@@ -410,3 +410,61 @@ def test_plan_outputs_instance_layer(home, catalog, tmp_path):
     with_instance = plan_outputs(config, config.components["panel"], directory, "1.0.0", "a" * 40, instance=True)
     extra = [o for o in with_instance if o not in plain]
     assert [(o.dest, o.layer, o.content) for o in extra] == [(f"{HA}/local.yaml", "instance", b"owned_by_home: 1\n")]
+
+
+# --- --catalog-dev on an unlocked component, and write failures (Task 7 findings) ----------------
+
+
+def dev_render(home, catalog, capsys, *ids):
+    return run(home, "render", "--catalog-dev", str(catalog), *ids, capsys=capsys)
+
+
+def set_template(catalog, text):
+    write_files(catalog / "components" / "panel", {"templates/package.yaml.j2": text})
+
+
+def test_second_dev_render_of_an_unlocked_component_replaces_its_dirty_files(home, catalog, capsys):
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert code == 0 and not Lock.load(home).components
+    set_template(catalog, "sensor_prefix: [[ inputs.prefix ]]\ndev: 2\n")
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert code == 0, out
+    assert "dev: 2" in (home / HA / "packages/panel.yaml").read_text()
+    assert f"dev {HA}/packages/panel.yaml" in out.splitlines()
+
+
+def test_dev_render_still_refuses_a_file_that_is_not_its_own_dirty_output(home, catalog, capsys):
+    package = home / HA / "packages/panel.yaml"
+    package.parent.mkdir(parents=True)
+    for first_line in (
+        "# Rendered by Domosenso from other/1.0.0 (abcdef1-dirty) — do not edit",  # another component's
+        "# Rendered by Domosenso from panel/1.0.0 (abcdef1) — do not edit",  # a clean render, not a dev one
+        "# the home's own",
+    ):
+        package.write_text(first_line + "\nmine: 1\n")
+        code, out = dev_render(home, catalog, capsys, "panel")
+        assert code == 1 and out.splitlines()[-1] == f"FAIL not managed, differs: {HA}/packages/panel.yaml", first_line
+        assert package.read_text() == first_line + "\nmine: 1\n"
+
+
+def test_dev_render_names_a_file_that_differs_from_the_lock(home, catalog, capsys):
+    lock_in(home, catalog, "panel")
+    run(home, "render", capsys=capsys)
+    set_template(catalog, "sensor_prefix: [[ inputs.prefix ]]\ndev: 1\n")
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert code == 0 and f"write {HA}/packages/panel.yaml" in out.splitlines()  # still what the lock describes
+    set_template(catalog, "sensor_prefix: [[ inputs.prefix ]]\ndev: 2\n")
+    code, out = dev_render(home, catalog, capsys, "panel")
+    lines = out.splitlines()
+    assert code == 0 and f"dev {HA}/packages/panel.yaml" in lines  # the first dev render's file, not the lock's
+    assert f"write {HA}/packages/panel.yaml" not in lines
+    assert f"same {HA}/shell/pick.py" in lines
+
+
+def test_write_oserror_names_the_destination(home, catalog, capsys):
+    lock_in(home, catalog, "panel")
+    (home / HA).mkdir(parents=True)
+    (home / HA / "shell").write_text("a file where a directory belongs\n")
+    code, out = run(home, "render", capsys=capsys)
+    last = out.splitlines()[-1]
+    assert code == 1 and last.startswith(f"FAIL cannot write {HA}/shell/pick.py: ")

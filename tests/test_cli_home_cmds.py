@@ -1,0 +1,562 @@
+"""`domosenso init`, `add`, `update` and `status` against a temporary catalog repository and home."""
+import hashlib
+import json
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+from domosenso_cli import main as cli
+from domosenso_cli.home import HomeConfig
+from domosenso_cli.lock import Lock
+from domosenso_cli.upgrade_notes import sections_between
+
+HA = "home-assistant"
+
+MANIFEST = """\
+id: panel
+version: {version}
+artifacts:
+  templates: [templates/package.yaml.j2, templates/dashboard.lang.yaml.j2]
+  install_path: www/domosenso/panel/<version>/
+  dashboard_cards: [cards/panel-card.js]
+inputs:
+  prefix: {{type: slug, example: demo}}
+  title: {{type: string, default: Hello, example: Hi}}
+  rooms: {{type: "list[room]", default: null, example: [a, b]}}
+  bare: {{type: string}}
+"""
+
+FILES = {
+    "templates/package.yaml.j2": "sensor_prefix: [[ inputs.prefix ]]\n",
+    "templates/dashboard.lang.yaml.j2": "title: [[ t('ui.title') ]]\n",
+    "templates/instance/local.yaml.j2": "owned_by_home: [[ inputs.prefix ]]\n",
+    "translations/en.json": '{"ui": {"title": "Panel"}}',
+    "translations/de.json": '{"ui": {"title": "Tafel"}}',
+    "translations/pl.json": '{"ui": {"title": "Panel pl"}}',
+    "cards/panel-card.js": "export const v = 1;\n",
+}
+
+UPGRADE = """\
+# panel: upgrade notes
+
+## 1.1.0 (2026-10-21): the second
+
+Card changed.
+
+### What a home does
+
+- Reload the tablet.
+
+## 1.0.0 (2026-10-20): the first
+
+Initial release.
+"""
+
+
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@localhost", "-C", str(repo), *args],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+
+def write_files(root: Path, files: dict[str, str]) -> None:
+    for rel, text in files.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+
+def release(repo: Path, version: str, extra: dict[str, str] | None = None) -> None:
+    write_files(repo / "components" / "panel", {"component.yaml": MANIFEST.format(version=version), **(extra or {})})
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", f"panel {version}")
+    git(repo, "tag", "-a", f"panel/{version}", "-m", f"panel/{version}")
+
+
+@pytest.fixture
+def catalog(tmp_path):
+    repo = tmp_path / "catalog"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    write_files(repo / "components" / "panel", FILES)
+    release(repo, "1.0.0")
+    return repo
+
+
+def release_110(repo: Path) -> None:
+    release(repo, "1.1.0", {"cards/panel-card.js": "export const v = 2;\n", "UPGRADE.md": UPGRADE})
+
+
+def run(home: Path, *argv: str, capsys) -> tuple[int, str]:
+    capsys.readouterr()
+    code = cli.main(["--home", str(home), *argv])
+    return code, capsys.readouterr().out
+
+
+@pytest.fixture
+def home(tmp_path, catalog, capsys):
+    root = tmp_path / "home"
+    code, out = run(root, "init", "--catalog", str(catalog), capsys=capsys)
+    assert code == 0, out
+    return root
+
+
+@pytest.fixture
+def added(home, catalog, capsys):
+    """The home after `add panel@1.0.0`."""
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 0, out
+    return home
+
+
+def edit_home(home: Path, **changes) -> None:
+    path = home / "domosenso.yaml"
+    data = yaml.safe_load(path.read_text())
+    data.update(changes)
+    path.write_text(yaml.safe_dump(data))
+
+
+# --- init -------------------------------------------------------------------------------------
+
+
+def test_init_writes_declaration_and_empty_lock(home, catalog):
+    config = HomeConfig.load(home)
+    assert config.catalog == str(catalog) and config.catalog_source() == catalog
+    assert config.targets == {} and config.components == {}
+    assert (config.config_dir, config.esphome_dir) == (home / "home-assistant", home / "esphome")
+    assert Lock.load(home).components == {}
+    assert (home / "domosenso.lock").is_file()
+    text = (home / "domosenso.yaml").read_text()
+    assert "targets: {}" in text
+    commented = [line for line in text.splitlines() if line.startswith("#")]
+    for needle in ("staging:", "production:", "kind: local-docker", "kind: ssh-docker", "host:", "docker:",
+                   "container:", "config:", "url:", "token_file:"):
+        assert any(needle in line for line in commented), needle
+
+
+def test_init_refuses_existing(home, catalog, capsys):
+    before = (home / "domosenso.yaml").read_text()
+    code, out = run(home, "init", "--catalog", str(catalog), capsys=capsys)
+    assert code == 1
+    assert out.splitlines()[-1] == f"FAIL domosenso.yaml exists: {home / 'domosenso.yaml'}"
+    assert (home / "domosenso.yaml").read_text() == before
+
+
+# --- add --------------------------------------------------------------------------------------
+
+
+def test_add_writes_skeleton_and_instance_once(home, catalog, capsys):
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    lines = out.splitlines()
+    assert (code, lines[-1]) == (0, "ok"), out
+
+    data = yaml.safe_load((home / "domosenso.yaml").read_text())
+    assert data["components"] == {"panel": {"inputs": "domosenso/panel.inputs.yaml"}}
+    assert "#   staging:" in (home / "domosenso.yaml").read_text()  # the template of `init` survives
+
+    skeleton = (home / "domosenso/panel.inputs.yaml").read_text().splitlines()
+    assert "prefix: demo  # slug" in skeleton
+    assert "# title: Hi  # string" in skeleton
+    assert "# rooms: [a, b]  # list[room]" in skeleton
+    assert "bare: null  # string" in skeleton  # required, no example: left for the home to fill
+    assert yaml.safe_load("\n".join(skeleton)) == {"prefix": "demo", "bare": None}
+
+    assert "instance home-assistant/local.yaml" in lines
+    assert (home / HA / "local.yaml").read_text() == "owned_by_home: demo\n"
+    entry = Lock.load(home).components["panel"]
+    assert (entry.version, entry.tag) == ("1.0.0", "panel/1.0.0")
+    assert entry.commit == git(catalog, "rev-parse", "panel/1.0.0^{commit}")
+    assert entry.files[f"{HA}/local.yaml"].layer == "instance"
+    assert entry.files[f"{HA}/packages/panel.yaml"].layer == "managed"
+    assert (home / HA / "packages/panel.yaml").read_text().endswith("sensor_prefix: demo\n")
+    assert (home / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js").is_file()
+    assert entry.resources == ["/local/domosenso/panel/1.0.0/cards/panel-card.js"]
+
+
+def test_instance_files_are_the_homes_after_add(added, capsys):
+    local = added / HA / "local.yaml"
+    local.write_text("mine: edited\n")
+    before = Lock.load(added).components["panel"].files[f"{HA}/local.yaml"]
+    code, out = run(added, "render", capsys=capsys)  # neither hand-edited nor stale, and not re-rendered
+    assert code == 0, out
+    assert local.read_text() == "mine: edited\n"
+    assert not any(line.startswith(("stale", "write", "same")) and "local.yaml" in line for line in out.splitlines())
+    assert Lock.load(added).components["panel"].files[f"{HA}/local.yaml"] == before
+
+
+def test_add_refuses_existing_instance(home, catalog, capsys):
+    """A `--catalog-dev` add never overwrites an instance file; nothing of the refused add is left."""
+    (home / HA).mkdir(parents=True)
+    (home / HA / "local.yaml").write_text("the home's own\n")
+    code, out = run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)
+    assert code == 1
+    assert out.splitlines()[-1] == f"FAIL instance file exists: {HA}/local.yaml"
+    assert (home / HA / "local.yaml").read_text() == "the home's own\n"
+    assert yaml.safe_load((home / "domosenso.yaml").read_text())["components"] == {}
+    assert Lock.load(home).components == {}
+    assert not (home / "domosenso/panel.inputs.yaml").exists()
+    assert not (home / HA / "packages").exists()
+
+
+def test_tagged_add_keeps_an_instance_file_the_lock_does_not_record(home, catalog, capsys):
+    (home / HA).mkdir(parents=True)
+    (home / HA / "local.yaml").write_text("the home's own, edited\n")
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert f"instance-kept {HA}/local.yaml" in out.splitlines()
+    assert (home / HA / "local.yaml").read_text() == "the home's own, edited\n"
+    record = Lock.load(home).components["panel"].files[f"{HA}/local.yaml"]
+    assert record.layer == "instance"
+    assert record.sha256 == hashlib.sha256(b"the home's own, edited\n").hexdigest()
+    assert (home / HA / "packages/panel.yaml").is_file()
+
+
+def test_tagged_add_after_dev_add_supersedes_it(home, catalog, capsys):
+    code, out = run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)
+    assert code == 0, out
+    assert (home / HA / "local.yaml").read_text() == "owned_by_home: demo\n"  # a dev add renders instance files too
+    assert Lock.load(home).components == {}
+    (home / HA / "local.yaml").write_text("owned_by_home: edited\n")
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert f"instance-kept {HA}/local.yaml" in out.splitlines()
+    assert "-dirty" not in (home / HA / "packages/panel.yaml").read_text().splitlines()[0]
+    entry = Lock.load(home).components["panel"]
+    assert entry.files[f"{HA}/local.yaml"].layer == "instance"
+    assert (home / HA / "local.yaml").read_text() == "owned_by_home: edited\n"
+    assert {r.layer for p, r in entry.files.items() if p != f"{HA}/local.yaml"} == {"managed"}
+    assert f"{HA}/dashboards/panel.de.yaml" in entry.files and f"{HA}/www/domosenso/panel/1.0.0/cards/panel-card.js" in entry.files
+
+
+def test_failed_tagged_add_leaves_no_lock_entry(home, catalog, capsys):
+    (home / HA / "packages").mkdir(parents=True)
+    (home / HA / "packages/panel.yaml").write_text("the home's own\n")  # unmanaged and differing: the render refuses
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == f"FAIL not managed, differs: {HA}/packages/panel.yaml"
+    assert Lock.load(home).components == {}
+    (home / HA / "packages/panel.yaml").unlink()
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)  # retry works: nothing says "already locked"
+    assert code == 0, out
+
+
+def test_add_keeps_an_inputs_file_the_home_prepared(home, capsys):
+    (home / "domosenso").mkdir()
+    (home / "domosenso/panel.inputs.yaml").write_text("prefix: mine\n")
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 0 and "keep domosenso/panel.inputs.yaml" in out.splitlines()
+    assert (home / "domosenso/panel.inputs.yaml").read_text() == "prefix: mine\n"
+    assert (home / HA / "local.yaml").read_text() == "owned_by_home: mine\n"
+
+
+def test_add_errors(added, capsys):
+    code, out = run(added, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == "FAIL panel is already locked at 1.0.0: use update"
+    assert run(added, "add", "panel", capsys=capsys) == (1, "FAIL expected <id>@<version>, got 'panel'\n")
+    assert run(added, "add", "ghost@1.0.0", capsys=capsys) == (1, "FAIL no tag ghost/1.0.0\n")
+    assert run(added, "add", "Bad_Id@1.0.0", capsys=capsys)[1].startswith("FAIL ")
+
+
+def test_add_into_a_flow_style_components_is_refused_not_mangled(tmp_path, catalog, capsys):
+    root = tmp_path / "h2"
+    root.mkdir()
+    (root / "domosenso.yaml").write_text(
+        f"catalog: {catalog}\nconfig_dir: ha\nesphome_dir: esphome\ntargets: {{}}\n"
+        "components: {other: {inputs: domosenso/other.inputs.yaml}}\n"
+    )
+    before = (root / "domosenso.yaml").read_text()
+    code, out = run(root, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 1 and "domosenso.yaml" in out.splitlines()[-1]
+    assert (root / "domosenso.yaml").read_text() == before
+    assert not (root / "domosenso").exists()
+
+
+def test_add_appends_to_a_block_components_mapping(home, capsys):
+    (home / "domosenso.yaml").write_text(
+        (home / "domosenso.yaml").read_text().replace(
+            "components: {}", "components:\n  other:\n    inputs: domosenso/other.inputs.yaml  # kept\n\nlocal: []"
+        )
+    )
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 0, out
+    text = (home / "domosenso.yaml").read_text()
+    assert "inputs: domosenso/other.inputs.yaml  # kept" in text
+    assert sorted(yaml.safe_load(text)["components"]) == ["other", "panel"]
+    assert yaml.safe_load(text)["local"] == []
+
+
+def test_add_catalog_dev_writes_no_lock_entry(home, catalog, capsys):
+    code, out = run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert "panel" in yaml.safe_load((home / "domosenso.yaml").read_text())["components"]
+    assert (home / "domosenso/panel.inputs.yaml").is_file()
+    assert Lock.load(home).components == {}
+    package = (home / HA / "packages/panel.yaml").read_text()
+    assert package.startswith("# Rendered by Domosenso from panel/1.0.0 (") and "-dirty)" in package.splitlines()[0]
+
+
+# --- update -----------------------------------------------------------------------------------
+
+
+def test_update_prints_notes_and_removes_old_version_files(added, catalog, capsys):
+    release_110(catalog)
+    code, out = run(added, "update", "panel", capsys=capsys)
+    lines = out.splitlines()
+    assert (code, lines[-1]) == (0, "ok"), out
+    assert "note ## 1.1.0 (2026-10-21): the second" in lines
+    assert "note Card changed." in lines
+    assert "note - Reload the tablet." in lines
+    assert not any("1.0.0 (2026-10-20)" in line or "Initial release" in line for line in lines)
+    assert lines.index("note ## 1.1.0 (2026-10-21): the second") < next(i for i, l in enumerate(lines) if l.startswith(("write", "same")))
+
+    old, new = added / HA / "www/domosenso/panel/1.0.0", added / HA / "www/domosenso/panel/1.1.0"
+    assert not old.exists()  # files and their emptied directories
+    assert (new / "cards/panel-card.js").read_text() == "export const v = 2;\n"
+    assert f"remove {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js" in lines
+
+    entry = Lock.load(added).components["panel"]
+    assert (entry.version, entry.tag) == ("1.1.0", "panel/1.1.0")
+    assert entry.commit == git(catalog, "rev-parse", "panel/1.1.0^{commit}")
+    assert entry.resources == ["/local/domosenso/panel/1.1.0/cards/panel-card.js"]
+    assert not any("/1.0.0/" in path for path in entry.files)
+    assert entry.files[f"{HA}/local.yaml"].layer == "instance"  # the home's file is untouched
+    assert (added / HA / "local.yaml").read_text() == "owned_by_home: demo\n"
+
+
+def test_update_to_a_given_version_and_to_the_same_one(added, catalog, capsys):
+    release_110(catalog)
+    code, out = run(added, "update", "panel", "--to", "1.0.0", capsys=capsys)
+    assert (code, out) == (0, "current panel 1.0.0\nok\n")
+    code, out = run(added, "update", "panel", "--to", "1.1.0", capsys=capsys)
+    assert code == 0 and Lock.load(added).components["panel"].version == "1.1.0"
+    code, out = run(added, "update", "panel", "--to", "1.0.0", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == "FAIL panel: 1.0.0 is older than the locked 1.1.0"
+    code, out = run(added, "update", "panel", "--to", "9.9.9", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == "FAIL no tag panel/9.9.9"
+
+
+def test_update_refuses_a_hand_edited_file_it_would_remove(added, catalog, capsys):
+    release_110(catalog)
+    card = added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js"
+    card.write_text("edited\n")
+    code, out = run(added, "update", "panel", capsys=capsys)
+    assert code == 1
+    assert out.splitlines()[-1] == f"FAIL hand-edited: {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js"
+    assert Lock.load(added).components["panel"].version == "1.0.0"
+    assert not (added / HA / "www/domosenso/panel/1.1.0").exists()  # nothing written
+    code, out = run(added, "update", "panel", "--force", capsys=capsys)
+    assert code == 0 and not card.exists()
+
+
+def test_update_errors(home, added, catalog, capsys):
+    code, out = run(added, "update", "ghost", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == "FAIL ghost is not in domosenso.yaml"
+    edit_home(added, components={"panel": {"inputs": "domosenso/panel.inputs.yaml"}, "free": {"inputs": "domosenso/free.yaml"}})
+    code, out = run(added, "update", "free", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == "FAIL free is not in domosenso.lock: add it first"
+
+
+def test_update_refuses_a_moved_locked_tag(added, catalog, capsys):
+    release_110(catalog)
+    write_files(catalog / "components" / "panel", {"cards/panel-card.js": "moved\n"})
+    git(catalog, "add", "-A")
+    git(catalog, "commit", "-q", "-m", "move")
+    git(catalog, "tag", "-a", "-f", "panel/1.0.0", "-m", "again")
+    code, out = run(added, "update", "panel", capsys=capsys)
+    assert code == 1 and "panel/1.0.0 moved" in out
+
+
+def test_update_fails_before_writing_when_an_input_is_missing(added, catalog, capsys):
+    release(catalog, "1.1.0", {"templates/package.yaml.j2": "x: [[ inputs.brand_new ]]\n"})
+    code, out = run(added, "update", "panel", capsys=capsys)
+    assert code == 1 and "brand_new" in out.splitlines()[-1]
+    assert Lock.load(added).components["panel"].version == "1.0.0"
+    assert (added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js").exists()
+
+
+# --- sections_between -------------------------------------------------------------------------
+
+NOTES = """\
+# comp: upgrade notes
+
+Intro line.
+
+## 1.10.0 (2026-10-30): ten
+
+ten body
+
+## 1.9.0 (2026-10-29): nine
+
+nine body
+### Detail
+
+detail body
+
+```
+## 1.99.0 (fenced, not a section)
+```
+
+## Unreleased
+
+draft
+
+## 1.0.0 (2026-10-20): first
+
+first body
+"""
+
+
+def test_sections_between_order():
+    found = sections_between(NOTES, "1.0.0", "1.10.0")
+    assert [s.splitlines()[0] for s in found] == ["## 1.10.0 (2026-10-30): ten", "## 1.9.0 (2026-10-29): nine"]  # newest first, 1.10 after 1.9 numerically
+    assert found[0] == "## 1.10.0 (2026-10-30): ten\n\nten body"
+    assert "### Detail" in found[1] and "detail body" in found[1] and "## 1.99.0 (fenced, not a section)" in found[1]
+    assert "draft" not in found[1]  # `## Unreleased` ends the section and is not one
+
+
+def test_sections_between_bounds():
+    assert sections_between(NOTES, "1.9.0", "1.10.0") == ["## 1.10.0 (2026-10-30): ten\n\nten body"]  # old excluded, new included
+    assert sections_between(NOTES, "1.10.0", "1.10.0") == []
+    assert sections_between(NOTES, "1.10.0", "1.9.0") == []
+    assert [s.splitlines()[0] for s in sections_between(NOTES, "0.0.0", "1.0.0")] == ["## 1.0.0 (2026-10-20): first"]
+    assert sections_between("no sections here\n", "0.0.0", "9.9.9") == []
+
+
+# --- status -----------------------------------------------------------------------------------
+
+
+def lines_of(out: str) -> list[str]:
+    return out.splitlines()
+
+
+def test_classify_returns_the_class_of_each_file(added):
+    from domosenso_cli.cmd_home import classify
+
+    (added / HA / "packages/mine.yaml").write_text("x: 1\n")
+    (added / HA / "automations.yaml").write_text("[]\n")
+    (added / HA / "stray.txt").write_text("?\n")
+    edit_home(added, local=["packages/mine.yaml"], unmanaged_on_target=["automations.yaml"])
+    classes = classify(HomeConfig.load(added), Lock.load(added))
+    assert classes[f"{HA}/packages/panel.yaml"] == "managed"
+    assert classes[f"{HA}/local.yaml"] == "instance"
+    assert classes[f"{HA}/packages/mine.yaml"] == "local"
+    assert classes[f"{HA}/automations.yaml"] == "unmanaged"
+    assert classes[f"{HA}/stray.txt"] == "unclassified"
+
+
+def test_status_classifies(added, capsys):
+    (added / HA / "packages/mine.yaml").write_text("x: 1\n")
+    (added / HA / "automations.yaml").write_text("[]\n")
+    (added / HA / "configuration.yaml").write_text("homeassistant:\n  packages: !include_dir_named packages\n")
+    (added / HA / "secrets.yaml").write_text("a: b\n")
+    (added / HA / "stray.txt").write_text("?\n")
+    (added / HA / "shell").mkdir()
+    (added / HA / "shell/pick.py").write_text("print()\n")
+    edited = added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js"
+    edited.write_text("edited\n")
+    edit_home(added, local=["packages/*.yaml"], unmanaged_on_target=["automations.yaml"],
+              custom_integrations={"hacs_thing": "1.2.3"})
+    (added / "esphome").mkdir()
+    (added / "esphome/node.yaml").write_text("esphome: {}\n")
+    # `packages/*.yaml` must not swallow the managed package, and `*` does not cross a directory
+    (added / HA / "packages/sub").mkdir()
+    (added / HA / "packages/sub/deep.yaml").write_text("x: 1\n")
+
+    code, out = run(added, "status", capsys=capsys)
+    lines = lines_of(out)
+    assert code == 1 and lines[-1] == "FAIL 4 unclassified", out
+    assert f"managed {HA}/packages/panel.yaml" in lines
+    assert f"managed-modified {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js" in lines
+    assert f"instance {HA}/local.yaml" in lines
+    assert f"unmanaged {HA}/automations.yaml" in lines
+    assert f"unmanaged {HA}/configuration.yaml" in lines
+    assert f"unmanaged {HA}/secrets.yaml" in lines
+    assert f"unclassified {HA}/stray.txt" in lines
+    assert f"unclassified {HA}/shell/pick.py" in lines
+    assert f"unclassified {HA}/packages/sub/deep.yaml" in lines
+    assert "unclassified esphome/node.yaml" in lines
+    assert not any(line.endswith("packages/mine.yaml") for line in lines)  # local files are not listed
+    assert "component panel 1.0.0 newest 1.0.0" in lines
+    assert "integration hacs_thing 1.2.3 (manual)" in lines
+
+
+def test_status_all_classified_is_ok(added, capsys):
+    code, out = run(added, "status", capsys=capsys)
+    lines = lines_of(out)
+    assert (code, lines[-1]) == (0, "ok"), out
+    assert not any(line.startswith("unclassified") for line in lines)
+    assert not any(line.startswith("managed-modified") for line in lines)
+
+
+def test_status_component_lines(added, catalog, capsys):
+    release_110(catalog)
+    edit_home(added, components={"panel": {"inputs": "domosenso/panel.inputs.yaml"}, "free": {"inputs": "domosenso/free.yaml"}})
+    code, out = run(added, "status", capsys=capsys)
+    lines = lines_of(out)
+    assert "component panel 1.0.0 newest 1.1.0" in lines
+    assert "component free not-locked newest none" in lines
+
+
+def test_status_unclassified_in_json(added, capsys):
+    (added / HA / "stray.txt").write_text("?\n")
+    code, out = run(added, "status", "--json", capsys=capsys)
+    document = json.loads(out)
+    assert code == 1 and document["result"] == "FAIL" and document["reason"] == "1 unclassified"
+    assert ["unclassified", f"{HA}/stray.txt"] in document["lines"]
+
+
+CONFIGURATION = """\
+homeassistant:
+  packages: !include_dir_named packages
+  external_url: !secret url
+lovelace:
+  mode: storage
+  dashboards:
+    panel-en:
+      mode: yaml
+      title: Panel
+      filename: dashboards/panel.en.yaml
+"""
+
+
+def test_status_missing_dashboard_entry(added, capsys):
+    (added / HA / "configuration.yaml").write_text(CONFIGURATION)
+    code, out = run(added, "status", capsys=capsys)
+    lines = lines_of(out)
+    assert code == 0, out
+    assert "missing-dashboard-entry dashboards/panel.de.yaml" in lines
+    assert "missing-dashboard-entry dashboards/panel.pl.yaml" in lines
+    assert "missing-dashboard-entry dashboards/panel.en.yaml" not in lines
+    snippet = []
+    for line in lines[lines.index("missing-dashboard-entry dashboards/panel.de.yaml") + 1:]:
+        if not line.startswith("yaml "):
+            break
+        snippet.append(line[len("yaml "):])
+    block = yaml.safe_load("\n".join(snippet))
+    assert block["lovelace"]["dashboards"]["panel-de"] == {
+        "mode": "yaml", "title": "panel de", "filename": "dashboards/panel.de.yaml", "show_in_sidebar": True,
+    }
+
+
+def test_status_without_a_configuration_file_names_every_dashboard(added, capsys):
+    code, out = run(added, "status", capsys=capsys)
+    assert code == 0
+    assert [l for l in lines_of(out) if l.startswith("missing-dashboard-entry")] == [
+        f"missing-dashboard-entry dashboards/panel.{lang}.yaml" for lang in ("de", "en", "pl")
+    ]
+
+
+def test_status_included_dashboards_cannot_be_checked(added, capsys):
+    (added / HA / "configuration.yaml").write_text("lovelace: !include lovelace.yaml\n")
+    code, out = run(added, "status", capsys=capsys)
+    lines = lines_of(out)
+    assert code == 0 and "unchecked configuration.yaml: lovelace is included from another file" in lines
+    assert not any(line.startswith("missing-dashboard-entry") for line in lines)
+
+
+def test_status_broken_configuration_is_named(added, capsys):
+    (added / HA / "configuration.yaml").write_text("lovelace: [unclosed\n")
+    code, out = run(added, "status", capsys=capsys)
+    assert code == 1 and "configuration.yaml" in lines_of(out)[-1] and lines_of(out)[-1].startswith("FAIL ")

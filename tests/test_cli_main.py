@@ -63,8 +63,9 @@ def fake_command(monkeypatch, run, add_arguments=None):
     module = types.SimpleNamespace(run=run)
     if add_arguments:
         module.add_arguments = add_arguments
+    real = cli.load_command_module
     monkeypatch.setitem(cli.COMMANDS, "status", "fake.status")
-    monkeypatch.setattr(cli, "load_command_module", lambda path: module)
+    monkeypatch.setattr(cli, "load_command_module", lambda path: module if path == "fake.status" else real(path))
 
 
 def test_error_becomes_fail(monkeypatch, capsys):
