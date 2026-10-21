@@ -204,13 +204,16 @@ def pick_target(home: HomeConfig, name: str) -> Target:
     return home.targets[name]
 
 
+async def target_profiles(home: HomeConfig, target: Target, ha: HA) -> dict[str, dict] | None:
+    """The kiosk users' profiles where the target can be read over ssh (SPEC-002 decision 2: read-only)."""
+    if target.kind == "ssh-docker" and home.kiosk_users:
+        return await read_kiosk_profiles(ha, home.kiosk_users, target_reader(target))
+    return None
+
+
 async def take_from(home: HomeConfig, target: Target) -> dict:
-    """A snapshot of `target`, with kiosk profiles where the target can be read over ssh."""
     async with HA.for_target(target) as ha:
-        profiles = None
-        if target.kind == "ssh-docker" and home.kiosk_users:
-            profiles = await read_kiosk_profiles(ha, home.kiosk_users, target_reader(target))
-        return await take(ha, profiles)
+        return await take(ha, await target_profiles(home, target, ha))
 
 
 def validate(snapshot: dict) -> None:

@@ -28,7 +28,7 @@ COMMANDS: dict[str, str | None] = {
     "rollback": None,
     "snapshot": "domosenso_cli.snapshot",
     "compare": "domosenso_cli.compare",
-    "verify": None,
+    "verify": "domosenso_cli.verify",
 }
 
 SUMMARIES = {
