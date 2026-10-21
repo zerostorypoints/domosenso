@@ -2,6 +2,7 @@
 import asyncio
 import io
 import json
+import re
 import tarfile
 from pathlib import Path
 
@@ -281,22 +282,22 @@ def test_plan_removes_file_dropped_from_record(tmp_path):
 def test_unmanaged_on_target_never_touched(tmp_path):
     home = Home(tmp_path, local=("*.yaml", "packages/*.yaml"), unmanaged=("automations.yaml", "scripts.yaml"))
     home.write("automations.yaml", "[]\n")  # the repository's copy matches a local glob, but is unmanaged
-    home.write("configuration.yaml", "homeassistant: {}\n")  # never written by any command
+    home.write("secrets.yaml", "token: repo\n")  # Home Assistant's: never written by any command
     home.write("packages/mine.yaml", "b: 1\n")
     target = FakeTarget(home.target_dir, check_output=CLEAN)
     on_target(target, "automations.yaml", "- id: '1'\n")
     on_target(target, "scripts.yaml", "{}\n")
-    on_target(target, "configuration.yaml", "homeassistant: {packages: !include_dir_named packages}\n")
+    on_target(target, "secrets.yaml", "token: real\n")
     before = target_files(home.target_dir)
 
     plan = plan_for(home, target)
     assert plan.add == ["packages/mine.yaml"]
     assert plan.change == [] and plan.orphan == [] and plan.remove == []
-    assert {"automations.yaml", "scripts.yaml", "configuration.yaml"} <= set(plan.keep)
+    assert {"automations.yaml", "scripts.yaml", "secrets.yaml"} <= set(plan.keep)
 
     run_apply(home, target, Resources([]).ha(), plan)
     after = target_files(home.target_dir)
-    for rel in ("automations.yaml", "scripts.yaml", "configuration.yaml"):
+    for rel in ("automations.yaml", "scripts.yaml", "secrets.yaml"):
         assert after[rel] == before[rel]
     assert set(record(home.target_dir)["files"]) == {"packages/mine.yaml"}
 
@@ -435,7 +436,8 @@ def test_restore_failure_says_where_the_backup_is(tmp_path):
     target = FakeTarget(home.target_dir, check_output=CLEAN)
     target.exec = lambda argv, timeout_s=0: (_ for _ in ()).throw(DomosensoError("exec timed out"))
     target.delete = lambda paths: (_ for _ in ()).throw(DomosensoError("ssh died"))
-    with pytest.raises(DomosensoError, match=r"restore failed.*ssh died.*predeploy-\d{8}T\d{6}Z"):
+    with pytest.raises(DomosensoError,
+                       match=r"restore failed.*ssh died.*domosenso rollback staging \d{8}T\d{6}Z.*predeploy-"):
         run_apply(home, target, Resources([]).ha(), plan_for(home, target))
 
 
@@ -685,3 +687,140 @@ def test_rollback_refuses_a_record_with_a_malformed_deploy_id(tmp_path):
     target.put({deploy.RECORD: json.dumps({"deploy_id": "../../x", "files": {}}).encode()})
     with pytest.raises(DomosensoError, match="not a deploy id"):
         run_rollback(home, target, Resources([]).ha())
+
+
+def test_configuration_yaml_is_carried(tmp_path):
+    """The home's own configuration.yaml: copied like any declared file, never generated or edited."""
+    home = Home(tmp_path, local=("*.yaml",), unmanaged=())
+    home.write("configuration.yaml", "homeassistant: {packages: !include_dir_named packages}\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    on_target(target, "configuration.yaml", "homeassistant: {}\n")
+    plan = plan_for(home, target)
+    assert plan.change == ["configuration.yaml"] and plan.restart is True
+    assert ["change", "configuration.yaml"] in deploy.plan_lines(plan)
+    run_apply(home, target, Resources([]).ha(), plan)
+    assert (home.target_dir / "configuration.yaml").read_text() == "homeassistant: {packages: !include_dir_named packages}\n"
+    assert record(home.target_dir)["files"]["configuration.yaml"]["layer"] == "local"
+    again = plan_for(home, target)
+    assert again.change == [] and again.add == [] and "configuration.yaml" in again.keep
+
+
+def test_cut_off_copy_whose_restore_fails_rolls_back_by_id(tmp_path, monkeypatch):
+    """ssh drops mid-copy and the restore fails too: the half-copied deploy never wrote its record,
+    yet `rollback <its id>` (and the default rollback) must put the target back as it was before it."""
+    home = Home(tmp_path)
+    home.managed("packages/ramka.yaml", "a: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    store = Resources([{"id": "r1", "url": "/local/x.js", "type": "module"}])
+    first = run_apply(home, target, store.ha(), plan_for(home, target))
+    start_files, start_record, start_urls = target_files(home.target_dir), record(home.target_dir), store.urls()
+
+    home.managed("packages/ramka.yaml", "a: 2\n")
+    home.write("packages/new.yaml", "n: 1\n")
+    home.write("packages/zz.yaml", "z: 1\n")  # written after new.yaml; the record comes last of all
+    target.fail_put_after = target.files_put + len(deploy.BACKUP_FILES) + 1
+    real_delete, broken = target.delete, {"left": 1}
+
+    def delete(paths):  # the link is still down when the restore deletes the added files
+        if broken["left"]:
+            broken["left"] -= 1
+            raise DomosensoError("ssh died")
+        real_delete(paths)
+
+    monkeypatch.setattr(target, "delete", delete)
+    with pytest.raises(DomosensoError, match=r"restore failed.*domosenso rollback staging (\d{8}T\d{6}Z)") as failed:
+        run_apply(home, target, store.ha(), plan_for(home, target))
+    second = re.search(r"rollback staging (\d{8}T\d{6}Z)", str(failed.value))[1]
+    assert record(home.target_dir) == start_record  # the record never got there
+    assert target_files(home.target_dir) != start_files  # half copied
+
+    assert run_rollback(home, target, store.ha()) == second  # the default finds the deploy that never completed
+    assert target_files(home.target_dir) == start_files
+    assert record(home.target_dir) == start_record and record(home.target_dir)["deploy_id"] == first
+    assert store.urls() == start_urls
+
+    with pytest.raises(DomosensoError, match="already rolled back"):
+        run_rollback(home, target, store.ha(), second)
+    assert run_rollback(home, target, store.ha()) == first  # the default is the record's deploy again
+
+
+def test_cut_off_copy_whose_restore_fails_rolls_back_by_explicit_id(tmp_path, monkeypatch):
+    home = Home(tmp_path)
+    home.write("packages/a.yaml", "a: 1\n")
+    home.write("packages/b.yaml", "b: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    target.fail_put_after = len(deploy.BACKUP_FILES) + 1
+    monkeypatch.setattr(target, "delete", lambda paths: (_ for _ in ()).throw(DomosensoError("ssh died")))
+    with pytest.raises(DomosensoError, match="restore failed") as failed:
+        run_apply(home, target, Resources([]).ha(), plan_for(home, target))
+    deploy_id = re.search(r"rollback staging (\d{8}T\d{6}Z)", str(failed.value))[1]
+    monkeypatch.undo()
+    assert run_rollback(home, target, Resources([]).ha(), deploy_id) == deploy_id
+    assert target_files(home.target_dir) == {}  # a first deploy: nothing was there, no record either
+
+
+def test_restored_deploy_is_not_the_default_rollback(tmp_path):
+    """A failed deploy that restored itself is done with: the default rollback is the record's deploy."""
+    home = Home(tmp_path)
+    home.write("packages/mine.yaml", "b: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    first = run_apply(home, target, Resources([]).ha(), plan_for(home, target))
+    home.write("packages/mine.yaml", "b: 2\n")
+    target.check_output = f"{BLUEPRINT_LINE}\n{CLEAN}"
+    with pytest.raises(DomosensoError, match="check_config"):
+        run_apply(home, target, Resources([]).ha(), plan_for(home, target))
+    assert run_rollback(home, target, Resources([]).ha()) == first
+
+
+def test_prune_is_part_of_the_plan(tmp_path, fakes, capsys):
+    home = Home(tmp_path)
+    home.write("packages/mine.yaml", "b: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    existing = [{"id": "z", "url": "/local/unwanted.js", "type": "module"}]
+    kept = deploy.make_plan(home.config_obj(), home.lock, target, existing)
+    pruned = deploy.make_plan(home.config_obj(), home.lock, target, existing, prune=True)
+    assert ["resource", "unwanted", "/local/unwanted.js"] in deploy.plan_lines(kept)
+    assert ["resource", "delete", "/local/unwanted.js"] in deploy.plan_lines(pruned)
+    assert kept.hash != pruned.hash
+    with pytest.raises(DomosensoError, match="prune"):
+        run_apply(home, target, Resources(existing).ha(), kept, prune=True)
+
+    home.declare()
+    store = Resources(existing)
+    fakes.update(target=target, ha=store.ha())
+    assert cli(home, "deploy", "production", "--plan") == 0
+    digest = capsys.readouterr().out.splitlines()[-2].removeprefix("hash ")
+    assert cli(home, "deploy", "production", "--apply", "--prune-resources", "--confirm", digest) == 1
+    assert "FAIL the plan changed" in capsys.readouterr().out
+    assert store.urls() == {"z": "/local/unwanted.js"} and target_files(home.target_dir) == {}
+
+
+def test_noop_deploy_writes_nothing(tmp_path, fakes, capsys):
+    home = Home(tmp_path)
+    home.write("packages/mine.yaml", "b: 1\n")
+    home.declare(targets=("staging",))
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "staging", "--apply") == 0
+    capsys.readouterr()
+    files, execs, puts = target_files(home.target_dir), list(target.execs), target.files_put
+    backups = sorted((home.target_dir / ".domosenso").iterdir())
+
+    assert cli(home, "deploy", "staging", "--apply") == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[-2:] == ["nothing to deploy", "ok"]
+    assert target_files(home.target_dir) == files and target.files_put == puts
+    assert target.execs == execs and target.restarts == 1
+    assert sorted((home.target_dir / ".domosenso").iterdir()) == backups
+
+
+def test_equal_files_without_a_record_still_write_the_record(tmp_path):
+    home = Home(tmp_path)
+    home.write("packages/mine.yaml", "b: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    on_target(target, "packages/mine.yaml", "b: 1\n")
+    plan = plan_for(home, target)
+    assert plan.add == [] and plan.change == []
+    deploy_id = run_apply(home, target, Resources([]).ha(), plan)
+    assert record(home.target_dir)["deploy_id"] == deploy_id
+    assert target.restarts == 0  # only the record changed

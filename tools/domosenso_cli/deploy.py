@@ -5,13 +5,16 @@ matching a `local:` glob. Every path here is relative to config_dir on both side
 `.domosenso/deployed.json`, the record of what the last deploy wrote; a path in it that the repository
 no longer has is removed. Nothing else is written or deleted: a file on the target that matches a
 `local:` glob but is in neither the repository nor the record is an orphan, and blocks `apply` until
-it is named in `remove_orphans`; `unmanaged_on_target` and the files Home Assistant owns are never
-touched.
+it is named in `remove_orphans`; `unmanaged_on_target` and the files Home Assistant keeps for itself
+(`secrets.yaml`, `.storage/`, the recorder database) are never touched. `configuration.yaml` is the
+home's instance file: when a `local:` glob names it, it is copied like any other declared file.
 
 `apply` backs up every file it will replace or remove (and the resource list) before it writes, on
 the target and in the home, and puts the backup back itself when the copy, check_config or the
 resources fail. The record travels in the same `put` as the files, so it describes the target
-whenever the files are there, and a backup holds the record it replaced.
+whenever the files are there, and a backup holds the record it replaced. A deploy whose copy was
+cut off and whose restore failed too has no record on the target; `rollback` finds it by the
+previous deploy id its backup names.
 """
 from __future__ import annotations
 
@@ -40,10 +43,11 @@ from domosenso_cli.targets import TargetIO, check_relative, match_globs
 TOOL_DIR = ".domosenso/"
 RECORD = TOOL_DIR + "deployed.json"
 BACKUP_FILES = ("files.tar", "resources.json", "added.json", "plan.json")
+RESTORED = "restored"  # beside the home's copy of a backup once it has been put back
 LOCAL_DEPLOYS = Path(".domosenso") / "deploys"
 PRODUCTION = "production"
-# Files Home Assistant owns: no command writes them, whatever a `local:` glob says.
-NEVER_CARRIED = {"configuration.yaml", "secrets.yaml"}
+# Files Home Assistant keeps for itself: no command writes them, whatever a `local:` glob says.
+NEVER_CARRIED = {"secrets.yaml"}
 NEVER_CARRIED_PREFIXES = (TOOL_DIR, ".storage/", "home-assistant_v2.db")
 # Home Assistant serves these without a restart (YAML dashboards are read when they load).
 NO_RESTART_PREFIXES = ("www/", "dashboards/")
@@ -71,6 +75,8 @@ class Plan:
     record: dict[str, dict] = field(default_factory=dict)  # deployed.json `files` after this deploy
     sources: dict[str, Path] = field(default_factory=dict)  # the repository file behind each carried path
     dirty: list[str] = field(default_factory=list)  # carried files rendered with --catalog-dev
+    prune: bool = False  # unwanted resources are deleted (and shown as `resource delete`)
+    recorded: dict[str, dict] = field(default_factory=dict)  # deployed.json `files` on the target now
 
 
 @dataclass
@@ -168,7 +174,8 @@ def needs_restart(paths: list[str]) -> bool:
     return any(not p.startswith(NO_RESTART_PREFIXES) for p in paths)
 
 
-def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: list[dict]) -> Plan:
+def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: list[dict],
+              prune: bool = False) -> Plan:
     record, sources, dirty = _carried(home, lock)
     previous = read_record(io)
     recorded = previous["files"] if previous else {}
@@ -188,10 +195,10 @@ def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: li
     restart = needs_restart(add + change + remove)
     digest = sha256(json.dumps({
         "add": add, "change": change, "remove": remove, "orphan": orphan, "keep": keep,
-        "resources": [asdict(a) for a in actions], "restart": restart,
+        "resources": [asdict(a) for a in actions], "prune": prune, "restart": restart,
         "content": {p: record[p]["sha256"] for p in add + change},
     }, sort_keys=True, separators=(",", ":")).encode())[:HASH_LENGTH]
-    return Plan(add, change, remove, orphan, keep, actions, restart, digest, record, sources, dirty)
+    return Plan(add, change, remove, orphan, keep, actions, restart, digest, record, sources, dirty, prune, recorded)
 
 
 def plan_lines(plan: Plan) -> list[list[str]]:
@@ -199,7 +206,7 @@ def plan_lines(plan: Plan) -> list[list[str]]:
     lines = [[kind, p] for kind in ("add", "change", "remove", "orphan", "keep") for p in getattr(plan, kind)]
     lines += [["dev-render", p] for p in plan.dirty]
     for a in plan.resources:
-        fields = ["resource", a.kind, a.url]
+        fields = ["resource", "delete" if a.kind == "unwanted" and plan.prune else a.kind, a.url]
         lines.append([*fields, "from", a.old_url] if a.kind == "update" else fields)
     lines.append(["restart:", "yes" if plan.restart else "no"])
     lines.append(["hash", plan.hash])
@@ -305,13 +312,45 @@ def _load_backup(home: HomeConfig, io: TargetIO, target: str, deploy_id: str) ->
         raise DomosensoError(f"the backup of {deploy_id} cannot be read: {e}") from e
 
 
-def _restore_files(io: TargetIO, backup: Backup, where: str) -> None:
+def _restore_files(io: TargetIO, backup: Backup, where: str, retry: str) -> None:
     try:
         if backup.files:
             io.put(backup.files)
         io.delete(backup.added)
     except Exception as e:
-        raise DomosensoError(f"restore failed, the target is half deployed: {e}; the backup is {where}") from e
+        raise DomosensoError(f"restore failed, the target is half deployed: {e}; "
+                             f"run `{retry}` once the target answers; the backup is {where}") from e
+
+
+def _mark_restored(home: HomeConfig, target: str, deploy_id: str) -> None:
+    """Best effort: without the mark the default rollback may only repeat a restore already done."""
+    try:
+        (_local_dir(home, target, deploy_id) / RESTORED).write_text("")
+    except OSError:
+        pass
+
+
+def _is_restored(home: HomeConfig, target: str, deploy_id: str) -> bool:
+    return (_local_dir(home, target, deploy_id) / RESTORED).is_file()
+
+
+def _incomplete(home: HomeConfig, target: str, last: str | None) -> str | None:
+    """The newest local deploy after `last` that started from it and was never put back: its copy was
+    cut off and its own restore failed, so the target's record still names `last`."""
+    base = home.root / LOCAL_DEPLOYS / target
+    names = sorted((d.name for d in base.iterdir() if DEPLOY_ID.match(d.name)), reverse=True) if base.is_dir() else []
+    for name in names:
+        if last is not None and name <= last:
+            break
+        if _is_restored(home, target, name):
+            continue
+        try:
+            plan = json.loads((base / name / "plan.json").read_text())
+        except (OSError, ValueError):
+            continue
+        if "previous_deploy_id" in plan and plan["previous_deploy_id"] == last:
+            return name
+    return None
 
 
 async def _restore_resources(ha, backup: Backup) -> None:
@@ -352,9 +391,10 @@ def _new_id() -> str:
 
 
 async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remove_orphans: list[str],
-                prune: bool, *, target: str, rep=None) -> str:
-    """Deploy `plan` to `target`; returns the deploy id. Any failure before the restart leaves the
-    target as it was (or raises naming the backup when even that fails)."""
+                prune: bool, *, target: str, rep=None) -> str | None:
+    """Deploy `plan` to `target`; returns the deploy id, or None when there is nothing to do (nothing
+    is written then). Any failure before the restart leaves the target as it was, or raises naming
+    the backup and the rollback command when even that fails."""
     rep = rep or _Quiet()
     removed_orphans = sorted(set(remove_orphans))
     if unknown := [p for p in removed_orphans if p not in plan.orphan]:
@@ -363,6 +403,11 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         raise DomosensoError(f"orphan {', '.join(blocking)}")
     if target == PRODUCTION and plan.dirty:
         raise DomosensoError(f"dev render: {', '.join(plan.dirty)}: production takes only files rendered from a tag")
+    if prune != plan.prune:
+        raise DomosensoError("--prune-resources differs from the plan's: plan again with the same options")
+    resource_work = [a for a in plan.resources if a.kind != "unwanted" or prune]
+    if not (plan.add or plan.change or plan.remove or removed_orphans or resource_work) and plan.recorded == plan.record:
+        return None
     contents = _contents(plan)
     _parse_dashboards(contents)
 
@@ -383,27 +428,35 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         if current is None:
             raise DomosensoError(f"{path} vanished from the target while it was backed up: nothing was deployed")
         files[path] = current
+    previous_id = json.loads(files[RECORD]).get("deploy_id") if RECORD in files else None
     backup = Backup(files, added, await ha.call("lovelace/resources"), {
-        "deploy_id": deploy_id, "target": target, "hash": plan.hash, "add": plan.add, "change": plan.change,
+        "deploy_id": deploy_id, "previous_deploy_id": previous_id,
+        "target": target, "hash": plan.hash, "add": plan.add, "change": plan.change,
         "remove": deletes, "restart": restart,
         "created_resources": [a.url for a in plan.resources if a.kind == "create"],
     })
     _save_backup(home, io, target, deploy_id, backup)
     where = f"{_local_dir(home, target, deploy_id)} and {_backup_dir(deploy_id)} on the target"
+    retry = f"domosenso rollback {target} {deploy_id}"
+
+    def restore() -> None:
+        _restore_files(io, backup, where, retry)
+        _mark_restored(home, target, deploy_id)
+
     rep.line("backup", deploy_id)
 
     try:
         io.put(writes)
         io.delete(deletes)
     except Exception as e:
-        _restore_files(io, backup, where)
+        restore()
         raise DomosensoError(f"copy failed ({e}); the target is restored from the backup") from e
     rep.line("copied", str(len(contents)), "removed", str(len(deletes)))
 
     try:
         rc, out = io.exec(CHECK_CONFIG, timeout_s=CHECK_CONFIG_TIMEOUT_S)
     except Exception as e:
-        _restore_files(io, backup, where)
+        restore()
         raise DomosensoError(f"check_config did not run ({e}); the target is restored from the backup") from e
     n, details = summarize("check_config", out)
     if rc != 0 or n:
@@ -412,7 +465,7 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
             rep.line("output", " ".join(out.split())[-OUTPUT_TAIL:])
         for line in details[1:]:  # `  error [domain] message`, `  warning [domain] message`
             rep.line(*line.strip().split(" ", 1))
-        _restore_files(io, backup, where)
+        restore()
         raise DomosensoError(f"check_config: {n} errors" + (f" (exit {rc})" if rc else ""))
     rep.line("check_config", "0 errors")
 
@@ -423,8 +476,10 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
             await _restore_resources(ha, backup)
             restored = "files and resources are restored from the backup"
         except Exception as again:  # noqa: BLE001 - the files must go back even so
-            restored = f"files are restored; resources are not ({again}): domosenso rollback {target} {deploy_id}"
-        _restore_files(io, backup, where)
+            restored = f"files are restored; resources are not ({again}): {retry}"
+            _restore_files(io, backup, where, retry)  # not marked: the rollback still has resources to do
+        else:
+            restore()
         raise DomosensoError(f"resources failed ({e}); {restored}") from e
 
     if restart:
@@ -441,23 +496,30 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
 
 
 async def rollback(home: HomeConfig, io: TargetIO, ha, deploy_id: str | None, *, target: str, rep=None) -> str:
-    """Put the target back as it was before `deploy_id` (default: the last deploy its record names)."""
+    """Put the target back as it was before `deploy_id`. Default: a deploy that never completed (its
+    copy cut off, its restore failed), else the last deploy the target's record names."""
     rep = rep or _Quiet()
     current = read_record(io)
     last = current.get("deploy_id") if current else None
-    chosen = deploy_id or last
+    chosen = deploy_id or _incomplete(home, target, last) or last
     if chosen is None:
         raise DomosensoError(f"no deploy recorded on {target} ({RECORD})")
     if not isinstance(chosen, str) or not DEPLOY_ID.match(chosen):  # it names a directory, here and there
         raise DomosensoError(f"{chosen!r} is not a deploy id (like 20261021T120000Z)")
-    if chosen != last:
+    if _is_restored(home, target, chosen):
+        raise DomosensoError(f"{chosen} was already rolled back (or restored itself when it failed)")
+    backup = _load_backup(home, io, target, chosen)
+    # The last deploy, or one that never wrote its record because its copy was cut off: then the
+    # record is still the one it started from.
+    never_completed = "previous_deploy_id" in backup.plan and backup.plan["previous_deploy_id"] == last
+    if chosen != last and not never_completed:
         raise DomosensoError(f"{chosen} is not the last deploy on {target} (that is {last or 'none'}): "
                              "roll back the last one first")
-    backup = _load_backup(home, io, target, chosen)
     where = f"{_local_dir(home, target, chosen)} or {_backup_dir(chosen)} on the target"
-    _restore_files(io, backup, where)
+    _restore_files(io, backup, where, f"domosenso rollback {target} {chosen}")
     rep.line("restored", str(len(backup.files)), "removed", str(len(backup.added)))
     await _restore_resources(ha, backup)
+    _mark_restored(home, target, chosen)
     if backup.plan.get("restart", True):
         rep.line("restart", target)
         io.restart(RESTART_TIMEOUT_S)

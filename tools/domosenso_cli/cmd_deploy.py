@@ -64,27 +64,30 @@ async def _deploy(args: argparse.Namespace, rep: Reporter) -> int:
     t = _target(home, args.target)
     io = open_target(t)
     async with connect(t) as ha:
-        plan = make_plan(home, lock, io, await ha.call("lovelace/resources"))
+        plan = make_plan(home, lock, io, await ha.call("lovelace/resources"), args.prune_resources)
         for line in plan_lines(plan):
             rep.line(*line)
         rep.data.append({"plan": {
             "add": plan.add, "change": plan.change, "remove": plan.remove, "orphan": plan.orphan,
             "keep": plan.keep, "dirty": plan.dirty, "resources": [asdict(a) for a in plan.resources],
-            "restart": plan.restart, "hash": plan.hash,
+            "prune": plan.prune, "restart": plan.restart, "hash": plan.hash,
         }})
         if args.plan:
             return rep.ok()
         await _confirm(plan, args.confirm, args.target, rep.json_mode)
         deploy_id = await apply(home, lock, plan, io, ha, args.remove_orphans, args.prune_resources,
                                 target=args.target, rep=rep)
-    rep.line("deployed", deploy_id)
+    if deploy_id is None:
+        rep.line("nothing to deploy")
+    else:
+        rep.line("deployed", deploy_id)
     return rep.ok()
 
 
 def _rollback_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("target", help="a target named in domosenso.yaml")
     parser.add_argument("deploy_id", nargs="?", metavar="<deploy id>",
-                        help="the deploy to undo (default: the last one the target's record names)")
+                        help="the deploy to undo (default: one whose copy was cut off and never restored, else the last one the target's record names)")
 
 
 async def _rollback(args: argparse.Namespace, rep: Reporter) -> int:
