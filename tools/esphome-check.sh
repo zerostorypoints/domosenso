@@ -38,9 +38,9 @@ python3 - "$INSTANCE" "$WORK/home" "$WORK/remote" "$COMP" <<'PY'
 import pathlib, re, sys
 src, dst, remote = map(pathlib.Path, sys.argv[1:4])
 comp = sys.argv[4]
-pat = re.compile(r"^(\s+)(\w+): github://domosenso/domosenso/(\S+)@(\S+)$", re.M)
+pat = re.compile(r"^(\s+)(\w+): github://zerostorypoints/domosenso/(\S+)@(\S+)$", re.M)
 for f in sorted(src.glob("*.yaml")):
-    if f"github://domosenso/domosenso/components/{comp}/" not in f.read_text():
+    if f"github://zerostorypoints/domosenso/components/{comp}/" not in f.read_text():
         print(f"skipped      {f.name} (no package of {comp})")
         continue
     text = pat.sub(lambda m: f"{m[1]}{m[2]}:\n{m[1]}  url: file://{remote}\n{m[1]}  ref: {m[4]}\n"

@@ -7,7 +7,7 @@
 #   esphome:
 #     area: ${area}          # not in the package: an adopted device has no area until HA sets one
 #   packages:
-#     proxy: github://domosenso/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0
+#     proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0
 #   wifi:
 #     ssid: !secret wifi_ssid
 #     password: !secret wifi_password

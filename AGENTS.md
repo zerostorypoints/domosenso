@@ -94,7 +94,7 @@ Rules:
   imported `with { type: "json" }`; strings come from `card.*` keys through `cards/lib/i18n.js`
   (`no-literals.test.mjs` fails on a Polish or German literal in a card).
 - **ESPHome** components ship remote packages; a home's device file is thin (substitutions,
-  `packages:` pulling `github://domosenso/domosenso/components/<id>/esphome/<file>@<id>/<version>`,
+  `packages:` pulling `github://zerostorypoints/domosenso/components/<id>/esphome/<file>@<id>/<version>`,
   secrets). A package does not validate on its own: checks validate the demo home's device files.
   OTA encryption lives in the device file, not the package.
 - **Field notes**: what a home needs to know that the manifest cannot say (an integration's login

@@ -3,6 +3,16 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-21: remote package URL
+
+The account in the remote package URL changes from `domosenso` to `zerostorypoints`, the account the
+repository lives under: `github://domosenso/domosenso/components/<id>/<path>@<component>/<version>`
+becomes `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>`, in device
+files, `package_import_url` and blueprint `source_url`. The change comes before any home used the
+URL, so no bridge is kept (the rule for components not yet used by another home, in
+[COMPATIBILITY.md](COMPATIBILITY.md)). A device file that still uses the old form must be changed
+to the new one.
+
 ## 2026-10-21: ramka 0.1.1
 
 - **ramka 0.1.1** ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)): "Tomorrow" capitalised

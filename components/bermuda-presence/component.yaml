@@ -52,7 +52,7 @@ inputs:
 
 artifacts:
   esphome:
-    packages:                             # remote packages, github://domosenso/domosenso/components/bermuda-presence/esphome/<file>@bermuda-presence/<version>
+    packages:                             # remote packages, github://zerostorypoints/domosenso/components/bermuda-presence/esphome/<file>@bermuda-presence/<version>
       - {file: esphome/ble-proxy.yaml, project: domosenso.bermuda-presence}
       - {file: esphome/ld2410.yaml, feature: radar}
     factory: esphome/ble-proxy.factory.yaml   # pilot: Improv + dashboard_import, for boards nobody configured yet

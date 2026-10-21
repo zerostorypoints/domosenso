@@ -23,7 +23,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | surface | level |
 |---|---|
 | Tag scheme `<component>/<version>`, e.g. `bermuda-presence/0.1.0` | FROZEN |
-| Remote package URL `github://domosenso/domosenso/components/<id>/<path>@<component>/<version>` (ESPHome device files, `dashboard_import`; at most 255 characters) | FROZEN |
+| Remote package URL `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>` (ESPHome device files, `dashboard_import`; at most 255 characters) | FROZEN |
 | Component ids (the directory name, `^[a-z0-9]+(-[a-z0-9]+)*$`) | FROZEN |
 | Device ids (`devices/<id>.yaml`) | STABLE |
 | ESPHome `project:` name `domosenso.<component>` | STABLE |
