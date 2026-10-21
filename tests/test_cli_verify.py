@@ -114,6 +114,25 @@ def test_after_restart_unknown_allowed(tmp_path):
     ]
 
 
+def test_after_restart_unknown_by_pattern(tmp_path):
+    # Bermuda's per-proxy distance sensors go unknown whenever the phone is beyond the proxy's range.
+    now = states()
+    now[4]["state"] = "unknown"
+    equivalence = "entries:\n  - {part: entities, id: 'sensor.wind_*', after_restart: unknown, reason: out of range}\n"
+    assert run_verify(tmp_path, FakeHA(responses(now)), equivalence=equivalence) == []
+    other = "entries:\n  - {part: entities, id: 'sensor.rain_*', after_restart: unknown, reason: no match}\n"
+    assert kinds(run_verify(tmp_path, FakeHA(responses(now)), equivalence=other)) == [
+        ("entities", "sensor.wind_speed", "newly-unavailable"),
+    ]
+
+
+def test_script_run_state_not_compared(tmp_path):
+    # A script that is running now (the Ramka's ambient loop) is not a failure; its loading is.
+    now = states()
+    now[2]["state"] = "on"
+    assert run_verify(tmp_path, FakeHA(responses(now))) == []
+
+
 def test_automation_turned_off_fails(tmp_path):
     now = states()
     now[0]["state"] = "off"
