@@ -1,7 +1,7 @@
 # Domosenso component manifest: houseplant sensors (Xiaomi Mi Flora) rated by Home Assistant's
-# plant integration.
+# plant integration; from 0.2.0 a package with the plants, their light peak and two alerts (SPEC-006).
 id: plants
-version: 0.1.0
+version: 0.2.0
 summary: Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors
 description_key: meta.description
 photo: null
@@ -22,16 +22,34 @@ host:
 integrations:
   - {name: xiaomi_ble, source: core, setup: "discovers the sensors on its own once a proxy hears them"}
   - {name: plant, source: core, setup: "one plant entity per sensor, with the thresholds in YAML; a change needs a Home Assistant restart"}
+  - {name: statistics, source: core}
 
 inputs:
-  plants:
-    type: "list[{entity: plant.*, label, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]"
+  plants:                       # the Ramka's plants shape; name, sensors, the temperature band and check_days from 0.2.0
+    type: "list[{entity: plant.*, label, name?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
     example: [{entity: plant.monstera, label: Living room}]
-  plant_defaults:
+  plant_defaults:               # a plant's own value wins, then this, then nothing (check_days: 3)
     type: map
     default: {min_moisture: 15, max_moisture: 60, min_conductivity: 350, max_conductivity: 2000, min_brightness: 500}
+  notify:                       # who hears about a dry plant or a silent sensor
+    type: action
+    example: notify.mobile_app_alex_phone
+  notify_from:                  # a plant drying out outside this window waits for the morning run at notify_from
+    type: "HH:MM:SS"
+    default: "08:00:00"
+  notify_until:
+    type: "HH:MM:SS"
+    default: "21:00:00"
+  dry_for:                      # below min_moisture this long before the push
+    type: "HH:MM:SS"
+    default: "01:00:00"
+  silent_hours:                 # a moisture sensor unavailable this long gives the silent push
+    type: int
+    default: 6
 
 artifacts:
+  templates:
+    - templates/package.yaml.j2   # -> packages/plants.yaml
   ha_packages: []
   services: []
 
@@ -39,6 +57,10 @@ provides:
   entities:
     - {id: "plant.<plant>", stability: stable, note: "state ok or problem; attributes moisture, conductivity, brightness, temperature, problem"}
     - {id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}", stability: stable}
+    # From the package (0.2.0). <plant> is the object id of the plant's entity input.
+    - {id: "sensor.<plant>_illuminance_max_24h", unique_id: "<plant>_illuminance_max_24h", stability: stable, note: "lx, brightest reading of the last 24 hours"}
+    - {id: automation.plants_need_water, unique_id: plants_water_reminder, stability: stable}
+    - {id: automation.plant_sensor_silent, unique_id: plants_sensor_silent, stability: stable}
 
 consumes: []
 

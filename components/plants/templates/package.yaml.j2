@@ -1,0 +1,162 @@
+[#
+  The plants component's Home Assistant package (SPEC-006): plant entities, the 24-hour light peak,
+  the water reminder and the silent-sensor alert. Rendered once per home (lang en) by
+  tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
+  Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set defaults = inputs.plant_defaults | default({'min_moisture': 15, 'max_moisture': 60, 'min_conductivity': 350, 'max_conductivity': 2000, 'min_brightness': 500}) -%]
+[%- set bands = ['min_moisture', 'max_moisture', 'min_conductivity', 'max_conductivity', 'min_temperature', 'max_temperature', 'min_brightness'] -%]
+[%- set notify_from = inputs.notify_from | default('08:00:00') -%]
+[%- set notify_until = inputs.notify_until | default('21:00:00') -%]
+[%- set dry_for = inputs.dry_for | default('01:00:00') -%]
+[%- set silent_hours = inputs.silent_hours | default(6) -%]
+[#- One row per plant: object id, friendly name, sensors, thresholds. -#]
+[%- set ns = namespace(rows=[]) -%]
+[%- for item in inputs.plants -%]
+[%- set p = item.entity.split('.', 1)[1] -%]
+[%- set given = item.sensors | default({}) -%]
+[%- set sensors = {'moisture': given.moisture | default('sensor.' ~ p ~ '_moisture'),
+                   'conductivity': given.conductivity | default('sensor.' ~ p ~ '_conductivity'),
+                   'brightness': given.brightness | default('sensor.' ~ p ~ '_illuminance'),
+                   'temperature': given.temperature | default('sensor.' ~ p ~ '_temperature')} -%]
+[%- set limits = {} -%]
+[%- for band in bands -%]
+[%- if item[band] is defined -%][%- set _ = limits.update({band: item[band]}) -%]
+[%- elif band in defaults -%][%- set _ = limits.update({band: defaults[band]}) -%]
+[%- endif -%]
+[%- endfor -%]
+[%- set ns.rows = ns.rows + [{'id': p, 'name': item.name | default(item.label), 'sensors': sensors, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
+[%- endfor -%]
+[%- set rows = ns.rows -%]
+[%- set watered = rows | selectattr('limits.min_moisture', 'defined') | list -%]
+[%- set watered_list = watered | map(attribute='sensors.moisture') | list | tojson | replace('"', "'") -%]
+[%- set thresholds = watered | map(attribute='limits.min_moisture') | unique | list -%]
+[%- macro row_limit(row) -%][[ row.limits.min_moisture ]][%- endmacro -%]
+[%- macro row_plant(row) -%]'plant.[[ row.id ]]'[%- endmacro -%]
+[%- macro sensor_map(items, value) -%]
+{[% for row in items %]'[[ row.sensors.moisture ]]': [[ value(row) ]][% if not loop.last %], [% endif %][% endfor %]}
+[%- endmacro -%]
+[%- set silent_for = '%02d:00:00' % silent_hours -%]
+# Houseplants, from the Domosenso catalog (component plants). Edit the inputs and render again
+# rather than editing this file.
+#
+# Mi Flora sensors reach Home Assistant through the Bluetooth proxies; Xiaomi BLE discovers them on
+# its own. The brightness threshold is compared with the brightest reading of the last check_days,
+# not the current one.
+
+homeassistant:
+  customize:
+[%- for row in rows %]
+    plant.[[ row.id ]]:
+      friendly_name: [[ row.name | yaml ]]
+[%- set peak_name = row.name ~ ' illuminance max 24h' %]
+    sensor.[[ row.id ]]_illuminance_max_24h:
+      friendly_name: [[ peak_name | yaml ]]
+[%- endfor %]
+
+plant:
+[%- for row in rows %]
+  [[ row.id ]]:
+    sensors:
+      moisture: [[ row.sensors.moisture ]]
+      conductivity: [[ row.sensors.conductivity ]]
+      brightness: [[ row.sensors.brightness ]]
+      temperature: [[ row.sensors.temperature ]]
+[%- for band in bands if band in row.limits %]
+    [[ band ]]: [[ row.limits[band] ]]
+[%- endfor %]
+    check_days: [[ row.check_days ]]
+[%- endfor %]
+
+# Brightest reading of the last 24 hours per plant, for light gauges: the current reading is zero
+# every night, which says nothing about whether the spot is bright enough. The name carries the
+# object id so that a fresh registry gives the same entity id; customize above gives the readable name.
+sensor:
+[%- for row in rows %]
+  - platform: statistics
+    name: [[ row.id ]] illuminance max 24h
+    unique_id: [[ row.id ]]_illuminance_max_24h
+    entity_id: [[ row.sensors.brightness ]]
+    state_characteristic: value_max
+    max_age:
+      hours: 24
+[%- endfor %]
+
+automation:
+[%- if watered %]
+  # A plant is reported once when it dries out during the day, and at [[ notify_from[:5] ]] every morning while
+  # it stays dry, so at most once a day each. A crossing outside [[ notify_from[:5] ]]-[[ notify_until[:5] ]] waits for the
+  # morning run rather than waking anyone. numeric_state and has_value skip unavailable and missing
+  # sensors, so nothing fires before the sensors exist or while one is out of range.
+  - id: plants_water_reminder
+    alias: Plants need water
+    description: Push a notification when a plant's soil moisture is below its minimum.
+    mode: queued
+    triggers:
+[%- for limit in thresholds %]
+      - trigger: numeric_state
+        entity_id:
+[%- for row in watered if row.limits.min_moisture == limit %]
+          - [[ row.sensors.moisture ]]
+[%- endfor %]
+        below: [[ limit ]]
+        for: [[ dry_for | yaml ]]
+        id: dried_out
+[%- endfor %]
+      - trigger: time
+        at: [[ notify_from | yaml ]]
+        id: morning
+    conditions:
+      - condition: or
+        conditions:
+          - condition: trigger
+            id: morning
+          - condition: time
+            after: [[ notify_from | yaml ]]
+            before: [[ notify_until | yaml ]]
+    variables:
+      sensors: >
+        {{ [trigger.entity_id] if trigger.id == 'dried_out' else
+           [[ watered_list ]] }}
+      dry: >
+        {% set limits = [[ sensor_map(watered, row_limit) ]] %}
+        {% set plants = [[ sensor_map(watered, row_plant) ]] %}
+        {% set ns = namespace(out=[]) %}
+        {% for s in sensors if has_value(s) and states(s) | float(100) < limits[s] %}
+          {% set plant = plants[s] %}
+          {% set name = state_attr(plant, 'friendly_name') or plant.replace('plant.', '') %}
+          {% set ns.out = ns.out + [name ~ ' (' ~ states(s) ~ ' %)'] %}
+        {% endfor %}
+        {{ ns.out }}
+    actions:
+      - condition: template
+        value_template: "{{ dry | count > 0 }}"
+      - action: [[ inputs.notify ]]
+        data:
+          title: Plants need water
+          message: "{{ dry | join(', ') }}"
+[%- endif %]
+
+  # The sensors report no battery level through the proxies, so a sensor that stops reporting is how
+  # a flat CR2032, or a pot moved out of proxy range, shows up. Xiaomi BLE marks the sensor
+  # unavailable when its advertisements stop.
+  - id: plants_sensor_silent
+    alias: Plant sensor silent
+    description: Push a notification when a plant sensor has been unavailable for [[ silent_hours ]] hours.
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id:
+[%- for row in rows %]
+          - [[ row.sensors.moisture ]]
+[%- endfor %]
+        to: unavailable
+        for: [[ silent_for | yaml ]]
+    actions:
+      - action: [[ inputs.notify ]]
+        data:
+          title: Plant sensor silent
+          message: >
+            {% set plant = [[ sensor_map(rows, row_plant) ]][trigger.entity_id] %}
+            {{ state_attr(plant, 'friendly_name') or plant | replace('plant.', '') }} has sent
+            nothing for [[ silent_hours ]] hours. Replace the CR2032, or check it is in range of a Bluetooth proxy.

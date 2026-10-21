@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Bodenfeuchte, Düngerstand (Leitfähigkeit), Licht und Temperatur von Zimmerpflanzen von Xiaomi-Mi-Flora-Sensoren. Die Plant-Integration von Home Assistant bewertet jeden Messwert anhand von Grenzwerten, und die Pflanzenseite der Ramka zeigt, welche Pflanze Wasser braucht.",
+    "description": "Bodenfeuchte, Düngerstand (Leitfähigkeit), Licht und Temperatur von Zimmerpflanzen von Xiaomi-Mi-Flora-Sensoren. Die Plant-Integration von Home Assistant bewertet jeden Messwert anhand von Grenzwerten, und die Pflanzenseite der Ramka zeigt, welche Pflanze Wasser braucht. Ein Paket ergänzt das hellste Licht der letzten 24 Stunden pro Pflanze, eine Benachrichtigung, wenn eine Pflanze Wasser braucht, und eine, wenn ein Sensor verstummt.",
     "devices": {
       "mi-flora": {
         "description": "Ein Bluetooth-Pflanzensensor (HHCC Flower Care, Modell HHCCJCY01), der in die Erde gesteckt wird.",

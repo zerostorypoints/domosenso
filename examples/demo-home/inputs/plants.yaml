@@ -1,0 +1,17 @@
+# The values the demo home supplies to the plants component (its `inputs:` in component.yaml). The
+# list has the Ramka's shape plus the keys only this component reads: a friendly name, the basil's
+# own sensors and thresholds.
+plants:
+  - {entity: plant.monstera, label: Living room, name: Monstera}
+  - {entity: plant.ficus, label: Office, name: Ficus, min_temperature: 12, max_temperature: 30}
+  - entity: plant.basil
+    label: Kitchen
+    name: Basil
+    min_moisture: 25
+    min_brightness: 1000
+    sensors:
+      moisture: sensor.kitchen_herbs_moisture
+      conductivity: sensor.kitchen_herbs_conductivity
+      brightness: sensor.kitchen_herbs_illuminance
+      temperature: sensor.kitchen_herbs_temperature
+notify: notify.mobile_app_alex_phone
