@@ -60,8 +60,9 @@ document. Parse the lines, do not guess from the exit code of anything else.
 | `verify <target> --baseline <snapshot> [--day-after]` | the running target against a snapshot taken before the change |
 
 Lines to read: `deploy --plan` prints `add`, `change`, `remove`, `orphan`, `keep` (a path each),
-`resource create|update|unwanted <url>` (`delete` instead of `unwanted` with `--prune-resources`; an `update` adds `from <old url>`), `restart: yes|no` and `hash <plan hash>`. An
-`orphan` is a file on the target that this repository does not know; it blocks `--apply` until it
+`resource create|update|unwanted <url>` (`delete` instead of `unwanted` with `--prune-resources`;
+an `update` adds `from <old url>`), `restart: yes|no` and `hash <plan hash>`.
+An `orphan` is a file on the target that this repository does not know; it blocks `--apply` until it
 is removed (`--remove-orphans`), added to the repository or listed under `unmanaged_on_target`.
 `compare` ends with `equivalent` or `FAIL not equivalent: <n> unexplained`; `verify` with
 `verified` or `FAIL not verified: <n> failed`.
@@ -136,7 +137,7 @@ Needs the human's go-ahead **typed in the same session**, each time:
 - anything that deletes data that cannot be regenerated.
 
 `deploy production` prints the plan and asks for the word `production`; a non-interactive run
-needs `--confirm <plan hash>` from a plan made in the same minute. That prompt is a second lock,
+needs `--confirm <plan hash>`, the hash of the current plan; it fails if the plan has changed. That prompt is a second lock,
 not the permission: ask the human first, show the `--plan` output, wait for a clear yes.
 
 This file does not change Claude Code's permission classifier. If the classifier blocks a step

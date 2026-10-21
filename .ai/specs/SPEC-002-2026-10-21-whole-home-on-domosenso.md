@@ -186,9 +186,9 @@ components:
   the API. YAML dashboards are parsed with `yaml.safe_load` before the copy (check_config does not
   read them).
 - `deploy production` prints the plan and asks for the word `production` on the terminal; a
-  non-interactive run needs `--confirm <plan hash>` from a plan made in the same minute. Agents still
-  need the human's go-ahead in the conversation (AGENTS.md); the prompt is a second lock, not the
-  permission.
+  non-interactive run needs `--confirm <plan hash>`, the hash of the current plan; it fails if the plan
+  has changed. Agents still need the human's go-ahead in the conversation (AGENTS.md); the prompt is
+  a second lock, not the permission.
 - After the restart: `verify <target>` (3.4) runs on its own when a baseline snapshot exists.
 
 ### 1.7 What stays manual, and why
