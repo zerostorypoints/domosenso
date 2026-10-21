@@ -1,4 +1,5 @@
 import subprocess
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -127,6 +128,24 @@ def test_extraction_oserror_names_the_destination(repo, tmp_path, monkeypatch):
         raise PermissionError(13, "Permission denied")
 
     monkeypatch.setattr("domosenso_cli.catalog.os.replace", refuse)
+    with pytest.raises(DomosensoError, match=r"ramka/0\.1\.0.*cache.*0\.1\.0"):
+        Catalog(str(repo), cache).checkout("ramka", "0.1.0", None)
+
+
+@pytest.mark.parametrize("error", [
+    OSError(28, "No space left on device"),
+    tarfile.FilterError(tarfile.TarInfo("../escape")),
+    tarfile.ReadError("truncated"),
+])
+def test_extraction_failure_names_tag_and_destination(repo, tmp_path, monkeypatch, error):
+    commit(repo, "components/ramka/component.yaml", "v1\n")
+    tag(repo, "ramka/0.1.0")
+    cache = tmp_path / "cache"
+
+    def fail(self, *args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(tarfile.TarFile, "extractall", fail)
     with pytest.raises(DomosensoError, match=r"ramka/0\.1\.0.*cache.*0\.1\.0"):
         Catalog(str(repo), cache).checkout("ramka", "0.1.0", None)
 

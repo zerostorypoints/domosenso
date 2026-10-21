@@ -90,18 +90,18 @@ class Catalog:
         archive = self._git("archive", "--format=tar", f"refs/tags/{tag}:components/{cid}")
         if archive.returncode != 0:
             raise DomosensoError(f"tag {tag} has no components/{cid}: {archive.stderr.decode().strip()}")
-        marker.unlink(missing_ok=True)
-        staging = destination.with_name(version + ".partial")
-        shutil.rmtree(staging, ignore_errors=True)
-        staging.mkdir(parents=True)
-        with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
-            tar.extractall(staging, filter="data")
         try:
+            marker.unlink(missing_ok=True)
+            staging = destination.with_name(version + ".partial")
+            shutil.rmtree(staging, ignore_errors=True)
+            staging.mkdir(parents=True)
+            with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+                tar.extractall(staging, filter="data")
             shutil.rmtree(destination, ignore_errors=True)  # a leftover shows up as the failure of the replace
             os.replace(staging, destination)
-        except OSError as exc:
+            marker.write_text(commit + "\n")
+        except (OSError, tarfile.TarError) as exc:
             raise DomosensoError(f"cannot place {tag} in {destination}: {exc}") from exc
-        marker.write_text(commit + "\n")
         return destination
 
     def _git(self, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:

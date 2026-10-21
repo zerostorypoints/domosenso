@@ -33,6 +33,9 @@ def test_parse_other_line_is_none():
         "# Rendered by Domosenso from ramka/0.1.1 (xyz) — do not edit",
         "# Rendered by Domosenso from ramka/0.1.1 (a535d) — do not edit",  # fewer than 7 hex
         "# Rendered by Domosenso from ramka@a535d00 — edit freely",
+        f"# Rendered by Domosenso from ramka/0.1.1 ({'a' * 41}) — do not edit",  # more than 40 hex
+        "# Rendered by Domosenso from ramka/0.1.1 (A535D00) — do not edit",  # upper case hex
+        "# Rendered by Domosenso from ramka@A535D00 — do not edit",
     ]:
         assert parse(line) is None, line
 
