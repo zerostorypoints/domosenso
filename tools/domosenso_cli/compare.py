@@ -38,8 +38,16 @@ class Diff:
     detail: str = ""
 
 
-def _from_files(snapshot: dict) -> dict[str, dict]:
-    return {eid: e for eid, e in snapshot["entities"].items() if e["from_files"]}
+def _from_files(snapshot: dict, other: dict) -> dict[str, dict]:
+    """The entities of `snapshot` that come from files. A registry-less entity (no unique_id) that the
+    other side knows as an integration's is a state posted over the REST API, such as staging's mirror
+    of production, and is left out: only the pair of snapshots can tell it from a YAML entity without
+    a unique_id, which stays in."""
+    theirs = other["entities"]
+    return {
+        eid: e for eid, e in snapshot["entities"].items()
+        if e["from_files"] and not (e["unique_id"] is None and eid in theirs and not theirs[eid]["from_files"])
+    }
 
 
 def _pairs(entities: dict[str, dict]) -> dict[str, str]:
@@ -129,7 +137,7 @@ def _resources(a: list[dict], b: list[dict]) -> list[Diff]:
 
 def diff(a: dict, b: dict) -> list[Diff]:
     """Every difference between snapshots `a` and `b`, in PARTS order, sorted by id within a part."""
-    ea, eb = _from_files(a), _from_files(b)
+    ea, eb = _from_files(a, b), _from_files(b, a)
     return [
         *_presence("entities", ea, eb),
         *_unique_ids(ea, eb),
@@ -143,7 +151,7 @@ def diff(a: dict, b: dict) -> list[Diff]:
 
 def sizes(a: dict, b: dict) -> dict[str, int]:
     """How many things each part compared: the union of both sides."""
-    ea, eb = _from_files(a), _from_files(b)
+    ea, eb = _from_files(a, b), _from_files(b, a)
     return {
         "entities": len(set(ea) | set(eb)),
         "unique_ids": len(set(_pairs(ea)) | set(_pairs(eb))),
@@ -178,15 +186,21 @@ def _matches(entry: dict, d: Diff, head_commit: str | None) -> bool:
 def explain(diffs: list[Diff], entries: list[dict], head_commit: str | None) -> tuple[list[Diff], list[dict]]:
     """`(unexplained differences, stale entries)`. A `config` entry counts only while its `reviewed_at`
     is the commit `head_commit` (a prefix of 7 or more hex digits is enough), or, when no commit is
-    known, only without `reviewed_at`. Entries without a `kind` (`after_restart` only) are for `verify`."""
+    known, only without `reviewed_at`. A `renamed` entry counts only when both halves are there (`id`
+only in a, `to` only in b); with one half it explains nothing and is stale. Entries without a `kind`
+(`after_restart` only) are for `verify`."""
     explanations = [e for e in entries if "kind" in e]
     used: set[int] = set()
-    unexplained = []
-    for d in diffs:
-        hits = [i for i, e in enumerate(explanations) if _matches(e, d, head_commit)]
-        used.update(hits)
-        if not hits:
-            unexplained.append(d)
+    explained: set[int] = set()
+    for i, entry in enumerate(explanations):
+        hits = [j for j, d in enumerate(diffs) if _matches(entry, d, head_commit)]
+        # A rename is the old id gone and the new one there; one half alone is something else.
+        if entry["kind"] == "renamed" and {diffs[j].kind for j in hits} != {"only-in-a", "only-in-b"}:
+            continue
+        if hits:
+            used.add(i)
+            explained.update(hits)
+    unexplained = [d for j, d in enumerate(diffs) if j not in explained]
     return unexplained, [e for i, e in enumerate(explanations) if i not in used]
 
 
