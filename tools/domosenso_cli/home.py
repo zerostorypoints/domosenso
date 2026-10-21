@@ -66,7 +66,7 @@ class HomeConfig:
                 container=raw["container"],
                 config=_target_config(root, raw),
                 url=raw["url"],
-                token_file=Path(raw["token_file"]).expanduser(),
+                token_file=root / Path(raw["token_file"]).expanduser(),
                 host=raw.get("host"),
                 docker=raw.get("docker", "docker"),
             )
