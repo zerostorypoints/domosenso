@@ -6,6 +6,7 @@ directory (`STUB_CONFIG`) and drops the container name; `ssh <host> <string>` ha
 """
 import json
 import os
+import time
 import shlex
 import stat
 import sys
@@ -14,16 +15,18 @@ from types import SimpleNamespace
 
 import pytest
 
+from domosenso_cli import targets
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import Target
 from domosenso_cli.targets import LocalDocker, SshDocker, open_target
 from fakes import FakeTarget
 
 DOCKER_STUB = """#!{python}
-import json, os, subprocess, sys
+import json, os, subprocess, sys, time
 argv = sys.argv[1:]
 with open(os.environ["STUB_LOG"], "a") as log:
     log.write(json.dumps(["docker", argv, os.environ.get("STUB_MARK", "")]) + "\\n")
+time.sleep(float(os.environ.get("STUB_SLEEP", "0")))
 if argv[:1] == ["exec"]:
     rest = argv[1:]
     while rest[0].startswith("-"):
@@ -36,14 +39,15 @@ sys.exit(2)
 """
 
 SSH_STUB = """#!{python}
-import json, os, sys
+import json, os, sys, time
 argv = sys.argv[1:]
 with open(os.environ["STUB_LOG"], "a") as log:
     log.write(json.dumps(["ssh", argv, ""]) + "\\n")
+time.sleep(float(os.environ.get("STUB_SLEEP", "0")))
 if os.environ.get("STUB_SSH_FAIL"):
     sys.stderr.write(os.environ["STUB_SSH_FAIL"] + "\\n")
     sys.exit(255)
-os.execvp("sh", ["sh", "-c", " ".join(argv[1:])])
+os.execvp("sh", ["sh", "-c", argv[-1]])  # the options and the host come first, the string is last
 """
 
 
@@ -168,18 +172,19 @@ def test_ssh_argv_quotes_paths_with_spaces(stubs):
     calls = stubs.calls("ssh")
     assert len(calls) == 3
     for _, argv, _ in calls:
-        assert len(argv) == 2 and argv[0] == "nas"  # host, then one remote command string
-        assert argv[1].startswith("env HASS_DOCKER=1 docker exec -i hass ")
-    assert calls[0][1][1] == "env HASS_DOCKER=1 docker exec -i hass tar -x -C /config"
-    assert shlex.split(calls[1][1][1])[-2:] == ["my dir/a b.yaml", "it's.yaml"]
-    assert "'my dir/a b.yaml'" in calls[1][1][1] and "'it'\"'\"'s.yaml'" in calls[1][1][1]
-    assert shlex.split(calls[2][1][1])[-1] == "my dir/a b.yaml"
+        assert argv[:-2] == targets.SSH_OPTIONS and argv[-2] == "nas"  # options, host, then one command string
+        assert "BatchMode=yes" in argv and any(a.startswith("ConnectTimeout=") for a in argv)
+        assert argv[-1].startswith("env HASS_DOCKER=1 docker exec -i hass ")
+    assert calls[0][1][-1] == "env HASS_DOCKER=1 docker exec -i hass tar -x -C /config"
+    assert shlex.split(calls[1][1][-1])[-2:] == ["my dir/a b.yaml", "it's.yaml"]
+    assert "'my dir/a b.yaml'" in calls[1][1][-1] and "'it'\"'\"'s.yaml'" in calls[1][1][-1]
+    assert shlex.split(calls[2][1][-1])[-1] == "my dir/a b.yaml"
 
 
 def test_ssh_file_operations_run_in_the_container(stubs):
     SshDocker(make_target("ssh-docker", stubs.config)).delete(["a.yaml"])
     (_, argv, _), = stubs.calls("ssh")
-    assert shlex.split(argv[1])[:5] == ["docker", "exec", "-i", "hass", "sh"]
+    assert shlex.split(argv[-1])[:5] == ["docker", "exec", "-i", "hass", "sh"]
 
 
 def test_exec_returns_code_and_combined_output(io):
@@ -195,7 +200,7 @@ def test_exec_runs_inside_the_container(io):
         assert io.calls("docker")[0][1] == ["exec", "hass", "python3", "-m", "homeassistant", "--script", "check_config"]
     else:
         (_, argv, _), = io.calls("ssh")
-        assert shlex.split(argv[1]) == ["docker", "exec", "hass", "python3", "-m", "homeassistant", "--script",
+        assert shlex.split(argv[-1]) == ["docker", "exec", "hass", "python3", "-m", "homeassistant", "--script",
                                         "check_config"]
 
 
@@ -206,7 +211,7 @@ def test_restart_passes_timeout(io):
         assert [argv for _, argv, _ in io.calls("docker")] == [["restart", "-t", "120", "hass"],
                                                                  ["restart", "-t", "30", "hass"]]
     else:
-        assert [shlex.split(argv[1]) for _, argv, _ in io.calls("ssh")] == [
+        assert [shlex.split(argv[-1]) for _, argv, _ in io.calls("ssh")] == [
             ["docker", "restart", "-t", "120", "hass"], ["docker", "restart", "-t", "30", "hass"]]
 
 
@@ -249,6 +254,93 @@ def test_nonzero_exit_of_a_file_operation_raises(stubs):
         locked.chmod(0o700)
 
 
+def _hang(monkeypatch):
+    monkeypatch.setenv("STUB_SLEEP", "20")
+    monkeypatch.setattr(targets, "COMMAND_TIMEOUT_S", 0.5)
+    monkeypatch.setattr(targets, "RESTART_SLACK_S", 0.5)
+    return time.monotonic()
+
+
+def test_exec_and_restart_that_hang_time_out(io, monkeypatch):
+    started = _hang(monkeypatch)
+    with pytest.raises(DomosensoError, match=r"exec timed out after 0\.5s"):
+        io.io.exec(["true"])
+    with pytest.raises(DomosensoError, match=r"restart timed out after 0\.5s"):
+        io.io.restart(timeout_s=0)
+    assert time.monotonic() - started < 10
+
+
+@pytest.mark.parametrize("operation", ["hashes", "put", "read", "delete", "glob"])
+def test_ssh_file_operation_that_hangs_times_out(stubs, monkeypatch, operation):
+    ssh = SshDocker(make_target("ssh-docker", stubs.config))
+    started = _hang(monkeypatch)
+    call = {
+        "hashes": lambda: ssh.hashes(["a.yaml"]),
+        "put": lambda: ssh.put({"a.yaml": b"x"}),
+        "read": lambda: ssh.read("a.yaml"),
+        "delete": lambda: ssh.delete(["a.yaml"]),
+        "glob": lambda: ssh.glob(["a/*.yaml"]),
+    }[operation]
+    with pytest.raises(DomosensoError, match=rf"{operation} timed out after 0\.5s"):
+        call()
+    assert time.monotonic() - started < 10
+
+
+def test_restart_waits_for_docker_own_timeout_plus_slack(io, monkeypatch):
+    seen = []
+    real_run = targets.subprocess.run
+    monkeypatch.setattr(targets.subprocess, "run", lambda *a, **kw: seen.append(kw["timeout"]) or real_run(*a, **kw))
+    io.io.restart(timeout_s=30)
+    io.io.exec(["true"])
+    assert seen == [30 + targets.RESTART_SLACK_S, targets.COMMAND_TIMEOUT_S]
+
+
+def test_ssh_glob_lists_only_under_the_literal_prefixes(stubs):
+    ssh = SshDocker(make_target("ssh-docker", stubs.config))
+    for name in ("packages/a.yaml", "packages/sub/b.yaml", "www/domosenso/x.js", "www/y.js", "top.yaml",
+                 "backups/old.yaml", "-dash/z.yaml", "photos/p.jpg"):
+        ssh.put({name: b"."})
+    assert ssh.glob(["packages/*.yaml", "www/**/*.js", "top.yaml", "-dash/*"]) == [
+        "-dash/z.yaml", "packages/a.yaml", "top.yaml", "www/domosenso/x.js", "www/y.js"]
+    words = shlex.split(stubs.calls("ssh")[-1][1][-1])
+    assert words[-4:] == ["./-dash", "./packages", "./top.yaml", "./www"]
+    assert ssh.glob(["*.yaml"]) == ["top.yaml"]
+    assert shlex.split(stubs.calls("ssh")[-1][1][-1])[-1] == "."
+
+
+def test_ssh_glob_under_a_missing_directory_is_empty_not_an_error(stubs):
+    ssh = SshDocker(make_target("ssh-docker", stubs.config))
+    ssh.put({"packages/a.yaml": b"."})
+    assert ssh.glob(["nowhere/*.yaml", "deeper/none/**/*.js"]) == []
+    assert ssh.glob(["nowhere/*.yaml", "packages/*.yaml"]) == ["packages/a.yaml"]
+
+
+def test_glob_roots():
+    assert targets.glob_roots(["packages/*.yaml", "packages/local_*.yaml", "www/domosenso/**/*.js"]) == [
+        "packages", "www/domosenso"]
+    assert targets.glob_roots(["a/b/c.yaml", "*.yaml", "x*/y"]) == [".", "a/b/c.yaml"]
+
+
+def test_put_builds_ustar_and_refuses_names_it_cannot_hold(stubs, monkeypatch):
+    ssh = SshDocker(make_target("ssh-docker", stubs.config))
+    long_but_splittable = "/".join(["d" * 60, "e" * 60, "f.yaml"])  # 128 bytes: ustar splits it at a slash
+    ssh.put({long_but_splittable: b"ok", "zażółć/gęślą.yaml": b"utf8"})
+    assert (stubs.config / long_but_splittable).read_bytes() == b"ok"
+    assert (stubs.config / "zażółć/gęślą.yaml").read_bytes() == b"utf8"
+    sent = []
+    with monkeypatch.context() as m:
+        m.setattr(targets, "_checked", lambda argv, what, timeout, stdin=None: sent.append(stdin) or b"")
+        ssh.put({"a.yaml": b"x"})
+    assert sent[0][:6] == b"a.yaml"
+    assert sent[0][257:265] == b"ustar\x0000"  # a ustar header, not GNU ("ustar  \x00")
+    before = len(stubs.calls())
+    for bad in ("x" * 101, "/".join(["y" * 90] * 4) + "/f.yaml"):
+        with pytest.raises(DomosensoError, match="ustar") as err:
+            ssh.put({"fine.yaml": b"1", bad: b"2"})
+        assert bad in str(err.value)
+    assert len(stubs.calls()) == before and not (stubs.config / "fine.yaml").exists()
+
+
 def test_missing_executable_is_a_domosenso_error(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", str(tmp_path))
     with pytest.raises(DomosensoError, match="docker"):
@@ -257,7 +349,7 @@ def test_missing_executable_is_a_domosenso_error(tmp_path, monkeypatch):
         SshDocker(make_target("ssh-docker", tmp_path)).exec(["true"])
 
 
-@pytest.mark.parametrize("bad", ["/etc/passwd", "../x.yaml", "a/../../x.yaml", "a/..", "", "/config/a.yaml"])
+@pytest.mark.parametrize("bad", ["/etc/passwd", "../x.yaml", "a/../../x.yaml", "a/..", "", "/config/a.yaml", "a\0b.yaml"])
 def test_paths_that_leave_config_are_rejected(io, bad):
     for call in (
         lambda: io.io.hashes([bad]),
