@@ -134,6 +134,7 @@ Delimiters are `[[ ... ]]`, `[% ... %]`, `[# ... #]`, so Home Assistant's own `{
 pass through untouched; `[[ ]]` still substitutes inside them. Globals `t(key)`, `inputs`, `lang`;
 filter `yaml` (a YAML-safe scalar). Inputs are `StrictUndefined`: a missing input is an error naming
 it; an input set to `null` counts as absent. A nested YAML flow list needs spaces, `[ [ 80 ] ]`.
+`templates/instance/**.j2` is the home's own layer: `domosenso add` renders it once (never overwrites) and the lock records it as `instance`.
 
 ## Validation
 

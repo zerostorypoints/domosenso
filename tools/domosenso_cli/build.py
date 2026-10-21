@@ -213,11 +213,13 @@ def _instance_destination(rendered: str) -> str:
 def write_outputs(
     home: HomeConfig, lock: Lock, cid: str, outputs: list[Output], force: bool = False, dev: bool = False
 ) -> list[tuple[str, str]]:
-    """Write `outputs`; returns `("write"|"same", dest)` per file. Nothing is written when any file is refused.
+    """Write `outputs`; returns `("write"|"same"|"dev", dest)` per file. Nothing is written when any file is refused.
 
     `dev` (a `--catalog-dev` render, whose files the lock does not describe) skips the hand-edit check
-    for this component's files, so that a second dev render can replace the first; ownership by
-    another component and unmanaged differing files are still refused."""
+    for this component's files, so that a second dev render can replace the first, and accepts a
+    differing file with no lock record when its first line is this component's own dirty stamp.
+    Ownership by another component and other unmanaged differing files are still refused. A dev
+    render that replaces a file differing from the lock reports `dev` instead of `write`."""
     entry = lock.components.get(cid)
     records = entry.files if entry else {}
     plan: list[tuple[str, Output]] = []
@@ -230,22 +232,46 @@ def write_outputs(
             raise DomosensoError(f"not a file: {output.dest}")
         action = "write"
         if path.is_file():
-            current = path.read_bytes()
+            try:
+                current = path.read_bytes()
+            except OSError as exc:
+                raise DomosensoError(f"cannot read {output.dest}: {exc.strerror or exc}") from exc
             if current == output.content:
                 action = "same"
-            elif not force:
+            else:
                 record = records.get(output.dest)
-                if record is None:
-                    raise DomosensoError(f"not managed, differs: {output.dest}")
-                if not dev and sha256(current) != record.sha256:
-                    raise DomosensoError(f"hand-edited: {output.dest}")
+                off_lock = record is None or sha256(current) != record.sha256
+                if not force:
+                    if record is None and not (dev and _own_dirty_stamp(current, cid)):
+                        raise DomosensoError(f"not managed, differs: {output.dest}")
+                    if not dev and off_lock:
+                        raise DomosensoError(f"hand-edited: {output.dest}")
+                if dev and off_lock:
+                    action = "dev"
         plan.append((action, output))
     for action, output in plan:
-        if action == "write":
+        if action != "same":
             path = home.root / output.dest
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(output.content)
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(output.content)
+            except OSError as exc:
+                raise DomosensoError(f"cannot write {output.dest}: {exc.strerror or exc}") from exc
     return [(action, output.dest) for action, output in plan]
+
+
+def _own_dirty_stamp(content: bytes, cid: str) -> bool:
+    first = content.split(b"\n", 1)[0].decode("utf-8", errors="replace")
+    found = stamps.parse(first)
+    return found is not None and found.dirty and found.cid == cid
+
+
+def parse_spec(spec: str) -> tuple[str, str]:
+    """`<id>@<version>` as given on the command line."""
+    cid, at, version = spec.partition("@")
+    if not at or not cid or not version or "@" in version:
+        raise DomosensoError(f"expected <id>@<version>, got {spec!r}")
+    return cid, version
 
 
 def file_records(home: HomeConfig, outputs: list[Output]) -> dict[str, FileRecord]:

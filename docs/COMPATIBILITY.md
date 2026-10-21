@@ -38,6 +38,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | `inputs`: each input's name, type and default | STABLE; new optional inputs are free, a new required input is a breaking change |
 | `media_player_contract` of the Ramka: `required` / `optional` | STABLE; moving a feature from optional to required is a breaking change |
 | Scene files (`schemas/scene.schema.json`, `scenes/README.md`) and device files | ADDITIVE-ONLY |
+| `templates/instance/**.j2`: rendered once by `domosenso add` into `config_dir/<path>` with the home's inputs, never overwritten, recorded in the lock as layer `instance`, not stamped | ADDITIVE-ONLY |
 
 ### Entities a component provides
 

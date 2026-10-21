@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 
-from domosenso_cli.build import file_records, open_catalog, plan_outputs, resource_urls
+from domosenso_cli.build import file_records, open_catalog, parse_spec, plan_outputs, resource_urls
 from domosenso_cli import stamps
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
@@ -21,9 +21,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def run(args: argparse.Namespace, rep: Reporter) -> int:
-    cid, at, version = args.spec.partition("@")
-    if not at or not cid or not version or "@" in version:
-        raise DomosensoError(f"expected <id>@<version>, got {args.spec!r}")
+    cid, version = parse_spec(args.spec)
     home = HomeConfig.load(args.home)
     lock = Lock.load(args.home)
     if cid not in home.components:
