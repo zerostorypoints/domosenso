@@ -19,8 +19,8 @@ from domosenso_cli.report import Reporter
 COMMANDS: dict[str, str | None] = {
     "init": None,
     "add": None,
-    "adopt": None,
-    "render": None,
+    "adopt": "domosenso_cli.cmd_adopt",
+    "render": "domosenso_cli.cmd_render",
     "update": None,
     "status": None,
     "deploy": None,
