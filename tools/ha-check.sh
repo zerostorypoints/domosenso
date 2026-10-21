@@ -22,7 +22,9 @@ HA_VERSION=${HA_VERSION:-2026.9.2}
 ROOT=$(pwd)
 SRC=$ROOT/components/$COMP
 INPUTS=$ROOT/examples/demo-home/inputs/$COMP.yaml
-WORK=${TMPDIR:-/tmp}/domosenso-ha-check/$COMP
+# One work dir per checkout: git worktrees run checks side by side and must not share it.
+ROOT_ID=$(printf %s "$ROOT" | { shasum -a 256 2>/dev/null || sha256sum; } | cut -c1-8)
+WORK=${TMPDIR:-/tmp}/domosenso-ha-check/$ROOT_ID/$COMP
 rm -rf "$WORK"; mkdir -p "$WORK"
 [ -f "$SRC/component.yaml" ] || { echo "no component $COMP" >&2; exit 2; }
 

@@ -21,7 +21,9 @@ INSTANCE=$SRC/examples/demo-home/esphome
 if [ ! -d "$CDIR/esphome" ]; then echo "$COMP has no esphome/: nothing to check"; exit 0; fi
 VERSION=$(sed -n 's/^version: *//p' "$CDIR/component.yaml")
 TAG="$COMP/$VERSION"
-WORK=${TMPDIR:-/tmp}/domosenso-esphome-check/$COMP
+# One work dir per checkout: git worktrees run checks side by side and must not share it.
+ROOT_ID=$(printf %s "$SRC" | { shasum -a 256 2>/dev/null || sha256sum; } | cut -c1-8)
+WORK=${TMPDIR:-/tmp}/domosenso-esphome-check/$ROOT_ID/$COMP
 rm -rf "$WORK"; mkdir -p "$WORK/remote" "$WORK/home"
 
 # 1. A git "catalog" with the component at its tag.
