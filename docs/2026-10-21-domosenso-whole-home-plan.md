@@ -33,8 +33,8 @@ Known hazard: `tools/ha-check.sh` uses one work directory per component under `$
 | 1–9 | done, reviewed, on `feature/whole-home` | executor `local_4a35c383` (`claude/whole-home-spec-e7a681`) |
 | 10 Lovelace resources | done, on `feature/whole-home` | executor `local_4a35c383` |
 | 11 targets | done, merged (#2) | executor `local_4a35c383` |
-| 12 deploy / rollback | in progress | executor `local_4a35c383` |
-| 13 staging `--full`, home `domosenso.yaml`, Ramka adopted (home repo) | waiting for 12 | executor `local_4a35c383` |
+| 12 deploy / rollback | done, merged (#5); feature/whole-home reaches main by merge only (tags) | executor `local_4a35c383` |
+| 13 staging `--full`, home `domosenso.yaml`, Ramka adopted (home repo) | in progress, home repo branch from `feature/whole-home` | executor `local_4a35c383` |
 | 14–16 snapshot / compare / verify | done, merged (#1, #3); 14 Step 5 waits for 13; COMPATIBILITY.md rows go to Task 18 | `local_3bd19b01` (`claude/equivalence-3dd81e`) |
 | 17 fidelity comparison (home repo) | waiting for 13–16 | to assign |
 | 18 home AGENTS.md + first production deploy (Ramka) | waiting for 17; production go-ahead typed by the maintainer | to assign |
