@@ -304,8 +304,9 @@ same; it names the commit it was reviewed at, so a later change of either side i
 Today staging loads one package (the Ramka's). For the check it needs the whole home:
 
 - a `--full` mode of the home's staging tool: every package, dashboard, blueprint, card, shell
-  script and theme from the repository, `configuration.yaml` as the home has it, minus `default_config`
-  and discovery (as now);
+  script and theme from the repository, `configuration.yaml` exactly as the home has it, including
+  `default_config`, so its entities exist on both sides of the comparison (ruled 2026-10-21 in Task 13;
+  the first draft said "minus `default_config` and discovery");
 - a throwaway MQTT broker container on staging and an MQTT config entry pointing at it, so `mqtt:`
   entities load (nothing connects to the house);
 - the state mirror and the service stubs as today.
