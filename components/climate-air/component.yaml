@@ -51,7 +51,7 @@ inputs:
 
 artifacts:
   templates:
-    - templates/package.yaml.j2   # -> packages/climate-air.yaml
+    - templates/package.yaml.j2   # -> packages/climate_air.yaml
   ha_packages: []
   services: []
 

@@ -177,8 +177,10 @@ skill `check` explains how to read it.
 **`check_config` exits 0 on a broken automation-blueprint input.** An invalid template-blueprint
 instance is counted as an error, but an invalid automation-blueprint instance is only a log line
 (`ERROR: ... generated invalid automation`), with exit code 0 even under `--fail-on-warnings`.
-`tools/ha-check.sh` counts those lines into its error total. Anything that runs `check_config`
-elsewhere (a home's own check, CI) must count the `ERROR:` lines too; the exit code alone passes a
+A package Home Assistant refuses to set up (a hyphen in its file name: the name must be a slug) is
+only a warning, `Setup of package '<name>' failed`, and none of its entities exists.
+`tools/ha-check.sh` and `domosenso deploy` count both into their error total. Anything that runs
+`check_config` elsewhere (a home's own check, CI) must count them too; the exit code alone passes a
 broken config.
 
 Every check has to give a machine-readable pass or fail, so an agent closes its own loop. A new check

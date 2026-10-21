@@ -4,7 +4,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.2.0 (2026-10-21): a package with the whole home's figures
 
-New artifact `templates/package.yaml.j2` → `packages/climate-air.yaml`; new optional inputs
+New artifact `templates/package.yaml.j2` → `packages/climate_air.yaml`; new optional inputs
 `outside_weather`, `bathroom_humidity` and the room keys `indoor`, `bathroom`, `battery`; new
 entities (`provides` in `component.yaml`). Nothing that existed changes.
 
