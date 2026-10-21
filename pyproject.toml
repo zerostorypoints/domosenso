@@ -22,7 +22,7 @@ domosenso = "domosenso_cli.main:main"
 [tool.setuptools]
 package-dir = {"" = "tools"}
 packages = ["domosenso_cli"]
-py-modules = ["catalog_check", "domosenso_render", "domosenso_install"]
+py-modules = ["catalog_check", "domosenso_render", "domosenso_install", "check_config_parse"]
 
 [dependency-groups]
 dev = [

@@ -88,9 +88,10 @@ def test_error_becomes_fail_json(monkeypatch, capsys):
     assert doc["result"] == "FAIL" and doc["reason"] == "x"
 
 
-def test_not_implemented_stub_fails(capsys):
-    assert cli.COMMANDS["deploy"] is None
-    assert cli.main(["deploy"]) == 1
+def test_not_implemented_stub_fails(monkeypatch, capsys):
+    # Every command is implemented now; a stub is still how a new command lands first.
+    monkeypatch.setitem(cli.COMMANDS, "snapshot", None)
+    assert cli.main(["snapshot"]) == 1
     assert capsys.readouterr().out.splitlines()[-1] == "FAIL not implemented"
 
 

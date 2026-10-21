@@ -57,7 +57,10 @@ def wanted(home: HomeConfig, lock: Lock) -> list[Resource]:
         url, kind = raw["url"], raw.get("type", "module")
         _claim(owners, url, "the home's resources")
         if _bare(url).startswith(LOCAL):
-            path = home.config_dir / "www" / _bare(url)[len(LOCAL):]
+            relative = _bare(url)[len(LOCAL):]
+            if ".." in relative.split("/"):
+                raise DomosensoError(f"resource {url}: '..' is not allowed in a /local/ path")
+            path = home.config_dir / "www" / relative
             if not path.is_file():
                 raise DomosensoError(f"resource {url}: file not found: {path}")
             url = f"{_bare(url)}?v={file_sha(path)[:HASH_LENGTH]}"

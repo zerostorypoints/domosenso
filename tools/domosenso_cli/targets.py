@@ -24,7 +24,7 @@ from domosenso_cli.home import Target
 
 CONTAINER_CONFIG = "/config"
 # A deploy runs unattended between the backup and the restart; nothing in it may wait forever.
-COMMAND_TIMEOUT_S = 120  # a file operation, or `exec` (check_config)
+COMMAND_TIMEOUT_S = 120  # a file operation, or `exec` unless the caller gives its own (check_config does)
 RESTART_SLACK_S = 60  # on top of `-t <timeout_s>`, which is how long docker waits before it kills
 SSH_OPTIONS = [
     "-o", "BatchMode=yes",  # no password prompt: a missing key fails instead of hanging
@@ -56,7 +56,7 @@ class TargetIO(Protocol):
     def read(self, path: str) -> bytes | None: ...
     def put(self, files: dict[str, bytes]) -> None: ...
     def delete(self, paths: list[str]) -> None: ...
-    def exec(self, argv: list[str]) -> tuple[int, str]: ...
+    def exec(self, argv: list[str], timeout_s: float | None = None) -> tuple[int, str]: ...  # None: COMMAND_TIMEOUT_S
     def restart(self, timeout_s: int = 120) -> None: ...
 
 
@@ -211,8 +211,8 @@ class LocalDocker(LocalFiles):
         self._container = t.container
         self._docker = _docker_argv(t)
 
-    def exec(self, argv: list[str]) -> tuple[int, str]:
-        done = _run([*self._docker, "exec", self._container, *argv], "exec", COMMAND_TIMEOUT_S, merge=True)
+    def exec(self, argv: list[str], timeout_s: float | None = None) -> tuple[int, str]:
+        done = _run([*self._docker, "exec", self._container, *argv], "exec", timeout_s or COMMAND_TIMEOUT_S, merge=True)
         return done.returncode, done.stdout.decode("utf-8", "replace")
 
     def restart(self, timeout_s: int = 120) -> None:
@@ -291,8 +291,8 @@ class SshDocker:
         if paths:
             _checked(self._sh(_DELETE_SCRIPT, paths), "delete", COMMAND_TIMEOUT_S)
 
-    def exec(self, argv: list[str]) -> tuple[int, str]:
-        done = _run(self._remote("exec", self._container, *argv), "exec", COMMAND_TIMEOUT_S, merge=True)
+    def exec(self, argv: list[str], timeout_s: float | None = None) -> tuple[int, str]:
+        done = _run(self._remote("exec", self._container, *argv), "exec", timeout_s or COMMAND_TIMEOUT_S, merge=True)
         return done.returncode, done.stdout.decode("utf-8", "replace")
 
     def restart(self, timeout_s: int = 120) -> None:

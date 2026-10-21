@@ -411,3 +411,28 @@ def test_fake_target_put_can_fail_midway(tmp_path):
     with pytest.raises(DomosensoError, match="interrupted"):
         fake.put({"a.yaml": b"1", "b.yaml": b"2", "c.yaml": b"3"})
     assert fake.glob(["*.yaml"]) == ["a.yaml"]
+
+
+def test_exec_takes_its_own_timeout(io, monkeypatch):
+    seen = []
+    real_run = targets.subprocess.run
+    monkeypatch.setattr(targets.subprocess, "run", lambda *a, **kw: seen.append(kw["timeout"]) or real_run(*a, **kw))
+    io.io.exec(["true"], timeout_s=600)
+    assert seen == [600]
+
+
+def test_fake_target_cut_off_happens_once_counted_across_puts(tmp_path):
+    fake = FakeTarget(tmp_path, fail_put_after=2)
+    fake.put({"a.yaml": b"1"})
+    with pytest.raises(DomosensoError, match="interrupted"):
+        fake.put({"b.yaml": b"2", "c.yaml": b"3"})
+    assert fake.glob(["*.yaml"]) == ["a.yaml", "b.yaml"]
+    fake.put({"c.yaml": b"3", "d.yaml": b"4"})  # the link is back
+    assert fake.files_put == 4
+
+
+def test_fake_target_records_exec_timeouts(tmp_path):
+    fake = FakeTarget(tmp_path)
+    fake.exec(["ls"])
+    fake.exec(["check_config"], timeout_s=600)
+    assert fake.exec_timeouts == [targets.COMMAND_TIMEOUT_S, 600]
