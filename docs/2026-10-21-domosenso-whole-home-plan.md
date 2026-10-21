@@ -39,8 +39,8 @@ Fixed hazard (2026-10-21, #6): `tools/ha-check.sh` and `tools/esphome-check.sh` 
 | 17 fidelity comparison (home repo) + 14 Step 5 | done, merged (home #2; framework #8): equivalent with 9 renamed, 24 ignore, 7 after_restart | executor `local_4a35c383` |
 | 18 home AGENTS.md + first production deploy (Ramka) | framework part merged (#10); home part in progress up to `deploy production --plan`; apply waits for the maintainer's go-ahead typed in the executor session | executor `local_4a35c383` |
 | 19 components, Steps 1–2 (six specs approved) | done, merged (#4) | `local_06cf3620` (`claude/components-batch-0efe9b`) |
-| 19 components, Steps 3–5 | backup done (home #3, tag backup/0.1.0); climate-air in progress; one at a time on ha-staging-full; lights also fixes hue_lowest_battery; awnings must settle discovery vs YAML covers first | `local_06cf3620` |
-| 17a snapshot/compare defects from Task 17 (registry-less mirrored states, discovered MQTT entities, `renamed` both halves, verify after_restart) | done, merged (#9, #11) | `local_3bd19b01` |
+| 19 components, Steps 3–5 | Steps 3–4 done for all six on staging (equivalent); framework fixes merged (#13); tags backup/0.1.0, climate-air, bermuda-presence, plants, awnings, lights /0.2.0 made; Step 5 (add from tags, lock) in progress | `local_06cf3620` |
+| 17a snapshot/compare defects from Task 17 | merged (#9, #11, #12); open: unloaded-package detection, script run state | `local_3bd19b01` |
 | 20 cut-over | waiting for 17–19; production go-ahead typed by the maintainer | to assign |
 
 **Spec:** `.ai/specs/SPEC-002-2026-10-21-whole-home-on-domosenso.md` (approved 2026-10-21). The home's
