@@ -26,14 +26,16 @@ is `feature/whole-home`; every sub-session opens its pull request into it, the c
 against this plan and the specs and merges in plan order. Home-repository tasks use a feature branch of
 the same name in the home repository. The table below is kept current by the coordinator.
 
+Known hazard: `tools/ha-check.sh` uses one work directory per component under `$TMPDIR`, so two sessions checking the same component at once collide (seen 2026-10-21); run checks one at a time or give the work directory a per-worktree suffix.
+
 | task | state | session (branch) |
 |---|---|---|
 | 1–9 | done, reviewed, on `feature/whole-home` | executor `local_4a35c383` (`claude/whole-home-spec-e7a681`) |
 | 10 Lovelace resources | done, on `feature/whole-home` | executor `local_4a35c383` |
-| 11 targets | in progress | executor `local_4a35c383` |
-| 12 deploy / rollback | waiting for 11 | executor `local_4a35c383` |
+| 11 targets | done, merged (#2) | executor `local_4a35c383` |
+| 12 deploy / rollback | in progress | executor `local_4a35c383` |
 | 13 staging `--full`, home `domosenso.yaml`, Ramka adopted (home repo) | waiting for 12 | executor `local_4a35c383` |
-| 14–16 snapshot / compare / verify | in progress (14 Step 5 waits for 13) | `local_3bd19b01` (`claude/equivalence-*`) |
+| 14–16 snapshot / compare / verify | done, merged (#1); 14 Step 5 waits for 13; follow-ups: kiosk profile reader → `targets` (`local_3bd19b01`), COMPATIBILITY.md rows (Task 18) | `local_3bd19b01` (`claude/equivalence-3dd81e`) |
 | 17 fidelity comparison (home repo) | waiting for 13–16 | to assign |
 | 18 home AGENTS.md + first production deploy (Ramka) | waiting for 17; production go-ahead typed by the maintainer | to assign |
 | 19 components, Steps 1–2 (six specs approved) | in progress | `local_06cf3620` (`claude/components-batch-*`) |
