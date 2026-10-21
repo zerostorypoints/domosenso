@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "description": "Zgłasza wartość demonstracyjną.",
+    "device": {"description": "Węzeł demonstracyjny.", "does": "Wysyła wartość demonstracyjną."}
+  },
+  "ui": {"title": "Demo"}
+}

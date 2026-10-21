@@ -1,0 +1,16 @@
+[project]
+name = "domosenso"
+version = "0.0.0"
+description = "Domosenso: a catalog of tested Home Assistant components"
+requires-python = ">=3.11"
+dependencies = [
+    "jinja2",
+    "pyyaml",
+    "jsonschema",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pillow",
+]

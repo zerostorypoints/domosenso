@@ -1,0 +1,34 @@
+# domosenso component bermuda-presence: factory firmware for an Atom Lite that nobody has configured
+# yet. Same split as ESPHome's own esphome/bluetooth-proxies (m5stack-atom-lite.factory.yaml): the
+# package plus Wi-Fi provisioning over USB (Improv serial, e.g. from web.esphome.io) and the
+# dashboard_import pointer.
+#
+# Adoption (read from esphome/components/dashboard_import in ESPHome 2026.9.1): the device announces
+# package_import_url in its mDNS TXT record; the ESPHome Device Builder — not Home Assistant — offers
+# "Adopt" and writes a device file with substitutions name/friendly_name, `packages: {<project
+# name>: <package_import_url>}`, a fresh API key and `wifi: !secret wifi_ssid/wifi_password`. On a
+# Container install the Device Builder has to run as its own container (esphome/esphome).
+#
+# Not flashed on any board: built only, to check it compiles.
+
+packages:
+  proxy: !include ble-proxy.yaml
+
+esphome:
+  name_add_mac_suffix: true  # one image for every board; adoption turns the suffix off
+
+# Factory only (the adopted device pulls ble-proxy.yaml, which has neither): a fallback AP with a
+# captive portal, and Improv over USB, to give a new board its Wi-Fi.
+wifi:
+  ap:
+
+captive_portal:
+
+improv_serial:
+
+# Improv talks over the UART, which the package frees for Bluetooth (baud_rate: 0).
+logger:
+  baud_rate: 115200
+
+dashboard_import:
+  package_import_url: github://domosenso/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0

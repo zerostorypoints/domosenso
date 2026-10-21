@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Ein Netzwerk-Audioplayer als Home-Assistant-Mediaplayer: Ein- und Ausschalten, Lautstärke, Wiedergabe und Pause und der laufende Titel. Getestet mit dem Verstärker Hegel H400 über die Integration hegel_streaming; jeder Mediaplayer, der die Anforderungen der Ramka erfüllt, funktioniert.",
+    "devices": {
+      "hegel-h400": {
+        "description": "Ein Vollverstärker mit eingebautem Netzwerk-Streamer, der Spotify, Qobuz und Google Cast abspielt.",
+        "does": "Spielt Musik aus dem Netzwerk und von seinen Eingängen. Über die Integration hegel_streaming schaltet Home Assistant ihn ein und aus, stellt die Lautstärke ein, steuert die Wiedergabe und liest den laufenden Titel."
+      }
+    }
+  }
+}

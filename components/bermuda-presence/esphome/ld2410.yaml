@@ -1,0 +1,195 @@
+# domosenso component bermuda-presence, feature "radar": a Hi-Link HLK-LD2410C 24 GHz radar on the
+# Atom Lite's bottom header. Copied unchanged from a working home configuration
+# (2026-10-20). Add next to the proxy package in a device file:
+#   packages:
+#     radar: github://domosenso/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.1.0
+# Wiring (same colours on every board): VCC -> 5V red (not 3V3), GND -> G black,
+# radar TX -> G22 purple, radar RX -> G19 green, OUT unconnected. The Grove port stays free.
+#
+# The module keeps its settings (gates, thresholds, timeout, Bluetooth) in its own flash, so they
+# are set once from HA and survive a reflash of the Atom.
+
+# Engineering mode is the one setting the module forgets on a restart, and the light reading
+# only comes in engineering frames, so it is switched back on after every boot.
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - delay: 10s
+      - switch.turn_on: radar_engineering_mode
+
+uart:
+  id: radar_uart
+  rx_pin: GPIO22  # radar TX
+  tx_pin: GPIO19  # radar RX
+  baud_rate: 256000  # the module's factory setting
+  parity: NONE
+  stop_bits: 1
+
+ld2410:
+  uart_id: radar_uart
+
+binary_sensor:
+  - platform: ld2410
+    has_target:
+      name: Presence
+    has_moving_target:
+      name: Moving target
+    has_still_target:
+      name: Still target
+
+sensor:
+  - platform: ld2410
+    moving_distance:
+      name: Moving distance
+    still_distance:
+      name: Still distance
+    moving_energy:
+      id: radar_moving_energy
+      name: Moving energy
+    still_energy:
+      name: Still energy
+    detection_distance:
+      name: Detection distance
+    light:
+      device_class: ""  # the component's default is illuminance, which HA rejects without lx
+      name: Radar light  # 0-255, the module's own coarse photodiode; only reported in engineering mode, see on_boot
+    # Energy per 0.75 m gate, 0-100, also engineering mode only. They change every second, so
+    # a home's recorder settings should keep them out of the recorder; a dashboard card can
+    # draw them live.
+    g0:
+      move_energy:
+        name: G0 move energy
+      still_energy:
+        name: G0 still energy
+    g1:
+      move_energy:
+        name: G1 move energy
+      still_energy:
+        name: G1 still energy
+    g2:
+      move_energy:
+        name: G2 move energy
+      still_energy:
+        name: G2 still energy
+    g3:
+      move_energy:
+        name: G3 move energy
+      still_energy:
+        name: G3 still energy
+    g4:
+      move_energy:
+        name: G4 move energy
+      still_energy:
+        name: G4 still energy
+    g5:
+      move_energy:
+        name: G5 move energy
+      still_energy:
+        name: G5 still energy
+    g6:
+      move_energy:
+        name: G6 move energy
+      still_energy:
+        name: G6 still energy
+    g7:
+      move_energy:
+        name: G7 move energy
+      still_energy:
+        name: G7 still energy
+    g8:
+      move_energy:
+        name: G8 move energy
+      still_energy:
+        name: G8 still energy
+
+  # Moving energy as a one-minute average with a state class, so HA keeps statistics of it: the
+  # raw value changes every second and stays out of the recorder. A dashboard card can show it
+  # as "how much you move".
+  - platform: copy
+    source_id: radar_moving_energy
+    name: Movement
+    icon: mdi:run
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 0
+    filters:
+      - throttle_average: 60s
+
+# One gate is 0.75 m. Thresholds are 0-100: a gate reports a target when its energy is above the
+# threshold, so raising one makes that distance band less sensitive.
+number:
+  - platform: ld2410
+    timeout:
+      name: Radar timeout  # seconds presence is held after the last detection
+    max_move_distance_gate:
+      name: Max move distance gate
+    max_still_distance_gate:
+      name: Max still distance gate
+    g0:
+      move_threshold:
+        name: G0 move threshold
+      still_threshold:
+        name: G0 still threshold
+    g1:
+      move_threshold:
+        name: G1 move threshold
+      still_threshold:
+        name: G1 still threshold
+    g2:
+      move_threshold:
+        name: G2 move threshold
+      still_threshold:
+        name: G2 still threshold
+    g3:
+      move_threshold:
+        name: G3 move threshold
+      still_threshold:
+        name: G3 still threshold
+    g4:
+      move_threshold:
+        name: G4 move threshold
+      still_threshold:
+        name: G4 still threshold
+    g5:
+      move_threshold:
+        name: G5 move threshold
+      still_threshold:
+        name: G5 still threshold
+    g6:
+      move_threshold:
+        name: G6 move threshold
+      still_threshold:
+        name: G6 still threshold
+    g7:
+      move_threshold:
+        name: G7 move threshold
+      still_threshold:
+        name: G7 still threshold
+    g8:
+      move_threshold:
+        name: G8 move threshold
+      still_threshold:
+        name: G8 still threshold
+
+switch:
+  - platform: ld2410
+    engineering_mode:
+      id: radar_engineering_mode
+      name: Radar engineering mode
+    # The module advertises over Bluetooth with a factory password. Switch it off once per
+    # module; it takes effect after the radar restarts.
+    bluetooth:
+      name: Radar Bluetooth
+
+button:
+  - platform: ld2410
+    restart:
+      name: Radar restart
+    query_params:
+      name: Radar query params
+
+text_sensor:
+  - platform: ld2410
+    version:
+      name: Radar firmware

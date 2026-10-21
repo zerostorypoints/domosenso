@@ -1,0 +1,21 @@
+# Early afternoon, bright: both awnings are out, the tablet's status page shows them.
+id: sun
+time: "13:00"
+names: {en: Sun, de: Sonne, pl: Słońce}
+states:
+  weather.forecast_home: sunny
+  sensor.outside_temperature: 24.6
+  sensor.outside_humidity: 41
+  cover.awning_living_room: open
+  cover.awning_kitchen: open
+  binary_sensor.awnings_wind: "off"
+  sensor.living_room_temperature: 23.4
+  sensor.kitchen_temperature: 23.9
+  light.living_room: "off"
+  light.kitchen: "off"
+attributes:
+  cover.awning_living_room: {current_position: 100}
+  cover.awning_kitchen: {current_position: 100}
+tablet: {mode: ambient, page: status}
+components: [awnings, climate-air, lights, ramka, weather]
+devices: [cc1101, hue-bridge, tapo-t315]

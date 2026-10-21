@@ -1,0 +1,733 @@
+[#
+  The Ramka dashboard: one sections view, each section visible in exactly one state of the
+  package's helpers, so the tablet shows one thing at a time. Rendered once per language
+  (dashboard.<lang>.yaml) by tools/domosenso_render.py: every label is t('ui.…') or an input's
+  `label`. Double square brackets are the renderer's; {{ }} would be Home Assistant's.
+#]
+[%- set p = inputs.prefix -%]
+[%- set mp = inputs.media_player -%]
+[%- set photo_dir = inputs.photo_dir.rstrip('/') -%]
+[%- if not photo_dir.startswith('/config/www/') -%][[ photo_dir_must_be_under_config_www ]][%- endif -%]
+[%- set local = '/local/' ~ photo_dir[12:] -%]
+[%- set calendars = [inputs.calendar] if inputs.calendar is string else inputs.calendar -%]
+[%- set unreachable = ' (' ~ t('ui.common.unreachable') ~ ')' -%]
+[%- set media_label = inputs.media_label | default(t('ui.media.player')) -%]
+[%- set covers = inputs.covers | default([]) -%]
+[%- set lights = inputs.lights | default([]) -%]
+[%- set status = inputs.status | default({}) -%]
+[%- set air = inputs.air -%]
+[%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
+[%- set photo_index = local ~ '/index.json' -%]
+[%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
+[%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]
+[%- set series = [] -%]
+[%- for c in inputs.climate -%]
+[%- set _ = series.append({'label': c.label, 'temperature': c.temperature, 'humidity': c.humidity | default(none), 'color': c.color | default(loop.index)}) -%]
+[%- endfor -%]
+[%- set outside = inputs.outside | default(none) -%]
+[%- if outside -%]
+[%- set chart = (series + [{'label': t('ui.climate.outside'), 'temperature': outside.temperature, 'humidity': outside.humidity | default(none), 'color': outside.color | default(series | length + 1)}]) | sort(attribute='color') -%]
+[%- else -%]
+[%- set chart = series | sort(attribute='color') -%]
+[%- endif -%]
+# Rendered from the Domosenso catalog, component ramka (templates/dashboard.lang.yaml.j2),
+# language [[ lang ]]. Edit the inputs and render again rather than editing this file.
+#
+# The tablet's only dashboard. One view; each section is visible in exactly one state of the
+# helpers from the ramka package, so the tablet shows one thing at a time. No navigation, no
+# more-info on the ambient cards: the frame must never sit in a dialog. kiosk-mode hides header
+# and sidebar for the tablet's user; ?disable_km on the URL shows them again.
+title: Ramka
+[%- if inputs.kiosk_user is defined %]
+kiosk_mode:
+  user_settings:
+    - users:
+        - [[ inputs.kiosk_user | yaml ]]
+      kiosk: true
+[%- endif %]
+views:
+  - title: Ramka
+    path: ramka
+    # themes/ramka.yaml: only the series colours, shared by the charts and the room tiles.
+    theme: ramka
+    # Black behind everything: in the "off" state no section is visible, and a dim panel that has
+    # not gone to sleep then shows nothing.
+    background: "#000000"
+    type: sections
+    max_columns: 3
+    dense_section_placement: true
+    sections:
+      # ---- Way out of the kiosk: invisible tap targets in the top corners (always present) ----
+      # Top-left → the Overview with the sidebar; top-right → this dashboard with kiosk-mode off.
+      - type: grid
+        column_span: 3
+        cards:
+          - type: custom:corner-taps-card
+            left: [[ inputs.exit_left | default('/lovelace/0') | yaml ]]
+            right: [[ exit_right | yaml ]]
+            # One 8 px margin everywhere instead of HA's 32/24 px; the card heights below assume it.
+            padding: 8
+            # A tap anywhere shows the controls (and keeps them up while they are shown).
+            tap:
+              entity: input_select.[[ p ]]_mode
+              states: [ambient, controls, calendar]
+              script: script.[[ p ]]_show_controls
+              # Until the controls are up and have stood 0.7 s, touches go nowhere: the tap that
+              # opens them (or a second one made while they load) must not switch the tile drawn
+              # under the finger.
+              shows: controls
+              shield_ms: 700
+            # Swipes, first matching rule wins. On the controls and the calendar they leave to
+            # ambient at once: up = the home-info rotation, down = the music (while the player
+            # plays). On the rotation itself they turn its pages and restart the cycle there.
+            swipe:
+              - conditions:
+                  - entity: input_select.[[ p ]]_mode
+                    states: [controls, calendar]
+                up: script.[[ p ]]_swipe_up
+                down: script.[[ p ]]_swipe_down
+              - conditions:
+                  - entity: input_select.[[ p ]]_mode
+                    states: [ambient]
+                  - entity: binary_sensor.[[ p ]]_music_view
+                    states: ["off"]
+                up: script.[[ p ]]_ambient_next
+                down: script.[[ p ]]_ambient_prev
+            # Pressing this button reloads the page in place, the way to pick up a deploy.
+            reload: input_button.[[ p ]]_reload
+            grid_options: {columns: full, rows: 1}
+[%- if inputs.wind_sensor is defined %]
+
+      # ---- Wind: the awnings were rolled in. Over the ambient pages and the controls, while the
+      # wind sensor is on; one heading row, so the pages below it scroll by that much.
+      - type: grid
+        column_span: 3
+        visibility:
+          - condition: state
+            entity: [[ inputs.wind_sensor ]]
+            state: "on"
+          - condition: or
+            conditions:
+              - {condition: state, entity: input_select.[[ p ]]_mode, state: ambient}
+              - {condition: state, entity: input_select.[[ p ]]_mode, state: controls}
+        cards:
+          - type: heading
+            heading: [[ t('ui.wind.awnings_rolled_in') | yaml ]]
+            icon: mdi:weather-windy
+            grid_options: {columns: full, rows: 1}
+[%- endif %]
+
+      # ---- Off: nothing at all. The tablet's screen should be asleep; while Android keeps it on
+      # at the lowest brightness, a clock here would still glow through, so the view is black and
+      # empty in this state (the view's background above).
+      # ---- Now playing: ambient while the media player plays ---------------------------------
+      # Readable from across the room: now-playing-card draws artwork, title, artist, album, a
+      # live progress bar and the volume in large type; below it the time, the weather and, with
+      # a mains meter, the player's draw.
+      - type: grid
+        column_span: 3
+        visibility: &now_playing
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "on"
+        cards:
+          - type: custom:now-playing-card
+            entity: [[ mp ]]
+            [%- if inputs.media_quality_sensor is defined %]
+            quality: [[ inputs.media_quality_sensor ]]
+            [%- endif %]
+            [%- if inputs.media_source_sensor is defined %]
+            source: [[ inputs.media_source_sensor ]]
+            [%- endif %]
+            [%- if inputs.media_details is defined %]
+            details:
+            [%- for sensor in inputs.media_details %]
+              - [[ sensor ]]
+            [%- endfor %]
+            [%- endif %]
+            wave: true
+            # The card's height comes from the screen, not from grid rows: everything below it
+            # (the 4-row bottom section, 248 px, plus three 8 px paddings/gaps) is subtracted;
+            # dvh, not vh: in the Companion app's WebView 100vh includes the area under Android's
+            # bars.
+            height: calc(100dvh - 272px)
+            grid_options: {columns: full, rows: auto}
+      # A section spanning three view columns has a 36-column grid (12 per column), so the widths
+      # below add up to 36. Rows 6 + 4 fit a 720 CSS px tall screen without scrolling.
+      - type: grid
+        column_span: 3
+        visibility: *now_playing
+        cards:
+          # Time and the weather right now, large; the built-in clock card stops at "large" and the
+          # forecast card spends its space on the coming days.
+          - type: custom:clock-weather-card
+            weather: [[ inputs.weather ]]
+            grid_options: {columns: [[ clock_columns ]], rows: 4}
+          [%- if inputs.mains is defined %]
+          # Mains draw and voltage behind the player: the two live values large, and the voltage
+          # of the last hour as a smoothed line.
+          - type: custom:mains-card
+            power: [[ inputs.mains.power ]]
+            voltage: [[ inputs.mains.voltage ]]
+            hours: 1
+            grid_options: {columns: 16, rows: 4}
+          [%- endif %]
+
+      # ---- Climate: ambient, music view off, page "climate" ----------------------------------
+      # Clock, current weather and a four-day forecast on top; the rooms in large type in the
+      # middle (height from the screen); temperature and humidity of every room as 7-day charts at
+      # the bottom. 8 + 184 + 8 + rooms + 8 + 248 + 8 = 100dvh.
+      - type: grid
+        column_span: 3
+        visibility: &climate
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "off"
+          - condition: state
+            entity: input_select.[[ p ]]_ambient
+            state: climate
+        cards:
+          - type: custom:clock-weather-card
+            weather: [[ inputs.weather ]]
+            forecast: 4
+            [%- if inputs.pressure is defined %]
+            pressure: [[ inputs.pressure ]]
+            [%- endif %]
+            grid_options: {columns: full, rows: 3}
+      - type: grid
+        column_span: 3
+        visibility: *climate
+        cards:
+          - type: custom:rooms-card
+            height: calc(100dvh - 464px)
+            columns: [[ inputs.rooms_columns | default(5) ]]
+            rooms:
+            [%- for room in series %]
+              - name: [[ room.label | yaml ]]
+                color: [[ room.color ]]
+                temperature: [[ room.temperature ]]
+                [%- if room.humidity %]
+                humidity: [[ room.humidity ]]
+                [%- endif %]
+            [%- endfor %]
+            grid_options: {columns: full, rows: auto}
+      - type: grid
+        column_span: 3
+        visibility: *climate
+        cards:
+          # Every room plus outside, overlaid as daily means over the last 7 days, in the order of
+          # their colours (statistics-graph colours its series by position, the theme's series
+          # colours match the room tiles'). No min/max band, no legend. Humidity on the left,
+          # temperature on the right. Outside is dashed and thicker than the rooms (line-style-card;
+          # statistics-graph has no per-series style).
+          - type: custom:line-style-card
+            [%- if outside and outside.humidity is defined %]
+            line_styles:
+              [[ outside.humidity ]]: {width: 3, type: [8, 5]}
+            [%- else %]
+            line_styles: {}
+            [%- endif %]
+            grid_options: {columns: 18, rows: 4}
+            card:
+              type: statistics-graph
+              entities:
+              [%- for s in chart if s.humidity %]
+                - entity: [[ s.humidity ]]
+                  name: [[ s.label | yaml ]]
+              [%- endfor %]
+              stat_types: [mean]
+              period: day
+              days_to_show: 7
+              chart_type: line
+              hide_legend: true
+          - type: custom:line-style-card
+            [%- if outside %]
+            line_styles:
+              [[ outside.temperature ]]: {width: 3, type: [8, 5]}
+            [%- else %]
+            line_styles: {}
+            [%- endif %]
+            grid_options: {columns: 18, rows: 4}
+            card:
+              type: statistics-graph
+              entities:
+              [%- for s in chart %]
+                - entity: [[ s.temperature ]]
+                  name: [[ s.label | yaml ]]
+              [%- endfor %]
+              stat_types: [mean]
+              period: day
+              days_to_show: 7
+              chart_type: line
+              hide_legend: true
+
+      # ---- Air quality: ambient, music view off, page "air" ----------------------------------
+      # air-card: the score and four readings, coloured good / raised / high. Limits: CO₂ 800 /
+      # 1200 ppm (ventilation rules of thumb), PM2.5 15 / 35 µg/m³ (WHO 2021 24-hour guideline,
+      # then the old US 24-hour limit), VOC and NOx on Sensirion's index scales (100 and 1 are the
+      # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means.
+      # 8 + air + 8 + 248 + 8 = 100dvh.
+      - type: grid
+        column_span: 3
+        visibility: &air
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "off"
+          - condition: state
+            entity: input_select.[[ p ]]_ambient
+            state: air
+        cards:
+          - type: custom:air-card
+            height: calc(100dvh - 272px)
+            [%- if air.score is defined %]
+            score:
+              name: [[ t('ui.air.score') | yaml ]]
+              entity: [[ air.score ]]
+              unit: /100
+              higher_is_better: true
+              levels:
+                - [80, [[ t('ui.air.score_good') | yaml ]] ]
+                - [60, [[ t('ui.air.score_fair') | yaml ]] ]
+                - [0, [[ t('ui.air.score_poor') | yaml ]] ]
+            [%- endif %]
+            tiles:
+            [%- if air.co2 is defined %]
+              - name: CO₂
+                entity: [[ air.co2 ]]
+                unit: ppm
+                levels:
+                  - [800, [[ t('ui.air.co2_good') | yaml ]] ]
+                  - [1200, [[ t('ui.air.co2_soon') | yaml ]] ]
+                  - [null, [[ t('ui.air.co2_ventilate') | yaml ]] ]
+            [%- endif %]
+            [%- if air.pm2_5 is defined %]
+              - name: PM2.5
+                entity: [[ air.pm2_5 ]]
+                unit: µg/m³
+                digits: 1
+                levels:
+                  - [15, [[ t('ui.air.pm_good') | yaml ]] ]
+                  - [35, [[ t('ui.air.pm_raised') | yaml ]] ]
+                  - [null, [[ t('ui.air.pm_high') | yaml ]] ]
+            [%- endif %]
+            [%- if air.voc is defined %]
+              - name: VOC
+                entity: [[ air.voc ]]
+                levels:
+                  - [150, [[ t('ui.air.index_normal') | yaml ]] ]
+                  - [250, [[ t('ui.air.index_raised') | yaml ]] ]
+                  - [null, [[ t('ui.air.index_high') | yaml ]] ]
+            [%- endif %]
+            [%- if air.nox is defined %]
+              - name: NOx
+                entity: [[ air.nox ]]
+                levels:
+                  - [20, [[ t('ui.air.index_normal') | yaml ]] ]
+                  - [150, [[ t('ui.air.index_raised') | yaml ]] ]
+                  - [null, [[ t('ui.air.index_high') | yaml ]] ]
+            [%- endif %]
+            grid_options: {columns: full, rows: auto}
+      [%- if air.co2 is defined or air.pm2_5 is defined %]
+      - type: grid
+        column_span: 3
+        visibility: *air
+        cards:
+          # Five-minute means from the long-term statistics, not the raw history: a sensor that
+          # reports every second draws a saw.
+          [%- for key, label in [('co2', 'CO₂'), ('pm2_5', 'PM2.5')] if air[key] is defined %]
+          - type: statistics-graph
+            entities:
+              - entity: [[ air[key] ]]
+                name: [[ label ]]
+            stat_types: [mean]
+            period: 5minute
+            days_to_show: 1
+            chart_type: line
+            hide_legend: true
+            grid_options: {columns: 18, rows: 4}
+          [%- endfor %]
+      [%- endif %]
+
+      # ---- Plants: ambient, music view off, page "plants" ------------------------------------
+      # plants-card: sun, fertiliser and water as bars against each plant's band, one line saying
+      # what to do, a smoothed 7-day moisture line; the ones that need something first. The bands
+      # are defaults plus per-plant overrides (the plant entity does not expose them).
+      - type: grid
+        column_span: 3
+        visibility:
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "off"
+          - condition: state
+            entity: input_select.[[ p ]]_ambient
+            state: plants
+        cards:
+          - type: custom:plants-card
+            height: calc(100dvh - 16px)
+            defaults: [[ inputs.plant_defaults | default({'min_moisture': 15, 'max_moisture': 60, 'min_conductivity': 350, 'max_conductivity': 2000, 'min_brightness': 500}) | yaml ]]
+            plants:
+            [%- for plant in inputs.plants %]
+            [%- set item = {'entity': plant.entity, 'room': plant.label} %]
+            [%- for key, value in plant.items() if key not in ('entity', 'label', 'room') %]
+            [%- set _ = item.update({key: value}) %]
+            [%- endfor %]
+              - [[ item | yaml ]]
+            [%- endfor %]
+            grid_options: {columns: full, rows: auto}
+
+      # ---- Photos: ambient, music view off, page "photos" ------------------------------------
+      # photo-frame-card draws the photo image as a full-screen layer (edge to edge, with a
+      # cross-fade); the card itself takes no row. It reads the same conditions as this section's
+      # visibility, because a hidden section keeps its cards connected.
+      - type: grid
+        column_span: 3
+        visibility:
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "off"
+          - condition: state
+            entity: input_select.[[ p ]]_ambient
+            state: photos
+        cards:
+          - type: custom:photo-frame-card
+            entity: image.[[ p ]]_photo
+            fade: 1200
+            fit: contain          # the whole photo; square and portrait ones get black margins
+            blur_background: false
+            path_entity: input_text.[[ p ]]_photo
+            index: [[ photo_index | yaml ]]
+            show_when:
+              - entity: input_select.[[ p ]]_mode
+                state: ambient
+              - entity: binary_sensor.[[ p ]]_music_view
+                state: "off"
+              - entity: input_select.[[ p ]]_ambient
+                state: photos
+            grid_options: {columns: full, rows: 1}
+
+      # ---- Status: ambient, music view off, page "status" ------------------------------------
+      # status-card: what the home is doing, read-only, in large type: awnings, doors, lights per
+      # room, power meters and locks.
+      - type: grid
+        column_span: 3
+        visibility:
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "off"
+          - condition: state
+            entity: input_select.[[ p ]]_ambient
+            state: status
+        cards:
+          - type: custom:status-card
+            height: calc(100dvh - 16px)
+            columns: [[ inputs.status_columns | default(4) ]]
+            items:
+            [%- for cover in covers %]
+              - name: [[ cover.status_label | default(cover.label) | yaml ]]
+                entity: [[ cover.entity ]]
+                icon: [[ cover.icon | default('mdi:awning-outline') ]]
+                states: {open: [[ t('ui.status.awning.open') | yaml ]], closed: [[ t('ui.status.awning.closed') | yaml ]], opening: [[ t('ui.status.awning.opening') | yaml ]], closing: [[ t('ui.status.awning.closing') | yaml ]]}
+            [%- endfor %]
+            [%- for door in status.contacts | default([]) %]
+              - name: [[ door.label | yaml ]]
+                entity: [[ door.entity ]]
+                icon: [[ door.icon | default('mdi:door') ]]
+                states: {"on": [[ t('ui.status.door.on') | yaml ]], "off": [[ t('ui.status.door.off') | yaml ]]}
+                active: ["on"]
+            [%- endfor %]
+            [%- for light in lights %]
+              - name: [[ light.label | yaml ]]
+                entity: [[ light.entity ]]
+                kind: light
+            [%- endfor %]
+            [%- for meter in status.power | default([]) %]
+              - name: [[ meter.label | yaml ]]
+                entity: [[ meter.entity ]]
+                icon: [[ meter.icon | default('mdi:flash-outline') ]]
+                decimals: 0
+            [%- endfor %]
+            [%- for lock in status.locks | default([]) %]
+              - name: [[ lock.label | yaml ]]
+                entity: [[ lock.entity ]]
+                icon: [[ lock.icon | default('mdi:lock-outline') ]]
+                states: {locked: [[ t('ui.status.lock.locked') | yaml ]], unlocked: [[ t('ui.status.lock.unlocked') | yaml ]], unlocking: [[ t('ui.status.lock.unlocking') | yaml ]], locking: [[ t('ui.status.lock.locking') | yaml ]], jammed: [[ t('ui.status.lock.jammed') | yaml ]]}
+            [%- endfor %]
+            grid_options: {columns: full, rows: auto}
+
+      # ---- Calendar: from the calendar button on the controls --------------------------------
+      # agenda-card: today large on the left, the next six days beside it.
+      - type: grid
+        column_span: 3
+        visibility:
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: calendar
+        cards:
+          - type: custom:agenda-card
+            entities:
+            [%- for calendar in calendars %]
+              - [[ calendar ]]
+            [%- endfor %]
+            days: 7
+            height: calc(100dvh - 16px)
+            grid_options: {columns: full, rows: 1}
+
+      # ---- Controls: a wave near the tablet, three columns under the hand --------------------
+      # Music (the player while it plays or pauses, a single "turn on" tile when it is off), the
+      # awnings, the room lights with one "all off" button. No scenes, no lock. Every light and
+      # awning tile has an inert, greyed twin shown while the entity is unavailable.
+      - type: grid
+        visibility: &controls
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: controls
+        cards:
+          - type: heading
+            heading: [[ t('ui.media.heading') | yaml ]]
+          - type: media-control
+            entity: [[ mp ]]
+            visibility: &player_on
+              - {condition: state, entity: [[ mp ]], state_not: "off"}
+              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+          # Everything under the player is one row high so the column fits under the artwork.
+          # tap-button-card rather than button cards, which take two rows whatever grid_options
+          # say, or tiles, which take half the column at the least.
+          [%- for key, icon, action in [('previous', 'mdi:skip-previous', 'media_previous_track'), ('pause', 'mdi:pause', 'media_pause'), ('play', 'mdi:play', 'media_play'), ('next', 'mdi:skip-next', 'media_next_track')] %]
+          - type: custom:tap-button-card
+            name: [[ t('ui.media.' ~ key) | yaml ]]
+            icon: [[ icon ]]
+            taps: 1
+            action: media_player.[[ action ]]
+            target: {entity_id: [[ mp ]]}
+            columns: 4
+            rows: 1
+            visibility:
+            [%- if key == 'pause' %]
+              - {condition: state, entity: [[ mp ]], state: playing}
+            [%- else %]
+            [%- if key == 'play' %]
+              - {condition: state, entity: [[ mp ]], state_not: playing}
+            [%- endif %]
+              - {condition: state, entity: [[ mp ]], state_not: "off"}
+              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+            [%- if key in ('previous', 'next') and inputs.media_service_sensor is defined %]
+              # A service that gives the player no skip (Spotify Connect on some players).
+              - {condition: state, entity: [[ inputs.media_service_sensor ]], state_not: [[ inputs.media_service_no_skip | default('Spotify') | yaml ]]}
+            [%- endif %]
+            [%- endif %]
+          [%- endfor %]
+          # Volume: − and + step one unit, the level as a number between them, the slider under it
+          # for big jumps.
+          - type: custom:tap-button-card
+            name: [[ t('ui.media.volume_down') | yaml ]]
+            icon: mdi:volume-minus
+            taps: 1
+            action: media_player.volume_down
+            target: {entity_id: [[ mp ]]}
+            columns: 3
+            rows: 2
+            visibility: *player_on
+          - type: tile
+            entity: [[ mp ]]
+            name: [[ t('ui.media.volume') | yaml ]]
+            state_content: volume_level
+            vertical: false
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+            grid_options: {columns: 6, rows: 2}
+            visibility: *player_on
+            features:
+              - type: media-player-volume-slider
+          - type: custom:tap-button-card
+            name: [[ t('ui.media.volume_up') | yaml ]]
+            icon: mdi:volume-plus
+            taps: 1
+            action: media_player.volume_up
+            target: {entity_id: [[ mp ]]}
+            columns: 3
+            rows: 2
+            visibility: *player_on
+          - type: tile
+            entity: [[ mp ]]
+            name: [[ t('ui.media.standby') | yaml ]]
+            icon: mdi:power-standby
+            hide_state: true
+            tap_action: &standby
+              action: perform-action
+              perform_action: media_player.turn_off
+              target:
+                entity_id: [[ mp ]]
+            icon_tap_action: *standby
+            grid_options: {columns: 6, rows: 1}
+            visibility: *player_on
+          # The calendar beside standby while the player is on; full width (below) while it is not.
+          - type: tile
+            entity: [[ calendars[0] ]]
+            name: [[ t('ui.calendar.button') | yaml ]]
+            icon: mdi:calendar-month
+            hide_state: true
+            tap_action: &show_calendar
+              action: perform-action
+              perform_action: script.[[ p ]]_show_calendar
+            icon_tap_action: *show_calendar
+            grid_options: {columns: 6, rows: 1}
+            visibility: *player_on
+          # Controls on approach (radar) on/off; off means a tap only. Always shown.
+          - type: tile
+            entity: input_boolean.[[ p ]]_near_enabled
+            name: [[ t('ui.near.toggle') | yaml ]]
+            icon: mdi:hand-wave
+            tap_action: {action: toggle}
+            icon_tap_action: {action: toggle}
+            grid_options: {columns: 12, rows: 1}
+          - type: tile
+            entity: [[ calendars[0] ]]
+            name: [[ t('ui.calendar.button') | yaml ]]
+            icon: mdi:calendar-month
+            hide_state: true
+            tap_action: *show_calendar
+            icon_tap_action: *show_calendar
+            grid_options: {columns: 12, rows: 1}
+            visibility:
+              - condition: or
+                conditions:
+                  - {condition: state, entity: [[ mp ]], state: "off"}
+                  - {condition: state, entity: [[ mp ]], state: unavailable}
+          - type: button
+            name: [[ inputs.media_turn_on_label | default(t('ui.media.turn_on')) | yaml ]]
+            icon: [[ inputs.media_icon | default('mdi:speaker') ]]
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: media_player.turn_on
+              target:
+                entity_id: [[ mp ]]
+            grid_options: {columns: 12, rows: 3}
+            visibility:
+              - {condition: state, entity: [[ mp ]], state: "off"}
+          # Off at the mains (or unreachable): nothing to switch on from here.
+          - type: tile
+            entity: [[ mp ]]
+            name: [[ twin(media_label) ]]
+            hide_state: true
+            color: disabled
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+            grid_options: {columns: 12, rows: 3}
+            visibility:
+              - {condition: state, entity: [[ mp ]], state: unavailable}
+      [%- if covers %]
+      - type: grid
+        visibility: *controls
+        cards:
+          - type: heading
+            heading: [[ t('ui.covers.heading') | yaml ]]
+          # Every awning button acts on one tap (a double tap did not work on the tablet).
+          [%- for cover in covers %]
+          - type: tile
+            entity: [[ cover.entity ]]
+            name: [[ cover.label | yaml ]]
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+            grid_options: {columns: 12, rows: 1}
+            visibility:
+              - {condition: state, entity: [[ cover.entity ]], state_not: unavailable}
+          [%- for key, icon, action in [('open', 'mdi:arrow-expand-horizontal', 'open_cover'), ('stop', 'mdi:stop', 'stop_cover'), ('close', 'mdi:arrow-collapse-horizontal', 'close_cover')] %]
+          - type: custom:tap-button-card
+            name: [[ t('ui.covers.' ~ key) | yaml ]]
+            icon: [[ icon ]]
+            taps: 1
+            action: cover.[[ action ]]
+            target: {entity_id: [[ cover.entity ]]}
+            columns: 4
+            visibility:
+              - {condition: state, entity: [[ cover.entity ]], state_not: unavailable}
+          [%- endfor %]
+          # The same tile greyed out and inert while the device cannot be reached.
+          - type: tile
+            entity: [[ cover.entity ]]
+            name: [[ twin(cover.label) ]]
+            hide_state: true
+            color: disabled
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+            grid_options: {columns: 12}
+            visibility:
+              - {condition: state, entity: [[ cover.entity ]], state: unavailable}
+          [%- endfor %]
+          [%- for key, icon, action in [('all_open', 'mdi:arrow-expand-horizontal', 'open_cover'), ('all_close', 'mdi:arrow-collapse-horizontal', 'close_cover')] %]
+          - type: custom:tap-button-card
+            name: [[ t('ui.covers.' ~ key) | yaml ]]
+            icon: [[ icon ]]
+            taps: 1
+            action: cover.[[ action ]]
+            target:
+              entity_id: [[ covers | map(attribute='entity') | list | yaml ]]
+            columns: 6
+            rows: 2
+          [%- endfor %]
+      [%- endif %]
+      [%- if lights %]
+      - type: grid
+        visibility: *controls
+        cards:
+          - type: heading
+            heading: [[ t('ui.lights.heading') | yaml ]]
+          [%- for light in lights %]
+          - type: tile
+            entity: [[ light.entity ]]
+            name: [[ light.label | yaml ]]
+            grid_options: {columns: 6}
+            visibility:
+              - {condition: state, entity: [[ light.entity ]], state_not: unavailable}
+            features:
+              - type: light-brightness
+          # The same tile greyed out and inert while the device cannot be reached.
+          - type: tile
+            entity: [[ light.entity ]]
+            name: [[ twin(light.label) ]]
+            hide_state: true
+            color: disabled
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+            grid_options: {columns: 6}
+            visibility:
+              - {condition: state, entity: [[ light.entity ]], state: unavailable}
+          [%- endfor %]
+          # With a scene: one call (a Hue bridge takes one command per second per group, so one
+          # scene beats a call per room); without one, light.turn_off on every room.
+          - type: button
+            name: [[ t('ui.lights.all_off') | yaml ]]
+            icon: mdi:lightbulb-group-off-outline
+            show_state: false
+            tap_action:
+              action: perform-action
+            [%- if inputs.lights_all_off is defined %]
+              perform_action: scene.turn_on
+              target:
+                entity_id: [[ inputs.lights_all_off ]]
+            [%- else %]
+              perform_action: light.turn_off
+              target:
+                entity_id: [[ lights | map(attribute='entity') | list | yaml ]]
+            [%- endif %]
+            grid_options: {columns: 12, rows: 2}
+      [%- endif %]

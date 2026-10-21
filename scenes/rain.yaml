@@ -1,0 +1,10 @@
+# Rain, windows shut. Motorised windows are tested nowhere, so no component or device reacts, the
+# tablet is left alone and no state of a catalog component changes (the website tells this one).
+id: rain
+time: "18:00"
+names: {en: Rain, de: Regen, pl: Deszcz}
+states:
+  binary_sensor.balcony_door_contact: "off"
+tablet: null
+components: []
+devices: []

@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Extend and retract Somfy RTS awnings from Home Assistant. A small radio node acts as one more remote, so the handset keeps working and Home Assistant follows it. The awnings' own wind sensor is read too, and shows when the awnings have rolled themselves in.",
+    "devices": {
+      "cc1101": {
+        "description": "A radio transceiver module for the sub-gigahertz bands, wired to the ESP32 board over SPI.",
+        "does": "Sends and receives the 433 MHz frames of Somfy RTS, so the node can drive the awnings, hear the handset and hear the wind sensor."
+      }
+    }
+  }
+}

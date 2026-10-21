@@ -1,0 +1,182 @@
+{
+  "card": {
+    "common": {
+      "weekday_short": {
+        "0": "Sun",
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat"
+      },
+      "noValue": "–"
+    },
+    "agenda": {
+      "today": "Today",
+      "tomorrow": "tomorrow",
+      "allDay": "all day",
+      "untitled": "(untitled)",
+      "empty": "Nothing in the calendar",
+      "reminders": "Reminders",
+      "nothingToDo": "Nothing to do"
+    },
+    "clock": {
+      "wind": "wind {speed} {unit}",
+      "condition": {
+        "clear-night": "Clear night",
+        "cloudy": "Cloudy",
+        "fog": "Fog",
+        "hail": "Hail",
+        "lightning": "Thunderstorm",
+        "lightning-rainy": "Thunderstorm with rain",
+        "partlycloudy": "Partly cloudy",
+        "pouring": "Pouring rain",
+        "rainy": "Rain",
+        "snowy": "Snow",
+        "snowy-rainy": "Sleet",
+        "sunny": "Sunny",
+        "windy": "Windy",
+        "windy-variant": "Windy",
+        "exceptional": "Exceptional"
+      }
+    },
+    "status": {
+      "on": "On",
+      "off": "Off",
+      "open": "Open",
+      "closed": "Closed",
+      "opening": "Opening",
+      "closing": "Closing",
+      "locked": "Locked",
+      "unlocked": "Unlocked",
+      "unlocking": "Unlocking",
+      "locking": "Locking",
+      "jammed": "Jammed",
+      "unavailable": "—",
+      "unknown": "—",
+      "playing": "Playing",
+      "paused": "Paused",
+      "idle": "Idle",
+      "standby": "Standby",
+      "home": "Home",
+      "not_home": "Away"
+    },
+    "tap_button": {
+      "hint": "Tap twice"
+    },
+    "plants": {
+      "gauge": {
+        "sun": "Sun",
+        "fertiliser": "Fertiliser",
+        "water": "Water"
+      },
+      "water": "Water",
+      "dontWater": "Don't water",
+      "moreLight": "More light",
+      "fertilise": "Fertilise",
+      "flush": "Flush the soil",
+      "tooCold": "Too cold",
+      "tooWarm": "Too warm",
+      "noReading": "no reading",
+      "toWater": "to water: {count}"
+    },
+    "air": {
+      "level": {
+        "good": "Good",
+        "raised": "Raised",
+        "high": "High"
+      }
+    },
+    "mains": {
+      "max": "max {value} V",
+      "min": "min {value} V"
+    },
+    "now_playing": {
+      "quality": {
+        "hi_res": "Hi-Res",
+        "lossless": "Lossless",
+        "lossy": "Lossy"
+      }
+    }
+  },
+  "ui": {
+    "common": {
+      "unreachable": "unreachable"
+    },
+    "wind": {
+      "awnings_rolled_in": "Wind: awnings rolled in"
+    },
+    "media": {
+      "heading": "Music",
+      "player": "Player",
+      "previous": "Previous",
+      "pause": "Pause",
+      "play": "Play",
+      "next": "Next",
+      "volume_down": "−1",
+      "volume_up": "+1",
+      "volume": "Volume",
+      "standby": "Standby",
+      "turn_on": "Turn on the player"
+    },
+    "calendar": {
+      "button": "Calendar"
+    },
+    "near": {
+      "toggle": "Controls on approach"
+    },
+    "covers": {
+      "heading": "Awnings",
+      "open": "Extend",
+      "stop": "Stop",
+      "close": "Retract",
+      "all_open": "Extend all",
+      "all_close": "Retract all"
+    },
+    "lights": {
+      "heading": "Lights",
+      "all_off": "All off"
+    },
+    "climate": {
+      "outside": "Outside"
+    },
+    "air": {
+      "score": "Air quality",
+      "score_good": "good",
+      "score_fair": "fair",
+      "score_poor": "poor",
+      "co2_good": "fine",
+      "co2_soon": "ventilate soon",
+      "co2_ventilate": "ventilate",
+      "pm_good": "fine",
+      "pm_raised": "raised",
+      "pm_high": "high",
+      "index_normal": "normal",
+      "index_raised": "raised",
+      "index_high": "high"
+    },
+    "status": {
+      "awning": {
+        "open": "Extended",
+        "closed": "Retracted",
+        "opening": "Extending",
+        "closing": "Retracting"
+      },
+      "door": {
+        "on": "Open",
+        "off": "Closed"
+      },
+      "lock": {
+        "locked": "Locked",
+        "unlocked": "Unlocked",
+        "unlocking": "Unlocking",
+        "locking": "Locking",
+        "jammed": "Jammed"
+      }
+    }
+  },
+  "meta": {
+    "description": "A wall tablet for Home Assistant. A radar wakes it when someone comes into the room; it then rotates through climate, air quality, plants, photos and the home's status, shows what the media player plays, and brings up music, awnings and lights when a hand comes near the screen."
+  }
+}

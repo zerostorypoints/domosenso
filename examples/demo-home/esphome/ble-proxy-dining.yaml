@@ -1,0 +1,23 @@
+substitutions:
+  room: dining
+  area: Dining
+  bssid_name: Connected AP (BSSID)
+
+esphome:
+  area: ${area}
+
+packages:
+  proxy: github://domosenso/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0
+  radar: github://domosenso/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.1.0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:  # uploads authenticated with the API key

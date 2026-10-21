@@ -1,0 +1,198 @@
+# Domosenso component manifest: the Ramka, a wall tablet driven by Home Assistant. A radar decides
+# between off, ambient and controls; ambient rotates climate, air, plants, photos and status (or
+# shows what the media player plays); a tap or a hand near the screen brings up the controls
+# (music, awnings, lights); a button there opens the calendar. The tablet runs the Home Assistant
+# Companion app; its notification commands wake, dim and sleep the screen.
+#
+# Instance: `uv run tools/domosenso_render.py components/ramka --inputs <inputs.yaml> --out <dir>`
+# writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
+# notes for an existing home: UPGRADE.md.
+id: ramka
+version: 0.1.0
+summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: android-tablet
+      app: Home Assistant Companion (notification commands, light sensor, battery sensors, app importance)
+      count: 1
+    - kind: mmwave-radar
+      recommend: [hlk-ld2410c]
+      via: "bermuda-presence, feature radar (presence + detection distance)"
+  optional:
+    - kind: mains-meter
+      feature: mains            # the player's draw and voltage on the now-playing view
+    - kind: wind-sensor
+      feature: wind             # the Wind banner
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"              # template entities with default_entity_id, sections view, heading card
+
+integrations:
+  - {name: mobile_app, source: core, setup: "the tablet signed in to the Companion app"}
+  - {name: template, source: core}
+  - {name: folder, source: core, setup: "photo_dir in homeassistant.allowlist_external_dirs"}
+  - {name: shell_command, source: core}
+  - {name: kiosk-mode, source: hacs, repo: NemesisRE/kiosk-mode, kind: frontend, optional: true}
+
+# Values the home supplies. Entity ids are the home's; labels are shown as they are (a room name
+# reads the same in every language). Everything not marked required may be left out.
+#
+# `room:` on an item of covers, lights, climate or plants is an optional room slug (lower case,
+# words joined by _, like a Home Assistant area id: living_room, kids_room). The templates ignore
+# it; it is the join key that maps a scene written for one home onto another: a scene's entity →
+# the item that names it → its room → the other home's item with the same room (scenes/README.md).
+inputs:
+  prefix:                       # required: every helper, script, automation and template entity
+    type: slug                  # this component creates is named <prefix>_*
+    example: ramka
+  name:                         # friendly-name prefix of those entities
+    type: string
+    default: "<prefix> with _ as spaces, title case"
+    example: Ramka
+  radar:                        # required
+    type: "{presence: binary_sensor, distance: sensor}"
+    example: {presence: binary_sensor.dining_ble_proxy_dining_presence, distance: sensor.dining_ble_proxy_dining_detection_distance}
+  media_player:                 # required: any media_player (see media_player_contract below)
+    type: entity_id
+    example: media_player.living_room_speaker
+  media_label:                  # the player's name on the "unreachable" tile
+    type: string
+    default: "t('ui.media.player')"
+  media_turn_on_label:          # the label of the "turn on" button while the player is off
+    type: string
+    default: "t('ui.media.turn_on')"
+  media_icon:
+    type: icon
+    default: mdi:speaker
+  media_service_sensor:         # a sensor with the streaming service; with it, previous/next hide
+    type: entity_id             # while it reads media_service_no_skip. Absent: no such condition.
+    default: null
+    example: sensor.speaker_streaming_service
+  media_service_no_skip:
+    type: string
+    default: Spotify
+  media_quality_sensor: {type: entity_id, default: null}   # now-playing card, bottom right
+  media_source_sensor: {type: entity_id, default: null}    # now-playing card, bottom right
+  media_details: {type: "list[entity_id]", default: null}  # e.g. bit depth, sample rate
+  mains:                        # the player's mains meter on the now-playing view
+    type: "{power: sensor, voltage: sensor}"
+    default: null
+  covers:                       # awnings: a tile and Extend / Stop / Retract per cover, plus "all"
+    type: "list[{entity, label, room?, status_label?, icon?}]"   # status_label: the name on the status page
+    default: []
+    example: [{entity: cover.awning_living_room, label: Living room, room: living_room}]
+  wind_sensor:                  # binary_sensor; while on, the Wind banner over ambient and controls
+    type: entity_id
+    default: null
+    example: binary_sensor.awnings_wind
+  lights:                       # one brightness tile per room (Hue-style room groups)
+    type: "list[{entity, label, room?}]"
+    default: []
+  lights_all_off:               # a scene for "all off"; absent: light.turn_off on every room
+    type: entity_id
+    default: null
+  climate:                      # required: the climate page's rooms and its 7-day charts
+    type: "list[{label, temperature, humidity?, color?, room?}]"   # color: theme series 1..n, default the position
+  outside:                      # outside on the charts, dashed and thicker
+    type: "{temperature, humidity?, color?}"
+    default: null
+  rooms_columns: {type: int, default: 5}
+  air:                          # required, at least one tile: the air page
+    type: "{score?, co2?, pm2_5?, voc?, nox?}"
+    example: {score: sensor.dining_air_quality_score, co2: sensor.dining_air_carbon_dioxide}
+  pressure: {type: entity_id, default: null}               # after the wind on the climate page
+  plants:                       # required: the plants page; any extra key but room is a band override
+    type: "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]"
+  plant_defaults:
+    type: map
+    default: {min_moisture: 15, max_moisture: 60, min_conductivity: 350, max_conductivity: 2000, min_brightness: 500}
+  status:                       # the status page: covers, then contacts, lights, power, locks
+    type: "{contacts?: list[{entity, label, icon?}], power?: list[{entity, label, icon?}], locks?: list[{entity, label, icon?}]}"
+    default: {}
+  status_columns: {type: int, default: 4}
+  weather: {type: entity_id, required: true, example: weather.forecast_home}
+  calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
+  photo_dir:                    # required, under /config/www (served as /local/...)
+    type: path
+    example: /config/www/ramka
+  tablet_device:                # required: the Companion app's notify action and sensor slug
+    type: "{notify: notify.mobile_app_*, sensors: slug}"   # sensor.<slug>_light_sensor, _battery_level,
+    example: {notify: notify.mobile_app_dining_tablet, sensors: dining_tablet}   # _app_importance, _charger_type,
+                                                          # _battery_temperature, binary_sensor.<slug>_is_charging
+  alert_notify: {type: action, default: null}             # battery and charger alerts; absent: none
+  alert_title: {type: string, default: "<name>"}
+  kiosk_user: {type: string, default: null}               # HA user that gets kiosk-mode
+  dashboard_path: {type: string, default: dashboard-ramka}  # the top-right corner's way out
+  exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
+  ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
+
+# What the dashboard asks of `media_player`. Required: the states off / on / idle / playing /
+# paused / buffering / unavailable, turn_on, turn_off, media_play, media_pause, volume_level with
+# volume_set (the slider). Optional: volume_up / volume_down (the ±1 buttons; HA falls back to
+# volume_set), previous / next track (without them the buttons get HA's "not supported"; with a
+# streaming-service sensor they hide for the service that cannot skip), and the media_* attributes
+# the now-playing card shows when they are there.
+media_player_contract:
+  required: [state, turn_on, turn_off, media_play, media_pause, volume_level, volume_set]
+  optional: [volume_step, previous_track, next_track, media_title, media_artist, media_album_name, entity_picture, media_position]
+
+artifacts:
+  templates:                    # rendered per home by tools/domosenso_render.py
+    - templates/package.yaml.j2          # -> package.yaml, the home's packages/
+    - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
+  ha_packages: []
+  # Where the cards go in the home's config: www/domosenso/<id>/<version>/, served as
+  # /local/domosenso/ramka/<version>/. The cards (cards/*.js), what they import (cards/lib/) and
+  # translations/ are copied there keeping their paths from this directory
+  # (`uv run tools/domosenso_install.py components/ramka --config <config dir>`), and each card is a
+  # Lovelace resource of type module at /local/domosenso/ramka/<version>/cards/<name>.js. A new
+  # version is a new directory, so the 31-day /local/ cache cannot serve an old lib/ or
+  # translation to a new card. An upgrade updates the existing resources' URLs in place
+  # (lovelace/resources/update): a second resource with the same card defines its element twice.
+  install_path: www/domosenso/ramka/<version>/
+  dashboard_cards:              # Lovelace resources (type: module); they import lib/ and translations/
+    - cards/agenda-card.js
+    - cards/air-card.js
+    - cards/clock-weather-card.js
+    - cards/corner-taps-card.js
+    - cards/line-style-card.js
+    - cards/mains-card.js
+    - cards/now-playing-card.js
+    - cards/photo-frame-card.js
+    - cards/plants-card.js
+    - cards/rooms-card.js
+    - cards/status-card.js
+    - cards/tap-button-card.js
+  services: []
+  shell:                        # -> /config/shell/: the photo loop's picker and the caption index
+    - shell/ramka_pick.py       #    (shell_command.<prefix>_pick / _index call them with photo_dir)
+    - shell/ramka_index.py
+  themes:                       # -> /config/themes/, with `frontend: themes: !include_dir_merge_named themes`;
+    - themes/ramka.yaml         #    the series colours the charts and the room tiles share
+
+provides:                       # <prefix> from inputs
+  entities:
+    - {id: "input_select.<prefix>_mode", stability: frozen, options: ["off", ambient, controls, calendar]}
+    - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
+    - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
+    - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
+    - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
+    - {id: "timer.<prefix>_controls", stability: stable}
+    - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}
+    - {id: "input_text.<prefix>_photo", stability: stable}
+    - {id: "image.<prefix>_photo", stability: stable}
+    - {id: "sensor.<prefix>_brightness_target", stability: stable}
+    - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
+    - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
+    - {id: "shell_command.<prefix>_{index,pick}", stability: stable}
+  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh ramka), 2026-10-20
+local_only: true

@@ -1,0 +1,6 @@
+id: m5stack-atom-lite
+names: {en: M5Stack Atom Lite, de: M5Stack Atom Lite, pl: M5Stack Atom Lite}
+description_key: meta.devices.m5stack-atom-lite.description
+does_key: meta.devices.m5stack-atom-lite.does
+photo: null
+component: bermuda-presence

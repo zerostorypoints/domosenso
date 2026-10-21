@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "description": "Meldet einen Demowert.",
+    "device": {"description": "Ein Demo-Knoten.", "does": "Sendet den Demowert."}
+  },
+  "ui": {"title": "Demo"}
+}

@@ -1,0 +1,37 @@
+# Domosenso component manifest: weather from Met.no.
+id: weather
+version: 0.1.0
+summary: Current weather and forecast from the Norwegian Meteorological Institute (Met.no)
+description_key: meta.description
+photo: null
+
+devices:
+  requires: []
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: met, source: core, setup: "the home's location from Home Assistant's own settings; no account or key"}
+
+inputs:
+  weather:
+    type: entity_id
+    example: weather.forecast_home
+
+artifacts:
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "weather.<home>", stability: stable, note: "condition as state; temperature, humidity, pressure, wind_speed as attributes; the forecast through the weather.get_forecasts action"}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+# Reads the forecast from Met.no over the internet.
+local_only: false

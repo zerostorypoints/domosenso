@@ -1,0 +1,868 @@
+[#
+  The Ramka's Home Assistant package: helpers, screen scripts, the ambient loop and the automations
+  that move the tablet between off, ambient, controls and calendar. Rendered once per home (lang en)
+  by tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
+  Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set p = inputs.prefix -%]
+[%- set name = inputs.name | default(p | replace('_', ' ') | title) -%]
+[%- set notify = inputs.tablet_device.notify -%]
+[%- set ts = inputs.tablet_device.sensors -%]
+[%- set photo_dir = inputs.photo_dir.rstrip('/') -%]
+[%- if not photo_dir.startswith('/config/www/') -%][[ photo_dir_must_be_under_config_www ]][%- endif -%]
+[%- set photo_url = (inputs.ha_url | default('http://127.0.0.1:8123')) ~ '/local/' ~ photo_dir[12:] -%]
+[%- set folder_sensor = 'sensor.' ~ (photo_dir.split('/') | last | lower | replace('-', '_') | replace(' ', '_')) -%]
+[%- set radar = inputs.radar -%]
+[%- set index_command = 'python3 /config/shell/ramka_index.py ' ~ photo_dir -%]
+[%- set pick_command = 'python3 /config/shell/ramka_pick.py ' ~ photo_dir ~ ' 5' -%]
+[%- set index_description = 'Rebuild ' ~ photo_dir ~ '/index.json: at start, every 15 min, on a folder change.' -%]
+[%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
+# Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
+# inputs and render again rather than editing this file.
+#
+# The wall tablet (Home Assistant Companion app): the radar decides between off, ambient and
+# controls, the ramka dashboard shows one section per state, and the Companion app's notification
+# commands wake, dim and sleep the screen.
+
+input_select:
+  [[ p ]]_mode:
+    name: [[ named(' mode') ]]
+    icon: mdi:tablet-dashboard
+    # "off" quoted: bare off is a YAML boolean. calendar: the calendar screen, from a button on
+    # the controls; it ends like the controls do (leaving the zone, then the hold), a tap brings
+    # the controls back.
+    options: ["off", ambient, controls, calendar]
+  [[ p ]]_ambient:
+    name: [[ named(' ambient page') ]]
+    icon: mdi:image-multiple
+    # In the rotation's order: the swipes step through this list (select_next / select_previous).
+    options: [climate, air, plants, photos, status]
+
+# No `initial:` on any input_number: HA would reset it to that value at every restart and throw
+# away the tuning. Starting values: near 100 cm for 1 s, controls hold 5 s, off delay 300 s,
+# brightness 16 to 204 with lux_max 200.
+# Ambient has two faces while the media player plays: the now-playing card (default) or the
+# home-info rotation. A swipe up on the controls picks the rotation, a swipe down the music, both
+# leave to ambient; the player starting from silence sets it back to the music.
+input_boolean:
+  [[ p ]]_ambient_music:
+    name: [[ named(' ambient shows the music') ]]
+    icon: mdi:music-note
+  # Controls on approach (the radar's near zone). Off: only a tap shows them; leaving the zone
+  # still ends them. A tile on the controls panel flips it.
+  [[ p ]]_near_enabled:
+    name: [[ named(' controls on approach') ]]
+    icon: mdi:hand-wave
+
+input_number:
+  [[ p ]]_near_cm:
+    name: [[ named(' near (cm)') ]]
+    icon: mdi:hand-wave
+    min: 10
+    max: 400
+    step: 10
+    unit_of_measurement: cm
+    mode: slider
+  [[ p ]]_near_s:
+    name: [[ named(' near hold (s)') ]]
+    icon: mdi:timer-sand-complete
+    min: 1
+    max: 10
+    step: 1
+    unit_of_measurement: s
+    mode: slider
+  [[ p ]]_controls_hold_s:
+    name: [[ named(' controls hold (s)') ]]
+    icon: mdi:timer-outline
+    min: 1
+    max: 600
+    step: 1
+    unit_of_measurement: s
+    mode: slider
+  [[ p ]]_off_delay_s:
+    name: [[ named(' off delay (s)') ]]
+    icon: mdi:timer-sand
+    min: 10
+    max: 1800
+    step: 10
+    unit_of_measurement: s
+    mode: slider
+  # Auto brightness from the tablet's own light sensor (sensor.[[ ts ]]_light_sensor, lux, once a
+  # minute): brightness_min in the dark, brightness_max at lux_max and above, logarithmic in
+  # between (sensor.[[ p ]]_brightness_target below).
+  [[ p ]]_brightness_min:
+    name: [[ named(' brightness, dark') ]]
+    icon: mdi:brightness-4
+    min: 1
+    max: 255
+    step: 1
+    mode: slider
+  [[ p ]]_brightness_max:
+    name: [[ named(' brightness, bright') ]]
+    icon: mdi:brightness-7
+    min: 1
+    max: 255
+    step: 1
+    mode: slider
+  [[ p ]]_lux_max:
+    name: [[ named(' lux for full brightness') ]]
+    icon: mdi:white-balance-sunny
+    min: 20
+    max: 2000
+    step: 10
+    unit_of_measurement: lx
+    mode: slider
+
+timer:
+  [[ p ]]_controls:
+    name: [[ named(' controls') ]]
+    icon: mdi:timer-outline
+    duration: "00:01:00"  # overridden on every start from controls_hold_s
+
+# Reloads the tablet's page in place after a dashboard or card deploy: corner-taps-card's `reload`
+# option watches it. Not command_webview, which starts a new hidden copy of the Companion app on
+# every call (NEW_TASK | MULTIPLE_TASK, by design since 2024).
+input_button:
+  [[ p ]]_reload:
+    name: [[ named(' reload page') ]]
+    icon: mdi:reload
+
+# The photo on screen, "<folder>/<file>" under the photo folder.
+input_text:
+  [[ p ]]_photo:
+    name: [[ named(' photo') ]]
+    icon: mdi:image
+    max: 255
+
+# The photo folder: folders at any depth, the photo's own folder name is the caption. The folder
+# platform names the entity after the last path component ([[ folder_sensor ]]); it only sees one
+# level, so it is a change detector and a size readout, the picking is done by shell/ramka_pick.py.
+# The path must be in homeassistant.allowlist_external_dirs.
+sensor:
+  - platform: folder
+    folder: [[ photo_dir | yaml ]]
+    filter: "*/*.jp*g"
+
+# shell/ramka_index.py writes index.json (event and EXIF date per photo) into the photo folder for
+# the photo card's caption; it runs at start and whenever the number of photos changes.
+shell_command:
+  [[ p ]]_index: [[ index_command | yaml ]]
+  # The next series: one folder with photos drawn at random (any depth), five shuffled photos from
+  # it, as JSON on stdout for the loop's response_variable.
+  [[ p ]]_pick: [[ pick_command | yaml ]]
+
+template:
+  - sensor:
+      # What the screen should be at, from the room's light. The sensor's state is what the
+      # auto-brightness automation and the screen_on script send.
+      - name: [[ named(' brightness target') ]]
+        unique_id: [[ p ]]_brightness_target
+        default_entity_id: sensor.[[ p ]]_brightness_target
+        icon: mdi:brightness-auto
+        state_class: measurement
+        availability: "{{ has_value('sensor.[[ ts ]]_light_sensor') }}"
+        state: >-
+          {% set lux = states('sensor.[[ ts ]]_light_sensor') | float(0) %}
+          {% set lo = states('input_number.[[ p ]]_brightness_min') | float(20) %}
+          {% set hi = states('input_number.[[ p ]]_brightness_max') | float(255) %}
+          {% set lux_max = states('input_number.[[ p ]]_lux_max') | float(200) %}
+          {% set k = [log(lux + 1, 10) / log(lux_max + 1, 10), 1] | min %}
+          {{ (lo + (hi - lo) * k) | round(0) | int }}
+  - binary_sensor:
+      # The media player playing, with track changes bridged. Between two tracks a player can
+      # report playing → buffering → playing (or paused for buffering), each gap 0.5-3 s, and
+      # every gap would take the now-playing card off the screen and flash the rotation. The delay
+      # sits here and not on the music view, so a swipe up still leaves the music at once. It is
+      # fixed: HA renders a templated delay_off after the state, with the old value, so after
+      # standby or a pause the music view stays the same 5 s.
+      - name: [[ named(' media playing') ]]
+        unique_id: [[ p ]]_media_playing
+        default_entity_id: binary_sensor.[[ p ]]_media_playing
+        icon: mdi:play-circle
+        delay_off:
+          seconds: 5
+        state: "{{ is_state('[[ inputs.media_player ]]', 'playing') }}"
+      # Ambient shows the now-playing card: the player plays and the music face is chosen. Every
+      # view condition and the loop's start/stop read this one sensor.
+      - name: [[ named(' music view') ]]
+        unique_id: [[ p ]]_music_view
+        default_entity_id: binary_sensor.[[ p ]]_music_view
+        icon: mdi:album
+        state: >-
+          {{ is_state('binary_sensor.[[ p ]]_media_playing', 'on')
+             and is_state('input_boolean.[[ p ]]_ambient_music', 'on') }}
+      # "Someone at the tablet", debounced. An LD2410's moving-target flag flickers off for a
+      # second or two every few seconds even with a person standing at the screen, and the
+      # detection distance jumps to a farther object or to 0 in those gaps, so a trigger that
+      # needs the raw reading to hold for 3 s almost never fires. This sensor is on while the
+      # radar sees a target whose distance is within near_cm, and delay_off keeps it on across
+      # gaps shorter than two seconds; the near automation then asks for it to be on for near_s.
+      # No still branch: within 1.5 m (gates 0-1) the module reports no still targets at all.
+      - name: [[ named(' near') ]]
+        unique_id: [[ p ]]_near
+        default_entity_id: binary_sensor.[[ p ]]_near
+        icon: mdi:hand-wave
+        device_class: occupancy
+        delay_off:
+          seconds: 2
+        state: >-
+          {% set d = states('[[ radar.distance ]]') | float(0) %}
+          {{ is_state('[[ radar.presence ]]', 'on')
+             and 0 < d <= states('input_number.[[ p ]]_near_cm') | float(50) }}
+  # The photo named by input_text.[[ p ]]_photo, so a card can show a file that changes. HA
+  # fetches it from itself; /local/ needs no token. Each path segment is URL-encoded on its own
+  # (folder and file names can have spaces).
+  - image:
+      - name: [[ named(' photo') ]]
+        unique_id: [[ p ]]_photo
+        default_entity_id: image.[[ p ]]_photo
+        url: >-
+          [[ photo_url ]]/{{ states('input_text.[[ p ]]_photo').split('/') | map('urlencode') | join('/') }}
+        availability: "{{ states('input_text.[[ p ]]_photo') not in ['', 'unknown', 'unavailable'] }}"
+
+# Screen scripts. Each step is one Companion notification command
+# (https://companion.home-assistant.io/docs/notifications/notification-commands). Both scripts
+# return quietly while the tablet is not registered yet (no battery sensor → no device).
+script:
+  [[ p ]]_screen_on:
+    alias: [[ named(' screen on') ]]
+    icon: mdi:tablet
+    mode: single
+    sequence:
+      - condition: template
+        value_template: "{{ states.sensor.[[ ts ]]_battery_level is not none }}"
+      # The screen stays on through Android's own screen timeout, 24 h (never, in practice, yet
+      # bounded if a screen_off gets lost); screen_off puts it back to 15 s. Not through the
+      # Companion app's Keep screen on (command_screen_on keep_screen_on): the app applies that
+      # preference to the window only when the page resumes, so a screen woken with it on never
+      # slept again.
+      - action: [[ notify ]]
+        data:
+          message: command_screen_off_timeout
+          data:
+            command: 86400000
+      # The wake itself: a 30 s full wake lock that leaves the screen on when released. Any
+      # command other than keep_screen_on keeps the app's Keep screen on preference off.
+      - action: [[ notify ]]
+        data:
+          message: command_screen_on
+          data:
+            command: release
+      - action: [[ notify ]]
+        data:
+          message: command_auto_screen_brightness
+          data:
+            command: turn_off
+      - action: [[ notify ]]
+        data:
+          message: command_screen_brightness_level
+          data:
+            command: "{{ states('sensor.[[ p ]]_brightness_target') | int(120) }}"
+      # Back on top, but only when the app is not on top any more. "foreground" is the app on a
+      # lit screen, "top_sleeping" the same app behind a sleeping screen; in both the screen simply
+      # lights up on whatever was shown. Anything else (cached, background, gone) means Android
+      # pushed the app away. command_launch_app sends the app's launcher intent, which brings the
+      # existing task forward with its page as it was, as a tap on the icon does; if Android
+      # killed the app, it starts on the tablet user's default dashboard. Not command_webview,
+      # which opens a new hidden copy of the app on every call and reloads the page.
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: sensor.[[ ts ]]_app_importance
+                state:
+                  - foreground
+                  - top_sleeping
+        then:
+          - action: [[ notify ]]
+            data:
+              message: command_launch_app
+              data:
+                package_name: io.homeassistant.companion.android
+  # Show the controls, or keep them up: the near automation and a tap on the screen (the
+  # corner-taps card's tap option) both land here. The hold timer counts from leaving the near
+  # zone, not from the last trigger, so while someone is within near_cm there is no timer at all;
+  # a tap with "near" off (a flicker, or a reach from farther away) starts it, so the controls
+  # never stay up on their own.
+  [[ p ]]_show_controls:
+    alias: [[ named(' show controls') ]]
+    icon: mdi:gesture-tap
+    mode: queued
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: controls
+      - if:
+          - condition: state
+            entity_id: binary_sensor.[[ p ]]_near
+            state: "on"
+        then:
+          - action: timer.cancel
+            target:
+              entity_id: timer.[[ p ]]_controls
+        else:
+          - action: timer.start
+            target:
+              entity_id: timer.[[ p ]]_controls
+            data:
+              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int(15) }}"
+  # Swipes on the rotation (ambient, music view off): up = the next page, down = the previous,
+  # round the pages; the loop restarts and the cycle begins on that page with its full time.
+  [[ p ]]_ambient_next:
+    alias: [[ named(' ambient next page') ]]
+    icon: mdi:chevron-up
+    mode: single
+    sequence:
+      - action: input_select.select_next
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+      - action: script.turn_on
+        target:
+          entity_id: script.[[ p ]]_ambient_loop
+  [[ p ]]_ambient_prev:
+    alias: [[ named(' ambient previous page') ]]
+    icon: mdi:chevron-down
+    mode: single
+    sequence:
+      - action: input_select.select_previous
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+      - action: script.turn_on
+        target:
+          entity_id: script.[[ p ]]_ambient_loop
+  # The calendar screen, from the calendar button on the controls. Same hold rules as the
+  # controls: no timer while someone is within near_cm, controls_hold_s after leaving.
+  [[ p ]]_show_calendar:
+    alias: [[ named(' show calendar') ]]
+    icon: mdi:calendar-month
+    mode: single
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: calendar
+      - if:
+          - condition: state
+            entity_id: binary_sensor.[[ p ]]_near
+            state: "on"
+        then:
+          - action: timer.cancel
+            target:
+              entity_id: timer.[[ p ]]_controls
+        else:
+          - action: timer.start
+            target:
+              entity_id: timer.[[ p ]]_controls
+            data:
+              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int(5) }}"
+
+  # Swipes on the controls (corner-taps card, swipe option), both leave to ambient at once:
+  # up = the home-info rotation from the climate page, down = the music (the rotation anyway while
+  # the player is silent). Standing there changes nothing more; the next approach or tap brings
+  # the controls back.
+  [[ p ]]_swipe_up:
+    alias: [[ named(' swipe up') ]]
+    icon: mdi:gesture-swipe-up
+    mode: single
+    sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_ambient_music
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: climate
+      - action: timer.cancel
+        target:
+          entity_id: timer.[[ p ]]_controls
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: ambient
+  [[ p ]]_swipe_down:
+    alias: [[ named(' swipe down') ]]
+    icon: mdi:gesture-swipe-down
+    mode: single
+    sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.[[ p ]]_ambient_music
+      - action: timer.cancel
+        target:
+          entity_id: timer.[[ p ]]_controls
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: ambient
+  [[ p ]]_screen_off:
+    alias: [[ named(' screen off') ]]
+    icon: mdi:tablet-off
+    mode: single
+    sequence:
+      - condition: template
+        value_template: "{{ states.sensor.[[ ts ]]_battery_level is not none }}"
+      # command_screen_on with any value other than keep_screen_on keeps Keep screen on off (the
+      # screen is already on here, so the "on" part is a no-op). What sleeps the screen is the
+      # 15 s timeout below, counted from this command's wake lock.
+      - action: [[ notify ]]
+        data:
+          message: command_screen_on
+          data:
+            command: release
+      - action: [[ notify ]]
+        data:
+          message: command_screen_off_timeout
+          data:
+            command: 15000
+      - action: [[ notify ]]
+        data:
+          message: command_screen_brightness_level
+          data:
+            command: 0
+
+  # The ambient loop (see automation [[ p ]]_ambient_start). Each pass: climate page 30 s, air
+  # quality 15 s, plants 20 s, five photos of 10 s from one folder drawn at random, the status
+  # page 15 s: 130 s in all. With an empty folder the photos are skipped (an empty for_each runs
+  # nothing). The while-condition ends the loop by itself if the mode or the player changed and
+  # the stop automation did not get to it first.
+  [[ p ]]_ambient_loop:
+    alias: [[ named(' ambient loop') ]]
+    icon: mdi:play-box-multiple
+    mode: restart
+    sequence:
+      - repeat:
+          while:
+            - condition: state
+              entity_id: input_select.[[ p ]]_mode
+              state: ambient
+            # The music view is off: the player is silent, or the swipe chose the home info.
+            - condition: state
+              entity_id: binary_sensor.[[ p ]]_music_view
+              state: "off"
+          # Five stages, each guarded by the page the frame is on, so a pass picks up wherever
+          # the page already is: a swipe (scripts ambient_next/prev) sets the page and restarts
+          # this script, and the cycle begins there with that page's full time. Left alone it runs
+          # climate → air → plants → photos → status → climate.
+          sequence:
+            # 1. Climate, 30 s.
+            - if:
+                - condition: state
+                  entity_id: input_select.[[ p ]]_ambient
+                  state: climate
+              then:
+                - delay:
+                    seconds: 30
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: air
+            # 2. Air quality, 15 s: a handful of numbers, read at a glance.
+            - if:
+                - condition: state
+                  entity_id: input_select.[[ p ]]_ambient
+                  state: air
+              then:
+                - delay:
+                    seconds: 15
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: plants
+            # 3. Plants, 20 s: the ones to water first.
+            - if:
+                - condition: state
+                  entity_id: input_select.[[ p ]]_ambient
+                  state: plants
+              then:
+                - delay:
+                    seconds: 20
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: photos
+            # 4. Photos: from the plants page, or straight in when the page already is photos.
+            #    shell/ramka_pick.py: one folder that holds photos, at any depth, drawn with equal
+            #    chances, then up to five different photos from it. An empty folder tree gives an
+            #    empty list and the photos are skipped.
+            - if:
+                - condition: state
+                  entity_id: input_select.[[ p ]]_ambient
+                  state: photos
+              then:
+                - action: shell_command.[[ p ]]_pick
+                  response_variable: pick
+                - variables:
+                    # The JSON is the last line of stdout; anything the script printed before it
+                    # is ignored.
+                    picks: >-
+                      {% set lines = (pick.stdout | default('')).strip().splitlines() %}
+                      {{ (lines | last | from_json).photos if lines else [] }}
+                - repeat:
+                    for_each: "{{ picks }}"
+                    sequence:
+                      - action: input_text.set_value
+                        target:
+                          entity_id: input_text.[[ p ]]_photo
+                        data:
+                          value: "{{ repeat.item }}"
+                      - action: input_select.select_option
+                        target:
+                          entity_id: input_select.[[ p ]]_ambient
+                        data:
+                          option: photos
+                      - delay:
+                          seconds: 10
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: status
+            # 5. Status, 15 s, then round to the climate page.
+            - if:
+                - condition: state
+                  entity_id: input_select.[[ p ]]_ambient
+                  state: status
+              then:
+                - delay:
+                    seconds: 15
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: climate
+
+# One automation per transition; none shares state with another, so no mode: restart races.
+automation:
+  # 1. Someone arrives while the tablet sleeps.
+  - id: [[ p ]]_presence_on
+    alias: [[ named(' presence on') ]]
+    description: "Radar presence while the tablet is off: show ambient and wake the screen."
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: [[ radar.presence ]]
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state: "off"
+    actions:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: ambient
+      - action: script.[[ p ]]_screen_on
+
+  # 2. Nobody for off_delay_s. The `for` is rendered when presence drops, so a changed helper
+  #    takes effect on the next drop.
+  - id: [[ p ]]_presence_off
+    alias: [[ named(' presence off') ]]
+    description: "No radar presence for the configured delay: sleep the screen."
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: [[ radar.presence ]]
+        to: "off"
+        for:
+          seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int(120) }}"
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.[[ p ]]_mode
+            state: "off"
+    actions:
+      - action: timer.cancel
+        target:
+          entity_id: timer.[[ p ]]_controls
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: "off"
+      - action: script.[[ p ]]_screen_off
+
+  # 3. Someone right at the tablet: binary_sensor.[[ p ]]_near (the radar's target within
+  #    near_cm, gaps under 2 s bridged) on for near_s. 100 cm for 1 s puts a person at the screen
+  #    (45-65 cm) inside and anyone at a table (180-260 cm) outside. The trigger fires again only
+  #    after the sensor has been off (the person stepped back), so each new approach restarts the
+  #    timer (timer.start on a running timer restarts it), and a hand on the screen is a target at
+  #    30 cm, so touching keeps the controls up.
+  - id: [[ p ]]_near
+    alias: [[ named(' near movement') ]]
+    description: Movement within the near distance shows the controls and (re)starts the hold timer.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_near
+        to: "on"
+        for:
+          seconds: "{{ states('input_number.[[ p ]]_near_s') | int(3) }}"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_near_enabled
+        state: "on"
+    actions:
+      # A wave can arrive before the presence automation has run: wake the screen here too.
+      - if:
+          - condition: state
+            entity_id: input_select.[[ p ]]_mode
+            state: "off"
+        then:
+          - action: script.[[ p ]]_screen_on
+      - action: script.[[ p ]]_show_controls
+
+  # Watchdog for the loop: it is the one piece that can die quietly (a script error ends it). If
+  # the tablet sits in ambient with the player silent and the loop off for a minute, start it
+  # again and say so in the logbook.
+  - id: [[ p ]]_ambient_watchdog
+    alias: [[ named(' ambient watchdog') ]]
+    description: "Loop off for a minute while the frame is in ambient: restart it."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: script.[[ p ]]_ambient_loop
+        to: "off"
+        for: "00:01:00"
+      - trigger: time_pattern
+        minutes: "/5"
+    conditions:
+      - condition: state
+        entity_id: script.[[ p ]]_ambient_loop
+        state: "off"
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state: ambient
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        state: "off"
+    actions:
+      - action: logbook.log
+        data:
+          name: Ramka
+          message: "ambient loop was off, restarted by the watchdog"
+          entity_id: script.[[ p ]]_ambient_loop
+      - action: script.turn_on
+        target:
+          entity_id: script.[[ p ]]_ambient_loop
+
+  # Auto brightness: follow the light sensor while the screen is on. The target changes only
+  #    when the lux reading does (once a minute at most), and small steps are skipped.
+  - id: [[ p ]]_auto_brightness
+    alias: [[ named(' auto brightness') ]]
+    description: "Light sensor moved: set the screen brightness to the target, unless the tablet is off."
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: sensor.[[ p ]]_brightness_target
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.[[ p ]]_mode
+            state: "off"
+      # Skip steps under 8; a manual run (no trigger object) always sends.
+      - condition: template
+        value_template: >-
+          {{ trigger is not defined or trigger.platform is none
+             or trigger.from_state is none
+             or trigger.from_state.state in ['unknown', 'unavailable']
+             or (trigger.to_state.state | int(0) - trigger.from_state.state | int(0)) | abs >= 8 }}
+    actions:
+      - action: [[ notify ]]
+        data:
+          message: command_screen_brightness_level
+          data:
+            command: "{{ states('sensor.[[ p ]]_brightness_target') | int(120) }}"
+
+  # 4. The hold ran out.
+  # Leaving the near zone while the controls are up starts the hold; the timer's end is the way
+  # back to ambient. Coming back within the hold cancels it (the near automation above).
+  - id: [[ p ]]_near_left
+    alias: [[ named(' near left') ]]
+    description: "Nobody within near_cm any more: the controls (or the calendar) stay controls_hold_s longer."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_near
+        to: "off"
+    conditions:
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state:
+          - controls
+          - calendar
+    actions:
+      - action: timer.start
+        target:
+          entity_id: timer.[[ p ]]_controls
+        data:
+          duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int(15) }}"
+
+  - id: [[ p ]]_controls_timeout
+    alias: [[ named(' controls timeout') ]]
+    description: "The controls hold timer finished: back to ambient."
+    mode: single
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.[[ p ]]_controls
+    conditions:
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state:
+          - controls
+          - calendar
+    actions:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_mode
+        data:
+          option: ambient
+
+  # Rebuild the photo index (captions) at start, every 15 minutes (the folder sensor sees only
+  # one level, and photos sit deeper), and when that sensor sees a change anyway.
+  - id: [[ p ]]_photo_index
+    alias: [[ named(' photo index') ]]
+    description: [[ index_description | yaml ]]
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/15"
+      - trigger: state
+        entity_id: [[ folder_sensor ]]
+        attribute: number_of_files
+    actions:
+      - action: shell_command.[[ p ]]_index
+
+  # 5. The ambient rhythm: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s,
+  #    and again.
+  #    A looping script (mode restart) rather than a time_pattern, so the slots are exact. It
+  #    starts when the tablet enters ambient or the player stops, and is stopped when the mode
+  #    leaves ambient or the player starts (the dashboard shows now-playing then, and the photo
+  #    must not change underneath it).
+  - id: [[ p ]]_ambient_start
+    alias: [[ named(' ambient start') ]]
+    description: "Ambient entered, or the music view gone: run the climate/photos loop."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_mode
+        to: ambient
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        to: "off"
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state: ambient
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        state: "off"
+    actions:
+      - action: script.turn_on
+        target:
+          entity_id: script.[[ p ]]_ambient_loop
+  - id: [[ p ]]_music_back
+    alias: [[ named(' music back') ]]
+    description: "The media player starts playing from silence: ambient shows the music again."
+    mode: single
+    triggers:
+      # Only from a silent state: a track change is buffering → paused → playing within a second
+      # and must not undo the swipe. A start can pass through buffering (off → on → buffering →
+      # playing when an amplifier wakes from standby), so the trigger takes the step out of
+      # silence into buffering too; with `to: playing` alone it can miss every start.
+      - trigger: state
+        entity_id: [[ inputs.media_player ]]
+        from: ["off", "on", "idle", "unavailable"]
+        to: [buffering, playing]
+    actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.[[ p ]]_ambient_music
+  - id: [[ p ]]_ambient_stop
+    alias: [[ named(' ambient stop') ]]
+    description: "Ambient left, or the music view on: stop the loop and rest on the climate page."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_mode
+        from: ambient
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        to: "on"
+    actions:
+      - action: script.turn_off
+        target:
+          entity_id: script.[[ p ]]_ambient_loop
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: climate
+[%- if inputs.alert_notify is defined %]
+
+  # ---- Battery alerts ------------------------------------------------------------------------
+  # A tablet that holds its own charge limit (charges to 80 % and runs off the mains from there)
+  # needs no smart plug. What is left is the alerts: a tablet without a charger or draining is a
+  # charger or a cable that is gone, and a hot battery is something to hear about even though HA
+  # cannot cut the power.
+  - id: [[ p ]]_charger_failed
+    alias: [[ named(' charger failed') ]]
+    description: "No charger for 30 minutes, or the battery under 20 % for 30 minutes: send an alert."
+    mode: single
+    triggers:
+      - trigger: state
+        id: unplugged
+        entity_id: sensor.[[ ts ]]_charger_type
+        to: none
+        for: "00:30:00"
+      - trigger: numeric_state
+        id: low
+        entity_id: sensor.[[ ts ]]_battery_level
+        below: 20
+        for: "00:30:00"
+    actions:
+      - action: [[ inputs.alert_notify ]]
+        data:
+          title: [[ inputs.alert_title | default(name) | yaml ]]
+          message: >-
+            The tablet is at {{ states('sensor.[[ ts ]]_battery_level') }} %, charger
+            {{ states('sensor.[[ ts ]]_charger_type') }},
+            {{ 'charging' if is_state('binary_sensor.[[ ts ]]_is_charging', 'on') else 'not charging' }}.
+            Check the cable and the charger.
+  - id: [[ p ]]_battery_hot
+    alias: [[ named(' battery hot') ]]
+    description: "Battery above 42 °C: send an alert."
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.[[ ts ]]_battery_temperature
+        above: 42
+    actions:
+      - action: [[ inputs.alert_notify ]]
+        data:
+          title: [[ inputs.alert_title | default(name) | yaml ]]
+          message: >-
+            Battery at {{ states('sensor.[[ ts ]]_battery_temperature') }} °C. Pull the charger
+            until it has cooled; HA has no plug to do it.
+[%- endif %]

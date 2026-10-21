@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Switch Philips Hue lights and set their brightness room by room, using the room groups of the Hue bridge.",
+    "devices": {
+      "hue-bridge": {
+        "description": "The hub that connects Hue bulbs and accessories over Zigbee and puts them on the home network.",
+        "does": "Groups the bulbs into rooms. Home Assistant pairs with it by a press on the bridge's button and then controls the rooms and bulbs over the home network."
+      }
+    }
+  }
+}

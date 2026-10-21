@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "description": "Pokazuje, w którym pomieszczeniu znajduje się każdy telefon, tablet lub zegarek, dzięki serwerom proxy Bluetooth rozmieszczonym w domu.",
+    "devices": {
+      "m5stack-atom-lite": {
+        "description": "Płytka ESP32 wielkości kciuka z Wi-Fi, Bluetooth, przyciskiem i diodą, zasilana przez USB.",
+        "does": "Z ESPHome działa jako proxy Bluetooth: nasłuchuje telefonów, tabletów i zegarków i przekazuje to, co usłyszy, do Home Assistanta, dzięki czemu dom wie, w którym pokoju jest urządzenie. Ta sama płytka z firmware'em ESPSomfy-RTS (nie ESPHome) jest też mostem radiowym markiz i niesie wtedy moduł radiowy."
+      },
+      "hlk-ld2410c": {
+        "description": "Moduł radaru milimetrowego 24 GHz, który wykrywa osoby, ruszające się lub nieruchome, i mierzy ich odległość.",
+        "does": "Podłączony do płytki proxy, przekazuje do Home Assistanta obecność i odległość wykrycia. Ramka używa go do wybudzania ekranu, gdy ktoś wchodzi do pokoju."
+      }
+    }
+  }
+}

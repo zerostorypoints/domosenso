@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/device.schema.json",
+  "title": "Domosenso catalog device",
+  "type": "object",
+  "required": ["id", "names", "description_key", "does_key", "component"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "names": {
+      "type": "object",
+      "required": ["en", "de", "pl"],
+      "additionalProperties": false,
+      "properties": {
+        "en": {"type": "string", "minLength": 1},
+        "de": {"type": "string", "minLength": 1},
+        "pl": {"type": "string", "minLength": 1}
+      }
+    },
+    "description_key": {"type": "string", "pattern": "^meta\\..+"},
+    "does_key": {"type": "string", "pattern": "^meta\\..+"},
+    "photo": {"type": ["string", "null"]},
+    "component": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"}
+  }
+}

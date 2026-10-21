@@ -1,0 +1,37 @@
+# Domosenso component manifest: a calendar from a CalDAV server.
+id: calendar
+version: 0.1.0
+summary: Calendar events from a CalDAV server, for example iCloud
+description_key: meta.description
+photo: null
+
+devices:
+  requires: []
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: caldav, source: core, setup: "the server's URL, a user name and an app-specific password (iCloud: created in the Apple account's security settings)"}
+
+inputs:
+  calendar:
+    type: "entity_id | list[entity_id]"
+    example: calendar.family
+
+artifacts:
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "calendar.<calendar>", stability: stable, note: "state on while an event runs; events through the calendar.get_events action"}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+# The server is usually a cloud service.
+local_only: false

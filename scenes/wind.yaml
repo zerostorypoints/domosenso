@@ -1,0 +1,19 @@
+# A gust: the awnings' wind sensor trips and they roll in by themselves; the tablet shows the Wind
+# notice over the climate page.
+id: wind
+time: "16:00"
+names: {en: Wind, de: Wind, pl: Wiatr}
+states:
+  weather.forecast_home: windy
+  sensor.outside_temperature: 21.3
+  sensor.outside_humidity: 52
+  binary_sensor.awnings_wind: "on"
+  cover.awning_living_room: closed
+  cover.awning_kitchen: closed
+  binary_sensor.dining_ble_proxy_dining_presence: "on"
+attributes:
+  cover.awning_living_room: {current_position: 0}
+  cover.awning_kitchen: {current_position: 0}
+tablet: {mode: ambient, page: climate}
+components: [awnings, ramka, weather]
+devices: [cc1101]

@@ -1,0 +1,15 @@
+{
+  "name": "domosenso",
+  "private": true,
+  "type": "module",
+  "description": "Domosenso: a catalog of tested Home Assistant components",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test components/"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.0.0"
+  }
+}

@@ -1,0 +1,125 @@
+# The demo home's baseline: one state per entity that inputs/ramka.yaml (and the scenes) name. A
+# scene in scenes/<id>.yaml overrides the states it lists; everything else stays as written here.
+# Entity states are strings or numbers, as Home Assistant holds them (quote on/off: unquoted they
+# are YAML booleans). `attributes` are what a state carries beyond its value; a path is relative to
+# this folder. `calendar_events` and `queue` are what the calendar and the speaker serve: days
+# count from today, times are local.
+states:
+  # the Ramka's own entities (the rendered package creates them; the website has no package).
+  # binary_sensor.ramka_media_playing and binary_sensor.ramka_music_view are derived: see
+  # scenes/README.md; a scene never sets them.
+  input_select.ramka_mode: ambient
+  input_select.ramka_ambient: climate
+  input_boolean.ramka_ambient_music: "on"
+  input_boolean.ramka_near_enabled: "on"
+  binary_sensor.ramka_media_playing: "off"
+  binary_sensor.ramka_music_view: "off"
+  input_text.ramka_photo: Lake trip/ambient-sea.jpg          # "<folder>/<file>" under photo_dir
+  image.ramka_photo: "2026-10-20T07:00:00+00:00"              # an image entity's state is its last update
+
+  # the tablet in the Dining room: radar, then the Companion app's sensors
+  binary_sensor.dining_ble_proxy_dining_presence: "on"
+  sensor.dining_ble_proxy_dining_detection_distance: 180      # cm
+  sensor.dining_tablet_light_sensor: 120                      # lx
+  sensor.dining_tablet_battery_level: 78
+  sensor.dining_tablet_app_importance: foreground
+  sensor.dining_tablet_charger_type: ac
+  sensor.dining_tablet_battery_temperature: 29
+  binary_sensor.dining_tablet_is_charging: "on"
+
+  # music: a plain network speaker and the smart plug it hangs on
+  media_player.living_room_speaker: "off"
+  sensor.media_plug_power: 1.4                                # W, standby
+  sensor.media_plug_voltage: 231
+
+  # awnings and their wind sensor
+  cover.awning_living_room: closed
+  cover.awning_kitchen: closed
+  binary_sensor.awnings_wind: "off"
+
+  # lights, one group per room
+  light.living_room: "on"
+  light.dining: "off"
+  light.kitchen: "off"
+  light.office: "off"
+  light.bedroom: "off"
+  light.kids_room: "off"
+  light.hall: "off"
+  scene.all_lights_off: unknown
+
+  # temperature (°C) and humidity (%) per room, and outside
+  sensor.living_room_temperature: 21.8
+  sensor.living_room_humidity: 46
+  sensor.dining_air_temperature: 21.5
+  sensor.dining_air_humidity: 47
+  sensor.kitchen_temperature: 22.4
+  sensor.kitchen_humidity: 52
+  sensor.office_temperature: 21.0
+  sensor.office_humidity: 44
+  sensor.bedroom_temperature: 19.2
+  sensor.bedroom_humidity: 50
+  sensor.kids_room_temperature: 20.6
+  sensor.kids_room_humidity: 48
+  sensor.hall_temperature: 20.1
+  sensor.hall_humidity: 45
+  sensor.outside_temperature: 12.4
+  sensor.outside_humidity: 71
+
+  # air quality in the Dining room
+  sensor.dining_air_quality_score: 82
+  sensor.dining_air_carbon_dioxide: 640                       # ppm
+  sensor.dining_air_pm2_5: 6                                  # µg/m³
+  sensor.dining_air_voc_index: 104
+  sensor.dining_air_nox_index: 1
+  sensor.dining_air_pressure: 1016                            # hPa
+
+  # plants: "ok" or "problem" (the basil is dry)
+  plant.monstera: ok
+  plant.ficus: ok
+  plant.basil: problem
+
+  # status page
+  binary_sensor.balcony_door_contact: "off"
+  lock.front_door: locked
+
+  weather.forecast_home: partlycloudy
+  calendar.family: "off"
+
+attributes:
+  media_player.living_room_speaker:
+    friendly_name: Living room speaker
+    volume_level: 0.25
+    media_title: Slow Tide
+    media_artist: The Quiet Meridian
+    media_album_name: Glass Hours
+    media_duration: 214
+    media_position: 61
+    entity_picture: media/cover-glass-hours.png
+  weather.forecast_home:
+    friendly_name: Forecast Home
+    temperature: 12.4
+    temperature_unit: °C
+    humidity: 71
+    pressure: 1016
+    wind_speed: 14
+    wind_speed_unit: km/h
+  plant.monstera: {friendly_name: Monstera, moisture: 38, conductivity: 820, brightness: 1400, temperature: 21.6, problem: none}
+  plant.ficus: {friendly_name: Ficus, moisture: 45, conductivity: 640, brightness: 900, temperature: 21.2, problem: none}
+  plant.basil: {friendly_name: Basil, moisture: 12, conductivity: 1100, brightness: 2300, temperature: 22.0, problem: moisture low}
+  image.ramka_photo: {friendly_name: Ramka photo, entity_picture: media/ambient-sea.jpg}
+  binary_sensor.awnings_wind: {device_class: safety, friendly_name: Awnings wind}
+  cover.awning_living_room: {device_class: awning, friendly_name: Awning Living room, current_position: 0}
+  cover.awning_kitchen: {device_class: awning, friendly_name: Awning Kitchen, current_position: 0}
+
+# What the speaker plays after "Slow Tide"; the first entry is the one in `attributes` above.
+queue:
+  - {title: Slow Tide, artist: The Quiet Meridian, album: Glass Hours, duration: 214, entity_picture: media/cover-glass-hours.png}
+  - {title: Paper Lanterns, artist: Ines Halloran, album: Paper Lanterns, duration: 187, entity_picture: media/cover-paper-lanterns.png}
+  - {title: Low Water, artist: The Quiet Meridian, album: Slow Tide, duration: 242, entity_picture: media/cover-slow-tide.png}
+
+calendar_events:
+  - {day: 0, start: "09:00", end: "09:30", summary: Dentist}
+  - {day: 0, start: "18:30", end: "22:00", summary: Dinner with friends}
+  - {day: 1, start: "08:15", end: "08:45", summary: Parents' meeting at school}
+  - {day: 1, start: "19:00", end: "20:00", summary: Choir rehearsal}
+  - {day: 3, all_day: true, summary: Sam's birthday}

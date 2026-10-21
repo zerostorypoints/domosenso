@@ -1,0 +1,20 @@
+# Half past five, the door unlocks: the radar sees someone in the Dining room, the hall light comes
+# on and the tablet wakes on the controls.
+id: home
+time: "17:30"
+names: {en: Home again, de: Wieder zuhause, pl: Powrót do domu}
+states:
+  weather.forecast_home: partlycloudy
+  sensor.outside_temperature: 13.1
+  sensor.outside_humidity: 68
+  lock.front_door: unlocked
+  light.hall: "on"
+  light.living_room: "on"
+  binary_sensor.dining_ble_proxy_dining_presence: "on"
+  sensor.dining_ble_proxy_dining_detection_distance: 90
+  cover.awning_living_room: closed
+  cover.awning_kitchen: closed
+  binary_sensor.awnings_wind: "off"
+tablet: {mode: controls}
+components: [bermuda-presence, lights, ramka, weather]
+devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite]

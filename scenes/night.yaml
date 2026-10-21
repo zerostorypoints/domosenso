@@ -1,0 +1,24 @@
+# Ten at night: lights and music off, the door locked, the tablet dark.
+id: night
+time: "22:00"
+names: {en: Night, de: Nacht, pl: Noc}
+states:
+  weather.forecast_home: clear-night
+  sensor.outside_temperature: 9.4
+  sensor.outside_humidity: 80
+  light.living_room: "off"
+  light.dining: "off"
+  light.kitchen: "off"
+  light.office: "off"
+  light.kids_room: "off"
+  light.hall: "off"
+  light.bedroom: "off"
+  media_player.living_room_speaker: "off"
+  binary_sensor.dining_ble_proxy_dining_presence: "off"
+  sensor.dining_ble_proxy_dining_detection_distance: 0
+  lock.front_door: locked
+  cover.awning_living_room: closed
+  cover.awning_kitchen: closed
+tablet: {mode: "off"}
+components: [bermuda-presence, lights, ramka, weather]
+devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite]

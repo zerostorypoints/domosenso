@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "A network audio player as a Home Assistant media player: power, volume, play and pause, and what is playing. Tested with the Hegel H400 amplifier through the hegel_streaming integration; any media player that meets the Ramka's requirements works.",
+    "devices": {
+      "hegel-h400": {
+        "description": "An integrated amplifier with a built-in network streamer that plays Spotify, Qobuz and Google Cast.",
+        "does": "Plays music from the network and from its inputs. Through the hegel_streaming integration Home Assistant switches it on and off, sets the volume, controls playback and reads what is playing."
+      }
+    }
+  }
+}

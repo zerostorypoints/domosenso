@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "description": "Temperatur und Luftfeuchtigkeit pro Raum von Tapo-Sensoren und Luftqualität von einem Ruuvi Air: CO2, Feinstaub (PM2.5), VOC- und NOx-Index, Temperatur, Luftfeuchtigkeit, Luftdruck und eine Gesamtnote. Speist die Klima- und die Luftseite der Ramka.",
+    "devices": {
+      "tapo-t315": {
+        "description": "Ein kleiner batteriebetriebener Sensor mit Display, der Temperatur und Luftfeuchtigkeit über das stromsparende Funknetz eines Tapo-Hubs meldet (getestet mit dem H200).",
+        "does": "Meldet Temperatur und Luftfeuchtigkeit jedes Raums über den Hub an Home Assistant; die Integration TP-Link Smart Home legt sie als Sensoren an."
+      },
+      "ruuvi-air": {
+        "description": "Ein Bluetooth-Luftqualitätssensor (Sensirion SEN66), der CO2, Feinstaub, VOC, NOx, Temperatur, Luftfeuchtigkeit und Luftdruck misst und die Luft mit einer Note bewertet.",
+        "does": "Home Assistant empfängt seine Meldungen über Bluetooth-Proxys und die Kernintegration ruuvitag_ble. Ein Proxy auf einem klassischen ESP32 empfängt nur das Datenformat 6, das kein PM1, PM4 und PM10 enthält."
+      }
+    }
+  }
+}

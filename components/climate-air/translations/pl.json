@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "description": "Temperatura i wilgotność w każdym pokoju z czujników Tapo oraz jakość powietrza z Ruuvi Air: CO2, pył zawieszony (PM2.5), wskaźniki VOC i NOx, temperatura, wilgotność, ciśnienie i ocena ogólna. Zasila strony klimatu i powietrza na Ramce.",
+    "devices": {
+      "tapo-t315": {
+        "description": "Mały czujnik na baterię z wyświetlaczem, który przekazuje temperaturę i wilgotność przez energooszczędną łączność radiową huba Tapo (sprawdzony z H200).",
+        "does": "Przekazuje temperaturę i wilgotność każdego pokoju przez hub do Home Assistanta; integracja TP-Link Smart Home dodaje je jako czujniki."
+      },
+      "ruuvi-air": {
+        "description": "Czujnik jakości powietrza na Bluetooth (Sensirion SEN66), który mierzy CO2, pył zawieszony, VOC, NOx, temperaturę, wilgotność i ciśnienie oraz ocenia powietrze liczbą punktów.",
+        "does": "Home Assistant odbiera jego transmisje przez proxy Bluetooth i wbudowaną integrację ruuvitag_ble. Proxy na klasycznym ESP32 odbiera tylko format danych 6, który nie zawiera PM1, PM4 ani PM10."
+      }
+    }
+  }
+}

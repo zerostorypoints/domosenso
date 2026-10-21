@@ -1,0 +1,9 @@
+id: evening
+time: "19:30"
+names: {en: Evening, de: Abend, pl: Wieczór}
+states:
+  light.living_room: "on"
+  sensor.demo_value: "21.5"
+tablet: {mode: ambient, page: climate}
+components: [demo-sensor]
+devices: [demo-node]

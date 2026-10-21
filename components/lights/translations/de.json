@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Philips-Hue-Lampen raumweise schalten und dimmen, über die Raumgruppen der Hue Bridge.",
+    "devices": {
+      "hue-bridge": {
+        "description": "Die Zentrale, die Hue-Lampen und -Zubehör per Zigbee verbindet und im Heimnetz verfügbar macht.",
+        "does": "Fasst die Lampen zu Räumen zusammen. Home Assistant koppelt sich mit einem Druck auf die Taste der Bridge und steuert danach Räume und Lampen über das Heimnetz."
+      }
+    }
+  }
+}

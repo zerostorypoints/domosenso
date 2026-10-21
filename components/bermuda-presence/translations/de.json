@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "description": "Zeigt, in welchem Raum sich jedes Handy, Tablet oder jede Uhr befindet, mithilfe von Bluetooth-Proxys, die im Zuhause verteilt sind.",
+    "devices": {
+      "m5stack-atom-lite": {
+        "description": "Ein daumengrosses ESP32-Board mit WLAN, Bluetooth, Taste und LED, per USB versorgt.",
+        "does": "Läuft mit ESPHome als Bluetooth-Proxy: Er hört Handys, Tablets und Uhren ab und gibt weiter, was er hört. So weiss das Zuhause, in welchem Raum sich ein Gerät befindet. Dasselbe Board läuft auch mit der Firmware ESPSomfy-RTS (nicht ESPHome) als Funkbrücke der Markisen und trägt dafür ein Funkmodul."
+      },
+      "hlk-ld2410c": {
+        "description": "Ein 24-GHz-Millimeterwellen-Radarmodul, das Personen erkennt, ob sie sich bewegen oder still sitzen, und ihre Entfernung misst.",
+        "does": "An ein Proxy-Board angeschlossen, meldet es Anwesenheit und Erkennungsdistanz an Home Assistant. Die Ramka weckt damit den Bildschirm, wenn jemand den Raum betritt."
+      }
+    }
+  }
+}

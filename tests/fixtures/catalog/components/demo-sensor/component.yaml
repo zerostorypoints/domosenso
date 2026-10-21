@@ -1,0 +1,27 @@
+id: demo-sensor
+version: 0.1.0
+summary: A fixture component for the catalog checker tests
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: sensor-node
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: esphome, source: core}
+
+artifacts:
+  esphome:
+    packages:
+      - {file: esphome/node.yaml}
+  ha_blueprints:
+    - ha/blueprints/automation/domosenso/alert.yaml
+  dashboard_cards: [cards/card.yaml]
+
+tested:
+  ha: ["2026.9.2"]

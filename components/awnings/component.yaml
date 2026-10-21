@@ -1,0 +1,69 @@
+# Domosenso component manifest: Somfy RTS awnings, driven from Home Assistant by an ESPSomfy-RTS
+# radio node. Catalog entry only for now: the covers are declared by the home (see home_provides).
+id: awnings
+version: 0.1.0
+summary: Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: rts-awning
+      brand: Somfy
+      protocol: Somfy RTS, 433 MHz
+      note: "each awning is paired to the node as one more virtual remote; a Telis handset keeps working and the node follows it"
+    - kind: esp32-board
+      recommend: [m5stack-atom-lite]
+      count: 1
+      note: "runs ESPSomfy-RTS firmware, not ESPHome, so it is not a Bluetooth proxy; a second board is needed for those"
+    - kind: radio-transceiver
+      recommend: [cc1101]
+      note: "the module's band has to match the awnings (433.42 MHz for Somfy RTS in Europe); wired to the board over SPI"
+  optional:
+    - kind: wind-sensor
+      brand: Somfy
+      feature: wind                 # the awnings' own sensor; the awnings retract themselves, Home Assistant only watches
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: mqtt, source: core, setup: "an MQTT broker (Mosquitto); the node publishes under its own root topic"}
+  - name: espsomfy-rts
+    source: firmware
+    repo: rstrouse/ESPSomfy-RTS
+    tested: "2.4.6"
+    setup: "flashed over USB, then Wi-Fi and the radio pins in its web page; pair each awning from its own virtual remote"
+
+inputs:
+  covers:                       # one cover per awning; the home declares them as MQTT covers
+    type: "list[{name, shade_id}]"
+    example: [{name: Awning Living room, shade_id: 1}, {name: Awning Kitchen, shade_id: 2}]
+  mqtt_root_topic: {type: string, default: espsomfy}
+  wind_sensor:
+    type: entity_id
+    default: null
+    example: binary_sensor.awnings_wind
+
+artifacts:
+  ha_packages: []
+  services:
+    - {name: espsomfy-rts, kind: firmware, repo: rstrouse/ESPSomfy-RTS, version: "2.4.6"}
+  # Not in the catalog yet. The home declares the covers and the wind sensor against the node's
+  # MQTT topics: the node's own Home Assistant discovery is rejected by HA with firmware 2.4.6
+  # ("A device can not be its own via device"), so it is switched off there.
+  home_provides: [packages/awnings.yaml]
+
+provides:
+  entities:
+    - {id: "cover.<awning>", stability: stable, note: "device_class awning; position 0 retracted to 100 extended; extend, retract, stop"}
+    - {id: "binary_sensor.<wind>", stability: stable, note: "on while the wind sensor reports an alarm; the awnings have then retracted themselves. The sensor reports about every 19.5 minutes and on an alarm, but the node can miss reports for hours (README.md), so a missed all-clear needs an off delay"}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  espsomfy_rts: ["2.4.6"]
+  homes: 1
+local_only: true

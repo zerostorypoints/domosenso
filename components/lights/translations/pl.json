@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Włączasz i ściemniasz światła Philips Hue pokój po pokoju, przez grupy pokojów w mostku Hue.",
+    "devices": {
+      "hue-bridge": {
+        "description": "Mostek, który łączy żarówki i akcesoria Hue przez Zigbee i udostępnia je w sieci domowej.",
+        "does": "Grupuje żarówki w pokoje. Home Assistant łączy się z nim po naciśnięciu przycisku na mostku, a potem steruje pokojami i żarówkami przez sieć domową."
+      }
+    }
+  }
+}

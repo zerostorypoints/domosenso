@@ -1,0 +1,6 @@
+id: hegel-h400
+names: {en: Hegel H400, de: Hegel H400, pl: Hegel H400}
+description_key: meta.devices.hegel-h400.description
+does_key: meta.devices.hegel-h400.does
+photo: null
+component: media

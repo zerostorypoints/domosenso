@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/component.schema.json",
+  "title": "Domosenso component manifest",
+  "type": "object",
+  "required": ["id", "version", "summary", "description_key", "devices", "host", "integrations", "artifacts", "tested"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "summary": {"type": "string", "minLength": 1},
+    "description_key": {"type": "string", "pattern": "^meta\\..+"},
+    "photo": {"type": ["string", "null"]},
+    "devices": {
+      "type": "object",
+      "properties": {
+        "requires": {"type": "array", "items": {"$ref": "#/$defs/device_need"}},
+        "optional": {"type": "array", "items": {"$ref": "#/$defs/device_need"}},
+        "supports": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "host": {
+      "type": "object",
+      "required": ["installs"],
+      "properties": {
+        "installs": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "ha_min": {"type": "string"}
+      }
+    },
+    "integrations": {
+      "type": "array",
+      "items": {"type": "object", "required": ["name", "source"], "properties": {"name": {"type": "string"}, "source": {"type": "string"}}}
+    },
+    "inputs": {"type": "object"},
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "esphome": {
+          "type": "object",
+          "properties": {
+            "packages": {"type": "array", "items": {"type": "object", "required": ["file"], "properties": {"file": {"type": "string"}}}},
+            "factory": {"type": "string"},
+            "instance": {"type": "string"}
+          }
+        },
+        "ha_blueprints": {"type": "array", "items": {"type": "string"}},
+        "ha_packages": {"type": "array", "items": {"type": "string"}},
+        "ha_instance": {"type": "string"},
+        "dashboard_cards": {"type": "array", "items": {"type": "string"}},
+        "templates": {"type": "array", "items": {"type": "string"}},
+        "shell": {"type": "array", "items": {"type": "string"}},
+        "themes": {"type": "array", "items": {"type": "string"}},
+        "install_path": {"type": "string", "pattern": "^www/domosenso/[a-z0-9]+(-[a-z0-9]+)*/<version>/$"},
+        "services": {"type": "array"}
+      }
+    },
+    "provides": {"type": "object"},
+    "consumes": {"type": "array"},
+    "tested": {
+      "type": "object",
+      "required": ["ha"],
+      "properties": {
+        "ha": {"type": "array", "items": {"type": "string"}},
+        "esphome": {"type": "array", "items": {"type": "string"}},
+        "homes": {"type": "integer"}
+      }
+    },
+    "local_only": {"type": "boolean"}
+  },
+  "$defs": {
+    "device_need": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {"type": "string"},
+        "recommend": {"type": "array", "items": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"}}
+      }
+    }
+  }
+}

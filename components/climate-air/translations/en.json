@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "description": "Temperature and humidity per room from Tapo sensors, and air quality from a Ruuvi Air: CO2, fine dust (PM2.5), VOC and NOx indices, temperature, humidity, pressure and a quality score. Feeds the Ramka's climate and air pages.",
+    "devices": {
+      "tapo-t315": {
+        "description": "A small battery-powered sensor with a display that reports temperature and humidity over the low-power radio of a Tapo hub (tested with the H200).",
+        "does": "Reports each room's temperature and humidity to Home Assistant through the hub; the TP-Link Smart Home integration adds them as sensors."
+      },
+      "ruuvi-air": {
+        "description": "A Bluetooth air-quality sensor (Sensirion SEN66) that measures CO2, fine dust, VOC, NOx, temperature, humidity and pressure and rates the air with a score.",
+        "does": "Home Assistant picks up its broadcasts through Bluetooth proxies and the core ruuvitag_ble integration. A proxy on a classic ESP32 receives only data format 6, which carries no PM1, PM4 or PM10."
+      }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+blueprint:
+  name: Presence in a room (Bermuda)
+  description: >
+    domosenso component bermuda-presence. A sensor whose state is the people in one HA area, from
+    Bermuda's per-device area sensors, or "-" when nobody is there. A person seen only through a
+    tablet is shown in brackets: a phone follows its owner, a tablet lies where it was left.
+    One instance per room.
+  domain: template
+  source_url: https://github.com/domosenso/domosenso/blob/main/components/bermuda-presence/ha/blueprints/template/domosenso/presence_room.yaml
+  input:
+    area_name:
+      name: Area name
+      description: The HA area name exactly as Bermuda reports it (not the area id).
+      selector:
+        text: {}
+    phones:
+      name: Phones
+      description: "Bermuda area sensor → person, e.g. {sensor.alex_phone_area: Alex}"
+      selector:
+        object: {}
+    tablets:
+      name: Tablets
+      description: Same as phones; a person seen only here is bracketed.
+      default: {}
+      selector:
+        object: {}
+
+# Derived from a working home's presence package, with the room and the people turned into inputs.
+# The state and icon templates are unchanged.
+variables:
+  area_name: !input area_name
+  phones: !input phones
+  tablets: !input tablets
+
+sensor:
+  icon: >
+    {% set s = this.state if this is defined else "-" %}
+    {% if s in ["-", "unknown", "unavailable", "None"] %}mdi:account-off
+    {% elif s.split(", ") | count > 2 %}mdi:account-group
+    {% elif s.split(", ") | count > 1 %}mdi:account-multiple
+    {% else %}mdi:account{% endif %}
+  state: >
+    {% set ns = namespace(here=[], only_tablet=[]) %}
+    {% for e, n in phones.items() %}
+      {% if states(e) == area_name and n not in ns.here %}{% set ns.here = ns.here + [n] %}{% endif %}
+    {% endfor %}
+    {% for e, n in tablets.items() %}
+      {% if states(e) == area_name and n not in ns.here and n not in ns.only_tablet %}
+        {% set ns.only_tablet = ns.only_tablet + ["(" ~ n ~ ")"] %}
+      {% endif %}
+    {% endfor %}
+    {% set all = ns.here + ns.only_tablet %}
+    {{ all | join(", ") if all else "-" }}
+  # Contract: lets a card or another component find these sensors without a list of rooms.
+  attributes:
+    component: bermuda-presence
+    area: "{{ area_name }}"

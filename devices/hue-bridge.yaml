@@ -1,0 +1,6 @@
+id: hue-bridge
+names: {en: Philips Hue Bridge, de: Philips Hue Bridge, pl: Mostek Philips Hue Bridge}
+description_key: meta.devices.hue-bridge.description
+does_key: meta.devices.hue-bridge.does
+photo: null
+component: lights

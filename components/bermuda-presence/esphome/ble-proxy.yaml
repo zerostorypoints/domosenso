@@ -1,0 +1,152 @@
+# domosenso component bermuda-presence: Bluetooth proxy for Bermuda on an M5Stack Atom Lite
+# (ESP32-PICO-D4, 4 MB flash). Shared as an ESPHome remote package; a home's device file stays thin:
+#
+#   substitutions:
+#     room: living-room      # slug for the hostname, ble-proxy-<room>, and the button event
+#     area: Living room      # HA area name; must match an existing area exactly
+#   esphome:
+#     area: ${area}          # not in the package: an adopted device has no area until HA sets one
+#   packages:
+#     proxy: github://domosenso/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0
+#   wifi:
+#     ssid: !secret wifi_ssid
+#     password: !secret wifi_password
+#   api:
+#     encryption:
+#       key: !secret api_encryption_key
+#   ota:
+#     - platform: esphome
+#       encryption:            # authenticates uploads with the API key
+#
+# Nothing here reads a secret: the ESPHome docs say remote packages cannot, so Wi-Fi and the API key
+# live in the device file and merge into the blocks below.
+#
+# Derived from a working home configuration (2026-10-20). What changed for sharing:
+# substitution defaults so the package validates alone, `name` / `friendly_name` as substitutions
+# (the names ESPHome's dashboard adoption writes), the project: block, and the secrets moved out.
+# Based on esphome/bluetooth-proxies m5stack/m5stack-atom-lite.yaml; scan parameters from the
+# Bermuda wiki (ESPHome-Configurations).
+
+substitutions:
+  room: proxy
+  area: ${room}
+  name: ble-proxy-${room}
+  friendly_name: BLE Proxy ${area}
+  # The ESPHome default window is 30 ms of every 320 ms. Bermuda wants 300 of 320 to catch more
+  # advertisements. If a proxy starts dropping off Wi-Fi, set scan_window: 200ms in its device file.
+  scan_interval: 320ms
+  scan_window: 300ms
+  bssid_name: Connected AP (BSSID)  # a home may name its mesh here, e.g. "Connected <mesh> (BSSID)"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2025.8.0
+  # Required for ESPHome dashboard adoption; versions follow the component's manifest.
+  project:
+    name: domosenso.bermuda-presence
+    version: 0.1.0
+
+esp32:
+  board: m5stack-atom
+  variant: esp32
+  framework:
+    type: esp-idf  # Bermuda wiki: arduino uses more memory and proxies worse
+
+# No fast_connect: a mesh with one SSID on several units, and fast_connect takes the first one that
+# answers instead of the strongest. No fallback AP or captive portal, to keep RAM for Bluetooth;
+# with wrong Wi-Fi credentials the fix is a USB flash. ssid/password come from the device file.
+wifi:
+
+# encryption: the key comes from the device file (api: encryption: key: !secret ...).
+api:
+
+# No encryption: here, because a factory board has no API key yet and ESPHome refuses an OTA
+# encryption block with nothing to inherit. The device file adds `encryption:` (bare: it takes the
+# API key); ESPHome merges same-port OTA blocks. Without it, uploads are unauthenticated.
+ota:
+  - platform: esphome
+
+logger:
+  baud_rate: 0  # logs over the API only (esphome logs <file>); frees the UART
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+    interval: ${scan_interval}
+    window: ${scan_window}
+
+bluetooth_proxy:
+  active: true  # lets HA open connections through the proxy (BLE thermometers, plant sensors)
+
+# The Atom's own hardware. Cheap enough not to disturb the proxying.
+light:
+  - platform: esp32_rmt_led_strip
+    id: led
+    name: LED
+    pin: GPIO27
+    num_leds: 1
+    chipset: SK6812
+    channel_colors: GRB
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+    effects:
+      - pulse:
+          name: Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+      - strobe:
+          name: Blink
+
+# Contract: the event esphome.atom_button with data {room, click: single|double|long}.
+binary_sensor:
+  - platform: gpio
+    id: front_button
+    name: Button
+    pin:
+      number: GPIO39  # input-only pin with an external pull-up on the board
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 0.6s
+          - OFF for at least 0.35s
+        then:
+          - homeassistant.event:
+              event: esphome.atom_button
+              data: {room: "${room}", click: single}
+      - timing:
+          - ON for at most 0.6s
+          - OFF for at most 0.35s
+          - ON for at most 0.6s
+          - OFF for at least 0.2s
+        then:
+          - homeassistant.event:
+              event: esphome.atom_button
+              data: {room: "${room}", click: double}
+      - timing:
+          - ON for at least 1s
+        then:
+          - homeassistant.event:
+              event: esphome.atom_button
+              data: {room: "${room}", click: long}
+
+sensor:
+  - platform: wifi_signal
+    name: Wi-Fi signal
+    update_interval: 60s
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s
+
+text_sensor:
+  - platform: wifi_info
+    bssid:
+      name: ${bssid_name}
+
+button:
+  - platform: restart
+    name: Restart
+  - platform: safe_mode
+    name: Safe mode boot

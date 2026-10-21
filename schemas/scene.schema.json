@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/scene.schema.json",
+  "title": "Domosenso demo scene",
+  "type": "object",
+  "required": ["id", "time", "names", "states", "tablet", "components", "devices"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "time": {"type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"},
+    "names": {"$ref": "#/$defs/names"},
+    "states": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z_]+\\.[a-z0-9_]+$"},
+      "additionalProperties": {"type": ["string", "number", "boolean"]}
+    },
+    "attributes": {
+      "description": "Attribute overrides per entity, merged over the demo home's baseline attributes; each entity must also be in states",
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z_]+\\.[a-z0-9_]+$"},
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": {"type": ["string", "number", "boolean", "null"]}
+      }
+    },
+    "tablet": {
+      "type": ["object", "null"],
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"type": "string"},
+        "page": {"type": "string"}
+      }
+    },
+    "components": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "devices": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  },
+  "$defs": {
+    "names": {
+      "type": "object",
+      "required": ["en", "de", "pl"],
+      "additionalProperties": false,
+      "properties": {
+        "en": {"type": "string", "minLength": 1},
+        "de": {"type": "string", "minLength": 1},
+        "pl": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+state: "{{ is_state('input_select.[[ inputs.prefix ]]_mode', 'ambient') }}"
+raw_block: "{% if is_state('x', 'on') %}a{% endif %}"
+raw_filter: "{{ states('sensor.x') | float(0) }}"

@@ -1,0 +1,28 @@
+# Seven in the morning: the kitchen light is on, the living room lamp is off, the house is cool, the
+# basil has just been watered (moisture back above its minimum, no problem), the tablet shows the
+# climate.
+id: morning
+time: "07:00"
+names: {en: Morning, de: Morgen, pl: Rano}
+states:
+  weather.forecast_home: sunny
+  sensor.outside_temperature: 9.8
+  sensor.outside_humidity: 82
+  light.kitchen: "on"
+  light.living_room: "off"
+  binary_sensor.dining_ble_proxy_dining_presence: "on"
+  sensor.dining_ble_proxy_dining_detection_distance: 140
+  cover.awning_living_room: closed
+  cover.awning_kitchen: closed
+  binary_sensor.awnings_wind: "off"
+  media_player.living_room_speaker: "off"
+  plant.basil: ok
+  sensor.kitchen_temperature: 20.8
+  sensor.bedroom_temperature: 18.6
+  sensor.dining_air_temperature: 20.4
+  lock.front_door: locked
+attributes:
+  plant.basil: {moisture: 34, problem: none}   # watered: above min_moisture (15), no problem
+tablet: {mode: ambient, page: climate}
+components: [bermuda-presence, climate-air, lights, plants, ramka, weather]
+devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite, mi-flora, ruuvi-air, tapo-t315]

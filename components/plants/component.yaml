@@ -1,0 +1,48 @@
+# Domosenso component manifest: houseplant sensors (Xiaomi Mi Flora) rated by Home Assistant's
+# plant integration.
+id: plants
+version: 0.1.0
+summary: Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: plant-sensor
+      recommend: [mi-flora]
+      count: "1 per plant"
+    - kind: ble-proxy
+      recommend: [m5stack-atom-lite]
+      via: bermuda-presence         # a Mi Flora is Bluetooth LE; a proxy has to hear it (weak signals drop out)
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: xiaomi_ble, source: core, setup: "discovers the sensors on its own once a proxy hears them"}
+  - {name: plant, source: core, setup: "one plant entity per sensor, with the thresholds in YAML; a change needs a Home Assistant restart"}
+
+inputs:
+  plants:
+    type: "list[{entity: plant.*, label, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]"
+    example: [{entity: plant.monstera, label: Living room}]
+  plant_defaults:
+    type: map
+    default: {min_moisture: 15, max_moisture: 60, min_conductivity: 350, max_conductivity: 2000, min_brightness: 500}
+
+artifacts:
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "plant.<plant>", stability: stable, note: "state ok or problem; attributes moisture, conductivity, brightness, temperature, problem"}
+    - {id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}", stability: stable}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+local_only: true

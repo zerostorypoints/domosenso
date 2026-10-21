@@ -1,0 +1,5 @@
+{
+  "meta": {
+    "description": "Calendar events from a CalDAV server, for example iCloud with an app-specific password. The Ramka shows today's and tomorrow's events as its agenda."
+  }
+}

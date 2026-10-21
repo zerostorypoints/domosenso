@@ -1,0 +1,76 @@
+# domosenso component bermuda-presence 0.1.0 — the demo home's instance. Written once by
+# `domosenso add bermuda-presence` from inputs/bermuda-presence.yaml and owned by the home from then
+# on; the logic lives in the blueprints under blueprints/*/domosenso/, which the CLI updates.
+
+template:
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: Living room
+        phones: &phones
+          sensor.alex_phone_area: Alex
+          sensor.sam_phone_area: Sam
+        tablets: &tablets
+          sensor.family_tablet_area: Sam
+    name: Presence Living room
+    unique_id: presence_living_room
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: Dining
+        phones: *phones
+        tablets: *tablets
+    name: Presence Dining
+    unique_id: presence_dining
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: Kitchen
+        phones: *phones
+        tablets: *tablets
+    name: Presence Kitchen
+    unique_id: presence_kitchen
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: Office
+        phones: *phones
+        tablets: *tablets
+    name: Presence Office
+    unique_id: presence_office
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: Bedroom
+        phones: *phones
+        tablets: *tablets
+    name: Presence Bedroom
+    unique_id: presence_bedroom
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: "Kids' room"
+        phones: *phones
+        tablets: *tablets
+    name: Presence Kids' room
+    unique_id: presence_kids_room
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: Hall
+        phones: *phones
+        tablets: *tablets
+    name: Presence Hall
+    unique_id: presence_hall
+
+automation:
+  - id: ble_proxy_offline_alert
+    alias: BLE proxy offline
+    use_blueprint:
+      path: domosenso/ble_proxy_offline.yaml
+      input:
+        proxies:
+          - sensor.living_room_ble_proxy_living_room_wi_fi_signal
+          - sensor.dining_ble_proxy_dining_wi_fi_signal
+        minutes: 10
+        notify_action: notify.mobile_app_alex_phone

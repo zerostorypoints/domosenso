@@ -1,0 +1,6 @@
+id: ruuvi-air
+names: {en: Ruuvi Air, de: Ruuvi Air, pl: Ruuvi Air}
+description_key: meta.devices.ruuvi-air.description
+does_key: meta.devices.ruuvi-air.does
+photo: null
+component: climate-air

@@ -1,0 +1,50 @@
+# Domosenso component manifest: a network audio player as a Home Assistant media player. The
+# Ramka's music view and the now-playing card read it (media_player_contract in components/ramka).
+id: media
+version: 0.1.0
+summary: A network audio player as a media_player; tested with the Hegel H400 through hegel_streaming
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: network-audio-player
+      recommend: [hegel-h400]
+      count: 1
+      note: "anything that shows up as a media_player and meets the Ramka's contract"
+  optional:
+    - kind: mains-meter
+      feature: mains                # the player's draw and voltage on the now-playing view (a smart plug with metering)
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - name: hegel_streaming
+    source: hacs
+    repo: zerostorypoints/hegel-home-assistant
+    tested: "0.1.7"
+    setup: "found on the home network by its web API; no account"
+
+inputs:
+  media_player:
+    type: entity_id
+    example: media_player.living_room_speaker
+
+artifacts:
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "media_player.<player>", stability: stable, note: "power, volume, play and pause, input, now playing"}
+    - {id: "sensor.<player>_audio_quality", stability: additive-only, note: "hegel_streaming only: hi_res, cd, lossless, lossy, dsd"}
+    - {id: "sensor.<player>_streaming_service", stability: additive-only, note: "hegel_streaming only; the Ramka hides previous and next while it reads a service that cannot skip"}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+local_only: true

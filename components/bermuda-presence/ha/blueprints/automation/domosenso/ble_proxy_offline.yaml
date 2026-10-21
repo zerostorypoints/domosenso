@@ -1,0 +1,51 @@
+blueprint:
+  name: BLE proxy offline alert
+  description: >
+    domosenso component bermuda-presence. A notification when an ESPHome Bluetooth proxy stops
+    answering. The Atom Lite's LED is off after boot by design, so a proxy without power looks
+    exactly like one that works; this is the only tell. ESPHome marks a device's entities
+    unavailable when its API connection drops, so the trigger is one entity per proxy (the Wi-Fi
+    signal sensor). The default ten minutes rides out an HA restart and a proxy's own reboot.
+  domain: automation
+  source_url: https://github.com/domosenso/domosenso/blob/main/components/bermuda-presence/ha/blueprints/automation/domosenso/ble_proxy_offline.yaml
+  input:
+    proxies:
+      name: Proxies
+      description: One entity per proxy, e.g. its Wi-Fi signal sensor.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - integration: esphome
+              domain: sensor
+    minutes:
+      name: Minutes unavailable
+      default: 10
+      selector:
+        number: {min: 1, max: 120, unit_of_measurement: min}
+    notify_action:
+      name: Notify action
+      description: e.g. notify.mobile_app_<phone>
+      selector:
+        text: {}
+
+# Derived from a working home's package (written after a proxy sat dead for 25 hours), with the
+# proxies, the delay and the recipient as inputs.
+# queued: two proxies going down together (a tripped breaker, a mesh reboot) give two messages.
+mode: queued
+variables:
+  minutes: !input minutes
+triggers:
+  - trigger: state
+    entity_id: !input proxies
+    to: unavailable
+    for:
+      minutes: !input minutes
+actions:
+  - action: !input notify_action
+    data:
+      title: Bluetooth proxy offline
+      message: >
+        {{ trigger.to_state.name | replace(' Wi-Fi signal', '') }} has not answered for
+        {{ minutes }} minute{{ '' if minutes | int == 1 else 's' }}. Check its power first — the LED
+        stays dark even when it works.

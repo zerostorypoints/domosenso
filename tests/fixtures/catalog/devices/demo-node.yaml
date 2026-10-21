@@ -1,0 +1,6 @@
+id: demo-node
+names: {en: Demo node, de: Demo-Knoten, pl: Węzeł demonstracyjny}
+description_key: meta.device.description
+does_key: meta.device.does
+photo: null
+component: demo-sensor

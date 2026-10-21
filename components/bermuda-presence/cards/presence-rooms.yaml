@@ -1,0 +1,19 @@
+# domosenso component bermuda-presence: who is in which room, as a plain markdown card. No list of
+# rooms: it finds the sensors by the `component` attribute the presence_room blueprint sets, so a
+# room added to the instance shows up without touching the card. Core cards only.
+#
+# A home can draw the same sensors on a floor plan instead; a plan needs the home's own drawing, so
+# it stays out of the catalog.
+type: markdown
+title: Who is where
+content: |
+  {%- set rooms = states.sensor
+       | selectattr('attributes.component', 'defined')
+       | selectattr('attributes.component', 'eq', 'bermuda-presence')
+       | rejectattr('state', 'in', ['-', 'unknown', 'unavailable'])
+       | sort(attribute='attributes.area') | list %}
+  {%- for s in rooms %}
+  - **{{ s.attributes.area }}**: {{ s.state }}
+  {%- else %}
+  Nobody is in a room with a proxy.
+  {%- endfor %}

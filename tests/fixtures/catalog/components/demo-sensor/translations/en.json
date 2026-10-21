@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "description": "Reports a demo value.",
+    "device": {"description": "A demo node.", "does": "Sends the demo value."}
+  },
+  "ui": {"title": "Demo"}
+}

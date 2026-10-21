@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Somfy-RTS-Markisen lassen sich über Home Assistant aus- und einfahren. Ein kleiner Funkknoten arbeitet wie eine weitere Fernbedienung: Der Handsender funktioniert weiter, und Home Assistant bekommt seine Befehle mit. Auch der Windsensor der Markisen wird gelesen und zeigt, wann sich die Markisen von selbst eingefahren haben.",
+    "devices": {
+      "cc1101": {
+        "description": "Ein Funk-Transceiver-Modul für die Sub-Gigahertz-Bänder, per SPI mit dem ESP32-Board verbunden.",
+        "does": "Sendet und empfängt die 433-MHz-Telegramme von Somfy RTS. So kann der Knoten die Markisen steuern, den Handsender mithören und den Windsensor empfangen."
+      }
+    }
+  }
+}

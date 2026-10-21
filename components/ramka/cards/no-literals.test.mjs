@@ -1,0 +1,77 @@
+// Card sources carry no human-language text: every visible word lives in translations/*.json.
+// This scans the sources of the cards (cards/*.js and cards/lib/*.js; tests and testing/ are
+// excluded, they hold localized expected text by design) and checks that
+//   (a) no Polish or German letter appears in them, and
+//   (b) every translation key the code uses exists in translations/en.json.
+// The scan is a plain regex over the source text, comments included: a string-aware parser would
+// have to tell regex literals from strings, and a card header comment is English anyway.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+
+const here = fileURLToPath(new URL(".", import.meta.url));
+const en = JSON.parse(readFileSync(join(here, "../translations/en.json"), "utf8"));
+
+const LOCAL_LETTERS = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻäöüßÄÖÜ]/;
+
+const sources = [".", "lib"].flatMap((dir) =>
+  readdirSync(join(here, dir)).filter((f) => f.endsWith(".js")).map((f) => `${dir}/${f}`.replace("./", "")));
+
+// The node a dotted key points at, or undefined.
+const resolve = (key) => key.split(".").reduce((node, part) =>
+  node !== null && typeof node === "object" && part in node ? node[part] : undefined, en);
+
+// Offences in one source text: a line-numbered list of strings.
+function scan(text) {
+  const found = [];
+  text.split("\n").forEach((line, i) => {
+    const hit = line.match(LOCAL_LETTERS);
+    if (hit) found.push(`line ${i + 1}: "${hit[0]}" in: ${line.trim().slice(0, 80)}`);
+  });
+  // Keys: the literal passed to t(hass, "key"), and any literal that is itself a card.* key
+  // (keys kept in tables, as plants-card does for its gauges).
+  const keys = new Set();
+  for (const m of text.matchAll(/(?<![\w.$])t\(\s*[\w.$]+\s*,\s*(["'`])((?:(?!\1).)*)\1/g)) keys.add(m[2]);
+  for (const m of text.matchAll(/(["'`])(card\.[\w.${}]*)\1/g)) keys.add(m[2]);
+  for (const key of keys) {
+    const cut = key.indexOf("${");
+    if (cut === -1) {
+      if (typeof resolve(key) !== "string") found.push(`key not in en.json: ${key}`);
+    } else {
+      // A key built at run time: its static prefix must at least name a group.
+      const prefix = key.slice(0, cut).replace(/\.$/, "");
+      const node = prefix ? resolve(prefix) : undefined;
+      if (node === null || typeof node !== "object") found.push(`key prefix not a group in en.json: ${key}`);
+    }
+  }
+  return found;
+}
+
+test("the scanner flags a planted Polish or German literal and a missing key", () => {
+  assert.equal(scan('const label = "Zamknięte";').length, 1);
+  assert.equal(scan("const label = 'Geöffnet';").length, 1);
+  assert.equal(scan("const label = `Straße ${x}`;").length, 1);
+  assert.equal(scan('const x = t(this._hass, "card.nope.missing");').length, 1);
+  assert.equal(scan("const x = t(hass, `card.nope.${state}`);").length, 1);
+  assert.equal(scan('{ label: "card.nope.gauge" }').length, 1);
+});
+
+test("the scanner accepts plain text and keys that exist", () => {
+  assert.deepEqual(scan('const x = t(this._hass, "card.agenda.today"); // Today'), []);
+  assert.deepEqual(scan("const x = t(hass, `card.status.${state}`);"), []);
+  assert.deepEqual(scan("const x = t(hass, key);"), []);
+});
+
+test("card sources are found", () => {
+  assert.ok(sources.length >= 13, sources.join(", "));
+  assert.ok(sources.includes("lib/i18n.js"));
+  assert.ok(!sources.some((f) => f.includes(".test.")));
+});
+
+for (const file of sources) {
+  test(`${file}: no Polish or German text, every translation key exists`, () => {
+    assert.deepEqual(scan(readFileSync(join(here, file), "utf8")), []);
+  });
+}

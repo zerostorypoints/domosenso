@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Sieciowy odtwarzacz audio jako media_player w Home Assistancie: zasilanie, głośność, odtwarzanie i pauza oraz to, co gra. Sprawdzony ze wzmacniaczem Hegel H400 przez integrację hegel_streaming; zadziała każdy odtwarzacz spełniający wymagania Ramki.",
+    "devices": {
+      "hegel-h400": {
+        "description": "Wzmacniacz zintegrowany z wbudowanym streamerem sieciowym, który odtwarza Spotify, Qobuz i Google Cast.",
+        "does": "Odtwarza muzykę z sieci i ze swoich wejść. Przez integrację hegel_streaming Home Assistant włącza go i wyłącza, ustawia głośność, steruje odtwarzaniem i odczytuje, co gra."
+      }
+    }
+  }
+}

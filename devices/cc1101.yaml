@@ -1,0 +1,6 @@
+id: cc1101
+names: {en: CC1101 radio module, de: CC1101-Funkmodul, pl: Moduł radiowy CC1101}
+description_key: meta.devices.cc1101.description
+does_key: meta.devices.cc1101.does
+photo: null
+component: awnings

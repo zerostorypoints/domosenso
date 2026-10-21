@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Wilgotność gleby, poziom nawozu (przewodność), światło i temperatura roślin doniczkowych z czujników Xiaomi Mi Flora. Integracja plant w Home Assistancie ocenia każdy odczyt względem progów, a strona roślin na Ramce pokazuje, która roślina potrzebuje wody.",
+    "devices": {
+      "mi-flora": {
+        "description": "Czujnik roślin na Bluetooth (HHCC Flower Care, model HHCCJCY01), który wbija się w ziemię.",
+        "does": "Mierzy wilgotność gleby, przewodność, światło i temperaturę i przekazuje je przez Bluetooth Low Energy; Home Assistant odbiera je przez proxy Bluetooth i wbudowaną integrację Xiaomi BLE."
+      }
+    }
+  }
+}

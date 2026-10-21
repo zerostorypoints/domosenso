@@ -1,0 +1,182 @@
+{
+  "card": {
+    "common": {
+      "weekday_short": {
+        "0": "nd",
+        "1": "pn",
+        "2": "wt",
+        "3": "śr",
+        "4": "cz",
+        "5": "pt",
+        "6": "sb"
+      },
+      "noValue": "–"
+    },
+    "agenda": {
+      "today": "Dziś",
+      "tomorrow": "jutro",
+      "allDay": "cały dzień",
+      "untitled": "(bez tytułu)",
+      "empty": "Nic w kalendarzu",
+      "reminders": "Przypomnienia",
+      "nothingToDo": "Nic do zrobienia"
+    },
+    "clock": {
+      "wind": "wiatr {speed} {unit}",
+      "condition": {
+        "clear-night": "Bezchmurna noc",
+        "cloudy": "Pochmurno",
+        "fog": "Mgła",
+        "hail": "Grad",
+        "lightning": "Burza",
+        "lightning-rainy": "Burza z deszczem",
+        "partlycloudy": "Częściowe zachmurzenie",
+        "pouring": "Ulewa",
+        "rainy": "Deszcz",
+        "snowy": "Śnieg",
+        "snowy-rainy": "Deszcz ze śniegiem",
+        "sunny": "Słonecznie",
+        "windy": "Wietrznie",
+        "windy-variant": "Wietrznie",
+        "exceptional": "Nietypowo"
+      }
+    },
+    "status": {
+      "on": "Włączone",
+      "off": "Wyłączone",
+      "open": "Otwarte",
+      "closed": "Zamknięte",
+      "opening": "Otwiera się",
+      "closing": "Zamyka się",
+      "locked": "Zamknięty",
+      "unlocked": "Otwarty",
+      "unlocking": "Otwiera się",
+      "locking": "Zamyka się",
+      "jammed": "Zacięty",
+      "unavailable": "—",
+      "unknown": "—",
+      "playing": "Gra",
+      "paused": "Pauza",
+      "idle": "Bezczynny",
+      "standby": "Czuwanie",
+      "home": "W domu",
+      "not_home": "Poza domem"
+    },
+    "tap_button": {
+      "hint": "Dotknij dwa razy"
+    },
+    "plants": {
+      "gauge": {
+        "sun": "Słońce",
+        "fertiliser": "Nawóz",
+        "water": "Woda"
+      },
+      "water": "Podlej",
+      "dontWater": "Nie podlewaj",
+      "moreLight": "Więcej światła",
+      "fertilise": "Nawieź",
+      "flush": "Przepłucz ziemię",
+      "tooCold": "Za zimno",
+      "tooWarm": "Za ciepło",
+      "noReading": "brak odczytu",
+      "toWater": "do podlania: {count}"
+    },
+    "air": {
+      "level": {
+        "good": "Dobry",
+        "raised": "Podwyższony",
+        "high": "Wysoki"
+      }
+    },
+    "mains": {
+      "max": "max {value} V",
+      "min": "min {value} V"
+    },
+    "now_playing": {
+      "quality": {
+        "hi_res": "Hi-Res",
+        "lossless": "Lossless",
+        "lossy": "Lossy"
+      }
+    }
+  },
+  "ui": {
+    "common": {
+      "unreachable": "brak łączności"
+    },
+    "wind": {
+      "awnings_rolled_in": "Wiatr: markizy zwinięte"
+    },
+    "media": {
+      "heading": "Muzyka",
+      "player": "Odtwarzacz",
+      "previous": "Poprzedni",
+      "pause": "Pauza",
+      "play": "Play",
+      "next": "Następny",
+      "volume_down": "−1",
+      "volume_up": "+1",
+      "volume": "Głośność",
+      "standby": "Czuwanie",
+      "turn_on": "Włącz odtwarzacz"
+    },
+    "calendar": {
+      "button": "Kalendarz"
+    },
+    "near": {
+      "toggle": "Kontrolki na podejście"
+    },
+    "covers": {
+      "heading": "Markizy",
+      "open": "Rozwiń",
+      "stop": "Stop",
+      "close": "Zwiń",
+      "all_open": "Wszystkie rozwiń",
+      "all_close": "Wszystkie zwiń"
+    },
+    "lights": {
+      "heading": "Światła",
+      "all_off": "Wszystko zgaś"
+    },
+    "climate": {
+      "outside": "Na zewnątrz"
+    },
+    "air": {
+      "score": "Jakość powietrza",
+      "score_good": "dobra",
+      "score_fair": "umiarkowana",
+      "score_poor": "zła",
+      "co2_good": "dobre",
+      "co2_soon": "przewietrz wkrótce",
+      "co2_ventilate": "przewietrz",
+      "pm_good": "dobre",
+      "pm_raised": "podwyższone",
+      "pm_high": "wysokie",
+      "index_normal": "normalne",
+      "index_raised": "podwyższone",
+      "index_high": "wysokie"
+    },
+    "status": {
+      "awning": {
+        "open": "Rozwinięta",
+        "closed": "Zwinięta",
+        "opening": "Rozwija się",
+        "closing": "Zwija się"
+      },
+      "door": {
+        "on": "Otwarte",
+        "off": "Zamknięte"
+      },
+      "lock": {
+        "locked": "Zamknięte",
+        "unlocked": "Otwarte",
+        "unlocking": "Otwiera się",
+        "locking": "Zamyka się",
+        "jammed": "Zacięty"
+      }
+    }
+  },
+  "meta": {
+    "description": "Tablet na ścianę dla Home Assistant. Radar budzi go, gdy ktoś wchodzi do pokoju; wtedy pokazuje na zmianę klimat, jakość powietrza, rośliny, zdjęcia i stan mieszkania, wyświetla, co gra odtwarzacz, a gdy dłoń zbliży się do ekranu, pokazuje muzykę, markizy i światła."
+  }
+}

@@ -1,0 +1,6 @@
+id: mi-flora
+names: {en: Xiaomi Mi Flora plant sensor, de: Xiaomi-Mi-Flora-Pflanzensensor, pl: Czujnik roślin Xiaomi Mi Flora}
+description_key: meta.devices.mi-flora.description
+does_key: meta.devices.mi-flora.does
+photo: null
+component: plants

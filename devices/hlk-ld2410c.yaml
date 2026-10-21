@@ -1,0 +1,6 @@
+id: hlk-ld2410c
+names: {en: HLK-LD2410C radar, de: HLK-LD2410C-Radar, pl: Radar HLK-LD2410C}
+description_key: meta.devices.hlk-ld2410c.description
+does_key: meta.devices.hlk-ld2410c.does
+photo: null
+component: bermuda-presence

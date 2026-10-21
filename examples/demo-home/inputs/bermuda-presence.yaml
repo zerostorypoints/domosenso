@@ -1,0 +1,14 @@
+# The values the demo home supplies to the bermuda-presence component (its `inputs:` in
+# component.yaml). The instance files under esphome/ and ha/packages/ are what
+# `domosenso add bermuda-presence` would write from these; here they are written by hand.
+rooms: [Living room, Dining, Kitchen, Office, Bedroom, Kids' room, Hall]
+phones:
+  sensor.alex_phone_area: Alex
+  sensor.sam_phone_area: Sam
+tablets:
+  sensor.family_tablet_area: Sam
+proxies:
+  - {room: living-room, area: Living room, radar: false}
+  - {room: dining, area: Dining, radar: true}
+offline_notify: notify.mobile_app_alex_phone
+minutes: 10

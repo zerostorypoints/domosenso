@@ -1,0 +1,59 @@
+# Domosenso component manifest: room temperature and humidity from Tapo sensors, air quality from
+# a Ruuvi Air.
+id: climate-air
+version: 0.1.0
+summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: temperature-humidity-sensor
+      recommend: [tapo-t315]
+      count: "1 per room"
+      via: "a Tapo hub (tested: H200), which the sensors report to"
+  optional:
+    - kind: air-quality-sensor
+      recommend: [ruuvi-air]
+      feature: air                  # the Ramka's air page
+    - kind: ble-proxy
+      recommend: [m5stack-atom-lite]
+      via: bermuda-presence         # the Ruuvi Air is Bluetooth; one proxy within range is enough
+      feature: air
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: tplink, source: core, setup: "the TP-Link account entered in Home Assistant's UI; the hub is polled on the home network. Reserve the hub's address in the router"}
+  - {name: ruuvitag_ble, source: core, setup: "discovered through a Bluetooth proxy; enable the air-quality score entity by hand, it is off by default"}
+
+inputs:
+  climate:
+    type: "list[{label, temperature, humidity?}]"
+    example: [{label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity}]
+  air:
+    type: "{score?, co2?, pm2_5?, voc?, nox?}"
+    example: {score: sensor.dining_air_quality_score, co2: sensor.dining_air_carbon_dioxide}
+  outside:
+    type: "{temperature, humidity?}"
+    default: null
+
+artifacts:
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "sensor.<room>_temperature", stability: stable, note: "°C"}
+    - {id: "sensor.<room>_humidity", stability: stable, note: "%"}
+    - {id: "sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}", stability: additive-only, feature: air}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+# The Tapo hub needs a TP-Link account to set up; the Ruuvi Air is local.
+local_only: false

@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Soil moisture, fertiliser level (conductivity), light and temperature of houseplants from Xiaomi Mi Flora sensors. Home Assistant's plant integration rates each reading against limits, and the Ramka's plants page shows which plant needs water.",
+    "devices": {
+      "mi-flora": {
+        "description": "A Bluetooth plant sensor (HHCC Flower Care, model HHCCJCY01) that is pushed into the soil.",
+        "does": "Measures soil moisture, conductivity, light and temperature and reports them over Bluetooth Low Energy; Home Assistant receives them through Bluetooth proxies and the core Xiaomi BLE integration."
+      }
+    }
+  }
+}

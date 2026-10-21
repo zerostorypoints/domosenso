@@ -1,0 +1,182 @@
+{
+  "card": {
+    "common": {
+      "weekday_short": {
+        "0": "So",
+        "1": "Mo",
+        "2": "Di",
+        "3": "Mi",
+        "4": "Do",
+        "5": "Fr",
+        "6": "Sa"
+      },
+      "noValue": "–"
+    },
+    "agenda": {
+      "today": "Heute",
+      "tomorrow": "morgen",
+      "allDay": "ganztägig",
+      "untitled": "(ohne Titel)",
+      "empty": "Nichts im Kalender",
+      "reminders": "Erinnerungen",
+      "nothingToDo": "Nichts zu erledigen"
+    },
+    "clock": {
+      "wind": "Wind {speed} {unit}",
+      "condition": {
+        "clear-night": "Klare Nacht",
+        "cloudy": "Bewölkt",
+        "fog": "Nebel",
+        "hail": "Hagel",
+        "lightning": "Gewitter",
+        "lightning-rainy": "Gewitter mit Regen",
+        "partlycloudy": "Teilweise bewölkt",
+        "pouring": "Starkregen",
+        "rainy": "Regen",
+        "snowy": "Schnee",
+        "snowy-rainy": "Schneeregen",
+        "sunny": "Sonnig",
+        "windy": "Windig",
+        "windy-variant": "Windig",
+        "exceptional": "Aussergewöhnlich"
+      }
+    },
+    "status": {
+      "on": "Ein",
+      "off": "Aus",
+      "open": "Offen",
+      "closed": "Geschlossen",
+      "opening": "Öffnet",
+      "closing": "Schliesst",
+      "locked": "Verriegelt",
+      "unlocked": "Entriegelt",
+      "unlocking": "Wird entriegelt",
+      "locking": "Wird verriegelt",
+      "jammed": "Blockiert",
+      "unavailable": "—",
+      "unknown": "—",
+      "playing": "Wiedergabe",
+      "paused": "Pausiert",
+      "idle": "Inaktiv",
+      "standby": "Standby",
+      "home": "Zuhause",
+      "not_home": "Unterwegs"
+    },
+    "tap_button": {
+      "hint": "Zweimal tippen"
+    },
+    "plants": {
+      "gauge": {
+        "sun": "Sonne",
+        "fertiliser": "Dünger",
+        "water": "Wasser"
+      },
+      "water": "Giessen",
+      "dontWater": "Nicht giessen",
+      "moreLight": "Mehr Licht",
+      "fertilise": "Düngen",
+      "flush": "Erde durchspülen",
+      "tooCold": "Zu kalt",
+      "tooWarm": "Zu warm",
+      "noReading": "kein Messwert",
+      "toWater": "zu giessen: {count}"
+    },
+    "air": {
+      "level": {
+        "good": "Gut",
+        "raised": "Erhöht",
+        "high": "Hoch"
+      }
+    },
+    "mains": {
+      "max": "max {value} V",
+      "min": "min {value} V"
+    },
+    "now_playing": {
+      "quality": {
+        "hi_res": "Hi-Res",
+        "lossless": "Lossless",
+        "lossy": "Lossy"
+      }
+    }
+  },
+  "ui": {
+    "common": {
+      "unreachable": "nicht erreichbar"
+    },
+    "wind": {
+      "awnings_rolled_in": "Wind: Markisen eingefahren"
+    },
+    "media": {
+      "heading": "Musik",
+      "player": "Player",
+      "previous": "Zurück",
+      "pause": "Pause",
+      "play": "Play",
+      "next": "Weiter",
+      "volume_down": "−1",
+      "volume_up": "+1",
+      "volume": "Lautstärke",
+      "standby": "Standby",
+      "turn_on": "Player einschalten"
+    },
+    "calendar": {
+      "button": "Kalender"
+    },
+    "near": {
+      "toggle": "Bedienung beim Herantreten"
+    },
+    "covers": {
+      "heading": "Markisen",
+      "open": "Ausfahren",
+      "stop": "Stopp",
+      "close": "Einfahren",
+      "all_open": "Alle ausfahren",
+      "all_close": "Alle einfahren"
+    },
+    "lights": {
+      "heading": "Licht",
+      "all_off": "Alles aus"
+    },
+    "climate": {
+      "outside": "Aussen"
+    },
+    "air": {
+      "score": "Luftqualität",
+      "score_good": "gut",
+      "score_fair": "mässig",
+      "score_poor": "schlecht",
+      "co2_good": "gut",
+      "co2_soon": "bald lüften",
+      "co2_ventilate": "lüften",
+      "pm_good": "gut",
+      "pm_raised": "erhöht",
+      "pm_high": "hoch",
+      "index_normal": "normal",
+      "index_raised": "erhöht",
+      "index_high": "hoch"
+    },
+    "status": {
+      "awning": {
+        "open": "Ausgefahren",
+        "closed": "Eingefahren",
+        "opening": "Fährt aus",
+        "closing": "Fährt ein"
+      },
+      "door": {
+        "on": "Offen",
+        "off": "Geschlossen"
+      },
+      "lock": {
+        "locked": "Verriegelt",
+        "unlocked": "Entriegelt",
+        "unlocking": "Wird entriegelt",
+        "locking": "Wird verriegelt",
+        "jammed": "Blockiert"
+      }
+    }
+  },
+  "meta": {
+    "description": "Ein Wandtablet für Home Assistant. Ein Radar weckt es, sobald jemand den Raum betritt; dann zeigt es abwechselnd Raumklima, Luftqualität, Pflanzen, Fotos und den Zustand der Wohnung, zeigt, was der Player spielt, und blendet Musik, Markisen und Licht ein, wenn sich eine Hand dem Bildschirm nähert."
+  }
+}
