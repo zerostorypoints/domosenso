@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Markizy Somfy RTS wysuwasz i zwijasz z Home Assistanta. Mały węzeł radiowy działa jak jeszcze jeden pilot, więc pilot ręczny nadal działa, a Home Assistant widzi jego polecenia. Odczytywany jest też czujnik wiatru markiz, który pokazuje, kiedy markizy zwinęły się same.",
+    "description": "Markizy Somfy RTS wysuwasz i zwijasz z Home Assistanta. Mały węzeł radiowy działa jak jeszcze jeden pilot, więc pilot ręczny nadal działa, a Home Assistant widzi jego polecenia. Odczytywany jest też czujnik wiatru markiz, który pokazuje, kiedy markizy zwinęły się same. O zachodzie słońca markizy się zwijają, a gdy czujnik wiatru milczy od kilku dni, przychodzi powiadomienie.",
     "devices": {
       "cc1101": {
         "description": "Moduł transceivera radiowego na pasma poniżej gigaherca, połączony z płytką ESP32 przez SPI.",
