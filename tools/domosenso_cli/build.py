@@ -215,11 +215,12 @@ def write_outputs(
 ) -> list[tuple[str, str]]:
     """Write `outputs`; returns `("write"|"same"|"dev", dest)` per file. Nothing is written when any file is refused.
 
-    `dev` (a `--catalog-dev` render, whose files the lock does not describe) skips the hand-edit check
-    for this component's files, so that a second dev render can replace the first, and accepts a
-    differing file with no lock record when its first line is this component's own dirty stamp.
-    Ownership by another component and other unmanaged differing files are still refused. A dev
-    render that replaces a file differing from the lock reports `dev` instead of `write`."""
+    A differing file with no lock record is replaced when its first line is this component's own dirty
+    stamp (a `--catalog-dev` render a tag now supersedes); other unmanaged differing files are refused.
+    `dev` (a `--catalog-dev` render, whose files the lock does not describe) also skips the hand-edit
+    check for this component's files, so that a second dev render can replace the first, and reports
+    `dev` instead of `write` for a file it replaces that differs from the lock. Ownership by another
+    component is always refused."""
     entry = lock.components.get(cid)
     records = entry.files if entry else {}
     plan: list[tuple[str, Output]] = []
@@ -242,9 +243,9 @@ def write_outputs(
                 record = records.get(output.dest)
                 off_lock = record is None or sha256(current) != record.sha256
                 if not force:
-                    if record is None and not (dev and _own_dirty_stamp(current, cid)):
+                    if record is None and not _own_dirty_stamp(current, cid):
                         raise DomosensoError(f"not managed, differs: {output.dest}")
-                    if not dev and off_lock:
+                    if not dev and record is not None and off_lock:
                         raise DomosensoError(f"hand-edited: {output.dest}")
                 if dev and off_lock:
                     action = "dev"
@@ -258,6 +259,13 @@ def write_outputs(
             except OSError as exc:
                 raise DomosensoError(f"cannot write {output.dest}: {exc.strerror or exc}") from exc
     return [(action, output.dest) for action, output in plan]
+
+
+def file_sha(path: Path) -> str:
+    try:
+        return sha256(path.read_bytes())
+    except OSError as exc:
+        raise DomosensoError(f"cannot read {path}: {exc.strerror or exc}") from exc
 
 
 def _own_dirty_stamp(content: bytes, cid: str) -> bool:

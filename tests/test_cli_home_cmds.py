@@ -1,4 +1,5 @@
 """`domosenso init`, `add`, `update` and `status` against a temporary catalog repository and home."""
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -186,17 +187,59 @@ def test_instance_files_are_the_homes_after_add(added, capsys):
     assert Lock.load(added).components["panel"].files[f"{HA}/local.yaml"] == before
 
 
-def test_add_refuses_existing_instance(home, capsys):
+def test_add_refuses_existing_instance(home, catalog, capsys):
+    """A `--catalog-dev` add never overwrites an instance file; nothing of the refused add is left."""
     (home / HA).mkdir(parents=True)
     (home / HA / "local.yaml").write_text("the home's own\n")
-    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    code, out = run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)
     assert code == 1
     assert out.splitlines()[-1] == f"FAIL instance file exists: {HA}/local.yaml"
     assert (home / HA / "local.yaml").read_text() == "the home's own\n"
     assert yaml.safe_load((home / "domosenso.yaml").read_text())["components"] == {}
     assert Lock.load(home).components == {}
-    assert not (home / "domosenso/panel.inputs.yaml").exists()  # nothing of a refused add is left
+    assert not (home / "domosenso/panel.inputs.yaml").exists()
     assert not (home / HA / "packages").exists()
+
+
+def test_tagged_add_keeps_an_instance_file_the_lock_does_not_record(home, catalog, capsys):
+    (home / HA).mkdir(parents=True)
+    (home / HA / "local.yaml").write_text("the home's own, edited\n")
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert f"instance-kept {HA}/local.yaml" in out.splitlines()
+    assert (home / HA / "local.yaml").read_text() == "the home's own, edited\n"
+    record = Lock.load(home).components["panel"].files[f"{HA}/local.yaml"]
+    assert record.layer == "instance"
+    assert record.sha256 == hashlib.sha256(b"the home's own, edited\n").hexdigest()
+    assert (home / HA / "packages/panel.yaml").is_file()
+
+
+def test_tagged_add_after_dev_add_supersedes_it(home, catalog, capsys):
+    code, out = run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)
+    assert code == 0, out
+    assert (home / HA / "local.yaml").read_text() == "owned_by_home: demo\n"  # a dev add renders instance files too
+    assert Lock.load(home).components == {}
+    (home / HA / "local.yaml").write_text("owned_by_home: edited\n")
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert f"instance-kept {HA}/local.yaml" in out.splitlines()
+    assert "-dirty" not in (home / HA / "packages/panel.yaml").read_text().splitlines()[0]
+    entry = Lock.load(home).components["panel"]
+    assert entry.files[f"{HA}/local.yaml"].layer == "instance"
+    assert (home / HA / "local.yaml").read_text() == "owned_by_home: edited\n"
+    assert {r.layer for p, r in entry.files.items() if p != f"{HA}/local.yaml"} == {"managed"}
+    assert f"{HA}/dashboards/panel.de.yaml" in entry.files and f"{HA}/www/domosenso/panel/1.0.0/cards/panel-card.js" in entry.files
+
+
+def test_failed_tagged_add_leaves_no_lock_entry(home, catalog, capsys):
+    (home / HA / "packages").mkdir(parents=True)
+    (home / HA / "packages/panel.yaml").write_text("the home's own\n")  # unmanaged and differing: the render refuses
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == f"FAIL not managed, differs: {HA}/packages/panel.yaml"
+    assert Lock.load(home).components == {}
+    (home / HA / "packages/panel.yaml").unlink()
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)  # retry works: nothing says "already locked"
+    assert code == 0, out
 
 
 def test_add_keeps_an_inputs_file_the_home_prepared(home, capsys):
@@ -252,7 +295,6 @@ def test_add_catalog_dev_writes_no_lock_entry(home, catalog, capsys):
     assert Lock.load(home).components == {}
     package = (home / HA / "packages/panel.yaml").read_text()
     assert package.startswith("# Rendered by Domosenso from panel/1.0.0 (") and "-dirty)" in package.splitlines()[0]
-    assert not (home / HA / "local.yaml").exists()  # instance files come with a tagged add
 
 
 # --- update -----------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 
 from domosenso_cli.build import (
-    file_records, git_short_head, load_manifest, open_catalog, plan_outputs, resource_urls, sha256, write_outputs,
+    file_records, file_sha, git_short_head, load_manifest, open_catalog, plan_outputs, resource_urls, write_outputs,
 )
 from domosenso_cli.catalog import dev_dir
 from domosenso_cli.errors import DomosensoError
@@ -87,13 +87,6 @@ def apply_component(
     }
     locked.resources = resource_urls(component_dir)
     lock.save(home.root)  # per component: files already written stay described if a later one fails
-
-
-def file_sha(path: Path) -> str:
-    try:
-        return sha256(path.read_bytes())
-    except OSError as exc:
-        raise DomosensoError(f"cannot read {path}: {exc.strerror or exc}") from exc
 
 
 def _remove(home: HomeConfig, dest: str) -> None:

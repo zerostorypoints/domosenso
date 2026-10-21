@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import yaml
 
 from domosenso_cli.build import (
-    file_records, load_manifest, open_catalog, parse_spec, plan_outputs, sha256,
+    file_records, file_sha, git_short_head, load_manifest, open_catalog, parse_spec, plan_outputs,
 )
 from domosenso_cli.catalog import SEMVER, TagMoved, dev_dir
 from domosenso_cli.cmd_render import apply_component, render_ids
@@ -26,7 +26,7 @@ from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HOME_FILE, ComponentEntry, HomeConfig
 from domosenso_cli.lock import LOCK_FILE, Lock, LockEntry
 from domosenso_cli.report import Reporter
-from domosenso_cli.upgrade_notes import sections_between
+from domosenso_cli.upgrade_notes import sections_between, version_key
 
 COMPONENT_ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 CONFIGURATION = "configuration.yaml"
@@ -113,7 +113,7 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("spec", metavar="<id>@<version>", help="the component and the tag to start from")
     parser.add_argument("--catalog-dev", type=Path, metavar="<path>",
                         help="read the component from a catalog working tree (the version is then optional): "
-                             "dirty stamp, no lock entry, no instance files")
+                             "dirty stamp, no lock entry")
 
 
 def _add_run(args: argparse.Namespace, rep: Reporter) -> int:
@@ -150,7 +150,9 @@ def _add_run(args: argparse.Namespace, rep: Reporter) -> int:
     if made_inputs:
         _write(entry.inputs, inputs_skeleton(manifest, cid, version), inputs_rel)
     try:
-        instance = [] if dev else _instance_outputs(home, entry, component_dir, version, commit)
+        instance = _instance_outputs(
+            home, lock, entry, component_dir, version, git_short_head(dev) if dev else commit, dev is not None
+        )
     except BaseException:
         if made_inputs:
             entry.inputs.unlink(missing_ok=True)
@@ -162,25 +164,38 @@ def _add_run(args: argparse.Namespace, rep: Reporter) -> int:
         rep.line("write", HOME_FILE)
     rep.line("write" if made_inputs else "keep", inputs_rel)
     for output in instance:
-        _write(home.root / output.dest, output.content.decode("utf-8"), output.dest)
-        rep.line("instance", output.dest)
+        if os.path.lexists(home.root / output.dest):
+            rep.line("instance-kept", output.dest)  # the home's already: kept as it is, and recorded in the lock
+        else:
+            _write(home.root / output.dest, output.content.decode("utf-8"), output.dest)
+            rep.line("instance", output.dest)
     home = HomeConfig.load(args.home)  # now with the component in it
     if dev:
         render_ids(home, lock, [cid], False, dev, rep)
         return rep.ok()
+    # The entry exists in memory only until `apply_component` has written everything and saved the
+    # lock: a failed add leaves no lock entry, so it can be retried.
     lock.components[cid] = LockEntry(
         version=version, tag=f"{cid}/{version}", commit=commit, files=file_records(home, instance),
     )
-    lock.save(args.home)
     apply_component(home, lock, cid, component_dir, version, commit, False, rep)
     return rep.ok()
 
 
-def _instance_outputs(home: HomeConfig, entry: ComponentEntry, component_dir: Path, version: str, commit: str) -> list:
-    outputs = plan_outputs(home, entry, component_dir, version, commit, instance=True)
+def _instance_outputs(
+    home: HomeConfig, lock: Lock, entry: ComponentEntry, component_dir: Path, version: str, sha: str, dev: bool
+) -> list:
+    """The component's `templates/instance/**` as rendered with the home's inputs. A file that exists
+    is refused for a `--catalog-dev` add; for a tagged add it is the home's own and stays (unless
+    another component's lock entry owns it)."""
+    outputs = plan_outputs(home, entry, component_dir, version, sha, instance=True, dirty=dev)
     instance = [o for o in outputs if o.layer == "instance"]
     for output in instance:
-        if os.path.lexists(home.root / output.dest):
+        other = lock.owner(output.dest)
+        if other is not None:
+            raise DomosensoError(f"owned by {other}: {output.dest}")
+        path = home.root / output.dest
+        if os.path.lexists(path) and (dev or not path.is_file()):
             raise DomosensoError(f"instance file exists: {output.dest}")
     return instance
 
@@ -268,10 +283,6 @@ def _update_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--force", action="store_true", help="overwrite or remove hand-edited and unmanaged files")
 
 
-def _version_key(version: str) -> tuple[int, int, int]:
-    return tuple(map(int, version.split(".")))  # type: ignore[return-value]
-
-
 def _update_run(args: argparse.Namespace, rep: Reporter) -> int:
     cid = args.id
     home = HomeConfig.load(args.home)
@@ -297,7 +308,7 @@ def _update_run(args: argparse.Namespace, rep: Reporter) -> int:
     if target == locked.version:
         rep.line("current", cid, target)
         return rep.ok()
-    if _version_key(target) < _version_key(locked.version):
+    if version_key(target) < version_key(locked.version):
         raise DomosensoError(f"{cid}: {target} is older than the locked {locked.version}")
     commit = catalog.tag_commit(cid, target)
     component_dir = catalog.checkout(cid, target, commit)
@@ -370,7 +381,7 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
                 if record is not None and record.layer == "instance":
                     kind = "instance"
                 elif record is not None:
-                    kind = "managed" if _file_sha(path) == record.sha256 else "managed-modified"
+                    kind = "managed" if file_sha(path) == record.sha256 else "managed-modified"
                 elif _matches(local, *names_to_try):
                     kind = "local"
                 elif (
@@ -383,13 +394,6 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
                     kind = "unclassified"
                 result[from_root] = kind
     return result
-
-
-def _file_sha(path: Path) -> str:
-    try:
-        return sha256(path.read_bytes())
-    except OSError as exc:
-        raise DomosensoError(f"cannot read {path}: {exc.strerror or exc}") from exc
 
 
 def _status_run(args: argparse.Namespace, rep: Reporter) -> int:

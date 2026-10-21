@@ -13,7 +13,7 @@ def sections_between(upgrade_md: str, old: str, new: str) -> list[str]:
     A section runs from its heading to the next `## ` heading, so its `###` subsections belong to it;
     a `## ` line inside a code fence does not start one, and a `## ` heading that is not a version
     (`## Unreleased`) ends the section before it and is not returned."""
-    low, high = _key(old), _key(new)
+    low, high = version_key(old), version_key(new)
     found: list[tuple[tuple[int, int, int], str]] = []
     key: tuple[int, int, int] | None = None
     block: list[str] = []
@@ -37,5 +37,5 @@ def sections_between(upgrade_md: str, old: str, new: str) -> list[str]:
     return [text for _, text in sorted(found, key=lambda item: item[0], reverse=True)]
 
 
-def _key(version: str) -> tuple[int, int, int]:
+def version_key(version: str) -> tuple[int, int, int]:
     return tuple(map(int, version.split(".")))  # type: ignore[return-value]
