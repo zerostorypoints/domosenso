@@ -1,0 +1,5 @@
+{
+  "meta": {
+    "description": "A full Home Assistant backup every night and again after a start when the newest one is too old, a retention that keeps the newest few plus one per recent week, sensors for the newest backup's age, the number of backups and the folder's size, and a notification when backups stop."
+  }
+}

@@ -13,7 +13,7 @@ REPO = Path(__file__).resolve().parent.parent
 DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
-COMPONENTS = ["awnings", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "weather"]
+COMPONENTS = ["awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "weather"]
 DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315"]
 
 # id -> (time, tablet)

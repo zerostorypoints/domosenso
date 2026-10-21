@@ -1,0 +1,4 @@
+# The values the demo home supplies to the backup component (its `inputs:` in component.yaml).
+# Everything but the recipient has a default; the demo keeps one copy a day longer than the default.
+keep_daily: 8
+notify: notify.mobile_app_alex_phone

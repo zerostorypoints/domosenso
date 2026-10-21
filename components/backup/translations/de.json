@@ -1,0 +1,5 @@
+{
+  "meta": {
+    "description": "Jede Nacht eine vollständige Sicherung von Home Assistant, nach einem Start eine weitere, wenn die neueste zu alt ist, eine Aufbewahrung, die die neuesten und je eine aus den letzten Wochen behält, Sensoren für das Alter der neuesten Sicherung, die Anzahl der Sicherungen und die Grösse des Ordners, und eine Benachrichtigung, wenn keine Sicherungen mehr entstehen."
+  }
+}
