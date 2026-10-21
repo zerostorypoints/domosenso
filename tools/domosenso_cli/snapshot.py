@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -37,6 +38,7 @@ HELPER_DOMAINS = {
 }
 HELPER_KEYS = ("options", "min", "max", "step", "mode", "has_date", "has_time", "duration")
 PROFILE_FILE = ".storage/frontend.user_data_{}"
+NO_CONFIG = re.compile(r"^[a-z_/]+: (not_found|config_not_found)\b")
 
 
 def canonical_sha(obj: Any) -> str:
@@ -51,12 +53,29 @@ def _state_class(state: str | None) -> str:
 
 async def _config_sha(ha: HA, type: str, unwrap: bool, **fields: Any) -> str | None:
     """The hash of one config (`result["config"]` when `unwrap`), or None when Home Assistant has
-    none to give: an automation that did not load, an auto-generated dashboard."""
+    none to give: `not_found` for an automation or script it did not load (or a state posted over
+    the REST API with nothing behind it), `config_not_found` for an auto-generated dashboard. Any
+    other failure (a timeout) fails the snapshot rather than pass for a missing config."""
     try:
         result = await ha.call(type, **fields)
-    except DomosensoError:
-        return None
+    except DomosensoError as exc:
+        if NO_CONFIG.match(str(exc)):
+            return None
+        raise
     return canonical_sha(result.get("config") if unwrap and isinstance(result, dict) else result)
+
+
+async def _mqtt_discovered(ha: HA, registry: list[dict]) -> list[str]:
+    """Entity ids that MQTT discovery published, as `mqtt/device/debug_info` reports them per device:
+    a discovered entity carries its `discovery_data` (topic and payload), a YAML `mqtt:` entity attached
+    to the same device has it empty. A discovered entity with no device is not found this way and
+    stays counted as from files."""
+    devices = sorted({e["device_id"] for e in registry if e.get("platform") == "mqtt" and e.get("device_id")})
+    discovered: set[str] = set()
+    for device_id in devices:
+        info = await ha.call("mqtt/device/debug_info", device_id=device_id)
+        discovered |= {e["entity_id"] for e in (info or {}).get("entities", []) if e.get("discovery_data")}
+    return sorted(discovered)
 
 
 async def read_raw(ha: HA) -> dict[str, Any]:
@@ -74,6 +93,7 @@ async def read_raw(ha: HA) -> dict[str, Any]:
         if domain in ("automation", "script") and state.get("state") != "unavailable":
             configs[entity_id] = await _config_sha(ha, f"{domain}/config", True, entity_id=entity_id)
     raw["configs"] = configs
+    raw["mqtt_discovered"] = await _mqtt_discovered(ha, raw["registry"])
     panels = await ha.call("get_panels")
     dashboards = {}
     for url_path, panel in sorted(panels.items()):
@@ -95,6 +115,7 @@ async def read_raw(ha: HA) -> dict[str, Any]:
 def build(raw: dict[str, Any], kiosk_profiles: dict[str, dict] | None = None) -> dict:
     registry = {entry["entity_id"]: entry for entry in raw["registry"]}
     states = {state["entity_id"]: state for state in raw["states"]}
+    discovered = set(raw.get("mqtt_discovered", ()))
     entities, automations, scripts, helpers = {}, {}, {}, {}
     for entity_id in sorted(set(registry) | set(states)):
         reg, state = registry.get(entity_id), states.get(entity_id)
@@ -106,13 +127,15 @@ def build(raw: dict[str, Any], kiosk_profiles: dict[str, dict] | None = None) ->
             "platform": platform,
             "unique_id": reg.get("unique_id") if reg else None,
             "state_class": _state_class(value),
-            "from_files": reg is None or platform in FILE_PLATFORMS or not reg.get("config_entry_id"),
+            "from_files": entity_id not in discovered
+            and (reg is None or platform in FILE_PLATFORMS or not reg.get("config_entry_id")),
         }
         if domain in ("automation", "script"):
             (automations if domain == "automation" else scripts)[entity_id] = {
                 "id": attributes.get("id", object_id if domain == "script" else None),
                 "state": value or "unavailable",
-                "loaded": value not in (None, "unavailable"),
+                # A state with no config behind it (staging's mirror posts production's) is not loaded.
+                "loaded": value not in (None, "unavailable") and raw["configs"].get(entity_id) is not None,
                 "config_sha256": raw["configs"].get(entity_id),
                 "last_triggered": attributes.get("last_triggered"),
             }
