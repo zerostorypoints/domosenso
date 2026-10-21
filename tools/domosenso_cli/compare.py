@@ -34,7 +34,8 @@ COVERS = {
 class Diff:
     part: str
     id: str
-    # compare: only-in-a, only-in-b, config-differs, options-differ, not-loaded, unique-id-differs;
+    # compare: only-in-a, only-in-b, unavailable-in-a, unavailable-in-b, config-differs,
+    # options-differ, not-loaded, unique-id-differs;
     # verify adds its own (see verify.py).
     kind: str
     detail: str = ""
@@ -65,6 +66,23 @@ def _presence(part: str, a: dict, b: dict) -> list[Diff]:
 
 def _differing(a: dict, b: dict, keys) -> list[str]:
     return [key for key in keys if a.get(key) != b.get(key)]
+
+
+def _entities(a: dict[str, dict], b: dict[str, dict]) -> list[Diff]:
+    """Presence, and availability: an entity both sides define that only one side has unavailable.
+    A package Home Assistant refused keeps its registry entries, so its ids and unique_ids still match;
+    only its entities' `unavailable` gives it away. `unknown` (a value still to come, as for the
+    `after_restart: unknown` entries) is not unavailable."""
+    out = _presence("entities", a, b)
+    for eid in sorted(set(a) & set(b)):
+        if eid.split(".", 1)[0] in ("automation", "script"):
+            continue  # their own parts report them as not-loaded
+        down_a, down_b = a[eid]["state_class"] == "unavailable", b[eid]["state_class"] == "unavailable"
+        if down_a != down_b:
+            where = "a" if down_a else "b"
+            other = "b" if down_a else "a"
+            out.append(Diff("entities", eid, f"unavailable-in-{where}", f"available in {other}, unavailable in {where}"))
+    return sorted(out, key=lambda d: d.id)
 
 
 def _unique_ids(a: dict[str, dict], b: dict[str, dict]) -> list[Diff]:
@@ -101,7 +119,9 @@ def _runnables(part: str, a: dict, b: dict) -> list[Diff]:
             what.append(f"id {ra['id']} → {rb['id']}")
         if ra["config_sha256"] != rb["config_sha256"]:
             what.append("config")
-        if ra["state"] != rb["state"]:
+        # An automation's on / off is whether it is enabled; a script's is whether it is running right
+        # now (a loop started a minute after the restart), so only automations compare it.
+        if part == "automations" and ra["state"] != rb["state"]:
             what.append(f"state {ra['state']} → {rb['state']}")
         if what:
             out.append(Diff(part, eid, "config-differs", ", ".join(what)))
@@ -141,7 +161,7 @@ def diff(a: dict, b: dict) -> list[Diff]:
     """Every difference between snapshots `a` and `b`, in PARTS order, sorted by id within a part."""
     ea, eb = _from_files(a, b), _from_files(b, a)
     return [
-        *_presence("entities", ea, eb),
+        *_entities(ea, eb),
         *_unique_ids(ea, eb),
         *_runnables("automations", a["automations"], b["automations"]),
         *_runnables("scripts", a["scripts"], b["scripts"]),

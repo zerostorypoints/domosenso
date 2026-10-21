@@ -349,3 +349,59 @@ def test_config_entry_names_its_file(tmp_path, capsys):
     # The entry names other.yaml: hall.yaml's new commit does not concern it.
     assert compare_with_config_entry(tmp_path, home, reviewed, ", file: packages/other.yaml") == 0
     capsys.readouterr()
+
+
+def test_entity_unavailable_on_one_side_reported():
+    """A package Home Assistant refused leaves its registry entries: same ids and unique_ids on both
+    sides, but every entity of it is unavailable on that side."""
+    b = base()
+    b["entities"]["sensor.office_comfort"]["state_class"] = "unavailable"
+    [d] = diff(base(), b)
+    assert (d.part, d.id, d.kind, d.detail) == ("entities", "sensor.office_comfort", "unavailable-in-b",
+                                                "available in a, unavailable in b")
+    a = base()
+    a["entities"]["input_select.house_mode"]["state_class"] = "unavailable"
+    assert kinds(diff(a, base())) == [("entities", "input_select.house_mode", "unavailable-in-a")]
+
+
+def test_unknown_or_unavailable_on_both_sides_not_reported():
+    a, b = base(), base()
+    b["entities"]["sensor.office_comfort"]["state_class"] = "unknown"  # e.g. an after_restart: unknown entity
+    assert diff(a, b) == []
+    a["entities"]["sensor.office_comfort"]["state_class"] = "unavailable"
+    b["entities"]["sensor.office_comfort"]["state_class"] = "unavailable"
+    assert diff(a, b) == []
+
+
+def test_availability_of_integration_and_mirrored_entities_not_compared():
+    a, b = base(), base()
+    b["entities"]["sensor.living_room_temperature"]["state_class"] = "unavailable"  # an integration's
+    assert diff(a, b) == []
+    b["entities"]["sensor.living_room_temperature"] = entity("sensor", None, state_class="unavailable")  # mirrored
+    assert diff(a, b) == []
+
+
+def test_unavailable_explained_by_ignore():
+    b = base()
+    b["entities"]["sensor.office_comfort"]["state_class"] = "unavailable"
+    entry = {"part": "entities", "id": "sensor.office_comfort", "kind": "ignore", "reason": "no broker on staging"}
+    assert explain(diff(base(), b), [entry], None) == ([], [])
+
+
+def test_script_run_state_not_compared():
+    """A loop script is `on` while it runs; a snapshot right after a restart may catch it before it starts."""
+    a, b = base(), base()
+    a["scripts"]["script.ambient_loop"] = {"id": "ambient_loop", "state": "on", "loaded": True,
+                                           "config_sha256": SHA_A, "last_triggered": None}
+    b["scripts"]["script.ambient_loop"] = dict(a["scripts"]["script.ambient_loop"], state="off")
+    assert diff(a, b) == []
+    b["scripts"]["script.ambient_loop"]["config_sha256"] = SHA_B
+    [d] = diff(a, b)
+    assert (d.part, d.kind, d.detail) == ("scripts", "config-differs", "config")
+
+
+def test_unavailable_automation_reported_once():
+    b = base()
+    b["entities"]["automation.hall_light"]["state_class"] = "unavailable"
+    b["automations"]["automation.hall_light"].update(state="unavailable", loaded=False, config_sha256=None)
+    assert kinds(diff(base(), b)) == [("automations", "automation.hall_light", "not-loaded")]
