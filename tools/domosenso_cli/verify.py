@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import posixpath
 import re
+from fnmatch import fnmatchcase
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,7 +41,10 @@ LOG_SOURCES = (
 LANG_FILE = re.compile(r"\.([a-z]{2})\.ya?ml$")
 
 
-def _runnables(part: str, base: dict, now: dict) -> list[Diff]:
+def _runnables(part: str, base: dict, now: dict, compare_state: bool = True) -> list[Diff]:
+    """Loaded or not, and for automations their on/off (a switched-off automation is a failure). A
+    script's on/off only says whether it is running right now, so scripts are checked for loading
+    only, as `compare` does."""
     out = []
     for eid, was in sorted(base.items()):
         if not was["loaded"]:
@@ -48,7 +52,7 @@ def _runnables(part: str, base: dict, now: dict) -> list[Diff]:
         cur = now.get(eid)
         if cur is None or not cur["loaded"]:
             out.append(Diff(part, eid, "not-loaded", "missing" if cur is None else f"state {cur['state']}"))
-        elif cur["state"] != was["state"]:
+        elif compare_state and cur["state"] != was["state"]:
             out.append(Diff(part, eid, "state-changed", f"{was['state']} → {cur['state']}"))
     return out
 
@@ -61,7 +65,7 @@ def _entities(base: dict, now: dict, may_be_unknown: set[str]) -> list[Diff]:
         cur = now.get(eid)
         if cur is None:
             out.append(Diff("entities", eid, "newly-unavailable", "missing"))
-        elif cur["state_class"] == "unknown" and eid in may_be_unknown:
+        elif cur["state_class"] == "unknown" and any(fnmatchcase(eid, pattern) for pattern in may_be_unknown):
             continue
         elif cur["state_class"] != "available":
             out.append(Diff("entities", eid, "newly-unavailable", cur["state_class"]))
@@ -183,7 +187,7 @@ async def check(
     states = {s["entity_id"]: s for s in raw["states"]}
     diffs = [
         *_runnables("automations", baseline["automations"], current["automations"]),
-        *_runnables("scripts", baseline["scripts"], current["scripts"]),
+        *_runnables("scripts", baseline["scripts"], current["scripts"], compare_state=False),
         *_entities(baseline["entities"], current["entities"], may_be_unknown),
         *_log(current["errors"]),
         *await _resources(ha, current["resources"]),
