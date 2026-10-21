@@ -150,8 +150,8 @@ async def take(ha: HA, kiosk_profiles: dict[str, dict] | None = None) -> dict:
 
 
 def profile_language(raw: bytes | None) -> str | None:
-    """The language in a `frontend.user_data_<id>` file. **(inference)** The frontend stores it as
-    `data.language.language`; a plain string under `data.language` is accepted as well."""
+    """The language in a `frontend.user_data_<id>` file. Home Assistant 2026.9.2 stores it as
+    `data.language.language` (verified on staging); a plain string under `data.language` is accepted as well."""
     if not raw:
         return None
     try:
