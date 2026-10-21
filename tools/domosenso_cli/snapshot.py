@@ -67,14 +67,15 @@ async def _config_sha(ha: HA, type: str, unwrap: bool, **fields: Any) -> str | N
 
 async def _mqtt_discovered(ha: HA, registry: list[dict]) -> list[str]:
     """Entity ids that MQTT discovery published, as `mqtt/device/debug_info` reports them per device:
-    a discovered entity carries its `discovery_data` (topic and payload), a YAML `mqtt:` entity attached
-    to the same device has it empty. A discovered entity with no device is not found this way and
+    a discovered entity carries its `discovery_data` with the discovery topic; a YAML `mqtt:` entity
+    attached to the same device has it empty or, as on Home Assistant 2026.9.2, with an empty `topic`
+    (`{"topic": "", "payload": ""}`, seen on production's YAML covers 2026-10-21). A discovered entity with no device is not found this way and
     stays counted as from files."""
     devices = sorted({e["device_id"] for e in registry if e.get("platform") == "mqtt" and e.get("device_id")})
     discovered: set[str] = set()
     for device_id in devices:
         info = await ha.call("mqtt/device/debug_info", device_id=device_id)
-        discovered |= {e["entity_id"] for e in (info or {}).get("entities", []) if e.get("discovery_data")}
+        discovered |= {e["entity_id"] for e in (info or {}).get("entities", []) if (e.get("discovery_data") or {}).get("topic")}
     return sorted(discovered)
 
 
