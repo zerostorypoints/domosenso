@@ -242,6 +242,20 @@ def test_local_docker_config_is_resolved_against_the_root(tmp_path):
     assert HomeConfig.load(tmp_path).targets["staging"].config == Path("/abs/config")
 
 
+def test_token_file_is_resolved_against_the_root(tmp_path, monkeypatch):
+    root = tmp_path / "home"
+    root.mkdir()
+    (tmp_path / "elsewhere").mkdir()
+    monkeypatch.chdir(tmp_path / "elsewhere")
+    write_home(root, HOME_YAML.replace("token_file: ~/.secrets/staging.token", "token_file: staging/token"))
+    home = HomeConfig.load(root)
+    assert home.targets["staging"].token_file == root / "staging/token"
+    # ~ still expands to the home directory
+    assert home.targets["production"].token_file == Path.home() / ".secrets/production.token"
+    write_home(root, HOME_YAML.replace("token_file: ~/.secrets/staging.token", "token_file: /abs/token"))
+    assert HomeConfig.load(root).targets["staging"].token_file == Path("/abs/token")
+
+
 BAD_PATHS = ["/etc/passwd", "../outside.yaml", "a/../../b.yaml", "a/..", ".."]
 
 
