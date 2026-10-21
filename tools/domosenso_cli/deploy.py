@@ -7,7 +7,8 @@ no longer has is removed. Nothing else is written or deleted: a file on the targ
 `local:` glob but is in neither the repository nor the record is an orphan, and blocks `apply` until
 it is named in `remove_orphans`; `unmanaged_on_target` and the files Home Assistant keeps for itself
 (`secrets.yaml`, `.storage/`, the recorder database) are never touched. `configuration.yaml` is the
-home's instance file: when a `local:` glob names it, it is copied like any other declared file.
+home's instance file: carried whenever the repository has it, whatever the globs say, and never an
+orphan or a removal (a repository without it means "keep the target's").
 
 `apply` backs up every file it will replace or remove (and the resource list) before it writes, on
 the target and in the home, and puts the backup back itself when the copy, check_config or the
@@ -49,6 +50,7 @@ PRODUCTION = "production"
 # Files Home Assistant keeps for itself: no command writes them, whatever a `local:` glob says.
 NEVER_CARRIED = {"secrets.yaml"}
 NEVER_CARRIED_PREFIXES = (TOOL_DIR, ".storage/", "home-assistant_v2.db")
+CONFIGURATION = "configuration.yaml"  # carried when the repository has one; never deleted from a target
 # Home Assistant serves these without a restart (YAML dashboards are read when they load).
 NO_RESTART_PREFIXES = ("www/", "dashboards/")
 CHECK_CONFIG = ["python3", "-m", "homeassistant", "--script", "check_config", "-c", "/config", "--json"]
@@ -103,6 +105,11 @@ def _untouchable(home: HomeConfig, path: str) -> bool:
     return _never(path) or bool(match_globs([path], home.unmanaged_on_target))
 
 
+def _kept(home: HomeConfig, path: str) -> bool:
+    """Never planned as a removal or an orphan."""
+    return path == CONFIGURATION or _untouchable(home, path)
+
+
 def _dirty(path: Path, cid: str | None = None) -> bool:
     with path.open("rb") as f:
         first = f.readline().decode("utf-8", "replace")
@@ -133,6 +140,10 @@ def _carried(home: HomeConfig, lock: Lock) -> tuple[dict[str, dict], dict[str, P
                 dirty.append(rel)
             record[rel] = {"sha256": digest, "layer": locked.layer, "component": cid}
             sources[rel] = source
+    configuration = home.config_dir / CONFIGURATION
+    if CONFIGURATION not in record and configuration.is_file() and not _untouchable(home, CONFIGURATION):
+        record[CONFIGURATION] = {"sha256": file_sha(configuration), "layer": "instance", "component": None}
+        sources[CONFIGURATION] = configuration
     for rel in _local_files(home):
         if rel in record or _untouchable(home, rel):
             continue
@@ -179,15 +190,17 @@ def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: li
     record, sources, dirty = _carried(home, lock)
     previous = read_record(io)
     recorded = previous["files"] if previous else {}
-    stale = sorted(p for p in recorded if p not in record and not _untouchable(home, p))
-    there = io.hashes(sorted(set(record) | set(stale)))
+    stale = sorted(p for p in recorded if p not in record and not _kept(home, p))
+    there = io.hashes(sorted(set(record) | set(stale) | {CONFIGURATION}))
     add = sorted(p for p in record if there[p] is None)
     change = sorted(p for p in record if there[p] not in (None, record[p]["sha256"]))
     remove = [p for p in stale if there[p] is not None]
     keep = {p for p in record if there[p] == record[p]["sha256"]}
     listed = io.glob(home.local) if home.local else []
-    orphan = sorted(p for p in listed if p not in record and p not in recorded and not _untouchable(home, p))
-    keep |= {p for p in listed if _untouchable(home, p)}
+    orphan = sorted(p for p in listed if p not in record and p not in recorded and not _kept(home, p))
+    keep |= {p for p in listed if _kept(home, p) and p not in record}
+    if CONFIGURATION not in record and there[CONFIGURATION] is not None:
+        keep.add(CONFIGURATION)  # not carried: the target's own stays as it is
     if home.unmanaged_on_target:
         keep |= set(io.glob(home.unmanaged_on_target))
     keep = sorted(p for p in keep if not p.startswith(TOOL_DIR))
@@ -428,7 +441,10 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         if current is None:
             raise DomosensoError(f"{path} vanished from the target while it was backed up: nothing was deployed")
         files[path] = current
-    previous_id = json.loads(files[RECORD]).get("deploy_id") if RECORD in files else None
+    try:
+        previous_id = json.loads(files[RECORD])["deploy_id"] if RECORD in files else None
+    except (ValueError, TypeError, KeyError) as e:
+        raise DomosensoError(f"target record changed or unreadable: re-run --plan ({e!r})") from e
     backup = Backup(files, added, await ha.call("lovelace/resources"), {
         "deploy_id": deploy_id, "previous_deploy_id": previous_id,
         "target": target, "hash": plan.hash, "add": plan.add, "change": plan.change,

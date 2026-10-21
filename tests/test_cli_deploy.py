@@ -691,7 +691,7 @@ def test_rollback_refuses_a_record_with_a_malformed_deploy_id(tmp_path):
 
 def test_configuration_yaml_is_carried(tmp_path):
     """The home's own configuration.yaml: copied like any declared file, never generated or edited."""
-    home = Home(tmp_path, local=("*.yaml",), unmanaged=())
+    home = Home(tmp_path, local=("packages/*.yaml",), unmanaged=())  # no glob names it
     home.write("configuration.yaml", "homeassistant: {packages: !include_dir_named packages}\n")
     target = FakeTarget(home.target_dir, check_output=CLEAN)
     on_target(target, "configuration.yaml", "homeassistant: {}\n")
@@ -700,7 +700,9 @@ def test_configuration_yaml_is_carried(tmp_path):
     assert ["change", "configuration.yaml"] in deploy.plan_lines(plan)
     run_apply(home, target, Resources([]).ha(), plan)
     assert (home.target_dir / "configuration.yaml").read_text() == "homeassistant: {packages: !include_dir_named packages}\n"
-    assert record(home.target_dir)["files"]["configuration.yaml"]["layer"] == "local"
+    assert record(home.target_dir)["files"]["configuration.yaml"] == {
+        "sha256": sha256(b"homeassistant: {packages: !include_dir_named packages}\n"), "layer": "instance",
+        "component": None}
     again = plan_for(home, target)
     assert again.change == [] and again.add == [] and "configuration.yaml" in again.keep
 
@@ -824,3 +826,40 @@ def test_equal_files_without_a_record_still_write_the_record(tmp_path):
     deploy_id = run_apply(home, target, Resources([]).ha(), plan)
     assert record(home.target_dir)["deploy_id"] == deploy_id
     assert target.restarts == 0  # only the record changed
+
+
+def test_target_configuration_yaml_is_never_an_orphan(tmp_path):
+    """A broad glob and no repository copy: the target's configuration.yaml is kept, not offered for deletion."""
+    home = Home(tmp_path, local=("*.yaml",), unmanaged=())
+    home.write("other.yaml", "x: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    on_target(target, "configuration.yaml", "homeassistant: {}\n")
+    plan = plan_for(home, target)
+    assert plan.orphan == [] and "configuration.yaml" in plan.keep
+    with pytest.raises(DomosensoError, match="not an orphan: configuration.yaml"):
+        run_apply(home, target, Resources([]).ha(), plan, ["configuration.yaml"])
+    run_apply(home, target, Resources([]).ha(), plan)
+    assert (home.target_dir / "configuration.yaml").read_text() == "homeassistant: {}\n"
+
+
+def test_configuration_yaml_dropped_from_the_repository_is_not_removed(tmp_path):
+    home = Home(tmp_path)
+    home.write("configuration.yaml", "homeassistant: {}\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    run_apply(home, target, Resources([]).ha(), plan_for(home, target))
+    assert "configuration.yaml" in record(home.target_dir)["files"]
+    (home.config / "configuration.yaml").unlink()
+    plan = plan_for(home, target)
+    assert plan.remove == [] and plan.orphan == [] and "configuration.yaml" in plan.keep
+
+
+def test_target_record_corrupted_after_the_plan_stops_before_the_backup(tmp_path):
+    home = Home(tmp_path)
+    home.write("packages/mine.yaml", "b: 1\n")
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    plan = plan_for(home, target)
+    target.put({deploy.RECORD: b"{not json"})
+    with pytest.raises(DomosensoError, match="target record changed or unreadable: re-run --plan"):
+        run_apply(home, target, Resources([]).ha(), plan)
+    assert not (home.root / ".domosenso").exists()
+    assert set(target_files(home.target_dir)) == {deploy.RECORD}
