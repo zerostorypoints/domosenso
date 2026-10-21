@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Philips-Hue-Lampen raumweise schalten und dimmen, über die Raumgruppen der Hue Bridge.",
+    "description": "Philips-Hue-Lampen raumweise schalten und dimmen, über die Raumgruppen der Hue Bridge. Ein Paket ergänzt pro Raum eine Leuchte, die nur dann als eingeschaltet gilt, wenn eine ihrer Lampen erreichbar und an ist: Ein Raum, dessen Lampen am Wandschalter den Strom verloren haben, zeigt aus. Dazu die Zahl der eingeschalteten Lampen und die schwächste Batterie des Hue-Zubehörs.",
     "devices": {
       "hue-bridge": {
         "description": "Die Zentrale, die Hue-Lampen und -Zubehör per Zigbee verbindet und im Heimnetz verfügbar macht.",

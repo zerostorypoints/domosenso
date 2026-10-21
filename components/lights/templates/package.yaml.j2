@@ -1,0 +1,95 @@
+[#
+  The lights component's Home Assistant package (SPEC-008): room lights that follow the bulbs, the
+  lights-on count and the lowest Hue battery. Rendered once per home (lang en) by
+  tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
+  Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set rooms = inputs.rooms | default([]) -%]
+[%- set batteries = inputs.battery_sensors | default([]) -%]
+[%- set open = '[' -%]
+# Hue lights, from the Domosenso catalog (component lights). Edit the inputs and render again rather
+# than editing this file.
+
+template:
+  - sensor:
+      - name: Lights on
+        unique_id: lights_on_count
+        icon: mdi:lightbulb-group
+        state_class: measurement
+        # Individual Hue bulbs that are on (room groups and zones excluded, and so are the room_*
+        # template lights below, which are not Hue entities).
+        state: >
+          {{ integration_entities('hue') | select('match', 'light\\.') | expand
+             | rejectattr('attributes.is_hue_group', 'eq', true)
+             | selectattr('state', 'eq', 'on')
+             | list | count }}
+        attributes:
+          component: lights
+[%- if batteries %]
+      - name: Hue lowest battery
+        unique_id: hue_lowest_battery
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        # Jinja's min filter has no result for an empty sequence and renders an empty string, which
+        # Home Assistant rejects as a sensor state. With every battery sensor unavailable at once (a
+        # Zigbee mesh falling apart does that) the list is empty, so report unknown instead.
+        state: >
+          {% set levels = [[ open ]][% for entity in batteries %]states('[[ entity ]]')[% if not loop.last %],
+                           [% endif %][% endfor %]]
+                          | reject('in', ['unknown', 'unavailable']) | map('int') | list %}
+          {{ levels | min if levels else 'unknown' }}
+        attributes:
+          component: lights
+[%- endif %]
+[%- if rooms %]
+
+  # Room lights as they really are. Where lights are switched at the wall, the switch cuts the
+  # bulbs' power: they drop off the Zigbee mesh and go unavailable, and the bridge's grouped light
+  # keeps the state it had when they went, "on" all night with every bulb dead. Polling would not
+  # help: Home Assistant already follows the bridge's event stream, and the group's state is what the
+  # bridge sends.
+  #
+  # Each light here mirrors one Hue room and counts as on only while one of its bulbs is reachable
+  # and on; a room whose bulbs have all lost power is off. Commands go to the Hue group, so the
+  # bridge still switches the room in one Zigbee broadcast. Unavailable only when the group is, i.e.
+  # when the bridge cannot be reached.
+  - light:
+[%- for room in rooms %]
+[%- set g = room.group %]
+[%- set id = room.id | default(g.split('.', 1)[1]) %]
+      - name: [[ room.name | yaml ]]
+        unique_id: room_[[ id ]]
+        default_entity_id: light.room_[[ id ]]
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('[[ g ]]') }}"
+        state: >-
+          {{ expand(state_attr('[[ g ]]', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('[[ g ]]', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('[[ g ]]', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('[[ g ]]', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('[[ g ]]', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: [[ g ]]}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: [[ g ]]}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: [[ g ]]}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: [[ g ]]}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+[%- endfor %]
+[%- endif %]

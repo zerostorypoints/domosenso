@@ -1,0 +1,14 @@
+# The values the demo home supplies to the lights component (its `inputs:` in component.yaml). The
+# Hue room groups are the Ramka's lights; the Kids' room keeps a shorter id, and two accessories
+# report a battery.
+rooms:
+  - {group: light.living_room, name: Living room}
+  - {group: light.dining, name: Dining}
+  - {group: light.kitchen, name: Kitchen}
+  - {group: light.office, name: Office}
+  - {group: light.bedroom, name: Bedroom}
+  - {group: light.kids_room, name: Kids' room, id: kids}
+  - {group: light.hall, name: Hall}
+battery_sensors:
+  - sensor.hall_motion_sensor_battery
+  - sensor.living_room_dimmer_switch_battery

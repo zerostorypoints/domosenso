@@ -19,3 +19,14 @@ What a home needs to know beyond `component.yaml`.
   home's owner before reading it.
 - If Zigbee interference is suspected, pick a channel clear of the Wi-Fi in use (with Wi-Fi on 1, 6
   and 11, Zigbee 25).
+
+## The package (0.2.0)
+
+- **Room lights.** `light.room_<id>` per entry of `rooms`, with `default_entity_id` pinned, so the
+  id does not follow the name. `<id>` is the group's object id unless the entry sets `id`. The
+  dashboards should show these, not the Hue groups.
+- **Brightness and colour temperature** come from the group; `set_temperature` passes the brightness
+  along when a call sets both.
+- **All off:** the bridge accepts about one command per second per group, so switching many rooms
+  at once is better done with one Hue scene (the `lights_all_off` input) than with a call per light.
+- **Lights on** counts Hue bulbs only: groups and zones carry `is_hue_group` and are left out.
