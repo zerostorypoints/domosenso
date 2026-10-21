@@ -12,7 +12,8 @@ class FakeHA:
     `responses` maps a websocket type (`"lovelace/resources"`) or a REST path (starts with `/`,
     `"/api/states"`) to a result, or to a callable `(fields) -> result` for a stateful fake. A key
     that is not there fails like a rejected call. `calls` records `(type or path, fields)`;
-    `http_statuses` gives `http_status` answers per path (default 200).
+    `http_statuses` gives `http_status` answers per path (default 200); each probe is recorded as
+    `("http_status", {"path": path})`.
     """
 
     def __init__(self, responses: dict[str, Any] | None = None, http_statuses: dict[str, int] | None = None):
@@ -40,4 +41,5 @@ class FakeHA:
         return self._answer(path, {})
 
     async def http_status(self, path: str) -> int:
+        self.calls.append(("http_status", {"path": path}))
         return self.http_statuses.get(path, 200)

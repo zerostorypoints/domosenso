@@ -37,8 +37,39 @@ async def _ws_handler(conn, seen):
         await conn.send(json.dumps({"id": msg["id"], "type": "result", **reply}))
 
 
+async def _silent_auth_handler(conn, seen):
+    await conn.send(json.dumps({"type": "auth_required"}))
+    await conn.wait_closed()
+
+
+async def _silent_call_handler(conn, seen):
+    await conn.send(json.dumps({"type": "auth_required"}))
+    await conn.recv()
+    await conn.send(json.dumps({"type": "auth_ok"}))
+    async for raw in conn:
+        seen.append(json.loads(raw))  # never answers
+
+
+def _garbage_handler(frame: str):
+    async def handler(conn, seen):
+        await conn.send(json.dumps({"type": "auth_required"}))
+        await conn.recv()
+        await conn.send(json.dumps({"type": "auth_ok"}))
+        async for raw in conn:
+            await conn.send(frame)
+
+    return handler
+
+
+async def _garbage_auth_handler(conn, seen):
+    await conn.send(json.dumps({"type": "auth_required"}))
+    await conn.recv()
+    await conn.send("not json")
+    await conn.wait_closed()
+
+
 @contextmanager
-def ws_stub():
+def ws_stub(handler=_ws_handler):
     """Run the stub in a thread; yield (url, seen messages)."""
     seen: list[dict] = []
     ready = threading.Event()
@@ -46,7 +77,7 @@ def ws_stub():
 
     def run():
         async def main():
-            async with websockets.serve(lambda c: _ws_handler(c, seen), "127.0.0.1", 0) as server:
+            async with websockets.serve(lambda c: handler(c, seen), "127.0.0.1", 0) as server:
                 box["port"] = server.sockets[0].getsockname()[1]
                 box["loop"] = asyncio.get_running_loop()
                 box["stop"] = asyncio.Event()
@@ -73,6 +104,16 @@ def rest_stub():
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             seen.append({"path": self.path, "auth": self.headers.get("Authorization")})
+            if self.path == "/api/hangup":  # closes without a response
+                self.close_connection = True
+                return
+            if self.path == "/api/short":  # promises 100 bytes, sends 5
+                self.send_response(200)
+                self.send_header("Content-Length", "100")
+                self.end_headers()
+                self.wfile.write(b"short")
+                self.close_connection = True
+                return
             status = {"/api/ok": 200, "/api/gone": 404, "/api/boom": 500}.get(self.path, 404)
             body = json.dumps({"path": self.path}).encode()
             self.send_response(status)
@@ -189,6 +230,79 @@ def test_http_status_unreachable_raises():
         asyncio.run(go())
 
 
+def test_auth_read_times_out_naming_the_step():
+    with ws_stub(_silent_auth_handler) as (url, _):
+        async def go():
+            async with HA(url, TOKEN, timeout=0.3) as ha:
+                await ha.call("lovelace/resources")
+
+        with pytest.raises(DomosensoError, match=r"timed out.*authentication"):
+            asyncio.run(go())
+
+
+def test_call_times_out_naming_the_type():
+    with ws_stub(_silent_call_handler) as (url, _):
+        async def go():
+            async with HA(url, TOKEN, timeout=0.3) as ha:
+                await ha.call("lovelace/resources")
+
+        with pytest.raises(DomosensoError, match=r"lovelace/resources: no result within"):
+            asyncio.run(go())
+
+
+def test_call_after_timeout_reconnects():
+    with ws_stub(_silent_call_handler) as (url, seen):
+        async def go():
+            async with HA(url, TOKEN, timeout=0.3) as ha:
+                for _ in range(2):
+                    with pytest.raises(DomosensoError):
+                        await ha.call("x")
+
+        asyncio.run(go())
+    assert [m["id"] for m in seen] == [1, 2]  # the second call reconnected, not reused a stale socket
+
+
+@pytest.mark.parametrize("frame", ["not json", "[1, 2]", '"text"'])
+def test_call_non_object_frame_raises(frame):
+    with ws_stub(_garbage_handler(frame)) as (url, _):
+        async def go():
+            async with HA(url, TOKEN, timeout=5) as ha:
+                await ha.call("lovelace/resources")
+
+        with pytest.raises(DomosensoError, match=r"lovelace/resources: .*not a JSON object"):
+            asyncio.run(go())
+
+
+def test_auth_reply_not_json_raises():
+    with ws_stub(_garbage_auth_handler) as (url, _):
+        async def go():
+            async with HA(url, TOKEN, timeout=5) as ha:
+                await ha.call("lovelace/resources")
+
+        with pytest.raises(DomosensoError, match=r"authentication.*not a JSON object"):
+            asyncio.run(go())
+
+
+def test_rest_incomplete_read_raises_domosenso_error():
+    with rest_stub() as (url, _):
+        async def go():
+            async with HA(url, TOKEN) as ha:
+                await ha.rest_get("/api/short")
+
+        with pytest.raises(DomosensoError, match="/api/short"):
+            asyncio.run(go())
+
+
+def test_rest_remote_disconnect_raises_domosenso_error():
+    with rest_stub() as (url, _):
+        async def go():
+            async with HA(url, TOKEN) as ha:
+                await ha.http_status("/api/hangup")
+
+        with pytest.raises(DomosensoError, match="/api/hangup"):
+            asyncio.run(go())
+
+
 def test_fake_ha_ws_rest_and_records():
     fake = FakeHA({"lovelace/resources": [{"url": "/a"}], "/api/states": [1, 2]}, http_statuses={"/x": 404})
 
@@ -202,7 +316,12 @@ def test_fake_ha_ws_rest_and_records():
             )
 
     assert asyncio.run(go()) == ([{"url": "/a"}], [1, 2], 404, 200)
-    assert fake.calls == [("lovelace/resources", {"force": True}), ("/api/states", {})]
+    assert fake.calls == [
+        ("lovelace/resources", {"force": True}),
+        ("/api/states", {}),
+        ("http_status", {"path": "/x"}),
+        ("http_status", {"path": "/y"}),
+    ]
 
 
 def test_fake_ha_callable_is_stateful_and_unknown_key_raises():

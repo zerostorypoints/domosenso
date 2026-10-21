@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import http.client
 import json
 import urllib.error
 import urllib.request
@@ -24,17 +25,33 @@ def ws_url(url: str) -> str:
     return f"{'wss' if scheme == 'https' else 'ws'}{sep}{rest}/api/websocket"
 
 
+def _decode(raw: str | bytes, what: str) -> dict:
+    """A websocket frame as a JSON object; anything else is a protocol failure."""
+    try:
+        data = json.loads(raw)
+    except ValueError as e:
+        raise DomosensoError(f"{what}: frame is not a JSON object: {e}") from e
+    if not isinstance(data, dict):
+        raise DomosensoError(f"{what}: frame is not a JSON object: got {type(data).__name__}")
+    return data
+
+
 class HA:
     """Websocket commands (`call`) and REST reads (`rest_get`, `http_status`) for one instance.
 
     The websocket connects and authenticates on the first `call`, so a client used only for
-    REST never opens one.
+    REST never opens one. Sequential use only: one `call` at a time (no `asyncio.gather` on one
+    instance), because a call reads the shared socket until its own result arrives.
+
+    `timeout` (seconds) bounds the connect, each authentication read, each call's wait for its
+    result and each REST request.
     """
 
-    def __init__(self, url: str, token: str, token_source: Path | str | None = None):
+    def __init__(self, url: str, token: str, token_source: Path | str | None = None, timeout: float = TIMEOUT):
         self.url = url.rstrip("/")
         self._token = token
         self._token_source = token_source
+        self._timeout = timeout
         self._ws: Any = None
         self._next_id = 0
 
@@ -50,23 +67,32 @@ class HA:
         return self
 
     async def __aexit__(self, *exc: object) -> None:
-        if self._ws is not None:
-            await self._ws.close()
-            self._ws = None
+        await self._drop()
+
+    async def _drop(self) -> None:
+        ws, self._ws = self._ws, None
+        if ws is not None:
+            await ws.close()
 
     async def _connect(self) -> None:
         target = ws_url(self.url)
         try:
-            ws = await connect(target, max_size=None, open_timeout=TIMEOUT)
+            ws = await connect(target, max_size=None, open_timeout=self._timeout)
         except (OSError, WebSocketException, TimeoutError) as e:
             raise DomosensoError(f"cannot connect to {target}: {e}") from e
         try:
-            await ws.recv()  # auth_required
+            await asyncio.wait_for(ws.recv(), self._timeout)  # auth_required
             await ws.send(json.dumps({"type": "auth", "access_token": self._token}))
-            reply = json.loads(await ws.recv())
+            reply = _decode(await asyncio.wait_for(ws.recv(), self._timeout), f"{target}: authentication")
+        except TimeoutError as e:
+            await ws.close()
+            raise DomosensoError(f"{target}: websocket timed out during authentication after {self._timeout:g} s") from e
         except (OSError, WebSocketException) as e:
             await ws.close()
             raise DomosensoError(f"{target}: websocket closed during authentication: {e}") from e
+        except DomosensoError:
+            await ws.close()
+            raise
         if reply.get("type") != "auth_ok":
             await ws.close()
             source = f" (token file {self._token_source})" if self._token_source else ""
@@ -81,12 +107,19 @@ class HA:
         n = self._next_id
         try:
             await self._ws.send(json.dumps({**fields, "type": type, "id": n}))
-            while True:
-                msg = json.loads(await self._ws.recv())
-                if msg.get("id") == n and msg.get("type") == "result":
-                    break
+            async with asyncio.timeout(self._timeout):
+                while True:
+                    msg = _decode(await self._ws.recv(), type)
+                    if msg.get("id") == n and msg.get("type") == "result":
+                        break
+        except TimeoutError as e:
+            await self._drop()  # a late result would still be on this socket: start the next call on a fresh one
+            raise DomosensoError(f"{type}: no result within {self._timeout:g} s") from e
         except (OSError, WebSocketException) as e:
             raise DomosensoError(f"{type}: websocket failed: {e}") from e
+        except DomosensoError:
+            await self._drop()
+            raise
         if not msg.get("success"):
             error = msg.get("error") or {}
             raise DomosensoError(f"{type}: {error.get('code', 'error')} {error.get('message', '')}".rstrip())
@@ -95,12 +128,14 @@ class HA:
     def _request(self, path: str) -> tuple[int, bytes]:
         req = urllib.request.Request(self.url + path, headers={"Authorization": f"Bearer {self._token}"})
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-                return resp.status, resp.read()
-        except urllib.error.HTTPError as e:
-            return e.code, e.read()
-        except (urllib.error.URLError, OSError) as e:
-            raise DomosensoError(f"GET {path}: {getattr(e, 'reason', e)}") from e
+            try:
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                    return resp.status, resp.read()
+            except urllib.error.HTTPError as e:
+                return e.code, e.read()
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
+            reason = repr(e) if isinstance(e, http.client.HTTPException) else getattr(e, "reason", e)
+            raise DomosensoError(f"GET {path}: {reason}") from e
 
     async def rest_get(self, path: str) -> Any:
         status, body = await asyncio.to_thread(self._request, path)
