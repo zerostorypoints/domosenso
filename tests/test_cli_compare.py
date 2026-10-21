@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 from domosenso_cli import main as cli
-from domosenso_cli.compare import Diff, diff, explain
+from domosenso_cli.compare import Diff, diff, explain, sizes
 
 SHA_A = "a" * 64
 SHA_B = "b" * 64
@@ -248,3 +248,33 @@ def test_command_reads_commit_of_config_dir(tmp_path, capsys):
     pa, pb = write(tmp_path / "a.json", base()), write(tmp_path / "b.json", b)
     assert cli.main(["--home", str(home), "compare", str(pa), str(pb), "--explain", str(explanations)]) == 0
     assert capsys.readouterr().out.splitlines()[-2:] == ["equivalent", "ok"]
+
+
+def test_mirrored_state_of_an_integration_entity_not_compared():
+    """Staging's mirror posts production's integration states over the REST API: on staging they have
+    no registry entry, so its snapshot counts them as from files; production knows they are not."""
+    b = base()
+    b["entities"]["sensor.living_room_temperature"] = entity("sensor", None)  # mirrored, registry-less
+    assert diff(base(), b) == []
+    assert sizes(base(), b)["entities"] == 3
+
+
+def test_registry_less_entity_on_both_sides_compared():
+    a, b = base(), base()
+    a["entities"]["sensor.legacy_template"] = entity("sensor", None)  # YAML without unique_id
+    assert kinds(diff(a, b)) == [("entities", "sensor.legacy_template", "only-in-a")]
+
+
+def test_renamed_needs_both_halves():
+    b = base()
+    del b["entities"]["sensor.office_comfort"]  # only the a half: the new id never appeared
+    entry = {"part": "entities", "id": "sensor.office_comfort", "kind": "renamed",
+             "to": "sensor.office_comfort_index", "reason": "catalog name"}
+    unexplained, stale = explain(diff(base(), b), [entry], None)
+    assert ("entities", "sensor.office_comfort", "only-in-a") in kinds(unexplained)
+    assert stale == [entry]
+    c = base()
+    c["entities"]["sensor.office_comfort_index"] = entity("template", "office_comfort")  # only the b half
+    unexplained, stale = explain(diff(base(), c), [entry], None)
+    assert ("entities", "sensor.office_comfort_index", "only-in-b") in kinds(unexplained)
+    assert stale == [entry]
