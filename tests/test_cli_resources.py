@@ -131,3 +131,10 @@ def test_home_resource_clashes_with_component_card(tmp_path):
     with pytest.raises(DomosensoError) as exc:
         wanted(home, lock_with(CARD))
     assert "agenda-card.js" in str(exc.value) and "ramka" in str(exc.value) and "/local/agenda-card.js" in str(exc.value)
+
+
+@pytest.mark.parametrize("url", ["/local/../secrets.yaml", "/local/a/../../b.js", "/local/..", "/local/x/..?v=1"])
+def test_home_resource_with_parent_segment_refused(tmp_path, url):
+    home = make_home(tmp_path, [{"url": url, "type": "module"}])
+    with pytest.raises(DomosensoError, match=r"'\.\.'"):
+        wanted(home, Lock())

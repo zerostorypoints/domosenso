@@ -262,6 +262,38 @@ def test_call_after_timeout_reconnects():
     assert [m["id"] for m in seen] == [1, 2]  # the second call reconnected, not reused a stale socket
 
 
+def _closing_once_handler():
+    connections = []
+
+    async def handler(conn, seen):
+        connections.append(conn)
+        await conn.send(json.dumps({"type": "auth_required"}))
+        await conn.recv()
+        await conn.send(json.dumps({"type": "auth_ok"}))
+        async for raw in conn:
+            msg = json.loads(raw)
+            seen.append(msg)
+            if len(connections) == 1:
+                await conn.close()  # the first connection dies under its first call (HA restarting, a dropped link)
+                return
+            await conn.send(json.dumps({"id": msg["id"], "type": "result", "success": True, "result": "ok"}))
+
+    return handler
+
+
+def test_call_after_a_closed_connection_reconnects():
+    with ws_stub(_closing_once_handler()) as (url, seen):
+        async def go():
+            async with HA(url, TOKEN, timeout=5) as ha:
+                with pytest.raises(DomosensoError, match="websocket failed"):
+                    await ha.call("x")
+                assert ha._ws is None
+                return await ha.call("y")
+
+        assert asyncio.run(go()) == "ok"
+    assert [m["type"] for m in seen] == ["x", "y"]
+
+
 @pytest.mark.parametrize("frame", ["not json", "[1, 2]", '"text"'])
 def test_call_non_object_frame_raises(frame):
     with ws_stub(_garbage_handler(frame)) as (url, _):

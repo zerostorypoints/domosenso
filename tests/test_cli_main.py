@@ -89,8 +89,8 @@ def test_error_becomes_fail_json(monkeypatch, capsys):
 
 
 def test_not_implemented_stub_fails(capsys):
-    assert cli.COMMANDS["deploy"] is None
-    assert cli.main(["deploy"]) == 1
+    assert cli.COMMANDS["snapshot"] is None
+    assert cli.main(["snapshot"]) == 1
     assert capsys.readouterr().out.splitlines()[-1] == "FAIL not implemented"
 
 

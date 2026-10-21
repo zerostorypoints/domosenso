@@ -116,6 +116,7 @@ class HA:
             await self._drop()  # a late result would still be on this socket: start the next call on a fresh one
             raise DomosensoError(f"{type}: no result within {self._timeout:g} s") from e
         except (OSError, WebSocketException) as e:
+            await self._drop()  # a closed or broken socket: the next call connects afresh
             raise DomosensoError(f"{type}: websocket failed: {e}") from e
         except DomosensoError:
             await self._drop()
