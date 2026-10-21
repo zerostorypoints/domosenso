@@ -58,7 +58,7 @@ Silent automations: none (no automations).
 
 ## Artifacts and layers
 
-- `templates/package.yaml.j2` → `packages/climate-air.yaml` (managed).
+- `templates/package.yaml.j2` → `packages/climate_air.yaml` (managed).
 - `translations/*`: `meta.description` updated. No `ui.*` text.
 - `README.md`: why a glazed room is left out of the indoor figures; long-term statistics come with
   `state_class: measurement`.
