@@ -42,9 +42,11 @@ components/<id>/              the catalog: component.yaml, translations/, README
                               UPGRADE.md, esphome/, ha/blueprints/, templates/, cards/, shell/, themes/
 devices/<id>.yaml             hardware the components name: names, description, what it does (en, de, pl)
 scenes/<id>.yaml              the demo's eight scenes (format: scenes/README.md)
-schemas/                      JSON Schemas: component, device, scene
+schemas/                      JSON Schemas: component, device, scene, home, lock, snapshot, equivalence, silent
 examples/demo-home/           a fictional home (Alex and Sam) as an instance: inputs, states, media
-tools/                        checker, renderer, installer, ha-check, esphome-check, check-all
+examples/home-template/       AGENTS.md + CLAUDE.md a home repository starts from (placeholders)
+tools/                        the `domosenso` command (tools/domosenso_cli/), checker, renderer, installer,
+                              ha-check, esphome-check, check-all
 tests/                        pytest for tools/ and the catalog data; node tests sit next to the cards
 docs/                         framework design: research, pilot, specs and plans of stage 1, notes
 ```
@@ -128,6 +130,26 @@ uv run tools/install_skills.py [--check]        # skill links for every agent
 uv run tools/make_demo_media.py                 # regenerates examples/demo-home/media/
 tools/check-all.sh                              # everything
 ```
+
+**The `domosenso` command** installs, renders, deploys and compares a home from a home repository
+(its `AGENTS.md` starts from `examples/home-template/AGENTS.md`). From the home's root:
+`uv run --project <catalog checkout> domosenso <command>`. Every command prints one line per action
+and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are STABLE
+(`docs/COMPATIBILITY.md`). Specified in `.ai/specs/SPEC-002-*`.
+
+- `init`, `add <id>@<version>`, `adopt <id>@<version>`: start a home, add a component at a tag, take
+  over files rendered by hand. `render [<id>]`, `update <id> [--to <version>]`, `status`: managed
+  files from the lock (the catalog is read at a tag, never the working tree; `--catalog-dev <path>`
+  renders a working tree, stamps get `-dirty`).
+- `deploy <target> --plan | --apply`, `rollback <target>`: copy the home to a target declared in
+  `domosenso.yaml` (`local-docker` staging, `ssh-docker` production), `check_config`, restart,
+  Lovelace resources; an `orphan` blocks `--apply`.
+- `snapshot <target>`, `compare <a> <b>`, `verify <target> --baseline <snapshot>`: record a running
+  home, compare two snapshots against `domosenso/equivalence.yaml`, check a target after a change
+  against `domosenso/silent.yaml`.
+
+Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
+is a change to a STABLE surface (spec first).
 
 Renderer: `templates/**/*.j2`; `*.lang.yaml.j2` renders once per language to `<name>.<lang>.yaml`.
 Delimiters are `[[ ... ]]`, `[% ... %]`, `[# ... #]`, so Home Assistant's own `{{ }}` and `{% %}`
@@ -252,7 +274,7 @@ the script after adding, renaming or removing a skill.
 
 - Text in this repository is English; commit messages say what changed, in the style of `git log`.
 - Read the clock (`date`) before writing a dated file name or note.
-- Python: 3.11+, run through `uv run`, tested with pytest under `tests/`; tools import each other
+- Python: 3.11.4+ (`pyproject.toml`: tarfile extraction filters), run through `uv run`, tested with pytest under `tests/`; tools import each other
   from `tools/` (see `tests/conftest.py`).
 - JavaScript: ES modules, node's built-in test runner with happy-dom, tests next to the code as
   `*.test.mjs`.
