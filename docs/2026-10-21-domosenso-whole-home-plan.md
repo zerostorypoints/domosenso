@@ -26,7 +26,7 @@ is `feature/whole-home`; every sub-session opens its pull request into it, the c
 against this plan and the specs and merges in plan order. Home-repository tasks use a feature branch of
 the same name in the home repository. The table below is kept current by the coordinator.
 
-Known hazard: `tools/ha-check.sh` uses one work directory per component under `$TMPDIR`, so two sessions checking the same component at once collide (seen 2026-10-21); run checks one at a time or give the work directory a per-worktree suffix.
+Fixed hazard (2026-10-21, #6): `tools/ha-check.sh` and `tools/esphome-check.sh` used one work directory per component under `$TMPDIR`, so parallel sessions collided; each checkout now gets its own.
 
 | task | state | session (branch) |
 |---|---|---|
