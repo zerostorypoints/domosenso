@@ -39,7 +39,7 @@ Fixed hazard (2026-10-21, #6): `tools/ha-check.sh` and `tools/esphome-check.sh` 
 | 17 fidelity comparison (home repo) + 14 Step 5 | done, merged (home #2; framework #8): equivalent with 9 renamed, 24 ignore, 7 after_restart | executor `local_4a35c383` |
 | 18 home AGENTS.md + first production deploy (Ramka) | framework part merged (#10); home part merged (home #4), plan c5ed22cf3f77 ready; apply waits for the maintainer's go-ahead typed in the executor session | executor `local_4a35c383` |
 | 19 components, Steps 1–2 (six specs approved) | done, merged (#4) | `local_06cf3620` (`claude/components-batch-0efe9b`) |
-| 19 components, Steps 3–5 | done: all six locked at their tags in the home (home #5, #6); equivalent with the framework before #14; with #14 the before-sync procedure shows 28 unavailable-in-b artefacts — open: staging mirror marker (`domosenso_mirror`) so the procedure becomes deploy → sync → snapshot | `local_06cf3620` |
+| 19 components, Steps 3–5 | done: all six locked at their tags in the home (home #5, #6); staging mirror marker (#15, home #7): deploy → sync → snapshot is equivalent with zero stale, and a refused package is caught | `local_06cf3620` |
 | 17a snapshot/compare defects from Task 17 and Task 19 | done, merged (#9, #11, #12, #14) | `local_3bd19b01` |
 | 20 cut-over | waiting for 17–19; production go-ahead typed by the maintainer | to assign |
 
