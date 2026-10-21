@@ -279,9 +279,10 @@ plan and its generator, every dashboard except the Ramka's.
 | part | source | compared |
 |---|---|---|
 | entities from files | entity registry (`config/entity_registry/list`: platform, unique_id, disabled_by) and `GET /api/states` | entity ids of every file-defined platform: template, group, input_*, timer, counter, automation, script, utility_meter, history_stats, statistics, command_line, mqtt, plant, folder and any other platform with no config entry; plus state entities with no registry entry; and the set of `(platform, unique_id)` pairs, because staging's registry is fresh and derives ids from names while production's keeps them by `unique_id` |
-| automations, scripts | states (`id` attribute, `on` / `off` / `unavailable`), `automation/config` and `script/config` **(inference: websocket commands taking `entity_id`; verify on staging)** | id, entity id, loaded, enabled, sha256 of the config as canonical JSON |
+| automations, scripts | states (`id` attribute, `on` / `off` / `unavailable`), `automation/config` and `script/config` (verified on staging 2026-10-21 (HA 2026.9.2): both take `entity_id` and return `{"config": {...}}`; an entity that is not loaded gives `not_found`) | id, entity id, loaded, enabled, sha256 of the config as canonical JSON |
 | helpers | state attributes | options in order, min, max, step, mode, has_date, has_time, duration |
-| dashboards | `get_panels`, `lovelace/config` per url_path **(inference: also returns YAML-mode dashboards; verify)** | url_path, title, icon, require_admin, sha256 of the config as canonical JSON |
+| dashboards | `get_panels`, `lovelace/config` per url_path (verified on staging 2026-10-21 (HA 2026.9.2): `get_panels` lists YAML-mode dashboards (`config.mode: yaml`) and `lovelace/config` with `url_path` returns their config; with no `url_path` the default dashboard, or `config_not_found` while it is auto-generated, which the snapshot records as no hash) | url_path, title, icon, require_admin, sha256 of the config as canonical JSON |
+| kiosk profile language | `config/auth/list` for the user id, then `data.language.language` of `.storage/frontend.user_data_<id>` (verified on staging 2026-10-21 (HA 2026.9.2)); read over ssh only | language per kiosk user |
 | Lovelace resources | `lovelace/resources` | URL without query, type |
 | config entries | `config_entries/get` | domain, title, state; informational only (staging has none) |
 | health | `system_log/list` | ERROR entries; for `verify` |
