@@ -1,0 +1,90 @@
+"""Entry point of `domosenso`: parses the command line and runs one subcommand.
+
+Each subcommand lives in its own module that exposes `run(args, rep) -> int` and may expose
+`add_arguments(parser)` for its own options. COMMANDS is the one place that knows where they are:
+a task that builds a command adds its module and replaces the `None` here. A `None` entry is a
+stub that fails with `not implemented`.
+"""
+from __future__ import annotations
+
+import argparse
+import importlib
+import sys
+from pathlib import Path
+from types import ModuleType
+
+from domosenso_cli.errors import DomosensoError
+from domosenso_cli.report import Reporter
+
+COMMANDS: dict[str, str | None] = {
+    "init": None,
+    "add": None,
+    "adopt": None,
+    "render": None,
+    "update": None,
+    "status": None,
+    "deploy": None,
+    "rollback": None,
+    "snapshot": None,
+    "compare": None,
+    "verify": None,
+}
+
+SUMMARIES = {
+    "init": "start a home repository",
+    "add": "add a component to the home",
+    "adopt": "take over files already rendered by hand",
+    "render": "render components into the home",
+    "update": "move a component to a newer version",
+    "status": "classify the home's files and list component versions",
+    "deploy": "copy the home to a target and restart",
+    "rollback": "restore a target from its last backup",
+    "snapshot": "record the entities of a running home",
+    "compare": "compare two snapshots",
+    "verify": "check a running home against a snapshot",
+}
+
+
+def load_command_module(path: str) -> ModuleType:
+    return importlib.import_module(path)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="domosenso", description="Install, render, deploy and compare a Domosenso home."
+    )
+    parser.add_argument(
+        "--home", type=Path, default=None, help="the home repository (default: current directory)"
+    )
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--json", action="store_true", help="print one JSON document")
+    sub = parser.add_subparsers(dest="command", metavar="<command>", required=True)
+    for name, module_path in COMMANDS.items():
+        command = sub.add_parser(name, parents=[common], help=SUMMARIES[name], description=SUMMARIES[name])
+        if module_path is not None:
+            add_arguments = getattr(load_command_module(module_path), "add_arguments", None)
+            if add_arguments:
+                add_arguments(command)
+    return parser
+
+
+def run_command(name: str, args: argparse.Namespace, rep: Reporter) -> int:
+    module_path = COMMANDS[name]
+    if module_path is None:
+        raise DomosensoError("not implemented")
+    return load_command_module(module_path).run(args, rep)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.home is None:
+        args.home = Path.cwd()
+    rep = Reporter(args.json)
+    try:
+        return run_command(args.command, args, rep)
+    except DomosensoError as exc:
+        return rep.fail(str(exc))
+
+
+if __name__ == "__main__":
+    sys.exit(main())
