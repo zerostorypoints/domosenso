@@ -303,3 +303,35 @@ def test_config_read_failure_other_than_not_found_fails_the_snapshot():
 
     with pytest.raises(DomosensoError, match="no result within"):
         snap(**{"automation/config": config})
+
+
+def test_mirrored_state_is_not_from_files():
+    """Staging's mirror posts production's states over the REST API with `domosenso_mirror: true`.
+    Such a state has no registry entry and nothing in the home's files behind it: it is the
+    integration's on production, so it is not compared as a file entity, unavailable or not."""
+    mirrored = {"domosenso_mirror": True, "friendly_name": "Awning"}
+    states = STATES + [
+        {"entity_id": "cover.awning_side", "state": "closed", "attributes": mirrored},
+        {"entity_id": "sensor.zone_power", "state": "unavailable", "attributes": mirrored},
+    ]
+    entities = snap(**{"/api/states": states})["entities"]
+    assert entities["cover.awning_side"] == {
+        "platform": "cover", "unique_id": None, "state_class": "available", "from_files": False, "mirrored": True,
+    }
+    assert entities["sensor.zone_power"]["from_files"] is False
+    assert "mirrored" not in entities["script.good_night"]  # registry-less, unmarked: still from files
+
+
+def test_mirror_marker_on_a_registered_entity_is_ignored():
+    # An entity the home defines on this side keeps being compared, whatever its state carries.
+    states = [dict(s, attributes={**s["attributes"], "domosenso_mirror": True})
+              if s["entity_id"] == "sensor.office_comfort" else s for s in STATES]
+    entity = snap(**{"/api/states": states})["entities"]["sensor.office_comfort"]
+    assert entity["from_files"] is True and "mirrored" not in entity
+
+
+def test_snapshot_with_mirrored_state_validates_against_schema():
+    states = STATES + [{"entity_id": "cover.awning_side", "state": "closed", "attributes": {"domosenso_mirror": True}}]
+    schema = json.loads(SCHEMA.read_text())
+    errors = list(Draft202012Validator(schema).iter_errors(snap(**{"/api/states": states})))
+    assert errors == []
