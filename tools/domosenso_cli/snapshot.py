@@ -12,8 +12,6 @@ import argparse
 import asyncio
 import hashlib
 import json
-import shlex
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -23,6 +21,7 @@ from domosenso_cli.ha_api import HA
 from domosenso_cli.home import HomeConfig, Target
 from domosenso_cli.report import Reporter
 from domosenso_cli.schema import SCHEMAS
+from domosenso_cli.targets import open_target
 
 # Platforms whose entities come from the home's YAML files. Any entity with no config entry, or with
 # no registry entry at all, counts as from files too.
@@ -38,7 +37,6 @@ HELPER_DOMAINS = {
 }
 HELPER_KEYS = ("options", "min", "max", "step", "mode", "has_date", "has_time", "duration")
 PROFILE_FILE = ".storage/frontend.user_data_{}"
-SSH_TIMEOUT = 60
 
 
 def canonical_sha(obj: Any) -> str:
@@ -179,25 +177,6 @@ async def read_kiosk_profiles(ha: HA, names: list[str], read: Callable[[str], by
     return profiles
 
 
-def target_reader(target: Target) -> Callable[[str], bytes | None]:
-    """Reads one file under the container's `/config` over ssh; an absent file reads as empty.
-    (Task 11's `SshDocker.read` can replace this once it is merged.)"""
-
-    def read(rel: str) -> bytes | None:
-        inner = f"cat {shlex.quote('/config/' + rel)} 2>/dev/null; exit 0"
-        remote = shlex.join([target.docker, "exec", target.container, "sh", "-c", inner])
-        try:
-            proc = subprocess.run(["ssh", target.host, remote], capture_output=True, timeout=SSH_TIMEOUT)
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise DomosensoError(f"{target.name}: cannot read {rel} over ssh: {exc}") from exc
-        if proc.returncode != 0:
-            message = proc.stderr.decode(errors="replace").strip().splitlines()
-            raise DomosensoError(f"{target.name}: cannot read {rel} over ssh: {message[-1] if message else proc.returncode}")
-        return proc.stdout or None
-
-    return read
-
-
 def pick_target(home: HomeConfig, name: str) -> Target:
     if name not in home.targets:
         raise DomosensoError(f"unknown target {name} (declared: {', '.join(sorted(home.targets)) or 'none'})")
@@ -207,7 +186,7 @@ def pick_target(home: HomeConfig, name: str) -> Target:
 async def target_profiles(home: HomeConfig, target: Target, ha: HA) -> dict[str, dict] | None:
     """The kiosk users' profiles where the target can be read over ssh (SPEC-002 decision 2: read-only)."""
     if target.kind == "ssh-docker" and home.kiosk_users:
-        return await read_kiosk_profiles(ha, home.kiosk_users, target_reader(target))
+        return await read_kiosk_profiles(ha, home.kiosk_users, open_target(target).read)
     return None
 
 

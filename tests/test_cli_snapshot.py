@@ -10,7 +10,7 @@ from domosenso_cli import main as cli
 from domosenso_cli import snapshot
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.snapshot import canonical_sha, profile_language, read_kiosk_profiles, take
-from fakes import FakeHA
+from fakes import FakeHA, FakeTarget
 
 SCHEMA = Path(__file__).resolve().parent.parent / "schemas" / "snapshot.schema.json"
 
@@ -229,13 +229,10 @@ def test_command_reads_kiosk_profiles_on_ssh_target(tmp_path, monkeypatch, capsy
     home = write_home(tmp_path, "ssh-docker")
     ha = FakeHA(responses(**{"config/auth/list": [{"id": "u1", "username": "ramka", "name": "Ramka"}]}))
     monkeypatch.setattr(snapshot.HA, "for_target", classmethod(lambda cls, t: ha))
+    remote = FakeTarget(tmp_path / "remote")
+    remote.put({".storage/frontend.user_data_u1": json.dumps({"data": {"language": {"language": "pl"}}}).encode()})
     seen = []
-
-    def reader(target):
-        seen.append(target.host)
-        return lambda rel: json.dumps({"data": {"language": {"language": "pl"}}}).encode()
-
-    monkeypatch.setattr(snapshot, "target_reader", reader)
+    monkeypatch.setattr(snapshot, "open_target", lambda t: seen.append(t.host) or remote)
     out = tmp_path / "s.json"
     assert cli.main(["--home", str(home), "snapshot", "staging", "--out", str(out)]) == 0
     assert json.loads(out.read_text())["profiles"] == {"ramka": {"user_id": "u1", "language": "pl"}}
@@ -246,23 +243,3 @@ def test_command_unknown_target(tmp_path, capsys):
     home = write_home(tmp_path)
     assert cli.main(["--home", str(home), "snapshot", "production", "--out", str(tmp_path / "s.json")]) == 1
     assert capsys.readouterr().out.splitlines()[-1] == "FAIL unknown target production (declared: staging)"
-
-
-def test_ssh_reader_argv(monkeypatch, tmp_path):
-    from domosenso_cli.home import Target
-
-    calls = []
-
-    class Done:
-        returncode = 0
-        stdout = b'{"data": {}}'
-        stderr = b""
-
-    monkeypatch.setattr(snapshot.subprocess, "run", lambda argv, **kw: calls.append(argv) or Done())
-    target = Target("production", "ssh-docker", "home assistant", "/volume1/ha", "http://h:8123", tmp_path / "t",
-                    host="ha@nas", docker="/usr/local/bin/docker")
-    assert snapshot.target_reader(target)(".storage/frontend.user_data_u1") == b'{"data": {}}'
-    argv = calls[0]
-    assert argv[:2] == ["ssh", "ha@nas"]
-    assert argv[2].startswith("/usr/local/bin/docker exec 'home assistant' sh -c ")
-    assert "/config/.storage/frontend.user_data_u1" in argv[2]
