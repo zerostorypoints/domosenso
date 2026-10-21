@@ -37,7 +37,7 @@ Fixed hazard (2026-10-21, #6): `tools/ha-check.sh` and `tools/esphome-check.sh` 
 | 13 staging `--full`, home `domosenso.yaml`, Ramka adopted (home repo) | done, merged (home #1; framework #6, #7) | executor `local_4a35c383` |
 | 14–16 snapshot / compare / verify | done, merged (#1, #3); 14 Step 5 waits for 13; COMPATIBILITY.md rows go to Task 18 | `local_3bd19b01` (`claude/equivalence-3dd81e`) |
 | 17 fidelity comparison (home repo) + 14 Step 5 | done, merged (home #2; framework #8): equivalent with 9 renamed, 24 ignore, 7 after_restart | executor `local_4a35c383` |
-| 18 home AGENTS.md + first production deploy (Ramka) | framework part merged (#10); home part merged (home #4), plan c5ed22cf3f77 ready; apply waits for the maintainer's go-ahead typed in the executor session | executor `local_4a35c383` |
+| 18 home AGENTS.md + first production deploy (Ramka) | done 2026-10-21: plan c5ed22cf3f77 applied by the coordinator with the maintainer's go-ahead, 16 orphans removed, verified after two false-alarm fixes (#16); next-morning `--day-after` verify owed (home #4, #8) | coordinator |
 | 19 components, Steps 1–2 (six specs approved) | done, merged (#4) | `local_06cf3620` (`claude/components-batch-0efe9b`) |
 | 19 components, Steps 3–5 | done: all six locked at their tags in the home (home #5, #6); staging mirror marker (#15, home #7): deploy → sync → snapshot is equivalent with zero stale, and a refused package is caught | `local_06cf3620` |
 | 17a snapshot/compare defects from Task 17 and Task 19 | done, merged (#9, #11, #12, #14) | `local_3bd19b01` |
