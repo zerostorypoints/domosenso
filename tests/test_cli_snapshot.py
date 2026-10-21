@@ -252,6 +252,8 @@ MQTT_REGISTRY = [
      "config_entry_id": "mq", "device_id": "dev-lock", "disabled_by": None},
     {"entity_id": "binary_sensor.wind", "platform": "mqtt", "unique_id": "wind",
      "config_entry_id": "mq", "device_id": None, "disabled_by": None},
+    {"entity_id": "cover.awning", "platform": "mqtt", "unique_id": "awning_shade1",
+     "config_entry_id": "mq", "device_id": "dev-lock", "disabled_by": None},
 ]
 
 
@@ -263,6 +265,9 @@ def debug_info(fields):
         {"entity_id": "lock.front_door", "subscriptions": [],
          "discovery_data": {"topic": "homeassistant/lock/ABC123/lock/config", "payload": {}}, "transmitted": []},
         {"entity_id": "sensor.front_door_state", "subscriptions": [], "discovery_data": {}, "transmitted": []},
+        # What production's YAML covers actually return (2026-10-21): the key with an empty topic.
+        {"entity_id": "cover.awning", "subscriptions": [], "discovery_data": {"topic": "", "payload": ""},
+         "transmitted": []},
     ], "triggers": []}
 
 
@@ -273,6 +278,7 @@ def test_mqtt_discovered_entities_not_from_files():
     assert entities["lock.front_door"]["from_files"] is False  # published by the device's discovery
     assert entities["sensor.front_door_state"]["from_files"] is True  # YAML `mqtt:` on the same device
     assert entities["binary_sensor.wind"]["from_files"] is True  # YAML, no device
+    assert entities["cover.awning"]["from_files"] is True  # YAML on the device, empty discovery topic
     assert [f for k, f in ha.calls if k == "mqtt/device/debug_info"] == [{"device_id": "dev-lock"}]
 
 
