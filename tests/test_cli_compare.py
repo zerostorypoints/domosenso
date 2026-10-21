@@ -278,3 +278,74 @@ def test_renamed_needs_both_halves():
     unexplained, stale = explain(diff(base(), c), [entry], None)
     assert ("entities", "sensor.office_comfort_index", "only-in-b") in kinds(unexplained)
     assert stale == [entry]
+
+
+def test_config_explanation_commit_per_entry():
+    b = base()
+    b["automations"]["automation.hall_light"]["config_sha256"] = SHA_B
+    diffs = diff(base(), b)
+    entry = {"part": "automations", "id": "automation.hall_light", "kind": "config", "reason": "same",
+             "reviewed_at": "aaaaaaa"}
+    seen = []
+
+    def commit_of(e):
+        seen.append(e["id"])
+        return "aaaaaaa1234"
+
+    assert explain(diffs, [entry], commit_of) == ([], [])
+    assert seen == ["automation.hall_light"]
+
+
+def git_home(tmp_path: Path) -> tuple[Path, list[str]]:
+    home = tmp_path / "home"
+    (home / "home-assistant" / "packages").mkdir(parents=True)
+    (home / "domosenso.yaml").write_text(
+        "catalog: ../c\nconfig_dir: home-assistant\nesphome_dir: esphome\ntargets: {}\ncomponents: {}\n")
+    (home / "home-assistant" / "packages" / "hall.yaml").write_text(
+        "automation:\n  - id: hall_light_1\n    alias: Hall light\n")
+    (home / "home-assistant" / "packages" / "other.yaml").write_text("automation:\n  - id: 'other_1'\n")
+    git = ["git", "-C", str(home), "-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "."], check=True)
+    subprocess.run([*git, "commit", "-qm", "c1"], check=True)
+    return home, git
+
+
+def head(git: list[str]) -> str:
+    return subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def compare_with_config_entry(tmp_path, home, reviewed_at: str, extra: str = "") -> int:
+    b = base()
+    b["automations"]["automation.hall_light"]["config_sha256"] = SHA_B
+    explanations = tmp_path / "eq.yaml"
+    explanations.write_text(
+        "entries:\n  - {part: automations, id: automation.hall_light, kind: config, reason: r, "
+        f"reviewed_at: '{reviewed_at}'{extra}}}\n")
+    pa, pb = write(tmp_path / "a.json", base()), write(tmp_path / "b.json", b)
+    return cli.main(["--home", str(home), "compare", str(pa), str(pb), "--explain", str(explanations)])
+
+
+def test_config_entry_bound_to_the_file_that_defines_the_automation(tmp_path, capsys):
+    home, git = git_home(tmp_path)
+    reviewed = head(git)[:12]
+    (home / "home-assistant" / "packages" / "other.yaml").write_text("automation:\n  - id: 'other_2'\n")
+    subprocess.run([*git, "commit", "-qam", "another component"], check=True)
+    assert compare_with_config_entry(tmp_path, home, reviewed) == 0  # another file's commit: still valid
+    (home / "home-assistant" / "packages" / "hall.yaml").write_text(
+        "automation:\n  - id: hall_light_1\n    alias: Hall light, changed\n")
+    assert compare_with_config_entry(tmp_path, home, reviewed) == 1  # uncommitted change of the file
+    subprocess.run([*git, "commit", "-qam", "hall changed"], check=True)
+    assert compare_with_config_entry(tmp_path, home, reviewed) == 1  # committed change of the file
+    assert compare_with_config_entry(tmp_path, home, head(git)[:12]) == 0
+    capsys.readouterr()
+
+
+def test_config_entry_names_its_file(tmp_path, capsys):
+    home, git = git_home(tmp_path)
+    reviewed = head(git)[:12]
+    (home / "home-assistant" / "packages" / "hall.yaml").write_text("automation:\n  - id: hall_light_1\n    alias: x\n")
+    subprocess.run([*git, "commit", "-qam", "hall changed"], check=True)
+    # The entry names other.yaml: hall.yaml's new commit does not concern it.
+    assert compare_with_config_entry(tmp_path, home, reviewed, ", file: packages/other.yaml") == 0
+    capsys.readouterr()

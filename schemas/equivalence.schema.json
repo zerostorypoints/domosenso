@@ -8,6 +8,7 @@
     "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}
   },
   "$defs": {
+    "relpath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))"},
     "entry": {
       "type": "object",
       "additionalProperties": false,
@@ -22,8 +23,15 @@
         },
         "to": {"type": "string", "minLength": 1},
         "reason": {"type": "string", "minLength": 1},
+        "file": {
+          "description": "for a config entry: the file(s) under config_dir that define what it explains; reviewed_at is their last commit. Without it, an automation's file is found by its id, anything else binds to the whole config tree",
+          "oneOf": [
+            {"$ref": "#/$defs/relpath"},
+            {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/relpath"}}
+          ]
+        },
         "reviewed_at": {
-          "description": "the commit of the home's config tree the config entry was reviewed at (7 or more hex digits)",
+          "description": "the commit the config entry was reviewed at (7 or more hex digits): the last commit of the files that define what it explains",
           "type": "string", "pattern": "^[0-9a-f]{7,40}$"
         },
         "after_restart": {
