@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/equivalence.schema.json",
+  "title": "Explained differences between two snapshots (domosenso/equivalence.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["part", "id", "reason"],
+      "anyOf": [{"required": ["kind"]}, {"required": ["after_restart"]}],
+      "properties": {
+        "part": {"enum": ["entities", "unique_ids", "automations", "scripts", "helpers", "dashboards", "resources"]},
+        "id": {"type": "string", "minLength": 1},
+        "kind": {
+          "description": "renamed: id in a is `to` in b; added: only in b; removed: only in a; config: both configs read and they behave the same (with reviewed_at); ignore: any difference of this id, a staging artefact",
+          "enum": ["renamed", "added", "removed", "config", "ignore"]
+        },
+        "to": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "reviewed_at": {
+          "description": "the commit of the home's config tree the config entry was reviewed at (7 or more hex digits)",
+          "type": "string", "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "after_restart": {
+          "description": "for `verify`: this entity may be `unknown` right after a restart (its value comes with the next event)",
+          "enum": ["unknown"]
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "renamed"}}, "required": ["kind"]}, "then": {"required": ["to"]}}
+      ]
+    }
+  }
+}

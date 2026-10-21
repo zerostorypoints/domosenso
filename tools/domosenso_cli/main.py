@@ -26,9 +26,9 @@ COMMANDS: dict[str, str | None] = {
     "status": "domosenso_cli.cmd_home:status",
     "deploy": None,
     "rollback": None,
-    "snapshot": None,
-    "compare": None,
-    "verify": None,
+    "snapshot": "domosenso_cli.snapshot",
+    "compare": "domosenso_cli.compare",
+    "verify": "domosenso_cli.verify",
 }
 
 SUMMARIES = {
