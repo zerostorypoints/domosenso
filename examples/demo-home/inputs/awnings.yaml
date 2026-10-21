@@ -1,0 +1,9 @@
+# The values the demo home supplies to the awnings component (its `inputs:` in component.yaml): two
+# awnings on one ESPSomfy-RTS node, and the awnings' wind sensor.
+node_id: espsomfy_a1b2c3
+node: {area: Living room, url: "http://espsomfy.local"}
+covers:
+  - {name: Awning Living room, shade_id: 1}
+  - {name: Awning Kitchen, shade_id: 2}
+wind_sensor: binary_sensor.awnings_wind
+notify: notify.mobile_app_alex_phone

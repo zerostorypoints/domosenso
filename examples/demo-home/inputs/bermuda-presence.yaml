@@ -1,6 +1,6 @@
 # The values the demo home supplies to the bermuda-presence component (its `inputs:` in
-# component.yaml). The instance files under esphome/ and ha/packages/ are what
-# `domosenso add bermuda-presence` would write from these; here they are written by hand.
+# component.yaml). ha/packages/bermuda_presence.yaml is what the component's instance template
+# renders from these; the ESPHome device files under esphome/ are still written by hand.
 rooms: [Living room, Dining, Kitchen, Office, Bedroom, Kids' room, Hall]
 phones:
   sensor.alex_phone_area: Alex

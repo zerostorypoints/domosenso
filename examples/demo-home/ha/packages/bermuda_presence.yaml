@@ -1,6 +1,7 @@
-# domosenso component bermuda-presence 0.1.0 — the demo home's instance. Written once by
-# `domosenso add bermuda-presence` from inputs/bermuda-presence.yaml and owned by the home from then
-# on; the logic lives in the blueprints under blueprints/*/domosenso/, which the CLI updates.
+# domosenso component bermuda-presence — the demo home's instance: what
+# templates/instance/packages/bermuda_presence.yaml.j2 renders from inputs/bermuda-presence.yaml
+# (tests/test_instance_templates.py keeps the two equal). In a home `domosenso add` writes it once and
+# the home owns it; the logic lives in the blueprints under blueprints/*/domosenso/.
 
 template:
   - use_blueprint:

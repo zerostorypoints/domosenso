@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Switch Philips Hue lights and set their brightness room by room, using the room groups of the Hue bridge.",
+    "description": "Switch Philips Hue lights and set their brightness room by room, using the room groups of the Hue bridge. A package adds a light per room that shows it as on only while one of its bulbs is reachable and on, so a room whose bulbs lost power at the wall switch reads off, plus a count of the bulbs that are on and the lowest battery of the Hue accessories.",
     "devices": {
       "hue-bridge": {
         "description": "The hub that connects Hue bulbs and accessories over Zigbee and puts them on the home network.",

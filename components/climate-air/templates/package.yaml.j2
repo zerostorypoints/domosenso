@@ -1,0 +1,170 @@
+[#
+  The climate-air component's Home Assistant package (SPEC-004): whole-home figures on top of the
+  room sensors. Rendered once per home (lang en) by tools/domosenso_render.py; double square brackets
+  are the renderer's, {{ }} / {% %} stay for Home Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set rooms = inputs.climate -%]
+[%- set indoor = rooms | rejectattr('indoor', 'false') | list -%]
+[%- set humid = indoor | selectattr('humidity', 'defined') | list -%]
+[%- set baths = rooms | selectattr('bathroom', 'true') | selectattr('humidity', 'defined') | list -%]
+[%- set batteries = rooms | selectattr('battery', 'defined') | map(attribute='battery') | list -%]
+[%- set battery_list = batteries | tojson | replace('"', "'") -%]
+[%- set weather = inputs.outside_weather | default(none) -%]
+[%- set outside_temperature = 'sensor.outside_temperature' if weather else (inputs.outside.temperature if inputs.outside is defined else none) -%]
+[%- set bath_limit = inputs.bathroom_humidity | default(65) -%]
+[%- macro quoted(text) -%]'[[ text | replace("\\", "\\\\") | replace("'", "\\'") ]]'[%- endmacro -%]
+# Whole-home climate figures, from the Domosenso catalog (component climate-air). Edit the inputs and
+# render again rather than editing this file.
+#
+# Every sensor with state_class measurement also gets permanent long-term statistics (5-minute and
+# hourly min / mean / max), independent of the recorder's purge_keep_days. Rooms with `indoor: false`
+# (a glazed porch whose windows are often open) stay out of the indoor figures.
+
+sensor:
+  - platform: group
+    name: Indoor temperature average
+    unique_id: climate_indoor_temperature_mean
+    type: mean
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    ignore_non_numeric: true
+    entities: &indoor_temperatures
+[%- for room in indoor %]
+      - [[ room.temperature ]]
+[%- endfor %]
+
+  - platform: group
+    name: Indoor temperature max
+    unique_id: climate_indoor_temperature_max
+    type: max
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    ignore_non_numeric: true
+    entities: *indoor_temperatures
+
+  - platform: group
+    name: Indoor temperature min
+    unique_id: climate_indoor_temperature_min
+    type: min
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    ignore_non_numeric: true
+    entities: *indoor_temperatures
+[%- if humid %]
+
+  - platform: group
+    name: Indoor humidity average
+    unique_id: climate_indoor_humidity_mean
+    type: mean
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    ignore_non_numeric: true
+    entities: &indoor_humidities
+[%- for room in humid %]
+      - [[ room.humidity ]]
+[%- endfor %]
+
+  - platform: group
+    name: Indoor humidity max
+    unique_id: climate_indoor_humidity_max
+    type: max
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    ignore_non_numeric: true
+    entities: *indoor_humidities
+[%- endif %]
+
+template:
+  - sensor:
+[%- if weather %]
+      # From the weather entity's current conditions.
+      - name: Outside temperature
+        unique_id: climate_outside_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ state_attr('[[ weather ]]', 'temperature') is number }}"
+        state: "{{ state_attr('[[ weather ]]', 'temperature') }}"
+        attributes:
+          component: climate-air
+
+      - name: Outside humidity
+        unique_id: climate_outside_humidity
+        unit_of_measurement: "%"
+        device_class: humidity
+        state_class: measurement
+        availability: "{{ state_attr('[[ weather ]]', 'humidity') is number }}"
+        state: "{{ state_attr('[[ weather ]]', 'humidity') }}"
+        attributes:
+          component: climate-air
+[%- endif %]
+[%- if outside_temperature %]
+
+      - name: Indoor outdoor difference
+        unique_id: climate_indoor_outdoor_difference
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:home-thermometer-outline
+        availability: >-
+          {{ has_value('sensor.indoor_temperature_average')
+             and has_value('[[ outside_temperature ]]') }}
+        state: >-
+          {{ (states('sensor.indoor_temperature_average') | float
+              - states('[[ outside_temperature ]]') | float) | round(1) }}
+        attributes:
+          component: climate-air
+[%- endif %]
+[%- if humid %]
+
+      - name: Most humid room
+        unique_id: climate_most_humid_room
+        icon: mdi:water-percent-alert
+        state: >-
+          {% set rooms = {
+[%- for room in humid %]
+[%- set sep = ' }' if loop.last else ',' %]
+            [[ quoted(room.label) ]]: '[[ room.humidity ]]'[[ sep ]]
+[%- endfor %] %}
+          {% set ns = namespace(room='—', val=-1) %}
+          {% for name, eid in rooms.items() if has_value(eid) %}
+            {% if states(eid) | float > ns.val %}{% set ns.room = name %}{% set ns.val = states(eid) | float %}{% endif %}
+          {% endfor %}
+          {{ ns.room }}
+        attributes:
+          component: climate-air
+[%- endif %]
+[%- if batteries %]
+
+      - name: Lowest sensor battery
+        unique_id: climate_lowest_sensor_battery
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        availability: >-
+          {{ [[ battery_list ]] | select('has_value') | list | count > 0 }}
+        state: >-
+          {{ [[ battery_list ]] | select('has_value') | map('states') | map('int') | min }}
+        attributes:
+          component: climate-air
+[%- endif %]
+[%- if baths %]
+
+  - binary_sensor:
+      - name: Bathroom humidity high
+        unique_id: climate_bathroom_humidity_high
+        device_class: moisture
+        # [[ bath_limit ]] % and above for 10 minutes: time to ventilate.
+        delay_on: "00:10:00"
+        delay_off: "00:05:00"
+        state: >-
+          {{ [% for room in baths %][% if not loop.first %]
+             or [% endif %]states('[[ room.humidity ]]') | float(0) >= [[ bath_limit ]][% endfor %] }}
+        attributes:
+          component: climate-air
+[%- endif %]

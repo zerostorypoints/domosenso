@@ -1,0 +1,17 @@
+# The awnings component's frame bridge (README.md of the component). Build and start it next to this
+# file, with bridge.env written from bridge.env.example:
+#
+#   docker compose up -d --build
+#
+# Host network: the node's websocket and the broker are reached by their addresses on the home
+# network. The frames log stays in ./data across rebuilds.
+services:
+  espsomfy-frame-bridge:
+    build: .
+    image: espsomfy-frame-bridge
+    container_name: espsomfy-frame-bridge
+    network_mode: host
+    restart: always
+    env_file: bridge.env
+    volumes:
+      - ./data:/data

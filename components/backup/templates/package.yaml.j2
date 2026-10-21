@@ -1,0 +1,104 @@
+[#
+  The backup component's Home Assistant package (SPEC-003). Rendered once per home (lang en) by
+  tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
+  Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set time = inputs.time | default('03:30:00') -%]
+[%- set catch_up = inputs.catch_up_hours | default(20) -%]
+[%- set keep_daily = inputs.keep_daily | default(7) -%]
+[%- set keep_weekly = inputs.keep_weekly | default(4) -%]
+[%- set stale = inputs.stale_hours | default(30) -%]
+# Nightly Home Assistant backups, from the Domosenso catalog (component backup). Edit the inputs and
+# render again rather than editing this file.
+#
+# backup.create makes a full backup (configuration, .storage, database) with the local agent into
+# /config/backups. It is NOT encrypted: the archive holds Home Assistant's auth store and the
+# integrations' credentials, so any copy off this host needs client-side encryption.
+# Restore: onboarding screen "Restore from backup", or Settings → System → Backups.
+
+shell_command:
+  # Rolling retention: the newest [[ keep_daily ]] plus the newest of each of the last [[ keep_weekly ]] ISO weeks.
+  # Only touches *.tar in the backups folder itself.
+  prune_old_backups: "python3 /config/shell/prune_backups.py --keep-daily [[ keep_daily ]] --keep-weekly [[ keep_weekly ]]"
+
+command_line:
+  - sensor:
+      name: Newest backup age
+      unique_id: backup_newest_age_hours
+      icon: mdi:backup-restore
+      unit_of_measurement: h
+      state_class: measurement
+      scan_interval: 900
+      command: >-
+        f=$(ls -t /config/backups/*.tar 2>/dev/null | head -1);
+        if [ -n "$f" ]; then echo $(( ($(date +%s) - $(stat -c %Y "$f")) / 3600 )); else echo 9999; fi
+  - sensor:
+      name: Backup count
+      unique_id: backup_count
+      icon: mdi:archive
+      scan_interval: 900
+      command: "ls /config/backups/*.tar 2>/dev/null | wc -l"
+  - sensor:
+      name: Backup folder size
+      unique_id: backup_folder_size
+      icon: mdi:harddisk
+      unit_of_measurement: MB
+      scan_interval: 3600
+      command: "if [ -d /config/backups ]; then du -sm /config/backups | cut -f1; else echo 0; fi"
+
+automation:
+  - id: nightly_home_assistant_backup
+    alias: Nightly Home Assistant backup
+    description: Full backup at [[ time[:5] ]], and after a start if the newest backup is older than [[ catch_up ]] h.
+    mode: single
+    triggers:
+      - trigger: time
+        at: [[ time | yaml ]]
+        id: schedule
+      - trigger: homeassistant
+        event: start
+        id: catch_up
+    actions:
+      - if:
+          - condition: trigger
+            id: catch_up
+        then:
+          # Let the age sensor run once before it is checked.
+          - delay: "00:02:00"
+          - action: homeassistant.update_entity
+            target:
+              entity_id: sensor.newest_backup_age
+      # Top level on purpose: a condition inside if/then only ends that branch.
+      - condition: or
+        conditions:
+          - condition: trigger
+            id: schedule
+          - condition: numeric_state
+            entity_id: sensor.newest_backup_age
+            above: [[ catch_up ]]
+      - action: backup.create
+      - delay: "00:05:00"
+      - action: shell_command.prune_old_backups
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.newest_backup_age
+            - sensor.backup_count
+            - sensor.backup_folder_size
+
+  - id: backup_stale_alert
+    alias: Alert when backups stop
+    description: Push a notification if no backup has been written for [[ stale ]] hours.
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.newest_backup_age
+        above: [[ stale ]]
+        for: "01:00:00"
+    actions:
+      - action: [[ inputs.notify ]]
+        data:
+          title: Home Assistant backup
+          message: >-
+            No backup for {{ states('sensor.newest_backup_age') }} h.
+            Check Settings → System → Backups and the disk of the host.
