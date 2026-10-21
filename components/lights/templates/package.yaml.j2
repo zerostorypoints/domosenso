@@ -6,7 +6,7 @@
 #]
 [%- set rooms = inputs.rooms | default([]) -%]
 [%- set batteries = inputs.battery_sensors | default([]) -%]
-[%- set open = '[' -%]
+[%- set battery_list = batteries | tojson | replace('"', "'") -%]
 # Hue lights, from the Domosenso catalog (component lights). Edit the inputs and render again rather
 # than editing this file.
 
@@ -31,14 +31,12 @@ template:
         unit_of_measurement: "%"
         device_class: battery
         state_class: measurement
-        # Jinja's min filter has no result for an empty sequence and renders an empty string, which
-        # Home Assistant rejects as a sensor state. With every battery sensor unavailable at once (a
-        # Zigbee mesh falling apart does that) the list is empty, so report unknown instead.
-        state: >
-          {% set levels = [[ open ]][% for entity in batteries %]states('[[ entity ]]')[% if not loop.last %],
-                           [% endif %][% endfor %]]
-                          | reject('in', ['unknown', 'unavailable']) | map('int') | list %}
-          {{ levels | min if levels else 'unknown' }}
+        # Unavailable while no battery sensor has a value (a Zigbee mesh falling apart, or the first
+        # seconds after a start): a numeric sensor that renders "unknown" logs an ERROR each time.
+        availability: >-
+          {{ [[ battery_list ]] | select('has_value') | list | count > 0 }}
+        state: >-
+          {{ [[ battery_list ]] | select('has_value') | map('states') | map('int') | min }}
         attributes:
           component: lights
 [%- endif %]

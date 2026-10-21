@@ -52,7 +52,7 @@ provides:
     # From the package (0.2.0); every entity carries component: lights.
     - {id: "light.room_<id>", unique_id: "room_<id>", stability: stable, note: "on only while a reachable bulb of the group is on; commands go to the group"}
     - {id: sensor.lights_on, unique_id: lights_on_count, stability: stable, note: "Hue bulbs that are on, groups excluded"}
-    - {id: sensor.hue_lowest_battery, unique_id: hue_lowest_battery, stability: stable, note: "%, unknown when every sensor is unavailable; with battery_sensors"}
+    - {id: sensor.hue_lowest_battery, unique_id: hue_lowest_battery, stability: stable, note: "%, unavailable while no battery sensor has a value; with battery_sensors"}
 
 consumes: []
 
