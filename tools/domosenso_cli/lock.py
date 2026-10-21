@@ -60,8 +60,12 @@ class Lock:
         text = HEADER + yaml.safe_dump(document, sort_keys=True, allow_unicode=True)
         target = root / LOCK_FILE
         temporary = target.with_name(LOCK_FILE + ".tmp")
-        temporary.write_text(text, encoding="utf-8")
-        os.replace(temporary, target)
+        try:
+            temporary.write_text(text, encoding="utf-8")
+            os.replace(temporary, target)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
 
     def owner(self, path: str) -> str | None:
         """The component whose files include `path` (relative to the home root, POSIX form)."""

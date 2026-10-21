@@ -1,10 +1,12 @@
 """`domosenso.yaml`: the home's declaration of its catalog, targets and components."""
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from domosenso_cli.catalog import is_url
 from domosenso_cli.schema import load_validated
 
 HOME_FILE = "domosenso.yaml"
@@ -16,7 +18,10 @@ class Target:
     name: str
     kind: Literal["local-docker", "ssh-docker"]
     container: str
-    config: str  # a path on the target (on the host for ssh-docker), as the target sees it
+    # Where the target's Home Assistant config lives: a Path resolved against the home root for
+    # local-docker (a file the tool reads and writes here); for ssh-docker a str, a path on the
+    # remote host as written.
+    config: str | Path
     url: str
     token_file: Path
     host: str | None = None
@@ -45,6 +50,12 @@ class HomeConfig:
     kiosk_users: list[str] = field(default_factory=list)
     custom_integrations: dict[str, str] = field(default_factory=dict)
 
+    def catalog_source(self) -> str | Path:
+        """A URL as written; a local path resolved against the home root (`catalog:` may be relative)."""
+        if is_url(self.catalog):
+            return self.catalog
+        return Path(os.path.normpath(self.root / self.catalog))
+
     @classmethod
     def load(cls, root: Path) -> HomeConfig:
         data = load_validated(root / HOME_FILE, "home")
@@ -53,7 +64,7 @@ class HomeConfig:
                 name=name,
                 kind=raw["kind"],
                 container=raw["container"],
-                config=raw["config"],
+                config=_target_config(root, raw),
                 url=raw["url"],
                 token_file=Path(raw["token_file"]).expanduser(),
                 host=raw.get("host"),
@@ -83,3 +94,9 @@ class HomeConfig:
             kiosk_users=list(data.get("kiosk_users", [])),
             custom_integrations=dict(data.get("custom_integrations", {})),
         )
+
+
+def _target_config(root: Path, raw: dict) -> str | Path:
+    if raw["kind"] == "local-docker":
+        return Path(os.path.normpath(root / raw["config"]))
+    return raw["config"]

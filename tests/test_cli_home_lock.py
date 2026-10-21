@@ -46,7 +46,7 @@ def test_home_round_trip(tmp_path):
     assert home.config_dir == tmp_path / "home-assistant"
     assert home.esphome_dir == tmp_path / "esphome"
     assert home.targets["staging"] == Target(
-        name="staging", kind="local-docker", container="ha-staging", config="staging/.data/config",
+        name="staging", kind="local-docker", container="ha-staging", config=tmp_path / "staging/.data/config",
         url="http://127.0.0.1:8124", token_file=Path("~/.secrets/staging.token").expanduser(),
     )
     production = home.targets["production"]
@@ -203,7 +203,7 @@ def test_lock_rejects_bad_entry(tmp_path):
 
 def test_lock_rejects_unknown_layer(tmp_path):
     (tmp_path / "domosenso.lock").write_text(
-        f"components:\n  ramka:\n    version: 0.1.1\n    tag: t\n    commit: c\n    files:\n"
+        f"components:\n  ramka:\n    version: 0.1.1\n    tag: t\n    commit: {'a' * 40}\n    files:\n"
         f"      x.yaml: {{sha256: {'b' * 64}, from: t.j2, layer: local}}\n"
     )
     with pytest.raises(DomosensoError, match=r"files.*layer"):
@@ -219,3 +219,109 @@ def test_schemas_are_valid_draft_2020_12(name):
     from domosenso_cli.schema import SCHEMAS
 
     Draft202012Validator.check_schema(json.loads((SCHEMAS / f"{name}.schema.json").read_text()))
+
+
+def test_home_catalog_source(tmp_path):
+    write_home(tmp_path)
+    assert HomeConfig.load(tmp_path).catalog_source() == tmp_path.parent / "domosenso"
+    for url in ["https://github.com/zerostorypoints/domosenso.git", "git@github.com:zerostorypoints/domosenso.git",
+                "file:///srv/catalog"]:
+        write_home(tmp_path, HOME_YAML.replace("../domosenso", url))
+        assert HomeConfig.load(tmp_path).catalog_source() == url
+    write_home(tmp_path, HOME_YAML.replace("../domosenso", "/srv/catalog"))
+    assert HomeConfig.load(tmp_path).catalog_source() == Path("/srv/catalog")
+
+
+def test_local_docker_config_is_resolved_against_the_root(tmp_path):
+    write_home(tmp_path)
+    home = HomeConfig.load(tmp_path)
+    assert home.targets["staging"].config == tmp_path / "staging/.data/config"
+    # an ssh-docker target's config is a path on another machine: kept as written
+    assert home.targets["production"].config == "/srv/ha/config"
+    write_home(tmp_path, HOME_YAML.replace("config: staging/.data/config", "config: /abs/config"))
+    assert HomeConfig.load(tmp_path).targets["staging"].config == Path("/abs/config")
+
+
+BAD_PATHS = ["/etc/passwd", "../outside.yaml", "a/../../b.yaml", "a/..", ".."]
+
+
+@pytest.mark.parametrize("bad", BAD_PATHS)
+def test_home_local_glob_must_be_relative(tmp_path, bad):
+    write_home(tmp_path, HOME_YAML.replace("  - www/*.js", f"  - {bad}"))
+    with pytest.raises(DomosensoError, match=r"local\.1"):
+        HomeConfig.load(tmp_path)
+
+
+@pytest.mark.parametrize("bad", BAD_PATHS)
+def test_home_outputs_must_be_relative(tmp_path, bad):
+    write_home(tmp_path, HOME_YAML.replace("package.yaml: packages/ramka.yaml", f"package.yaml: {bad}"))
+    with pytest.raises(DomosensoError, match=r"components\.ramka\.outputs\.package\.yaml"):
+        HomeConfig.load(tmp_path)
+
+
+def test_home_relative_paths_with_dots_in_names_are_fine(tmp_path):
+    write_home(tmp_path, HOME_YAML.replace("package.yaml: packages/ramka.yaml", "package.yaml: packages/..hidden/a..b.yaml"))
+    assert HomeConfig.load(tmp_path).components["ramka"].outputs["package.yaml"] == "packages/..hidden/a..b.yaml"
+
+
+def test_home_resource_items_reject_unknown_keys(tmp_path):
+    write_home(tmp_path, HOME_YAML.replace("{url: /local/radar-card.js, type: module}",
+                                           "{url: /local/radar-card.js, type: module, defer: true}"))
+    with pytest.raises(DomosensoError, match=r"resources\.0.*defer"):
+        HomeConfig.load(tmp_path)
+
+
+LOCK_HEAD = f"components:\n  ramka:\n    version: 0.1.1\n    tag: ramka/0.1.1\n    commit: {'a' * 40}\n    files:\n"
+
+
+@pytest.mark.parametrize("bad", ["/etc/passwd", "../x.yaml", "a/../../x.yaml"])
+def test_lock_file_paths_must_be_relative(tmp_path, bad):
+    (tmp_path / "domosenso.lock").write_text(LOCK_HEAD + f"      {bad}: {{sha256: {'b' * 64}, from: t.j2}}\n")
+    with pytest.raises(DomosensoError, match=r"components\.ramka\.files"):
+        Lock.load(tmp_path)
+
+
+@pytest.mark.parametrize("sha", ["B" * 64, "b" * 63, "b" * 65, "xyz"])
+def test_lock_sha256_pattern(tmp_path, sha):
+    (tmp_path / "domosenso.lock").write_text(LOCK_HEAD + f"      x.yaml: {{sha256: {sha}, from: t.j2}}\n")
+    with pytest.raises(DomosensoError, match="sha256"):
+        Lock.load(tmp_path)
+
+
+@pytest.mark.parametrize("commit", ["c", "A" * 40, "a" * 39, "a" * 41])
+def test_lock_commit_pattern(tmp_path, commit):
+    (tmp_path / "domosenso.lock").write_text(
+        f"components:\n  ramka:\n    version: 0.1.1\n    tag: t\n    commit: {commit}\n    files: {{}}\n"
+    )
+    with pytest.raises(DomosensoError, match=r"ramka\.commit"):
+        Lock.load(tmp_path)
+
+
+def test_lock_save_removes_its_temporary_file_when_the_replace_fails(tmp_path, monkeypatch):
+    import os
+
+    lock = sample_lock()
+    lock.save(tmp_path)
+    before = (tmp_path / "domosenso.lock").read_text(encoding="utf-8")
+
+    def broken(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(os, "replace", broken)
+    with pytest.raises(OSError, match="disk full"):
+        lock.save(tmp_path)
+    monkeypatch.undo()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["domosenso.lock"]
+    assert (tmp_path / "domosenso.lock").read_text(encoding="utf-8") == before
+
+
+def test_lock_save_removes_its_temporary_file_when_the_write_fails(tmp_path, monkeypatch):
+    def broken(self, *args, **kwargs):
+        self.open("w").close()  # leave a partial file behind, as a full disk would
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Path, "write_text", broken)
+    with pytest.raises(OSError, match="disk full"):
+        sample_lock().save(tmp_path)
+    monkeypatch.undo()
+    assert list(tmp_path.iterdir()) == []

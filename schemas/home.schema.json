@@ -18,11 +18,12 @@
       "propertyNames": {"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
       "additionalProperties": {"$ref": "#/$defs/component"}
     },
-    "local": {"type": "array", "items": {"type": "string"}},
+    "local": {"type": "array", "items": {"$ref": "#/$defs/relpath"}},
     "resources": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["url", "type"],
         "properties": {"url": {"type": "string"}, "type": {"type": "string"}}
       }
@@ -32,6 +33,12 @@
     "custom_integrations": {"type": "object", "additionalProperties": {"type": "string"}}
   },
   "$defs": {
+    "relpath": {
+      "description": "A relative POSIX path inside the home: no leading slash, no `..` segment.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))"
+    },
     "target": {
       "type": "object",
       "additionalProperties": false,
@@ -55,7 +62,7 @@
       "properties": {
         "inputs": {"type": "string", "minLength": 1},
         "langs": {"type": "array", "items": {"type": "string", "pattern": "^[a-z]{2}$"}, "minItems": 1},
-        "outputs": {"type": "object", "additionalProperties": {"type": "string"}}
+        "outputs": {"type": "object", "additionalProperties": {"$ref": "#/$defs/relpath"}}
       }
     }
   }
