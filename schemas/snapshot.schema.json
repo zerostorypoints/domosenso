@@ -20,7 +20,8 @@
           "platform": {"type": "string"},
           "unique_id": {"type": ["string", "null"]},
           "state_class": {"enum": ["available", "unavailable", "unknown"]},
-          "from_files": {"type": "boolean"}
+          "from_files": {"type": "boolean"},
+          "mirrored": {"const": true, "description": "a state posted by a staging mirror (attribute domosenso_mirror) with no registry entry; never from files"}
         }
       }
     },

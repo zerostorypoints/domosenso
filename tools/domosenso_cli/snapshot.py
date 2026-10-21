@@ -25,7 +25,7 @@ from domosenso_cli.schema import SCHEMAS
 from domosenso_cli.targets import open_target
 
 # Platforms whose entities come from the home's YAML files. Any entity with no config entry, or with
-# no registry entry at all, counts as from files too.
+# no registry entry at all, counts as from files too, unless its state carries MIRROR_ATTRIBUTE.
 FILE_PLATFORMS = {
     "template", "group", "input_boolean", "input_number", "input_select", "input_text", "input_datetime",
     "input_button", "timer", "counter", "automation", "script", "utility_meter", "history_stats",
@@ -37,6 +37,10 @@ HELPER_DOMAINS = {
     "timer", "counter",
 }
 HELPER_KEYS = ("options", "min", "max", "step", "mode", "has_date", "has_time", "duration")
+# The attribute a staging mirror puts on every state it posts over the REST API (production's states,
+# for entities staging does not define). A marked state with no registry entry is the integration's,
+# not the home's files'.
+MIRROR_ATTRIBUTE = "domosenso_mirror"
 PROFILE_FILE = ".storage/frontend.user_data_{}"
 NO_CONFIG = re.compile(r"^[a-z_/]+: (not_found|config_not_found)\b")
 
@@ -124,13 +128,16 @@ def build(raw: dict[str, Any], kiosk_profiles: dict[str, dict] | None = None) ->
         platform = reg["platform"] if reg else domain
         value = state.get("state") if state else None
         attributes = (state or {}).get("attributes") or {}
+        mirrored = reg is None and attributes.get(MIRROR_ATTRIBUTE) is True
         entities[entity_id] = {
             "platform": platform,
             "unique_id": reg.get("unique_id") if reg else None,
             "state_class": _state_class(value),
-            "from_files": entity_id not in discovered
+            "from_files": not mirrored and entity_id not in discovered
             and (reg is None or platform in FILE_PLATFORMS or not reg.get("config_entry_id")),
         }
+        if mirrored:
+            entities[entity_id]["mirrored"] = True
         if domain in ("automation", "script"):
             (automations if domain == "automation" else scripts)[entity_id] = {
                 "id": attributes.get("id", object_id if domain == "script" else None),
