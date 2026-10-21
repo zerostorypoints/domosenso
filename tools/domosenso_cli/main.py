@@ -77,13 +77,17 @@ def run_command(name: str, args: argparse.Namespace, rep: Reporter) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.home is None:
-        args.home = Path.cwd()
+    args.home = (args.home or Path.cwd()).resolve()
     rep = Reporter(args.json)
     try:
-        return run_command(args.command, args, rep)
+        code = run_command(args.command, args, rep)
     except DomosensoError as exc:
         return rep.fail(str(exc))
+    except Exception as exc:  # noqa: BLE001 - `--json` must print one document whatever goes wrong
+        return rep.fail(f"unexpected: {exc!r}")
+    if not isinstance(code, int) or isinstance(code, bool):
+        return rep.fail("command returned no exit code")
+    return code
 
 
 if __name__ == "__main__":

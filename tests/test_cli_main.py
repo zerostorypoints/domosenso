@@ -110,9 +110,52 @@ def test_home_option_defaults_to_cwd(monkeypatch, tmp_path):
     fake_command(monkeypatch, run)
     monkeypatch.chdir(tmp_path)
     assert cli.main(["status"]) == 0
-    assert seen["home"] == tmp_path
+    assert seen["home"] == tmp_path.resolve()
     assert cli.main(["--home", str(tmp_path / "h"), "status"]) == 0
-    assert seen["home"] == tmp_path / "h"
+    assert seen["home"] == (tmp_path / "h").resolve()
+
+
+def test_home_option_is_made_absolute(monkeypatch, tmp_path):
+    seen = {}
+
+    def run(args, rep):
+        seen["home"] = args.home
+        return rep.ok()
+
+    fake_command(monkeypatch, run)
+    (tmp_path / "h").mkdir()
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["--home", "h", "status"]) == 0
+    assert seen["home"] == (tmp_path / "h").resolve() and seen["home"].is_absolute()
+
+
+def test_unexpected_exception_becomes_fail(monkeypatch, capsys):
+    def run(args, rep):
+        raise KeyError("x")
+
+    fake_command(monkeypatch, run)
+    assert cli.main(["status"]) == 1
+    assert capsys.readouterr().out.splitlines()[-1] == "FAIL unexpected: KeyError('x')"
+
+
+def test_unexpected_exception_prints_one_json_document(monkeypatch, capsys):
+    def run(args, rep):
+        rep.line("start")
+        raise ValueError("bad")
+
+    fake_command(monkeypatch, run)
+    assert cli.main(["status", "--json"]) == 1
+    out = capsys.readouterr().out
+    assert out.count("\n") == 1
+    doc = json.loads(out)
+    assert doc["result"] == "FAIL" and doc["reason"] == "unexpected: ValueError('bad')"
+
+
+@pytest.mark.parametrize("value", [None, "ok", True])
+def test_run_without_exit_code_is_a_failure(monkeypatch, capsys, value):
+    fake_command(monkeypatch, lambda args, rep: value)
+    assert cli.main(["status"]) == 1
+    assert capsys.readouterr().out.splitlines()[-1] == "FAIL command returned no exit code"
 
 
 def test_module_adds_its_own_arguments(monkeypatch):

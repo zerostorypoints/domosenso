@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/home.schema.json",
+  "title": "Domosenso home declaration (domosenso.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog", "config_dir", "esphome_dir", "targets", "components"],
+  "properties": {
+    "catalog": {"type": "string", "minLength": 1},
+    "config_dir": {"type": "string", "minLength": 1},
+    "esphome_dir": {"type": "string", "minLength": 1},
+    "targets": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/target"}
+    },
+    "components": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+      "additionalProperties": {"$ref": "#/$defs/component"}
+    },
+    "local": {"type": "array", "items": {"type": "string"}},
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url", "type"],
+        "properties": {"url": {"type": "string"}, "type": {"type": "string"}}
+      }
+    },
+    "unmanaged_on_target": {"type": "array", "items": {"type": "string"}},
+    "kiosk_users": {"type": "array", "items": {"type": "string"}},
+    "custom_integrations": {"type": "object", "additionalProperties": {"type": "string"}}
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "container", "config", "url", "token_file"],
+      "properties": {
+        "kind": {"enum": ["local-docker", "ssh-docker"]},
+        "host": {"type": "string", "minLength": 1},
+        "docker": {"type": "string", "minLength": 1},
+        "container": {"type": "string", "minLength": 1},
+        "config": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "minLength": 1},
+        "token_file": {"type": "string", "minLength": 1}
+      },
+      "if": {"properties": {"kind": {"const": "ssh-docker"}}, "required": ["kind"]},
+      "then": {"required": ["host"]}
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs"],
+      "properties": {
+        "inputs": {"type": "string", "minLength": 1},
+        "langs": {"type": "array", "items": {"type": "string", "pattern": "^[a-z]{2}$"}, "minItems": 1},
+        "outputs": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    }
+  }
+}

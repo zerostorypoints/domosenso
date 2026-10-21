@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/lock.schema.json",
+  "title": "Domosenso lock (domosenso.lock)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["components"],
+  "properties": {
+    "components": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "tag", "commit", "files"],
+      "properties": {
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "tag": {"type": "string", "minLength": 1},
+        "commit": {"type": "string", "minLength": 1},
+        "files": {"type": "object", "additionalProperties": {"$ref": "#/$defs/file"}},
+        "resources": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "from"],
+      "properties": {
+        "sha256": {"type": "string", "minLength": 1},
+        "from": {"type": "string", "minLength": 1},
+        "layer": {"enum": ["managed", "instance"]}
+      }
+    }
+  }
+}
