@@ -18,6 +18,8 @@ and run from a home repository as `uv run --project <catalog checkout> domosenso
 **Tech Stack:** Python 3.11+, uv, pytest, PyYAML, Jinja2, jsonschema, `websockets>=13`, git, Docker,
 ssh; Home Assistant 2026.9.2 (staging image `homeassistant/home-assistant:2026.9.2`).
 
+**Status:** approved by the maintainer 2026-10-21; executed subagent-driven.
+
 **Spec:** `.ai/specs/SPEC-002-2026-10-21-whole-home-on-domosenso.md` (approved 2026-10-21). The home's
 inventory: home repository, `docs/superpowers/specs/2026-10-21-whole-home-inventory.md`.
 
