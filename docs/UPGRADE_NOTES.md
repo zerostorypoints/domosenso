@@ -3,6 +3,12 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-21: ramka 0.1.1
+
+- **ramka 0.1.1** ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)): "Tomorrow" capitalised
+  in en and de; the cards move to `www/domosenso/ramka/0.1.1/` and the twelve resource URLs change in
+  place to `/local/domosenso/ramka/0.1.1/cards/<name>.js`.
+
 ## 2026-10-20: stage 1, the catalog
 
 The first versions of the components, moved out of one home's configuration. No home ran a released

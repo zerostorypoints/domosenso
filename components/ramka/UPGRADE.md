@@ -3,6 +3,19 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.1.1 (2026-10-21): "Tomorrow" capitalised in en and de
+
+The agenda's label for the next day was lower-case in English and German ("tomorrow", "morgen")
+while the weekday names beside it are capitalised. Polish keeps "jutro", in line with "pn"…"nd".
+
+### What a home does
+
+- Install the cards: they go to the new directory `www/domosenso/ramka/0.1.1/`, because the 31-day
+  `/local/` cache would keep serving the old translation under `0.1.0/`.
+- Update each of the twelve Lovelace resources in place from `/local/domosenso/ramka/0.1.0/cards/<name>.js`
+  to `/local/domosenso/ramka/0.1.1/cards/<name>.js` (`lovelace/resources/update`, same resource id).
+- Reload the tablet. No restart, no entity changes. The old `0.1.0/` directory can be deleted afterwards.
+
 ## 0.1.0 (2026-10-20): from a home's own Ramka to the catalog component
 
 The package and the dashboard are now rendered from `templates/` with the home's inputs

@@ -88,8 +88,8 @@ test("headings, empty states and the to-do label follow the language", async () 
   const todos = [{ summary: "Pay rent", status: "needs_action", due: "2026-10-27" }, { summary: "Done", status: "completed" }];
   const expected = {
     pl: ["Dziś", "Nic w kalendarzu", "Przypomnienia", "jutro"],
-    de: ["Heute", "Nichts im Kalender", "Erinnerungen", "morgen"],
-    en: ["Today", "Nothing in the calendar", "Reminders", "tomorrow"],
+    de: ["Heute", "Nichts im Kalender", "Erinnerungen", "Morgen"],
+    en: ["Today", "Nothing in the calendar", "Reminders", "Tomorrow"],
   };
   for (const [lang, [today, empty, reminders, tomorrow]] of Object.entries(expected)) {
     const { card } = makeCard({ lang, todos, config: { todo: "todo.family" } });
@@ -129,7 +129,7 @@ test("a missing language falls back to English", async () => {
 });
 
 test("week row labels use the weekday_short strings of the language", async () => {
-  const expected = { pl: ["jutro", "pn"], de: ["morgen", "Mo"], en: ["tomorrow", "Mon"] };
+  const expected = { pl: ["jutro", "pn"], de: ["Morgen", "Mo"], en: ["Tomorrow", "Mon"] };
   for (const [lang, [tomorrow, monday]] of Object.entries(expected)) {
     const { card } = makeCard({ lang });
     await flush();
