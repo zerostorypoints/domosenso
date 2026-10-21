@@ -313,6 +313,21 @@ def test_stamp_marks_uncommitted_changes(comp, tmp_path):
     assert path.read_text(encoding="utf-8").startswith(f"# Rendered by Domosenso from render-comp@{sha}-dirty — do not edit\n")
 
 
+def test_stamp_text_overrides(comp, tmp_path):
+    text = "# Rendered by Domosenso from render-comp/0.1.0 (abc1234) — do not edit\n"
+    plain = tmp_path / "plain"
+    out = tmp_path / "out"
+    dr.render_component(comp, INPUTS, plain)
+    written = dr.render_component(comp, INPUTS, out, stamp_text=text)  # no git needed: stamp_line is not called
+    assert written
+    for path in written:
+        content = path.read_text(encoding="utf-8")
+        assert content == text + (plain / path.relative_to(out)).read_text(encoding="utf-8")
+    # stamp=True as well: stamp_text wins, stamp_line (and git) is not consulted
+    both = dr.render_component(comp, INPUTS, tmp_path / "both", stamp=True, stamp_text=text)
+    assert both[0].read_text(encoding="utf-8").startswith(text)
+
+
 def test_stamp_outside_git_is_an_error(comp, tmp_path):
     with pytest.raises(dr.RenderError, match="git"):
         dr.render_component(comp, INPUTS, tmp_path / "out", stamp=True)

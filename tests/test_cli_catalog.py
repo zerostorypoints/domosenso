@@ -118,6 +118,19 @@ def test_checkout_reuses_cache_only_for_the_same_commit(repo, tmp_path):
     assert not marker.exists()  # another commit: re-extracted
 
 
+def test_extraction_oserror_names_the_destination(repo, tmp_path, monkeypatch):
+    commit(repo, "components/ramka/component.yaml", "v1\n")
+    tag(repo, "ramka/0.1.0")
+    cache = tmp_path / "cache"
+
+    def refuse(*args):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr("domosenso_cli.catalog.os.replace", refuse)
+    with pytest.raises(DomosensoError, match=r"ramka/0\.1\.0.*cache.*0\.1\.0"):
+        Catalog(str(repo), cache).checkout("ramka", "0.1.0", None)
+
+
 def test_tags_are_fetched_once_per_instance(repo, tmp_path):
     commit(repo, "components/ramka/component.yaml", "x\n")
     tag(repo, "ramka/0.1.0")

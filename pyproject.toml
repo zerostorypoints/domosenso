@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "domosenso"
 version = "0.0.0"
 description = "Domosenso: a catalog of tested Home Assistant components"
-requires-python = ">=3.11"
+requires-python = ">=3.11.4"  # tarfile extraction filters, used in domosenso_cli/catalog.py
 dependencies = [
     "jinja2",
     "pyyaml",

@@ -3,6 +3,15 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-21: stamp line names the tag
+
+The first line of a rendered file changes from `# Rendered by Domosenso from <id>@<commit> — do not
+edit` to `# Rendered by Domosenso from <id>/<version> (<commit>) — do not edit`, so it names the
+tag the file was rendered from (`<commit>-dirty` inside the parentheses when the catalog had
+uncommitted changes). The `domosenso` command reads both forms and writes the new one; the old tool
+`tools/domosenso_render.py --stamp` still writes the old form. Homes need no action: the next
+`domosenso render` rewrites the first line. The old form is read until the next minor version.
+
 ## 2026-10-21: remote package URL
 
 The account in the remote package URL changes from `domosenso` to `zerostorypoints`, the account the

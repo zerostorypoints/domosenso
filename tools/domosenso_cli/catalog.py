@@ -96,8 +96,11 @@ class Catalog:
         staging.mkdir(parents=True)
         with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
             tar.extractall(staging, filter="data")
-        shutil.rmtree(destination, ignore_errors=True)
-        os.replace(staging, destination)
+        try:
+            shutil.rmtree(destination, ignore_errors=True)  # a leftover shows up as the failure of the replace
+            os.replace(staging, destination)
+        except OSError as exc:
+            raise DomosensoError(f"cannot place {tag} in {destination}: {exc}") from exc
         marker.write_text(commit + "\n")
         return destination
 
