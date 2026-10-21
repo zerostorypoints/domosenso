@@ -1,0 +1,208 @@
+[#
+  The awnings component's Home Assistant package (SPEC-007): MQTT covers for an ESPSomfy-RTS node,
+  the wind sensor fed by the frame bridge, the sunset retract and the wind sensor watch. Rendered
+  once per home (lang en) by tools/domosenso_render.py; double square brackets are the renderer's,
+  {{ }} / {% %} stay for Home Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set base = {'ą': 'a', 'ä': 'a', 'ć': 'c', 'ę': 'e', 'é': 'e', 'è': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o',
+               'ö': 'o', 'ś': 's', 'ß': 'ss', 'ü': 'u', 'ź': 'z', 'ż': 'z'} -%]
+[%- macro slug(name) -%]
+[%- set ns = namespace(out='', gap=false) -%]
+[%- for ch in name | lower -%]
+[%- set ch = base.get(ch, ch) -%]
+[%- if ch.isascii() and ch.isalnum() -%]
+[%- set ns.out = ns.out ~ ('_' if ns.gap and ns.out else '') ~ ch -%][%- set ns.gap = false -%]
+[%- else -%][%- set ns.gap = true -%]
+[%- endif -%]
+[%- endfor -%]
+[[ ns.out ]]
+[%- endmacro -%]
+[%- set root = inputs.mqtt_root_topic | default('espsomfy') -%]
+[%- set node_id = inputs.node_id -%]
+[%- set node = inputs.node | default({}) -%]
+[%- set wind = inputs.wind_sensor | default(none) -%]
+[%- set heard = inputs.wind_last_heard | default({'id': 'awnings_wind_last_heard', 'name': 'Awnings wind last heard'}) -%]
+[%- set silent_hours = inputs.wind_silent_hours | default(72) -%]
+[%- set check_time = inputs.wind_check_time | default('10:00:00') -%]
+[%- set ns = namespace(covers=[]) -%]
+[%- for cover in inputs.covers -%]
+[%- set ns.covers = ns.covers + [cover.entity_id | default('cover.' ~ slug(cover.name))] -%]
+[%- endfor -%]
+# Somfy RTS awnings through an ESPSomfy-RTS node, from the Domosenso catalog (component awnings).
+# Edit the inputs and render again rather than editing this file.
+#
+# The node talks MQTT under the root topic `[[ root ]]`. Its own Home Assistant discovery stays off:
+# firmware 2.4.6 names each device as its own via_device, and Home Assistant refuses that ("A device
+# can not be its own via device"), so the covers are declared here against the same topics.
+#
+# Commands: 1 = extend (open), -1 = retract (close), 0 = stop.
+# Position: 0 retracted, 100 fully extended, estimated by the node from the travel times.
+# The covers take their state from the position alone. With the direction topic as state_topic Home
+# Assistant came back from a restart showing the awnings open at position 0: the retained "stopped"
+# arrives before the retained position, and a position never corrects a state once a state topic is
+# set. The positions are retained by the frame bridge; the node retains them only at boot.
+
+mqtt:
+[%- if wind %]
+  # The awnings' own wind sensor. It sends an alarm, then the all-clear 34-43 s later, and a calm
+  # report about every 19.5 minutes in between. The state comes from the frame bridge, one message per
+  # sensor frame, and falls back to off [[ inputs.wind_off_delay | default(120) ]] s after the last alarm frame: the
+  # all-clear arrives weaker than the alarm and gets lost, which leaves the node's own wind flag
+  # stuck on. Unknown until the first frame after a start.
+  binary_sensor:
+    - name: [[ inputs.wind_name | default('Awnings wind') | yaml ]]
+      default_entity_id: [[ wind ]]
+      unique_id: [[ node_id ]]_windy
+      device_class: safety
+      icon: mdi:weather-windy
+      state_topic: [[ root ]]/wind_sensor/state
+      payload_on: "1"
+      payload_off: "0"
+      off_delay: [[ inputs.wind_off_delay | default(120) ]]
+      availability_topic: [[ root ]]/bridge/status
+      payload_available: online
+      payload_not_available: offline
+      device:
+        identifiers: [ [[ node_id ]] ]
+[%- endif %]
+  cover:
+[%- for cover in inputs.covers %]
+    - name: [[ cover.name | yaml ]]
+[%- if cover.entity_id is defined %]
+      default_entity_id: [[ cover.entity_id ]]
+[%- endif %]
+      unique_id: [[ node_id ]]_shade[[ cover.shade_id ]]
+      device_class: awning
+      command_topic: [[ root ]]/shades/[[ cover.shade_id ]]/direction/set
+      position_topic: [[ root ]]/shades/[[ cover.shade_id ]]/position
+      set_position_topic: [[ root ]]/shades/[[ cover.shade_id ]]/target/set
+      payload_open: "1"
+      payload_close: "-1"
+      payload_stop: "0"
+      position_open: 100
+      position_closed: 0
+      availability_topic: [[ root ]]/status
+      payload_available: online
+      payload_not_available: offline
+[%- if loop.first %]
+      device: &node_device
+        identifiers: [ [[ node_id ]] ]
+        name: [[ node.name | default('ESPSomfy RTS') | yaml ]]
+        manufacturer: rstrouse
+        model: [[ node.model | default('ESPSomfy-RTS') | yaml ]]
+[%- if node.area is defined %]
+        suggested_area: [[ node.area | yaml ]]
+[%- endif %]
+[%- if node.url is defined %]
+        configuration_url: [[ node.url ]]
+[%- endif %]
+[%- else %]
+      device: *node_device
+[%- endif %]
+[%- endfor %]
+
+automation:
+[%- if inputs.retract_at_sunset | default(true) %]
+  # Every awning the node does not report as retracted goes up at sunset. An unknown state counts as
+  # extended, an unavailable one (node offline) is skipped. One command at a time: the node has a
+  # single radio. Up on an awning that is already retracted does nothing at the motor.
+  # A restart over sunset loses the sunset trigger, so a start between sunset and sunrise does the
+  # same, after a minute for the covers to come back from MQTT: until then they are unavailable and
+  # would be skipped.
+  - id: awnings_retract_at_sunset
+    alias: Awnings retract at sunset
+    description: Retract every awning that is not reported closed when the sun sets, or when HA starts after sunset.
+    mode: single
+    triggers:
+      - trigger: sun
+        event: sunset
+      - trigger: homeassistant
+        event: start
+        id: start
+    conditions:
+      - condition: or
+        conditions:
+          - condition: not
+            conditions:
+              - condition: trigger
+                id: start
+          # Two conditions: one sun condition with both after and before means the same day.
+          - condition: sun
+            after: sunset
+          - condition: sun
+            before: sunrise
+    actions:
+      - if:
+          - condition: trigger
+            id: start
+        then:
+          - delay: "00:01:00"
+      - repeat:
+          for_each:
+[%- for entity in ns.covers %]
+            - [[ entity ]]
+[%- endfor %]
+          sequence:
+            - if:
+                - condition: template
+                  value_template: "{{ states(repeat.item) not in ['closed', 'unavailable'] }}"
+              then:
+                - action: cover.close_cover
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                - delay: "00:00:03"
+[%- endif %]
+[%- if wind %]
+
+  # The wind sensor reports calm about every 19.5 minutes, but the node hears only some of those
+  # reports: gaps of more than a day with the sensor working are normal at the edge of its range
+  # (README.md). The motors receive the sensor directly, so this checks the sensor is alive, not that
+  # the awnings are protected. Every frame stores its time in a helper, which survives restarts (a
+  # delay does not); at [[ check_time[:5] ]] a push goes out while nothing has come for [[ silent_hours ]] hours, so once a
+  # day for as long as the silence lasts.
+  - id: awnings_wind_sensor_heard
+    alias: Awnings wind sensor heard
+    description: Store the time of the latest frame from the awnings' wind sensor.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: mqtt
+        topic: [[ root ]]/wind_sensor/state
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.[[ heard.id ]]
+        data:
+          timestamp: "{{ now().timestamp() }}"
+
+  - id: awnings_wind_sensor_silent
+    alias: Awnings wind sensor silent
+    description: Push a notification at [[ check_time[:5] ]] while the awnings' wind sensor has not been heard for [[ silent_hours ]] hours.
+    mode: single
+    triggers:
+      - trigger: time
+        at: [[ check_time | yaml ]]
+    conditions:
+      - condition: template
+        value_template: >
+          {{ now().timestamp() - state_attr('input_datetime.[[ heard.id ]]', 'timestamp') | float(0) > [[ silent_hours ]] * 3600 }}
+    actions:
+      - action: [[ inputs.notify ]]
+        data:
+          title: Awnings wind sensor silent
+          message: >
+            Nothing from the awnings' wind sensor since
+            {{ state_attr('input_datetime.[[ heard.id ]]', 'timestamp') | timestamp_custom('%-d %b %H:%M') }}.
+            The node often misses its reports for a day or more, never this long yet. If the
+            sensor itself is dead, the awnings have no wind protection. Check the sensor's
+            batteries, the ESPSomfy node and the frame bridge container.
+
+input_datetime:
+  # Set by awnings_wind_sensor_heard. No initial value, so a restart keeps the last one; a helper
+  # created afresh starts at midnight of that day.
+  [[ heard.id ]]:
+    name: [[ heard.name | yaml ]]
+    icon: mdi:weather-windy
+    has_date: true
+    has_time: true
+[%- endif %]

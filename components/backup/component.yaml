@@ -1,0 +1,65 @@
+# Domosenso component manifest: nightly Home Assistant backups with a rolling retention, sensors
+# that show whether backups happen, and a push when they stop. SPEC-003.
+id: backup
+version: 0.1.0
+summary: Nightly full backup, catch-up after a start, rolling retention, backup sensors and a stale alert
+description_key: meta.description
+photo: null
+
+devices:
+  requires: []
+
+host:
+  # The sensors read /config/backups, where a Container install's local backup agent writes. HAOS
+  # keeps backups in /backup.
+  installs: [container]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: backup, source: core, setup: "nothing; leave Home Assistant's own automatic backup schedule off, this component replaces it"}
+  - {name: command_line, source: core}
+  - {name: shell_command, source: core}
+
+inputs:
+  time:                         # the nightly backup
+    type: "HH:MM:SS"
+    default: "03:30:00"
+  catch_up_hours:               # after a start, back up when the newest backup is older than this
+    type: int
+    default: 20
+  keep_daily:                   # newest archives kept
+    type: int
+    default: 7
+  keep_weekly:                  # plus the newest archive of each of the last N ISO weeks
+    type: int
+    default: 4
+  stale_hours:                  # the alert fires after one more hour above this
+    type: int
+    default: 30
+  notify:                       # who hears that backups stopped
+    type: action
+    example: notify.mobile_app_alex_phone
+
+artifacts:
+  templates:
+    - templates/package.yaml.j2   # -> packages/backup.yaml
+  ha_packages: []
+  shell:                          # -> /config/shell/, called by shell_command.prune_old_backups
+    - shell/prune_backups.py
+  services: []
+
+provides:
+  entities:
+    - {id: sensor.newest_backup_age, unique_id: backup_newest_age_hours, stability: stable, note: "hours since the newest archive in /config/backups; 9999 when there is none"}
+    - {id: sensor.backup_count, unique_id: backup_count, stability: stable, note: "archives in /config/backups"}
+    - {id: sensor.backup_folder_size, unique_id: backup_folder_size, stability: stable, note: "MB"}
+    - {id: shell_command.prune_old_backups, stability: stable}
+    - {id: automation.nightly_home_assistant_backup, unique_id: nightly_home_assistant_backup, stability: stable}
+    - {id: automation.alert_when_backups_stop, unique_id: backup_stale_alert, stability: stable}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+local_only: true

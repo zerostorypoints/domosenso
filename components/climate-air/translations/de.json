@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Temperatur und Luftfeuchtigkeit pro Raum von Tapo-Sensoren und Luftqualität von einem Ruuvi Air: CO2, Feinstaub (PM2.5), VOC- und NOx-Index, Temperatur, Luftfeuchtigkeit, Luftdruck und eine Gesamtnote. Speist die Klima- und die Luftseite der Ramka.",
+    "description": "Temperatur und Luftfeuchtigkeit pro Raum von Tapo-Sensoren und Luftqualität von einem Ruuvi Air: CO2, Feinstaub (PM2.5), VOC- und NOx-Index, Temperatur, Luftfeuchtigkeit, Luftdruck und eine Gesamtnote. Ein Paket ergänzt die Werte des ganzen Hauses: Mittel, Minimum und Maximum innen, aussen aus der Wettervorhersage, die Differenz zwischen innen und aussen, den feuchtesten Raum, die schwächste Sensorbatterie und eine Meldung, wenn ein Bad gelüftet werden sollte. Speist die Klima- und die Luftseite der Ramka.",
     "devices": {
       "tapo-t315": {
         "description": "Ein kleiner batteriebetriebener Sensor mit Display, der Temperatur und Luftfeuchtigkeit über das stromsparende Funknetz eines Tapo-Hubs meldet (getestet mit dem H200).",

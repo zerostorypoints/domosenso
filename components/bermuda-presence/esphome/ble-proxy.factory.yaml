@@ -31,4 +31,4 @@ logger:
   baud_rate: 115200
 
 dashboard_import:
-  package_import_url: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0
+  package_import_url: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.2.0

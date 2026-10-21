@@ -1,0 +1,71 @@
+[#
+  bermuda-presence's instance file (SPEC-005): written once into a home by `domosenso add` from its
+  inputs, then the home's own (no stamp). One presence sensor per room and the proxy-offline
+  automation, both instances of the component's blueprints. Double square brackets are the
+  renderer's, {{ }} / {% %} stay for Home Assistant.
+#]
+[#- An id part the way Home Assistant slugifies a name: lower case, letters with diacritics to their
+    base letter, every other run of characters to one underscore. -#]
+[%- set base = {'ą': 'a', 'à': 'a', 'á': 'a', 'â': 'a', 'ä': 'a', 'å': 'a', 'ć': 'c', 'ç': 'c', 'č': 'c',
+               'ę': 'e', 'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e', 'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+               'ł': 'l', 'ń': 'n', 'ñ': 'n', 'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'ø': 'o', 'ś': 's',
+               'š': 's', 'ß': 'ss', 'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u', 'ý': 'y', 'ź': 'z', 'ż': 'z',
+               'ž': 'z'} -%]
+[%- macro slug(name) -%]
+[%- set ns = namespace(out='', gap=false) -%]
+[%- for ch in name | lower -%]
+[%- set ch = base.get(ch, ch) -%]
+[%- if ch.isascii() and ch.isalnum() -%]
+[%- set ns.out = ns.out ~ ('_' if ns.gap and ns.out else '') ~ ch -%][%- set ns.gap = false -%]
+[%- else -%][%- set ns.gap = true -%]
+[%- endif -%]
+[%- endfor -%]
+[[ ns.out ]]
+[%- endmacro -%]
+[%- set room_ids = inputs.room_ids | default({}) -%]
+[%- set tablets = inputs.tablets | default({}) -%]
+# domosenso component bermuda-presence — this home's instance. Written once by
+# `domosenso add bermuda-presence` from the component's inputs and owned by the home from then on;
+# the logic lives in the blueprints under blueprints/*/domosenso/, which the command updates.
+
+template:
+[%- for area in inputs.rooms %]
+[%- set id = room_ids[area] if area in room_ids else slug(area) %]
+[%- set sensor_name = 'Presence ' ~ area %]
+  - use_blueprint:
+      path: domosenso/presence_room.yaml
+      input:
+        area_name: [[ area | yaml ]]
+[%- if loop.first %]
+        phones: &phones
+[%- for entity, person in inputs.phones.items() %]
+          [[ entity ]]: [[ person | yaml ]]
+[%- endfor %]
+[%- if tablets %]
+        tablets: &tablets
+[%- for entity, person in tablets.items() %]
+          [[ entity ]]: [[ person | yaml ]]
+[%- endfor %]
+[%- else %]
+        tablets: &tablets {}
+[%- endif %]
+[%- else %]
+        phones: *phones
+        tablets: *tablets
+[%- endif %]
+    name: [[ sensor_name | yaml ]]
+    unique_id: presence_[[ id ]]
+[%- endfor %]
+
+automation:
+  - id: ble_proxy_offline_alert
+    alias: BLE proxy offline
+    use_blueprint:
+      path: domosenso/ble_proxy_offline.yaml
+      input:
+        proxies:
+[%- for proxy in inputs.proxies %]
+          - sensor.[[ slug(proxy.area) ]]_ble_proxy_[[ proxy.room | replace('-', '_') ]]_wi_fi_signal
+[%- endfor %]
+        minutes: [[ inputs.minutes | default(10) ]]
+        notify_action: [[ inputs.offline_notify ]]

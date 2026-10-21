@@ -2,7 +2,7 @@
 # first filled from a real home on 2026-10-20. Fields marked "pilot:" are additions the format
 # needed; see docs/pilot-bermuda-presence.md.
 id: bermuda-presence
-version: 0.1.0
+version: 0.2.0
 summary: Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda
 description_key: meta.description
 photo: null
@@ -49,6 +49,10 @@ inputs:
   minutes:                                # how long a proxy may stay unavailable before the notification
     type: int
     default: 10
+  room_ids:                               # 0.2.0: the id part for an area whose name does not slugify to the wanted id
+    type: "map[area_name, slug]"
+    default: {}
+    example: {"Kids' room": kids}
 
 artifacts:
   esphome:
@@ -61,19 +65,23 @@ artifacts:
     - ha/blueprints/template/domosenso/presence_room.yaml
     - ha/blueprints/automation/domosenso/ble_proxy_offline.yaml
   ha_packages: []                         # nothing generic is left once the repetition lives in blueprints
-  ha_instance: examples/demo-home/ha/packages/bermuda_presence.yaml   # pilot: written once from inputs, owned by the home
+  templates:                              # 0.2.0: templates/instance/<path> -> <path> in the home, written once by `domosenso add`
+    - templates/instance/packages/bermuda_presence.yaml.j2
+  # The demo home's copy of what the instance template renders from its inputs; ha-check loads it and
+  # tests/test_instance_templates.py keeps the two equal.
+  ha_instance: examples/demo-home/ha/packages/bermuda_presence.yaml
   dashboard_cards: [cards/presence-rooms.yaml]
   services: []
 
 provides:                                 # contract surface; placeholders in <> come from inputs
   entities:
-    - {id: "sensor.presence_<area slug>", stability: stable, from: ha_instance,
+    - {id: "sensor.presence_<area slug>", unique_id: "presence_<area slug>", stability: stable, from: ha_instance,
        state: "names joined by ', ', tablet-only people in brackets, '-' when empty",
        attributes: {component: bermuda-presence, area: "<area name>"}}
     - {id: "light.<area slug>_ble_proxy_<room>_led", stability: stable, from: esphome,
        note: "id built by HA from the ESPHome area + friendly name, not by this component"}
     - {id: "sensor.<area slug>_ble_proxy_<room>_wi_fi_signal", stability: stable, from: esphome, note: same}
-    - {id: "automation.ble_proxy_offline", stability: additive-only, from: ha_instance}
+    - {id: "automation.ble_proxy_offline", unique_id: ble_proxy_offline_alert, stability: additive-only, from: ha_instance}
   events:
     - {type: esphome.atom_button, data: {room: "<room>", click: [single, double, long]}, stability: frozen, from: esphome}
   features:

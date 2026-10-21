@@ -1,7 +1,8 @@
 # Domosenso component manifest: Somfy RTS awnings, driven from Home Assistant by an ESPSomfy-RTS
-# radio node. Catalog entry only for now: the covers are declared by the home (see home_provides).
+# radio node. From 0.2.0 a package with the covers, the wind sensor and its watch, and the frame
+# bridge as a compose service (SPEC-007).
 id: awnings
-version: 0.1.0
+version: 0.2.0
 summary: Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor
 description_key: meta.description
 photo: null
@@ -19,6 +20,8 @@ devices:
     - kind: radio-transceiver
       recommend: [cc1101]
       note: "the module's band has to match the awnings (433.42 MHz for Somfy RTS in Europe); wired to the board over SPI"
+    - kind: mqtt-broker
+      note: "the home provides it (Mosquitto, for example); the node and the frame bridge publish to it"
   optional:
     - kind: wind-sensor
       brand: Somfy
@@ -37,28 +40,71 @@ integrations:
     setup: "flashed over USB, then Wi-Fi and the radio pins in its web page; pair each awning from its own virtual remote"
 
 inputs:
-  covers:                       # one cover per awning; the home declares them as MQTT covers
-    type: "list[{name, shade_id}]"
+  covers:                       # one MQTT cover per awning; entity_id (0.2.0) pins the cover's id
+    type: "list[{name, shade_id, entity_id?}]"
     example: [{name: Awning Living room, shade_id: 1}, {name: Awning Kitchen, shade_id: 2}]
   mqtt_root_topic: {type: string, default: espsomfy}
-  wind_sensor:
+  wind_sensor:                  # 0.2.0: the package declares the sensor under this id; absent, no wind entities
     type: entity_id
     default: null
     example: binary_sensor.awnings_wind
+  node_id:                      # 0.2.0: prefix of every unique_id and the device identifier
+    type: string
+    example: espsomfy_a1b2c3
+  node:                         # device info of the node
+    type: "{name?, model?, area?, url?}"
+    default: {name: ESPSomfy RTS, model: ESPSomfy-RTS}
+  wind_name:
+    type: string
+    default: Awnings wind
+  wind_off_delay:               # seconds; the all-clear frame is often lost
+    type: int
+    default: 120
+  wind_last_heard:              # the input_datetime the heard automation writes
+    type: "{id, name}"
+    default: {id: awnings_wind_last_heard, name: Awnings wind last heard}
+  wind_silent_hours:
+    type: int
+    default: 72
+  wind_check_time:              # the daily check
+    type: "HH:MM:SS"
+    default: "10:00:00"
+  retract_at_sunset:
+    type: bool
+    default: true
+  notify:                       # who hears that the wind sensor went silent; required with wind_sensor
+    type: action
+    example: notify.mobile_app_alex_phone
 
 artifacts:
+  templates:
+    # The covers and the wind sensor against the node's MQTT topics: the node's own Home Assistant
+    # discovery is rejected by HA with firmware 2.4.6 ("A device can not be its own via device"), so
+    # it is switched off there.
+    - templates/package.yaml.j2   # -> packages/awnings.yaml
   ha_packages: []
   services:
     - {name: espsomfy-rts, kind: firmware, repo: rstrouse/ESPSomfy-RTS, version: "2.4.6"}
-  # Not in the catalog yet. The home declares the covers and the wind sensor against the node's
-  # MQTT topics: the node's own Home Assistant discovery is rejected by HA with firmware 2.4.6
-  # ("A device can not be its own via device"), so it is switched off there.
-  home_provides: [packages/awnings.yaml]
+    # The frame bridge, a compose service next to the broker: the wind sensor's state and the
+    # retained cover positions come from it (README.md). Configured by bridge.env.
+    - services/frame-bridge/compose.yaml
+    - services/frame-bridge/Dockerfile
+    - services/frame-bridge/bridge.py
+    - services/frame-bridge/bridge.env.example
 
 provides:
   entities:
-    - {id: "cover.<awning>", stability: stable, note: "device_class awning; position 0 retracted to 100 extended; extend, retract, stop"}
-    - {id: "binary_sensor.<wind>", stability: stable, note: "on while the wind sensor reports an alarm; the awnings have then retracted themselves. The sensor reports about every 19.5 minutes and on an alarm, but the node can miss reports for hours (README.md), so a missed all-clear needs an off delay"}
+    - {id: "cover.<awning>", unique_id: "<node_id>_shade<shade_id>", stability: stable, note: "device_class awning; position 0 retracted to 100 extended; extend, retract, stop"}
+    - {id: "binary_sensor.<wind>", unique_id: "<node_id>_windy", stability: stable, feature: wind, note: "on while the wind sensor reports an alarm; the awnings have then retracted themselves. The sensor reports about every 19.5 minutes and on an alarm, but the node can miss reports for hours (README.md), so a missed all-clear needs an off delay"}
+    - {id: "input_datetime.<wind_last_heard.id>", stability: additive-only, feature: wind, note: "time of the latest frame from the wind sensor"}
+    - {id: automation.awnings_retract_at_sunset, unique_id: awnings_retract_at_sunset, stability: stable}
+    - {id: automation.awnings_wind_sensor_heard, unique_id: awnings_wind_sensor_heard, stability: stable, feature: wind}
+    - {id: automation.awnings_wind_sensor_silent, unique_id: awnings_wind_sensor_silent, stability: stable, feature: wind}
+  mqtt_topics:                  # what the frame bridge publishes, under mqtt_root_topic
+    - {topic: "<root>/frames", stability: additive-only, note: "every frame as JSON: ts, address, command, rcode, rssi, bits, valid"}
+    - {topic: "<root>/wind_sensor/state", stability: additive-only, note: "1 / 0 per wind sensor frame"}
+    - {topic: "<root>/bridge/status", stability: additive-only, note: "online / offline, retained, last will"}
+    - {topic: "<root>/shades/<n>/position", stability: additive-only, note: "retained"}
 
 consumes: []
 
