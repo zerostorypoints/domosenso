@@ -276,3 +276,17 @@ def test_bad_silent_file_names_the_key(tmp_path):
     silent = "entries:\n  - entity: automation.nightly_backup\n    checks: [{triggered_within: -1}]\n"
     with pytest.raises(DomosensoError, match=r"silent\.yaml: entries\.0\.checks\.0"):
         run_verify(tmp_path, FakeHA(responses()), silent=silent)
+
+
+def test_after_restart_entity_unknown_in_baseline_passes(tmp_path):
+    """A stream sensor that had no value when the baseline was taken is not reported either way."""
+    base_states = states()
+    base_states.append({"entity_id": "sensor.amp_codec", "state": "unknown", "attributes": {},
+                        "last_updated": "2026-10-21T20:00:00+00:00"})
+    baseline = asyncio.run(take(FakeHA(responses(base_states))))
+    equivalence = "entries:\n  - {part: entities, id: sensor.amp_codec, after_restart: unknown, reason: stream}\n"
+    for now_state in ("unknown", "unavailable"):
+        now = states()
+        now.append({"entity_id": "sensor.amp_codec", "state": now_state, "attributes": {},
+                    "last_updated": "2026-10-22T06:00:00+00:00"})
+        assert run_verify(tmp_path, FakeHA(responses(now)), baseline=baseline, equivalence=equivalence) == []
