@@ -1,6 +1,7 @@
 # SPEC-002: The maintainer's whole home on Domosenso
 
-Status: draft 2026-10-21.
+Status: approved 2026-10-21 by the maintainer, in this session (draft 2026-10-21). His answers to
+the open questions are under "Decisions" at the end.
 Source: the maintainer, through the session that ran the first catalog deploy (ramka 0.1.1, live
 2026-10-21); `docs/2026-10-20-domosenso-validation-notes.md` §2 (cut-over requirements) and §5
 (operations log); `docs/COMPATIBILITY.md`; the stage 1 plan; the home repository's data audit of
@@ -260,7 +261,7 @@ plan and its generator, every dashboard except the Ramka's.
 ### 2.4 Containers
 
 - At the cut-over no container changes: the switch is Home Assistant files.
-- Done includes one compose file per service in the home repository (instance layer), generated
+- Phase 5 (after the cut-over, decision 3) adds one compose file per service in the home repository (instance layer), generated
   from `docker inspect` of the running container and checked by diffing the inspect output of a
   container created from it on staging. Switching production containers to compose is a separate,
   later step with its own go-ahead.
@@ -429,7 +430,8 @@ pilot), `plants`, `awnings`, `lights`.
    runs exactly the repository);
 3. the migration comparison `equivalent`, `verify` passed three times after the cut-over;
 4. the home's `AGENTS.md` and README describe the commands, not the hand steps;
-5. phase 5 done or explicitly deferred by the maintainer.
+
+Phase 5 (ESPHome, compose) is not part of done: it follows the cut-over (decision 3).
 
 ## Compatibility
 
@@ -438,6 +440,15 @@ pilot), `plants`, `awnings`, `lights`.
   COMPATIBILITY.md and a schema in `schemas/`).
 - Changed STABLE surface: the `--stamp` line (1.5), with the one-version bridge in the reader and a
   line in `docs/UPGRADE_NOTES.md`.
+- Corrected FROZEN surface, before any home used it: the remote package URL becomes
+  `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>`, the account the
+  repository lives under (decision 3). No device was flashed with the old form and no tag was ever
+  pushed, so COMPATIBILITY.md's rule for changes before a component's first release to another home
+  applies: no bridge, a line in `docs/UPGRADE_NOTES.md`. Every place that names the old form changes
+  with it (COMPATIBILITY.md, AGENTS.md, the `new-component` skill, `bermuda-presence`'s manifest,
+  packages, factory file and blueprint `source_url`s, the demo home's device files,
+  `tools/esphome-check.sh` and its test); SPEC-001 and the architecture research keep the old form as
+  history.
 - No existing component's entities change. The six component versions of 2.3 add artifacts; their
   `provides` are the home's current ids, ADDITIVE-ONLY additions to the manifests.
 
@@ -462,32 +473,27 @@ pilot), `plants`, `awnings`, `lights`.
 - A check that diffs `provides` between tags mechanically (SPEC-001 out of scope, still).
 - The operations-log component (validation notes §5, later).
 
-## Open questions
+## Decisions (2026-10-21, the maintainer)
 
-1. **One cut-over or component by component?** The maintainer decided on 2026-10-20 to switch once
-   when the home repository is 100 % equivalent. The Ramka has since gone live on its own, and phase 3
-   produces components that each could be deployed alone. This spec keeps one cut-over, preceded by
-   phase 1b (the command's first production run on the already-live Ramka). The maintainer confirms.
-2. **ESPHome packages from a private repository.** The FROZEN remote package URL is
-   `github://domosenso/domosenso/...`; the repository is private and under another account
-   (verified: `git remote -v`). ESPHome fetches `github://` over HTTPS without credentials
-   **(inference: a private repository fails; verify with one `esphome config`)**. Options: make the
-   repository public at that path before phase 5; or a vendored mode where the command copies the
-   package files from the tag into `esphome/domosenso/<id>/<version>/` (managed) and device files
-   `!include` them. Recommendation: vendored mode until the repository is public; it is additive.
-3. **The local-versus-catalog calls of 2.3** (amplifier statistics, desk log, lock extras, vacuum
-   statistics stay local). The maintainer confirms or moves one.
-4. **Compose files in "done"**, or deferred.
-5. **Reading production without asking.** Phase 2 and every phase 3 session need production
-   snapshots (REST and websocket reads with the token; `verify` also reads a kiosk user's profile
-   file over ssh). AGENTS.md requires a go-ahead for deploys, not for reads. Proposal: read-only
-   calls to production are allowed without asking, in the framework's and the home's AGENTS.md;
-   otherwise the maintainer takes one baseline snapshot and the sessions share the file.
-6. **The ESPHome URL is under another account.** Open question 2 continued: making the repository
-   public is not enough for the FROZEN `github://domosenso/domosenso/...` form; it would also have to
-   move to that account and name. Vendored mode is phase 5 work and only matters if phase 5 is in
-   "done".
-7. **Packages and `lovelace:`.** **(inference)** Home Assistant packages cannot declare `lovelace:`
+1. **One cut-over**, preceded by phase 1b (the command's first production deploy: the already-live
+   Ramka alone, no content change).
+2. **Reading production needs no go-ahead.** Read-only access (REST and websocket GETs, reading a
+   kiosk user's profile file over ssh) is written into the home repository's `AGENTS.md` as allowed;
+   writes, deploys and restarts still need the maintainer's go-ahead in the conversation. `AGENTS.md`
+   does not change Claude Code's permission classifier: a step the classifier blocks needs a
+   permission rule in the maintainer's own settings (the ssh host, the home's websocket tool) or his
+   consent typed in that same session; a consent relayed from another session is not accepted by the
+   classifier (observed twice on 2026-10-21).
+3. **ESPHome and compose are outside the cut-over's done**; phase 5 runs after it. The repository
+   does not change accounts: once it is public,
+   `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>` works. Until then
+   ESPHome cannot fetch packages from the private repository **(inference, not tried)**, one more
+   reason to defer. The vendored mode is dropped.
+4. **The catalog / local split of 2.3 stays** as proposed.
+
+## Open question
+
+1. **Packages and `lovelace:`.** **(inference)** Home Assistant packages cannot declare `lovelace:`
    dashboards, so a component's dashboard needs an entry in the home's `configuration.yaml`, which is
    instance. The command then checks the entry exists (`status`) and prints the lines to add; it never
    edits `configuration.yaml`. Verify on staging in phase 1.
