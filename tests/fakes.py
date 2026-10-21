@@ -1,9 +1,11 @@
 """Test doubles shared by the `domosenso` command's tests."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from domosenso_cli.errors import DomosensoError
+from domosenso_cli.targets import LocalFiles
 
 
 class FakeHA:
@@ -43,3 +45,32 @@ class FakeHA:
     async def http_status(self, path: str) -> int:
         self.calls.append(("http_status", {"path": path}))
         return self.http_statuses.get(path, 200)
+
+
+class FakeTarget(LocalFiles):
+    """Stands in for a `TargetIO` (`domosenso_cli.targets`): the files are a directory, `root`.
+
+    `exec` answers `(0, check_output)` for an argv that contains `check_config`, `(0, "")` otherwise,
+    and records every argv in `execs`; `restarts` counts `restart` calls. `fail_put_after=N` makes
+    `put` write N files and then raise, like a copy that was cut off.
+    """
+
+    def __init__(self, root: Path, check_output: str = "{}", fail_put_after: int | None = None):
+        super().__init__(root)
+        self.check_output = check_output
+        self.fail_put_after = fail_put_after
+        self.restarts = 0
+        self.execs: list[list[str]] = []
+
+    def put(self, files: dict[str, bytes]) -> None:
+        for i, (path, data) in enumerate(files.items()):
+            if self.fail_put_after is not None and i >= self.fail_put_after:
+                raise DomosensoError(f"put interrupted after {self.fail_put_after} files")
+            super().put({path: data})
+
+    def exec(self, argv: list[str]) -> tuple[int, str]:
+        self.execs.append(list(argv))
+        return 0, self.check_output if "check_config" in argv else ""
+
+    def restart(self, timeout_s: int = 120) -> None:
+        self.restarts += 1
