@@ -1,7 +1,7 @@
 # Domosenso component manifest: room temperature and humidity from Tapo sensors, air quality from
-# a Ruuvi Air.
+# a Ruuvi Air; from 0.2.0 a package with whole-home figures (SPEC-004).
 id: climate-air
-version: 0.1.0
+version: 0.2.0
 summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
 description_key: meta.description
 photo: null
@@ -28,10 +28,12 @@ host:
 integrations:
   - {name: tplink, source: core, setup: "the TP-Link account entered in Home Assistant's UI; the hub is polled on the home network. Reserve the hub's address in the router"}
   - {name: ruuvitag_ble, source: core, setup: "discovered through a Bluetooth proxy; enable the air-quality score entity by hand, it is off by default"}
+  - {name: group, source: core}
+  - {name: template, source: core}
 
 inputs:
-  climate:
-    type: "list[{label, temperature, humidity?}]"
+  climate:                      # 0.2.0: indoor (default true), bathroom (default false), battery read by the package
+    type: "list[{label, temperature, humidity?, indoor?, bathroom?, battery?}]"
     example: [{label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity}]
   air:
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
@@ -39,8 +41,17 @@ inputs:
   outside:
     type: "{temperature, humidity?}"
     default: null
+  outside_weather:              # gives sensor.outside_temperature / _humidity from its current conditions
+    type: entity_id
+    default: null
+    example: weather.forecast_home
+  bathroom_humidity:            # % for 10 minutes turns binary_sensor.bathroom_humidity_high on
+    type: int
+    default: 65
 
 artifacts:
+  templates:
+    - templates/package.yaml.j2   # -> packages/climate-air.yaml
   ha_packages: []
   services: []
 
@@ -49,8 +60,22 @@ provides:
     - {id: "sensor.<room>_temperature", stability: stable, note: "°C"}
     - {id: "sensor.<room>_humidity", stability: stable, note: "%"}
     - {id: "sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}", stability: additive-only, feature: air}
+    # From the package (0.2.0). Ids come from the fixed English names; template entities carry
+    # component: climate-air.
+    - {id: sensor.indoor_temperature_average, unique_id: climate_indoor_temperature_mean, stability: stable, note: "°C, rooms without indoor: false"}
+    - {id: sensor.indoor_temperature_max, unique_id: climate_indoor_temperature_max, stability: stable}
+    - {id: sensor.indoor_temperature_min, unique_id: climate_indoor_temperature_min, stability: stable}
+    - {id: sensor.indoor_humidity_average, unique_id: climate_indoor_humidity_mean, stability: stable, note: "%"}
+    - {id: sensor.indoor_humidity_max, unique_id: climate_indoor_humidity_max, stability: stable}
+    - {id: sensor.outside_temperature, unique_id: climate_outside_temperature, stability: stable, note: "with outside_weather"}
+    - {id: sensor.outside_humidity, unique_id: climate_outside_humidity, stability: stable, note: "with outside_weather"}
+    - {id: sensor.indoor_outdoor_difference, unique_id: climate_indoor_outdoor_difference, stability: stable, note: "°C, with outside_weather or outside"}
+    - {id: sensor.most_humid_room, unique_id: climate_most_humid_room, stability: additive-only, note: "the room's label, '—' when no room has a value"}
+    - {id: sensor.lowest_sensor_battery, unique_id: climate_lowest_sensor_battery, stability: stable, note: "%, with a battery on any room"}
+    - {id: binary_sensor.bathroom_humidity_high, unique_id: climate_bathroom_humidity_high, stability: stable, note: "with a bathroom room"}
 
-consumes: []
+consumes:
+  - {component: weather, id: "weather.<home>", via: outside_weather}
 
 tested:
   ha: ["2026.9.2"]

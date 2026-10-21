@@ -19,3 +19,17 @@ What a home needs to know beyond `component.yaml`.
 - The TP-Link account is entered in Home Assistant's UI; the hub is then polled on the home network.
 - Battery and signal-strength entities are disabled by default. Check an entity's `disabled_by`
   before putting it on a dashboard.
+
+## The package (0.2.0)
+
+- **Leave a room out of the indoor figures** with `indoor: false`: a glazed porch or winter garden
+  whose windows are often open pulls the average towards the outside. It still counts for the
+  lowest battery and, with `bathroom: true`, for the bathroom flag.
+- **Long-term statistics** come with `state_class: measurement` on every figure (5-minute and hourly
+  min / mean / max), kept regardless of the recorder's `purge_keep_days`.
+- **The most humid room's state is the room's `label`**, so set the labels the household wants to
+  read. `—` when no room has a value.
+- **Lowest sensor battery** reads the `battery` sensors of the rooms; Tapo hides them by default, so
+  enable each one first (above).
+- **Outside** comes from a weather entity's current conditions (`outside_weather`). A home with its
+  own outdoor sensor sets `outside.temperature` instead; the difference sensor then uses it.

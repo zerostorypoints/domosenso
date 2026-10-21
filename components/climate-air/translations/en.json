@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Temperature and humidity per room from Tapo sensors, and air quality from a Ruuvi Air: CO2, fine dust (PM2.5), VOC and NOx indices, temperature, humidity, pressure and a quality score. Feeds the Ramka's climate and air pages.",
+    "description": "Temperature and humidity per room from Tapo sensors, and air quality from a Ruuvi Air: CO2, fine dust (PM2.5), VOC and NOx indices, temperature, humidity, pressure and a quality score. A package adds the whole home's figures: indoor average, minimum and maximum, outside from the weather forecast, the indoor-outdoor difference, the most humid room, the lowest sensor battery and a flag when a bathroom needs airing. Feeds the Ramka's climate and air pages.",
     "devices": {
       "tapo-t315": {
         "description": "A small battery-powered sensor with a display that reports temperature and humidity over the low-power radio of a Tapo hub (tested with the H200).",
