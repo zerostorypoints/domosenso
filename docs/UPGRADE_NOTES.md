@@ -3,6 +3,15 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-21: the `domosenso` command and the home formats
+
+New STABLE surfaces, no change to an existing one: the `domosenso` command lines and the output
+lines agents parse, and the formats `domosenso.yaml`, `domosenso.lock`, `domosenso/equivalence.yaml`,
+`domosenso/silent.yaml` and the snapshot file, each with a schema in `schemas/`
+([COMPATIBILITY.md](COMPATIBILITY.md), "The `domosenso` command and a home repository").
+`examples/home-template/AGENTS.md` is the `AGENTS.md` a home repository starts from. Homes need no
+action; a home that renders by hand adopts the command with `domosenso adopt <id>@<version>`.
+
 ## 2026-10-21: stamp line names the tag
 
 The first line of a rendered file changes from `# Rendered by Domosenso from <id>@<commit> — do not

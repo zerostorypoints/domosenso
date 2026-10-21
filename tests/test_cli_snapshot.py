@@ -243,3 +243,57 @@ def test_command_unknown_target(tmp_path, capsys):
     home = write_home(tmp_path)
     assert cli.main(["--home", str(home), "snapshot", "production", "--out", str(tmp_path / "s.json")]) == 1
     assert capsys.readouterr().out.splitlines()[-1] == "FAIL unknown target production (declared: staging)"
+
+
+MQTT_REGISTRY = [
+    {"entity_id": "lock.front_door", "platform": "mqtt", "unique_id": "ABC123_lock",
+     "config_entry_id": "mq", "device_id": "dev-lock", "disabled_by": None},
+    {"entity_id": "sensor.front_door_state", "platform": "mqtt", "unique_id": "front_door_state",
+     "config_entry_id": "mq", "device_id": "dev-lock", "disabled_by": None},
+    {"entity_id": "binary_sensor.wind", "platform": "mqtt", "unique_id": "wind",
+     "config_entry_id": "mq", "device_id": None, "disabled_by": None},
+]
+
+
+def debug_info(fields):
+    # Shape of `mqtt/device/debug_info` in Home Assistant 2026.9.2: discovered entities carry their
+    # discovery topic and payload; a YAML entity on the same device has empty `discovery_data`.
+    assert fields == {"device_id": "dev-lock"}
+    return {"entities": [
+        {"entity_id": "lock.front_door", "subscriptions": [],
+         "discovery_data": {"topic": "homeassistant/lock/ABC123/lock/config", "payload": {}}, "transmitted": []},
+        {"entity_id": "sensor.front_door_state", "subscriptions": [], "discovery_data": {}, "transmitted": []},
+    ], "triggers": []}
+
+
+def test_mqtt_discovered_entities_not_from_files():
+    ha = FakeHA(responses(**{"config/entity_registry/list": REGISTRY + MQTT_REGISTRY,
+                             "mqtt/device/debug_info": debug_info}))
+    entities = asyncio.run(take(ha))["entities"]
+    assert entities["lock.front_door"]["from_files"] is False  # published by the device's discovery
+    assert entities["sensor.front_door_state"]["from_files"] is True  # YAML `mqtt:` on the same device
+    assert entities["binary_sensor.wind"]["from_files"] is True  # YAML, no device
+    assert [f for k, f in ha.calls if k == "mqtt/device/debug_info"] == [{"device_id": "dev-lock"}]
+
+
+def test_mirrored_automation_state_is_not_loaded():
+    """A state posted over the REST API (staging's mirror) looks like an automation that is on, but
+    Home Assistant has no automation behind it: `automation/config` answers not_found."""
+    states = STATES + [{"entity_id": "automation.only_in_production", "state": "on", "attributes": {"id": "x"}}]
+
+    def config(fields):
+        if fields["entity_id"] == "automation.only_in_production":
+            raise DomosensoError("automation/config: not_found Entity not found")
+        return {"config": HALL_LIGHT}
+
+    automations = snap(**{"/api/states": states, "automation/config": config})["automations"]
+    assert automations["automation.only_in_production"]["loaded"] is False
+    assert automations["automation.hall_light"]["loaded"] is True
+
+
+def test_config_read_failure_other_than_not_found_fails_the_snapshot():
+    def config(fields):
+        raise DomosensoError("automation/config: no result within 30 s")
+
+    with pytest.raises(DomosensoError, match="no result within"):
+        snap(**{"automation/config": config})

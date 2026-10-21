@@ -9,9 +9,11 @@ matches nothing is a warning.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Callable, Union
 
 from domosenso_cli.home import HOME_FILE, HomeConfig
 from domosenso_cli.report import Reporter
@@ -38,8 +40,16 @@ class Diff:
     detail: str = ""
 
 
-def _from_files(snapshot: dict) -> dict[str, dict]:
-    return {eid: e for eid, e in snapshot["entities"].items() if e["from_files"]}
+def _from_files(snapshot: dict, other: dict) -> dict[str, dict]:
+    """The entities of `snapshot` that come from files. A registry-less entity (no unique_id) that the
+    other side knows as an integration's is a state posted over the REST API, such as staging's mirror
+    of production, and is left out: only the pair of snapshots can tell it from a YAML entity without
+    a unique_id, which stays in."""
+    theirs = other["entities"]
+    return {
+        eid: e for eid, e in snapshot["entities"].items()
+        if e["from_files"] and not (e["unique_id"] is None and eid in theirs and not theirs[eid]["from_files"])
+    }
 
 
 def _pairs(entities: dict[str, dict]) -> dict[str, str]:
@@ -129,7 +139,7 @@ def _resources(a: list[dict], b: list[dict]) -> list[Diff]:
 
 def diff(a: dict, b: dict) -> list[Diff]:
     """Every difference between snapshots `a` and `b`, in PARTS order, sorted by id within a part."""
-    ea, eb = _from_files(a), _from_files(b)
+    ea, eb = _from_files(a, b), _from_files(b, a)
     return [
         *_presence("entities", ea, eb),
         *_unique_ids(ea, eb),
@@ -143,7 +153,7 @@ def diff(a: dict, b: dict) -> list[Diff]:
 
 def sizes(a: dict, b: dict) -> dict[str, int]:
     """How many things each part compared: the union of both sides."""
-    ea, eb = _from_files(a), _from_files(b)
+    ea, eb = _from_files(a, b), _from_files(b, a)
     return {
         "entities": len(set(ea) | set(eb)),
         "unique_ids": len(set(_pairs(ea)) | set(_pairs(eb))),
@@ -155,14 +165,19 @@ def sizes(a: dict, b: dict) -> dict[str, int]:
     }
 
 
-def _reviewed(entry: dict, head_commit: str | None) -> bool:
+# The commit a `config` entry must have been reviewed at: one for every entry, or one per entry.
+CommitOf = Union[str, None, Callable[[dict], Union[str, None]]]
+
+
+def _reviewed(entry: dict, commit_of: CommitOf) -> bool:
     reviewed_at = entry.get("reviewed_at")
+    head_commit = commit_of(entry) if callable(commit_of) else commit_of
     if head_commit is None:
         return reviewed_at is None
     return reviewed_at is not None and len(reviewed_at) >= 7 and head_commit.startswith(reviewed_at)
 
 
-def _matches(entry: dict, d: Diff, head_commit: str | None) -> bool:
+def _matches(entry: dict, d: Diff, head_commit: CommitOf) -> bool:
     if entry["part"] != d.part:
         return False
     kind = entry["kind"]
@@ -175,18 +190,24 @@ def _matches(entry: dict, d: Diff, head_commit: str | None) -> bool:
     return entry["id"] == d.id and d.kind in COVERS[kind]
 
 
-def explain(diffs: list[Diff], entries: list[dict], head_commit: str | None) -> tuple[list[Diff], list[dict]]:
+def explain(diffs: list[Diff], entries: list[dict], head_commit: CommitOf) -> tuple[list[Diff], list[dict]]:
     """`(unexplained differences, stale entries)`. A `config` entry counts only while its `reviewed_at`
-    is the commit `head_commit` (a prefix of 7 or more hex digits is enough), or, when no commit is
-    known, only without `reviewed_at`. Entries without a `kind` (`after_restart` only) are for `verify`."""
+    is the commit `head_commit` gives (the string, or the callable's answer for that entry; a prefix of
+    7 or more hex digits is enough), or, when no commit is known, only without `reviewed_at`. A `renamed` entry counts only when both halves are there (`id`
+only in a, `to` only in b); with one half it explains nothing and is stale. Entries without a `kind`
+(`after_restart` only) are for `verify`."""
     explanations = [e for e in entries if "kind" in e]
     used: set[int] = set()
-    unexplained = []
-    for d in diffs:
-        hits = [i for i, e in enumerate(explanations) if _matches(e, d, head_commit)]
-        used.update(hits)
-        if not hits:
-            unexplained.append(d)
+    explained: set[int] = set()
+    for i, entry in enumerate(explanations):
+        hits = [j for j, d in enumerate(diffs) if _matches(entry, d, head_commit)]
+        # A rename is the old id gone and the new one there; one half alone is something else.
+        if entry["kind"] == "renamed" and {diffs[j].kind for j in hits} != {"only-in-a", "only-in-b"}:
+            continue
+        if hits:
+            used.add(i)
+            explained.update(hits)
+    unexplained = [d for j, d in enumerate(diffs) if j not in explained]
     return unexplained, [e for i, e in enumerate(explanations) if i not in used]
 
 
@@ -195,16 +216,59 @@ def load_entries(path: Path) -> list[dict]:
     return list(data.get("entries") or [])
 
 
-def config_commit(home: Path) -> str | None:
-    """The last commit that touched the home's config tree, or None outside a git repository."""
-    if not (home / HOME_FILE).is_file():
-        return None
-    config_dir = HomeConfig.load(home).config_dir
-    proc = subprocess.run(
-        ["git", "-C", str(home), "log", "-1", "--format=%H", "--", str(config_dir)],
-        capture_output=True, text=True,
-    )
-    return (proc.stdout.strip() or None) if proc.returncode == 0 else None
+def _id_line(ids: set[str]) -> re.Pattern[str]:
+    """A YAML line `id: <one of ids>` (also `- id:`, quoted, with a comment after it)."""
+    alternatives = "|".join(re.escape(i) for i in sorted(ids))
+    return re.compile(rf"^\s*(?:-\s*)?id:\s*([\"']?)({alternatives})\1\s*(?:#.*)?$", re.M)
+
+
+class FileCommits:
+    """The commit each `config` entry is bound to: the last commit of the files that define the thing
+    it explains, so a change elsewhere in the config tree (another component's migration) leaves it
+    valid. The files are the entry's `file:` (paths under config_dir); for an automation without one,
+    the YAML files whose `id:` is the automation's id in either snapshot; otherwise the whole config
+    tree. A file with uncommitted changes binds to no commit, so no reviewed entry matches it.
+    Outside a git repository (or a home without domosenso.yaml) every entry gets None."""
+
+    def __init__(self, home: Path, snapshots: list[dict]):
+        self.home = home
+        self.snapshots = snapshots
+        self.config_dir = HomeConfig.load(home).config_dir if (home / HOME_FILE).is_file() else None
+        self._texts: dict[Path, str] | None = None
+
+    def _git(self, *args: str) -> str | None:
+        proc = subprocess.run(["git", "-C", str(self.home), *args], capture_output=True, text=True)
+        return proc.stdout if proc.returncode == 0 else None
+
+    def _defining(self, entry: dict) -> list[Path]:
+        named = entry.get("file")
+        if named:
+            return [self.config_dir / f for f in ([named] if isinstance(named, str) else named)]
+        if entry["part"] != "automations":
+            return []
+        ids = {s["automations"].get(entry["id"], {}).get("id") for s in self.snapshots} - {None}
+        if not ids:
+            return []
+        if self._texts is None:
+            self._texts = {}
+            for path in sorted(self.config_dir.rglob("*.yaml")):
+                try:
+                    self._texts[path] = path.read_text(encoding="utf-8")
+                except (OSError, UnicodeDecodeError):
+                    continue
+        pattern = _id_line(ids)
+        return [path for path, text in self._texts.items() if pattern.search(text)]
+
+    def __call__(self, entry: dict) -> str | None:
+        if self.config_dir is None:
+            return None
+        paths = [str(p) for p in (self._defining(entry) or [self.config_dir])]
+        status = self._git("status", "--porcelain", "--", *paths)
+        if status is None:
+            return None
+        if status.strip():
+            return ""  # uncommitted: matches no reviewed_at
+        return (self._git("log", "-1", "--format=%H", "--", *paths) or "").strip() or None
 
 
 def report(rep: Reporter, parts: dict[str, int], unexplained: list[Diff], stale: list[dict]) -> int:
@@ -239,7 +303,7 @@ def run(args: argparse.Namespace, rep: Reporter) -> int:
     if path:
         rep.line("explanations", str(path), f"({len(entries)})")
     diffs = diff(a, b)
-    unexplained, stale = explain(diffs, entries, config_commit(args.home))
+    unexplained, stale = explain(diffs, entries, FileCommits(args.home, [a, b]))
     rep.data.append({
         "unexplained": [asdict(d) for d in unexplained],
         "explained": [asdict(d) for d in diffs if d not in unexplained],
