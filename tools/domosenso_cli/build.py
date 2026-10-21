@@ -102,12 +102,15 @@ def _template_destination(entry: ComponentEntry, key: str, lang: str | None) -> 
     `package.yaml`, `dashboard.<lang>.yaml`, ..."""
     chosen = entry.outputs.get(key)
     if chosen is None:
+        # Home Assistant names a package after its file and refuses a hyphen in that name, so a
+        # package file carries the id with underscores (as tools/ha-check.sh installs it).
+        package = entry.id.replace("-", "_")
         if key == "package.yaml":
-            chosen = f"packages/{entry.id}.yaml"
+            chosen = f"packages/{package}.yaml"
         elif key == "dashboard.<lang>.yaml":
             chosen = f"dashboards/{entry.id}.<lang>.yaml"
         else:
-            chosen = f"packages/{entry.id}-{key}"
+            chosen = f"packages/{package}_{key}"
     return chosen.replace("<lang>", lang) if lang else chosen
 
 

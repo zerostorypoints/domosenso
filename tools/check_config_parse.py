@@ -2,8 +2,9 @@
 
 check_config counts an invalid template-blueprint instance as an error, but an invalid
 automation-blueprint instance only as a log line ("Blueprint ... generated invalid automation"),
-with exit code 0 even under --fail-on-warnings (HA 2026.9.2). The count here is the JSON document's
-`total_errors` plus those lines. Log lines may come before and after the document (the deploy's
+with exit code 0 even under --fail-on-warnings (HA 2026.9.2), and a package it refuses to set up
+only as a warning. The count here is the JSON document's `total_errors`, plus those packages, plus
+those lines. Log lines may come before and after the document (the deploy's
 `exec` merges stderr into stdout); output with no document counts as NO_JSON errors.
 
     uv run tools/check_config_parse.py <label> <stdout file> <stderr file>
@@ -42,12 +43,29 @@ def _parse(stdout: str) -> tuple[dict | None, list[str], str | None]:
         return None, logged, f"no JSON output ({e})"
 
 
+def _failed_packages(document: dict) -> int:
+    """Packages Home Assistant refused to set up. check_config lists them under warnings
+    (`homeassistant.packages.<name>`: "Setup of package '<name>' failed: ..."), not in total_errors,
+    though none of the package's entities then exists."""
+    return sum(
+        1
+        for domain, messages in (document.get("warnings") or {}).items()
+        if domain.startswith("homeassistant.packages.")
+        for message in messages
+        if isinstance(message, str) and message.startswith("Setup of package")
+    )
+
+
+def _errors(document: dict, logged: list[str]) -> int:
+    return document.get("total_errors", 0) + _failed_packages(document) + len(logged)
+
+
 def count_errors(stdout: str) -> tuple[int, list[str]]:
     """(errors, the blueprint log lines counted); (NO_JSON, [reason]) when there is no document."""
     document, logged, reason = _parse(stdout)
     if document is None:
         return NO_JSON, [reason]
-    return document.get("total_errors", 0) + len(logged), logged
+    return _errors(document, logged), logged
 
 
 def summarize(label: str, stdout: str) -> tuple[int, list[str]]:
@@ -55,7 +73,7 @@ def summarize(label: str, stdout: str) -> tuple[int, list[str]]:
     document, logged, reason = _parse(stdout)
     if document is None:
         return NO_JSON, [f"{label}: {reason}"]
-    n = document.get("total_errors", 0) + len(logged)
+    n = _errors(document, logged)
     lines = [f"{label}: {n} errors ({len(logged)} from blueprint log lines), "
              f"{document.get('total_warnings', 0)} warnings"]
     for kind in ("errors", "warnings"):

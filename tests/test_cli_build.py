@@ -468,3 +468,13 @@ def test_write_oserror_names_the_destination(home, catalog, capsys):
     code, out = run(home, "render", capsys=capsys)
     last = out.splitlines()[-1]
     assert code == 1 and last.startswith(f"FAIL cannot write {HA}/shell/pick.py: ")
+
+
+def test_default_package_destination_is_a_valid_package_name():
+    # Home Assistant names a package after its file (`!include_dir_named`) and refuses a hyphen.
+    from domosenso_cli.build import _template_destination
+    from domosenso_cli.home import ComponentEntry
+
+    entry = ComponentEntry("climate-air", Path("domosenso/climate-air.inputs.yaml"))
+    assert _template_destination(entry, "package.yaml", None) == "packages/climate_air.yaml"
+    assert _template_destination(entry, "dashboard.<lang>.yaml", "de") == "dashboards/climate-air.de.yaml"

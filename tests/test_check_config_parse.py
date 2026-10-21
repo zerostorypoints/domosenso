@@ -89,3 +89,14 @@ def test_cli_without_json_writes_999(tmp_path):
     assert done.returncode == 0
     assert done.stdout.startswith("fresh: no JSON output (")
     assert (tmp_path / "fresh.json.count").read_text() == "999"
+
+
+def test_failed_package_counts_as_an_error():
+    # check_config lists a package Home Assistant refuses (a hyphen in its name, for one) under
+    # warnings only, with total_errors 0; the package's entities then do not exist.
+    message = ("Setup of package 'climate-air' failed: Invalid package definition 'climate-air': invalid slug "
+               "climate-air (try climate_air). Package will not be initialized")
+    out = document(warnings={"homeassistant.packages.climate-air": [message, {"sensor": []}], "frontend": ["old key"]})
+    assert count_errors(out)[0] == 1
+    n, lines = summarize("fresh", out)
+    assert n == 1 and lines[0] == "fresh: 1 errors (0 from blueprint log lines), 3 warnings"
