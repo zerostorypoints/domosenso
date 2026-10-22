@@ -102,6 +102,12 @@ beyond naming it.
   5. **The person** creates a long-lived access token (profile → Security) and saves it in a file
      outside every repository, `chmod 600` (SPEC-009's rule). Then the scan as above.
 - `init` then gets a `production` target pointing at this host; nothing else changes.
+- As built in phase D: the file follows Home Assistant's Container page as read on 2026-10-22
+  (`privileged`, `/run/dbus`, `stop_grace_period: 60s`, `network_mode: host`, container
+  `homeassistant`), with the image pinned. Tried on Docker Desktop on a Mac with an override that
+  publishes the port instead of host networking (a Mac has none to the LAN): the container starts,
+  `/api/onboarding` answers within seconds, and after onboarding `discover` and `recommend --from-ha`
+  read it. Not tried on a Synology or a Linux host (owed to the first such home).
 
 ## 4. Integrations: what Home Assistant discovered, and what it cannot (point 4)
 

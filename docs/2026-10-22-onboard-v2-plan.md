@@ -28,5 +28,7 @@ the maintainer is back.
 | C | byte-identical render with every page and no `screen` (a test against the tag `ramka/0.1.2`); every page shot on a scratch demo staging at 1024 × 720 and 1280 × 800; the reduced home run live (rotation, swipes, guard) | done 2026-10-22 |
 | C | tag `ramka/0.2.0` (with `tools/release.py`, after the merge into `main`) | waiting for the maintainer |
 | C | follow-up found: German status words cut off on the status page (already in 0.1.2) | not started |
-| D | Home Assistant install path for a Docker host (§3), tried with a local container | waiting |
+| D | `examples/home-template/services/home-assistant/compose.yaml`, skill section 1.1, a test that the image is the checked version (§3) | done on `claude/onboard-v2-phase-d` |
+| D | tried on a local container (Mac, port published instead of host networking): start, `/api/onboarding`, onboarding, `discover`, `recommend --from-ha` | done 2026-10-22 |
+| D | on a Synology or a Linux host | owed to the first home without Home Assistant |
 | E | SPEC-012 `remote-access` | waiting (spec first) |
