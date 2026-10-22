@@ -3,6 +3,17 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.1.2 (2026-10-22): metadata only
+
+The manifest states the homes it is tested in (`tested.homes: 1`), so `domosenso recommend` no longer
+says "unknown". Cards, templates and translations are unchanged.
+
+### What a home does
+
+Nothing is required: a home on 0.1.1 can stay there. Updating moves the cards to
+`www/domosenso/ramka/0.1.2/` and their twelve resource URLs with them (`domosenso update ramka` and a
+deploy do both).
+
 ## 0.1.1 (2026-10-21): "Tomorrow" capitalised in en and de
 
 The agenda's label for the next day was lower-case in English and German ("tomorrow", "morgen")

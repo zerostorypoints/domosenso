@@ -8,7 +8,7 @@
 # writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
 # notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.1.1
+version: 0.1.2
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -195,4 +195,5 @@ consumes: []
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh ramka), 2026-10-20
+  homes: 1                      # the maintainer's home, on production since 2026-10-21 (0.1.1)
 local_only: true

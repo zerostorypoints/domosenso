@@ -97,8 +97,22 @@ def test_unknown_token_is_a_line_not_a_failure(catalog, tmp_path, capsys):
     code, lines = run(capsys, "--home", str(tmp_path), "recommend", "--catalog", str(catalog),
                       "--have", "tapo-t31", "ruuvi-air")
     assert code == 0
-    assert "unknown tapo-t31" in lines
+    assert "unknown tapo-t31 did-you-mean tapo-t315" in lines
     assert "unknown ruuvi-air" not in lines  # named by an optional device
+
+
+def test_unknown_token_suggests_by_vendor_prefix(catalog, tmp_path, capsys):
+    # A kind-like guess ("a Tapo sensor") points at the catalog's Tapo device id.
+    code, lines = run(capsys, "--home", str(tmp_path), "recommend", "--catalog", str(catalog),
+                      "--have", "tapo-sensor")
+    assert code == 0
+    assert "unknown tapo-sensor did-you-mean tapo-t315" in lines
+
+
+def test_unknown_token_without_a_near_match(catalog, tmp_path, capsys):
+    code, lines = run(capsys, "--home", str(tmp_path), "recommend", "--catalog", str(catalog),
+                      "--have", "zzz")
+    assert "unknown zzz" in lines
 
 
 def test_catalog_from_the_home(catalog, tmp_path, capsys):
