@@ -25,4 +25,4 @@ attributes:
   plant.basil: {moisture: 34, problem: none}   # watered: above min_moisture (15), no problem
 tablet: {mode: ambient, page: climate}
 components: [bermuda-presence, climate-air, lights, plants, ramka, weather]
-devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite, mi-flora, ruuvi-air, tapo-t315]
+devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite, mi-flora, ruuvi-air, tapo-t315, tcl-9469x]

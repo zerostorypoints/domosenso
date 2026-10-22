@@ -17,4 +17,4 @@ states:
   binary_sensor.awnings_wind: "off"
 tablet: {mode: controls}
 components: [bermuda-presence, lights, ramka, weather]
-devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite]
+devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite, tcl-9469x]

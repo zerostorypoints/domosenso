@@ -21,4 +21,4 @@ states:
   cover.awning_kitchen: closed
 tablet: {mode: "off"}
 components: [bermuda-presence, lights, ramka, weather]
-devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite]
+devices: [hlk-ld2410c, hue-bridge, m5stack-atom-lite, tcl-9469x]

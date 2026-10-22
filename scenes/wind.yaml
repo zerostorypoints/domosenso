@@ -16,4 +16,4 @@ attributes:
   cover.awning_kitchen: {current_position: 0}
 tablet: {mode: ambient, page: climate}
 components: [awnings, ramka, weather]
-devices: [cc1101]
+devices: [cc1101, tcl-9469x]
