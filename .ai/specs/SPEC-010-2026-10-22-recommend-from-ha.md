@@ -36,8 +36,8 @@ Websocket, read-only, the same client as `snapshot` (`ha_api.HA`):
 |---|---|
 | `config_entries/get` | `entry_id` → integration `domain`; entry-level rules (`mqtt` → `mqtt-broker`) |
 | `config/device_registry/list` | `manufacturer`, `model`, `model_id`, `config_entries`, `name`, `name_by_user`, `entry_type`, `disabled_by` |
-| `config/entity_registry/list` | entity → `device_id`, `platform`, `original_name`, `device_class` / `original_device_class` |
-| REST `GET /api/states` | `device_class` of entities whose registry entry has none (the registry only records an override) |
+| `config/entity_registry/list` | entity → `device_id`, `original_name` (and `device_class` / `original_device_class` where an entry has them) |
+| REST `GET /api/states` | `device_class` of an entity (on HA 2026.9.2 the registry list carries no device class, so this is the source) |
 
 Skipped: devices with `entry_type: service` (integration services, not hardware) and devices
 `disabled_by` anything. A device's integrations are the domains of its `config_entries`.
@@ -83,38 +83,38 @@ One file per kind that has rules (`schemas/kind.schema.json`: `id`, `match`). `c
 
 ### 3.3 First rules (implemented with this spec)
 
+Checked on 2026-10-22 against one real registry (HA 2026.9.2, read-only, section 7). "Seen" = the
+registry showed exactly this; "inference" = kept without a device to confirm it.
+
 Device ids:
 
 | device | rule | verified |
 |---|---|---|
-| `tapo-t315` | `integration: [tplink, tapo]`, `model: T315*` | inference: model string |
-| `hue-bridge` | `integration: hue`, `model_id: BSB00*` or `model: "Hue Bridge*"` | inference |
-| `m5stack-atom-lite` | `integration: esphome`, `model: m5stack-atom*`; or `manufacturer: domosenso`, `model: bermuda-presence` (the catalog's package sets `project: domosenso.bermuda-presence`, which ESPHome reports as manufacturer and model) | inference |
-| `hlk-ld2410c` | `integration: esphome`, `entity_names: ["Moving distance", "Still distance"]` (the names in the catalog's `ld2410.yaml` and ESPHome's examples) | from the package |
-| `mi-flora` | `integration: xiaomi_ble`, `model: HHCCJCY01*` | inference |
-| `ruuvi-air` | `integration: ruuvitag_ble`, `model: "*Air*"` | inference |
-| `hegel-h400` | `integration: hegel_streaming`, `model: "*H400*"` | inference |
-| `cc1101` | `integration: espsomfy_rts`; or `integration: mqtt`, `manufacturer: rstrouse*` (ESPSomfy-RTS always drives a CC1101) | inference |
+| `tapo-t315` | `integration: [tplink, tapo]`, `model: T315*` | seen (tplink, model `T315`); `tapo` (HACS) inference |
+| `hue-bridge` | `integration: hue`, `model_id: BSB00*`; or `model: "Hue Bridge*"` | seen (`Hue Bridge`, `BSB002`) |
+| `m5stack-atom-lite` | `integration: esphome`, `model: m5stack-atom*`; `integration: [mqtt, espsomfy_rts]`, `manufacturer: rstrouse*`, `model: "*M5Stack Atom Lite*"`; `integration: esphome`, `manufacturer: domosenso`, `model: bermuda-presence` | seen (ESPHome: manufacturer `Espressif`, model `m5stack-atom`, shared by the Atom Matrix and Echo; ESPSomfy names the board in its model); the `domosenso` project rule inference |
+| `hlk-ld2410c` | `integration: esphome`, `entity_names: ["Still distance", "Detection distance"]` | seen (the names of the catalog's `ld2410.yaml`) |
+| `mi-flora` | `integration: xiaomi_ble`, `model: HHCCJCY01*` | seen |
+| `ruuvi-air` | `integration: ruuvitag_ble`, `model: "*Air*"` | seen (`Ruuvi Air`) |
+| `hegel-h400` | `integration: hegel_streaming`, `model: "*H400*"` | seen; the same player also shows through `cast` and `dlna_dmr`, which count as `maybe network-audio-player` |
+| `cc1101` | `integration: [mqtt, espsomfy_rts]`, `manufacturer: rstrouse*` (ESPSomfy-RTS always drives a CC1101) | seen over MQTT; `espsomfy_rts` inference |
 
 Kinds (`found` unless marked `maybe`):
 
-| kind | rule |
-|---|---|
-| `mqtt-broker` | `entry: mqtt` |
-| `temperature-humidity-sensor` | `integration: [tplink, tapo]`, `model: T31*`; `maybe`: `device_classes: [temperature, humidity]` |
-| `plant-sensor` | `device_classes: [moisture, conductivity]` |
-| `air-quality-sensor` | `maybe`: `device_classes: [carbon_dioxide]`, or `[pm25]` |
-| `ble-proxy` | `integration: esphome`, `with_integration: bluetooth` (inference: an ESPHome Bluetooth proxy also holds a `bluetooth` config entry since HA 2025) |
-| `esp32-board` | `integration: esphome`, `model: [esp32*, m5stack*]`; `manufacturer: domosenso`; `integration: espsomfy_rts`; `maybe`: any `esphome` device |
-| `android-tablet` | `maybe`: `integration: mobile_app`, `unless_manufacturer: Apple` (phone or tablet cannot be told apart) |
-| `network-audio-player` | `maybe`: `entity_domain: media_player` (televisions and cast groups match too; the person confirms) |
-| `mains-meter` | `maybe`: `device_classes: [power, voltage]` |
-| `wind-sensor` | `maybe`: `device_classes: [wind_speed]` |
-| `rts-awning` | `integration: espsomfy_rts`, `entity_domain: cover` |
-| `mmwave-radar` | covered by `hlk-ld2410c`; no kind rule |
-
-Every "inference" above is checked against one real registry (section 7) before the commit, and the
-rule corrected from what it shows; the spec's table is updated to say which were confirmed.
+| kind | rule | verified |
+|---|---|---|
+| `mqtt-broker` | `entry: mqtt` | seen |
+| `temperature-humidity-sensor` | `integration: [tplink, tapo]`, `model: T31*`; `maybe`: `device_classes: [temperature, humidity]` | seen (T310, T315) |
+| `plant-sensor` | `device_classes: [moisture, conductivity]` | seen (Mi Flora) |
+| `air-quality-sensor` | `maybe`: `device_classes: [carbon_dioxide]`; `maybe`: `[pm25]` | seen (Ruuvi Air) |
+| `ble-proxy` | `integration: bluetooth`, `manufacturer: esphome` | seen: each ESPHome proxy is a second device of the `bluetooth` integration, manufacturer `esphome`; the draft's `with_integration` guess was wrong |
+| `esp32-board` | `integration: esphome`, `model: [esp32*, m5stack*]`; `integration: esphome`, `manufacturer: domosenso`; `integration: [mqtt, espsomfy_rts]`, `manufacturer: rstrouse*`; `maybe`: any `esphome` device | seen, except the `domosenso` rule |
+| `android-tablet` | `maybe`: `integration: mobile_app`, `unless_manufacturer: apple*` (phone or tablet cannot be told apart) | seen |
+| `network-audio-player` | `maybe`: `entity_domain: media_player` (televisions and speakers match too; the person confirms) | seen |
+| `mains-meter` | `maybe`: `device_classes: [power, voltage]` | seen |
+| `wind-sensor` | `maybe`: `device_classes: [wind_speed]` | inference (nothing to see) |
+| `rts-awning` | `integration: [mqtt, espsomfy_rts]`, `manufacturer: rstrouse*`, `entity_domain: cover` | seen over MQTT |
+| `mmwave-radar`, `radio-transceiver`, `hue-bridge` | covered by `hlk-ld2410c`, `cc1101`, `hue-bridge`; no kind file | |
 
 ### 3.4 Where `devices/` and `kinds/` are read from
 
@@ -135,14 +135,15 @@ With `--from-ha`, before the existing lines:
 | `scan devices <n> integrations <m>` | hardware devices read (services and disabled ones left out), integration domains among them |
 | `found <device id or kind> <n> via <domain>[,<domain>...]` | `n` devices (or entries) matched with `found`; counted as `--have` |
 | `maybe <device id or kind> <n> via <domain>[,...]` | a likely match, not counted; confirm and pass it with `--have` |
-| `unmatched <domain> <n>` | `n` devices of that integration that no rule matched |
+| `unmatched <domain> <n>` | `n` devices of that integration that no printed `found` or `maybe` line accounts for (a `maybe` hidden because the same token is `found` does not count) |
 
 Then `fits` / `missing` / `needs` / `optional` / `describes` / `unknown` exactly as today, with
 `have` = the `found` tokens plus `--have`. A token that is both `found` and `maybe` prints `found`.
 `unknown` applies to `--have` values only.
 
 `--json`: the document gains a top-level `scan` object: `rules_commit`, `found` and `maybe`
-(`{token: [device indexes]}`), `unmatched` (`{domain: [device indexes]}`) and `devices`: one object
+(`{token: {count, via, devices}}`, `devices` as indexes, empty for an `entry` rule), `unmatched`
+(`{domain: [device indexes]}`) and `devices`: one object
 per device with `name`, `name_by_user`, `manufacturer`, `model`, `model_id`, `integrations`,
 `matches` (`[{token, certainty, source}]`, `source` = `devices/<id>.yaml#<rule>` or
 `kinds/<kind>.yaml#<rule>`). `data` is unchanged.

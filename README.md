@@ -21,7 +21,9 @@ AGENTS.md, CLAUDE.md    instructions for coding agents (CLAUDE.md only imports A
 .ai/skills/, .ai/specs/ agent skills (linked into .agents/skills/ and .claude/skills/) and specs
 components/<id>/        the catalog: manifest (component.yaml), esphome/, ha/, cards/, translations/,
                         README.md (field notes)
-devices/<id>.yaml       the hardware the components name: names, description and what it does (en, de, pl)
+devices/<id>.yaml       the hardware the components name: names, description and what it does (en, de, pl),
+                        and how Home Assistant shows it (match rules)
+kinds/<kind>.yaml       how Home Assistant shows a kind of hardware (match rules for `recommend --from-ha`)
 scenes/<id>.yaml        the demo's eight scenes: time, entity states and attributes, what the tablet shows,
                         who takes part (format and rules: scenes/README.md)
 examples/demo-home/     a fictional home (Alex and Sam) as an instance of the catalog: inputs, states, generated media

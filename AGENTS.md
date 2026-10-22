@@ -40,9 +40,10 @@ AGENTS.md  CLAUDE.md          agent instructions (this file; CLAUDE.md = @AGENTS
 .agents/skills/, .claude/skills/   symlinks to .ai/skills/ (tools/install_skills.py); committed
 components/<id>/              the catalog: component.yaml, translations/, README.md (field notes),
                               UPGRADE.md, esphome/, ha/blueprints/, templates/, cards/, shell/, themes/
-devices/<id>.yaml             hardware the components name: names, description, what it does (en, de, pl)
+devices/<id>.yaml             hardware the components name: names, description, what it does (en, de, pl), match rules
+kinds/<kind>.yaml             how a running Home Assistant shows a kind of hardware (match rules, SPEC-010)
 scenes/<id>.yaml              the demo's eight scenes (format: scenes/README.md)
-schemas/                      JSON Schemas: component, device, scene, home, lock, snapshot, equivalence, silent
+schemas/                      JSON Schemas: component, device, kind, scene, home, lock, snapshot, equivalence, silent
 examples/demo-home/           a fictional home (Alex and Sam) as an instance: inputs, states, media
 examples/home-template/       AGENTS.md + CLAUDE.md a home repository starts from (placeholders)
 tools/                        the `domosenso` command (tools/domosenso_cli/), checker, renderer, installer,
@@ -147,8 +148,10 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
 - `snapshot <target>`, `compare <a> <b>`, `verify <target> --baseline <snapshot>`: record a running
   home, compare two snapshots against `domosenso/equivalence.yaml`, check a target after a change
   against `domosenso/silent.yaml`.
-- `recommend [--catalog <path or URL>] --have <device ids or kinds>`: which components the devices
-  satisfy, read at their newest tags; read-only, runs before `init` too (SPEC-009).
+- `recommend [--catalog <path or URL>] [--from-ha <target or URL> [--token-file <file>]] --have <device
+  ids or kinds>`: which components the devices satisfy, read at their newest tags; `--from-ha` scans a
+  running Home Assistant read-only and matches its devices by the rules in `devices/` and `kinds/` at
+  the catalog's HEAD; runs before `init` too (SPEC-009, SPEC-010).
 
 Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
 is a change to a STABLE surface (spec first).
@@ -195,7 +198,7 @@ entity ids, IP or MAC addresses, account names, tokens, photos, calendars or flo
 use the fictional demo home: Alex and Sam; Living room, Dining, Kitchen, Office, Bedroom, Kids' room,
 Hall; prefix `ramka`. A real home lives in its own repository.
 
-`tests/test_catalog_content.py::test_privacy` scans `components/`, `devices/`, `scenes/`,
+`tests/test_catalog_content.py::test_privacy` scans `components/`, `devices/`, `kinds/`, `scenes/`,
 `examples/`, `tools/`, `tests/`, `schemas/`, `docs/`, `.ai/`, `README.md`, `AGENTS.md` and
 `CLAUDE.md` for a list of the author's household words (assembled from fragments, so the list
 itself does not trip it). Framework documents under `docs/` and `README.md` may name the author and

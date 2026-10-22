@@ -50,7 +50,14 @@ provides; its `README.md` has field notes. `calendar`, `media`, `weather` descri
 
 ## First steps (by hand)
 
-Which components your devices satisfy, from the catalog's newest tags:
+Which components your devices satisfy, from the catalog's newest tags. With a running Home Assistant,
+let it read the hardware (read-only; the token stays in its file):
+
+```bash
+uv run --project ~/path/to/domosenso domosenso recommend --catalog ~/path/to/domosenso --from-ha http://homeassistant.local:8123 --token-file ~/.config/ha-token
+```
+
+Or name the devices yourself, and add what Home Assistant does not know yet the same way:
 
 ```bash
 uv run --project ~/path/to/domosenso domosenso recommend --catalog ~/path/to/domosenso --have tapo-t315 network-audio-player
