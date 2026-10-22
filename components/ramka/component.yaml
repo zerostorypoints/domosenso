@@ -8,7 +8,7 @@
 # writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
 # notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.1.2
+version: 0.2.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -16,6 +16,7 @@ photo: null
 devices:
   requires:
     - kind: android-tablet
+      recommend: [tcl-9469x]
       app: Home Assistant Companion (notification commands, light sensor, battery sensors, app importance)
       count: 1
     - kind: mmwave-radar
@@ -95,18 +96,23 @@ inputs:
   lights_all_off:               # a scene for "all off"; absent: light.turn_off on every room
     type: entity_id
     default: null
-  climate:                      # required: the climate page's rooms and its 7-day charts
+  climate:                      # the climate page's rooms and its 7-day charts; absent: no climate page (0.2.0)
     type: "list[{label, temperature, humidity?, color?, room?}]"   # color: theme series 1..n, default the position
+    default: null
+    example: [{label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity, room: living_room}]
   outside:                      # outside on the charts, dashed and thicker
     type: "{temperature, humidity?, color?}"
     default: null
   rooms_columns: {type: int, default: 5}
-  air:                          # required, at least one tile: the air page
+  air:                          # at least one tile: the air page; absent: no air page (0.2.0)
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
+    default: null
     example: {score: sensor.dining_air_quality_score, co2: sensor.dining_air_carbon_dioxide}
   pressure: {type: entity_id, default: null}               # after the wind on the climate page
-  plants:                       # required: the plants page; any extra key but room is a band override
+  plants:                       # the plants page; any extra key but room is a band override; absent: no plants page (0.2.0)
     type: "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]"
+    default: null
+    example: [{entity: plant.monstera, label: Living room, room: living_room}]
   plant_defaults:
     type: map
     default: {min_moisture: 15, max_moisture: 60, min_conductivity: 350, max_conductivity: 2000, min_brightness: 500}
@@ -129,6 +135,10 @@ inputs:
   dashboard_path: {type: string, default: dashboard-ramka}  # the top-right corner's way out
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
+  screen:                       # the tablet's CSS viewport, from `domosenso probe` (SPEC-011); absent: 1100 x 720.
+    type: "{width: int, height: int}"   # Rendering fails when no tested layout fits it (templates/dashboard.lang.yaml.j2).
+    default: null
+    example: {width: 1100, height: 720}
 
 # What the dashboard asks of `media_player`. Required: the states off / on / idle / playing /
 # paused / buffering / unavailable, turn_on, turn_off, media_play, media_pause, volume_level with

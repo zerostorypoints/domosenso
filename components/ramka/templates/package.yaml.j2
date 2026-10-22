@@ -16,6 +16,14 @@
 [%- set index_command = 'python3 /config/shell/ramka_index.py ' ~ photo_dir -%]
 [%- set pick_command = 'python3 /config/shell/ramka_pick.py ' ~ photo_dir ~ ' 5' -%]
 [%- set index_description = 'Rebuild ' ~ photo_dir ~ '/index.json: at start, every 15 min, on a folder change.' -%]
+[#- The ambient pages this home has, in rotation order (0.2.0): climate, air and plants only with
+    their inputs; photos and status always. The input_select keeps all five options (FROZEN), so
+    every step of the rotation goes to the next page that is there. -#]
+[%- set pages = [] -%]
+[%- for page in ['climate', 'air', 'plants', 'photos', 'status'] -%]
+[%- if page in ('photos', 'status') or inputs[page] is defined -%][%- set _ = pages.append(page) -%][%- endif -%]
+[%- endfor -%]
+[%- macro after(page) -%][[ pages[(pages.index(page) + 1) % (pages | length)] ]][%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
 # inputs and render again rather than editing this file.
@@ -315,9 +323,20 @@ script:
     icon: mdi:chevron-up
     mode: single
     sequence:
+[%- if pages | length == 5 %]
       - action: input_select.select_next
         target:
           entity_id: input_select.[[ p ]]_ambient
+[%- else %]
+      # Only the pages this home has: [[ pages | join(', ') ]].
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: >-
+            {% set pages = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
+            {{ pages[((pages.index(here) if here in pages else -1) + 1) % (pages | count)] }}
+[%- endif %]
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
@@ -326,9 +345,19 @@ script:
     icon: mdi:chevron-down
     mode: single
     sequence:
+[%- if pages | length == 5 %]
       - action: input_select.select_previous
         target:
           entity_id: input_select.[[ p ]]_ambient
+[%- else %]
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: >-
+            {% set pages = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
+            {{ pages[((pages.index(here) if here in pages else 1) - 1) % (pages | count)] }}
+[%- endif %]
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
@@ -375,7 +404,7 @@ script:
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
-          option: climate
+          option: [[ pages[0] ]]
       - action: timer.cancel
         target:
           entity_id: timer.[[ p ]]_controls
@@ -450,6 +479,21 @@ script:
           # this script, and the cycle begins there with that page's full time. Left alone it runs
           # climate → air → plants → photos → status → climate.
           sequence:
+[%- if pages | length < 5 %]
+            # Pages this home has: [[ pages | join(', ') ]]. A page it has not (the helper can stand
+            # on one after a restart) goes to the first, or no stage below would match.
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ states('input_select.[[ p ]]_ambient') not in [[ pages | tojson ]] }}
+              then:
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: [[ pages[0] ]]
+[%- endif %]
+[%- if 'climate' in pages %]
             # 1. Climate, 30 s.
             - if:
                 - condition: state
@@ -462,7 +506,9 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: air
+                    option: [[ after('climate') ]]
+[%- endif %]
+[%- if 'air' in pages %]
             # 2. Air quality, 15 s: a handful of numbers, read at a glance.
             - if:
                 - condition: state
@@ -475,7 +521,9 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: plants
+                    option: [[ after('air') ]]
+[%- endif %]
+[%- if 'plants' in pages %]
             # 3. Plants, 20 s: the ones to water first.
             - if:
                 - condition: state
@@ -488,7 +536,8 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: photos
+                    option: [[ after('plants') ]]
+[%- endif %]
             # 4. Photos: from the plants page, or straight in when the page already is photos.
             #    shell/ramka_pick.py: one folder that holds photos, at any depth, drawn with equal
             #    chances, then up to five different photos from it. An empty folder tree gives an
@@ -525,7 +574,7 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: status
+                    option: [[ after('photos') ]]
             # 5. Status, 15 s, then round to the climate page.
             - if:
                 - condition: state
@@ -538,7 +587,7 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: climate
+                    option: [[ after('status') ]]
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
@@ -818,7 +867,7 @@ automation:
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
-          option: climate
+          option: [[ pages[0] ]]
 [%- if inputs.alert_notify is defined %]
 
   # ---- Battery alerts ------------------------------------------------------------------------
