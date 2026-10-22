@@ -29,6 +29,7 @@ COMMANDS: dict[str, str | None] = {
     "snapshot": "domosenso_cli.snapshot",
     "compare": "domosenso_cli.compare",
     "verify": "domosenso_cli.verify",
+    "recommend": "domosenso_cli.recommend",
 }
 
 SUMMARIES = {
@@ -43,6 +44,7 @@ SUMMARIES = {
     "snapshot": "record the entities of a running home",
     "compare": "compare two snapshots",
     "verify": "check a running home against a snapshot",
+    "recommend": "list the components the home's devices satisfy",
 }
 
 

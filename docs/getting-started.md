@@ -1,7 +1,18 @@
 # Getting started: your own home on Domosenso
 
-For a first outside home. Read this, then open your home repository in Claude Code (or Codex) and let
-the agent read `AGENTS.md`; it knows the commands below.
+For a first outside home.
+
+## Start here: `/onboard-home`
+
+Clone this repository with its tags, open it in Claude Code and type `/onboard-home` (Codex: ask for
+the `onboard-home` skill). The agent asks about your Home Assistant host, your hardware and what you
+want, recommends components (`domosenso recommend`), creates your home repository in a directory
+outside this one, adds `backup` with values read from your Home Assistant, and stops at
+`deploy production --plan`. It reads your Home Assistant freely and writes nothing to it until you
+type yes. From an empty directory instead: tell the agent to read
+`<catalog>/.ai/skills/onboard-home/SKILL.md` and follow it.
+
+The rest of this page is what the skill does, step by step, for reference.
 
 ## Where things stand (2026-10-22)
 
@@ -37,7 +48,15 @@ the agent read `AGENTS.md`; it knows the commands below.
 Each component's `component.yaml` lists its inputs (your entity ids, names, rooms) and what it
 provides; its `README.md` has field notes. `calendar`, `media`, `weather` describe what the Ramka reads.
 
-## First steps
+## First steps (by hand)
+
+Which components your devices satisfy, from the catalog's newest tags:
+
+```bash
+uv run --project ~/path/to/domosenso domosenso recommend --catalog ~/path/to/domosenso --have tapo-t315 network-audio-player
+```
+
+Then the home repository:
 
 ```bash
 mkdir ~/my-home && cd ~/my-home && git init
@@ -55,7 +74,10 @@ uv run --project ~/path/to/domosenso domosenso status
 ```
 
 Describe your Home Assistant as the `production` target in `domosenso.yaml` (SSH host, container,
-config path, URL, token file), then:
+config path, URL, token file). Rendered packages load only through
+`homeassistant: packages: !include_dir_named packages`: copy your `configuration.yaml` from Home
+Assistant into `home-assistant/configuration.yaml`, add that line if it is missing, and the deploy
+carries it from then on (`secrets.yaml` and `.storage/` stay where they are). Then:
 
 ```bash
 uv run --project ~/path/to/domosenso domosenso snapshot production --out before.json   # read-only
@@ -71,16 +93,11 @@ by itself if `check_config` fails.
 
 Start small: `backup` first (no hardware), then one component whose hardware you have.
 
-## With a coding agent
+## With a coding agent, after onboarding
 
-Copy `examples/home-template/AGENTS.md` and `CLAUDE.md` into your home repository and fill in the
-placeholders (host, container, paths). Then a first prompt such as:
-
-> Read AGENTS.md and the catalog's components. I have a Synology NAS with Home Assistant in Docker,
-> Tapo sensors and a Naim Uniti Star. Propose which components to add and what inputs they need, then
-> add `backup` and show me `deploy production --plan`.
-
-The agent may read your Home Assistant freely; it asks before any write to it.
+`/onboard-home` copies `examples/home-template/AGENTS.md` and `CLAUDE.md` into your home repository
+and fills in the placeholders (host, container, paths). From then on open the agent in your home
+repository for everyday work; it may read your Home Assistant freely and asks before any write to it.
 
 ## Giving back
 

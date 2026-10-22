@@ -147,6 +147,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
 - `snapshot <target>`, `compare <a> <b>`, `verify <target> --baseline <snapshot>`: record a running
   home, compare two snapshots against `domosenso/equivalence.yaml`, check a target after a change
   against `domosenso/silent.yaml`.
+- `recommend [--catalog <path or URL>] --have <device ids or kinds>`: which components the devices
+  satisfy, read at their newest tags; read-only, runs before `init` too (SPEC-009).
 
 Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
 is a change to a STABLE surface (spec first).
@@ -267,6 +269,7 @@ the script after adding, renaming or removing a skill.
 
 | skill | use it to |
 |---|---|
+| `onboard-home` | start a new home from an empty directory: interview, `domosenso recommend`, `init`, add `backup`, stop at `deploy production --plan` |
 | `check` | run `tools/check-all.sh` and report pass or fail per step |
 | `new-component` | scaffold `components/<id>/` and get the checker and tests passing |
 | `write-component-spec` | write a spec in `.ai/specs/` and stop for approval |
