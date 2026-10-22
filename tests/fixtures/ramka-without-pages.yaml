@@ -1,5 +1,6 @@
-# The demo home's ramka inputs without climate, air and plants (and outside and pressure, which only
-# the climate page reads): tools/check-all.sh runs check_config on this render too (ramka 0.2.0).
+# The demo home's ramka inputs without climate, air, plants and photo_dir (and outside and pressure,
+# which only the climate page reads): only the status page is left. tools/check-all.sh runs
+# check_config on this render too (ramka 0.2.0).
 prefix: ramka
 kiosk_user: Ramka
 radar:
@@ -52,7 +53,6 @@ status:
     label: Front door
 weather: weather.forecast_home
 calendar: calendar.family
-photo_dir: /config/www/ramka
 tablet_device:
   notify: notify.mobile_app_dining_tablet
   sensors: dining_tablet

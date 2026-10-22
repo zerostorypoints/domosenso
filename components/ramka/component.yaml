@@ -122,8 +122,9 @@ inputs:
   status_columns: {type: int, default: 4}
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
-  photo_dir:                    # required, under /config/www (served as /local/...)
-    type: path
+  photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
+    type: path                  # entities, shell commands or index automation (0.2.0)
+    default: null
     example: /config/www/ramka
   tablet_device:                # required: the Companion app's notify action and sensor slug
     type: "{notify: notify.mobile_app_*, sensors: slug}"   # sensor.<slug>_light_sensor, _battery_level,
@@ -193,12 +194,12 @@ provides:                       # <prefix> from inputs
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
     - {id: "timer.<prefix>_controls", stability: stable}
     - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}
-    - {id: "input_text.<prefix>_photo", stability: stable}
-    - {id: "image.<prefix>_photo", stability: stable}
+    - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
+    - {id: "image.<prefix>_photo", stability: stable, note: "with photo_dir"}
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
-    - {id: "shell_command.<prefix>_{index,pick}", stability: stable}
+    - {id: "shell_command.<prefix>_{index,pick}", stability: stable, note: "with photo_dir"}
   automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes: []

@@ -34,7 +34,7 @@ for manifest in components/*/component.yaml; do
     step "esphome-check $comp" tools/esphome-check.sh "$comp"
   fi
 done
-# ramka 0.2.0: climate, air and plants left out (SPEC-011 section 6.2).
+# ramka 0.2.0: climate, air, plants and photos left out, only the status page (SPEC-011 section 6.2).
 step "ha-check ramka (pages left out)" env INPUTS="$ROOT/tests/fixtures/ramka-without-pages.yaml" tools/ha-check.sh ramka
 
 echo

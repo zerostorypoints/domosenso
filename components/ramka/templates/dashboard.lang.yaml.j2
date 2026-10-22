@@ -22,9 +22,12 @@
 [[ fail('ramka: no tested layout for ' ~ screen.width ~ 'x' ~ screen.height ~ ' CSS px (tested: ' ~ (tested | join(', ')) ~ ')') ]]
 [%- endif -%]
 [%- set mp = inputs.media_player -%]
+[%- if inputs.photo_dir is defined -%]
 [%- set photo_dir = inputs.photo_dir.rstrip('/') -%]
 [%- if not photo_dir.startswith('/config/www/') -%][[ photo_dir_must_be_under_config_www ]][%- endif -%]
 [%- set local = '/local/' ~ photo_dir[12:] -%]
+[%- set photo_index = local ~ '/index.json' -%]
+[%- endif -%]
 [%- set calendars = [inputs.calendar] if inputs.calendar is string else inputs.calendar -%]
 [%- set unreachable = ' (' ~ t('ui.common.unreachable') ~ ')' -%]
 [%- set media_label = inputs.media_label | default(t('ui.media.player')) -%]
@@ -33,7 +36,6 @@
 [%- set status = inputs.status | default({}) -%]
 [%- set air = inputs.air | default(none) -%]
 [%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
-[%- set photo_index = local ~ '/index.json' -%]
 [%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
 [%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]
 [%- set series = [] -%]
@@ -408,6 +410,7 @@ views:
             [%- endfor %]
             grid_options: {columns: full, rows: auto}
 [%- endif %]
+[%- if inputs.photo_dir is defined %]
 
       # ---- Photos: ambient, music view off, page "photos" ------------------------------------
       # photo-frame-card draws the photo image as a full-screen layer (edge to edge, with a
@@ -441,6 +444,7 @@ views:
               - entity: input_select.[[ p ]]_ambient
                 state: photos
             grid_options: {columns: full, rows: 1}
+[%- endif %]
 
       # ---- Status: ambient, music view off, page "status" ------------------------------------
       # status-card: what the home is doing, read-only, in large type: awnings, doors, lights per

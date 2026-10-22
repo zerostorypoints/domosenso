@@ -278,8 +278,10 @@ def test_room_slugs_do_not_change_the_render(tmp_path):
 
 # ---- 0.2.0: optional pages and the screen (SPEC-011 sections 6.2, 7.4) ------------------------
 
-PAGE_INPUTS = {"climate": ("climate", "outside", "pressure"), "air": ("air",), "plants": ("plants",)}
-PAGE_CARDS = {"climate": "custom:rooms-card", "air": "custom:air-card", "plants": "custom:plants-card"}
+PAGE_INPUTS = {"climate": ("climate", "outside", "pressure"), "air": ("air",), "plants": ("plants",),
+               "photos": ("photo_dir",)}
+PAGE_CARDS = {"climate": "custom:rooms-card", "air": "custom:air-card", "plants": "custom:plants-card",
+              "photos": "custom:photo-frame-card"}
 
 
 def without_pages(*pages) -> dict:
@@ -303,7 +305,8 @@ def rotation(package) -> dict[str, str]:
     return steps
 
 
-@pytest.mark.parametrize("dropped", [("climate",), ("air",), ("plants",), ("climate", "air", "plants")])
+@pytest.mark.parametrize("dropped", [("climate",), ("air",), ("plants",), ("photos",), ("climate", "air", "plants"),
+                                     ("climate", "air", "plants", "photos")])
 def test_a_page_without_its_input_is_left_out(tmp_path, dropped):
     rendered = render(tmp_path, without_pages(*dropped))
     pages = [p for p in RAMKA_PAGES if p not in dropped]
@@ -339,7 +342,7 @@ def test_all_pages_keep_select_next_and_no_guard(demo):
     assert first["if"][0] == {"condition": "state", "entity_id": "input_select.ramka_ambient", "state": "climate"}
 
 
-@pytest.mark.parametrize("key", ["climate", "air", "plants"])
+@pytest.mark.parametrize("key", ["climate", "air", "plants", "photo_dir"])
 def test_null_page_input_renders_like_an_omitted_one(tmp_path, key):
     omitted = demo_inputs()
     del omitted[key]
@@ -385,3 +388,11 @@ def test_without_screen_and_with_every_page_0_2_0_renders_as_0_1_2(tmp_path):
     assert names == sorted(p.name for p in after.iterdir())
     for name in names:
         assert (before / name).read_bytes() == (after / name).read_bytes(), name
+
+
+def test_without_photo_dir_nothing_of_the_photos_is_rendered(tmp_path):
+    """The photos hang on nothing else of the Ramka (they may become a component of their own)."""
+    out = texts(tmp_path, without_pages("photos"))
+    for name, text in out.items():
+        for word_ in ("ramka_photo", "ramka_pick", "ramka_index", "photo-frame-card", "/config/www/ramka", "platform: folder"):
+            assert word_ not in text, (name, word_)

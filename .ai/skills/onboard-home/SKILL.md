@@ -168,20 +168,21 @@ the tablet's light sensor. Modes: `off`, `ambient`, `controls`, `calendar`.
 - controls: a hand near the screen (100 cm for 1 s) or a tap — music, awnings, lights;
 - calendar: a button on the controls opens the agenda.
 
-**What each page needs** (show which of them their hardware fills; from ramka 0.2.0 climate, air and
-plants are optional — a page whose input is absent is left out of the rotation):
+**What each page needs** (show which of them their hardware fills; from ramka 0.2.0 climate, air,
+plants and photos are optional — a page whose input is absent is left out of the rotation):
 
 | page | needs |
 |---|---|
 | climate | temperature (and humidity) sensors per room (`climate-air`); the `weather` entity is required anyway |
 | air | an air-quality sensor (`ruuvi-air` recommended) |
 | plants | plant sensors (`plants`, `mi-flora`) |
-| photos | a folder under `/config/www`; empty skips the page |
+| photos | a folder under `/config/www` (`photo_dir`); an empty folder skips the page |
 | status | awnings, contacts, power, locks — all optional |
 | now playing, controls | a `media_player` meeting the Ramka's `media_player_contract`; covers and lights optional |
 | calendar | a `calendar` entity — required |
 
-In 0.1.2 `air`, `plants` and `climate` are required; take 0.2.0 or newer for a home without them.
+In 0.1.2 `air`, `plants`, `climate` and `photo_dir` are required; take 0.2.0 or newer for a home
+without them.
 
 **Which tablet.** Stop at the first that answers:
 

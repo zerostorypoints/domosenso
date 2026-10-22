@@ -215,7 +215,12 @@ What each page needs today:
 A home without an air sensor or plant sensors cannot render the Ramka today (`air` and `plants` are
 required). In 0.2.0 `air`, `plants` and `climate` become optional; a page whose input is absent is
 left out of the rotation (its stage in `<prefix>_ambient_loop` is skipped, and its sections are not
-rendered). The options of `input_select.<prefix>_ambient` stay as they are (FROZEN). Turning a
+rendered). The options of `input_select.<prefix>_ambient` stay as they are (FROZEN). Added during
+phase C (the coordinator, 2026-10-22: the photo slideshow may become a `photos` component of its own
+that the Ramka consumes): `photo_dir` is optional too, and without it nothing of the photos is
+rendered — folder sensor, `input_text`/`image` photo, `shell_command` pick and index, the index
+automation, the loop's photo stage. Those pieces depend on nothing else of the Ramka; they are not
+extracted yet. Turning a
 required input into an optional one is additive (COMPATIBILITY.md: inputs). `recommend` keeps
 `ramka`'s requirements as they are (tablet, radar); the skill lists which pages the home's hardware
 fills.
@@ -330,7 +335,7 @@ page shot on a demo staging at both corners (en; controls, climate and status in
 desktop Chromium at DPR 2 with the header hidden as kiosk-mode does; not on a device. Its values
 (`max_columns`, the px subtractions) stay in the template until a second layout needs other ones.
 The renderer gained the global `fail(message)` for the refusal. `ha-check.sh` takes `INPUTS=<file>`,
-and `check-all.sh` checks a render without climate, air and plants.
+and `check-all.sh` checks a render without climate, air, plants and photos.
 
 ### 7.5 Tablet device files (schema, additive)
 

@@ -5,9 +5,10 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.2.0 (2026-10-22): optional pages, the tablet's screen size, a recommended tablet
 
-- `climate`, `air` and `plants` are optional. A page whose input is absent is left out: its sections
-  are not rendered and the rotation steps over it (the swipes too). `input_select.<prefix>_ambient`
-  keeps all five options.
+- `climate`, `air`, `plants` and `photo_dir` are optional. A page whose input is absent is left out:
+  its sections are not rendered and the rotation steps over it (the swipes too); without `photo_dir`
+  the photo helper, image, shell commands and the `<prefix>_photo_index` automation are left out as
+  well. `input_select.<prefix>_ambient` keeps all five options.
 - New optional input `screen: {width, height}`, the tablet's CSS viewport as `domosenso probe`
   reports it. Absent means 1100 × 720. Rendering fails with `no tested layout for <w>x<h>` when no
   tested layout fits; the one there is fits 1024–1280 × 720–800 CSS px.
