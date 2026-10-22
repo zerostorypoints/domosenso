@@ -1,6 +1,8 @@
-"""Guards for the people-facing documents (SPEC-013): README images carry no metadata, and every
-relative link in README.md, CONTRIBUTING.md and docs/*.md points at a file that exists."""
+"""Guards for the people-facing documents (SPEC-013): README images carry no metadata, every relative
+link in README.md, CONTRIBUTING.md and docs/*.md points at a file that exists, and the home template's
+.gitignore keeps secrets out of a home repository that goes to GitHub."""
 import re
+import subprocess
 from pathlib import Path
 
 from PIL import Image
@@ -50,3 +52,21 @@ def broken_links(doc: Path) -> list[str]:
 def test_relative_links_resolve():
     broken = [b for doc in documents() for b in broken_links(doc)]
     assert broken == []
+
+
+# SPEC-013 §5.5: the home repository may go to GitHub; these must never be tracked in it.
+HOME_IGNORED = ["secrets.yaml", "home-assistant/secrets.yaml", "ha.token", "token", ".domosenso/snap/x.json",
+                "staging/.data/x", "staging/.data-prod/x", ".storage/core.config_entries",
+                "home-assistant/.storage/auth", "home-assistant_v2.db", "home-assistant_v2.db-wal"]
+
+
+def test_home_template_gitignore(tmp_path):
+    template = ROOT / "examples" / "home-template" / ".gitignore"
+    assert template.is_file(), "examples/home-template/.gitignore is missing"
+    (tmp_path / ".gitignore").write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for path in HOME_IGNORED:
+        ignored = subprocess.run(["git", "-C", str(tmp_path), "check-ignore", "--no-index", "-q", path])
+        assert ignored.returncode == 0, f"{path} is not ignored by the home template"
+    kept = subprocess.run(["git", "-C", str(tmp_path), "check-ignore", "--no-index", "-q", "domosenso.yaml"])
+    assert kept.returncode == 1, "domosenso.yaml must stay tracked"

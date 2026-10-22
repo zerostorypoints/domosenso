@@ -293,7 +293,22 @@ into `<home>/.domosenso/cache`.)
    packages another way (`!include_dir_merge_named`, another directory), stop and ask. This file
    is the home's from now on and the deploy carries it. Never copy `secrets.yaml`, `.storage/` or
    the database.
-5. `.gitignore` with `.domosenso/`. Commit: "Start the home on Domosenso".
+5. **`.gitignore`.** Copy `<catalog>/examples/home-template/.gitignore` into the home (secrets,
+   tokens, `.storage/`, the database, `.domosenso/`, staging data). Commit: "Start the home on
+   Domosenso".
+6. **GitHub, private?** Ask: "Keep this home's configuration in a private GitHub repository?
+   **yes** · later · no". Pushing is a write outside this machine: only on a typed yes.
+   - `gh auth status`; if it is not logged in, **they** run `gh auth login`.
+   - Before the first push, `git -C <home> ls-files` and `git -C <home> status --ignored --short`.
+     Refuse and stop if a tracked path is `secrets.yaml`, a `.storage/` file, `home-assistant_v2.db*`,
+     anything under `.domosenso/` or `staging/.data*/`, or has `token` in its name; untrack it
+     (`git rm --cached`) and commit before asking again.
+   - `gh repo create <owner>/<home name> --private --source <home> --remote origin --push`.
+     Never public: the repository names rooms, devices and entity ids. If they want a public one,
+     stop and ask why.
+   - Done when `git -C <home> remote -v` shows `origin`. From now on every change in the home goes on
+     a branch, pushed with a pull request that they merge (the home's AGENTS.md).
+   On "later" or "no", go on; the home stays on this machine.
 
 ## 7. First component: backup
 
