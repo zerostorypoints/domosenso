@@ -1,0 +1,23 @@
+# Home Assistant Container for a home that does not run one yet (SPEC-011 section 3). The home
+# copies this file once and owns it from then on; the onboarding skill starts it with the owner's
+# yes:  docker compose -f services/home-assistant/compose.yaml up -d  (on the Docker host).
+#
+# As Home Assistant's own Linux/Container installation page has it (read 2026-10-22), with the
+# image pinned to the version the catalog's checks run against instead of `stable`.
+#   network_mode: host   zeroconf, SSDP and DHCP discovery reach the container (`domosenso discover`)
+#   privileged, /run/dbus   Bluetooth and USB devices; drop them if the host has neither
+#   HA_CONFIG            the directory on the host that becomes /config (the target's `config`)
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: homeassistant/home-assistant:2026.9.2
+    volumes:
+      - ${HA_CONFIG:-./config}:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    stop_grace_period: 60s
+    privileged: true
+    network_mode: host
+    environment:
+      TZ: ${TZ:-Europe/Zurich}

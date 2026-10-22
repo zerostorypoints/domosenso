@@ -44,10 +44,8 @@ One short question at a time, with a default where there is one.
    home would test it — say so). HAOS, Home Assistant Core and Supervised are not supported: no
    component's deploy is tried there (`backup` excludes HAOS). Say so and stop if that is what they
    run.
-2. **Does Home Assistant run already?** If not: installing it is not in the catalog yet (see "Not
-   ready"); point them to Home Assistant's own Container installation page (with `network_mode:
-   host`, so discovery works), let them finish its first-run onboarding in the browser, then
-   continue. You do not create the owner account.
+2. **Does Home Assistant run already?** If not, install it on their Docker host (section 1.1),
+   then go on.
 3. **SSH login** `user@host`, key-based (the command runs ssh with `BatchMode=yes`: a password
    prompt fails). **Docker command** on the host: `docker`, or on a Synology often
    `sudo /usr/local/bin/docker` (inference; step 6 checks it). **Container name**, **config path on
@@ -73,6 +71,31 @@ One short question at a time, with a default where there is one.
    music on the tablet, anything else.
 7. **Home name** (one word for the directory and `AGENTS.md`, not a person's name), **where** the
    home repository goes (default `~/<name>-home`), **language** of the home repository's text.
+
+## 1.1 Installing Home Assistant (only when they have none)
+
+Ask the SSH login and the docker command first (item 3), and the directory on the host for the
+config (Synology: under `/volume1/docker/`). Then:
+
+1. Check read-only: `ssh <host> <docker> ps` works, nothing listens on port 8123
+   (`curl -s -o /dev/null -w '%{http_code}' http://<host>:8123/` gives `000`), and the compose
+   command exists: `ssh <host> <docker> compose version` (on a Synology it may be `docker-compose`
+   or Container Manager's "Project"; inference — use what answers).
+2. Show them `<catalog>/examples/home-template/services/home-assistant/compose.yaml` and what it
+   does: the pinned image, host networking (discovery), `privileged` and `/run/dbus` (Bluetooth,
+   USB — drop them if the host has neither), restart unless stopped. After their **yes**: copy it to
+   the host (`scp` into the config directory's parent) and start it:
+   `ssh <host> "cd <dir> && HA_CONFIG=<config dir> TZ=<their time zone> <docker> compose -f compose.yaml up -d"`.
+   The file goes into the home repository too (`services/home-assistant/compose.yaml`, step 6).
+3. Wait until `curl -s http://<host>:8123/api/onboarding` answers (no login needed; it lists the
+   first-run steps and whether each is done). The first start takes a minute or two.
+4. **They** open `http://<host>:8123` and finish Home Assistant's first-run onboarding: their owner
+   account, location, units. You never create the account and never see its password.
+5. **They** create a long-lived access token (profile → Security) and save it in a file outside every
+   repository, `chmod 600` (the rules above). Then the scan (step 2) — it finds nothing yet, which is
+   right — and integrations (step 3), where Home Assistant's discoveries now show up.
+
+The container is named `homeassistant`: that is the target's `container` in step 6.
 
 ## 2. Scan their hardware
 
@@ -340,9 +363,8 @@ and `sensor.newest_backup_age` below 24 show the first nightly backup ran.
   record it (`tested-homes unknown`). Their home would be the second.
 - No staging for a new home yet (an installable staging Home Assistant with scene simulation is
   planned): changes go to production after `--plan`, with `snapshot`, `verify` and `rollback`.
-- Installing Home Assistant is not in the catalog yet (SPEC-011 phase D); they install it by Home
-  Assistant's own instructions. Remote access is not a catalog component yet (`remote-access`,
-  phase E).
+- Installing Home Assistant (section 1.1) is tried on a local container, not yet on a Synology or a
+  mini PC. Remote access is not a catalog component yet (`remote-access`, SPEC-011 phase E).
 - The Ramka: one tested layout (1024–1280 × 720–800 CSS px, landscape); portrait or a phone needs
   a new one. The probe is tried on a local Home Assistant, not yet on a real tablet. ramka 0.2.0
   (optional pages, `screen`) reaches `recommend` once it is tagged. Its music player
