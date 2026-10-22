@@ -1,4 +1,5 @@
 """The catalog's own data: components, devices, scenes, and the demo home's states and media."""
+import json
 import re
 from pathlib import Path
 
@@ -14,6 +15,8 @@ DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
 COMPONENTS = ["awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "weather"]
+KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
+         "network-audio-player", "plant-sensor", "rts-awning", "temperature-humidity-sensor", "wind-sensor"]
 DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315"]
 
 # id -> (time, tablet)
@@ -59,6 +62,16 @@ def test_whole_catalog_passes_the_checker_strictly():
 def test_catalog_lists_the_expected_components_and_devices():
     assert sorted(p.parent.name for p in (REPO / "components").glob("*/component.yaml")) == COMPONENTS
     assert sorted(p.stem for p in (REPO / "devices").glob("*.yaml")) == DEVICES
+    assert sorted(p.stem for p in (REPO / "kinds").glob("*.yaml")) == KINDS
+
+
+def test_match_rules_are_one_language():
+    """`devices/` and `kinds/` share the rule definition (SPEC-010); the two schemas keep equal copies."""
+    device = json.loads((REPO / "schemas" / "device.schema.json").read_text())
+    kind = json.loads((REPO / "schemas" / "kind.schema.json").read_text())
+    assert device["$defs"] == kind["$defs"]
+    for path in sorted((REPO / "kinds").glob("*.yaml")):
+        assert cc.check_kind(path, REPO) == [], path.name
 
 
 def test_all_eight_scenes_valid():
@@ -370,7 +383,7 @@ FORBIDDEN = [
         ("koryt", "arz"), ("pral", "nia"), ("zoll", "weg"), ("tablet_", "jadal"), (r"192\.", r"168"),
     )
 ]
-SCANNED = ["components", "devices", "scenes", "examples", "tools", "tests", "schemas", "docs", ".ai",
+SCANNED = ["components", "devices", "kinds", "scenes", "examples", "tools", "tests", "schemas", "docs", ".ai",
            "README.md", "AGENTS.md", "CLAUDE.md"]
 SKIPPED = {"node_modules", "__pycache__", ".venv", ".esphome"}
 # The framework's documents may name its author and the first outside user (Ruling 32), as whole

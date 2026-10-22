@@ -1,0 +1,5 @@
+# SPEC-010. A wind speed reading is a candidate (an anemometer, a weather station).
+id: wind-sensor
+match:
+  - device_classes: [wind_speed]
+    certainty: maybe

@@ -1,0 +1,7 @@
+# SPEC-010.
+id: air-quality-sensor
+match:
+  - device_classes: [carbon_dioxide]
+    certainty: maybe
+  - device_classes: [pm25]
+    certainty: maybe

@@ -4,3 +4,9 @@ description_key: meta.devices.hue-bridge.description
 does_key: meta.devices.hue-bridge.does
 photo: null
 component: lights
+# SPEC-010. Seen on HA 2026.9.2: integration hue, model "Hue Bridge", model_id BSB002.
+match:
+  - integration: hue
+    model_id: "BSB00*"
+  - integration: hue
+    model: "Hue Bridge*"

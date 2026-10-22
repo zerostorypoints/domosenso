@@ -4,3 +4,8 @@ description_key: meta.devices.hegel-h400.description
 does_key: meta.devices.hegel-h400.does
 photo: null
 component: media
+# SPEC-010. Seen on HA 2026.9.2: manufacturer Hegel, model H400, through hegel_streaming (and the
+# same player again through cast and dlna_dmr, which count as maybe network-audio-player).
+match:
+  - integration: hegel_streaming
+    model: "*H400*"

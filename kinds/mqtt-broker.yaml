@@ -1,0 +1,4 @@
+# SPEC-010. Home Assistant talks to a broker when it has an MQTT config entry.
+id: mqtt-broker
+match:
+  - entry: mqtt

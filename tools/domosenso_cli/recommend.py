@@ -2,22 +2,27 @@
 
 Read-only. Every component is read at its newest tag, as `add` would take it, never from a working
 tree. A requirement is met when `--have` names its `kind` or one of its `recommend` device ids; the
-device ids known are those the manifests name (`devices/` is not tagged, so it is not read).
+device ids known are those the manifests name. `--from-ha` (SPEC-010) adds what a scan of a running
+Home Assistant found, matched by the rules in `devices/` and `kinds/` at the catalog's HEAD.
 """
 from __future__ import annotations
 
 import argparse
+import asyncio
 import difflib
 import tempfile
 from pathlib import Path
 
 import yaml
 
+from domosenso_cli import hwscan
 from domosenso_cli.build import CACHE_DIR
 from domosenso_cli.catalog import Catalog, is_url
 from domosenso_cli.errors import DomosensoError
+from domosenso_cli.ha_api import HA
 from domosenso_cli.home import HOME_FILE, HomeConfig
 from domosenso_cli.report import Reporter
+from domosenso_cli.snapshot import pick_target
 
 # `install_path` names where cards would go; it installs nothing by itself.
 NOT_AN_INSTALL = {"install_path"}
@@ -28,6 +33,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
                         help="the catalog to read (default: the one in the home's domosenso.yaml)")
     parser.add_argument("--have", nargs="*", default=[], metavar="<device id or kind>",
                         help="the devices the home has: catalog device ids (tapo-t315) or kinds (android-tablet)")
+    parser.add_argument("--from-ha", metavar="<target or URL>",
+                        help="scan a running Home Assistant read-only: a target in domosenso.yaml, or a URL with --token-file")
+    parser.add_argument("--token-file", metavar="<file>", help="the long-lived access token for a --from-ha URL")
 
 
 def _installs(value) -> bool:
@@ -107,7 +115,50 @@ def _catalog_source(args: argparse.Namespace) -> str | Path:
     return HomeConfig.load(args.home).catalog_source()
 
 
-def _read(catalog: Catalog, have: set[str], rep: Reporter) -> int:
+def _open_ha(args: argparse.Namespace) -> HA:
+    """The Home Assistant `--from-ha` names; the token is read from its file and never printed."""
+    if is_url(args.from_ha):
+        if not args.token_file:
+            raise DomosensoError("--from-ha with a URL needs --token-file")
+        path = Path(args.token_file).expanduser()
+        try:
+            token = path.read_text().strip()
+        except OSError as exc:
+            raise DomosensoError(f"cannot read token file {path}: {exc.strerror or exc}") from exc
+        return HA(args.from_ha, token, path)
+    if args.token_file:
+        raise DomosensoError("--token-file goes with a --from-ha URL; a target has its own token_file")
+    if not (args.home / HOME_FILE).exists():
+        raise DomosensoError(f"--from-ha {args.from_ha}: no {HOME_FILE} in {args.home} (give a URL and --token-file)")
+    return HA.for_target(pick_target(HomeConfig.load(args.home), args.from_ha))
+
+
+async def _read_ha(ha: HA) -> dict:
+    async with ha:
+        return await hwscan.read(ha)
+
+
+def _scan(catalog: Catalog, args: argparse.Namespace, rep: Reporter, given: set[str]) -> set[str]:
+    """Scan, print what was found and how it matched; the `found` tokens count as `--have`."""
+    rules = hwscan.load_rules(catalog)
+    ha = _open_ha(args)
+    result = hwscan.scan(asyncio.run(_read_ha(ha)), rules, given)
+    rep.line("rules", rules.commit, "devices", str(rules.count("devices")), "kinds", str(rules.count("kinds")))
+    integrations = {i for dev in result["devices"] for i in dev["integrations"]}
+    rep.line("scan", "devices", str(len(result["devices"])), "integrations", str(len(integrations)))
+    for certainty in ("found", "maybe"):
+        for token, hit in result[certainty].items():
+            rep.line(certainty, token, str(hit["count"]), "via", ",".join(hit["via"]))
+    for integration, indexes in result["unmatched"].items():
+        rep.line("unmatched", integration, str(len(indexes)))
+    rep.extra["scan"] = result
+    return set(result["found"])
+
+
+def _read(catalog: Catalog, have: set[str], rep: Reporter, args: argparse.Namespace | None = None) -> int:
+    given = set(have)
+    if args is not None and args.from_ha:
+        have = have | _scan(catalog, args, rep, given)
     known: set[str] = set()
     for cid in catalog.component_ids():
         version = catalog.versions(cid)[-1]
@@ -122,7 +173,7 @@ def _read(catalog: Catalog, have: set[str], rep: Reporter) -> int:
         result = assess(cid, version, manifest, have)
         rep.data.append(result)
         _report(result, rep)
-    for token in sorted(have - known):
+    for token in sorted(given - known):
         near = suggestions(token, known)
         rep.line("unknown", token, *(["did-you-mean", ",".join(near)] if near else []))
     return rep.ok()
@@ -134,5 +185,5 @@ def run(args: argparse.Namespace, rep: Reporter) -> int:
     if isinstance(source, str) and not (args.home / HOME_FILE).exists():
         # A URL needs a mirror; without a home there is nowhere of its own to keep it.
         with tempfile.TemporaryDirectory(prefix="domosenso-recommend-") as cache:
-            return _read(Catalog(source, Path(cache)), have, rep)
-    return _read(Catalog(source, args.home / CACHE_DIR), have, rep)
+            return _read(Catalog(source, Path(cache)), have, rep, args)
+    return _read(Catalog(source, args.home / CACHE_DIR), have, rep, args)

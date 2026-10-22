@@ -1,0 +1,5 @@
+# SPEC-010. Any media player is a candidate; televisions and speakers match too, the person decides.
+id: network-audio-player
+match:
+  - entity_domain: media_player
+    certainty: maybe

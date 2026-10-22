@@ -1,0 +1,6 @@
+# SPEC-010. ESPSomfy-RTS drives Somfy RTS motors only; its covers are the awnings (seen over MQTT on HA 2026.9.2).
+id: rts-awning
+match:
+  - integration: [mqtt, espsomfy_rts]
+    manufacturer: "rstrouse*"
+    entity_domain: cover

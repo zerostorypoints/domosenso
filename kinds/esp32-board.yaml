@@ -1,0 +1,13 @@
+# SPEC-010. ESPHome reports the board as the model (m5stack-atom seen on HA 2026.9.2); the catalog's
+# firmware reports manufacturer domosenso (inference); an ESPSomfy-RTS node runs on an ESP32.
+id: esp32-board
+match:
+  - integration: esphome
+    model: ["esp32*", "m5stack*"]
+  - integration: esphome
+    manufacturer: domosenso
+    note: inference
+  - integration: [mqtt, espsomfy_rts]
+    manufacturer: "rstrouse*"
+  - integration: esphome
+    certainty: maybe

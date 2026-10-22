@@ -4,3 +4,7 @@ description_key: meta.devices.tapo-t315.description
 does_key: meta.devices.tapo-t315.does
 photo: null
 component: climate-air
+# SPEC-010. Seen on HA 2026.9.2: integration tplink, manufacturer TP-Link, model T315.
+match:
+  - integration: [tplink, tapo]
+    model: "T315*"

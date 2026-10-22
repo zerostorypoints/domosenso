@@ -1,0 +1,6 @@
+# SPEC-010. Seen on HA 2026.9.2: each ESPHome Bluetooth proxy is also a device of the bluetooth
+# integration, manufacturer esphome (the node itself is the esphome integration's, manufacturer Espressif).
+id: ble-proxy
+match:
+  - integration: bluetooth
+    manufacturer: esphome

@@ -41,9 +41,9 @@ One short question at a time, with a default where there is one. Collect:
    `sudo /usr/local/bin/docker` (inference; step 3 checks it). **Container name**, **config path on
    the host** (the directory mounted as `/config`), **HA URL** as seen from their computer,
    **token file** path.
-3. **Hardware**, in their words: sensors, hubs, speakers and streamers, tablets, lights, blinds,
-   ESP boards. Map each to a catalog device id or kind from the manifests (`devices.requires[]` and
-   `optional[]`: `kind`, `recommend`) and `devices/*.yaml`; ask when unsure instead of guessing.
+3. **Hardware is read, not asked** (step 2 scans their Home Assistant). Ask only what it cannot
+   know: hardware they have or plan that is not in Home Assistant yet (a tablet not set up, awnings
+   with no controller), in their words.
 4. **What they want**: wall tablet, climate overview, backups, plants, lights, presence, awnings,
    music on the tablet, anything else.
 5. **Home name** (one word for the directory and `AGENTS.md`, not a person's name), **where** the
@@ -52,11 +52,36 @@ One short question at a time, with a default where there is one. Collect:
 ## 2. Recommend
 
 Read every `components/*/component.yaml` (summary, devices, integrations with `setup`, `tested`,
-`host.installs`) and `devices/*.yaml`, then:
+`host.installs`) and `devices/*.yaml`.
+
+**Scan first** (SPEC-010; read-only, the token stays in its file):
 
 ```bash
-uv run --project <catalog> domosenso recommend --catalog <catalog> --have <device ids and kinds>
+uv run --project <catalog> domosenso recommend --catalog <catalog> --from-ha <HA URL> --token-file <token file> --json
 ```
+
+The `scan` object of the JSON document says what their Home Assistant has and how it matched:
+
+- `found` (`{token: {count, via, devices}}`): matched for certain, already counted. Show each with
+  their own device names (`scan.devices[i].name_by_user` or `name`, manufacturer, model), e.g.
+  "5 × TP-Link T315 (Living room, …) → tapo-t315".
+- `maybe`: a likely match, not counted. Ask about each token, one question at a time, naming the
+  devices ("Is the Lenovo tablet the wall tablet?", "Which of these players should the tablet show?").
+- `unmatched` (`{integration: [device indexes]}`): devices no rule knows. Mention the integrations
+  that might matter for what they want; skip the rest (bulbs, phones, network clients).
+
+The scan holds their device names: show it in the conversation, never write it into the catalog
+checkout, a pull request or an issue. A `FAIL` (URL, token): fix it with them before going on.
+
+**Then run again** with what they confirmed and what Home Assistant does not know (interview item 3)
+as `--have`, without `--json` unless you need it:
+
+```bash
+uv run --project <catalog> domosenso recommend --catalog <catalog> --from-ha <HA URL> --token-file <token file> --have <confirmed maybes, device ids and kinds>
+```
+
+Without a running Home Assistant, the same command without `--from-ha`/`--token-file`, with
+everything as `--have`.
 
 Lines: `fits <id>@<version> tested-homes <n|unknown>`, `missing <id>@<version> tested-homes … needs <k>`
 with a `needs <id>@<version> <kind> [<device ids>]` per missing device, `optional <id>@<version>

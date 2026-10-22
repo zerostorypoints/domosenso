@@ -283,3 +283,28 @@ def test_scene_attributes_are_optional_and_need_a_state(catalog):
     assert any("attributes" in e for e in cc.check_scene(scene, catalog))
     edit_yaml(scene, lambda d: d.update(attributes={"light.living_room": {}}))
     assert any("attributes" in e for e in cc.check_scene(scene, catalog))
+
+
+def test_device_match_rules_are_checked(catalog):
+    device = catalog / "devices" / "demo-node.yaml"
+    edit_yaml(device, lambda d: d.update(match=[{"integration": "esphome", "model": "demo*", "certainty": "maybe"},
+                                                {"entry": "mqtt"}]))
+    assert cc.check_device(device, catalog) == []
+    for bad in ([{"entry": "mqtt", "model": "x"}], [{"certainty": "found"}], [{"modle": "x"}], []):
+        edit_yaml(device, lambda d: d.update(match=bad))
+        assert cc.check_device(device, catalog) != [], bad
+
+
+def test_kind_files(catalog):
+    kinds = catalog / "kinds"
+    kinds.mkdir()
+    kind = yaml.safe_load(component_yaml(catalog).read_text())["devices"]["requires"][0]["kind"]
+    (kinds / f"{kind}.yaml").write_text(yaml.safe_dump({"id": kind, "match": [{"entity_domain": "sensor"}]}))
+    assert cc.check_catalog(catalog) == ([], [])
+    (kinds / "ghost.yaml").write_text(yaml.safe_dump({"id": "ghost", "match": [{"entry": "mqtt"}]}))
+    (kinds / "named.yaml").write_text(yaml.safe_dump({"id": kind, "match": [{"entry": "mqtt"}]}))
+    (kinds / "empty.yaml").write_text(yaml.safe_dump({"id": "empty"}))
+    errors, _ = cc.check_catalog(catalog)
+    assert any("ghost.yaml" in e and "no manifest names kind 'ghost'" in e for e in errors)
+    assert any("named.yaml" in e and "does not match file name" in e for e in errors)
+    assert any("empty.yaml" in e and "match" in e for e in errors)

@@ -1,0 +1,4 @@
+# SPEC-010. Soil moisture with conductivity is what plant sensors report (Mi Flora on HA 2026.9.2).
+id: plant-sensor
+match:
+  - device_classes: [moisture, conductivity]
