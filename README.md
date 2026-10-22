@@ -22,10 +22,11 @@ yet (Apache-2.0 proposed).
 **Home Assistant on your NAS.** Domosenso works with Home Assistant as a Container (Docker), without
 add-ons. Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`.
 
-- You have it: check that Settings → System → Repairs → ⋮ → System information says "Installation
-  Type: Home Assistant Container", note its address (for example `http://<nas>:8123`), and create a long-lived access token (your profile →
-  Security → Long-lived access tokens). Save the token in a file outside any repository
-  (`chmod 600`); the onboarding asks for the address and that file's path, never for the token.
+- You have it: check that Settings → System → Repairs → ⋮ → System information says
+  "Installation type: Home Assistant Container". Note its address (for example `http://<nas>:8123`)
+  and create a long-lived access token (your profile → Security → Long-lived access tokens). Save the
+  token in a file outside any repository (`chmod 600`); the onboarding asks for the address and that
+  file's path, never for the token.
 - You don't: `/onboard-home` installs it with you from the home template's `compose.yaml` (tried on a
   local container, not yet on a NAS), or you follow your NAS's own steps. Synology DSM with
   Container Manager is the tested host. QNAP, Unraid or a mini PC with Docker take the same path and
