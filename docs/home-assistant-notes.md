@@ -47,6 +47,18 @@ Domosenso home never replaces.
 - A command to a cloud or Wi-Fi appliance may be confirmed later: an automation that reads the state
   right after the command can still see the old one.
 
+## Reading Home Assistant from outside
+
+- Behind a Cloudflare tunnel, REST calls with Python's default user agent (`Python-urllib/...`) get
+  HTTP 403, Cloudflare error 1010; the websocket and `curl` pass. The `domosenso` command sends
+  `User-Agent: domosenso` (seen 2026-10-22).
+- Discovered devices waiting to be added are `config_entries/flow/progress` (admin only); Home
+  Assistant leaves the flows a user started out of it. A dismissed discovery is a config entry with
+  `source: ignore`.
+- The Android Companion app registers the device with `sw_version` = the Android API level (a
+  tablet on Android 16 shows `36`; inference from the API table, seen 2026-10-22). Its own app version
+  is stored only in the config entry's data, which no API returns.
+
 ## Staging
 
 - A staging Home Assistant that mirrors production by posting its states over REST starts its own

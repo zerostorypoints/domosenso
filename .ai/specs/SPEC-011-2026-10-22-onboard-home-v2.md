@@ -108,8 +108,12 @@ beyond naming it.
 ### 4.1 `domosenso discover` (new, read-only)
 
 ```
-domosenso discover [--from-ha <target or URL> [--token-file <file>]] [--domain <domain>...] [--json]
+domosenso discover [--from-ha <target or URL> [--token-file <file>]] [--domain <domain>...]
+                   [--catalog <path or URL>] [--json]
 ```
+
+`--catalog` (added in phase A) names the catalog whose components the `catalog` lines link; default
+the home's, none without a home. `--from-ha` is required.
 
 `--from-ha` / `--token-file` as in SPEC-010 (a target of `domosenso.yaml`, or a URL with a token
 file before `init`). Websocket, the same client as `snapshot`; the two `config_entries/*` reads need an admin

@@ -17,7 +17,7 @@ MEDIA = DEMO / "media"
 COMPONENTS = ["awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
          "network-audio-player", "plant-sensor", "rts-awning", "temperature-humidity-sensor", "wind-sensor"]
-DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315"]
+DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315", "tcl-9469x"]
 
 # id -> (time, tablet)
 SCENES = {

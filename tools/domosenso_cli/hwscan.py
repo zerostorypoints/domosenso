@@ -96,6 +96,7 @@ def _devices(raw: dict[str, Any]) -> list[dict]:
         found.append({
             "name": dev.get("name"), "name_by_user": dev.get("name_by_user"),
             "manufacturer": dev.get("manufacturer"), "model": dev.get("model"), "model_id": dev.get("model_id"),
+            "sw_version": dev.get("sw_version"),
             "integrations": sorted({domain[c] for c in dev.get("config_entries", []) if c in domain}),
             "entity_domains": {e["entity_id"].split(".", 1)[0] for e in own},
             "device_classes": classes - {None},
@@ -144,7 +145,8 @@ def scan(raw: dict[str, Any], rules: Rules, confirmed: set[str] = frozenset()) -
         if not accounted:
             for integration in dev["integrations"] or ["-"]:
                 unmatched.setdefault(integration, []).append(index)
-    public = [{k: dev[k] for k in ("name", "name_by_user", "manufacturer", "model", "model_id", "integrations", "matches")}
+    public = [{k: dev[k] for k in ("name", "name_by_user", "manufacturer", "model", "model_id", "sw_version",
+                                  "integrations", "matches")}
               for dev in devices]
     return {
         "rules_commit": rules.commit,

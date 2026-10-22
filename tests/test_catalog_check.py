@@ -295,6 +295,24 @@ def test_device_match_rules_are_checked(catalog):
         assert cc.check_device(device, catalog) != [], bad
 
 
+def test_device_tested_and_tablet_profile(catalog):
+    """SPEC-011: `tested.homes` on any device; a `tablet` profile only on a device of the Ramka."""
+    device = catalog / "devices" / "demo-node.yaml"
+    edit_yaml(device, lambda d: d.update(tested={"homes": 2}))
+    assert cc.check_device(device) == []
+    for bad in ({"homes": -1}, {"note": "no count"}, {"homes": 1, "rooms": 3}):
+        edit_yaml(device, lambda d: d.update(tested=bad))
+        assert cc.check_device(device) != [], bad
+    edit_yaml(device, lambda d: d.update(tested={"homes": 1}, component="ramka",
+                                         tablet={"css": [1100, 720], "dpr": 2, "charge_limit": None}))
+    assert cc.check_device(device) == []
+    for bad in ({"css": [1100], "dpr": 2}, {"css": [1100, 720]}, {"css": [1100, 720], "dpr": 2, "charge_limit": 101}):
+        edit_yaml(device, lambda d: d.update(tablet=bad))
+        assert cc.check_device(device) != [], bad
+    edit_yaml(device, lambda d: d.update(component="plants", tablet={"css": [1100, 720], "dpr": 2}))
+    assert any("only a device of component ramka" in e for e in cc.check_device(device))
+
+
 def test_kind_files(catalog):
     kinds = catalog / "kinds"
     kinds.mkdir()

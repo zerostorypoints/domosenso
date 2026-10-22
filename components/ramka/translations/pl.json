@@ -177,6 +177,12 @@
     }
   },
   "meta": {
-    "description": "Tablet na ścianę dla Home Assistant. Radar budzi go, gdy ktoś wchodzi do pokoju; wtedy pokazuje na zmianę klimat, jakość powietrza, rośliny, zdjęcia i stan mieszkania, wyświetla, co gra odtwarzacz, a gdy dłoń zbliży się do ekranu, pokazuje muzykę, markizy i światła."
+    "description": "Tablet na ścianę dla Home Assistant. Radar budzi go, gdy ktoś wchodzi do pokoju; wtedy pokazuje na zmianę klimat, jakość powietrza, rośliny, zdjęcia i stan mieszkania, wyświetla, co gra odtwarzacz, a gdy dłoń zbliży się do ekranu, pokazuje muzykę, markizy i światła.",
+    "devices": {
+      "tcl-9469x": {
+        "description": "Tablet z Androidem 11,5 cala (TCL, model 9469X) z ekranem 2200 × 1440 pikseli.",
+        "does": "Wisi na ścianie jako Ramka: aplikacja Home Assistant Companion pokazuje panel na całym ekranie, budzi i przyciemnia ekran na polecenie Home Assistanta i przekazuje odczyty czujnika światła i baterii. Sam przestaje się ładować przy 80 %, więc może stale wisieć na ładowarce."
+      }
+    }
   }
 }

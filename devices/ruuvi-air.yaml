@@ -4,6 +4,7 @@ description_key: meta.devices.ruuvi-air.description
 does_key: meta.devices.ruuvi-air.does
 photo: null
 component: climate-air
+tested: {homes: 1}  # the maintainer's home (SPEC-011)
 # SPEC-010. Seen on HA 2026.9.2: integration ruuvitag_ble, manufacturer Ruuvi Innovations Ltd., model "Ruuvi Air".
 match:
   - integration: ruuvitag_ble

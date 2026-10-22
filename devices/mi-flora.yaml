@@ -4,6 +4,7 @@ description_key: meta.devices.mi-flora.description
 does_key: meta.devices.mi-flora.does
 photo: null
 component: plants
+tested: {homes: 1}  # the maintainer's home (SPEC-011)
 # SPEC-010. Seen on HA 2026.9.2: integration xiaomi_ble, manufacturer Xiaomi, model HHCCJCY01.
 match:
   - integration: xiaomi_ble

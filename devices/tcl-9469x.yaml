@@ -1,0 +1,21 @@
+id: tcl-9469x
+names: {en: TCL tablet 9469X, de: TCL-Tablet 9469X, pl: Tablet TCL 9469X}
+description_key: meta.devices.tcl-9469x.description
+does_key: meta.devices.tcl-9469x.does
+photo: null
+component: ramka
+tested: {homes: 1}
+# SPEC-011 section 7.5. The Ramka's tablet in the maintainer's home: 1100 × 720 CSS px at DPR 2,
+# landscape (ramka README); holds its battery at 80 % on the charger. The 2200 × 1440 panel and
+# 11.5 inches are from retailer listings, not TCL's own page.
+tablet:
+  css: [1100, 720]
+  dpr: 2
+  orientation: landscape
+  charge_limit: 80
+# The Companion app registers it as manufacturer TCL, model 9469X; its sw_version is the Android
+# API level ("36" seen 2026-10-22, read-only).
+match:
+  - integration: mobile_app
+    manufacturer: TCL
+    model: 9469X

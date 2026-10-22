@@ -18,4 +18,4 @@ attributes:
   cover.awning_kitchen: {current_position: 100}
 tablet: {mode: ambient, page: status}
 components: [awnings, climate-air, lights, ramka, weather]
-devices: [cc1101, hue-bridge, tapo-t315]
+devices: [cc1101, hue-bridge, tapo-t315, tcl-9469x]

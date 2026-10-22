@@ -56,13 +56,18 @@ def _met(requirement: dict, have: set[str]) -> bool:
     return requirement["kind"] in have or bool(have & set(requirement.get("recommend", [])))
 
 
-def assess(cid: str, version: str, manifest: dict, have: set[str]) -> dict:
+def assess(cid: str, version: str, manifest: dict, have: set[str], tested: dict[str, int | None] | None = None) -> dict:
+    """`tested` maps a device id to the homes its device file says it runs in (SPEC-011 section 5)."""
     devices = manifest.get("devices") or {}
     describes = describes_only(manifest)
-    needs = [{"kind": r["kind"], "recommend": list(r.get("recommend", []))}
-             for r in devices.get("requires", []) if not _met(r, have)]
-    optional = [{"feature": o.get("feature"), "kind": o["kind"], "have": _met(o, have),
-                 "recommend": list(o.get("recommend", []))} for o in devices.get("optional", [])]
+
+    def recommended(requirement: dict) -> dict:
+        ids = list(requirement.get("recommend", []))
+        return {"recommend": ids, "tested_homes": {d: (tested or {}).get(d) for d in ids}}
+
+    needs = [{"kind": r["kind"], **recommended(r)} for r in devices.get("requires", []) if not _met(r, have)]
+    optional = [{"feature": o.get("feature"), "kind": o["kind"], "have": _met(o, have), **recommended(o)}
+                for o in devices.get("optional", [])]
     return {
         "id": cid, "version": version,
         "fits": None if describes else not needs,
@@ -90,6 +95,16 @@ def suggestions(token: str, known: set[str]) -> list[str]:
     return list(dict.fromkeys([*same_vendor, *close]))[:3]
 
 
+def device_tested(catalog: Catalog) -> dict[str, int | None]:
+    """`tested.homes` of every device file at the catalog's HEAD (like the match rules, not tagged)."""
+    found: dict[str, int | None] = {}
+    for raw in catalog.head_files("devices").values():
+        data = yaml.safe_load(raw)
+        if isinstance(data, dict) and data.get("id"):
+            found[data["id"]] = (data.get("tested") or {}).get("homes")
+    return found
+
+
 def _report(result: dict, rep: Reporter) -> None:
     name = f"{result['id']}@{result['version']}"
     homes = "unknown" if result["tested_homes"] is None else str(result["tested_homes"])
@@ -115,7 +130,7 @@ def _catalog_source(args: argparse.Namespace) -> str | Path:
     return HomeConfig.load(args.home).catalog_source()
 
 
-def _open_ha(args: argparse.Namespace) -> HA:
+def open_ha(args: argparse.Namespace) -> HA:
     """The Home Assistant `--from-ha` names; the token is read from its file and never printed."""
     if is_url(args.from_ha):
         if not args.token_file:
@@ -141,7 +156,7 @@ async def _read_ha(ha: HA) -> dict:
 def _scan(catalog: Catalog, args: argparse.Namespace, rep: Reporter, given: set[str]) -> set[str]:
     """Scan, print what was found and how it matched; the `found` tokens count as `--have`."""
     rules = hwscan.load_rules(catalog)
-    ha = _open_ha(args)
+    ha = open_ha(args)
     result = hwscan.scan(asyncio.run(_read_ha(ha)), rules, given)
     rep.line("rules", rules.commit, "devices", str(rules.count("devices")), "kinds", str(rules.count("kinds")))
     integrations = {i for dev in result["devices"] for i in dev["integrations"]}
@@ -160,6 +175,7 @@ def _read(catalog: Catalog, have: set[str], rep: Reporter, args: argparse.Namesp
     if args is not None and args.from_ha:
         have = have | _scan(catalog, args, rep, given)
     known: set[str] = set()
+    tested = device_tested(catalog)
     for cid in catalog.component_ids():
         version = catalog.versions(cid)[-1]
         raw = catalog.show(cid, version, "component.yaml")
@@ -170,7 +186,7 @@ def _read(catalog: Catalog, have: set[str], rep: Reporter, args: argparse.Namesp
         if not isinstance(manifest, dict):
             raise DomosensoError(f"{cid}/{version}: component.yaml is not a mapping")
         known |= known_tokens(manifest)
-        result = assess(cid, version, manifest, have)
+        result = assess(cid, version, manifest, have, tested)
         rep.data.append(result)
         _report(result, rep)
     for token in sorted(given - known):
