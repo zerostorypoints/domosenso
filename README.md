@@ -51,15 +51,19 @@ configuration in a private GitHub repository.
 
 ## Start in 10 minutes
 
-In a terminal, clone this repository (tags come with it), turn on its guard and start your agent in
-the clone:
+With the tools above installed and `gh auth login` done, in a terminal: clone this repository (tags
+come with it), install its Python dependencies, turn on its guard and start your agent in the clone.
 
 ```bash
 gh repo clone zerostorypoints/domosenso
 cd domosenso
+uv sync
 git config core.hooksPath .githooks
 claude
 ```
+
+`uv sync` fetches a matching Python if you have none and installs the `domosenso` command into the
+clone's `.venv`; `uv run domosenso --help` then lists its commands.
 
 In Claude Code, type `/onboard-home`. With Codex, start `codex` in the same folder instead and ask it
 to run the onboard-home skill.
