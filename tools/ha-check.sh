@@ -14,14 +14,17 @@
 #
 # check_config counts an invalid template-blueprint instance as an error, but an invalid
 # automation-blueprint instance only as a log line ("Blueprint ... generated invalid automation"),
-# with exit code 0 even under --fail-on-warnings (HA 2026.9.2). Those lines are counted here.
+# with exit code 0 even under --fail-on-warnings (HA 2026.9.2). Those lines are counted by
+# tools/check_config_parse.py, which `domosenso deploy` uses too.
 set -uo pipefail
 COMP=${1:?component id}
 HA_VERSION=${HA_VERSION:-2026.9.2}
 ROOT=$(pwd)
 SRC=$ROOT/components/$COMP
 INPUTS=$ROOT/examples/demo-home/inputs/$COMP.yaml
-WORK=${TMPDIR:-/tmp}/domosenso-ha-check/$COMP
+# One work dir per checkout: git worktrees run checks side by side and must not share it.
+ROOT_ID=$(printf %s "$ROOT" | { shasum -a 256 2>/dev/null || sha256sum; } | cut -c1-8)
+WORK=${TMPDIR:-/tmp}/domosenso-ha-check/$ROOT_ID/$COMP
 rm -rf "$WORK"; mkdir -p "$WORK"
 [ -f "$SRC/component.yaml" ] || { echo "no component $COMP" >&2; exit 2; }
 
@@ -82,26 +85,7 @@ write_configuration() {  # $1 = config dir
 check() {  # $1 = label, $2 = config dir
   docker run --rm -v "$2:/config" --entrypoint python "homeassistant/home-assistant:$HA_VERSION" \
     -m homeassistant --script check_config -c /config --json > "$WORK/$1.json" 2> "$WORK/$1.err"
-  python3 - "$1" "$WORK/$1.json" "$WORK/$1.err" <<'PY'
-import json, re, sys
-label, path, err = sys.argv[1:]
-text = open(path).read()
-# Log lines go to stdout ahead of the JSON document.
-logged = re.findall(r"^ERROR:.*generated invalid .*$", text, re.M)
-try:
-    r = json.loads(text[re.search(r"^\{$", text, re.M).start():])
-except Exception as e:
-    print(f"{label}: no JSON output ({e})"); open(f"{path}.count", "w").write("999"); sys.exit(0)
-n = r.get("total_errors", 0) + len(logged)
-print(f"{label}: {n} errors ({len(logged)} from blueprint log lines), {r.get('total_warnings', 0)} warnings")
-for kind in ("errors", "warnings"):
-    for domain, msgs in (r.get(kind) or {}).items():
-        for m in msgs:
-            print(f"  {kind[:-1]} [{domain}] {str(m)[:300]}")
-for line in logged:
-    print(f"  error [log] {line[:300]}")
-open(f"{path}.count", "w").write(str(n))
-PY
+  uv run --project "$ROOT" "$ROOT/tools/check_config_parse.py" "$1" "$WORK/$1.json" "$WORK/$1.err"
 }
 count() { cat "$WORK/$1.json.count"; }
 

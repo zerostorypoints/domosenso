@@ -22,12 +22,14 @@ def catalog(tmp_path):
     home = root / "examples" / "demo-home" / "esphome"
     home.mkdir(parents=True)
     (home / "radio-hall.yaml").write_text(
-        "packages:\n  node: github://domosenso/domosenso/components/radio/esphome/node.yaml@radio/1.2.3\n")
+        "packages:\n  node: github://zerostorypoints/domosenso/components/radio/esphome/node.yaml@radio/1.2.3\n")
     (home / "proxy-kitchen.yaml").write_text(
-        "packages:\n  node: github://domosenso/domosenso/components/other/esphome/x.yaml@other/0.1.0\n")
+        "packages:\n  node: github://zerostorypoints/domosenso/components/other/esphome/x.yaml@other/0.1.0\n")
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log = tmp_path / "uvx.log"
+    (home / "radio-old.yaml").write_text(
+        "packages:\n  node: github://domosenso/domosenso/components/radio/esphome/node.yaml@radio/1.2.3\n")
     (bin_dir / "uvx").write_text(f'#!/bin/sh\necho "$@" >> "{log}"\n')
     (bin_dir / "uvx").chmod(0o755)
     return root, bin_dir, log
@@ -55,8 +57,17 @@ def test_only_device_files_using_the_component_are_checked(catalog, tmp_path):
     assert any(line.endswith("factory/node.factory.yaml") for line in checked)
     assert any(line.endswith("home/radio-hall.yaml") for line in checked)
     assert "skipped      proxy-kitchen.yaml (no package of radio)" in result.stdout
-    rewritten = (tmp_path / "domosenso-esphome-check" / "radio" / "home" / "radio-hall.yaml").read_text()
+    work = Path(next(l for l in result.stdout.splitlines() if l.startswith("work dir: ")).removeprefix("work dir: "))
+    rewritten = (work / "home" / "radio-hall.yaml").read_text()
     assert "url: file://" in rewritten and "ref: radio/1.2.3" in rewritten
+
+
+def test_old_url_form_is_skipped(catalog, tmp_path):
+    root, bin_dir, log = catalog
+    result = run(root, bin_dir, tmp_path, "radio")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "skipped      radio-old.yaml (no package of radio)" in result.stdout
+    assert not any(line.endswith("home/radio-old.yaml") for line in log.read_text().splitlines())
 
 
 def test_unknown_component(catalog, tmp_path):
@@ -67,3 +78,32 @@ def test_unknown_component(catalog, tmp_path):
 def test_real_catalog_ramka_has_no_esphome():
     result = subprocess.run(["bash", str(SCRIPT), "ramka"], cwd=REPO, capture_output=True, text=True)
     assert result.returncode == 0 and "nothing to check" in result.stdout
+
+
+def _work_dir(result):
+    return next(l for l in result.stdout.splitlines() if l.startswith("work dir: ")).removeprefix("work dir: ")
+
+
+def test_work_dir_is_per_checkout(catalog, tmp_path):
+    root, bin_dir, _ = catalog
+    other = tmp_path / "other"
+    shutil.copytree(root, other)
+    first = _work_dir(run(root, bin_dir, tmp_path, "radio"))
+    second = _work_dir(run(other, bin_dir, tmp_path, "radio"))
+    again = _work_dir(run(root, bin_dir, tmp_path, "radio"))
+    assert first != second
+    assert first == again
+    assert Path(first).parent.parent == Path(second).parent.parent == tmp_path / "domosenso-esphome-check"
+
+
+def test_ha_check_work_dir_is_per_checkout(tmp_path):
+    """ha-check creates its work dir before looking for the component; an unknown one stops there, without docker."""
+    for name in ("one", "two"):
+        (tmp_path / name).mkdir()
+        env = {**os.environ, "TMPDIR": str(tmp_path / "tmp")}
+        (tmp_path / "tmp").mkdir(exist_ok=True)
+        result = subprocess.run(["bash", str(REPO / "tools" / "ha-check.sh"), "ghost"],
+                                cwd=tmp_path / name, env=env, capture_output=True, text=True)
+        assert result.returncode == 2
+    dirs = sorted((tmp_path / "tmp" / "domosenso-ha-check").glob("*/ghost"))
+    assert len(dirs) == 2

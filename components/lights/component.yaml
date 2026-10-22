@@ -1,6 +1,8 @@
-# Domosenso component manifest: Philips Hue lights per room, through the bridge's room groups.
+# Domosenso component manifest: Philips Hue lights per room, through the bridge's room groups; from
+# 0.2.0 a package with room lights that follow the bulbs, a lights-on count and the lowest battery
+# (SPEC-008).
 id: lights
-version: 0.1.0
+version: 0.2.0
 summary: Philips Hue lights per room, from the bridge's room groups
 description_key: meta.description
 photo: null
@@ -18,6 +20,7 @@ host:
 
 integrations:
   - {name: hue, source: core, setup: "press the button on the bridge when Home Assistant asks; it then talks to the bridge on the home network"}
+  - {name: template, source: core}
 
 inputs:
   lights:                       # the Ramka's room tiles read these
@@ -27,8 +30,18 @@ inputs:
     type: entity_id
     default: null
     example: scene.all_lights_off
+  rooms:                        # 0.2.0: one template light per Hue room group; id defaults to the group's object id
+    type: "list[{group, name, id?}]"
+    default: []
+    example: [{group: light.living_room, name: Living room}]
+  battery_sensors:              # 0.2.0: the Hue accessories' battery sensors; none, no battery sensor
+    type: "list[entity_id]"
+    default: []
+    example: [sensor.hall_motion_sensor_battery]
 
 artifacts:
+  templates:
+    - templates/package.yaml.j2   # -> packages/lights.yaml
   ha_packages: []
   services: []
 
@@ -36,6 +49,10 @@ provides:
   entities:
     - {id: "light.<room>", stability: stable, note: "one per Hue room group; on, off, brightness"}
     - {id: "light.<bulb>", stability: stable, note: "one per bulb. A room group stays on while its bulbs have lost power (a wall switch cut them), so read the bulbs where that can happen"}
+    # From the package (0.2.0); every entity carries component: lights.
+    - {id: "light.room_<id>", unique_id: "room_<id>", stability: stable, note: "on only while a reachable bulb of the group is on; commands go to the group"}
+    - {id: sensor.lights_on, unique_id: lights_on_count, stability: stable, note: "Hue bulbs that are on, groups excluded"}
+    - {id: sensor.hue_lowest_battery, unique_id: hue_lowest_battery, stability: stable, note: "%, unavailable while no battery sensor has a value; with battery_sensors"}
 
 consumes: []
 

@@ -6,7 +6,7 @@ blueprint:
     tablet is shown in brackets: a phone follows its owner, a tablet lies where it was left.
     One instance per room.
   domain: template
-  source_url: https://github.com/domosenso/domosenso/blob/main/components/bermuda-presence/ha/blueprints/template/domosenso/presence_room.yaml
+  source_url: https://github.com/zerostorypoints/domosenso/blob/main/components/bermuda-presence/ha/blueprints/template/domosenso/presence_room.yaml
   input:
     area_name:
       name: Area name

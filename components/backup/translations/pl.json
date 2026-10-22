@@ -1,0 +1,5 @@
+{
+  "meta": {
+    "description": "Pełna kopia zapasowa Home Assistanta co noc, a po starcie dodatkowa, gdy najnowsza jest za stara; z kopii zostają najnowsze i po jednej z ostatnich tygodni. Czujniki pokazują wiek najnowszej kopii, liczbę kopii i rozmiar folderu, a powiadomienie przychodzi, gdy kopie przestają powstawać."
+  }
+}

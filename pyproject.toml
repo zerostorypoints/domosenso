@@ -1,13 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "domosenso"
 version = "0.0.0"
 description = "Domosenso: a catalog of tested Home Assistant components"
-requires-python = ">=3.11"
+requires-python = ">=3.11.4"  # tarfile extraction filters, used in domosenso_cli/catalog.py
 dependencies = [
     "jinja2",
     "pyyaml",
     "jsonschema",
+    "websockets>=13",
 ]
+
+[project.scripts]
+domosenso = "domosenso_cli.main:main"
+
+# The other tools stay scripts run as `uv run tools/<name>.py`; the modules listed here are the
+# ones the `domosenso` command imports.
+[tool.setuptools]
+package-dir = {"" = "tools"}
+packages = ["domosenso_cli"]
+py-modules = ["catalog_check", "domosenso_render", "domosenso_install", "check_config_parse"]
 
 [dependency-groups]
 dev = [

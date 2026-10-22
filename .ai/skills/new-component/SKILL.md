@@ -23,7 +23,7 @@ from a real home goes in.
    never `ß`); Polish without English calques. A key in `de`/`pl` that `en` lacks is an error.
 4. **Artifacts**, as needed: `esphome/` (remote packages; the demo home's thin device files in
    `examples/demo-home/esphome/` pull them as
-   `github://domosenso/domosenso/components/<id>/esphome/<file>@<id>/<version>`),
+   `github://zerostorypoints/domosenso/components/<id>/esphome/<file>@<id>/<version>`),
    `ha/blueprints/`, `templates/*.j2` (rendered by `tools/domosenso_render.py`; delimiters `[[ ]]`,
    `[% %]`, `[# #]`; inputs in `examples/demo-home/inputs/<id>.yaml`), `cards/` with
    `artifacts.install_path: www/domosenso/<id>/<version>/`.

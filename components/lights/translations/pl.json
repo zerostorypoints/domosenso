@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Włączasz i ściemniasz światła Philips Hue pokój po pokoju, przez grupy pokojów w mostku Hue.",
+    "description": "Włączasz i ściemniasz światła Philips Hue pokój po pokoju, przez grupy pokojów w mostku Hue. Pakiet dodaje dla każdego pokoju światło, które jest włączone tylko wtedy, gdy któraś z jego żarówek jest osiągalna i świeci, więc pokój, w którym wyłącznik ścienny odciął żarówkom prąd, pokazuje się jako wyłączony. Do tego liczba włączonych żarówek i najsłabsza bateria akcesoriów Hue.",
     "devices": {
       "hue-bridge": {
         "description": "Mostek, który łączy żarówki i akcesoria Hue przez Zigbee i udostępnia je w sieci domowej.",

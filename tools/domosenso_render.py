@@ -153,9 +153,12 @@ def render_component(
     out_dir: Path,
     langs: list[str] = DEFAULT_LANGS,
     stamp: bool = False,
+    stamp_text: str | None = None,
 ) -> list[Path]:
+    """`stamp_text` is written verbatim as the first line of every file (the caller includes the newline)
+    and wins over `stamp`: the `domosenso` command writes its own form of the stamp."""
     component_dir, out_dir = Path(component_dir), Path(out_dir)
-    first_line = stamp_line(component_dir) if stamp else ""
+    first_line = stamp_text if stamp_text is not None else stamp_line(component_dir) if stamp else ""
     inputs = drop_none(inputs)  # so that `is defined` in a template means "the home gave a value"
     templates_dir = component_dir / "templates"
     names = sorted(p.relative_to(templates_dir).as_posix() for p in templates_dir.rglob("*.j2"))

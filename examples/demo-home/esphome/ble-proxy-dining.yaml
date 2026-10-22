@@ -7,8 +7,8 @@ esphome:
   area: ${area}
 
 packages:
-  proxy: github://domosenso/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.1.0
-  radar: github://domosenso/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.1.0
+  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.2.0
+  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.2.0
 
 wifi:
   ssid: !secret wifi_ssid

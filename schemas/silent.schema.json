@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/silent.schema.json",
+  "title": "The home's silent automations and how each proves it is alive (domosenso/silent.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity", "checks"],
+      "properties": {
+        "entity": {"type": "string", "pattern": "^(automation|script)\\.[a-z0-9_]+$"},
+        "note": {"type": "string"},
+        "checks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/check"}}
+      }
+    },
+    "hours": {"type": "number", "exclusiveMinimum": 0},
+    "check": {
+      "oneOf": [
+        {"description": "loaded, and for an automation enabled (on)", "const": "loaded_on"},
+        {
+          "description": "last_triggered no older than this many hours; checked with --day-after",
+          "type": "object", "additionalProperties": false, "required": ["triggered_within"],
+          "properties": {"triggered_within": {"$ref": "#/$defs/hours"}}
+        },
+        {
+          "description": "the entity's time (its value if that is a time, else its last update) no older than max_age hours; checked with --day-after",
+          "type": "object", "additionalProperties": false, "required": ["entity_fresh"],
+          "properties": {
+            "entity_fresh": {
+              "type": "object", "additionalProperties": false, "required": ["entity", "max_age"],
+              "properties": {
+                "entity": {"type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"},
+                "max_age": {"$ref": "#/$defs/hours"}
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

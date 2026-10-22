@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/snapshot.schema.json",
+  "title": "Domosenso snapshot of a running home (domosenso snapshot)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["taken_at", "ha_version", "entities", "automations", "scripts", "helpers", "dashboards",
+               "resources", "config_entries", "errors", "profiles"],
+  "properties": {
+    "taken_at": {"type": "string", "description": "UTC, ISO 8601"},
+    "ha_version": {"type": ["string", "null"]},
+    "entities": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/entity_id"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "unique_id", "state_class", "from_files"],
+        "properties": {
+          "platform": {"type": "string"},
+          "unique_id": {"type": ["string", "null"]},
+          "state_class": {"enum": ["available", "unavailable", "unknown"]},
+          "from_files": {"type": "boolean"},
+          "mirrored": {"const": true, "description": "a state posted by a staging mirror (attribute domosenso_mirror) with no registry entry; never from files"}
+        }
+      }
+    },
+    "automations": {"$ref": "#/$defs/runnables"},
+    "scripts": {"$ref": "#/$defs/runnables"},
+    "helpers": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/entity_id"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "options": {"type": "array"},
+          "min": {}, "max": {}, "step": {}, "mode": {},
+          "has_date": {}, "has_time": {}, "duration": {}
+        }
+      }
+    },
+    "dashboards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "icon", "require_admin", "config_sha256"],
+        "properties": {
+          "title": {"type": ["string", "null"]},
+          "icon": {"type": ["string", "null"]},
+          "require_admin": {"type": "boolean"},
+          "config_sha256": {"$ref": "#/$defs/sha_or_null"}
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url_no_query", "type"],
+        "properties": {"url_no_query": {"type": "string"}, "type": {"type": "string"}}
+      }
+    },
+    "config_entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["domain", "title", "state"],
+        "properties": {
+          "domain": {"type": "string"},
+          "title": {"type": ["string", "null"]},
+          "state": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": {"type": ["string", "null"]},
+          "message": {}, "source": {}, "timestamp": {}, "count": {}
+        }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user_id", "language"],
+        "properties": {"user_id": {"type": "string"}, "language": {"type": ["string", "null"]}}
+      }
+    }
+  },
+  "$defs": {
+    "entity_id": {"type": "string", "pattern": "^[a-z0-9_]+\\.[^.\\s]+$"},
+    "sha_or_null": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "runnables": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/entity_id"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "state", "loaded", "config_sha256", "last_triggered"],
+        "properties": {
+          "id": {"type": ["string", "null"]},
+          "state": {"type": "string"},
+          "loaded": {"type": "boolean"},
+          "config_sha256": {"$ref": "#/$defs/sha_or_null"},
+          "last_triggered": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/lock.schema.json",
+  "title": "Domosenso lock (domosenso.lock)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["components"],
+  "properties": {
+    "components": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "relpath": {
+      "description": "A relative POSIX path inside the home: no leading slash, no `..` segment.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "tag", "commit", "files"],
+      "properties": {
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "tag": {"type": "string", "minLength": 1},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "files": {"type": "object", "propertyNames": {"$ref": "#/$defs/relpath"}, "additionalProperties": {"$ref": "#/$defs/file"}},
+        "resources": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "from"],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "from": {"type": "string", "minLength": 1},
+        "layer": {"enum": ["managed", "instance"]}
+      }
+    }
+  }
+}

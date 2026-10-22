@@ -21,7 +21,9 @@ INSTANCE=$SRC/examples/demo-home/esphome
 if [ ! -d "$CDIR/esphome" ]; then echo "$COMP has no esphome/: nothing to check"; exit 0; fi
 VERSION=$(sed -n 's/^version: *//p' "$CDIR/component.yaml")
 TAG="$COMP/$VERSION"
-WORK=${TMPDIR:-/tmp}/domosenso-esphome-check/$COMP
+# One work dir per checkout: git worktrees run checks side by side and must not share it.
+ROOT_ID=$(printf %s "$SRC" | { shasum -a 256 2>/dev/null || sha256sum; } | cut -c1-8)
+WORK=${TMPDIR:-/tmp}/domosenso-esphome-check/$ROOT_ID/$COMP
 rm -rf "$WORK"; mkdir -p "$WORK/remote" "$WORK/home"
 
 # 1. A git "catalog" with the component at its tag.
@@ -38,9 +40,9 @@ python3 - "$INSTANCE" "$WORK/home" "$WORK/remote" "$COMP" <<'PY'
 import pathlib, re, sys
 src, dst, remote = map(pathlib.Path, sys.argv[1:4])
 comp = sys.argv[4]
-pat = re.compile(r"^(\s+)(\w+): github://domosenso/domosenso/(\S+)@(\S+)$", re.M)
+pat = re.compile(r"^(\s+)(\w+): github://zerostorypoints/domosenso/(\S+)@(\S+)$", re.M)
 for f in sorted(src.glob("*.yaml")):
-    if f"github://domosenso/domosenso/components/{comp}/" not in f.read_text():
+    if f"github://zerostorypoints/domosenso/components/{comp}/" not in f.read_text():
         print(f"skipped      {f.name} (no package of {comp})")
         continue
     text = pat.sub(lambda m: f"{m[1]}{m[2]}:\n{m[1]}  url: file://{remote}\n{m[1]}  ref: {m[4]}\n"

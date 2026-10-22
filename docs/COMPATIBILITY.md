@@ -23,7 +23,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | surface | level |
 |---|---|
 | Tag scheme `<component>/<version>`, e.g. `bermuda-presence/0.1.0` | FROZEN |
-| Remote package URL `github://domosenso/domosenso/components/<id>/<path>@<component>/<version>` (ESPHome device files, `dashboard_import`; at most 255 characters) | FROZEN |
+| Remote package URL `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>` (ESPHome device files, `dashboard_import`; at most 255 characters) | FROZEN |
 | Component ids (the directory name, `^[a-z0-9]+(-[a-z0-9]+)*$`) | FROZEN |
 | Device ids (`devices/<id>.yaml`) | STABLE |
 | ESPHome `project:` name `domosenso.<component>` | STABLE |
@@ -38,6 +38,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | `inputs`: each input's name, type and default | STABLE; new optional inputs are free, a new required input is a breaking change |
 | `media_player_contract` of the Ramka: `required` / `optional` | STABLE; moving a feature from optional to required is a breaking change |
 | Scene files (`schemas/scene.schema.json`, `scenes/README.md`) and device files | ADDITIVE-ONLY |
+| `templates/instance/**.j2`: rendered once by `domosenso add` into `config_dir/<path>` with the home's inputs, never overwritten, recorded in the lock as layer `instance`, not stamped | ADDITIVE-ONLY |
 
 ### Entities a component provides
 
@@ -83,10 +84,38 @@ Each entry in a manifest's `provides.entities` carries its own `stability:` (`fr
 |---|---|
 | Renderer delimiters `[[ ]]`, `[% %]`, `[# #]`; Home Assistant's own `{{ }}` / `{% %}` passed through byte-identical | FROZEN |
 | Renderer inputs: globals `t(key)`, `inputs`, `lang`; filter `yaml`; `*.lang.yaml.j2` → `<name>.<lang>.yaml`; an input set to `null` counts as absent | STABLE |
-| `--stamp` first line `# Rendered by Domosenso from <component>@<commit> — do not edit` (`-dirty` suffix) | STABLE |
+| First line of a rendered file: `# Rendered by Domosenso from <component>/<version> (<commit>) — do not edit` (`<commit>-dirty` when the catalog had uncommitted changes), written by `domosenso render`; the old form `# Rendered by Domosenso from <component>@<commit> — do not edit` (`domosenso_render.py --stamp`) is read as well, until the next minor version | STABLE |
 | Command lines of `domosenso_render.py`, `domosenso_install.py`, `catalog_check.py`, `ha-check.sh`, `esphome-check.sh`, `check-all.sh`, `agents_check.py`, `install_skills.py` | STABLE |
 | Output lines agents parse: `fresh: N errors`, `config ok` / `config FAIL`, `ok` / `FAIL <step>`, `all checks passed`, `ERROR` / `WARNING` prefixes | STABLE |
 | Steps of `check-all.sh` | ADDITIVE-ONLY |
+
+### The `domosenso` command and a home repository
+
+`uv run --project <catalog checkout> domosenso <command>`, run from the home repository's root
+(`--home <dir>` otherwise). Every command prints one line per action, then `ok` or `FAIL <reason>`
+(exit 0 or 1); `--json` prints the same as one document (`lines`, `data`, `result`, `reason`).
+Specified in [SPEC-002](../.ai/specs/SPEC-002-2026-10-21-whole-home-on-domosenso.md).
+
+| surface | level |
+|---|---|
+| Command lines: `init --catalog`, `add <id>@<version> [--catalog-dev]`, `adopt <id>@<version>`, `render [<id>...] [--force] [--catalog-dev]`, `update <id> [--to <version>] [--force]`, `status`, `deploy <target> (--plan \| --apply) [--remove-orphans <path>...] [--prune-resources] [--confirm <hash>]`, `rollback <target> [<deploy id>]`, `snapshot <target> [--out <file>]`, `compare <a> <b> [--explain <file>]`, `verify <target> --baseline <snapshot> [--day-after]`, and `--json` on each | STABLE |
+| Last line of every command: `ok` or `FAIL <reason>`; exit code 0 or 1 | STABLE |
+| `FAIL` reasons agents act on: `hand-edited: <path>`, `not managed, differs: <path>`, `owned by <id>: <path>`, `tag <tag> moved: locked <sha>, now <sha>`, `<n> unclassified`, `check_config: <n> errors`, `orphan <paths>`, `not an orphan: <paths>`, `dev render: <paths>: …`, `not confirmed`, `the plan changed: its hash is now <hash>, not <given>`, `not equivalent: <n> unexplained`, `not verified: <n> failed` (the wording after the colon is free text) | STABLE |
+| Lines of `render`, `add`, `update`: `write`, `same`, `dev`, `keep`, `instance`, `instance-kept`, `remove`, `stale`, `current <id> <version>`, `note <text>` (an `UPGRADE.md` line), `adopt <path>` | STABLE |
+| Lines of `status`: `managed`, `managed-modified`, `instance`, `unmanaged`, `unclassified` (each `<path>`; `local` files are not listed), `component <id> <locked> newest <newest>`, `integration <name> <version> (manual)`, `missing-dashboard-entry <path>`, `unchecked <reason>` | STABLE |
+| Plan lines of `deploy --plan` / `--apply`: `add`, `change`, `remove`, `orphan`, `keep` (each `<path>`), `dev-render <path>`, `resource create\|update\|unwanted\|delete <url>` (`update` adds `from <old url>`), `restart: yes\|no`, `hash <plan hash>` | STABLE |
+| Apply lines: `backup <deploy id>`, `copied <n> removed <m>`, `check_config 0 errors`, `error ...` / `warning ...` (from `check_config`), `restart <target>`, `deployed <deploy id>` or `nothing to deploy`; `rollback`: `restored <n> removed <m>`, `restart <target>`, `rolled-back <deploy id>` | STABLE |
+| `snapshot`: `read <part> <n>` per part, `wrote <file>` | STABLE |
+| `compare` and `verify`: per part `ok <part> (<n>)` or `FAIL <part>: <n> differences` followed by `<kind> <part> <id> [detail]` for each difference; `explanations <file> (<n>)`; `warning stale explanation <part> <id>`; the last line before `ok` is `equivalent` (`compare`) or `verified` (`verify`). Kinds: `only-in-a`, `only-in-b`, `unique-id-differs`, `not-loaded`, `config-differs`, `options-differ`, `state-changed`, `newly-unavailable`, `log-error`, `resource-missing`, `resource-duplicate`, `profile-language`, `silent-failed` | STABLE; new kinds and parts ADDITIVE-ONLY |
+| `deploy production --apply` asks for the word `production`; a non-interactive run needs `--confirm <plan hash>` | STABLE |
+| `domosenso.yaml` (`schemas/home.schema.json`): `catalog`, `config_dir`, `esphome_dir`, `targets` (`kind` `local-docker` / `ssh-docker`), `components`, `local`, `resources`, `unmanaged_on_target`, `kiosk_users`, `custom_integrations` | STABLE; new optional keys ADDITIVE-ONLY |
+| `domosenso.lock` (`schemas/lock.schema.json`): per component `version`, `tag`, `commit`, `files` (`sha256`, `from`, `layer`), `resources` | STABLE; new optional keys ADDITIVE-ONLY |
+| `domosenso/equivalence.yaml` (`schemas/equivalence.schema.json`): explained differences between two snapshots, `after_restart: unknown` | STABLE; new optional keys ADDITIVE-ONLY |
+| `domosenso/silent.yaml` (`schemas/silent.schema.json`): entry kinds `loaded_on`, `triggered_within`, `entity_fresh` | STABLE; new entry kinds ADDITIVE-ONLY |
+| Snapshot file (`schemas/snapshot.schema.json`), default `.domosenso/snap/<target>.json`: `entities`, `automations`, `scripts`, `helpers`, `dashboards`, `resources`, `config_entries`, `errors`, `profiles` | STABLE; new parts ADDITIVE-ONLY |
+| Home repository layout: `domosenso.yaml`, `domosenso.lock`, `domosenso/<id>.inputs.yaml`, `domosenso/equivalence.yaml`, `domosenso/silent.yaml`; `.domosenso/` is not committed | STABLE |
+| Per-target deploy record `<config>/.domosenso/deployed.json` and backups `.domosenso/predeploy-<timestamp>/` | not a contract: read through `rollback`, never by hand |
+| Home repository template `examples/home-template/AGENTS.md` | free: text a home copies once and then owns |
 
 ## Deprecation protocol
 

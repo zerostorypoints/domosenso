@@ -51,3 +51,14 @@ integration with each device's identity resolving key (IRK).
   from those gates.
 - A device with a fan next to the module (an air-quality monitor) can show up as motion on the
   nearest gates: check gates 0 and 1 after placing one.
+
+## The instance file (0.2.0)
+
+- `domosenso add bermuda-presence` writes `packages/bermuda_presence.yaml` once; after that it is the
+  home's file and the command does not touch it. Adding a room later means adding one more
+  `use_blueprint` entry by hand (or rendering the template again into a scratch directory and copying
+  the entry).
+- Each sensor's `unique_id` is `presence_<id>`, where `<id>` is the area name slugified as Home
+  Assistant does it (`Kids' room` → `kids_room`). A home moving from its own presence package keeps
+  its ids by setting `room_ids` where they differ.
+- Silent automation (for a home's `domosenso/silent.yaml`): `automation.ble_proxy_offline` (`loaded_on`).

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Temperatura i wilgotność w każdym pokoju z czujników Tapo oraz jakość powietrza z Ruuvi Air: CO2, pył zawieszony (PM2.5), wskaźniki VOC i NOx, temperatura, wilgotność, ciśnienie i ocena ogólna. Zasila strony klimatu i powietrza na Ramce.",
+    "description": "Temperatura i wilgotność w każdym pokoju z czujników Tapo oraz jakość powietrza z Ruuvi Air: CO2, pył zawieszony (PM2.5), indeksy VOC i NOx, temperatura, wilgotność, ciśnienie i ocena ogólna. Pakiet dodaje wartości dla całego domu: średnią, minimum i maksimum w środku, temperaturę i wilgotność na zewnątrz z prognozy pogody, różnicę między środkiem a zewnątrz, najwilgotniejszy pokój, najsłabszą baterię czujnika i sygnał, że łazienkę trzeba przewietrzyć. Zasila strony klimatu i powietrza Ramki.",
     "devices": {
       "tapo-t315": {
         "description": "Mały czujnik na baterię z wyświetlaczem, który przekazuje temperaturę i wilgotność przez energooszczędną łączność radiową huba Tapo (sprawdzony z H200).",

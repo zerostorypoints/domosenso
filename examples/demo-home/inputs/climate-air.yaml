@@ -1,0 +1,13 @@
+# The values the demo home supplies to the climate-air component (its `inputs:` in component.yaml).
+# The rooms are the Ramka's climate list plus the keys only this component reads: the Hall is left
+# out of the indoor figures (it opens onto the stairwell), the Kids' room has the bathroom's humidity
+# role for the test, and two sensors report a battery.
+climate:
+  - {label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity, battery: sensor.living_room_battery}
+  - {label: Dining, temperature: sensor.dining_air_temperature, humidity: sensor.dining_air_humidity}
+  - {label: Kitchen, temperature: sensor.kitchen_temperature, humidity: sensor.kitchen_humidity}
+  - {label: Office, temperature: sensor.office_temperature, humidity: sensor.office_humidity, battery: sensor.office_battery}
+  - {label: Bedroom, temperature: sensor.bedroom_temperature, humidity: sensor.bedroom_humidity}
+  - {label: Kids' room, temperature: sensor.kids_room_temperature, humidity: sensor.kids_room_humidity, bathroom: true}
+  - {label: Hall, temperature: sensor.hall_temperature, humidity: sensor.hall_humidity, indoor: false}
+outside_weather: weather.forecast_home
