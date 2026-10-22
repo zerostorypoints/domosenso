@@ -2,7 +2,7 @@
 
 SPEC-002 section 3.4. Run right after a restart, again after 10 minutes, and with `--day-after` the
 next morning. Every automation and script loaded in the baseline is loaded, with the same on / off;
-no entity that had a value is unavailable or unknown (except `after_restart: unknown` entries of
+no entity defined in files that had a value is unavailable or unknown (except `after_restart: unknown` entries of
 `domosenso/equivalence.yaml`, and then only `unknown`); no ERROR in the system log from
 configuration, templates, automations or scripts; every resource answers 200 and no two share a file
 name; each kiosk profile has the language of the dashboards `configuration.yaml` loads; every entry of
@@ -62,6 +62,8 @@ def _entities(base: dict, now: dict, may_be_unknown: set[str]) -> list[Diff]:
     for eid, was in sorted(base.items()):
         if was["state_class"] != "available" or eid.split(".", 1)[0] in ("automation", "script"):
             continue  # automations and scripts are checked as such above
+        if not was.get("from_files", True):
+            continue  # a deploy changes files only; an integration's device going away is the house
         cur = now.get(eid)
         if cur is None:
             out.append(Diff("entities", eid, "newly-unavailable", "missing"))

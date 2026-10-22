@@ -98,6 +98,21 @@ def test_newly_unavailable_fails(tmp_path):
     ]
 
 
+def test_integration_entity_going_unavailable_not_reported(tmp_path):
+    # A deploy changes files only; a Hue bulb whose wall switch was turned off the next morning
+    # (2026-10-22) is the house, not the deploy. Entities from files are still checked.
+    registry = [{"entity_id": "sensor.wind_speed", "platform": "hue", "unique_id": "bulb-1",
+                 "config_entry_id": "hue-entry", "device_id": "d1", "disabled_by": None}]
+    baseline = asyncio.run(take(FakeHA(responses(**{"config/entity_registry/list": registry}))))
+    now = states()
+    now[3]["state"] = "unavailable"
+    now[4]["state"] = "unavailable"
+    ha = FakeHA(responses(now, **{"config/entity_registry/list": registry}))
+    assert kinds(run_verify(tmp_path, ha, baseline=baseline)) == [
+        ("entities", "sensor.office_comfort", "newly-unavailable"),
+    ]
+
+
 def test_unavailable_in_baseline_not_reported(tmp_path):
     # sensor.kitchen_power was unavailable in the baseline already
     assert run_verify(tmp_path, FakeHA(responses())) == []
