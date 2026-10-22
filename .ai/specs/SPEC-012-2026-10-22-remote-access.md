@@ -140,6 +140,19 @@ change to other components. `artifacts.services` is used as `awnings` uses it.
 - Creating the tunnel, the route, the DNS record or the WAF rule through Cloudflare's API.
 - An installer's remote access to clients' homes (its own project).
 
+## As built (2026-10-22)
+
+- `cloudflare/cloudflared:2026.10.1` (a week old; 2026.10.3 was a day old). The token is mounted as a
+  file and read through `TUNNEL_TOKEN_FILE` (verified in cloudflared's source at that tag), so it is in
+  no environment listing.
+- `tested.homes: 0`: the maintainer's tunnel was set up by hand; this compose file and `domosenso
+  http` have not run there.
+- `domosenso http` keeps a login-attempt threshold the home chose and sets 5 only where there is none
+  (open question 3); `--trusted-proxy` overrides the input.
+- Checked: `--plan` read-only against the maintainer's production over the tunnel prints `nothing to
+  change`; on a throwaway local Home Assistant 2026.9.2 a request with `X-Forwarded-For` from loopback
+  got 400 before `--apply` and 200 after it, `--promote` made the config stable.
+
 ## Open questions
 
 1. Pin which `cloudflared` version (the newest at implementation time, checked to run).

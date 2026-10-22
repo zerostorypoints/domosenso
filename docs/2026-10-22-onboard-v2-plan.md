@@ -33,4 +33,6 @@ the maintainer is back.
 | D | `examples/home-template/services/home-assistant/compose.yaml`, skill section 1.1, a test that the image is the checked version (§3) | done on `claude/onboard-v2-phase-d` |
 | D | tried on a local container (Mac, port published instead of host networking): start, `/api/onboarding`, onboarding, `discover`, `recommend --from-ha` | done 2026-10-22 |
 | D | on a Synology or a Linux host | owed to the first home without Home Assistant |
-| E | SPEC-012 `remote-access` and `domosenso http`, on `claude/onboard-v2-phase-e`; found while drafting: on 2026.9 the `http` settings are not YAML (SPEC-011 §2.2 corrected) | spec approved 2026-10-22; implementation in progress |
+| E | SPEC-012 `remote-access` and `domosenso http`, on `claude/onboard-v2-phase-e`; found while drafting: on 2026.9 the `http` settings are not YAML (SPEC-011 §2.2 corrected) | spec approved 2026-10-22; done on `claude/onboard-v2-phase-e` |
+| E | `domosenso http --plan` read-only against production over the tunnel: `nothing to change`; apply and promote end to end on a local Home Assistant (a proxied request 400 → 200) | done 2026-10-22 |
+| E | the compose file and `domosenso http` in a real home | owed |

@@ -45,6 +45,7 @@ The rest of this page is what the skill does, step by step, for reference.
 |---|---|---|
 | `ramka` | an Android wall tablet with the HA Companion app, presence (a radar or Bermuda) | the wall-tablet dashboard: clock, weather, climate, air, plants, photos, calendar, controls |
 | `backup` | — | nightly backups with retention, backup sensors, an alert when backups stop |
+| `remote-access` | a Cloudflare account with a domain | Home Assistant from anywhere through a Cloudflare Tunnel, no open port |
 | `climate-air` | temperature/humidity sensors per room, a `weather` entity | indoor averages and extremes, outside figures, most humid room, lowest battery |
 | `bermuda-presence` | ESPHome BLE proxies (M5Stack Atom Lite) and the Bermuda integration | which room each phone is in |
 | `plants` | Mi Flora sensors | plant entities, water reminder, silent-sensor alert |

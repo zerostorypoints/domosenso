@@ -59,7 +59,7 @@ One short question at a time, with a default where there is one.
    | browser at home | `http://<host>:8123` | works |
    | Companion app (Android, iOS) at home | the app, the URL as its internal URL | works; the Ramka runs on the Android app |
    | remote: Nabu Casa cloud | a subscription, set up in HA's UI | should work with a Container; not tried here |
-   | remote: Cloudflare Tunnel | a domain on Cloudflare, `cloudflared` as a compose service, HA `http:` trusting the proxy | runs in the maintainer's home; a catalog component (`remote-access`) is planned, not ready |
+   | remote: Cloudflare Tunnel | a domain on Cloudflare, `cloudflared` as a compose service, Home Assistant trusting the proxy | the `remote-access` component (its README: the Cloudflare steps, then `domosenso http`) |
    | remote: VPN (Tailscale, WireGuard) | an agent on the host and on every phone | not in the catalog |
    | port forwarding on the router | — | advise against it |
 
@@ -364,7 +364,8 @@ and `sensor.newest_backup_age` below 24 show the first nightly backup ran.
 - No staging for a new home yet (an installable staging Home Assistant with scene simulation is
   planned): changes go to production after `--plan`, with `snapshot`, `verify` and `rollback`.
 - Installing Home Assistant (section 1.1) is tried on a local container, not yet on a Synology or a
-  mini PC. Remote access is not a catalog component yet (`remote-access`, SPEC-011 phase E).
+  mini PC. `remote-access` is tested in no home as packaged (the maintainer's tunnel was set up by
+  hand); `domosenso http` is tried on a local Home Assistant.
 - The Ramka: one tested layout (1024–1280 × 720–800 CSS px, landscape); portrait or a phone needs
   a new one. The probe is tried on a local Home Assistant, not yet on a real tablet. ramka 0.2.0
   (optional pages, `screen`) reaches `recommend` once it is tagged. Its music player
