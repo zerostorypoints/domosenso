@@ -63,7 +63,7 @@ claude
 ```
 
 `uv sync` fetches a matching Python if you have none and installs the `domosenso` command into the
-clone's `.venv`; `uv run domosenso --help` then lists its commands.
+clone's `.venv`.
 
 In Claude Code, type `/onboard-home`. With Codex, start `codex` in the same folder instead and ask it
 to run the onboard-home skill.
@@ -108,14 +108,28 @@ and a manifest that says what it needs and which versions it was tested on.
 
 Every component except remote-access runs in one home so far. Yours would be the second.
 
+## The `domosenso` command
+
+Domosenso is also a command-line tool in this repository: it scans your Home Assistant, puts
+components into your home repository, deploys them and checks the result. Your agent runs it for you
+and shows each command before anything that changes Home Assistant; you never have to type it. To run
+one yourself, from the clone:
+
+```bash
+uv run domosenso --help
+```
+
+From your home's folder: `uv run --project <path to the clone> domosenso <command>`. Below,
+`domosenso …` is short for either.
+
 ## Stages
 
 ### Minute 10: what fits your home
 
 - **You decide:** how the agent reaches your Home Assistant, and whether your home's configuration
   goes to a private GitHub repository.
-- **Run:** `/onboard-home`. It scans with `domosenso recommend --from-ha` and `domosenso discover`,
-  and creates your home with `domosenso init`.
+- **The agent runs**, after you type `/onboard-home`: `domosenso recommend --from-ha` and
+  `domosenso discover` to scan, then `domosenso init` to create your home.
 - **Done when:** you have a list of fitting components and missing hardware; your home repository
   exists in its own folder; and, if you chose it, it is on GitHub as a private repository
   (`git remote -v` shows `origin`).
@@ -123,8 +137,10 @@ Every component except remote-access runs in one home so far. Yours would be the
 ### Hour 1: the first component live
 
 - **You decide:** yes or no to the first deploy, after reading its plan.
-- **Run:** `backup` added with values read from your Home Assistant; `domosenso deploy production
-  --plan`, then `--apply` with your yes; `domosenso verify`.
+- **The agent runs:** `domosenso add backup@<version>` and fills its settings from your Home
+  Assistant; `domosenso deploy production --plan` shows what would change; after your yes,
+  `--apply` copies it to Home Assistant and restarts it; `domosenso verify` checks that nothing that
+  worked before stopped working.
 - **Done when:** the nightly backup is in Home Assistant and `verify` passes against the snapshot
   taken before the deploy.
 
@@ -132,15 +148,15 @@ Every component except remote-access runs in one home so far. Yours would be the
 
 - **You decide:** the tablet (Android, landscape) and where it hangs. It needs a radar board next to
   it, which wakes the screen when someone comes near.
-- **Run:** `domosenso probe` measures the tablet's screen; the agent fills the Ramka's inputs from
-  your rooms and devices; `deploy --plan`, then `--apply`.
+- **The agent runs:** `domosenso probe` to measure the tablet's screen, fills the Ramka's settings
+  from your rooms and devices, then `deploy --plan` and, after your yes, `--apply`.
 - **Done when:** the tablet shows your pages and wakes when someone walks up to it.
 
 ### Month 1: your house, kept current
 
 - **You decide:** which updates to take and which components come next.
-- **Run:** `domosenso update` moves a component to a newer tag; `domosenso verify --day-after` checks
-  that automations ran overnight. A device the catalog lacks:
+- **The agent runs:** `domosenso update` to move a component to a newer version;
+  `domosenso verify --day-after` to check that automations ran overnight. A device the catalog lacks:
   [Integrate a device](docs/integrate-a-device.md).
 - **Done when:** your home runs on tagged versions only (`domosenso status`), and anything you added
   yourself is back in the catalog as a pull request.
