@@ -152,6 +152,9 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
   ids or kinds>`: which components the devices satisfy, read at their newest tags; `--from-ha` scans a
   running Home Assistant read-only and matches its devices by the rules in `devices/` and `kinds/` at
   the catalog's HEAD; runs before `init` too (SPEC-009, SPEC-010).
+- `discover --from-ha <target or URL> [--token-file <file>] [--domain <domain>...]`: what Home Assistant
+  discovered on the network and has set up, and whether it has the integrations named (read-only,
+  SPEC-011).
 
 Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
 is a change to a STABLE surface (spec first).

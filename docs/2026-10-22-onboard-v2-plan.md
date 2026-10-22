@@ -1,0 +1,29 @@
+# Plan: onboard-home v2 (SPEC-011)
+
+Spec: [SPEC-011](../.ai/specs/SPEC-011-2026-10-22-onboard-home-v2.md), approved 2026-10-22.
+Feature branch: `feature/onboard-v2` (from the spec's branch, PR #24). One pull request per phase into
+the feature branch, then one from the feature branch into `main` for the maintainer.
+Coordinator: the session that wrote the spec; it does the phases itself, one after the other.
+
+Working conditions from 2026-10-22, for about four days: the maintainer is away. No SSH or LAN to the
+home's NAS, so no `deploy`, `rollback`, probe install or any write to production. Production is
+read-only through its Cloudflare tunnel (REST and websocket). Anything that needs a running Home
+Assistant uses a local staging container. The tablet cannot be checked: those checks are owed until
+the maintainer is back.
+
+## Tasks
+
+| phase | task | state |
+|---|---|---|
+| A | `domosenso discover` (§4.1), tests, COMPATIBILITY row | done on `claude/onboard-v2-phase-a` |
+| A | `sw_version` in `recommend --from-ha` `scan.devices`; `tested_homes` per device in `--json` `needs` / `optional` (§5, §8) | done on `claude/onboard-v2-phase-a` |
+| A | device files: `tested`, `tablet` in the schema; `tested.homes: 1` on the eight devices; `devices/tcl-9469x.yaml` with its match rule and profile; the tablet in the scenes that list the Ramka | done on `claude/onboard-v2-phase-a` |
+| A | skill `onboard-home` v2 text (§1, §2.1, §4.2, §5, §6.1, §7.1–7.2); getting-started; AGENTS.md command list | done on `claude/onboard-v2-phase-a` |
+| A | fix found on the way: REST through a Cloudflare tunnel needs a named User-Agent (error 1010) | done on `claude/onboard-v2-phase-a` |
+| A | real check, read-only: `discover` and `recommend --from-ha` against production over the tunnel | done 2026-10-22 (reported in the conversation) |
+| B | `domosenso probe` and the probe card (§7.3), tested on a local staging HA | waiting |
+| B | the probe on the real tablet (must report 1100 × 720 at DPR 2) | owed until the maintainer is back |
+| C | ramka 0.2.0: optional `air`, `plants`, `climate`; `screen` input and the layout table; `recommend: [tcl-9469x]` for `android-tablet` (§6.2, §7.4) | waiting |
+| C | screenshots of every page at 1100 × 720 on staging, byte-identical render without `screen` | waiting |
+| D | Home Assistant install path for a Docker host (§3), tried with a local container | waiting |
+| E | SPEC-012 `remote-access` | waiting (spec first) |
