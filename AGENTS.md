@@ -155,6 +155,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
 - `discover --from-ha <target or URL> [--token-file <file>] [--domain <domain>...]`: what Home Assistant
   discovered on the network and has set up, and whether it has the integrations named (read-only,
   SPEC-011).
+- `probe <target> --install | --read | --remove`: a temporary page a wall tablet opens to report its
+  viewport, pixel ratio and WebView (SPEC-011); install and remove write to Home Assistant.
 
 Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
 is a change to a STABLE surface (spec first).

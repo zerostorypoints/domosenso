@@ -288,6 +288,12 @@ domosenso probe <target or URL> [--token-file <file>] --install | --read [--wait
   user agent (`wv` marks a WebView), and does a real `import(..., { with: { type: "json" } })` of a
   small file next to it. Strings through `card.*` keys like every card.
 
+As built in phase B: the card is `tools/probe/probe-card.js` with its strings in `probe.json` (the
+file the JSON-module import tries), so `--install` copies two files (`copied 2`); its test is
+`tools/probe/probe-card.test.mjs` (`npm test` runs `tools/` too). `--read` ends at the first report;
+the browser field reads `webview <major>` in a WebView and `chromium <major>` otherwise. `--install`
+prints `warning /local/ is not served ...` when Home Assistant needs a restart to serve a new `www/`.
+
 Creating a dashboard and a resource goes through Home Assistant's own API, as the UI does; no file
 under `.storage` is written by Domosenso.
 

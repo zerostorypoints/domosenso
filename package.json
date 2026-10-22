@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test components/"
+    "test": "node --test components/ tools/"
   },
   "devDependencies": {
     "happy-dom": "^20.0.0"

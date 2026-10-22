@@ -46,6 +46,15 @@ class FakeHA:
         self.calls.append(("http_status", {"path": path}))
         return self.http_statuses.get(path, 200)
 
+    async def subscribe(self, event_type: str) -> int:
+        self.calls.append(("subscribe_events", {"event_type": event_type}))
+        return len(self.calls)
+
+    async def next_event(self, subscription: int, timeout: float) -> dict | None:
+        """The next of `events` (a list of event dicts), or None when it is used up."""
+        events = self.responses.get("events") or []
+        return events.pop(0) if events else None
+
 
 class FakeTarget(LocalFiles):
     """Stands in for a `TargetIO` (`domosenso_cli.targets`): the files are a directory, `root`.
