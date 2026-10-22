@@ -60,8 +60,9 @@ uv run --project <catalog> domosenso recommend --catalog <catalog> --have <devic
 
 Lines: `fits <id>@<version> tested-homes <n|unknown>`, `missing <id>@<version> tested-homes … needs <k>`
 with a `needs <id>@<version> <kind> [<device ids>]` per missing device, `optional <id>@<version>
-<feature> <kind> have|lacks [<device ids>]`, `describes <id>@<version>`, `unknown <token>` (a
-`--have` value no manifest names: fix the mapping and run again).
+<feature> <kind> have|lacks [<device ids>]`, `describes <id>@<version>`, `unknown <token> [did-you-mean <ids>]` (a
+`--have` value no manifest names: pass the catalog's device ids from `devices/*.yaml`, such as
+`tapo-t315`, not a description such as `tapo-sensor`; take the suggestion or ask, then run again).
 
 Present, in this order:
 

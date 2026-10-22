@@ -31,6 +31,11 @@ URL, so no bridge is kept (the rule for components not yet used by another home,
 [COMPATIBILITY.md](COMPATIBILITY.md)). A device file that still uses the old form must be changed
 to the new one.
 
+## 2026-10-22: ramka 0.1.2
+
+- **ramka 0.1.2** ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)): metadata only
+  (`tested.homes`); nothing to do, a home may stay on 0.1.1.
+
 ## 2026-10-21: ramka 0.1.1
 
 - **ramka 0.1.1** ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)): "Tomorrow" capitalised

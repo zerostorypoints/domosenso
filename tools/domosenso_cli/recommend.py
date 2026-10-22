@@ -7,6 +7,7 @@ device ids known are those the manifests name (`devices/` is not tagged, so it i
 from __future__ import annotations
 
 import argparse
+import difflib
 import tempfile
 from pathlib import Path
 
@@ -72,6 +73,15 @@ def known_tokens(manifest: dict) -> set[str]:
     return found
 
 
+def suggestions(token: str, known: set[str]) -> list[str]:
+    """Known device ids or kinds a mistyped or guessed `--have` value probably meant: close spellings,
+    then ids that share its vendor prefix (`tapo-sensor` → `tapo-t315`)."""
+    close = difflib.get_close_matches(token, sorted(known), n=3, cutoff=0.6)
+    prefix = token.split("-", 1)[0]
+    same_vendor = sorted(k for k in known if "-" in token and k.split("-", 1)[0] == prefix)
+    return list(dict.fromkeys([*close, *same_vendor]))[:3]
+
+
 def _report(result: dict, rep: Reporter) -> None:
     name = f"{result['id']}@{result['version']}"
     homes = "unknown" if result["tested_homes"] is None else str(result["tested_homes"])
@@ -113,7 +123,8 @@ def _read(catalog: Catalog, have: set[str], rep: Reporter) -> int:
         rep.data.append(result)
         _report(result, rep)
     for token in sorted(have - known):
-        rep.line("unknown", token)
+        near = suggestions(token, known)
+        rep.line("unknown", token, *(["did-you-mean", ",".join(near)] if near else []))
     return rep.ok()
 
 
