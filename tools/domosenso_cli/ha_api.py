@@ -129,6 +129,26 @@ class HA:
             raise DomosensoError(f"{type}: {error.get('code', 'error')} {error.get('message', '')}".rstrip())
         return msg.get("result")
 
+    async def subscribe(self, event_type: str) -> int:
+        """Subscribe to one event type; returns the subscription id that `next_event` reads."""
+        await self.call("subscribe_events", event_type=event_type)
+        return self._next_id
+
+    async def next_event(self, subscription: int, timeout: float) -> dict | None:
+        """The next event of a subscription, or None when none arrives within `timeout` seconds.
+        Other messages on the socket are skipped."""
+        try:
+            async with asyncio.timeout(timeout):
+                while True:
+                    msg = _decode(await self._ws.recv(), "event")
+                    if msg.get("id") == subscription and msg.get("type") == "event":
+                        return msg.get("event") or {}
+        except TimeoutError:
+            return None
+        except (OSError, WebSocketException) as e:
+            await self._drop()
+            raise DomosensoError(f"subscription {subscription}: websocket failed: {e}") from e
+
     def _request(self, path: str) -> tuple[int, bytes]:
         req = urllib.request.Request(self.url + path, headers={"Authorization": f"Bearer {self._token}", "User-Agent": USER_AGENT})
         try:
