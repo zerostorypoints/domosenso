@@ -442,3 +442,18 @@ def test_rule_fields_all_have_to_match():
     assert not matches({"unless_manufacturer": "espressif"}, dev)
     assert matches({"entity_domain": ["media_player", "sensor"], "device_classes": ["distance"]}, dev)
     assert not matches({"entity_names": ["Still distance", "Moving distance"]}, dev)
+
+
+def test_a_maybe_confirmed_with_have_is_not_printed_again(catalog, tmp_path, capsys, ha):
+    add_rules(catalog)
+    token = tmp_path / "token"
+    token.write_text("t")
+    code = cli.main(["--home", str(tmp_path), "recommend", "--json", "--catalog", str(catalog),
+                     "--from-ha", "http://ha.local:8123", "--token-file", str(token), "--have", "android-tablet"])
+    doc = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert not [line for line in doc["lines"] if line[:2] == ["maybe", "android-tablet"]]
+    assert "android-tablet" not in doc["scan"]["maybe"]
+    # The tablet is accounted for; the phone, which no rule matched, is still unmatched.
+    names = [d["name"] for d in doc["scan"]["devices"]]
+    assert doc["scan"]["unmatched"]["mobile_app"] == [names.index("Alex's phone")]

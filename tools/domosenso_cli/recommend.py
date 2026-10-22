@@ -138,11 +138,11 @@ async def _read_ha(ha: HA) -> dict:
         return await hwscan.read(ha)
 
 
-def _scan(catalog: Catalog, args: argparse.Namespace, rep: Reporter) -> set[str]:
+def _scan(catalog: Catalog, args: argparse.Namespace, rep: Reporter, given: set[str]) -> set[str]:
     """Scan, print what was found and how it matched; the `found` tokens count as `--have`."""
     rules = hwscan.load_rules(catalog)
     ha = _open_ha(args)
-    result = hwscan.scan(asyncio.run(_read_ha(ha)), rules)
+    result = hwscan.scan(asyncio.run(_read_ha(ha)), rules, given)
     rep.line("rules", rules.commit, "devices", str(rules.count("devices")), "kinds", str(rules.count("kinds")))
     integrations = {i for dev in result["devices"] for i in dev["integrations"]}
     rep.line("scan", "devices", str(len(result["devices"])), "integrations", str(len(integrations)))
@@ -158,7 +158,7 @@ def _scan(catalog: Catalog, args: argparse.Namespace, rep: Reporter) -> set[str]
 def _read(catalog: Catalog, have: set[str], rep: Reporter, args: argparse.Namespace | None = None) -> int:
     given = set(have)
     if args is not None and args.from_ha:
-        have = have | _scan(catalog, args, rep)
+        have = have | _scan(catalog, args, rep, given)
     known: set[str] = set()
     for cid in catalog.component_ids():
         version = catalog.versions(cid)[-1]

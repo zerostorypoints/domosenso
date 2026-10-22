@@ -138,7 +138,9 @@ With `--from-ha`, before the existing lines:
 | `unmatched <domain> <n>` | `n` devices of that integration that no printed `found` or `maybe` line accounts for (a `maybe` hidden because the same token is `found` does not count) |
 
 Then `fits` / `missing` / `needs` / `optional` / `describes` / `unknown` exactly as today, with
-`have` = the `found` tokens plus `--have`. A token that is both `found` and `maybe` prints `found`.
+`have` = the `found` tokens plus `--have`. A token that is both `found` and `maybe` prints `found`;
+a `maybe` token also given with `--have` is confirmed: no `maybe` line, and its devices are not
+`unmatched` (added 2026-10-22 after the first real run).
 `unknown` applies to `--have` values only.
 
 `--json`: the document gains a top-level `scan` object: `rules_commit`, `found` and `maybe`

@@ -105,9 +105,10 @@ def _devices(raw: dict[str, Any]) -> list[dict]:
     return found
 
 
-def scan(raw: dict[str, Any], rules: Rules) -> dict[str, Any]:
+def scan(raw: dict[str, Any], rules: Rules, confirmed: set[str] = frozenset()) -> dict[str, Any]:
     """What `recommend` prints and counts: `found` and `maybe` per token (`count`, `via`, `devices`
-    as indexes into `devices`), `unmatched` per integration, and the devices themselves."""
+    as indexes into `devices`), `unmatched` per integration, and the devices themselves. A `maybe`
+    token in `confirmed` (given with `--have`) is not asked about again, and its devices are matched."""
     devices = _devices(raw)
     enabled_entries = [e["domain"] for e in raw["entries"] if not e.get("disabled_by")]
     tally: dict[str, dict[str, dict]] = {"found": {}, "maybe": {}}
@@ -134,12 +135,12 @@ def scan(raw: dict[str, Any], rules: Rules) -> dict[str, Any]:
                         dev["matches"].append({"token": token, "certainty": certainty, "source": f"{path}#{n}"})
                     hit(certainty, token, dev["integrations"], index)
 
-    for token in tally["found"]:
+    for token in {*tally["found"], *confirmed}:
         tally["maybe"].pop(token, None)
     unmatched: dict[str, list[int]] = {}
     for index, dev in enumerate(devices):
-        accounted = any(m["token"] in tally["found"] if m["certainty"] == "found" else m["token"] in tally["maybe"]
-                        for m in dev["matches"])
+        accounted = any(m["token"] in tally["found"] if m["certainty"] == "found"
+                        else m["token"] in tally["maybe"] or m["token"] in confirmed for m in dev["matches"])
         if not accounted:
             for integration in dev["integrations"] or ["-"]:
                 unmatched.setdefault(integration, []).append(index)
