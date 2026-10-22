@@ -74,12 +74,12 @@ def known_tokens(manifest: dict) -> set[str]:
 
 
 def suggestions(token: str, known: set[str]) -> list[str]:
-    """Known device ids or kinds a mistyped or guessed `--have` value probably meant: close spellings,
-    then ids that share its vendor prefix (`tapo-sensor` → `tapo-t315`)."""
+    """Known device ids or kinds a mistyped or guessed `--have` value probably meant: ids that share
+    its vendor prefix first (`tapo-sensor` → `tapo-t315`), then close spellings."""
     close = difflib.get_close_matches(token, sorted(known), n=3, cutoff=0.6)
     prefix = token.split("-", 1)[0]
     same_vendor = sorted(k for k in known if "-" in token and k.split("-", 1)[0] == prefix)
-    return list(dict.fromkeys([*close, *same_vendor]))[:3]
+    return list(dict.fromkeys([*same_vendor, *close]))[:3]
 
 
 def _report(result: dict, rep: Reporter) -> None:
