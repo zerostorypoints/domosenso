@@ -10,7 +10,7 @@ Home Assistant runs as a Container: no add-ons or apps. Pinned versions: Home As
 
 All rights reserved — licence not chosen yet (Apache-2.0 proposed). The repository is private.
 
-Coding agents (Claude Code, Codex, Cursor): start with [AGENTS.md](AGENTS.md).
+Coding agents (Claude Code, Codex, Cursor): start with [AGENTS.md](AGENTS.md). A new home: [docs/getting-started.md](docs/getting-started.md).
 
 ## Layout
 
