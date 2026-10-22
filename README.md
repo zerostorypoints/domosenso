@@ -10,7 +10,9 @@ Home Assistant runs as a Container: no add-ons or apps. Pinned versions: Home As
 
 All rights reserved — licence not chosen yet (Apache-2.0 proposed). The repository is private.
 
-Coding agents (Claude Code, Codex, Cursor): start with [AGENTS.md](AGENTS.md). A new home: [docs/getting-started.md](docs/getting-started.md).
+Coding agents (Claude Code, Codex, Cursor): start with [AGENTS.md](AGENTS.md). A new home: open this
+repository in Claude Code and type `/onboard-home` (Codex: the `onboard-home` skill); the steps are in
+[docs/getting-started.md](docs/getting-started.md).
 
 ## Layout
 
@@ -44,6 +46,19 @@ calendars or floor plans. A real home lives in its own repository.
 | [plants](components/plants/component.yaml) | Houseplant sensors (Xiaomi Mi Flora) |
 | [ramka](components/ramka/component.yaml) | Wall tablet: radar wake-up, ambient pages, music, awnings, lights, calendar ([upgrade notes](components/ramka/UPGRADE.md)) |
 | [weather](components/weather/component.yaml) | Weather and forecast from Met.no |
+
+## Agent skills
+
+One source in `.ai/skills/<name>/SKILL.md`, linked for Claude Code (`.claude/skills/`) and Codex and
+Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
+
+| skill | use it to |
+|---|---|
+| [onboard-home](.ai/skills/onboard-home/SKILL.md) | start a new home: interview, recommend components, `domosenso init`, add `backup`, stop at `deploy production --plan` |
+| [check](.ai/skills/check/SKILL.md) | run `tools/check-all.sh` and report pass or fail per step |
+| [new-component](.ai/skills/new-component/SKILL.md) | scaffold `components/<id>/` and get the checker and tests passing |
+| [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
+| [render-and-stage](.ai/skills/render-and-stage/SKILL.md) | render a component into a home repository, install it, check it, try it on staging |
 
 ## Checks
 

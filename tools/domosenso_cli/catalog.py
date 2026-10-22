@@ -16,6 +16,7 @@ from pathlib import Path
 from domosenso_cli.errors import DomosensoError
 
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+COMPONENT_ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
 class TagMoved(DomosensoError):
@@ -76,6 +77,23 @@ class Catalog:
         names = self._run("tag", "--list", f"{cid}/*", error="list tags").stdout.decode().split()
         found = [name[len(cid) + 1:] for name in names]
         return sorted((v for v in found if SEMVER.match(v)), key=lambda v: tuple(map(int, v.split("."))))
+
+    def component_ids(self) -> list[str]:
+        """Every component that has at least one `<id>/<semver>` tag."""
+        self.ensure()
+        names = self._run("tag", "--list", "*/*", error="list tags").stdout.decode().split()
+        found = {cid for cid, _, version in (name.partition("/") for name in names)
+                 if SEMVER.match(version) and COMPONENT_ID.match(cid)}
+        return sorted(found)
+
+    def show(self, cid: str, version: str, path: str) -> bytes:
+        """One file of the component as it is at its tag, without extracting the component."""
+        self.ensure()
+        tag = f"{cid}/{version}"
+        done = self._git("show", f"refs/tags/{tag}:components/{cid}/{path}")
+        if done.returncode != 0:
+            raise DomosensoError(f"tag {tag} has no components/{cid}/{path}")
+        return done.stdout
 
     def checkout(self, cid: str, version: str, expect_commit: str | None) -> Path:
         """The component as it is at its tag, extracted into `<cache>/components/<cid>/<version>/`."""
