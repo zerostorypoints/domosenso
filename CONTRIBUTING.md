@@ -12,9 +12,11 @@ integration as the worked example (skill `new-integration`).
 
 ## How changes land
 
-- **Nothing reaches `main` except through a pull request.** Work on a branch; never push `main`,
-  never force-push a shared branch, never move or delete a published tag. Enable the guard in your
-  clone: `git config core.hooksPath .githooks` (AGENTS.md, "Main, tags and pull requests").
+- **A pull request from your fork.** Fork the repository (`gh repo fork zerostorypoints/domosenso
+  --clone` also sets the `upstream` remote), make one branch per change
+  (`feat/…`, `fix/…`, `docs/…`), keep it current with `git pull --rebase upstream main`, and open a
+  pull request into `main`. Maintainers review and merge; nothing reaches `main` any other way, and
+  published tags never move.
 - **Spec first** for a new component, a new capability of the command, a schema change or anything in
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md): a spec in `.ai/specs/` (skill `write-component-spec`),
   approved, then built. A fix that keeps the contract goes straight to a pull request with a test.

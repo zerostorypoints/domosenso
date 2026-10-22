@@ -93,7 +93,7 @@ as a custom repository on your own Home Assistant, where the player meets the co
 ## 4. Bring the device into the catalog
 
 Now the catalog learns the device, so `recommend --from-ha` finds it in the next home. This is a pull
-request into this repository (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
+request from your fork into this repository (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 **A device file**, `devices/<id>.yaml`, like [`devices/hegel-h400.yaml`](../devices/hegel-h400.yaml):
 

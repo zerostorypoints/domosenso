@@ -18,7 +18,7 @@ Rules, all steps:
   Assistant reports for every unit of that model.
 - A change to a component's contract (its `integrations`, `inputs` or `provides`) is spec first:
   skill `write-component-spec`, and stop for approval.
-- Catalog changes go on a branch with a pull request (AGENTS.md "Main, tags and pull requests").
+- Catalog changes go on a branch of their fork, as a pull request into `main` (CONTRIBUTING.md).
 
 1. **What Home Assistant already has.** Run `discover` and `recommend --from-ha --json`; find the
    device under `unmatched` and the integrations already offering it. Compare the candidate

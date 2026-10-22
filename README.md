@@ -52,13 +52,12 @@ configuration in a private GitHub repository.
 ## Start in 10 minutes
 
 With the tools above installed and `gh auth login` done, in a terminal: clone this repository (tags
-come with it), install its Python dependencies, turn on its guard and start your agent in the clone.
+come with it), install its Python dependencies and start your agent in the clone.
 
 ```bash
 gh repo clone zerostorypoints/domosenso
 cd domosenso
 uv sync
-git config core.hooksPath .githooks
 claude
 ```
 
@@ -72,11 +71,11 @@ The agent asks how to reach your Home Assistant, reads what it already has, reco
 the hardware still missing, creates your home repository in a folder of its own, and stops before the
 first deploy. It reads Home Assistant freely and writes nothing to it until you type yes.
 
-> **For AI agents.** Clone this catalog with its tags and enable its guard
-> (`git config core.hooksPath .githooks`); run the `onboard-home` skill from that clone. Domosenso is
-> not a package yet: every command runs as `uv run --project <catalog clone> domosenso …`. Create the
-> home with `domosenso init` in a separate folder, never inside the catalog. Never change the catalog
-> itself except on a branch with a pull request, and stop at every question the skill asks the owner.
+> **For AI agents.** Clone this catalog with its tags and run the `onboard-home` skill from that
+> clone. Domosenso is not a package yet: every command runs as `uv run --project <catalog clone>
+> domosenso …`. Create the home with `domosenso init` in a separate folder, never inside the catalog.
+> Never change the catalog in place: a contribution is a pull request from a fork
+> ([CONTRIBUTING.md](CONTRIBUTING.md)). Stop at every question the skill asks the owner.
 > The rules are in [AGENTS.md](AGENTS.md).
 
 ## Where to start
