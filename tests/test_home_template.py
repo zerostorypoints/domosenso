@@ -17,3 +17,14 @@ def test_home_assistant_compose_runs_the_checked_version_with_discovery():
     assert service["container_name"] == "homeassistant"
     assert "${HA_CONFIG:-./config}:/config" in service["volumes"]
     assert service["restart"] == "unless-stopped"
+
+
+def test_cloudflared_compose_is_pinned_on_the_host_network_and_reads_the_token_from_a_file():
+    """SPEC-012: the connector next to Home Assistant; the token never in the compose file."""
+    path = REPO / "components" / "remote-access" / "services" / "cloudflared" / "compose.yaml"
+    service = yaml.safe_load(path.read_text())["services"]["cloudflared"]
+    assert re.fullmatch(r"cloudflare/cloudflared:\d{4}\.\d+\.\d+", service["image"])
+    assert service["network_mode"] == "host"
+    assert service["environment"] == {"TUNNEL_TOKEN_FILE": "/run/secrets/tunnel-token"}
+    assert service["volumes"][0].endswith(":/run/secrets/tunnel-token:ro")
+    assert "--no-autoupdate" in service["command"]

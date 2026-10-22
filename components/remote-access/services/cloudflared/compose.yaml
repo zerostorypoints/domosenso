@@ -1,0 +1,19 @@
+# The Cloudflare Tunnel connector for Home Assistant (SPEC-012). The home copies this file once and
+# owns it. On the Docker host:
+#   TUNNEL_TOKEN_HOST_FILE=<token_file input> docker compose -f compose.yaml up -d
+# The log shows "Registered tunnel connection" four times when it is up.
+#
+# Host network, so the route's URL is localhost:8123 and Home Assistant sees the requests come from
+# ::1 (the default trusted_proxies). The token stays in its file on the host: cloudflared reads it
+# through TUNNEL_TOKEN_FILE, so it is in no environment listing and no compose file.
+services:
+  cloudflared:
+    container_name: cloudflared
+    image: cloudflare/cloudflared:2026.10.1
+    command: tunnel --no-autoupdate run
+    network_mode: host
+    restart: always
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/tunnel-token
+    volumes:
+      - ${TUNNEL_TOKEN_HOST_FILE:-/volume1/docker/cloudflared/token.txt}:/run/secrets/tunnel-token:ro

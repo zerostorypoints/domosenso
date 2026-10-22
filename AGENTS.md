@@ -157,6 +157,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
   SPEC-011).
 - `probe <target> --install | --read | --remove`: a temporary page a wall tablet opens to report its
   viewport, pixel ratio and WebView (SPEC-011); install and remove write to Home Assistant.
+- `http <target> --plan | --apply --confirm <hash> | --promote`: Home Assistant's HTTP settings for a
+  reverse proxy, which since 2026.9 are not YAML (SPEC-012); apply and promote write.
 
 Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
 is a change to a STABLE surface (spec first).

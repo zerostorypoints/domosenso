@@ -66,7 +66,8 @@ Proposed as a new catalog component, specified separately (spec-first: SPEC-012,
 starts): `cloudflared` as a compose service (`artifacts.services`), the tunnel token in an env file
 outside every repository, a rendered `http:` package for the proxy headers (whether `http:` loads from
 a package is **inference**, checked in that spec), `homeassistant: external_url`. Not in v2's skill
-beyond naming it.
+beyond naming it. Corrected 2026-10-22 by SPEC-012: on 2026.9 the `http` settings live in
+`.storage/http` and YAML is ignored; they are changed over the websocket.
 
 ### 2.3 The dedicated always-on device
 

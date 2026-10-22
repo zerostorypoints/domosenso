@@ -1,0 +1,5 @@
+{
+  "meta": {
+    "description": "Udostępnia Home Assistanta z dowolnego miejsca, także aplikacji Companion, przez tunel Cloudflare: na routerze nie otwiera się żadnego portu, dostępu pilnuje logowanie Home Assistanta z uwierzytelnianiem dwuskładnikowym, a Cloudflare blokuje każdy kraj spoza listy podanej przez domowników. Wymaga konta Cloudflare z domeną."
+  }
+}

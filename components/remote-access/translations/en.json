@@ -1,0 +1,5 @@
+{
+  "meta": {
+    "description": "Reaches Home Assistant from anywhere, the Companion app included, through a Cloudflare Tunnel: no port is opened on the router, Home Assistant's own login with two-factor is the gate, and Cloudflare blocks every country outside the list the household gives. Needs a Cloudflare account with a domain."
+  }
+}

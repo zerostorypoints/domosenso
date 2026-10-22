@@ -40,6 +40,7 @@ calendars or floor plans. A real home lives in its own repository.
 |---|---|
 | [awnings](components/awnings/component.yaml) | Somfy RTS awnings through an ESPSomfy-RTS radio node, with the awnings' wind sensor |
 | [backup](components/backup/component.yaml) | Nightly backups with rolling retention, backup sensors and a stale alert |
+| [remote-access](components/remote-access/component.yaml) | Home Assistant from anywhere through a Cloudflare Tunnel: no open port, a country allow-list |
 | [bermuda-presence](components/bermuda-presence/component.yaml) | Room-level presence of phones and tablets from BLE proxies and Bermuda |
 | [calendar](components/calendar/component.yaml) | Calendar events from a CalDAV server |
 | [climate-air](components/climate-air/component.yaml) | Room temperature and humidity (Tapo), air quality (Ruuvi Air) |
