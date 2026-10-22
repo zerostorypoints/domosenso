@@ -1,0 +1,51 @@
+# Domosenso component manifest: Home Assistant from outside the home through a Cloudflare Tunnel,
+# with no port open on the router. A cloudflared connector on the Docker host holds an outbound
+# connection; Home Assistant's own login (with two-factor) is the gate and Cloudflare blocks every
+# country the household is not in. SPEC-012. The proxy settings are not files: `domosenso http`.
+id: remote-access
+version: 0.1.0
+summary: Home Assistant from anywhere through a Cloudflare Tunnel, no open port, a country allow-list
+description_key: meta.description
+photo: null
+
+devices:
+  requires: []
+
+host:
+  installs: [container]
+  ha_min: "2026.9"              # the http settings live in .storage/http, changed over the websocket
+
+integrations:
+  - {name: http, source: core, setup: "domosenso http <target> --plan, --apply, then --promote (README.md)"}
+
+inputs:
+  hostname:                     # the public host name the tunnel serves
+    type: string
+    example: ha.example.org
+  token_file:                   # the tunnel token on the Docker host, chmod 600, outside every repository
+    type: path
+    default: /volume1/docker/cloudflared/token.txt
+  trusted_proxies:              # where the proxied requests come from: the connector on the host network
+    type: "list[cidr]"
+    default: ["127.0.0.1/32", "::1/128"]
+  allowed_countries:            # the Cloudflare WAF rule blocks every other country (README.md)
+    type: "list[country code]"
+    example: [DE, AT]
+
+artifacts:
+  ha_packages: []
+  services:
+    # The connector, a compose service on the host network (services/cloudflared/compose.yaml).
+    - services/cloudflared/compose.yaml
+
+provides:
+  entities: []
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 0                      # the maintainer's home runs the same tunnel set up by hand since 2026-09;
+                                # this compose file and `domosenso http` have not run there yet
+# Reaches Cloudflare over the internet; nothing listens from the internet side.
+local_only: false
