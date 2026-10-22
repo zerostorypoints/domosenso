@@ -1,6 +1,6 @@
 # SPEC-013: README for people, and a guide for integrating your own device
 
-Status: draft, 2026-10-22; builder check done, its questions settled or answered by the maintainer. Written from a brainstorm with the maintainer in the coordinator
+Status: approved by the maintainer 2026-10-22 (after the builder check); plan: docs/2026-10-22-readme-and-integration-guide-plan.md. Written from a brainstorm with the maintainer in the coordinator
 session. Statements marked **(my call)** were decided while writing, not by the maintainer.
 
 ## 1. Intent
