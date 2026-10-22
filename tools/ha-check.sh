@@ -8,6 +8,7 @@
 # packages/<component>[_<name>].yaml, dashboard.<lang>.yaml files become YAML dashboards.
 #
 #   tools/ha-check.sh <component>
+#   INPUTS=<inputs.yaml> tools/ha-check.sh <component>   # other inputs than the demo home's
 #
 # Run from the repository root. Needs docker. Talks to no Home Assistant instance. Exits non-zero
 # when the fresh home has an error.
@@ -21,7 +22,7 @@ COMP=${1:?component id}
 HA_VERSION=${HA_VERSION:-2026.9.2}
 ROOT=$(pwd)
 SRC=$ROOT/components/$COMP
-INPUTS=$ROOT/examples/demo-home/inputs/$COMP.yaml
+INPUTS=${INPUTS:-$ROOT/examples/demo-home/inputs/$COMP.yaml}
 # One work dir per checkout: git worktrees run checks side by side and must not share it.
 ROOT_ID=$(printf %s "$ROOT" | { shasum -a 256 2>/dev/null || sha256sum; } | cut -c1-8)
 WORK=${TMPDIR:-/tmp}/domosenso-ha-check/$ROOT_ID/$COMP
