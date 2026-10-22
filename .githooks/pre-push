@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Refuses a push that would change `main` directly or create, move or delete a component tag.
+# `main` changes through pull requests only; tags come from tools/release.py on a merged commit and are
+# pushed once, never moved (AGENTS.md, "Main, tags and pull requests"). Enable in a clone with
+#   git config core.hooksPath .githooks
+# A human may override a single push with DOMOSENSO_ALLOW_MAIN_PUSH=1; an agent never does.
+set -uo pipefail
+[ "${DOMOSENSO_ALLOW_MAIN_PUSH:-}" = "1" ] && exit 0
+zero=0000000000000000000000000000000000000000
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "pre-push: refused: push to main. Open a pull request instead (AGENTS.md)." >&2
+      status=1 ;;
+    refs/tags/*)
+      if [ "$local_sha" = "$zero" ]; then
+        echo "pre-push: refused: deleting tag ${remote_ref#refs/tags/}. Published tags are never removed." >&2
+        status=1
+      elif [ "$remote_sha" != "$zero" ]; then
+        echo "pre-push: refused: moving tag ${remote_ref#refs/tags/}. Published tags are never moved." >&2
+        status=1
+      fi ;;
+  esac
+done
+exit $status

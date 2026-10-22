@@ -136,6 +136,10 @@ Needs the human's go-ahead **typed in the same session**, each time:
 - **pushing** to GitHub, opening or merging a pull request, publishing a tag;
 - anything that deletes data that cannot be regenerated.
 
+Changes reach `main` of this repository and of the catalog only through a pull request: never push
+to `main`, never force-push a shared branch, never move or delete a tag. In the catalog's clone,
+`git config core.hooksPath .githooks` enables a guard that refuses those pushes; never bypass it.
+
 `deploy production` prints the plan and asks for the word `production`; a non-interactive run
 needs `--confirm <plan hash>`, the hash of the current plan; it fails if the plan has changed. That prompt is a second lock,
 not the permission: ask the human first, show the `--plan` output, wait for a clear yes.

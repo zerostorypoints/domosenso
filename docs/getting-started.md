@@ -30,7 +30,9 @@ The rest of this page is what the skill does, step by step, for reference.
 - A Home Assistant Container you can reach over SSH with `docker` (a Synology NAS works), a
   long-lived access token from your HA profile, saved in a file outside any repository.
 - On your computer: `git`, [`uv`](https://docs.astral.sh/uv/), Docker (for the checks).
-- This repository cloned, with its tags: `git clone git@github.com:zerostorypoints/domosenso.git`
+- This repository cloned, with its tags: `git clone git@github.com:zerostorypoints/domosenso.git`,
+  then in it `git config core.hooksPath .githooks` (the guard that keeps pushes off `main`; changes go
+  in through pull requests, see AGENTS.md "Main, tags and pull requests").
   (the command reads components only from tags such as `ramka/0.1.1`).
 
 ## The components
