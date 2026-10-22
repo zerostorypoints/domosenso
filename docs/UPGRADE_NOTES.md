@@ -3,6 +3,12 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-22: ramka 0.2.0, optional pages and a screen size
+
+`climate`, `air`, `plants` and `photo_dir` become optional inputs, and a new optional input `screen` names the
+tablet's CSS viewport; the renderer gains the global `fail(message)`. Additive: a home needs no
+action ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)).
+
 ## 2026-10-21: the `domosenso` command and the home formats
 
 New STABLE surfaces, no change to an existing one: the `domosenso` command lines and the output

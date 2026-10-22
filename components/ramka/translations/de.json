@@ -177,6 +177,12 @@
     }
   },
   "meta": {
-    "description": "Ein Wandtablet für Home Assistant. Ein Radar weckt es, sobald jemand den Raum betritt; dann zeigt es abwechselnd Raumklima, Luftqualität, Pflanzen, Fotos und den Zustand der Wohnung, zeigt, was der Player spielt, und blendet Musik, Markisen und Licht ein, wenn sich eine Hand dem Bildschirm nähert."
+    "description": "Ein Wandtablet für Home Assistant. Ein Radar weckt es, sobald jemand den Raum betritt; dann zeigt es abwechselnd Raumklima, Luftqualität, Pflanzen, Fotos und den Zustand der Wohnung, zeigt, was der Player spielt, und blendet Musik, Markisen und Licht ein, wenn sich eine Hand dem Bildschirm nähert.",
+    "devices": {
+      "tcl-9469x": {
+        "description": "Ein 11,5-Zoll-Android-Tablet (TCL, Modell 9469X) mit einem Bildschirm von 2200 × 1440 Pixeln.",
+        "does": "Hängt als Ramka an der Wand: Die Home Assistant Companion App zeigt das Dashboard bildschirmfüllend, weckt und dimmt den Bildschirm auf Befehl von Home Assistant und meldet Lichtsensor und Akku. Es hört bei 80 % von selbst auf zu laden und kann deshalb dauernd am Ladegerät bleiben."
+      }
+    }
   }
 }

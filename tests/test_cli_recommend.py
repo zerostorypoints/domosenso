@@ -141,6 +141,12 @@ def test_not_a_repository_fails(tmp_path, capsys):
 
 
 def test_json_data(catalog, tmp_path, capsys):
+    # Device files at HEAD give each recommended device its tested homes (SPEC-011 section 5).
+    (catalog / "devices").mkdir()
+    (catalog / "devices" / "ruuvi-air.yaml").write_text(yaml.safe_dump({"id": "ruuvi-air", "tested": {"homes": 2}}))
+    (catalog / "devices" / "hlk-ld2410c.yaml").write_text(yaml.safe_dump({"id": "hlk-ld2410c"}))
+    git(catalog, "add", "-A")
+    git(catalog, "commit", "-q", "-m", "device files")
     code = cli.main(["--home", str(tmp_path), "recommend", "--json", "--catalog", str(catalog), "--have", "tapo-t315"])
     doc = json.loads(capsys.readouterr().out)
     assert code == 0 and doc["result"] == "ok"
@@ -150,14 +156,17 @@ def test_json_data(catalog, tmp_path, capsys):
         "id": "climate-air", "version": "0.2.0", "fits": True, "describes": False, "tested_homes": 1,
         "needs": [],
         "optional": [
-            {"feature": "air", "kind": "air-quality-sensor", "have": False, "recommend": ["ruuvi-air"]},
-            {"feature": "air", "kind": "ble-proxy", "have": False, "recommend": []},
+            {"feature": "air", "kind": "air-quality-sensor", "have": False, "recommend": ["ruuvi-air"],
+             "tested_homes": {"ruuvi-air": 2}},
+            {"feature": "air", "kind": "ble-proxy", "have": False, "recommend": [], "tested_homes": {}},
         ],
     }
     assert by_id["ramka"]["tested_homes"] is None
-    assert by_id["ramka"]["optional"] == [{"feature": None, "kind": "mains-meter", "have": False, "recommend": []}]
-    assert by_id["ramka"]["needs"] == [{"kind": "android-tablet", "recommend": []},
-                                      {"kind": "mmwave-radar", "recommend": ["hlk-ld2410c"]}]
+    assert by_id["ramka"]["optional"] == [{"feature": None, "kind": "mains-meter", "have": False, "recommend": [],
+                                           "tested_homes": {}}]
+    assert by_id["ramka"]["needs"] == [{"kind": "android-tablet", "recommend": [], "tested_homes": {}},
+                                      {"kind": "mmwave-radar", "recommend": ["hlk-ld2410c"],
+                                       "tested_homes": {"hlk-ld2410c": None}}]
     assert by_id["media"]["describes"] is True and by_id["media"]["fits"] is None
 
 
@@ -230,7 +239,7 @@ DEVICES = [
     device("d-bridge", ["e-hue"], "Signify Netherlands B.V.", "Hue Bridge", "BSB002", name="Hue Bridge"),
     device("d-radar", ["e-esp"], "Espressif", "m5stack-atom", name="Hall radar"),
     device("d-atom-bt", ["e-bt"], "esphome", "m5stack-atom", name="Hall radar (bluetooth)"),
-    device("d-tablet", ["e-app1"], "TCL", "9469X", name="Dining tablet"),
+    device("d-tablet", ["e-app1"], "TCL", "9469X", name="Dining tablet", sw_version="15"),
     device("d-phone", ["e-app2"], "Apple", "iPhone17,1", name="Alex's phone"),
     device("d-speaker", ["e-sonos"], "Sonos", "One", "S18", name="Kids' room speaker"),
     device("d-svc", ["e-hue"], "Signify", "Hue service", entry_type="service"),
@@ -417,7 +426,7 @@ def test_scan_json(catalog, tmp_path, capsys, ha):
     living = scan["devices"][names.index("Living room sensor")]
     assert living == {
         "name": "Living room sensor", "name_by_user": None, "manufacturer": "TP-Link", "model": "T315",
-        "model_id": None, "integrations": ["tplink"],
+        "model_id": None, "sw_version": None, "integrations": ["tplink"],
         "matches": [{"token": "tapo-t315", "certainty": "found", "source": "devices/tapo-t315.yaml#0"},
                     {"token": "temperature-humidity-sensor", "certainty": "found",
                      "source": "kinds/temperature-humidity-sensor.yaml#0"}],
@@ -426,6 +435,7 @@ def test_scan_json(catalog, tmp_path, capsys, ha):
                                           "devices": [names.index("Living room sensor"), names.index("Kitchen sensor")]}
     assert scan["found"]["mqtt-broker"] == {"count": 1, "via": ["mqtt"], "devices": []}
     assert scan["maybe"]["android-tablet"]["devices"] == [names.index("Dining tablet")]
+    assert scan["devices"][names.index("Dining tablet")]["sw_version"] == "15"
     assert scan["unmatched"] == {"mobile_app": [names.index("Alex's phone")],
                                  "sonos": [names.index("Kids' room speaker")], "tplink": [names.index("Tapo hub")]}
 

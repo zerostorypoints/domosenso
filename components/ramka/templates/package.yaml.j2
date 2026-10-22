@@ -8,14 +8,27 @@
 [%- set name = inputs.name | default(p | replace('_', ' ') | title) -%]
 [%- set notify = inputs.tablet_device.notify -%]
 [%- set ts = inputs.tablet_device.sensors -%]
+[%- set radar = inputs.radar -%]
+[#- The photos (photo_dir, the folder sensor, input_text/image photo, shell/ramka_pick.py and
+    ramka_index.py, the loop's photo stage) hang together and on nothing else of the Ramka, so they
+    can leave it as a component of their own; without photo_dir none of them is rendered (0.2.0). -#]
+[%- if inputs.photo_dir is defined -%]
 [%- set photo_dir = inputs.photo_dir.rstrip('/') -%]
 [%- if not photo_dir.startswith('/config/www/') -%][[ photo_dir_must_be_under_config_www ]][%- endif -%]
 [%- set photo_url = (inputs.ha_url | default('http://127.0.0.1:8123')) ~ '/local/' ~ photo_dir[12:] -%]
 [%- set folder_sensor = 'sensor.' ~ (photo_dir.split('/') | last | lower | replace('-', '_') | replace(' ', '_')) -%]
-[%- set radar = inputs.radar -%]
 [%- set index_command = 'python3 /config/shell/ramka_index.py ' ~ photo_dir -%]
 [%- set pick_command = 'python3 /config/shell/ramka_pick.py ' ~ photo_dir ~ ' 5' -%]
 [%- set index_description = 'Rebuild ' ~ photo_dir ~ '/index.json: at start, every 15 min, on a folder change.' -%]
+[%- endif -%]
+[#- The ambient pages this home has, in rotation order (0.2.0): climate, air, plants and photos only
+    with their inputs (photos: photo_dir); status always. The input_select keeps all five options (FROZEN), so
+    every step of the rotation goes to the next page that is there. -#]
+[%- set pages = [] -%]
+[%- for page in ['climate', 'air', 'plants', 'photos', 'status'] -%]
+[%- if page == 'status' or inputs['photo_dir' if page == 'photos' else page] is defined -%][%- set _ = pages.append(page) -%][%- endif -%]
+[%- endfor -%]
+[%- macro after(page) -%][[ pages[(pages.index(page) + 1) % (pages | length)] ]][%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
 # inputs and render again rather than editing this file.
@@ -127,6 +140,8 @@ input_button:
     name: [[ named(' reload page') ]]
     icon: mdi:reload
 
+[%- if inputs.photo_dir is defined %]
+
 # The photo on screen, "<folder>/<file>" under the photo folder.
 input_text:
   [[ p ]]_photo:
@@ -150,6 +165,7 @@ shell_command:
   # The next series: one folder with photos drawn at random (any depth), five shuffled photos from
   # it, as JSON on stdout for the loop's response_variable.
   [[ p ]]_pick: [[ pick_command | yaml ]]
+[%- endif %]
 
 template:
   - sensor:
@@ -209,6 +225,7 @@ template:
           {% set d = states('[[ radar.distance ]]') | float(0) %}
           {{ is_state('[[ radar.presence ]]', 'on')
              and 0 < d <= states('input_number.[[ p ]]_near_cm') | float(50) }}
+[%- if inputs.photo_dir is defined %]
   # The photo named by input_text.[[ p ]]_photo, so a card can show a file that changes. HA
   # fetches it from itself; /local/ needs no token. Each path segment is URL-encoded on its own
   # (folder and file names can have spaces).
@@ -219,6 +236,7 @@ template:
         url: >-
           [[ photo_url ]]/{{ states('input_text.[[ p ]]_photo').split('/') | map('urlencode') | join('/') }}
         availability: "{{ states('input_text.[[ p ]]_photo') not in ['', 'unknown', 'unavailable'] }}"
+[%- endif %]
 
 # Screen scripts. Each step is one Companion notification command
 # (https://companion.home-assistant.io/docs/notifications/notification-commands). Both scripts
@@ -315,9 +333,20 @@ script:
     icon: mdi:chevron-up
     mode: single
     sequence:
+[%- if pages | length == 5 %]
       - action: input_select.select_next
         target:
           entity_id: input_select.[[ p ]]_ambient
+[%- else %]
+      # Only the pages this home has: [[ pages | join(', ') ]].
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: >-
+            {% set pages = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
+            {{ pages[((pages.index(here) if here in pages else -1) + 1) % (pages | count)] }}
+[%- endif %]
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
@@ -326,9 +355,19 @@ script:
     icon: mdi:chevron-down
     mode: single
     sequence:
+[%- if pages | length == 5 %]
       - action: input_select.select_previous
         target:
           entity_id: input_select.[[ p ]]_ambient
+[%- else %]
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: >-
+            {% set pages = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
+            {{ pages[((pages.index(here) if here in pages else 1) - 1) % (pages | count)] }}
+[%- endif %]
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
@@ -375,7 +414,7 @@ script:
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
-          option: climate
+          option: [[ pages[0] ]]
       - action: timer.cancel
         target:
           entity_id: timer.[[ p ]]_controls
@@ -450,6 +489,21 @@ script:
           # this script, and the cycle begins there with that page's full time. Left alone it runs
           # climate → air → plants → photos → status → climate.
           sequence:
+[%- if pages | length < 5 %]
+            # Pages this home has: [[ pages | join(', ') ]]. A page it has not (the helper can stand
+            # on one after a restart) goes to the first, or no stage below would match.
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ states('input_select.[[ p ]]_ambient') not in [[ pages | tojson ]] }}
+              then:
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_ambient
+                  data:
+                    option: [[ pages[0] ]]
+[%- endif %]
+[%- if 'climate' in pages %]
             # 1. Climate, 30 s.
             - if:
                 - condition: state
@@ -462,7 +516,9 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: air
+                    option: [[ after('climate') ]]
+[%- endif %]
+[%- if 'air' in pages %]
             # 2. Air quality, 15 s: a handful of numbers, read at a glance.
             - if:
                 - condition: state
@@ -475,7 +531,9 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: plants
+                    option: [[ after('air') ]]
+[%- endif %]
+[%- if 'plants' in pages %]
             # 3. Plants, 20 s: the ones to water first.
             - if:
                 - condition: state
@@ -488,7 +546,9 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: photos
+                    option: [[ after('plants') ]]
+[%- endif %]
+[%- if 'photos' in pages %]
             # 4. Photos: from the plants page, or straight in when the page already is photos.
             #    shell/ramka_pick.py: one folder that holds photos, at any depth, drawn with equal
             #    chances, then up to five different photos from it. An empty folder tree gives an
@@ -525,7 +585,8 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: status
+                    option: [[ after('photos') ]]
+[%- endif %]
             # 5. Status, 15 s, then round to the climate page.
             - if:
                 - condition: state
@@ -538,7 +599,7 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: climate
+                    option: [[ after('status') ]]
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
@@ -734,6 +795,7 @@ automation:
           entity_id: input_select.[[ p ]]_mode
         data:
           option: ambient
+[%- if inputs.photo_dir is defined %]
 
   # Rebuild the photo index (captions) at start, every 15 minutes (the folder sensor sees only
   # one level, and photos sit deeper), and when that sensor sees a change anyway.
@@ -751,6 +813,7 @@ automation:
         attribute: number_of_files
     actions:
       - action: shell_command.[[ p ]]_index
+[%- endif %]
 
   # 5. The ambient rhythm: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s,
   #    and again.
@@ -818,7 +881,7 @@ automation:
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
-          option: climate
+          option: [[ pages[0] ]]
 [%- if inputs.alert_notify is defined %]
 
   # ---- Battery alerts ------------------------------------------------------------------------

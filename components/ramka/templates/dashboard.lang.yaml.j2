@@ -5,23 +5,41 @@
   `label`. Double square brackets are the renderer's; {{ }} would be Home Assistant's.
 #]
 [%- set p = inputs.prefix -%]
+[#- Tested layouts (SPEC-011 section 7.4): the CSS px range of screens each one fits. A screen no
+    layout fits fails the render. 1100x720: the tablet in the maintainer's home (1100 x 720, DPR 2);
+    every page also shot on staging at 1024 x 720 and 1280 x 800 (en; controls, climate and status in
+    de too), a desktop browser at DPR 2 with the header hidden as kiosk-mode hides it. Below about
+    1000 px the view drops to two columns and the controls scroll. -#]
+[%- set layouts = [{'name': '1100x720', 'min_width': 1024, 'max_width': 1280, 'min_height': 720, 'max_height': 800}] -%]
+[%- set screen = inputs.screen | default({'width': 1100, 'height': 720}) -%]
+[%- set fit = namespace(layout=none) -%]
+[%- for layout in layouts if fit.layout is none and layout.min_width <= screen.width <= layout.max_width and layout.min_height <= screen.height <= layout.max_height -%]
+[%- set fit.layout = layout -%]
+[%- endfor -%]
+[%- if fit.layout is none -%]
+[%- set tested = [] -%]
+[%- for l in layouts -%][%- set _ = tested.append(l.name ~ ' for ' ~ l.min_width ~ '-' ~ l.max_width ~ ' x ' ~ l.min_height ~ '-' ~ l.max_height) -%][%- endfor -%]
+[[ fail('ramka: no tested layout for ' ~ screen.width ~ 'x' ~ screen.height ~ ' CSS px (tested: ' ~ (tested | join(', ')) ~ ')') ]]
+[%- endif -%]
 [%- set mp = inputs.media_player -%]
+[%- if inputs.photo_dir is defined -%]
 [%- set photo_dir = inputs.photo_dir.rstrip('/') -%]
 [%- if not photo_dir.startswith('/config/www/') -%][[ photo_dir_must_be_under_config_www ]][%- endif -%]
 [%- set local = '/local/' ~ photo_dir[12:] -%]
+[%- set photo_index = local ~ '/index.json' -%]
+[%- endif -%]
 [%- set calendars = [inputs.calendar] if inputs.calendar is string else inputs.calendar -%]
 [%- set unreachable = ' (' ~ t('ui.common.unreachable') ~ ')' -%]
 [%- set media_label = inputs.media_label | default(t('ui.media.player')) -%]
 [%- set covers = inputs.covers | default([]) -%]
 [%- set lights = inputs.lights | default([]) -%]
 [%- set status = inputs.status | default({}) -%]
-[%- set air = inputs.air -%]
+[%- set air = inputs.air | default(none) -%]
 [%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
-[%- set photo_index = local ~ '/index.json' -%]
 [%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
 [%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]
 [%- set series = [] -%]
-[%- for c in inputs.climate -%]
+[%- for c in inputs.climate | default([]) -%]
 [%- set _ = series.append({'label': c.label, 'temperature': c.temperature, 'humidity': c.humidity | default(none), 'color': c.color | default(loop.index)}) -%]
 [%- endfor -%]
 [%- set outside = inputs.outside | default(none) -%]
@@ -175,6 +193,7 @@ views:
             hours: 1
             grid_options: {columns: 16, rows: 4}
           [%- endif %]
+[%- if inputs.climate is defined %]
 
       # ---- Climate: ambient, music view off, page "climate" ----------------------------------
       # Clock, current weather and a four-day forecast on top; the rooms in large type in the
@@ -266,6 +285,8 @@ views:
               days_to_show: 7
               chart_type: line
               hide_legend: true
+[%- endif %]
+[%- if air %]
 
       # ---- Air quality: ambient, music view off, page "air" ----------------------------------
       # air-card: the score and four readings, coloured good / raised / high. Limits: CO₂ 800 /
@@ -356,6 +377,8 @@ views:
             grid_options: {columns: 18, rows: 4}
           [%- endfor %]
       [%- endif %]
+[%- endif %]
+[%- if inputs.plants is defined %]
 
       # ---- Plants: ambient, music view off, page "plants" ------------------------------------
       # plants-card: sun, fertiliser and water as bars against each plant's band, one line saying
@@ -386,6 +409,8 @@ views:
               - [[ item | yaml ]]
             [%- endfor %]
             grid_options: {columns: full, rows: auto}
+[%- endif %]
+[%- if inputs.photo_dir is defined %]
 
       # ---- Photos: ambient, music view off, page "photos" ------------------------------------
       # photo-frame-card draws the photo image as a full-screen layer (edge to edge, with a
@@ -419,6 +444,7 @@ views:
               - entity: input_select.[[ p ]]_ambient
                 state: photos
             grid_options: {columns: full, rows: 1}
+[%- endif %]
 
       # ---- Status: ambient, music view off, page "status" ------------------------------------
       # status-card: what the home is doing, read-only, in large type: awnings, doors, lights per

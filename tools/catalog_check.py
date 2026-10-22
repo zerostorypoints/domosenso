@@ -245,6 +245,8 @@ def check_device(path: Path, catalog: Path | None = None) -> list[str]:
         return errors
     if data["id"] != path.stem:
         errors.append(f"{path}: id '{data['id']}' does not match file name '{path.stem}'")
+    if "tablet" in data and data["component"] != "ramka":
+        errors.append(f"{path}: tablet: only a device of component ramka carries a tablet profile")
     if catalog is not None:
         catalog = Path(catalog)
         if not _exists_component(catalog, data["component"]):

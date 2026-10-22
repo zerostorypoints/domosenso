@@ -5,9 +5,11 @@ For a first outside home.
 ## Start here: `/onboard-home`
 
 Clone this repository with its tags, open it in Claude Code and type `/onboard-home` (Codex: ask for
-the `onboard-home` skill). The agent asks about your Home Assistant host, your hardware and what you
-want, recommends components (`domosenso recommend`), creates your home repository in a directory
-outside this one, adds `backup` with values read from your Home Assistant, and stops at
+the `onboard-home` skill). The agent asks about your Home Assistant host and how you will reach it,
+reads your hardware and the integrations Home Assistant discovered on your network (`domosenso
+recommend --from-ha`, `domosenso discover`), recommends components and the hardware still missing,
+explains the Ramka and checks your tablet if you want one, creates your home repository in a
+directory outside this one, adds `backup` with values read from your Home Assistant, and stops at
 `deploy production --plan`. It reads your Home Assistant freely and writes nothing to it until you
 type yes. From an empty directory instead: tell the agent to read
 `<catalog>/.ai/skills/onboard-home/SKILL.md` and follow it.
@@ -22,7 +24,9 @@ The rest of this page is what the skill does, step by step, for reference.
 - Not there yet: an installable staging Home Assistant with scene simulation for a home without
   hardware (planned, "stage 2"); a written contract for the Ramka's music player (it is tested with a
   Hegel amplifier through `hegel_streaming`; another `media_player` such as a Naim streamer through
-  `cast` or `dlna_dmr` should work but has not been tried); remote access for an installer.
+  `cast` or `dlna_dmr` should work but has not been tried); remote access for an installer; in
+  progress (SPEC-011): installing Home Assistant, a `remote-access` component, a probe that measures a
+  tablet's screen, and Ramka layouts for screens other than 1100 × 720 CSS px.
 - The repository is private and has no licence yet. Ask before sharing anything from it.
 
 ## What you need
@@ -41,6 +45,7 @@ The rest of this page is what the skill does, step by step, for reference.
 |---|---|---|
 | `ramka` | an Android wall tablet with the HA Companion app, presence (a radar or Bermuda) | the wall-tablet dashboard: clock, weather, climate, air, plants, photos, calendar, controls |
 | `backup` | — | nightly backups with retention, backup sensors, an alert when backups stop |
+| `remote-access` | a Cloudflare account with a domain | Home Assistant from anywhere through a Cloudflare Tunnel, no open port |
 | `climate-air` | temperature/humidity sensors per room, a `weather` entity | indoor averages and extremes, outside figures, most humid room, lowest battery |
 | `bermuda-presence` | ESPHome BLE proxies (M5Stack Atom Lite) and the Bermuda integration | which room each phone is in |
 | `plants` | Mi Flora sensors | plant entities, water reminder, silent-sensor alert |
@@ -57,6 +62,13 @@ let it read the hardware (read-only; the token stays in its file):
 
 ```bash
 uv run --project ~/path/to/domosenso domosenso recommend --catalog ~/path/to/domosenso --from-ha http://homeassistant.local:8123 --token-file ~/.config/ha-token
+```
+
+What Home Assistant found on your network and has set up, and whether it has an integration you
+name (read-only):
+
+```bash
+uv run --project ~/path/to/domosenso domosenso discover --from-ha http://homeassistant.local:8123 --token-file ~/.config/ha-token --domain workday
 ```
 
 Or name the devices yourself, and add what Home Assistant does not know yet the same way:

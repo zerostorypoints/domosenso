@@ -177,6 +177,12 @@
     }
   },
   "meta": {
-    "description": "A wall tablet for Home Assistant. A radar wakes it when someone comes into the room; it then rotates through climate, air quality, plants, photos and the home's status, shows what the media player plays, and brings up music, awnings and lights when a hand comes near the screen."
+    "description": "A wall tablet for Home Assistant. A radar wakes it when someone comes into the room; it then rotates through climate, air quality, plants, photos and the home's status, shows what the media player plays, and brings up music, awnings and lights when a hand comes near the screen.",
+    "devices": {
+      "tcl-9469x": {
+        "description": "An 11.5-inch Android tablet (TCL, model 9469X) with a 2200 × 1440 screen.",
+        "does": "Hangs on the wall as the Ramka: the Home Assistant Companion app shows the dashboard full screen, wakes and dims the screen on Home Assistant's commands and reports its light sensor and battery. It stops charging at 80 % by itself, so it can stay on the charger."
+      }
+    }
   }
 }

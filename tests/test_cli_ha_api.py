@@ -103,7 +103,8 @@ def rest_stub():
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            seen.append({"path": self.path, "auth": self.headers.get("Authorization")})
+            seen.append({"path": self.path, "auth": self.headers.get("Authorization"),
+                         "agent": self.headers.get("User-Agent")})
             if self.path == "/api/hangup":  # closes without a response
                 self.close_connection = True
                 return
@@ -162,6 +163,34 @@ def test_call_returns_result(tmp_path):
     assert seen[1] == {"type": "lovelace/dashboards/list", "foo": "bar", "id": 2}
 
 
+async def _events_handler(conn, seen):
+    """Answers subscribe_events, then sends an event of another subscription and two of its own."""
+    await conn.send(json.dumps({"type": "auth_required"}))
+    await conn.recv()
+    await conn.send(json.dumps({"type": "auth_ok"}))
+    async for raw in conn:
+        msg = json.loads(raw)
+        seen.append(msg)
+        await conn.send(json.dumps({"id": msg["id"], "type": "result", "success": True, "result": None}))
+        await conn.send(json.dumps({"id": msg["id"] + 7, "type": "event", "event": {"data": {"n": 0}}}))
+        for n in (1, 2):
+            await conn.send(json.dumps({"id": msg["id"], "type": "event", "event": {"data": {"n": n}}}))
+
+
+def test_subscribe_reads_its_own_events_then_times_out(tmp_path):
+    with ws_stub(_events_handler) as (url, seen):
+        async def go():
+            async with HA(url, TOKEN) as ha:
+                sub = await ha.subscribe("logbook_entry")
+                got = [await ha.next_event(sub, 2), await ha.next_event(sub, 2)]
+                return sub, got, await ha.next_event(sub, 0.2)
+
+        sub, got, last = asyncio.run(go())
+    assert seen == [{"type": "subscribe_events", "event_type": "logbook_entry", "id": sub}]
+    assert [e["data"]["n"] for e in got] == [1, 2]
+    assert last is None
+
+
 def test_call_error_raises(tmp_path):
     with ws_stub() as (url, _):
         async def go():
@@ -199,7 +228,8 @@ def test_rest_get_sends_bearer_and_parses_json(tmp_path):
                 return await ha.rest_get("/api/ok")
 
         assert asyncio.run(go()) == {"path": "/api/ok"}
-    assert seen == [{"path": "/api/ok", "auth": f"Bearer {TOKEN}"}]
+    # A named agent: Cloudflare answers urllib's default one with 403 (error 1010).
+    assert seen == [{"path": "/api/ok", "auth": f"Bearer {TOKEN}", "agent": "domosenso"}]
 
 
 def test_rest_get_error_status_raises():

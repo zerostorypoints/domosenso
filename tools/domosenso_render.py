@@ -14,7 +14,7 @@ inside them, e.g. "{{ is_state('input_select.[[ inputs.prefix ]]_mode', 'on') }}
 A nested YAML flow list needs spaces, `[ [ 80 ] ]`: `[[80]]` would read as an
 expression, so a `[[` followed by anything but a letter or underscore is an error.
 
-Template globals: t(key), inputs, lang. Filter: yaml (a YAML-safe scalar).
+Template globals: t(key), inputs, lang, fail(message). Filter: yaml (a YAML-safe scalar).
 An input whose value is null counts as absent (`is defined` is false), at every depth.
 
 --stamp puts a first line on every file written:
@@ -94,8 +94,12 @@ def _make_env(component_dir: Path, inputs: dict, lang: str, en: dict, current: d
         comment_start_string="[#",
         comment_end_string="#]",
     )
+    def fail(message: str):
+        # A template refuses inputs it cannot render well (ramka: a screen no tested layout fits).
+        raise RenderError(message)
+
     env.filters["yaml"] = yaml_scalar
-    env.globals.update(t=t, inputs=inputs, lang=lang)
+    env.globals.update(t=t, inputs=inputs, lang=lang, fail=fail)
     return env
 
 

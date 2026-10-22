@@ -22,8 +22,14 @@ Breaking changes and the steps for an existing home: [UPGRADE.md](UPGRADE.md).
   charger type reads `none` or the battery is under 20 % for 30 minutes.
 - The Companion app has no camera or microphone; a camera needs another app (the free IP Webcam
   serves only while it is on screen).
-- The tested tablet is 1100 × 720 CSS pixels at device pixel ratio 2. Judge a layout from
-  screenshots at that size on staging; a desktop browser pane is not a faithful tablet.
+- The tested tablet is 1100 × 720 CSS pixels at device pixel ratio 2 (`devices/tcl-9469x.yaml`). Judge a
+  layout from screenshots at that size on staging; a desktop browser pane is not a faithful tablet.
+- **Screen sizes (0.2.0).** The `screen` input takes the tablet's CSS viewport from `domosenso probe`.
+  The one tested layout fits 1024–1280 × 720–800 CSS px: every page shot on staging at both corners
+  (2026-10-22, desktop Chromium at DPR 2, header hidden as kiosk-mode does). Below about 1000 px wide
+  the view drops to two columns and the controls scroll; a portrait tablet needs a layout of its own.
+- German status words are cut off on the status page at 1100 × 720 ("Eingefah…", "Geschlos…"); seen
+  on staging 2026-10-22, already so in 0.1.2.
 
 ## Dashboards and cards
 

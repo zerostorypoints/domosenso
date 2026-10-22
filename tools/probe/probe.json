@@ -1,0 +1,5 @@
+{
+  "en": {"title": "Domosenso probe", "sent": "Measured and reported. The setup can go on; this page is removed afterwards.", "failed": "Measured, but the report failed:"},
+  "de": {"title": "Domosenso-Messseite", "sent": "Gemessen und gemeldet. Die Einrichtung kann weitergehen; diese Seite wird danach entfernt.", "failed": "Gemessen, aber die Meldung ist fehlgeschlagen:"},
+  "pl": {"title": "Pomiar Domosenso", "sent": "Zmierzono i wysłano. Można kontynuować konfigurację; ta strona zostanie potem usunięta.", "failed": "Zmierzono, ale nie udało się wysłać wyniku:"}
+}

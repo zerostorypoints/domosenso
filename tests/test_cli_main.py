@@ -7,7 +7,7 @@ from domosenso_cli import main as cli
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.report import Reporter
 
-COMMANDS = "init add adopt render update status deploy rollback snapshot compare verify recommend".split()
+COMMANDS = "init add adopt render update status deploy rollback snapshot compare verify recommend discover probe http".split()
 
 
 def test_help_lists_commands(capsys):

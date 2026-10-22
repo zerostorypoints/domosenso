@@ -30,6 +30,9 @@ COMMANDS: dict[str, str | None] = {
     "compare": "domosenso_cli.compare",
     "verify": "domosenso_cli.verify",
     "recommend": "domosenso_cli.recommend",
+    "discover": "domosenso_cli.discover",
+    "probe": "domosenso_cli.probe",
+    "http": "domosenso_cli.http_config",
 }
 
 SUMMARIES = {
@@ -45,6 +48,9 @@ SUMMARIES = {
     "compare": "compare two snapshots",
     "verify": "check a running home against a snapshot",
     "recommend": "list the components the home's devices satisfy",
+    "discover": "list what Home Assistant discovered and has set up",
+    "probe": "measure a wall tablet's screen through a temporary page",
+    "http": "set Home Assistant's HTTP settings for a reverse proxy",
 }
 
 
