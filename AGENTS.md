@@ -203,12 +203,14 @@ goes into `check-all.sh` as a step.
 Nothing from a real home belongs in this repository: no real names of people, rooms or places, no
 entity ids, IP or MAC addresses, account names, tokens, photos, calendars or floor plans. Examples
 use the fictional demo home: Alex and Sam; Living room, Dining, Kitchen, Office, Bedroom, Kids' room,
-Hall; prefix `ramka`. A real home lives in its own repository.
+Hall; prefix `ramka`. A real home lives in its own repository. The one exception: the photos in
+`.github/readme/` are the maintainer's own wall tablet, chosen by him, cropped, with every metadata
+field removed (`tests/test_docs.py` checks it); nothing else from a real home.
 
 `tests/test_catalog_content.py::test_privacy` scans `components/`, `devices/`, `kinds/`, `scenes/`,
-`examples/`, `tools/`, `tests/`, `schemas/`, `docs/`, `.ai/`, `README.md`, `AGENTS.md` and
+`examples/`, `tools/`, `tests/`, `schemas/`, `docs/`, `.ai/`, `.github/`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md` and
 `CLAUDE.md` for a list of the author's household words (assembled from fragments, so the list
-itself does not trip it). Framework documents under `docs/` and `README.md` may name the author and
+itself does not trip it). Framework documents under `docs/`, `README.md` and `CONTRIBUTING.md` may name the author and
 the first outside user as whole words; nowhere else. Do not weaken the list to make a test pass:
 remove the word from the file.
 
