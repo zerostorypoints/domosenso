@@ -59,6 +59,9 @@ Domosenso home never replaces.
   tablet on Android 16 shows `36`; inference from the API table, seen 2026-10-22). Its own app version
   is stored only in the config entry's data, which no API returns.
 
+- Home Assistant serves `/local/` only if `config/www/` existed when it started: a file put into a new
+  `www/` is a 404 until a restart (seen on 2026.9.2). `domosenso probe --install` warns about it.
+
 ## Staging
 
 - A staging Home Assistant that mirrors production by posting its states over REST starts its own

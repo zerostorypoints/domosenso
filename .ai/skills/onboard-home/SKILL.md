@@ -191,7 +191,7 @@ planned (ramka 0.2.0, see "Not ready").
 2. Not in Home Assistant yet: they name it; tell them what the catalog knows of it (usually nothing)
    and what to check once it is set up.
 
-**Its setup**, measured where you can, asked where you cannot (all read-only; the slug is the part
+**Its setup**, measured where you can, asked where you cannot (read-only except the probe; the slug is the part
 after `notify.mobile_app_` of its notify action):
 
 | what | how |
@@ -202,8 +202,29 @@ after `notify.mobile_app_` of its notify action):
 | Companion app version | ask (app → Settings → About); 2026.6.5 can get stuck awake (ramka README), 2026.8.4 or newer is better |
 | kiosk: a Home Assistant user of its own, `kiosk-mode` (HACS) or Android screen pinning | ask |
 | permissions: *Modify system settings*, *Display over other apps*, lock screen None, the app's *Keep screen on* **off** | ask, as a checklist |
-| screen: CSS width × height, pixel ratio, WebView version | from the device file of a tested model; otherwise unknown until the probe exists — the layout is tested only at 1100 × 720 CSS px (DPR 2) |
+| screen: CSS width × height, pixel ratio, WebView version, JSON modules | the probe (below); a tested model's device file says what to expect |
 | mounting: wall or stand, room, height, where the radar goes | ask |
+
+**The probe** (after `init`, step 6, because it needs the `production` target; it writes to their
+Home Assistant, so ask first and say it adds one logbook line):
+
+```bash
+domosenso probe production --install     # copies the probe card, adds a resource and the dashboard domosenso-probe
+domosenso probe production --read        # waits up to 300 s; run it, then have them open the page
+```
+
+They open `<HA URL>/domosenso-probe/0` in the tablet's Companion app, signed in as the tablet's own
+user, in the orientation it will hang. `--install` may print `warning /local/ is not served ...`:
+Home Assistant needs a restart first (their yes). `--read` prints `probe viewport <w>x<h> dpr <r>
+screen ... webview <major> json-modules yes|no dvh yes|no user admin|non-admin`. Read it against
+what the Ramka needs: the layout is tested at 1100 × 720 CSS px only (another size waits for ramka
+0.2.0's layouts); `webview` below 123 or `json-modules no` means the cards will not load (the
+Android System WebView needs an update, which old Android versions no longer get); `user admin`
+means the tablet is signed in as an admin — suggest a user of its own. Then always:
+
+```bash
+domosenso probe production --remove
+```
 
 Write the profile into the home repository only (a comment block in `domosenso/ramka.inputs.yaml`
 when the Ramka is added), never into the catalog. A tablet model the catalog does not know can become
@@ -320,9 +341,9 @@ and `sensor.newest_backup_age` below 24 show the first nightly backup ran.
 - Installing Home Assistant is not in the catalog yet (SPEC-011 phase D); they install it by Home
   Assistant's own instructions. Remote access is not a catalog component yet (`remote-access`,
   phase E).
-- The Ramka: the probe that measures a tablet's screen and WebView (`domosenso probe`, phase B) and
-  optional pages and screen-size layouts (ramka 0.2.0, phase C) are being built; today the layout is
-  tested at 1100 × 720 CSS px only, and `air`, `plants`, `climate` are required. Its music player
+- The Ramka: optional pages and screen-size layouts (ramka 0.2.0, SPEC-011 phase C) are being
+  built; today the layout is tested at 1100 × 720 CSS px only, and `air`, `plants`, `climate` are
+  required. The probe is tried on a local Home Assistant, not yet on a real tablet. Its music player
   contract is tested with a Hegel through `hegel_streaming`; another `media_player` (a Naim through
   `cast` or `dlna_dmr`) should work and has not been tried.
 - `calendar`, `media` and `weather` install nothing.

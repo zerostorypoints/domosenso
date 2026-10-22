@@ -21,7 +21,8 @@ the maintainer is back.
 | A | skill `onboard-home` v2 text (§1, §2.1, §4.2, §5, §6.1, §7.1–7.2); getting-started; AGENTS.md command list | done on `claude/onboard-v2-phase-a` |
 | A | fix found on the way: REST through a Cloudflare tunnel needs a named User-Agent (error 1010) | done on `claude/onboard-v2-phase-a` |
 | A | real check, read-only: `discover` and `recommend --from-ha` against production over the tunnel | done 2026-10-22 (reported in the conversation) |
-| B | `domosenso probe` and the probe card (§7.3), tested on a local staging HA | waiting |
+| B | `domosenso probe` and the probe card (§7.3); `ha_api` subscriptions; skill text | done on `claude/onboard-v2-phase-b` |
+| B | end-to-end on a throwaway local HA 2026.9.2 (onboarded through its API): install, the page in a browser at 1100 × 720 DPR 2, `--read` got the report, remove (twice) | done 2026-10-22 |
 | B | the probe on the real tablet (must report 1100 × 720 at DPR 2) | owed until the maintainer is back |
 | C | ramka 0.2.0: optional `air`, `plants`, `climate`; `screen` input and the layout table; `recommend: [tcl-9469x]` for `android-tablet` (§6.2, §7.4) | waiting |
 | C | screenshots of every page at 1100 × 720 on staging, byte-identical render without `screen` | waiting |
