@@ -71,6 +71,7 @@ Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
 | [onboard-home](.ai/skills/onboard-home/SKILL.md) | start a new home: interview, recommend components, `domosenso init`, add `backup`, stop at `deploy production --plan` |
 | [check](.ai/skills/check/SKILL.md) | run `tools/check-all.sh` and report pass or fail per step |
 | [new-component](.ai/skills/new-component/SKILL.md) | scaffold `components/<id>/` and get the checker and tests passing |
+| [new-integration](.ai/skills/new-integration/SKILL.md) | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
 | [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
 | [render-and-stage](.ai/skills/render-and-stage/SKILL.md) | render a component into a home repository, install it, check it, try it on staging |
 

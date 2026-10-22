@@ -30,7 +30,7 @@ from a real home goes in.
 5. **Notes.** `components/<id>/README.md` for what a home needs to know that the manifest cannot
    say (integration quirks, hardware limits). No household facts.
 6. **Catalog lists.** Add the id to `COMPONENTS` in `tests/test_catalog_content.py` (and new
-   devices to `DEVICES`) and a row to the components table in `README.md`.
+   devices to `DEVICES`) and a line to "What's in the box" in `README.md`.
 7. **Check** until all pass:
 
    ```bash

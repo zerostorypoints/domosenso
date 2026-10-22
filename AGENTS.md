@@ -298,6 +298,7 @@ the script after adding, renaming or removing a skill.
 | `onboard-home` | start a new home from an empty directory: interview, `domosenso recommend`, `init`, add `backup`, stop at `deploy production --plan` |
 | `check` | run `tools/check-all.sh` and report pass or fail per step |
 | `new-component` | scaffold `components/<id>/` and get the checker and tests passing |
+| `new-integration` | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
 | `write-component-spec` | write a spec in `.ai/specs/` and stop for approval |
 | `render-and-stage` | render a component into a home repository, install it, check it, try it on staging |
 
