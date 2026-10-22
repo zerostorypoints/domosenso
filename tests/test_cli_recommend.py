@@ -106,7 +106,8 @@ def test_unknown_token_suggests_by_vendor_prefix(catalog, tmp_path, capsys):
     code, lines = run(capsys, "--home", str(tmp_path), "recommend", "--catalog", str(catalog),
                       "--have", "tapo-sensor")
     assert code == 0
-    assert "unknown tapo-sensor did-you-mean tapo-t315" in lines
+    [line] = [line for line in lines if line.startswith("unknown tapo-sensor")]
+    assert line.split("did-you-mean ")[1].split(",")[0] == "tapo-t315"  # the vendor's id comes first
 
 
 def test_unknown_token_without_a_near_match(catalog, tmp_path, capsys):
