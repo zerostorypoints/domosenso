@@ -16,6 +16,9 @@ from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import Target
 
 TIMEOUT = 30
+# Cloudflare refuses urllib's default user agent (error 1010, an HTTP 403) on a Home Assistant
+# reached through a tunnel; any named agent passes.
+USER_AGENT = "domosenso"
 
 
 def ws_url(url: str) -> str:
@@ -127,7 +130,7 @@ class HA:
         return msg.get("result")
 
     def _request(self, path: str) -> tuple[int, bytes]:
-        req = urllib.request.Request(self.url + path, headers={"Authorization": f"Bearer {self._token}"})
+        req = urllib.request.Request(self.url + path, headers={"Authorization": f"Bearer {self._token}", "User-Agent": USER_AGENT})
         try:
             try:
                 with urllib.request.urlopen(req, timeout=self._timeout) as resp:

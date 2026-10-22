@@ -103,7 +103,8 @@ def rest_stub():
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            seen.append({"path": self.path, "auth": self.headers.get("Authorization")})
+            seen.append({"path": self.path, "auth": self.headers.get("Authorization"),
+                         "agent": self.headers.get("User-Agent")})
             if self.path == "/api/hangup":  # closes without a response
                 self.close_connection = True
                 return
@@ -199,7 +200,8 @@ def test_rest_get_sends_bearer_and_parses_json(tmp_path):
                 return await ha.rest_get("/api/ok")
 
         assert asyncio.run(go()) == {"path": "/api/ok"}
-    assert seen == [{"path": "/api/ok", "auth": f"Bearer {TOKEN}"}]
+    # A named agent: Cloudflare answers urllib's default one with 403 (error 1010).
+    assert seen == [{"path": "/api/ok", "auth": f"Bearer {TOKEN}", "agent": "domosenso"}]
 
 
 def test_rest_get_error_status_raises():
