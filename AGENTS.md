@@ -313,4 +313,5 @@ the script after adding, renaming or removing a skill.
 - Shell: `bash`, `set -uo pipefail` or stricter, run from the repository root.
 - Comments say why; the code says what. Match the surrounding density.
 - A new component or device id also goes into `COMPONENTS` / `DEVICES` in
-  `tests/test_catalog_content.py` and the components table in `README.md`.
+  `tests/test_catalog_content.py`, the components table in `CONTRIBUTING.md` and a line in the
+  README's "What's in the box".

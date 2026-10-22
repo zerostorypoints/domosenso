@@ -9,9 +9,10 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
-# A photo straight from a phone carries GPS and the camera in EXIF or XMP; an ICC colour profile is
-# harmless and allowed.
-METADATA_KEYS = {"exif", "xmp", "XML:com.adobe.xmp", "comment", "photoshop", "iptc"}
+# A photo straight from a phone carries GPS and the camera in EXIF or XMP, and an exported PNG can
+# carry any text chunk (Author, Description, …). Only encoding details and a colour profile may stay.
+ALLOWED_INFO = {"jfif", "jfif_version", "jfif_unit", "jfif_density", "dpi", "progressive", "progression",
+                "adobe", "adobe_transform", "icc_profile", "transparency", "gamma"}
 LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 
 
@@ -28,8 +29,17 @@ def test_readme_images_have_no_metadata():
     for path in readme_images():
         with Image.open(path) as img:
             assert not img.getexif(), f"{path.name}: EXIF present"
-            leaked = METADATA_KEYS & set(img.info)
+            leaked = set(img.info) - ALLOWED_INFO
             assert not leaked, f"{path.name}: metadata {sorted(leaked)}"
+
+
+def test_metadata_guard_catches_png_text(tmp_path):
+    from PIL.PngImagePlugin import PngInfo
+    meta = PngInfo()
+    meta.add_text("Description", "taken at home")
+    Image.new("RGB", (4, 4)).save(tmp_path / "x.png", pnginfo=meta)
+    with Image.open(tmp_path / "x.png") as img:
+        assert set(img.info) - ALLOWED_INFO == {"Description"}
 
 
 def documents() -> list[Path]:
@@ -70,3 +80,18 @@ def test_home_template_gitignore(tmp_path):
         assert ignored.returncode == 0, f"{path} is not ignored by the home template"
     kept = subprocess.run(["git", "-C", str(tmp_path), "check-ignore", "--no-index", "-q", "domosenso.yaml"])
     assert kept.returncode == 1, "domosenso.yaml must stay tracked"
+
+
+def test_no_document_points_at_a_readme_components_table():
+    # The README lists components under "What's in the box"; the table lives in CONTRIBUTING.md.
+    sources = [ROOT / "AGENTS.md", *(ROOT / ".ai" / "skills").glob("*/SKILL.md")]
+    stale = [str(s.relative_to(ROOT)) for s in sources if "components table in `README.md`" in s.read_text(encoding="utf-8")]
+    assert stale == []
+
+
+def test_readme_tested_homes_line_matches_manifests():
+    untested = sorted(c.parent.name for c in (ROOT / "components").glob("*/component.yaml")
+                      if "homes: 0" in c.read_text(encoding="utf-8"))
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    if untested:
+        assert "Every component runs in one home so far" not in readme

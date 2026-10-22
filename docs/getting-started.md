@@ -89,7 +89,8 @@ uv run --project ~/path/to/domosenso domosenso init --catalog ~/path/to/domosens
 `.storage/`, the database and `.domosenso/` out of git.
 
 If you want the home on GitHub, make it **private**: it names your rooms, devices and entities. Check
-that `git ls-files` lists none of the ignored files above, then:
+that `git ls-files` lists none of the ignored files above and nothing with `token` in its name. If
+one is tracked, untrack it (`git rm --cached <path>`) and commit before you push. Then:
 
 ```bash
 gh repo create <you>/<home name> --private --source . --remote origin --push

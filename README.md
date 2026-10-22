@@ -97,7 +97,7 @@ and a manifest that says what it needs and which versions it was tested on.
 - **backup** — nightly full backup, catch-up after a restart, retention and a stale-backup alert. Tested in 1 home.
 - **remote-access** — Home Assistant from anywhere through a Cloudflare Tunnel, no open port. Tested in 0 homes.
 
-Every component runs in one home so far. Yours would be the second.
+Every component except remote-access runs in one home so far. Yours would be the second.
 
 ## Stages
 
