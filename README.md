@@ -22,7 +22,10 @@ yet (Apache-2.0 proposed).
 **Home Assistant on your NAS.** Domosenso works with Home Assistant as a Container (Docker), without
 add-ons. Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`.
 
-- You have it: go on.
+- You have it: check that Settings → System → Repairs → ⋮ → System information says "Installation
+  Type: Home Assistant Container", note its address (for example `http://<nas>:8123`), and create a long-lived access token (your profile →
+  Security → Long-lived access tokens). Save the token in a file outside any repository
+  (`chmod 600`); the onboarding asks for the address and that file's path, never for the token.
 - You don't: `/onboard-home` installs it with you from the home template's `compose.yaml` (tried on a
   local container, not yet on a NAS), or you follow your NAS's own steps. Synology DSM with
   Container Manager is the tested host. QNAP, Unraid or a mini PC with Docker take the same path and
@@ -48,26 +51,31 @@ configuration in a private GitHub repository.
 
 ## Start in 10 minutes
 
-Open Claude Code in an empty folder and paste:
+With the tools above installed and `gh auth login` done, in a terminal: clone this repository (tags
+come with it), install its Python dependencies and start your agent in the clone.
 
-```text
-Clone github.com/zerostorypoints/domosenso with its tags, run `git config core.hooksPath .githooks`
-in the clone, then run /onboard-home from it for my house. Stop and ask me before anything changes
-my Home Assistant.
+```bash
+gh repo clone zerostorypoints/domosenso
+cd domosenso
+uv sync
+claude
 ```
 
-In Codex, paste the same text with "the onboard-home skill in .ai/skills/onboard-home/SKILL.md"
-instead of `/onboard-home`.
+`uv sync` fetches a matching Python if you have none and installs the `domosenso` command into the
+clone's `.venv`; `uv run domosenso --help` then lists its commands.
+
+In Claude Code, type `/onboard-home`. With Codex, start `codex` in the same folder instead and ask it
+to run the onboard-home skill.
 
 The agent asks how to reach your Home Assistant, reads what it already has, recommends components and
 the hardware still missing, creates your home repository in a folder of its own, and stops before the
 first deploy. It reads Home Assistant freely and writes nothing to it until you type yes.
 
-> **For AI agents.** Clone this catalog with its tags and enable its guard
-> (`git config core.hooksPath .githooks`); run the `onboard-home` skill from that clone. Domosenso is
-> not a package yet: every command runs as `uv run --project <catalog clone> domosenso …`. Create the
-> home with `domosenso init` in a separate folder, never inside the catalog. Never change the catalog
-> itself except on a branch with a pull request, and stop at every question the skill asks the owner.
+> **For AI agents.** Clone this catalog with its tags and run the `onboard-home` skill from that
+> clone. Domosenso is not a package yet: every command runs as `uv run --project <catalog clone>
+> domosenso …`. Create the home with `domosenso init` in a separate folder, never inside the catalog.
+> Never change the catalog in place: a contribution is a pull request from a fork
+> ([CONTRIBUTING.md](CONTRIBUTING.md)). Stop at every question the skill asks the owner.
 > The rules are in [AGENTS.md](AGENTS.md).
 
 ## Where to start
