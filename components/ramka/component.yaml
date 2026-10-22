@@ -8,7 +8,7 @@
 # writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
 # notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.1.2
+version: 0.2.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -16,6 +16,7 @@ photo: null
 devices:
   requires:
     - kind: android-tablet
+      recommend: [tcl-9469x]
       app: Home Assistant Companion (notification commands, light sensor, battery sensors, app importance)
       count: 1
     - kind: mmwave-radar
@@ -95,18 +96,23 @@ inputs:
   lights_all_off:               # a scene for "all off"; absent: light.turn_off on every room
     type: entity_id
     default: null
-  climate:                      # required: the climate page's rooms and its 7-day charts
+  climate:                      # the climate page's rooms and its 7-day charts; absent: no climate page (0.2.0)
     type: "list[{label, temperature, humidity?, color?, room?}]"   # color: theme series 1..n, default the position
+    default: null
+    example: [{label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity, room: living_room}]
   outside:                      # outside on the charts, dashed and thicker
     type: "{temperature, humidity?, color?}"
     default: null
   rooms_columns: {type: int, default: 5}
-  air:                          # required, at least one tile: the air page
+  air:                          # at least one tile: the air page; absent: no air page (0.2.0)
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
+    default: null
     example: {score: sensor.dining_air_quality_score, co2: sensor.dining_air_carbon_dioxide}
   pressure: {type: entity_id, default: null}               # after the wind on the climate page
-  plants:                       # required: the plants page; any extra key but room is a band override
+  plants:                       # the plants page; any extra key but room is a band override; absent: no plants page (0.2.0)
     type: "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]"
+    default: null
+    example: [{entity: plant.monstera, label: Living room, room: living_room}]
   plant_defaults:
     type: map
     default: {min_moisture: 15, max_moisture: 60, min_conductivity: 350, max_conductivity: 2000, min_brightness: 500}
@@ -116,8 +122,9 @@ inputs:
   status_columns: {type: int, default: 4}
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
-  photo_dir:                    # required, under /config/www (served as /local/...)
-    type: path
+  photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
+    type: path                  # entities, shell commands or index automation (0.2.0)
+    default: null
     example: /config/www/ramka
   tablet_device:                # required: the Companion app's notify action and sensor slug
     type: "{notify: notify.mobile_app_*, sensors: slug}"   # sensor.<slug>_light_sensor, _battery_level,
@@ -129,6 +136,10 @@ inputs:
   dashboard_path: {type: string, default: dashboard-ramka}  # the top-right corner's way out
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
+  screen:                       # the tablet's CSS viewport, from `domosenso probe` (SPEC-011); absent: 1100 x 720.
+    type: "{width: int, height: int}"   # Rendering fails when no tested layout fits it (templates/dashboard.lang.yaml.j2).
+    default: null
+    example: {width: 1100, height: 720}
 
 # What the dashboard asks of `media_player`. Required: the states off / on / idle / playing /
 # paused / buffering / unavailable, turn_on, turn_off, media_play, media_pause, volume_level with
@@ -183,12 +194,12 @@ provides:                       # <prefix> from inputs
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
     - {id: "timer.<prefix>_controls", stability: stable}
     - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}
-    - {id: "input_text.<prefix>_photo", stability: stable}
-    - {id: "image.<prefix>_photo", stability: stable}
+    - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
+    - {id: "image.<prefix>_photo", stability: stable, note: "with photo_dir"}
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
-    - {id: "shell_command.<prefix>_{index,pick}", stability: stable}
+    - {id: "shell_command.<prefix>_{index,pick}", stability: stable, note: "with photo_dir"}
   automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes: []

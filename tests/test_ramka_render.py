@@ -274,3 +274,125 @@ def test_room_slugs_do_not_change_the_render(tmp_path):
         for item in without[key]:
             item.pop("room")
     assert texts(tmp_path / "with", demo_inputs()) == texts(tmp_path / "without", without)
+
+
+# ---- 0.2.0: optional pages and the screen (SPEC-011 sections 6.2, 7.4) ------------------------
+
+PAGE_INPUTS = {"climate": ("climate", "outside", "pressure"), "air": ("air",), "plants": ("plants",),
+               "photos": ("photo_dir",)}
+PAGE_CARDS = {"climate": "custom:rooms-card", "air": "custom:air-card", "plants": "custom:plants-card",
+              "photos": "custom:photo-frame-card"}
+
+
+def without_pages(*pages) -> dict:
+    inputs = demo_inputs()
+    for page in pages:
+        for key in PAGE_INPUTS[page]:
+            inputs.pop(key, None)
+    return inputs
+
+
+def rotation(package) -> dict[str, str]:
+    """page -> the page the ambient loop goes to after it, read from the rendered loop."""
+    stages = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"]
+    steps = {}
+    for stage in stages:
+        condition = stage["if"][0]
+        if condition.get("condition") != "state":
+            continue
+        last = stage["then"][-1]
+        steps[condition["state"]] = last["data"]["option"]
+    return steps
+
+
+@pytest.mark.parametrize("dropped", [("climate",), ("air",), ("plants",), ("photos",), ("climate", "air", "plants"),
+                                     ("climate", "air", "plants", "photos")])
+def test_a_page_without_its_input_is_left_out(tmp_path, dropped):
+    rendered = render(tmp_path, without_pages(*dropped))
+    pages = [p for p in RAMKA_PAGES if p not in dropped]
+    for lang in LANGS:
+        # isinstance: line-style-card's dash pattern is a list under `type`.
+        types = {n["type"] for n in walk(rendered[f"dashboard.{lang}.yaml"]) if isinstance(n.get("type"), str)}
+        for page, card in PAGE_CARDS.items():
+            assert (card in types) == (page not in dropped), (lang, page)
+    package = rendered["package.yaml"]
+    # The rotation visits exactly the pages there are, in order, round.
+    assert rotation(package) == {page: pages[(i + 1) % len(pages)] for i, page in enumerate(pages)}
+    # A helper standing on a missing page goes to the first page there is.
+    guard = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"][0]
+    assert guard["if"][0]["condition"] == "template" and guard["then"][0]["data"]["option"] == pages[0]
+    # The swipes step through the same pages, never select_next onto a missing one.
+    for script in ("ramka_ambient_next", "ramka_ambient_prev"):
+        [step] = [s for s in package["script"][script]["sequence"] if "input_select" in s["action"]]
+        assert step["action"] == "input_select.select_option"
+        assert json.dumps(pages) in step["data"]["option"]
+    for script, automation in (("ramka_swipe_up", None), (None, "ramka_ambient_stop")):
+        actions = (package["script"][script]["sequence"] if script else
+                   next(a for a in package["automation"] if a["id"] == automation)["actions"])
+        starts = [a["data"]["option"] for a in actions
+                  if a.get("action") == "input_select.select_option" and a["target"]["entity_id"] == "input_select.ramka_ambient"]
+        assert starts == [pages[0]]
+
+
+def test_all_pages_keep_select_next_and_no_guard(demo):
+    package = demo["package.yaml"]
+    assert package["script"]["ramka_ambient_next"]["sequence"][0]["action"] == "input_select.select_next"
+    assert package["script"]["ramka_ambient_prev"]["sequence"][0]["action"] == "input_select.select_previous"
+    first = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"][0]
+    assert first["if"][0] == {"condition": "state", "entity_id": "input_select.ramka_ambient", "state": "climate"}
+
+
+@pytest.mark.parametrize("key", ["climate", "air", "plants", "photo_dir"])
+def test_null_page_input_renders_like_an_omitted_one(tmp_path, key):
+    omitted = demo_inputs()
+    del omitted[key]
+    nulled = demo_inputs()
+    nulled[key] = None
+    assert texts(tmp_path / "a", omitted) == texts(tmp_path / "b", nulled)
+
+
+@pytest.mark.parametrize("screen", [{"width": 1100, "height": 720}, {"width": 1024, "height": 720},
+                                    {"width": 1280, "height": 800}])
+def test_a_screen_the_tested_layout_fits_renders_as_without_one(tmp_path, screen):
+    inputs = demo_inputs()
+    inputs["screen"] = screen
+    assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", demo_inputs())
+
+
+@pytest.mark.parametrize("screen", [{"width": 800, "height": 1280}, {"width": 1000, "height": 720},
+                                    {"width": 1100, "height": 700}, {"width": 1920, "height": 1080}])
+def test_a_screen_no_tested_layout_fits_fails(tmp_path, screen):
+    inputs = demo_inputs()
+    inputs["screen"] = screen
+    with pytest.raises(dr.RenderError, match=rf"no tested layout for {screen['width']}x{screen['height']} CSS px "
+                                             r"\(tested: 1100x720 for 1024-1280 x 720-800\)"):
+        render(tmp_path, inputs)
+
+
+def test_without_screen_and_with_every_page_0_2_0_renders_as_0_1_2(tmp_path):
+    """The 0.2.0 promise: a home that changes nothing gets the same files (UPGRADE.md)."""
+    import subprocess
+
+    if subprocess.run(["git", "-C", str(REPO), "rev-parse", "-q", "--verify", "refs/tags/ramka/0.1.2"],
+                      capture_output=True).returncode:
+        pytest.skip("tag ramka/0.1.2 not in this clone")
+    old = tmp_path / "ramka-0.1.2"
+    old.mkdir()
+    archive = subprocess.run(["git", "-C", str(REPO), "archive", "refs/tags/ramka/0.1.2", "components/ramka"],
+                             capture_output=True, check=True).stdout
+    subprocess.run(["tar", "-x", "-C", str(old)], input=archive, check=True)
+    before, after = tmp_path / "before", tmp_path / "after"
+    dr.render_component(old / "components" / "ramka", demo_inputs(), before)
+    dr.render_component(COMP, demo_inputs(), after)
+    names = sorted(p.name for p in before.iterdir())
+    assert names == sorted(p.name for p in after.iterdir())
+    for name in names:
+        assert (before / name).read_bytes() == (after / name).read_bytes(), name
+
+
+def test_without_photo_dir_nothing_of_the_photos_is_rendered(tmp_path):
+    """The photos hang on nothing else of the Ramka (they may become a component of their own)."""
+    out = texts(tmp_path, without_pages("photos"))
+    for name, text in out.items():
+        for word_ in ("ramka_photo", "ramka_pick", "ramka_index", "photo-frame-card", "/config/www/ramka", "platform: folder"):
+            assert word_ not in text, (name, word_)
