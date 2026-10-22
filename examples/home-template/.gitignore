@@ -1,0 +1,12 @@
+# Never in the home repository, even a private one: secrets, tokens, Home Assistant's own state.
+secrets.yaml
+token
+*.token
+.storage/
+home-assistant_v2.db*
+
+# The command's working data: backups, snapshots, the catalog cache.
+.domosenso/
+
+# A local staging Home Assistant's data.
+staging/.data*/

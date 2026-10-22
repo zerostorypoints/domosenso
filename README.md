@@ -1,109 +1,145 @@
 # Domosenso
 
-A framework of tested Home Assistant components: each component in the catalog bundles its ESPHome
-packages, Home Assistant blueprints and cards, a manifest that states what it needs and what it
-provides, and the versions it was tested on. A home installs components from the catalog and keeps
-only its own instance files.
+**Your home on Home Assistant, built with Claude or Codex from parts that already run in a real home.**
 
-Home Assistant runs as a Container: no add-ons or apps. Pinned versions: Home Assistant
-`2026.9.2`, ESPHome `2026.9.1`.
+You have a NAS and a few smart devices. Domosenso reads your Home Assistant, tells you which tested
+components fit what you own and which hardware is missing, installs them and checks that they work.
+Your coding agent does the typing; you approve every change.
 
-All rights reserved — licence not chosen yet (Apache-2.0 proposed). The repository is private.
-
-Coding agents (Claude Code, Codex, Cursor): start with [AGENTS.md](AGENTS.md). A new home: open this
-repository in Claude Code and type `/onboard-home` (Codex: the `onboard-home` skill); the steps are in
-[docs/getting-started.md](docs/getting-started.md).
-
-## Layout
-
-```
-AGENTS.md, CLAUDE.md    instructions for coding agents (CLAUDE.md only imports AGENTS.md)
-.ai/skills/, .ai/specs/ agent skills (linked into .agents/skills/ and .claude/skills/) and specs
-components/<id>/        the catalog: manifest (component.yaml), esphome/, ha/, cards/, translations/,
-                        README.md (field notes)
-devices/<id>.yaml       the hardware the components name: names, description and what it does (en, de, pl),
-                        and how Home Assistant shows it (match rules)
-kinds/<kind>.yaml       how Home Assistant shows a kind of hardware (match rules for `recommend --from-ha`)
-scenes/<id>.yaml        the demo's eight scenes: time, entity states and attributes, what the tablet shows,
-                        who takes part (format and rules: scenes/README.md)
-examples/demo-home/     a fictional home (Alex and Sam) as an instance of the catalog: inputs, states, generated media
-tools/                  checks that run a component against ESPHome and Home Assistant
-docs/                   framework design: research, the pilot write-up, specs and plans
-```
-
-Nothing from a real household belongs here: no real names, rooms, entity ids, addresses, photos,
-calendars or floor plans. A real home lives in its own repository.
-
-## Components
-
-| Component | What it does |
+| | |
 |---|---|
-| [awnings](components/awnings/component.yaml) | Somfy RTS awnings through an ESPSomfy-RTS radio node, with the awnings' wind sensor |
-| [backup](components/backup/component.yaml) | Nightly backups with rolling retention, backup sensors and a stale alert |
-| [remote-access](components/remote-access/component.yaml) | Home Assistant from anywhere through a Cloudflare Tunnel: no open port, a country allow-list |
-| [bermuda-presence](components/bermuda-presence/component.yaml) | Room-level presence of phones and tablets from BLE proxies and Bermuda |
-| [calendar](components/calendar/component.yaml) | Calendar events from a CalDAV server |
-| [climate-air](components/climate-air/component.yaml) | Room temperature and humidity (Tapo), air quality (Ruuvi Air) |
-| [lights](components/lights/component.yaml) | Philips Hue lights per room |
-| [media](components/media/component.yaml) | A network audio player as a media player (tested: Hegel H400) |
-| [plants](components/plants/component.yaml) | Houseplant sensors (Xiaomi Mi Flora) |
-| [ramka](components/ramka/component.yaml) | Wall tablet: radar wake-up, ambient pages, music, awnings, lights, calendar ([upgrade notes](components/ramka/UPGRADE.md)) |
-| [weather](components/weather/component.yaml) | Weather and forecast from Met.no |
+| ![The Ramka wall tablet showing the air page](.github/readme/ramka-air.jpg) | ![The Ramka at night showing the track now playing, the radar board beside it](.github/readme/ramka-now-playing.jpg) |
+| The Ramka by day: the air page (CO₂, fine dust, temperature and humidity per room). | At night: the track now playing, on the sideboard next to the speaker; the board beside it is the radar that wakes the screen. |
 
-## Agent skills
+The tablet runs in Polish, as it does in the home where these were taken; the pages also come in
+English and German.
 
-One source in `.ai/skills/<name>/SKILL.md`, linked for Claude Code (`.claude/skills/`) and Codex and
-Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
+The repository is private for now; access is by invitation. All rights reserved — licence not chosen
+yet (Apache-2.0 proposed).
 
-| skill | use it to |
-|---|---|
-| [onboard-home](.ai/skills/onboard-home/SKILL.md) | start a new home: interview, recommend components, `domosenso init`, add `backup`, stop at `deploy production --plan` |
-| [check](.ai/skills/check/SKILL.md) | run `tools/check-all.sh` and report pass or fail per step |
-| [new-component](.ai/skills/new-component/SKILL.md) | scaffold `components/<id>/` and get the checker and tests passing |
-| [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
-| [render-and-stage](.ai/skills/render-and-stage/SKILL.md) | render a component into a home repository, install it, check it, try it on staging |
+## Prerequisites
 
-## Checks
+**Home Assistant on your NAS.** Domosenso works with Home Assistant as a Container (Docker), without
+add-ons. Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`.
 
-They need Docker or `uv` and flash nothing. Run from the repository root.
+- You have it: go on.
+- You don't: `/onboard-home` installs it with you from the home template's `compose.yaml` (tried on a
+  local container, not yet on a NAS), or you follow your NAS's own steps. Synology DSM with
+  Container Manager is the tested host. QNAP, Unraid or a mini PC with Docker take the same path and
+  are not tested. Home Assistant OS (HAOS) is not covered.
 
-```bash
-tools/check-all.sh                           # all of the below: agents_check, pytest, npm test,
-                                             # catalog_check, ha-check and esphome-check for every component
-uv run tools/agents_check.py                 # AGENTS.md within 32,768 bytes, CLAUDE.md, skills and their links
-uv run tools/install_skills.py               # links .ai/skills/ for claude-code, codex and cursor
-tools/esphome-check.sh bermuda-presence      # config of the demo-home device files using it, and the factory image
-tools/esphome-check.sh bermuda-presence compile ble-proxy-dining.yaml   # also compile
-tools/ha-check.sh bermuda-presence           # check_config on a fresh home; needs docker
-uv run tools/catalog_check.py --strict       # manifests, translations, devices, scenes
-uv run tools/make_demo_media.py              # rewrites examples/demo-home/media/ (generated images)
-tools/ha-check.sh ramka                      # renders examples/demo-home/inputs/ramka.yaml first
-uv run tools/domosenso_render.py components/ramka --inputs examples/demo-home/inputs/ramka.yaml --out <dir> [--stamp]
-uv run tools/domosenso_install.py components/ramka --config <config dir>   # cards, shell scripts, theme
+**SSH access** to that host, key-based, with `docker` usable there (on a Synology that may mean
+`sudo docker`).
+
+**A console and a few tools** on your computer: git, gh, uv, an SSH client, and Claude Code or Codex.
+Claude Code needs a Claude Pro, Max, Team or Enterprise plan, or a Console account.
+
+| | macOS | Linux | Windows |
+|---|---|---|---|
+| Package manager | [Homebrew](https://brew.sh): `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` | your distribution's (`apt`, `dnf`, …) | [WSL2](https://learn.microsoft.com/windows/wsl/install) (`wsl --install`), then everything as on Linux. **Not tested.** |
+| git, SSH client | `brew install git` (ssh ships with macOS) | `sudo apt install git openssh-client` | as Linux |
+| gh | `brew install gh` | [the GitHub CLI Linux guide](https://github.com/cli/cli/blob/trunk/docs/install_linux.md) (official apt and dnf repositories) | as Linux |
+| uv | `brew install uv` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | as Linux |
+| Claude Code | `brew install --cask claude-code` | `curl -fsSL https://claude.ai/install.sh \| bash` | as Linux |
+| or Codex | `brew install --cask codex` | `npm install -g @openai/codex` | as Linux |
+
+Then `gh auth login` once, so the agent can clone this repository and, if you want, keep your home's
+configuration in a private GitHub repository.
+
+## Start in 10 minutes
+
+Open Claude Code in an empty folder and paste:
+
+```text
+Clone github.com/zerostorypoints/domosenso with its tags, run `git config core.hooksPath .githooks`
+in the clone, then run /onboard-home from it for my house. Stop and ask me before anything changes
+my Home Assistant.
 ```
 
-`--stamp` makes the first line of every rendered file
-`# Rendered by Domosenso from <component>@<commit> — do not edit`. A component's cards install
-under `www/domosenso/<id>/<version>/` (`artifacts.install_path`), so a new version gets new
-`/local/` URLs and the browser's 31-day cache cannot mix versions.
+In Codex, paste the same text with "the onboard-home skill in .ai/skills/onboard-home/SKILL.md"
+instead of `/onboard-home`.
 
-`tools/esphome-check.sh` builds a throwaway git remote from the working tree, tagged
-`<component>/<version>`, and rewrites the demo home's `github://` packages to it; `tools/ha-check.sh`
-loads the component's blueprints and the demo-home instance into a minimal Home Assistant
-configuration and runs `check_config` in the `homeassistant/home-assistant:2026.9.2` image.
+The agent asks how to reach your Home Assistant, reads what it already has, recommends components and
+the hardware still missing, creates your home repository in a folder of its own, and stops before the
+first deploy. It reads Home Assistant freely and writes nothing to it until you type yes.
 
-Dependencies: `uv sync` (Python: jinja2, pyyaml and jsonschema for the tools, pytest and pillow
-for development) and `npm install` (happy-dom, for `npm test`; node 22 or newer).
+> **For AI agents.** Clone this catalog with its tags and enable its guard
+> (`git config core.hooksPath .githooks`); run the `onboard-home` skill from that clone. Domosenso is
+> not a package yet: every command runs as `uv run --project <catalog clone> domosenso …`. Create the
+> home with `domosenso init` in a separate folder, never inside the catalog. Never change the catalog
+> itself except on a branch with a pull request, and stop at every question the skill asks the owner.
+> The rules are in [AGENTS.md](AGENTS.md).
 
-## Documents
+## Where to start
 
-- [AGENTS.md](AGENTS.md): how to work in this repository, for people and agents
-- [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md): the contract surface and the deprecation protocol;
-  [docs/UPGRADE_NOTES.md](docs/UPGRADE_NOTES.md): what changed for homes
-- [docs/home-assistant-notes.md](docs/home-assistant-notes.md), [docs/integration-notes.md](docs/integration-notes.md): field notes
-- [.ai/specs/](.ai/specs/): specs, SPEC-NNN-<date>-<title>.md
+| You are | Start with |
+|---|---|
+| A home owner with a NAS and Home Assistant | the prompt above: scan, recommendations, a first component planned |
+| A home owner with a NAS, no Home Assistant yet | the same prompt; it installs Home Assistant with you, or use your NAS's steps (Prerequisites) |
+| Someone who wants it done for them | [domosenso.com](https://domosenso.com) · [domosenso.ch](https://domosenso.ch) |
+| A contributor with a device the catalog lacks | [Integrate a device](docs/integrate-a-device.md), with the Hegel amplifier as the worked example |
+| An AI agent | the note above, then [AGENTS.md](AGENTS.md) |
 
-- [docs/research/2026-10-20-domosenso-architecture.md](docs/research/2026-10-20-domosenso-architecture.md)
-- [docs/pilot-bermuda-presence.md](docs/pilot-bermuda-presence.md): the catalog format tried on one component
-- [docs/2026-10-20-domosenso-demo-staging-i18n-design.md](docs/2026-10-20-domosenso-demo-staging-i18n-design.md): design for the demo, staging and translations
-- [docs/2026-10-20-domosenso-stage1-catalog-foundation.md](docs/2026-10-20-domosenso-stage1-catalog-foundation.md): the stage 1 plan
+## What's in the box
+
+Each component bundles its Home Assistant packages, cards, ESPHome configuration where it needs one,
+and a manifest that says what it needs and which versions it was tested on.
+
+- **ramka** — wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar. Tested in 1 home.
+- **climate-air** — temperature and humidity per room (Tapo sensors); CO₂, fine dust, VOC and NOx (Ruuvi Air). Tested in 1 home.
+- **bermuda-presence** — which room each phone, tablet and watch is in, from Bluetooth through ESPHome proxies and Bermuda. Tested in 1 home.
+- **plants** — soil moisture, conductivity, light and temperature of houseplants (Mi Flora). Tested in 1 home.
+- **awnings** — Somfy RTS awnings through an ESPSomfy-RTS radio node, with the wind sensor. Tested in 1 home.
+- **lights** — Philips Hue lights per room, from the bridge's rooms. Tested in 1 home.
+- **media** — a network audio player as a media player; tested with a Hegel H400. Tested in 1 home.
+- **calendar** — events from a CalDAV server such as iCloud. Tested in 1 home.
+- **weather** — current weather and forecast from Met.no. Tested in 1 home.
+- **backup** — nightly full backup, catch-up after a restart, retention and a stale-backup alert. Tested in 1 home.
+- **remote-access** — Home Assistant from anywhere through a Cloudflare Tunnel, no open port. Tested in 0 homes.
+
+Every component except remote-access runs in one home so far. Yours would be the second.
+
+## Stages
+
+### Minute 10: what fits your home
+
+- **You decide:** how the agent reaches your Home Assistant, and whether your home's configuration
+  goes to a private GitHub repository.
+- **Run:** `/onboard-home`. It scans with `domosenso recommend --from-ha` and `domosenso discover`,
+  and creates your home with `domosenso init`.
+- **Done when:** you have a list of fitting components and missing hardware; your home repository
+  exists in its own folder; and, if you chose it, it is on GitHub as a private repository
+  (`git remote -v` shows `origin`).
+
+### Hour 1: the first component live
+
+- **You decide:** yes or no to the first deploy, after reading its plan.
+- **Run:** `backup` added with values read from your Home Assistant; `domosenso deploy production
+  --plan`, then `--apply` with your yes; `domosenso verify`.
+- **Done when:** the nightly backup is in Home Assistant and `verify` passes against the snapshot
+  taken before the deploy.
+
+### Day 1: the Ramka
+
+- **You decide:** the tablet (Android, landscape) and where it hangs. It needs a radar board next to
+  it, which wakes the screen when someone comes near.
+- **Run:** `domosenso probe` measures the tablet's screen; the agent fills the Ramka's inputs from
+  your rooms and devices; `deploy --plan`, then `--apply`.
+- **Done when:** the tablet shows your pages and wakes when someone walks up to it.
+
+### Month 1: your house, kept current
+
+- **You decide:** which updates to take and which components come next.
+- **Run:** `domosenso update` moves a component to a newer tag; `domosenso verify --day-after` checks
+  that automations ran overnight. A device the catalog lacks:
+  [Integrate a device](docs/integrate-a-device.md).
+- **Done when:** your home runs on tagged versions only (`domosenso status`), and anything you added
+  yourself is back in the catalog as a pull request.
+
+## More
+
+- [Getting started](docs/getting-started.md) — the first two stages, step by step.
+- [Integrate a device](docs/integrate-a-device.md) — from a Home Assistant integration to a catalog
+  device.
+- [Contributing](CONTRIBUTING.md) — layout, components, checks, how changes land.
+- [AGENTS.md](AGENTS.md) — the rules for coding agents.

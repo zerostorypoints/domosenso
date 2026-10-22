@@ -9,7 +9,7 @@ the `onboard-home` skill). The agent asks about your Home Assistant host and how
 reads your hardware and the integrations Home Assistant discovered on your network (`domosenso
 recommend --from-ha`, `domosenso discover`), recommends components and the hardware still missing,
 explains the Ramka and checks your tablet if you want one, creates your home repository in a
-directory outside this one, adds `backup` with values read from your Home Assistant, and stops at
+directory outside this one, offers to keep it in a private GitHub repository, adds `backup` with values read from your Home Assistant, and stops at
 `deploy production --plan`. It reads your Home Assistant freely and writes nothing to it until you
 type yes. From an empty directory instead: tell the agent to read
 `<catalog>/.ai/skills/onboard-home/SKILL.md` and follow it.
@@ -84,8 +84,22 @@ mkdir ~/my-home && cd ~/my-home && git init
 uv run --project ~/path/to/domosenso domosenso init --catalog ~/path/to/domosenso
 ```
 
-`init` writes `domosenso.yaml` (targets, components, local files) and a lock file. Then, for each
-component you want:
+`init` writes `domosenso.yaml` (targets, components, local files) and a lock file. Copy
+`examples/home-template/.gitignore` from the catalog into the home: it keeps `secrets.yaml`, tokens,
+`.storage/`, the database and `.domosenso/` out of git.
+
+If you want the home on GitHub, make it **private**: it names your rooms, devices and entities. Check
+that `git ls-files` lists none of the ignored files above and nothing with `token` in its name. If
+one is tracked, untrack it (`git rm --cached <path>`) and commit before you push. Then:
+
+```bash
+gh repo create <you>/<home name> --private --source . --remote origin --push
+```
+
+Done when `git remote -v` shows `origin`. From then on, every change goes on a branch with a pull
+request.
+
+Then, for each component you want:
 
 ```bash
 uv run --project ~/path/to/domosenso domosenso add backup@0.1.0

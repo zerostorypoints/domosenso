@@ -384,12 +384,12 @@ FORBIDDEN = [
     )
 ]
 SCANNED = ["components", "devices", "kinds", "scenes", "examples", "tools", "tests", "schemas", "docs", ".ai",
-           "README.md", "AGENTS.md", "CLAUDE.md"]
+           "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", ".github"]
 SKIPPED = {"node_modules", "__pycache__", ".venv", ".esphome"}
 # The framework's documents may name its author and the first outside user (Ruling 32), as whole
 # words; the name inside a path or a longer word still counts.
 DOC_ALLOWED = re.compile("|".join(["".join(("\\bPio", "tr(?:'s)?\\b")), "\u0141ukasz"]))
-DOCS = ("docs", "README.md")
+DOCS = ("docs", "README.md", "CONTRIBUTING.md")
 
 
 def scanned_files():
@@ -427,6 +427,9 @@ def test_privacy():
 def test_privacy_scan_covers_docs_and_allows_only_the_names():
     files = {p.relative_to(REPO).as_posix() for p in scanned_files()}
     assert "README.md" in files and any(f.startswith("docs/") for f in files)
+    assert "CONTRIBUTING.md" in files  # SPEC-013: the repository material moved there
+    contributing = REPO / "CONTRIBUTING.md"
+    assert privacy_hits(contributing, "".join(("Pio", "tr")) + " decided") == []
     assert {"AGENTS.md", "CLAUDE.md"} <= files and any(f.startswith(".ai/skills/") for f in files)
     doc, code = REPO / "docs" / "x.md", REPO / "tools" / "x.py"
     name = "".join(("Pio", "tr"))
