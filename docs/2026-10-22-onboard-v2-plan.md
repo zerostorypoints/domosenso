@@ -24,7 +24,9 @@ the maintainer is back.
 | B | `domosenso probe` and the probe card (§7.3); `ha_api` subscriptions; skill text | done on `claude/onboard-v2-phase-b` |
 | B | end-to-end on a throwaway local HA 2026.9.2 (onboarded through its API): install, the page in a browser at 1100 × 720 DPR 2, `--read` got the report, remove (twice) | done 2026-10-22 |
 | B | the probe on the real tablet (must report 1100 × 720 at DPR 2) | owed until the maintainer is back |
-| C | ramka 0.2.0: optional `air`, `plants`, `climate`; `screen` input and the layout table; `recommend: [tcl-9469x]` for `android-tablet` (§6.2, §7.4) | waiting |
-| C | screenshots of every page at 1100 × 720 on staging, byte-identical render without `screen` | waiting |
+| C | ramka 0.2.0: optional `air`, `plants`, `climate`; `screen` input and the layout table; `recommend: [tcl-9469x]` for `android-tablet`; renderer `fail()`; `ha-check` `INPUTS=` and a check-all step (§6.2, §7.4) | done on `claude/onboard-v2-phase-c` |
+| C | byte-identical render with every page and no `screen` (a test against the tag `ramka/0.1.2`); every page shot on a scratch demo staging at 1024 × 720 and 1280 × 800; the reduced home run live (rotation, swipes, guard) | done 2026-10-22 |
+| C | tag `ramka/0.2.0` (with `tools/release.py`, after the merge into `main`) | waiting for the maintainer |
+| C | follow-up found: German status words cut off on the status page (already in 0.1.2) | not started |
 | D | Home Assistant install path for a Docker host (§3), tried with a local container | waiting |
 | E | SPEC-012 `remote-access` | waiting (spec first) |

@@ -325,6 +325,13 @@ A new layout enters the table only with a home that needs it, and only when test
 
 Portrait and phone layouts are out of scope (§2.3).
 
+As built in phase C: the table has one layout, `1100x720`, fitting 1024–1280 × 720–800 CSS px — every
+page shot on a demo staging at both corners (en; controls, climate and status in de as well), in a
+desktop Chromium at DPR 2 with the header hidden as kiosk-mode does; not on a device. Its values
+(`max_columns`, the px subtractions) stay in the template until a second layout needs other ones.
+The renderer gained the global `fail(message)` for the refusal. `ha-check.sh` takes `INPUTS=<file>`,
+and `check-all.sh` checks a render without climate, air and plants.
+
 ### 7.5 Tablet device files (schema, additive)
 
 Device files whose component is `ramka` may carry `tablet:`:

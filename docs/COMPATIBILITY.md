@@ -84,9 +84,9 @@ Each entry in a manifest's `provides.entities` carries its own `stability:` (`fr
 | surface | level |
 |---|---|
 | Renderer delimiters `[[ ]]`, `[% %]`, `[# #]`; Home Assistant's own `{{ }}` / `{% %}` passed through byte-identical | FROZEN |
-| Renderer inputs: globals `t(key)`, `inputs`, `lang`; filter `yaml`; `*.lang.yaml.j2` → `<name>.<lang>.yaml`; an input set to `null` counts as absent | STABLE |
+| Renderer inputs: globals `t(key)`, `inputs`, `lang`, `fail(message)` (ends the render with that message; SPEC-011); filter `yaml`; `*.lang.yaml.j2` → `<name>.<lang>.yaml`; an input set to `null` counts as absent | STABLE |
 | First line of a rendered file: `# Rendered by Domosenso from <component>/<version> (<commit>) — do not edit` (`<commit>-dirty` when the catalog had uncommitted changes), written by `domosenso render`; the old form `# Rendered by Domosenso from <component>@<commit> — do not edit` (`domosenso_render.py --stamp`) is read as well, until the next minor version | STABLE |
-| Command lines of `domosenso_render.py`, `domosenso_install.py`, `catalog_check.py`, `ha-check.sh`, `esphome-check.sh`, `check-all.sh`, `agents_check.py`, `install_skills.py` | STABLE |
+| Command lines of `domosenso_render.py`, `domosenso_install.py`, `catalog_check.py`, `ha-check.sh` (and its `INPUTS=<file>` override), `esphome-check.sh`, `check-all.sh`, `agents_check.py`, `install_skills.py` | STABLE |
 | Output lines agents parse: `fresh: N errors`, `config ok` / `config FAIL`, `ok` / `FAIL <step>`, `all checks passed`, `ERROR` / `WARNING` prefixes | STABLE |
 | Steps of `check-all.sh` | ADDITIVE-ONLY |
 

@@ -168,20 +168,20 @@ the tablet's light sensor. Modes: `off`, `ambient`, `controls`, `calendar`.
 - controls: a hand near the screen (100 cm for 1 s) or a tap — music, awnings, lights;
 - calendar: a button on the controls opens the agenda.
 
-**What each page needs** (ramka 0.1.2; show which of them their hardware fills):
+**What each page needs** (show which of them their hardware fills; from ramka 0.2.0 climate, air and
+plants are optional — a page whose input is absent is left out of the rotation):
 
 | page | needs |
 |---|---|
-| climate | temperature (and humidity) sensors per room (`climate-air`), a `weather` entity — required |
-| air | an air-quality sensor (`ruuvi-air` recommended) — required |
-| plants | plant sensors (`plants`, `mi-flora`) — required |
+| climate | temperature (and humidity) sensors per room (`climate-air`); the `weather` entity is required anyway |
+| air | an air-quality sensor (`ruuvi-air` recommended) |
+| plants | plant sensors (`plants`, `mi-flora`) |
 | photos | a folder under `/config/www`; empty skips the page |
 | status | awnings, contacts, power, locks — all optional |
 | now playing, controls | a `media_player` meeting the Ramka's `media_player_contract`; covers and lights optional |
 | calendar | a `calendar` entity — required |
 
-In 0.1.2 a home without an air sensor or plant sensors cannot render the Ramka; optional pages are
-planned (ramka 0.2.0, see "Not ready").
+In 0.1.2 `air`, `plants` and `climate` are required; take 0.2.0 or newer for a home without them.
 
 **Which tablet.** Stop at the first that answers:
 
@@ -217,8 +217,9 @@ They open `<HA URL>/domosenso-probe/0` in the tablet's Companion app, signed in 
 user, in the orientation it will hang. `--install` may print `warning /local/ is not served ...`:
 Home Assistant needs a restart first (their yes). `--read` prints `probe viewport <w>x<h> dpr <r>
 screen ... webview <major> json-modules yes|no dvh yes|no user admin|non-admin`. Read it against
-what the Ramka needs: the layout is tested at 1100 × 720 CSS px only (another size waits for ramka
-0.2.0's layouts); `webview` below 123 or `json-modules no` means the cards will not load (the
+what the Ramka needs: its one tested layout fits 1024–1280 × 720–800 CSS px (ramka 0.2.0: put the
+viewport into the `screen` input; rendering fails for a size no tested layout fits — a new layout is
+catalog work, tested on staging at that size first); `webview` below 123 or `json-modules no` means the cards will not load (the
 Android System WebView needs an update, which old Android versions no longer get); `user admin`
 means the tablet is signed in as an admin — suggest a user of its own. Then always:
 
@@ -341,9 +342,9 @@ and `sensor.newest_backup_age` below 24 show the first nightly backup ran.
 - Installing Home Assistant is not in the catalog yet (SPEC-011 phase D); they install it by Home
   Assistant's own instructions. Remote access is not a catalog component yet (`remote-access`,
   phase E).
-- The Ramka: optional pages and screen-size layouts (ramka 0.2.0, SPEC-011 phase C) are being
-  built; today the layout is tested at 1100 × 720 CSS px only, and `air`, `plants`, `climate` are
-  required. The probe is tried on a local Home Assistant, not yet on a real tablet. Its music player
+- The Ramka: one tested layout (1024–1280 × 720–800 CSS px, landscape); portrait or a phone needs
+  a new one. The probe is tried on a local Home Assistant, not yet on a real tablet. ramka 0.2.0
+  (optional pages, `screen`) reaches `recommend` once it is tagged. Its music player
   contract is tested with a Hegel through `hegel_streaming`; another `media_player` (a Naim through
   `cast` or `dlna_dmr`) should work and has not been tried.
 - `calendar`, `media` and `weather` install nothing.
