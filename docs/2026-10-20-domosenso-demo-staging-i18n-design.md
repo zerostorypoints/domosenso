@@ -2,8 +2,8 @@
 
 Status: approved in conversation with the maintainer on 2026-10-20, builder questions answered the same day;
 not built. Follows the catalog pilot in
-[../../../domosenso/README.md](../../../domosenso/README.md) and the research in
-[../../../research/2026-10-20-domosenso-architecture.md](../../../research/2026-10-20-domosenso-architecture.md).
+[pilot-bermuda-presence.md](pilot-bermuda-presence.md) and the research in
+[research/2026-10-20-domosenso-architecture.md](research/2026-10-20-domosenso-architecture.md).
 Statements marked **(my call)** are decisions made while writing, not by the maintainer; check them.
 Validation notes from 2026-10-20 (the maintainer's priorities after stage 1, cut-over requirements for his home,
 AI-first requirements, the Ramka player contract, operations log):
