@@ -20,6 +20,45 @@
     "description_key": {"type": "string", "pattern": "^meta\\..+"},
     "does_key": {"type": "string", "pattern": "^meta\\..+"},
     "photo": {"type": ["string", "null"]},
-    "component": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"}
+    "component": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "match": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/rule"}}
+  },
+  "$defs": {
+    "one_or_more": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      ]
+    },
+    "rule": {
+      "description": "SPEC-010 section 3.1: matches when every field given matches; globs are case-insensitive. Kept equal to kind.schema.json's (tests/test_catalog_content.py).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "integration": {"$ref": "#/$defs/one_or_more"},
+        "with_integration": {"$ref": "#/$defs/one_or_more"},
+        "manufacturer": {"$ref": "#/$defs/one_or_more"},
+        "model": {"$ref": "#/$defs/one_or_more"},
+        "model_id": {"$ref": "#/$defs/one_or_more"},
+        "unless_manufacturer": {"$ref": "#/$defs/one_or_more"},
+        "entity_domain": {"$ref": "#/$defs/one_or_more"},
+        "device_classes": {"$ref": "#/$defs/one_or_more"},
+        "entity_names": {"$ref": "#/$defs/one_or_more"},
+        "entry": {"type": "string", "minLength": 1},
+        "certainty": {"enum": ["found", "maybe"]},
+        "note": {"type": "string"}
+      },
+      "anyOf": [
+        {"required": ["entry"], "propertyNames": {"enum": ["entry", "certainty", "note"]}},
+        {
+          "not": {"required": ["entry"]},
+          "anyOf": [
+            {"required": ["integration"]}, {"required": ["with_integration"]}, {"required": ["manufacturer"]},
+            {"required": ["model"]}, {"required": ["model_id"]}, {"required": ["unless_manufacturer"]},
+            {"required": ["entity_domain"]}, {"required": ["device_classes"]}, {"required": ["entity_names"]}
+          ]
+        }
+      ]
+    }
   }
 }

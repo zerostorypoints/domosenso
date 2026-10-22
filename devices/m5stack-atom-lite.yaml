@@ -4,3 +4,17 @@ description_key: meta.devices.m5stack-atom-lite.description
 does_key: meta.devices.m5stack-atom-lite.does
 photo: null
 component: bermuda-presence
+# SPEC-010. Seen on HA 2026.9.2: ESPHome reports the board, manufacturer Espressif, model
+# m5stack-atom (the Atom Lite, Matrix and Echo share it); ESPSomfy-RTS over MQTT names the board in
+# its model. The catalog's firmware sets `project: domosenso.<component>`, which ESPHome reports as
+# manufacturer domosenso instead (inference, from ESPHome's device info).
+match:
+  - integration: esphome
+    model: "m5stack-atom*"
+  - integration: esphome
+    manufacturer: domosenso
+    model: bermuda-presence
+    note: inference
+  - integration: [mqtt, espsomfy_rts]
+    manufacturer: "rstrouse*"
+    model: "*M5Stack Atom Lite*"

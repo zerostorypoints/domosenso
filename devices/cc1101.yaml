@@ -4,3 +4,9 @@ description_key: meta.devices.cc1101.description
 does_key: meta.devices.cc1101.does
 photo: null
 component: awnings
+# SPEC-010. The radio is not a device of its own: ESPSomfy-RTS always drives a CC1101, and its node
+# shows up over MQTT as manufacturer rstrouse (seen on HA 2026.9.2). espsomfy_rts, the HACS
+# integration, is inference.
+match:
+  - integration: [mqtt, espsomfy_rts]
+    manufacturer: "rstrouse*"

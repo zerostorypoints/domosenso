@@ -12,6 +12,7 @@ class Reporter:
         self.json_mode = json_mode
         self.lines: list[list[str]] = []
         self.data: list[dict] = []  # structured results, part of the JSON document only
+        self.extra: dict = {}  # further top-level keys of the JSON document (`recommend`'s `scan`)
 
     def line(self, kind: str, *fields: str) -> None:
         self.lines.append([kind, *fields])
@@ -33,5 +34,6 @@ class Reporter:
         document: dict = {"lines": self.lines}
         if self.data:
             document["data"] = self.data
+        document.update(self.extra)
         document.update(result)
         print(json.dumps(document), flush=True)

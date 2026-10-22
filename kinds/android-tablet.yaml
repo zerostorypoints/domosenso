@@ -1,0 +1,6 @@
+# SPEC-010. The Companion app registers a device per phone or tablet; Home Assistant does not tell them apart.
+id: android-tablet
+match:
+  - integration: mobile_app
+    unless_manufacturer: "apple*"
+    certainty: maybe

@@ -95,6 +95,18 @@ class Catalog:
             raise DomosensoError(f"tag {tag} has no components/{cid}/{path}")
         return done.stdout
 
+    def head_commit(self) -> str:
+        """The commit the repository's HEAD names (a mirror's HEAD is the remote's default branch)."""
+        self.ensure()
+        return self._run("rev-parse", "--verify", "HEAD^{commit}", error="read HEAD").stdout.decode().strip()
+
+    def head_files(self, directory: str) -> dict[str, bytes]:
+        """Every `<directory>/*.yaml` as HEAD has it, by path; never the working tree."""
+        commit = self.head_commit()
+        names = self._run("ls-tree", "--name-only", commit, "--", f"{directory}/", error="list files").stdout.decode().split()
+        return {name: self._run("show", f"{commit}:{name}", error=f"read {name}").stdout
+                for name in sorted(names) if name.endswith(".yaml")}
+
     def checkout(self, cid: str, version: str, expect_commit: str | None) -> Path:
         """The component as it is at its tag, extracted into `<cache>/components/<cid>/<version>/`."""
         commit = self.tag_commit(cid, version)

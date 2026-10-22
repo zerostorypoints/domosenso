@@ -4,3 +4,8 @@ description_key: meta.devices.hlk-ld2410c.description
 does_key: meta.devices.hlk-ld2410c.does
 photo: null
 component: bermuda-presence
+# SPEC-010. The radar is entities on its ESPHome node, named as in the catalog's ld2410.yaml (seen
+# so on HA 2026.9.2).
+match:
+  - integration: esphome
+    entity_names: ["Still distance", "Detection distance"]

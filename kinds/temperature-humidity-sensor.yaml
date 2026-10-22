@@ -1,0 +1,8 @@
+# SPEC-010. Tapo T310 and T315 seen on HA 2026.9.2 (integration tplink); any device with both
+# readings is only a maybe (a thermostat, an air-quality sensor, a weather station).
+id: temperature-humidity-sensor
+match:
+  - integration: [tplink, tapo]
+    model: "T31*"
+  - device_classes: [temperature, humidity]
+    certainty: maybe

@@ -1,0 +1,5 @@
+# SPEC-010. A smart plug or relay with metering reports power and voltage.
+id: mains-meter
+match:
+  - device_classes: [power, voltage]
+    certainty: maybe

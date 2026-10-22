@@ -1,6 +1,6 @@
 # SPEC-010: `domosenso recommend --from-ha`, a hardware scan of a running Home Assistant
 
-Status: draft 2026-10-22.
+Status: approved 2026-10-22 by the maintainer, typed in the session that wrote it ("OK dla SPEC-010, zgoda na odczyt z produkcji"; draft 2026-10-22).
 Source: the maintainer's request (2026-10-22) to let onboarding read the hardware from the person's
 Home Assistant instead of asking for it; SPEC-009 (`recommend`, `onboard-home`); the first outside
 home (Home Assistant Container on a Synology NAS, Tapo sensors, a Naim Uniti Star).
