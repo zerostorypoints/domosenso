@@ -27,7 +27,8 @@ The rest of this page is what the skill does, step by step, for reference.
   `cast` or `dlna_dmr` should work but has not been tried); remote access for an installer; in
   progress (SPEC-011): installing Home Assistant, a `remote-access` component, a probe that measures a
   tablet's screen, and Ramka layouts for screens other than 1100 × 720 CSS px.
-- The repository is private and has no licence yet. Ask before sharing anything from it.
+- The framework is licensed under [Apache-2.0](../LICENSE), including commercial use.
+  Keep your home repository private; the framework license does not require you to publish its configuration.
 
 ## What you need
 

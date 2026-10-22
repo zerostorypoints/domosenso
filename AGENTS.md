@@ -15,7 +15,8 @@ offered separately; nothing commercial lives here.
 - Home Assistant runs as a **Container**: no add-ons (apps). Every service a component needs ships
   as a compose service.
 - Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`. Checks run against these.
-- The repository is private, all rights reserved; licence not chosen yet (Apache-2.0 proposed).
+- Original code and documentation: Apache-2.0, copyright 2026 ZeroStoryPoints GmbH. Preserve
+  LICENSE, NOTICE and third-party notices; dependencies and separately licensed assets keep their terms.
 - Related repositories, not this one: each home's own repository (its config, inputs, staging and
   deploy scripts, and its own `AGENTS.md`), and the website. Work for a home happens in its
   repository; work on the catalog, tools, schemas and the demo home happens here.

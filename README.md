@@ -14,8 +14,10 @@ Your coding agent does the typing; you approve every change.
 The tablet runs in Polish, as it does in the home where these were taken; the pages also come in
 English and German.
 
-The repository is private for now; access is by invitation. All rights reserved — licence not chosen
-yet (Apache-2.0 proposed).
+Licensed under [Apache-2.0](LICENSE). Copyright 2026 ZeroStoryPoints GmbH.
+You may use the framework for personal and commercial projects under that license.
+DomoSenso and ZeroStoryPoints trade names and trademarks are not licensed for branding
+by the code license; see [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Prerequisites
 

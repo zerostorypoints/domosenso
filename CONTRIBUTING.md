@@ -121,3 +121,15 @@ for development) and `npm install` (happy-dom, for `npm test`; node 22 or newer)
 - [docs/pilot-bermuda-presence.md](docs/pilot-bermuda-presence.md): the catalog format tried on one component
 - [docs/2026-10-20-domosenso-demo-staging-i18n-design.md](docs/2026-10-20-domosenso-demo-staging-i18n-design.md): design for the demo, staging and translations
 - [docs/2026-10-20-domosenso-stage1-catalog-foundation.md](docs/2026-10-20-domosenso-stage1-catalog-foundation.md): the stage 1 plan
+
+## License and contributions
+
+Original DomoSenso code and documentation are licensed under [Apache-2.0](LICENSE),
+with copyright 2026 ZeroStoryPoints GmbH. Unless you explicitly state otherwise,
+contributions intentionally submitted for inclusion are provided under the same
+license, as described in section 5. Only submit material you have the right to
+contribute and preserve third-party license and attribution notices.
+
+The code license does not grant rights to use DomoSenso or ZeroStoryPoints trade
+names or trademarks for your own branding. See [NOTICE](NOTICE) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
