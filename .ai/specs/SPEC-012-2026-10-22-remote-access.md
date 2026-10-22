@@ -1,6 +1,7 @@
 # SPEC-012: `remote-access` — Home Assistant from outside the home through a Cloudflare Tunnel
 
-Status: draft 2026-10-22.
+Status: approved 2026-10-22 by the maintainer, typed in the session that wrote it ("OK dla SPEC-012,
+push i PR-y do feature/onboard-v2"; draft 2026-10-22).
 Source: SPEC-011 §2.2 (onboarding v2 names this component); the tunnel that has run in the
 maintainer's home since 2026-09 and its notes in that home's repository (read 2026-10-22; nothing of
 that home is copied here: no host name, address, account or rule value).
