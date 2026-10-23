@@ -384,8 +384,8 @@ FORBIDDEN = [
     )
 ]
 SCANNED = ["components", "devices", "kinds", "scenes", "examples", "tools", "tests", "schemas", "docs", ".ai",
-           "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", ".github"]
-SKIPPED = {"node_modules", "__pycache__", ".venv", ".esphome"}
+           "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", ".github", "website", "SECURITY.md"]
+SKIPPED = {"node_modules", "__pycache__", ".venv", ".esphome", ".next", "out", "test-results", "playwright-report"}
 # The framework's documents may name its author and the first outside user (Ruling 32), as whole
 # words; the name inside a path or a longer word still counts.
 DOC_ALLOWED = re.compile("|".join(["".join(("\\bPio", "tr(?:'s)?\\b")), "\u0141ukasz"]))

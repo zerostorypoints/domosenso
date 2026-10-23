@@ -23,6 +23,7 @@ step() {  # $1 = label, rest = command
 
 step agents_check uv run tools/agents_check.py
 step pytest uv run pytest -q
+step "website content" uv run tools/export_website.py --check
 step "npm test" npm test --silent
 step "catalog_check --strict" uv run tools/catalog_check.py --strict
 for manifest in components/*/component.yaml; do
