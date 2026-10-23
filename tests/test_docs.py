@@ -33,6 +33,17 @@ def test_readme_images_have_no_metadata():
             assert not leaked, f"{path.name}: metadata {sorted(leaked)}"
 
 
+def test_journal_photos_are_exact_copies_of_approved_readme_images():
+    journal = ROOT / "website" / "public" / "journal"
+    approved = {
+        "installation-001.jpg": "ramka-now-playing.jpg",
+        "ramka-air.jpg": "ramka-air.jpg",
+    }
+    assert {p.name for p in journal.iterdir() if p.is_file()} == set(approved)
+    for target, source in approved.items():
+        assert (journal / target).read_bytes() == (ROOT / ".github" / "readme" / source).read_bytes()
+
+
 def test_metadata_guard_catches_png_text(tmp_path):
     from PIL.PngImagePlugin import PngInfo
     meta = PngInfo()
@@ -95,3 +106,24 @@ def test_readme_tested_homes_line_matches_manifests():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     if untested:
         assert "Every component runs in one home so far" not in readme
+
+
+def test_public_release_license_covers_selected_component_snapshots():
+    import json
+    selection = json.loads((ROOT / 'website/content/publication.json').read_text())
+    grant = (ROOT / 'docs/licensing.md').read_text()
+    assert 'Apache-2.0' in grant and 'ZeroStoryPoints GmbH' in grant
+    for component in selection['components']:
+        assert component['commit'] in grant
+        assert component['tag'] in grant
+
+
+def test_onboarding_discloses_unreleased_remote_access_and_current_ramka():
+    guide = (ROOT / 'docs/getting-started.md').read_text()
+    skill = (ROOT / '.ai/skills/onboard-home/SKILL.md').read_text()
+    assert 'Every component is tested in that one home only' not in guide
+    assert 'in progress (SPEC-011)' not in guide
+    assert 'no published component tag' in guide
+    assert 'ramka/0.2.0' in guide
+    assert 'tested-homes unknown' not in skill
+    assert 'reaches `recommend` once it is tagged' not in skill

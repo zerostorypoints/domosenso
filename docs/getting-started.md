@@ -1,6 +1,6 @@
 # Getting started: your own home on Domosenso
 
-For a first outside home.
+Build a separate Home Assistant project from the shared component catalog.
 
 ## Start here: `/onboard-home`
 
@@ -16,27 +16,37 @@ type yes. From an empty directory instead: tell the agent to read
 
 The rest of this page is what the skill does, step by step, for reference.
 
-## Where things stand (2026-10-22)
+## Release status (2026-10-23)
 
-- One home runs fully on the catalog since 2026-10-22: seven components, deployed and checked with the
-  `domosenso` command. Every component is tested in that one home only.
-- Home Assistant runs as a **Container** (Docker), no add-ons or apps. Tested on 2026.9.2.
-- Not there yet: an installable staging Home Assistant with scene simulation for a home without
-  hardware (planned, "stage 2"); a written contract for the Ramka's music player (it is tested with a
-  Hegel amplifier through `hegel_streaming`; another `media_player` such as a Naim streamer through
-  `cast` or `dlna_dmr` should work but has not been tried); remote access for an installer; in
-  progress (SPEC-011): installing Home Assistant, a `remote-access` component, a probe that measures a
-  tablet's screen, and Ramka layouts for screens other than 1100 × 720 CSS px.
-- The framework is licensed under [Apache-2.0](../LICENSE), including commercial use.
-  Keep your home repository private; the framework license does not require you to publish its configuration.
+- The selected released components have field evidence from one personal installation. This is
+  an early-stage framework, not a record of completed customer projects. Check each manifest's
+  `tested.homes`; an unknown count and zero tested homes mean different things.
+- The supported onboarding path is **Home Assistant Container** on a Docker host reached over
+  key-based SSH. Home Assistant 2026.9.2 is the checked baseline. The existing-installation path
+  has been used on a Synology NAS; other hosts need validation. HAOS is not supported.
+- Ramka's published `ramka/0.2.0` release supports optional climate, air, plants and photo pages.
+  Its one tested layout covers 1024–1280 × 720–800 CSS px in landscape. The manifest contains
+  `media_player_contract`; the documented audio integration was tested with Hegel H400 through
+  `hegel_streaming`. Other players need their own contract and behavior checks.
+- The host-installation path, tablet probe and HTTP proxy tools exist and have local-container
+  checks. This does not establish field validation on every host or tablet. There is no
+  installable scene-simulation staging environment for a new home yet.
+- `remote-access` is development work: it has **no published component tag** and its manifest
+  records zero tested homes as packaged. It is not included in the released website catalog.
+  Do not present it as an installable release or automatically add it during onboarding.
+- The framework is licensed under [Apache-2.0](../LICENSE), including commercial use. See the
+  [license scope for historical releases](licensing.md). Keep your home repository private;
+  the framework license does not require you to publish its configuration.
 
 ## What you need
 
 - A Home Assistant Container you can reach over SSH with `docker` (a Synology NAS works), a
   long-lived access token from your HA profile, saved in a file outside any repository.
-- On your computer: `git`, [`uv`](https://docs.astral.sh/uv/), Docker (for the checks).
-- This repository cloned, with its tags: `gh repo clone zerostorypoints/domosenso`, then `uv sync`
-  in it (the command reads components only from tags such as `ramka/0.1.1`). You only read from
+- On your computer: `git`, [`uv`](https://docs.astral.sh/uv/), `ssh` and your coding agent.
+  Docker is needed on the Home Assistant host; local Docker is needed for framework checks,
+  not for the normal onboarding path.
+- This repository cloned, with its tags: `git clone https://github.com/zerostorypoints/domosenso.git`, then `uv sync`
+  in it (the command reads components only from tags such as `ramka/0.2.0`). You only read from
   this clone; a change to the catalog is a pull request from your fork (CONTRIBUTING.md).
 
 ## The components
@@ -45,7 +55,6 @@ The rest of this page is what the skill does, step by step, for reference.
 |---|---|---|
 | `ramka` | an Android wall tablet with the HA Companion app, presence (a radar or Bermuda) | the wall-tablet dashboard: clock, weather, climate, air, plants, photos, calendar, controls |
 | `backup` | — | nightly backups with retention, backup sensors, an alert when backups stop |
-| `remote-access` | a Cloudflare account with a domain | Home Assistant from anywhere through a Cloudflare Tunnel, no open port |
 | `climate-air` | temperature/humidity sensors per room, a `weather` entity | indoor averages and extremes, outside figures, most humid room, lowest battery |
 | `bermuda-presence` | ESPHome BLE proxies (M5Stack Atom Lite) and the Bermuda integration | which room each phone is in |
 | `plants` | Mi Flora sensors | plant entities, water reminder, silent-sensor alert |
@@ -138,4 +147,5 @@ repository for everyday work; it may read your Home Assistant freely and asks be
 
 A component you change or add goes back as a pull request to this repository: spec first for a new
 component (`.ai/specs/`, skill `write-component-spec`), `tools/check-all.sh` green, nothing from your
-household in the catalog (inputs carry it). A component tested in your home becomes "tested in 2 homes".
+household in the catalog (inputs carry it). A verified test in another home can support updating that component’s recorded field evidence.
+It does not change the counts for unrelated components.
