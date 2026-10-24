@@ -7,9 +7,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test components/ tools/"
+    "test": "node --test 'components/**/*.test.mjs' 'tools/**/*.test.mjs'"
   },
   "devDependencies": {
     "happy-dom": "^20.0.0"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "ZeroStoryPoints GmbH"
 }

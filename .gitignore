@@ -7,3 +7,16 @@ __pycache__/
 .DS_Store
 .claude/settings.local.json
 *.egg-info/
+
+node_modules
+website/.next/
+website/out/
+website/test-results/
+website/playwright-report/
+website/next-env.d.ts
+website/tsconfig.tsbuildinfo
+
+# Local hosting credentials and build settings
+.env*
+!.env.example
+.wrangler/

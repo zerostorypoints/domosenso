@@ -1,0 +1,35 @@
+name: Framework website
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+        working-directory: .
+      - run: uv run tools/export_website.py --check --verify-remote
+        working-directory: .
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e

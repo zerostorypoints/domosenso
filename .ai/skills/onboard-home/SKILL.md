@@ -59,7 +59,7 @@ One short question at a time, with a default where there is one.
    | browser at home | `http://<host>:8123` | works |
    | Companion app (Android, iOS) at home | the app, the URL as its internal URL | works; the Ramka runs on the Android app |
    | remote: Nabu Casa cloud | a subscription, set up in HA's UI | should work with a Container; not tried here |
-   | remote: Cloudflare Tunnel | a domain on Cloudflare, `cloudflared` as a compose service, Home Assistant trusting the proxy | the `remote-access` component (its README: the Cloudflare steps, then `domosenso http`) |
+   | remote: Cloudflare Tunnel | a domain on Cloudflare, `cloudflared` as a compose service, Home Assistant trusting the proxy | development only: `remote-access` has no published tag and zero packaged-home tests; do not add it as a released component |
    | remote: VPN (Tailscale, WireGuard) | an agent on the host and on every phone | not in the catalog |
    | port forwarding on the router | — | advise against it |
 
@@ -372,18 +372,19 @@ domosenso verify production --baseline .domosenso/snap/before-backup.json
 went unavailable, no new configuration error in the log. The next morning, `verify ... --day-after`
 and `sensor.newest_backup_age` below 24 show the first nightly backup ran.
 
-## Not ready (as of 2026-10-22)
+## Release limits (as of 2026-10-23)
 
-- Every component and device is tested in one home, the maintainer's; `ramka`'s manifest does not
-  record it (`tested-homes unknown`). Their home would be the second.
+- Read each selected manifest's field evidence. Released website entries, including `ramka/0.2.0`,
+  record one home; `remote-access` records zero and has no published component tag. Never replace
+  missing evidence with a count or claim every component/device has been field-tested.
 - No staging for a new home yet (an installable staging Home Assistant with scene simulation is
   planned): changes go to production after `--plan`, with `snapshot`, `verify` and `rollback`.
 - Installing Home Assistant (section 1.1) is tried on a local container, not yet on a Synology or a
   mini PC. `remote-access` is tested in no home as packaged (the maintainer's tunnel was set up by
   hand); `domosenso http` is tried on a local Home Assistant.
 - The Ramka: one tested layout (1024–1280 × 720–800 CSS px, landscape); portrait or a phone needs
-  a new one. The probe is tried on a local Home Assistant, not yet on a real tablet. ramka 0.2.0
-  (optional pages, `screen`) reaches `recommend` once it is tagged. Its music player
+  a new one. The probe is tried on a local Home Assistant, not yet on a real tablet. `ramka/0.2.0` is published
+  and includes optional pages and the `screen` input. Its music player
   contract is tested with a Hegel through `hegel_streaming`; another `media_player` (a Naim through
   `cast` or `dlna_dmr`) should work and has not been tried.
 - `calendar`, `media` and `weather` install nothing.

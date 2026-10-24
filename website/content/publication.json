@@ -1,0 +1,127 @@
+{
+  "frameworkCommit": "817f8de4eebce9563b385294376e6b751c01ef9f",
+  "components": [
+    {
+      "id": "awnings",
+      "version": "0.2.0",
+      "tag": "awnings/0.2.0",
+      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "backup",
+      "version": "0.1.0",
+      "tag": "backup/0.1.0",
+      "commit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "bermuda-presence",
+      "version": "0.2.0",
+      "tag": "bermuda-presence/0.2.0",
+      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "calendar",
+      "version": "0.1.0",
+      "tag": "calendar/0.1.0",
+      "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "climate-air",
+      "version": "0.2.0",
+      "tag": "climate-air/0.2.0",
+      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "lights",
+      "version": "0.2.0",
+      "tag": "lights/0.2.0",
+      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "media",
+      "version": "0.1.0",
+      "tag": "media/0.1.0",
+      "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "plants",
+      "version": "0.2.0",
+      "tag": "plants/0.2.0",
+      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "ramka",
+      "version": "0.2.0",
+      "tag": "ramka/0.2.0",
+      "commit": "0345fba394a40f666fd038c4dd6f6fa49173311d",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    },
+    {
+      "id": "weather",
+      "version": "0.1.0",
+      "tag": "weather/0.1.0",
+      "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "limitations": [
+        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "path": "docs/getting-started.md",
+      "slug": "getting-started",
+      "title": "Getting started"
+    },
+    {
+      "path": "docs/COMPATIBILITY.md",
+      "slug": "compatibility",
+      "title": "Compatibility and ownership"
+    },
+    {
+      "path": "docs/UPGRADE_NOTES.md",
+      "slug": "upgrades",
+      "title": "Upgrade notes"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "slug": "contributing",
+      "title": "Contributing"
+    },
+    {
+      "path": "docs/integrate-a-device.md",
+      "slug": "integrate-a-device",
+      "title": "Integrate a device"
+    },
+    {
+      "path": "docs/licensing.md",
+      "slug": "licensing",
+      "title": "License and historical releases"
+    }
+  ]
+}

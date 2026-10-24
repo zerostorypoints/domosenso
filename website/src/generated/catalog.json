@@ -1,0 +1,936 @@
+{
+  "frameworkCommit": "817f8de4eebce9563b385294376e6b751c01ef9f",
+  "components": [
+    {
+      "id": "awnings",
+      "version": "0.2.0",
+      "sourceTag": "awnings/0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "summary": "Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor",
+      "requirements": [
+        {
+          "kind": "rts-awning",
+          "brand": "Somfy",
+          "protocol": "Somfy RTS, 433 MHz",
+          "note": "each awning is paired to the node as one more virtual remote; a Telis handset keeps working and the node follows it"
+        },
+        {
+          "kind": "esp32-board",
+          "recommend": [
+            "m5stack-atom-lite"
+          ],
+          "count": 1,
+          "note": "runs ESPSomfy-RTS firmware, not ESPHome, so it is not a Bluetooth proxy; a second board is needed for those"
+        },
+        {
+          "kind": "radio-transceiver",
+          "recommend": [
+            "cc1101"
+          ],
+          "note": "the module's band has to match the awnings (433.42 MHz for Somfy RTS in Europe); wired to the board over SPI"
+        },
+        {
+          "kind": "mqtt-broker",
+          "note": "the home provides it (Mosquitto, for example); the node and the frame bridge publish to it"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "mqtt",
+          "source": "core",
+          "setup": "an MQTT broker (Mosquitto); the node publishes under its own root topic"
+        },
+        {
+          "name": "espsomfy-rts",
+          "source": "firmware",
+          "repo": "rstrouse/ESPSomfy-RTS",
+          "tested": "2.4.6",
+          "setup": "flashed over USB, then Wi-Fi and the radio pins in its web page; pair each awning from its own virtual remote"
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "covers",
+          "type": "list[{name, shade_id, entity_id?}]",
+          "required": true
+        },
+        {
+          "name": "mqtt_root_topic",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "wind_sensor",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "node",
+          "type": "{name?, model?, area?, url?}",
+          "required": false
+        },
+        {
+          "name": "wind_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "wind_off_delay",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "wind_last_heard",
+          "type": "{id, name}",
+          "required": false
+        },
+        {
+          "name": "wind_silent_hours",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "wind_check_time",
+          "type": "HH:MM:SS",
+          "required": false
+        },
+        {
+          "name": "retract_at_sunset",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "notify",
+          "type": "action",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/awnings",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/awnings/UPGRADE.md"
+    },
+    {
+      "id": "backup",
+      "version": "0.1.0",
+      "sourceTag": "backup/0.1.0",
+      "sourceCommit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+      "summary": "Nightly full backup, catch-up after a start, rolling retention, backup sensors and a stale alert",
+      "requirements": [],
+      "integrations": [
+        {
+          "name": "backup",
+          "source": "core",
+          "setup": "nothing; leave Home Assistant's own automatic backup schedule off, this component replaces it"
+        },
+        {
+          "name": "command_line",
+          "source": "core"
+        },
+        {
+          "name": "shell_command",
+          "source": "core"
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "time",
+          "type": "HH:MM:SS",
+          "required": false
+        },
+        {
+          "name": "catch_up_hours",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "keep_daily",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "keep_weekly",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "stale_hours",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "notify",
+          "type": "action",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/04d337cbd812e62abd9f6bb4f16b8db61179c2be/components/backup",
+      "upgradeUrl": null
+    },
+    {
+      "id": "bermuda-presence",
+      "version": "0.2.0",
+      "sourceTag": "bermuda-presence/0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "summary": "Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda",
+      "requirements": [
+        {
+          "kind": "ble-proxy",
+          "recommend": [
+            "m5stack-atom-lite"
+          ],
+          "count": "1 per room",
+          "power": "5 V USB, plain supply"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "esphome",
+          "source": "core"
+        },
+        {
+          "name": "private_ble_device",
+          "source": "core",
+          "setup": "one entry per Apple device, IRK from the macOS keychain or a capture node"
+        },
+        {
+          "name": "bermuda",
+          "source": "hacs",
+          "repo": "agittins/bermuda",
+          "tested": "0.8.7"
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [
+        "2026.9.1"
+      ],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "rooms",
+          "type": "list[area_name]",
+          "required": true
+        },
+        {
+          "name": "phones",
+          "type": "map[entity_id, name]",
+          "required": true
+        },
+        {
+          "name": "tablets",
+          "type": "map[entity_id, name]",
+          "required": false
+        },
+        {
+          "name": "proxies",
+          "type": "list[{room: slug, area: area_name, radar: bool}]",
+          "required": true
+        },
+        {
+          "name": "offline_notify",
+          "type": "action",
+          "required": true
+        },
+        {
+          "name": "minutes",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "room_ids",
+          "type": "map[area_name, slug]",
+          "required": false
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/bermuda-presence",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/bermuda-presence/UPGRADE.md"
+    },
+    {
+      "id": "calendar",
+      "version": "0.1.0",
+      "sourceTag": "calendar/0.1.0",
+      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "summary": "Calendar events from a CalDAV server, for example iCloud",
+      "requirements": [],
+      "integrations": [
+        {
+          "name": "caldav",
+          "source": "core",
+          "setup": "the server's URL, a user name and an app-specific password (iCloud: created in the Apple account's security settings)"
+        }
+      ],
+      "installationRole": "describes",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": false,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "calendar",
+          "type": "entity_id | list[entity_id]",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/calendar",
+      "upgradeUrl": null
+    },
+    {
+      "id": "climate-air",
+      "version": "0.2.0",
+      "sourceTag": "climate-air/0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air",
+      "requirements": [
+        {
+          "kind": "temperature-humidity-sensor",
+          "recommend": [
+            "tapo-t315"
+          ],
+          "count": "1 per room",
+          "via": "a Tapo hub (tested: H200), which the sensors report to"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "tplink",
+          "source": "core",
+          "setup": "the TP-Link account entered in Home Assistant's UI; the hub is polled on the home network. Reserve the hub's address in the router"
+        },
+        {
+          "name": "ruuvitag_ble",
+          "source": "core",
+          "setup": "discovered through a Bluetooth proxy; enable the air-quality score entity by hand, it is off by default"
+        },
+        {
+          "name": "group",
+          "source": "core"
+        },
+        {
+          "name": "template",
+          "source": "core"
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": false,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "climate",
+          "type": "list[{label, temperature, humidity?, indoor?, bathroom?, battery?}]",
+          "required": true
+        },
+        {
+          "name": "air",
+          "type": "{score?, co2?, pm2_5?, voc?, nox?}",
+          "required": true
+        },
+        {
+          "name": "outside",
+          "type": "{temperature, humidity?}",
+          "required": false
+        },
+        {
+          "name": "outside_weather",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "bathroom_humidity",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air/UPGRADE.md"
+    },
+    {
+      "id": "lights",
+      "version": "0.2.0",
+      "sourceTag": "lights/0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "summary": "Philips Hue lights per room, from the bridge's room groups",
+      "requirements": [
+        {
+          "kind": "hue-bridge",
+          "recommend": [
+            "hue-bridge"
+          ],
+          "count": 1
+        }
+      ],
+      "integrations": [
+        {
+          "name": "hue",
+          "source": "core",
+          "setup": "press the button on the bridge when Home Assistant asks; it then talks to the bridge on the home network"
+        },
+        {
+          "name": "template",
+          "source": "core"
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "lights",
+          "type": "list[{entity, label}]",
+          "required": true
+        },
+        {
+          "name": "lights_all_off",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "rooms",
+          "type": "list[{group, name, id?}]",
+          "required": false
+        },
+        {
+          "name": "battery_sensors",
+          "type": "list[entity_id]",
+          "required": false
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/lights",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/lights/UPGRADE.md"
+    },
+    {
+      "id": "media",
+      "version": "0.1.0",
+      "sourceTag": "media/0.1.0",
+      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "summary": "A network audio player as a media_player; tested with the Hegel H400 through hegel_streaming",
+      "requirements": [
+        {
+          "kind": "network-audio-player",
+          "recommend": [
+            "hegel-h400"
+          ],
+          "count": 1,
+          "note": "anything that shows up as a media_player and meets the Ramka's contract"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "hegel_streaming",
+          "source": "hacs",
+          "repo": "zerostorypoints/hegel-home-assistant",
+          "tested": "0.1.7",
+          "setup": "found on the home network by its web API; no account"
+        }
+      ],
+      "installationRole": "describes",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "media_player",
+          "type": "entity_id",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/media",
+      "upgradeUrl": null
+    },
+    {
+      "id": "plants",
+      "version": "0.2.0",
+      "sourceTag": "plants/0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
+      "requirements": [
+        {
+          "kind": "plant-sensor",
+          "recommend": [
+            "mi-flora"
+          ],
+          "count": "1 per plant"
+        },
+        {
+          "kind": "ble-proxy",
+          "recommend": [
+            "m5stack-atom-lite"
+          ],
+          "via": "bermuda-presence"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "xiaomi_ble",
+          "source": "core",
+          "setup": "discovers the sensors on its own once a proxy hears them"
+        },
+        {
+          "name": "plant",
+          "source": "core",
+          "setup": "one plant entity per sensor, with the thresholds in YAML; a change needs a Home Assistant restart"
+        },
+        {
+          "name": "statistics",
+          "source": "core"
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "plants",
+          "type": "list[{entity: plant.*, label, name?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
+          "required": true
+        },
+        {
+          "name": "plant_defaults",
+          "type": "map",
+          "required": false
+        },
+        {
+          "name": "notify",
+          "type": "action",
+          "required": true
+        },
+        {
+          "name": "notify_from",
+          "type": "HH:MM:SS",
+          "required": false
+        },
+        {
+          "name": "notify_until",
+          "type": "HH:MM:SS",
+          "required": false
+        },
+        {
+          "name": "dry_for",
+          "type": "HH:MM:SS",
+          "required": false
+        },
+        {
+          "name": "silent_hours",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/plants/UPGRADE.md"
+    },
+    {
+      "id": "ramka",
+      "version": "0.2.0",
+      "sourceTag": "ramka/0.2.0",
+      "sourceCommit": "0345fba394a40f666fd038c4dd6f6fa49173311d",
+      "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
+      "requirements": [
+        {
+          "kind": "android-tablet",
+          "recommend": [
+            "tcl-9469x"
+          ],
+          "app": "Home Assistant Companion (notification commands, light sensor, battery sensors, app importance)",
+          "count": 1
+        },
+        {
+          "kind": "mmwave-radar",
+          "recommend": [
+            "hlk-ld2410c"
+          ],
+          "via": "bermuda-presence, feature radar (presence + detection distance)"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "mobile_app",
+          "source": "core",
+          "setup": "the tablet signed in to the Companion app"
+        },
+        {
+          "name": "template",
+          "source": "core"
+        },
+        {
+          "name": "folder",
+          "source": "core",
+          "setup": "photo_dir in homeassistant.allowlist_external_dirs"
+        },
+        {
+          "name": "shell_command",
+          "source": "core"
+        },
+        {
+          "name": "kiosk-mode",
+          "source": "hacs",
+          "repo": "NemesisRE/kiosk-mode",
+          "kind": "frontend",
+          "optional": true
+        }
+      ],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "prefix",
+          "type": "slug",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "radar",
+          "type": "{presence: binary_sensor, distance: sensor}",
+          "required": true
+        },
+        {
+          "name": "media_player",
+          "type": "entity_id",
+          "required": true
+        },
+        {
+          "name": "media_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "media_turn_on_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "media_icon",
+          "type": "icon",
+          "required": false
+        },
+        {
+          "name": "media_service_sensor",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "media_service_no_skip",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "media_quality_sensor",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "media_source_sensor",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "media_details",
+          "type": "list[entity_id]",
+          "required": false
+        },
+        {
+          "name": "mains",
+          "type": "{power: sensor, voltage: sensor}",
+          "required": false
+        },
+        {
+          "name": "covers",
+          "type": "list[{entity, label, room?, status_label?, icon?}]",
+          "required": false
+        },
+        {
+          "name": "wind_sensor",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "lights",
+          "type": "list[{entity, label, room?}]",
+          "required": false
+        },
+        {
+          "name": "lights_all_off",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "climate",
+          "type": "list[{label, temperature, humidity?, color?, room?}]",
+          "required": false
+        },
+        {
+          "name": "outside",
+          "type": "{temperature, humidity?, color?}",
+          "required": false
+        },
+        {
+          "name": "rooms_columns",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "air",
+          "type": "{score?, co2?, pm2_5?, voc?, nox?}",
+          "required": false
+        },
+        {
+          "name": "pressure",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "plants",
+          "type": "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]",
+          "required": false
+        },
+        {
+          "name": "plant_defaults",
+          "type": "map",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "{contacts?: list[{entity, label, icon?}], power?: list[{entity, label, icon?}], locks?: list[{entity, label, icon?}]}",
+          "required": false
+        },
+        {
+          "name": "status_columns",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "weather",
+          "type": "entity_id",
+          "required": true
+        },
+        {
+          "name": "calendar",
+          "type": "entity_id | list[entity_id]",
+          "required": true
+        },
+        {
+          "name": "photo_dir",
+          "type": "path",
+          "required": false
+        },
+        {
+          "name": "tablet_device",
+          "type": "{notify: notify.mobile_app_*, sensors: slug}",
+          "required": true
+        },
+        {
+          "name": "alert_notify",
+          "type": "action",
+          "required": false
+        },
+        {
+          "name": "alert_title",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "kiosk_user",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "dashboard_path",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "exit_left",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "ha_url",
+          "type": "url",
+          "required": false
+        },
+        {
+          "name": "screen",
+          "type": "{width: int, height: int}",
+          "required": false
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/0345fba394a40f666fd038c4dd6f6fa49173311d/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/0345fba394a40f666fd038c4dd6f6fa49173311d/components/ramka/UPGRADE.md"
+    },
+    {
+      "id": "weather",
+      "version": "0.1.0",
+      "sourceTag": "weather/0.1.0",
+      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "summary": "Current weather and forecast from the Norwegian Meteorological Institute (Met.no)",
+      "requirements": [],
+      "integrations": [
+        {
+          "name": "met",
+          "source": "core",
+          "setup": "the home's location from Home Assistant's own settings; no account or key"
+        }
+      ],
+      "installationRole": "describes",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": false,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "weather",
+          "type": "entity_id",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/weather",
+      "upgradeUrl": null
+    }
+  ]
+}

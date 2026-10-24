@@ -17,7 +17,8 @@
 # automation-blueprint instance only as a log line ("Blueprint ... generated invalid automation"),
 # with exit code 0 even under --fail-on-warnings (HA 2026.9.2). Those lines are counted by
 # tools/check_config_parse.py, which `domosenso deploy` uses too.
-set -uo pipefail
+set -euo pipefail
+shopt -s nullglob
 COMP=${1:?component id}
 HA_VERSION=${HA_VERSION:-2026.9.2}
 ROOT=$(pwd)

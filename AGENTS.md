@@ -15,9 +15,11 @@ offered separately; nothing commercial lives here.
 - Home Assistant runs as a **Container**: no add-ons (apps). Every service a component needs ships
   as a compose service.
 - Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`. Checks run against these.
-- The repository is private, all rights reserved; licence not chosen yet (Apache-2.0 proposed).
+- Original code and documentation: Apache-2.0, copyright 2026 ZeroStoryPoints GmbH. Preserve
+  LICENSE, NOTICE and third-party notices; dependencies and separately licensed assets keep their terms.
+- The English framework website lives in `website/` and deploys separately to Cloudflare Pages.
 - Related repositories, not this one: each home's own repository (its config, inputs, staging and
-  deploy scripts, and its own `AGENTS.md`), and the website. Work for a home happens in its
+  deploy scripts, and its own `AGENTS.md`), and the commercial website. Work for a home happens in its
   repository; work on the catalog, tools, schemas and the demo home happens here.
 
 Background documents, read before larger changes:
@@ -205,7 +207,9 @@ entity ids, IP or MAC addresses, account names, tokens, photos, calendars or flo
 use the fictional demo home: Alex and Sam; Living room, Dining, Kitchen, Office, Bedroom, Kids' room,
 Hall; prefix `ramka`. A real home lives in its own repository. The one exception: the photos in
 `.github/readme/` are the maintainer's own wall tablet, chosen by him, cropped, with every metadata
-field removed (`tests/test_docs.py` checks it); nothing else from a real home.
+field removed (`tests/test_docs.py` checks it). The installation journal also uses byte-identical
+copies of `ramka-now-playing.jpg` and `ramka-air.jpg` under `website/public/journal/`; the same test
+guards these copies. Nothing else from a real home.
 
 `tests/test_catalog_content.py::test_privacy` scans `components/`, `devices/`, `kinds/`, `scenes/`,
 `examples/`, `tools/`, `tests/`, `schemas/`, `docs/`, `.ai/`, `.github/`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md` and
