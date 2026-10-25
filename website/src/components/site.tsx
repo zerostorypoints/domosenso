@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {componentName,evidenceLabel,type Component,repository} from '@/lib/catalog';
 import {MobileNav} from './mobile-nav';
+import {validMeasurementId} from '@/lib/analytics-consent';
 
 export function Arrow() { return <span aria-hidden="true">↗</span>; }
 
@@ -37,6 +38,7 @@ export function Footer() {
       <Link href="/professional-services/">Professional services</Link>
       <a href={repository+'/blob/main/SECURITY.md'}>Security</a>
       <Link href="/docs/licensing/">Apache-2.0 license</Link>
+      {validMeasurementId(process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID)&&<button type="button" className="analytics-settings" data-analytics-settings>Analytics settings</button>}
     </nav>
     <div className="footer-bottom"><span>Maintained by <a href="https://zerostorypoints.com/">ZeroStoryPoints GmbH</a> · © 2026</span><span>Built for Home Assistant. Independently developed.</span></div>
   </footer>;

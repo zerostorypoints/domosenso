@@ -13,7 +13,7 @@ npm ci
 npm run lint
 npm run typecheck
 npm test -- --runInBand
-npm run build
+NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-DOMOTEST01 npm run build
 npx playwright install chromium
 npm run e2e
 ```
@@ -147,3 +147,21 @@ Merge the release PR with a merge commit that preserves its commits. The curated
 deleting the branch would not preserve that commit as an ancestor of `main`.
 If the merge method changes, select and regenerate content from an immutable
 revision that will remain publicly reachable before publishing the website.
+
+## Optional analytics and webmaster verification
+
+Production may set `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` to its own GA4 web-stream ID
+and `NEXT_PUBLIC_BING_SITE_VERIFICATION` to its own Bing ownership token. These
+are public build-time identifiers, not secrets. Leave both unset in forks and
+previews; never inherit the maintainer's analytics property. See `.env.example`.
+
+The tag is loaded only after explicit consent. Visitors can decline or revoke
+through Analytics settings in the footer. Stored choices expire after 180 days;
+advertising consent and Google signals remain off. Page and referrer URLs omit
+query strings and fragments. Enhanced measurement is disabled in the production
+GA4 stream so automatically captured interactions do not bypass that policy.
+
+For analytics browser checks, build with the fake ID `G-DOMOTEST01` (as CI does).
+Tests intercept the tag request; no test traffic goes to a production property.
+A GA4 property and Search Console association are configured in their provider
+panels; a successful build alone does not establish that analytics receives data.
