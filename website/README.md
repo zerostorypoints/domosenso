@@ -44,8 +44,9 @@ Production branch: `main`. Root directory: `website`. Build command: `npm run bu
 Output directory: `out`. Set `NODE_VERSION=22`. The project is not provisioned by
 this document. Verify account, GitHub access, DNS and TLS independently.
 
-Watch `website/**` for builds; catalog and documentation changes must update the
-committed snapshots through the exporter checks. Pull requests must not receive
+Watch `website/*` for builds; Cloudflare’s single wildcard also matches nested
+paths. Catalog and documentation changes must update the committed snapshots
+through the exporter checks. Pull requests must not receive
 deployment credentials. Keep previews private until repository publication.
 Branch previews set `CF_PAGES_BRANCH`; non-main builds emit `noindex` metadata.
 Also verify Cloudflare's preview `X-Robots-Tag` behavior and redirect the production
@@ -79,7 +80,7 @@ production deployment is public on `pages.dev` even before adding a custom domai
 | Build command | `npm run build` |
 | Build output directory | `out` |
 | Environment variable | `NODE_VERSION=22` in production and preview |
-| Build watch include | `website/**` |
+| Build watch include | `website/*` |
 | Preview deployments | Disabled initially; enable only with an Access policy |
 | Runtime bindings / secrets | None |
 
