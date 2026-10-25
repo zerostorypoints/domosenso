@@ -63,7 +63,7 @@ export function Analytics({measurementId}:{measurementId?:string}){
    </details>
   </div>
   <div className="analytics-consent-actions">
-   <button type="button" className="analytics-choice" onClick={()=>choose('denied')}>Decline</button>
+   <button type="button" className="analytics-choice analytics-choice-neutral" onClick={()=>choose('denied')}>Decline</button>
    <button type="button" className="analytics-choice" onClick={()=>choose('granted')}>Allow analytics</button>
    {preferencesOpen&&choice!==null&&<button type="button" className="analytics-close" onClick={()=>setPreferencesOpen(false)}>Close</button>}
   </div>
