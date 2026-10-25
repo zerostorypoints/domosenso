@@ -31,5 +31,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test -- --runInBand
       - run: npm run build
+        env:
+          NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: G-DOMOTEST01
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
