@@ -308,6 +308,12 @@ the script after adding, renaming or removing a skill.
 | `write-component-spec` | write a spec in `.ai/specs/` and stop for approval |
 | `render-and-stage` | render a component into a home repository, install it, check it, try it on staging |
 
+## Cookie consent button style
+
+- On domosenso.org and domosenso.com/domosenso.ch, acceptance is the primary button: use a filled background in the site's primary action colour and contrasting text.
+- Refusal is a neutral secondary button: use a transparent or neutral background, readable dark text and a subtle border. Do not give it the same filled emphasis as acceptance.
+- Keep both choices enabled, clearly labelled, keyboard accessible and easy to click, with visible hover and focus states. Apply this hierarchy in every language, on desktop and mobile, and when reopening consent settings. Styling must not change consent behaviour.
+
 ## Conventions
 
 - Text in this repository is English; commit messages say what changed, in the style of `git log`.
