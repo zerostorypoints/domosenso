@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.2.2 (2026-10-26): the pages fit under Home Assistant's header
+
+The cards take their height from the screen (`calc(100dvh - …)`), which assumed the tablet's kiosk
+view with no header. Opened in a browser, the Home Assistant header (56 px) stays, so every page
+ran 56 px past the bottom of the window. The heights now subtract the header when it is shown:
+`var(--kiosk-header-height, var(--header-height, 0px))`, which kiosk-mode sets to 0px where it hides
+the header.
+
+### What a home does
+
+Nothing is required. On a tablet in kiosk mode the dashboards render as in 0.2.1. Updating moves
+the cards to `www/domosenso/ramka/0.2.2/` and the twelve resource URLs with them (`domosenso update
+ramka` and a deploy do both).
+
 ## 0.2.1 (2026-10-26): the cards fit a browser window
 
 The rooms, air, plants and status cards sized their type by the card's height alone. In a window

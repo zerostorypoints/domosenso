@@ -369,8 +369,9 @@ def test_a_screen_no_tested_layout_fits_fails(tmp_path, screen):
         render(tmp_path, inputs)
 
 
-def test_without_screen_and_with_every_page_0_2_0_renders_as_0_1_2(tmp_path):
-    """The 0.2.0 promise: a home that changes nothing gets the same files (UPGRADE.md)."""
+def test_without_screen_and_with_every_page_renders_as_0_1_2_but_for_the_header(tmp_path):
+    """The 0.2.0 promise: a home that changes nothing gets the same files (UPGRADE.md), except
+    that since 0.2.2 the screen-high cards subtract the header when one is shown."""
     import subprocess
 
     if subprocess.run(["git", "-C", str(REPO), "rev-parse", "-q", "--verify", "refs/tags/ramka/0.1.2"],
@@ -386,8 +387,19 @@ def test_without_screen_and_with_every_page_0_2_0_renders_as_0_1_2(tmp_path):
     dr.render_component(COMP, demo_inputs(), after)
     names = sorted(p.name for p in before.iterdir())
     assert names == sorted(p.name for p in after.iterdir())
+    header = "var(--kiosk-header-height, var(--header-height, 0px)) - "
     for name in names:
-        assert (before / name).read_bytes() == (after / name).read_bytes(), name
+        a, b = (before / name).read_text(), (after / name).read_text()
+        if not name.startswith("dashboard."):
+            assert a == b, name
+            continue
+        # Line by line: a height gains the header term, a comment may say so; nothing else moves.
+        b_lines = [line.replace(header, "") for line in b.splitlines()]
+        a_lines = a.splitlines()
+        assert len(a_lines) + 2 == len(b_lines), name  # the dvh comment grows by two lines
+        assert b.count(header) == 6, name
+        assert [l for l in a_lines if not l.lstrip().startswith("#")] == \
+               [l for l in b_lines if not l.lstrip().startswith("#")], name
 
 
 def test_without_photo_dir_nothing_of_the_photos_is_rendered(tmp_path):
