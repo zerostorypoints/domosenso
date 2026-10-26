@@ -245,7 +245,13 @@ what the Ramka needs: its one tested layout fits 1024–1280 × 720–800 CSS px
 viewport into the `screen` input; rendering fails for a size no tested layout fits — a new layout is
 catalog work, tested on staging at that size first); `webview` below 123 or `json-modules no` means the cards will not load (the
 Android System WebView needs an update, which old Android versions no longer get); `user admin`
-means the tablet is signed in as an admin — suggest a user of its own. Then always:
+means the tablet is signed in as an admin — suggest a user of its own.
+
+Android System WebView is part of Android on every tablet with Google Play: nothing to install, and
+Play updates it in the background. Say so before the owner searches the store, where WebView Dev,
+Beta and Canary show an *Install* button: they are test channels and do not belong on a wall
+tablet. When `webview` is below 123, the fix is *Update* on the stable *Android System WebView* page
+in Play (it shows *Update* or *Open*, never *Install*). Then always:
 
 ```bash
 domosenso probe production --remove
