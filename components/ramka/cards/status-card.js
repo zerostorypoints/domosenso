@@ -64,23 +64,25 @@ class StatusCard extends HTMLElement {
     const root = this.attachShadow({ mode: "open" });
     root.innerHTML = `
       <style>
+        /* --u: a share of the card's height, capped by its width so that in a window squarer than
+           the tablet the type still fits the tiles; 0.66 is the card's height to width there. */
         :host { display: block; height: 100%; }
-        ha-card { height: 100%; box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
+        ha-card { height: 100%; --u: min(1cqh, 0.66cqw); box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
                   display: grid; grid-template-columns: repeat(${this._config.columns}, 1fr);
                   grid-template-rows: repeat(${rows}, 1fr); gap: 1.5cqh 1.5cqw; overflow: hidden; }
         .item { display: flex; flex-direction: column; justify-content: center; align-items: center;
-                border-radius: 2cqh; background: var(--secondary-background-color); min-width: 0; gap: 0.6cqh; }
-        .item ha-icon { --mdc-icon-size: ${Math.min(11, 30 / rows)}cqh; color: var(--secondary-text-color); }
+                border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); min-width: 0; gap: calc(0.6 * var(--u)); }
+        .item ha-icon { --mdc-icon-size: calc(${Math.min(11, 30 / rows)} * var(--u)); color: var(--secondary-text-color); }
         .item.active ha-icon { color: var(--primary-color); }
-        .name { font-size: ${Math.min(4.5, 14 / rows)}cqh; color: var(--secondary-text-color); white-space: nowrap;
+        .name { font-size: calc(${Math.min(4.5, 14 / rows)} * var(--u)); color: var(--secondary-text-color); white-space: nowrap;
                 overflow: hidden; text-overflow: ellipsis; max-width: 95%; }
-        .state { font-size: ${Math.min(7, 22 / rows)}cqh; font-weight: 600; line-height: 1.1; white-space: nowrap;
+        .state { font-size: calc(${Math.min(7, 22 / rows)} * var(--u)); font-weight: 600; line-height: 1.1; white-space: nowrap;
                  overflow: hidden; text-overflow: ellipsis; max-width: 95%; color: var(--secondary-text-color); }
         .item.active .state { color: var(--primary-color); }
         .item.numeric .state { color: var(--primary-text-color); }
-        .bar { width: 60%; height: 1.2cqh; min-height: 4px; border-radius: 1cqh; margin-top: 0.4cqh;
+        .bar { width: 60%; height: calc(1.2 * var(--u)); min-height: 4px; border-radius: calc(1 * var(--u)); margin-top: calc(0.4 * var(--u));
                background: var(--divider-color, rgba(128,128,128,0.35)); overflow: hidden; display: none; }
-        .bar > div { height: 100%; width: 0; background: var(--primary-color); border-radius: 1cqh; }
+        .bar > div { height: 100%; width: 0; background: var(--primary-color); border-radius: calc(1 * var(--u)); }
         .item.lit .bar { display: block; }
       </style>
       <ha-card>

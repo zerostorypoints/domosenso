@@ -5,7 +5,8 @@
 // the action. Plants that need something come first, watering before anything else. A plant that
 // needs nothing gets no text at all: the green dots say it. Gauge labels and actions follow the
 // Home Assistant language (en, de, pl; anything else falls back to en). Sizes are shares of
-// the card's own height (cqh).
+// the card's own height (cqh), capped by its width (--u) so that in a window squarer than the
+// tablet the type still fits the tiles.
 //
 //   type: custom:plants-card
 //   height: calc(100dvh - 16px)
@@ -136,24 +137,24 @@ class PlantsCard extends HTMLElement {
         :host { display: block; height: 100%;
                 --good: var(--plant-good, #5be37a); --act: var(--plant-act, #f5c542);
                 --water: var(--plant-water, #ff6b5c); --wet: var(--plant-wet, #8fd3ff); }
-        ha-card { height: 100%; box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
+        ha-card { height: 100%; --u: min(1cqh, 0.66cqw); box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
                   display: grid; gap: 2cqh 1.5cqw; overflow: hidden;
                   grid-template-columns: repeat(${cols}, 1fr);
                   grid-template-rows: ${this._config.title ? "auto " : ""}repeat(${rows}, 1fr); }
-        .title { grid-column: 1 / -1; font-size: 6cqh; color: var(--secondary-text-color); }
+        .title { grid-column: 1 / -1; font-size: calc(6 * var(--u)); color: var(--secondary-text-color); }
         .plant { display: flex; flex-direction: column; justify-content: space-evenly; min-width: 0;
-                 padding: 0 5%; border-radius: 2cqh; background: var(--secondary-background-color); }
+                 padding: 0 5%; border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); }
         .head { display: flex; align-items: baseline; gap: 0.6em; min-width: 0; }
-        .name { font-size: ${6 * k}cqh; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .room { font-size: ${4.5 * k}cqh; color: var(--secondary-text-color); white-space: nowrap; }
+        .name { font-size: calc(${6 * k} * var(--u)); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .room { font-size: calc(${4.5 * k} * var(--u)); color: var(--secondary-text-color); white-space: nowrap; }
         .g { display: grid; grid-template-columns: 5.5em 1fr; align-items: center; gap: 0.6em;
-             font-size: ${4.2 * k}cqh; color: var(--secondary-text-color); }
-        .bar { position: relative; height: ${2.4 * k}cqh; border-radius: 99px; background: rgba(255,255,255,0.08); }
+             font-size: calc(${4.2 * k} * var(--u)); color: var(--secondary-text-color); }
+        .bar { position: relative; height: calc(${2.4 * k} * var(--u)); border-radius: 99px; background: rgba(255,255,255,0.08); }
         .band { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: rgba(91,227,122,0.25); }
-        .dot { position: absolute; top: 50%; width: ${3.8 * k}cqh; height: ${3.8 * k}cqh; border-radius: 50%;
+        .dot { position: absolute; top: 50%; width: calc(${3.8 * k} * var(--u)); height: calc(${3.8 * k} * var(--u)); border-radius: 50%;
                transform: translate(-50%, -50%); background: currentColor; }
-        .chart { display: block; width: 100%; height: ${11 * k}cqh; overflow: visible; }
-        .action { font-size: ${4.6 * k}cqh; font-weight: 600; line-height: 1.15; min-height: 1.15em;
+        .chart { display: block; width: 100%; height: calc(${11 * k} * var(--u)); overflow: visible; }
+        .action { font-size: calc(${4.6 * k} * var(--u)); font-weight: 600; line-height: 1.15; min-height: 1.15em;
                   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
       </style>
       <ha-card>
