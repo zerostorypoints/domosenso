@@ -168,5 +168,7 @@ From your home's folder: `uv run --project <path to the clone> domosenso <comman
 - [Getting started](docs/getting-started.md) — the first two stages, step by step.
 - [Integrate a device](docs/integrate-a-device.md) — from a Home Assistant integration to a catalog
   device.
+- [Setting up the Ramka's tablet](docs/tablet-setup.md) — every Android and Companion app setting,
+  on the tested TCL tablet.
 - [Contributing](CONTRIBUTING.md) — layout, components, checks, how changes land.
 - [AGENTS.md](AGENTS.md) — the rules for coding agents.

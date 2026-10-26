@@ -5,67 +5,8 @@ Breaking changes and the steps for an existing home: [UPGRADE.md](UPGRADE.md).
 
 ## Setting up the tablet
 
-From a reset Android tablet to the Ramka on screen. The steps are those of the tested tablet
-(`devices/tcl-9469x.yaml`); menu names differ between Android makers. The reasons behind the
-settings are in "The tablet" below.
-
-**In Home Assistant, before the tablet:**
-
-1. Create a Home Assistant user for the tablet (Settings → People → Add person, *Allow login* on,
-   not an administrator). Its name goes into `kiosk_user` if you use kiosk-mode.
-2. Optional: install `kiosk-mode` from HACS (frontend). It hides the header and sidebar for the
-   tablet's user only; `?disable_km` on the URL shows them again.
-
-**On the tablet, in Android:**
-
-3. Update Android and *Android System WebView* (Play Store). The cards need WebView 123 or newer;
-   the version is under Settings → Apps → Android System WebView.
-4. Lock screen: None (Settings → Security). The package wakes the screen; a PIN or swipe would
-   stop it there.
-5. Install *Home Assistant* (the Companion app) from the Play Store, 2026.8.4 or newer if the Play
-   Store offers it (2026.6.5 can get stuck awake, below).
-6. Give the app, under Settings → Apps → Home Assistant:
-   - *Modify system settings*: without it the brightness and screen-timeout commands are dropped;
-   - *Display over other apps*: without it `command_launch_app` cannot bring the app forward after
-     a wake;
-   - battery: unrestricted (no battery optimisation), or Android stops it in the background.
-7. Set the tablet's own charge limit (battery protection) if it has one; without one, plan a smart
-   plug schedule. The tested TCL stops at 80 % by itself.
-
-**In the Companion app:**
-
-8. Sign in to your Home Assistant as the tablet's user, not as yourself.
-9. App → Settings → Companion app:
-   - device name: a short name; it becomes the slug of `notify.mobile_app_<slug>` and
-     `sensor.<slug>_*`, which go into the `tablet_device` input;
-   - *Keep screen on*: **off**;
-   - *Fullscreen* on, *Screen orientation* landscape, *Always show first view on app start* on;
-   - *Persistent connection*: Always;
-   - Manage sensors: enable `light_sensor`, `battery_level`, `app_importance`, `charger_type`,
-     `battery_temperature`, `is_charging` (and `interactive` to see the screen state);
-     *Sensor update frequency*: Fast always.
-10. Profile (in the app, as the tablet's user): default dashboard = the Ramka's (`dashboard_path`),
-    language and time format matching the dashboard's language. Once kiosk-mode is active the
-    profile page is hidden: set them first, or open it with `?disable_km`.
-
-**Measure, then render:**
-
-11. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app
-    held in its final orientation, `domosenso probe <target> --read`, then `--remove`. Its
-    `viewport` goes into the `screen` input; `webview` under 123 or `json-modules no` means the
-    cards will not load; `user admin` means the app is signed in as an administrator (step 8).
-12. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging
-    and look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet
-    has the dashboard.
-13. Optional: pin the app (Settings → Security → App pinning) so a guest cannot leave it. The
-    corner-taps card's two top corners are the way out: top-left opens `exit_left`, top-right
-    reloads the Ramka with kiosk-mode off.
-
-**Check it works:** with nobody near the radar for `off_delay_s` the screen goes dark; walking in
-wakes it on the ambient page; `sensor.<slug>_app_importance` reads `foreground` while it is on and
-`top_sleeping` while it sleeps. A screen that never sleeps is *Keep screen on* (step 9, and the
-2026.6.5 note below); one that wakes onto the lock screen is step 4; one whose brightness never
-changes is step 6.
+Step by step, with every Android and Companion app setting and what to switch off, on the tested
+TCL tablet: [docs/tablet-setup.md](../../docs/tablet-setup.md).
 
 ## The tablet
 
