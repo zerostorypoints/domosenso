@@ -170,8 +170,10 @@ views:
             # The card's height comes from the screen, not from grid rows: everything below it
             # (the 4-row bottom section, 248 px, plus three 8 px paddings/gaps) is subtracted;
             # dvh, not vh: in the Companion app's WebView 100vh includes the area under Android's
-            # bars.
-            height: calc(100dvh - 272px)
+            # bars. The header is subtracted too when it is shown: kiosk-mode sets
+            # --kiosk-header-height to 0px where it hides the header, and a browser without kiosk
+            # mode shows Home Assistant's own, --header-height high.
+            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 272px)
             grid_options: {columns: full, rows: auto}
       # A section spanning three view columns has a 36-column grid (12 per column), so the widths
       # below add up to 36. Rows 6 + 4 fit a 720 CSS px tall screen without scrolling.
@@ -198,7 +200,7 @@ views:
       # ---- Climate: ambient, music view off, page "climate" ----------------------------------
       # Clock, current weather and a four-day forecast on top; the rooms in large type in the
       # middle (height from the screen); temperature and humidity of every room as 7-day charts at
-      # the bottom. 8 + 184 + 8 + rooms + 8 + 248 + 8 = 100dvh.
+      # the bottom. 8 + 184 + 8 + rooms + 8 + 248 + 8 = 100dvh less the header, if shown.
       - type: grid
         column_span: 3
         visibility: &climate
@@ -224,7 +226,7 @@ views:
         visibility: *climate
         cards:
           - type: custom:rooms-card
-            height: calc(100dvh - 464px)
+            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
             rooms:
             [%- for room in series %]
@@ -293,7 +295,7 @@ views:
       # 1200 ppm (ventilation rules of thumb), PM2.5 15 / 35 µg/m³ (WHO 2021 24-hour guideline,
       # then the old US 24-hour limit), VOC and NOx on Sensirion's index scales (100 and 1 are the
       # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means.
-      # 8 + air + 8 + 248 + 8 = 100dvh.
+      # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown.
       - type: grid
         column_span: 3
         visibility: &air
@@ -308,7 +310,7 @@ views:
             state: air
         cards:
           - type: custom:air-card
-            height: calc(100dvh - 272px)
+            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 272px)
             [%- if air.score is defined %]
             score:
               name: [[ t('ui.air.score') | yaml ]]
@@ -398,7 +400,7 @@ views:
             state: plants
         cards:
           - type: custom:plants-card
-            height: calc(100dvh - 16px)
+            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
             defaults: [[ inputs.plant_defaults | default({'min_moisture': 15, 'max_moisture': 60, 'min_conductivity': 350, 'max_conductivity': 2000, 'min_brightness': 500}) | yaml ]]
             plants:
             [%- for plant in inputs.plants %]
@@ -463,7 +465,7 @@ views:
             state: status
         cards:
           - type: custom:status-card
-            height: calc(100dvh - 16px)
+            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
             columns: [[ inputs.status_columns | default(4) ]]
             items:
             [%- for cover in covers %]
@@ -513,7 +515,7 @@ views:
               - [[ calendar ]]
             [%- endfor %]
             days: 7
-            height: calc(100dvh - 16px)
+            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
             grid_options: {columns: full, rows: 1}
 
       # ---- Controls: a wave near the tablet, three columns under the hand --------------------
