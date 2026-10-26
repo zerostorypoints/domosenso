@@ -1,6 +1,7 @@
 // Air quality for a wall tablet, readable from across the room: one large tile for the
 // overall score and a tile per reading, each coloured by where its value sits (good / raised /
-// high) with the word for it underneath. Sizes are shares of the card's own height (cqh), and
+// high) with the word for it underneath. Sizes are shares of the card's own height (cqh), capped by
+// its width (--u) so that in a window squarer than the tablet the type still fits the tiles; and
 // with `height` the card takes its height from the screen rather than from grid rows.
 //
 //   type: custom:air-card
@@ -74,20 +75,20 @@ class AirCard extends HTMLElement {
       <style>
         :host { display: block; height: 100%;
                 --good: var(--air-good, #5be37a); --raised: var(--air-raised, #f5c542); --high: var(--air-high, #ff6b5c); }
-        ha-card { height: 100%; box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
+        ha-card { height: 100%; --u: min(1cqh, 0.41cqw); box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
                   display: grid; gap: 2cqh 1.5cqw; overflow: hidden;
                   grid-template-columns: ${score ? "1.3fr " : ""}repeat(${cols}, 1fr);
                   grid-template-rows: ${this._config.title ? "auto " : ""}1fr 1fr; }
-        .title { grid-column: 1 / -1; font-size: 6cqh; color: var(--secondary-text-color); }
+        .title { grid-column: 1 / -1; font-size: calc(6 * var(--u)); color: var(--secondary-text-color); }
         .tile { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0;
-                border-radius: 2cqh; background: var(--secondary-background-color); }
+                border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); }
         .score { grid-row: span 2; }
-        .name { font-size: 6cqh; color: var(--secondary-text-color); white-space: nowrap; }
-        .value { font-size: 15cqh; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .score .value { font-size: 30cqh; }
+        .name { font-size: calc(6 * var(--u)); color: var(--secondary-text-color); white-space: nowrap; }
+        .value { font-size: calc(15 * var(--u)); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .score .value { font-size: calc(30 * var(--u)); }
         .unit { font-size: 0.4em; font-weight: 400; margin-left: 0.15em; }
-        .label { font-size: 5.5cqh; white-space: nowrap; }
-        .score .label { font-size: 8cqh; }
+        .label { font-size: calc(5.5 * var(--u)); white-space: nowrap; }
+        .score .label { font-size: calc(8 * var(--u)); }
       </style>
       <ha-card>
         ${this._config.title ? `<div class="title"></div>` : ""}

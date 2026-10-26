@@ -1,7 +1,8 @@
 // Room temperatures for a wall tablet, readable from across the room: a grid of rooms
 // that fills the card, each with the temperature in large type and the humidity under it.
 // A missing reading shows card.common.noValue. Sizes are shares of the card's own height (cqh),
-// and with `height` the card takes its height from the screen rather than from grid rows.
+// capped by its width (--u) so that in a window squarer than the tablet the type still fits the
+// tiles; and with `height` the card takes its height from the screen rather than from grid rows.
 //
 //   type: custom:rooms-card
 //   height: calc(100vh - 304px)
@@ -48,15 +49,15 @@ class RoomsCard extends HTMLElement {
     root.innerHTML = `
       <style>
         :host { display: block; height: 100%; }
-        ha-card { height: 100%; box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
+        ha-card { height: 100%; --u: min(1cqh, 0.22cqw); box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
                   display: grid; grid-template-columns: repeat(${this._config.columns}, 1fr);
                   grid-template-rows: repeat(${rows}, 1fr); gap: 1.5cqh 1.5cqw; overflow: hidden; }
         .room { display: flex; flex-direction: column; justify-content: center; align-items: center;
-                border-radius: 2cqh; background: var(--secondary-background-color); min-width: 0; }
-        .name { font-size: ${Math.min(7, 24 / rows)}cqh; color: var(--secondary-text-color); white-space: nowrap;
+                border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); min-width: 0; }
+        .name { font-size: calc(${Math.min(7, 24 / rows)} * var(--u)); color: var(--secondary-text-color); white-space: nowrap;
                 overflow: hidden; text-overflow: ellipsis; max-width: 95%; }
-        .temp { font-size: ${Math.min(16, 56 / rows)}cqh; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
-        .hum { font-size: ${Math.min(6, 20 / rows)}cqh; color: var(--secondary-text-color); }
+        .temp { font-size: calc(${Math.min(16, 56 / rows)} * var(--u)); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .hum { font-size: calc(${Math.min(6, 20 / rows)} * var(--u)); color: var(--secondary-text-color); }
       </style>
       <ha-card>
         ${this._config.rooms.map(() => `<div class="room"><div class="name"></div><div class="temp"></div><div class="hum"></div></div>`).join("")}

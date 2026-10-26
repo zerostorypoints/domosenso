@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.2.1 (2026-10-26): the cards fit a browser window
+
+The rooms, air, plants and status cards sized their type by the card's height alone. In a window
+squarer than the tablet (a desktop browser beside the Home Assistant sidebar) the cards grow tall
+while the tiles stay narrow, so temperatures ran into each other and names were cut short. Their
+sizes are now capped by the card's width, at the card's own proportions on the 1100 × 720 tablet.
+
+### What a home does
+
+Nothing is required. On the tested tablet (1100 × 720) the four cards render pixel for pixel as in
+0.2.0; on a squarer screen (1024 × 800, or a browser window) their type is smaller and fits.
+Updating moves the cards to `www/domosenso/ramka/0.2.1/` and the twelve resource URLs with them
+(`domosenso update ramka` and a deploy do both).
+
 ## 0.2.0 (2026-10-22): optional pages, the tablet's screen size, a recommended tablet
 
 - `climate`, `air`, `plants` and `photo_dir` are optional. A page whose input is absent is left out:
