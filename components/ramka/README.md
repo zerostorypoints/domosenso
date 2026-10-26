@@ -3,6 +3,11 @@
 What a home needs to know beyond `component.yaml` and the comments in `templates/package.yaml.j2`.
 Breaking changes and the steps for an existing home: [UPGRADE.md](UPGRADE.md).
 
+## Setting up the tablet
+
+Step by step, with every Android and Companion app setting and what to switch off, on the tested
+TCL tablet: [docs/tablet-setup.md](../../docs/tablet-setup.md).
+
 ## The tablet
 
 - Android with the Home Assistant Companion app, signed in as its own Home Assistant user. Grant
