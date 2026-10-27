@@ -204,7 +204,7 @@ plants and photos are optional — a page whose input is absent is left out of t
 | climate | temperature (and humidity) sensors per room (`climate-air`); the `weather` entity is required anyway |
 | air | an air-quality sensor (`ruuvi-air` recommended) |
 | plants | plant sensors (`plants`, `mi-flora`) |
-| photos | a folder under `/config/www` (`photo_dir`); an empty folder skips the page |
+| photos | a folder under `/config/www` (`photo_dir`) with one subfolder per event (its name is the caption; how the draw works and who can open the files: `components/ramka/PHOTOS.md`); an empty folder skips the page |
 | status | awnings, contacts, power, locks — all optional |
 | now playing, controls | a `media_player` meeting the Ramka's `media_player_contract`; covers and lights optional |
 | calendar | a `calendar` entity — required |

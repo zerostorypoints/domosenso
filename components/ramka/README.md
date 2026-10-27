@@ -8,6 +8,11 @@ Breaking changes and the steps for an existing home: [UPGRADE.md](UPGRADE.md).
 Step by step, with every Android and Companion app setting and what to switch off, on the tested
 TCL tablet: [docs/tablet-setup.md](../../docs/tablet-setup.md).
 
+## Photos
+
+How the photos page draws a folder and its photos, where the event names and dates come from, and
+who can open the files: [PHOTOS.md](PHOTOS.md).
+
 ## The tablet
 
 - Android with the Home Assistant Companion app, signed in as its own Home Assistant user. Grant
