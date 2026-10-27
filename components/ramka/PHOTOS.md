@@ -74,8 +74,9 @@ On the photos page, the loop calls `shell_command.<prefix>_pick`, which runs `ra
 4. It shuffles that folder's photos and takes up to five different ones.
 
 The loop then shows them for 10 seconds each, the page cross-fades from one to the next, and the
-rotation moves on. One pass of the whole rotation with every page is 130 seconds, so a photo series
-comes about every two minutes while the tablet is in ambient mode.
+rotation moves on. One pass of the whole rotation with all five pages is 130 seconds, so a photo
+series comes about every two minutes while the tablet is in ambient mode; fewer pages (an absent
+input, `status_page: false`) make the pass, and the wait for the next series, shorter.
 
 What follows from that:
 

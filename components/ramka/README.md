@@ -56,6 +56,17 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 
 ## Behaviour
 
+- **The ambient pages** (climate, air, plants, photos, status) are each optional: a page is in the
+  rotation when its input is given (`climate`, `air`, `plants`, `photo_dir`), and status unless
+  `status_page: false` (0.3.0). The loop and the swipes step only through the pages that are there;
+  `input_select.<prefix>_ambient` keeps all five options (FROZEN), and a render that leaves no page
+  fails. The times are fixed: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s;
+  one pass is their sum (130 s with all five). The package's comments still quote 130 s and the
+  status stage whichever pages a home has.
+- **Why `status_page: false`**: the status page is read-only. A home whose controls screen already
+  shows its lights and covers, and that has no doors, power or locks to list, gains nothing from it
+  in the rotation.
+
 - **`off_delay_s`**: the radar loses people who sit still, so a short delay sends the screen off
   and back on many times a day. In the first home 120 s gave 40 to 50 such offs a day; 300 s cut
   the short offs by 40 % and the median ambient stretch went from 2.3 to 9.6 minutes.
