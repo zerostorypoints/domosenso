@@ -43,6 +43,9 @@ integration with each device's identity resolving key (IRK).
 
 ## Radar (feature `radar`, HLK-LD2410C)
 
+Wiring to the Atom Lite, with a diagram, and what to check when the radar stays silent:
+[devices/hlk-ld2410c.md](../../devices/hlk-ld2410c.md).
+
 - The module as configured has no still detection within about 1.5 m. A person close to the
   screen keeps it on through movement only.
 - Before tuning thresholds, read the gate energies with people where they normally sit. In the

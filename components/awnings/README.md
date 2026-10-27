@@ -25,19 +25,8 @@ on its address in the home network: Radio → the CC1101's pins (the wiring belo
 broker, with Home Assistant discovery off, and a virtual remote per awning. Reserve its address in
 the router.
 
-Wiring of an Ebyte E07-M1101D (CC1101) to an Atom Lite, the pinout the ESPSomfy-RTS wiki gives for
-that module (pin 1 has the square pad):
-
-| CC1101 pin | signal | Atom socket | setting in ESPSomfy |
-|---|---|---|---|
-| 1 | GND | G | |
-| 2 | VCC | 3V3 (never 5 V) | |
-| 3 | GDO0 | G22 | TX 22 |
-| 4 | CSN | G21 | CSN 21 |
-| 5 | SCK | G33 | SCLK 33 |
-| 6 | MOSI | G23 | MOSI 23 |
-| 7 | MISO | G19 | MISO 19 |
-| 8 | GDO2 | G25 | RX 25 |
+Wiring of the CC1101 (Ebyte E07-M1101D) to the Atom Lite, with a diagram, the antenna and what to
+check when the radio does not answer: [devices/cc1101.md](../../devices/cc1101.md).
 
 ## The node
 
