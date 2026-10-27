@@ -1,0 +1,49 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 456' width='900' height='456' font-family='Helvetica, Arial, sans-serif'>
+<rect width='900' height='456' fill='#ffffff'/>
+<text x='450.0' y='38' text-anchor='middle' font-size='22' font-weight='700' fill='#111'>HLK-LD2410C radar on an M5Stack Atom Lite</text>
+<rect x='40' y='100' width='230' height='250' rx='10' fill='#f4f6f8' stroke='#55606b' stroke-width='2'/>
+<text x='155.0' y='68' text-anchor='middle' font-size='17' font-weight='700' fill='#111'>M5Stack Atom Lite</text>
+<text x='155.0' y='88' text-anchor='middle' font-size='13' fill='#444'>bottom header, labels as printed</text>
+<rect x='630' y='100' width='230' height='250' rx='10' fill='#f4f6f8' stroke='#55606b' stroke-width='2'/>
+<text x='745.0' y='68' text-anchor='middle' font-size='17' font-weight='700' fill='#111'>HLK-LD2410C</text>
+<text x='745.0' y='88' text-anchor='middle' font-size='13' fill='#444'>labels as printed on the module</text>
+<text x='252' y='135' text-anchor='end' font-size='16' font-weight='600' fill='#111'>5V</text>
+<circle cx='270' cy='130' r='6' fill='#55606b'/>
+<text x='648' y='135' font-size='16' font-weight='600' fill='#111'>VCC</text>
+<circle cx='630' cy='130' r='6' fill='#55606b'/>
+<line x1='270' y1='130' x2='630' y2='130' stroke='#d62728' stroke-width='5' stroke-linecap='round'/>
+<rect x='330.0' y='105' width='240' height='18' fill='#ffffff' opacity='0.9'/>
+<text x='450.0' y='119' text-anchor='middle' font-size='13' fill='#333'>red · 5 V, never 3V3</text>
+<text x='252' y='181' text-anchor='end' font-size='16' font-weight='600' fill='#111'>G (GND)</text>
+<circle cx='270' cy='176' r='6' fill='#55606b'/>
+<text x='648' y='181' font-size='16' font-weight='600' fill='#111'>GND</text>
+<circle cx='630' cy='176' r='6' fill='#55606b'/>
+<line x1='270' y1='176' x2='630' y2='176' stroke='#222222' stroke-width='5' stroke-linecap='round'/>
+<rect x='330.0' y='151' width='240' height='18' fill='#ffffff' opacity='0.9'/>
+<text x='450.0' y='165' text-anchor='middle' font-size='13' fill='#333'>black</text>
+<text x='252' y='227' text-anchor='end' font-size='16' font-weight='600' fill='#111'>G22</text>
+<circle cx='270' cy='222' r='6' fill='#55606b'/>
+<text x='648' y='227' font-size='16' font-weight='600' fill='#111'>TX</text>
+<circle cx='630' cy='222' r='6' fill='#55606b'/>
+<line x1='270' y1='222' x2='630' y2='222' stroke='#8e44ad' stroke-width='5' stroke-linecap='round'/>
+<rect x='330.0' y='197' width='240' height='18' fill='#ffffff' opacity='0.9'/>
+<text x='450.0' y='211' text-anchor='middle' font-size='13' fill='#333'>purple · radar TX → Atom receives (rx_pin)</text>
+<text x='252' y='273' text-anchor='end' font-size='16' font-weight='600' fill='#111'>G19</text>
+<circle cx='270' cy='268' r='6' fill='#55606b'/>
+<text x='648' y='273' font-size='16' font-weight='600' fill='#111'>RX</text>
+<circle cx='630' cy='268' r='6' fill='#55606b'/>
+<line x1='270' y1='268' x2='630' y2='268' stroke='#2e9e44' stroke-width='5' stroke-linecap='round'/>
+<rect x='330.0' y='243' width='240' height='18' fill='#ffffff' opacity='0.9'/>
+<text x='450.0' y='257' text-anchor='middle' font-size='13' fill='#333'>green · Atom sends (tx_pin) → radar RX</text>
+<text x='252' y='319' text-anchor='end' font-size='16' font-weight='600' fill='#111'>—</text>
+<circle cx='270' cy='314' r='6' fill='#55606b'/>
+<text x='648' y='319' font-size='16' font-weight='600' fill='#111'>OUT</text>
+<circle cx='630' cy='314' r='6' fill='#55606b'/>
+<line x1='310' y1='314' x2='630' y2='314' stroke='#999' stroke-width='2' stroke-dasharray='6 6'/>
+<rect x='330.0' y='289' width='240' height='18' fill='#ffffff' opacity='0.9'/>
+<text x='450.0' y='303' text-anchor='middle' font-size='13' fill='#333'>not connected</text>
+
+<text x='40' y='380' font-size='14' fill='#333'>UART 256000 baud, the module's factory setting (esphome/ld2410.yaml of bermuda-presence).</text>
+<text x='40' y='402' font-size='14' fill='#333'>TX goes to the Atom's receive pin and RX to its send pin: crossed, as on every UART.</text>
+<text x='40' y='424' font-size='14' fill='#333'>The Grove port stays free. Colours are a convention, not printed on any part.</text>
+</svg>

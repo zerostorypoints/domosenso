@@ -43,6 +43,7 @@ AGENTS.md  CLAUDE.md          agent instructions (this file; CLAUDE.md = @AGENTS
 components/<id>/              the catalog: component.yaml, translations/, README.md (field notes),
                               UPGRADE.md, esphome/, ha/blueprints/, templates/, cards/, shell/, themes/
 devices/<id>.yaml             hardware the components name: names, description, what it does (en, de, pl), match rules
+devices/<id>.md, wiring/      a module wired to a board: diagram (SVG), pin table, first start, faults
 kinds/<kind>.yaml             how a running Home Assistant shows a kind of hardware (match rules, SPEC-010)
 scenes/<id>.yaml              the demo's eight scenes (format: scenes/README.md)
 schemas/                      JSON Schemas: component, device, kind, scene, home, lock, snapshot, equivalence, silent
