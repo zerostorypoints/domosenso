@@ -1,0 +1,139 @@
+name: "Enhancement"
+description: "A new option, behaviour or check in the command, a component, a card or a skill."
+title: "<area>: <what changes>"
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Read [docs/ISSUES.md](https://github.com/zerostorypoints/domosenso/blob/main/docs/ISSUES.md) first: what each section needs, and how the issue is checked (`uv run tools/issue_check.py --issue <n>`). **Nothing from a real home**: no names, rooms, entity ids, IP or MAC addresses, accounts, calendars or photos; examples use the demo home (Alex and Sam)."
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: "The kind of issue; it sets which sections are required."
+      options:
+        - "enhancement"
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Area
+      description: "The command (`deploy`, `verify`, …), component id and version, device, skill or document."
+      placeholder: "deploy --plan, ramka 0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: spec-needed
+    attributes:
+      label: Spec needed
+      description: "Yes for a new component, a new capability of the tools, a schema change or a surface in docs/COMPATIBILITY.md (AGENTS.md, Spec first)."
+      options:
+        - "no"
+        - "yes"
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: "One sentence: what should change."
+    validations:
+      required: true
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User story
+      description: "As a <who>, I want <what>, so that <why>. Recommended for enhancements and new work."
+      placeholder: |
+        As a home owner without a radar, I want the Ramka to wake from the room's lights, so that it works without extra hardware.
+    validations:
+      required: false
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem statement
+      description: "What happens today, for whom, how often. Observed facts; mark inference as inference."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: "The `domosenso` output lines (`FAIL …`), log lines and steps to reproduce, anonymised."
+    validations:
+      required: false
+  - type: textarea
+    id: value-proposition
+    attributes:
+      label: Value proposition
+      description: "Who gains what: time or risk saved, homes affected."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: "The approach and the interfaces it touches: inputs, entity ids, command lines, schema."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Alternatives considered
+      description: "At least one, and why not."
+      value: |
+        - 
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: "Checkboxes, each one testable on its own."
+      value: |
+        - [ ] Given …, when …, then … (an exact output line, entity state or file)
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: tests-required
+    attributes:
+      label: Tests required
+      description: "Which tests prove it, written to fail before the change."
+      value: |
+        - [ ] `tests/test_….py`: … (fails before the change)
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility-and-upgrade
+    attributes:
+      label: Compatibility and upgrade
+      description: "Stable ids or inputs touched, version bump, UPGRADE.md note."
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: "What this issue does not cover."
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "HA version and installation type, catalog tag or commit, component versions, target kind."
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy-check
+    attributes:
+      label: Privacy check
+      description: "AGENTS.md, Privacy. Remove the detail instead of ticking the box."
+      options:
+        - label: "No real names, rooms, entity ids, IP or MAC addresses, accounts, tokens, calendars or photos; examples use the demo home."
+          required: true

@@ -17,6 +17,8 @@ integration as the worked example (skill `new-integration`).
   (`feat/…`, `fix/…`, `docs/…`), keep it current with `git pull --rebase upstream main`, and open a
   pull request into `main`. Maintainers review and merge; nothing reaches `main` any other way, and
   published tags never move.
+- **Issues** use the forms on GitHub and follow [docs/ISSUES.md](docs/ISSUES.md): problem, value,
+  testable acceptance criteria, the tests a change brings; `uv run tools/issue_check.py --issue <n>` checks one.
 - **Spec first** for a new component, a new capability of the command, a schema change or anything in
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md): a spec in `.ai/specs/` (skill `write-component-spec`),
   approved, then built. A fix that keeps the contract goes straight to a pull request with a test.
@@ -75,6 +77,8 @@ Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
 | [new-component](.ai/skills/new-component/SKILL.md) | scaffold `components/<id>/` and get the checker and tests passing |
 | [new-integration](.ai/skills/new-integration/SKILL.md) | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
 | [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
+| [write-issue](.ai/skills/write-issue/SKILL.md) | draft issues and user stories per docs/ISSUES.md, check them, file after a go-ahead |
+| [review-issue](.ai/skills/review-issue/SKILL.md) | check an issue against docs/ISSUES.md: ready, needs changes or split |
 | [add-component](.ai/skills/add-component/SKILL.md) | one component into an onboarded home, end to end: integrations, containers, ESPHome device files and firmware, render, deploy, verify |
 | [render-and-stage](.ai/skills/render-and-stage/SKILL.md) | try a changed component in a home (`render --catalog-dev`, staging), release it, `update` the home |
 
