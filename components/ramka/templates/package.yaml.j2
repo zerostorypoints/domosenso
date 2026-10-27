@@ -22,12 +22,13 @@
 [%- set index_description = 'Rebuild ' ~ photo_dir ~ '/index.json: at start, every 15 min, on a folder change.' -%]
 [%- endif -%]
 [#- The ambient pages this home has, in rotation order (0.2.0): climate, air, plants and photos only
-    with their inputs (photos: photo_dir); status always. The input_select keeps all five options (FROZEN), so
+    with their inputs (photos: photo_dir); status unless status_page is false (0.3.0). The input_select keeps all five options (FROZEN), so
     every step of the rotation goes to the next page that is there. -#]
 [%- set pages = [] -%]
 [%- for page in ['climate', 'air', 'plants', 'photos', 'status'] -%]
-[%- if page == 'status' or inputs['photo_dir' if page == 'photos' else page] is defined -%][%- set _ = pages.append(page) -%][%- endif -%]
+[%- if (inputs.status_page | default(true) if page == 'status' else inputs['photo_dir' if page == 'photos' else page] is defined) -%][%- set _ = pages.append(page) -%][%- endif -%]
 [%- endfor -%]
+[%- if not pages -%][[ fail('ramka: status_page: false leaves no ambient page; give climate, air, plants or photo_dir') ]][%- endif -%]
 [%- macro after(page) -%][[ pages[(pages.index(page) + 1) % (pages | length)] ]][%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
@@ -587,6 +588,7 @@ script:
                   data:
                     option: [[ after('photos') ]]
 [%- endif %]
+[%- if 'status' in pages %]
             # 5. Status, 15 s, then round to the climate page.
             - if:
                 - condition: state
@@ -600,6 +602,7 @@ script:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
                     option: [[ after('status') ]]
+[%- endif %]
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:

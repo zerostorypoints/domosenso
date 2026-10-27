@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.3.0 (2026-10-27): the status page is optional
+
+New optional input `status_page` (default `true`). With `status_page: false` the status page is
+left out like any other missing page: its section is not rendered, and the ambient rotation and
+the swipes step over it. `input_select.<prefix>_ambient` keeps all five options. Rendering fails
+with `status_page: false leaves no ambient page` when no other page is there.
+
+### What a home does
+
+Nothing is required: without `status_page` the package and the dashboards render as in 0.2.2.
+Updating moves the cards to `www/domosenso/ramka/0.3.0/` and the twelve resource URLs with them
+(`domosenso update ramka` and a deploy do both). A home that wants no status page sets
+`status_page: false` in its inputs and renders again.
+
 ## 0.2.2 (2026-10-26): the pages fit under Home Assistant's header
 
 The cards take their height from the screen (`calc(100dvh - …)`), which assumed the tablet's kiosk

@@ -408,3 +408,37 @@ def test_without_photo_dir_nothing_of_the_photos_is_rendered(tmp_path):
     for name, text in out.items():
         for word_ in ("ramka_photo", "ramka_pick", "ramka_index", "photo-frame-card", "/config/www/ramka", "platform: folder"):
             assert word_ not in text, (name, word_)
+
+
+# ---- 0.3.0: status_page -------------------------------------------------------------------------
+
+@pytest.mark.parametrize("dropped", [(), ("photos",), ("climate", "air", "plants")])
+def test_status_page_false_leaves_the_status_page_out(tmp_path, dropped):
+    inputs = without_pages(*dropped)
+    inputs["status_page"] = False
+    rendered = render(tmp_path, inputs)
+    pages = [p for p in RAMKA_PAGES if p not in dropped and p != "status"]
+    for lang in LANGS:
+        types = {n["type"] for n in walk(rendered[f"dashboard.{lang}.yaml"]) if isinstance(n.get("type"), str)}
+        assert "custom:status-card" not in types, lang
+    package = rendered["package.yaml"]
+    assert rotation(package) == {page: pages[(i + 1) % len(pages)] for i, page in enumerate(pages)}
+    for script in ("ramka_ambient_next", "ramka_ambient_prev"):
+        [step] = [s for s in package["script"][script]["sequence"] if "input_select" in s["action"]]
+        assert step["action"] == "input_select.select_option"
+        assert json.dumps(pages) in step["data"]["option"]
+    # The helper keeps all five options (FROZEN): a home's history and scenes still name status.
+    assert package["input_select"]["ramka_ambient"]["options"] == RAMKA_PAGES
+
+
+def test_status_page_true_renders_as_without_it(tmp_path):
+    inputs = demo_inputs()
+    inputs["status_page"] = True
+    assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", demo_inputs())
+
+
+def test_status_page_false_without_another_page_fails(tmp_path):
+    inputs = without_pages("climate", "air", "plants", "photos")
+    inputs["status_page"] = False
+    with pytest.raises(dr.RenderError, match=r"status_page: false leaves no ambient page"):
+        render(tmp_path, inputs)

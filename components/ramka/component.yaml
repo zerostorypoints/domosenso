@@ -8,7 +8,7 @@
 # writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
 # notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.2.2
+version: 0.3.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -120,6 +120,9 @@ inputs:
     type: "{contacts?: list[{entity, label, icon?}], power?: list[{entity, label, icon?}], locks?: list[{entity, label, icon?}]}"
     default: {}
   status_columns: {type: int, default: 4}
+  status_page:                  # false: no status page; the rotation and the swipes step over it (0.3.0)
+    type: bool
+    default: true
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
   photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
