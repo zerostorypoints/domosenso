@@ -8,6 +8,11 @@ Breaking changes and the steps for an existing home: [UPGRADE.md](UPGRADE.md).
 Step by step, with every Android and Companion app setting and what to switch off, on the tested
 TCL tablet: [docs/tablet-setup.md](../../docs/tablet-setup.md).
 
+## Photos
+
+How the photos page draws a folder and its photos, where the event names and dates come from, and
+who can open the files: [PHOTOS.md](PHOTOS.md).
+
 ## The tablet
 
 - Android with the Home Assistant Companion app, signed in as its own Home Assistant user. Grant
@@ -50,6 +55,17 @@ TCL tablet: [docs/tablet-setup.md](../../docs/tablet-setup.md).
   back a 24-hour step shows one day twice (`agenda-card.test.mjs` covers it).
 
 ## Behaviour
+
+- **The ambient pages** (climate, air, plants, photos, status) are each optional: a page is in the
+  rotation when its input is given (`climate`, `air`, `plants`, `photo_dir`), and status unless
+  `status_page: false` (0.3.0). The loop and the swipes step only through the pages that are there;
+  `input_select.<prefix>_ambient` keeps all five options (FROZEN), and a render that leaves no page
+  fails. The times are fixed: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s;
+  one pass is their sum (130 s with all five). The package's comments still quote 130 s and the
+  status stage whichever pages a home has.
+- **Why `status_page: false`**: the status page is read-only. A home whose controls screen already
+  shows its lights and covers, and that has no doors, power or locks to list, gains nothing from it
+  in the rotation.
 
 - **`off_delay_s`**: the radar loses people who sit still, so a short delay sends the screen off
   and back on many times a day. In the first home 120 s gave 40 to 50 such offs a day; 300 s cut

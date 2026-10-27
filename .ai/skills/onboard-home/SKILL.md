@@ -191,21 +191,23 @@ next to it (`hlk-ld2410c` on a `bermuda-presence` node) wakes the screen when so
 room; with nobody there for `off_delay_s` (300 s by default) the screen goes off. Brightness follows
 the tablet's light sensor. Modes: `off`, `ambient`, `controls`, `calendar`.
 
-- ambient: a rotation of 130 s — climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status
-  15 s; while the music player plays, it shows what is playing instead (a swipe switches);
+- ambient: a rotation of the pages the home has — climate 30 s, air 15 s, plants 20 s, five photos
+  of 10 s, status 15 s (130 s with all five); while the music player plays, it shows what is playing
+  instead (a swipe switches);
 - controls: a hand near the screen (100 cm for 1 s) or a tap — music, awnings, lights;
 - calendar: a button on the controls opens the agenda.
 
 **What each page needs** (show which of them their hardware fills; from ramka 0.2.0 climate, air,
-plants and photos are optional — a page whose input is absent is left out of the rotation):
+plants and photos are optional — a page whose input is absent is left out of the rotation; from
+0.3.0 the status page too, with `status_page: false`):
 
 | page | needs |
 |---|---|
 | climate | temperature (and humidity) sensors per room (`climate-air`); the `weather` entity is required anyway |
 | air | an air-quality sensor (`ruuvi-air` recommended) |
 | plants | plant sensors (`plants`, `mi-flora`) |
-| photos | a folder under `/config/www` (`photo_dir`); an empty folder skips the page |
-| status | awnings, contacts, power, locks — all optional |
+| photos | a folder under `/config/www` (`photo_dir`) with one subfolder per event (its name is the caption; how the draw works and who can open the files: `components/ramka/PHOTOS.md`); an empty folder skips the page |
+| status | awnings, contacts, power, locks — all optional; `status_page: false` drops the page (0.3.0), for a home whose controls screen already shows what it would |
 | now playing, controls | a `media_player` meeting the Ramka's `media_player_contract`; covers and lights optional |
 | calendar | a `calendar` entity — required |
 
