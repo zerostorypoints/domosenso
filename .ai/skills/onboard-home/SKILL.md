@@ -175,7 +175,11 @@ Present, in this order:
   `--json` gives it as `needs[].tested_homes`; absent = unknown). For a kind with no recommended
   device, say plainly: "the catalog names no tested model for <kind>". `optional ... lacks` lines are
   "would add <feature>". Never order or buy anything;
-- `describes` components install nothing (they say what the Ramka reads).
+- `describes` components install nothing (they say what the Ramka reads);
+- where each part of a chosen component runs, from the table "What runs where" in
+  `<catalog>/docs/getting-started.md`: inside Home Assistant, as a container next to it, on their
+  computer (the ESPHome CLI: there is no ESPHome container or dashboard), or as firmware on a
+  device. Owners coming from Home Assistant OS look for an add-on and find none.
 
 Confirm with them which components they want eventually. Only `backup` is added today.
 

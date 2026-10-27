@@ -22,7 +22,9 @@ by the code license; see [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_
 ## Prerequisites
 
 **Home Assistant on your NAS.** Domosenso works with Home Assistant as a Container (Docker), without
-add-ons. Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`.
+add-ons. Pinned versions: Home Assistant `2026.9.2`, ESPHome `2026.9.1`. What an add-on would do
+runs as a container next to Home Assistant or on your computer (ESPHome is a command there, not a
+container): [what runs where](docs/getting-started.md#what-runs-where).
 
 - You have it: check that Settings → System → Repairs → ⋮ → System information says
   "Installation type: Home Assistant Container". Note its address (for example `http://<nas>:8123`)
