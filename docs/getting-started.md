@@ -49,6 +49,55 @@ The rest of this page is what the skill does, step by step, for reference.
   in it (the command reads components only from tags such as `ramka/0.2.0`). You only read from
   this clone; a change to the catalog is a pull request from your fork (CONTRIBUTING.md).
 
+## What runs where
+
+Home Assistant Container has no add-ons. What an add-on does on Home Assistant OS runs here either
+as its own container next to Home Assistant or on your computer. `domosenso deploy` installs only
+the catalog's files in `/config`; every other part below is installed by hand (or by your agent,
+with your yes). Every part a released component uses, and what it is: a ready package or image, or
+code from this catalog.
+
+**Inside Home Assistant** (`/config` of the container)
+
+| part | for | what it is | how it gets there |
+|---|---|---|---|
+| built-in integrations: `esphome`, `mqtt`, `hue`, `tplink`, `xiaomi_ble`, `ruuvitag_ble`, `private_ble_device`, `plant`, `caldav`, `met`, `mobile_app`, `backup`, … | each component's `integrations` | part of the Home Assistant image | nothing to install; you add each in Settings → Devices & services |
+| `bermuda` (agittins/bermuda, tested 0.8.7) | `bermuda-presence` | third-party custom integration (Python) | HACS, or its release copied into `custom_components/`; then a restart and the UI |
+| `hegel_streaming` (zerostorypoints/hegel-home-assistant, tested 0.1.7) | `media` | custom integration (Python) | as `bermuda` |
+| `kiosk-mode` (NemesisRE/kiosk-mode) | `ramka`, optional | third-party frontend plugin (JavaScript) | HACS → Frontend (`docs/tablet-setup.md`) |
+| packages, blueprints, dashboards, the Ramka's cards (`www/domosenso/ramka/<version>/`), shell scripts (`shell/prune_backups.py`, `shell/ramka_pick.py`, `shell/ramka_index.py`, run by the container's Python) | each component's `artifacts` | code from this catalog, rendered with your inputs | `domosenso render`, then `domosenso deploy` |
+
+**Next to it, on the Docker host** (one container each, host network)
+
+| part | for | what it is | how it gets there |
+|---|---|---|---|
+| MQTT broker | `awnings` (any device that speaks MQTT) | ready image, for example `eclipse-mosquitto:2`; the catalog ships no compose file for it | the home sets it up: config, one login per client, no anonymous access (`docs/integration-notes.md`) |
+| frame bridge | `awnings` | **code from this catalog**: `bridge.py` and a `Dockerfile` on `python:3.14-slim` with `websockets` 15.0.1 and `paho-mqtt` 2.1.0; no image is published | copy `components/awnings/services/frame-bridge/` to the host, `bridge.env` from `bridge.env.example`, then `docker compose up -d --build` |
+| `cloudflared` connector | `remote-access` (unreleased) | ready image `cloudflare/cloudflared:2026.10.1` | the component's `services/cloudflared/compose.yaml` and the tunnel token in a file, `docker compose up -d` |
+
+**On your computer**
+
+| part | for | what it is | how it gets there |
+|---|---|---|---|
+| the `domosenso` command | everything | code from this catalog | `uv sync` in the catalog clone |
+| ESPHome CLI | `bermuda-presence` | ready package from PyPI | `uvx esphome@2026.9.1`, nothing installed |
+| `esptool` | `awnings` | ready package from PyPI | `uv run --with esptool esptool …`, nothing installed |
+
+**On the devices**
+
+| part | for | what it is | how it gets there |
+|---|---|---|---|
+| ESPHome firmware (BLE proxies, radar boards) | `bermuda-presence` | compiled on your computer from the home's device file, which pulls the component's ESPHome package from this repository at its tag (`github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.2.0`) | first flash over USB, later over Wi-Fi |
+| ESPSomfy-RTS 2.4.6 | `awnings` | ready binary from the project's GitHub releases (rstrouse/ESPSomfy-RTS, `SomfyController.onboard.esp32.bin`) | `esptool` over USB (`erase-flash`, then `write-flash 0x0 <bin>`); Wi-Fi and the radio pins afterwards in its own web page |
+| Home Assistant Companion app | `ramka` | ready app from the Play Store; Android System WebView 123 or newer comes with Android | the tablet's store (`docs/tablet-setup.md`) |
+
+ESPHome has no container and no dashboard here. Home Assistant's built-in ESPHome integration talks
+to each board over its native API (port 6053); compiling and flashing is the CLI on your computer,
+`uvx esphome@2026.9.1 run <device>.yaml`. The board's Wi-Fi name and password go into the firmware
+at that flash, from the home's `esphome/secrets.yaml` (git-ignored), so joining the Wi-Fi and the
+first flash are one step. The ESPHome dashboard can run as one more container next to Home
+Assistant (`ghcr.io/esphome/esphome`, host network); the catalog does not test that.
+
 ## The components
 
 | component | needs | gives you |
