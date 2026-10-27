@@ -447,6 +447,7 @@ views:
                 state: photos
             grid_options: {columns: full, rows: 1}
 [%- endif %]
+[%- if inputs.status_page | default(true) %]
 
       # ---- Status: ambient, music view off, page "status" ------------------------------------
       # status-card: what the home is doing, read-only, in large type: awnings, doors, lights per
@@ -499,6 +500,7 @@ views:
                 states: {locked: [[ t('ui.status.lock.locked') | yaml ]], unlocked: [[ t('ui.status.lock.unlocked') | yaml ]], unlocking: [[ t('ui.status.lock.unlocking') | yaml ]], locking: [[ t('ui.status.lock.locking') | yaml ]], jammed: [[ t('ui.status.lock.jammed') | yaml ]]}
             [%- endfor %]
             grid_options: {columns: full, rows: auto}
+[%- endif %]
 
       # ---- Calendar: from the calendar button on the controls --------------------------------
       # agenda-card: today large on the left, the next six days beside it.

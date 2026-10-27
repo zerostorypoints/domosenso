@@ -3,6 +3,11 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-27: ramka 0.3.0, an optional status page
+
+New optional input `status_page`; `false` leaves the status page out of the dashboard and the
+rotation. Additive: a home needs no action ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)).
+
 ## 2026-10-27: services, firmware and ESPHome device files as data
 
 `artifacts.services` items are typed (`container`, `firmware`) and `artifacts.esphome` gains `devices`
