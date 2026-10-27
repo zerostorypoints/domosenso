@@ -2,6 +2,17 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
+## 0.2.1 (2026-10-27): the services say what they are
+
+`artifacts.services` is typed (SPEC-015): the node's firmware with its release file and flash
+command, the frame bridge as a container built on the host. `domosenso add` copies the bridge's
+files into the home at `services/frame-bridge/`; `domosenso status` lists the firmware and the
+bridge as manual. The README has the flashing steps. No package, input or entity changed.
+
+### What a home does
+
+- Nothing. A home that runs the bridge from its own copy keeps it.
+
 ## 0.2.0 (2026-10-21): the package and the frame bridge
 
 New artifact `templates/package.yaml.j2` → `packages/awnings.yaml` (MQTT covers, the wind sensor,

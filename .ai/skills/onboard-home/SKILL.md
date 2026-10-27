@@ -179,7 +179,8 @@ Present, in this order:
 - where each part of a chosen component runs, from the table "What runs where" in
   `<catalog>/docs/getting-started.md`: inside Home Assistant, as a container next to it, on their
   computer (the ESPHome CLI: there is no ESPHome container or dashboard), or as firmware on a
-  device. Owners coming from Home Assistant OS look for an add-on and find none.
+  device. Owners coming from Home Assistant OS look for an add-on and find none. The skill
+  `add-component` installs each of them later, one component at a time.
 
 Confirm with them which components they want eventually. Only `backup` is added today.
 
@@ -402,6 +403,6 @@ and `sensor.newest_backup_age` below 24 show the first nightly backup ran.
 ## After onboarding
 
 Their home repository's `AGENTS.md` takes over: open the agent in the home repository for
-everyday work. A next component: `domosenso add <id>@<version>`, inputs from their HA, `render`,
-`--plan`, their yes. A fix to a component goes to the catalog as a pull request (spec first for
-anything new), without their household in it.
+everyday work. A next component: the skill `add-component`, which takes it from `add` through its
+integrations, containers, ESPHome device files and firmware to `verify`. A fix to a component goes
+to the catalog as a pull request (spec first for anything new), without their household in it.

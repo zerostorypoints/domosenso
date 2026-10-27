@@ -1,6 +1,6 @@
 # The values the demo home supplies to the bermuda-presence component (its `inputs:` in
 # component.yaml). ha/packages/bermuda_presence.yaml is what the component's instance template
-# renders from these; the ESPHome device files under esphome/ are still written by hand.
+# renders from these; esphome/ble-proxy-<room>.yaml are what its device template renders from `proxies`.
 rooms: [Living room, Dining, Kitchen, Office, Bedroom, Kids' room, Hall]
 phones:
   sensor.alex_phone_area: Alex

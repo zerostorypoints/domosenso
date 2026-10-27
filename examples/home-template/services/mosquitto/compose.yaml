@@ -1,0 +1,24 @@
+# An MQTT broker next to Home Assistant, for a home whose components or devices speak MQTT (a
+# component that requires kind `mqtt-broker`, such as `awnings`) and that has none yet (SPEC-015).
+# The home copies this directory once and owns it from then on. On the Docker host, next to this file:
+#
+#   mkdir -p data && touch config/passwd
+#   docker compose up -d
+#   docker exec -it mosquitto mosquitto_passwd /mosquitto/config/passwd <client>   # asks for the password
+#   docker exec mosquitto sh -c "chown -R 1883:1883 /mosquitto/config /mosquitto/data; chmod 700 /mosquitto/config/passwd; chmod 750 /mosquitto/data"
+#   docker kill -s HUP mosquitto    # reloads the logins without dropping connected clients
+#
+# The owner types each password; one login per client (Home Assistant, each node, each bridge).
+# The broker runs as uid 1883: on a Synology, a directory that inherited the share's ACL refuses it
+# and retained messages are lost on every restart, which the chown and chmod above prevent.
+# Host network: devices reach it on the host's address, port 1883. The image tag is pinned (Docker
+# Hub, read 2026-10-27).
+services:
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:2.1.2-alpine
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./config:/mosquitto/config
+      - ./data:/mosquitto/data

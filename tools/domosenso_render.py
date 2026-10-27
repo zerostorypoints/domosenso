@@ -75,7 +75,9 @@ def _load_translations(component_dir: Path, lang: str) -> dict[str, object]:
     return flatten(data)
 
 
-def _make_env(component_dir: Path, inputs: dict, lang: str, en: dict, current: dict) -> Environment:
+def _make_env(
+    component_dir: Path, inputs: dict, lang: str, en: dict, current: dict, root: str = "templates"
+) -> Environment:
     def t(key: str):
         if key in current:
             return current[key]
@@ -84,7 +86,7 @@ def _make_env(component_dir: Path, inputs: dict, lang: str, en: dict, current: d
         raise RenderError(f"translation key {key!r} is missing in {lang} and en")
 
     env = Environment(
-        loader=FileSystemLoader(str(component_dir / "templates")),
+        loader=FileSystemLoader(str(component_dir / root)),
         undefined=StrictUndefined,
         keep_trailing_newline=True,
         variable_start_string="[[",
@@ -180,6 +182,50 @@ def render_component(
                 written.append(_render(envs[lang], name, out_dir / f"{stem}.{lang}.yaml", first_line))
         else:
             written.append(_render(envs["en"], name, out_dir / name[: -len(".j2")], first_line))
+    return written
+
+
+_PLACEHOLDER = re.compile(r"<([a-z_]+)>")
+
+
+def render_device_files(component_dir: Path, inputs: dict) -> list[tuple[str, str]]:
+    """The ESPHome device files of `artifacts.esphome.devices` (SPEC-015): `(file name, text)` per item of
+    the list input `each`, the template rendered with `item` and `component` (`id`, `version`) besides the
+    usual globals, and `<field>` in `file` replaced by that item's field."""
+    component_dir = Path(component_dir)
+    manifest = yaml.safe_load((component_dir / "component.yaml").read_text(encoding="utf-8")) or {}
+    devices = ((manifest.get("artifacts") or {}).get("esphome") or {}).get("devices")
+    if not devices:
+        return []
+    inputs = drop_none(inputs)
+    items = inputs.get(devices["each"])
+    if not isinstance(items, list):
+        raise RenderError(f"input {devices['each']!r} must be a list: it names the ESPHome device files")
+    en = _load_translations(component_dir, "en")
+    template = Path(devices["template"])
+    env = _make_env(component_dir, inputs, "en", en, en, root=template.parent.as_posix())
+    env.globals["component"] = {"id": manifest.get("id"), "version": manifest.get("version")}
+    written: list[tuple[str, str]] = []
+    for n, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise RenderError(f"{devices['each']}[{n}] must be a mapping")
+
+        def field(match: re.Match, item=item, n=n) -> str:
+            value = item.get(match.group(1))
+            if not isinstance(value, str) or not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", value):
+                raise RenderError(f"{devices['each']}[{n}].{match.group(1)} must be a slug for {devices['file']}")
+            return value
+
+        name = _PLACEHOLDER.sub(field, devices["file"])
+        try:
+            _check_nested_list_literals(env, template.name)
+            text = env.get_template(template.name).render(item=item)
+        except (TemplateError, RenderError) as exc:
+            raise RenderError(f"{template}: {exc}") from exc
+        written.append((name, text))
+    names = [name for name, _ in written]
+    if len(set(names)) != len(names):
+        raise RenderError(f"two items of {devices['each']} give the same device file name")
     return written
 
 

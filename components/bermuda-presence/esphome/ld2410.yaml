@@ -2,7 +2,7 @@
 # Atom Lite's bottom header. Copied unchanged from a working home configuration
 # (2026-10-20). Add next to the proxy package in a device file:
 #   packages:
-#     radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.2.0
+#     radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.2.1
 # Wiring (same colours on every board): VCC -> 5V red (not 3V3), GND -> G black,
 # radar TX -> G22 purple, radar RX -> G19 green, OUT unconnected. The Grove port stays free.
 #

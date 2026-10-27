@@ -77,7 +77,8 @@ Manifest, in short (the full shape: `components/ramka/component.yaml`, the small
   fits in a managed file;
 - `artifacts`: `esphome.packages` / `factory`, `ha_blueprints`, `ha_packages`, `ha_instance`,
   `templates`, `dashboard_cards`, `install_path` (`www/domosenso/<id>/<version>/`), `shell`,
-  `themes`, `services`. Every path must exist;
+  `themes`, `services` (typed `container` / `firmware`, SPEC-015), `esphome.devices` / `secrets`.
+  Every path must exist;
 - `provides`: entities (id or pattern with `<placeholders>`, `stability`), events, features;
   `consumes`: other components' entities it reads; `upstream`: entities another integration owns;
 - `tested`: `ha`, `esphome`, `homes`; `local_only`.
@@ -140,7 +141,8 @@ tools/check-all.sh                              # everything
 and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are STABLE
 (`docs/COMPATIBILITY.md`). Specified in `.ai/specs/SPEC-002-*`.
 
-- `init`, `add <id>@<version>`, `adopt <id>@<version>`: start a home, add a component at a tag, take
+- `init`, `add <id>@<version>`, `adopt <id>@<version>`: start a home, add a component at a tag (with
+  its instance files: ESPHome device files, the files of its container services; SPEC-015), take
   over files rendered by hand. `render [<id>]`, `update <id> [--to <version>]`, `status`: managed
   files from the lock (the catalog is read at a tag, never the working tree; `--catalog-dev <path>`
   renders a working tree, stamps get `-dirty`).
@@ -302,11 +304,12 @@ the script after adding, renaming or removing a skill.
 | skill | use it to |
 |---|---|
 | `onboard-home` | start a new home from an empty directory: interview, `domosenso recommend`, `init`, add `backup`, stop at `deploy production --plan` |
+| `add-component` | one component into an onboarded home, end to end: integrations, containers, ESPHome device files and firmware, render, deploy, verify |
 | `check` | run `tools/check-all.sh` and report pass or fail per step |
 | `new-component` | scaffold `components/<id>/` and get the checker and tests passing |
 | `new-integration` | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
 | `write-component-spec` | write a spec in `.ai/specs/` and stop for approval |
-| `render-and-stage` | render a component into a home repository, install it, check it, try it on staging |
+| `render-and-stage` | try a changed component in a home (`render --catalog-dev`, staging), release it, `update` the home |
 
 ## Cookie consent button style
 

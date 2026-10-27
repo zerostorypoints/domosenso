@@ -2,7 +2,7 @@
 # radio node. From 0.2.0 a package with the covers, the wind sensor and its watch, and the frame
 # bridge as a compose service (SPEC-007).
 id: awnings
-version: 0.2.0
+version: 0.2.1
 summary: Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor
 description_key: meta.description
 photo: null
@@ -83,14 +83,18 @@ artifacts:
     # it is switched off there.
     - templates/package.yaml.j2   # -> packages/awnings.yaml
   ha_packages: []
-  services:
-    - {name: espsomfy-rts, kind: firmware, repo: rstrouse/ESPSomfy-RTS, version: "2.4.6"}
+  services:                     # SPEC-015: what runs outside Home Assistant; `status` lists them as manual
+    # The node's firmware, a release binary flashed over USB from the owner's computer (README.md,
+    # "Flashing the node"); erase-flash first, which also erases the paired shades.
+    - {name: espsomfy-rts, kind: firmware, repo: rstrouse/ESPSomfy-RTS, version: "2.4.6",
+       asset: SomfyController.onboard.esp32.bin,
+       flash: "uv run --with esptool esptool --port <port> --baud 500000 write-flash 0x0 <asset>",
+       setup: "erase-flash first; then Wi-Fi and the radio pins in its own web page"}
     # The frame bridge, a compose service next to the broker: the wind sensor's state and the
-    # retained cover positions come from it (README.md). Configured by bridge.env.
-    - services/frame-bridge/compose.yaml
-    - services/frame-bridge/Dockerfile
-    - services/frame-bridge/bridge.py
-    - services/frame-bridge/bridge.env.example
+    # retained cover positions come from it (README.md). Built on the host: no image is published.
+    - {name: frame-bridge, kind: container, compose: services/frame-bridge/compose.yaml,
+       files: [services/frame-bridge/Dockerfile, services/frame-bridge/bridge.py],
+       env_example: services/frame-bridge/bridge.env.example, build: true}
 
 provides:
   entities:

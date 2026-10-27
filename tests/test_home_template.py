@@ -28,3 +28,14 @@ def test_cloudflared_compose_is_pinned_on_the_host_network_and_reads_the_token_f
     assert service["environment"] == {"TUNNEL_TOKEN_FILE": "/run/secrets/tunnel-token"}
     assert service["volumes"][0].endswith(":/run/secrets/tunnel-token:ro")
     assert "--no-autoupdate" in service["command"]
+
+
+def test_mosquitto_compose_is_pinned_on_the_host_network_without_anonymous_clients():
+    """SPEC-015: the broker a home copies when a component needs one."""
+    base = REPO / "examples" / "home-template" / "services" / "mosquitto"
+    service = yaml.safe_load((base / "compose.yaml").read_text())["services"]["mosquitto"]
+    assert re.fullmatch(r"eclipse-mosquitto:\d+\.\d+\.\d+(-alpine)?", service["image"])
+    assert service["network_mode"] == "host"
+    conf = (base / "config" / "mosquitto.conf").read_text().splitlines()
+    assert "allow_anonymous false" in conf
+    assert "password_file /mosquitto/config/passwd" in conf

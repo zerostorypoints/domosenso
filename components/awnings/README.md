@@ -3,6 +3,42 @@
 What a home needs to know beyond `component.yaml`. Tested with ESPSomfy-RTS 2.4.6 on an Atom Lite
 with a CC1101 module.
 
+## Flashing the node
+
+The firmware is a release binary, not built here: `SomfyController.onboard.esp32.bin` from the
+ESPSomfy-RTS 2.4.6 release on GitHub (`rstrouse/ESPSomfy-RTS`). The owner flashes it over USB from
+their computer; an agent prepares the commands and does not run them (AGENTS.md, Boundaries).
+
+```bash
+uv run --with esptool esptool --port <port> --baud 500000 erase-flash
+uv run --with esptool esptool --port <port> --baud 500000 write-flash 0x0 SomfyController.onboard.esp32.bin
+```
+
+`<port>` is the board's serial port (`/dev/cu.usbserial-…` on a Mac, `/dev/ttyUSB0` on Linux).
+`erase-flash` also erases a node's paired shades; on a node already in use, update through its web
+page instead. Opening the serial port resets the board.
+
+First start: the node opens an unsecured access point `ESPSomfy RTS`. Join it from a phone, open
+the node's page at the access point's gateway address (the phone's Wi-Fi details show it), Network
+→ the home's 2.4 GHz network and its passphrase → Save Adapter. Then,
+on its address in the home network: Radio → the CC1101's pins (the wiring below), MQTT → the
+broker, with Home Assistant discovery off, and a virtual remote per awning. Reserve its address in
+the router.
+
+Wiring of an Ebyte E07-M1101D (CC1101) to an Atom Lite, the pinout the ESPSomfy-RTS wiki gives for
+that module (pin 1 has the square pad):
+
+| CC1101 pin | signal | Atom socket | setting in ESPSomfy |
+|---|---|---|---|
+| 1 | GND | G | |
+| 2 | VCC | 3V3 (never 5 V) | |
+| 3 | GDO0 | G22 | TX 22 |
+| 4 | CSN | G21 | CSN 21 |
+| 5 | SCK | G33 | SCLK 33 |
+| 6 | MOSI | G23 | MOSI 23 |
+| 7 | MISO | G19 | MISO 19 |
+| 8 | GDO2 | G25 | RX 25 |
+
 ## The node
 
 - **The firmware prints the Wi-Fi passphrase on the serial console at boot.** Never paste a boot
@@ -35,9 +71,11 @@ with a CC1101 module.
   it retains shade positions only at boot, so after a Home Assistant restart the covers came back
   with the boot-time position. The bridge republishes every frame, the wind sensor's state per frame
   and each position retained (topics in `component.yaml`).
-- **Start it** next to the broker: copy `bridge.env.example` to `bridge.env`, fill in the node's
-  websocket, the broker and the wind sensor's RTS address, then `docker compose up -d --build`. The
-  frames also go to `./data/frames.jsonl`, the first place to look when the sensor seems silent.
+- **Start it** next to the broker. `domosenso add` has copied its files into the home at
+  `services/frame-bridge/`; copy that directory to the Docker host, there `bridge.env.example` to
+  `bridge.env` with the node's websocket, the broker and the wind sensor's RTS address, then
+  `docker compose up -d --build`. The frames also go to `./data/frames.jsonl`, the first place to
+  look when the sensor seems silent.
 - The wind sensor's state is `unknown` after a Home Assistant restart until its next frame.
 - The bridge pings the websocket every 20 s; without pings it sat on a dead connection after the
   node rebooted.

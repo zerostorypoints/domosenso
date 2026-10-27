@@ -3,6 +3,15 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-27: services, firmware and ESPHome device files as data
+
+`artifacts.services` items are typed (`container`, `firmware`) and `artifacts.esphome` gains `devices`
+and `secrets` ([SPEC-015](../.ai/specs/SPEC-015-2026-10-27-add-component-end-to-end.md)). `add` writes
+the ESPHome device files and copies a container service's files into the home once; `status` prints
+`service`, `firmware` and `esphome-secret` lines. `bermuda-presence` 0.2.1 and `awnings` 0.2.1 use
+them. Additive: a home needs no action ([bermuda-presence](../components/bermuda-presence/UPGRADE.md),
+[awnings](../components/awnings/UPGRADE.md)).
+
 ## 2026-10-22: ramka 0.2.0, optional pages and a screen size
 
 `climate`, `air`, `plants` and `photo_dir` become optional inputs, and a new optional input `screen` names the

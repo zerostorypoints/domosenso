@@ -54,8 +54,11 @@ The rest of this page is what the skill does, step by step, for reference.
 Home Assistant Container has no add-ons. What an add-on does on Home Assistant OS runs here either
 as its own container next to Home Assistant or on your computer. `domosenso deploy` installs only
 the catalog's files in `/config`; every other part below is installed by hand (or by your agent,
-with your yes). Every part a released component uses, and what it is: a ready package or image, or
-code from this catalog.
+with your yes: the skill `add-component` walks one component through all of it). `domosenso add`
+writes the home's copies of the ESPHome device files and the container services' files, and
+`domosenso status` lists what is still manual (`integration`, `service`, `firmware` and
+`esphome-secret` lines). Every part a released component uses, and what it is: a ready package or
+image, or code from this catalog.
 
 **Inside Home Assistant** (`/config` of the container)
 
@@ -71,9 +74,9 @@ code from this catalog.
 
 | part | for | what it is | how it gets there |
 |---|---|---|---|
-| MQTT broker | `awnings` (any device that speaks MQTT) | ready image, for example `eclipse-mosquitto:2`; the catalog ships no compose file for it | the home sets it up: config, one login per client, no anonymous access (`docs/integration-notes.md`) |
-| frame bridge | `awnings` | **code from this catalog**: `bridge.py` and a `Dockerfile` on `python:3.14-slim` with `websockets` 15.0.1 and `paho-mqtt` 2.1.0; no image is published | copy `components/awnings/services/frame-bridge/` to the host, `bridge.env` from `bridge.env.example`, then `docker compose up -d --build` |
-| `cloudflared` connector | `remote-access` (unreleased) | ready image `cloudflare/cloudflared:2026.10.1` | the component's `services/cloudflared/compose.yaml` and the tunnel token in a file, `docker compose up -d` |
+| MQTT broker | `awnings` (any device that speaks MQTT) | ready image `eclipse-mosquitto:2.1.2-alpine`, the home's own (one broker serves every MQTT device) | the home template's `services/mosquitto/` (compose file and config: no anonymous access, one login per client), copied into the home when it has no broker |
+| frame bridge | `awnings` | **code from this catalog**: `bridge.py` and a `Dockerfile` on `python:3.14-slim` with `websockets` 15.0.1 and `paho-mqtt` 2.1.0; no image is published | `add` copies the files to the home's `services/frame-bridge/`; from there to the host, `bridge.env` from `bridge.env.example`, then `docker compose up -d --build` |
+| `cloudflared` connector | `remote-access` (unreleased) | ready image `cloudflare/cloudflared:2026.10.1` | `add` copies the compose file to the home's `services/cloudflared/`; on the host with the tunnel token in a file, `docker compose up -d` |
 
 **On your computer**
 
@@ -87,7 +90,7 @@ code from this catalog.
 
 | part | for | what it is | how it gets there |
 |---|---|---|---|
-| ESPHome firmware (BLE proxies, radar boards) | `bermuda-presence` | compiled on your computer from the home's device file, which pulls the component's ESPHome package from this repository at its tag (`github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.2.0`) | first flash over USB, later over Wi-Fi |
+| ESPHome firmware (BLE proxies, radar boards) | `bermuda-presence` | compiled on your computer from the home's device file (`add` writes one per proxy from the inputs), which pulls the component's ESPHome package from this repository at its tag (`github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.2.1`) | first flash over USB, later over Wi-Fi |
 | ESPSomfy-RTS 2.4.6 | `awnings` | ready binary from the project's GitHub releases (rstrouse/ESPSomfy-RTS, `SomfyController.onboard.esp32.bin`) | `esptool` over USB (`erase-flash`, then `write-flash 0x0 <bin>`); Wi-Fi and the radio pins afterwards in its own web page |
 | Home Assistant Companion app | `ramka` | ready app from the Play Store; Android System WebView 123 or newer comes with Android | the tablet's store (`docs/tablet-setup.md`) |
 
