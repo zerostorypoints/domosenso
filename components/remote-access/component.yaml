@@ -35,8 +35,9 @@ inputs:
 artifacts:
   ha_packages: []
   services:
-    # The connector, a compose service on the host network (services/cloudflared/compose.yaml).
-    - services/cloudflared/compose.yaml
+    # The connector, a compose service on the host network; `add` copies it into the home (SPEC-015).
+    - {name: cloudflared, kind: container, compose: services/cloudflared/compose.yaml,
+       image: "cloudflare/cloudflared:2026.10.1"}
 
 provides:
   entities: []

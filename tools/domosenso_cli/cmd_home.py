@@ -387,6 +387,8 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
                 elif (
                     _matches(unmanaged, *names_to_try)
                     or (in_config and names_to_try[1] in BUILT_IN_UNMANAGED)
+                    # ESPHome's secrets, read by the device files, git-ignored by the home template
+                    or (not in_config and path == home.esphome_dir / "secrets.yaml")
                     or TOOL_DIR in Path(from_root).parts
                 ):
                     kind = "unmanaged"
@@ -410,9 +412,50 @@ def _status_run(args: argparse.Namespace, rep: Reporter) -> int:
         rep.line("component", cid, locked.version if locked else "not-locked", "newest", _newest(catalog, cid))
     for name, version in sorted(home.custom_integrations.items()):
         rep.line("integration", name, version, "(manual)")
+    _report_outside_ha(home, lock, catalog, rep)
     _check_dashboard_entries(home, lock, rep)
     unclassified = sum(1 for kind in classes.values() if kind == "unclassified")
     return rep.fail(f"{unclassified} unclassified") if unclassified else rep.ok()
+
+
+def _report_outside_ha(home: HomeConfig, lock: Lock, catalog, rep: Reporter) -> None:
+    """What the locked components need outside Home Assistant's config, read at their tags (SPEC-015):
+    their container services and firmware, which a human installs, and the ESPHome secrets their device
+    files read that the home's secrets.yaml lacks. Only the secrets file's keys are read."""
+    wanted: set[str] = set()
+    for cid, locked in sorted(lock.components.items()):
+        try:
+            manifest = load_manifest(catalog.checkout(cid, locked.version, locked.commit))
+        except DomosensoError as exc:
+            rep.line("unchecked", f"{cid}: {exc}")
+            continue
+        artifacts = manifest.get("artifacts") or {}
+        for service in artifacts.get("services") or []:
+            if not isinstance(service, dict):
+                continue  # a tag from before SPEC-015: a bare path says nothing to act on
+            if service.get("kind") == "container":
+                how = ("image", service["image"]) if service.get("image") else ("build",)
+                rep.line("service", cid, service["name"], *how, "(manual)")
+            elif service.get("kind") == "firmware":
+                rep.line("firmware", cid, service["name"], str(service["version"]), "(manual)")
+        wanted.update((artifacts.get("esphome") or {}).get("secrets") or [])
+    if wanted:
+        present = _secret_keys(home.esphome_dir / "secrets.yaml")
+        for key in sorted(wanted - present):
+            rep.line("esphome-secret", key, "missing")
+
+
+def _secret_keys(path: Path) -> set[str]:
+    """The top-level keys of an ESPHome secrets file with a non-empty value; the values are dropped here."""
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return set()
+    except (OSError, yaml.YAMLError, UnicodeDecodeError) as exc:
+        raise DomosensoError(f"{path.name}: cannot read its keys: {getattr(exc, 'strerror', None) or type(exc).__name__}") from None
+    if not isinstance(data, dict):
+        return set()
+    return {str(key) for key, value in data.items() if value not in (None, "")}
 
 
 def _newest(catalog, cid: str) -> str:

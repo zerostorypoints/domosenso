@@ -17,13 +17,13 @@ from pathlib import Path
 
 import yaml
 
-from catalog_check import install_dir, install_files
+from catalog_check import install_dir, install_files, service_files
 from domosenso_cli import stamps
 from domosenso_cli.catalog import Catalog
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import ComponentEntry, HomeConfig
 from domosenso_cli.lock import FileRecord, Lock
-from domosenso_render import LANG_SUFFIX, RenderError, render_component
+from domosenso_render import LANG_SUFFIX, RenderError, render_component, render_device_files
 
 CACHE_DIR = Path(".domosenso") / "cache"
 INSTANCE_DIR = "instance/"
@@ -91,9 +91,13 @@ def resource_urls(component_dir: Path) -> list[str]:
 
 
 def _config_prefix(home: HomeConfig) -> str:
-    relative = Path(os.path.relpath(home.config_dir, home.root))
+    return _dir_prefix(home, home.config_dir, "config_dir")
+
+
+def _dir_prefix(home: HomeConfig, directory: Path, name: str) -> str:
+    relative = Path(os.path.relpath(directory, home.root))
     if relative.parts[:1] == ("..",):
-        raise DomosensoError(f"config_dir {home.config_dir} is outside the home {home.root}")
+        raise DomosensoError(f"{name} {directory} is outside the home {home.root}")
     return "" if relative == Path(".") else relative.as_posix() + "/"
 
 
@@ -186,12 +190,35 @@ def plan_outputs(
             raise DomosensoError(f"{cid}: blueprint {rel} is not under {BLUEPRINTS}<domain>/")
         add(f"blueprints/{rel[len(BLUEPRINTS):]}", _read(component_dir, rel), rel)
 
+    if instance:
+        outputs.extend(_esphome_devices(home, entry, component_dir, manifest))
+        for service in artifacts.get("services") or []:
+            # A container service's files go to services/<name>/ at the home's root, the home's own
+            # from then on (SPEC-015); a plain path is a tag from before SPEC-015 and is left alone.
+            if isinstance(service, dict):
+                for rel in service_files(service):
+                    outputs.append(Output(f"services/{service['name']}/{Path(rel).name}",
+                                          _read(component_dir, rel), rel, "instance"))
+
     seen: dict[str, str] = {}
     for output in outputs:
         if output.dest in seen:
             raise DomosensoError(f"{cid}: {seen[output.dest]} and {output.from_} both go to {output.dest}")
         seen[output.dest] = output.from_
     return sorted(outputs, key=lambda o: o.dest)
+
+
+def _esphome_devices(home: HomeConfig, entry: ComponentEntry, component_dir: Path, manifest: dict) -> list[Output]:
+    """The thin ESPHome device files of `artifacts.esphome.devices`, one per item, into esphome_dir."""
+    devices = ((manifest.get("artifacts") or {}).get("esphome") or {}).get("devices")
+    if not devices:
+        return []
+    try:
+        rendered = render_device_files(component_dir, load_inputs(entry))
+    except RenderError as exc:
+        raise DomosensoError(f"{entry.id}: render failed: {exc}") from exc
+    prefix = _dir_prefix(home, home.esphome_dir, "esphome_dir")
+    return [Output(prefix + name, text.encode("utf-8"), devices["template"], "instance") for name, text in rendered]
 
 
 def _renderable_copy(component_dir: Path, destination: Path, instance: bool) -> Path:

@@ -2,7 +2,7 @@
 # first filled from a real home on 2026-10-20. Fields marked "pilot:" are additions the format
 # needed; see docs/pilot-bermuda-presence.md.
 id: bermuda-presence
-version: 0.2.0
+version: 0.2.1
 summary: Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda
 description_key: meta.description
 photo: null
@@ -60,7 +60,10 @@ artifacts:
       - {file: esphome/ble-proxy.yaml, project: domosenso.bermuda-presence}
       - {file: esphome/ld2410.yaml, feature: radar}
     factory: esphome/ble-proxy.factory.yaml   # pilot: Improv + dashboard_import, for boards nobody configured yet
-    instance: examples/demo-home/esphome/ble-proxy-<room>.yaml   # pilot: the thin per-device file the CLI writes once; the home owns it
+    instance: examples/demo-home/esphome/ble-proxy-<room>.yaml   # the demo home's device files, as `devices` renders them from its inputs
+    devices:                              # 0.2.1 (SPEC-015): `domosenso add` writes one thin device file per proxy, once; the home owns it
+      {template: esphome/device.yaml.j2, each: proxies, file: ble-proxy-<room>.yaml}
+    secrets: [wifi_ssid, wifi_password, api_encryption_key]   # what the device files read; `status` names a missing one
   ha_blueprints:                          # pilot: managed, copied to blueprints/<domain>/domosenso/
     - ha/blueprints/template/domosenso/presence_room.yaml
     - ha/blueprints/automation/domosenso/ble_proxy_offline.yaml

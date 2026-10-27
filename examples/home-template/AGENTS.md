@@ -106,7 +106,11 @@ The command never does these; a human does, and an agent only prepares or checks
   `verify` reads them, nothing writes them;
 - entity and device registry edits (renames, areas, orphans): this home's registry tool applies a
   reviewed plan;
-- flashing an ESPHome device: `esphome config` proves the config, a human flashes;
+- flashing an ESPHome device or a firmware (`status`: `firmware ... (manual)`): `esphome config`
+  and `compile` prove the config, a human flashes;
+- starting a container next to Home Assistant (`status`: `service ... (manual)`; its files are in
+  `services/<name>/`), and the passwords it needs: a human, with the agent's prepared steps
+  (skill `add-component` in the catalog);
 - pushing tags, opening or merging pull requests into `main`;
 - changing how a container runs; restoring a full backup.
 

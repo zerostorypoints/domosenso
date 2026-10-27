@@ -1,0 +1,29 @@
+[# One device file per item of the `proxies` input, written once by `domosenso add` into the home's
+   esphome_dir as ble-proxy-<room>.yaml (SPEC-015). The home owns it afterwards: scan_window or a
+   mesh name for bssid_name go here, not into the package. -#]
+# ble-proxy-[[ item.room ]]: a Bermuda BLE proxy in [[ item.area ]]. Written once by `domosenso add`
+# from [[ component.id ]] [[ component.version ]], this home's file from now on; the packages are the catalog's at that tag.
+substitutions:
+  room: [[ item.room | yaml ]]
+  area: [[ item.area | yaml ]]
+
+esphome:
+  area: ${area}
+
+packages:
+  proxy: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/ble-proxy.yaml@[[ component.id ]]/[[ component.version ]]
+[%- if item.radar %]
+  radar: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/ld2410.yaml@[[ component.id ]]/[[ component.version ]]
+[%- endif %]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:  # uploads authenticated with the API key

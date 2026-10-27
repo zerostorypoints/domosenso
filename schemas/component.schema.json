@@ -39,7 +39,18 @@
           "properties": {
             "packages": {"type": "array", "items": {"type": "object", "required": ["file"], "properties": {"file": {"type": "string"}}}},
             "factory": {"type": "string"},
-            "instance": {"type": "string"}
+            "instance": {"type": "string"},
+            "devices": {
+              "type": "object",
+              "required": ["template", "each", "file"],
+              "additionalProperties": false,
+              "properties": {
+                "template": {"type": "string"},
+                "each": {"type": "string"},
+                "file": {"type": "string", "pattern": "^[a-z0-9<>_-]+\\.yaml$"}
+              }
+            },
+            "secrets": {"type": "array", "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}}
           }
         },
         "ha_blueprints": {"type": "array", "items": {"type": "string"}},
@@ -50,7 +61,7 @@
         "shell": {"type": "array", "items": {"type": "string"}},
         "themes": {"type": "array", "items": {"type": "string"}},
         "install_path": {"type": "string", "pattern": "^www/domosenso/[a-z0-9]+(-[a-z0-9]+)*/<version>/$"},
-        "services": {"type": "array"}
+        "services": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"$ref": "#/$defs/service"}]}}
       }
     },
     "provides": {"type": "object"},
@@ -67,6 +78,39 @@
     "local_only": {"type": "boolean"}
   },
   "$defs": {
+    "service": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+        "kind": {"enum": ["container", "firmware"]}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {"const": "container"},
+            "compose": {"type": "string"},
+            "files": {"type": "array", "items": {"type": "string"}},
+            "env_example": {"type": "string"},
+            "image": {"type": "string", "pattern": "^[^:\\s]+:[^\\s]+$"},
+            "build": {"const": true}
+          },
+          "required": ["compose"],
+          "oneOf": [{"required": ["image"]}, {"required": ["build"]}]
+        },
+        {
+          "properties": {
+            "kind": {"const": "firmware"},
+            "repo": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"},
+            "version": {"type": "string"},
+            "asset": {"type": "string"},
+            "flash": {"type": "string"},
+            "setup": {"type": "string"}
+          },
+          "required": ["repo", "version", "asset", "flash"]
+        }
+      ]
+    },
     "device_need": {
       "type": "object",
       "required": ["kind"],

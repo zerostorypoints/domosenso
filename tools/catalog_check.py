@@ -84,6 +84,8 @@ def _artifact_paths(artifacts: dict) -> list[tuple[str, str, bool]]:
         out.append(("artifacts.esphome.factory", esphome["factory"], False))
     if esphome.get("instance"):
         out.append(("artifacts.esphome.instance", esphome["instance"], True))
+    if esphome.get("devices"):
+        out.append(("artifacts.esphome.devices.template", esphome["devices"]["template"], False))
     for key in ("ha_blueprints", "ha_packages", "dashboard_cards", "templates", "shell", "themes"):
         for item in artifacts.get(key) or []:
             out.append((f"artifacts.{key}", item, False))
@@ -92,7 +94,18 @@ def _artifact_paths(artifacts: dict) -> list[tuple[str, str, bool]]:
     for item in artifacts.get("services") or []:
         if isinstance(item, str):
             out.append(("artifacts.services", item, False))
+        else:
+            for rel in service_files(item):
+                out.append((f"artifacts.services.{item['name']}", rel, False))
     return out
+
+
+def service_files(service: dict) -> list[str]:
+    """The files a `container` service puts into a home (SPEC-015): compose file, the files built or
+    mounted with it, the env example. A `firmware` service has none."""
+    if service.get("kind") != "container":
+        return []
+    return [service["compose"], *(service.get("files") or []), *([service["env_example"]] if service.get("env_example") else [])]
 
 
 def check_component(path: Path) -> list[str]:
