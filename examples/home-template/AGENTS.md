@@ -111,7 +111,8 @@ The command never does these; a human does, and an agent only prepares or checks
 - starting a container next to Home Assistant (`status`: `service ... (manual)`; its files are in
   `services/<name>/`), and the passwords it needs: a human, with the agent's prepared steps
   (skill `add-component` in the catalog);
-- pushing tags, opening or merging pull requests into `main`;
+- pushing tags or merging pull requests into `main`; opening a task draft PR follows the scoped
+  authorisation in Boundaries below;
 - changing how a container runs; restoring a full backup.
 
 ## Privacy
