@@ -23,3 +23,6 @@ website/tsconfig.tsbuildinfo
 
 # Isolated generated catalog demos: includes local authentication and browser evidence
 .domosenso/
+
+# Separate local agent sessions
+.worktrees/

@@ -122,6 +122,14 @@ calendars into the catalog, a pull request description in the catalog's reposito
 place outside this repository. What is true for any home goes to the catalog as a component or a
 field note; what describes this home stays here.
 
+## Agent-operated work
+
+Agents implement, test and review; the human owner decides scope and manually approves changes.
+Never submit a required human approval using the owner's credentials. Optional auto-merge requires
+explicit task authorisation and never authorises production deployment. Use the catalog's
+`docs/AGENT_WORKFLOW.md` as setup guidance; this home template does not install its catalog-only
+launcher or hooks into the home repository. Verify this home's own guard setup separately.
+
 ## Local session workspaces
 
 Every local session, including Codex, Claude Code, coordinators and read-only reviewers, must use

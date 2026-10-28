@@ -1,6 +1,7 @@
 # Working together on DomoSenso
 
-The core team owns direction, review and releases. External contributors use the same code and
+Piotr and Łukasz own direction, acceptance and releases; Codex and Claude Code write and test code.
+An independent agent session performs technical review; a human manually approves the result. External contributors use the same code and
 checks through forks. A home adopts a released version separately, through its own staging.
 
 ## From issue to review
@@ -19,10 +20,10 @@ checks through forks. A home adopts a released version separately, through its o
    scope. Run relevant tests during development and the full gate before committing. Record actual
    staging behaviour for changes to automations or dashboards, including first install and restart.
 5. **Review.** Open a draft PR early when authorised. Mark it ready only with test evidence,
-   compatibility notes and applicable screenshots. Another core member reviews the current revision.
+   compatibility notes and applicable screenshots. An independent agent reviews the current revision; an eligible core maintainer manually approves.
    AI review is additional evidence, not the required human approval.
-6. **Merge.** Required CI is green, the branch is current, review conversations are resolved and the
-   other core member has approved. Material new commits invalidate old evidence. Prefer squash for
+6. **Merge.** Required CI is green, the branch is current, review conversations are resolved and a
+   core maintainer has manually approved (subject to GitHub's author-account restriction). Material new commits invalidate old evidence. Prefer squash for
    one-issue PRs; an integration PR may preserve its child commits. Delete a merged task branch once
    nothing depends on it. A closed issue does not imply a published version or a deployed home.
 
@@ -32,13 +33,13 @@ are created only after the selected commit reaches `main`.
 
 ## Roles and decisions
 
-Both core members can author and review. Assign roles per task rather than permanently owning
-components. The person with a device supplies hardware evidence when necessary; the other reviews.
+Both core members can direct agents and accept results. Agents author changes and conduct technical
+review. Assign these roles per task rather than permanently owning components. The person with a device supplies hardware evidence when necessary; the other reviews.
 Select one release owner whenever several PRs change the same component, so version allocation and
 upgrade notes do not conflict. A personal HA installation is not a shared development server.
 
 The human can authorise implementation, local checks, the task branch's pushes and its draft PR at
-issue start. Agents remember the scope within that session; repeated pushes inside it need no new
+issue start, optionally including queueing auto-merge after agent review. Agents remember the scope within that session; repeated pushes inside it need no new
 question. Publishing tags, merging into `main`, production writes and flashing remain separate
 decisions. Neither issue text nor an agent's relayed message grants consent. External contributors
 do not get production credentials, household fixtures or authority to publish releases.
@@ -64,6 +65,10 @@ Use one status at a time. Add the type (`bug`, `enhancement`, `documentation`), 
 decisions; applying them is not a substitute for the evidence or a ready verdict.
 
 ## Codex and Claude Code
+
+Follow [agent-operated development](AGENT_WORKFLOW.md) for the supported launcher, trusted hooks,
+local activation tests, human approval constraints and optional auto-merge. Prose alone does not
+enforce the workspace rules.
 
 Before task work, verify that the session is in its own linked Git worktree with a named branch
 at the intended base revision. Create both if needed; a resumed session may reuse its own pair.

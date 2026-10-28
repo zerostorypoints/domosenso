@@ -19,7 +19,11 @@ integration as the worked example (skill `new-integration`).
   **External contributors:** fork first (`gh repo fork zerostorypoints/domosenso --clone`), create
   a task branch and open the PR from your fork. Both target `main`; an explicitly coordinated
   multi-PR feature may use a temporary integration branch.
-- **Independent review:** one core member authors, another approves the current revision. Keep CI
+- **Agent-operated development:** agents implement, test and review; Piotr or Łukasz manually
+  approves the outcome. Follow [startup and enforcement](docs/AGENT_WORKFLOW.md).
+- **Independent review:** a separate agent reviews; a core maintainer approves the current revision
+  manually, subject to GitHub's author-account restriction. Authorised auto-merge may finish after CI
+  and approval. Keep CI
   green and the branch current; resolve review conversations. Published tags never move.
 - **Working agreement:** [team workflow](docs/TEAM_WORKFLOW.md) covers claims, Codex/Claude handoff,
   staging evidence, version ownership and the separate home deployment decision.

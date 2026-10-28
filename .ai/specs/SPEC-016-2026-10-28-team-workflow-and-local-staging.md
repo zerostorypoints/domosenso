@@ -71,8 +71,10 @@ QA evidence and release authority, scaled to this team; do not copy its entire a
 
 | Role | Can do | Completion boundary |
 |---|---|---|
-| Core author | Claim an issue; implement; push a task branch; open a draft PR; provide tests and QA evidence | Another core member approves before merge |
-| Core reviewer | Check scope, compatibility and evidence; reproduce relevant behaviour; request changes or approve | Approval applies to the reviewed revision |
+| Core task owner | A core maintainer sets outcomes, scope and agent authority | An eligible core maintainer manually approves the result |
+| Implementing agent | Implement, test, push the authorised branch and prepare its PR/evidence | Independent agent review, then human acceptance |
+| Reviewing agent | Review exact-SHA code and evidence in its own worktree/branch | Reports findings; never submits the human approval |
+| Human approver | A core maintainer assesses scope, observed behaviour and agent evidence, then manually approves or requests changes | Approval applies to the reviewed revision and GitHub author-account restrictions |
 | Release owner | A core member named for that release; select the green merged commit and publish component tags | Published versions never move; release is not a home deploy |
 | External contributor | Claim by discussion; work in a fork; submit a PR and reproducible evidence | Core triages, labels, reviews, merges and releases |
 | Home owner/operator | Update a private home lock, test its staging and approve its production plan | Authority is specific to that home and operation |
@@ -303,3 +305,26 @@ permission and a demo limited initially to Ramka with synthetic upstream devices
 - [Open Mercato review/QA conventions](https://github.com/open-mercato/open-mercato/blob/main/.ai/docs/pr-workflow.md)
 - [Codex repository instructions](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 - [Claude Code shared instructions](https://code.claude.com/docs/en/memory)
+
+## 11. Agent-operated workflow amendment — 2026-10-28
+
+The maintainers clarified that agents write and review code; The core maintainers set direction and
+accept changes. Implement one tested local session launcher and shared workspace guard for both
+agents, with project SessionStart/PreToolUse hooks and Git commit/push checks. The launcher prepares
+a named branch in a linked worktree before starting the selected CLI. Native desktop worktrees
+remain supported; detached starts may perform only the branch-creation bootstrap before task work.
+Keep source instructions shared through AGENTS.md and the CLAUDE.md import.
+
+Prefer these local guardrails plus existing server-side protection over prose alone or an unscoped
+machine-wide policy. Do not claim an absolute sandbox: hooks need local trust/activation, some tool
+paths are not intercepted, and an arbitrary shell can target other directories. CI validates the
+committed configuration and guard regressions, not the state of every contributor's workstation.
+Each workstation must complete the documented activation and negative-test checklist. No global
+trust bypass, private credentials or new bot account is introduced.
+
+Enable repository auto-merge availability without weakening protection. An agent may queue it for
+a PR when the task authorisation includes that action; approval remains a manual core-team action.
+Agents never submit that human approval themselves. GitHub's author-account restriction still
+applies: PRs opened with one maintainer's account need the other maintainer's approval, and vice versa. Allowing either
+person to approve every PR would require a separately configured agent identity, outside this slice.
+Tag publication and production deployment remain separately authorised.

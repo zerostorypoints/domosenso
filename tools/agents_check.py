@@ -16,6 +16,8 @@ Exits 1 on any error.
 from __future__ import annotations
 
 import re
+import json
+import tomllib
 import sys
 from pathlib import Path
 
@@ -94,8 +96,31 @@ def check_skills(root: Path) -> list[str]:
     return errors + install_skills.check(root)
 
 
+def check_agent_hooks(root: Path) -> list[str]:
+    errors = []
+    command = 'python3 "$(git rev-parse --show-toplevel)/tools/agent_workspace.py" hook'
+    expected = {'hooks': {event: [{'hooks': [{'type': 'command', 'command': command, 'timeout': 10}]}]
+                          for event in ('SessionStart', 'PreToolUse')}}
+    for file in ('.codex/hooks.json', '.claude/settings.json'):
+        try:
+            data = json.loads((root / file).read_text())
+            if file == '.claude/settings.json' and data.get('disableAllHooks') is True:
+                errors.append(f'{file}: disableAllHooks must not be true')
+            if data.get('hooks') != expected['hooks']:
+                errors.append(f'{file}: must wire both workspace hooks without disabling or narrowing them')
+        except (OSError, ValueError, AttributeError):
+            errors.append(f'{file}: missing or invalid hook configuration')
+    try:
+        config = tomllib.loads((root / '.codex/config.toml').read_text())
+        if config.get('features', {}).get('hooks') is not True:
+            errors.append('.codex/config.toml: hooks must be enabled')
+    except (OSError, ValueError, AttributeError):
+        errors.append('.codex/config.toml: missing or invalid hook configuration')
+    return errors
+
+
 def check_all(root: Path) -> list[str]:
-    return check_agents_md(root) + check_claude_md(root) + check_skills(root)
+    return check_agents_md(root) + check_claude_md(root) + check_skills(root) + check_agent_hooks(root)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -152,3 +152,22 @@ plus synthetic upstream entities and registered services/forecast subscription s
   passed the full browser matrix/reconnect. The local runner removed its Docker resources.
 - Final delivery remains a core-review PR into main. No main merge, release tag, physical-device
   operation or home deployment is part of this implementation. Task worktrees remain for review.
+
+## Agent-operated follow-up
+
+Maintainer clarification: agents implement/test/review; Piotr and Łukasz direct and approve.
+Implement and test the shared workspace guard, CLI start path, project hooks and Git guards;
+validate hook configuration in agents_check; align roles/auto-merge docs; enable auto-merge
+availability without queueing the current PR or changing approval/check requirements. Verify the
+full gate and deliver the local activation/trust steps with explicit limits on enforcement.
+
+Follow-up evidence: guard/launcher tests failed before implementation, then passed. Independent
+review found three P2 issues (numeric issue names, alternate CLI session modes, disabled Claude
+hooks); each was reproduced and fixed, with 51 focused/privacy checks passing and scoped review
+approved. The existing privacy scanner remains unchanged; agent/tool instructions use role names.
+Repository auto-merge is enabled and read back; one approval plus framework/website/demo remains
+required. PR68 is not queued for auto-merge. Live hook trust/activation on each maintainer's client
+is deliberately still a manual setup step, not claimed by direct protocol tests.
+Final follow-up full gate: 837 Python tests, 127 Node tests, catalog/HA/ESPHome and runtime demo
+passed after all fixes. Hook/client activation remains explicitly unverified pending manual trust
+and a fresh-session negative test on each workstation. No model-based test session was launched.

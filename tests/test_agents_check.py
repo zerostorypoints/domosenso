@@ -1,5 +1,6 @@
 """tools/agents_check.py and tools/install_skills.py: the files coding agents read."""
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,10 @@ def home(tmp_path):
     skill(tmp_path, "check")
     skill(tmp_path, "new-component")
     inst.install(tmp_path)
+    for file in ('.codex/hooks.json', '.codex/config.toml', '.claude/settings.json'):
+        target = tmp_path / file
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO / file, target)
     return tmp_path
 
 
@@ -133,3 +138,23 @@ def test_cli_exit_codes(home):
     (home / ".claude" / "skills" / "check").unlink()
     bad = subprocess.run([sys.executable, script, "--check", "--root", home], capture_output=True, text=True)
     assert bad.returncode == 1 and "missing" in bad.stdout
+
+
+@pytest.mark.parametrize('file', ['.codex/hooks.json', '.claude/settings.json'])
+def test_missing_or_disabled_workspace_hook_fails(home, file):
+    (home / file).write_text('{"hooks": {}}')
+    assert any(file in error for error in ac.check_all(home))
+
+
+def test_disabled_codex_hooks_fail(home):
+    (home / '.codex/config.toml').write_text('[features]\nhooks = false\n')
+    assert any('hooks' in error for error in ac.check_all(home))
+
+
+def test_claude_disable_all_hooks_fails(home):
+    import json
+    path = home / '.claude/settings.json'
+    data = json.loads(path.read_text())
+    data['disableAllHooks'] = True
+    path.write_text(json.dumps(data))
+    assert any('disableAllHooks' in error for error in ac.check_all(home))

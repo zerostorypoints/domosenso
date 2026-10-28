@@ -26,6 +26,7 @@
 - [ ] Every local session used its own worktree and named branch, including reviews.
 - [ ] Examples and evidence contain no household identifiers, credentials or private media.
 - [ ] The change matches the issue/spec and includes its required tests.
-- [ ] Another core member has enough evidence to reproduce and review this revision.
+- [ ] Independent agent review findings and verification evidence are recorded for this revision.
+- [ ] A core maintainer has enough evidence to manually accept the behaviour and risks.
 
 <!-- Owner, branch/SHA, remaining work and next action when handing over an incomplete change. -->

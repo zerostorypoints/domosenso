@@ -5,6 +5,7 @@
 #   git config core.hooksPath .githooks
 # A human may override a single push with DOMOSENSO_ALLOW_MAIN_PUSH=1; an agent never does.
 set -uo pipefail
+python3 "$(git rev-parse --show-toplevel)/tools/agent_workspace.py" check >/dev/null || exit 1
 [ "${DOMOSENSO_ALLOW_MAIN_PUSH:-}" = "1" ] && exit 0
 zero=0000000000000000000000000000000000000000
 status=0

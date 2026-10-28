@@ -1,11 +1,31 @@
 """The pre-push guard in .githooks: no push to main, no tag moved or deleted (AGENTS.md)."""
 import os
+import shutil
+import pytest
 import subprocess
 from pathlib import Path
 
 HOOK = Path(__file__).resolve().parent.parent / ".githooks" / "pre-push"
 ZERO = "0" * 40
 A, B = "a" * 40, "b" * 40
+
+
+@pytest.fixture(autouse=True)
+def isolated_push_checkout(tmp_path, monkeypatch):
+    primary = tmp_path / 'primary'
+    primary.mkdir()
+    def git(*args):
+        subprocess.run(['git', '-C', str(primary), *args], check=True, capture_output=True)
+    git('init', '-b', 'main')
+    git('config', 'user.email', 'test@example.invalid')
+    git('config', 'user.name', 'Test')
+    (primary / 'tools').mkdir()
+    shutil.copyfile(HOOK.parent.parent / 'tools/agent_workspace.py', primary / 'tools/agent_workspace.py')
+    git('add', '.')
+    git('commit', '-m', 'fixture')
+    work = tmp_path / 'work'
+    git('worktree', 'add', '-b', 'codex/push-test', str(work))
+    monkeypatch.chdir(work)
 
 
 def push(*lines: str, allow: bool = False) -> subprocess.CompletedProcess:
