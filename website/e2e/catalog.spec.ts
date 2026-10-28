@@ -63,7 +63,29 @@ test('hardware and journal routes render on narrow screens',async({page},info)=>
 test('no JavaScript retains catalog, views and journal content',async({browser})=>{
  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();
  await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(10);
+ await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(9);
  await page.goto('http://127.0.0.1:4336/components/ramka/');await expect(page.locator('#views')).toContainText('Home status');
  await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(4);
  await context.close();
+});
+
+test('catalog sections lead from components to hardware and back from a guide',async({page},info)=>{
+ await page.goto('/components/');
+ const sections=page.getByRole('navigation',{name:'Catalog sections'});
+ await expect(sections.getByRole('link',{name:/DomoSenso components/})).toHaveAttribute('aria-current','page');
+ await sections.getByRole('link',{name:/Hardware/}).click();
+ await expect(page).toHaveURL(/\/devices\/$/);
+ await expect(sections.getByRole('link',{name:/Hardware/})).toHaveAttribute('aria-current','page');
+ await expect(page.locator('.hardware-card')).toHaveCount(9);
+ await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://domosenso.org/devices/');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:info.outputPath('hardware-index.png'),fullPage:true});
+ const radio=page.locator('.hardware-card').filter({has:page.getByRole('heading',{name:'CC1101 radio module'})});
+ await expect(radio.getByRole('link',{name:'Awnings'})).toHaveAttribute('href','/components/awnings/');
+ await radio.getByRole('link',{name:'Open device guide'}).click();
+ await expect(page).toHaveURL(/\/devices\/cc1101\/$/);
+ await page.getByRole('link',{name:'All hardware',exact:true}).first().click();
+ await expect(page).toHaveURL(/\/devices\/$/);
+ await sections.getByRole('link',{name:/DomoSenso components/}).click();
+ await expect(page.locator('.browser-card')).toHaveCount(10);
 });
