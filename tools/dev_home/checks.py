@@ -68,11 +68,21 @@ def services(demo):
     require(demo.api('/api/states/media_player.living_room_speaker')['attributes']['volume_level'] == .4, 'volume service had no effect')
     forecasts = demo.api('/api/services/weather/get_forecasts?return_response', {'entity_id': 'weather.forecast_home', 'type': 'daily'})
     require(len(forecasts['service_response']['weather.forecast_home']['forecast']) == 5, 'forecast service missing')
+    cover = 'cover.awning_living_room'
+    demo.api('/api/services/cover/open_cover', {'entity_id': cover})
+    wait_state(demo, cover, 'open')
+    require(demo.api('/api/states/' + cover)['attributes']['current_position'] == 100, 'cover open effect missing')
+    demo.api('/api/services/cover/stop_cover', {'entity_id': cover})
+    require(demo.api('/api/states/' + cover)['state'] == 'open' and demo.api('/api/states/' + cover)['attributes']['current_position'] == 100,
+            'cover stop changed its state or position')
+    demo.api('/api/services/cover/close_cover', {'entity_id': cover})
+    wait_state(demo, cover, 'closed')
+    require(demo.api('/api/states/' + cover)['attributes']['current_position'] == 0, 'cover close effect missing')
     demo.api('/api/services/notify/mobile_app_dining_tablet', {'message': 'command_screen_on'})
     state = demo.api('/api/states/sensor.domosenso_demo_actions')
     require(state['attributes']['last_action']['domain'] == 'notify', 'tablet action not recorded')
     require(state['attributes']['last_action']['data']['message'] == 'command_screen_on', 'recorded tablet action differs')
-    return 'Registered light/media/weather/notify services changed synthetic state; tablet wake recorded only'
+    return 'Registered light/media/weather/cover/notify services changed synthetic state; tablet wake recorded only'
 
 
 def scenes(demo):

@@ -112,13 +112,16 @@ def test_docker_plan_has_isolation(tmp_path):
     assert not any('host' == x or 'privileged' in x or 'device=' in x for x in argv)
 
 
-def test_foreign_docker_resource_is_never_adopted(tmp_path, monkeypatch):
+@pytest.mark.parametrize('kind', ['container', 'network'])
+@pytest.mark.parametrize('labels', [{}, None])
+def test_foreign_docker_resource_is_never_adopted(tmp_path, monkeypatch, kind, labels):
     from types import SimpleNamespace
     import dev_home.runtime as runtime
     d = Demo(tmp_path, 'test'); d.ensure()
-    monkeypatch.setattr(runtime, 'run', lambda *a, **kw: SimpleNamespace(returncode=0, stdout=json.dumps([{'Config': {'Labels': {}}}]), stderr=''))
+    obj = {'Config': {'Labels': labels}} if kind == 'container' else {'Labels': labels}
+    monkeypatch.setattr(runtime, 'run', lambda *a, **kw: SimpleNamespace(returncode=0, stdout=json.dumps([obj]), stderr=''))
     with pytest.raises(DemoError, match='ownership'):
-        d.inspect()
+        d.inspect(kind)
 
 
 def test_daemon_failure_does_not_mean_resource_absent(tmp_path, monkeypatch):

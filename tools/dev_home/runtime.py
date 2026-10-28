@@ -130,6 +130,7 @@ class Demo:
             raise DemoError(f'Docker inspect failed: {result.stderr.strip()}')
         obj = json.loads(result.stdout)[0]
         labels = obj.get('Config', {}).get('Labels', {}) if kind == 'container' else obj.get('Labels', {})
+        labels = labels or {}
         if labels.get(LABEL) != self.identity or labels.get('org.domosenso.dev.root') != str(self.root):
             raise DemoError(f'Docker {kind} ownership mismatch: {self.resource}')
         return obj

@@ -94,6 +94,8 @@ async def async_setup(hass, config):
                 if eid not in runtime['states']:
                     continue
                 if call.domain == 'cover':
+                    if call.service == 'stop_cover':
+                        continue  # Record the stop intention; preserve position and state.
                     position = call.data.get('position', 100 if call.service == 'open_cover' else 0)
                     runtime['states'][eid] = 'open' if position else 'closed'
                     runtime['attributes'].setdefault(eid, {})['current_position'] = position
