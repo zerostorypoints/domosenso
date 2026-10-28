@@ -137,12 +137,16 @@ Needs the human's go-ahead **typed in the same session**, each time:
 - anything that **writes** to production: `deploy production --apply`, `rollback production`, a
   service call, a helper value, a restart, a file copy;
 - **registry edits** and **flashing** a device;
-- **pushing** to GitHub, opening or merging a pull request, publishing a tag;
+- **pushing** or opening a PR unless the human has already authorised the named task branch and
+  its draft PR in this session; merging into `main` or publishing a tag still needs a separate decision;
 - anything that deletes data that cannot be regenerated.
 
 Changes reach `main` of this repository only through a pull request: never push to `main`, never
 force-push a shared branch, never move or delete a tag. The catalog's clone is read-only from here: a
-change to the catalog is a pull request from a fork of it (its CONTRIBUTING.md), on its own branch.
+change to the catalog is made in a separate worktree and PR (its CONTRIBUTING.md). Core members
+use upstream task branches; external contributors use forks. Another core member reviews the change.
+One human and one implementation session own each task; record branch, SHA, tests and next action
+when handing it off. A catalog merge or release never authorises a production write to this home.
 
 `deploy production` prints the plan and asks for the word `production`; a non-interactive run
 needs `--confirm <plan hash>`, the hash of the current plan; it fails if the plan has changed. That prompt is a second lock,

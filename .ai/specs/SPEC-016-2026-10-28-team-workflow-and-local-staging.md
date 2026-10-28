@@ -1,8 +1,8 @@
 # SPEC-016 — Core team, contributions and local Home Assistant staging
 
-Status: draft, 2026-10-28. The maintainer selected short-lived task branches into `main`,
-local staging and temporary integration branches for larger features. This document makes that
-direction concrete; the implementation details below are proposals awaiting approval.
+Status: approved, 2026-10-28, by the maintainer's explicit "go" in the originating conversation.
+The maintainer selected short-lived task branches into `main`, local staging and temporary
+integration branches for larger features. This document is the approved implementation scope.
 
 Source: the maintainer's request to organise a two-person core team, later external contributions,
 new components, issues and Codex / Claude Code work. Baseline: catalog `5b01271`, inspected on
@@ -284,8 +284,8 @@ Run the existing full gate before commits as required by `AGENTS.md`; report any
 prerequisite rather than substituting the earlier GitHub run for local verification.
 
 Builder decisions: internal helper names, exact fixture organisation, allocated port strategy and
-browser-test library, provided the boundaries and outcomes above hold. Proposed product-level
-defaults awaiting approval: one human approval, the small label vocabulary, task-scoped agent push
+browser-test library, provided the boundaries and outcomes above hold. Approved product-level
+defaults: one human approval, the small label vocabulary, task-scoped agent push
 permission and a demo limited initially to Ramka with synthetic upstream devices.
 
 ## 10. References
