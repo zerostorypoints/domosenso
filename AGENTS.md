@@ -206,7 +206,7 @@ it; an input set to `null` counts as absent. A nested YAML flow list needs space
 
 `tools/check-all.sh` runs every check, keeps going after a failure, prints `ok   <step>` or
 `FAIL <step>` per step and ends with `all checks passed` (exit 0) or `failed: <step>` lines (exit
-1). It flashes nothing and talks to no Home Assistant instance. Run it before every commit; the
+1). It flashes nothing and uses only the generated, isolated demo Home Assistant. Run it before every commit; the
 skill `check` explains how to read it.
 
 | step | checks | a failure means |

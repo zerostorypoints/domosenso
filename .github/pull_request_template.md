@@ -19,6 +19,7 @@
 - Full catalog checks:
 - Applicable staging scenarios (first install, upgrade, restart, reconnect):
 - UI screenshots / device evidence, or why not applicable:
+- How to open the interactive staging preview (credentials supplied privately), tested SHA and things to try:
 - Known limitations:
 
 ## Review and handoff

@@ -100,6 +100,12 @@ The implementing agent owns its worktree and fixes review findings. A separate r
 its own worktree/branch at the exact revision. It reports findings and evidence but **never submits
 the required human approval**, even if its GitHub CLI is authenticated as a core maintainer.
 
+Piotr or Łukasz makes an explicit acceptance decision after seeing the result; use the short
+[staging guide](STAGING_QUICKSTART.md) to request and inspect a preview. Merely adding a reviewer,
+reviewing your own change locally, a successful demo or green CI never counts as acceptance.
+Agents never auto-approve PRs. Auto-merge may execute only after the required human approval;
+it does not replace this extra step.
+
 Piotr or Łukasz manually approves in GitHub. GitHub cannot distinguish a human and an agent sharing
 one account, so account credentials are not a technical proof of human action. Also, an author
 cannot approve their own PR: an agent PR opened under Piotr's account needs Łukasz's approval, and

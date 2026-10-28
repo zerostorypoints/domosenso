@@ -172,5 +172,6 @@ From your home's folder: `uv run --project <path to the clone> domosenso <comman
   device.
 - [Setting up the Ramka's tablet](docs/tablet-setup.md) — every Android and Companion app setting,
   on the tested TCL tablet.
+- [Preview a PR before accepting it](docs/STAGING_QUICKSTART.md) — short staging guide for human reviewers.
 - [Contributing](CONTRIBUTING.md) — layout, components, checks, how changes land.
 - [AGENTS.md](AGENTS.md) — the rules for coding agents.

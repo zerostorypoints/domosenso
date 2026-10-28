@@ -98,6 +98,8 @@ Next action and owner:
 
 ## Three different gates
 
+For a short, human-facing walkthrough, use [Preview a PR before accepting it](STAGING_QUICKSTART.md).
+
 - **Catalog validation:** manifests, templates, cards, Python tests, HA `check_config` and ESPHome
   config checks. A local subset can help iteration, but only a full pass is full evidence.
 - **Running demo / staging:** exercise the real component against synthetic upstream devices;

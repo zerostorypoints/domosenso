@@ -1,5 +1,7 @@
 # Local catalog demo
 
+For the short human review path, start with [Preview a PR before accepting it](STAGING_QUICKSTART.md).
+
 The catalog demo runs the real Ramka package and cards from the current worktree against a
 fictional Home Assistant Container. It needs no home repository, production token, cloud login,
 radio or physical device. It is separate from a private home's existing staging target.
