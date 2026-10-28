@@ -90,6 +90,9 @@ review; stronger isolation needs a managed sandbox/OS policy, outside this repos
 
 ## Agent task and human decision
 
+Use skill [`preview-pr`](../.ai/skills/preview-pr/SKILL.md) when preparing an interactive PR preview
+for human acceptance. It ends at the live-preview handoff; approval and adoption remain separate.
+
 Give the agent the issue, expected outcome, approved spec if applicable, constraints and authorised
 actions. A practical brief is: implement and test; push this task branch; open/update its PR;
 queue auto-merge after independent agent review. That last action is optional and must be within

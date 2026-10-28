@@ -6,6 +6,10 @@ Your home and devices are not connected to it.
 
 ## Give the agent this task
 
+Use the shared **`preview-pr`** skill in Codex or Claude Code. Its [playbook](../.ai/skills/preview-pr/SKILL.md)
+handles the PR revision, workspace, checks, live preview and handoff. For example: **"Use preview-pr
+for PR #NUMBER and leave the demo running for my acceptance."**
+
 > Prepare local staging for PR #NUMBER at its current commit, in a separate worktree and named
 > branch. Run the applicable checks, then leave an interactive demo running. Give me its browser
 > URL, the private login-file location, the tested commit and 3–5 things to try with expected
