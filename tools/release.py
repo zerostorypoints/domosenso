@@ -4,17 +4,18 @@
 Usage: uv run tools/release.py <id> [--skip-checks]
 
 The `domosenso` command reads components only from these tags. Refuses when
-- the component's directory has uncommitted changes (the tag would not match what is installed);
+- the checkout has uncommitted changes or HEAD has not reached main;
 - the tag `<id>/<version>` already exists (a published version is never moved);
 - the contract (`inputs`, `provides`, `artifacts`) differs from the newest earlier tag of the
   component and `components/<id>/UPGRADE.md` has no `## <version>` heading;
-- `tools/check-all.sh` fails (unless --skip-checks).
+- the full local gate fails, or --skip-checks has no successful exact-HEAD GitHub CI evidence.
 
 Prints `tag <id>/<version> at <short sha>` and `ok`, or `FAIL <reason>` (exit 1). Never pushes.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -32,7 +33,72 @@ class ReleaseError(Exception):
 
 
 def git(catalog: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=catalog, capture_output=True, text=True)
+    try:
+        return subprocess.run(["git", *args], cwd=catalog, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ReleaseError(f"git check failed: {exc}") from exc
+
+
+def checked_head(catalog: Path) -> str:
+    """A release is a clean commit already included in the authoritative main."""
+    dirty = git(catalog, "status", "--porcelain", "--untracked-files=all")
+    if dirty.returncode or dirty.stdout.strip():
+        raise ReleaseError("uncommitted changes in the catalog: commit or remove them before release")
+    head = git(catalog, "rev-parse", "HEAD")
+    if head.returncode:
+        raise ReleaseError("cannot resolve HEAD")
+    origin = git(catalog, "remote", "get-url", "origin")
+    main = "refs/heads/main"
+    if origin.returncode == 0:
+        remote = git(catalog, "ls-remote", "--exit-code", "origin", "refs/heads/main")
+        main = "refs/remotes/origin/main"
+        local = git(catalog, "rev-parse", "--verify", main)
+        if remote.returncode or not remote.stdout.strip():
+            raise ReleaseError("cannot verify origin/main; check remote access and fetch origin")
+        if local.returncode or local.stdout.strip() != remote.stdout.split()[0]:
+            raise ReleaseError("origin/main is stale or missing: fetch origin before release")
+    if git(catalog, "merge-base", "--is-ancestor", head.stdout.strip(), main).returncode:
+        raise ReleaseError("HEAD is not included in main: merge the reviewed PR before release")
+    return head.stdout.strip()
+
+
+def github_json(catalog: Path, endpoint: str, paginate: bool = False):
+    command = ["gh", "api", endpoint]
+    if paginate:
+        command += ["--paginate", "--slurp"]
+    try:
+        result = subprocess.run(command, cwd=catalog, capture_output=True, text=True, timeout=60)
+        if result.returncode:
+            raise ReleaseError(f"CI evidence unavailable: {result.stderr.strip()[-400:]}")
+        return json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
+        raise ReleaseError(f"CI evidence unavailable: {exc}") from exc
+
+
+def verify_ci(catalog: Path, head: str) -> None:
+    """Require every protected-branch check for this commit, from its configured GitHub App."""
+    origin = git(catalog, "remote", "get-url", "origin")
+    match = re.fullmatch(r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([\w.-]+/[\w.-]+?)(?:\.git)?", origin.stdout.strip())
+    if origin.returncode or not match:
+        raise ReleaseError("CI evidence requires a GitHub origin; run the full local gate instead")
+    repo = match[1]
+    requirements = github_json(catalog, f"repos/{repo}/branches/main/protection/required_status_checks")
+    if not isinstance(requirements, dict) or not requirements.get("checks"):
+        raise ReleaseError("CI required checks unavailable: run the full local gate instead")
+    pages = github_json(catalog, f"repos/{repo}/commits/{head}/check-runs?filter=all&per_page=100", paginate=True)
+    if not isinstance(pages, list) or not all(isinstance(page, dict) and isinstance(page.get("check_runs"), list) for page in pages):
+        raise ReleaseError("CI check response is malformed")
+    runs = [run for page in pages for run in page["check_runs"]]
+    for required in requirements["checks"]:
+        name, app_id = required.get("context"), required.get("app_id")
+        # An unbound context can be supplied by an unrelated app: don't use it for a release.
+        if not name or not app_id:
+            raise ReleaseError("CI required check has no trusted app; run the full local gate instead")
+        matching = [run for run in runs if run.get("name") == name and run.get("head_sha") == head
+                    and (run.get("app") or {}).get("id") == app_id]
+        latest = max(matching, key=lambda run: run.get("id", 0), default={})
+        if latest.get("status") != "completed" or latest.get("conclusion") != "success":
+            raise ReleaseError(f"CI {name}: no current successful check for {head}")
 
 
 def newest_earlier_tag(catalog: Path, component_id: str) -> str | None:
@@ -59,6 +125,7 @@ def has_upgrade_entry(upgrade_md: Path, version: str) -> bool:
 
 def release(catalog: Path, component_id: str, skip_checks: bool = False) -> str:
     catalog = Path(catalog)
+    head = checked_head(catalog)
     component = catalog / "components" / component_id
     manifest_path = component / "component.yaml"
     if not manifest_path.is_file():
@@ -88,14 +155,18 @@ def release(catalog: Path, component_id: str, skip_checks: bool = False) -> str:
                 f"components/{component_id}/UPGRADE.md"
             )
 
-    if not skip_checks:
+    if skip_checks:
+        verify_ci(catalog, head)
+    else:
         script = catalog / "tools" / "check-all.sh"
         result = subprocess.run(["bash", str(script)], cwd=catalog, capture_output=True, text=True)
-        if result.returncode != 0:
+        if result.returncode != 0 or not result.stdout.rstrip().endswith("all checks passed"):
             tail = "\n".join((result.stdout + result.stderr).strip().splitlines()[-15:])
-            raise ReleaseError(f"check-all failed (exit {result.returncode}):\n{tail}")
+            raise ReleaseError(f"full check-all failed (exit {result.returncode}):\n{tail}")
 
-    made = git(catalog, "tag", "-a", tag, "-m", f"{component_id} {version}")
+    if checked_head(catalog) != head:
+        raise ReleaseError("HEAD changed during verification: run release again")
+    made = git(catalog, "tag", "-a", tag, head, "-m", f"{component_id} {version}")
     if made.returncode != 0:
         raise ReleaseError(f"git tag failed: {made.stderr.strip()}")
     return tag
@@ -104,7 +175,7 @@ def release(catalog: Path, component_id: str, skip_checks: bool = False) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Tag a component release (annotated tag <id>/<version> at HEAD).")
     parser.add_argument("id", help="component id")
-    parser.add_argument("--skip-checks", action="store_true", help="do not run tools/check-all.sh first")
+    parser.add_argument("--skip-checks", action="store_true", help="use successful exact-HEAD GitHub checks instead of the full local gate")
     args = parser.parse_args(argv)
     try:
         tag = release(REPO, args.id, skip_checks=args.skip_checks)

@@ -3,6 +3,13 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-28: contributor checks and release verification
+
+No home migration. Maintainers must release from a clean commit already included in main, with an
+up-to-date `origin/main`. `tools/release.py --skip-checks` now requires successful GitHub required
+checks for the exact commit rather than bypassing validation. `tools/check-all.sh --local` is a
+partial developer check and never release evidence. See [team workflow](TEAM_WORKFLOW.md).
+
 ## 2026-10-27: ramka 0.3.0, an optional status page
 
 New optional input `status_page`; `false` leaves the status page out of the dashboard and the

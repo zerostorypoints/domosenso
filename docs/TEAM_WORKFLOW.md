@@ -96,6 +96,23 @@ Next action and owner:
 - **Home adoption:** use the home's private inputs and lock on its own staging. The shared demo
   is not evidence that a particular home's devices or integrations work.
 
+## Local checks and release evidence
+
+`tools/check-all.sh --local` runs agent, Python, website-content, card and catalog checks without
+Docker/ESPHome. It prints `partial checks passed (HA/ESPHome not run)` on success. Use it for fast
+iteration or a machine without Docker; it never substitutes for the full `tools/check-all.sh` gate.
+The framework's Python floor stays unchanged; the pinned HA runtime runs in its own container.
+
+`tools/release.py` requires a completely clean checkout and a commit already included in `main`.
+With an `origin` remote, its `origin/main` tracking ref must match the current remote tip; run
+`git fetch origin` first. Offline releases cannot silently rely on stale remote information.
+
+`--skip-checks` now means **skip local execution using verified GitHub CI**, not bypass checks.
+It reads the required checks and their GitHub App IDs from main protection and requires the latest
+run of each on the exact release commit to have completed successfully. Missing, pending, stale,
+failed or unbound check evidence refuses the release. A local-only repo must run its full local
+gate. HEAD and cleanliness are checked again before the explicit verified commit is tagged.
+
 ## Release, then home adoption
 
 1. The release owner chooses a clean commit included in `main`, with applicable checks for that
