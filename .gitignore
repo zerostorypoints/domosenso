@@ -20,3 +20,6 @@ website/tsconfig.tsbuildinfo
 .env*
 !.env.example
 .wrangler/
+
+# Isolated generated catalog demos: includes local authentication and browser evidence
+.domosenso/

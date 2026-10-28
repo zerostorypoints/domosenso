@@ -1,0 +1,9 @@
+{
+  "domain": "domosenso_demo",
+  "name": "Domosenso fictional demo",
+  "version": "0.1.0",
+  "documentation": "https://github.com/zerostorypoints/domosenso",
+  "codeowners": [],
+  "iot_class": "local_push",
+  "requirements": []
+}

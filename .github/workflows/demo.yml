@@ -1,0 +1,37 @@
+name: Isolated demo acceptance
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: npm ci --prefix website
+      - name: Prepare Chromium before isolated runtime
+        working-directory: website
+        run: npx playwright install --with-deps chromium
+      - name: Prepare pinned Home Assistant image
+        run: docker pull homeassistant/home-assistant:2026.9.2
+      - name: Runtime and actual HA browser acceptance
+        run: uv run tools/dev_home/ci.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-acceptance
+          path: .domosenso/dev/*/evidence/**
+          include-hidden-files: true
+          if-no-files-found: warn
