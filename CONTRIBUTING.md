@@ -12,6 +12,9 @@ integration as the worked example (skill `new-integration`).
 
 ## How changes land
 
+- **Local sessions:** always use a separate linked Git worktree with a named branch, including
+  read-only reviews and coordinator sessions. A resumed session can reuse its own pair; concurrent
+  sessions never share either. Do not work in the primary checkout, on `main` or in detached HEAD.
 - **Core team:** create a task branch in this repository, for example `fix/53-weather-reconnect`.
   **External contributors:** fork first (`gh repo fork zerostorypoints/domosenso --clone`), create
   a task branch and open the PR from your fork. Both target `main`; an explicitly coordinated

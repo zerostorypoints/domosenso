@@ -122,6 +122,16 @@ calendars into the catalog, a pull request description in the catalog's reposito
 place outside this repository. What is true for any home goes to the catalog as a component or a
 field note; what describes this home stays here.
 
+## Local session workspaces
+
+Every local session, including Codex, Claude Code, coordinators and read-only reviewers, must use
+its own linked Git worktree with a named branch. Verify both before task work. The primary checkout
+is only for reading setup instructions and creating/selecting worktrees; do not work there, on
+`main` or in detached HEAD. A resumed session may reuse its own pair; concurrent sessions never
+share a worktree or branch. Review on a separate branch at the exact reviewed SHA. If setup fails,
+report the blocker instead of falling back to the primary checkout. Isolate each session's staging
+instance as well; a separate worktree alone does not isolate a shared HA target.
+
 ## Boundaries
 
 Allowed without asking:

@@ -11,7 +11,8 @@ checks through forks. A home adopts a released version separately, through its o
 2. **Claim.** Choose one human owner and record the assignee, branch, scope and dependencies in the
    issue. Read previous claims first; a maintainer resolves conflicts. A claim is a coordination
    convention, not an atomic lock. External contributors ask a maintainer to apply labels/assignment.
-3. **Isolate.** One branch and worktree per task; one implementation session writes to it. Core
+3. **Isolate.** Every local session has its own linked Git worktree and named branch, including
+   review and coordination. Keep one implementation session per task. Core
    contributors push upstream; external contributors push to their fork. Examples:
    `codex/53-weather-reconnect`, `claude/53-weather-reconnect`, `fix/53-weather-reconnect`.
 4. **Implement and prove.** Write the failing regression first. Keep the change within its approved
@@ -64,15 +65,19 @@ decisions; applying them is not a substitute for the evidence or a ready verdict
 
 ## Codex and Claude Code
 
-Start each session in the task's worktree at the intended base revision. Both agents read the same
-`AGENTS.md`; `CLAUDE.md` imports it, and `.ai/skills/` is shared through the committed skill links.
+Before task work, verify that the session is in its own linked Git worktree with a named branch
+at the intended base revision. Create both if needed; a resumed session may reuse its own pair.
+Use the primary checkout only to read setup instructions and create/select worktrees. Never do
+local task work there, on `main` or in detached HEAD. If setup fails, report it instead of falling
+back to the primary checkout. Both agents read the same `AGENTS.md`; `CLAUDE.md` imports it, and `.ai/skills/` is shared through the committed skill links.
 Use `review-issue`, `write-component-spec`, `check` and `render-and-stage` as appropriate. Keep
 instructions in the repository instead of maintaining separate Codex and Claude workflows.
 
 A useful task brief names the issue, approved spec, files/contract to preserve, acceptance criteria,
 required verification and authorised actions. Either tool can implement or review. Use a fresh
-session for review, ideally operated by the other core member. Do not run two writers in one checkout
-or let two sessions control the same staging instance. Coordinate shared schema/CLI/manifest edits.
+session for review, ideally operated by the other core member, with its own worktree and review
+branch at the exact reviewed SHA. Concurrent sessions never share a worktree, branch or staging
+instance, even when one session is read-only. Coordinate shared schema/CLI/manifest edits.
 
 When switching tools or owners, record this in the issue or PR:
 

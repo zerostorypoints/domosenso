@@ -3,6 +3,8 @@
 Status: approved, 2026-10-28, by the maintainer's explicit "go" in the originating conversation.
 The maintainer selected short-lived task branches into `main`, local staging and temporary
 integration branches for larger features. This document is the approved implementation scope.
+Maintainer amendment, 2026-10-28: every local session must use its own linked worktree and named branch, including read-only review and
+coordination; a resumed session may reuse its own pair.
 
 Source: the maintainer's request to organise a two-person core team, later external contributions,
 new components, issues and Codex / Claude Code work. Baseline: catalog `5b01271`, inspected on
@@ -110,8 +112,10 @@ is reported separately. Add a type (`bug`, `enhancement`, `documentation`), an a
    branch, intended scope and dependencies. Read existing claims first; core resolves competing
    claims. These conventions are coordination, not an atomic lock. External contributors without
    label permissions request the claim; a maintainer applies metadata.
-3. One implementation session owns the worktree. Separate read-only review sessions are fine.
-   Two writers never share a checkout or the same demo runtime. Shared files such as schemas,
+3. Every local session owns a separate linked worktree and named branch. Read-only reviewers use
+   their own review branch at the exact reviewed SHA; coordinators also work in their own worktree.
+   Concurrent sessions never share a worktree, branch or demo runtime. The primary checkout is only
+   for workspace setup; task work never uses it, `main` or detached HEAD. Shared files such as schemas,
    deployment tools and component manifests require explicit coordination between parallel issues.
 4. Fixes preserving the contract get a failing regression test. New components, new capabilities,
    schema changes and public contract changes get an approved spec first. Specs use the existing
