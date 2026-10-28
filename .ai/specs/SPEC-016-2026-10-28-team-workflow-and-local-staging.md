@@ -328,3 +328,38 @@ Agents never submit that human approval themselves. GitHub's author-account rest
 applies: PRs opened with one maintainer's account need the other maintainer's approval, and vice versa. Allowing either
 person to approve every PR would require a separately configured agent identity, outside this slice.
 Tag publication and production deployment remain separately authorised.
+
+## 9. Reproducible home staging amendment
+
+Requested by the maintainer on 2026-10-28: home staging and its agent playbook must be reusable
+by other installations and users, not implemented only in a maintainer's private repository.
+This extends section 6.1 with an additional home tool; the fictional demo remains separate.
+
+Implementation decisions: provide `tools/home-staging.py --home PATH up|status|target|down|reset
+--name NAME` (`up` optionally `--port`, `reset` requires `--confirm NAME`). Reuse the audited
+internal-network HA lifecycle and loopback relay. Use a home-worktree-derived identity and
+private, ignored `.domosenso/staging/` state. Require an owned linked worktree and named branch.
+Reject catalog-contained homes, symlinked state, foreign resources and nonignored runtime paths.
+Never adopt or stop a pre-existing home's staging container. Do not read production credentials,
+copy production storage, mirror production, or automatically deploy home configuration.
+
+Bootstrap an empty local HA; generate its private login and long-lived staging token, and output
+a `local-docker` target fragment for `staging-NAME`. The user/agent reviews and adds that single
+entry to the home declaration. Preserve existing targets. Starting HA is not evidence that the
+home's components work: deploy, private fixtures, integration limitations and browser checks are
+separate playbook steps. Missing integrations/upstream state must be reported, not presented as
+complete simulation. Home config may be deployed only after review; egress remains blocked.
+
+Distribute a shared `stage-home-update` skill with a reproducible installer into any home
+worktree. It installs a versioned copy for both agent clients and a short human guide, without
+replacing AGENTS/CLAUDE, existing skills, hooks or settings. Updates replace only unchanged
+previously installed files; conflicts fail before writes. Runtime data stays ignored and private.
+Home-template and onboarding instructions discover this workflow. No personal paths, hostnames,
+rooms or household scripts enter the shared implementation.
+
+Acceptance: two fresh synthetic home repositories/worktrees can install the workflow, start
+concurrent isolated staging with the same name, load local HA, obtain valid generated targets,
+resume without losing deployed configuration, and clean up one without affecting the other.
+Tests cover ownership, symlinks, ignored-state checks, occupied ports, safe installer upgrades and
+private file permissions. Existing demo and CLI tests remain green. No production action or
+automatic human approval is introduced.

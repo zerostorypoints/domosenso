@@ -356,6 +356,7 @@ the script after adding, renaming or removing a skill.
 | `onboard-home` | start a new home from an empty directory: interview, `domosenso recommend`, `init`, add `backup`, stop at `deploy production --plan` |
 | `add-component` | one component into an onboarded home, end to end: integrations, containers, ESPHome device files and firmware, render, deploy, verify |
 | `check` | run `tools/check-all.sh` and report pass or fail per step |
+| `stage-home-update` | install reproducible local home staging, preserve private customization and hand off a candidate for human acceptance |
 | `preview-pr` | prepare an exact-revision local demo, leave it running and hand it to a human for acceptance |
 | `new-component` | scaffold `components/<id>/` and get the checker and tests passing |
 | `new-integration` | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |

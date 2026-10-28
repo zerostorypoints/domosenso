@@ -175,3 +175,8 @@ From your home's folder: `uv run --project <path to the clone> domosenso <comman
 - [Preview a PR before accepting it](docs/STAGING_QUICKSTART.md) — short staging guide for human reviewers.
 - [Contributing](CONTRIBUTING.md) — layout, components, checks, how changes land.
 - [AGENTS.md](AGENTS.md) — the rules for coding agents.
+
+
+For a private installation, [set up local home staging](docs/HOME_STAGING.md) with the shared
+`stage-home-update` skill and framework tools. Each home/worktree gets its own isolated runtime;
+private inputs and local customizations remain in the home repository.

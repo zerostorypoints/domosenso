@@ -56,7 +56,11 @@ For a fresh demo: `uv run tools/dev-home.py reset --name review --confirm review
 
 ## Before adopting it in your own home
 
-The fictional preview helps you accept a framework PR. Your home's staging is a second check:
+The fictional preview helps you accept a framework PR. Your home's staging is a second check.
+Use the shared [home staging setup](HOME_STAGING.md) and `stage-home-update` skill: the framework
+ships an installer and isolated runtime for any home/worktree, rather than requiring a personal script.
+
+For that second check:
 
 - Ask the agent to read the **home repository's** instructions, use its own worktree/branch and
   identify the configured staging target. If there is no staging target, prepare its setup first;

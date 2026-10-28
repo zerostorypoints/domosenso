@@ -47,6 +47,7 @@ done
 # ramka 0.2.0: climate, air, plants and photos left out, only the status page (SPEC-011 section 6.2).
 step "ha-check ramka (pages left out)" env INPUTS="$ROOT/tests/fixtures/ramka-without-pages.yaml" tools/ha-check.sh ramka
 step "demo runtime" uv run tools/dev_home/ci.py --runtime-only
+step "home staging runtime" uv run tools/home-staging-check.py
 fi
 
 echo

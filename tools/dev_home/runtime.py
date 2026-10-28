@@ -158,6 +158,10 @@ class Demo:
                 '-v', f'{self.path / "proxy.py"}:/proxy.py:ro', '--entrypoint', 'python', IMAGE,
                 '/proxy.py', target]
 
+    @property
+    def proxy_source(self):
+        return self.root / 'tools/dev_home/proxy.py'
+
     def start_proxy(self):
         obj = self.inspect(resource=self.ui_resource)
         if obj:
@@ -166,7 +170,7 @@ class Demo:
             return
         if not self.inspect('network', self.ui_resource):
             run(['docker', 'network', 'create', *self.labels(), self.ui_resource])
-        shutil.copyfile(self.root / 'tools/dev_home/proxy.py', self.path / 'proxy.py')
+        shutil.copyfile(self.proxy_source, self.path / 'proxy.py')
         target = self.inspect()['NetworkSettings']['Networks'][self.resource]['IPAddress']
         run(self.proxy_command(self.metadata()['port'], target))
         run(['docker', 'network', 'connect', self.resource, self.ui_resource])
