@@ -114,8 +114,14 @@ def test_public_release_license_covers_selected_component_snapshots():
     grant = (ROOT / 'docs/licensing.md').read_text()
     assert 'Apache-2.0' in grant and 'ZeroStoryPoints GmbH' in grant
     for component in selection['components']:
-        assert component['commit'] in grant
-        assert component['tag'] in grant
+        # Historical snapshots need the explicit grant; newer tags carry their own license.
+        if component['commit'] in grant and component['tag'] in grant:
+            continue
+        import subprocess
+        license_text = subprocess.check_output(['git', 'show', f"{component['commit']}:LICENSE"], cwd=ROOT, text=True)
+        notice = subprocess.check_output(['git', 'show', f"{component['commit']}:NOTICE"], cwd=ROOT, text=True)
+        assert 'Apache License' in license_text and 'Version 2.0' in license_text
+        assert 'ZeroStoryPoints GmbH' in notice
 
 
 def test_onboarding_discloses_unreleased_remote_access_and_current_ramka():

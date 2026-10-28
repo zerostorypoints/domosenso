@@ -166,3 +166,23 @@ For analytics browser checks, build with the fake ID `G-DOMOTEST01` (as CI does)
 Tests intercept the tag request; no test traffic goes to a production property.
 A GA4 property and Search Console association are configured in their provider
 panels; a successful build alone does not establish that analytics receives data.
+
+## Visual catalog, device guides and journal
+
+`content/components/<id>.json` binds editorial text, illustrative states and view ownership to
+the selected component release. `content/devices/` names explicit public source files at
+`documentationCommit`; `content/assets.json` records preview/wiring/photo provenance. Run the
+exporter from the repository root to regenerate catalog, docs, editorial JSON and pinned SVGs.
+Never edit generated snapshots alone. The exporter rejects stale component/view versions and
+missing or unsafe evidence/asset paths.
+
+Journal entries live in `content/journal/<slug>.md` with YAML frontmatter: slug, title, summary,
+category (`releases`, `updates`, `installations`), date (`YYYY-MM-DD`, quoted), status
+(`draft` or `published`), author, components, releases and sources; cover is optional. A release
+reference records id, version, tag and full commit. Keep historical references fixed. Drafts
+are excluded from all generated website data. Published articles feed `/journal/feed.xml`.
+
+Examples use manual controls and fictional data. Preview illustrations are not dashboard
+screenshots. Do not imply mobile HA layout support because the website itself is responsive.
+Use the repository `domosenso-website-audit` skill around merges and release publication; record
+local, merged and production state separately. The skill is not an automatic background job.

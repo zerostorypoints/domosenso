@@ -1,0 +1,82 @@
+{
+  "outcome": "Bring the forecast into Home Assistant.",
+  "categories": [
+    "climate",
+    "utilities"
+  ],
+  "hardware": "none",
+  "ui": "consumer",
+  "deviceIds": [],
+  "views": [
+    {
+      "id": "clock-weather",
+      "title": "Clock & weather",
+      "owner": "ramka",
+      "providers": [
+        "weather"
+      ],
+      "availability": "conditional",
+      "condition": "Provide the weather entity to Ramka. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+      "preview": "/previews/clock-weather.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Set up the Met.no integration with the location you choose in Home Assistant.",
+    "Verify its weather entity and forecast.",
+    "Map the weather entity in Ramka to show current weather alongside now playing and a four-day forecast on the configured climate page."
+  ],
+  "id": "weather",
+  "version": "0.1.0",
+  "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+  "evidencePaths": [
+    "components/weather/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Clear",
+        "headline": "A brighter outlook",
+        "detail": "Illustrative Met.no-style forecast data, not a weather service request.",
+        "values": [
+          {
+            "label": "Conditions",
+            "value": "Clear"
+          },
+          {
+            "label": "Temperature",
+            "value": "18 °C"
+          },
+          {
+            "label": "Wind",
+            "value": "8 km/h"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Rain",
+        "headline": "Plan for a wet afternoon",
+        "detail": "No local weather station is required; this integration uses an external service.",
+        "values": [
+          {
+            "label": "Conditions",
+            "value": "Rain"
+          },
+          {
+            "label": "Temperature",
+            "value": "13 °C"
+          },
+          {
+            "label": "Wind",
+            "value": "16 km/h"
+          }
+        ],
+        "level": 50
+      }
+    ]
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "outcome": "Bring existing Somfy RTS awnings into your setup.",
+  "categories": [
+    "lighting-shading"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "m5stack-atom-lite",
+    "cc1101"
+  ],
+  "views": [
+    {
+      "id": "controls",
+      "title": "Room controls",
+      "owner": "ramka",
+      "providers": [
+        "lights",
+        "awnings",
+        "media"
+      ],
+      "availability": "conditional",
+      "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+      "preview": "/previews/controls.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Use a separate Atom/ESP32 board with the correct-band CC1101 module; follow its wiring guide.",
+    "Configure ESPSomfy-RTS, MQTT and each virtual remote, then pair with the awning.",
+    "Verify open, stop and close, handset behavior and existing wind protection before using automations."
+  ],
+  "id": "awnings",
+  "version": "0.2.1",
+  "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+  "evidencePaths": [
+    "components/awnings/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Closed",
+        "headline": "Shade when you need it",
+        "detail": "An illustrative position, not live position feedback from an RTS motor.",
+        "values": [
+          {
+            "label": "Command",
+            "value": "Close"
+          },
+          {
+            "label": "Connection",
+            "value": "433 MHz radio"
+          },
+          {
+            "label": "Position",
+            "value": "Illustrative"
+          }
+        ],
+        "level": 0
+      },
+      {
+        "label": "Open",
+        "headline": "Send an open command",
+        "detail": "The radio node acts as another remote. The original handset keeps working.",
+        "values": [
+          {
+            "label": "Command",
+            "value": "Open"
+          },
+          {
+            "label": "Connection",
+            "value": "MQTT → radio"
+          },
+          {
+            "label": "Position",
+            "value": "Illustrative"
+          }
+        ],
+        "level": 100
+      },
+      {
+        "label": "Stop",
+        "headline": "Stop at the right moment",
+        "detail": "This preview pauses at a sample position; actual feedback depends on the installation.",
+        "values": [
+          {
+            "label": "Command",
+            "value": "Stop"
+          },
+          {
+            "label": "Connection",
+            "value": "RTS"
+          },
+          {
+            "label": "Position",
+            "value": "Illustrative"
+          }
+        ],
+        "level": 55
+      }
+    ]
+  }
+}

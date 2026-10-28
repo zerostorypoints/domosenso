@@ -1,0 +1,118 @@
+[
+  {
+    "path": "/previews/climate.svg",
+    "alt": "Illustration of climate with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/air.svg",
+    "alt": "Illustration of air quality with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/plants.svg",
+    "alt": "Illustration of plant care with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/photos.svg",
+    "alt": "Illustration of photo frame with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/status.svg",
+    "alt": "Illustration of home status with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/controls.svg",
+    "alt": "Illustration of room controls with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/music.svg",
+    "alt": "Illustration of now playing with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/calendar.svg",
+    "alt": "Illustration of calendar with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/previews/presence.svg",
+    "alt": "Illustration of presence rooms with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
+    "path": "/wiring/hlk-ld2410c-atom-lite.svg",
+    "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
+    "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+    "alt": "Wiring diagram: hlk ld2410c atom lite",
+    "kind": "wiring",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/wiring/cc1101-atom-lite.svg",
+    "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
+    "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+    "alt": "Wiring diagram: cc1101 atom lite",
+    "kind": "wiring",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/journal/installation-001.jpg",
+    "alt": "The maintainer’s wall tablet and radar",
+    "kind": "photograph",
+    "credit": "Maintainer photograph",
+    "license": "Existing repository-approved photograph",
+    "scope": "existing-approved-public-photo"
+  },
+  {
+    "path": "/journal/ramka-air.jpg",
+    "alt": "The air page in the maintainer’s installation",
+    "kind": "photograph",
+    "credit": "Maintainer photograph",
+    "license": "Existing repository-approved photograph",
+    "scope": "existing-approved-public-photo"
+  },
+  {
+    "path": "/previews/clock-weather.svg",
+    "alt": "Illustrative clock and weather card with current conditions and forecast",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  }
+]

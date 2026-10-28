@@ -1,11 +1,11 @@
 {
-  "frameworkCommit": "817f8de4eebce9563b385294376e6b751c01ef9f",
+  "frameworkCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
   "components": [
     {
       "id": "awnings",
-      "version": "0.2.0",
-      "sourceTag": "awnings/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.2.1",
+      "sourceTag": "awnings/0.2.1",
+      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
       "summary": "Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor",
       "requirements": [
         {
@@ -46,6 +46,13 @@
           "repo": "rstrouse/ESPSomfy-RTS",
           "tested": "2.4.6",
           "setup": "flashed over USB, then Wi-Fi and the radio pins in its web page; pair each awning from its own virtual remote"
+        }
+      ],
+      "optionalRequirements": [
+        {
+          "kind": "wind-sensor",
+          "brand": "Somfy",
+          "feature": "wind"
         }
       ],
       "installationRole": "installs",
@@ -127,8 +134,8 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/awnings",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/awnings/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/67a289d6e61bc7325f389f068c38610262a09c1f/components/awnings",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/67a289d6e61bc7325f389f068c38610262a09c1f/components/awnings/UPGRADE.md"
     },
     {
       "id": "backup",
@@ -152,6 +159,7 @@
           "source": "core"
         }
       ],
+      "optionalRequirements": [],
       "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
@@ -205,9 +213,9 @@
     },
     {
       "id": "bermuda-presence",
-      "version": "0.2.0",
-      "sourceTag": "bermuda-presence/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.2.1",
+      "sourceTag": "bermuda-presence/0.2.1",
+      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
       "summary": "Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda",
       "requirements": [
         {
@@ -234,6 +242,15 @@
           "source": "hacs",
           "repo": "agittins/bermuda",
           "tested": "0.8.7"
+        }
+      ],
+      "optionalRequirements": [
+        {
+          "kind": "mmwave-radar",
+          "recommend": [
+            "hlk-ld2410c"
+          ],
+          "feature": "radar"
         }
       ],
       "installationRole": "installs",
@@ -292,8 +309,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/bermuda-presence",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/bermuda-presence/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/67a289d6e61bc7325f389f068c38610262a09c1f/components/bermuda-presence",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/67a289d6e61bc7325f389f068c38610262a09c1f/components/bermuda-presence/UPGRADE.md"
     },
     {
       "id": "calendar",
@@ -309,6 +326,7 @@
           "setup": "the server's URL, a user name and an app-specific password (iCloud: created in the Apple account's security settings)"
         }
       ],
+      "optionalRequirements": [],
       "installationRole": "describes",
       "testedHa": [
         "2026.9.2"
@@ -370,6 +388,23 @@
         {
           "name": "template",
           "source": "core"
+        }
+      ],
+      "optionalRequirements": [
+        {
+          "kind": "air-quality-sensor",
+          "recommend": [
+            "ruuvi-air"
+          ],
+          "feature": "air"
+        },
+        {
+          "kind": "ble-proxy",
+          "recommend": [
+            "m5stack-atom-lite"
+          ],
+          "via": "bermuda-presence",
+          "feature": "air"
         }
       ],
       "installationRole": "installs",
@@ -445,6 +480,7 @@
           "source": "core"
         }
       ],
+      "optionalRequirements": [],
       "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
@@ -512,6 +548,12 @@
           "setup": "found on the home network by its web API; no account"
         }
       ],
+      "optionalRequirements": [
+        {
+          "kind": "mains-meter",
+          "feature": "mains"
+        }
+      ],
       "installationRole": "describes",
       "testedHa": [
         "2026.9.2"
@@ -577,6 +619,7 @@
           "source": "core"
         }
       ],
+      "optionalRequirements": [],
       "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
@@ -636,9 +679,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.2.0",
-      "sourceTag": "ramka/0.2.0",
-      "sourceCommit": "0345fba394a40f666fd038c4dd6f6fa49173311d",
+      "version": "0.3.0",
+      "sourceTag": "ramka/0.3.0",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -682,6 +725,16 @@
           "repo": "NemesisRE/kiosk-mode",
           "kind": "frontend",
           "optional": true
+        }
+      ],
+      "optionalRequirements": [
+        {
+          "kind": "mains-meter",
+          "feature": "mains"
+        },
+        {
+          "kind": "wind-sensor",
+          "feature": "wind"
         }
       ],
       "installationRole": "installs",
@@ -833,6 +886,11 @@
           "required": false
         },
         {
+          "name": "status_page",
+          "type": "bool",
+          "required": false
+        },
+        {
           "name": "weather",
           "type": "entity_id",
           "required": true
@@ -888,8 +946,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/0345fba394a40f666fd038c4dd6f6fa49173311d/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/0345fba394a40f666fd038c4dd6f6fa49173311d/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",
@@ -905,6 +963,7 @@
           "setup": "the home's location from Home Assistant's own settings; no account or key"
         }
       ],
+      "optionalRequirements": [],
       "installationRole": "describes",
       "testedHa": [
         "2026.9.2"

@@ -1,0 +1,82 @@
+{
+  "outcome": "See what is coming up today.",
+  "categories": [
+    "media-display",
+    "utilities"
+  ],
+  "hardware": "none",
+  "ui": "consumer",
+  "deviceIds": [],
+  "views": [
+    {
+      "id": "calendar",
+      "title": "Calendar agenda",
+      "owner": "ramka",
+      "providers": [
+        "calendar"
+      ],
+      "availability": "conditional",
+      "condition": "Configure calendar entities and open the agenda.",
+      "preview": "/previews/calendar.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Configure the CalDAV integration and the account’s calendar access.",
+    "Confirm the selected calendar entities return events.",
+    "Map them in Ramka to use its agenda view."
+  ],
+  "id": "calendar",
+  "version": "0.1.0",
+  "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+  "evidencePaths": [
+    "components/calendar/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Today",
+        "headline": "A little room for the day",
+        "detail": "Only fictional events are shown. Account setup belongs in your private home project.",
+        "values": [
+          {
+            "label": "10:00",
+            "value": "Sample meeting"
+          },
+          {
+            "label": "15:30",
+            "value": "Sample reminder"
+          },
+          {
+            "label": "Day",
+            "value": "Today"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Tomorrow",
+        "headline": "A look ahead",
+        "detail": "The agenda reads events from the configured upstream calendar.",
+        "values": [
+          {
+            "label": "09:00",
+            "value": "Sample appointment"
+          },
+          {
+            "label": "18:00",
+            "value": "Sample dinner"
+          },
+          {
+            "label": "Day",
+            "value": "Tomorrow"
+          }
+        ],
+        "level": 50
+      }
+    ]
+  }
+}

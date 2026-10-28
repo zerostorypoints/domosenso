@@ -1,0 +1,84 @@
+{
+  "outcome": "Notice when a plant needs attention.",
+  "categories": [
+    "climate"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "mi-flora",
+    "m5stack-atom-lite"
+  ],
+  "views": [
+    {
+      "id": "plants",
+      "title": "Plant care",
+      "owner": "ramka",
+      "providers": [
+        "plants"
+      ],
+      "availability": "conditional",
+      "condition": "Provide plants inputs to Ramka.",
+      "preview": "/previews/plants.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Place the Mi Flora probe in the soil following the device instructions.",
+    "Provide Bluetooth coverage and verify fresh readings in Home Assistant.",
+    "Map each plant and its thresholds; optionally show the readings in Ramka."
+  ],
+  "id": "plants",
+  "version": "0.2.0",
+  "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+  "evidencePaths": [
+    "components/plants/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Moist soil",
+        "headline": "The fern is comfortable",
+        "detail": "Illustrative values; choose thresholds for the actual plant and substrate.",
+        "values": [
+          {
+            "label": "Soil moisture",
+            "value": "32%"
+          },
+          {
+            "label": "Status",
+            "value": "OK"
+          },
+          {
+            "label": "Light",
+            "value": "860 lx"
+          }
+        ],
+        "level": 72
+      },
+      {
+        "label": "Dry soil",
+        "headline": "A reason to check the pot",
+        "detail": "A low sample reading illustrates the configured dry-soil status. This component does not water the plant.",
+        "values": [
+          {
+            "label": "Soil moisture",
+            "value": "12%"
+          },
+          {
+            "label": "Status",
+            "value": "Check soil"
+          },
+          {
+            "label": "Light",
+            "value": "860 lx"
+          }
+        ],
+        "level": 25
+      }
+    ]
+  }
+}

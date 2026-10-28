@@ -1,0 +1,100 @@
+{
+  "outcome": "See temperature, humidity and the air you breathe.",
+  "categories": [
+    "climate"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "tapo-t315",
+    "ruuvi-air",
+    "m5stack-atom-lite"
+  ],
+  "views": [
+    {
+      "id": "climate",
+      "title": "Climate",
+      "owner": "ramka",
+      "providers": [
+        "climate-air"
+      ],
+      "availability": "conditional",
+      "condition": "Provide climate inputs to Ramka.",
+      "preview": "/previews/climate.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "air",
+      "title": "Air quality",
+      "owner": "ramka",
+      "providers": [
+        "climate-air"
+      ],
+      "availability": "conditional",
+      "condition": "Provide air inputs and compatible air-quality readings to Ramka.",
+      "preview": "/previews/air.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Pair Tapo sensors to their hub and set up the Home Assistant integration.",
+    "For air measurements, add the optional Ruuvi Air and a supported Bluetooth path.",
+    "Map the sensor entities; configure Ramka climate or air inputs if you want these pages."
+  ],
+  "id": "climate-air",
+  "version": "0.2.0",
+  "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+  "evidencePaths": [
+    "components/climate-air/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Temperature",
+        "headline": "Comfort, room by room",
+        "detail": "Sample temperature and humidity readings from configured sensors.",
+        "values": [
+          {
+            "label": "Living room",
+            "value": "21.4 °C"
+          },
+          {
+            "label": "Humidity",
+            "value": "46%"
+          },
+          {
+            "label": "Bedroom",
+            "value": "19.8 °C"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Air quality",
+        "headline": "Look beyond temperature",
+        "detail": "Optional air-quality readings require the additional sensor and integration.",
+        "values": [
+          {
+            "label": "CO2",
+            "value": "780 ppm"
+          },
+          {
+            "label": "PM2.5",
+            "value": "4 µg/m³"
+          },
+          {
+            "label": "VOC index",
+            "value": "68"
+          }
+        ],
+        "level": 50
+      }
+    ]
+  }
+}

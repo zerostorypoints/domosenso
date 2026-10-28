@@ -1,0 +1,105 @@
+{
+  "outcome": "Control the room, not a list of bulbs.",
+  "categories": [
+    "lighting-shading"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "hue-bridge"
+  ],
+  "views": [
+    {
+      "id": "controls",
+      "title": "Room controls",
+      "owner": "ramka",
+      "providers": [
+        "lights",
+        "awnings",
+        "media"
+      ],
+      "availability": "conditional",
+      "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+      "preview": "/previews/controls.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Set up the Hue Bridge and room groups, then connect its Home Assistant integration.",
+    "Map the room light entities in your home inputs.",
+    "Verify group state and brightness; configure Ramka lights inputs for tablet controls."
+  ],
+  "id": "lights",
+  "version": "0.2.0",
+  "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+  "evidencePaths": [
+    "components/lights/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Off",
+        "headline": "The room settles down",
+        "detail": "The Hue room group is switched off in this fictional example.",
+        "values": [
+          {
+            "label": "Room",
+            "value": "Living room"
+          },
+          {
+            "label": "Group",
+            "value": "Off"
+          },
+          {
+            "label": "Brightness",
+            "value": "0%"
+          }
+        ],
+        "level": 0
+      },
+      {
+        "label": "Soft",
+        "headline": "A softer evening light",
+        "detail": "One room group can control several bulbs together.",
+        "values": [
+          {
+            "label": "Room",
+            "value": "Living room"
+          },
+          {
+            "label": "Group",
+            "value": "On"
+          },
+          {
+            "label": "Brightness",
+            "value": "35%"
+          }
+        ],
+        "level": 35
+      },
+      {
+        "label": "Bright",
+        "headline": "Ready for the day",
+        "detail": "The example changes a sample group; it never sends a command to your bridge.",
+        "values": [
+          {
+            "label": "Room",
+            "value": "Living room"
+          },
+          {
+            "label": "Group",
+            "value": "On"
+          },
+          {
+            "label": "Brightness",
+            "value": "90%"
+          }
+        ],
+        "level": 90
+      }
+    ]
+  }
+}

@@ -1,0 +1,247 @@
+{
+  "outcome": "One screen that changes with the moment.",
+  "categories": [
+    "media-display"
+  ],
+  "hardware": "required",
+  "ui": "own",
+  "deviceIds": [
+    "tcl-9469x",
+    "hlk-ld2410c",
+    "m5stack-atom-lite"
+  ],
+  "views": [
+    {
+      "id": "climate",
+      "title": "Climate",
+      "owner": "ramka",
+      "providers": [
+        "climate-air"
+      ],
+      "availability": "conditional",
+      "condition": "Provide climate inputs to Ramka.",
+      "preview": "/previews/climate.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "air",
+      "title": "Air quality",
+      "owner": "ramka",
+      "providers": [
+        "climate-air"
+      ],
+      "availability": "conditional",
+      "condition": "Provide air inputs and compatible air-quality readings to Ramka.",
+      "preview": "/previews/air.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "plants",
+      "title": "Plant care",
+      "owner": "ramka",
+      "providers": [
+        "plants"
+      ],
+      "availability": "conditional",
+      "condition": "Provide plants inputs to Ramka.",
+      "preview": "/previews/plants.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "photos",
+      "title": "Photo slideshow",
+      "owner": "ramka",
+      "providers": [
+        "ramka"
+      ],
+      "availability": "conditional",
+      "condition": "Provide photo_dir and permit the directory in Home Assistant.",
+      "preview": "/previews/photos.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "status",
+      "title": "Home status",
+      "owner": "ramka",
+      "providers": [
+        "ramka"
+      ],
+      "availability": "default",
+      "condition": "Enabled by default in Ramka 0.3.0; disable with status_page: false.",
+      "preview": "/previews/status.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "controls",
+      "title": "Room controls",
+      "owner": "ramka",
+      "providers": [
+        "lights",
+        "awnings",
+        "media"
+      ],
+      "availability": "conditional",
+      "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+      "preview": "/previews/controls.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "music",
+      "title": "Now playing",
+      "owner": "ramka",
+      "providers": [
+        "media"
+      ],
+      "availability": "conditional",
+      "condition": "A configured media player is playing.",
+      "preview": "/previews/music.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "calendar",
+      "title": "Calendar agenda",
+      "owner": "ramka",
+      "providers": [
+        "calendar"
+      ],
+      "availability": "conditional",
+      "condition": "Configure calendar entities and open the agenda.",
+      "preview": "/previews/calendar.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "clock-weather",
+      "title": "Clock & weather",
+      "owner": "ramka",
+      "providers": [
+        "weather"
+      ],
+      "availability": "conditional",
+      "condition": "Provide the weather entity to Ramka. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+      "preview": "/previews/clock-weather.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Set up the tablet and Companion app using the tablet guide.",
+    "Install the radar through Room presence and map its presence and distance entities.",
+    "Choose the optional page inputs, render the dashboard and check each configured page before deployment."
+  ],
+  "id": "ramka",
+  "version": "0.3.0",
+  "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+  "evidencePaths": [
+    "components/ramka/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Ambient",
+        "headline": "A quiet view of your home",
+        "detail": "The configured ambient pages rotate while someone is present.",
+        "values": [
+          {
+            "label": "Page",
+            "value": "Climate"
+          },
+          {
+            "label": "Room",
+            "value": "21.4 °C"
+          },
+          {
+            "label": "Mode",
+            "value": "Ambient"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Approach",
+        "headline": "Controls within reach",
+        "detail": "A nearby radar detection brings up controls when near controls are enabled.",
+        "values": [
+          {
+            "label": "Lighting",
+            "value": "65%"
+          },
+          {
+            "label": "Audio",
+            "value": "Ready"
+          },
+          {
+            "label": "Mode",
+            "value": "Controls"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Playing",
+        "headline": "Let the music take the screen",
+        "detail": "A playing media player takes priority over the ambient pages.",
+        "values": [
+          {
+            "label": "Track",
+            "value": "Morning light"
+          },
+          {
+            "label": "Artist",
+            "value": "Sample artist"
+          },
+          {
+            "label": "Mode",
+            "value": "Now playing"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Away",
+        "headline": "Rest until you return",
+        "detail": "The tablet sleeps after the configured absence delay; this example skips the wait.",
+        "values": [
+          {
+            "label": "Presence",
+            "value": "Away"
+          },
+          {
+            "label": "Screen",
+            "value": "Sleeping"
+          },
+          {
+            "label": "Data",
+            "value": "Sample only"
+          }
+        ],
+        "level": 0
+      }
+    ]
+  }
+}

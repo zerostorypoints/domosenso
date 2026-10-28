@@ -1,0 +1,120 @@
+{
+  "outcome": "Your music, visible and within reach.",
+  "categories": [
+    "media-display"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "hegel-h400"
+  ],
+  "views": [
+    {
+      "id": "music",
+      "title": "Now playing",
+      "owner": "ramka",
+      "providers": [
+        "media"
+      ],
+      "availability": "conditional",
+      "condition": "A configured media player is playing.",
+      "preview": "/previews/music.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "controls",
+      "title": "Room controls",
+      "owner": "ramka",
+      "providers": [
+        "lights",
+        "awnings",
+        "media"
+      ],
+      "availability": "conditional",
+      "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+      "preview": "/previews/controls.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Set up the supported player integration and verify its media_player entity.",
+    "Map the player and supported controls in Ramka.",
+    "Check playback, metadata and standby; an optional mains meter needs separately verified model-specific installation."
+  ],
+  "id": "media",
+  "version": "0.1.0",
+  "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+  "evidencePaths": [
+    "components/media/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Playing",
+        "headline": "Morning light",
+        "detail": "Fictional track metadata, displayed through the configured media player.",
+        "values": [
+          {
+            "label": "Artist",
+            "value": "Sample artist"
+          },
+          {
+            "label": "Player",
+            "value": "Playing"
+          },
+          {
+            "label": "Volume",
+            "value": "28%"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Paused",
+        "headline": "A moment of quiet",
+        "detail": "The player remains available while playback is paused.",
+        "values": [
+          {
+            "label": "Track",
+            "value": "Morning light"
+          },
+          {
+            "label": "Player",
+            "value": "Paused"
+          },
+          {
+            "label": "Volume",
+            "value": "28%"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Standby",
+        "headline": "Ready for the next track",
+        "detail": "Standby behavior and wake capability depend on the player integration.",
+        "values": [
+          {
+            "label": "Player",
+            "value": "Standby"
+          },
+          {
+            "label": "Control",
+            "value": "Turn on"
+          },
+          {
+            "label": "Connection",
+            "value": "Local network"
+          }
+        ],
+        "level": 0
+      }
+    ]
+  }
+}

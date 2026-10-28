@@ -1,0 +1,17 @@
+{
+  "id": "hue-bridge",
+  "title": "Philips Hue Bridge",
+  "summary": "Lighting through the bridge’s room groups.",
+  "sourcePath": "devices/hue-bridge.yaml",
+  "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+  "components": [
+    "lights"
+  ],
+  "compatibility": [
+    {
+      "id": "lights",
+      "version": "0.2.0"
+    }
+  ],
+  "body": "## Connect existing lighting\n\nSet up the bridge and pair the bulbs using the manufacturer’s setup process. Organize lights into room groups, then add the Hue integration in Home Assistant.\n\n## Verify the group\n\nCheck that the expected room entity responds to on/off and brightness changes before mapping it into DomoSenso. Ramka can show controls for configured light entities. No additional circuit wiring is specified by this component.\n\n## Setup references\n\n- [Philips Hue setup and room groups — Home Assistant](https://www.home-assistant.io/integrations/hue/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope."
+}
