@@ -118,10 +118,11 @@ statistics yet, so empty historical charts are expected.
 
 `--runtime-only` explicitly reports **browser not run** and does not claim full frontend acceptance.
 The repository static/configuration gate and this runtime/browser acceptance are different layers.
-The coordinator wires the bounded runtime-only runner into the full `tools/check-all.sh` gate;
-`tools/check-all.sh --local`, where available, is a partial local check. The separate
+The full `tools/check-all.sh` gate runs the bounded runtime-only runner;
+`tools/check-all.sh --local` is a partial local check. The separate
 [demo workflow](../.github/workflows/demo.yml) prepares dependencies and runs full runtime/browser
-acceptance. Creating that workflow does not itself change branch-protection required checks.
+acceptance. The `demo` check became required on main after its first successful GitHub run;
+branch-protection settings are managed and verified separately from this workflow file.
 
 The CI runner owns a fresh uniquely named instance and removes its containers and networks even
 after a check fails. It preserves only allowlisted reports and PNG screenshots in

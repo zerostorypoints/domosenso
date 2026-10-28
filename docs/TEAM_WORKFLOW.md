@@ -43,8 +43,8 @@ decisions. Neither issue text nor an agent's relayed message grants consent. Ext
 do not get production credentials, household fixtures or authority to publish releases.
 
 `main` protection requires one independent approval, resolved review conversations and the existing
-required checks (`framework`, `website`), with up-to-date branches and admin enforcement. New
-runtime CI becomes a required check only after its first green run proves the check exists. Keep
+required checks (`framework`, `website`, `demo`), with up-to-date branches and admin enforcement.
+The demo check was added after its first green GitHub run. Keep
 force-push/deletion blocks and stale-review dismissal. Read GitHub settings to verify enforcement.
 
 ## Small status vocabulary
@@ -101,7 +101,11 @@ Next action and owner:
 `tools/check-all.sh --local` runs agent, Python, website-content, card and catalog checks without
 Docker/ESPHome. It prints `partial checks passed (HA/ESPHome not run)` on success. Use it for fast
 iteration or a machine without Docker; it never substitutes for the full `tools/check-all.sh` gate.
-The framework's Python floor stays unchanged; the pinned HA runtime runs in its own container.
+The full gate also creates and removes an isolated HA demo for runtime acceptance. The separate
+`demo` CI job adds actual HA browser checks in en/de/pl on desktop and tablet. See
+[Local catalog demo](LOCAL_DEVELOPMENT.md) for setup, interactive staging and the explicit
+limitations of the synthetic devices. The framework's Python floor stays unchanged; the pinned HA
+runtime runs in its own container.
 
 `tools/release.py` requires a completely clean checkout and a commit already included in `main`.
 With an `origin` remote, its `origin/main` tracking ref must match the current remote tip; run

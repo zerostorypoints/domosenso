@@ -45,6 +45,7 @@ def test_local_runs_fast_checks_and_explicitly_reports_partial(checks):
     assert result.returncode == 0
     assert 'pytest -q' in calls and 'catalog_check.py --strict' in calls
     assert 'ha-check.sh' not in calls and 'esphome-check.sh' not in calls
+    assert 'dev_home/ci.py' not in calls
     assert result.stdout.rstrip().endswith('partial checks passed (HA/ESPHome not run)')
     assert 'all checks passed' not in result.stdout
 
@@ -53,6 +54,7 @@ def test_default_keeps_complete_gate(checks):
     result, calls = checks()
     assert result.returncode == 0
     assert 'ha-check.sh radio' in calls and 'esphome-check.sh radio' in calls
+    assert 'dev_home/ci.py --runtime-only' in calls
     assert result.stdout.rstrip().endswith('all checks passed')
 
 
@@ -67,3 +69,10 @@ def test_unknown_flag_is_not_silently_ignored(checks):
     result, calls = checks('--skip-everything')
     assert result.returncode == 2
     assert calls == ''
+
+
+def test_demo_failure_blocks_full_pass(checks):
+    result, _ = checks(fail='dev_home/ci.py')
+    assert result.returncode == 1
+    assert 'failed: demo runtime' in result.stdout
+    assert 'all checks passed' not in result.stdout
