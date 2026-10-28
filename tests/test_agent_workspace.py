@@ -153,3 +153,119 @@ def test_missing_guard_in_base_fails_before_creating_worktree(repo):
     result = subprocess.run([sys.executable, str(LAUNCHER), 'claude', 'old-base', '--base', 'main', '--prepare-only'], cwd=root, capture_output=True, text=True)
     assert result.returncode != 0 and 'predates' in result.stderr
     assert not (root / '.worktrees/claude-old-base').exists()
+
+
+def session_record(work, client='unknown', session='test-session', source='startup'):
+    payload = {'cwd': str(work), 'session_id': session, 'source': source, 'hook_event_name': 'SessionStart'}
+    result = subprocess.run([sys.executable, str(GUARD), 'hook', '--client', client], cwd=work,
+                            input=json.dumps(payload), capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def records(work):
+    return Path(git(work, 'rev-parse', '--absolute-git-dir')) / 'domosenso/sessions'
+
+
+def test_session_start_saves_actual_repo_identity_without_remote_credentials(repo):
+    root, work = repo
+    git(root, 'remote', 'add', 'origin', 'https://user:PRIVATE_TOKEN@example.test/team/catalog.git?auth=PRIVATE_QUERY')
+    nested = work / 'nested'; nested.mkdir()
+    out = session_record(nested, 'codex')
+    saved = records(work) / 'latest-codex.json'
+    assert saved.is_file()
+    record = json.loads(saved.read_text())
+    assert record['repo_name'] == 'catalog'
+    assert record['repository'] == 'example.test/team/catalog'
+    assert record['primary_root'] == str(root)
+    assert record['worktree_root'] == str(work)
+    assert record['cwd'] == str(nested)
+    assert record['branch'] == 'codex/test'
+    assert record['client'] == 'codex' and record['workspace_allowed'] is True
+    assert record['head'] == git(work, 'rev-parse', 'HEAD')
+    assert saved.stat().st_mode & 0o077 == 0
+    combined = json.dumps(out) + saved.read_text()
+    assert 'PRIVATE_TOKEN' not in combined and 'PRIVATE_QUERY' not in combined and 'user:' not in combined
+    assert 'catalog' in out['hookSpecificOutput']['additionalContext']
+    assert git(work, 'status', '--porcelain') == ''
+
+
+def test_session_resume_refreshes_branch_and_keeps_separate_session_records(repo):
+    _, work = repo
+    session_record(work, 'claude', 'one')
+    git(work, 'switch', '-c', 'claude/renamed')
+    session_record(work, 'claude', 'one', 'resume')
+    session_record(work, 'claude', '../../two')
+    session_record(work, 'codex', 'one')
+    data = records(work)
+    assert len(list(data.glob('session-*.json'))) == 3
+    assert json.loads((data / 'latest-claude.json').read_text())['branch'] == 'claude/renamed'
+    assert all(p.parent == data for p in data.glob('session-*.json'))
+
+
+def test_primary_start_records_identity_but_does_not_allow_task_work(repo):
+    root, _ = repo
+    out = session_record(root, 'codex')
+    record = json.loads((records(root) / 'latest-codex.json').read_text())
+    assert record['repo_name'] == root.name
+    assert record['workspace_allowed'] is False
+    assert 'No task work' in out['hookSpecificOutput']['additionalContext']
+    assert hook(root)['hookSpecificOutput']['permissionDecision'] == 'deny'
+
+
+def test_session_log_symlink_is_refused_without_writing_outside_git(repo, tmp_path):
+    _, work = repo
+    outside = tmp_path / 'outside'; outside.mkdir()
+    parent = records(work).parent
+    parent.symlink_to(outside)
+    out = session_record(work, 'claude')
+    assert 'not saved' in out['hookSpecificOutput']['additionalContext']
+    assert not list(outside.iterdir())
+    assert hook(work).get('hookSpecificOutput', {}).get('permissionDecision') != 'deny'
+
+
+@pytest.mark.parametrize('origin,expected', [
+    ('git@example.test:team/project.git', 'example.test/team/project'),
+    ('ssh://git@example.test:2222/team/project.git', 'example.test:2222/team/project'),
+])
+def test_session_identity_supports_ssh_remotes(repo, origin, expected):
+    root, work = repo
+    git(root, 'remote', 'add', 'origin', origin)
+    session_record(work, 'codex')
+    record = json.loads((records(work) / 'latest-codex.json').read_text())
+    assert record['repo_name'] == 'project' and record['repository'] == expected
+
+
+def test_same_session_key_in_two_worktrees_stays_separate(repo, tmp_path):
+    root, work = repo
+    other = tmp_path / 'other-session'
+    git(root, 'worktree', 'add', '-b', 'claude/other', str(other))
+    session_record(work, 'codex', 'same')
+    session_record(other, 'codex', 'same')
+    a = json.loads((records(work) / 'latest-codex.json').read_text())
+    b = json.loads((records(other) / 'latest-codex.json').read_text())
+    assert a['primary_root'] == b['primary_root'] == str(root)
+    assert a['worktree_root'] != b['worktree_root']
+    assert a['branch'] == 'codex/test'
+
+
+def test_detached_context_is_saved_as_disallowed(repo):
+    _, work = repo
+    git(work, 'checkout', '--detach')
+    session_record(work, 'claude')
+    record = json.loads((records(work) / 'latest-claude.json').read_text())
+    assert record['branch'] is None and record['workspace_allowed'] is False
+
+
+def test_existing_latest_symlink_blocks_writes_before_session_record(repo, tmp_path):
+    _, work = repo
+    session_record(work, 'codex', 'one')
+    data = records(work)
+    latest = data / 'latest-codex.json'
+    outside = tmp_path / 'outside.json'; outside.write_text('keep')
+    latest.unlink(); latest.symlink_to(outside)
+    before = set(data.glob('session-*.json'))
+    out = session_record(work, 'codex', 'two')
+    assert 'not saved' in out['hookSpecificOutput']['additionalContext']
+    assert set(data.glob('session-*.json')) == before
+    assert outside.read_text() == 'keep'

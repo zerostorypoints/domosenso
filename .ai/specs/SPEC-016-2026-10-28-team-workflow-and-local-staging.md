@@ -363,3 +363,22 @@ resume without losing deployed configuration, and clean up one without affecting
 Tests cover ownership, symlinks, ignored-state checks, occupied ports, safe installer upgrades and
 private file permissions. Existing demo and CLI tests remain green. No production action or
 automatic human approval is introduced.
+
+## 10. Automatic session repository context
+
+Maintainer request, 2026-10-28: starting Codex or Claude in a local repository must automatically
+record the actual repository/directory identity so the session knows what it is working on.
+Extend the existing SessionStart hook rather than relying on app project labels or hardcoded
+personal mappings. On start/resume, inject and persist repo name, sanitized origin identity when
+available, primary checkout, worktree root, cwd, branch/HEAD, client and timestamp. A missing
+origin falls back to the primary directory name; never confuse the task worktree basename with
+the repository name. Primary/detached startup records context but remains blocked for task work.
+
+Store records under the worktree-specific Git metadata directory (`domosenso/sessions/`), outside
+tracked content. Use a hashed session key, separate client latest records, atomic writes and
+private permissions. Do not retain credentials, raw remote URLs, transcripts or prompts. Refuse
+symlinked destinations and report save failures accurately; a failed save does not relax the
+workspace guard. Ask the agent to state the concise repo/branch/worktree identity at startup.
+Both client configurations pass an explicit client identifier. Trust requirements stay intact;
+protocol tests do not certify live hook activation. The implementation must work with arbitrary
+clone names, remotes, subdirectory starts and linked worktrees on other users' machines.

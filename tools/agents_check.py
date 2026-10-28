@@ -99,9 +99,11 @@ def check_skills(root: Path) -> list[str]:
 def check_agent_hooks(root: Path) -> list[str]:
     errors = []
     command = 'python3 "$(git rev-parse --show-toplevel)/tools/agent_workspace.py" hook'
-    expected = {'hooks': {event: [{'hooks': [{'type': 'command', 'command': command, 'timeout': 10}]}]
-                          for event in ('SessionStart', 'PreToolUse')}}
     for file in ('.codex/hooks.json', '.claude/settings.json'):
+        client = 'codex' if file.startswith('.codex/') else 'claude'
+        expected = {'hooks': {event: [{'hooks': [{'type': 'command',
+                    'command': command + (' --client ' + client if event == 'SessionStart' else ''),
+                    'timeout': 10}]}] for event in ('SessionStart', 'PreToolUse')}}
         try:
             data = json.loads((root / file).read_text())
             if file == '.claude/settings.json' and data.get('disableAllHooks') is True:

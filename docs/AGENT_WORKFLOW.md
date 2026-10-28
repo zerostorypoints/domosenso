@@ -39,6 +39,37 @@ must actually start or attach with their own client working directory; putting a
 prompt or changing only a tool workdir is not session isolation. If the client cannot relocate a
 child session, use a separate supported CLI/client session for that review.
 
+## Automatic repository context at startup
+
+The trusted `SessionStart` hook records the actual Git identity on start/resume/compaction and
+passes it to the agent: repository name, sanitized origin host/path (when available), primary
+checkout, worktree root, launch directory, branch/HEAD, client and timestamp. A clone directory
+or app project label is not treated as the repository identity. Without an origin, the primary
+checkout's directory name is the fallback. The agent is asked to state repo, branch and worktree
+briefly at startup; the model-readable hook output is not itself a guaranteed UI banner.
+
+Records are private files under the **current worktree's Git metadata directory**:
+
+```sh
+# Resolve the location; do not assume a linked worktree contains a .git directory.
+printf '%s/domosenso/sessions\n' "$(git rev-parse --absolute-git-dir)"
+```
+
+This directory contains `session-<hashed-client-and-session>.json`
+and `latest-codex.json` or `latest-claude.json`. Each session keeps its own record; `latest` means
+last startup for that client in this worktree, not a live session lock. Resume refreshes the
+record from Git, so a changed branch is not remembered as the old branch. Another worktree uses
+another metadata directory. Files are atomically replaced with mode 0600, directories use 0700,
+and symlinked destinations are refused. Records are not tracked or pushed; no raw remote URL,
+authentication, prompt or transcript is recorded. A failed save is reported as such.
+
+A startup in the primary checkout or detached HEAD still records identity with
+`workspace_allowed: false`; ordinary task work remains blocked by the existing guard. The hook
+never changes an app project name, remotes, branch or approval settings. Other clones get the
+same behavior by updating to the shared workflow and reviewing/trusting the changed hook definitions.
+This does not silently install hooks into an existing home: its home-workflow installer continues
+to preserve custom client settings. Integrate these hooks there only through reviewed setup.
+
 ## Activate and verify on each machine
 
 Repository files cannot silently grant trust on Piotr's or Łukasz's computer. Complete this once
@@ -54,7 +85,7 @@ per clone/client, and repeat when the client requests trust for changed hooks:
    launcher refuses until its owner integrates the guards. This setting is local to the clone;
    committing a `.githooks` directory alone does not activate it elsewhere.
 3. In a correctly prepared worktree, run `python3 tools/agent_workspace.py check`. Expect
-   `workspace ok` with the actual path and branch. Run `python3 tools/agents_check.py` to check
+   `workspace ok` with the actual path and branch. Run `uv run tools/agents_check.py` to check
    shared instructions and the committed hook wiring.
 4. In each client's `/hooks`, confirm SessionStart and PreToolUse are loaded and enabled. Start a
    disposable session in the primary checkout and request a harmless ordinary shell command.
@@ -77,7 +108,7 @@ or certify another machine. Baseline inspected here: Codex CLI 0.164.0-alpha.11.
 | Shared AGENTS.md / CLAUDE import | Roles, task scope, worktree ownership, tests and handoff | Instructions for the agent, not executable enforcement |
 | Launcher | Named linked worktree before CLI start; refuses old bases, conflicting names and startup overrides | Use this supported entry point or native worktree setup |
 | Trusted PreToolUse hook | Refuses primary checkout, main/detached task work and explicit tool workdir/file-edit escapes | Supported intercepted tool paths; needs activation/trust |
-| SessionStart hook | Reintroduces current workspace and human approval rule on start/resume | Context reminder; not relied on to block execution |
+| SessionStart hook | Saves and injects actual repository/worktree identity and the human approval rule on start/resume | Context reminder; not relied on to block execution |
 | Installed Git hooks | Refuse commit/push outside a named linked worktree; retain main/tag push guard | Local hooks are not a security boundary against someone disabling them |
 | Required CI | Regression tests and committed hook wiring, plus framework/website/demo | Cannot inspect a contributor's local activation or session ownership |
 | GitHub main protection | Required approval, green app-bound checks, current branch, resolved conversations | Server-side merge gate; retain admin enforcement |

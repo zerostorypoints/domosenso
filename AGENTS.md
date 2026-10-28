@@ -20,6 +20,9 @@ This applies to Codex, Claude Code, coordinators, implementation and read-only r
 The primary checkout is only for reading setup instructions and creating/selecting worktrees;
 do not perform task work there. A detached HEAD is not a session workspace.
 
+The trusted SessionStart hook saves repository/worktree identity in local Git metadata and injects
+it into the session. Briefly state the actual repo name, branch and worktree at startup; never infer
+identity from an app project label. Report a missing/failed hook record rather than claiming it ran.
 Before task work, run `python3 tools/agent_workspace.py check` and verify the path and branch.
 For new CLI sessions use `tools/agent-session.py`; for desktop use native worktree setup.
 Review/trust the project hooks on each machine; never bypass hook trust or disable a failing guard.
