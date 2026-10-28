@@ -12,11 +12,14 @@ integration as the worked example (skill `new-integration`).
 
 ## How changes land
 
-- **A pull request from your fork.** Fork the repository (`gh repo fork zerostorypoints/domosenso
-  --clone` also sets the `upstream` remote), make one branch per change
-  (`feat/…`, `fix/…`, `docs/…`), keep it current with `git pull --rebase upstream main`, and open a
-  pull request into `main`. Maintainers review and merge; nothing reaches `main` any other way, and
-  published tags never move.
+- **Core team:** create a task branch in this repository, for example `fix/53-weather-reconnect`.
+  **External contributors:** fork first (`gh repo fork zerostorypoints/domosenso --clone`), create
+  a task branch and open the PR from your fork. Both target `main`; an explicitly coordinated
+  multi-PR feature may use a temporary integration branch.
+- **Independent review:** one core member authors, another approves the current revision. Keep CI
+  green and the branch current; resolve review conversations. Published tags never move.
+- **Working agreement:** [team workflow](docs/TEAM_WORKFLOW.md) covers claims, Codex/Claude handoff,
+  staging evidence, version ownership and the separate home deployment decision.
 - **Issues** use the forms on GitHub and follow [docs/ISSUES.md](docs/ISSUES.md): problem, value,
   testable acceptance criteria, the tests a change brings; `uv run tools/issue_check.py --issue <n>` checks one.
 - **Spec first** for a new component, a new capability of the command, a schema change or anything in

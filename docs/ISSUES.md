@@ -179,6 +179,17 @@ An agent posts the review as a comment only after its human's go-ahead.
 The forms set `bug`, `enhancement` or `documentation`. A maintainer may add `good first issue`
 and `help wanted`.
 
+## Ownership and progress
+
+After `review-issue` gives a `ready` verdict, follow [the team workflow](TEAM_WORKFLOW.md): one
+assignee, one task branch, and one status label (`needs-triage`, `ready`, `in-progress`, `in-review`
+or `blocked`). A contributor without label permissions asks a core maintainer to record the claim.
+A claim comment identifies the branch, scope and dependencies. Read existing claims before starting;
+a conflicting claim is resolved by a maintainer, not by racing to push first.
+
+Closing an issue means its agreed change landed. Report the released component version separately;
+merging a PR does not mean any home's Home Assistant was updated.
+
 ## Skeleton
 
 ```markdown
