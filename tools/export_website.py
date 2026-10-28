@@ -31,7 +31,7 @@ def read(root, commit, path):
 def valid_document(path):
     parts = PurePosixPath(path).parts
     return '..' not in parts and not path.startswith('/') and (
-        path in ('README.md', 'CONTRIBUTING.md') or path.startswith('docs/')) and path.endswith('.md')
+        path in ('README.md', 'CONTRIBUTING.md') or path.startswith('docs/') or bool(re.fullmatch(r'components/[a-z0-9-]+/(README|PHOTOS)\.md', path))) and path.endswith('.md')
 
 
 def rewrite_links(body, path, routes, commit):
@@ -81,6 +81,7 @@ def build(root, publication):
             'id': cid, 'version': version, 'sourceTag': tag, 'sourceCommit': sha,
             'summary': manifest['summary'], 'requirements': manifest.get('devices', {}).get('requires', []),
             'integrations': manifest.get('integrations', []),
+            'optionalRequirements': manifest.get('devices', {}).get('optional', []),
             'installationRole': 'installs' if any(artifacts.values()) else 'describes',
             'testedHa': tested.get('ha', []), 'testedEspHome': tested.get('esphome', []),
             'testedHomes': homes, 'host': manifest.get('host', {}),
@@ -120,6 +121,9 @@ def verify_remote(root, publication):
     refs = {}
     for line in git(root, 'ls-remote', '--tags', 'origin').splitlines():
         sha, ref = line.split(); refs[ref] = sha
+    remote_main = git(root, 'ls-remote', 'origin', 'refs/heads/main').split()[0]
+    for sha in {publication['frameworkCommit'], publication.get('documentationCommit', publication['frameworkCommit']), *(c['commit'] for c in publication['components'])}:
+        git(root, 'merge-base', '--is-ancestor', sha, remote_main)
     for item in publication['components']:
         ref = 'refs/tags/' + item['tag']
         if refs.get(ref + '^{}', refs.get(ref)) != item['commit']:
@@ -135,7 +139,13 @@ def main():
         publication = json.loads((ROOT / 'website/content/publication.json').read_text())
         if args.verify_remote:
             verify_remote(ROOT, publication)
+        from website_content import build_content, export_source_assets, verify_content_refs
+        export_source_assets(ROOT, publication, args.check)
+        content = build_content(ROOT, publication)
+        if args.verify_remote:
+            verify_content_refs(ROOT, publication, content)
         catalog, docs = build(ROOT, publication)
+        write_json(ROOT / 'website/src/generated/content.json', content, args.check)
         write_json(ROOT / 'website/src/generated/catalog.json', catalog, args.check)
         write_json(ROOT / 'website/content/docs.generated.json', docs, args.check)
     except (ValueError, KeyError, OSError, yaml.YAMLError) as error:

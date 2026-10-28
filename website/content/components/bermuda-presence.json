@@ -1,0 +1,104 @@
+{
+  "outcome": "Know which room a device is near.",
+  "categories": [
+    "presence"
+  ],
+  "hardware": "required",
+  "ui": "own",
+  "deviceIds": [
+    "m5stack-atom-lite",
+    "hlk-ld2410c"
+  ],
+  "views": [
+    {
+      "id": "presence",
+      "title": "Presence rooms card",
+      "owner": "bermuda-presence",
+      "providers": [
+        "bermuda-presence"
+      ],
+      "availability": "opt-in",
+      "condition": "Add the supplied Lovelace cards to your dashboard.",
+      "preview": "/previews/presence.svg",
+      "previewType": "illustration",
+      "layout": "Native Home Assistant cards; no dedicated tablet layout declared.",
+      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "evidencePath": "components/bermuda-presence/cards/presence-rooms.yaml"
+    }
+  ],
+  "setup": [
+    "Position a USB-powered BLE proxy in each area you want to observe.",
+    "Configure ESPHome and Bermuda, then map people and area names in your home inputs.",
+    "Optionally wire the radar using its guide; verify radar presence separately from BLE room estimates."
+  ],
+  "id": "bermuda-presence",
+  "version": "0.2.1",
+  "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+  "evidencePaths": [
+    "components/bermuda-presence/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Living room",
+        "headline": "Alex is near the living-room proxy",
+        "detail": "Bluetooth signal estimates a device’s room. It does not prove a person is there.",
+        "values": [
+          {
+            "label": "Room estimate",
+            "value": "Living room"
+          },
+          {
+            "label": "Device",
+            "value": "Alex’s phone"
+          },
+          {
+            "label": "Radar",
+            "value": "Not configured"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Office",
+        "headline": "The estimate follows the device",
+        "detail": "A different nearby proxy changes the sample room estimate.",
+        "values": [
+          {
+            "label": "Room estimate",
+            "value": "Office"
+          },
+          {
+            "label": "Device",
+            "value": "Alex’s phone"
+          },
+          {
+            "label": "Radar",
+            "value": "Not configured"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Add radar",
+        "headline": "A second, separate signal",
+        "detail": "The optional radar measures presence and distance, not a person’s identity.",
+        "values": [
+          {
+            "label": "BLE estimate",
+            "value": "Office"
+          },
+          {
+            "label": "Radar presence",
+            "value": "Detected"
+          },
+          {
+            "label": "Distance",
+            "value": "0.8 m"
+          }
+        ],
+        "level": 50
+      }
+    ]
+  }
+}

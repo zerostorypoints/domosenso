@@ -1,0 +1,1640 @@
+{
+  "components": [
+    {
+      "outcome": "Bring existing Somfy RTS awnings into your setup.",
+      "categories": [
+        "lighting-shading"
+      ],
+      "hardware": "required",
+      "ui": "consumer",
+      "deviceIds": [
+        "m5stack-atom-lite",
+        "cc1101"
+      ],
+      "views": [
+        {
+          "id": "controls",
+          "title": "Room controls",
+          "owner": "ramka",
+          "providers": [
+            "lights",
+            "awnings",
+            "media"
+          ],
+          "availability": "conditional",
+          "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+          "preview": "/previews/controls.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Use a separate Atom/ESP32 board with the correct-band CC1101 module; follow its wiring guide.",
+        "Configure ESPSomfy-RTS, MQTT and each virtual remote, then pair with the awning.",
+        "Verify open, stop and close, handset behavior and existing wind protection before using automations."
+      ],
+      "id": "awnings",
+      "version": "0.2.1",
+      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "evidencePaths": [
+        "components/awnings/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Closed",
+            "headline": "Shade when you need it",
+            "detail": "An illustrative position, not live position feedback from an RTS motor.",
+            "values": [
+              {
+                "label": "Command",
+                "value": "Close"
+              },
+              {
+                "label": "Connection",
+                "value": "433 MHz radio"
+              },
+              {
+                "label": "Position",
+                "value": "Illustrative"
+              }
+            ],
+            "level": 0
+          },
+          {
+            "label": "Open",
+            "headline": "Send an open command",
+            "detail": "The radio node acts as another remote. The original handset keeps working.",
+            "values": [
+              {
+                "label": "Command",
+                "value": "Open"
+              },
+              {
+                "label": "Connection",
+                "value": "MQTT → radio"
+              },
+              {
+                "label": "Position",
+                "value": "Illustrative"
+              }
+            ],
+            "level": 100
+          },
+          {
+            "label": "Stop",
+            "headline": "Stop at the right moment",
+            "detail": "This preview pauses at a sample position; actual feedback depends on the installation.",
+            "values": [
+              {
+                "label": "Command",
+                "value": "Stop"
+              },
+              {
+                "label": "Connection",
+                "value": "RTS"
+              },
+              {
+                "label": "Position",
+                "value": "Illustrative"
+              }
+            ],
+            "level": 55
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "Notice when your backups stop arriving.",
+      "categories": [
+        "utilities"
+      ],
+      "hardware": "none",
+      "ui": "none",
+      "deviceIds": [],
+      "views": [],
+      "setup": [
+        "Configure the backup time, retention counts, catch-up interval and notification action in your home inputs. The Container setup uses /config/backups.",
+        "Review the rendered Home Assistant package and retention script; keep Home Assistant’s separate automatic backup schedule off and verify an archive is created.",
+        "Test the stale alert and plan a separate restore exercise. A successful file is not proof of recoverability."
+      ],
+      "id": "backup",
+      "version": "0.1.0",
+      "sourceCommit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+      "evidencePaths": [
+        "components/backup/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Completed",
+            "headline": "A fresh backup is recorded",
+            "detail": "The component exposes backup sensors and rolling retention.",
+            "values": [
+              {
+                "label": "Last result",
+                "value": "Success"
+              },
+              {
+                "label": "Age",
+                "value": "2 hours"
+              },
+              {
+                "label": "Alert",
+                "value": "Clear"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Overdue",
+            "headline": "The next backup needs attention",
+            "detail": "Illustrates the configured stale condition; this does not claim a universal alert threshold.",
+            "values": [
+              {
+                "label": "Last result",
+                "value": "No new backup"
+              },
+              {
+                "label": "Age",
+                "value": "Past configured limit"
+              },
+              {
+                "label": "Alert",
+                "value": "Stale"
+              }
+            ],
+            "level": 50
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "Know which room a device is near.",
+      "categories": [
+        "presence"
+      ],
+      "hardware": "required",
+      "ui": "own",
+      "deviceIds": [
+        "m5stack-atom-lite",
+        "hlk-ld2410c"
+      ],
+      "views": [
+        {
+          "id": "presence",
+          "title": "Presence rooms card",
+          "owner": "bermuda-presence",
+          "providers": [
+            "bermuda-presence"
+          ],
+          "availability": "opt-in",
+          "condition": "Add the supplied Lovelace cards to your dashboard.",
+          "preview": "/previews/presence.svg",
+          "previewType": "illustration",
+          "layout": "Native Home Assistant cards; no dedicated tablet layout declared.",
+          "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+          "evidencePath": "components/bermuda-presence/cards/presence-rooms.yaml"
+        }
+      ],
+      "setup": [
+        "Position a USB-powered BLE proxy in each area you want to observe.",
+        "Configure ESPHome and Bermuda, then map people and area names in your home inputs.",
+        "Optionally wire the radar using its guide; verify radar presence separately from BLE room estimates."
+      ],
+      "id": "bermuda-presence",
+      "version": "0.2.1",
+      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "evidencePaths": [
+        "components/bermuda-presence/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Living room",
+            "headline": "Alex is near the living-room proxy",
+            "detail": "Bluetooth signal estimates a device’s room. It does not prove a person is there.",
+            "values": [
+              {
+                "label": "Room estimate",
+                "value": "Living room"
+              },
+              {
+                "label": "Device",
+                "value": "Alex’s phone"
+              },
+              {
+                "label": "Radar",
+                "value": "Not configured"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Office",
+            "headline": "The estimate follows the device",
+            "detail": "A different nearby proxy changes the sample room estimate.",
+            "values": [
+              {
+                "label": "Room estimate",
+                "value": "Office"
+              },
+              {
+                "label": "Device",
+                "value": "Alex’s phone"
+              },
+              {
+                "label": "Radar",
+                "value": "Not configured"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Add radar",
+            "headline": "A second, separate signal",
+            "detail": "The optional radar measures presence and distance, not a person’s identity.",
+            "values": [
+              {
+                "label": "BLE estimate",
+                "value": "Office"
+              },
+              {
+                "label": "Radar presence",
+                "value": "Detected"
+              },
+              {
+                "label": "Distance",
+                "value": "0.8 m"
+              }
+            ],
+            "level": 50
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "See what is coming up today.",
+      "categories": [
+        "media-display",
+        "utilities"
+      ],
+      "hardware": "none",
+      "ui": "consumer",
+      "deviceIds": [],
+      "views": [
+        {
+          "id": "calendar",
+          "title": "Calendar agenda",
+          "owner": "ramka",
+          "providers": [
+            "calendar"
+          ],
+          "availability": "conditional",
+          "condition": "Configure calendar entities and open the agenda.",
+          "preview": "/previews/calendar.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Configure the CalDAV integration and the account’s calendar access.",
+        "Confirm the selected calendar entities return events.",
+        "Map them in Ramka to use its agenda view."
+      ],
+      "id": "calendar",
+      "version": "0.1.0",
+      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "evidencePaths": [
+        "components/calendar/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Today",
+            "headline": "A little room for the day",
+            "detail": "Only fictional events are shown. Account setup belongs in your private home project.",
+            "values": [
+              {
+                "label": "10:00",
+                "value": "Sample meeting"
+              },
+              {
+                "label": "15:30",
+                "value": "Sample reminder"
+              },
+              {
+                "label": "Day",
+                "value": "Today"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Tomorrow",
+            "headline": "A look ahead",
+            "detail": "The agenda reads events from the configured upstream calendar.",
+            "values": [
+              {
+                "label": "09:00",
+                "value": "Sample appointment"
+              },
+              {
+                "label": "18:00",
+                "value": "Sample dinner"
+              },
+              {
+                "label": "Day",
+                "value": "Tomorrow"
+              }
+            ],
+            "level": 50
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "See temperature, humidity and the air you breathe.",
+      "categories": [
+        "climate"
+      ],
+      "hardware": "required",
+      "ui": "consumer",
+      "deviceIds": [
+        "tapo-t315",
+        "ruuvi-air",
+        "m5stack-atom-lite"
+      ],
+      "views": [
+        {
+          "id": "climate",
+          "title": "Climate",
+          "owner": "ramka",
+          "providers": [
+            "climate-air"
+          ],
+          "availability": "conditional",
+          "condition": "Provide climate inputs to Ramka.",
+          "preview": "/previews/climate.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "air",
+          "title": "Air quality",
+          "owner": "ramka",
+          "providers": [
+            "climate-air"
+          ],
+          "availability": "conditional",
+          "condition": "Provide air inputs and compatible air-quality readings to Ramka.",
+          "preview": "/previews/air.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Pair Tapo sensors to their hub and set up the Home Assistant integration.",
+        "For air measurements, add the optional Ruuvi Air and a supported Bluetooth path.",
+        "Map the sensor entities; configure Ramka climate or air inputs if you want these pages."
+      ],
+      "id": "climate-air",
+      "version": "0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "evidencePaths": [
+        "components/climate-air/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Temperature",
+            "headline": "Comfort, room by room",
+            "detail": "Sample temperature and humidity readings from configured sensors.",
+            "values": [
+              {
+                "label": "Living room",
+                "value": "21.4 °C"
+              },
+              {
+                "label": "Humidity",
+                "value": "46%"
+              },
+              {
+                "label": "Bedroom",
+                "value": "19.8 °C"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Air quality",
+            "headline": "Look beyond temperature",
+            "detail": "Optional air-quality readings require the additional sensor and integration.",
+            "values": [
+              {
+                "label": "CO2",
+                "value": "780 ppm"
+              },
+              {
+                "label": "PM2.5",
+                "value": "4 µg/m³"
+              },
+              {
+                "label": "VOC index",
+                "value": "68"
+              }
+            ],
+            "level": 50
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "Control the room, not a list of bulbs.",
+      "categories": [
+        "lighting-shading"
+      ],
+      "hardware": "required",
+      "ui": "consumer",
+      "deviceIds": [
+        "hue-bridge"
+      ],
+      "views": [
+        {
+          "id": "controls",
+          "title": "Room controls",
+          "owner": "ramka",
+          "providers": [
+            "lights",
+            "awnings",
+            "media"
+          ],
+          "availability": "conditional",
+          "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+          "preview": "/previews/controls.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Set up the Hue Bridge and room groups, then connect its Home Assistant integration.",
+        "Map the room light entities in your home inputs.",
+        "Verify group state and brightness; configure Ramka lights inputs for tablet controls."
+      ],
+      "id": "lights",
+      "version": "0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "evidencePaths": [
+        "components/lights/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Off",
+            "headline": "The room settles down",
+            "detail": "The Hue room group is switched off in this fictional example.",
+            "values": [
+              {
+                "label": "Room",
+                "value": "Living room"
+              },
+              {
+                "label": "Group",
+                "value": "Off"
+              },
+              {
+                "label": "Brightness",
+                "value": "0%"
+              }
+            ],
+            "level": 0
+          },
+          {
+            "label": "Soft",
+            "headline": "A softer evening light",
+            "detail": "One room group can control several bulbs together.",
+            "values": [
+              {
+                "label": "Room",
+                "value": "Living room"
+              },
+              {
+                "label": "Group",
+                "value": "On"
+              },
+              {
+                "label": "Brightness",
+                "value": "35%"
+              }
+            ],
+            "level": 35
+          },
+          {
+            "label": "Bright",
+            "headline": "Ready for the day",
+            "detail": "The example changes a sample group; it never sends a command to your bridge.",
+            "values": [
+              {
+                "label": "Room",
+                "value": "Living room"
+              },
+              {
+                "label": "Group",
+                "value": "On"
+              },
+              {
+                "label": "Brightness",
+                "value": "90%"
+              }
+            ],
+            "level": 90
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "Your music, visible and within reach.",
+      "categories": [
+        "media-display"
+      ],
+      "hardware": "required",
+      "ui": "consumer",
+      "deviceIds": [
+        "hegel-h400"
+      ],
+      "views": [
+        {
+          "id": "music",
+          "title": "Now playing",
+          "owner": "ramka",
+          "providers": [
+            "media"
+          ],
+          "availability": "conditional",
+          "condition": "A configured media player is playing.",
+          "preview": "/previews/music.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "controls",
+          "title": "Room controls",
+          "owner": "ramka",
+          "providers": [
+            "lights",
+            "awnings",
+            "media"
+          ],
+          "availability": "conditional",
+          "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+          "preview": "/previews/controls.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Set up the supported player integration and verify its media_player entity.",
+        "Map the player and supported controls in Ramka.",
+        "Check playback, metadata and standby; an optional mains meter needs separately verified model-specific installation."
+      ],
+      "id": "media",
+      "version": "0.1.0",
+      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "evidencePaths": [
+        "components/media/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Playing",
+            "headline": "Morning light",
+            "detail": "Fictional track metadata, displayed through the configured media player.",
+            "values": [
+              {
+                "label": "Artist",
+                "value": "Sample artist"
+              },
+              {
+                "label": "Player",
+                "value": "Playing"
+              },
+              {
+                "label": "Volume",
+                "value": "28%"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Paused",
+            "headline": "A moment of quiet",
+            "detail": "The player remains available while playback is paused.",
+            "values": [
+              {
+                "label": "Track",
+                "value": "Morning light"
+              },
+              {
+                "label": "Player",
+                "value": "Paused"
+              },
+              {
+                "label": "Volume",
+                "value": "28%"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Standby",
+            "headline": "Ready for the next track",
+            "detail": "Standby behavior and wake capability depend on the player integration.",
+            "values": [
+              {
+                "label": "Player",
+                "value": "Standby"
+              },
+              {
+                "label": "Control",
+                "value": "Turn on"
+              },
+              {
+                "label": "Connection",
+                "value": "Local network"
+              }
+            ],
+            "level": 0
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "Notice when a plant needs attention.",
+      "categories": [
+        "climate"
+      ],
+      "hardware": "required",
+      "ui": "consumer",
+      "deviceIds": [
+        "mi-flora",
+        "m5stack-atom-lite"
+      ],
+      "views": [
+        {
+          "id": "plants",
+          "title": "Plant care",
+          "owner": "ramka",
+          "providers": [
+            "plants"
+          ],
+          "availability": "conditional",
+          "condition": "Provide plants inputs to Ramka.",
+          "preview": "/previews/plants.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Place the Mi Flora probe in the soil following the device instructions.",
+        "Provide Bluetooth coverage and verify fresh readings in Home Assistant.",
+        "Map each plant and its thresholds; optionally show the readings in Ramka."
+      ],
+      "id": "plants",
+      "version": "0.2.0",
+      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "evidencePaths": [
+        "components/plants/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Moist soil",
+            "headline": "The fern is comfortable",
+            "detail": "Illustrative values; choose thresholds for the actual plant and substrate.",
+            "values": [
+              {
+                "label": "Soil moisture",
+                "value": "32%"
+              },
+              {
+                "label": "Status",
+                "value": "OK"
+              },
+              {
+                "label": "Light",
+                "value": "860 lx"
+              }
+            ],
+            "level": 72
+          },
+          {
+            "label": "Dry soil",
+            "headline": "A reason to check the pot",
+            "detail": "A low sample reading illustrates the configured dry-soil status. This component does not water the plant.",
+            "values": [
+              {
+                "label": "Soil moisture",
+                "value": "12%"
+              },
+              {
+                "label": "Status",
+                "value": "Check soil"
+              },
+              {
+                "label": "Light",
+                "value": "860 lx"
+              }
+            ],
+            "level": 25
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "One screen that changes with the moment.",
+      "categories": [
+        "media-display"
+      ],
+      "hardware": "required",
+      "ui": "own",
+      "deviceIds": [
+        "tcl-9469x",
+        "hlk-ld2410c",
+        "m5stack-atom-lite"
+      ],
+      "views": [
+        {
+          "id": "climate",
+          "title": "Climate",
+          "owner": "ramka",
+          "providers": [
+            "climate-air"
+          ],
+          "availability": "conditional",
+          "condition": "Provide climate inputs to Ramka.",
+          "preview": "/previews/climate.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "air",
+          "title": "Air quality",
+          "owner": "ramka",
+          "providers": [
+            "climate-air"
+          ],
+          "availability": "conditional",
+          "condition": "Provide air inputs and compatible air-quality readings to Ramka.",
+          "preview": "/previews/air.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "plants",
+          "title": "Plant care",
+          "owner": "ramka",
+          "providers": [
+            "plants"
+          ],
+          "availability": "conditional",
+          "condition": "Provide plants inputs to Ramka.",
+          "preview": "/previews/plants.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "photos",
+          "title": "Photo slideshow",
+          "owner": "ramka",
+          "providers": [
+            "ramka"
+          ],
+          "availability": "conditional",
+          "condition": "Provide photo_dir and permit the directory in Home Assistant.",
+          "preview": "/previews/photos.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "status",
+          "title": "Home status",
+          "owner": "ramka",
+          "providers": [
+            "ramka"
+          ],
+          "availability": "default",
+          "condition": "Enabled by default in Ramka 0.3.0; disable with status_page: false.",
+          "preview": "/previews/status.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "controls",
+          "title": "Room controls",
+          "owner": "ramka",
+          "providers": [
+            "lights",
+            "awnings",
+            "media"
+          ],
+          "availability": "conditional",
+          "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+          "preview": "/previews/controls.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "music",
+          "title": "Now playing",
+          "owner": "ramka",
+          "providers": [
+            "media"
+          ],
+          "availability": "conditional",
+          "condition": "A configured media player is playing.",
+          "preview": "/previews/music.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "calendar",
+          "title": "Calendar agenda",
+          "owner": "ramka",
+          "providers": [
+            "calendar"
+          ],
+          "availability": "conditional",
+          "condition": "Configure calendar entities and open the agenda.",
+          "preview": "/previews/calendar.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        },
+        {
+          "id": "clock-weather",
+          "title": "Clock & weather",
+          "owner": "ramka",
+          "providers": [
+            "weather"
+          ],
+          "availability": "conditional",
+          "condition": "Provide the weather entity to Ramka. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+          "preview": "/previews/clock-weather.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Set up the tablet and Companion app using the tablet guide.",
+        "Install the radar through Room presence and map its presence and distance entities.",
+        "Choose the optional page inputs, render the dashboard and check each configured page before deployment."
+      ],
+      "id": "ramka",
+      "version": "0.3.0",
+      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "evidencePaths": [
+        "components/ramka/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Ambient",
+            "headline": "A quiet view of your home",
+            "detail": "The configured ambient pages rotate while someone is present.",
+            "values": [
+              {
+                "label": "Page",
+                "value": "Climate"
+              },
+              {
+                "label": "Room",
+                "value": "21.4 °C"
+              },
+              {
+                "label": "Mode",
+                "value": "Ambient"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Approach",
+            "headline": "Controls within reach",
+            "detail": "A nearby radar detection brings up controls when near controls are enabled.",
+            "values": [
+              {
+                "label": "Lighting",
+                "value": "65%"
+              },
+              {
+                "label": "Audio",
+                "value": "Ready"
+              },
+              {
+                "label": "Mode",
+                "value": "Controls"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Playing",
+            "headline": "Let the music take the screen",
+            "detail": "A playing media player takes priority over the ambient pages.",
+            "values": [
+              {
+                "label": "Track",
+                "value": "Morning light"
+              },
+              {
+                "label": "Artist",
+                "value": "Sample artist"
+              },
+              {
+                "label": "Mode",
+                "value": "Now playing"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Away",
+            "headline": "Rest until you return",
+            "detail": "The tablet sleeps after the configured absence delay; this example skips the wait.",
+            "values": [
+              {
+                "label": "Presence",
+                "value": "Away"
+              },
+              {
+                "label": "Screen",
+                "value": "Sleeping"
+              },
+              {
+                "label": "Data",
+                "value": "Sample only"
+              }
+            ],
+            "level": 0
+          }
+        ]
+      }
+    },
+    {
+      "outcome": "Bring the forecast into Home Assistant.",
+      "categories": [
+        "climate",
+        "utilities"
+      ],
+      "hardware": "none",
+      "ui": "consumer",
+      "deviceIds": [],
+      "views": [
+        {
+          "id": "clock-weather",
+          "title": "Clock & weather",
+          "owner": "ramka",
+          "providers": [
+            "weather"
+          ],
+          "availability": "conditional",
+          "condition": "Provide the weather entity to Ramka. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+          "preview": "/previews/clock-weather.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Set up the Met.no integration with the location you choose in Home Assistant.",
+        "Verify its weather entity and forecast.",
+        "Map the weather entity in Ramka to show current weather alongside now playing and a four-day forecast on the configured climate page."
+      ],
+      "id": "weather",
+      "version": "0.1.0",
+      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "evidencePaths": [
+        "components/weather/component.yaml"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Clear",
+            "headline": "A brighter outlook",
+            "detail": "Illustrative Met.no-style forecast data, not a weather service request.",
+            "values": [
+              {
+                "label": "Conditions",
+                "value": "Clear"
+              },
+              {
+                "label": "Temperature",
+                "value": "18 °C"
+              },
+              {
+                "label": "Wind",
+                "value": "8 km/h"
+              }
+            ],
+            "level": 50
+          },
+          {
+            "label": "Rain",
+            "headline": "Plan for a wet afternoon",
+            "detail": "No local weather station is required; this integration uses an external service.",
+            "values": [
+              {
+                "label": "Conditions",
+                "value": "Rain"
+              },
+              {
+                "label": "Temperature",
+                "value": "13 °C"
+              },
+              {
+                "label": "Wind",
+                "value": "16 km/h"
+              }
+            ],
+            "level": 50
+          }
+        ]
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "cc1101",
+      "title": "CC1101 radio module",
+      "summary": "A radio link to Somfy RTS awnings.",
+      "sourcePath": "devices/cc1101.md",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "awnings"
+      ],
+      "compatibility": [
+        {
+          "id": "awnings",
+          "version": "0.2.1"
+        }
+      ],
+      "body": "# CC1101 radio module: wiring and setup\n\nA CC1101 433 MHz transceiver, the Ebyte **E07-M1101D** with an SMA antenna socket, on an M5Stack\nAtom Lite that runs ESPSomfy-RTS: the `awnings` component's node, which sends and hears Somfy RTS.\nDevice file: [cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/cc1101.yaml).\n\n## Wiring\n\n![E07-M1101D on an M5Stack Atom Lite: eight wires from G, 3V3, G22, G21, G33, G23, G19, G25 to module pins 1 to 8, and a 433 MHz antenna on the SMA socket](/wiring/cc1101-atom-lite.svg)\n\n| E07-M1101D pin | signal | Atom Lite (bottom header) | wire | ESPSomfy-RTS, Radio page |\n|---|---|---|---|---|\n| 1 | GND | G | black | |\n| 2 | VCC | 3V3 (**never 5V**) | red | |\n| 3 | GDO0 | G22 | purple | TX 22 |\n| 4 | CSN | G21 | orange | CSN 21 |\n| 5 | SCK | G33 | yellow | SCLK 33 |\n| 6 | MOSI | G23 | blue | MOSI 23 |\n| 7 | MISO | G19 | green | MISO 19 |\n| 8 | GDO2 | G25 | white | RX 25 |\n\nPin 1 has the square pad. The pinout is the one the ESPSomfy-RTS wiki gives for this module; it is\nthe wiring of the first home's node. The Atom's 5V and the Grove port stay free. Another CC1101\nboard (a different maker) can number its pins differently: go by the signal names printed on it,\nnot by the numbers.\n\n## The antenna\n\n- Screw a **433 MHz** antenna onto the SMA socket before the node transmits. A CC1101 sending into\n  an open socket can damage its output stage (general radio practice, not seen here).\n- The antenna decides what the node hears. One home's wind sensor reached the node at −83 to\n  −86 dBm and only part of its reports arrived, with gaps of hours (`components/awnings/README.md`).\n  Stand the antenna upright and move the node, or the antenna on a short cable, towards the\n  sensor and the awnings; keep it clear of metal.\n\n## Firmware and first start\n\nESPSomfy-RTS is a release binary flashed over USB with `esptool`, then set up in its own web\npage: the network, then on the Radio page the pins of the right-hand column above, then MQTT and a\nvirtual remote per awning. The commands and steps: `components/awnings/README.md`, \"Flashing the\nnode\". The radio answers when `GET http://<node>/controller` shows\n`transceiver.config.radioInit: true`; `false` means the CC1101 did not answer on SPI with these pins\n(a wire on the wrong socket, or VCC missing).\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| `radioInit: false` | a wire on the wrong socket, the pins in ESPSomfy's Radio page not matching the wiring, or VCC not on 3V3 |\n| awnings do not move, the node logs sending | no antenna, or the virtual remote not paired with the awning |\n| the node hears the handsets only sometimes | reception: antenna position and distance |\n\nThe second and third rows are inference from how RTS works, apart from reception, which the first\nhome saw.",
+      "photo": "/hardware/cc1101.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/cc1101.md"
+    },
+    {
+      "id": "hegel-h400",
+      "title": "Hegel",
+      "summary": "The integrated amplifier used for the documented audio integration.",
+      "sourcePath": "devices/hegel-h400.yaml",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "media"
+      ],
+      "compatibility": [
+        {
+          "id": "media",
+          "version": "0.1.0"
+        }
+      ],
+      "body": "## Configure the amplifier\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. A model-specific electrical guide is not yet published here; do not infer Shelly compatibility or wiring from this audio example. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/hegel-h400.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hegel-h400.yaml"
+    },
+    {
+      "id": "hlk-ld2410c",
+      "title": "HLK-LD2410C radar",
+      "summary": "Presence and distance over UART.",
+      "sourcePath": "devices/hlk-ld2410c.md",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "ramka",
+        "bermuda-presence"
+      ],
+      "compatibility": [
+        {
+          "id": "ramka",
+          "version": "0.3.0"
+        },
+        {
+          "id": "bermuda-presence",
+          "version": "0.2.1"
+        }
+      ],
+      "body": "# HLK-LD2410C radar: wiring and setup\n\nA Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already runs as a\n`bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a\nradar like this to wake its screen. Device file: [hlk-ld2410c.yaml](https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hlk-ld2410c.yaml).\n\n## Wiring\n\n![HLK-LD2410C on an M5Stack Atom Lite: 5V to VCC, G to GND, G22 to TX, G19 to RX, OUT not connected](/wiring/hlk-ld2410c-atom-lite.svg)\n\n| Atom Lite (bottom header) | HLK-LD2410C | wire | why |\n|---|---|---|---|\n| 5V | VCC | red | the module needs 5 V; **never 3V3** |\n| G | GND | black | |\n| G22 | TX | purple | the Atom receives on G22 (`rx_pin: GPIO22`) |\n| G19 | RX | green | the Atom sends on G19 (`tx_pin: GPIO19`) |\n| — | OUT | — | not connected: presence comes over the UART |\n\nSource: `components/bermuda-presence/esphome/ld2410.yaml`, the wiring of the first home's boards.\nThe labels are the ones printed on the Atom and on the module; the diagram shows which socket goes to\nwhich pin, not where they sit on the boards. Colours are a convention: any colour works if both ends\nmatch. The Grove port stays free.\n\n## Firmware\n\nThe board's thin device file pulls the radar package next to the proxy package; with\n`radar: true` on that proxy in the component's inputs, `domosenso add` writes it so (SPEC-015):\n\n```yaml\npackages:\n  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/<version>\n  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/<version>\n```\n\nThen `esphome config`, `compile` and a flash, as for any proxy (`components/bermuda-presence/README.md`).\nThe UART runs at 256000 baud, the module's factory setting.\n\n## After the first start\n\n- The module keeps its settings (gates, thresholds, timeout, its own Bluetooth) in its own flash:\n  set them once from Home Assistant; they survive a reflash of the Atom.\n- Engineering mode is the one setting it forgets on a restart, and the light reading only comes in\n  engineering frames, so the package switches it back on 10 s after every boot.\n- New entities on the proxy's device: presence, moving and still target, detection distance and\n  the others listed under `features.radar` in `components/bermuda-presence/component.yaml`.\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| no radar entities at all | the device file lacks the `radar:` package line |\n| radar entities `unavailable` or never changing | TX and RX swapped (TX must go to G22), or VCC on 3V3 |\n| the Atom resets or drops off Wi-Fi when the radar is plugged in | a weak USB supply: the radar draws its power through the Atom; use a plain 5 V USB supply (the `power` note on `ble-proxy` in `components/bermuda-presence/component.yaml`) |\n| presence that never clears with nobody there | sensitivity and gates, set from Home Assistant; the module keeps them |\n\nThe last two rows are inference from how the module and the board are powered and set up, not\ncases seen in the first home.",
+      "photo": "/hardware/hlk-ld2410c.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hlk-ld2410c.md"
+    },
+    {
+      "id": "hue-bridge",
+      "title": "Philips Hue Bridge",
+      "summary": "Lighting through the bridge’s room groups.",
+      "sourcePath": "devices/hue-bridge.yaml",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "lights"
+      ],
+      "compatibility": [
+        {
+          "id": "lights",
+          "version": "0.2.0"
+        }
+      ],
+      "body": "## Connect existing lighting\n\nSet up the bridge and pair the bulbs using the manufacturer’s setup process. Organize lights into room groups, then add the Hue integration in Home Assistant.\n\n## Verify the group\n\nCheck that the expected room entity responds to on/off and brightness changes before mapping it into DomoSenso. Ramka can show controls for configured light entities. No additional circuit wiring is specified by this component.\n\n## Setup references\n\n- [Philips Hue setup and room groups — Home Assistant](https://www.home-assistant.io/integrations/hue/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/hue-bridge.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hue-bridge.yaml"
+    },
+    {
+      "id": "m5stack-atom-lite",
+      "title": "M5Stack Atom Lite",
+      "summary": "A compact board with two distinct installation roles.",
+      "sourcePath": "devices/m5stack-atom-lite.yaml",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "bermuda-presence",
+        "awnings",
+        "climate-air",
+        "plants",
+        "ramka"
+      ],
+      "compatibility": [
+        {
+          "id": "bermuda-presence",
+          "version": "0.2.1"
+        },
+        {
+          "id": "awnings",
+          "version": "0.2.1"
+        },
+        {
+          "id": "climate-air",
+          "version": "0.2.0"
+        },
+        {
+          "id": "plants",
+          "version": "0.2.0"
+        },
+        {
+          "id": "ramka",
+          "version": "0.3.0"
+        }
+      ],
+      "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/m5stack-atom-lite.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/m5stack-atom-lite.yaml"
+    },
+    {
+      "id": "mi-flora",
+      "title": "Mi Flora plant sensor",
+      "summary": "Soil and light readings for individual plants.",
+      "sourcePath": "devices/mi-flora.yaml",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "plants"
+      ],
+      "compatibility": [
+        {
+          "id": "plants",
+          "version": "0.2.0"
+        }
+      ],
+      "body": "## Place and discover\n\nInstall the sensor as instructed by its manufacturer and provide Bluetooth coverage with a proxy. Set up the Xiaomi BLE integration (xiaomi_ble) in Home Assistant.\n\n## Check each plant\n\nConfirm soil moisture, conductivity, light and temperature update before assigning the plant. Choose suitable thresholds for the plant and substrate. Ramka can display a plant page when configured; this sensor does not provide automatic watering.\n\n## Setup references\n\n- [Xiaomi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/xiaomi_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/mi-flora.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/mi-flora.yaml"
+    },
+    {
+      "id": "ruuvi-air",
+      "title": "Ruuvi Air",
+      "summary": "Optional air-quality readings over Bluetooth.",
+      "sourcePath": "devices/ruuvi-air.yaml",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "climate-air"
+      ],
+      "compatibility": [
+        {
+          "id": "climate-air",
+          "version": "0.2.0"
+        }
+      ],
+      "body": "## Provide Bluetooth coverage\n\nSet up the sensor according to its manufacturer instructions. The documented integration is ruuvitag_ble; the component can use a Bluetooth proxy supplied by Room presence.\n\n## Check the entities\n\nVerify the CO2, particle and other available readings before mapping air inputs. The air page is conditional on those inputs; a temperature-only setup does not automatically gain air-quality measurements.\n\n## Setup references\n\n- [Ruuvi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/ruuvitag_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/ruuvi-air.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/ruuvi-air.yaml"
+    },
+    {
+      "id": "tapo-t315",
+      "title": "Tapo T315",
+      "summary": "Room temperature and humidity through a Tapo hub.",
+      "sourcePath": "devices/tapo-t315.yaml",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "climate-air"
+      ],
+      "compatibility": [
+        {
+          "id": "climate-air",
+          "version": "0.2.0"
+        }
+      ],
+      "body": "## Pair with the hub\n\nThe documented setup uses a Tapo H200 hub. Pair the sensor with its hub, then configure the TP-Link/Tapo integration in Home Assistant.\n\n## Verify readings\n\nConfirm fresh temperature and humidity entities. Map them into the climate-air inputs and, if desired, Ramka’s climate page. No custom wiring is required for this sensor setup. Follow the model’s manufacturer instructions for battery installation and placement.\n\n## Setup references\n\n- [TP-Link Smart Home and hub-attached sensors — Home Assistant](https://www.home-assistant.io/integrations/tplink/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/tapo-t315.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/tapo-t315.yaml"
+    },
+    {
+      "id": "tcl-9469x",
+      "title": "TCL wall tablet",
+      "summary": "Companion app, screen behavior and the tested landscape layout.",
+      "sourcePath": "docs/tablet-setup.md",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "components": [
+        "ramka"
+      ],
+      "compatibility": [
+        {
+          "id": "ramka",
+          "version": "0.3.0"
+        }
+      ],
+      "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's two top corners are its way out\ninstead: top-left opens `exit_left`, top-right reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |",
+      "photo": "/hardware/tcl-9469x.webp",
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/docs/tablet-setup.md"
+    }
+  ],
+  "articles": [
+    {
+      "slug": "wiring-made-visible",
+      "title": "From a component to the wires",
+      "summary": "Two documented Atom connections, plus the tablet setup they help support.",
+      "category": "updates",
+      "date": "2026-10-28",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "bermuda-presence",
+        "awnings",
+        "ramka"
+      ],
+      "releases": [],
+      "sources": [
+        "https://github.com/zerostorypoints/domosenso/tree/5b012718dcce57a386b1f3cfe87b8d7512c39b2f"
+      ],
+      "body": "Hardware requirements should lead to instructions you can inspect.\n\nThe [HLK-LD2410C radar guide](/devices/hlk-ld2410c/) pairs a labeled wiring diagram with a pin table, firmware steps and first-start checks. The [CC1101 guide](/devices/cc1101/) does the same for the radio node used with Somfy RTS awnings.\n\n## Same board, different jobs\n\nThe radar accompanies an ESPHome Bluetooth proxy. The CC1101 radio node runs ESPSomfy-RTS. These are distinct firmware roles; one board should not be presented as doing both jobs at once.\n\n## Finish at the screen\n\nThe [tablet setup guide](/devices/tcl-9469x/) covers the Companion app and Android settings used by the documented Ramka installation. Wiring, firmware, integration and presentation are separate steps, and each needs a check.\n\nThese guides describe the documented models and connections. They do not establish support for all related boards, radios or meters."
+    },
+    {
+      "slug": "ramka-0-3-0",
+      "title": "Keep only the pages you need",
+      "summary": "The status page can now be removed from Ramka’s ambient rotation.",
+      "category": "releases",
+      "date": "2026-10-28",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "ramka"
+      ],
+      "releases": [
+        {
+          "id": "ramka",
+          "version": "0.3.0",
+          "tag": "ramka/0.3.0",
+          "commit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe"
+        }
+      ],
+      "sources": [
+        "https://github.com/zerostorypoints/domosenso/tree/5b012718dcce57a386b1f3cfe87b8d7512c39b2f"
+      ],
+      "body": "Ramka 0.3.0 adds `status_page: false`. It removes the read-only status page from both the rotation and the swipe sequence. Status remains enabled by default.\n\n## When to use it\n\nIf the controls already show your lights and awnings, and there are no other status items you want to see, the extra ambient page may add little. You can keep the useful pages and leave that one out.\n\nClimate, air, plants and photos still depend on their own inputs. At least one ambient page must remain; a render with no ambient pages fails rather than leaving an empty rotation.\n\n## Upgrade deliberately\n\nReview the release notes linked below. Update the component in your separate home project, adjust the inputs, render and inspect the resulting pages. Review the deployment plan before changing a live installation.\n\nThe release was merged on 27 October 2026. This article’s publication date is 28 October; it is not the tag creation date."
+    },
+    {
+      "slug": "installation-001",
+      "title": "A tablet, a radar, an ordinary shelf",
+      "summary": "Inside the maintainer’s first installation: components with a physical home.",
+      "category": "installations",
+      "date": "2026-10-28",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "ramka",
+        "bermuda-presence",
+        "media"
+      ],
+      "releases": [
+        {
+          "id": "ramka",
+          "version": "0.2.0",
+          "tag": "ramka/0.2.0",
+          "commit": "0345fba394a40f666fd038c4dd6f6fa49173311d"
+        }
+      ],
+      "sources": [
+        "https://github.com/zerostorypoints/domosenso/tree/5b012718dcce57a386b1f3cfe87b8d7512c39b2f"
+      ],
+      "cover": "/journal/installation-001.jpg",
+      "body": "The first installation brings an Android tablet, a nearby radar and Home Assistant together. This is the maintainer’s personal setup, not a customer project. The photographs were already published in the original installation journal.\n\n## Give the screen a reason to wake\n\nRamka supplies the ambient pages and controls. The radar supplies presence and distance through the optional radar feature of Room presence. Bluetooth room estimates and radar presence are separate signals; the screen does not need to identify a person to react to someone nearby.\n\n## Show what is already happening\n\nThe media integration supplies a Home Assistant media player. Ramka can use its track metadata for the now-playing view. The documented player is a Hegel H400; a speaker visible in a photograph is not a claim about compatibility.\n\n## What this installation taught us\n\nA wall display needs more than a dashboard layout. Screen wake and sleep, Android permissions, charging behavior and the viewport all matter. The [tablet guide](/devices/tcl-9469x/) records the tested setup; the [radar guide](/devices/hlk-ld2410c/) records the wiring.\n\nThe original journal documented Ramka 0.2.0. This article does not establish which version is running in the home today. Field experience remains limited; another installation needs its own validation."
+    },
+    {
+      "slug": "ramka-0-2-0",
+      "title": "A dashboard should fit the home it lives in",
+      "summary": "Ramka 0.2.0 made climate, air, plants and photos conditional on your inputs.",
+      "category": "releases",
+      "date": "2026-10-22",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "ramka"
+      ],
+      "releases": [
+        {
+          "id": "ramka",
+          "version": "0.2.0",
+          "tag": "ramka/0.2.0",
+          "commit": "0345fba394a40f666fd038c4dd6f6fa49173311d"
+        }
+      ],
+      "sources": [
+        "https://github.com/zerostorypoints/domosenso/tree/5b012718dcce57a386b1f3cfe87b8d7512c39b2f"
+      ],
+      "cover": "/journal/ramka-air.jpg",
+      "body": "Not every home has plant sensors. Not every tablet needs a photo album.\n\nIn Ramka 0.2.0, climate, air, plants and photos became optional. Leave out an input and the corresponding page is left out of the rendered dashboard and its rotation. The shared component stays the same; each home decides what belongs on its screen.\n\n## Before upgrading\n\nRead the pinned release notes below, review your inputs and render the dashboard before applying changes. This historical article retains the date and subject of the original homepage entry. The [current component page](/components/ramka/) may describe a newer release."
+    }
+  ],
+  "assets": [
+    {
+      "path": "/previews/climate.svg",
+      "alt": "Illustration of climate with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/air.svg",
+      "alt": "Illustration of air quality with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/plants.svg",
+      "alt": "Illustration of plant care with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/photos.svg",
+      "alt": "Illustration of photo frame with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/status.svg",
+      "alt": "Illustration of home status with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/controls.svg",
+      "alt": "Illustration of room controls with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/music.svg",
+      "alt": "Illustration of now playing with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/calendar.svg",
+      "alt": "Illustration of calendar with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/previews/presence.svg",
+      "alt": "Illustration of presence rooms with fictional readings",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/wiring/hlk-ld2410c-atom-lite.svg",
+      "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "alt": "Wiring diagram: hlk ld2410c atom lite",
+      "kind": "wiring",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "public-device-guide"
+    },
+    {
+      "path": "/wiring/cc1101-atom-lite.svg",
+      "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
+      "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+      "alt": "Wiring diagram: cc1101 atom lite",
+      "kind": "wiring",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "public-device-guide"
+    },
+    {
+      "path": "/journal/installation-001.jpg",
+      "alt": "The maintainer’s wall tablet and radar",
+      "kind": "photograph",
+      "credit": "Maintainer photograph",
+      "license": "Existing repository-approved photograph",
+      "scope": "existing-approved-public-photo"
+    },
+    {
+      "path": "/journal/ramka-air.jpg",
+      "alt": "The air page in the maintainer’s installation",
+      "kind": "photograph",
+      "credit": "Maintainer photograph",
+      "license": "Existing repository-approved photograph",
+      "scope": "existing-approved-public-photo"
+    },
+    {
+      "path": "/previews/clock-weather.svg",
+      "alt": "Illustrative clock and weather card with current conditions and forecast",
+      "kind": "illustration",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "fictional"
+    },
+    {
+      "path": "/hardware/cc1101.webp",
+      "alt": "Ebyte E07-M1101D-SMA CC1101 radio module with SMA antenna connector",
+      "kind": "photograph",
+      "credit": "Ebyte",
+      "license": "Copyright Ebyte; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.ebyte.com/product/57.html",
+      "imageSourceUrl": "https://www.ebyte.com/Uploadfiles/Picture/2017-9-29/20179291441518237.jpg",
+      "retrievedAt": "2026-10-28",
+      "width": 520,
+      "height": 431,
+      "sha256": "e1d54cf06c3b4bb459cd83003306ebb21f5f7b9f08208bfb92182539682475ae"
+    },
+    {
+      "path": "/hardware/hegel-h400.webp",
+      "alt": "Hegel H400 integrated amplifier, angled front view",
+      "kind": "photograph",
+      "credit": "Hegel",
+      "license": "Copyright Hegel; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.hegel.com/en/products/integrated/h400",
+      "imageSourceUrl": "https://www.hegel.com/images/products/h400/H400AngleFront.jpg",
+      "retrievedAt": "2026-10-28",
+      "width": 1000,
+      "height": 417,
+      "sha256": "2df55310f7b1cbc13f8f78280ce374aa5cbf5c9a6f1b9abb464889549a9e239e"
+    },
+    {
+      "path": "/hardware/hlk-ld2410c.webp",
+      "alt": "Hi-Link HLK-LD2410C presence radar module",
+      "kind": "photograph",
+      "credit": "Hi-Link",
+      "license": "Copyright Hi-Link; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.hlktech.com/cn/Goods-239.html",
+      "imageSourceUrl": "https://www.hlktech.com/Uploads/AlbumPic/h98f0el37tmpd.png",
+      "retrievedAt": "2026-10-28",
+      "width": 800,
+      "height": 800,
+      "sha256": "564e6cca8d62b5c4175c2182861b945cdaec1764d9702e5540a09b808153abb7"
+    },
+    {
+      "path": "/hardware/hue-bridge.webp",
+      "alt": "Philips Hue Bridge, square second-generation model",
+      "kind": "photograph",
+      "credit": "Philips Hue / Signify",
+      "license": "Copyright Philips Hue / Signify; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.philips-hue.com/en-us/products/all-products/product-page.hue_bridge",
+      "imageSourceUrl": "https://www.assets.signify.com/is/image/Signify/046677458478-929001180603-Hue-Bridge-v2-NAM-RTP-Award?wid=1024&hei=768&qlt=82",
+      "retrievedAt": "2026-10-28",
+      "width": 1000,
+      "height": 750,
+      "sha256": "247c5d0581b16e43ddfe580584cad4097ca0a0723f43e336c8959031c3bd2ac3"
+    },
+    {
+      "path": "/hardware/m5stack-atom-lite.webp",
+      "alt": "M5Stack Atom Lite ESP32 board",
+      "kind": "photograph",
+      "credit": "M5Stack",
+      "license": "Copyright M5Stack; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://docs.m5stack.com/en/core/Atom-Lite",
+      "imageSourceUrl": "https://static-cdn.m5stack.com/resource/docs/products/core/ATOM%20Lite/img-d066cf3f-63a8-4866-bed2-2c2a6d9c034e.webp",
+      "retrievedAt": "2026-10-28",
+      "width": 800,
+      "height": 800,
+      "sha256": "0a3a9d00310d47e2d649b4d40f2ad04b92232a55a61db1be8f378d73ca955092"
+    },
+    {
+      "path": "/hardware/mi-flora.webp",
+      "alt": "Mi Flora HHCCJCY01 plant sensor with soil probes",
+      "kind": "photograph",
+      "credit": "ESPHome contributors",
+      "license": "CC-BY-NC-SA-4.0",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://esphome.io/components/sensor/xiaomi_ble/",
+      "imageSourceUrl": "https://raw.githubusercontent.com/esphome/esphome.io/7f1ec35b8bdc5fb1c8284bcabe438eb2de1b51dd/public/images/xiaomi_hhccjcy01.jpg",
+      "retrievedAt": "2026-10-28",
+      "width": 83,
+      "height": 300,
+      "sha256": "381cce070a8f038f92387e59d8aa878bd8cc71781029944aede00efe7d51368c",
+      "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+    },
+    {
+      "path": "/hardware/ruuvi-air.webp",
+      "alt": "Ruuvi Air indoor air-quality monitor",
+      "kind": "photograph",
+      "credit": "Ruuvi",
+      "license": "Ruuvi product image permission (see https://ruuvi.com/media/)",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://ruuvi.com/air/",
+      "imageSourceUrl": "https://ruuvi.com/i/u/air-menu-1.png",
+      "retrievedAt": "2026-10-28",
+      "width": 400,
+      "height": 400,
+      "sha256": "94154434fe09401f738a72549685513cf6c105770c11fd2a58d9910191c142fc",
+      "licenseUrl": "https://ruuvi.com/media/"
+    },
+    {
+      "path": "/hardware/tapo-t315.webp",
+      "alt": "Tapo T315 temperature and humidity monitor with e-ink display",
+      "kind": "photograph",
+      "credit": "TP-Link / Tapo",
+      "license": "Copyright TP-Link / Tapo; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.tapo.com/en/product/smart-sensor/tapo-t315/",
+      "imageSourceUrl": "https://static.tp-link.com/upload/image-line/Tapo_T315_1.0_normal_20250115024648p.png",
+      "retrievedAt": "2026-10-28",
+      "width": 590,
+      "height": 590,
+      "sha256": "a0d2f7fabe408febbd003dfe41016f7d27f66b08167a0a84e3f2558fab0023bc"
+    },
+    {
+      "path": "/hardware/tcl-9469x.webp",
+      "alt": "TCL NXTPAPER 11 Plus tablet, front and rear views",
+      "kind": "photograph",
+      "credit": "TCL",
+      "license": "Copyright TCL; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.tcl.com/global/en/tablets/tcl-nxtpaper-11-plus",
+      "imageSourceUrl": "https://aws-obg-image-lb-2.tcl.com/content/dam/brandsite/region/global/products/tablets/tcl-nxtpaper-11-plus/id/Gray01-03.png?t=1756894845625&w=800",
+      "retrievedAt": "2026-10-28",
+      "width": 800,
+      "height": 600,
+      "sha256": "8f1accba5d3f83f01c438dd2ccb6281a435479f6d5e61d5126383d61403bc7e5"
+    }
+  ]
+}

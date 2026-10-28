@@ -1,0 +1,65 @@
+{
+  "outcome": "Notice when your backups stop arriving.",
+  "categories": [
+    "utilities"
+  ],
+  "hardware": "none",
+  "ui": "none",
+  "deviceIds": [],
+  "views": [],
+  "setup": [
+    "Configure the backup time, retention counts, catch-up interval and notification action in your home inputs. The Container setup uses /config/backups.",
+    "Review the rendered Home Assistant package and retention script; keep Home Assistant’s separate automatic backup schedule off and verify an archive is created.",
+    "Test the stale alert and plan a separate restore exercise. A successful file is not proof of recoverability."
+  ],
+  "id": "backup",
+  "version": "0.1.0",
+  "sourceCommit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+  "evidencePaths": [
+    "components/backup/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Completed",
+        "headline": "A fresh backup is recorded",
+        "detail": "The component exposes backup sensors and rolling retention.",
+        "values": [
+          {
+            "label": "Last result",
+            "value": "Success"
+          },
+          {
+            "label": "Age",
+            "value": "2 hours"
+          },
+          {
+            "label": "Alert",
+            "value": "Clear"
+          }
+        ],
+        "level": 50
+      },
+      {
+        "label": "Overdue",
+        "headline": "The next backup needs attention",
+        "detail": "Illustrates the configured stale condition; this does not claim a universal alert threshold.",
+        "values": [
+          {
+            "label": "Last result",
+            "value": "No new backup"
+          },
+          {
+            "label": "Age",
+            "value": "Past configured limit"
+          },
+          {
+            "label": "Alert",
+            "value": "Stale"
+          }
+        ],
+        "level": 50
+      }
+    ]
+  }
+}

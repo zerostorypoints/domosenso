@@ -1,3 +1,5 @@
+import {ComponentExperience} from '@/components/component-experience';
+import {RelatedJournal} from '@/components/journal-cards';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {PageIntro,Code} from '@/components/site';
@@ -24,6 +26,7 @@ export default async function Page({params}:Props) {
 
   return <div className="page">
     <PageIntro label={`COMPONENT INDEX / ${isGuide?'INTEGRATION GUIDE':'INSTALLABLE COMPONENT'} / v${component.version}`} title={componentName(id)}><p>{component.summary}</p></PageIntro>
+    <ComponentExperience id={id}/><h2 id="release" className="release-detail-title">Release details</h2>
     <div className="component-detail">
       <aside className="release-panel">
         <span className="pill">{isGuide?'Integration guide':'Installable component'}</span><h2>Release record</h2>
@@ -39,6 +42,7 @@ export default async function Page({params}:Props) {
             <strong>{requirement.kind.replaceAll('-',' ')}</strong>
             <dl className="requirement-values">{Object.entries(requirement).filter(([key]) => key !== 'kind').map(([key,value]) => <div key={key}><dt>{requirementLabels[key]??key}: </dt><dd>{Array.isArray(value)?value.join(', '):String(value)}</dd></div>)}</dl>
           </li>)}</ul> : <p>No specific device requirement is declared by this component. Review the integrations and inputs below.</p>}
+          {component.optionalRequirements.length > 0 && <><h3>Optional equipment</h3><ul className="requirements">{component.optionalRequirements.map((r,index)=><li key={index}><strong>{r.kind.replaceAll('-',' ')}</strong><p>{Object.entries(r).filter(([key])=>key!=='kind').map(([key,value])=>`${requirementLabels[key]??key}: ${Array.isArray(value)?value.join(', '):String(value)}`).join(' · ')}</p></li>)}</ul></>}
           <h3>Home Assistant integrations</h3>
           <ul className="integration-list">{component.integrations.map((integration,index) => <li key={index}><code>{integration.name}</code><span>{integration.source}</span>{'setup' in integration && <p>{integration.setup}</p>}</li>)}</ul>
         </section>
@@ -49,9 +53,10 @@ export default async function Page({params}:Props) {
           </>}
           <Link className="text-link" href="/get-started/">Start with the onboarding guide →</Link>
         </section>
-        {component.inputs.length > 0 && <section><p className="eyebrow">03 / CONFIGURATION</p><h2>Your inputs</h2><div className="table-scroll"><table><thead><tr><th>Input</th><th>Type</th><th>Configuration</th></tr></thead><tbody>{component.inputs.map(input => <tr key={input.name}><td><code>{input.name}</code></td><td>{input.type}</td><td>{input.required?'Supply your value':'Default available'}</td></tr>)}</tbody></table></div></section>}
+        {component.inputs.length > 0 && <section><p className="eyebrow">03 / CONFIGURATION</p><h2>Your inputs</h2><details className="input-disclosure"><summary>Show {component.inputs.length} configuration inputs</summary><div className="table-scroll"><table><thead><tr><th>Input</th><th>Type</th><th>Configuration</th></tr></thead><tbody>{component.inputs.map(input => <tr key={input.name}><td><code>{input.name}</code></td><td>{input.type}</td><td>{input.required?'Supply your value':'Default available'}</td></tr>)}</tbody></table></div></details></section>}
         <section className="note"><h2>Before a live change</h2>{component.limitations.map(limit => <p key={limit}>{limit}</p>)}<p>Configuration validation is not a guarantee of hardware compatibility. Review the component source and deployment plan; verify behavior after deployment.</p></section>
       </div>
     </div>
+    <RelatedJournal componentId={id}/>
   </div>;
 }

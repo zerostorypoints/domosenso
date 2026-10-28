@@ -1,0 +1,18 @@
+{
+  "id": "tapo-t315",
+  "title": "Tapo T315",
+  "summary": "Room temperature and humidity through a Tapo hub.",
+  "sourcePath": "devices/tapo-t315.yaml",
+  "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+  "components": [
+    "climate-air"
+  ],
+  "compatibility": [
+    {
+      "id": "climate-air",
+      "version": "0.2.0"
+    }
+  ],
+  "body": "## Pair with the hub\n\nThe documented setup uses a Tapo H200 hub. Pair the sensor with its hub, then configure the TP-Link/Tapo integration in Home Assistant.\n\n## Verify readings\n\nConfirm fresh temperature and humidity entities. Map them into the climate-air inputs and, if desired, Ramka’s climate page. No custom wiring is required for this sensor setup. Follow the model’s manufacturer instructions for battery installation and placement.\n\n## Setup references\n\n- [TP-Link Smart Home and hub-attached sensors — Home Assistant](https://www.home-assistant.io/integrations/tplink/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+  "photo": "/hardware/tapo-t315.webp"
+}
