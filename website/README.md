@@ -186,3 +186,17 @@ Examples use manual controls and fictional data. Preview illustrations are not d
 screenshots. Do not imply mobile HA layout support because the website itself is responsive.
 Use the repository `domosenso-website-audit` skill around merges and release publication; record
 local, merged and production state separately. The skill is not an automatic background job.
+
+### Hardware product photographs
+
+Device records reference `photo` paths from `content/assets.json`. Product photographs live in
+`public/hardware/` and render on the hardware index and device guide with source credits.
+Builds use the committed files without downloads or third-party image requests.
+
+To replace or add a photograph, verify the exact hardware model, save a local WebP without
+embedded metadata (maximum 1000 × 800, keep aspect ratio and avoid enlargement), and update
+its asset entry: alt text, credit, source page and image URLs, rights/terms, retrieval date,
+width, height and SHA-256 of the saved file. Set the device's `photo` path, regenerate the
+content with `uv run tools/export_website.py`, then build and inspect desktop/mobile output.
+Keep the original rights notice; product photographs are not Apache-2.0. See
+[photo sources and terms](public/hardware/SOURCES.md) before reusing or publishing the images.

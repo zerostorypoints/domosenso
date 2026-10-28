@@ -77,6 +77,15 @@ test('catalog sections lead from components to hardware and back from a guide',a
  await expect(page).toHaveURL(/\/devices\/$/);
  await expect(sections.getByRole('link',{name:/Hardware/})).toHaveAttribute('aria-current','page');
  await expect(page.locator('.hardware-card')).toHaveCount(9);
+ const photos=page.locator('.hardware-photo img');
+ await expect(photos).toHaveCount(9);
+ for(const photo of await photos.all()){
+  await photo.scrollIntoViewIfNeeded();
+  await expect(photo).toHaveAttribute('alt',/.+/);
+  await expect.poll(()=>photo.evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>0)).toBe(true);
+ }
+ await expect(page.locator('.hardware-photo figcaption')).toHaveCount(9);
+ await page.evaluate(()=>window.scrollTo(0,0));
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://domosenso.org/devices/');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:info.outputPath('hardware-index.png'),fullPage:true});
@@ -84,6 +93,7 @@ test('catalog sections lead from components to hardware and back from a guide',a
  await expect(radio.getByRole('link',{name:'Awnings'})).toHaveAttribute('href','/components/awnings/');
  await radio.getByRole('link',{name:'Open device guide'}).click();
  await expect(page).toHaveURL(/\/devices\/cc1101\/$/);
+ await expect(page.locator('.hardware-photo-detail img')).toHaveAttribute('src','/hardware/cc1101.webp');
  await page.getByRole('link',{name:'All hardware',exact:true}).first().click();
  await expect(page).toHaveURL(/\/devices\/$/);
  await sections.getByRole('link',{name:/DomoSenso components/}).click();

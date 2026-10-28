@@ -13,5 +13,6 @@
       "version": "0.2.0"
     }
   ],
-  "body": "## Provide Bluetooth coverage\n\nSet up the sensor according to its manufacturer instructions. The documented integration is ruuvitag_ble; the component can use a Bluetooth proxy supplied by Room presence.\n\n## Check the entities\n\nVerify the CO2, particle and other available readings before mapping air inputs. The air page is conditional on those inputs; a temperature-only setup does not automatically gain air-quality measurements.\n\n## Setup references\n\n- [Ruuvi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/ruuvitag_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope."
+  "body": "## Provide Bluetooth coverage\n\nSet up the sensor according to its manufacturer instructions. The documented integration is ruuvitag_ble; the component can use a Bluetooth proxy supplied by Room presence.\n\n## Check the entities\n\nVerify the CO2, particle and other available readings before mapping air inputs. The air page is conditional on those inputs; a temperature-only setup does not automatically gain air-quality measurements.\n\n## Setup references\n\n- [Ruuvi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/ruuvitag_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+  "photo": "/hardware/ruuvi-air.webp"
 }

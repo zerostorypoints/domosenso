@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {componentName,evidenceLabel,type Component,repository} from '@/lib/catalog';
 import {MobileNav} from './mobile-nav';
+import {RedditLink} from './reddit-link';
 import {validMeasurementId} from '@/lib/analytics-consent';
 
 export function Arrow() { return <span aria-hidden="true">↗</span>; }
@@ -17,6 +18,7 @@ export function Header() {
         <Link href="/get-started/">Get started</Link><Link href="/components/">Components</Link>
         <Link href="/docs/">Docs</Link><Link href="/journal/">Journal</Link>
         <a href={repository}>GitHub <Arrow/></a>
+        <RedditLink/>
       </nav>
       <MobileNav/>
     </header>
@@ -32,6 +34,8 @@ export function Footer() {
   return <footer className="footer">
     <div><Link href="/" aria-label="DomoSenso framework home"><Brand/></Link>
       <p>An open framework for Home Assistant.<br/>Build a home. Contribute to the shared foundation.</p>
+      <p>Questions about integrations or components? Get in touch, discuss ideas and share your experience on our subreddit.</p>
+      <RedditLink label="Contact & discussion · r/domosenso"/>
     </div>
     <nav aria-label="Footer">
       <Link href="/contribute/">Contribute</Link><Link href="/journal/">Journal</Link><Link href="/releases/">Releases & upgrades</Link>

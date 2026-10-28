@@ -1113,12 +1113,13 @@
         }
       ],
       "body": "# CC1101 radio module: wiring and setup\n\nA CC1101 433 MHz transceiver, the Ebyte **E07-M1101D** with an SMA antenna socket, on an M5Stack\nAtom Lite that runs ESPSomfy-RTS: the `awnings` component's node, which sends and hears Somfy RTS.\nDevice file: [cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/cc1101.yaml).\n\n## Wiring\n\n![E07-M1101D on an M5Stack Atom Lite: eight wires from G, 3V3, G22, G21, G33, G23, G19, G25 to module pins 1 to 8, and a 433 MHz antenna on the SMA socket](/wiring/cc1101-atom-lite.svg)\n\n| E07-M1101D pin | signal | Atom Lite (bottom header) | wire | ESPSomfy-RTS, Radio page |\n|---|---|---|---|---|\n| 1 | GND | G | black | |\n| 2 | VCC | 3V3 (**never 5V**) | red | |\n| 3 | GDO0 | G22 | purple | TX 22 |\n| 4 | CSN | G21 | orange | CSN 21 |\n| 5 | SCK | G33 | yellow | SCLK 33 |\n| 6 | MOSI | G23 | blue | MOSI 23 |\n| 7 | MISO | G19 | green | MISO 19 |\n| 8 | GDO2 | G25 | white | RX 25 |\n\nPin 1 has the square pad. The pinout is the one the ESPSomfy-RTS wiki gives for this module; it is\nthe wiring of the first home's node. The Atom's 5V and the Grove port stay free. Another CC1101\nboard (a different maker) can number its pins differently: go by the signal names printed on it,\nnot by the numbers.\n\n## The antenna\n\n- Screw a **433 MHz** antenna onto the SMA socket before the node transmits. A CC1101 sending into\n  an open socket can damage its output stage (general radio practice, not seen here).\n- The antenna decides what the node hears. One home's wind sensor reached the node at −83 to\n  −86 dBm and only part of its reports arrived, with gaps of hours (`components/awnings/README.md`).\n  Stand the antenna upright and move the node, or the antenna on a short cable, towards the\n  sensor and the awnings; keep it clear of metal.\n\n## Firmware and first start\n\nESPSomfy-RTS is a release binary flashed over USB with `esptool`, then set up in its own web\npage: the network, then on the Radio page the pins of the right-hand column above, then MQTT and a\nvirtual remote per awning. The commands and steps: `components/awnings/README.md`, \"Flashing the\nnode\". The radio answers when `GET http://<node>/controller` shows\n`transceiver.config.radioInit: true`; `false` means the CC1101 did not answer on SPI with these pins\n(a wire on the wrong socket, or VCC missing).\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| `radioInit: false` | a wire on the wrong socket, the pins in ESPSomfy's Radio page not matching the wiring, or VCC not on 3V3 |\n| awnings do not move, the node logs sending | no antenna, or the virtual remote not paired with the awning |\n| the node hears the handsets only sometimes | reception: antenna position and distance |\n\nThe second and third rows are inference from how RTS works, apart from reception, which the first\nhome saw.",
+      "photo": "/hardware/cc1101.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/cc1101.md"
     },
     {
       "id": "hegel-h400",
-      "title": "Hegel H400",
-      "summary": "The network player used for the documented audio integration.",
+      "title": "Hegel",
+      "summary": "The integrated amplifier used for the documented audio integration.",
       "sourcePath": "devices/hegel-h400.yaml",
       "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
       "components": [
@@ -1130,7 +1131,8 @@
           "version": "0.1.0"
         }
       ],
-      "body": "## Configure the player\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. A model-specific electrical guide is not yet published here; do not infer Shelly compatibility or wiring from this audio example. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "body": "## Configure the amplifier\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. A model-specific electrical guide is not yet published here; do not infer Shelly compatibility or wiring from this audio example. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/hegel-h400.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hegel-h400.yaml"
     },
     {
@@ -1154,6 +1156,7 @@
         }
       ],
       "body": "# HLK-LD2410C radar: wiring and setup\n\nA Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already runs as a\n`bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a\nradar like this to wake its screen. Device file: [hlk-ld2410c.yaml](https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hlk-ld2410c.yaml).\n\n## Wiring\n\n![HLK-LD2410C on an M5Stack Atom Lite: 5V to VCC, G to GND, G22 to TX, G19 to RX, OUT not connected](/wiring/hlk-ld2410c-atom-lite.svg)\n\n| Atom Lite (bottom header) | HLK-LD2410C | wire | why |\n|---|---|---|---|\n| 5V | VCC | red | the module needs 5 V; **never 3V3** |\n| G | GND | black | |\n| G22 | TX | purple | the Atom receives on G22 (`rx_pin: GPIO22`) |\n| G19 | RX | green | the Atom sends on G19 (`tx_pin: GPIO19`) |\n| — | OUT | — | not connected: presence comes over the UART |\n\nSource: `components/bermuda-presence/esphome/ld2410.yaml`, the wiring of the first home's boards.\nThe labels are the ones printed on the Atom and on the module; the diagram shows which socket goes to\nwhich pin, not where they sit on the boards. Colours are a convention: any colour works if both ends\nmatch. The Grove port stays free.\n\n## Firmware\n\nThe board's thin device file pulls the radar package next to the proxy package; with\n`radar: true` on that proxy in the component's inputs, `domosenso add` writes it so (SPEC-015):\n\n```yaml\npackages:\n  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/<version>\n  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/<version>\n```\n\nThen `esphome config`, `compile` and a flash, as for any proxy (`components/bermuda-presence/README.md`).\nThe UART runs at 256000 baud, the module's factory setting.\n\n## After the first start\n\n- The module keeps its settings (gates, thresholds, timeout, its own Bluetooth) in its own flash:\n  set them once from Home Assistant; they survive a reflash of the Atom.\n- Engineering mode is the one setting it forgets on a restart, and the light reading only comes in\n  engineering frames, so the package switches it back on 10 s after every boot.\n- New entities on the proxy's device: presence, moving and still target, detection distance and\n  the others listed under `features.radar` in `components/bermuda-presence/component.yaml`.\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| no radar entities at all | the device file lacks the `radar:` package line |\n| radar entities `unavailable` or never changing | TX and RX swapped (TX must go to G22), or VCC on 3V3 |\n| the Atom resets or drops off Wi-Fi when the radar is plugged in | a weak USB supply: the radar draws its power through the Atom; use a plain 5 V USB supply (the `power` note on `ble-proxy` in `components/bermuda-presence/component.yaml`) |\n| presence that never clears with nobody there | sensitivity and gates, set from Home Assistant; the module keeps them |\n\nThe last two rows are inference from how the module and the board are powered and set up, not\ncases seen in the first home.",
+      "photo": "/hardware/hlk-ld2410c.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hlk-ld2410c.md"
     },
     {
@@ -1172,6 +1175,7 @@
         }
       ],
       "body": "## Connect existing lighting\n\nSet up the bridge and pair the bulbs using the manufacturer’s setup process. Organize lights into room groups, then add the Hue integration in Home Assistant.\n\n## Verify the group\n\nCheck that the expected room entity responds to on/off and brightness changes before mapping it into DomoSenso. Ramka can show controls for configured light entities. No additional circuit wiring is specified by this component.\n\n## Setup references\n\n- [Philips Hue setup and room groups — Home Assistant](https://www.home-assistant.io/integrations/hue/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/hue-bridge.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/hue-bridge.yaml"
     },
     {
@@ -1210,6 +1214,7 @@
         }
       ],
       "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/m5stack-atom-lite.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/m5stack-atom-lite.yaml"
     },
     {
@@ -1228,6 +1233,7 @@
         }
       ],
       "body": "## Place and discover\n\nInstall the sensor as instructed by its manufacturer and provide Bluetooth coverage with a proxy. Set up the Xiaomi BLE integration (xiaomi_ble) in Home Assistant.\n\n## Check each plant\n\nConfirm soil moisture, conductivity, light and temperature update before assigning the plant. Choose suitable thresholds for the plant and substrate. Ramka can display a plant page when configured; this sensor does not provide automatic watering.\n\n## Setup references\n\n- [Xiaomi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/xiaomi_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/mi-flora.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/mi-flora.yaml"
     },
     {
@@ -1246,6 +1252,7 @@
         }
       ],
       "body": "## Provide Bluetooth coverage\n\nSet up the sensor according to its manufacturer instructions. The documented integration is ruuvitag_ble; the component can use a Bluetooth proxy supplied by Room presence.\n\n## Check the entities\n\nVerify the CO2, particle and other available readings before mapping air inputs. The air page is conditional on those inputs; a temperature-only setup does not automatically gain air-quality measurements.\n\n## Setup references\n\n- [Ruuvi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/ruuvitag_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/ruuvi-air.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/ruuvi-air.yaml"
     },
     {
@@ -1264,6 +1271,7 @@
         }
       ],
       "body": "## Pair with the hub\n\nThe documented setup uses a Tapo H200 hub. Pair the sensor with its hub, then configure the TP-Link/Tapo integration in Home Assistant.\n\n## Verify readings\n\nConfirm fresh temperature and humidity entities. Map them into the climate-air inputs and, if desired, Ramka’s climate page. No custom wiring is required for this sensor setup. Follow the model’s manufacturer instructions for battery installation and placement.\n\n## Setup references\n\n- [TP-Link Smart Home and hub-attached sensors — Home Assistant](https://www.home-assistant.io/integrations/tplink/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+      "photo": "/hardware/tapo-t315.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/devices/tapo-t315.yaml"
     },
     {
@@ -1282,6 +1290,7 @@
         }
       ],
       "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's two top corners are its way out\ninstead: top-left opens `exit_left`, top-right reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |",
+      "photo": "/hardware/tcl-9469x.webp",
       "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/5b012718dcce57a386b1f3cfe87b8d7512c39b2f/docs/tablet-setup.md"
     }
   ],
@@ -1498,6 +1507,134 @@
       "credit": "DomoSenso",
       "license": "Apache-2.0",
       "scope": "fictional"
+    },
+    {
+      "path": "/hardware/cc1101.webp",
+      "alt": "Ebyte E07-M1101D-SMA CC1101 radio module with SMA antenna connector",
+      "kind": "photograph",
+      "credit": "Ebyte",
+      "license": "Copyright Ebyte; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.ebyte.com/product/57.html",
+      "imageSourceUrl": "https://www.ebyte.com/Uploadfiles/Picture/2017-9-29/20179291441518237.jpg",
+      "retrievedAt": "2026-10-28",
+      "width": 520,
+      "height": 431,
+      "sha256": "e1d54cf06c3b4bb459cd83003306ebb21f5f7b9f08208bfb92182539682475ae"
+    },
+    {
+      "path": "/hardware/hegel-h400.webp",
+      "alt": "Hegel H400 integrated amplifier, angled front view",
+      "kind": "photograph",
+      "credit": "Hegel",
+      "license": "Copyright Hegel; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.hegel.com/en/products/integrated/h400",
+      "imageSourceUrl": "https://www.hegel.com/images/products/h400/H400AngleFront.jpg",
+      "retrievedAt": "2026-10-28",
+      "width": 1000,
+      "height": 417,
+      "sha256": "2df55310f7b1cbc13f8f78280ce374aa5cbf5c9a6f1b9abb464889549a9e239e"
+    },
+    {
+      "path": "/hardware/hlk-ld2410c.webp",
+      "alt": "Hi-Link HLK-LD2410C presence radar module",
+      "kind": "photograph",
+      "credit": "Hi-Link",
+      "license": "Copyright Hi-Link; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.hlktech.com/cn/Goods-239.html",
+      "imageSourceUrl": "https://www.hlktech.com/Uploads/AlbumPic/h98f0el37tmpd.png",
+      "retrievedAt": "2026-10-28",
+      "width": 800,
+      "height": 800,
+      "sha256": "564e6cca8d62b5c4175c2182861b945cdaec1764d9702e5540a09b808153abb7"
+    },
+    {
+      "path": "/hardware/hue-bridge.webp",
+      "alt": "Philips Hue Bridge, square second-generation model",
+      "kind": "photograph",
+      "credit": "Philips Hue / Signify",
+      "license": "Copyright Philips Hue / Signify; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.philips-hue.com/en-us/products/all-products/product-page.hue_bridge",
+      "imageSourceUrl": "https://www.assets.signify.com/is/image/Signify/046677458478-929001180603-Hue-Bridge-v2-NAM-RTP-Award?wid=1024&hei=768&qlt=82",
+      "retrievedAt": "2026-10-28",
+      "width": 1000,
+      "height": 750,
+      "sha256": "247c5d0581b16e43ddfe580584cad4097ca0a0723f43e336c8959031c3bd2ac3"
+    },
+    {
+      "path": "/hardware/m5stack-atom-lite.webp",
+      "alt": "M5Stack Atom Lite ESP32 board",
+      "kind": "photograph",
+      "credit": "M5Stack",
+      "license": "Copyright M5Stack; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://docs.m5stack.com/en/core/Atom-Lite",
+      "imageSourceUrl": "https://static-cdn.m5stack.com/resource/docs/products/core/ATOM%20Lite/img-d066cf3f-63a8-4866-bed2-2c2a6d9c034e.webp",
+      "retrievedAt": "2026-10-28",
+      "width": 800,
+      "height": 800,
+      "sha256": "0a3a9d00310d47e2d649b4d40f2ad04b92232a55a61db1be8f378d73ca955092"
+    },
+    {
+      "path": "/hardware/mi-flora.webp",
+      "alt": "Mi Flora HHCCJCY01 plant sensor with soil probes",
+      "kind": "photograph",
+      "credit": "ESPHome contributors",
+      "license": "CC-BY-NC-SA-4.0",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://esphome.io/components/sensor/xiaomi_ble/",
+      "imageSourceUrl": "https://raw.githubusercontent.com/esphome/esphome.io/7f1ec35b8bdc5fb1c8284bcabe438eb2de1b51dd/public/images/xiaomi_hhccjcy01.jpg",
+      "retrievedAt": "2026-10-28",
+      "width": 83,
+      "height": 300,
+      "sha256": "381cce070a8f038f92387e59d8aa878bd8cc71781029944aede00efe7d51368c",
+      "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+    },
+    {
+      "path": "/hardware/ruuvi-air.webp",
+      "alt": "Ruuvi Air indoor air-quality monitor",
+      "kind": "photograph",
+      "credit": "Ruuvi",
+      "license": "Ruuvi product image permission (see https://ruuvi.com/media/)",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://ruuvi.com/air/",
+      "imageSourceUrl": "https://ruuvi.com/i/u/air-menu-1.png",
+      "retrievedAt": "2026-10-28",
+      "width": 400,
+      "height": 400,
+      "sha256": "94154434fe09401f738a72549685513cf6c105770c11fd2a58d9910191c142fc",
+      "licenseUrl": "https://ruuvi.com/media/"
+    },
+    {
+      "path": "/hardware/tapo-t315.webp",
+      "alt": "Tapo T315 temperature and humidity monitor with e-ink display",
+      "kind": "photograph",
+      "credit": "TP-Link / Tapo",
+      "license": "Copyright TP-Link / Tapo; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.tapo.com/en/product/smart-sensor/tapo-t315/",
+      "imageSourceUrl": "https://static.tp-link.com/upload/image-line/Tapo_T315_1.0_normal_20250115024648p.png",
+      "retrievedAt": "2026-10-28",
+      "width": 590,
+      "height": 590,
+      "sha256": "a0d2f7fabe408febbd003dfe41016f7d27f66b08167a0a84e3f2558fab0023bc"
+    },
+    {
+      "path": "/hardware/tcl-9469x.webp",
+      "alt": "TCL NXTPAPER 11 Plus tablet, front and rear views",
+      "kind": "photograph",
+      "credit": "TCL",
+      "license": "Copyright TCL; all rights reserved. Not covered by the repository Apache-2.0 licence.",
+      "scope": "public-product-photo",
+      "sourceUrl": "https://www.tcl.com/global/en/tablets/tcl-nxtpaper-11-plus",
+      "imageSourceUrl": "https://aws-obg-image-lb-2.tcl.com/content/dam/brandsite/region/global/products/tablets/tcl-nxtpaper-11-plus/id/Gray01-03.png?t=1756894845625&w=800",
+      "retrievedAt": "2026-10-28",
+      "width": 800,
+      "height": 600,
+      "sha256": "8f1accba5d3f83f01c438dd2ccb6281a435479f6d5e61d5126383d61403bc7e5"
     }
   ]
 }

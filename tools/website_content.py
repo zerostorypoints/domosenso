@@ -67,6 +67,8 @@ def build_content(root, publication):
     routes = {d['sourcePath']: f"/devices/{d['id']}/" for d in device_records}
     routes.update({d['path']:f"/docs/{d['slug']}/" for d in publication['documents']})
     for item in device_records:
+        if item.get('photo'):
+            require(item['photo'] in asset_paths, 'missing device photo asset')
         require(IDENTIFIER.fullmatch(item['id']) and source_path(item['sourcePath']), 'invalid device source')
         require(COMMIT.fullmatch(item['sourceCommit']) and item['sourceCommit'] == publication.get('documentationCommit', publication['frameworkCommit']), 'invalid device source commit')
         source = read(root, item['sourceCommit'], item['sourcePath'])

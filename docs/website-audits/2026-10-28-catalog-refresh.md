@@ -33,3 +33,21 @@ Final local verification: 775 Python tests, 127 card tests, full HA/ESPHome chec
 lint/typecheck, 10 unit tests, static build and 37 browser tests passed. One desktop run of the
 mobile-only navigation test was intentionally skipped. Independent code/content review findings
 were fixed; no production result is claimed.
+
+## Follow-up review before the pull request
+
+The same reviewed main revision remains current. The hardware index now lives at `/devices/`
+with a sibling tab next to DomoSenso components. Nine locally served product photographs have
+source credits and an asset inventory; titles and card images navigate to device guides.
+Hegel is described as an integrated amplifier. The Reddit icon in desktop/mobile navigation
+and the footer links to `r/domosenso` for contact and component/integration discussions.
+
+The updated website passed lint, TypeScript, 10 unit tests, static export and 39 browser tests
+(one intentional desktop skip). Card/photo navigation and keyboard behavior were verified;
+Reddit links and layout were also checked at 390, 720, 1024 and 1440 px. Read-only review found no actionable follow-up defects.
+
+Publication of the new product photographs is deferred pending rights review: manufacturer
+redistribution permission is not established for seven images, Ruuvi has explicit media terms,
+and Mi Flora is CC BY-NC-SA 4.0. Sources and terms are in
+`website/public/hardware/SOURCES.md`; these assets are not Apache-2.0. Public deployment and
+post-merge revision verification remain separate from opening this pull request.
