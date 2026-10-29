@@ -125,3 +125,43 @@ def test_workflow_shape():
     assert run_step['env'] == {'BEFORE': '${{ github.event.before }}', 'SHA': '${{ github.sha }}'}
     assert run_step['run'].index('set -o pipefail') < run_step['run'].index('website_changes.py')
     assert 'website_changes.py' in run_step['run'] and '--format urls' in run_step['run'] and 'HEAD~1' in run_step['run']
+
+
+class Response:
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self):
+        return b'{"commit": "abc"}'
+
+
+def capture_requests(monkeypatch, module):
+    seen = []
+
+    def urlopen(request, timeout=None):
+        seen.append(request)
+        return Response()
+    monkeypatch.setattr(module.urllib.request, 'urlopen', urlopen)
+    return seen
+
+
+def test_requests_send_own_user_agent(monkeypatch):
+    # Cloudflare answers the default Python-urllib agent with 403, so polling never saw the commit.
+    module = tool()
+    seen = capture_requests(monkeypatch, module)
+    module.http_get(module.BUILD_URL)
+    module.http_post(module.ENDPOINT, {'urlList': []})
+    agents = [r.get_header('User-agent') for r in seen]
+    assert agents == [module.USER_AGENT] * 2 and not module.USER_AGENT.startswith('Python-urllib')
+
+
+def test_timeout_names_the_last_error():
+    def fetch(url):
+        raise OSError('HTTP Error 403: Forbidden')
+    with pytest.raises(TimeoutError, match='403'):
+        tool().wait_for_commit('abc', timeout=30, interval=30, fetch=fetch, sleep=lambda s: None)
