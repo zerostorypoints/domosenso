@@ -98,9 +98,22 @@ def changed_routes(paths, root, base, head='HEAD'):
     return sorted(found.items())
 
 
+def agent_urls(urls):
+    """The changed pages plus their markdown copies and the llms files built from them (SPEC-020)."""
+    if not urls:
+        return []
+    extra = []
+    for url in urls:
+        path = url[len(SITE):]
+        if path.count('/') > 2 or path == '/get-started/':  # a page, not a section index
+            extra.append(url + 'index.md')
+    extra += [SITE + '/llms.txt', SITE + '/llms-full.txt']
+    return list(dict.fromkeys(urls + extra))
+
+
 def render(routes, fmt, preview):
     if fmt == 'urls':
-        return [SITE + r for r, why in routes if not why.endswith(DRAFT)]
+        return agent_urls([SITE + r for r, why in routes if not why.endswith(DRAFT)])
     if not routes:
         return ['no website changes']
     return [f'- [{r}]({preview.rstrip("/")}{r}) — {why}' if preview else f'- `{r}` — {why}' for r, why in routes]

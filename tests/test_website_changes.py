@@ -159,3 +159,18 @@ def test_head_argument(repo, capsys):
     git('rm', '-q', 'website/content/how-to/x.md'); git('commit', '-qm', 'rm')
     tool().main(['--root', str(root), '--base', 'base', '--head', 'mid'])
     assert '/how-to/x/` — new how-to' in capsys.readouterr().out
+
+
+def test_urls_include_agent_files():
+    # IndexNow should learn about the markdown copy and the llms files whenever a page changes (SPEC-020).
+    routes = [('/how-to/', 'how-to index'), ('/how-to/x/', 'updated how-to')]
+    assert tool().render(routes, 'urls', None) == [
+        'https://domosenso.org/how-to/', 'https://domosenso.org/how-to/x/',
+        'https://domosenso.org/how-to/x/index.md',
+        'https://domosenso.org/llms.txt', 'https://domosenso.org/llms-full.txt']
+    assert 'https://domosenso.org/get-started/index.md' in tool().agent_urls(['https://domosenso.org/get-started/'])
+
+
+def test_no_changes_adds_nothing():
+    assert tool().agent_urls([]) == []
+    assert tool().render([('/how-to/x/', 'new how-to' + DRAFT)], 'urls', None) == []
