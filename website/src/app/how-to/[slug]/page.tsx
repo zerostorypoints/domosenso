@@ -9,9 +9,7 @@ import {metadata as meta} from '@/lib/seo';
 import {PageIntro} from '@/components/site';
 type Props={params:Promise<{slug:string}>};
 export const dynamicParams=false;
-// Next refuses an empty route under output: export; until a guide is visible, one reserved slug
-// is generated and the page 404s for it (it matches no guide, so nothing is rendered or listed).
-export function generateStaticParams(){const list=visibleHowTos(howTos);return list.length?list.map(h=>({slug:h.slug})):[{slug:'_none'}];}
+export function generateStaticParams(){return visibleHowTos(howTos).map(h=>({slug:h.slug}));}
 export async function generateMetadata({params}:Props){const {slug}=await params;const h=visibleHowTos(howTos).find(h=>h.slug===slug);if(!h)notFound();return meta(h.title,`/how-to/${slug}/`,h.description);}
 export default async function Page({params}:Props){
  const {slug}=await params;const h=visibleHowTos(howTos).find(h=>h.slug===slug);if(!h)notFound();

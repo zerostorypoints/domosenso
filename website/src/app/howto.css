@@ -3,5 +3,10 @@
 .howto-card .eyebrow { display: flex; gap: 12px; flex-wrap: wrap; }
 .howto-draft { border: 1px solid #ad431f; color: #ad431f; padding: 8px 16px; font-weight: 600; }
 .howto-branches th, .howto-branches td { text-align: left; vertical-align: top; }
+/* The shared wiring-table rules keep a device table's first two columns on one line and make a
+   prose table a block; a guide's branch table holds sentences, so it wraps and fills the column. */
+.wiring-table-scroll table.howto-branches { display: table; width: 100%; min-width: 600px; margin: 0; }
+.wiring-table-scroll table.howto-branches td { white-space: normal; }
+.howto-branches th { white-space: nowrap; }
 .howto-prompt .code { white-space: pre-wrap; user-select: all; }
 .howto-empty { margin: 32px 0; }
