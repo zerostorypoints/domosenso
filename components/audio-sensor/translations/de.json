@@ -7,5 +7,143 @@
         "does": "Läuft mit ESPHome als Raum-Schallsensor. Jede Sekunde meldet es die Lautstärke und die lauteste Spitze, fünfmal pro Sekunde ein Spektrum in 31 Bändern von tiefem Bass bis zu den Höhen, und auf Wunsch eine schnellere Messung. Es hört nur zu: Der Lautsprecher-Verstärker auf dem Board bleibt ausgeschaltet."
       }
     }
+  },
+  "card": {
+    "ambient_wave": {
+      "name": "Umgebungswelle",
+      "description": "Klang oder ein beliebiger Sensor als ruhige Wellen, die mit dem Pegel anschwellen und wärmer werden.",
+      "editor": {
+        "source": "Quelle",
+        "kind": "Art",
+        "entity": "Entität",
+        "demo": "Demo (simulierter Klang)",
+        "scenario": "Demo-Szenario",
+        "offset": "Versatz (Zahl-Entität)",
+        "flavour": "Variante",
+        "colour": "Farbe",
+        "palette": "Palette",
+        "neutral": "Neutral bis",
+        "hot": "Volle Farbe ab",
+        "dynamics": "Dynamik",
+        "rise": "Anstieg (ms)",
+        "fall": "Abklingen (s)",
+        "hold": "Spitze halten (s)",
+        "tilt": "Spektrale Neigung der Musik ausgleichen",
+        "style": "Stil",
+        "line_width": "Linienstärke (px)",
+        "active": "Aktiv, solange ein",
+        "controls": "Bedienfeld anzeigen",
+        "fallback": "Ohne Daten"
+      },
+      "kind": {
+        "spectrum": "Spektrum (Bänder)",
+        "scalar": "Einzelwert"
+      },
+      "scenario": {
+        "electronic": "Elektronisch",
+        "jazz": "Jazz",
+        "vocal": "Gesang",
+        "orchestra": "Orchester",
+        "quiet": "Stiller Raum"
+      },
+      "palette": {
+        "zones": "Zonen",
+        "series": "Reihe",
+        "calm": "Ruhig"
+      },
+      "flavour": {
+        "still": "Ruhig",
+        "swell": "Woge",
+        "dune": "Düne",
+        "veil": "Schleier",
+        "voices": "Stimmen",
+        "halo": "Halo",
+        "afterglow": "Nachglühen",
+        "bars": "Balken",
+        "tide": "Gezeiten",
+        "centre": "Mitte",
+        "timeline": "Zeitachse",
+        "clocks": "Zeitfenster",
+        "ripples": "Ringe",
+        "tint": "Tönung"
+      },
+      "message": {
+        "count": "{expected} Werte erwartet, {count} erhalten."
+      },
+      "aria": {
+        "spectrum": "Am lautesten bei {frequency} Hz, {level} {unit}",
+        "scalar": "Aktueller Wert {level} {unit}",
+        "calm": "Ruhig, kein aktueller Messwert",
+        "still": "Ruhige Wellen"
+      },
+      "console": {
+        "flavour": "Variante",
+        "palette": "Palette",
+        "demo": "Demo",
+        "scenario": "Demo-Szenario",
+        "rise": "Anstieg",
+        "fall": "Abfall",
+        "line_width": "Linienstärke",
+        "neutral": "Neutral bis",
+        "hot": "Volle Farbe ab",
+        "tilt": "Spektrale Neigung",
+        "level": "Pegel",
+        "smoothed": "geglättet",
+        "monitor": "Live-Eingang",
+        "monitor_hint": "Balken wie empfangen, Linie geglättet"
+      },
+      "error": {
+        "config": "Die Kartenkonfiguration muss ein Objekt sein.",
+        "source_kind": "source.kind muss \"spectrum\" oder \"scalar\" sein.",
+        "source_entity": "source.entity ist erforderlich, ausser source.demo ist true.",
+        "flavour": "flavour \"{flavour}\" ist unbekannt oder passt nicht zu source.kind \"{kind}\".",
+        "colour_hot": "colour.hot muss über colour.neutral liegen.",
+        "fps": "fps muss eine Zahl von 1 bis 60 sein.",
+        "axis": "source.axis muss \"third_octave\" sein; andere Achsen werden nicht unterstützt.",
+        "show": "source.show müssen zwei Frequenzen in Hz sein, die tiefere zuerst, mindestens ein Band auseinander.",
+        "palette": "colour.palette muss zones, series, calm, eine Entität oder eine Liste von [Wert, Farbe]-Stufen mit mindestens einem Zahlenwert sein.",
+        "history": "source.history muss eine Anzahl Sekunden über 0 sein.",
+        "fallback": "fallback muss \"classic\" oder \"none\" sein."
+      },
+      "fallback": {
+        "none": "Keine (ruhig)",
+        "classic": "Klassische Welle",
+        "no_data": "Der Schallsensor sendet keine Daten: die klassische Welle wird angezeigt"
+      }
+    },
+    "room_meter": {
+      "name": "Raumpegelmesser",
+      "description": "Schallpegel live: eine Nadel, eine LED-Leiter mit Spitzenwert, ein Streifen der letzten Messwerte und Live-Verfolgung.",
+      "zone": {
+        "near_silence": "Fast still",
+        "very_quiet": "Sehr ruhiger Raum",
+        "quiet": "Ruhiger Raum",
+        "background_music": "Hintergrundmusik",
+        "conversation": "Gespräch",
+        "lively_music": "Lebhafte Musik",
+        "loud_music": "Laute Musik",
+        "very_loud": "Sehr laut",
+        "concert": "Konzertlautstärke",
+        "painful": "Schmerzhaft"
+      },
+      "live": {
+        "off": "LIVE",
+        "fast": "LIVE · 10/s",
+        "waiting": "LIVE · wartet",
+        "to_slow": "Zurück zu einem Messwert pro Sekunde",
+        "to_fast": "Den Pegel zehnmal pro Sekunde verfolgen"
+      },
+      "no_reading": "Kein Messwert",
+      "unit": "dB SPL · Z · {window}",
+      "unit_estimated": "dB SPL (geschätzt) · Z · {window}",
+      "chip": {
+        "leq": "Leq 1 min",
+        "peak": "Spitze",
+        "hold": "Halten",
+        "crest": "Crest",
+        "headroom": "Reserve"
+      },
+      "offset_estimated": "Offset geschätzt: mit einem Referenzmessgerät kalibrieren"
+    }
   }
 }
