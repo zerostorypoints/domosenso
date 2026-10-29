@@ -23,16 +23,19 @@ HOST = 'domosenso.org'
 BUILD_URL = f'https://{HOST}/build.json'
 ENDPOINT = 'https://api.indexnow.org/indexnow'
 NO_CHANGES = 'no website changes'
+# Cloudflare answers the default Python-urllib agent with 403 Forbidden.
+USER_AGENT = 'domosenso-indexnow (+https://github.com/zerostorypoints/domosenso)'
 
 
 def http_get(url):
-    with urllib.request.urlopen(url, timeout=30) as response:
+    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
+    with urllib.request.urlopen(request, timeout=30) as response:
         return response.read().decode()
 
 
 def http_post(url, payload):
     request = urllib.request.Request(url, data=json.dumps(payload).encode(), method='POST',
-                                     headers={'Content-Type': 'application/json; charset=utf-8'})
+                                     headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             return response.status
@@ -42,15 +45,16 @@ def http_post(url, payload):
 
 def wait_for_commit(sha, url=BUILD_URL, timeout=900, interval=30, fetch=http_get, sleep=time.sleep):
     """Poll `url` until it reports `sha`; raise TimeoutError after `timeout` seconds."""
-    waited = 0
+    waited, last_error = 0, None
     while True:
         try:
             if json.loads(fetch(url)).get('commit') == sha:
                 return
-        except (OSError, ValueError, AttributeError):
-            pass  # not deployed yet, or briefly unreachable: keep polling
+        except (OSError, ValueError, AttributeError) as error:
+            last_error = error  # not deployed yet, or briefly unreachable: keep polling
         if waited >= timeout:
-            raise TimeoutError(f'{url} did not report {sha} within {timeout}s')
+            detail = f' (last error: {last_error})' if last_error else ''
+            raise TimeoutError(f'{url} did not report {sha} within {timeout}s{detail}')
         if not waited:
             print(f'waiting for {sha}', flush=True)
         sleep(interval)
