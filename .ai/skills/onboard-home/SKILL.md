@@ -408,3 +408,11 @@ Their home repository's `AGENTS.md` takes over: open the agent in the home repos
 everyday work. A next component: the skill `add-component`, which takes it from `add` through its
 integrations, containers, ESPHome device files and firmware to `verify`. A fix to a component goes
 to the catalog as a pull request (spec first for anything new), without their household in it.
+
+
+## Local staging before adoption
+
+For any new home, use the framework's `tools/install-home-workflow.py --home <home-worktree>`
+to install `stage-home-update` for both Codex and Claude. Follow `docs/HOME_STAGING.md` for
+prerequisites, an isolated local HA and a generated staging target. Preserve existing home
+instructions and targets; a bootstrap is not a component acceptance test or production consent.

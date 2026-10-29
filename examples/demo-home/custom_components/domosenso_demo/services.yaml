@@ -1,0 +1,10 @@
+scenario:
+  name: Apply fictional scene
+  description: Apply the catalog scene's synthetic upstream states and Ramka mode/page.
+  fields:
+    scene:
+      name: Scene
+      description: An existing ID from the catalog scenes directory.
+      required: true
+      selector:
+        text:

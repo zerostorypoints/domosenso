@@ -65,7 +65,7 @@ test('no JavaScript retains catalog, views and journal content',async({browser})
  await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(10);
  await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(9);
  await page.goto('http://127.0.0.1:4336/components/ramka/');await expect(page.locator('#views')).toContainText('Home status');
- await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(4);
+ await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(5);
  await context.close();
 });
 

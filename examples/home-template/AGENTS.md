@@ -80,6 +80,15 @@ is removed (`--remove-orphans`), added to the repository or listed under `unmana
 
 The lock is the deploy history together with `git log`: one commit per `update` or `render`.
 
+## Reproducible local staging
+
+Use the framework's `tools/install-home-workflow.py --home <owned home worktree>` to install the
+shared `stage-home-update` skill for Codex and Claude plus `docs/HOME_STAGING.md`. Follow that
+playbook for staging setup and component updates. The framework's `tools/home-staging.py` creates
+unique owned Docker resources per home worktree and outputs a local target fragment; never copy
+a different household's fixed-name staging script. Preserve existing targets and private inputs.
+The setup starts an isolated empty HA; home deployment, fixtures and acceptance are separate.
+
 ## Everyday work
 
 - Change a component's value: edit `domosenso/<id>.inputs.yaml`, `domosenso render`, review the
@@ -111,7 +120,8 @@ The command never does these; a human does, and an agent only prepares or checks
 - starting a container next to Home Assistant (`status`: `service ... (manual)`; its files are in
   `services/<name>/`), and the passwords it needs: a human, with the agent's prepared steps
   (skill `add-component` in the catalog);
-- pushing tags, opening or merging pull requests into `main`;
+- pushing tags or merging pull requests into `main`; opening a task draft PR follows the scoped
+  authorisation in Boundaries below;
 - changing how a container runs; restoring a full backup.
 
 ## Privacy
@@ -120,6 +130,24 @@ This repository holds a real home. Do not copy its names, rooms, entity ids, add
 calendars into the catalog, a pull request description in the catalog's repository, or any other
 place outside this repository. What is true for any home goes to the catalog as a component or a
 field note; what describes this home stays here.
+
+## Agent-operated work
+
+Agents implement, test and review; the human owner decides scope and manually approves changes.
+Never submit a required human approval using the owner's credentials. Optional auto-merge requires
+explicit task authorisation and never authorises production deployment. Use the catalog's
+`docs/AGENT_WORKFLOW.md` as setup guidance; this home template does not install its catalog-only
+launcher or hooks into the home repository. Verify this home's own guard setup separately.
+
+## Local session workspaces
+
+Every local session, including Codex, Claude Code, coordinators and read-only reviewers, must use
+its own linked Git worktree with a named branch. Verify both before task work. The primary checkout
+is only for reading setup instructions and creating/selecting worktrees; do not work there, on
+`main` or in detached HEAD. A resumed session may reuse its own pair; concurrent sessions never
+share a worktree or branch. Review on a separate branch at the exact reviewed SHA. If setup fails,
+report the blocker instead of falling back to the primary checkout. Isolate each session's staging
+instance as well; a separate worktree alone does not isolate a shared HA target.
 
 ## Boundaries
 
@@ -137,12 +165,16 @@ Needs the human's go-ahead **typed in the same session**, each time:
 - anything that **writes** to production: `deploy production --apply`, `rollback production`, a
   service call, a helper value, a restart, a file copy;
 - **registry edits** and **flashing** a device;
-- **pushing** to GitHub, opening or merging a pull request, publishing a tag;
+- **pushing** or opening a PR unless the human has already authorised the named task branch and
+  its draft PR in this session; merging into `main` or publishing a tag still needs a separate decision;
 - anything that deletes data that cannot be regenerated.
 
 Changes reach `main` of this repository only through a pull request: never push to `main`, never
 force-push a shared branch, never move or delete a tag. The catalog's clone is read-only from here: a
-change to the catalog is a pull request from a fork of it (its CONTRIBUTING.md), on its own branch.
+change to the catalog is made in a separate worktree and PR (its CONTRIBUTING.md). Core members
+use upstream task branches; external contributors use forks. Another core member reviews the change.
+One human and one implementation session own each task; record branch, SHA, tests and next action
+when handing it off. A catalog merge or release never authorises a production write to this home.
 
 `deploy production` prints the plan and asks for the word `production`; a non-interactive run
 needs `--confirm <plan hash>`, the hash of the current plan; it fails if the plan has changed. That prompt is a second lock,
