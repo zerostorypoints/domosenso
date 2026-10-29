@@ -124,9 +124,14 @@ customizations before running it. Released adoption uses an explicit version and
 `deploy production` refuses development-rendered files (`dev-render` plan lines); a maintainer can
 put them on a production target for a look with `--apply --allow-dirty --confirm <hash>` of the plan
 read (SPEC-019 A), and the next plan warns until a clean deploy replaces them.
-A development render does not currently update the deploy inventory/resource list in the lock.
-Asset changes or versioned/new files can therefore be refused or omitted. The agent must verify
-that the actual plan contains the complete candidate; otherwise the home PR preview is blocked.
+A development render leaves the lock alone and records what it wrote in `.domosenso/dev-render.json`
+(SPEC-019 B): per component its files with their sha256 and its resource URLs. `deploy`, on every
+target, carries that entry in place of the lock's managed files (all `dev-render` lines), so a
+component the lock does not have yet and a new card version directory arrive complete, the resources
+move (`resource update … from …`) and the locked version's files are removed through the record. A
+file edited after the render fails the plan with `dev render changed: <path>: render again`. A
+render, `add` or `update` from the tag removes the component's entry. Read the plan before applying:
+it must list the whole candidate.
 Use the fictional framework preview, then test the released version in home staging. Do not
 hand-edit the lock to pretend that an unreleased candidate is a release. Neither rendering nor
 a preview authorizes production.

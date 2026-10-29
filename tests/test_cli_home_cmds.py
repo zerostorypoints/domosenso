@@ -560,3 +560,175 @@ def test_status_broken_configuration_is_named(added, capsys):
     (added / HA / "configuration.yaml").write_text("lovelace: [unclosed\n")
     code, out = run(added, "status", capsys=capsys)
     assert code == 1 and "configuration.yaml" in lines_of(out)[-1] and lines_of(out)[-1].startswith("FAIL ")
+
+
+# --- dev render inventory (SPEC-019 B) ---------------------------------------------------------
+
+DEV_RENDER = ".domosenso/dev-render.json"
+CARD_100 = "/local/domosenso/panel/1.0.0/cards/panel-card.js"
+CARD_110 = "/local/domosenso/panel/1.1.0/cards/panel-card.js"
+
+
+def inventory(home: Path) -> dict:
+    path = home / DEV_RENDER
+    return json.loads(path.read_text()) if path.is_file() else {}
+
+
+def dev_110(catalog: Path) -> None:
+    """The working tree at 1.1.0 with a new card, not committed or tagged: what a maintainer tries."""
+    write_files(catalog / "components" / "panel", {
+        "component.yaml": MANIFEST.format(version="1.1.0"), "cards/panel-card.js": "export const v = 2;\n",
+    })
+
+
+class _Resources:
+    """Home Assistant's `lovelace/resources`, enough for `deploy.apply`."""
+
+    def __init__(self, items: list[dict] | None = None):
+        self.items = [dict(i) for i in items or []]
+
+    def ha(self):
+        from fakes import FakeHA
+
+        def create(f):
+            self.items.append({"id": str(100 + len(self.items)), "url": f["url"], "type": f["res_type"]})
+
+        def update(f):
+            next(i for i in self.items if i["id"] == f["resource_id"]).update(url=f["url"], type=f["res_type"])
+
+        return FakeHA({"lovelace/resources": lambda f: [dict(i) for i in self.items],
+                       "lovelace/resources/create": create, "lovelace/resources/update": update})
+
+
+def deploy_plan(home: Path, target_dir: Path, existing: list[dict] | None = None):
+    from domosenso_cli import deploy
+    from fakes import FakeTarget
+    target_dir.mkdir(exist_ok=True)
+    return deploy.make_plan(HomeConfig.load(home), Lock.load(home), FakeTarget(target_dir), existing or [])
+
+
+def deploy_apply(home: Path, target_dir: Path, resources: _Resources) -> str:
+    import asyncio
+
+    from domosenso_cli import deploy
+    from fakes import FakeTarget
+    plan = deploy_plan(home, target_dir, resources.items)
+    clean = json.dumps({"total_errors": 0, "total_warnings": 0, "errors": {}, "warnings": {}}, indent=2)
+    return asyncio.run(deploy.apply(HomeConfig.load(home), Lock.load(home), plan, FakeTarget(target_dir, clean),
+                                    resources.ha(), [], False, target="staging"))
+
+
+def plan_text(plan) -> list[str]:
+    from domosenso_cli import deploy
+    return [" ".join(line) for line in deploy.plan_lines(plan)]
+
+
+def test_dev_render_writes_inventory(added, catalog, capsys):
+    lock_before = (added / "domosenso.lock").read_text()
+    dev_110(catalog)
+    code, out = run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert (added / "domosenso.lock").read_text() == lock_before  # SPEC-002: a dev render leaves the lock alone
+    entry = inventory(added)["panel"]
+    assert entry["version"] == "1.1.0"
+    assert entry["commit"] == git(catalog, "rev-parse", "--short=12", "HEAD") + "-dirty"
+    card = f"{HA}/www/domosenso/panel/1.1.0/cards/panel-card.js"
+    assert entry["files"][card] == {
+        "sha256": hashlib.sha256(b"export const v = 2;\n").hexdigest(), "layer": "managed",
+    }
+    package = f"{HA}/packages/panel.yaml"
+    assert entry["files"][package]["sha256"] == hashlib.sha256((added / package).read_bytes()).hexdigest()
+    assert f"{HA}/local.yaml" not in entry["files"]  # instance files of a locked component stay the lock's
+    assert entry["resources"] == [CARD_110]
+
+
+def test_dev_add_writes_inventory_with_its_instance_files(home, catalog, capsys):
+    code, out = run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    entry = inventory(home)["panel"]
+    assert entry["files"][f"{HA}/local.yaml"]["layer"] == "instance"
+    assert entry["files"][f"{HA}/packages/panel.yaml"]["layer"] == "managed"
+    assert entry["resources"] == [CARD_100]
+
+
+def test_tag_render_drops_inventory_entry(added, catalog, capsys):
+    dev_110(catalog)
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    assert "panel" in inventory(added)
+    code, out = run(added, "render", "--force", capsys=capsys)  # back to the tag (the 1.1.0 files are not locked)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert "panel" not in inventory(added)
+
+
+def test_tagged_add_and_update_drop_inventory_entry(home, catalog, capsys):
+    assert run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    assert "panel" in inventory(home)
+    code, out = run(home, "add", "panel@1.0.0", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert "panel" not in inventory(home)
+    assert run(home, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    assert "panel" in inventory(home)
+    release_110(catalog)
+    code, out = run(home, "update", "panel", "--force", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert "panel" not in inventory(home)
+
+
+def test_deploy_carries_new_component_from_inventory(home, catalog, capsys, tmp_path):
+    assert run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    assert Lock.load(home).components == {}
+    lines = plan_text(deploy_plan(home, tmp_path / "target"))
+    added_files = [line.removeprefix("add ") for line in lines if line.startswith("add ")]
+    for rel in ("dashboards/panel.de.yaml", "packages/panel.yaml", "www/domosenso/panel/1.0.0/cards/panel-card.js",
+                "local.yaml"):
+        assert rel in added_files
+    # every file of the dev render is a dev-render line; the instance file is the home's own
+    managed = [rel for rel in added_files if rel != "local.yaml"]
+    assert [line for line in lines if line.startswith("dev-render ")] == [f"dev-render {rel}" for rel in managed]
+    assert f"resource create {CARD_100}" in lines
+
+
+def test_deploy_new_version_moves_resources(added, catalog, capsys, tmp_path):
+    target, resources = tmp_path / "target", _Resources()
+    assert deploy_apply(added, target, resources)
+    assert [i["url"] for i in resources.items] == [CARD_100]
+    dev_110(catalog)
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+
+    lines = plan_text(deploy_plan(added, target, resources.items))
+    assert f"resource update {CARD_110} from {CARD_100}" in lines
+    assert "remove www/domosenso/panel/1.0.0/cards/panel-card.js" in lines
+    assert "add www/domosenso/panel/1.1.0/cards/panel-card.js" in lines
+    assert "dev-render www/domosenso/panel/1.1.0/cards/panel-card.js" in lines
+    assert "keep local.yaml" in lines  # the instance file is still the lock's
+
+    assert deploy_apply(added, target, resources)
+    assert not [p for p in (target / "www/domosenso/panel/1.0.0").rglob("*") if p.is_file()]
+    assert (target / "www/domosenso/panel/1.1.0/cards/panel-card.js").read_text() == "export const v = 2;\n"
+    assert [i["url"] for i in resources.items] == [CARD_110]
+    record = json.loads((target / ".domosenso/deployed.json").read_text())
+    assert "www/domosenso/panel/1.1.0/cards/panel-card.js" in record["dev_render"]["paths"]
+
+
+def test_inventory_file_changed_fails(added, catalog, capsys, tmp_path):
+    from domosenso_cli.errors import DomosensoError
+    dev_110(catalog)
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    card = f"{HA}/www/domosenso/panel/1.1.0/cards/panel-card.js"
+    (added / card).write_text("export const v = 3;\n")
+    with pytest.raises(DomosensoError) as e:
+        deploy_plan(added, tmp_path / "target")
+    assert str(e.value) == f"dev render changed: {card}: render again"
+    (added / card).unlink()
+    with pytest.raises(DomosensoError, match="dev render changed: .*: render again"):
+        deploy_plan(added, tmp_path / "target")
+
+
+def test_inventory_of_a_component_not_declared_fails(added, catalog, capsys, tmp_path):
+    from domosenso_cli.errors import DomosensoError
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    data = inventory(added)
+    data["ghost"] = data["panel"]
+    (added / DEV_RENDER).write_text(json.dumps(data))
+    with pytest.raises(DomosensoError, match=r"^dev render of ghost, not in domosenso.yaml$"):
+        deploy_plan(added, tmp_path / "target")

@@ -1,7 +1,8 @@
 """What a deploy changes on a target, changing it with a backup, and putting it back (SPEC-002 1.6, 4.3).
 
 The deploy carries the lock's files under config_dir (managed and instance) and the home's files
-matching a `local:` glob. Every path here is relative to config_dir on both sides. The target keeps
+matching a `local:` glob; a component rendered with `--catalog-dev` is carried from its entry in
+`.domosenso/dev-render.json` instead (SPEC-019 B). Every path here is relative to config_dir on both sides. The target keeps
 `.domosenso/deployed.json`, the record of what the last deploy wrote; a path in it that the repository
 no longer has is removed. Nothing else is written or deleted: a file on the target that matches a
 `local:` glob but is in neither the repository nor the record is an orphan, and blocks `apply` until
@@ -33,7 +34,7 @@ from pathlib import Path
 import yaml
 
 from check_config_parse import NO_JSON, summarize
-from domosenso_cli import resources
+from domosenso_cli import dev_render, resources
 from domosenso_cli.build import file_sha, sha256
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
@@ -118,20 +119,34 @@ def _dirty(path: Path, cid: str | None = None) -> bool:
     return found is not None and found.dirty and (cid is None or found.cid == cid)
 
 
-def _carried(home: HomeConfig, lock: Lock) -> tuple[dict[str, dict], dict[str, Path], list[str]]:
-    """(record entries, sources, dirty paths) for everything the deploy takes from the repository."""
+def _carried(home: HomeConfig, lock: Lock, dev: dict[str, dict]) -> tuple[dict[str, dict], dict[str, Path], list[str]]:
+    """(record entries, sources, dirty paths) for everything the deploy takes from the repository.
+
+    A component with a dev render entry (`.domosenso/dev-render.json`) is carried from it: its managed
+    files are the entry's, every one a `dev-render`, and a locked managed file the entry does not have
+    is not carried (the record then removes it from the target, as an update would)."""
     record: dict[str, dict] = {}
     sources: dict[str, Path] = {}
     dirty: list[str] = []
+
+    def carry(cid: str, dest: str) -> tuple[str, Path] | None:
+        source = home.root / dest
+        if not source.is_relative_to(home.config_dir):
+            return None  # an ESPHome device file, or anything else that is not Home Assistant's config
+        rel = check_relative(source.relative_to(home.config_dir).as_posix())
+        if _untouchable(home, rel):
+            raise DomosensoError(f"{rel}: {cid} ships it, but it is listed under unmanaged_on_target "
+                                 "or belongs to Home Assistant; the deploy never writes it")
+        return rel, source
+
     for cid, entry in lock.components.items():
         for dest, locked in entry.files.items():
-            source = home.root / dest
-            if not source.is_relative_to(home.config_dir):
-                continue  # an ESPHome device file, or anything else that is not Home Assistant's config
-            rel = check_relative(source.relative_to(home.config_dir).as_posix())
-            if _untouchable(home, rel):
-                raise DomosensoError(f"{rel}: {cid} ships it, but it is listed under unmanaged_on_target "
-                                     "or belongs to Home Assistant; the deploy never writes it")
+            if cid in dev and locked.layer == "managed":
+                continue  # the dev render's files stand in for these
+            found = carry(cid, dest)
+            if found is None:
+                continue
+            rel, source = found
             if not source.is_file():
                 raise DomosensoError(f"{dest}: in domosenso.lock but not in the repository: run domosenso render")
             digest = file_sha(source)
@@ -140,6 +155,22 @@ def _carried(home: HomeConfig, lock: Lock) -> tuple[dict[str, dict], dict[str, P
                     raise DomosensoError(f"hand-edited: {dest}")
                 dirty.append(rel)
             record[rel] = {"sha256": digest, "layer": locked.layer, "component": cid}
+            sources[rel] = source
+    for cid, entry in dev.items():
+        for dest, rendered in sorted(entry["files"].items()):
+            found = carry(cid, dest)
+            if found is None:
+                continue
+            rel, source = found
+            if rendered.get("layer") == "instance":  # the home's own (a dev add): carried as it is now
+                if rel not in record and source.is_file():
+                    record[rel] = {"sha256": file_sha(source), "layer": "instance", "component": cid}
+                    sources[rel] = source
+                continue
+            if not source.is_file() or file_sha(source) != rendered.get("sha256"):
+                raise DomosensoError(f"dev render changed: {dest}: render again")
+            dirty.append(rel)
+            record[rel] = {"sha256": rendered["sha256"], "layer": "managed", "component": cid}
             sources[rel] = source
     configuration = home.config_dir / CONFIGURATION
     if CONFIGURATION not in record and configuration.is_file() and not _untouchable(home, CONFIGURATION):
@@ -186,9 +217,19 @@ def needs_restart(paths: list[str]) -> bool:
     return any(not p.startswith(NO_RESTART_PREFIXES) for p in paths)
 
 
+def dev_renders(home: HomeConfig) -> dict[str, dict]:
+    """The home's dev render entries, each for a component domosenso.yaml declares."""
+    dev = dev_render.load(home.root)
+    for cid in dev:
+        if cid not in home.components:
+            raise DomosensoError(f"dev render of {cid}, not in domosenso.yaml")
+    return dev
+
+
 def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: list[dict],
               prune: bool = False) -> Plan:
-    record, sources, dirty = _carried(home, lock)
+    dev = dev_renders(home)
+    record, sources, dirty = _carried(home, lock, dev)
     previous = read_record(io)
     recorded = previous["files"] if previous else {}
     stale = sorted(p for p in recorded if p not in record and not _kept(home, p))
@@ -205,7 +246,8 @@ def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: li
     if home.unmanaged_on_target:
         keep |= set(io.glob(home.unmanaged_on_target))
     keep = sorted(p for p in keep if not p.startswith(TOOL_DIR))
-    actions = resources.plan(existing_resources, resources.wanted(home, lock))
+    wanted = resources.wanted(home, lock, {cid: entry.get("resources", []) for cid, entry in dev.items()})
+    actions = resources.plan(existing_resources, wanted)
     restart = needs_restart(add + change + remove)
     hashed = {
         "add": add, "change": change, "remove": remove, "orphan": orphan, "keep": keep,
