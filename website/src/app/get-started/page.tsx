@@ -3,7 +3,7 @@ import {PageIntro,Code,Arrow} from '@/components/site';
 import {installCommands,starterPrompt,noHomeAssistant} from '@/lib/install';
 import {metadata as meta} from '@/lib/seo';
 
-export const metadata = meta('Get started','/get-started/');
+export const metadata = meta('Get started','/get-started/',undefined,{markdown:true});
 
 export default function Page() {
   return <div className="page">

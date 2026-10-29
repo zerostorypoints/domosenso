@@ -14,7 +14,7 @@ export async function generateMetadata({params}:Props) {
   const {id} = await params;
   const component = catalog.find(component => component.id === id);
   if (!component) notFound();
-  return meta(componentName(id),`/components/${id}/`,component.summary);
+  return meta(componentName(id),`/components/${id}/`,component.summary,{markdown:true});
 }
 
 const requirementLabels:Record<string,string> = {recommend:'Recommended',via:'Connects through',count:'Quantity',note:'Setup note',app:'App',power:'Power',protocol:'Protocol',brand:'Brand'};
