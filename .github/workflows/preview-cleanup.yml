@@ -1,0 +1,27 @@
+name: Preview cleanup
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: read
+jobs:
+  cleanup:
+    # Fork pull requests get no secrets and have no previews of ours.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Delete the branch's Cloudflare previews
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo 'skip: CLOUDFLARE_API_TOKEN not configured'
+            exit 0
+          fi
+          uv run tools/cloudflare_previews.py --branch "$BRANCH"
