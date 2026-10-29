@@ -1,0 +1,30 @@
+# domosenso component audio-sensor: factory firmware for an Atom EchoS3R that nobody has configured
+# yet. Same split as bermuda-presence's factory image: the package plus Wi-Fi provisioning over USB
+# (Improv serial, e.g. from web.esphome.io) and the dashboard_import pointer.
+#
+# Adoption: the device announces package_import_url in its mDNS TXT record; the ESPHome Device
+# Builder (not Home Assistant) offers "Adopt" and writes a device file with substitutions
+# name/friendly_name, `packages: {<project name>: <package_import_url>}`, a fresh API key and
+# `wifi: !secret wifi_ssid/wifi_password`. On a Container install the Device Builder runs as its own
+# container (esphome/esphome). The adopted file then needs `esphome: area:` and the OTA
+# `encryption:` line by hand, as the device template writes them.
+#
+# Not flashed on any board: built only, to check it compiles.
+
+packages:
+  sensor: !include audio-sensor.yaml
+
+esphome:
+  name_add_mac_suffix: true  # one image for every board; adoption turns the suffix off
+
+# Factory only (the adopted device pulls audio-sensor.yaml, which has neither): a fallback AP with a
+# captive portal, and Improv over USB, to give a new board its Wi-Fi.
+wifi:
+  ap:
+
+captive_portal:
+
+improv_serial:
+
+dashboard_import:
+  package_import_url: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.1.0

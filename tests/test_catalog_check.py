@@ -353,3 +353,40 @@ def test_esphome_external_ref_matches_version(catalog):
     node.write_text("esphome: {name: demo}\nexternal_components:\n  - source: {type: local, path: components}\n"
                     "wifi:\n  ssid: !secret wifi_ssid\n")  # local sources and !secret tags are fine
     assert cc.check_component(component_yaml(catalog)) == []
+
+
+def firmware(version, ref="demo-sensor/0.1.0", external=True):
+    ext = (f"external_components:\n  - source: {{type: git, url: {REPO_URL}, ref: {ref}, path: components/x}}\n"
+           if external else "")
+    return f"esphome:\n  name: demo\n  project: {{name: domosenso.demo, version: {version}}}\n{ext}"
+
+
+def factory(tag):
+    return ("packages:\n  node: !include node.yaml\n"
+            f"dashboard_import:\n  package_import_url: github://zerostorypoints/domosenso/components/demo-sensor/esphome/node.yaml@{tag}\n")
+
+
+def test_esphome_project_version_matches_version(catalog):
+    """With the component's own external components, the package's project version is the manifest's."""
+    node = catalog / "components" / "demo-sensor" / "esphome" / "node.yaml"
+    node.write_text(firmware("0.1.0"))
+    assert cc.check_component(component_yaml(catalog)) == []
+    node.write_text(firmware("0.0.9"))
+    errors = cc.check_component(component_yaml(catalog))
+    assert len(errors) == 1 and "project.version '0.0.9'" in errors[0] and "'0.1.0'" in errors[0]
+    node.write_text(firmware("0.0.9", external=False))  # no catalog external component: not this rule's business
+    assert cc.check_component(component_yaml(catalog)) == []
+
+
+def test_esphome_factory_import_tag_matches_version(catalog):
+    fixture = catalog / "components" / "demo-sensor" / "esphome"
+    manifest = component_yaml(catalog)
+    edit_yaml(manifest, lambda d: d["artifacts"]["esphome"].update(factory="esphome/node.factory.yaml"))
+    (fixture / "node.yaml").write_text(firmware("0.1.0"))
+    (fixture / "node.factory.yaml").write_text(factory("demo-sensor/0.1.0"))
+    assert cc.check_component(manifest) == []
+    (fixture / "node.factory.yaml").write_text(factory("demo-sensor/0.0.9"))
+    errors = cc.check_component(manifest)
+    assert len(errors) == 1 and "node.factory.yaml" in errors[0] and "demo-sensor/0.0.9" in errors[0]
+    (fixture / "node.yaml").write_text(firmware("0.1.0", external=False))  # a component without catalog external components
+    assert cc.check_component(manifest) == []
