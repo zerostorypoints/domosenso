@@ -193,3 +193,17 @@ test("a card taken off the page leaves no subscription, listener or retry behind
   connection.reconnect();
   assert.equal(connection.subs.length, 1);
 });
+
+test("the weather entity appearing after a restart subscribes again at once, no timer needed (#53)", async () => {
+  const connection = fakeConnection({ reject: 1 });
+  const card = makeCard({ lang: "en", config: { forecast: 2 }, hassExtra: { connection }, apis: TIMERS,
+                          states: { "weather.forecast_home": undefined } });
+  await flush();
+  card.hass = { ...card._hass, states: { "weather.forecast_home": weather() } };
+  assert.equal(connection.subs.length, 2);
+  connection.subs[1].cb({ forecast: DAYS });
+  assert.equal(days(card), 2);
+  card.hass = { ...card._hass };
+  mock.timers.tick(3_600_000);
+  assert.equal(connection.subs.length, 2);
+});

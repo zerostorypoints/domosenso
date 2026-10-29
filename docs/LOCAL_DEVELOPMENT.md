@@ -146,11 +146,11 @@ fixed, silently seeded or counted as component passes here:
   with radar presence already `on`. Acceptance records the state 60 seconds after restart. It does
   not add a reconciliation automation. This initial fixture exercises the wake case; it does not
   claim coverage of every night/sleep timing case.
-- [#53](https://github.com/zerostorypoints/domosenso/issues/53): under the delayed-weather restart,
-  the existing page can reconnect and control lights while its forecast stays empty. Acceptance
-  records that observation separately and verifies that a newly opened page has four forecast days.
-  Console errors during the simulated outage are retained in `browser.json`; normal en/de/pl cases
-  require no frontend exceptions. Forecast recovery is not presented as a passing component gate.
+- [#53](https://github.com/zerostorypoints/domosenso/issues/53), fixed in ramka 0.3.1: under the
+  delayed-weather restart, the open page must reconnect without a reload, control lights and show
+  its four forecast days again; a newly opened page must show them too. These are required browser
+  cases. Console errors during the simulated outage are retained in `browser.json`; normal en/de/pl
+  cases require no frontend exceptions.
 
 When separately reviewed component fixes land, promote their regression expectations to required
 runtime cases. This demo supplies reproducible upstream boundaries, not evidence of hardware or a

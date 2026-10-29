@@ -13,7 +13,8 @@
 //
 // After a Home Assistant restart an open page reconnects before the weather integration is back:
 // the subscription is refused or answers with no days. The card subscribes again on every
-// reconnect and retries until days arrive, so the forecast comes back without a page reload.
+// reconnect and as soon as the weather entity is there again, and retries until days arrive, so
+// the forecast comes back without a page reload.
 
 import { createT, formatDate, weekdayShort } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -48,10 +49,14 @@ class ClockWeatherCard extends HTMLElement {
 
   set hass(hass) {
     const first = !this._hass;
+    const wasUp = this._weatherUp;
     this._hass = hass;
+    const w = hass.states[this._config.weather];
+    this._weatherUp = !!w && w.state !== "unavailable";
     if (!this._built) this._build();
     this._update();
     if (first && this._config.forecast) this._start();
+    else if (this._conn && this._weatherUp && !wasUp && !this._days) { this._tries = 0; this._subscribe(); }
   }
 
   connectedCallback() {
@@ -91,11 +96,12 @@ class ClockWeatherCard extends HTMLElement {
   // it delivers days, the timer subscribes again.
   _subscribe() {
     this._unsubscribe();
+    this._days = false;
     this._unsub = this._hass.connection.subscribeMessage(
       (msg) => {
         this._forecast = msg.forecast || [];
         this._renderForecast();
-        if (this._forecast.length) { clearTimeout(this._retry); this._retry = null; }
+        if (this._forecast.length) { this._days = true; clearTimeout(this._retry); this._retry = null; }
       },
       { type: "weather/subscribe_forecast", forecast_type: "daily", entity_id: this._config.weather });
     this._unsub.catch(() => {});

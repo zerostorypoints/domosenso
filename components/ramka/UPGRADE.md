@@ -7,8 +7,9 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 An open page reconnects after a Home Assistant restart before the weather integration is back, so
 the clock card's forecast subscription was refused or answered with no days, and the forecast
-stayed empty until the page was reloaded. The card now subscribes again on every reconnect and
-retries after 10 s, 30 s, 60 s and then every 5 minutes until days arrive. Card code only.
+stayed empty until the page was reloaded. The card now subscribes again on every reconnect and as
+soon as the weather entity is back, and retries after 10 s, 30 s, 60 s and then every 5 minutes
+until days arrive. Card code only.
 
 ### What a home does
 
