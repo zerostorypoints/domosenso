@@ -1,5 +1,12 @@
 # SPEC-010. A wind speed reading is a candidate (an anemometer, a weather station).
 id: wind-sensor
 match:
+  # An RTS wind sensor (Somfy Eolis) has no entity of its own: the awnings package gives it one on the
+  # ESPSomfy node, a binary_sensor of class safety, once the frame bridge knows its RTS address. So
+  # this finds it only in a home that already runs awnings with feature wind.
+  - integration: mqtt
+    manufacturer: "rstrouse*"
+    entity_domain: binary_sensor
+    device_classes: [safety]
   - device_classes: [wind_speed]
     certainty: maybe
