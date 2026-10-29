@@ -9,6 +9,9 @@
   the visual's defaults live in the card, not in this component's inputs; the Ramka switches the
   visual at runtime; one music sensor is checked when the package renders.
 - Deploy of an unreleased render for the pre-merge look on a wall tablet: SPEC-019.
+- Amended by SPEC-020 (Ramka live settings): `input_select.audio_sensor_music_source` picks the
+  music board live (Provides); the visual's options bind Ramka helpers, `music_visual_options` gives
+  their starting values, and 0.4.0 without `music_visual` is no longer byte-identical to 0.3.0.
 
 ## Goal
 
@@ -142,6 +145,7 @@ its classic wave (below).
 | `sensor.music_spl_offset` | stable | that sensor's offset, dB |
 | `sensor.music_level` | stable | its 1 s Sound level plus the offset, dB SPL; `none` while the source has no number |
 | `binary_sensor.music_sensor_online` | stable | `on` while the Spectrum sensor is neither `unavailable` nor `unknown` |
+| `input_select.audio_sensor_music_source` | stable | with a `music: true` board; options: the boards' areas, that board first; the four aliases above follow it (SPEC-020) |
 | `<domain>.<id_prefix>_<figure>` with `room_acoustics: true` and `acoustics: true` | additive-only | the room-acoustics figures below |
 | `input_select.room_acoustics_room` | additive-only | with `room_acoustics: true` and two or more acoustics sensors; options: the areas, the music sensor first |
 | `event` `audio_sensor_spike` (`room`, `level`) | additive-only | with `room_acoustics: true` |
