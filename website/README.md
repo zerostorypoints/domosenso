@@ -37,6 +37,16 @@ select reviewed revisions reachable from the public repository before deployment
 The website consumes committed JSON; the Cloudflare build needs no Git credentials
 for another repository and no Python content-generation step. Never move tags.
 
+The build also writes files for AI agents (SPEC-020): `/llms.txt`, `/llms-full.txt` and an
+`index.md` beside every content page (`/how-to/<slug>/index.md`, components, devices, docs,
+journal, get-started), linked from each page as `rel="alternate" type="text/markdown"`. They are
+route handlers rendering the same data as the pages (`src/lib/markdown.ts`, `src/lib/llms.ts`), so
+a content update refreshes them; nothing is maintained by hand. The limits in `llms.txt` are the
+README's "Prerequisites" at `frameworkCommit`, exported to `src/generated/agent.json`. The clone
+commands come from `src/lib/install.ts`, which a test keeps equal to the README's.
+`e2e/agent-files.spec.ts` checks a production `out/`: every content page has its `index.md`,
+listed in `llms.txt`, and every link there resolves; `e2e/drafts.spec.ts` covers `.md` too.
+
 ## Cloudflare Pages configuration
 
 Proposed project: `domosenso-framework`; repository: `zerostorypoints/domosenso`.
@@ -121,10 +131,13 @@ curl -I 'https://www.domosenso.org/docs/?from=launch-check'
 curl -I 'https://domosenso-framework.pages.dev/docs/?from=launch-check'
 curl -fsS https://domosenso.org/robots.txt
 curl -fsS https://domosenso.org/sitemap.xml
+curl -fsS https://domosenso.org/llms.txt | head
+curl -I https://domosenso.org/how-to/automate-old-awnings/index.md
 ```
 
 Expect 200 for real pages, 404 for the missing page and redirects to
-`https://domosenso.org/docs/?from=launch-check` for the aliases. Check the response
+`https://domosenso.org/docs/?from=launch-check` for the aliases. The `index.md` answers
+`content-type: text/markdown; charset=utf-8` and `link: <…/how-to/automate-old-awnings/>; rel="canonical"`. Check the response
 headers from `public/_headers`, canonical URLs, page metadata, mobile navigation
 and source links. Verify every sitemap route anonymously. The selected
 `frameworkCommit` and component commits must be reachable without authentication.

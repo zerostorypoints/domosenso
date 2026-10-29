@@ -55,8 +55,8 @@ Two kinds of agent read the site, and the work serves both:
   agents that look for markdown. Revisit if logs show agents asking for it.
 - New schema.org types. The existing `HowTo` JSON-LD stays; measured effect on AI answers is nil
   (Evidence).
-- The commercial site (domosenso.com, repository `domosenso-web`) and the home repository
-  (`domosenso-zollweg12`). Nothing from a real home goes into any generated file.
+- The commercial site (domosenso.com, repository `domosenso-web`) and any home's own
+  repository. Nothing from a real home goes into any generated file.
 
 ## Anti-goals
 
