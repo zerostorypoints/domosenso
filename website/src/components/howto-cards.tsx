@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import {componentName} from '@/lib/catalog';
-import {howTos,type HowTo} from '@/lib/content';
-import {visibleHowTos} from '@/lib/howto';
+import {howTos,visibleHowTos,type HowTo} from '@/lib/howto';
 export function HowToCard({howTo:h}:{howTo:HowTo}){
  return <Link className="howto-card" href={`/how-to/${h.slug}/`}>
   <div className="eyebrow">{h.status==='draft'&&<span>Draft</span>}{h.components.map(id=><span key={id}>{componentName(id)}</span>)}</div>

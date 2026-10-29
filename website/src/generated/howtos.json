@@ -1,0 +1,216 @@
+[
+  {
+    "slug": "automate-old-awnings",
+    "title": "Automate old awnings",
+    "description": "Awnings with a Somfy remote can retract at sunset and watch the wind sensor without rewiring. Wall-button motors are coming soon.",
+    "components": [
+      "awnings"
+    ],
+    "devices": [
+      "m5stack-atom-lite",
+      "cc1101"
+    ],
+    "status": "published",
+    "updated": "2026-10-29",
+    "sources": [
+      "https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/awnings"
+    ],
+    "branches": [
+      {
+        "situation": "A motor with a Somfy RTS remote",
+        "needs": "A small radio node: an M5Stack Atom Lite with a CC1101 radio module running ESPSomfy-RTS, which pairs with each awning as one more remote, and an MQTT broker such as Mosquitto.",
+        "wiring": "None at the awning. Eight short wires between the radio module and the Atom, on the desk.",
+        "supported": "yes",
+        "prompt": "Add the awnings component to my home, prepare the radio node for my Somfy RTS awnings (I will flash it myself) and the frame bridge for my Docker host, and stop before production so I can check it on staging."
+      },
+      {
+        "situation": "A motor with buttons in the wall",
+        "needs": "A Shelly 2PM behind the wall switch; the buttons keep working.",
+        "wiring": "Mains, by an electrician.",
+        "supported": "coming-soon",
+        "issue": "https://github.com/zerostorypoints/domosenso/issues/74"
+      },
+      {
+        "situation": "A Somfy io motor (a two-way remote)",
+        "needs": "Somfy io is a different radio from RTS; the RTS node cannot drive it.",
+        "wiring": "—",
+        "supported": "no"
+      },
+      {
+        "situation": "No motor (a crank or a strap)",
+        "needs": "An awning cannot be automated without a motor. Fitting one is a job for an awning installer.",
+        "wiring": "—",
+        "supported": "no"
+      }
+    ],
+    "body": "If your awnings already open and close with a Somfy remote, you can automate them without\ntouching the awnings or the wiring: a small radio node learns to speak to them as one more remote,\nand Home Assistant then retracts them at sunset and shows them on your phone and wall tablet. Your\nold remote keeps working.\n\nLook at your remote first: the label on the back or in the battery compartment usually says RTS\nor io. RTS is the older one-way radio this guide covers; Somfy io is a different radio, not\nsupported yet. Awnings run by buttons in the wall need a relay behind the switch; that branch\nwaits for the Shelly component ([issue #74](https://github.com/zerostorypoints/domosenso/issues/74)).\n\n## A motor with a Somfy RTS remote\n\n**What to buy**\n\n- One [M5Stack Atom Lite](/devices/m5stack-atom-lite/), about €8–15.\n- One [CC1101 radio module](/devices/cc1101/) (tested: Ebyte E07-M1101D) with a 433 MHz antenna,\n  about €5–10.\n- A USB power supply for the node.\n- An MQTT broker, such as Mosquitto, if your Home Assistant does not have one yet. The node and the\n  frame bridge (below) publish to it. It costs nothing; it runs as a container or an add-on.\n\n**Wiring.** Nothing at the awning. The radio module connects to the Atom with eight short wires;\nthe [CC1101 guide](/devices/cc1101/) has the diagram and the pin table. The module runs on 3.3 V,\nnever 5 V, and the antenna goes on before the node transmits.\n\n**What your agent does, and what you do.** The agent adds the [awnings component](/components/awnings/)\nto your home, prepares the flashing commands and the node's settings, and puts the awnings on your\nstaging Home Assistant. It also copies the frame bridge into your home project: a small service\nthat runs as a container next to the MQTT broker, on a computer that runs Docker. You flash the\nnode over USB, join its Wi-Fi from your phone once, and pair the awnings. On the Docker host you\nfill in the bridge's settings file (the node's address, the broker and the wind sensor's address)\nand start it. Nothing reaches your real Home Assistant until you say so.\n\nThe bridge carries every radio frame the node hears to Home Assistant. Without it, the wind-sensor\nwatch does not work and the awnings' positions are lost when Home Assistant restarts.\n\n**What you get**\n\n- Each awning as a cover in Home Assistant, with open, stop and close on your phone and on the\n  [Ramka](/components/ramka/) wall tablet.\n- At sunset, every awning that is not closed retracts by itself.\n- If your awnings have a Somfy wind sensor, its reports are watched through the frame bridge, and\n  you get an alert if it goes silent. The awnings still retract on wind by themselves, as before.\n- Home Assistant follows the old remote too: when someone uses it, the positions update.\n\n**Hints from real installations**\n\n- Pair one awning at a time: hold PROG on a remote that already works for that awning, then pair\n  the node's virtual remote. Name each awning as you go, before you pair the next one.\n- Somfy RTS only sends, it never answers. Home Assistant knows what it sent, not where the awning\n  is, and estimates the position from travel time. Time each awning's full extend and retract once\n  and enter it on the node; the default of 10 seconds is wrong for most awnings.\n- The node may hear the wind sensor only part of the time. On one installation the sensor was\n  heard only intermittently, and the \"sensor silent\" alert had to be relaxed to 72 hours to stop\n  false alarms. Place the node, or its antenna, with a clear line to the awnings and the sensor.\n- The node prints your Wi-Fi password in its start-up log. Never paste that log into a chat or an\n  issue.\n- Reserve the node's address in your router so it comes back after a power cut."
+  },
+  {
+    "slug": "know-your-air-quality",
+    "title": "Know your air quality",
+    "description": "Know when to open a window. One air monitor shows CO₂, fine dust and an air-quality score on your phone and a wall tablet.",
+    "components": [
+      "climate-air"
+    ],
+    "devices": [
+      "ruuvi-air"
+    ],
+    "status": "published",
+    "updated": "2026-10-29",
+    "sources": [
+      "https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/climate-air"
+    ],
+    "branches": [
+      {
+        "situation": "No air monitor yet",
+        "needs": "A Ruuvi Air and one Bluetooth proxy within range (an M5Stack Atom Lite with the proxy firmware of the bermuda-presence component), unless you already have one.",
+        "wiring": "None. The monitor and the proxy each plug into USB power.",
+        "supported": "yes",
+        "prompt": "Add the air part of the climate-air component to my home with my Ruuvi Air, prepare the Bluetooth proxy firmware from the bermuda-presence component for one Atom Lite near it (I will flash it myself), show the air on my wall tablet, and stop before production so I can check it on staging."
+      },
+      {
+        "situation": "A CO₂ or air-quality sensor already in Home Assistant, another brand",
+        "needs": "Nothing new. The component reads the CO₂, fine-dust and index sensors Home Assistant already shows; only the Ruuvi Air has been tested.",
+        "wiring": "None.",
+        "supported": "yes",
+        "prompt": "Add the air part of the climate-air component to my home using the air-quality sensor I already have in Home Assistant, and stop before production so I can check it on staging."
+      }
+    ],
+    "body": "Stale air is easy to miss and easy to measure: a CO₂ reading tells you when to open a window, and\nabove about 1000 ppm most people notice it as tiredness or a stuffy room. One air monitor in the\nroom you spend most time in, read by Home Assistant, puts that number on your phone and on a wall\ntablet, next to fine dust and an overall air-quality score.\n\nIf you only want temperature and humidity per room, see\n[Room temperature you can see](/how-to/see-room-temperature/); this guide is about the air itself.\n\n## No air monitor yet\n\n**What to buy**\n\n- A [Ruuvi Air](/devices/ruuvi-air/), a Bluetooth monitor for CO₂, fine dust (PM2.5), VOC, NOx,\n  temperature, humidity and pressure.\n- One Bluetooth proxy within range, an [M5Stack Atom Lite](/devices/m5stack-atom-lite/), about\n  €8–15. A proxy you already have from [room presence](/how-to/presence-who-is-home/) also\n  hears the monitor if it is within range; then you buy nothing more.\n\n**Wiring.** None. Both run on USB power.\n\n**What your agent does, and what you do.** A new proxy gets its firmware from the\n[bermuda-presence component](/components/bermuda-presence/), the same Bluetooth proxy firmware\nthe room-presence guide uses: the agent prepares it for your board and you flash it over USB.\nHome Assistant then discovers the monitor through the proxy; you confirm it, switch on its air-quality score (off by default) and switch off the\nlight-level reading the monitor does not have. The agent adds the air part of the\n[climate-air component](/components/climate-air/) and shows the result on your staging Home\nAssistant first.\n\n**What you get**\n\n- CO₂, PM2.5, VOC and NOx and an air-quality score out of 100, the same score the Ruuvi app shows.\n- An air page on the [Ramka](/components/ramka/) wall tablet.\n- History of every figure, so you can see which hours of the day the air gets bad.\n\n## A sensor already in Home Assistant\n\nThe component takes the CO₂, PM2.5, VOC, NOx and score sensors as inputs, whichever of them your\nsensor has. Only the Ruuvi Air has been tested; check the readings on staging before you rely on\nthem.\n\n## Hints from real installations\n\n- Place the monitor at breathing height, where people sit, not next to the hob or an open window.\n- Through the common Atom Lite proxies the Ruuvi Air reported CO₂, temperature, humidity and PM2.5,\n  but not PM1, PM4 or PM10: those travel in a newer Bluetooth format the proxies do not receive.\n- VOC and NOx need about a day after power-on to settle. Do not judge them, or set alerts on them,\n  before that.\n- The monitor has a fan. Next to a presence radar it can look like movement; check the radar after\n  placing it."
+  },
+  {
+    "slug": "multi-room-music",
+    "title": "Music in every room",
+    "description": "Control the music you already play from a wall tablet and your phone, starting from the network player or speakers you have.",
+    "components": [
+      "media"
+    ],
+    "devices": [
+      "hegel-h400"
+    ],
+    "status": "published",
+    "updated": "2026-10-29",
+    "sources": [
+      "https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/media"
+    ],
+    "branches": [
+      {
+        "situation": "A network streamer or amplifier Home Assistant supports",
+        "needs": "Nothing new. The player's Home Assistant integration (tested with a Hegel H400 through hegel_streaming).",
+        "wiring": "None. The player is on your home network.",
+        "supported": "yes",
+        "prompt": "Add the media component to my home for the network player I already have, show it on my wall tablet, and stop before production so I can check it on staging."
+      },
+      {
+        "situation": "Speakers in several rooms that you group in their own app",
+        "needs": "DomoSenso controls one player from the wall tablet; grouping rooms stays in the speakers' own app.",
+        "wiring": "None.",
+        "supported": "no"
+      },
+      {
+        "situation": "An old hi-fi or passive speakers, nothing on the network",
+        "needs": "A network streamer in front of the amplifier first; Home Assistant has nothing to talk to without one.",
+        "wiring": "The streamer's audio cable to the amplifier.",
+        "supported": "no"
+      }
+    ],
+    "body": "DomoSenso lets you control the music players you already have from a wall tablet and your phone:\nplay, pause, volume, input and what is playing now, for a streamer, amplifier or speaker that\nHome Assistant supports. It does not group rooms into one stream; speakers that play together are\ngrouped in their own app, and the wall tablet controls one player.\n\nIt also does not make an old hi-fi smart; that needs a network streamer in front of it first.\n\n## A network streamer or amplifier Home Assistant supports\n\n**What to buy.** Nothing, if Home Assistant already lists your player as a media player. The tested\nplayer is a [Hegel H400](/devices/hegel-h400/) through the `hegel_streaming` integration, which\nfinds the amplifier on your network without an account. Other players work when they offer the\nbasics the wall tablet needs: on and off, play and pause, volume and the current track. Only the\nHegel has been tested.\n\n**Wiring.** None. The player stays where it is.\n\n**What your agent does, and what you do.** The agent adds the [media component](/components/media/)\nand points the [Ramka](/components/ramka/) wall tablet at your player, on your staging Home\nAssistant first. You install the player's integration if Home Assistant does not have it yet\n(the Hegel one comes from HACS) and confirm when the player is discovered.\n\n**What you get**\n\n- A now-playing page on the wall tablet with the title, artist and cover art when the player\n  reports them, and the audio quality on the Hegel.\n- Play, pause, volume and turn on from the tablet or your phone.\n- Previous and next hidden while a service that cannot skip is playing, so the buttons on screen\n  are the ones that work.\n\n**Hints from real installations**\n\n- Home Assistant may list the same amplifier two or three times (for example through Cast and\n  DLNA as well). Point the tablet at the player from its own integration.\n- Resume and skip depend on the player's integration and the streaming service. Before you rely\n  on it, pause from the wall tablet and press play again: the same track should continue. On one\n  installation Spotify Connect lost the session on a plain play until the integration was fixed.\n- A player switched off at the mains does not answer at all. Network standby keeps it reachable."
+  },
+  {
+    "slug": "presence-who-is-home",
+    "title": "Presence: who is home, and in which room",
+    "description": "See who is home and which room they are in, from the phones and watches people already carry, with small Bluetooth receivers.",
+    "components": [
+      "bermuda-presence",
+      "ramka"
+    ],
+    "devices": [
+      "m5stack-atom-lite",
+      "hlk-ld2410c"
+    ],
+    "status": "published",
+    "updated": "2026-10-29",
+    "sources": [
+      "https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/bermuda-presence",
+      "https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/ramka"
+    ],
+    "branches": [
+      {
+        "situation": "Phones and watches everyone carries",
+        "needs": "One Bluetooth proxy per room, an M5Stack Atom Lite, and the Bermuda integration in Home Assistant.",
+        "wiring": "None. Each proxy plugs into a USB power supply.",
+        "supported": "yes",
+        "prompt": "Add the bermuda-presence component to my home with one Bluetooth proxy per room, prepare the proxies' firmware (I will flash them myself), and stop before production so I can check it on staging."
+      },
+      {
+        "situation": "Someone in the room without a phone",
+        "needs": "An HLK-LD2410C radar on one of the room's proxies. It notices a person sitting still and, if you have the Ramka wall tablet, wakes it.",
+        "wiring": "Four low-voltage wires between the radar and the Atom.",
+        "supported": "yes",
+        "prompt": "Add the radar feature of the bermuda-presence component to the proxy in the room I choose, let it wake the Ramka if I have one, and stop before production so I can check it on staging."
+      },
+      {
+        "situation": "Only AirTags or similar trackers",
+        "needs": "These trackers change their Bluetooth address and cannot be told apart as one person's tag.",
+        "wiring": "—",
+        "supported": "no"
+      }
+    ],
+    "body": "Home Assistant can tell who is home and which room they are in from the phones and watches people\nalready carry: a small Bluetooth receiver in each room hears them, and the Bermuda integration\nworks out which room is closest. DomoSenso turns that into one line per room (\"Alex, Sam\"), shown on\nyour phone and, if you have one, on a wall tablet. A radar adds \"someone is here\" for people\nwithout a phone in their pocket.\n\n## Phones and watches everyone carries\n\n**What to buy**\n\n- One [M5Stack Atom Lite](/devices/m5stack-atom-lite/) per room, about €8–15 each. A room without\n  one gets no presence of its own.\n- A plain 5 V USB power supply for each. Fast-charging plugs can cut the Atom's power.\n\n**Wiring.** None. Each proxy sits on a shelf or in a socket, wherever it is out of the way.\n\n**What your agent does, and what you do.** The agent adds the\n[bermuda-presence component](/components/bermuda-presence/), writes one firmware file per proxy\nand the room sensors, and shows them on your staging Home Assistant first. You flash the proxies\nover USB, install Bermuda (it comes from HACS) and add each phone and watch. Apple devices change\ntheir Bluetooth address, so each one needs its identity key once; the\n[component's notes](/components/bermuda-presence/) explain how to read it.\n\n**What you get**\n\n- One sensor per room with the names of the people in it, and a tablet left in a room shown in\n  brackets, because a tablet lies where it was put down.\n- A notification when a proxy has been offline for ten minutes.\n- Room sensors your own automations can use.\n\n## Someone in the room without a phone\n\n**What to buy.** One [HLK-LD2410C radar](/devices/hlk-ld2410c/), about €3–10, on the Atom that is\nalready the room's proxy.\n\n**Wiring.** Four wires between the radar and the Atom, all low voltage: 5 V, ground and two data\nlines. The [radar guide](/devices/hlk-ld2410c/) has the diagram.\n\n**What you get.** A \"someone is in the room\" sensor that works without a phone. If you have the\n[Ramka](/components/ramka/) wall tablet, it wakes when someone comes near.\n\n## Hints from real installations\n\n- Cover every room before you calibrate. A room without a proxy is never empty: Bermuda places\n  the person in the nearest room that has one.\n- One flat needed seven proxies, one per room.\n- Phones and watches work best. Tested with iPhones, iPads and Apple Watches; Garmin watches stay\n  silent while connected to their phone.\n- Give each proxy a fixed address in your router so it comes back after a power cut.\n- Keep Bermuda's distance sensors out of Home Assistant's history. On one installation they filled\n  most of the database.\n- The radar does not see a person sitting still within about 1.5 m of it, only movement. Mount it\n  a little away from where people sit closest."
+  },
+  {
+    "slug": "see-power-consumption",
+    "title": "See your power consumption",
+    "description": "Find the devices that never really switch off with a small metering relay behind a socket. Coming with the Shelly component.",
+    "components": [],
+    "devices": [],
+    "status": "draft",
+    "updated": "2026-10-29",
+    "sources": [
+      "https://github.com/zerostorypoints/domosenso/issues/74"
+    ],
+    "branches": [
+      {
+        "situation": "A device you suspect of drawing power in standby",
+        "needs": "A small metering relay (a Shelly PM Mini) behind its socket.",
+        "wiring": "Mains, by an electrician.",
+        "supported": "coming-soon",
+        "issue": "https://github.com/zerostorypoints/domosenso/issues/74"
+      }
+    ],
+    "body": "A small metering relay behind one socket shows how much the device plugged into it draws, on your\nphone and in Home Assistant's energy history, including the standby draw of devices that never\nreally switch off. DomoSenso does not cover this yet: it waits for the Shelly component\n([issue #74](https://github.com/zerostorypoints/domosenso/issues/74)), and this guide is published\nwhen that component is released.\n\n## Hints from real installations\n\n- On one installation a metering relay behind an amplifier's socket showed its standby draw, the\n  kind of figure that is hard to see any other way.\n- Fitting a relay behind a socket is mains work. Have an electrician do it."
+  },
+  {
+    "slug": "see-room-temperature",
+    "title": "Room temperature you can see",
+    "description": "See the temperature and humidity of every room at a glance, on your phone and a wall tablet, from small battery sensors.",
+    "components": [
+      "climate-air"
+    ],
+    "devices": [
+      "tapo-t315"
+    ],
+    "status": "published",
+    "updated": "2026-10-29",
+    "sources": [
+      "https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/climate-air"
+    ],
+    "branches": [
+      {
+        "situation": "No room sensors yet",
+        "needs": "One Tapo T315 thermo-hygrometer per room and a Tapo hub (tested with the H200) that they report to.",
+        "wiring": "None. Battery sensors; the hub plugs into a socket and joins your network.",
+        "supported": "yes",
+        "prompt": "Add the climate-air component to my home with one Tapo sensor per room, show the rooms on my wall tablet, and stop before production so I can check it on staging."
+      },
+      {
+        "situation": "Temperature sensors already in Home Assistant, another brand",
+        "needs": "Nothing new. The component reads any temperature and humidity sensors Home Assistant already shows; only Tapo has been tested.",
+        "wiring": "None.",
+        "supported": "yes",
+        "prompt": "Add the climate-air component to my home using the temperature and humidity sensors I already have in Home Assistant, one entry per room, and stop before production so I can check it on staging."
+      }
+    ],
+    "body": "To see every room's temperature in one place, put one small battery sensor in each room and let\nHome Assistant collect them: DomoSenso turns them into a room list, a whole-home average and the\nmost humid room, on your phone and on a wall tablet. If you already have sensors in Home Assistant,\nyou can use those instead.\n\n## No room sensors yet\n\n**What to buy**\n\n- One [Tapo T315](/devices/tapo-t315/) temperature and humidity sensor per room, about €20–30 each. It has its own small\n  display, so the reading is also on the wall.\n- One Tapo hub that the sensors report to (tested: the H200).\n\n**Wiring.** None. The sensors run on batteries; the hub plugs into a socket and joins your\nnetwork.\n\n**What your agent does, and what you do.** You set up the hub and the sensors in the Tapo app and\nadd your TP-Link account in Home Assistant once; after that the hub is read on your home network.\nThe agent adds the [climate-air component](/components/climate-air/) with one entry per room,\nlabels them the way your household names the rooms, and shows the result on your staging Home\nAssistant first.\n\n**What you get**\n\n- Temperature and humidity for every room, the indoor average, warmest and coolest, and, from\n  your weather service or an outdoor sensor, the difference to outside.\n- The most humid room by name, and a flag when the bathroom stays humid for ten minutes.\n- The sensor with the lowest battery, before one goes flat.\n- History kept as hourly figures, so you can compare this winter with the last.\n- A temperature page on the [Ramka](/components/ramka/) wall tablet.\n\n## Temperature sensors already in Home Assistant\n\nThe component takes each room's temperature and humidity sensor as an input, whatever their\nbrand. Your agent lists the ones Home Assistant has and asks which room each belongs to. Only the\nTapo sensors have been tested; tell your agent which ones you have, and check the readings on\nstaging before you rely on them.\n\n## Hints from real installations\n\n- Put each sensor away from radiators, windows and direct sun, at roughly head height. A sensor on\n  a sunny windowsill reports the sun, not the room.\n- Leave a glazed porch or winter garden out of the indoor average if its windows are often open;\n  it still shows as a room of its own.\n- Tapo hides the battery and signal entities by default. Switch on the battery ones in Home\n  Assistant, or the lowest-battery figure stays empty.\n- Reserve the hub's address in your router so Home Assistant finds it after a power cut."
+  }
+]

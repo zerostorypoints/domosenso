@@ -12,10 +12,10 @@ sources:
 - https://github.com/zerostorypoints/domosenso/tree/df34993199025856eeac590f959ae54e2a02cd62/components/climate-air
 branches:
 - situation: No air monitor yet
-  needs: A Ruuvi Air and one Bluetooth proxy within range (an M5Stack Atom Lite), unless you already have one.
+  needs: A Ruuvi Air and one Bluetooth proxy within range (an M5Stack Atom Lite with the proxy firmware of the bermuda-presence component), unless you already have one.
   wiring: None. The monitor and the proxy each plug into USB power.
   supported: 'yes'
-  prompt: Add the air part of the climate-air component to my home with my Ruuvi Air, show it on my wall tablet, and stop before production so I can check it on staging.
+  prompt: Add the air part of the climate-air component to my home with my Ruuvi Air, prepare the Bluetooth proxy firmware from the bermuda-presence component for one Atom Lite near it (I will flash it myself), show the air on my wall tablet, and stop before production so I can check it on staging.
 - situation: A CO₂ or air-quality sensor already in Home Assistant, another brand
   needs: Nothing new. The component reads the CO₂, fine-dust and index sensors Home Assistant already shows; only the Ruuvi Air has been tested.
   wiring: None.
@@ -38,13 +38,15 @@ If you only want temperature and humidity per room, see
 - A [Ruuvi Air](/devices/ruuvi-air/), a Bluetooth monitor for CO₂, fine dust (PM2.5), VOC, NOx,
   temperature, humidity and pressure.
 - One Bluetooth proxy within range, an [M5Stack Atom Lite](/devices/m5stack-atom-lite/), about
-  €8–15, unless you already have one, for example from
-  [room presence](/how-to/presence-who-is-home/). The monitor needs no proxy of its own.
+  €8–15. A proxy you already have from [room presence](/how-to/presence-who-is-home/) also
+  hears the monitor if it is within range; then you buy nothing more.
 
 **Wiring.** None. Both run on USB power.
 
-**What your agent does, and what you do.** Home Assistant discovers the monitor through the
-proxy; you confirm it, switch on its air-quality score (off by default) and switch off the
+**What your agent does, and what you do.** A new proxy gets its firmware from the
+[bermuda-presence component](/components/bermuda-presence/), the same Bluetooth proxy firmware
+the room-presence guide uses: the agent prepares it for your board and you flash it over USB.
+Home Assistant then discovers the monitor through the proxy; you confirm it, switch on its air-quality score (off by default) and switch off the
 light-level reading the monitor does not have. The agent adds the air part of the
 [climate-air component](/components/climate-air/) and shows the result on your staging Home
 Assistant first.

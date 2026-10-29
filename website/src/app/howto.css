@@ -10,3 +10,4 @@
 .howto-branches th { white-space: nowrap; }
 .howto-prompt .code { white-space: pre-wrap; user-select: all; }
 .howto-empty { margin: 32px 0; }
+.howto-prompt-for { margin: 16px 0 4px; font-weight: 600; }

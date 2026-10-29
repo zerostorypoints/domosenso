@@ -4,7 +4,8 @@ title: Room temperature you can see
 description: See the temperature and humidity of every room at a glance, on your phone and a wall tablet, from small battery sensors.
 components:
 - climate-air
-devices: []
+devices:
+- tapo-t315
 status: published
 updated: '2026-10-29'
 sources:
@@ -31,7 +32,7 @@ you can use those instead.
 
 **What to buy**
 
-- One Tapo T315 temperature and humidity sensor per room, about €20–30 each. It has its own small
+- One [Tapo T315](/devices/tapo-t315/) temperature and humidity sensor per room, about €20–30 each. It has its own small
   display, so the reading is also on the wall.
 - One Tapo hub that the sensors report to (tested: the H200).
 

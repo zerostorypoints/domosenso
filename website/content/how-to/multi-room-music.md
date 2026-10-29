@@ -4,7 +4,8 @@ title: Music in every room
 description: Control the music you already play from a wall tablet and your phone, starting from the network player or speakers you have.
 components:
 - media
-devices: []
+devices:
+- hegel-h400
 status: published
 updated: '2026-10-29'
 sources:
@@ -25,13 +26,12 @@ branches:
   supported: 'no'
 ---
 
-You do not need new speakers to control music from the wall: if your streamer, amplifier or
-speaker already shows up in Home Assistant, DomoSenso puts it on a wall tablet and your phone with
-play, pause, volume, input and what is playing now. This guide starts from the player you have.
+DomoSenso lets you control the music players you already have from a wall tablet and your phone:
+play, pause, volume, input and what is playing now, for a streamer, amplifier or speaker that
+Home Assistant supports. It does not group rooms into one stream; speakers that play together are
+grouped in their own app, and the wall tablet controls one player.
 
-Two things it does not do today. It does not group rooms: one player is shown, and speakers that
-play together are grouped in their own app. And it does not make an old hi-fi smart; that needs a
-network streamer in front of it first.
+It also does not make an old hi-fi smart; that needs a network streamer in front of it first.
 
 ## A network streamer or amplifier Home Assistant supports
 

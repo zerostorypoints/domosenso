@@ -1,7 +1,6 @@
 import {PageIntro} from '@/components/site';
 import {HowToCard} from '@/components/howto-cards';
-import {howTos} from '@/lib/content';
-import {visibleHowTos} from '@/lib/howto';
+import {howTos,visibleHowTos} from '@/lib/howto';
 import {metadata as meta} from '@/lib/seo';
 export const metadata=meta('How-to guides','/how-to/','Step-by-step guides that start from your situation and end with a working Home Assistant setup.');
 export default function Page(){

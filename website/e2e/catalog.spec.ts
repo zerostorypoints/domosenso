@@ -110,6 +110,9 @@ test('how-to guides: index, branch table, agent prompt, structured data and draf
  await expect(wall).toHaveCount(1);
  await expect(wall.getByRole('link')).toHaveAttribute('href',/\/issues\/74$/);
  await expect(page.locator('.howto-prompt').first()).toContainText('Tell your agent');
+ await expect(page.locator('.howto-prompt h2')).toHaveText(['Tell your agent']);
+ await expect(page.locator('.howto-lead')).toContainText('Somfy remote');
+ expect(await page.evaluate(()=>!!(document.querySelector('.howto-lead')!.compareDocumentPosition(document.querySelector('table.howto-branches')!)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
  const ld=await page.locator('script[type="application/ld+json"]').first().textContent();
  expect(JSON.parse(ld!).some((item:{'@type':string})=>item['@type']==='HowTo')).toBe(true);
  await page.goto('/components/awnings/');

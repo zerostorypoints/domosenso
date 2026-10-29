@@ -20,10 +20,10 @@ branches:
   supported: 'yes'
   prompt: Add the bermuda-presence component to my home with one Bluetooth proxy per room, prepare the proxies' firmware (I will flash them myself), and stop before production so I can check it on staging.
 - situation: Someone in the room without a phone
-  needs: An HLK-LD2410C radar on one of the room's proxies. It notices a person sitting still and wakes the wall tablet.
+  needs: An HLK-LD2410C radar on one of the room's proxies. It notices a person sitting still and, if you have the Ramka wall tablet, wakes it.
   wiring: Four low-voltage wires between the radar and the Atom.
   supported: 'yes'
-  prompt: Add the radar feature of the bermuda-presence component to the proxy next to my wall tablet, let it wake the Ramka, and stop before production so I can check it on staging.
+  prompt: Add the radar feature of the bermuda-presence component to the proxy in the room I choose, let it wake the Ramka if I have one, and stop before production so I can check it on staging.
 - situation: Only AirTags or similar trackers
   needs: These trackers change their Bluetooth address and cannot be told apart as one person's tag.
   wiring: —
@@ -33,7 +33,7 @@ branches:
 Home Assistant can tell who is home and which room they are in from the phones and watches people
 already carry: a small Bluetooth receiver in each room hears them, and the Bermuda integration
 works out which room is closest. DomoSenso turns that into one line per room ("Alex, Sam"), shown on
-your phone and on a wall tablet. A radar next to the tablet adds "someone is here" for people
+your phone and, if you have one, on a wall tablet. A radar adds "someone is here" for people
 without a phone in their pocket.
 
 ## Phones and watches everyone carries
@@ -68,8 +68,8 @@ already the room's proxy.
 **Wiring.** Four wires between the radar and the Atom, all low voltage: 5 V, ground and two data
 lines. The [radar guide](/devices/hlk-ld2410c/) has the diagram.
 
-**What you get.** A "someone is in the room" sensor that works without a phone, and the
-[Ramka](/components/ramka/) wall tablet waking when someone comes near.
+**What you get.** A "someone is in the room" sensor that works without a phone. If you have the
+[Ramka](/components/ramka/) wall tablet, it wakes when someone comes near.
 
 ## Hints from real installations
 
