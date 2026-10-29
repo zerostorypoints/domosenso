@@ -255,6 +255,10 @@ ramka-<mode>`, once without `mode` and once with `mode: dark`, so both of the se
 slots carry it. `themes/ramka.yaml` gains `ramka-dark` and `ramka-light`: each the series colours of
 its mode (today's `modes:`) plus the base colours of that mode, without `modes:`, so the theme sets
 the look whatever the browser's own dark-mode setting is.
+**Amendment (2026-10-29, ruling C19):** each theme holds `modes:` with its one mode only (the
+series colours of that mode, no base colours), because the frontend forces a single-mode theme into
+that mode and applies its own defaults (home-assistant-frontend 20260826.7,
+`src/state/themes-mixin.ts`), while copied base colours would go stale with every frontend update.
 
 - **The limit, stated:** `frontend.set_theme` sets the server's default theme. It reaches every
   browser and every user whose profile theme is "Backend-selected", on every dashboard, not only the

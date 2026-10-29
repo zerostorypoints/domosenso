@@ -174,11 +174,6 @@
         "locking": "Wird verriegelt",
         "jammed": "Blockiert"
       }
-    },
-    "music_visual": {
-      "spectrum": "Welle: Spektrum",
-      "level": "Welle: Pegel",
-      "classic": "Welle: Klassisch"
     }
   },
   "meta": {

@@ -61,26 +61,94 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
 `music: true` (`sensor.music_spectrum` with `sensor.music_spl_offset`, or `sensor.music_level`).
 
 - **Switching.** `input_select.<prefix>_music_visual` holds `spectrum`, `level` and `classic`, the
-  input's choice first, so a fresh helper starts there; it has no `initial:`, so the tablet's choice
-  survives a restart. A tile on the controls, under the player while it is on, names the current
-  choice; a tap steps to the next (`input_select.select_next` with `cycle: true`). `classic`, or any
-  other state, draws Ramka's own wave and creates no visual card.
+  input's choice first, so a fresh helper starts there; it has no `initial:`, so the choice survives
+  a restart. It is set in Home Assistant (the settings dashboard's Music page), not on the tablet:
+  the Controls page has no visual tile. `classic`, or any other state, draws Ramka's own wave and
+  creates no visual card.
 - **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
   check that the aliases exist. Without them the card falls back to the classic wave with an info
   icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
-- **The look.** The card's own defaults apply (spectrum `dune`, level `centre`, 30 to 70 dB SPL, the
-  `series` palette), except the line: 2.8 px, the width of Ramka's wave in that strip, where the
-  card's 4 px is heavy. `music_visual_options` overrides them key by key, for example
-  `{level: {flavour: tide}, line_width: 3}`; `flavour`, `neutral` and `hot` per kind, `palette`,
-  `rise`, `fall`, `tilt` and `line_width` for both. A key it does not know fails the render. Try
-  flavours on audio-sensor's Room acoustics dashboard (Wave view) before writing them down here.
+- **The look is live.** Every option of the two visual configs names a helper (Live settings
+  below): the flavour per kind (`input_select.<prefix>_music_spectrum_flavour`, `_level_flavour`),
+  the palette, rise, fall, line width, tilt, the neutral and hot dB per kind and the refresh rate
+  (`fps`). The card reads their states on every update, so a change shows on the tablet at once.
+  `music_visual_options` gives their starting values, key by key, for example
+  `{level: {flavour: tide}, line_width: 3}`; absent keys take the card's defaults (spectrum `dune`,
+  level `centre`, 30 to 70 dB SPL, the `series` palette, rise 200 ms, fall 4 s, 30 fps), the line
+  Ramka's 2.8 px, the width of its own wave in that strip. The render checks them: a flavour of the
+  other kind, a palette other than `zones`, `series` or `calm` (a palette of colour stops cannot be a
+  select option), a number outside its helper's range, or hot not above neutral fails it.
+- **What the card does with an unusable state:** `unknown` or `unavailable` (only while a helper
+  does not exist yet) gives that option's card default, so the line falls to the card's 4 px. A hot
+  set at or below neutral on the settings page is not stopped there: the visual shows the kind's
+  default pair (30 to 70 dB) until it is corrected.
+- Try flavours on audio-sensor's Room acoustics dashboard (Wave view) before writing them down.
 - The visual moves while `binary_sensor.<prefix>_media_playing` is on, as the wave does.
+
+## Live settings
+
+Since 0.4.0 every behaviour setting of the Ramka is a helper its automations and cards read live;
+none has an `initial:` (Home Assistant would reset it at every restart), each is restored across
+restarts. **Settings live only in Home Assistant**: the tablet's Controls page keeps only the
+approach toggle it has had since 0.1.0.
+
+| part | helpers | group |
+|---|---|---|
+| General | `input_boolean.<prefix>_near_enabled`, `input_number.<prefix>_{off_delay_s,brightness_min,brightness_max,near_cm,near_s,controls_hold_s,lux_max}` | presence_display |
+| General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
+| each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
+| Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
+
+- **Defaults.** The catalog's: approach on, off delay 300 s, brightness 16 to 204, near 100 cm for
+  1 s, controls hold 5 s, full brightness at 200 lx, theme `dark`, every page on, Advanced off; the
+  music values above. `settings_defaults` overrides the General ones for a home, for example
+  `{off_delay_s: 600}`; an unknown key, a value outside its helper's range or `brightness_min` above
+  `brightness_max` fails the render. The templates' fallbacks (`| int(…)`, `| float(…)`) are the
+  same values.
+- **Seeding.** The automation `<prefix>_settings_seed` runs at every start. While
+  `input_boolean.<prefix>_settings_seeded` is off it hands `script.<prefix>_settings_reset` the
+  groups that are still untouched and turns the flag on. A group is untouched when each of its
+  numbers is `unknown`, `unavailable` or at its own minimum, which is what Home Assistant gives a
+  helper without `initial:` and without a restored state (the sliders of issue #51). The
+  presence_display group needs all seven numbers so; the pages group is new in 0.4.0 and is seeded
+  whenever the flag is off; the music_visual group needs its four dB helpers at 0 and is also seeded
+  after the flag is on, for a home that adds `music_visual` later. **A home that already runs the
+  Ramka keeps its tuning**: its numbers are not all at their minimum, so neither they nor the
+  booleans of that group are touched; it gets every page switch on and the music defaults.
+- **Reset.** `script.<prefix>_settings_reset` writes the defaults again. Field `page` (`general`, a
+  view) limits it to that page's helpers, field `groups` (`presence_display`, `pages`,
+  `music_visual`) to those groups; with both, the helpers in both; with neither, every helper and
+  `input_boolean.<prefix>_ambient_music` too. It never touches audio-sensor's music source or
+  calibration: a measurement is not a preference.
+- **Page switches.** `input_boolean.<prefix>_page_<view>` takes a view out live; the render is the
+  outer limit (a view the render left out stays out whatever its switch says). The ambient pages:
+  `sensor.<prefix>_ambient_pages` lists the rendered pages whose switch is on, in rotation order;
+  the loop, the swipes and swipe up step through that list. It is never empty: with every switch off
+  it lists the first rendered page and its attribute `all_off` is `true`. A page switched off while
+  it shows leaves at the end of its stage (at most 50 s, the photos), or at once with a swipe.
+  Music off: `binary_sensor.<prefix>_music_view` stays off, so ambient shows the rotation while the
+  player plays. Calendar off: the calendar buttons on the controls hide and
+  `script.<prefix>_show_calendar` does nothing.
+- **Theme mode.** `input_select.<prefix>_theme_mode` (`dark`, `light`) sets the server's default
+  theme, `ramka-dark` or `ramka-light` (`themes/ramka.yaml`), through the automation
+  `<prefix>_theme_mode` at start and on every change. That reaches every browser and user whose
+  profile theme is "Backend-selected", on every dashboard, not only the tablet; the Ramka's views
+  carry no theme of their own. A user who wants another look picks a theme in the profile. The
+  two themes hold one mode each (`modes: {dark: …}`, `modes: {light: …}`, the series colours): the
+  frontend forces a single-mode theme into that mode and draws its own defaults of it, whatever the
+  browser's dark-mode setting (`themes/ramka.yaml` names the frontend version). That an open page
+  follows a change without a reload is inference until staging shows it (SPEC-020).
+- **The standing rule, for implementers:** every Ramka extension updates the settings in the same
+  change. A new behaviour gets its live setting, belongs to one page and one group, and is covered
+  by the page's reset and the global one; `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset`
+  fails on a helper that is neither a named state helper nor reset.
 
 ## Behaviour
 
 - **The ambient pages** (climate, air, plants, photos, status) are each optional: a page is in the
   rotation when its input is given (`climate`, `air`, `plants`, `photo_dir`), and status unless
-  `status_page: false` (0.3.0). The loop and the swipes step only through the pages that are there;
+  `status_page: false` (0.3.0), and while its page switch is on (0.4.0, Live settings). The loop and
+  the swipes step only through the pages that are there;
   `input_select.<prefix>_ambient` keeps all five options (FROZEN), and a render that leaves no page
   fails. The times are fixed: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s;
   one pass is their sum (130 s with all five). The package's comments still quote 130 s and the

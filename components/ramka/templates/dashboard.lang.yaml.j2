@@ -39,33 +39,23 @@
 [%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
 [#- The now-playing card's music visual (0.4.0): audio-sensor's ambient-wave-card in the wave strip,
     reading the home's music aliases, one config per option of input_select.<prefix>_music_visual.
-    music_visual_options overrides the card's defaults key by key; a key left out stays out of the
-    config, so the card's own default applies. The line is 2.8 px unless the options say otherwise:
-    Ramka's own wave draws 2.8 px in that strip (the card's 4 px default is for larger cards). A
-    render cannot see audio-sensor's inputs: a home without its music aliases gets the classic wave
-    from the card's fallback, not a failed render. -#]
+    Every option of the look names a helper (SPEC-020), so the settings dashboard changes the
+    visual live; the card reads the states on every update. Their starting values
+    (music_visual_options) are the package's: its seed and reset write them, and it checks them.
+    A render cannot see audio-sensor's inputs: a home without its music aliases gets the classic
+    wave from the card's fallback, not a failed render. -#]
 [%- set music_visual = inputs.music_visual | default(none) -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
 [%- set visuals = {} -%]
 [%- if music_visual is not none -%]
-[%- set mvo = inputs.music_visual_options | default({}) -%]
-[%- if mvo is not mapping -%][[ fail('ramka: music_visual_options must be a mapping') ]][%- endif -%]
-[%- for key in mvo if key not in ['spectrum', 'level', 'palette', 'rise', 'fall', 'line_width', 'tilt'] -%][[ fail("ramka: music_visual_options: unknown key '" ~ key ~ "'") ]][%- endfor -%]
 [%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': 'sensor.music_spectrum', 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': 'sensor.music_level'})] -%]
-[%- set own = mvo[kind] | default({}) -%]
-[%- if own is not mapping -%][[ fail('ramka: music_visual_options.' ~ kind ~ ' must be a mapping') ]][%- endif -%]
-[%- for key in own if key not in ['flavour', 'neutral', 'hot'] -%][[ fail('ramka: music_visual_options.' ~ kind ~ ": unknown key '" ~ key ~ "'") ]][%- endfor -%]
-[%- set config = {'type': 'custom:ambient-wave-card', 'source': source, 'active': 'binary_sensor.' ~ p ~ '_media_playing', 'fallback': 'classic'} -%]
-[%- if own.flavour is defined -%][%- set _ = config.update({'flavour': own.flavour}) -%][%- endif -%]
-[%- set colour = {} -%]
-[%- if mvo.palette is defined -%][%- set _ = colour.update({'palette': mvo.palette}) -%][%- endif -%]
-[%- for key in ['neutral', 'hot'] if own[key] is defined -%][%- set _ = colour.update({key: own[key]}) -%][%- endfor -%]
-[%- set dynamics = {} -%]
-[%- for key in ['rise', 'fall', 'tilt'] if mvo[key] is defined -%][%- set _ = dynamics.update({key: mvo[key]}) -%][%- endfor -%]
-[%- if colour -%][%- set _ = config.update({'colour': colour}) -%][%- endif -%]
-[%- if dynamics -%][%- set _ = config.update({'dynamics': dynamics}) -%][%- endif -%]
-[%- set _ = config.update({'style': {'line_width': mvo.line_width | default(2.8)}}) -%]
-[%- set _ = visuals.update({kind: config}) -%]
+[%- set m = p ~ '_music_' -%]
+[%- set _ = visuals.update({kind: {
+    'type': 'custom:ambient-wave-card', 'source': source, 'active': 'binary_sensor.' ~ p ~ '_media_playing', 'fallback': 'classic',
+    'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
+    'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
+    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
+    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}}}) -%]
 [%- endfor -%]
 [%- endif -%]
 [%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]
@@ -97,8 +87,9 @@ kiosk_mode:
 views:
   - title: Ramka
     path: ramka
-    # themes/ramka.yaml: only the series colours, shared by the charts and the room tiles.
-    theme: ramka
+    # No view theme (0.4.0): the server's default theme, ramka-dark or ramka-light from
+    # input_select.[[ p ]]_theme_mode (themes/ramka.yaml: the series colours the charts and the room
+    # tiles share, and that mode's base colours).
     # Black behind everything: in the "off" state no section is visible, and a dim panel that has
     # not gone to sleep then shows nothing.
     background: "#000000"
@@ -654,6 +645,7 @@ views:
             grid_options: {columns: 6, rows: 1}
             visibility: *player_on
           # The calendar beside standby while the player is on; full width (below) while it is not.
+          # Neither while the calendar view is switched off (input_boolean.[[ p ]]_page_calendar).
           - type: tile
             entity: [[ calendars[0] ]]
             name: [[ t('ui.calendar.button') | yaml ]]
@@ -664,7 +656,10 @@ views:
               perform_action: script.[[ p ]]_show_calendar
             icon_tap_action: *show_calendar
             grid_options: {columns: 6, rows: 1}
-            visibility: *player_on
+            visibility:
+              - {condition: state, entity: [[ mp ]], state_not: "off"}
+              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+              - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
           # Controls on approach (radar) on/off; off means a tap only. Always shown.
           - type: tile
             entity: input_boolean.[[ p ]]_near_enabled
@@ -673,30 +668,6 @@ views:
             tap_action: {action: toggle}
             icon_tap_action: {action: toggle}
             grid_options: {columns: 12, rows: 1}
-          [%- if visuals %]
-          # What the now-playing strip draws (0.4.0): the name is the current choice, a tap steps to
-          # the next one. Only while the player is on; any state but spectrum or level is the
-          # card's classic wave, so the classic tile stands for it.
-          [%- for option, icon in [('spectrum', 'mdi:equalizer'), ('level', 'mdi:waveform'), ('classic', 'mdi:sine-wave')] %]
-          - type: custom:tap-button-card
-            name: [[ t('ui.music_visual.' ~ option) | yaml ]]
-            icon: [[ icon ]]
-            taps: 1
-            action: input_select.select_next
-            target: {entity_id: input_select.[[ p ]]_music_visual}
-            data: {cycle: true}
-            columns: 12
-            rows: 1
-            visibility:
-              - {condition: state, entity: [[ mp ]], state_not: "off"}
-              - {condition: state, entity: [[ mp ]], state_not: unavailable}
-            [%- if option == 'classic' %]
-              - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
-            [%- else %]
-              - {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ option ]]}
-            [%- endif %]
-          [%- endfor %]
-          [%- endif %]
           - type: tile
             entity: [[ calendars[0] ]]
             name: [[ t('ui.calendar.button') | yaml ]]
@@ -710,6 +681,7 @@ views:
                 conditions:
                   - {condition: state, entity: [[ mp ]], state: "off"}
                   - {condition: state, entity: [[ mp ]], state: unavailable}
+              - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
           - type: button
             name: [[ inputs.media_turn_on_label | default(t('ui.media.turn_on')) | yaml ]]
             icon: [[ inputs.media_icon | default('mdi:speaker') ]]

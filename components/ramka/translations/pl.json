@@ -174,11 +174,6 @@
         "locking": "Zamyka się",
         "jammed": "Zacięty"
       }
-    },
-    "music_visual": {
-      "spectrum": "Fala: widmo",
-      "level": "Fala: poziom",
-      "classic": "Fala: klasyczna"
     }
   },
   "meta": {
