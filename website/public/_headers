@@ -2,3 +2,25 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Markdown versions of pages for agents (SPEC-020): typed, and pointing search engines at the HTML page.
+/*/index.md
+  Content-Type: text/markdown; charset=utf-8
+
+/how-to/:slug/index.md
+  Link: <https://domosenso.org/how-to/:slug/>; rel="canonical"
+
+/components/:id/index.md
+  Link: <https://domosenso.org/components/:id/>; rel="canonical"
+
+/devices/:id/index.md
+  Link: <https://domosenso.org/devices/:id/>; rel="canonical"
+
+/docs/:slug/index.md
+  Link: <https://domosenso.org/docs/:slug/>; rel="canonical"
+
+/journal/:slug/index.md
+  Link: <https://domosenso.org/journal/:slug/>; rel="canonical"
+
+/get-started/index.md
+  Link: <https://domosenso.org/get-started/>; rel="canonical"

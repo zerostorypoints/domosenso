@@ -6,7 +6,8 @@ test('start a separate home project from the homepage',async({page}, testInfo)=>
  await page.getByRole('link',{name:'Start your project',exact:true}).first().click();
  await expect(page).toHaveURL(/get-started/);
  await expect(page.getByRole('heading',{name:'One home. Your own project.'})).toBeVisible();
- await expect(page.getByText('Home Assistant Container', {exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Home Assistant Container, or a Docker host to install it on', {exact:true}).first()).toBeVisible();
+ await expect(page.getByRole('heading',{name:'No Home Assistant yet?'})).toBeVisible();
  await expect(page.getByText(/HAOS is not supported/)).toBeVisible();
 });
 test('catalog distinguishes descriptive integrations and links to immutable source',async({page})=>{
