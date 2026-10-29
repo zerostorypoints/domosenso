@@ -1,0 +1,105 @@
+[#
+  The audio-sensor component's Home Assistant package (SPEC-018): the per-board SPL offset, the
+  recorder exclusions and the music aliases. Rendered once per home (lang en) by
+  tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
+  Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set boards = inputs.sensors -%]
+[%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load'] -%]
+[#- A board's ids: the prefix of what this component creates, and the guessed ids of the ESPHome entities when `entities` does not name them (the area slug and the device name slug that Home Assistant builds them from). -#]
+[%- macro to_slug(text) -%][[ text | lower | replace("'", "") | replace("-", "_") | replace(" ", "_") ]][%- endmacro -%]
+[%- macro guess(board, domain, entity_slug) -%][[ domain ]].[[ to_slug(board.area) ]]_[[ to_slug(board.name | default('audio-sensor-' ~ board.room)) ]]_[[ entity_slug ]][%- endmacro -%]
+[%- set ns = namespace(rooms=[], prefixes=[], music=[], prepared=[]) -%]
+[%- for board in boards -%]
+  [%- set prefix = board.id_prefix | default(to_slug(board.room)) -%]
+  [%- if board.room in ns.rooms -%][[ fail('duplicate room: ' ~ board.room) ]][%- endif -%]
+  [%- if prefix in ns.prefixes -%][[ fail('duplicate id_prefix: ' ~ prefix) ]][%- endif -%]
+  [%- for key in (board.entities | default({})) -%]
+    [%- if key not in known -%][[ fail('unknown entity key: ' ~ key) ]][%- endif -%]
+  [%- endfor -%]
+  [%- set spectrum = (board.entities | default({})).spectrum | default(guess(board, 'sensor', 'spectrum')) -%]
+  [%- set level = (board.entities | default({})).level | default(guess(board, 'sensor', 'sound_level')) -%]
+  [%- set ns.rooms = ns.rooms + [board.room] -%]
+  [%- set ns.prefixes = ns.prefixes + [prefix] -%]
+  [%- set item = {'room': board.room, 'area': board.area, 'prefix': prefix, 'label': board.area ~ ' SPL offset', 'spectrum': spectrum, 'level': level} -%]
+  [%- set ns.prepared = ns.prepared + [item] -%]
+  [%- if board.music | default(false) -%][%- set ns.music = ns.music + [item] -%][%- endif -%]
+[%- endfor -%]
+[%- if ns.music | length > 1 -%][[ fail('two music sensors: ' ~ (ns.music | map(attribute='room') | join(', '))) ]][%- endif -%]
+[%- set source = (ns.music | first) if ns.music else none -%]
+# Room sound figures, from the Domosenso catalog (component audio-sensor). Edit the inputs and render
+# again rather than editing this file.
+#
+# Each board gets a calibration offset (dB SPL = dBFS + offset): a helper to type it in and a sensor
+# that shows it. A fresh helper starts at 0; the component's README says how to measure the offset.
+# The helper has no `initial:`, so a restart keeps the calibrated value.
+
+input_number:
+[%- for b in ns.prepared %]
+  [[ b.prefix ]]_spl_offset:
+    name: [[ b.label | yaml ]]
+    min: 0
+    max: 140
+    step: 0.1
+    mode: box
+    unit_of_measurement: dB
+    icon: mdi:ear-hearing
+[%- endfor %]
+
+# The spectrum (31 values, five times a second) is only for the live wave, never for history.
+recorder:
+  exclude:
+    entities:
+[%- for b in ns.prepared %]
+      - [[ b.spectrum ]]
+[%- endfor %]
+[%- if source %]
+      - sensor.music_spectrum
+[%- endif %]
+
+template:
+  - sensor:
+[%- for b in ns.prepared %]
+      - name: [[ b.label | yaml ]]
+        unique_id: audio_sensor_[[ b.prefix ]]_spl_offset
+        default_entity_id: sensor.[[ b.prefix ]]_spl_offset
+        unit_of_measurement: dB
+        state_class: measurement
+        state: "{{ states('input_number.[[ b.prefix ]]_spl_offset') | float(none) }}"
+[%- endfor %]
+[%- if source %]
+      # The music sensor, under names that do not depend on the room. The spectrum alias copies the
+      # state and does nothing else: it changes five times a second.
+      - name: Music spectrum
+        unique_id: audio_sensor_music_spectrum
+        default_entity_id: sensor.music_spectrum
+        icon: mdi:equalizer
+        state: "{{ states('[[ source.spectrum ]]') }}"
+      - name: Music SPL offset
+        unique_id: audio_sensor_music_spl_offset
+        default_entity_id: sensor.music_spl_offset
+        unit_of_measurement: dB
+        state_class: measurement
+        state: "{{ states('input_number.[[ source.prefix ]]_spl_offset') | float(none) }}"
+      # dBFS plus the offset is dB SPL. No number from the source (or from the offset) gives none,
+      # never the text unknown.
+      - name: Music level
+        unique_id: audio_sensor_music_level
+        default_entity_id: sensor.music_level
+        device_class: sound_pressure
+        unit_of_measurement: dB
+        state_class: measurement
+        state: >-
+          {% set level = states('[[ source.level ]]') | float(none) %}
+          {% set offset = states('input_number.[[ source.prefix ]]_spl_offset') | float(none) %}
+          {{ (level + offset) | round(1) if level is not none and offset is not none else none }}
+[%- endif %]
+[%- if source %]
+
+  - binary_sensor:
+      - name: Music sensor online
+        unique_id: audio_sensor_music_sensor_online
+        default_entity_id: binary_sensor.music_sensor_online
+        device_class: connectivity
+        state: "{{ states('[[ source.spectrum ]]') not in ['unavailable', 'unknown'] }}"
+[%- endif %]
