@@ -66,6 +66,9 @@ template:
         unit_of_measurement: dB
         state_class: measurement
         state: "{{ states('input_number.[[ b.prefix ]]_spl_offset') | float(none) }}"
+        attributes:
+          component: audio-sensor
+          area: [[ b.area | yaml ]]
 [%- endfor %]
 [%- if source %]
       # The music sensor, under names that do not depend on the room. The spectrum alias copies the
@@ -75,12 +78,16 @@ template:
         default_entity_id: sensor.music_spectrum
         icon: mdi:equalizer
         state: "{{ states('[[ source.spectrum ]]') }}"
+        attributes:
+          component: audio-sensor
       - name: Music SPL offset
         unique_id: audio_sensor_music_spl_offset
         default_entity_id: sensor.music_spl_offset
         unit_of_measurement: dB
         state_class: measurement
         state: "{{ states('input_number.[[ source.prefix ]]_spl_offset') | float(none) }}"
+        attributes:
+          component: audio-sensor
       # dBFS plus the offset is dB SPL. No number from the source (or from the offset) gives none,
       # never the text unknown.
       - name: Music level
@@ -89,6 +96,8 @@ template:
         device_class: sound_pressure
         unit_of_measurement: dB
         state_class: measurement
+        attributes:
+          component: audio-sensor
         state: >-
           {% set level = states('[[ source.level ]]') | float(none) %}
           {% set offset = states('input_number.[[ source.prefix ]]_spl_offset') | float(none) %}
@@ -102,4 +111,6 @@ template:
         default_entity_id: binary_sensor.music_sensor_online
         device_class: connectivity
         state: "{{ states('[[ source.spectrum ]]') not in ['unavailable', 'unknown'] }}"
+        attributes:
+          component: audio-sensor
 [%- endif %]

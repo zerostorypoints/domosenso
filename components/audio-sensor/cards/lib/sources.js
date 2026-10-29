@@ -17,7 +17,9 @@ const num = (x) => (x === null || x === undefined || (typeof x === "string" && x
 
 export function parseSpectrum(state) {
   if (state === undefined || state === null || EMPTY.has(String(state).trim())) return null;
-  return String(state).split(",").map(num);
+  // Home Assistant may hand a copied CSV over as a tuple or list: "(-83.8, -81.3)".
+  const text = String(state).trim().replace(/^[([](.*)[)\]]$/s, "$1");
+  return text.split(",").map(num);
 }
 
 // Power sum of levels in dB; NaN entries do not count.

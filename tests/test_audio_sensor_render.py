@@ -156,3 +156,13 @@ def test_alias_templates_stay_cheap(demo):
     state = templates(demo)["audio_sensor_music_spectrum"]["state"]
     assert state.count("states(") == 1
     assert "for " not in state and "split" not in state
+
+
+def test_entities_carry_the_component_and_boards_their_area(demo):
+    found = templates(demo)
+    assert len(found) == 6
+    for entity in found.values():
+        assert entity["attributes"]["component"] == "audio-sensor"
+    assert found["audio_sensor_kids_room_spl_offset"]["attributes"]["area"] == "Kids' room"
+    assert found["audio_sensor_living_room_spl_offset"]["attributes"]["area"] == "Living room"
+    assert "area" not in found["audio_sensor_music_level"]["attributes"]
