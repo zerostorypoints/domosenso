@@ -1,7 +1,8 @@
 # Domosenso component manifest (SPEC-018). 0.1.0 is built over several tasks; this file holds what
-# exists so far: the firmware package, the spectrum component and the cards. Artifacts that later
-# tasks add (the device file template, the factory image, the Home Assistant package, the dashboard)
-# are listed under `artifacts` only once their files are in the catalog, as catalog_check requires.
+# exists so far: the firmware package, the spectrum component, the cards and the Home Assistant
+# package. Artifacts that later tasks add (the device file template, the factory image, the
+# dashboard) are listed under `artifacts` only once their files are in the catalog, as
+# catalog_check requires.
 id: audio-sensor
 version: 0.1.0
 summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level, a third-octave spectrum and optional room acoustics
@@ -79,7 +80,10 @@ artifacts:
     # device file per `sensors` item), secrets [wifi_ssid, wifi_password, api_encryption_key].
   # The spectrum component the package loads with external_components; it is not an artifact a home
   # receives, ESPHome pulls it from the tag (a fixed `ref`, checked against `version`).
-  # Added by later tasks: templates (the Home Assistant package, the Room acoustics dashboard).
+  templates:                            # rendered per home by tools/domosenso_render.py
+    - templates/package.yaml.j2         # -> package.yaml, the home's packages/: offsets, recorder exclusions, music aliases
+  ha_packages: []
+  # Added by a later task: the Room acoustics dashboard.
   # Where the cards go in the home's config, served as /local/domosenso/audio-sensor/<version>/:
   # cards/*.js, cards/lib/** and translations/ keep their paths from this directory (tests and
   # cards/testing/ stay behind). The cards have no version of their own: a new component version is
@@ -108,6 +112,15 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "sensor.<id_prefix>_uptime", stability: additive-only, from: esphome, entity_key: uptime}
     - {id: "text_sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
     - {id: "button.<id_prefix>_restart", stability: additive-only, from: esphome, entity_key: restart}
+
+    # The Home Assistant package (templates/package.yaml.j2). The figures of room_acoustics: true
+    # come with the dashboard task.
+    - {id: "input_number.<id_prefix>_spl_offset", stability: stable, note: "0-140 dB, step 0.1, no initial: a fresh helper starts at 0 and the README's calibration sets it"}
+    - {id: "sensor.<id_prefix>_spl_offset", stability: stable, note: "the offset as a sensor"}
+    - {id: "sensor.music_spectrum", stability: stable, note: "the music board's Spectrum CSV, dBFS, unchanged; excluded from the recorder"}
+    - {id: "sensor.music_spl_offset", stability: stable, note: "that board's offset, dB"}
+    - {id: "sensor.music_level", stability: stable, note: "its 1 s Sound level plus the offset, dB SPL; none while the source has no number"}
+    - {id: "binary_sensor.music_sensor_online", stability: stable, note: "on while the Spectrum sensor is neither unavailable nor unknown"}
 
 consumes: []
 

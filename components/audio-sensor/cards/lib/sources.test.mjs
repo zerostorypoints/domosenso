@@ -89,3 +89,9 @@ test("readSource: a spectrum without a unit is in dB, an entity's own unit wins"
   assert.equal(readSource(src, hassOf(csv, { unit_of_measurement: "dBFS" })).unit, "dBFS");
   assert.equal(readSource({ kind: "scalar", entity: "sensor.x" }, hassOf("21")).unit, undefined);
 });
+
+test("parseSpectrum: a tuple- or list-shaped state parses like the CSV", () => {
+  assert.deepEqual(parseSpectrum("(-83.8, -81.3, -70)"), [-83.8, -81.3, -70]);
+  assert.deepEqual(parseSpectrum(" [-83.8,-81.3] "), [-83.8, -81.3]);
+  assert.deepEqual(parseSpectrum("-83.8, -81.3"), [-83.8, -81.3]);
+});
