@@ -5,7 +5,7 @@
 # catalog_check requires.
 id: audio-sensor
 version: 0.1.0
-summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level, a third-octave spectrum and optional room acoustics
+summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum
 description_key: meta.description
 photo: null
 
@@ -24,22 +24,18 @@ integrations:
   - {name: esphome, source: core, setup: "adopt the board in Home Assistant once flashed (discovery confirmation), with the API key from the home's ESPHome secrets"}
   - {name: "ESPHome (firmware)", source: firmware, tested: "2026.9.1", setup: "flash the first time over USB (download mode: hold the button while plugging in); then OTA"}
   - {name: template, source: core}
-  - {name: statistics, source: core, feature: room-acoustics}
-  - {name: group, source: core, feature: room-acoustics}
-  - {name: apexcharts-card, source: hacs, repo: RomRider/apexcharts-card, feature: room-acoustics, setup: "only with room_acoustics: true; `status` lists it (manual)"}
 
 # Values the home supplies; `domosenso add` writes the inputs skeleton, the add-component skill fills it.
 inputs:
   sensors:                                # one item per board; one device file each
-    type: "list[{room: slug, area: area_name, music: bool, acoustics: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]"
+    type: "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]"
     example:
       - {room: living-room, area: Living room, music: true}
-      - {room: kids-room, area: "Kids' room", acoustics: true}
+      - {room: kids-room, area: "Kids' room"}
     item:
       room: {type: slug, note: "the board's hostname part (audio-sensor-<room>), words joined by -"}
       area: {type: area_name, note: "the Home Assistant area"}
       music: {type: bool, default: false, note: "this board is the default music source (the select's first option); at most one item"}
-      acoustics: {type: bool, default: true, note: "with room_acoustics: true, this board gets the derived figures"}
       id_prefix: {type: slug, default: "the room slug with _", note: "prefix of the ids this component creates for the board"}
       name: {type: str, default: "audio-sensor-<room>", note: "ESPHome substitution"}
       friendly_name: {type: str, default: "Audio sensor <area>", note: "ESPHome substitution"}
@@ -64,13 +60,6 @@ inputs:
           bssid: sensor.<..>_connected_ap_bssid
           restart: button.<..>_restart
           load: sensor.<..>_spectrum_load
-  playing:                                # an entity that means music plays: the listening sessions follow it
-    type: "entity_id (binary_sensor or media_player)"
-    default: null
-    example: media_player.living_room_speaker
-  room_acoustics:                         # the derived figures per board and the Room acoustics dashboard
-    type: bool
-    default: false
 
 artifacts:
   esphome:
@@ -86,7 +75,6 @@ artifacts:
   templates:                            # rendered per home by tools/domosenso_render.py
     - templates/package.yaml.j2         # -> package.yaml, the home's packages/: offsets, recorder exclusions, music aliases
   ha_packages: []
-  # Added by a later task: the Room acoustics dashboard.
   # Where the cards go in the home's config, served as /local/domosenso/audio-sensor/<version>/:
   # cards/*.js, cards/lib/** and translations/ keep their paths from this directory (tests and
   # cards/testing/ stay behind). The cards have no version of their own: a new component version is
@@ -97,8 +85,6 @@ artifacts:
     - cards/room-meter-card.js          # the analogue meter: needle, zones, clip mark
 
 provides:                                 # contract surface; placeholders in <> come from inputs
-  # The entities of the Home Assistant package, the aliases and the room-acoustics figures are
-  # listed with that package (the template task); the ESPHome side is fixed here.
   project: {name: domosenso.audio-sensor, stability: stable}   # reported to Home Assistant as manufacturer domosenso
   entities:
     - {id: "sensor.<id_prefix>_spectrum", stability: stable, from: esphome, entity_key: spectrum,
@@ -116,8 +102,7 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
     - {id: "button.<id_prefix>_restart", stability: additive-only, from: esphome, entity_key: restart}
 
-    # The Home Assistant package (templates/package.yaml.j2). The figures of room_acoustics: true
-    # come with the dashboard task.
+    # The Home Assistant package (templates/package.yaml.j2).
     - {id: "input_number.<id_prefix>_spl_offset", stability: stable, note: "0-140 dB, step 0.1, no initial: a fresh helper starts at 0 and the README's calibration sets it"}
     - {id: "sensor.<id_prefix>_spl_offset", stability: stable, note: "the offset as a sensor"}
     - {id: "sensor.music_spectrum", stability: stable, note: "the selected board's Spectrum CSV, dBFS, unchanged; excluded from the recorder"}

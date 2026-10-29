@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Misst, wie laut ein Raum ist, mit einem kleinen Mikrofon-Board: den Schallpegel, ein Spektrum nach Tonhöhe und auf Wunsch ein Dashboard zur Raumakustik.",
+    "description": "Misst, wie laut ein Raum ist, mit einem kleinen Mikrofon-Board: den Schallpegel, ein Spektrum nach Tonhöhe und einen kalibrierten Pegel in dB SPL.",
     "devices": {
       "m5stack-atom-echos3r": {
         "description": "Ein handtellergrosses ESP32-S3-Board mit Mikrofon, Audio-Chip und WLAN, per USB versorgt.",
