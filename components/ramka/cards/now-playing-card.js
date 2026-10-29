@@ -102,13 +102,23 @@ class NowPlayingCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this._connected = true;
     this._timer = setInterval(() => this._progress(), 1000);
     if (this._built) this._visualSync(true);
   }
 
+  // A kiosk rebuilds its dashboard for weeks and drops the old cards: nothing of a detached card
+  // may keep running or be kept alive. A mounted child stays (reconnecting reuses it); a creation
+  // still in flight and the element waits are dropped and come back on reconnect.
   disconnectedCallback() {
+    this._connected = false;
     clearInterval(this._timer);
     this._waveStop();
+    this._visualWaits = null;
+    if (!this._visualChild) {
+      this._visualKey = undefined;
+      this._visualToken = null;
+    }
   }
 
   // ---- Wave: a soft animation while the music plays ------------------------------
@@ -166,17 +176,26 @@ class NowPlayingCard extends HTMLElement {
     if (typeof config?.type !== "string") return null;
     const tag = config.type.replace(/^custom:/, "");
     if (customElements.get(tag)) return option;
-    this._visualPending ??= new Set();
-    if (!this._visualPending.has(tag)) {
-      this._visualPending.add(tag);
-      customElements.whenDefined(tag).then(() => { this._visualPending.delete(tag); this._visualSync(); });
+    // The registry keeps the wait until the element is defined, perhaps never (no audio-sensor):
+    // it holds the card only weakly, and a disconnect makes it stale.
+    this._visualWaits ??= new Set();
+    if (!this._visualWaits.has(tag)) {
+      const waits = this._visualWaits.add(tag), ref = new WeakRef(this);
+      customElements.whenDefined(tag).then(() => {
+        const card = ref.deref();
+        if (card && card._visualWaits === waits) { waits.delete(tag); card._visualSync(); }
+      });
     }
     return null;
   }
 
-  // Shows the wanted visual or the own wave. The own wave starts and stops only on a change, or
-  // on `restart` (connected again), so an update while disconnected starts nothing.
+  // Shows the wanted visual or the own wave, only while connected: a detached card only feeds a
+  // child it already has, and reconnecting (`restart`) resumes from the state as it is then.
   _visualSync(restart = false) {
+    if (!this._connected) {
+      if (this._visualChild) this._visualChild.hass = this._hass;
+      return;
+    }
     const key = this._visualWanted();
     if (key !== this._visualKey) {
       this._visualKey = key;
@@ -200,15 +219,22 @@ class NowPlayingCard extends HTMLElement {
   }
 
   // Home Assistant's own createCardElement where it exists (error cards, its card handling);
-  // the element directly otherwise. `token` drops a creation a later switch has superseded.
+  // the element directly otherwise, or when the helpers fail. `token` drops a creation that a
+  // later switch or a disconnect has superseded. If both ways fail, the own wave keeps drawing.
   _visualCreate(config, token) {
+    const direct = () => {
+      const el = document.createElement(config.type.replace(/^custom:/, ""));
+      el.setConfig(config);
+      return el;
+    };
     const mount = (helpers) => {
-      if (token !== this._visualToken) return;
+      if (token !== this._visualToken || !this._connected) return;
       let el;
-      if (helpers) el = helpers.createCardElement(config);
-      else {
-        el = document.createElement(config.type.replace(/^custom:/, ""));
-        el.setConfig(config);
+      try {
+        el = helpers ? helpers.createCardElement(config) : direct();
+      } catch {
+        if (!helpers) return;
+        try { el = direct(); } catch { return; }
       }
       for (const [name, value] of Object.entries(VISUAL_STYLE)) el.style.setProperty(name, value);
       this._waveStop();
@@ -218,7 +244,7 @@ class NowPlayingCard extends HTMLElement {
       this._visualChild = el;
       el.hass = this._hass;
     };
-    if (window.loadCardHelpers) window.loadCardHelpers().then(mount);
+    if (window.loadCardHelpers) window.loadCardHelpers().then(mount, () => mount(null));
     else mount(null);
   }
 
