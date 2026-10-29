@@ -117,6 +117,17 @@ def write_json(path, data, check):
         path.write_text(expected)
 
 
+def outputs(content, catalog, docs):
+    """Generated files by repository path. How-tos, drafts included, go to their own file, which only
+    server modules import: content.json is also imported by client components and so is bundled
+    into the public JavaScript."""
+    rest = {k: v for k, v in content.items() if k != 'howTos'}
+    return {'website/src/generated/content.json': rest,
+            'website/src/generated/howtos.json': content.get('howTos', []),
+            'website/src/generated/catalog.json': catalog,
+            'website/content/docs.generated.json': docs}
+
+
 def verify_remote(root, publication):
     refs = {}
     for line in git(root, 'ls-remote', '--tags', 'origin').splitlines():
@@ -145,9 +156,8 @@ def main():
         if args.verify_remote:
             verify_content_refs(ROOT, publication, content)
         catalog, docs = build(ROOT, publication)
-        write_json(ROOT / 'website/src/generated/content.json', content, args.check)
-        write_json(ROOT / 'website/src/generated/catalog.json', catalog, args.check)
-        write_json(ROOT / 'website/content/docs.generated.json', docs, args.check)
+        for path, data in outputs(content, catalog, docs).items():
+            write_json(ROOT / path, data, args.check)
     except (ValueError, KeyError, OSError, yaml.YAMLError) as error:
         parser.exit(1, f'FAIL {error}\n')
     print('ok website content')

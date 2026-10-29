@@ -99,3 +99,23 @@ test('catalog sections lead from components to hardware and back from a guide',a
  await sections.getByRole('link',{name:/DomoSenso components/}).click();
  await expect(page.locator('.browser-card')).toHaveCount(10);
 });
+
+test('how-to guides: index, branch table, agent prompt, structured data and drafts kept off production',async({page})=>{
+ await page.goto('/how-to/');
+ await expect(page.locator('.howto-card')).toHaveCount(5);
+ const response=await page.goto('/how-to/automate-old-awnings/');expect(response?.status()).toBe(200);
+ await expect(page.locator('h1')).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ const wall=page.locator('table.howto-branches tbody tr').filter({hasText:'buttons in the wall'});
+ await expect(wall).toHaveCount(1);
+ await expect(wall.getByRole('link')).toHaveAttribute('href',/\/issues\/74$/);
+ await expect(page.locator('.howto-prompt').first()).toContainText('Tell your agent');
+ await expect(page.locator('.howto-prompt h2')).toHaveText(['Tell your agent']);
+ await expect(page.locator('.howto-lead')).toContainText('Somfy remote');
+ expect(await page.evaluate(()=>!!(document.querySelector('.howto-lead')!.compareDocumentPosition(document.querySelector('table.howto-branches')!)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+ const ld=await page.locator('script[type="application/ld+json"]').first().textContent();
+ expect(JSON.parse(ld!).some((item:{'@type':string})=>item['@type']==='HowTo')).toBe(true);
+ await page.goto('/components/awnings/');
+ await expect(page.locator('.related-howto')).toContainText('Automate old awnings');
+ const draft=await page.goto('/how-to/see-power-consumption/');expect(draft?.status()).toBe(404);
+});

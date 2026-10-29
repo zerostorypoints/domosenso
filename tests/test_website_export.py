@@ -79,3 +79,12 @@ def test_export_is_deterministic_and_checks_stale_output(catalog,tmp_path):
 def test_unsafe_or_duplicate_identifiers_fail(catalog):
     root,pub,_=catalog; pub['components'].append(pub['components'][0])
     with pytest.raises(ValueError,match='duplicate'): exporter().build(root,pub)
+
+
+def test_howtos_get_their_own_generated_file():
+    # Client components import content.json; draft how-tos must never be bundled with it.
+    out = exporter().outputs({'components': [], 'howTos': [{'slug': 'x', 'status': 'draft'}]}, {'c': 1}, {'d': 1})
+    assert out['website/src/generated/howtos.json'] == [{'slug': 'x', 'status': 'draft'}]
+    assert 'howTos' not in out['website/src/generated/content.json']
+    assert set(out) == {'website/src/generated/content.json', 'website/src/generated/howtos.json',
+                        'website/src/generated/catalog.json', 'website/content/docs.generated.json'}
