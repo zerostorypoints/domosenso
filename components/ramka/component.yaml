@@ -5,8 +5,8 @@
 # Companion app; its notification commands wake, dim and sleep the screen.
 #
 # Instance: `uv run tools/domosenso_render.py components/ramka --inputs <inputs.yaml> --out <dir>`
-# writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
-# notes for an existing home: UPGRADE.md.
+# writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
+# from templates/. Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
 version: 0.4.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
@@ -171,6 +171,7 @@ artifacts:
   templates:                    # rendered per home by tools/domosenso_render.py
     - templates/package.yaml.j2          # -> package.yaml, the home's packages/
     - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
+    - templates/ramka-settings.lang.yaml.j2   # -> dashboards/ramka-settings.<lang>.yaml, the admins' live settings (0.4.0)
   ha_packages: []
   # Where the cards go in the home's config: www/domosenso/<id>/<version>/, served as
   # /local/domosenso/ramka/<version>/. The cards (cards/*.js), what they import (cards/lib/) and
@@ -233,6 +234,14 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: sensor.music_level}
   - {component: audio-sensor, id: binary_sensor.music_sensor_online}
   - {component: audio-sensor, element: ambient-wave-card}
+  # The settings dashboard's Music page (SPEC-020): the music source and the calibration of the board
+  # it names. Hidden while the select is unavailable, as in a home without audio-sensor.
+  - {component: audio-sensor, id: input_select.audio_sensor_music_source}
+  - {component: audio-sensor, id: sensor.music_mic_gain}
+  - {component: audio-sensor, id: sensor.music_spl_calibration}
+  - {component: audio-sensor, id: input_number.audio_sensor_measured_offset}
+  - {component: audio-sensor, id: input_text.audio_sensor_calibration_note}
+  - {component: audio-sensor, id: script.audio_sensor_apply_calibration}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh ramka), 2026-10-20
