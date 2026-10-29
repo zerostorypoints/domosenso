@@ -1,7 +1,7 @@
 // llms.txt and llms-full.txt (llmstxt.org), generated from the published content (SPEC-020).
 // Server modules only: callers pass how-tos already filtered by visibleHowTos.
 import type {HowTo} from './howto';
-import {componentName,repository,type Component} from './catalog';
+import {componentName,evidenceLabel,repository,type Component} from './catalog';
 import type {Article} from './content';
 import {absolutize,fence,howToMarkdown,componentMarkdown,getStartedMarkdown,type Device,type Doc} from './markdown';
 import {installCommands,starterPrompt,noHomeAssistant,agentRules} from './install';
@@ -15,9 +15,9 @@ const state=(b:HowTo['branches'][number])=>b.supported==='yes'?'yes':b.supported
 function header(i:AgentIndexInput):string{
  return [
   '# DomoSenso',
-  '> DomoSenso is an Apache-2.0 catalog of tested Home Assistant components and the agent skills that install them. Your coding agent (Claude Code or Codex) adds components to your own home repository; you approve every change to Home Assistant.',
+  '> DomoSenso is an Apache-2.0 catalog of Home Assistant components, each with its recorded field evidence, and the agent skills that install them. Your coding agent (Claude Code or Codex) adds components to your own home repository; you approve every change to Home Assistant.',
   '## Start here',
-  `You run Home Assistant Container: clone the catalog and start your agent in it.\n\n${fence(installCommands,'bash')}\n\nIn Claude Code, type \`/onboard-home\`; in Codex, ask it to run the onboard-home skill. A first prompt:\n\n> ${starterPrompt}`,
+  `You run Home Assistant Container: clone the catalog and start your agent in it.\n\n${fence(installCommands,'bash')}\n\nIn Claude Code, type \`/onboard-home\`. With Codex, run \`codex\` instead of \`claude\` in the same folder and ask it to run the onboard-home skill. A first prompt:\n\n> ${starterPrompt}`,
   noHomeAssistant.join('\n\n'),
   link('Get started','/get-started/index.md','the same steps as a page'),
   '## Limits',
@@ -32,7 +32,7 @@ export function llmsTxt(i:AgentIndexInput):string{
   'Recipes for specific projects. Each lists the situations it covers; a supported one carries a prompt for your coding agent.',
   i.howTos.map(h=>[link(h.title,`/how-to/${h.slug}/index.md`,h.description),...h.branches.map(b=>`  - ${b.situation} → ${state(b)}`)].join('\n')).join('\n'),
   '## Components',
-  i.components.map(c=>link(componentName(c.id),`/components/${c.id}/index.md`,c.summary)).join('\n'),
+  i.components.map(c=>link(componentName(c.id),`/components/${c.id}/index.md`,`${c.summary} (${evidenceLabel(c.testedHomes)})`)).join('\n'),
   '## Hardware',
   i.devices.map(d=>link(d.title,`/devices/${d.id}/index.md`,d.summary)).join('\n'),
   '## Docs',

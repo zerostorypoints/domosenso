@@ -31,6 +31,14 @@ test('llms-full.txt contains each how-to markdown in full',()=>{
  expect(full).toContain(howToMarkdown(h('a')));
  expect(full).toContain(howToMarkdown(h('b')));
 });
+test('component lines carry their field evidence',()=>{
+ // Without it an agent reading only the index would present a one-home component as broadly tested.
+ const c={id:'plants',summary:'Plant care.',testedHomes:1} as unknown as AgentIndexInput['components'][number];
+ expect(llmsTxt({...input([]),components:[c]})).toContain('- [Plant care](https://domosenso.org/components/plants/index.md): Plant care. (Tested in 1 home)');
+});
+test('a Codex user is told to start codex, not claude',()=>{
+ expect(llmsTxt(input([]))).toContain('With Codex, run `codex` instead of `claude`');
+});
 test('a draft passed through visibleHowTos is absent',()=>{
  const txt=llmsTxt(input(visibleHowTos([h('a'),{...h('secret-draft'),status:'draft'}],false)));
  expect(txt).not.toContain('secret-draft');
