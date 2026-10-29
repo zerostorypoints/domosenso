@@ -47,7 +47,7 @@ this document. Verify account, GitHub access, DNS and TLS independently.
 Watch `website/*` for builds; Cloudflare’s single wildcard also matches nested
 paths. Catalog and documentation changes must update the committed snapshots
 through the exporter checks. Pull requests must not receive
-deployment credentials. Keep previews private until repository publication.
+deployment credentials.
 Branch previews set `CF_PAGES_BRANCH`; non-main builds emit `noindex` metadata.
 Also verify Cloudflare's preview `X-Robots-Tag` behavior and redirect the production
 `pages.dev` hostname to the canonical domain to avoid duplicate indexing.
@@ -81,14 +81,15 @@ production deployment is public on `pages.dev` even before adding a custom domai
 | Build output directory | `out` |
 | Environment variable | `NODE_VERSION=22` in production and preview |
 | Build watch include | `website/*` |
-| Preview deployments | Disabled initially; enable only with an Access policy |
+| Preview deployments | Enabled and public; every non-`main` build is `noindex` |
 | Runtime bindings / secrets | None |
 
 Authorize GitHub access to this repository only if the integration needs approval.
 Do not create API tokens in source or add deployment secrets to pull-request jobs.
 `CF_PAGES_BRANCH` is supplied by Pages; do not override it. Non-main builds have
-`noindex` metadata, but that is not access control. Pages Access for previews does
-not protect the production `pages.dev` address or custom domains.
+`noindex` metadata and `X-Robots-Tag`. Previews are public by decision (2026-10-29); they
+hold only what the repository already shows. Cloudflare keeps a preview after merge; the
+PR-close workflow deletes it.
 
 After the first successful production deployment, add `domosenso.org` in the
 project's **Custom domains** tab. Let Pages set up DNS in the same account. Do not
@@ -128,9 +129,9 @@ headers from `public/_headers`, canonical URLs, page metadata, mobile navigation
 and source links. Verify every sitemap route anonymously. The selected
 `frameworkCommit` and component commits must be reachable without authentication.
 
-For a preview, verify both `noindex` metadata and `X-Robots-Tag: noindex`, and that
-Access blocks an anonymous browser if private previews are enabled. Do not use
-robots.txt as an access-control mechanism.
+For a preview, verify both `noindex` metadata and `X-Robots-Tag: noindex`. Previews are
+public; do not put anything on them that the repository does not show. List a PR's pages
+with `uv run tools/website_changes.py --base origin/main --preview-url <preview>`.
 
 On first-launch failure, remove custom-domain routing or restore a holding page;
 there is no earlier DomoSenso Pages deployment to roll back to. For later releases,
@@ -148,6 +149,21 @@ Merge the release PR with a merge commit that preserves its commits. The curated
 deleting the branch would not preserve that commit as an ancestor of `main`.
 If the merge method changes, select and regenerate content from an immutable
 revision that will remain publicly reachable before publishing the website.
+
+## Manual setup
+
+Done once in the provider panels; nothing here is provisioned by the repository.
+
+- Cloudflare Pages project `domosenso-framework`: enable preview deployments for non-production
+  branches.
+- Create a Cloudflare API token with Account > Cloudflare Pages > Edit (Cloudflare may not let you
+  narrow it to one project; check when creating it, and note that it can also deploy to production).
+  Store it as repository secret `CLOUDFLARE_API_TOKEN` and add repository variable
+  `CLOUDFLARE_ACCOUNT_ID`. The preview-cleanup workflow skips until both are set.
+- On the first preview, verify the `noindex` metadata and the `X-Robots-Tag` header once.
+- IndexNow: the key file is `website/public/<key>.txt`; nothing else is needed.
+- Sitemap resubmission to Search Console and Bing after a merge is an agent step in the
+  `domosenso-website-audit` skill.
 
 ## Optional analytics and webmaster verification
 
