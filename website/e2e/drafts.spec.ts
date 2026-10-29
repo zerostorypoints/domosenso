@@ -20,7 +20,7 @@ test('production build output contains no draft how-to slug or title',()=>{
  const list=drafts();expect(list.length).toBeGreaterThan(0);
  const hits:string[]=[];
  for(const file of files(path.join(root,'out'))){
-  if(!/\.(html|txt|js|json|xml|rsc)$/.test(file))continue;
+  if(!/\.(html|txt|js|json|xml|rsc|md)$/.test(file))continue;
   const text=fs.readFileSync(file,'utf8');
   for(const d of list)for(const needle of [d.slug,d.title])if(text.includes(needle))hits.push(`${path.relative(root,file)}: ${needle}`);
  }

@@ -10,7 +10,7 @@ import {PageIntro} from '@/components/site';
 type Props={params:Promise<{slug:string}>};
 export const dynamicParams=false;
 export function generateStaticParams(){return visibleHowTos(howTos).map(h=>({slug:h.slug}));}
-export async function generateMetadata({params}:Props){const {slug}=await params;const h=visibleHowTos(howTos).find(h=>h.slug===slug);if(!h)notFound();return meta(h.title,`/how-to/${slug}/`,h.description);}
+export async function generateMetadata({params}:Props){const {slug}=await params;const h=visibleHowTos(howTos).find(h=>h.slug===slug);if(!h)notFound();return meta(h.title,`/how-to/${slug}/`,h.description,{markdown:true});}
 export default async function Page({params}:Props){
  const {slug}=await params;const h=visibleHowTos(howTos).find(h=>h.slug===slug);if(!h)notFound();
  const yes=h.branches.filter(b=>b.supported==='yes'&&b.prompt);const {lead,rest}=splitLead(h.body);

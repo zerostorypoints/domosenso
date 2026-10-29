@@ -8,6 +8,7 @@
 """
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -98,9 +99,41 @@ def changed_routes(paths, root, base, head='HEAD'):
     return sorted(found.items())
 
 
-def render(routes, fmt, preview):
+# Code that writes every index.md: a change here regenerates pages no content diff names.
+MARKDOWN_CODE = re.compile(r'^website/src/(lib/(markdown|install)\.ts|app/.+/index\.md/route\.ts)$')
+
+
+def published_pages(root, head):
+    """Every page with an index.md at `head`, from the committed generated data; drafts left out."""
+    def data(path, default):
+        text = show(root, head, path)
+        return json.loads(text) if text else default
+    content = data(GENERATED + 'content.json', {})
+    return (['/get-started/']
+            + [f'/how-to/{h["slug"]}/' for h in data(GENERATED + 'howtos.json', []) if h.get('status') == 'published']
+            + [f'/components/{c["id"]}/' for c in data(GENERATED + 'catalog.json', {}).get('components', [])]
+            + [f'/devices/{d["id"]}/' for d in content.get('devices', [])]
+            + [f'/journal/{a["slug"]}/' for a in content.get('articles', [])]
+            + [f'/docs/{d["slug"]}/' for d in data(CONTENT + 'docs.generated.json', [])])
+
+
+def agent_urls(urls, pages=()):
+    """The changed pages plus their markdown copies and the llms files built from them (SPEC-020).
+    `pages` are routes whose index.md changed although the page itself did not."""
+    if not urls:
+        return []
+    extra = [SITE + p + 'index.md' for p in pages]
+    for url in urls:
+        path = url[len(SITE):]
+        if path.count('/') > 2 or path == '/get-started/':  # a page, not a section index
+            extra.append(url + 'index.md')
+    extra += [SITE + '/llms.txt', SITE + '/llms-full.txt']
+    return list(dict.fromkeys(urls + extra))
+
+
+def render(routes, fmt, preview, markdown_pages=()):
     if fmt == 'urls':
-        return [SITE + r for r, why in routes if not why.endswith(DRAFT)]
+        return agent_urls([SITE + r for r, why in routes if not why.endswith(DRAFT)], markdown_pages)
     if not routes:
         return ['no website changes']
     return [f'- [{r}]({preview.rstrip("/")}{r}) — {why}' if preview else f'- `{r}` — {why}' for r, why in routes]
@@ -119,8 +152,10 @@ def main(argv=None):
                           capture_output=True, text=True)
     if diff.returncode:
         sys.exit(diff.stderr.strip())
-    routes = changed_routes(diff.stdout.split('\n')[:-1] if diff.stdout else [], Path(a.root), base, a.head)
-    for line in render(routes, a.format, a.preview_url):
+    paths = diff.stdout.split('\n')[:-1] if diff.stdout else []
+    routes = changed_routes(paths, Path(a.root), base, a.head)
+    pages = published_pages(Path(a.root), a.head) if any(MARKDOWN_CODE.match(p) for p in paths) else ()
+    for line in render(routes, a.format, a.preview_url, pages):
         print(line)
 
 

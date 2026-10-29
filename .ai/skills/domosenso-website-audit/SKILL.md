@@ -66,6 +66,8 @@ uv run tools/website_changes.py --base origin/main --preview-url <preview URL>
 
 Check each listed route on the preview. Draft routes exist only there. After merge, open the
 same routes on https://domosenso.org (`--format urls` prints them without drafts).
+Agent files: `/llms.txt` lists every published how-to and component, and a changed page's
+`index.md` matches the page (`e2e/agent-files.spec.ts` checks the build; look at one live).
 
 ### Tell the search engines
 

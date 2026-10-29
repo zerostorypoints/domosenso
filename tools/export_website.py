@@ -50,6 +50,33 @@ def rewrite_links(body, path, routes, commit):
     return re.sub(r'(\[[^\]]*\]\()([^\s)]+)\)', replace, body)
 
 
+def document_routes(documents):
+    routes = {}; slugs = set()
+    for doc in documents:
+        path, slug = doc['path'], doc['slug']
+        if not valid_document(path) or not IDENTIFIER.fullmatch(slug):
+            raise ValueError('invalid public document path/slug')
+        if path in routes or slug in slugs:
+            raise ValueError('duplicate public document')
+        routes[path] = f'/docs/{slug}/'; slugs.add(slug)
+    return routes
+
+
+def readme_section(markdown, heading):
+    match = re.search(rf'^## {re.escape(heading)}[ \t]*\n(.*?)(?=^## |\Z)', markdown, re.M | re.S)
+    if not match:
+        raise ValueError(f'README has no section {heading}')
+    return match.group(1).strip()
+
+
+def agent_content(root, publication):
+    """What only the agent files need: the README's prerequisites at frameworkCommit (SPEC-020)."""
+    commit = publication['frameworkCommit']
+    routes = document_routes(publication['documents'])
+    section = readme_section(read(root, commit, 'README.md'), 'Prerequisites')
+    return {'prerequisites': rewrite_links(section, 'README.md', routes, commit)}
+
+
 def build(root, publication):
     commit = publication['frameworkCommit']
     if not COMMIT.fullmatch(commit):
@@ -93,14 +120,7 @@ def build(root, publication):
             'upgradeUrl': f'{REPOSITORY}/blob/{sha}/{folder}/UPGRADE.md' if f'{folder}/UPGRADE.md' in tree else None,
         })
     documents = publication['documents']
-    routes = {}; slugs = set()
-    for doc in documents:
-        path, slug = doc['path'], doc['slug']
-        if not valid_document(path) or not IDENTIFIER.fullmatch(slug):
-            raise ValueError('invalid public document path/slug')
-        if path in routes or slug in slugs:
-            raise ValueError('duplicate public document')
-        routes[path] = f'/docs/{slug}/'; slugs.add(slug)
+    routes = document_routes(documents)
     docs = [{'slug': d['slug'], 'title': d['title'],
              'body': rewrite_links(read(root, commit, d['path']), d['path'], routes, commit),
              'sourceUrl': f'{REPOSITORY}/blob/{commit}/{d["path"]}'} for d in documents]
@@ -117,7 +137,7 @@ def write_json(path, data, check):
         path.write_text(expected)
 
 
-def outputs(content, catalog, docs):
+def outputs(content, catalog, docs, agent):
     """Generated files by repository path. How-tos, drafts included, go to their own file, which only
     server modules import: content.json is also imported by client components and so is bundled
     into the public JavaScript."""
@@ -125,7 +145,8 @@ def outputs(content, catalog, docs):
     return {'website/src/generated/content.json': rest,
             'website/src/generated/howtos.json': content.get('howTos', []),
             'website/src/generated/catalog.json': catalog,
-            'website/content/docs.generated.json': docs}
+            'website/content/docs.generated.json': docs,
+            'website/src/generated/agent.json': agent}
 
 
 def verify_remote(root, publication):
@@ -156,7 +177,7 @@ def main():
         if args.verify_remote:
             verify_content_refs(ROOT, publication, content)
         catalog, docs = build(ROOT, publication)
-        for path, data in outputs(content, catalog, docs).items():
+        for path, data in outputs(content, catalog, docs, agent_content(ROOT, publication)).items():
             write_json(ROOT / path, data, args.check)
     except (ValueError, KeyError, OSError, yaml.YAMLError) as error:
         parser.exit(1, f'FAIL {error}\n')

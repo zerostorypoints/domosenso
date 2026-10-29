@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import {PageIntro,Code,Arrow} from '@/components/site';
-import {frameworkCommit} from '@/lib/catalog';
+import {installCommands,starterPrompt,noHomeAssistant} from '@/lib/install';
 import {metadata as meta} from '@/lib/seo';
 
-export const metadata = meta('Get started','/get-started/');
+export const metadata = meta('Get started','/get-started/',undefined,{markdown:true});
 
 export default function Page() {
   return <div className="page">
@@ -13,19 +13,22 @@ export default function Page() {
     <div className="guide-layout">
       <aside className="guide-aside">
         <p className="eyebrow">BEFORE YOU START</p>
-        <dl><dt>Installation</dt><dd>Home Assistant Container</dd><dt>Host access</dt><dd>SSH, key-based, with Docker available</dd><dt>Local tools</dt><dd>Git, uv, Claude Code or Codex</dd><dt>Field-tested host</dt><dd>Synology NAS with Container Manager</dd></dl>
+        <dl><dt>Installation</dt><dd>Home Assistant Container, or a Docker host to install it on</dd><dt>Host access</dt><dd>SSH, key-based, with Docker available</dd><dt>Local tools</dt><dd>Git, GitHub CLI (gh), uv, Claude Code or Codex</dd><dt>Field-tested host</dt><dd>Synology NAS with Container Manager</dd></dl>
         <p className="note">HAOS is not supported by this onboarding path. Other Docker hosts need individual validation.</p>
         <Link className="text-link" href="/docs/compatibility/">Ownership & contracts ↗</Link>
       </aside>
       <div className="guide-content">
         <section><span className="step-number">01 / PREPARE</span><h2>Open the framework with your agent.</h2>
-          <p>Clone the catalog with its component tags and use the documented revision. This is the shared framework; your home project will live in a separate folder.</p>
-          <Code>{`git clone https://github.com/zerostorypoints/domosenso.git\ncd domosenso\ngit checkout ${frameworkCommit}\nuv sync\nclaude`}</Code>
+          <p>Clone the catalog; its component tags come with it. This is the shared framework; your home project will live in a separate folder.</p>
+          <Code>{installCommands}</Code>
           <p>In Claude Code, run <code>/onboard-home</code>. In Codex, start <code>codex</code> instead and ask it to use the onboard-home skill. You can begin with this prompt:</p>
           <div className="starter-prompt"><p className="eyebrow">PASTE INTO YOUR CODING AGENT</p>
-            <blockquote aria-label="Starter prompt">Use the onboard-home skill to help me configure my Home Assistant setup. Ask about my host, devices and goals. Create a separate home project and start with backups. Stop at the deployment plan so I can review it before any live changes.</blockquote>
+            <blockquote aria-label="Starter prompt">{starterPrompt}</blockquote>
             <p>The conversation happens in your agent. There is no AI chat or connection to your installation on this website.</p>
           </div>
+        </section>
+        <section aria-labelledby="no-ha"><h2 id="no-ha">No Home Assistant yet?</h2>
+          {noHomeAssistant.map(p=><p key={p}>{p}</p>)}
         </section>
         <section><span className="step-number">02 / DISCOVER</span><h2>Work from the devices you have.</h2>
           <p>The skill asks about your host and priorities. With the access you provide, it reads your Home Assistant devices and discovered integrations, then compares them with the catalog’s requirements.</p>
