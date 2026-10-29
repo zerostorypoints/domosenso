@@ -100,6 +100,23 @@ must provide a suitable private test adapter and document its limits. Missing se
 blocked downloads, calendars and physical screen commands are **not** successful acceptance.
 Do not copy production secrets/storage or open networking just to get green checks.
 
+### Gaps an empty staging shows first
+
+The first baseline `check_config` on a blank instance usually fails on things the deploy never
+carries, not on the update. Seen on a real home, in this order:
+
+- **UI files** (`automations.yaml`, `scripts.yaml`, `scenes.yaml`) listed as `unmanaged_on_target`
+  but included by `configuration.yaml`: create empty ones (`[]`, `[]`, `{}`) in the staging config.
+- **Directories the config names** (a photo folder under `www/`, an allowlisted path): create
+  them empty.
+- **Custom integrations** (`config/custom_components/`, installed by hand on production): copy the
+  exact version production runs, from its pinned source, or the config check reports the
+  integration as missing.
+
+Record each fixture in the handoff; reapply after `reset`. A dashboard whose mode starts `off`
+renders black until an `input_select` is set. A compare against an `equivalence.yaml` written for
+production prints stale-explanation warnings; read them, do not add exemptions for staging.
+
 `uv --project` selects CLI code. Tagged components come from the home's `catalog:` setting;
 record their tag commit separately. `render --catalog-dev` selects a framework working tree,
 stamps a development preview and bypasses normal hand-edit protection: preserve/reconcile all

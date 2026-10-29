@@ -64,7 +64,9 @@ silently substitute production. Report unsupported behavior and failures explici
 
 First establish the existing customized home revision on this owned staging: review `deploy
 staging-review --plan`, apply, inspect errors/UI and take a snapshot to an explicit private path.
-Then update to the selected released version with `update COMPONENT --to VERSION`, or render the
+Expect the baseline to fail first on what deploys never carry: included UI files, directories the
+config names, hand-installed custom integrations; the guide lists the fixes. Add those as private
+fixtures, never by copying production `.storage`. Then update to the selected released version with `update COMPONENT --to VERSION`, or render the
 verified PR through the development route. Read upgrade notes, inspect input/lock/generated diffs,
 run appropriate checks, plan/apply the candidate to the same owned staging and take a separate
 snapshot. Reapply any private fixtures after restart; compare and explain intended differences.
