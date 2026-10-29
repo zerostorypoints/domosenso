@@ -1,6 +1,7 @@
-import type {HowTo} from './content';
+import {howTos,type HowTo} from './content';
 export function isPreviewBuild(branch:string|undefined=process.env.CF_PAGES_BRANCH):boolean{return !!branch&&branch!=='main';}
 export function visibleHowTos(all:HowTo[],preview=isPreviewBuild()):HowTo[]{return preview?all:all.filter(h=>h.status==='published');}
+export function howToLinks(slugs:string[],preview=isPreviewBuild()):HowTo[]{const v=visibleHowTos(howTos,preview);return slugs.flatMap(s=>v.filter(h=>h.slug===s));}
 export function howToJsonLd(h:HowTo,origin='https://domosenso.org'):object[]{
  const url=`${origin}/how-to/${h.slug}/`;
  return [
