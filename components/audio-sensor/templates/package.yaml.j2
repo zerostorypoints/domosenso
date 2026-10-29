@@ -27,7 +27,7 @@
   [%- set item = {
     'room': board.room, 'area': board.area, 'prefix': prefix, 'label': board.area ~ ' SPL offset', 'calibrated_label': board.area ~ ' SPL calibrated', 'note_label': board.area ~ ' SPL note',
     'spectrum': spectrum, 'level': level,
-    'mic_gain': (board.entities | default({})).mic_gain | default(guess(board, 'text_sensor', 'mic_gain')),
+    'mic_gain': (board.entities | default({})).mic_gain | default(guess(board, 'sensor', 'mic_gain')),
     'offset': 'input_number.' ~ prefix ~ '_spl_offset',
     'calibrated': 'input_boolean.' ~ prefix ~ '_spl_calibrated',
     'note': 'input_text.' ~ prefix ~ '_spl_note'
@@ -216,6 +216,13 @@ script:
     icon: mdi:check-decagram
     mode: single
     sequence:
+      # Stop, writing nothing, unless the measurement is a number and the note has a state: an
+      # unavailable helper must not set the offset to 0 or the note to "unavailable", nor turn the
+      # calibrated flag on.
+      - condition: template
+        value_template: >-
+          {{ states('input_number.audio_sensor_measured_offset') | is_number
+             and states('input_text.audio_sensor_calibration_note') not in ['unavailable', 'unknown'] }}
       - variables:
           board: >-
             {{ {[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b.prefix) ]][% if not loop.last %], [% endif %][% endfor %]}.get(states("input_select.audio_sensor_music_source"), [[ jstr(source.prefix) ]]) }}
@@ -223,7 +230,7 @@ script:
         target:
           entity_id: "{{ 'input_number.' ~ board ~ '_spl_offset' }}"
         data:
-          value: "{{ states('input_number.audio_sensor_measured_offset') | float(0) }}"
+          value: "{{ states('input_number.audio_sensor_measured_offset') | float }}"
       - action: input_text.set_value
         target:
           entity_id: "{{ 'input_text.' ~ board ~ '_spl_note' }}"

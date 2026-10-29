@@ -261,8 +261,8 @@ def test_aliases_follow_the_select(demo):
         LIVING: "-40,-41", KIDS: "-50,-51",
         LIVING_LEVEL: "-30", KIDS_LEVEL: "-20",
         "input_number.living_room_spl_offset": "90", "input_number.kids_room_spl_offset": "100",
-        "text_sensor.living_room_audio_sensor_living_room_mic_gain": "24DB",
-        "text_sensor.kids_room_audio_sensor_kids_room_mic_gain": "18DB",
+        "sensor.living_room_audio_sensor_living_room_mic_gain": "24DB",
+        "sensor.kids_room_audio_sensor_kids_room_mic_gain": "18DB",
         "input_boolean.living_room_spl_calibrated": "off", "input_boolean.kids_room_spl_calibrated": "on",
         "input_text.living_room_spl_note": "estimate", "input_text.kids_room_spl_note": "measured with a phone app",
     }
@@ -318,7 +318,9 @@ def test_apostrophe_and_quote_in_an_area_stay_valid(tmp_path):
 def test_apply_calibration_targets_the_selected_board(demo):
     script = demo["script"]["audio_sensor_apply_calibration"]
     sequence = script["sequence"]
-    variables = sequence[0]["variables"]
+    guard = sequence[0]
+    assert guard["condition"] == "template"
+    variables = sequence[1]["variables"]
     assert list(variables) == ["board"]
     states = {
         "input_number.audio_sensor_measured_offset": "93.5",
@@ -330,7 +332,8 @@ def test_apply_calibration_targets_the_selected_board(demo):
         assert board == prefix
         context = {"board": board}
         rendered = []
-        for step in sequence[1:]:
+        assert evaluate_with(guard["value_template"], states, context) == "True"
+        for step in sequence[2:]:
             target = evaluate_with(step["target"]["entity_id"], states, context)
             data = {k: evaluate_with(v, states, context) for k, v in step.get("data", {}).items()}
             rendered.append((step["action"], target, data))
@@ -341,8 +344,37 @@ def test_apply_calibration_targets_the_selected_board(demo):
         ]
 
 
+def test_apply_calibration_refuses_a_missing_measurement(demo):
+    # Nothing is written (and the flag stays off) unless the measured offset is a number and the
+    # note has a state: the script stops at its first step.
+    guard = demo["script"]["audio_sensor_apply_calibration"]["sequence"][0]
+    assert "float(0)" not in str(demo["script"])
+    good = {
+        "input_number.audio_sensor_measured_offset": "93.5",
+        "input_text.audio_sensor_calibration_note": "",
+        SELECT: "Living room",
+    }
+    assert evaluate_with(guard["value_template"], good, {}) == "True"
+    for entity in ("input_number.audio_sensor_measured_offset", "input_text.audio_sensor_calibration_note"):
+        for bad in ("unavailable", "unknown"):
+            assert evaluate_with(guard["value_template"], {**good, entity: bad}, {}) == "False", (entity, bad)
+    assert evaluate_with(guard["value_template"], {**good, "input_number.audio_sensor_measured_offset": "abc"}, {}) == "False"
+
+
+def test_text_sensors_default_to_the_sensor_domain(tmp_path):
+    # ESPHome text sensors appear in Home Assistant as sensor.*, so the guessed ids use that domain.
+    found = templates(render(tmp_path, demo_inputs()))
+    assert "sensor.living_room_audio_sensor_living_room_mic_gain" in found["audio_sensor_music_mic_gain"]["state"]
+    assert "text_sensor." not in found["audio_sensor_music_mic_gain"]["state"]
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    keys = next(i for i in manifest["inputs"]["sensors"].items() if i[0] == "item")[1]["entities"]["keys"]
+    assert keys["mic_gain"] == "sensor.<..>_mic_gain"
+    assert keys["bssid"] == "sensor.<..>_connected_ap_bssid"
+
+
 def evaluate_with(template, states_by_id, context) -> str:
     env = jinja2.Environment()
+    env.filters["is_number"] = lambda v: isinstance(v, str) and v.lstrip("-").replace(".", "", 1).isdigit()
     return env.from_string(template).render(states=lambda e: states_by_id.get(e, "unavailable"), **context).strip()
 
 

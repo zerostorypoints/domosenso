@@ -58,10 +58,10 @@ inputs:
           fast_level: sensor.<..>_fast_sound_level
           fast_peak: sensor.<..>_fast_sound_peak
           live_tracking: switch.<..>_live_tracking
-          mic_gain: text_sensor.<..>_mic_gain
+          mic_gain: sensor.<..>_mic_gain
           wifi_signal: sensor.<..>_wi_fi_signal
           uptime: sensor.<..>_uptime
-          bssid: text_sensor.<..>_connected_ap_bssid
+          bssid: sensor.<..>_connected_ap_bssid
           restart: button.<..>_restart
           load: sensor.<..>_spectrum_load
   playing:                                # an entity that means music plays: the listening sessions follow it
@@ -107,10 +107,10 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "sensor.<id_prefix>_fast_sound_peak", stability: additive-only, from: esphome, entity_key: fast_peak, note: same}
     - {id: "switch.<id_prefix>_live_tracking", stability: stable, from: esphome, entity_key: live_tracking, note: "off after a boot and after one hour"}
     - {id: "sensor.<id_prefix>_spectrum_load", stability: additive-only, from: esphome, entity_key: load, note: "share of one core the spectrum worker uses"}
-    - {id: "text_sensor.<id_prefix>_mic_gain", stability: additive-only, from: esphome, entity_key: mic_gain}
+    - {id: "sensor.<id_prefix>_mic_gain", stability: additive-only, from: esphome, entity_key: mic_gain}
     - {id: "sensor.<id_prefix>_wi_fi_signal", stability: additive-only, from: esphome, entity_key: wifi_signal}
     - {id: "sensor.<id_prefix>_uptime", stability: additive-only, from: esphome, entity_key: uptime}
-    - {id: "text_sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
+    - {id: "sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
     - {id: "button.<id_prefix>_restart", stability: additive-only, from: esphome, entity_key: restart}
 
     # The Home Assistant package (templates/package.yaml.j2). The figures of room_acoustics: true
