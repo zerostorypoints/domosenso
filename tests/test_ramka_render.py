@@ -1243,24 +1243,13 @@ def test_theme_mode(demo):
         assert all("theme" not in view for view in demo[f"dashboard.{lang}.yaml"]["views"]), lang
     themes = yaml.safe_load((COMP / "themes" / "ramka.yaml").read_text(encoding="utf-8"))
     assert {"ramka", "ramka-dark", "ramka-light"} <= set(themes)
-    for name, mode in (("ramka-dark", "dark"), ("ramka-light", "light")):
-        theme = themes[name]
-        assert "modes" not in theme, name
-        for n in range(1, 12):
-            assert theme[f"graph-color-{n}"] == themes["ramka"]["modes"][mode][f"graph-color-{n}"]
-    # A theme without modes runs in the frontend's light mode (frontend 20260826.7,
-    # themes-mixin.ts), so ramka-light needs only its series colours, and ramka-dark carries the
-    # frontend's own dark blocks (color.globals.ts darkColorStyles, semantic.globals.ts
-    # darkSemanticColorStyles), a few of them pinned here.
-    assert set(themes["ramka-light"]) == {f"graph-color-{n}" for n in range(1, 12)}
-    dark = themes["ramka-dark"]
-    assert len(dark) == 140 + 11
-    assert (dark["primary-background-color"], dark["card-background-color"], dark["secondary-background-color"],
-            dark["primary-text-color"], dark["secondary-text-color"], dark["disabled-text-color"]) == (
-        "#111111", "#1c1c1c", "#282828", "#e1e1e1", "#9b9b9b", "#6f6f6f")
-    assert dark["ha-color-text-primary"] == "var(--white-color)"
-    assert dark["ha-color-form-background-disabled"] == "var(--ha-color-neutral-20)"
-    assert "app-header-background-color" not in dark and "sidebar-background-color" not in dark
+    # Single-mode themes (SPEC-020 amendment, C19): a theme whose modes hold only one mode is
+    # forced into it (frontend 20260826.7, src/state/themes-mixin.ts), and the frontend applies its
+    # own defaults of that mode, so nothing of the frontend is copied here to go stale.
+    series = {mode: themes["ramka"]["modes"][mode] for mode in ("dark", "light")}
+    assert len(series["dark"]) == len(series["light"]) == 11
+    assert themes["ramka-dark"] == {"modes": {"dark": series["dark"]}}
+    assert themes["ramka-light"] == {"modes": {"light": series["light"]}}
 
 
 def test_an_empty_photo_pick_still_takes_a_slot(demo):

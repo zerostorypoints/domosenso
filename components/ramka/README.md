@@ -134,10 +134,10 @@ approach toggle it has had since 0.1.0.
   `<prefix>_theme_mode` at start and on every change. That reaches every browser and user whose
   profile theme is "Backend-selected", on every dashboard, not only the tablet; the Ramka's views
   carry no theme of their own. A user who wants another look picks a theme in the profile. The
-  frontend runs a theme without `modes:` in light mode, so `ramka-dark` carries the frontend's own
-  dark variables and `ramka-light` only the series colours (`themes/ramka.yaml` names the frontend
-  version they come from). That an open page follows a change without a reload is inference until
-  staging shows it (SPEC-020).
+  two themes hold one mode each (`modes: {dark: …}`, `modes: {light: …}`, the series colours): the
+  frontend forces a single-mode theme into that mode and draws its own defaults of it, whatever the
+  browser's dark-mode setting (`themes/ramka.yaml` names the frontend version). That an open page
+  follows a change without a reload is inference until staging shows it (SPEC-020).
 - **The standing rule, for implementers:** every Ramka extension updates the settings in the same
   change. A new behaviour gets its live setting, belongs to one page and one group, and is covered
   by the page's reset and the global one; `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset`
