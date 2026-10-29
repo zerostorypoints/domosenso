@@ -478,3 +478,16 @@ def test_default_package_destination_is_a_valid_package_name():
     entry = ComponentEntry("climate-air", Path("domosenso/climate-air.inputs.yaml"))
     assert _template_destination(entry, "package.yaml", None) == "packages/climate_air.yaml"
     assert _template_destination(entry, "dashboard.<lang>.yaml", "de") == "dashboards/climate-air.de.yaml"
+
+
+def test_every_language_template_is_a_dashboard():
+    # A *.lang.yaml.j2 is rendered per language because it has labels: a dashboard, never a package
+    # (ramka's settings dashboard, SPEC-020).
+    from domosenso_cli.build import _template_destination
+    from domosenso_cli.home import ComponentEntry
+
+    entry = ComponentEntry("ramka", Path("domosenso/ramka.inputs.yaml"))
+    assert _template_destination(entry, "ramka-settings.<lang>.yaml", "de") == "dashboards/ramka-settings.de.yaml"
+    assert _template_destination(entry, "dashboard.<lang>.yaml", "pl") == "dashboards/ramka.pl.yaml"
+    entry.outputs["ramka-settings.<lang>.yaml"] = "dash/settings-<lang>.yaml"
+    assert _template_destination(entry, "ramka-settings.<lang>.yaml", "en") == "dash/settings-en.yaml"

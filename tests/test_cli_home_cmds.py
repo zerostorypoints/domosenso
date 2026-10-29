@@ -548,6 +548,21 @@ def test_status_without_a_configuration_file_names_every_dashboard(added, capsys
     ]
 
 
+def test_status_names_every_language_template_as_a_dashboard(home, catalog, capsys):
+    # A second language template (ramka's settings dashboard, SPEC-020) is a dashboard too.
+    write_files(catalog / "components" / "panel", {"templates/panel-settings.lang.yaml.j2": "title: [[ t('ui.title') ]]\n"})
+    release(catalog, "1.1.0")
+    code, out = run(home, "add", "panel@1.1.0", capsys=capsys)
+    assert code == 0, out
+    code, out = run(home, "status", capsys=capsys)
+    assert code == 0, out
+    missing = [l for l in lines_of(out) if l.startswith("missing-dashboard-entry")]
+    for lang in ("de", "en", "pl"):
+        assert f"missing-dashboard-entry dashboards/panel-settings.{lang}.yaml" in missing
+        assert f"missing-dashboard-entry dashboards/panel.{lang}.yaml" in missing
+    assert (home / HA / "dashboards/panel-settings.de.yaml").read_text().endswith("title: Tafel\n")
+
+
 def test_status_included_dashboards_cannot_be_checked(added, capsys):
     (added / HA / "configuration.yaml").write_text("lovelace: !include lovelace.yaml\n")
     code, out = run(added, "status", capsys=capsys)

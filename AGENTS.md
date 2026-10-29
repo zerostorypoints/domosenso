@@ -200,7 +200,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
 Tests of the command: `tests/test_cli_*.py`. Changing a command line, an output line or a file format
 is a change to a STABLE surface (spec first).
 
-Renderer: `templates/**/*.j2`; `*.lang.yaml.j2` renders once per language to `<name>.<lang>.yaml`.
+Renderer: `templates/**/*.j2`; `*.lang.yaml.j2` renders once per language to `<name>.<lang>.yaml`, a
+dashboard in a home: `dashboards/<id>.<lang>.yaml` for `dashboard`, else `dashboards/<name>.<lang>.yaml`.
 Delimiters are `[[ ... ]]`, `[% ... %]`, `[# ... #]`, so Home Assistant's own `{{ }}` and `{% %}`
 pass through untouched; `[[ ]]` still substitutes inside them. Globals `t(key)`, `inputs`, `lang`;
 filter `yaml` (a YAML-safe scalar). Inputs are `StrictUndefined`: a missing input is an error naming

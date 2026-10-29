@@ -5,7 +5,7 @@
 # into themes/, loaded through frontend: themes:), the demo home's instance file
 # (artifacts.ha_instance in component.yaml) and, for a component with templates/, what
 # tools/domosenso_render.py writes from examples/demo-home/inputs/<component>.yaml: packages go to
-# packages/<component>[_<name>].yaml, dashboard.<lang>.yaml files become YAML dashboards.
+# packages/<component>[_<name>].yaml, every <name>.<lang>.yaml becomes a YAML dashboard.
 #
 #   tools/ha-check.sh <component>
 #   INPUTS=<inputs.yaml> tools/ha-check.sh <component>   # other inputs than the demo home's
@@ -53,6 +53,8 @@ install_component() {  # $1 = config dir
     case "$name" in
       dashboard.*)
         cp "$f" "$1/dashboards/$COMP.${name#dashboard.}.yaml" ;;
+      # Any other <name>.<lang>.yaml comes from a language template: a dashboard as well.
+      *.*) cp "$f" "$1/dashboards/$name.yaml" ;;
       package) cp "$f" "$1/packages/${COMP//-/_}.yaml" ;;
       *) cp "$f" "$1/packages/${COMP//-/_}_$name.yaml" ;;
     esac
