@@ -129,3 +129,33 @@ def test_cli_empty(repo, capsys):
     root, *_ = repo
     tool().main(['--root', str(root), '--base', 'base'])
     assert capsys.readouterr().out.strip() == 'no website changes'
+
+
+def test_removed_draft_is_tagged(repo):
+    _, write, commit, git = repo
+    write('website/content/how-to/d.md', howto('draft')); commit(); git('tag', '-f', 'base')
+    git('rm', '-q', 'website/content/how-to/d.md'); git('commit', '-qm', 'rm')
+    assert ('/how-to/d/', 'removed' + DRAFT) in routes(repo, ['website/content/how-to/d.md'])
+
+
+def test_published_to_draft_is_unpublished(repo):
+    _, write, commit, _ = repo
+    write('website/content/how-to/old.md', howto('draft', 'old')); commit()
+    got = routes(repo, ['website/content/how-to/old.md'])
+    assert ('/how-to/old/', 'unpublished') in got
+
+
+def test_rename_reports_old_route_removed(repo, capsys):
+    root, _, _, git = repo
+    git('mv', 'website/content/how-to/old.md', 'website/content/how-to/new.md'); git('commit', '-qm', 'mv')
+    tool().main(['--root', str(root), '--base', 'base'])
+    out = capsys.readouterr().out
+    assert '/how-to/old/` — removed' in out and '/how-to/new/` — new how-to' in out
+
+
+def test_head_argument(repo, capsys):
+    root, write, commit, git = repo
+    write('website/content/how-to/x.md', howto()); commit(); git('tag', 'mid')
+    git('rm', '-q', 'website/content/how-to/x.md'); git('commit', '-qm', 'rm')
+    tool().main(['--root', str(root), '--base', 'base', '--head', 'mid'])
+    assert '/how-to/x/` — new how-to' in capsys.readouterr().out

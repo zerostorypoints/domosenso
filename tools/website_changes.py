@@ -53,14 +53,16 @@ def routes_for(path, root, base, head):
     old, new = show(root, base, path), show(root, head, path)
     if old == new:
         return []
-    if path.startswith(CONTENT + 'how-to/') and path.endswith('.md'):
-        slug, index, noun = Path(path).stem, '/how-to/', 'how-to'
-        tag = DRAFT if status_of(new if new is not None else old) == 'draft' and new is not None else ''
-        return [(index, 'how-to index' + tag), (f'{index}{slug}/', verb(old, new, noun) + (tag if new is not None else ''))]
-    if path.startswith(CONTENT + 'journal/') and path.endswith('.md'):
-        slug = Path(path).stem
-        tag = DRAFT if new is not None and status_of(new) == 'draft' else ''
-        return [('/journal/', 'journal index' + tag), (f'/journal/{slug}/', verb(old, new, 'article') + tag)]
+    for folder, noun, index in (('how-to', 'how-to', 'how-to index'), ('journal', 'article', 'journal index')):
+        if path.startswith(f'{CONTENT}{folder}/') and path.endswith('.md'):
+            was, now = status_of(old) if old is not None else None, status_of(new) if new is not None else None
+            if now is None:  # removed: a draft never reached production
+                reason, tag = 'removed', DRAFT if was == 'draft' else ''
+            elif now == 'draft' and was == 'published':  # the page leaves production
+                reason, tag = 'unpublished', ''
+            else:
+                reason, tag = verb(old, new, noun), DRAFT if now == 'draft' else ''
+            return [(f'/{folder}/', index + tag), (f'/{folder}/{Path(path).stem}/', reason + tag)]
     for folder, noun in (('components', 'component page'), ('devices', 'device page')):
         if path.startswith(f'{CONTENT}{folder}/') and path.endswith('.json'):
             return [(f'/{folder}/{Path(path).stem}/', verb(old, new, noun))]
@@ -82,8 +84,16 @@ def routes_for(path, root, base, head):
     return []
 
 
+def merge_base(root, base, head):
+    r = subprocess.run(['git', '-C', str(root), 'merge-base', base, head], capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(r.stderr.strip() or f'no merge base for {base} and {head}')
+    return r.stdout.strip()
+
+
 def changed_routes(paths, root, base, head='HEAD'):
     """Sorted, unique (route, reason) pairs for the changed repository paths."""
+    base = merge_base(root, base, head)
     found = {}
     for path in paths:
         for route, reason in routes_for(path, root, base, head):
@@ -109,11 +119,12 @@ def main(argv=None):
     ap.add_argument('--format', choices=['markdown', 'urls'], default='markdown')
     ap.add_argument('--root', default='.')
     a = ap.parse_args(argv)
-    diff = subprocess.run(['git', '-C', a.root, 'diff', '--name-only', f'{a.base}...{a.head}'],
+    base = merge_base(a.root, a.base, a.head)
+    diff = subprocess.run(['git', '-C', a.root, 'diff', '--name-only', '--no-renames', base, a.head],
                           capture_output=True, text=True)
     if diff.returncode:
         sys.exit(diff.stderr.strip())
-    routes = changed_routes(diff.stdout.split('\n')[:-1] if diff.stdout else [], Path(a.root), a.base, a.head)
+    routes = changed_routes(diff.stdout.split('\n')[:-1] if diff.stdout else [], Path(a.root), base, a.head)
     for line in render(routes, a.format, a.preview_url):
         print(line)
 
