@@ -1,6 +1,6 @@
 # Domosenso component manifest (SPEC-018). 0.1.0 is built over several tasks; this file holds what
-# exists so far: the firmware package and the spectrum component. Artifacts that later tasks add
-# (the device file template, the factory image, the Home Assistant package, the dashboard, the cards)
+# exists so far: the firmware package, the spectrum component and the cards. Artifacts that later
+# tasks add (the device file template, the factory image, the Home Assistant package, the dashboard)
 # are listed under `artifacts` only once their files are in the catalog, as catalog_check requires.
 id: audio-sensor
 version: 0.1.0
@@ -79,8 +79,15 @@ artifacts:
     # device file per `sensors` item), secrets [wifi_ssid, wifi_password, api_encryption_key].
   # The spectrum component the package loads with external_components; it is not an artifact a home
   # receives, ESPHome pulls it from the tag (a fixed `ref`, checked against `version`).
-  # Added by later tasks: templates (the Home Assistant package, the Room acoustics dashboard),
-  # dashboard_cards and install_path (ambient-wave-card, room-meter-card).
+  # Added by later tasks: templates (the Home Assistant package, the Room acoustics dashboard).
+  # Where the cards go in the home's config, served as /local/domosenso/audio-sensor/<version>/:
+  # cards/*.js, cards/lib/** and translations/ keep their paths from this directory (tests and
+  # cards/testing/ stay behind). The cards have no version of their own: a new component version is
+  # a new directory, so the /local/ cache cannot serve an old lib/ to a new card.
+  install_path: www/domosenso/audio-sensor/<version>/
+  dashboard_cards:                      # Lovelace resources (type: module); they import lib/ and translations/
+    - cards/ambient-wave-card.js        # the live wave from the spectrum or the level; classic fallback
+    - cards/room-meter-card.js          # the analogue meter: needle, zones, clip mark
 
 provides:                                 # contract surface; placeholders in <> come from inputs
   # The entities of the Home Assistant package, the aliases and the room-acoustics figures are

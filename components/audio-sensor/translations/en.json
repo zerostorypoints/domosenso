@@ -7,5 +7,143 @@
         "does": "Runs ESPHome as a room sound sensor. Every second it reports the loudness and the loudest peak, five times a second a spectrum in 31 bands from deep bass to treble, and it can stream a faster reading on demand. It listens only: the speaker amplifier on the board stays off."
       }
     }
+  },
+  "card": {
+    "ambient_wave": {
+      "name": "Ambient wave",
+      "description": "Sound, or any sensor, drawn as calm waves that swell and warm with the level.",
+      "editor": {
+        "source": "Source",
+        "kind": "Kind",
+        "entity": "Entity",
+        "demo": "Demo (simulated sound)",
+        "scenario": "Demo scenario",
+        "offset": "Offset (number entity)",
+        "flavour": "Flavour",
+        "colour": "Colour",
+        "palette": "Palette",
+        "neutral": "Neutral up to",
+        "hot": "Full colour at",
+        "dynamics": "Dynamics",
+        "rise": "Rise (ms)",
+        "fall": "Fall (s)",
+        "hold": "Peak hold (s)",
+        "tilt": "Add back music's spectral slope",
+        "style": "Style",
+        "line_width": "Line width (px)",
+        "active": "Active while on",
+        "controls": "Show the console",
+        "fallback": "Without data"
+      },
+      "kind": {
+        "spectrum": "Spectrum (bands)",
+        "scalar": "Single value"
+      },
+      "scenario": {
+        "electronic": "Electronic",
+        "jazz": "Jazz",
+        "vocal": "Vocals",
+        "orchestra": "Orchestra",
+        "quiet": "Quiet room"
+      },
+      "palette": {
+        "zones": "Zones",
+        "series": "Series",
+        "calm": "Calm"
+      },
+      "flavour": {
+        "still": "Still",
+        "swell": "Swell",
+        "dune": "Dune",
+        "veil": "Veil",
+        "voices": "Voices",
+        "halo": "Halo",
+        "afterglow": "Afterglow",
+        "bars": "Bars",
+        "tide": "Tide",
+        "centre": "Centre",
+        "timeline": "Timeline",
+        "clocks": "Clocks",
+        "ripples": "Ripples",
+        "tint": "Tint"
+      },
+      "message": {
+        "count": "Expected {expected} values, received {count}."
+      },
+      "aria": {
+        "spectrum": "Loudest at {frequency} Hz, {level} {unit}",
+        "scalar": "Current value {level} {unit}",
+        "calm": "Calm, no current reading",
+        "still": "Still waves"
+      },
+      "console": {
+        "flavour": "Flavour",
+        "palette": "Palette",
+        "demo": "Demo",
+        "scenario": "Demo scenario",
+        "rise": "Rise",
+        "fall": "Fall",
+        "line_width": "Line width",
+        "neutral": "Neutral up to",
+        "hot": "Full colour at",
+        "tilt": "Spectral slope",
+        "level": "Level",
+        "smoothed": "smoothed",
+        "monitor": "Live input",
+        "monitor_hint": "bars as received, line smoothed"
+      },
+      "error": {
+        "config": "The card configuration must be an object.",
+        "source_kind": "source.kind must be \"spectrum\" or \"scalar\".",
+        "source_entity": "source.entity is required unless source.demo is true.",
+        "flavour": "flavour \"{flavour}\" is unknown or does not suit source.kind \"{kind}\".",
+        "colour_hot": "colour.hot must be above colour.neutral.",
+        "fps": "fps must be a number from 1 to 60.",
+        "axis": "source.axis must be \"third_octave\"; other axes are not supported.",
+        "show": "source.show must be two frequencies in Hz, the lower first, at least one band apart.",
+        "palette": "colour.palette must be zones, series, calm, an entity, or a list of [value, colour] stops with at least one numeric value.",
+        "history": "source.history must be a number of seconds above 0.",
+        "fallback": "fallback must be \"classic\" or \"none\"."
+      },
+      "fallback": {
+        "none": "None (calm)",
+        "classic": "Classic wave",
+        "no_data": "Sound sensor sends no data: showing the classic wave"
+      }
+    },
+    "room_meter": {
+      "name": "Room meter",
+      "description": "Live sound level: a needle, a peak-hold LED ladder, a strip of recent readings and live tracking.",
+      "zone": {
+        "near_silence": "Near silence",
+        "very_quiet": "Very quiet room",
+        "quiet": "Quiet room",
+        "background_music": "Background music",
+        "conversation": "Conversation",
+        "lively_music": "Lively music",
+        "loud_music": "Loud music",
+        "very_loud": "Very loud",
+        "concert": "Concert level",
+        "painful": "Painful"
+      },
+      "live": {
+        "off": "LIVE",
+        "fast": "LIVE · 10/s",
+        "waiting": "LIVE · waiting",
+        "to_slow": "Back to one reading a second",
+        "to_fast": "Follow the level ten times a second"
+      },
+      "no_reading": "No reading",
+      "unit": "dB SPL · Z · {window}",
+      "unit_estimated": "dB SPL (estimated) · Z · {window}",
+      "chip": {
+        "leq": "Leq 1 min",
+        "peak": "Peak",
+        "hold": "Hold",
+        "crest": "Crest",
+        "headroom": "Headroom"
+      },
+      "offset_estimated": "Offset estimated: calibrate against a reference meter"
+    }
   }
 }
