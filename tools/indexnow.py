@@ -5,6 +5,8 @@
 
 Waits for https://domosenso.org/build.json to report <sha>, then submits the URLs read from stdin
 (or --urls-file). `no website changes` and an empty input both mean nothing to submit.
+Back-to-back merges can make an earlier job time out: its URLs are then not submitted, and the
+next sitemap resubmission covers them.
 The key is public by design: IndexNow checks it against website/public/<key>.txt.
 """
 import argparse
@@ -49,7 +51,8 @@ def wait_for_commit(sha, url=BUILD_URL, timeout=900, interval=30, fetch=http_get
             pass  # not deployed yet, or briefly unreachable: keep polling
         if waited >= timeout:
             raise TimeoutError(f'{url} did not report {sha} within {timeout}s')
-        print(f'waiting for {sha}', flush=True)
+        if not waited:
+            print(f'waiting for {sha}', flush=True)
         sleep(interval)
         waited += interval
 

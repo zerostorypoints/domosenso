@@ -19,6 +19,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: |
+          set -o pipefail
           base="$BEFORE"
           if [ "$base" = "0000000000000000000000000000000000000000" ]; then
             base="HEAD~1"

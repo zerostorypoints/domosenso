@@ -123,4 +123,5 @@ def test_workflow_shape():
     run_step = next(s for s in steps if 'indexnow.py' in s.get('run', ''))
     assert '${{' not in run_step['run'] and 'secrets' not in text
     assert run_step['env'] == {'BEFORE': '${{ github.event.before }}', 'SHA': '${{ github.sha }}'}
+    assert run_step['run'].index('set -o pipefail') < run_step['run'].index('website_changes.py')
     assert 'website_changes.py' in run_step['run'] and '--format urls' in run_step['run'] and 'HEAD~1' in run_step['run']
