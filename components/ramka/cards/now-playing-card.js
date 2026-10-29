@@ -13,6 +13,10 @@
 //   wave: true                                   # optional: a slow, soft sine-wave animation
 //                                                # between the album line and the progress bar
 //                                                # while the player is playing (still otherwise)
+//   visual:                                      # optional: the room's music in the wave strip,
+//     select: input_select.music_visual          # in place of the wave; the select's state picks
+//     spectrum: {type: custom:ambient-wave-card, ...}  # the card config shown (spectrum or level);
+//     level: {type: custom:ambient-wave-card, ...}     # classic or anything else keeps the wave
 //   debug: true                                  # optional: viewport and card size in a corner,
 //                                                # to read the tablet's real CSS size once
 //   height: calc(100vh - 304px)                  # optional, with grid_options rows: auto: the
@@ -27,6 +31,8 @@
 //
 // The wave is decoration, not a level meter: a media player exposes no audio signal. Three
 // sines of different periods drift at a few pixels a second; the loop stops when playback does.
+// A `visual` is another card (audio-sensor's ambient-wave-card) drawing a real signal there; it
+// decides itself when to be still (its own `active:`), so this card only creates and feeds it.
 
 import { createT } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -57,6 +63,15 @@ const iconHtml = (icon, title) => icon === "svg:qobuz"
   ? `<span class="svgicon" title="${esc(title)}">${QOBUZ_SVG}</span>`
   : `<ha-icon icon="${icon}" title="${esc(title)}"></ha-icon>`;
 
+// The select options that name a card config under `visual`; any other state keeps the own wave.
+const VISUAL_OPTIONS = ["spectrum", "level"];
+// The hosted card fills the strip without card chrome: a border would add to its 100 % height
+// and a background or radius would frame it inside this card.
+const VISUAL_STYLE = {
+  display: "block", width: "100%", height: "100%", "--ha-card-background": "transparent",
+  "--ha-card-border-width": "0", "--ha-card-border-radius": "0", "--ha-card-box-shadow": "none",
+};
+
 const mmss = (s) => {
   s = Math.max(0, Math.round(s));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -65,6 +80,9 @@ const mmss = (s) => {
 class NowPlayingCard extends HTMLElement {
   setConfig(config) {
     if (!config.entity) throw new Error("now-playing-card: entity is required");
+    if (config.visual !== undefined && typeof config.visual?.select !== "string") {
+      throw new Error("now-playing-card: visual.select is required");
+    }
     this._config = config;
   }
 
@@ -80,11 +98,12 @@ class NowPlayingCard extends HTMLElement {
     this._hass = hass;
     if (!this._built) this._build();
     this._update();
+    this._visualSync();
   }
 
   connectedCallback() {
     this._timer = setInterval(() => this._progress(), 1000);
-    if (this._built) this._waveStart();
+    if (this._built) this._visualSync(true);
   }
 
   disconnectedCallback() {
@@ -134,6 +153,73 @@ class NowPlayingCard extends HTMLElement {
     this._waveRunning = false;
     if (this._waveFrame) cancelAnimationFrame(this._waveFrame);
     this._waveFrame = null;
+  }
+
+  // ---- Visual: another card in the strip, in place of the wave ---------------------
+  // The card config the select names, or null for the own wave. A card whose element is not
+  // defined yet (its resource still loading, or not installed) counts as null until it is.
+  _visualWanted() {
+    const visual = this._config.visual;
+    if (!visual) return null;
+    const option = this._hass?.states[visual.select]?.state;
+    const config = VISUAL_OPTIONS.includes(option) ? visual[option] : null;
+    if (typeof config?.type !== "string") return null;
+    const tag = config.type.replace(/^custom:/, "");
+    if (customElements.get(tag)) return option;
+    this._visualPending ??= new Set();
+    if (!this._visualPending.has(tag)) {
+      this._visualPending.add(tag);
+      customElements.whenDefined(tag).then(() => { this._visualPending.delete(tag); this._visualSync(); });
+    }
+    return null;
+  }
+
+  // Shows the wanted visual or the own wave. The own wave starts and stops only on a change, or
+  // on `restart` (connected again), so an update while disconnected starts nothing.
+  _visualSync(restart = false) {
+    const key = this._visualWanted();
+    if (key !== this._visualKey) {
+      this._visualKey = key;
+      const token = (this._visualToken = {});
+      if (this._visualChild) {
+        this._visualChild.remove();
+        this._visualChild = null;
+        this._q(".eq").style.display = "";
+      }
+      if (key) this._visualCreate(this._config.visual[key], token);
+      // Until the visual is in the strip (the helpers load asynchronously), the wave draws.
+      if (!this._visualChild) {
+        this._q(".eq canvas").style.display = "";
+        this._waveStart();
+      }
+    } else if (this._visualChild) {
+      this._visualChild.hass = this._hass;
+    } else if (restart) {
+      this._waveStart();
+    }
+  }
+
+  // Home Assistant's own createCardElement where it exists (error cards, its card handling);
+  // the element directly otherwise. `token` drops a creation a later switch has superseded.
+  _visualCreate(config, token) {
+    const mount = (helpers) => {
+      if (token !== this._visualToken) return;
+      let el;
+      if (helpers) el = helpers.createCardElement(config);
+      else {
+        el = document.createElement(config.type.replace(/^custom:/, ""));
+        el.setConfig(config);
+      }
+      for (const [name, value] of Object.entries(VISUAL_STYLE)) el.style.setProperty(name, value);
+      this._waveStop();
+      this._q(".eq canvas").style.display = "none";
+      this._q(".eq").style.display = "block";
+      this._q(".eq").appendChild(el);
+      this._visualChild = el;
+      el.hass = this._hass;
+    };
+    if (window.loadCardHelpers) window.loadCardHelpers().then(mount);
+    else mount(null);
   }
 
   _build() {
@@ -203,7 +289,6 @@ class NowPlayingCard extends HTMLElement {
     this._q = (sel) => root.querySelector(sel);
     if (this._config.height) this.style.height = this._config.height;
     if (window.ResizeObserver) new ResizeObserver(() => this._fitTitle()).observe(this);
-    this._waveStart();
   }
 
   _update() {
