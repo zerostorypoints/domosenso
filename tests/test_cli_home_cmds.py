@@ -670,7 +670,7 @@ def test_tag_render_drops_inventory_entry(added, catalog, capsys):
     dev_110(catalog)
     assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
     assert "panel" in inventory(added)
-    code, out = run(added, "render", "--force", capsys=capsys)  # back to the tag (the 1.1.0 files are not locked)
+    code, out = run(added, "render", capsys=capsys)  # back to the tag: the dev render's own files are replaced
     assert (code, out.splitlines()[-1]) == (0, "ok"), out
     assert "panel" not in inventory(added)
 
@@ -684,9 +684,76 @@ def test_tagged_add_and_update_drop_inventory_entry(home, catalog, capsys):
     assert run(home, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
     assert "panel" in inventory(home)
     release_110(catalog)
-    code, out = run(home, "update", "panel", "--force", capsys=capsys)
+    code, out = run(home, "update", "panel", capsys=capsys)
     assert (code, out.splitlines()[-1]) == (0, "ok"), out
     assert "panel" not in inventory(home)
+
+
+# --- a render from the tag replaces the dev render's own files (final review I1) -----------------
+
+
+def dev_card(catalog: Path, text: str) -> None:
+    """The working tree with a changed card and translation at the same version: no stamp on either."""
+    write_files(catalog / "components" / "panel", {
+        "cards/panel-card.js": text, "translations/de.json": '{"ui": {"title": "Tafel dev"}}',
+    })
+
+
+def test_tag_render_after_dev_render_of_a_card_needs_no_force(added, catalog, capsys):
+    dev_card(catalog, "export const v = 9;\n")
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    card = added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js"
+    assert card.read_text() == "export const v = 9;\n"
+    code, out = run(added, "render", "panel", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert card.read_text() == "export const v = 1;\n"
+    assert "Tafel dev" not in (added / HA / "dashboards/panel.de.yaml").read_text()
+    assert "panel" not in inventory(added)
+
+
+def test_update_after_dev_render_needs_no_force(added, catalog, capsys):
+    dev_110(catalog)
+    write_files(catalog / "components" / "panel", {"cards/panel-card.js": "export const v = 3;\n"})
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    release_110(catalog)  # the tag's card differs from the dev render's
+    code, out = run(added, "update", "panel", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert (added / HA / "www/domosenso/panel/1.1.0/cards/panel-card.js").read_text() == "export const v = 2;\n"
+    assert not (added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js").exists()
+    assert "panel" not in inventory(added)
+
+
+def test_update_removes_a_stale_dev_file_without_force(added, catalog, capsys):
+    dev_card(catalog, "export const v = 9;\n")  # the 1.0.0 card, rendered from the working tree
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    release_110(catalog)  # 1.1.0 no longer produces the 1.0.0 card
+    code, out = run(added, "update", "panel", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert f"remove {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js" in out.splitlines()
+    assert "panel" not in inventory(added)
+
+
+def test_update_still_refuses_a_stale_dev_file_edited_after_the_render(added, catalog, capsys):
+    dev_card(catalog, "export const v = 9;\n")
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    card = added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js"
+    card.write_text("export const v = 'mine';\n")
+    release_110(catalog)
+    code, out = run(added, "update", "panel", capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (1, f"FAIL hand-edited: {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js")
+    assert card.read_text() == "export const v = 'mine';\n"
+
+
+@pytest.mark.parametrize("argv", [("render", "panel"), ("render", "--catalog-dev", "<catalog>")])
+def test_a_dev_file_edited_after_the_render_is_still_refused(added, catalog, capsys, argv):
+    dev_card(catalog, "export const v = 9;\n")
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    card = added / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js"
+    card.write_text("export const v = 'mine';\n")
+    code, out = run(added, *[str(catalog) if a == "<catalog>" else a for a in argv], capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (1, f"FAIL hand-edited: {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js")
+    assert card.read_text() == "export const v = 'mine';\n"
+    assert "panel" in inventory(added)
 
 
 def test_deploy_carries_new_component_from_inventory(home, catalog, capsys, tmp_path):

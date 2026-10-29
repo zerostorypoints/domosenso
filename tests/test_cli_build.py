@@ -433,6 +433,28 @@ def test_second_dev_render_of_an_unlocked_component_replaces_its_dirty_files(hom
     assert f"dev {HA}/packages/panel.yaml" in out.splitlines()
 
 
+def test_second_dev_render_replaces_its_unstamped_cards_and_translations(home, catalog, capsys):
+    """Cards and translations carry no stamp: the inventory's sha256 says they are the dev render's own."""
+    assert dev_render(home, catalog, capsys, "panel")[0] == 0
+    write_files(catalog / "components" / "panel", {
+        "cards/lib/i18n.js": "export const t = (k) => k + '!';\n", "translations/de.json": '{"ui": {"title": "Neu"}}',
+    })
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert "+ '!'" in (home / HA / "www/domosenso/panel/1.0.0/cards/lib/i18n.js").read_text()
+    assert "Neu" in (home / HA / "dashboards/panel.de.yaml").read_text()
+
+
+def test_second_dev_render_refuses_its_file_edited_by_hand(home, catalog, capsys):
+    assert dev_render(home, catalog, capsys, "panel")[0] == 0
+    i18n = home / HA / "www/domosenso/panel/1.0.0/cards/lib/i18n.js"
+    i18n.write_text("// mine\n")
+    write_files(catalog / "components" / "panel", {"cards/lib/i18n.js": "export const t = (k) => k + '!';\n"})
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert (code, out.splitlines()[-1]) == (1, f"FAIL hand-edited: {HA}/www/domosenso/panel/1.0.0/cards/lib/i18n.js")
+    assert i18n.read_text() == "// mine\n"
+
+
 def test_dev_render_still_refuses_a_file_that_is_not_its_own_dirty_output(home, catalog, capsys):
     package = home / HA / "packages/panel.yaml"
     package.parent.mkdir(parents=True)

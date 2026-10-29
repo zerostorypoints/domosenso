@@ -119,8 +119,9 @@ production prints stale-explanation warnings; read them, do not add exemptions f
 
 `uv --project` selects CLI code. Tagged components come from the home's `catalog:` setting;
 record their tag commit separately. `render --catalog-dev` selects a framework working tree,
-stamps a development preview and bypasses normal hand-edit protection: preserve/reconcile all
-customizations before running it. Released adoption uses an explicit version and is tested again.
+stamps a development preview and replaces a file that differs from the lock when it is this
+component's own earlier dev output (its sha256 is the one the inventory recorded) or carries its dirty
+stamp: preserve/reconcile all customizations before running it. Released adoption uses an explicit version and is tested again.
 `deploy production` refuses development-rendered files (`dev-render` plan lines); a maintainer can
 put them on a production target for a look with `--apply --allow-dirty --confirm <hash>` of the plan
 read (SPEC-019 A), and the next plan warns until a clean deploy replaces them.
@@ -130,7 +131,8 @@ target, carries that entry in place of the lock's managed files (all `dev-render
 component the lock does not have yet and a new card version directory arrive complete, the resources
 move (`resource update … from …`) and the locked version's files are removed through the record. A
 file edited after the render fails the plan with `dev render changed: <path>: render again`. A
-render, `add` or `update` from the tag removes the component's entry. Read the plan before applying:
+render, `add` or `update` from the tag replaces the dev render's own files without `--force` and
+removes the component's entry; a file edited after the dev render is still refused (`hand-edited`). Read the plan before applying:
 it must list the whole candidate.
 Use the fictional framework preview, then test the released version in home staging. Do not
 hand-edit the lock to pretend that an unreleased candidate is a release. Neither rendering nor

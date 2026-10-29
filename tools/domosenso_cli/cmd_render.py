@@ -13,7 +13,8 @@ from pathlib import Path
 
 from domosenso_cli import dev_render
 from domosenso_cli.build import (
-    file_records, file_sha, git_short_head, load_manifest, open_catalog, plan_outputs, resource_urls, sha256,
+    file_records, file_sha, git_short_head, load_manifest, open_catalog, own_dev_files, plan_outputs, resource_urls,
+    sha256,
     write_outputs,
 )
 from domosenso_cli.catalog import dev_dir
@@ -78,9 +79,10 @@ def apply_component(
     produced = {o.dest for o in outputs}
     stale = sorted(p for p, r in locked.files.items() if r.layer == "managed" and p not in produced)
     if remove_stale and not force:
+        dev_files = own_dev_files(home, cid)  # a dev render's own output is not a hand edit
         for dest in stale:
             path = home.root / dest
-            if path.is_file() and file_sha(path) != locked.files[dest].sha256:
+            if path.is_file() and file_sha(path) not in (locked.files[dest].sha256, dev_files.get(dest)):
                 raise DomosensoError(f"hand-edited: {dest}")
     _report(rep, write_outputs(home, lock, cid, outputs, force))
     for dest in stale:
