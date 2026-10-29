@@ -5,9 +5,12 @@ has to act on; the steps are in the component's own `UPGRADE.md`.
 
 ## 2026-10-29: ramka 0.4.0, the room's music on the now-playing view
 
-New optional inputs `music_visual` and `music_visual_options`, a new optional `visual:` key of the
-now-playing card, and `input_select.<prefix>_music_visual`, which exists only with the input.
-Additive: a home needs no action ([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)).
+New optional inputs `music_visual`, `music_visual_options` and `settings_defaults`, a new optional
+`visual:` key of the now-playing card, and `input_select.<prefix>_music_visual`, which exists only
+with the input. Live settings on a settings dashboard and page switches; the theme follows a helper
+for every backend-selected browser; a home adds one `lovelace:` entry. Additive: the seed gives the
+new helpers their values and keeps a home's tuning
+([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)).
 
 ## 2026-10-29: deploy `--allow-dirty`
 

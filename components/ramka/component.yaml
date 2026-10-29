@@ -143,10 +143,15 @@ inputs:
     type: "spectrum | level"    # board with `music: true`) instead of the wave; the tablet switches
     default: null               # between spectrum, level and classic. Absent: the wave as before (0.4.0)
     example: spectrum
-  music_visual_options:         # overrides of the visual card's defaults, key by key; absent keys keep the card's
-    type: "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?}"
-    default: null               # line_width: 2.8 px unless given (Ramka's own wave in that strip)
-    example: {level: {flavour: tide}}
+  music_visual_options:         # the visual's starting values (0.4.0): what the seed and "Reset to defaults" write into
+    type: "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?, fps?}"
+    default: null               # its helpers, which the card reads live; absent keys take the card's defaults,
+    example: {level: {flavour: tide}}   # line_width Ramka's 2.8 px. Checked at render (flavour of its kind,
+                                # palette zones | series | calm, ranges, hot above neutral).
+  settings_defaults:            # the General settings' starting values (0.4.0), what the seed and "Reset to defaults"
+    type: "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}"
+    default: null               # write; absent keys keep the catalog's (true, 100 cm, 1 s, 5 s, 300 s, 16, 204,
+    example: {off_delay_s: 600} # 200 lx, dark). Checked at render against each helper's range.
   screen:                       # the tablet's CSS viewport, from `domosenso probe` (SPEC-011); absent: 1100 x 720.
     type: "{width: int, height: int}"   # Rendering fails when no tested layout fits it (templates/dashboard.lang.yaml.j2).
     default: null
@@ -194,16 +199,24 @@ artifacts:
     - shell/ramka_pick.py       #    (shell_command.<prefix>_pick / _index call them with photo_dir)
     - shell/ramka_index.py
   themes:                       # -> /config/themes/, with `frontend: themes: !include_dir_merge_named themes`;
-    - themes/ramka.yaml         #    the series colours the charts and the room tiles share
+    - themes/ramka.yaml         #    the series colours the charts and the room tiles share; ramka-dark, ramka-light
 
 provides:                       # <prefix> from inputs
   entities:
     - {id: "input_select.<prefix>_mode", stability: frozen, options: ["off", ambient, controls, calendar]}
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
     - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level, classic], note: "with music_visual; its value first (0.4.0)"}
+    - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
+    - {id: "input_select.<prefix>_{music_palette,music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the card's palettes and flavours, the default first; options additive-only (0.4.0)"}
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
     - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
+    - {id: "input_boolean.<prefix>_{settings_advanced,settings_seeded}", stability: stable, note: "0.4.0"}
+    - {id: "input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}", stability: stable, note: "in every home; off takes the view out, inside what the render configured (0.4.0)"}
+    - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0)"}
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
+    - {id: "input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}", stability: stable, note: "with music_visual (0.4.0)"}
+    - {id: "sensor.<prefix>_ambient_pages", stability: stable, note: "the ambient pages in the rotation now (state: how many; attributes pages, all_off, component: ramka; 0.4.0)"}
+    - {id: "script.<prefix>_settings_reset", stability: stable, note: "fields page and groups, both optional (0.4.0)"}
     - {id: "timer.<prefix>_controls", stability: stable}
     - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}
     - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
@@ -212,7 +225,7 @@ provides:                       # <prefix> from inputs
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick}", stability: stable, note: "with photo_dir"}
-  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without

@@ -14,7 +14,7 @@ radar:
 # sensors, so the template leaves out what reads them.
 media_player: media_player.living_room_speaker
 # The now-playing strip draws the music from audio-sensor's board in the living room (its
-# `music: true`); the tablet switches between Spectrum, Level and the classic wave (0.4.0).
+# `music: true`); its type and its look are live settings (0.4.0).
 music_visual: spectrum
 mains:
   power: sensor.media_plug_power

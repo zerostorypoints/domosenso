@@ -174,11 +174,6 @@
         "locking": "Locking",
         "jammed": "Jammed"
       }
-    },
-    "music_visual": {
-      "spectrum": "Wave: Spectrum",
-      "level": "Wave: Level",
-      "classic": "Wave: Classic"
     }
   },
   "meta": {

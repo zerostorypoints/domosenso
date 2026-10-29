@@ -33,7 +33,101 @@
 [%- set music_visual = inputs.music_visual | default(none) -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
 [%- set other_visual = 'level' if music_visual == 'spectrum' else 'spectrum' -%]
-[%- macro after(page) -%][[ pages[(pages.index(page) + 1) % (pages | length)] ]][%- endmacro -%]
+[#- ---- Live settings (0.4.0, SPEC-020) ----------------------------------------------------------
+    Every behaviour setting is a helper with this home's default: the catalog's, then
+    settings_defaults (General) and music_visual_options (Music) over it. The seed, the reset script
+    and the templates' `| int()` / `| float()` fallbacks all read `d`, so they cannot disagree.
+    Ranges are the helpers' own (0.3.0's for presence and display; the card's console for music). -#]
+[%- set general = {'near_enabled': ('bool', true), 'off_delay_s': ('number', 300, 10, 1800), 'brightness_min': ('number', 16, 1, 255),
+    'brightness_max': ('number', 204, 1, 255), 'near_cm': ('number', 100, 10, 400), 'near_s': ('number', 1, 1, 10),
+    'controls_hold_s': ('number', 5, 1, 600), 'lux_max': ('number', 200, 20, 2000), 'theme_mode': ('choice', 'dark', ['dark', 'light'])} -%]
+[%- set sd = inputs.settings_defaults | default({}) -%]
+[%- if sd is not mapping -%][[ fail('ramka: settings_defaults must be a mapping') ]][%- endif -%]
+[%- for key in sd if key not in general -%][[ fail("ramka: settings_defaults: unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- set d = {} -%]
+[%- for key, spec in general.items() -%]
+[%- set value = sd[key] if key in sd else spec[1] -%]
+[%- if spec[0] == 'bool' and value is not boolean -%][[ fail('ramka: settings_defaults.' ~ key ~ ' must be true or false') ]][%- endif -%]
+[%- if spec[0] == 'number' and (value is boolean or value is not number or value < spec[2] or value > spec[3]) -%][[ fail('ramka: settings_defaults.' ~ key ~ ' must be within ' ~ spec[2] ~ ' and ' ~ spec[3]) ]][%- endif -%]
+[%- if spec[0] == 'choice' and value not in spec[2] -%][[ fail('ramka: settings_defaults.' ~ key ~ ' must be ' ~ spec[2] | join(' or ')) ]][%- endif -%]
+[%- set _ = d.update({key: value}) -%]
+[%- endfor -%]
+[%- if d.brightness_min > d.brightness_max -%][[ fail('ramka: settings_defaults: brightness_min above brightness_max') ]][%- endif -%]
+[#- The music visual's starting values. The flavour and palette lists are the card's registry
+    (audio-sensor's cards/lib/flavours/index.js SPECTRUM and SCALAR, NAMED_PALETTES in
+    cards/lib/config.js), literal here because a render cannot read another component's files;
+    test_flavour_options_match_the_card_registry pins them. A palette of colour stops, which the card
+    accepts, cannot be a select option and is refused. -#]
+[%- set flavours = {'spectrum': ['still', 'swell', 'dune', 'veil', 'voices', 'halo', 'afterglow', 'bars'],
+    'level': ['still', 'tide', 'centre', 'timeline', 'clocks', 'ripples', 'tint', 'bars']} -%]
+[%- set palettes = ['zones', 'series', 'calm'] -%]
+[%- macro within(key, value, lo, hi) -%][%- if value is boolean or value is not number or value < lo or value > hi -%][[ fail('ramka: music_visual_options.' ~ key ~ ' must be within ' ~ lo ~ ' and ' ~ hi) ]][%- endif -%][%- endmacro -%]
+[%- set mv = {} -%]
+[%- if music_visual is not none -%]
+[%- set mvo = inputs.music_visual_options | default({}) -%]
+[%- if mvo is not mapping -%][[ fail('ramka: music_visual_options must be a mapping') ]][%- endif -%]
+[%- for key in mvo if key not in ['spectrum', 'level', 'palette', 'rise', 'fall', 'line_width', 'tilt', 'fps'] -%][[ fail("ramka: music_visual_options: unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- set _ = mv.update({'music_visual': music_visual}) -%]
+[%- set palette = mvo.palette | default('series') -%]
+[%- if palette is not string or palette not in palettes -%][[ fail('ramka: music_visual_options.palette must be zones, series or calm') ]][%- endif -%]
+[%- set _ = mv.update({'music_palette': palette}) -%]
+[%- for kind, default_flavour in [('spectrum', 'dune'), ('level', 'centre')] -%]
+[%- set own = mvo[kind] | default({}) -%]
+[%- if own is not mapping -%][[ fail('ramka: music_visual_options.' ~ kind ~ ' must be a mapping') ]][%- endif -%]
+[%- for key in own if key not in ['flavour', 'neutral', 'hot'] -%][[ fail('ramka: music_visual_options.' ~ kind ~ ": unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- set flavour = own.flavour | default(default_flavour) -%]
+[%- if flavour not in flavours[kind] -%][[ fail('ramka: music_visual_options.' ~ kind ~ ".flavour '" ~ flavour ~ "' is not a " ~ kind ~ ' flavour') ]][%- endif -%]
+[%- set neutral = own.neutral | default(30) -%]
+[%- set hot = own.hot | default(70) -%]
+[%- set _ = within(kind ~ '.neutral', neutral, 0, 130) ~ within(kind ~ '.hot', hot, 0, 130) -%]
+[#- The card would reverse the palette and fall back to its defaults (orderColour). -#]
+[%- if hot <= neutral -%][[ fail('ramka: music_visual_options.' ~ kind ~ ': hot must be above neutral') ]][%- endif -%]
+[%- set _ = mv.update({'music_' ~ kind ~ '_flavour': flavour, 'music_' ~ kind ~ '_neutral_db': neutral, 'music_' ~ kind ~ '_hot_db': hot}) -%]
+[%- endfor -%]
+[%- for key, helper, default, lo, hi in [('rise', 'music_rise_ms', 200, 0, 2000), ('fall', 'music_fall_s', 4, 0, 30),
+    ('line_width', 'music_line_width_px', 2.8, 0.5, 12), ('fps', 'music_fps', 30, 1, 60)] -%]
+[%- set value = mvo[key] | default(default) -%]
+[%- set _ = within(key, value, lo, hi) -%]
+[%- set _ = mv.update({helper: value}) -%]
+[%- endfor -%]
+[%- set tilt = mvo.tilt | default(true) -%]
+[%- if tilt is not boolean -%][[ fail('ramka: music_visual_options.tilt must be true or false') ]][%- endif -%]
+[%- set _ = mv.update({'music_tilt': tilt}) -%]
+[%- endif -%]
+[#- Every setting: (domain, suffix, page, group, default). One page and one group each; the reset
+    script sets them in this order. ambient_music is state the swipes flip, so it is on no page: the
+    presence_display group (the first seed) and the global reset set it. -#]
+[%- set settings = [('input_boolean', 'near_enabled', 'general', 'presence_display', d.near_enabled)] -%]
+[%- for key in ['off_delay_s', 'brightness_min', 'brightness_max', 'near_cm', 'near_s', 'controls_hold_s', 'lux_max'] -%]
+[%- set _ = settings.append(('input_number', key, 'general', 'presence_display', d[key])) -%]
+[%- endfor -%]
+[%- set _ = settings.append(('input_boolean', 'ambient_music', '', 'presence_display', true)) -%]
+[%- set _ = settings.append(('input_select', 'theme_mode', 'general', 'pages', d.theme_mode)) -%]
+[%- set _ = settings.append(('input_boolean', 'settings_advanced', 'general', 'pages', false)) -%]
+[%- set views = ['climate', 'air', 'plants', 'photos', 'status', 'calendar', 'music'] -%]
+[%- set reset_pages = ['general'] + views -%]
+[%- for view in views -%][%- set _ = settings.append(('input_boolean', 'page_' ~ view, view, 'pages', true)) -%][%- endfor -%]
+[%- for key, value in mv.items() -%]
+[%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
+[%- endfor -%]
+[#- A select's options: its default first, then the rest in the given order, so a fresh helper is
+    right before the seed runs. -#]
+[%- macro options(default, all) -%]
+[%- for option in [default] + (all | reject('equalto', default) | list) %]
+      - [[ option ]]
+[%- endfor -%]
+[%- endmacro -%]
+[#- The ambient pages whose switch is on, in rotation order; the first rendered page when none is
+    (never empty). A Home Assistant expression, for sensor.<prefix>_ambient_pages. -#]
+[%- set page_switches = [] -%]
+[%- for page in pages -%][%- set _ = page_switches.append([page, 'input_boolean.' ~ p ~ '_page_' ~ page]) -%][%- endfor -%]
+[%- macro switched_on() -%]{% set ns = namespace(on=[]) %}{% for page, switch in [[ page_switches | tojson ]] if is_state(switch, 'on') %}{% set ns.on = ns.on + [page] %}{% endfor %}[%- endmacro -%]
+[#- The live list, read where the loop and the swipes step: the sensor's pages, or every rendered
+    page while the sensor is not there yet. -#]
+[%- set live = "(state_attr('sensor." ~ p ~ "_ambient_pages', 'pages') or " ~ (pages | tojson) ~ ")" -%]
+[#- The page after `page` in the live list: the first live page later in the rendered order, else
+    round to the first. A page switched off while it shows hands on to the next one that is on. -#]
+[%- macro after(page) -%]{% set live = [[ live ]] %}{{ ((live | select('in', [[ pages[pages.index(page) + 1:] | tojson ]]) | list) or live) | first }}[%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
 # inputs and render again rather than editing this file.
@@ -55,11 +149,17 @@ input_select:
     icon: mdi:image-multiple
     # In the rotation's order: the swipes step through this list (select_next / select_previous).
     options: [climate, air, plants, photos, status]
+  # The server's default theme, ramka-dark or ramka-light (automation [[ p ]]_theme_mode): every
+  # browser on "Backend-selected" follows it, not only the tablet (0.4.0).
+  [[ p ]]_theme_mode:
+    name: [[ named(' theme mode') ]]
+    icon: mdi:theme-light-dark
+    options:[[ options(d.theme_mode, ['dark', 'light']) ]]
   [%- if music_visual %]
   # What the now-playing card draws in its wave strip (0.4.0): the room's music as audio-sensor's
   # spectrum or level, or the card's own classic wave. The input's choice comes first, so a fresh
-  # helper starts there; no `initial:`, which would undo the tablet's choice at every restart. A
-  # tile on the controls steps through the options.
+  # helper starts there; no `initial:`, which would undo the choice at every restart. The settings
+  # dashboard's Music page sets it, with the look below; the card reads every one of them live.
   [[ p ]]_music_visual:
     name: [[ named(' music visual') ]]
     icon: mdi:waveform
@@ -67,11 +167,24 @@ input_select:
       - [[ music_visual ]]
       - [[ other_visual ]]
       - classic
+  [[ p ]]_music_palette:
+    name: [[ named(' music palette') ]]
+    icon: mdi:palette
+    options:[[ options(mv.music_palette, palettes) ]]
+  [[ p ]]_music_spectrum_flavour:
+    name: [[ named(' music spectrum flavour') ]]
+    icon: mdi:equalizer
+    options:[[ options(mv.music_spectrum_flavour, flavours.spectrum) ]]
+  [[ p ]]_music_level_flavour:
+    name: [[ named(' music level flavour') ]]
+    icon: mdi:waveform
+    options:[[ options(mv.music_level_flavour, flavours.level) ]]
   [%- endif %]
 
-# No `initial:` on any input_number: HA would reset it to that value at every restart and throw
-# away the tuning. Starting values: near 100 cm for 1 s, controls hold 5 s, off delay 300 s,
-# brightness 16 to 204 with lux_max 200.
+# No `initial:` on any helper: HA would reset it to that value at every restart and throw away the
+# tuning. The starting values come from the seed automation ([[ p ]]_settings_seed) on the first
+# start, and from script.[[ p ]]_settings_reset later: near [[ d.near_cm ]] cm for [[ d.near_s ]] s,
+# controls hold [[ d.controls_hold_s ]] s, off delay [[ d.off_delay_s ]] s, brightness [[ d.brightness_min ]] to [[ d.brightness_max ]] with lux_max [[ d.lux_max ]].
 # Ambient has two faces while the media player plays: the now-playing card (default) or the
 # home-info rotation. A swipe up on the controls picks the rotation, a swipe down the music, both
 # leave to ambient; the player starting from silence sets it back to the music.
@@ -84,6 +197,26 @@ input_boolean:
   [[ p ]]_near_enabled:
     name: [[ named(' controls on approach') ]]
     icon: mdi:hand-wave
+  # The settings dashboard's Advanced parts show while this is on.
+  [[ p ]]_settings_advanced:
+    name: [[ named(' advanced settings') ]]
+    icon: mdi:tune-variant
+  # On once the seed has given every setting its starting value (automation [[ p ]]_settings_seed).
+  [[ p ]]_settings_seeded:
+    name: [[ named(' settings seeded') ]]
+    icon: mdi:sprout
+  # One switch per view: off takes the view out live, inside what the render configured (a view the
+  # render left out stays out whatever its switch says). Every home has all seven.
+  [%- for view in views %]
+  [[ p ]]_page_[[ view ]]:
+    name: [[ named(' page ' ~ view) ]]
+    icon: mdi:eye
+  [%- endfor %]
+  [%- if music_visual %]
+  [[ p ]]_music_tilt:
+    name: [[ named(' music tilt') ]]
+    icon: mdi:slope-uphill
+  [%- endif %]
 
 input_number:
   [[ p ]]_near_cm:
@@ -143,6 +276,27 @@ input_number:
     step: 10
     unit_of_measurement: lx
     mode: slider
+  [%- if music_visual %]
+  # The music visual's look, bound to ambient-wave-card's options; ranges are the card's console
+  # sliders (fps: the card's own check). The level is dB SPL too, so its pair takes the spectrum's range.
+  [%- for key, label, icon, lo, hi, step, unit in [('rise_ms', ' music rise (ms)', 'mdi:arrow-up-bold', 0, 2000, 10, 'ms'),
+      ('fall_s', ' music fall (s)', 'mdi:arrow-down-bold', 0, 30, 0.1, 's'),
+      ('line_width_px', ' music line width (px)', 'mdi:format-line-weight', 0.5, 12, 0.1, 'px'),
+      ('spectrum_neutral_db', ' music spectrum neutral (dB)', 'mdi:volume-low', 0, 130, 1, 'dB'),
+      ('spectrum_hot_db', ' music spectrum hot (dB)', 'mdi:volume-high', 0, 130, 1, 'dB'),
+      ('level_neutral_db', ' music level neutral (dB)', 'mdi:volume-low', 0, 130, 1, 'dB'),
+      ('level_hot_db', ' music level hot (dB)', 'mdi:volume-high', 0, 130, 1, 'dB'),
+      ('fps', ' music refresh rate (fps)', 'mdi:speedometer', 1, 60, 1, 'fps')] %]
+  [[ p ]]_music_[[ key ]]:
+    name: [[ named(label) ]]
+    icon: [[ icon ]]
+    min: [[ lo ]]
+    max: [[ hi ]]
+    step: [[ step ]]
+    unit_of_measurement: [[ unit ]]
+    mode: slider
+  [%- endfor %]
+  [%- endif %]
 
 timer:
   [[ p ]]_controls:
@@ -197,11 +351,27 @@ template:
         availability: "{{ has_value('sensor.[[ ts ]]_light_sensor') }}"
         state: >-
           {% set lux = states('sensor.[[ ts ]]_light_sensor') | float(0) %}
-          {% set lo = states('input_number.[[ p ]]_brightness_min') | float(20) %}
-          {% set hi = states('input_number.[[ p ]]_brightness_max') | float(255) %}
-          {% set lux_max = states('input_number.[[ p ]]_lux_max') | float(200) %}
+          {% set lo = states('input_number.[[ p ]]_brightness_min') | float([[ d.brightness_min ]]) %}
+          {% set hi = states('input_number.[[ p ]]_brightness_max') | float([[ d.brightness_max ]]) %}
+          {% set lux_max = states('input_number.[[ p ]]_lux_max') | float([[ d.lux_max ]]) %}
           {% set k = [log(lux + 1, 10) / log(lux_max + 1, 10), 1] | min %}
           {{ (lo + (hi - lo) * k) | round(0) | int }}
+      # The ambient pages in the rotation now: the rendered ones whose page switch is on, in
+      # rotation order (rendered here: [[ pages | join(', ') ]]). Never empty: with every switch off
+      # it lists the first page and all_off is true, which the settings page warns about. The loop
+      # and the swipes step through `pages`.
+      - name: [[ named(' ambient pages') ]]
+        unique_id: [[ p ]]_ambient_pages
+        default_entity_id: sensor.[[ p ]]_ambient_pages
+        icon: mdi:view-carousel
+        state: >-
+          [[ switched_on() ]]{{ [ns.on | count, 1] | max }}
+        attributes:
+          component: ramka
+          pages: >-
+            [[ switched_on() ]]{{ ns.on if ns.on else [[ pages[:1] | tojson ]] }}
+          all_off: >-
+            [[ switched_on() ]]{{ ns.on | count == 0 }}
   - binary_sensor:
       # The media player playing, with track changes bridged. Between two tracks a player can
       # report playing → buffering → playing (or paused for buffering), each gap 0.5-3 s, and
@@ -216,15 +386,17 @@ template:
         delay_off:
           seconds: 5
         state: "{{ is_state('[[ inputs.media_player ]]', 'playing') }}"
-      # Ambient shows the now-playing card: the player plays and the music face is chosen. Every
-      # view condition and the loop's start/stop read this one sensor.
+      # Ambient shows the now-playing card: the player plays, the music face is chosen and the
+      # music view is switched on (input_boolean.[[ p ]]_page_music; off, ambient keeps the
+      # rotation). Every view condition and the loop's start/stop read this one sensor.
       - name: [[ named(' music view') ]]
         unique_id: [[ p ]]_music_view
         default_entity_id: binary_sensor.[[ p ]]_music_view
         icon: mdi:album
         state: >-
           {{ is_state('binary_sensor.[[ p ]]_media_playing', 'on')
-             and is_state('input_boolean.[[ p ]]_ambient_music', 'on') }}
+             and is_state('input_boolean.[[ p ]]_ambient_music', 'on')
+             and is_state('input_boolean.[[ p ]]_page_music', 'on') }}
       # "Someone at the tablet", debounced. An LD2410's moving-target flag flickers off for a
       # second or two every few seconds even with a person standing at the screen, and the
       # detection distance jumps to a farther object or to 0 in those gaps, so a trigger that
@@ -242,7 +414,7 @@ template:
         state: >-
           {% set d = states('[[ radar.distance ]]') | float(0) %}
           {{ is_state('[[ radar.presence ]]', 'on')
-             and 0 < d <= states('input_number.[[ p ]]_near_cm') | float(50) }}
+             and 0 < d <= states('input_number.[[ p ]]_near_cm') | float([[ d.near_cm ]]) }}
 [%- if inputs.photo_dir is defined %]
   # The photo named by input_text.[[ p ]]_photo, so a card can show a file that changes. HA
   # fetches it from itself; /local/ needs no token. Each path segment is URL-encoded on its own
@@ -343,7 +515,7 @@ script:
             target:
               entity_id: timer.[[ p ]]_controls
             data:
-              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int(15) }}"
+              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
   # Swipes on the rotation (ambient, music view off): up = the next page, down = the previous,
   # round the pages; the loop restarts and the cycle begins on that page with its full time.
   [[ p ]]_ambient_next:
@@ -351,20 +523,15 @@ script:
     icon: mdi:chevron-up
     mode: single
     sequence:
-[%- if pages | length == 5 %]
-      - action: input_select.select_next
-        target:
-          entity_id: input_select.[[ p ]]_ambient
-[%- else %]
-      # Only the pages this home has: [[ pages | join(', ') ]].
+      # The live list (sensor.[[ p ]]_ambient_pages): the pages this home has whose switch is on.
+      # From a page switched off, the next one on after it.
       - action: input_select.select_option
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
           option: >-
-            {% set pages = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
-            {{ pages[((pages.index(here) if here in pages else -1) + 1) % (pages | count)] }}
-[%- endif %]
+            {% set live = [[ live ]] %}{% set order = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
+            {% if here in order %}{{ ((live | select('in', order[order.index(here) + 1:]) | list) or live) | first }}{% else %}{{ live | first }}{% endif %}
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
@@ -373,29 +540,27 @@ script:
     icon: mdi:chevron-down
     mode: single
     sequence:
-[%- if pages | length == 5 %]
-      - action: input_select.select_previous
-        target:
-          entity_id: input_select.[[ p ]]_ambient
-[%- else %]
       - action: input_select.select_option
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
           option: >-
-            {% set pages = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
-            {{ pages[((pages.index(here) if here in pages else 1) - 1) % (pages | count)] }}
-[%- endif %]
+            {% set live = [[ live ]] %}{% set order = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
+            {% if here in order %}{{ ((live | select('in', order[:order.index(here)]) | list) or live) | last }}{% else %}{{ live | first }}{% endif %}
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
   # The calendar screen, from the calendar button on the controls. Same hold rules as the
-  # controls: no timer while someone is within near_cm, controls_hold_s after leaving.
+  # controls: no timer while someone is within near_cm, controls_hold_s after leaving. Not while the
+  # calendar view is switched off (its buttons hide then too).
   [[ p ]]_show_calendar:
     alias: [[ named(' show calendar') ]]
     icon: mdi:calendar-month
     mode: single
     sequence:
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_page_calendar
+        state: "on"
       - action: input_select.select_option
         target:
           entity_id: input_select.[[ p ]]_mode
@@ -414,7 +579,7 @@ script:
             target:
               entity_id: timer.[[ p ]]_controls
             data:
-              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int(5) }}"
+              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
 
   # Swipes on the controls (corner-taps card, swipe option), both leave to ambient at once:
   # up = the home-info rotation from the climate page, down = the music (the rotation anyway while
@@ -432,7 +597,8 @@ script:
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
-          option: [[ pages[0] ]]
+          option: >-
+            {{ [[ live ]] | first }}
       - action: timer.cancel
         target:
           entity_id: timer.[[ p ]]_controls
@@ -507,20 +673,22 @@ script:
           # this script, and the cycle begins there with that page's full time. Left alone it runs
           # climate → air → plants → photos → status → climate.
           sequence:
-[%- if pages | length < 5 %]
-            # Pages this home has: [[ pages | join(', ') ]]. A page it has not (the helper can stand
-            # on one after a restart) goes to the first, or no stage below would match.
+            # The live list: the pages this home has whose switch is on. A page not in it (switched
+            # off, or one the helper stands on after a restart) goes to the list's first, or no
+            # stage below would match. A switch turned off while its page shows takes effect at the
+            # end of that stage: each stage hands on to the next page that is on.
+            # Pages this home has: [[ pages | join(', ') ]].
             - if:
                 - condition: template
                   value_template: >-
-                    {{ states('input_select.[[ p ]]_ambient') not in [[ pages | tojson ]] }}
+                    {{ states('input_select.[[ p ]]_ambient') not in [[ live ]] }}
               then:
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: [[ pages[0] ]]
-[%- endif %]
+                    option: >-
+                      {{ [[ live ]] | first }}
 [%- if 'climate' in pages %]
             # 1. Climate, 30 s.
             - if:
@@ -534,7 +702,8 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: [[ after('climate') ]]
+                    option: >-
+                      [[ after('climate') ]]
 [%- endif %]
 [%- if 'air' in pages %]
             # 2. Air quality, 15 s: a handful of numbers, read at a glance.
@@ -549,7 +718,8 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: [[ after('air') ]]
+                    option: >-
+                      [[ after('air') ]]
 [%- endif %]
 [%- if 'plants' in pages %]
             # 3. Plants, 20 s: the ones to water first.
@@ -564,7 +734,8 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: [[ after('plants') ]]
+                    option: >-
+                      [[ after('plants') ]]
 [%- endif %]
 [%- if 'photos' in pages %]
             # 4. Photos: from the plants page, or straight in when the page already is photos.
@@ -603,7 +774,8 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: [[ after('photos') ]]
+                    option: >-
+                      [[ after('photos') ]]
 [%- endif %]
 [%- if 'status' in pages %]
             # 5. Status, 15 s, then round to the climate page.
@@ -618,8 +790,64 @@ script:
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
-                    option: [[ after('status') ]]
+                    option: >-
+                      [[ after('status') ]]
 [%- endif %]
+
+  # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
+  # catalog's). `page`: only that page's settings; `groups`: only those groups'; both: the settings
+  # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
+  # the settings dashboard's Reset buttons with a page or with nothing. It never touches
+  # audio-sensor's music source or calibration: a measurement is not a preference.
+  [[ p ]]_settings_reset:
+    alias: [[ named(' reset settings') ]]
+    icon: mdi:restore
+    mode: queued
+    fields:
+      page:
+        name: Page
+        description: Only the settings of this page.
+        selector:
+          select:
+            options: [[ reset_pages | tojson ]]
+      groups:
+        name: Groups
+        description: Only the settings of these groups.
+        selector:
+          select:
+            multiple: true
+            options: ["presence_display", "pages", "music_visual"]
+    sequence:
+      - variables:
+          only_page: "{{ page | default('', true) }}"
+          only_groups: >-
+            {% set g = groups | default([], true) %}{{ [g] if g is string else g | list }}
+[%- set blocks = [] %]
+[%- for s in settings %]
+[%- if not blocks or blocks[-1].page != s[2] or blocks[-1].group != s[3] %][% set _ = blocks.append({'page': s[2], 'group': s[3], 'items': []}) %][% endif %]
+[%- set _ = blocks[-1]['items'].append(s) %]
+[%- endfor %]
+[%- for block in blocks %]
+[%- set on_page = "== ''" if block.page == '' else "in ['', '" ~ block.page ~ "']" %]
+      - if:
+          - condition: template
+            value_template: >-
+              {{ only_page [[ on_page ]] and (not only_groups or '[[ block.group ]]' in only_groups) }}
+        then:
+[%- for domain, key, _page, _group, value in block['items'] %]
+[%- set verb = 'set_value' if domain == 'input_number' else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
+          - action: [[ domain ]].[[ verb ]]
+            target:
+              entity_id: [[ domain ]].[[ p ]]_[[ key ]]
+[%- if domain == 'input_number' %]
+            data:
+              value: [[ value ]]
+[%- elif domain == 'input_select' %]
+            data:
+              option: [[ value | yaml ]]
+[%- endif %]
+[%- endfor %]
+[%- endfor %]
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
@@ -657,7 +885,7 @@ automation:
         entity_id: [[ radar.presence ]]
         to: "off"
         for:
-          seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int(120) }}"
+          seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
     conditions:
       - condition: not
         conditions:
@@ -691,7 +919,7 @@ automation:
         entity_id: binary_sensor.[[ p ]]_near
         to: "on"
         for:
-          seconds: "{{ states('input_number.[[ p ]]_near_s') | int(3) }}"
+          seconds: "{{ states('input_number.[[ p ]]_near_s') | int([[ d.near_s ]]) }}"
     conditions:
       - condition: state
         entity_id: input_boolean.[[ p ]]_near_enabled
@@ -792,7 +1020,7 @@ automation:
         target:
           entity_id: timer.[[ p ]]_controls
         data:
-          duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int(15) }}"
+          duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
 
   - id: [[ p ]]_controls_timeout
     alias: [[ named(' controls timeout') ]]
@@ -901,7 +1129,74 @@ automation:
         target:
           entity_id: input_select.[[ p ]]_ambient
         data:
-          option: [[ pages[0] ]]
+          option: >-
+            {{ [[ live ]] | first }}
+  # ---- Live settings (0.4.0) -----------------------------------------------------------------
+  # The settings' starting values, once. The flag is new in 0.4.0, so it is off on the first start
+  # of every home, also one that has run the Ramka for months: a group is seeded only while it is
+  # untouched, each of its numbers `unknown`, `unavailable` or at its own minimum (what Home
+  # Assistant gives a helper without `initial:` and without a restored state). Per group, not per
+  # helper, so a home that set one value to its minimum on purpose keeps it.
+  # - presence_display: the seven numbers untouched (an upgraded home keeps them, and its
+  #   booleans, which cannot tell a fresh off from a chosen one); only while the flag is off;
+  # - pages (theme, the Advanced switch, the page switches): new in 0.4.0 in every home, so seeded
+  #   whenever the flag is off, or an upgraded home would find every page switched off;
+  # - music_visual: the four dB helpers untouched (0 dB); also after the flag is on, since a home
+  #   can add music_visual later.
+  # Home Assistant's start trigger fires after the restored states are in place.
+  - id: [[ p ]]_settings_seed
+    alias: [[ named(' settings seed') ]]
+    description: "Start: give untouched settings their starting values, once; a home's tuning stays."
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - variables:
+          seed_groups: >-
+            {% set untouched = namespace(presence=true, music=true) %}
+            {% for e in ['input_number.[[ p ]]_off_delay_s', 'input_number.[[ p ]]_brightness_min', 'input_number.[[ p ]]_brightness_max', 'input_number.[[ p ]]_near_cm', 'input_number.[[ p ]]_near_s', 'input_number.[[ p ]]_controls_hold_s', 'input_number.[[ p ]]_lux_max'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.presence = false %}{% endfor %}
+[%- if music_visual %]
+            {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
+[%- endif %]
+            {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %] }}
+      - if:
+          - condition: template
+            value_template: "{{ seed_groups | count > 0 }}"
+        then:
+          - action: script.[[ p ]]_settings_reset
+            data:
+              groups: "{{ seed_groups }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.[[ p ]]_settings_seeded
+
+  # The server's default theme follows the theme mode, at start and on every change. Both of the
+  # server's default-theme slots get it (frontend.set_theme without mode and with mode: dark), so a
+  # browser shows it whatever its own dark-mode setting. It reaches every user whose profile theme is
+  # "Backend-selected", on every dashboard; a user who picks a theme in the profile keeps it.
+  - id: [[ p ]]_theme_mode
+    alias: [[ named(' theme mode') ]]
+    description: "Start, or the theme mode changed: set the server's default theme to ramka-<mode>."
+    mode: queued
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: input_select.[[ p ]]_theme_mode
+        to: ~
+    actions:
+      - variables:
+          theme: >-
+            {% set mode = states('input_select.[[ p ]]_theme_mode') %}ramka-{{ mode if mode in ['dark', 'light'] else '[[ d.theme_mode ]]' }}
+      - action: frontend.set_theme
+        data:
+          name: "{{ theme }}"
+      - action: frontend.set_theme
+        data:
+          name: "{{ theme }}"
+          mode: dark
 [%- if inputs.alert_notify is defined %]
 
   # ---- Battery alerts ------------------------------------------------------------------------
