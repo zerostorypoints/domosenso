@@ -20,7 +20,7 @@ branches:
   supported: 'yes'
   prompt: Add the bermuda-presence component to my home with one Bluetooth proxy per room, prepare the proxies' firmware (I will flash them myself), and stop before production so I can check it on staging.
 - situation: Someone in the room without a phone
-  needs: An HLK-LD2410C radar on one of the room's proxies. It notices a person sitting still and, if you have the Ramka wall tablet, wakes it.
+  needs: An HLK-LD2410C radar on one of the room's proxies. It notices a person sitting still beyond about 1.5 m and, if you have the Ramka wall tablet, wakes it.
   wiring: Four low-voltage wires between the radar and the Atom.
   supported: 'yes'
   prompt: Add the radar feature of the bermuda-presence component to the proxy in the room I choose, let it wake the Ramka if I have one, and stop before production so I can check it on staging.
