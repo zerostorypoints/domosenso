@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Misst, wie laut ein Raum ist, mit einem kleinen Mikrofon-Board: den Schallpegel, ein Spektrum nach Tonhöhe und auf Wunsch ein Dashboard zur Raumakustik.",
+    "devices": {
+      "m5stack-atom-echos3r": {
+        "description": "Ein handtellergrosses ESP32-S3-Board mit Mikrofon, Audio-Chip und WLAN, per USB versorgt.",
+        "does": "Läuft mit ESPHome als Raum-Schallsensor. Jede Sekunde meldet es die Lautstärke und die lauteste Spitze, fünfmal pro Sekunde ein Spektrum in 31 Bändern von tiefem Bass bis zu den Höhen, und auf Wunsch eine schnellere Messung. Es hört nur zu: Der Lautsprecher-Verstärker auf dem Board bleibt ausgeschaltet."
+      }
+    }
+  }
+}

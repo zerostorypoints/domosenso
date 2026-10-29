@@ -1,0 +1,252 @@
+# domosenso component audio-sensor: a room sound sensor on an M5Stack Atom EchoS3R (ESP32-S3-PICO-1-N8R8,
+# ES8311 codec, analog MEMS microphone, NS4150B amplifier). It only measures the room's sound: no
+# Bluetooth, no voice assistant, no speaker, so the radio and the CPU stay free for a clean,
+# uninterrupted audio stream. It reports the broadband level (Sound level, Sound peak) and a
+# third-octave spectrum (components/audio_spectrum, in this component). Shared as an ESPHome remote
+# package; a home's device file stays thin:
+#
+#   substitutions:
+#     room: office           # slug for the hostname, audio-sensor-<room>
+#     area: Office           # Home Assistant area name; must match an existing area exactly
+#   esphome:
+#     area: ${area}          # not in the package: an adopted device has no area until HA sets one
+#   packages:
+#     sensor: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.1.0
+#   wifi:
+#     ssid: !secret wifi_ssid
+#     password: !secret wifi_password
+#   api:
+#     encryption:
+#       key: !secret api_encryption_key
+#   ota:
+#     - platform: esphome
+#       encryption:            # authenticates uploads with the API key
+#
+# Nothing here reads a secret: the ESPHome docs say remote packages cannot, so Wi-Fi and the API key
+# live in the device file and merge into the blocks below.
+#
+# The `ref` of external_components below is a literal, because a remote package cannot take a
+# substitution there; tools/catalog_check.py fails when it differs from the manifest's version.
+#
+# Pins: M5Stack's Atom EchoS3R pin map, the same as their VoiceS3R ESPHome config
+# (m5stack/esphome-yaml common/atom-voices3r-satellite-base.yaml at 19eb639).
+#
+# First flash over USB-C (a human does it, in download mode: hold the button while plugging in):
+# uvx esphome@2026.9.1 run <device file>. Later: over Wi-Fi, the same command picking the network
+# address.
+
+substitutions:
+  room: sensor
+  area: ${room}
+  name: audio-sensor-${room}
+  friendly_name: Audio sensor ${area}
+  # One analog gain for the life of the calibration: changing it moves every reading by the same
+  # step, so Home Assistant's SPL offset must be measured again. 24 dB is M5Stack's value. If loud
+  # music brings "Sound peak" to 0 dBFS (clipping), step down to 18DB and recalibrate.
+  mic_gain: 24DB
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+  # Required for ESPHome dashboard adoption; versions follow the component's manifest.
+  project:
+    name: domosenso.audio-sensor
+    version: 0.1.0
+
+esp32:
+  variant: esp32s3
+  flash_size: 8MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+# Power saving off: the radio waking up and sleeping pulses the supply rail the microphone and the
+# codec share, which shows up as noise in the quiet range. No fallback AP or captive portal.
+# ssid/password come from the device file.
+wifi:
+  power_save_mode: none
+
+# encryption: the key comes from the device file (api: encryption: key: !secret ...).
+api:
+
+# No encryption here, because a factory board has no API key yet and ESPHome refuses an OTA
+# encryption block with nothing to inherit. The device file adds `encryption:` (bare: it takes the
+# API key); ESPHome merges same-port OTA blocks. Without it, uploads are unauthenticated.
+ota:
+  - platform: esphome
+
+logger:
+  level: WARN
+
+# The spectrum worker, from this repository at the component's tag.
+external_components:
+  - source:
+      type: git
+      url: https://github.com/zerostorypoints/domosenso
+      ref: audio-sensor/0.1.0
+      path: components/audio-sensor/esphome/components
+
+# ---- Audio: ES8311 ADC over I2S, read only -------------------------------------------------------
+# 48 kHz: the full audio band (to 24 kHz), which the spectrum will need; 16 kHz would stop at 8 kHz
+# and miss the energy above it. 16-bit is what sound_level reads; it already spans more than the
+# MEMS microphone's own noise floor allows.
+i2c:
+  - id: audio_i2c
+    sda:
+      number: GPIO45
+      ignore_strapping_warning: true
+    scl:
+      number: GPIO0
+      ignore_strapping_warning: true
+    frequency: 100kHz
+
+audio_dac:
+  - platform: es8311
+    id: codec
+    i2c_id: audio_i2c
+    address: 0x18
+    use_mclk: true
+    # Not "use the microphone": true switches the codec to a PDM digital microphone (REG14 bit 6).
+    # This board's MEMS microphone is analog, on the codec's analog input; true reads silence.
+    use_microphone: false
+    mic_gain: ${mic_gain}
+    sample_rate: 48000
+    bits_per_sample: 16bit
+
+i2s_audio:
+  - id: i2s_bus
+    i2s_mclk_pin: GPIO11
+    i2s_bclk_pin: GPIO17
+    i2s_lrclk_pin:
+      number: GPIO3
+      ignore_strapping_warning: true
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    i2s_audio_id: i2s_bus
+    adc_type: external
+    i2s_din_pin: GPIO4
+    pdm: false
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    channel: left  # ES8311 puts the microphone on slot 0
+    # A DC bias adds to every squared sample and lifts the quiet readings; take it out first.
+    correct_dc_offset: true
+
+# Unweighted (no A or C weighting): a broadband level, comparable with REW's Z-weighted SPL.
+# RMS is the energy mean over each second; peak is the loudest sample in it, so 0 dBFS = clipping.
+# Both stay in dBFS: Home Assistant adds the SPL offset (a helper per board, measured against a
+# reference microphone), so calibrating needs no flash.
+sensor:
+  - platform: sound_level
+    microphone: mic
+    passive: false  # this meter keeps the microphone running for both
+    measurement_duration: 1000ms
+    rms:
+      name: Sound level
+      accuracy_decimals: 1
+    peak:
+      name: Sound peak
+      accuracy_decimals: 1
+  # Live tracking: the same microphone measured over 100 ms, ten readings a second, for the
+  # dashboard's meter during listening and test sessions. Passive, so it never starts or stops the
+  # microphone the 1-second meter runs (stopping a source stops the shared microphone). It
+  # computes all the time, which costs little, and publishes only while "Live tracking" is on:
+  # nothing reaches Home Assistant otherwise. The 1-second readings, and everything recorded from
+  # them, are the same with it on or off. (sound_level's window cannot change at runtime: a
+  # shorter window set mid-measurement would never complete.)
+  - platform: sound_level
+    microphone: mic
+    passive: true
+    measurement_duration: 100ms
+    rms:
+      id: fast_level
+      name: Fast sound level
+      accuracy_decimals: 1
+      filters:
+        - lambda: &live_gate |-
+            // NAN passes so that turning live tracking off clears the reading.
+            if (!id(live_tracking).state && !std::isnan(x)) return {};
+            return x;
+    peak:
+      id: fast_peak
+      name: Fast sound peak
+      accuracy_decimals: 1
+      filters:
+        - lambda: *live_gate
+  - platform: wifi_signal
+    name: Wi-Fi signal
+    update_interval: 60s
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s
+
+# Third-octave spectrum for the ambient wave card.
+# Passive, like the 100 ms meter: it only listens while the 1-second meter keeps the microphone
+# running, and never stops it for the others. 8192-point FFT (50 % overlap, a frame every 85 ms):
+# bins 5.86 Hz wide, about one per third at the bottom (the 20 Hz third is 4.6 Hz wide); 4096 points
+# would smear the lowest thirds into each other.
+# The levels stay dBFS like the other meters: Home Assistant adds the same SPL offset. Always on:
+# the spectrum goes out every 200 ms; the octaves (1-minute Leq) and the worker's load every minute.
+audio_spectrum:
+  microphone: mic
+  spectrum:
+    name: Spectrum
+  octaves:
+    name_prefix: Octave
+  load:
+    name: Spectrum load
+
+# The amplifier stays off: nothing plays, and an idle class-D amplifier is noise in the microphone.
+switch:
+  - platform: gpio
+    id: amp_enable
+    pin: GPIO18
+    restore_mode: ALWAYS_OFF
+    internal: true
+  # Turns the fast readings on. Off after a boot, and off by itself after an hour, so a forgotten
+  # session does not stream ten readings a second for days.
+  - platform: template
+    id: live_tracking
+    name: Live tracking
+    icon: mdi:speedometer
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - script.execute: live_tracking_timeout
+    turn_off_action:
+      - script.stop: live_tracking_timeout
+      - lambda: |-
+          id(fast_level).publish_state(NAN);
+          id(fast_peak).publish_state(NAN);
+
+script:
+  - id: live_tracking_timeout
+    mode: restart
+    then:
+      - delay: 60min
+      - switch.turn_off: live_tracking
+
+text_sensor:
+  - platform: wifi_info
+    bssid:
+      name: Connected AP (BSSID)
+  # The gain the SPL offset belongs to, shown beside it on the Room acoustics dashboard.
+  - platform: template
+    name: Mic gain
+    entity_category: diagnostic
+    icon: mdi:microphone-settings
+    update_interval: 1h
+    lambda: return {"${mic_gain}"};
+
+button:
+  - platform: restart
+    name: Restart
+  - platform: safe_mode
+    name: Safe mode boot

@@ -1,0 +1,111 @@
+# Domosenso component manifest (SPEC-018). 0.1.0 is built over several tasks; this file holds what
+# exists so far: the firmware package and the spectrum component. Artifacts that later tasks add
+# (the device file template, the factory image, the Home Assistant package, the dashboard, the cards)
+# are listed under `artifacts` only once their files are in the catalog, as catalog_check requires.
+id: audio-sensor
+version: 0.1.0
+summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level, a third-octave spectrum and optional room acoustics
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: sound-sensor
+      recommend: [m5stack-atom-echos3r]
+      count: "1 or more"                  # one board per room; at most one of them marks `music: true`
+      power: "5 V USB"
+
+host:
+  installs: [container, haos]             # container = no apps; nothing here needs a service
+  ha_min: "2026.9"
+
+integrations:
+  - {name: esphome, source: core, setup: "adopt the board in Home Assistant once flashed (discovery confirmation), with the API key from the home's ESPHome secrets"}
+  - {name: "ESPHome (firmware)", source: firmware, tested: "2026.9.1", setup: "flash the first time over USB (download mode: hold the button while plugging in); then OTA"}
+  - {name: template, source: core}
+  - {name: statistics, source: core, feature: room-acoustics}
+  - {name: group, source: core, feature: room-acoustics}
+  - {name: apexcharts-card, source: hacs, repo: RomRider/apexcharts-card, feature: room-acoustics, setup: "only with room_acoustics: true; `status` lists it (manual)"}
+
+# Values the home supplies; `domosenso add` writes the inputs skeleton, the add-component skill fills it.
+inputs:
+  sensors:                                # one item per board; one device file each
+    type: "list[{room: slug, area: area_name, music: bool, acoustics: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]"
+    example:
+      - {room: living-room, area: Living room, music: true}
+      - {room: kids-room, area: "Kids' room", acoustics: true}
+    item:
+      room: {type: slug, note: "the board's hostname part (audio-sensor-<room>), words joined by -"}
+      area: {type: area_name, note: "the Home Assistant area"}
+      music: {type: bool, default: false, note: "this board is the music source; at most one item"}
+      acoustics: {type: bool, default: true, note: "with room_acoustics: true, this board gets the derived figures"}
+      id_prefix: {type: slug, default: "the room slug with _", note: "prefix of the ids this component creates for the board"}
+      name: {type: str, default: "audio-sensor-<room>", note: "ESPHome substitution"}
+      friendly_name: {type: str, default: "Audio sensor <area>", note: "ESPHome substitution"}
+      mic_gain: {type: str, default: 24DB, note: "ES8311 gain, 0DB to 42DB; changing it means calibrating again"}
+      entities:
+        type: "map[key, entity_id]"
+        # Home Assistant builds an ESPHome entity's id from the device's names and area when the board
+        # is adopted, and a renamed device keeps its old ids, so they cannot be derived from `room`
+        # and `area` reliably. The default is a guess the add-component skill corrects from the
+        # running Home Assistant.
+        default: "<domain>.<area slug>_<name slug with _>_<key slug>"
+        keys:
+          spectrum: sensor.<..>_spectrum
+          level: sensor.<..>_sound_level
+          peak: sensor.<..>_sound_peak
+          fast_level: sensor.<..>_fast_sound_level
+          fast_peak: sensor.<..>_fast_sound_peak
+          live_tracking: switch.<..>_live_tracking
+          mic_gain: text_sensor.<..>_mic_gain
+          wifi_signal: sensor.<..>_wi_fi_signal
+          uptime: sensor.<..>_uptime
+          bssid: text_sensor.<..>_connected_ap_bssid
+          restart: button.<..>_restart
+          load: sensor.<..>_spectrum_load
+  playing:                                # an entity that means music plays: the listening sessions follow it
+    type: "entity_id (binary_sensor or media_player)"
+    default: null
+    example: media_player.living_room_speaker
+  room_acoustics:                         # the derived figures per board and the Room acoustics dashboard
+    type: bool
+    default: false
+
+artifacts:
+  esphome:
+    packages:                             # remote package, github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/<version>
+      - {file: esphome/audio-sensor.yaml, project: domosenso.audio-sensor}
+    # Added by the device template task: factory (Improv + dashboard_import), devices (the thin
+    # device file per `sensors` item), secrets [wifi_ssid, wifi_password, api_encryption_key].
+  # The spectrum component the package loads with external_components; it is not an artifact a home
+  # receives, ESPHome pulls it from the tag (a fixed `ref`, checked against `version`).
+  # Added by later tasks: templates (the Home Assistant package, the Room acoustics dashboard),
+  # dashboard_cards and install_path (ambient-wave-card, room-meter-card).
+
+provides:                                 # contract surface; placeholders in <> come from inputs
+  # The entities of the Home Assistant package, the aliases and the room-acoustics figures are
+  # listed with that package (the template task); the ESPHome side is fixed here.
+  project: {name: domosenso.audio-sensor, stability: stable}   # reported to Home Assistant as manufacturer domosenso
+  entities:
+    - {id: "sensor.<id_prefix>_spectrum", stability: stable, from: esphome, entity_key: spectrum,
+       state: "31 comma-separated third-octave levels in dBFS, 20 Hz to 20 kHz",
+       note: "id built by HA from the ESPHome area + friendly name, not by this component; the `entities` input maps it"}
+    - {id: "sensor.<id_prefix>_sound_level", stability: stable, from: esphome, entity_key: level, note: "1 s RMS in dBFS, unweighted; same note"}
+    - {id: "sensor.<id_prefix>_sound_peak", stability: stable, from: esphome, entity_key: peak, note: "loudest sample in that second, dBFS; same note"}
+    - {id: "sensor.<id_prefix>_fast_sound_level", stability: additive-only, from: esphome, entity_key: fast_level, note: "100 ms, only while Live tracking is on"}
+    - {id: "sensor.<id_prefix>_fast_sound_peak", stability: additive-only, from: esphome, entity_key: fast_peak, note: same}
+    - {id: "switch.<id_prefix>_live_tracking", stability: stable, from: esphome, entity_key: live_tracking, note: "off after a boot and after one hour"}
+    - {id: "sensor.<id_prefix>_spectrum_load", stability: additive-only, from: esphome, entity_key: load, note: "share of one core the spectrum worker uses"}
+    - {id: "text_sensor.<id_prefix>_mic_gain", stability: additive-only, from: esphome, entity_key: mic_gain}
+    - {id: "sensor.<id_prefix>_wi_fi_signal", stability: additive-only, from: esphome, entity_key: wifi_signal}
+    - {id: "sensor.<id_prefix>_uptime", stability: additive-only, from: esphome, entity_key: uptime}
+    - {id: "text_sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
+    - {id: "button.<id_prefix>_restart", stability: additive-only, from: esphome, entity_key: restart}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]                        # the board adopted and its entities read on this version; check_config comes with the Home Assistant package
+  esphome: ["2026.9.1"]                   # config of the package; compile with the device file task
+  homes: 1
+local_only: true

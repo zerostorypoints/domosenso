@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Mierzy, jak głośno jest w pomieszczeniu, za pomocą małej płytki z mikrofonem: poziom dźwięku, widmo według wysokości tonu i, jeśli chcesz, panel akustyki pomieszczenia.",
+    "devices": {
+      "m5stack-atom-echos3r": {
+        "description": "Płytka ESP32-S3 wielkości dłoni z mikrofonem, układem audio i Wi-Fi, zasilana przez USB.",
+        "does": "Działa z ESPHome jako czujnik dźwięku w pomieszczeniu. Co sekundę podaje głośność i najgłośniejszy szczyt, pięć razy na sekundę widmo w 31 pasmach od głębokich basów po wysokie tony, a na życzenie także szybszy pomiar. Tylko słucha: wzmacniacz głośnika na płytce pozostaje wyłączony."
+      }
+    }
+  }
+}
