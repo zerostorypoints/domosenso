@@ -1,7 +1,8 @@
 # SPEC-020: Ramka live settings (ramka 0.4.0, audio-sensor 0.1.0)
 
-- Status: draft 2026-10-29, revised 2026-10-29 after the maintainer's review (settings pages, Basic
-  and Advanced, page switches, the Controls tile removed, the standing rule)
+- Status: approved 2026-10-29 (docere-priv), after a revision on the maintainer's review (settings
+  pages, Basic and Advanced, page switches, the Controls tile removed, the standing rule); issue #86,
+  phase 2 in #87–#90
 - Source: the maintainer's design, approved in conversation (2026-10-29), after the wall check of
   SPEC-018's music visual: tuning the visual meant an inputs change, a render and a deploy for each
   value tried. Also covers issue #51 (the tuning sliders start at their minimum on a first install).
