@@ -174,3 +174,26 @@ def test_urls_include_agent_files():
 def test_no_changes_adds_nothing():
     assert tool().agent_urls([]) == []
     assert tool().render([('/how-to/x/', 'new how-to' + DRAFT)], 'urls', None) == []
+
+
+def test_markdown_code_change_submits_every_markdown_page(repo, capsys):
+    # A change to the markdown generators rewrites every index.md, which no content diff lists.
+    root, write, commit, _ = repo
+    write('website/src/generated/howtos.json', json.dumps([{'slug': 'x', 'status': 'published'},
+                                                           {'slug': 'd', 'status': 'draft'}]))
+    write('website/src/generated/catalog.json', json.dumps({'components': [{'id': 'c'}]}))
+    write('website/src/generated/content.json', json.dumps({'devices': [{'id': 'dv'}], 'articles': [{'slug': 'ar'}]}))
+    write('website/src/lib/markdown.ts', 'changed'); commit()
+    tool().main(['--root', str(root), '--base', 'base', '--format', 'urls'])
+    urls = capsys.readouterr().out.split()
+    for path in ('/how-to/x/', '/components/c/', '/devices/dv/', '/journal/ar/', '/docs/s1/', '/get-started/'):
+        assert f'https://domosenso.org{path}index.md' in urls
+    assert 'https://domosenso.org/how-to/d/index.md' not in urls
+
+
+def test_other_code_change_does_not_list_every_markdown_page(repo, capsys):
+    root, write, commit, _ = repo
+    write('website/src/generated/catalog.json', json.dumps({'components': [{'id': 'c'}]}))
+    write('website/src/app/page.tsx', 'changed'); commit()
+    tool().main(['--root', str(root), '--base', 'base', '--format', 'urls'])
+    assert 'https://domosenso.org/components/c/index.md' not in capsys.readouterr().out.split()

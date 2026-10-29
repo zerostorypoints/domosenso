@@ -1,7 +1,7 @@
 // Markdown versions of the content pages for agents (SPEC-020), built from the objects the pages render.
-// Server modules only: it imports @/lib/howto.
+// How-tos come in as arguments: callers pass them through visibleHowTos, so drafts stay out of production.
 import type {HowTo} from './howto';
-import {componentName,evidenceLabel,type Component} from './catalog';
+import {componentName,evidenceLabel,requirementLabels,type Component} from './catalog';
 import {devices,type Article} from './content';
 import {docs} from './docs';
 import {installCommands,starterPrompt,noHomeAssistant} from './install';
@@ -15,8 +15,12 @@ export function fence(text:string,lang=''):string{
  const f='`'.repeat(Math.max(3,longest+1));
  return `${f}${lang}\n${text}\n${f}`;
 }
-// An agent may fetch the .md alone, so site-relative links must carry the origin.
-export function absolutize(md:string):string{return md.replace(/\]\(\//g,`](${origin}/`);}
+// An agent may fetch the .md alone, so site-relative links must carry the origin: inline links,
+// reference definitions and raw HTML src/href. Code (fenced or inline) is left as written.
+export function absolutize(md:string):string{
+ return md.replace(/(`{3,})[\s\S]*?\1|`[^`\n]*`|(\]\(|^\[[^\]\n]+\]:[ \t]*|\b(?:src|href)=")\/(?!\/)/gm,
+  (all,_fence,prefix)=>prefix===undefined?all:`${prefix}${origin}/`);
+}
 export function markdownPage(path:string,title:string,sections:string[]):string{
  return `Canonical: ${origin}${path}\n\n# ${title}\n\n${sections.filter(Boolean).join('\n\n')}\n`;
 }
@@ -39,15 +43,16 @@ export function howToMarkdown(h:HowTo):string{
  ]);
 }
 
-const values=(r:Record<string,unknown>)=>Object.entries(r).filter(([k])=>k!=='kind').map(([k,v])=>`${k}: ${Array.isArray(v)?v.join(', '):String(v)}`).join('; ');
+const values=(r:Record<string,unknown>)=>Object.entries(r).filter(([k])=>k!=='kind').map(([k,v])=>`${requirementLabels[k]??k}: ${Array.isArray(v)?v.join(', '):String(v)}`).join('; ');
+const kind=(k:string)=>k.replaceAll('-',' ');
 export function componentMarkdown(c:Component):string{
  // host.installs is left out: it lists haos, which onboarding does not cover (SPEC-020).
  return markdownPage(`/components/${c.id}/`,componentName(c.id),[
   c.summary,
   list([`Version: ${c.version}`,`Field use: ${evidenceLabel(c.testedHomes)}`,`Home Assistant: ${c.testedHa.join(', ')||'Not recorded'}`,
    `ESPHome: ${c.testedEspHome.join(', ')||'Not recorded'}`,`Role: ${c.installationRole==='describes'?'describes an integration; installs nothing':'installs configuration into your home project'}`]),
-  `## Requirements\n\n${c.requirements.length?list(c.requirements.map(r=>`${r.kind}: ${values(r)}`)):'No specific device requirement is declared.'}`,
-  c.optionalRequirements.length?`## Optional equipment\n\n${list(c.optionalRequirements.map(r=>`${r.kind}: ${values(r)}`))}`:'',
+  `## Requirements\n\n${c.requirements.length?list(c.requirements.map(r=>`${kind(r.kind)}: ${values(r)}`)):'No specific device requirement is declared.'}`,
+  c.optionalRequirements.length?`## Optional equipment\n\n${list(c.optionalRequirements.map(r=>`${kind(r.kind)}: ${values(r)}`))}`:'',
   `## Integrations\n\n${list(c.integrations.map(i=>`${i.name} (${i.source})${'setup' in i&&i.setup?`: ${i.setup}`:''}`))}`,
   c.inputs.length?`## Inputs\n\n${list(c.inputs.map(i=>`${i.name} (${i.type})${i.required?', required':''}`))}`:'',
   `## Limitations\n\n${list(c.limitations)}`,

@@ -28,6 +28,19 @@ test('every domosenso.org link in llms.txt exists in out/',()=>{
   expect(missing,file).toEqual([]);
  }
 });
+function markdownFiles(dir=out('')):string[]{
+ return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?markdownFiles(path.join(dir,e.name)):e.name==='index.md'?[path.join(dir,e.name)]:[]);
+}
+test('no markdown copy has a link an agent cannot follow on its own',()=>{
+ // Fetched alone, a relative link has nothing to resolve against: every target is absolute or a fragment.
+ const bad:string[]=[];
+ for(const file of [...markdownFiles(),out('llms.txt'),out('llms-full.txt')]){
+  const text=fs.readFileSync(file,'utf8').replace(/(`{3,})[\s\S]*?\1|`[^`\n]*`/g,'');
+  const targets=[...text.matchAll(/\]\(([^)\s]+)|^\[[^\]\n]+\]:[ \t]*(\S+)|\b(?:src|href)="([^"]+)"/gm)].map(m=>m[1]??m[2]??m[3]);
+  for(const t of targets)if(!/^(https?:|mailto:|#)/.test(t))bad.push(`${path.relative(out(''),file)}: ${t}`);
+ }
+ expect(bad).toEqual([]);
+});
 test('every content page links its markdown',()=>{
  const missing=[...contentPages(),'/get-started/'].filter(p=>{
   const html=fs.readFileSync(out(p+'index.html'),'utf8');

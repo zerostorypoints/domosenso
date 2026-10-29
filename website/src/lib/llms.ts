@@ -8,8 +8,10 @@ import {installCommands,starterPrompt,noHomeAssistant,agentRules} from './instal
 import {origin} from './seo';
 export type AgentIndexInput={howTos:HowTo[];components:Component[];devices:Device[];docs:Doc[];articles:Article[];prerequisites:string};
 
-export function linkText(s:string):string{return s.replace(/([[\]])/g,'\\$1');}
-const link=(title:string,path:string,note?:string)=>`- [${linkText(title)}](${origin}${path})${note?`: ${note}`:''}`;
+export function linkText(s:string):string{return oneLine(s).replace(/([[\]])/g,'\\$1');}
+// A list entry is one line: a line break in a description or situation would end it.
+const oneLine=(s:string)=>s.replace(/\s+/g,' ').trim();
+const link=(title:string,path:string,note?:string)=>`- [${linkText(title)}](${origin}${path})${note?`: ${oneLine(note)}`:''}`;
 const state=(b:HowTo['branches'][number])=>b.supported==='yes'?'yes':b.supported==='no'?'no':b.issue?`coming soon (${b.issue})`:'coming soon';
 
 function header(i:AgentIndexInput):string{
@@ -30,7 +32,7 @@ export function llmsTxt(i:AgentIndexInput):string{
   header(i),
   '## How-to guides',
   'Recipes for specific projects. Each lists the situations it covers; a supported one carries a prompt for your coding agent.',
-  i.howTos.map(h=>[link(h.title,`/how-to/${h.slug}/index.md`,h.description),...h.branches.map(b=>`  - ${b.situation} → ${state(b)}`)].join('\n')).join('\n'),
+  i.howTos.map(h=>[link(h.title,`/how-to/${h.slug}/index.md`,h.description),...h.branches.map(b=>`  - ${oneLine(b.situation)} → ${state(b)}`)].join('\n')).join('\n'),
   '## Components',
   i.components.map(c=>link(componentName(c.id),`/components/${c.id}/index.md`,`${c.summary} (${evidenceLabel(c.testedHomes)})`)).join('\n'),
   '## Hardware',

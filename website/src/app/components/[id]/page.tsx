@@ -4,7 +4,7 @@ import {RelatedJournal} from '@/components/journal-cards';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {PageIntro,Code} from '@/components/site';
-import {catalog,componentName,evidenceLabel} from '@/lib/catalog';
+import {catalog,componentName,evidenceLabel,requirementLabels} from '@/lib/catalog';
 import {metadata as meta} from '@/lib/seo';
 
 type Props = {params:Promise<{id:string}>};
@@ -17,7 +17,6 @@ export async function generateMetadata({params}:Props) {
   return meta(componentName(id),`/components/${id}/`,component.summary,{markdown:true});
 }
 
-const requirementLabels:Record<string,string> = {recommend:'Recommended',via:'Connects through',count:'Quantity',note:'Setup note',app:'App',power:'Power',protocol:'Protocol',brand:'Brand'};
 
 export default async function Page({params}:Props) {
   const {id} = await params;

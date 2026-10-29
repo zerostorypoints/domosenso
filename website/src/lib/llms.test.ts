@@ -31,6 +31,11 @@ test('llms-full.txt contains each how-to markdown in full',()=>{
  expect(full).toContain(howToMarkdown(h('a')));
  expect(full).toContain(howToMarkdown(h('b')));
 });
+test('a description or situation with line breaks stays on one list line',()=>{
+ const x={...h('a'),description:'Line one\nline two\n',branches:[{situation:'s\nmore',needs:'n',wiring:'w',supported:'no' as const}]};
+ const txt=llmsTxt(input([x]));
+ expect(txt).toContain('- [A](https://domosenso.org/how-to/a/index.md): Line one line two\n  - s more → no');
+});
 test('component lines carry their field evidence',()=>{
  // Without it an agent reading only the index would present a one-home component as broadly tested.
  const c={id:'plants',summary:'Plant care.',testedHomes:1} as unknown as AgentIndexInput['components'][number];

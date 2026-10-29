@@ -28,10 +28,21 @@ test('root-relative links become absolute',()=>{
  expect(absolutize('![w](/wiring/a.svg) [d](/docs/x/) [e](https://example.org/)')).toBe('![w](https://domosenso.org/wiring/a.svg) [d](https://domosenso.org/docs/x/) [e](https://example.org/)');
  expect(howToMarkdown({...base,body:'See [x](/devices/y/).'})).toContain('(https://domosenso.org/devices/y/)');
 });
+test('reference links and raw HTML paths become absolute too',()=>{
+ expect(absolutize('[x]: /docs/x/\n<img src="/wiring/a.svg"> <a href="/devices/y/">y</a>')).toBe('[x]: https://domosenso.org/docs/x/\n<img src="https://domosenso.org/wiring/a.svg"> <a href="https://domosenso.org/devices/y/">y</a>');
+});
+test('code blocks are left as written',()=>{
+ const md='Before [a](/a/)\n\n```\n[b](/b/)\n```\n\nAfter `[c](/c/)`';
+ expect(absolutize(md)).toBe('Before [a](https://domosenso.org/a/)\n\n```\n[b](/b/)\n```\n\nAfter `[c](/c/)`');
+});
 test('component evidence: null and zero differ',()=>{
  expect(componentMarkdown(component(null))).toContain('Field evidence not recorded');
  expect(componentMarkdown(component(0))).toContain('Not field-tested');
  expect(componentMarkdown(component(0))).not.toMatch(/haos/i);
+});
+test('component requirements use the labels the page shows',()=>{
+ const c={...component(1),requirements:[{kind:'audio-player',recommend:'hegel-h400',note:'any network player'}]} as unknown as Component;
+ expect(componentMarkdown(c)).toContain('- audio player: Recommended: hegel-h400; Setup note: any network player');
 });
 test('first line is the canonical URL',()=>{
  expect(howToMarkdown(base).split('\n')[0]).toBe('Canonical: https://domosenso.org/how-to/a/');
