@@ -2,6 +2,7 @@
 # Every check of the catalog, in order; keeps going after a failure and exits non-zero if any
 # failed:
 #   agents_check (AGENTS.md within 32,768 bytes, CLAUDE.md, skills), pytest, npm test,
+#   website build + e2e (only when the branch changes website/),
 #   catalog_check --strict,
 #   tools/ha-check.sh for every component with a Home Assistant part (ha/, templates/ or
 #   artifacts.ha_instance), tools/esphome-check.sh for every component with esphome/,
@@ -33,6 +34,11 @@ step agents_check uv run tools/agents_check.py
 step pytest uv run pytest -q
 step "website content" uv run tools/export_website.py --check
 step "npm test" npm test --silent
+if git diff --name-only origin/main...HEAD 2>/dev/null | grep -q '^website/'; then
+  # NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: the e2e analytics spec needs a measurement id at build time
+  step "website build" bash -c 'cd website && NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-DOMOTEST01 npm run build'
+  step "website e2e" bash -c 'cd website && npm run e2e'
+fi
 step "catalog_check --strict" uv run tools/catalog_check.py --strict
 if [ "$mode" = full ]; then
 for manifest in components/*/component.yaml; do

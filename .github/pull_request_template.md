@@ -31,6 +31,7 @@ Use `domosenso-website-audit` for the merge/release handoff.
 - Hardware and installation guides:
 - Onboarding and upgrade documentation:
 - Journal, homepage and release ledger:
+- Changed pages (from tools/website_changes.py):
 
 For each, record update, no change with a reason, or deferred with evidence and follow-up.
 After merge verify the actual target/revision; after a new tag verify release availability.

@@ -58,6 +58,17 @@ uv run tools/export_website.py --check --verify-remote
 
 Run the relevant content/privacy tests and website checks described in `website/README.md`.
 Inspect desktop and mobile when presentation changes; preserve analytics consent behavior.
+Before the PR is ready, list the pages it changes and paste the list under "Website impact":
+
+```sh
+uv run tools/website_changes.py --base origin/main --preview-url <preview URL>
+```
+
+Check each listed route on the preview. Draft routes exist only there. After merge, open the
+same routes on https://domosenso.org (`--format urls` prints them without drafts).
+
+<!-- Search-engine notification step (Task 9) goes here, after the live-route check. -->
+
 Run repository-required checks before committing. If deployment is authorized, independently
 check live changed routes, versions, source links and sitemap/feed after deployment. Report
 local, merged and live status separately; a green build is not proof of current production.

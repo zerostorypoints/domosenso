@@ -310,6 +310,8 @@ verifying its actual merge revision, and when publishing a component tag. Assess
 examples/views, hardware guides, documentation, journal and release ledger. Record update,
 no-change or deferred evidence; follow up when a missing tag becomes public. A feature-branch
 merge is not a main release. This is an agent workflow, not an automatic publishing service.
+Every plan names its website impact. Content about behaviour that is not yet in a tag stays
+`draft` until the tag exists. The PR lists its pages with `uv run tools/website_changes.py --base origin/main`.
 
 ## Issues
 
