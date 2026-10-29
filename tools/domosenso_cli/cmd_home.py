@@ -17,6 +17,7 @@ from types import SimpleNamespace
 
 import yaml
 
+from domosenso_cli import dev_render
 from domosenso_cli.build import (
     file_records, file_sha, git_short_head, load_manifest, open_catalog, parse_spec, plan_outputs,
 )
@@ -172,6 +173,9 @@ def _add_run(args: argparse.Namespace, rep: Reporter) -> int:
     home = HomeConfig.load(args.home)  # now with the component in it
     if dev:
         render_ids(home, lock, [cid], False, dev, rep)
+        # No lock entry carries the instance files of a dev add: the inventory does, for `deploy`.
+        dev_render.add_files(home.root, cid, {o.dest: {"sha256": file_sha(home.root / o.dest), "layer": "instance"}
+                                              for o in instance})
         return rep.ok()
     # The entry exists in memory only until `apply_component` has written everything and saved the
     # lock: a failed add leaves no lock entry, so it can be retried.

@@ -176,7 +176,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
   its instance files: ESPHome device files, the files of its container services; SPEC-015), take
   over files rendered by hand. `render [<id>]`, `update <id> [--to <version>]`, `status`: managed
   files from the lock (the catalog is read at a tag, never the working tree; `--catalog-dev <path>`
-  renders a working tree, stamps get `-dirty`).
+  renders a working tree, stamps get `-dirty`, its files and resources go to `.domosenso/dev-render.json` for `deploy`
+  until a render from the tag).
 - `deploy <target> --plan | --apply`, `rollback <target>`: copy the home to a target declared in
   `domosenso.yaml` (`local-docker` staging, `ssh-docker` production), `check_config`, restart,
   Lovelace resources; an `orphan` blocks `--apply`. `deploy production` refuses `dev-render` files unless

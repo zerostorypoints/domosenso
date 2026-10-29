@@ -2,15 +2,19 @@
 
 A component is read from the tag the lock names (the lock's commit must still be what the tag resolves
 to). With `--catalog-dev` it is read from a catalog working tree instead, stamped `-dirty`, and the lock
-is left alone: that is how a catalog change is tried in a home before it is tagged.
+is left alone: that is how a catalog change is tried in a home before it is tagged. What such a render
+wrote goes into `.domosenso/dev-render.json` instead, for `deploy` (SPEC-019 B); a render from the tag
+removes the component's entry there.
 """
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
+from domosenso_cli import dev_render
 from domosenso_cli.build import (
-    file_records, file_sha, git_short_head, load_manifest, open_catalog, plan_outputs, resource_urls, write_outputs,
+    file_records, file_sha, git_short_head, load_manifest, open_catalog, plan_outputs, resource_urls, sha256,
+    write_outputs,
 )
 from domosenso_cli.catalog import dev_dir
 from domosenso_cli.errors import DomosensoError
@@ -47,8 +51,12 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
         if dev:
             component_dir = dev_dir(dev, cid)
             version = load_manifest(component_dir).get("version")
-            outputs = plan_outputs(home, home.components[cid], component_dir, version, git_short_head(dev), dirty=True)
+            head = git_short_head(dev)
+            outputs = plan_outputs(home, home.components[cid], component_dir, version, head, dirty=True)
             _report(rep, write_outputs(home, lock, cid, outputs, force, dev=True))
+            dev_render.record(home.root, cid, version, f"{head}-dirty",
+                              {o.dest: {"sha256": sha256(o.content), "layer": o.layer} for o in outputs},
+                              resource_urls(component_dir))
             continue
         locked = lock.components[cid]
         component_dir = catalog.checkout(cid, locked.version, locked.commit)
@@ -87,6 +95,7 @@ def apply_component(
     }
     locked.resources = resource_urls(component_dir)
     lock.save(home.root)  # per component: files already written stay described if a later one fails
+    dev_render.drop(home.root, cid)
 
 
 def _remove(home: HomeConfig, dest: str) -> None:

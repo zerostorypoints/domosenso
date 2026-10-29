@@ -6,7 +6,9 @@ has to act on; the steps are in the component's own `UPGRADE.md`.
 ## 2026-10-29: deploy `--allow-dirty`
 
 New optional flag `deploy production --apply --allow-dirty --confirm <hash>` for dev-rendered files
-([SPEC-019](../.ai/specs/SPEC-019-2026-10-29-deploy-allow-dirty.md)). No home action.
+([SPEC-019](../.ai/specs/SPEC-019-2026-10-29-deploy-allow-dirty.md)). A `--catalog-dev` render now records
+its files and resource URLs in `.domosenso/dev-render.json`, so `deploy` carries a new component or card
+version complete; a render from the tag clears it. No home action.
 
 ## 2026-10-28: contributor checks and release verification
 
