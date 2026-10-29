@@ -1,6 +1,6 @@
 # SPEC-020: domosenso.org readable by AI agents
 
-Status: draft, 2026-10-29. Extends SPEC-014 (framework website).
+Status: approved 2026-10-29 (maintainer, in session). Extends SPEC-014 (framework website).
 Source: the maintainer asked on 2026-10-29 that personal agents (Claude Duet, Meta Muse, OpenAI dots)
 and coding agents find domosenso.org, answer a request with a recipe from its how-tos and send the
 person to the catalog; that `llms.txt` and markdown versions of pages stay current with every site
