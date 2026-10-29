@@ -44,6 +44,33 @@ def _load_yaml(path: Path):
         return None, f"{path}: cannot read: {exc}"
 
 
+CATALOG_REPO_URL = "https://github.com/zerostorypoints/domosenso"
+
+
+class _EsphomeLoader(yaml.SafeLoader):
+    """Reads an ESPHome file for its structure: `!secret`, `!include` and friends are kept as text."""
+
+
+_EsphomeLoader.add_multi_constructor("!", lambda loader, suffix, node: loader.construct_scalar(node)
+                                     if isinstance(node, yaml.ScalarNode) else None)
+
+
+def _external_component_refs(path: Path) -> list[str]:
+    """The `ref` of every git external_components source in the file that points at this repository."""
+    try:
+        data = yaml.load(path.read_text(encoding="utf-8"), Loader=_EsphomeLoader)
+    except (OSError, yaml.YAMLError):
+        return []  # not valid YAML for this purpose; ESPHome's own check owns that
+    items = data.get("external_components") if isinstance(data, dict) else None
+    refs = []
+    for item in items if isinstance(items, list) else []:
+        source = item.get("source") if isinstance(item, dict) else None
+        if isinstance(source, dict) and source.get("type") == "git" and \
+                str(source.get("url", "")).removesuffix(".git").rstrip("/") == CATALOG_REPO_URL:
+            refs.append(str(source.get("ref")))
+    return refs
+
+
 def _catalog_root(component_yaml: Path) -> Path:
     # <catalog>/components/<id>/component.yaml
     return component_yaml.resolve().parent.parent.parent
@@ -127,6 +154,15 @@ def check_component(path: Path) -> list[str]:
             target = target.parent
         if not target.exists():
             errors.append(f"{path}: {label}: path does not exist: {rel}")
+    # The tag a package pulls its external components from is the component's own version; it is a
+    # literal in the file (a remote package cannot take a substitution there), so it is checked here.
+    esphome = data["artifacts"].get("esphome") or {}
+    tag = f"{data['id']}/{data['version']}"
+    for rel in [pkg["file"] for pkg in esphome.get("packages") or []] + ([esphome["factory"]] if esphome.get("factory") else []):
+        if (comp_dir / rel).is_file():
+            for ref in _external_component_refs(comp_dir / rel):
+                if ref != tag:
+                    errors.append(f"{path}: {rel}: external_components ref '{ref}' must be '{tag}' (the manifest's version)")
     install = data["artifacts"].get("install_path")
     if install and install.split("/")[2] != data["id"]:
         errors.append(f"{path}: artifacts.install_path: '{install}' must be www/domosenso/{data['id']}/<version>/")

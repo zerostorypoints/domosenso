@@ -1,0 +1,7 @@
+# SPEC-018. A microphone that reports sound levels to Home Assistant. A sound pressure reading is
+# only a candidate (a weather station or a smart speaker can report one too). Other boards can join
+# the kind later; the audio-sensor firmware is for the Atom EchoS3R only.
+id: sound-sensor
+match:
+  - device_classes: [sound_pressure]
+    certainty: maybe

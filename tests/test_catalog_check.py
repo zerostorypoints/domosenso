@@ -326,3 +326,30 @@ def test_kind_files(catalog):
     assert any("ghost.yaml" in e and "no manifest names kind 'ghost'" in e for e in errors)
     assert any("named.yaml" in e and "does not match file name" in e for e in errors)
     assert any("empty.yaml" in e and "match" in e for e in errors)
+
+
+REPO_URL = "https://github.com/zerostorypoints/domosenso"
+
+
+def external_components(ref, url=REPO_URL):
+    return ("esphome: {name: demo}\n"
+            "external_components:\n"
+            f"  - source: {{type: git, url: {url}, ref: {ref}, path: components/demo-sensor/esphome/components}}\n")
+
+
+def test_esphome_external_ref_matches_version(catalog):
+    """An ESPHome package that pulls the catalog's own external components names the component's tag."""
+    node = catalog / "components" / "demo-sensor" / "esphome" / "node.yaml"
+    node.write_text(external_components("demo-sensor/0.1.0"))
+    assert cc.check_component(component_yaml(catalog)) == []
+    node.write_text(external_components("demo-sensor/0.0.9"))
+    errors = cc.check_component(component_yaml(catalog))
+    assert len(errors) == 1
+    assert "esphome/node.yaml" in errors[0] and "demo-sensor/0.0.9" in errors[0] and "demo-sensor/0.1.0" in errors[0]
+    node.write_text(external_components("main"))  # a branch is not a tag
+    assert len(cc.check_component(component_yaml(catalog))) == 1
+    node.write_text(external_components("elsewhere/0.0.9", url="https://github.com/someone/else"))  # not this repository
+    assert cc.check_component(component_yaml(catalog)) == []
+    node.write_text("esphome: {name: demo}\nexternal_components:\n  - source: {type: local, path: components}\n"
+                    "wifi:\n  ssid: !secret wifi_ssid\n")  # local sources and !secret tags are fine
+    assert cc.check_component(component_yaml(catalog)) == []

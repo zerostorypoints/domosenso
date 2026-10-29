@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Measures how loud a room is, from a small microphone board: the sound level, a spectrum by pitch and, if you want, a room acoustics dashboard.",
+    "devices": {
+      "m5stack-atom-echos3r": {
+        "description": "A palm-sized ESP32-S3 board with a microphone, a sound chip and Wi-Fi, powered over USB.",
+        "does": "Runs ESPHome as a room sound sensor. Every second it reports the loudness and the loudest peak, five times a second a spectrum in 31 bands from deep bass to treble, and it can stream a faster reading on demand. It listens only: the speaker amplifier on the board stays off."
+      }
+    }
+  }
+}
