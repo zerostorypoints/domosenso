@@ -125,7 +125,7 @@ Added to the framework PR template and `AGENTS.md`, extending the existing
    reviewer sees them; production builds still exclude them *(designer's call)*.
    **Cleanup:** Cloudflare Pages keeps preview deployments after a merge. A workflow on PR close
    deletes that branch's preview deployments through the Cloudflare API, with a Pages-edit token
-   available only to that workflow on the base repository (fork PRs have no previews).
+   (account-scoped; see manual steps) available only to that workflow on the base repository (fork PRs have no previews).
 4. **After merge.** The agent verifies the live routes from the same list, then notifies search
    engines (below) and records the audit note in `docs/website-audits/`.
 
@@ -157,7 +157,7 @@ from the PR head, or reviews after it is rebased onto a maintainer branch.
 
 ## Manual steps for a human
 
-- Create the Cloudflare API token (Pages edit, this project only) as a repository secret.
+- Create the Cloudflare API token (Account > Cloudflare Pages > Edit; Cloudflare may not allow narrowing it to one project, and it can also deploy to production) as repository secret `CLOUDFLARE_API_TOKEN`, plus variable `CLOUDFLARE_ACCOUNT_ID`.
 - Enable preview deployments for non-production branches in the Cloudflare Pages project
   `domosenso-framework` (today only `main` deploys).
 - Generate and commit the IndexNow key; for later Google CI, create the service account and

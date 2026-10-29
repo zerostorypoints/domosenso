@@ -6,7 +6,7 @@
 Waits for https://domosenso.org/build.json to report <sha>, then submits the URLs read from stdin
 (or --urls-file). `no website changes` and an empty input both mean nothing to submit.
 Back-to-back merges can make an earlier job time out: its URLs are then not submitted, and the
-next sitemap resubmission covers them.
+maintainer's post-merge sitemap resubmission (website-audit skill) covers them.
 The key is public by design: IndexNow checks it against website/public/<key>.txt.
 """
 import argparse

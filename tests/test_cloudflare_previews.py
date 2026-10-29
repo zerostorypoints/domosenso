@@ -86,15 +86,40 @@ def test_main_branch_is_refused():
     assert fake.calls == []
 
 
-def test_workflow_triggers_on_close_guards_forks_and_scopes_secret():
+def test_empty_account_id_exits_1_without_http(monkeypatch, capsys):
+    monkeypatch.setenv('CLOUDFLARE_API_TOKEN', 't')
+    monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', '')
+    fake = Fake([deployment('a', 'feat')])
+    assert tool().main(['--branch', 'feat'], http=fake) == 1
+    assert 'CLOUDFLARE_ACCOUNT_ID' in capsys.readouterr().err
+    assert fake.calls == []
+
+
+def test_non_dict_error_entry_does_not_raise_attribute_error():
+    with pytest.raises(RuntimeError, match='boom; fine'):
+        tool().delete_branch_previews('feat', 'a', 'p', 't', http=Fake([], error=['boom', {'message': 'fine'}]))
+
+
+def test_workflow_uses_base_branch_guards_forks_and_scopes_secrets_to_the_step():
     text = WORKFLOW.read_text()
     workflow = yaml.safe_load(text)
     triggers = workflow.get('on', workflow.get(True))
-    assert triggers == {'pull_request': {'types': ['closed']}}
+    assert triggers == {'pull_request_target': {'types': ['closed']}}
     assert workflow['permissions'] == {'contents': 'read'}
     assert list(workflow['jobs']) == ['cleanup']
     job = workflow['jobs']['cleanup']
     assert job['if'] == 'github.event.pull_request.head.repo.full_name == github.repository'
+    assert 'env' not in job  # secrets live on the one step that runs the tool
+    checkouts = [s for s in job['steps'] if str(s.get('uses', '')).startswith('actions/checkout')]
+    assert len(checkouts) == 1
+    assert checkouts[0]['with'] == {'persist-credentials': False}  # no ref: never the PR head
+    assert 'head' not in text.replace('head.repo.full_name', '').replace('head.ref', '')
+    steps = [s for s in job['steps'] if 'cloudflare_previews.py' in s.get('run', '')]
+    assert len(steps) == 1
+    step = steps[0]
     assert text.count('secrets.CLOUDFLARE_API_TOKEN') == 1
-    assert 'secrets.CLOUDFLARE_API_TOKEN' in yaml.safe_dump(job)
-    assert 'cloudflare_previews.py' in yaml.safe_dump(job)
+    assert step['env']['CLOUDFLARE_API_TOKEN'] == '${{ secrets.CLOUDFLARE_API_TOKEN }}'
+    assert step['env']['CLOUDFLARE_ACCOUNT_ID'] == '${{ vars.CLOUDFLARE_ACCOUNT_ID }}'
+    assert step['env']['BRANCH'] == '${{ github.event.pull_request.head.ref }}'
+    assert '--branch "$BRANCH"' in step['run']
+    assert '[ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]' in step['run']

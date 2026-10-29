@@ -26,7 +26,8 @@ def urlopen_json(method, url, token):
 def call(http, method, url, token):
     body = http(method, url, token)
     if not body.get('success'):
-        messages = '; '.join(e.get('message', str(e)) for e in body.get('errors', [])) or 'unknown error'
+        messages = '; '.join(e.get('message', str(e)) if isinstance(e, dict) else str(e)
+                              for e in body.get('errors', [])) or 'unknown error'
         raise RuntimeError(f'Cloudflare API error: {messages}')
     return body
 
@@ -54,12 +55,13 @@ def main(argv=None, http=urlopen_json):
     parser.add_argument('--branch', required=True)
     parser.add_argument('--project', default='domosenso-framework')
     args = parser.parse_args(argv)
+    account, token = os.environ.get('CLOUDFLARE_ACCOUNT_ID', ''), os.environ.get('CLOUDFLARE_API_TOKEN', '')
+    for name, value in (('CLOUDFLARE_ACCOUNT_ID', account), ('CLOUDFLARE_API_TOKEN', token)):
+        if not value:
+            print(f'missing or empty environment variable {name}', file=sys.stderr)
+            return 1
     try:
-        deleted = delete_branch_previews(args.branch, os.environ['CLOUDFLARE_ACCOUNT_ID'], args.project,
-                                         os.environ['CLOUDFLARE_API_TOKEN'], http)
-    except KeyError as missing:
-        print(f'missing environment variable {missing.args[0]}', file=sys.stderr)
-        return 1
+        deleted = delete_branch_previews(args.branch, account, args.project, token, http)
     except (RuntimeError, ValueError, OSError) as error:
         print(error, file=sys.stderr)
         return 1

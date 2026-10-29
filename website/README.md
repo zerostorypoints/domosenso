@@ -156,9 +156,10 @@ Done once in the provider panels; nothing here is provisioned by the repository.
 
 - Cloudflare Pages project `domosenso-framework`: enable preview deployments for non-production
   branches.
-- Create a Cloudflare API token with Pages edit on that project only. Store it as repository secret
-  `CLOUDFLARE_API_TOKEN` and add repository variable `CLOUDFLARE_ACCOUNT_ID`. The preview-cleanup
-  workflow skips until both exist.
+- Create a Cloudflare API token with Account > Cloudflare Pages > Edit (Cloudflare may not let you
+  narrow it to one project; check when creating it, and note that it can also deploy to production).
+  Store it as repository secret `CLOUDFLARE_API_TOKEN` and add repository variable
+  `CLOUDFLARE_ACCOUNT_ID`. The preview-cleanup workflow skips until both are set.
 - On the first preview, verify the `noindex` metadata and the `X-Robots-Tag` header once.
 - IndexNow: the key file is `website/public/<key>.txt`; nothing else is needed.
 - Sitemap resubmission to Search Console and Bing after a merge is an agent step in the

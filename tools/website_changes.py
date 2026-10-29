@@ -38,11 +38,6 @@ def status_of(text):
     return front.get('status', 'published')
 
 
-def json_at(root, ref, path):
-    text = show(root, ref, path)
-    return json.loads(text) if text else None
-
-
 def verb(old, new, noun):
     if new is None:
         return 'removed'
