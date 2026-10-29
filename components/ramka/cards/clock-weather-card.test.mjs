@@ -16,9 +16,9 @@ const weather = (state = "partlycloudy", attributes = {}) => ({
   state, attributes: { temperature: 12.4, wind_speed: 8.2, wind_speed_unit: "km/h", ...attributes },
 });
 
-function makeCard({ lang = "pl", states, config = {}, hassExtra = {} } = {}) {
+function makeCard({ lang = "pl", states, config = {}, hassExtra = {}, apis = ["Date"] } = {}) {
   mock.timers.reset();
-  mock.timers.enable({ apis: ["Date"], now: new Date(SAT_24) });
+  mock.timers.enable({ apis, now: new Date(SAT_24) });
   const card = document.createElement("clock-weather-card");
   card.setConfig({ weather: "weather.forecast_home", ...config });
   card.hass = {
@@ -113,4 +113,97 @@ test("in English no Polish word reaches the page", () => {
   const text = shadowText(card);
   assert.doesNotMatch(text, POLISH);
   assert.match(text, /Partly cloudy/);
+});
+
+// A websocket connection as the frontend hands it to cards: subscriptions that can be ended, and
+// the "ready" event it fires after reconnecting to a restarted Home Assistant.
+function fakeConnection({ reject = 0 } = {}) {
+  const conn = {
+    subs: [], listeners: new Set(),
+    subscribeMessage(cb) {
+      const sub = { cb, active: true };
+      conn.subs.push(sub);
+      if (conn.subs.length <= reject) { sub.active = false; return Promise.reject(new Error("not found")); }
+      return Promise.resolve(() => { sub.active = false; });
+    },
+    addEventListener(event, fn) { if (event === "ready") conn.listeners.add(fn); },
+    removeEventListener(event, fn) { if (event === "ready") conn.listeners.delete(fn); },
+    reconnect() { for (const fn of conn.listeners) fn(conn); },
+    active() { return conn.subs.filter((s) => s.active); },
+  };
+  return conn;
+}
+const flush = () => new Promise((r) => setImmediate(r));
+const DAYS = [
+  { datetime: "2026-10-25T12:00:00+01:00", condition: "rainy", temperature: 11.6 },
+  { datetime: "2026-10-26T12:00:00+01:00", condition: "sunny", temperature: 14 },
+];
+const TIMERS = ["Date", "setTimeout", "setInterval"];
+const days = (card) => card.shadowRoot.querySelectorAll(".forecast .day").length;
+
+test("a reconnect after an HA restart ends the subscription and subscribes again (#53)", async () => {
+  const connection = fakeConnection();
+  const card = makeCard({ lang: "en", config: { forecast: 2 }, hassExtra: { connection }, apis: TIMERS });
+  connection.subs[0].cb({ forecast: DAYS });
+  connection.reconnect();
+  await flush();
+  assert.equal(connection.subs.length, 2);
+  assert.deepEqual(connection.active(), [connection.subs[1]]);
+  connection.subs[1].cb({ forecast: DAYS.slice(0, 1) });
+  assert.equal(days(card), 1);
+});
+
+test("an empty first forecast is retried until days arrive, then retrying stops (#53)", async () => {
+  const connection = fakeConnection();
+  const card = makeCard({ lang: "en", config: { forecast: 2 }, hassExtra: { connection }, apis: TIMERS });
+  connection.subs[0].cb({ forecast: [] });
+  assert.equal(days(card), 0);
+  mock.timers.tick(10_000);
+  await flush();
+  assert.equal(connection.subs.length, 2);
+  assert.deepEqual(connection.active(), [connection.subs[1]]);
+  connection.subs[1].cb({ forecast: DAYS });
+  assert.equal(days(card), 2);
+  mock.timers.tick(3_600_000);
+  assert.equal(connection.subs.length, 2);
+});
+
+test("no answer or a refused subscription is retried after 10, 30, 60 s, then every 5 min (#53)", async () => {
+  const connection = fakeConnection({ reject: 1 });
+  makeCard({ lang: "en", config: { forecast: 2 }, hassExtra: { connection }, apis: TIMERS });
+  await flush();
+  const after = (ms) => { mock.timers.tick(ms); return connection.subs.length; };
+  assert.equal(after(9_999), 1);
+  assert.equal(after(1), 2);
+  assert.equal(after(30_000), 3);
+  assert.equal(after(60_000), 4);
+  assert.equal(after(300_000), 5);
+  assert.equal(after(300_000), 6);
+});
+
+test("a card taken off the page leaves no subscription, listener or retry behind (#53)", async () => {
+  const connection = fakeConnection();
+  const card = makeCard({ lang: "en", config: { forecast: 2 }, hassExtra: { connection }, apis: TIMERS });
+  document.body.appendChild(card);
+  card.remove();
+  await flush();
+  assert.equal(connection.active().length, 0);
+  assert.equal(connection.listeners.size, 0);
+  mock.timers.tick(3_600_000);
+  connection.reconnect();
+  assert.equal(connection.subs.length, 1);
+});
+
+test("the weather entity appearing after a restart subscribes again at once, no timer needed (#53)", async () => {
+  const connection = fakeConnection({ reject: 1 });
+  const card = makeCard({ lang: "en", config: { forecast: 2 }, hassExtra: { connection }, apis: TIMERS,
+                          states: { "weather.forecast_home": undefined } });
+  await flush();
+  card.hass = { ...card._hass, states: { "weather.forecast_home": weather() } };
+  assert.equal(connection.subs.length, 2);
+  connection.subs[1].cb({ forecast: DAYS });
+  assert.equal(days(card), 2);
+  card.hass = { ...card._hass };
+  mock.timers.tick(3_600_000);
+  assert.equal(connection.subs.length, 2);
 });

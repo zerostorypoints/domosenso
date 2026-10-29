@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.3.1 (2026-10-29): the forecast comes back after a restart
+
+An open page reconnects after a Home Assistant restart before the weather integration is back, so
+the clock card's forecast subscription was refused or answered with no days, and the forecast
+stayed empty until the page was reloaded. The card now subscribes again on every reconnect and as
+soon as the weather entity is back, and retries after 10 s, 30 s, 60 s and then every 5 minutes
+until days arrive. Card code only.
+
+### What a home does
+
+Nothing is required. Updating moves the cards to `www/domosenso/ramka/0.3.1/` and the twelve
+resource URLs with them (`domosenso update ramka` and a deploy do both). A home that added an
+automation reloading the tablet's page after every start for this can remove it.
+
 ## 0.3.0 (2026-10-27): the status page is optional
 
 New optional input `status_page` (default `true`). With `status_page: false` the status page is

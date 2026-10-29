@@ -70,6 +70,9 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - **`off_delay_s`**: the radar loses people who sit still, so a short delay sends the screen off
   and back on many times a day. In the first home 120 s gave 40 to 50 such offs a day; 300 s cut
   the short offs by 40 % and the median ambient stretch went from 2.3 to 9.6 minutes.
+- After a Home Assistant restart an open tablet page gets its forecast back by itself: the clock
+  card subscribes again when the page reconnects and when the weather entity is back, and retries
+  (10 s, 30 s, 60 s, then every 5 min) until the weather integration answers with days (0.3.1). No reload automation is needed.
 - A reload of the scripts stops the running ambient loop; the watchdog automation restarts it
   within five minutes. Template entities reload with `template.reload`.
 - After a change to the input_select options, restart Home Assistant rather than reloading them
