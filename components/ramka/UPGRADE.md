@@ -3,6 +3,23 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.4.0 (2026-10-29): the now-playing view can draw the room's music
+
+New optional inputs `music_visual` (`spectrum` or `level`) and `music_visual_options`. With
+`music_visual`, the now-playing card's wave strip shows audio-sensor's spectrum or level of the
+board marked `music: true`; a new helper `input_select.<prefix>_music_visual` (`spectrum`, `level`,
+`classic`, the input's choice first, no `initial:`) picks it, and a tile on the controls steps
+through it. `music_visual_options` overrides the visual card's defaults key by key (README, "Music
+visual").
+
+### What a home does
+
+Nothing is required: without them the dashboards render as in 0.3.0. To use it, install
+`audio-sensor` with one sensor marked `music: true`, set `music_visual: spectrum` or `level`, render
+both and deploy. Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the twelve resource
+URLs with them (`domosenso update ramka` and a deploy do both); the deploy's restart creates the
+new helper.
+
 ## 0.3.0 (2026-10-27): the status page is optional
 
 New optional input `status_page` (default `true`). With `status_page: false` the status page is

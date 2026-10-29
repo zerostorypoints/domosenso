@@ -37,6 +37,37 @@
 [%- set air = inputs.air | default(none) -%]
 [%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
 [%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
+[#- The now-playing card's music visual (0.4.0): audio-sensor's ambient-wave-card in the wave strip,
+    reading the home's music aliases, one config per option of input_select.<prefix>_music_visual.
+    music_visual_options overrides the card's defaults key by key; a key left out stays out of the
+    config, so the card's own default applies. The line is 2.8 px unless the options say otherwise:
+    Ramka's own wave draws 2.8 px in that strip (the card's 4 px default is for larger cards). A
+    render cannot see audio-sensor's inputs: a home without its music aliases gets the classic wave
+    from the card's fallback, not a failed render. -#]
+[%- set music_visual = inputs.music_visual | default(none) -%]
+[%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
+[%- set visuals = {} -%]
+[%- if music_visual is not none -%]
+[%- set mvo = inputs.music_visual_options | default({}) -%]
+[%- if mvo is not mapping -%][[ fail('ramka: music_visual_options must be a mapping') ]][%- endif -%]
+[%- for key in mvo if key not in ['spectrum', 'level', 'palette', 'rise', 'fall', 'line_width', 'tilt'] -%][[ fail("ramka: music_visual_options: unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': 'sensor.music_spectrum', 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': 'sensor.music_level'})] -%]
+[%- set own = mvo[kind] | default({}) -%]
+[%- if own is not mapping -%][[ fail('ramka: music_visual_options.' ~ kind ~ ' must be a mapping') ]][%- endif -%]
+[%- for key in own if key not in ['flavour', 'neutral', 'hot'] -%][[ fail('ramka: music_visual_options.' ~ kind ~ ": unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- set config = {'type': 'custom:ambient-wave-card', 'source': source, 'active': 'binary_sensor.' ~ p ~ '_media_playing', 'fallback': 'classic'} -%]
+[%- if own.flavour is defined -%][%- set _ = config.update({'flavour': own.flavour}) -%][%- endif -%]
+[%- set colour = {} -%]
+[%- if mvo.palette is defined -%][%- set _ = colour.update({'palette': mvo.palette}) -%][%- endif -%]
+[%- for key in ['neutral', 'hot'] if own[key] is defined -%][%- set _ = colour.update({key: own[key]}) -%][%- endfor -%]
+[%- set dynamics = {} -%]
+[%- for key in ['rise', 'fall', 'tilt'] if mvo[key] is defined -%][%- set _ = dynamics.update({key: mvo[key]}) -%][%- endfor -%]
+[%- if colour -%][%- set _ = config.update({'colour': colour}) -%][%- endif -%]
+[%- if dynamics -%][%- set _ = config.update({'dynamics': dynamics}) -%][%- endif -%]
+[%- set _ = config.update({'style': {'line_width': mvo.line_width | default(2.8)}}) -%]
+[%- set _ = visuals.update({kind: config}) -%]
+[%- endfor -%]
+[%- endif -%]
 [%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]
 [%- set series = [] -%]
 [%- for c in inputs.climate | default([]) -%]
@@ -167,6 +198,20 @@ views:
             [%- endfor %]
             [%- endif %]
             wave: true
+            [%- if visuals %]
+            # The room's music in the strip instead of the wave (0.4.0), as the select picks it. On
+            # classic, or until the visual's card is loaded, the card draws its own wave; wave: true
+            # stays so the strip keeps its place while it switches.
+            visual:
+              select: input_select.[[ p ]]_music_visual
+              [%- for kind, config in visuals.items() %]
+              [[ kind ]]:
+                type: custom:ambient-wave-card
+                [%- for key, value in config.items() if key != 'type' %]
+                [[ key ]]: [[ value if key in ['active', 'fallback'] else value | yaml ]]
+                [%- endfor %]
+              [%- endfor %]
+            [%- endif %]
             # The card's height comes from the screen, not from grid rows: everything below it
             # (the 4-row bottom section, 248 px, plus three 8 px paddings/gaps) is subtracted;
             # dvh, not vh: in the Companion app's WebView 100vh includes the area under Android's
@@ -628,6 +673,30 @@ views:
             tap_action: {action: toggle}
             icon_tap_action: {action: toggle}
             grid_options: {columns: 12, rows: 1}
+          [%- if visuals %]
+          # What the now-playing strip draws (0.4.0): the name is the current choice, a tap steps to
+          # the next one. Only while the player is on; any state but spectrum or level is the
+          # card's classic wave, so the classic tile stands for it.
+          [%- for option, icon in [('spectrum', 'mdi:equalizer'), ('level', 'mdi:waveform'), ('classic', 'mdi:sine-wave')] %]
+          - type: custom:tap-button-card
+            name: [[ t('ui.music_visual.' ~ option) | yaml ]]
+            icon: [[ icon ]]
+            taps: 1
+            action: input_select.select_next
+            target: {entity_id: input_select.[[ p ]]_music_visual}
+            data: {cycle: true}
+            columns: 12
+            rows: 1
+            visibility:
+              - {condition: state, entity: [[ mp ]], state_not: "off"}
+              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+            [%- if option == 'classic' %]
+              - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
+            [%- else %]
+              - {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ option ]]}
+            [%- endif %]
+          [%- endfor %]
+          [%- endif %]
           - type: tile
             entity: [[ calendars[0] ]]
             name: [[ t('ui.calendar.button') | yaml ]]

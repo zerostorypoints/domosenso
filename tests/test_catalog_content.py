@@ -236,6 +236,8 @@ def entity_reads(node, key=None):
 
 
 def test_every_entity_the_demo_dashboard_reads_has_a_state_or_comes_from_the_package(tmp_path):
+    """...or from a component the Ramka consumes (audio-sensor's music aliases, 0.4.0), whose own
+    package creates it in the demo home."""
     out = tmp_path / "ramka"
     dr.render_component(REPO / "components" / "ramka", ramka_inputs(), out, ["en"])
     dashboard = yaml.safe_load((out / "dashboard.en.yaml").read_text(encoding="utf-8"))
@@ -246,9 +248,11 @@ def test_every_entity_the_demo_dashboard_reads_has_a_state_or_comes_from_the_pac
     for block in package["template"]:
         for entities in block.values():
             created |= {e["default_entity_id"] for e in entities}
+    manifest = yaml.safe_load((REPO / "components" / "ramka" / "component.yaml").read_text(encoding="utf-8"))
+    consumed = {c["id"] for c in manifest["consumes"] if "id" in c}
     reads = set(entity_reads(dashboard))
     assert len(reads) > 40
-    assert sorted(reads - set(demo_states()["states"]) - created) == []
+    assert sorted(reads - set(demo_states()["states"]) - created - consumed) == []
 
 
 def test_scene_values_agree_with_what_the_ramka_shows():

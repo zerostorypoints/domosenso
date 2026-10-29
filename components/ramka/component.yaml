@@ -8,7 +8,7 @@
 # writes package.yaml (once) and dashboard.<lang>.yaml (en, de, pl) from templates/. Upgrade
 # notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.3.0
+version: 0.4.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -139,6 +139,14 @@ inputs:
   dashboard_path: {type: string, default: dashboard-ramka}  # the top-right corner's way out
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
+  music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
+    type: "spectrum | level"    # board with `music: true`) instead of the wave; the tablet switches
+    default: null               # between spectrum, level and classic. Absent: the wave as before (0.4.0)
+    example: spectrum
+  music_visual_options:         # overrides of the visual card's defaults, key by key; absent keys keep the card's
+    type: "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?}"
+    default: null               # line_width: 2.8 px unless given (Ramka's own wave in that strip)
+    example: {level: {flavour: tide}}
   screen:                       # the tablet's CSS viewport, from `domosenso probe` (SPEC-011); absent: 1100 x 720.
     type: "{width: int, height: int}"   # Rendering fails when no tested layout fits it (templates/dashboard.lang.yaml.j2).
     default: null
@@ -192,6 +200,7 @@ provides:                       # <prefix> from inputs
   entities:
     - {id: "input_select.<prefix>_mode", stability: frozen, options: ["off", ambient, controls, calendar]}
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
+    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level, classic], note: "with music_visual; its value first (0.4.0)"}
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
     - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
@@ -205,7 +214,12 @@ provides:                       # <prefix> from inputs
     - {id: "shell_command.<prefix>_{index,pick}", stability: stable, note: "with photo_dir"}
   automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
-consumes: []
+consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
+  - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without
+  - {component: audio-sensor, id: sensor.music_spl_offset}     # the aliases the card falls back to the classic wave
+  - {component: audio-sensor, id: sensor.music_level}
+  - {component: audio-sensor, id: binary_sensor.music_sensor_online}
+  - {component: audio-sensor, element: ambient-wave-card}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh ramka), 2026-10-20
