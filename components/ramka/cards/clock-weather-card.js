@@ -10,6 +10,11 @@
 //                                            # reports it (at the sensor's altitude, not sea level)
 //   forecast: 4                              # optional: the next N days (icon, max/min) on the right,
 //                                            # from HA's weather/subscribe_forecast (daily)
+//
+// After a Home Assistant restart an open page reconnects before the weather integration is back:
+// the subscription is refused or answers with no days. The card subscribes again on every
+// reconnect and as soon as the weather entity is there again, and retries until days arrive, so
+// the forecast comes back without a page reload.
 
 import { createT, formatDate, weekdayShort } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -25,6 +30,9 @@ const ICONS = {
   snowy: "mdi:weather-snowy", "snowy-rainy": "mdi:weather-snowy-rainy", sunny: "mdi:weather-sunny",
   windy: "mdi:weather-windy", "windy-variant": "mdi:weather-windy-variant", exceptional: "mdi:alert-circle-outline",
 };
+// Seconds to wait for a forecast with days before subscribing again; the last one repeats.
+const RETRY_S = [10, 30, 60, 300];
+
 class ClockWeatherCard extends HTMLElement {
   setConfig(config) {
     if (!config.weather) throw new Error("clock-weather-card: weather is required");
@@ -41,29 +49,64 @@ class ClockWeatherCard extends HTMLElement {
 
   set hass(hass) {
     const first = !this._hass;
+    const wasUp = this._weatherUp;
     this._hass = hass;
+    const w = hass.states[this._config.weather];
+    this._weatherUp = !!w && w.state !== "unavailable";
     if (!this._built) this._build();
     this._update();
-    if (first && this._config.forecast) this._subscribe();
+    if (first && this._config.forecast) this._start();
+    else if (this._conn && this._weatherUp && !wasUp && !this._days) { this._tries = 0; this._subscribe(); }
   }
 
   connectedCallback() {
     this._timer = setInterval(() => this._clock(), 1000);
     if (this._ro && this._built) this._ro.observe(this._q("ha-card"));
-    if (this._hass && this._config.forecast && !this._unsub) this._subscribe();
+    if (this._hass && this._config.forecast && !this._unsub) this._start();
   }
 
   disconnectedCallback() {
     clearInterval(this._timer);
     if (this._ro) this._ro.disconnect();
-    if (this._unsub) { this._unsub.then((u) => u()); this._unsub = null; }
+    this._stop();
   }
 
-  // The daily forecast the way the built-in weather card gets it: a websocket subscription.
+  _start() {
+    this._conn = this._hass.connection;
+    this._onReady = () => { this._tries = 0; this._subscribe(); };
+    this._conn.addEventListener?.("ready", this._onReady);
+    this._tries = 0;
+    this._subscribe();
+  }
+
+  _stop() {
+    if (this._conn) this._conn.removeEventListener?.("ready", this._onReady);
+    this._conn = this._onReady = null;
+    this._unsubscribe();
+  }
+
+  _unsubscribe() {
+    clearTimeout(this._retry);
+    this._retry = null;
+    // A subscription the server refused, or one on a connection that has gone, has nothing to end.
+    if (this._unsub) { this._unsub.then((u) => u()).catch(() => {}); this._unsub = null; }
+  }
+
+  // The daily forecast the way the built-in weather card gets it: a websocket subscription. Until
+  // it delivers days, the timer subscribes again.
   _subscribe() {
+    this._unsubscribe();
+    this._days = false;
     this._unsub = this._hass.connection.subscribeMessage(
-      (msg) => { this._forecast = msg.forecast || []; this._renderForecast(); },
+      (msg) => {
+        this._forecast = msg.forecast || [];
+        this._renderForecast();
+        if (this._forecast.length) { this._days = true; clearTimeout(this._retry); this._retry = null; }
+      },
       { type: "weather/subscribe_forecast", forecast_type: "daily", entity_id: this._config.weather });
+    this._unsub.catch(() => {});
+    const wait = RETRY_S[Math.min(this._tries++, RETRY_S.length - 1)];
+    this._retry = setTimeout(() => this._subscribe(), wait * 1000);
   }
 
   _renderForecast() {

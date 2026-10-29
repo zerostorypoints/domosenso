@@ -90,6 +90,7 @@ Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
 | [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
 | [write-issue](.ai/skills/write-issue/SKILL.md) | draft issues and user stories per docs/ISSUES.md, check them, file after a go-ahead |
 | [review-issue](.ai/skills/review-issue/SKILL.md) | check an issue against docs/ISSUES.md: ready, needs changes or split |
+| [triage-issues](.ai/skills/triage-issues/SKILL.md) | rank the open issues, propose labels, pick the next one and work it after a go-ahead |
 | [add-component](.ai/skills/add-component/SKILL.md) | one component into an onboarded home, end to end: integrations, containers, ESPHome device files and firmware, render, deploy, verify |
 | [render-and-stage](.ai/skills/render-and-stage/SKILL.md) | try a changed component in a home (`render --catalog-dev`, staging), release it, `update` the home |
 

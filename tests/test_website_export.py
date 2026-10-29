@@ -29,6 +29,7 @@ def catalog(tmp_path):
     (p/'component.yaml').write_text(yaml.safe_dump(manifest))
     (tmp_path/'docs').mkdir(); (tmp_path/'docs/start.md').write_text('# Start\n\n[Other](private.md)')
     (tmp_path/'docs/private.md').write_text('Unlisted research')
+    (tmp_path/'README.md').write_text('# Sample\n\n## Prerequisites\n\nHAOS is not covered. [Start](docs/start.md)\n\n## Start\n\nclone\n')
     git('add','.'); git('commit','-qm','fixture'); sha=git('rev-parse','HEAD'); git('tag','sample/0.1.0')
     publication={'frameworkCommit':sha,'components':[{'id':'sample','version':'0.1.0','tag':'sample/0.1.0','commit':sha}], 'documents':[{'path':'docs/start.md','slug':'start','title':'Start'}]}
     return tmp_path, publication, git
@@ -79,3 +80,31 @@ def test_export_is_deterministic_and_checks_stale_output(catalog,tmp_path):
 def test_unsafe_or_duplicate_identifiers_fail(catalog):
     root,pub,_=catalog; pub['components'].append(pub['components'][0])
     with pytest.raises(ValueError,match='duplicate'): exporter().build(root,pub)
+
+
+def test_howtos_get_their_own_generated_file():
+    # Client components import content.json; draft how-tos must never be bundled with it.
+    out = exporter().outputs({'components': [], 'howTos': [{'slug': 'x', 'status': 'draft'}]}, {'c': 1}, {'d': 1},
+                             {'prerequisites': 'p'})
+    assert out['website/src/generated/howtos.json'] == [{'slug': 'x', 'status': 'draft'}]
+    assert 'howTos' not in out['website/src/generated/content.json']
+    assert set(out) == {'website/src/generated/content.json', 'website/src/generated/howtos.json',
+                        'website/src/generated/catalog.json', 'website/content/docs.generated.json',
+                        'website/src/generated/agent.json'}
+    assert out['website/src/generated/agent.json'] == {'prerequisites': 'p'}
+
+
+def test_prerequisites_come_from_the_framework_commit(catalog):
+    # The agent files publish the reviewed README at frameworkCommit, never the working tree.
+    root,pub,_=catalog
+    (root/'README.md').write_text('## Prerequisites\n\nUnreviewed\n')
+    text=exporter().agent_content(root,pub)['prerequisites']
+    assert 'HAOS is not covered.' in text and '/docs/start/' in text
+    assert 'Unreviewed' not in text and 'clone' not in text
+
+
+def test_missing_prerequisites_section_fails(catalog):
+    root,pub,git=catalog
+    (root/'README.md').write_text('# Sample\n')
+    git('commit','-qam','no prerequisites'); pub['frameworkCommit']=git('rev-parse','HEAD')
+    with pytest.raises(ValueError,match='Prerequisites'): exporter().agent_content(root,pub)

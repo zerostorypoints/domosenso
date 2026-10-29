@@ -5,6 +5,9 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.4.0 (2026-10-29): the now-playing view can draw the room's music; live settings
 
+0.4.0 includes 0.3.1 (the clock card's forecast comes back after a restart); a home on 0.3.0 gets
+both with one update.
+
 New optional inputs `music_visual` (`spectrum` or `level`), `music_visual_options` and
 `settings_defaults`. With `music_visual`, the now-playing card's wave strip shows audio-sensor's
 spectrum or level of the board marked `music: true`; a new helper `input_select.<prefix>_music_visual`
@@ -43,6 +46,20 @@ creates the new helpers and runs the seed. Check after the restart that
 `input_boolean.<prefix>_settings_seeded` is on and every `input_boolean.<prefix>_page_<view>` is on.
 A dashboard or theme of the home's own that relied on the Ramka's view theme `ramka` keeps it: the
 theme stays in `themes/ramka.yaml`.
+
+## 0.3.1 (2026-10-29): the forecast comes back after a restart
+
+An open page reconnects after a Home Assistant restart before the weather integration is back, so
+the clock card's forecast subscription was refused or answered with no days, and the forecast
+stayed empty until the page was reloaded. The card now subscribes again on every reconnect and as
+soon as the weather entity is back, and retries after 10 s, 30 s, 60 s and then every 5 minutes
+until days arrive. Card code only.
+
+### What a home does
+
+Nothing is required. Updating moves the cards to `www/domosenso/ramka/0.3.1/` and the twelve
+resource URLs with them (`domosenso update ramka` and a deploy do both). A home that added an
+automation reloading the tablet's page after every start for this can remove it.
 
 ## 0.3.0 (2026-10-27): the status page is optional
 
