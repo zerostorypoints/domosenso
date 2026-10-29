@@ -44,9 +44,9 @@ Two kinds of agent read the site, and the work serves both:
 
 ## Non-goals
 
-- A git-free install (Homebrew formula, Claude Code plugin marketplace). It changes how Domosenso is
-  installed, not how the site reads. It is a separate project (maintainer's call pending, see
-  Open questions).
+- A git-free install (Homebrew formula, Claude Code plugin marketplace). Not planned (maintainer,
+  2026-10-29): Domosenso assumes its users know GitHub. The site and `llms.txt` state git and a
+  GitHub account as prerequisites, as the README does, and do not offer another route.
 - An MCP server or `/.well-known/` agent manifests: MCP server cards are a draft (SEP-2127) with no
   settled path.
 - Content negotiation on `Accept: text/markdown`. Our call: the site is a static export on
@@ -216,6 +216,5 @@ for being recommended but is the maintainer's to do.
 
 ## Open questions
 
-- Git-free install: a separate project next, or not at all? (maintainer)
 - IndexNow pings from CI would need a deploy hook or a GitHub Action after Pages deploys; the
   builder proposes the smallest way, the maintainer approves before any external ping.
