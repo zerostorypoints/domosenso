@@ -383,8 +383,9 @@ def test_without_screen_and_with_every_page_renders_as_0_1_2_but_for_the_header(
                              capture_output=True, check=True).stdout
     subprocess.run(["tar", "-x", "-C", str(old)], input=archive, check=True)
     before, after = tmp_path / "before", tmp_path / "after"
-    dr.render_component(old / "components" / "ramka", demo_inputs(), before)
-    dr.render_component(COMP, demo_inputs(), after)
+    # Since 0.4.0 the demo home shows the music visual, which 0.1.2 did not have.
+    dr.render_component(old / "components" / "ramka", without_visual(), before)
+    dr.render_component(COMP, without_visual(), after)
     names = sorted(p.name for p in before.iterdir())
     assert names == sorted(p.name for p in after.iterdir())
     header = "var(--kiosk-header-height, var(--header-height, 0px)) - "
@@ -442,3 +443,221 @@ def test_status_page_false_without_another_page_fails(tmp_path):
     inputs["status_page"] = False
     with pytest.raises(dr.RenderError, match=r"status_page: false leaves no ambient page"):
         render(tmp_path, inputs)
+
+
+# ---- 0.4.0: music_visual ------------------------------------------------------------------------
+
+AUDIO_CARDS = REPO / "components" / "audio-sensor" / "cards"
+VISUAL_OPTIONS = ("spectrum", "level", "classic")
+
+
+def without_visual() -> dict:
+    inputs = demo_inputs()
+    inputs.pop("music_visual", None)
+    inputs.pop("music_visual_options", None)
+    return inputs
+
+
+def with_visual(choice="spectrum", options=None) -> dict:
+    inputs = without_visual()
+    inputs["music_visual"] = choice
+    if options is not None:
+        inputs["music_visual_options"] = options
+    return inputs
+
+
+def now_playing(dashboard):
+    [card] = [n for n in walk(dashboard) if n.get("type") == "custom:now-playing-card"]
+    return card
+
+
+def visual_tiles(dashboard):
+    return [n for n in walk(dashboard) if n.get("type") == "custom:tap-button-card"
+            and n.get("action") == "input_select.select_next"]
+
+
+def test_demo_inputs_show_the_spectrum():
+    """The demo home is what ha-check and the website render: it shows the visual."""
+    assert demo_inputs()["music_visual"] == "spectrum"
+
+
+def test_music_visual_absent_renders_wave_true(tmp_path):
+    rendered = render(tmp_path, without_visual())
+    assert "ramka_music_visual" not in rendered["package.yaml"]["input_select"]
+    for lang in LANGS:
+        dashboard = rendered[f"dashboard.{lang}.yaml"]
+        card = now_playing(dashboard)
+        assert card["wave"] is True
+        assert "visual" not in card
+        assert not visual_tiles(dashboard), lang
+
+
+def test_music_visual_absent_renders_as_0_3_0(tmp_path):
+    """The 0.4.0 promise (UPGRADE.md): without music_visual a home gets 0.3.0's files; only the
+    stamp line and the cards' resource URLs, neither written by render_component, carry 0.4.0."""
+    import subprocess
+
+    if subprocess.run(["git", "-C", str(REPO), "rev-parse", "-q", "--verify", "refs/tags/ramka/0.3.0"],
+                      capture_output=True).returncode:
+        pytest.skip("tag ramka/0.3.0 not in this clone")
+    old = tmp_path / "ramka-0.3.0"
+    old.mkdir()
+    archive = subprocess.run(["git", "-C", str(REPO), "archive", "refs/tags/ramka/0.3.0", "components/ramka"],
+                             capture_output=True, check=True).stdout
+    subprocess.run(["tar", "-x", "-C", str(old)], input=archive, check=True)
+    before, after = tmp_path / "before", tmp_path / "after"
+    dr.render_component(old / "components" / "ramka", without_visual(), before)
+    dr.render_component(COMP, without_visual(), after)
+    names = sorted(p.name for p in before.iterdir())
+    assert names == sorted(p.name for p in after.iterdir())
+    for name in names:
+        assert (before / name).read_text() == (after / name).read_text(), name
+
+
+def test_music_visual_options_alone_change_nothing(tmp_path):
+    inputs = without_visual()
+    inputs["music_visual_options"] = {"line_width": 3}
+    assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", without_visual())
+
+
+@pytest.mark.parametrize("choice, options", [("spectrum", ["spectrum", "level", "classic"]),
+                                             ("level", ["level", "spectrum", "classic"])])
+def test_music_visual_spectrum_first_option(tmp_path, choice, options):
+    """The input's choice is the first option, so a fresh helper starts there; no initial:, which
+    would reset the tablet's choice at every restart."""
+    package = render(tmp_path, with_visual(choice))["package.yaml"]
+    helper = package["input_select"]["ramka_music_visual"]
+    assert helper["options"] == options
+    assert "initial" not in helper
+    assert helper["name"] == "Ramka music visual"
+
+
+def test_music_visual_card_uses_aliases(tmp_path):
+    """The visual reads audio-sensor's music aliases and falls back to the classic wave; the strip
+    stays (wave: true) and moves only while the player plays (active)."""
+    for lang in LANGS:
+        card = now_playing(render(tmp_path / lang, with_visual())[f"dashboard.{lang}.yaml"])
+        assert card["wave"] is True
+        assert card["visual"] == {
+            "select": "input_select.ramka_music_visual",
+            "spectrum": {
+                "type": "custom:ambient-wave-card",
+                "source": {"kind": "spectrum", "entity": "sensor.music_spectrum", "offset": "sensor.music_spl_offset"},
+                "active": "binary_sensor.ramka_media_playing",
+                "fallback": "classic",
+                "style": {"line_width": 2.8},
+            },
+            "level": {
+                "type": "custom:ambient-wave-card",
+                "source": {"kind": "scalar", "entity": "sensor.music_level"},
+                "active": "binary_sensor.ramka_media_playing",
+                "fallback": "classic",
+                "style": {"line_width": 2.8},
+            },
+        }
+
+
+def test_music_visual_follows_the_prefix(tmp_path):
+    inputs = with_visual()
+    inputs["prefix"] = "hall_frame"
+    rendered = render(tmp_path, inputs)
+    assert "hall_frame_music_visual" in rendered["package.yaml"]["input_select"]
+    visual = now_playing(rendered["dashboard.en.yaml"])["visual"]
+    assert visual["select"] == "input_select.hall_frame_music_visual"
+    assert {visual[k]["active"] for k in ("spectrum", "level")} == {"binary_sensor.hall_frame_media_playing"}
+
+
+def test_music_visual_options_merged_key_by_key(tmp_path):
+    options = {"spectrum": {"flavour": "bars", "hot": 80}, "level": {"flavour": "tide", "neutral": 25},
+               "palette": "calm", "rise": 150, "fall": 3, "tilt": False, "line_width": 3.5}
+    visual = now_playing(render(tmp_path, with_visual(options=options))["dashboard.en.yaml"])["visual"]
+    spectrum, level = visual["spectrum"], visual["level"]
+    assert spectrum["flavour"] == "bars" and level["flavour"] == "tide"
+    assert spectrum["colour"] == {"palette": "calm", "hot": 80}
+    assert level["colour"] == {"palette": "calm", "neutral": 25}
+    assert spectrum["dynamics"] == level["dynamics"] == {"rise": 150, "fall": 3, "tilt": False}
+    assert spectrum["style"] == level["style"] == {"line_width": 3.5}
+    # Keys given for one kind stay there; absent keys stay out, so the card's defaults apply.
+    only = now_playing(render(tmp_path / "only", with_visual(options={"level": {"flavour": "tide"}}))["dashboard.en.yaml"])["visual"]
+    assert only["level"]["flavour"] == "tide"
+    assert "flavour" not in only["spectrum"]
+    for config in (only["spectrum"], only["level"]):
+        assert "colour" not in config and "dynamics" not in config
+        assert config["style"] == {"line_width": 2.8}
+
+
+@pytest.mark.parametrize("inputs, message", [
+    (with_visual("bars"), r"music_visual must be spectrum or level, not 'bars'"),
+    (with_visual(options={"colour": "red"}), r"music_visual_options: unknown key 'colour'"),
+    (with_visual(options={"spectrum": {"palette": "calm"}}), r"music_visual_options.spectrum: unknown key 'palette'"),
+])
+def test_music_visual_bad_input_fails(tmp_path, inputs, message):
+    with pytest.raises(dr.RenderError, match=message):
+        render(tmp_path, inputs)
+
+
+def test_controls_tile_present_only_with_music_visual(tmp_path):
+    assert not visual_tiles(render(tmp_path / "without", without_visual())["dashboard.en.yaml"])
+    rendered = render(tmp_path / "with", with_visual())
+    for lang in LANGS:
+        tiles = visual_tiles(rendered[f"dashboard.{lang}.yaml"])
+        names = translations(lang)
+        # One tile per option, each shown while the select reads it; anything else is the classic
+        # wave on the card, so the classic tile stands for it.
+        assert [t["name"] for t in tiles] == [names[f"ui.music_visual.{o}"] for o in VISUAL_OPTIONS], lang
+        assert [t["visibility"][-1] for t in tiles] == [
+            {"condition": "state", "entity": "input_select.ramka_music_visual", "state": "spectrum"},
+            {"condition": "state", "entity": "input_select.ramka_music_visual", "state": "level"},
+            {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]},
+        ]
+        assert len({t["icon"] for t in tiles}) == 3
+        for tile in tiles:
+            assert tile["target"] == {"entity_id": "input_select.ramka_music_visual"}
+            assert tile["data"] == {"cycle": True}
+            assert tile["taps"] == 1
+            assert (tile["columns"], tile["rows"]) == (12, 1)
+
+
+def test_controls_tile_sits_in_the_music_column_while_the_player_is_on(tmp_path):
+    dashboard = render(tmp_path, with_visual())["dashboard.en.yaml"]
+    music = next(s for s in sections(dashboard)
+                 if any(c.get("type") == "media-control" for c in s.get("cards", [])))
+    tiles = [c for c in music["cards"] if c in visual_tiles(dashboard)]
+    assert len(tiles) == 3
+    player_on = next(c for c in music["cards"] if c.get("type") == "media-control")["visibility"]
+    for tile in tiles:
+        assert tile["visibility"][:-1] == player_on
+
+
+def test_visual_configs_pass_the_card_normaliser(tmp_path):
+    """The rendered configs go through ambient-wave-card's own normaliseConfig in node, so a key
+    the card does not read or a value it refuses fails here, not on the wall."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not on PATH (eval \"$(fnm env --shell zsh)\")")
+    options = {"spectrum": {"flavour": "bars", "neutral": 35, "hot": 75}, "level": {"flavour": "tide"},
+               "palette": "zones", "rise": 150, "fall": 3, "tilt": False, "line_width": 3.5}
+    configs = []
+    for inputs in (with_visual(), with_visual("level", options)):
+        visual = now_playing(render(tmp_path / str(len(configs)), inputs)["dashboard.en.yaml"])["visual"]
+        configs += [visual["spectrum"], visual["level"]]
+    script = tmp_path / "normalise.mjs"
+    script.write_text(
+        f"import {{ normaliseConfig }} from {json.dumps((AUDIO_CARDS / 'lib' / 'config.js').as_uri())};\n"
+        f"import {{ FLAVOUR_KINDS }} from {json.dumps((AUDIO_CARDS / 'lib' / 'flavours' / 'index.js').as_uri())};\n"
+        "const configs = JSON.parse(process.argv[2]);\n"
+        "const out = configs.map((c) => normaliseConfig(c, FLAVOUR_KINDS));\n"
+        "process.stdout.write(JSON.stringify(out));\n",
+        encoding="utf-8")
+    result = subprocess.run([node, str(script), json.dumps(configs)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    spectrum, level, spectrum2, level2 = json.loads(result.stdout)
+    assert (spectrum["flavour"], level["flavour"]) == ("dune", "centre")
+    assert spectrum["style"]["line_width"] == level["style"]["line_width"] == 2.8
+    assert spectrum["fallback"] == level["fallback"] == "classic"
+    assert (spectrum2["flavour"], spectrum2["colour"]["neutral"], spectrum2["colour"]["hot"]) == ("bars", 35, 75)
+    assert (level2["flavour"], level2["colour"]["palette"], level2["dynamics"]["tilt"]) == ("tide", "zones", False)
+    assert level2["style"]["line_width"] == 3.5

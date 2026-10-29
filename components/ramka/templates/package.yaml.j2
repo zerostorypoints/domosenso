@@ -29,6 +29,10 @@
 [%- if (inputs.status_page | default(true) if page == 'status' else inputs['photo_dir' if page == 'photos' else page] is defined) -%][%- set _ = pages.append(page) -%][%- endif -%]
 [%- endfor -%]
 [%- if not pages -%][[ fail('ramka: status_page: false leaves no ambient page; give climate, air, plants or photo_dir') ]][%- endif -%]
+[#- The now-playing card's music visual (0.4.0): spectrum or level, chosen on the tablet. -#]
+[%- set music_visual = inputs.music_visual | default(none) -%]
+[%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
+[%- set other_visual = 'level' if music_visual == 'spectrum' else 'spectrum' -%]
 [%- macro after(page) -%][[ pages[(pages.index(page) + 1) % (pages | length)] ]][%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
@@ -51,6 +55,19 @@ input_select:
     icon: mdi:image-multiple
     # In the rotation's order: the swipes step through this list (select_next / select_previous).
     options: [climate, air, plants, photos, status]
+  [%- if music_visual %]
+  # What the now-playing card draws in its wave strip (0.4.0): the room's music as audio-sensor's
+  # spectrum or level, or the card's own classic wave. The input's choice comes first, so a fresh
+  # helper starts there; no `initial:`, which would undo the tablet's choice at every restart. A
+  # tile on the controls steps through the options.
+  [[ p ]]_music_visual:
+    name: [[ named(' music visual') ]]
+    icon: mdi:waveform
+    options:
+      - [[ music_visual ]]
+      - [[ other_visual ]]
+      - classic
+  [%- endif %]
 
 # No `initial:` on any input_number: HA would reset it to that value at every restart and throw
 # away the tuning. Starting values: near 100 cm for 1 s, controls hold 5 s, off delay 300 s,

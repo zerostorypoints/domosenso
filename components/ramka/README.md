@@ -54,6 +54,28 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - Day stepping in the agenda must use calendar dates, not 24-hour steps: on the day the clocks go
   back a 24-hour step shows one day twice (`agenda-card.test.mjs` covers it).
 
+## Music visual
+
+With `music_visual: spectrum` or `level` (0.4.0) the now-playing view draws the room's music in its
+wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board marked
+`music: true` (`sensor.music_spectrum` with `sensor.music_spl_offset`, or `sensor.music_level`).
+
+- **Switching.** `input_select.<prefix>_music_visual` holds `spectrum`, `level` and `classic`, the
+  input's choice first, so a fresh helper starts there; it has no `initial:`, so the tablet's choice
+  survives a restart. A tile on the controls, under the player while it is on, names the current
+  choice; a tap steps to the next (`input_select.select_next` with `cycle: true`). `classic`, or any
+  other state, draws Ramka's own wave and creates no visual card.
+- **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
+  check that the aliases exist. Without them the card falls back to the classic wave with an info
+  icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
+- **The look.** The card's own defaults apply (spectrum `dune`, level `centre`, 30 to 70 dB SPL, the
+  `series` palette), except the line: 2.8 px, the width of Ramka's wave in that strip, where the
+  card's 4 px is heavy. `music_visual_options` overrides them key by key, for example
+  `{level: {flavour: tide}, line_width: 3}`; `flavour`, `neutral` and `hot` per kind, `palette`,
+  `rise`, `fall`, `tilt` and `line_width` for both. A key it does not know fails the render. Try
+  flavours on audio-sensor's Room acoustics dashboard (Wave view) before writing them down here.
+- The visual moves while `binary_sensor.<prefix>_media_playing` is on, as the wave does.
+
 ## Behaviour
 
 - **The ambient pages** (climate, air, plants, photos, status) are each optional: a page is in the
