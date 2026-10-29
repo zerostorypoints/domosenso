@@ -357,7 +357,8 @@ states in the music scene, which the website's previews render from (the website
   no aliases; `Kids' room` gives the slug `kids_room` and the picker option `Kids' room`; ids
   default per the table and follow `entities`; no `initial:` on any helper; a render with the removed
   inputs `room_acoustics`, `playing` or `sensors[].acoustics` fails and names the input (added
-  2026-10-29, replacing "room acoustics absent with `room_acoustics: false`"). `tests/test_ramka_render.py`: without `music_visual` output equal to
+  2026-10-29, replacing "room acoustics absent with `room_acoustics: false`").
+  `tests/test_ramka_render.py`: without `music_visual` output equal to
   0.3.0's apart from stamp and version; `test_music_visual_card_uses_aliases` (the rendered visual
   reads `sensor.music_*` with `fallback: classic`); options merged key by key; the select's first
   option follows the input; the Controls tile only with the input.
