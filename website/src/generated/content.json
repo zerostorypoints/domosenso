@@ -1408,6 +1408,7 @@
       "body": "Not every home has plant sensors. Not every tablet needs a photo album.\n\nIn Ramka 0.2.0, climate, air, plants and photos became optional. Leave out an input and the corresponding page is left out of the rendered dashboard and its rotation. The shared component stays the same; each home decides what belongs on its screen.\n\n## Before upgrading\n\nRead the pinned release notes below, review your inputs and render the dashboard before applying changes. This historical article retains the date and subject of the original homepage entry. The [current component page](/components/ramka/) may describe a newer release."
     }
   ],
+  "howTos": [],
   "assets": [
     {
       "path": "/previews/climate.svg",
