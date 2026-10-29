@@ -41,6 +41,9 @@ def _deploy_arguments(parser: argparse.ArgumentParser) -> None:
                         help="orphans (files on the target the repository does not know) to delete")
     parser.add_argument("--prune-resources", action="store_true", help="delete Lovelace resources nobody wants")
     parser.add_argument("--confirm", metavar="HASH", help="the hash of the plan, instead of typing 'production'")
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="production only: deploy dev-rendered files; needs --confirm <hash> of a plan whose "
+                             "dev-render lines were read")
 
 
 async def _confirm(plan: Plan, given: str | None, target: str, json_mode: bool) -> None:
@@ -59,6 +62,8 @@ async def _confirm(plan: Plan, given: str | None, target: str, json_mode: bool) 
 
 
 async def _deploy(args: argparse.Namespace, rep: Reporter) -> int:
+    if args.allow_dirty and args.plan:
+        raise DomosensoError("--allow-dirty goes with --apply")
     home = HomeConfig.load(args.home)
     lock = Lock.load(args.home)
     t = _target(home, args.target)
@@ -74,9 +79,12 @@ async def _deploy(args: argparse.Namespace, rep: Reporter) -> int:
         }})
         if args.plan:
             return rep.ok()
+        if args.target == PRODUCTION and plan.dirty and args.allow_dirty and args.confirm is None:
+            # the hash binds the exact files the human read; typing `production` is not enough
+            raise DomosensoError(f"dev render needs --confirm {plan.hash}")
         await _confirm(plan, args.confirm, args.target, rep.json_mode)
         deploy_id = await apply(home, lock, plan, io, ha, args.remove_orphans, args.prune_resources,
-                                target=args.target, rep=rep)
+                                target=args.target, rep=rep, allow_dirty=args.allow_dirty)
     if deploy_id is None:
         rep.line("nothing to deploy")
     else:

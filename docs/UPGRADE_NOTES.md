@@ -3,6 +3,11 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-29: deploy `--allow-dirty`
+
+New optional flag `deploy production --apply --allow-dirty --confirm <hash>` for dev-rendered files
+([SPEC-019](../.ai/specs/SPEC-019-2026-10-29-deploy-allow-dirty.md)). No home action.
+
 ## 2026-10-28: contributor checks and release verification
 
 No home migration. Maintainers must release from a clean commit already included in main, with an
