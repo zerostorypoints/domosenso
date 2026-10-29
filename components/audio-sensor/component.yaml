@@ -76,8 +76,11 @@ artifacts:
   esphome:
     packages:                             # remote package, github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/<version>
       - {file: esphome/audio-sensor.yaml, project: domosenso.audio-sensor}
-    # Added by the device template task: factory (Improv + dashboard_import), devices (the thin
-    # device file per `sensors` item), secrets [wifi_ssid, wifi_password, api_encryption_key].
+    factory: esphome/audio-sensor.factory.yaml   # Improv + dashboard_import, for boards nobody configured yet
+    instance: examples/demo-home/esphome/audio-sensor-<room>.yaml   # the demo home's device files, as `devices` renders them from its inputs
+    devices:                              # `domosenso add` writes one thin device file per `sensors` item, once; the home owns it
+      {template: esphome/device.yaml.j2, each: sensors, file: audio-sensor-<room>.yaml}
+    secrets: [wifi_ssid, wifi_password, api_encryption_key]   # what the device files read; `status` names a missing one
   # The spectrum component the package loads with external_components; it is not an artifact a home
   # receives, ESPHome pulls it from the tag (a fixed `ref`, checked against `version`).
   templates:                            # rendered per home by tools/domosenso_render.py
