@@ -1,13 +1,13 @@
 {
-  "frameworkCommit": "817f8de4eebce9563b385294376e6b751c01ef9f",
+  "frameworkCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
   "components": [
     {
       "id": "awnings",
-      "version": "0.2.0",
-      "tag": "awnings/0.2.0",
-      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.2.1",
+      "tag": "awnings/0.2.1",
+      "commit": "67a289d6e61bc7325f389f068c38610262a09c1f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -16,16 +16,16 @@
       "tag": "backup/0.1.0",
       "commit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
       "id": "bermuda-presence",
-      "version": "0.2.0",
-      "tag": "bermuda-presence/0.2.0",
-      "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.2.1",
+      "tag": "bermuda-presence/0.2.1",
+      "commit": "67a289d6e61bc7325f389f068c38610262a09c1f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -34,7 +34,7 @@
       "tag": "calendar/0.1.0",
       "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -43,7 +43,7 @@
       "tag": "climate-air/0.2.0",
       "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -52,7 +52,7 @@
       "tag": "lights/0.2.0",
       "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -61,7 +61,7 @@
       "tag": "media/0.1.0",
       "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -70,16 +70,16 @@
       "tag": "plants/0.2.0",
       "commit": "9b88257faec4b9b94187afa26d41a4f625506b25",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
       "id": "ramka",
-      "version": "0.2.0",
-      "tag": "ramka/0.2.0",
-      "commit": "0345fba394a40f666fd038c4dd6f6fa49173311d",
+      "version": "0.3.0",
+      "tag": "ramka/0.3.0",
+      "commit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -88,7 +88,7 @@
       "tag": "weather/0.1.0",
       "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     }
   ],
@@ -122,6 +122,12 @@
       "path": "docs/licensing.md",
       "slug": "licensing",
       "title": "License and historical releases"
+    },
+    {
+      "path": "components/ramka/PHOTOS.md",
+      "slug": "ramka-photos",
+      "title": "Ramka photo slideshow"
     }
-  ]
+  ],
+  "documentationCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f"
 }

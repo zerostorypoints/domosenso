@@ -55,9 +55,9 @@ test('agent path leads from framework explanation to a usable onboarding prompt'
 test('device requirements retain setup-critical information', async ({page}) => {
  await page.goto('/components/climate-air/');
  await expect(page.getByRole('heading',{name:'What it needs'})).toBeVisible();
- await expect(page.locator('.requirements')).toContainText('Tapo hub (tested: H200)');
+ await expect(page.locator('.requirements').first()).toContainText('Tapo hub (tested: H200)');
  await page.goto('/components/awnings/');
- await expect(page.locator('.requirements')).toContainText('ESPSomfy-RTS');
+ await expect(page.locator('.requirements').first()).toContainText('ESPSomfy-RTS');
 });
 
 test('mobile navigation closes after moving to another page', async ({page}, testInfo) => {

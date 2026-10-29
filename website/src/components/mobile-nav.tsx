@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {repository} from '@/lib/catalog';
+import {RedditLink} from './reddit-link';
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -16,8 +17,10 @@ export function MobileNav() {
       <Link href="/get-started/">Get started</Link>
       <Link href="/components/">Components</Link>
       <Link href="/docs/">Docs</Link>
+      <Link href="/journal/">Journal</Link>
       <Link href="/contribute/">Contribute</Link>
       <a href={repository}>GitHub ↗</a>
+      <RedditLink label="r/domosenso"/>
     </nav>
   </details>;
 }

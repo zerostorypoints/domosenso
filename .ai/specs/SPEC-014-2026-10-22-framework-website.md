@@ -76,3 +76,21 @@ Review focus: narrow screens and long source text; menu behavior after client na
 clear h1 per page; complete device prerequisite fields; no invented community or live-AI claims.
 External publication remains a separate launch step. This request extends the accepted design;
 no additional design-choice or publication approval is inferred.
+
+## Visual catalog and journal extension — approved 2026-10-28
+
+The maintainer approved the design in
+`docs/superpowers/specs/2026-10-28-component-browser-journal-design.md` and instructed immediate
+implementation. The implementation plan is under `docs/superpowers/plans/` for that date.
+
+The publication gains a documentationCommit. Optional equipment is exported alongside required
+equipment. Release-bound component editorial records, explicit hardware records/assets and
+Markdown journal entries generate `website/src/generated/content.json`. Draft articles never
+enter the generated snapshot. Existing device guides and selected component Markdown are
+allowlisted; wiring assets are copied from the pinned documentation commit. New routes are
+`/devices/<id>/`, `/journal/`, `/journal/<slug>/` and `/journal/feed.xml`.
+
+Public ref verification checks main ancestry as well as immutable remote tags. Historical
+article release refs remain independent of current catalog selections. Examples are local,
+fictional illustrations; they do not operate devices or claim to be HA screenshots. An agent
+skill audits the website at merge and release; it does not introduce automatic publishing.
