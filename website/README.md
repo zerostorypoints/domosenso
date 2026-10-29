@@ -150,6 +150,20 @@ deleting the branch would not preserve that commit as an ancestor of `main`.
 If the merge method changes, select and regenerate content from an immutable
 revision that will remain publicly reachable before publishing the website.
 
+## Manual setup
+
+Done once in the provider panels; nothing here is provisioned by the repository.
+
+- Cloudflare Pages project `domosenso-framework`: enable preview deployments for non-production
+  branches.
+- Create a Cloudflare API token with Pages edit on that project only. Store it as repository secret
+  `CLOUDFLARE_API_TOKEN` and add repository variable `CLOUDFLARE_ACCOUNT_ID`. The preview-cleanup
+  workflow skips until both exist.
+- On the first preview, verify the `noindex` metadata and the `X-Robots-Tag` header once.
+- IndexNow: the key file is `website/public/<key>.txt`; nothing else is needed.
+- Sitemap resubmission to Search Console and Bing after a merge is an agent step in the
+  `domosenso-website-audit` skill.
+
 ## Optional analytics and webmaster verification
 
 Production may set `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` to its own GA4 web-stream ID

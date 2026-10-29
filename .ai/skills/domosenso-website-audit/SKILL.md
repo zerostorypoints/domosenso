@@ -67,7 +67,20 @@ uv run tools/website_changes.py --base origin/main --preview-url <preview URL>
 Check each listed route on the preview. Draft routes exist only there. After merge, open the
 same routes on https://domosenso.org (`--format urls` prints them without drafts).
 
-<!-- Search-engine notification step (Task 9) goes here, after the live-route check. -->
+### Tell the search engines
+
+After merge, once the live routes are checked:
+
+1. Wait until https://domosenso.org/build.json shows the merge commit.
+2. Confirm the `IndexNow` workflow run for the merge commit succeeded.
+3. Resubmit `https://domosenso.org/sitemap.xml` to the Search Console property
+   `sc-domain:domosenso.org` and to the Bing Webmaster site `https://domosenso.org/`, with the
+   session's connected Search Console and Bing Webmaster tools.
+4. Record both results in the audit note. Report a failure; do not retry in a loop.
+
+These accounts belong to a maintainer. A contributor without them leaves this step to a maintainer.
+A later CI job could do it: a Google service account added as a property user, its key in a secret
+available only to `main` workflows.
 
 Run repository-required checks before committing. If deployment is authorized, independently
 check live changed routes, versions, source links and sitemap/feed after deployment. Report
