@@ -118,9 +118,9 @@ URL scheme: the builder's choice, constrained to: one stable URL per page, linke
 `<head>` as `<link rel="alternate" type="text/markdown" href="…">`, served with
 `Content-Type: text/markdown; charset=utf-8`, and carrying an HTTP `Link: <html url>;
 rel="canonical"` header (Cloudflare Pages `public/_headers`) so the copy does not compete with the
-HTML in search. With `trailingSlash: true` the likely shapes are `/how-to/<slug>/index.md` or
-`/how-to/<slug>.md`; the builder checks what `next build` with `output: 'export'` actually emits
-for a route handler under a dynamic segment before choosing.
+HTML in search. Shape: `<page path>index.md`, for example `/how-to/<slug>/index.md`. A spike on
+2026-10-29 confirmed that a `force-static` route handler at `src/app/how-to/[slug]/index.md/route.ts`
+with `generateStaticParams` exports `out/how-to/<slug>/index.md`.
 
 `.md` URLs stay out of `sitemap.xml`. `robots.txt` is unchanged (`Allow: /`).
 
@@ -159,7 +159,7 @@ repository is public).
 |---|---|---|
 | Cloudflare dashboard, AI Crawl Control: search crawlers, agent crawlers and user-triggered fetchers allowed; "Block AI bots" off; Bot Fight Mode does not challenge verified bots | maintainer (dashboard) | before or with the release |
 | Submit `https://domosenso.org/sitemap.xml` in Bing Webmaster Tools (property verified) | agent, with the maintainer's go-ahead | after deploy |
-| IndexNow: a key file generated into `out/` and a ping of changed URLs after each production deploy | builder proposes; the ping is a write to an external service and needs the go-ahead the first time | after deploy |
+| IndexNow: already automated on `main` (`.github/workflows/indexnow.yml`, `tools/website_changes.py`, `tools/indexnow.py`, #85, #93); `website_changes.py` gains the agent files of a changed page | builder | with the implementation |
 | Google Search Console: sitemap present (property `sc-domain:domosenso.org` verified) | agent reads, maintainer approves a submit | after deploy |
 | Brave: search for the site and record whether the how-tos are indexed (Claude's web search uses Brave) | agent | after deploy, and again a week later |
 
@@ -216,5 +216,6 @@ for being recommended but is the maintainer's to do.
 
 ## Open questions
 
-- IndexNow pings from CI would need a deploy hook or a GitHub Action after Pages deploys; the
-  builder proposes the smallest way, the maintainer approves before any external ping.
+None. Note (2026-10-29): `tools/indexnow.py` records that Cloudflare answers the default
+Python-urllib user agent with 403, so bot rules are active on the zone; the AI Crawl Control check
+above is not a formality.
