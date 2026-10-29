@@ -105,7 +105,7 @@ try {
   }
   assert.equal(report.browserErrors.length,0,'frontend errors during normal acceptance');
   // Leave one real frontend open across restart. The synthetic weather boundary is delayed
-  // once, so reconnect precedes the upstream forecast, reproducing the race behind #53.
+  // once, so reconnect precedes the upstream forecast: the race behind #53, fixed in ramka 0.3.1.
   await helper('mode','ambient'); await helper('ambient','climate');
   const {context,page}=await newPage('en',{width:1100,height:720});
   const clock=await visible(page,'clock-weather-card');
@@ -128,9 +128,11 @@ try {
     }
     await new Promise(r=>setTimeout(r,1500));
     assert.equal(page.url(),navigation); assert.equal(navigations,0,'frontend reloaded instead of reconnecting');
-    // This confirms the existing frontend connection is live even when forecast recovery fails.
-    const after=await (await visible(page,'clock-weather-card')).locator('.forecast .day').count();
-    report.knownIssues.push({issue:53,status:after===4?'not reproduced':'observed failure',forecastAfterReconnect:after,weatherDelaySeconds:20});
+    // The open page gets its forecast back without a reload (#53).
+    const reconnected=(await visible(page,'clock-weather-card')).locator('.forecast .day');
+    await reconnected.nth(3).waitFor({state:'visible',timeout:15000}).catch(()=>{});
+    const after=await reconnected.count();
+    assert.equal(after,4,'forecast not back on the open page after reconnect (#53)');
     await page.screenshot({path:join(output,'tablet-en-reconnected.png'),fullPage:true});
     await helper('mode','controls'); await uiLightToggle(page); await helper('mode','ambient');
     // A new page must receive the forecast once the synthetic upstream is ready.
@@ -139,7 +141,7 @@ try {
     await freshClock.locator('.forecast .day').first().waitFor({state:'visible',timeout:15000});
     assert.equal(await freshClock.locator('.forecast .day').count(),4);
     await fresh.context.close();
-    report.cases.push({case:'open-page restart',status:'pass',reloaded:false,uiLightToggleAfterReconnect:true,forecastRecovery:after===4?'pass':'known failure #53'});
+    report.cases.push({case:'open-page restart',status:'pass',reloaded:false,uiLightToggleAfterReconnect:true,forecastAfterReconnect:after,weatherDelaySeconds:20});
   } finally { await writeFile(configPath,config); }
   await context.close();
 } catch(error) {
