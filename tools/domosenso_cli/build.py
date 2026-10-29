@@ -101,6 +101,12 @@ def _dir_prefix(home: HomeConfig, directory: Path, name: str) -> str:
     return "" if relative == Path(".") else relative.as_posix() + "/"
 
 
+def is_dashboard_template(name: str) -> bool:
+    """A template rendered per language (`*.lang.yaml.j2`) has labels: it is a dashboard; so is a
+    template named `dashboard*`, as before."""
+    return Path(name).name.endswith(LANG_SUFFIX) or Path(name).name.startswith("dashboard")
+
+
 def _template_destination(entry: ComponentEntry, key: str, lang: str | None) -> str:
     """Where a rendered template goes, relative to config_dir. `key` is the template's output name:
     `package.yaml`, `dashboard.<lang>.yaml`, ..."""
@@ -113,6 +119,9 @@ def _template_destination(entry: ComponentEntry, key: str, lang: str | None) -> 
             chosen = f"packages/{package}.yaml"
         elif key == "dashboard.<lang>.yaml":
             chosen = f"dashboards/{entry.id}.<lang>.yaml"
+        elif key.endswith(".<lang>.yaml"):
+            # Any other language template has labels too, so it is a dashboard (ramka's settings).
+            chosen = f"dashboards/{key}"
         else:
             chosen = f"packages/{package}_{key}"
     return chosen.replace("<lang>", lang) if lang else chosen

@@ -138,10 +138,60 @@ approach toggle it has had since 0.1.0.
   frontend forces a single-mode theme into that mode and draws its own defaults of it, whatever the
   browser's dark-mode setting (`themes/ramka.yaml` names the frontend version). That an open page
   follows a change without a reload is inference until staging shows it (SPEC-020).
-- **The standing rule, for implementers:** every Ramka extension updates the settings in the same
-  change. A new behaviour gets its live setting, belongs to one page and one group, and is covered
-  by the page's reset and the global one; `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset`
-  fails on a helper that is neither a named state helper nor reset.
+
+## Settings page
+
+The "Ramka settings" dashboard (`dashboards/ramka-settings.<lang>.yaml`, one per language the home
+renders) changes every live setting from Home Assistant. It is for admins: a YAML dashboard cannot
+restrict itself, so the home's `configuration.yaml` entry does, with `require_admin: true`, and it
+stays out of the kiosk user's sidebar. Add it by hand (the catalog does not render
+`configuration.yaml`); until it is there `domosenso status` prints `missing-dashboard-entry
+dashboards/ramka-settings.<lang>.yaml`.
+
+```yaml
+lovelace:
+  dashboards:
+    ramka-settings:                  # the URL path needs a hyphen
+      mode: yaml
+      filename: dashboards/ramka-settings.en.yaml   # or .de / .pl
+      title: Ramka settings
+      icon: mdi:tune-vertical
+      show_in_sidebar: true
+      require_admin: true
+```
+
+- **Pages**, in this order: General, Climate, Air, Plants, Photos, Status, Calendar, Music. Every
+  page but General starts with its view's switch (with a note while it is off) and ends with "Reset
+  to defaults" for that page; General's resets every setting. Each asks for a confirmation. Each page
+  also lists its render-time inputs read-only with this render's values (General: the screen size).
+- **Basic and Advanced.** The Advanced cards (General: near distance and hold, controls hold, lux
+  for full brightness; Music: the flavours, rise, fall, line width, tilt, the four dB values, the
+  refresh rate, the music sensor and its calibration) show while "Show advanced settings"
+  (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on Music.
+- **Not configured.** A view the render left out (`climate`, `air`, `plants`, `photo_dir` absent,
+  or `status_page: false`) shows only a note naming its input and the way to add it: the inputs
+  file, `domosenso render ramka` and a deploy. Without `music_visual` the Music page keeps the
+  now-playing switch and says the same of the visual.
+- **Preview** (Music): the now-playing card's two visual configs, bound to the same helpers but
+  without `active`, so they draw while nothing plays; the one the visualization select names
+  shows, and `classic` shows a note. Each is 63 px high, the strip on the 1100 × 720 tablet, and
+  as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
+  phone the strip is narrower at the same height.
+- **Music sensor and calibration** (Music, Advanced): audio-sensor's
+  `input_select.audio_sensor_music_source`, the offset in use with "calibrated" or "estimate", the
+  mic gain (read-only: changing it is a flash), the note, the procedure, the measured offset and
+  note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render
+  cannot see audio-sensor, so these cards hide while the select is unavailable; that a missing
+  entity counts as unavailable in a visibility condition is inference until staging shows it
+  (SPEC-020), and otherwise a home without audio-sensor sees "entity not available" rows there.
+  No reset touches the calibration: a measurement is not a preference.
+- **Option values** (`dune`, `series`, `dark`) read as they are: helper options are English, and a
+  YAML `input_select` has no translated labels.
+- **The standing rule, for implementers:** every Ramka extension updates the settings dashboard in
+  the same change. A new behaviour gets its live setting on its view's page, Basic or Advanced,
+  belongs to one page and one group, and is covered by the page's reset and the global one;
+  `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset` fails on a helper that is
+  neither a named state helper nor on a page, and on one on a page that the reset does not set.
 
 ## Behaviour
 

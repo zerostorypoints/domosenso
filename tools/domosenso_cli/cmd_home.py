@@ -19,7 +19,8 @@ import yaml
 
 from domosenso_cli import dev_render
 from domosenso_cli.build import (
-    file_records, file_sha, git_short_head, load_manifest, open_catalog, parse_spec, plan_outputs,
+    file_records, file_sha, git_short_head, is_dashboard_template, load_manifest, open_catalog, parse_spec,
+    plan_outputs,
 )
 from domosenso_cli.catalog import SEMVER, TagMoved, dev_dir
 from domosenso_cli.cmd_render import apply_component, render_ids
@@ -524,7 +525,7 @@ def _check_dashboard_entries(home: HomeConfig, lock: Lock, rep: Reporter) -> Non
     wanted = []
     for entry in lock.components.values():
         for dest, record in entry.files.items():
-            if record.layer == "managed" and record.from_.startswith("templates/") and Path(record.from_).name.startswith("dashboard"):
+            if record.layer == "managed" and record.from_.startswith("templates/") and is_dashboard_template(record.from_):
                 relative = Path(os.path.relpath(home.root / dest, home.config_dir)).as_posix()
                 if not relative.startswith("../"):
                     wanted.append(relative)

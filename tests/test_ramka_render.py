@@ -82,7 +82,7 @@ def as_list(value):
 
 
 def test_demo_renders_three_dashboards_and_package(demo):
-    assert set(demo) == {"package.yaml", "dashboard.en.yaml", "dashboard.de.yaml", "dashboard.pl.yaml"}
+    assert set(demo) == {"package.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings") for lang in LANGS)}
     package = demo["package.yaml"]
     for domain in ("input_select", "input_boolean", "input_number", "timer", "input_button", "script", "automation", "template"):
         assert package[domain], domain
@@ -124,7 +124,8 @@ def test_pl_dashboard_has_no_english_ui_labels(demo):
     en, pl = translations("en"), translations("pl")
     shown = list(strings(demo["dashboard.pl.yaml"]))
     for key, pl_value in pl.items():
-        if not key.startswith("ui.") or pl_value == en[key]:
+        # ui.settings.* label the settings dashboard (test_settings_dashboard_pages_per_language).
+        if not key.startswith("ui.") or key.startswith("ui.settings.") or pl_value == en[key]:
             continue
         assert any(word(pl_value).search(s) for s in shown), f"{key}: {pl_value!r} not in the pl dashboard"
         assert not any(word(en[key]).search(s) for s in shown), f"{key}: English {en[key]!r} in the pl dashboard"
@@ -364,7 +365,11 @@ def test_null_page_input_renders_like_an_omitted_one(tmp_path, key):
 def test_a_screen_the_tested_layout_fits_renders_as_without_one(tmp_path, screen):
     inputs = demo_inputs()
     inputs["screen"] = screen
-    assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", demo_inputs())
+    given, default = texts(tmp_path / "a", inputs), texts(tmp_path / "b", demo_inputs())
+    # The settings dashboard lists the screen among the render-time inputs; nothing else changes.
+    settings = {name for name in given if name.startswith("ramka-settings.")}
+    assert {k: v for k, v in given.items() if k not in settings} == {k: v for k, v in default.items() if k not in settings}
+    assert all(f"{screen['width']} × {screen['height']}" in given[name] for name in settings)
 
 
 @pytest.mark.parametrize("screen", [{"width": 800, "height": 1280}, {"width": 1000, "height": 720},
@@ -517,7 +522,8 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
     dr.render_component(tagged_ramka(tmp_path, "0.3.0"), without_visual(), before)
     dr.render_component(COMP, without_visual(), after)
     names = sorted(p.name for p in before.iterdir())
-    assert names == sorted(p.name for p in after.iterdir())
+    # The settings dashboard is new in 0.4.0.
+    assert sorted(p.name for p in after.iterdir()) == sorted(names + [f"ramka-settings.{lang}.yaml" for lang in LANGS])
     load = lambda path: yaml.safe_load(path.read_text(encoding="utf-8"))  # noqa: E731
     old_package, new_package = load(before / "package.yaml"), load(after / "package.yaml")
     for domain, added in SETTINGS_ADDED.items():
@@ -891,15 +897,34 @@ def test_reset_page_and_groups(demo):
 
 
 def test_every_setting_is_on_a_page_and_reset(tmp_path):
-    """The standing rule (SPEC-020), its package half: every helper the package defines is a named
-    state helper or one the global reset sets. The settings dashboard's half (each such helper on a
-    page) comes with that dashboard."""
+    """The standing rule (SPEC-020): rendered with every optional input, every input_number,
+    input_boolean and input_select the package defines is a named state helper or on a settings
+    page; every helper on a page is one the global reset sets, and on its own page's reset. A new
+    state helper goes into STATE_HELPERS by name, in review."""
     inputs = with_visual()
     inputs["settings_defaults"] = {"off_delay_s": 600}
-    package = render(tmp_path, inputs)["package.yaml"]
+    inputs["music_visual_options"] = {"level": {"flavour": "tide"}}
+    rendered = render(tmp_path, inputs)
+    package = rendered["package.yaml"]
     reset = run_reset(package)
     for entity in helpers(package):
         assert entity in STATE_HELPERS or entity in reset, f"{entity}: neither a state helper nor reset"
+    for lang in LANGS:
+        views = settings_views(rendered[f"ramka-settings.{lang}.yaml"])
+        on_pages = {e: path for path, view in views.items() for e in shown_entities(view)}
+        for entity in helpers(package):
+            if entity in STATE_HELPERS:
+                assert entity not in on_pages, f"{lang}: state helper {entity} on the {on_pages[entity]} page"
+            else:
+                assert entity in on_pages, f"{lang}: {entity} is on no settings page"
+        for path, view in views.items():
+            for entity in shown_entities(view):
+                if not entity.startswith("input_") or ".ramka_" not in entity:
+                    continue
+                assert entity in reset, f"{lang}: {entity} on the {path} page and not reset"
+                # On its own page's reset; the Advanced switch also sits on Music.
+                assert PAGE_OF[entity] == path or (entity, path) == ("input_boolean.ramka_settings_advanced", "music"), (entity, path)
+                assert entity in run_reset(package, page=PAGE_OF[entity]), entity
 
 
 FALLBACK = re.compile(r"states\('(input_\w+\.ramka_\w+)'\)\s*\|\s*(?:int|float)\(([\d.]+)\)")
@@ -1267,3 +1292,327 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
     # The pause sits after the photos and before the hand-on to the next page.
     steps = stage["then"]
     assert steps.index(pauses[0]) == len(steps) - 2
+
+
+# ---- 0.4.0: the "Ramka settings" dashboard (SPEC-020) --------------------------------------------
+
+SETTINGS_PAGES = ["general", *PAGE_VIEWS]
+ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
+MUSIC_SOURCE = "input_select.audio_sensor_music_source"
+SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
+# Where each setting sits (SPEC-020's page table): Basic or Advanced.
+BASIC = {
+    "general": {"input_select.ramka_theme_mode", "input_boolean.ramka_near_enabled", "input_number.ramka_off_delay_s",
+                "input_number.ramka_brightness_min", "input_number.ramka_brightness_max",
+                "input_boolean.ramka_settings_advanced"},
+    **{v: {f"input_boolean.ramka_page_{v}"} for v in PAGE_VIEWS},
+}
+BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
+                   "input_boolean.ramka_settings_advanced"}
+ADVANCED = {
+    "general": {"input_number.ramka_near_cm", "input_number.ramka_near_s", "input_number.ramka_controls_hold_s",
+                "input_number.ramka_lux_max"},
+    "music": {"input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
+              "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s",
+              "input_number.ramka_music_line_width_px", "input_boolean.ramka_music_tilt", *(f"input_number.ramka_{k}" for k in MUSIC_DB),
+              "input_number.ramka_music_fps", MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
+              "input_text.audio_sensor_calibration_note"},
+}
+# What audio-sensor provides that the Music page reads (its manifest's provides, Ramka's consumes).
+AUDIO_SENSOR_IDS = {MUSIC_SOURCE, "sensor.music_spl_offset", "sensor.music_spl_calibration", "sensor.music_mic_gain",
+                    "input_number.audio_sensor_measured_offset", "input_text.audio_sensor_calibration_note",
+                    "script.audio_sensor_apply_calibration"}
+# The page each input adds, and how a render leaves it out.
+NOT_CONFIGURED = [("climate", "climate"), ("air", "air"), ("plants", "plants"), ("photos", "photo_dir"),
+                  ("status", "status_page"), ("music", "music_visual")]
+
+
+def settings_views(dashboard) -> dict[str, dict]:
+    return {view["path"]: view for view in dashboard["views"]}
+
+
+def view_cards(view):
+    """Every card of a sections view, with its section: (section, card), nested stacks included."""
+    for section in view["sections"]:
+        for card in section["cards"]:
+            yield section, card
+
+
+def rows(card) -> list[dict]:
+    return [r if isinstance(r, dict) else {"entity": r} for r in card.get("entities", [])] if card.get("type") == "entities" else []
+
+
+def shown_entities(view) -> set[str]:
+    """The entities a page shows as rows, tiles or cards (not the ones its conditions read)."""
+    out = set()
+    for _, card in view_cards(view):
+        if card.get("entity"):
+            out.add(card["entity"])
+        out |= {r["entity"] for r in rows(card) if r.get("entity")}
+    return out
+
+
+def advanced(section, card) -> bool:
+    return ADVANCED_ON in (section.get("visibility") or []) + (card.get("visibility") or [])
+
+
+def markdown(view) -> str:
+    return "\n".join(card["content"] for _, card in view_cards(view) if card.get("type") == "markdown")
+
+
+def reset_actions(view):
+    """Every tap that runs the Ramka's reset script on a page, from cards and rows."""
+    for _, card in view_cards(view):
+        for node in walk(card):
+            if node.get("perform_action") == "script.ramka_settings_reset":
+                yield node
+
+
+def settings_texts(lang) -> dict[str, str]:
+    return {k: v for k, v in translations(lang).items() if k.startswith("ui.settings.")}
+
+
+def test_settings_dashboard_pages_per_language(demo):
+    en = settings_texts("en")
+    assert en
+    for lang in LANGS:
+        dashboard = demo[f"ramka-settings.{lang}.yaml"]
+        t = settings_texts(lang)
+        assert dashboard["title"] == t["ui.settings.title"]
+        assert "kiosk_mode" not in dashboard
+        assert [v["path"] for v in dashboard["views"]] == SETTINGS_PAGES, lang
+        for view in dashboard["views"]:
+            assert view["title"] == t[f"ui.settings.pages.{view['path']}"], (lang, view["path"])
+            assert view["type"] == "sections" and "theme" not in view
+            # Each row of a Ramka helper carries its translated name.
+            for _, card in view_cards(view):
+                for row in rows(card):
+                    entity = row.get("entity", "")
+                    if ".ramka_" in entity and entity.startswith("input_"):
+                        assert row["name"] == t["ui.settings." + entity.split(".ramka_", 1)[1]], (lang, entity)
+        if lang == "en":
+            continue
+        shown = list(strings(dashboard))
+        for key, value in t.items():
+            if value == en[key] or "`" in en[key] or "\n" in en[key]:
+                continue
+            assert not any(word(en[key]).search(s) for s in shown), f"{lang}: English {en[key]!r} ({key})"
+    assert "ß" not in json.dumps(demo["ramka-settings.de.yaml"], ensure_ascii=False)
+
+
+def test_settings_page_switches_at_the_top(demo):
+    views = settings_views(demo["ramka-settings.en.yaml"])
+    for view in PAGE_VIEWS:
+        first = views[view]["sections"][0]
+        [switch] = [c for c in first["cards"] if f"input_boolean.ramka_page_{view}" in {r.get("entity") for r in rows(c)}]
+        assert not advanced(first, switch)
+        # While the switch is off, the page says the tablet leaves the view out.
+        notes = [c for _, c in view_cards(views[view]) if c.get("type") == "markdown"
+                 and {"condition": "state", "entity": f"input_boolean.ramka_page_{view}", "state": "off"} in c.get("visibility", [])]
+        assert len(notes) == 1, view
+        assert notes[0]["content"] == translations("en")["ui.settings.page_off"]
+
+
+@pytest.mark.parametrize("page, dropped", NOT_CONFIGURED)
+def test_settings_page_not_configured(tmp_path, page, dropped):
+    inputs = without_visual() if dropped == "music_visual" else (
+        {**with_visual(), "status_page": False} if dropped == "status_page" else
+        {k: v for k, v in with_visual().items() if k not in PAGE_INPUTS.get(page, (dropped,))})
+    rendered = render(tmp_path, inputs)
+    en = translations("en")
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(rendered[f"ramka-settings.{lang}.yaml"])[page]
+        text = markdown(view)
+        assert t["ui.settings.not_configured"] in text, lang
+        assert f"`{dropped}`" in text and "`domosenso/ramka.inputs.yaml`" in text and "`domosenso render ramka`" in text
+        if page == "music":
+            # The now-playing view is there without the visual: its switch stays, the visual parts go.
+            assert shown_entities(view) == {"input_boolean.ramka_page_music"}
+            assert not [n for n in walk(view) if n.get("type") == "custom:ambient-wave-card"]
+            assert not {e for e in AUDIO_SENSOR_IDS if e in json.dumps(view)}
+            assert len(list(reset_actions(view))) == 1
+        else:
+            # Its switch would change nothing: no switch, no settings, no reset.
+            assert not shown_entities(view), (lang, shown_entities(view))
+            assert not list(reset_actions(view))
+    # A configured page has no such card.
+    demo_views = settings_views(render(tmp_path / "demo", with_visual())["ramka-settings.en.yaml"])
+    assert en["ui.settings.not_configured"] not in markdown(demo_views[page])
+
+
+def test_calendar_page_always_configured(tmp_path):
+    inputs = {k: v for k, v in demo_inputs().items() if k in ("prefix", "radar", "media_player", "weather", "calendar", "tablet_device", "air")}
+    view = settings_views(render(tmp_path, inputs)["ramka-settings.en.yaml"])["calendar"]
+    assert "input_boolean.ramka_page_calendar" in shown_entities(view)
+    assert translations("en")["ui.settings.not_configured"] not in markdown(view)
+
+
+def test_advanced_cards_follow_the_switch(demo):
+    for lang in LANGS:
+        views = settings_views(demo[f"ramka-settings.{lang}.yaml"])
+        for path, view in views.items():
+            basic, extra = BASIC.get(path, set()), ADVANCED.get(path, set())
+            seen = set()
+            for section, card in view_cards(view):
+                shown = ({card.get("entity")} | {r.get("entity") for r in rows(card)}) - {None}
+                seen |= shown
+                if shown & extra:
+                    assert advanced(section, card), (lang, path, shown & extra)
+                if shown & basic:
+                    assert not advanced(section, card), (lang, path, shown & basic)
+                if advanced(section, card):
+                    assert not shown & basic, (lang, path)
+                    # Advanced cards carry the condition themselves (SPEC-020), not only their section.
+                    assert ADVANCED_ON in card.get("visibility", []), (lang, path, card.get("type"))
+            assert basic | extra <= seen, (lang, path, (basic | extra) - seen)
+        # The switch sits on General and Music, the two pages with Advanced parts.
+        on = {p for p, v in views.items() if "input_boolean.ramka_settings_advanced" in shown_entities(v)}
+        assert on == {"general", "music"}
+
+
+def test_settings_reset_buttons(demo):
+    for lang in LANGS:
+        t = translations(lang)
+        views = settings_views(demo[f"ramka-settings.{lang}.yaml"])
+        for path, view in views.items():
+            [action] = list(reset_actions(view))
+            if path == "general":
+                assert not action.get("data"), action
+                assert action["confirmation"]["text"] == t["ui.settings.reset_all_confirm"]
+            else:
+                assert action["data"] == {"page": path}
+                assert action["confirmation"]["text"] == t["ui.settings.reset_confirm"]
+        # The reset is the last section of each page.
+        for path, view in views.items():
+            last = view["sections"][-1]
+            assert any(n.get("perform_action") == "script.ramka_settings_reset" for n in walk(last)), path
+
+
+def test_music_page_sensor_and_calibration(demo):
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    consumed = {c["id"] for c in manifest["consumes"] if "id" in c and c["component"] == "audio-sensor"}
+    audio = yaml.safe_load((REPO / "components/audio-sensor/component.yaml").read_text(encoding="utf-8"))
+    provided = {e["id"] for e in audio["provides"]["entities"]}
+    assert AUDIO_SENSOR_IDS <= consumed <= provided
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        # The preview reads the music aliases too (the strip's own); every other card that reads
+        # audio-sensor is the music source or its calibration.
+        reading = [(s, c) for s, c in view_cards(view) if c.get("type") != "custom:ambient-wave-card"
+                   and any(e in json.dumps(c) for e in AUDIO_SENSOR_IDS)]
+        assert reading
+        for section, card in reading:
+            conditions = (section.get("visibility") or []) + (card.get("visibility") or [])
+            assert SOURCE_THERE in card.get("visibility", []) and ADVANCED_ON in conditions, (lang, card.get("type"))
+        [select] = [c for _, c in reading if MUSIC_SOURCE in {r.get("entity") for r in rows(c)}]
+        assert [r["name"] for r in rows(select)] == [t["ui.settings.music_source"]]
+        [table] = [c for _, c in reading if c.get("type") == "markdown"]
+        for entity in ("sensor.music_spl_offset", "sensor.music_spl_calibration", "sensor.music_mic_gain"):
+            assert entity in table["content"]
+        assert "state_attr('sensor.music_spl_calibration', 'note')" in table["content"]
+        assert t["ui.settings.calibration_procedure"] in table["content"]
+        assert "components/audio-sensor/README.md" in table["content"]
+        # The state calibrated / estimate reads translated.
+        for state, key in (("calibrated", "calibrated"), ("estimate", "estimate")):
+            out = ha(table["content"], states={"sensor.music_spl_calibration": state, "sensor.music_spl_offset": "82.5"},
+                     attrs={"sensor.music_spl_calibration": {"note": "pink noise, meter at 1 m"}})
+            assert t[f"ui.settings.{key}"] in out and "82.5" in out and "pink noise, meter at 1 m" in out
+        inputs = [c for _, c in reading if "input_number.audio_sensor_measured_offset" in {r.get("entity") for r in rows(c)}]
+        [entities] = inputs
+        assert [r.get("entity") for r in rows(entities)][:2] == ["input_number.audio_sensor_measured_offset",
+                                                                 "input_text.audio_sensor_calibration_note"]
+        [apply] = [n for n in walk(entities) if n.get("perform_action") == "script.audio_sensor_apply_calibration"]
+        assert apply["confirmation"]["text"] == t["ui.settings.calibration_apply_confirm"]
+
+
+def preview_cards(view):
+    return [(s, c) for s, c in view_cards(view) if c.get("type") == "custom:ambient-wave-card"]
+
+
+def test_settings_preview_is_the_now_playing_visual(demo):
+    for lang in LANGS:
+        visual = now_playing(demo[f"dashboard.{lang}.yaml"])["visual"]
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        cards = preview_cards(view)
+        assert [c["source"]["kind"] for _, c in cards] == ["spectrum", "scalar"]
+        for (section, card), kind in zip(cards, ("spectrum", "level")):
+            expected = {k: v for k, v in visual[kind].items() if k != "active"}
+            assert {k: v for k, v in card.items() if k not in ("height", "visibility", "grid_options")} == expected
+            # The strip's height on the 1100 x 720 tablet (SPEC-018): 14 % of 720 - 272 px.
+            assert card["height"] == "63px"
+            assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind}]
+            assert not advanced(section, card)
+        [classic] = [c for _, c in view_cards(view) if c.get("type") == "markdown" and
+                     {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]} in c.get("visibility", [])]
+        assert classic["content"] == translations(lang)["ui.settings.preview_classic"]
+
+
+def test_settings_preview_passes_the_card_normaliser(tmp_path, demo):
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not on PATH (eval \"$(fnm env --shell zsh)\")")
+    configs = [c for _, c in preview_cards(settings_views(demo["ramka-settings.en.yaml"])["music"])]
+    seeded = card_states(demo["package.yaml"], run_reset(demo["package.yaml"], groups=["music_visual"]))
+    script = tmp_path / "preview.mjs"
+    script.write_text(
+        f"import {{ normaliseConfig, resolveOptions }} from {json.dumps((AUDIO_CARDS / 'lib' / 'config.js').as_uri())};\n"
+        f"import {{ FLAVOUR_KINDS }} from {json.dumps((AUDIO_CARDS / 'lib' / 'flavours' / 'index.js').as_uri())};\n"
+        "const [configs, states] = JSON.parse(process.argv[2]);\n"
+        "process.stdout.write(JSON.stringify(configs.map((c) => resolveOptions(normaliseConfig(c, FLAVOUR_KINDS), states, FLAVOUR_KINDS))));\n",
+        encoding="utf-8")
+    result = subprocess.run([node, str(script), json.dumps([configs, seeded])], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    spectrum, level = json.loads(result.stdout)
+    assert (spectrum["flavour"], level["flavour"]) == ("dune", "centre")
+    assert spectrum["style"]["line_width"] == level["style"]["line_width"] == 2.8
+    # No `active`: the preview draws while the player is off too.
+    assert not [c for c in configs if "active" in c]
+
+
+def test_settings_read_only_inputs(demo):
+    inputs = demo_inputs()
+    t = translations("en")
+    views = settings_views(demo["ramka-settings.en.yaml"])
+    general = markdown(views["general"])
+    assert t["ui.settings.inputs.screen"] in general and "1100 × 720" in general
+    climate = markdown(views["climate"])
+    assert all(c["label"] in climate for c in inputs["climate"]) and t["ui.settings.inputs.rooms_columns"] in climate
+    air = markdown(views["air"])
+    assert all(entity in air for entity in inputs["air"].values())
+    plants = markdown(views["plants"])
+    assert all(p["label"] in plants for p in inputs["plants"])
+    assert inputs["photo_dir"] in markdown(views["photos"])
+    status = markdown(views["status"])
+    for item in [*inputs["covers"], *inputs["status"]["contacts"], *inputs["status"]["power"], *inputs["status"]["locks"]]:
+        assert item["label"] in status
+    assert t["ui.settings.inputs.status_columns"] in status
+    assert inputs["calendar"] in markdown(views["calendar"])
+    for path, view in views.items():
+        assert t["ui.settings.render_time"] in json.dumps(view, ensure_ascii=False), path
+
+
+def test_settings_all_off_warning(demo):
+    view = settings_views(demo["ramka-settings.en.yaml"])["general"]
+    t = translations("en")
+    [card] = [c for _, c in view_cards(view) if c.get("type") == "markdown" and "all_off" in c["content"]]
+    assert card["show_empty"] is False
+    attrs = lambda off: {"sensor.ramka_ambient_pages": {"all_off": off}}
+    assert t["ui.settings.all_off"] in ha(card["content"], attrs=attrs(True))
+    assert ha(card["content"], attrs=attrs(False)) == ""
+    assert ha(card["content"]) == ""
+
+
+def test_settings_dashboard_is_documented():
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    assert "templates/ramka-settings.lang.yaml.j2" in manifest["artifacts"]["templates"]
+    readme = (COMP / "README.md").read_text(encoding="utf-8")
+    assert "## Settings page" in readme
+    block = readme.split("## Settings page", 1)[1].split("```yaml", 1)[1].split("```", 1)[0]
+    entry = yaml.safe_load(block)["lovelace"]["dashboards"]["ramka-settings"]
+    assert entry["filename"] == "dashboards/ramka-settings.en.yaml" and entry["require_admin"] is True
+    assert entry["mode"] == "yaml"
