@@ -741,7 +741,7 @@ script:
             # 4. Photos: from the plants page, or straight in when the page already is photos.
             #    shell/ramka_pick.py: one folder that holds photos, at any depth, drawn with equal
             #    chances, then up to five different photos from it. An empty folder tree gives an
-            #    empty list and the photos are skipped.
+            #    empty list: the photos are skipped after one 10 s slot.
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
@@ -770,6 +770,15 @@ script:
                           option: photos
                       - delay:
                           seconds: 10
+                # An empty pick (no photos, or the folder not mounted) still takes one slot: with
+                # photos the only page switched on, the next page is photos again, and the loop
+                # would otherwise call the pick without a pause.
+                - if:
+                    - condition: template
+                      value_template: "{{ picks | count == 0 }}"
+                  then:
+                    - delay:
+                        seconds: 10
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient

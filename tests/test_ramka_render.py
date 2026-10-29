@@ -1248,4 +1248,33 @@ def test_theme_mode(demo):
         assert "modes" not in theme, name
         for n in range(1, 12):
             assert theme[f"graph-color-{n}"] == themes["ramka"]["modes"][mode][f"graph-color-{n}"]
-        assert {"primary-background-color", "card-background-color", "primary-text-color"} <= set(theme)
+    # A theme without modes runs in the frontend's light mode (frontend 20260826.7,
+    # themes-mixin.ts), so ramka-light needs only its series colours, and ramka-dark carries the
+    # frontend's own dark blocks (color.globals.ts darkColorStyles, semantic.globals.ts
+    # darkSemanticColorStyles), a few of them pinned here.
+    assert set(themes["ramka-light"]) == {f"graph-color-{n}" for n in range(1, 12)}
+    dark = themes["ramka-dark"]
+    assert len(dark) == 140 + 11
+    assert (dark["primary-background-color"], dark["card-background-color"], dark["secondary-background-color"],
+            dark["primary-text-color"], dark["secondary-text-color"], dark["disabled-text-color"]) == (
+        "#111111", "#1c1c1c", "#282828", "#e1e1e1", "#9b9b9b", "#6f6f6f")
+    assert dark["ha-color-text-primary"] == "var(--white-color)"
+    assert dark["ha-color-form-background-disabled"] == "var(--ha-color-neutral-20)"
+    assert "app-header-background-color" not in dark and "sidebar-background-color" not in dark
+
+
+def test_an_empty_photo_pick_still_takes_a_slot(demo):
+    """With photos the only live page and an empty pick (an empty folder, a share not mounted), the
+    stage hands on to photos again: without a pause the loop would spin and call the pick on every
+    pass. An empty pick waits one photo slot (10 s) instead; a pick with photos does not."""
+    [stage] = [s for s in loop_stages(demo["package.yaml"])
+               if s["if"][0].get("state") == "photos"]
+    pauses = [step for step in stage["then"] if "if" in step and any("delay" in t for t in step["then"])]
+    assert len(pauses) == 1
+    [condition] = pauses[0]["if"]
+    assert ha(condition["value_template"], picks=[]) == "True"
+    assert ha(condition["value_template"], picks=["a/1.jpg"]) == "False"
+    assert [t["delay"] for t in pauses[0]["then"] if "delay" in t] == [{"seconds": 10}]
+    # The pause sits after the photos and before the hand-on to the next page.
+    steps = stage["then"]
+    assert steps.index(pauses[0]) == len(steps) - 2

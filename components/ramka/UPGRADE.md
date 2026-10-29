@@ -31,8 +31,10 @@ delay, 3 s near hold, 50 cm, brightness 20 to 255, a 15 s controls hold in two p
 
 ### What a home does
 
-Nothing is required: the seed gives every new helper its value at the first start. To use the
-visual, install `audio-sensor` with one sensor marked `music: true`, set `music_visual: spectrum` or
+One step is required: add the "Ramka settings" dashboard's `lovelace:` entry to the home's
+`configuration.yaml` (README, "Settings page"); until then `domosenso status` prints
+`missing-dashboard-entry dashboards/ramka-settings.<lang>.yaml`. The tablet itself works without
+it, and the seed gives every new helper its value at the first start. To use the visual, install `audio-sensor` with one sensor marked `music: true`, set `music_visual: spectrum` or
 `level`, render both and deploy. Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the
 twelve resource URLs with them (`domosenso update ramka` and a deploy do both); the deploy's restart
 creates the new helpers and runs the seed. Check after the restart that
