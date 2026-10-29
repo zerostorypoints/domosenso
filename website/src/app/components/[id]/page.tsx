@@ -1,4 +1,5 @@
 import {ComponentExperience} from '@/components/component-experience';
+import {RelatedHowTos} from '@/components/howto-cards';
 import {RelatedJournal} from '@/components/journal-cards';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
@@ -26,7 +27,7 @@ export default async function Page({params}:Props) {
 
   return <div className="page">
     <PageIntro label={`COMPONENT INDEX / ${isGuide?'INTEGRATION GUIDE':'INSTALLABLE COMPONENT'} / v${component.version}`} title={componentName(id)}><p>{component.summary}</p></PageIntro>
-    <ComponentExperience id={id}/><h2 id="release" className="release-detail-title">Release details</h2>
+    <ComponentExperience id={id}/><RelatedHowTos componentId={id}/><h2 id="release" className="release-detail-title">Release details</h2>
     <div className="component-detail">
       <aside className="release-panel">
         <span className="pill">{isGuide?'Integration guide':'Installable component'}</span><h2>Release record</h2>

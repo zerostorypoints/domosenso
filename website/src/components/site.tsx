@@ -16,7 +16,7 @@ export function Header() {
       <Link href="/" aria-label="DomoSenso framework home"><Brand/></Link>
       <nav className="desktop-nav" aria-label="Main navigation">
         <Link href="/get-started/">Get started</Link><Link href="/components/">Components</Link>
-        <Link href="/docs/">Docs</Link><Link href="/journal/">Journal</Link>
+        <Link href="/docs/">Docs</Link><Link href="/how-to/">How-to</Link><Link href="/journal/">Journal</Link>
         <a href={repository}>GitHub <Arrow/></a>
         <RedditLink/>
       </nav>
@@ -38,7 +38,7 @@ export function Footer() {
       <RedditLink label="Contact & discussion · r/domosenso"/>
     </div>
     <nav aria-label="Footer">
-      <Link href="/contribute/">Contribute</Link><Link href="/journal/">Journal</Link><Link href="/releases/">Releases & upgrades</Link>
+      <Link href="/contribute/">Contribute</Link><Link href="/how-to/">How-to</Link><Link href="/journal/">Journal</Link><Link href="/releases/">Releases & upgrades</Link>
       <Link href="/professional-services/">Professional services</Link>
       <a href={repository+'/blob/main/SECURITY.md'}>Security</a>
       <Link href="/docs/licensing/">Apache-2.0 license</Link>

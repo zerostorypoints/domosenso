@@ -32,7 +32,7 @@ uv run tools/export_website.py --verify-remote
 uv run tools/export_website.py --check
 ```
 
-Commit the publication selection and both generated snapshots together. Only
+Commit the publication selection and the generated snapshots together. Only
 select reviewed revisions reachable from the public repository before deployment.
 The website consumes committed JSON; the Cloudflare build needs no Git credentials
 for another repository and no Python content-generation step. Never move tags.
@@ -179,8 +179,17 @@ missing or unsafe evidence/asset paths.
 Journal entries live in `content/journal/<slug>.md` with YAML frontmatter: slug, title, summary,
 category (`releases`, `updates`, `installations`), date (`YYYY-MM-DD`, quoted), status
 (`draft` or `published`), author, components, releases and sources; cover is optional. A release
-reference records id, version, tag and full commit. Keep historical references fixed. Drafts
+reference records id, version, tag and full commit. Keep historical references fixed. Journal drafts
 are excluded from all generated website data. Published articles feed `/journal/feed.xml`.
+
+How-to guides live in `content/how-to/<slug>.md` with YAML frontmatter: slug, title, description
+(at most 160 characters), components, devices, status (`draft` or `published`), updated
+(`'YYYY-MM-DD'`), sources and branches. Each branch has situation, needs, wiring and supported
+(`yes`, `coming-soon` or `no`), plus issue for `coming-soon` and prompt for `yes`. The exporter writes
+them to `src/generated/howtos.json`. Drafts render with a banner on preview builds (`CF_PAGES_BRANCH`
+set and not `main`) and never appear on production. Import `howtos.json` and `@/lib/howto` only from
+server modules, never from a `'use client'` component or anything it imports, because client bundles
+are public. `e2e/drafts.spec.ts` checks a production `out/` for draft text.
 
 Examples use manual controls and fictional data. Preview illustrations are not dashboard
 screenshots. Do not imply mobile HA layout support because the website itself is responsive.
