@@ -38,7 +38,7 @@ inputs:
     item:
       room: {type: slug, note: "the board's hostname part (audio-sensor-<room>), words joined by -"}
       area: {type: area_name, note: "the Home Assistant area"}
-      music: {type: bool, default: false, note: "this board is the music source; at most one item"}
+      music: {type: bool, default: false, note: "this board is the default music source (the select's first option); at most one item"}
       acoustics: {type: bool, default: true, note: "with room_acoustics: true, this board gets the derived figures"}
       id_prefix: {type: slug, default: "the room slug with _", note: "prefix of the ids this component creates for the board"}
       name: {type: str, default: "audio-sensor-<room>", note: "ESPHome substitution"}
@@ -58,10 +58,10 @@ inputs:
           fast_level: sensor.<..>_fast_sound_level
           fast_peak: sensor.<..>_fast_sound_peak
           live_tracking: switch.<..>_live_tracking
-          mic_gain: text_sensor.<..>_mic_gain
+          mic_gain: sensor.<..>_mic_gain
           wifi_signal: sensor.<..>_wi_fi_signal
           uptime: sensor.<..>_uptime
-          bssid: text_sensor.<..>_connected_ap_bssid
+          bssid: sensor.<..>_connected_ap_bssid
           restart: button.<..>_restart
           load: sensor.<..>_spectrum_load
   playing:                                # an entity that means music plays: the listening sessions follow it
@@ -107,20 +107,31 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "sensor.<id_prefix>_fast_sound_peak", stability: additive-only, from: esphome, entity_key: fast_peak, note: same}
     - {id: "switch.<id_prefix>_live_tracking", stability: stable, from: esphome, entity_key: live_tracking, note: "off after a boot and after one hour"}
     - {id: "sensor.<id_prefix>_spectrum_load", stability: additive-only, from: esphome, entity_key: load, note: "share of one core the spectrum worker uses"}
-    - {id: "text_sensor.<id_prefix>_mic_gain", stability: additive-only, from: esphome, entity_key: mic_gain}
+    - {id: "sensor.<id_prefix>_mic_gain", stability: additive-only, from: esphome, entity_key: mic_gain}
     - {id: "sensor.<id_prefix>_wi_fi_signal", stability: additive-only, from: esphome, entity_key: wifi_signal}
     - {id: "sensor.<id_prefix>_uptime", stability: additive-only, from: esphome, entity_key: uptime}
-    - {id: "text_sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
+    - {id: "sensor.<id_prefix>_connected_ap_bssid", stability: additive-only, from: esphome, entity_key: bssid}
     - {id: "button.<id_prefix>_restart", stability: additive-only, from: esphome, entity_key: restart}
 
     # The Home Assistant package (templates/package.yaml.j2). The figures of room_acoustics: true
     # come with the dashboard task.
     - {id: "input_number.<id_prefix>_spl_offset", stability: stable, note: "0-140 dB, step 0.1, no initial: a fresh helper starts at 0 and the README's calibration sets it"}
     - {id: "sensor.<id_prefix>_spl_offset", stability: stable, note: "the offset as a sensor"}
-    - {id: "sensor.music_spectrum", stability: stable, note: "the music board's Spectrum CSV, dBFS, unchanged; excluded from the recorder"}
+    - {id: "sensor.music_spectrum", stability: stable, note: "the selected board's Spectrum CSV, dBFS, unchanged; excluded from the recorder"}
     - {id: "sensor.music_spl_offset", stability: stable, note: "that board's offset, dB"}
     - {id: "sensor.music_level", stability: stable, note: "its 1 s Sound level plus the offset, dB SPL; none while the source has no number"}
-    - {id: "binary_sensor.music_sensor_online", stability: stable, note: "on while the Spectrum sensor is neither unavailable nor unknown"}
+    - {id: "binary_sensor.music_sensor_online", stability: stable, note: "on while the selected board's Spectrum sensor is neither unavailable nor unknown"}
+
+    # The music source and the calibration helpers (SPEC-020). With a `music: true` board the aliases
+    # above follow the select; a select state that is no option reads that board.
+    - {id: "input_select.audio_sensor_music_source", stability: stable, note: "with a music board: the boards' areas, the music board first, then input order; no initial:; one board gives one option"}
+    - {id: "sensor.music_mic_gain", stability: stable, note: "the selected board's Mic gain text, unchanged"}
+    - {id: "sensor.music_spl_calibration", stability: stable, note: "calibrated or estimate, from the selected board's flag; attribute note"}
+    - {id: "input_boolean.<id_prefix>_spl_calibrated", stability: stable, note: "per board; off = the offset is an estimate; no initial:"}
+    - {id: "input_text.<id_prefix>_spl_note", stability: stable, note: "per board, up to 255 characters; no initial:"}
+    - {id: "input_number.audio_sensor_measured_offset", stability: stable, note: "with a music board; 0-140 dB, step 0.1, the measurement to apply; no initial:"}
+    - {id: "input_text.audio_sensor_calibration_note", stability: stable, note: "with a music board; the note to apply, up to 255 characters; no initial:"}
+    - {id: "script.audio_sensor_apply_calibration", stability: stable, note: "writes the measured offset and the note into the selected board's helpers and turns its calibrated flag on"}
 
 consumes: []
 

@@ -2,6 +2,7 @@
 import copy
 from pathlib import Path
 
+import jinja2
 import pytest
 import yaml
 
@@ -36,6 +37,23 @@ def templates(package) -> dict:
     return found
 
 
+def evaluate(template, states_by_id) -> str:
+    """A Home Assistant template run with stub states (an entity not listed is `unavailable`)."""
+    env = jinja2.Environment()
+
+    def states(entity_id):
+        return states_by_id.get(entity_id, "unavailable")
+
+    return env.from_string(template).render(states=states, is_state=lambda e, v: states(e) == v).strip()
+
+
+LIVING = "sensor.living_room_audio_sensor_living_room_spectrum"
+KIDS = "sensor.kids_room_audio_sensor_kids_room_spectrum"
+LIVING_LEVEL = "sensor.living_room_audio_sensor_living_room_sound_level"
+KIDS_LEVEL = "sensor.kids_room_audio_sensor_kids_room_sound_level"
+SELECT = "input_select.audio_sensor_music_source"
+
+
 @pytest.fixture(scope="module")
 def demo(tmp_path_factory):
     return render(tmp_path_factory.mktemp("demo"), demo_inputs())
@@ -44,7 +62,7 @@ def demo(tmp_path_factory):
 def test_render_aliases_follow_music_sensor(demo):
     found = templates(demo)
     spectrum = found["audio_sensor_music_spectrum"]
-    assert "states('sensor.living_room_audio_sensor_living_room_spectrum')" in spectrum["state"]
+    assert LIVING in spectrum["state"]
     assert spectrum["default_entity_id"] == "sensor.music_spectrum"
     level = found["audio_sensor_music_level"]
     assert "sensor.living_room_audio_sensor_living_room_sound_level" in level["state"]
@@ -57,7 +75,7 @@ def test_render_aliases_follow_music_sensor(demo):
     assert online["default_entity_id"] == "binary_sensor.music_sensor_online"
     assert "sensor.living_room_audio_sensor_living_room_spectrum" in online["state"]
     assert "unavailable" in online["state"] and "unknown" in online["state"]
-    assert "kids_room" not in str([spectrum, level, offset, online])
+    # The aliases follow the select, so every board is in their maps (test_aliases_follow_the_select).
 
 
 def test_aliases_follow_a_different_music_board(tmp_path):
@@ -91,14 +109,15 @@ def test_no_music_sensor_no_aliases(tmp_path):
     inputs["sensors"][0]["music"] = False
     package = render(tmp_path, inputs)
     assert templates(package).keys() == {"audio_sensor_living_room_spl_offset", "audio_sensor_kids_room_spl_offset"}
+    assert "script" not in package
     assert "sensor.music_spectrum" not in package["recorder"]["exclude"]["entities"]
     assert "input_number" in package
 
 
 def test_offset_helper_has_no_initial(demo):
     helpers = demo["input_number"]
-    assert set(helpers) == {"living_room_spl_offset", "kids_room_spl_offset"}
-    for helper in helpers.values():
+    assert set(helpers) == {"living_room_spl_offset", "kids_room_spl_offset", "audio_sensor_measured_offset"}
+    for helper in (helpers["living_room_spl_offset"], helpers["kids_room_spl_offset"]):
         assert "initial" not in helper
         assert (helper["min"], helper["max"], helper["step"]) == (0, 140, 0.1)
         assert helper["mode"] == "box"
@@ -152,17 +171,218 @@ def test_input_validation_fails(tmp_path, mutate, message):
 
 
 def test_alias_templates_stay_cheap(demo):
-    # The spectrum changes five times a second: its alias is one states() call, no loops or filters.
+    # The spectrum changes five times a second: its alias is a lookup in a rendered map and two
+    # states() calls (the select, then the picked board's spectrum), no loops or filters.
     state = templates(demo)["audio_sensor_music_spectrum"]["state"]
-    assert state.count("states(") == 1
+    assert state.count("states(") == 2
     assert "for " not in state and "split" not in state
 
 
 def test_entities_carry_the_component_and_boards_their_area(demo):
     found = templates(demo)
-    assert len(found) == 6
+    assert len(found) == 8
     for entity in found.values():
         assert entity["attributes"]["component"] == "audio-sensor"
     assert found["audio_sensor_kids_room_spl_offset"]["attributes"]["area"] == "Kids' room"
     assert found["audio_sensor_living_room_spl_offset"]["attributes"]["area"] == "Living room"
     assert "area" not in found["audio_sensor_music_level"]["attributes"]
+
+
+# --- SPEC-020: the music source and the calibration helpers -----------------------------------
+
+
+def test_music_source_select_options(tmp_path, demo):
+    select = demo["input_select"]["audio_sensor_music_source"]
+    assert select["options"] == ["Living room", "Kids' room"]
+    assert "initial" not in select
+    inputs = demo_inputs()
+    inputs["sensors"][0]["music"] = False
+    inputs["sensors"][1]["music"] = True
+    inputs["sensors"].append({"room": "hall", "area": "Hall"})
+    options = render(tmp_path, inputs)["input_select"]["audio_sensor_music_source"]["options"]
+    assert options == ["Kids' room", "Living room", "Hall"]
+
+
+def test_no_music_board_no_select(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"][0]["music"] = False
+    package = render(tmp_path, inputs)
+    assert "input_select" not in package
+    assert "script" not in package
+    assert set(package["input_number"]) == {"living_room_spl_offset", "kids_room_spl_offset"}
+    assert "audio_sensor_calibration_note" not in package.get("input_text", {})
+    # The per-board flag and note exist for every board.
+    assert set(package["input_boolean"]) == {"living_room_spl_calibrated", "kids_room_spl_calibrated"}
+    assert set(package["input_text"]) == {"living_room_spl_note", "kids_room_spl_note"}
+
+
+def test_one_board_one_option(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"] = inputs["sensors"][:1]
+    package = render(tmp_path, inputs)
+    assert package["input_select"]["audio_sensor_music_source"]["options"] == ["Living room"]
+    assert "script" in package
+    assert "sensor.music_spectrum" in package["recorder"]["exclude"]["entities"]
+
+
+def test_duplicate_area_fails(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"][1]["area"] = "Living room"
+    with pytest.raises(dr.RenderError, match=r"duplicate area: Living room"):
+        render_text(tmp_path, inputs)
+    # Without a music board there is no select, so no collision to refuse.
+    inputs["sensors"][0]["music"] = False
+    render_text(tmp_path / "none", inputs)
+
+
+def test_calibration_helpers_per_board(demo):
+    for prefix, area in (("living_room", "Living room"), ("kids_room", "Kids' room")):
+        flag = demo["input_boolean"][f"{prefix}_spl_calibrated"]
+        assert area in flag["name"] and "initial" not in flag
+        note = demo["input_text"][f"{prefix}_spl_note"]
+        assert area in note["name"] and note["max"] == 255 and "initial" not in note
+    measured = demo["input_number"]["audio_sensor_measured_offset"]
+    assert (measured["min"], measured["max"], measured["step"]) == (0, 140, 0.1)
+    assert measured["unit_of_measurement"] == "dB" and "initial" not in measured
+    note = demo["input_text"]["audio_sensor_calibration_note"]
+    assert note["max"] == 255 and "initial" not in note
+
+
+def test_no_helper_has_an_initial(demo):
+    for domain in ("input_number", "input_boolean", "input_text", "input_select"):
+        for helper in demo[domain].values():
+            assert "initial" not in helper
+
+
+def test_aliases_follow_the_select(demo):
+    found = templates(demo)
+    states = {
+        SELECT: "Kids' room",
+        LIVING: "-40,-41", KIDS: "-50,-51",
+        LIVING_LEVEL: "-30", KIDS_LEVEL: "-20",
+        "input_number.living_room_spl_offset": "90", "input_number.kids_room_spl_offset": "100",
+        "sensor.living_room_audio_sensor_living_room_mic_gain": "24DB",
+        "sensor.kids_room_audio_sensor_kids_room_mic_gain": "18DB",
+        "input_boolean.living_room_spl_calibrated": "off", "input_boolean.kids_room_spl_calibrated": "on",
+        "input_text.living_room_spl_note": "estimate", "input_text.kids_room_spl_note": "measured with a phone app",
+    }
+
+    def value(uid, **changes):
+        return evaluate(found[uid]["state"], {**states, **changes})
+
+    # The select on the second board's area reads that board's entities.
+    assert value("audio_sensor_music_spectrum") == "-50,-51"
+    assert value("audio_sensor_music_spl_offset") == "100.0"
+    assert value("audio_sensor_music_level") == "80.0"
+    assert value("audio_sensor_music_sensor_online") == "True"
+    assert value("audio_sensor_music_mic_gain") == "18DB"
+    assert value("audio_sensor_music_spl_calibration") == "calibrated"
+    assert evaluate(found["audio_sensor_music_spl_calibration"]["attributes"]["note"], states) == "measured with a phone app"
+    # The first board's area, and `unknown` or `unavailable` (a first start, a lost helper): the
+    # `music: true` board.
+    for selected, spectrum, level, gain, calibration in (
+        ("Living room", "-40,-41", "60.0", "24DB", "estimate"),
+        ("unknown", "-40,-41", "60.0", "24DB", "estimate"),
+        ("unavailable", "-40,-41", "60.0", "24DB", "estimate"),
+    ):
+        assert value("audio_sensor_music_spectrum", **{SELECT: selected}) == spectrum
+        assert value("audio_sensor_music_level", **{SELECT: selected}) == level
+        assert value("audio_sensor_music_mic_gain", **{SELECT: selected}) == gain
+        assert value("audio_sensor_music_spl_calibration", **{SELECT: selected}) == calibration
+    # A select state that is not an option behaves like unknown.
+    assert value("audio_sensor_music_spectrum", **{SELECT: "Garage"}) == "-40,-41"
+    # The online sensor follows the selected board's spectrum.
+    assert value("audio_sensor_music_sensor_online", **{KIDS: "unavailable"}) == "False"
+    assert value("audio_sensor_music_sensor_online", **{KIDS: "unavailable", SELECT: "Living room"}) == "True"
+
+
+def test_aliases_follow_the_select_with_another_default(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"][0]["music"] = False
+    inputs["sensors"][1]["music"] = True
+    found = templates(render(tmp_path, inputs))
+    states = {LIVING: "a", KIDS: "b"}
+    assert evaluate(found["audio_sensor_music_spectrum"]["state"], {**states, SELECT: "unknown"}) == "b"
+    assert evaluate(found["audio_sensor_music_spectrum"]["state"], {**states, SELECT: "Living room"}) == "a"
+
+
+def test_apostrophe_and_quote_in_an_area_stay_valid(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"][1]["area"] = "Sam's \"den\""
+    inputs["sensors"][1]["entities"] = {"spectrum": "sensor.sams_den_spectrum"}
+    found = templates(render(tmp_path, inputs))
+    states = {LIVING: "a", "sensor.sams_den_spectrum": "b", SELECT: 'Sam\'s "den"'}
+    assert evaluate(found["audio_sensor_music_spectrum"]["state"], states) == "b"
+
+
+def test_apply_calibration_targets_the_selected_board(demo):
+    script = demo["script"]["audio_sensor_apply_calibration"]
+    sequence = script["sequence"]
+    guard = sequence[0]
+    assert guard["condition"] == "template"
+    variables = sequence[1]["variables"]
+    assert list(variables) == ["board"]
+    states = {
+        "input_number.audio_sensor_measured_offset": "93.5",
+        "input_text.audio_sensor_calibration_note": "pink noise, 70 dB on the meter",
+    }
+    for selected, prefix in (("Kids' room", "kids_room"), ("Living room", "living_room"),
+                             ("unknown", "living_room"), ("unavailable", "living_room")):
+        board = evaluate(variables["board"], {**states, SELECT: selected})
+        assert board == prefix
+        context = {"board": board}
+        rendered = []
+        assert evaluate_with(guard["value_template"], states, context) == "True"
+        for step in sequence[2:]:
+            target = evaluate_with(step["target"]["entity_id"], states, context)
+            data = {k: evaluate_with(v, states, context) for k, v in step.get("data", {}).items()}
+            rendered.append((step["action"], target, data))
+        assert rendered == [
+            ("input_number.set_value", f"input_number.{prefix}_spl_offset", {"value": "93.5"}),
+            ("input_text.set_value", f"input_text.{prefix}_spl_note", {"value": "pink noise, 70 dB on the meter"}),
+            ("input_boolean.turn_on", f"input_boolean.{prefix}_spl_calibrated", {}),
+        ]
+
+
+def test_apply_calibration_refuses_a_missing_measurement(demo):
+    # Nothing is written (and the flag stays off) unless the measured offset is a number and the
+    # note has a state: the script stops at its first step.
+    guard = demo["script"]["audio_sensor_apply_calibration"]["sequence"][0]
+    assert "float(0)" not in str(demo["script"])
+    good = {
+        "input_number.audio_sensor_measured_offset": "93.5",
+        "input_text.audio_sensor_calibration_note": "",
+        SELECT: "Living room",
+    }
+    assert evaluate_with(guard["value_template"], good, {}) == "True"
+    for entity in ("input_number.audio_sensor_measured_offset", "input_text.audio_sensor_calibration_note"):
+        for bad in ("unavailable", "unknown"):
+            assert evaluate_with(guard["value_template"], {**good, entity: bad}, {}) == "False", (entity, bad)
+    assert evaluate_with(guard["value_template"], {**good, "input_number.audio_sensor_measured_offset": "abc"}, {}) == "False"
+
+
+def test_text_sensors_default_to_the_sensor_domain(tmp_path):
+    # ESPHome text sensors appear in Home Assistant as sensor.*, so the guessed ids use that domain.
+    found = templates(render(tmp_path, demo_inputs()))
+    assert "sensor.living_room_audio_sensor_living_room_mic_gain" in found["audio_sensor_music_mic_gain"]["state"]
+    assert "text_sensor." not in found["audio_sensor_music_mic_gain"]["state"]
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    keys = next(i for i in manifest["inputs"]["sensors"].items() if i[0] == "item")[1]["entities"]["keys"]
+    assert keys["mic_gain"] == "sensor.<..>_mic_gain"
+    assert keys["bssid"] == "sensor.<..>_connected_ap_bssid"
+
+
+def evaluate_with(template, states_by_id, context) -> str:
+    env = jinja2.Environment()
+    env.filters["is_number"] = lambda v: isinstance(v, str) and v.lstrip("-").replace(".", "", 1).isdigit()
+    return env.from_string(template).render(states=lambda e: states_by_id.get(e, "unavailable"), **context).strip()
+
+
+def test_calibration_entities_carry_the_component(demo):
+    found = templates(demo)
+    for uid, entity_id in (
+        ("audio_sensor_music_mic_gain", "sensor.music_mic_gain"),
+        ("audio_sensor_music_spl_calibration", "sensor.music_spl_calibration"),
+    ):
+        assert found[uid]["default_entity_id"] == entity_id
+        assert found[uid]["attributes"]["component"] == "audio-sensor"

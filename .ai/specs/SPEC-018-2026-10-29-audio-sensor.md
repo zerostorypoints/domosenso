@@ -103,10 +103,10 @@ The `entities` keys, their domain and the entity-name slug of the default:
 
 | key | domain | slug | key | domain | slug |
 |---|---|---|---|---|---|
-| `spectrum` | sensor | `spectrum` | `mic_gain` | text_sensor | `mic_gain` |
+| `spectrum` | sensor | `spectrum` | `mic_gain` | sensor | `mic_gain` |
 | `level` | sensor | `sound_level` | `wifi_signal` | sensor | `wi_fi_signal` |
 | `peak` | sensor | `sound_peak` | `uptime` | sensor | `uptime` |
-| `fast_level` | sensor | `fast_sound_level` | `bssid` | text_sensor | `connected_ap_bssid` |
+| `fast_level` | sensor | `fast_sound_level` | `bssid` | sensor | `connected_ap_bssid` |
 | `fast_peak` | sensor | `fast_sound_peak` | `restart` | button | `restart` |
 | `live_tracking` | switch | `live_tracking` | `load` | sensor | `spectrum_load` |
 
