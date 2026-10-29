@@ -237,7 +237,7 @@ text_sensor:
   - platform: wifi_info
     bssid:
       name: Connected AP (BSSID)
-  # The gain the SPL offset belongs to, shown beside it on the Room acoustics dashboard.
+  # The gain the SPL offset belongs to, shown beside it in the Ramka's settings.
   - platform: template
     name: Mic gain
     entity_category: diagnostic

@@ -8,6 +8,12 @@
 - Amended before drafting by the plan's rulings: the sensor's entity ids are inputs, not derived;
   the visual's defaults live in the card, not in this component's inputs; the Ramka switches the
   visual at runtime; one music sensor is checked when the package renders.
+- Amended 2026-10-29 (dropped by the maintainer): live settings (SPEC-020) cover the tuning; room
+  acoustics figures and dashboard are not part of audio-sensor. Struck through and marked below
+  (goal 4, the `apexcharts-card`, `playing`, `room_acoustics` and `sensors[].acoustics` inputs, the
+  room-acoustics provides, the dashboard artifact, the questions, tests and the open question about
+  the dashboard); the text stays readable as history. The website task is dropped too. Issue #70's
+  acceptance criteria follow.
 - Deploy of an unreleased render for the pre-merge look on a wall tablet: SPEC-019.
 - Amended by SPEC-020 (Ramka live settings): `input_select.audio_sensor_music_source` picks the
   music board live and the music board's calibration is applied from the Ramka's settings
@@ -25,8 +31,8 @@ A home gets:
    `music: true`, four alias entities any component can read;
 3. two cards: `ambient-wave-card` (a live wave drawn from the spectrum or the level, with a classic
    fallback when the sensor sends nothing) and `room-meter-card` (an analogue-style meter);
-4. opt-in (`room_acoustics: true`): derived figures per sensor (Leq, percentiles, peaks, sessions)
-   and one Room acoustics dashboard;
+4. ~~opt-in (`room_acoustics: true`): derived figures per sensor (Leq, percentiles, peaks, sessions)
+   and one Room acoustics dashboard;~~ *(dropped 2026-10-29)*;
 5. with `ramka` 0.4.0 and its `music_visual` input: the now-playing view draws the music (spectrum
    or level) in place of the decorative wave, switchable on the tablet back to the classic wave.
 
@@ -54,7 +60,7 @@ A home gets:
 | `esphome` | core | HA 2026.9.2 | adopt the board in Home Assistant once flashed (discovery confirmation), with the API key from the home's secrets |
 | ESPHome (firmware) | firmware | 2026.9.1 | flash the first time over USB (download mode: hold the button while plugging in); then OTA |
 | `template` | core | | none |
-| `apexcharts-card` | hacs, frontend | | only with `room_acoustics: true`; `status` lists it `(manual)` |
+| ~~`apexcharts-card`~~ | ~~hacs, frontend~~ | | ~~only with `room_acoustics: true`; `status` lists it `(manual)`~~ *(dropped 2026-10-29)* |
 
 ## Firmware
 
@@ -87,17 +93,17 @@ A home gets:
 
 | name | type | default | example (demo home) |
 |---|---|---|---|
-| `sensors` | `list[{room, area, music?, acoustics?, id_prefix?, name?, friendly_name?, mic_gain?, entities?}]`, required | | below |
+| `sensors` | `list[{room, area, music?, ~~acoustics?~~, id_prefix?, name?, friendly_name?, mic_gain?, entities?}]`, required | | below |
 | `sensors[].room` | slug with `-`, the board's hostname part | | `living-room` |
 | `sensors[].area` | string, the Home Assistant area | | `Living room` |
 | `sensors[].music` | bool: this board is the music source; at most one item | `false` | `true` |
-| `sensors[].acoustics` | bool: with `room_acoustics: true`, this board gets the derived figures | `true` | `true` |
+| ~~`sensors[].acoustics`~~ | ~~bool: with `room_acoustics: true`, this board gets the derived figures~~ *(dropped 2026-10-29)* | | |
 | `sensors[].id_prefix` | slug with `_`, prefix of the ids this component creates for the board | the room slug with `_` | `living_room` |
 | `sensors[].name`, `friendly_name` | ESPHome substitutions | `audio-sensor-<room>`, `Audio sensor <area>` | |
 | `sensors[].mic_gain` | ES8311 gain, `0DB` … `42DB` | `24DB` | |
 | `sensors[].entities` | map of the board's entity ids, keys below | `<domain>.<area slug>_<name slug>_<entity slug>` | filled from Home Assistant by the `add-component` skill |
-| `playing` | entity id (`binary_sensor` or `media_player`): music plays | `null` | `media_player.living_room_speaker` |
-| `room_acoustics` | bool: the derived figures and the dashboard | `false` | `true` |
+| ~~`playing`~~ | ~~entity id (`binary_sensor` or `media_player`): music plays~~ *(dropped 2026-10-29)* | | |
+| ~~`room_acoustics`~~ | ~~bool: the derived figures and the dashboard~~ *(dropped 2026-10-29)* | | |
 
 The `entities` keys, their domain and the entity-name slug of the default:
 
@@ -120,10 +126,12 @@ Demo home (`examples/demo-home/inputs/audio-sensor.yaml`):
 ```yaml
 sensors:
   - {room: living-room, area: Living room, music: true}
-  - {room: kids-room, area: "Kids' room", acoustics: true}
-playing: media_player.living_room_speaker
-room_acoustics: true
+  - {room: kids-room, area: "Kids' room"}
 ```
+
+(Until 2026-10-29 the demo also set `acoustics: true` on the second board, `playing:` and
+`room_acoustics: true`; all three were dropped.) A home whose inputs still carry one of them gets a
+render error that names it: 0.1.0 is unreleased, so there is no bridge.
 
 There is no `music_visual_options` input here: the visual's look is the card's own defaults
 (Cards), and the Ramka takes the overrides (ramka 0.4.0).
@@ -151,16 +159,16 @@ its classic wave (below).
 | `sensor.music_mic_gain`, `sensor.music_spl_calibration` (`calibrated` \| `estimate`, attribute `note`) | stable | aliases of the selected music board (SPEC-020) |
 | `input_boolean.<id_prefix>_spl_calibrated`, `input_text.<id_prefix>_spl_note` | stable | per board: offset calibrated or an estimate, and a note (SPEC-020) |
 | `input_number.audio_sensor_measured_offset`, `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration` | stable | with a music board: apply a measured offset and a note to the selected board (SPEC-020) |
-| `<domain>.<id_prefix>_<figure>` with `room_acoustics: true` and `acoustics: true` | additive-only | the room-acoustics figures below |
-| `input_select.room_acoustics_room` | additive-only | with `room_acoustics: true` and two or more acoustics sensors; options: the areas, the music sensor first |
-| `event` `audio_sensor_spike` (`room`, `level`) | additive-only | with `room_acoustics: true` |
+| ~~`<domain>.<id_prefix>_<figure>` with `room_acoustics: true` and `acoustics: true`~~ | | ~~the room-acoustics figures below~~ *(dropped 2026-10-29)* |
+| ~~`input_select.room_acoustics_room`~~ | | ~~with `room_acoustics: true` and two or more acoustics sensors; options: the areas, the music sensor first~~ *(dropped 2026-10-29)* |
+| ~~`event` `audio_sensor_spike` (`room`, `level`)~~ | | ~~with `room_acoustics: true`~~ *(dropped 2026-10-29)* |
 
-Room-acoustics figures, ported from the home that built them, without anything specific to an
-amplifier: level and peak in dB SPL, energy, Leq 1 min / 15 min / 1 h, min / max, L10 / L50 / L90,
-crest factor, headroom, peak and Lmax today, clipped seconds, a spikes counter and its event; with
-`playing` also the listening session (session Leq, a logbook summary when it ends). The exact list
-of `<figure>` names is fixed by the package task and written into the manifest; additions later are
-free, renames are not. Numeric template sensors return `none`, never the string `unknown`.
+~~Room-acoustics figures, ported from the home that built them, without anything specific to an~~
+~~amplifier: level and peak in dB SPL, energy, Leq 1 min / 15 min / 1 h, min / max, L10 / L50 / L90,~~
+~~crest factor, headroom, peak and Lmax today, clipped seconds, a spikes counter and its event; with~~
+~~`playing` also the listening session (session Leq, a logbook summary when it ends). The exact list~~
+~~of `<figure>` names is fixed by the package task and written into the manifest; additions later are~~
+~~free, renames are not. Numeric template sensors return `none`, never the string `unknown`.~~ *(dropped 2026-10-29)*
 
 The recorder exclusion of every board's Spectrum sensor (31 values five times a second) is part of
 the package.
@@ -170,7 +178,7 @@ Entity ids Home Assistant builds for the boards (`entities`) are declared, not p
 
 Every template entity carries `component: audio-sensor`; the per-board ones also `area:`.
 
-**Consumes:** nothing from another component. `playing` is any entity the home names.
+**Consumes:** nothing from another component. (`playing` was dropped 2026-10-29.)
 
 ## Cards
 
@@ -295,27 +303,27 @@ A `tap-button-card` on the Controls page, only with `music_visual`: its label is
 | `esphome/audio-sensor.factory.yaml` | (catalog only; `dashboard_import`) | |
 | `esphome/device.yaml.j2` | `esphome_dir/audio-sensor-<room>.yaml`, written once by `add` | instance |
 | `templates/package.yaml.j2` | `packages/audio_sensor.yaml` | managed |
-| `templates/room-acoustics.lang.yaml.j2` | `dashboards/room-acoustics.<lang>.yaml` | managed |
+| ~~`templates/room-acoustics.lang.yaml.j2`~~ | ~~`dashboards/room-acoustics.<lang>.yaml`~~ | ~~managed~~ *(dropped 2026-10-29)* |
 | `cards/ambient-wave-card.js`, `cards/room-meter-card.js`, `cards/lib/**` | `www/domosenso/audio-sensor/0.1.0/` | managed |
 | `domosenso/audio-sensor.inputs.yaml` | written once by `add` | instance |
 
 Ramka 0.4.0 changes only its own managed files (package, dashboards, cards).
 
-Room Acoustics dashboard: views Live, History, Events, Sensor and Wave (the card with its session
-console, for trying flavours; values worth keeping go into Ramka's `music_visual_options`). With two
-or more acoustics sensors each view starts with the room picker and renders the cards per board
-behind a visibility condition on it.
+~~Room Acoustics dashboard: views Live, History, Events, Sensor and Wave (the card with its session~~
+~~console, for trying flavours; values worth keeping go into Ramka's `music_visual_options`). With two~~
+~~or more acoustics sensors each view starts with the room picker and renders the cards per board~~
+~~behind a visibility condition on it.~~ *(dropped 2026-10-29)*
 
 Demo home: `examples/demo-home/inputs/audio-sensor.yaml` (above), its device files under
 `examples/demo-home/esphome/`, `music_visual: spectrum` in its Ramka inputs, and spectrum and level
-states in the music scene, which the website's previews render from.
+states in the music scene, which the website's previews render from (the website task was dropped
+2026-10-29, and the scene states are not added).
 
 ## How a home learns about it
 
 - `domosenso add audio-sensor@0.1.0` writes the inputs skeleton and does not prompt. The questions
   are the manifest's input comments plus the `add-component` skill's steps: the boards (room,
-  area); which one feeds the Ramka's music view; "Create a Room acoustics dashboard?" (no by
-  default); an optional entity that means music is playing; then each board's `entities` from the
+  area); which one feeds the Ramka's music view; then each board's `entities` from the
   running Home Assistant.
 - `add-component`, when `ramka` is installed: "Show this sensor's music on the Ramka: Spectrum,
   Level, or keep Classic?", with links to the website previews; sets Ramka's `music_visual` and
@@ -323,7 +331,8 @@ states in the music scene, which the website's previews render from.
 - Docs: `components/audio-sensor/README.md` (hardware and first flash, calibration against a
   reference microphone, the opt-in dashboard, several boards and `music`, the limits); the README
   components table; the website component page with animated previews of the spectrum and level
-  flavours and of the Room acoustics views; the device page.
+  flavours; the device page. (The README's opt-in dashboard section and the dashboard previews were
+  dropped 2026-10-29.)
 
 ## Compatibility
 
@@ -346,8 +355,9 @@ states in the music scene, which the website's previews render from.
   normalisation, octave sums); `tests/test_audio_sensor_render.py`: aliases from the music board;
   `two music sensors: living-room, kids-room`; duplicate room; unknown entity key; no music board,
   no aliases; `Kids' room` gives the slug `kids_room` and the picker option `Kids' room`; ids
-  default per the table and follow `entities`; no `initial:` on any helper; room acoustics absent
-  with `room_acoustics: false`. `tests/test_ramka_render.py`: without `music_visual` output equal to
+  default per the table and follow `entities`; no `initial:` on any helper; a render with the removed
+  inputs `room_acoustics`, `playing` or `sensors[].acoustics` fails and names the input (added
+  2026-10-29, replacing "room acoustics absent with `room_acoustics: false`"). `tests/test_ramka_render.py`: without `music_visual` output equal to
   0.3.0's apart from stamp and version; `test_music_visual_card_uses_aliases` (the rendered visual
   reads `sensor.music_*` with `fallback: classic`); options merged key by key; the select's first
   option follows the input; the Controls tile only with the input.
@@ -382,12 +392,12 @@ states in the music scene, which the website's previews render from.
    may later take a zone name (`music: office`), giving `sensor.music_office_spectrum` and a Ramka
    input `music_source: office`; `music: true` stays the unnamed zone. Not built now; filed as an
    enhancement issue.
-2. **The Room acoustics dashboard with `room_acoustics: false`.** The renderer writes every
+2. ~~**The Room acoustics dashboard with `room_acoustics: false`.** The renderer writes every
    template, and `status` then reports `missing-dashboard-entry` for a dashboard the home does not
    want. Proposed: the renderer skips a template whose output is empty after rendering (an
    additive renderer rule, recorded in `docs/COMPATIBILITY.md`). Alternative: always render it, as a
    one-view dashboard that says how to turn the feature on, and let `status` keep its line. To
-   settle in the HA-side task.
+   settle in the HA-side task.~~ *(dropped 2026-10-29)*: no dashboard.
 3. **Bluetooth proxy.** #56 proposes the board as a Bluetooth proxy too. Not in this package (not
    tested together with the spectrum worker here); a home can add `bluetooth_proxy:` to its device
    file. Inference: the S3 has headroom at about 19 % load; unmeasured with both running.

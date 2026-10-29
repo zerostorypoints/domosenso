@@ -1,8 +1,9 @@
 # audio-sensor: field notes
 
 A room sound sensor on an M5Stack Atom EchoS3R: the sound level, a third-octave spectrum and, in
-later parts of this component, a calibrated level in dB SPL, two dashboard cards and an optional
-Room acoustics dashboard. This page holds the hardware and the first flash; the rest follows with
+later parts of this component, a calibrated level in dB SPL and two dashboard cards. Room acoustics
+figures and a dashboard are not part of it (dropped 2026-10-29: the Ramka's live settings cover the
+tuning). This page holds the hardware and the first flash; the rest follows with
 those parts (SPEC-018).
 
 ## The board

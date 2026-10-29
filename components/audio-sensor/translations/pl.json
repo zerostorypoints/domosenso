@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Mierzy, jak głośno jest w pomieszczeniu, za pomocą małej płytki z mikrofonem: poziom dźwięku, widmo według wysokości tonu i, jeśli chcesz, panel akustyki pomieszczenia.",
+    "description": "Mierzy, jak głośno jest w pomieszczeniu, za pomocą małej płytki z mikrofonem: poziom dźwięku, widmo według wysokości tonu i skalibrowany poziom w dB SPL.",
     "devices": {
       "m5stack-atom-echos3r": {
         "description": "Płytka ESP32-S3 wielkości dłoni z mikrofonem, układem audio i Wi-Fi, zasilana przez USB.",

@@ -82,7 +82,7 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
   does not exist yet) gives that option's card default, so the line falls to the card's 4 px. A hot
   set at or below neutral on the settings page is not stopped there: the visual shows the kind's
   default pair (30 to 70 dB) until it is corrected.
-- Try flavours on audio-sensor's Room acoustics dashboard (Wave view) before writing them down.
+- Try flavours on the Ramka's settings, Music (Preview) before writing them down.
 - The visual moves while `binary_sensor.<prefix>_media_playing` is on, as the wave does.
 
 ## Live settings

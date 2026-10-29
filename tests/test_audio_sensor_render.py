@@ -386,3 +386,29 @@ def test_calibration_entities_carry_the_component(demo):
     ):
         assert found[uid]["default_entity_id"] == entity_id
         assert found[uid]["attributes"]["component"] == "audio-sensor"
+
+
+@pytest.mark.parametrize(
+    "mutate, message",
+    [
+        (lambda i: i.update(room_acoustics=True), "input room_acoustics was removed"),
+        (lambda i: i.update(room_acoustics=False), "input room_acoustics was removed"),
+        (lambda i: i.update(playing="media_player.living_room_speaker"), "input playing was removed"),
+        (lambda i: i["sensors"][1].update(acoustics=True), "input sensors\\[\\].acoustics was removed"),
+    ],
+)
+def test_removed_room_acoustics_inputs_fail(tmp_path, mutate, message):
+    # Room acoustics was dropped before 0.1.0 shipped (SPEC-018, 2026-10-29): no bridge, a clear refusal.
+    inputs = copy.deepcopy(demo_inputs())
+    mutate(inputs)
+    with pytest.raises(dr.RenderError, match=message):
+        render_text(tmp_path, inputs)
+
+
+def test_demo_inputs_and_manifest_carry_no_room_acoustics():
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    assert not {"room_acoustics", "playing"} & set(manifest["inputs"])
+    assert "acoustics" not in manifest["inputs"]["sensors"]["item"]
+    assert not {"room_acoustics", "playing"} & set(demo_inputs())
+    assert all("acoustics" not in board for board in demo_inputs()["sensors"])
+    assert "apexcharts-card" not in [entry["name"] for entry in manifest["integrations"]]

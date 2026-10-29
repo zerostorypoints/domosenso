@@ -2,7 +2,7 @@
 // CSS transition), a peak-hold marker, an LED ladder of the loudest sample, and a strip of recent
 // readings, one bar each. Everything is drawn from the states as they arrive: no history is
 // fetched, so nothing waits on the recorder and the strip fills while the page is open. Levels are
-// dB SPL (the component's room-acoustics package adds the offset); while the offset is an estimate
+// dB SPL (the component's Home Assistant package adds the offset); while the offset is an estimate
 // the card says so.
 //
 // Live tracking: a button on the card turns the sensor's 100 ms readings on (its `live_switch`);

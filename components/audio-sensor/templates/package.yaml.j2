@@ -6,6 +6,10 @@
   Assistant. Inputs: component.yaml `inputs:`.
 #]
 [%- set boards = inputs.sensors -%]
+[#- Room acoustics was dropped before 0.1.0 shipped (SPEC-018, amended 2026-10-29): no bridge, a clear refusal. -#]
+[%- for removed in ['room_acoustics', 'playing'] -%]
+  [%- if removed in inputs -%][[ fail('input ' ~ removed ~ ' was removed: room acoustics is not part of audio-sensor; delete it from the inputs file') ]][%- endif -%]
+[%- endfor -%]
 [%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load'] -%]
 [#- A board's ids: the prefix of what this component creates, and the guessed ids of the ESPHome entities when `entities` does not name them (the area slug and the device name slug that Home Assistant builds them from). -#]
 [%- macro to_slug(text) -%][[ text | lower | replace("'", "") | replace("-", "_") | replace(" ", "_") ]][%- endmacro -%]
@@ -15,6 +19,7 @@
 [%- set ns = namespace(rooms=[], prefixes=[], music=[], prepared=[]) -%]
 [%- for board in boards -%]
   [%- set prefix = board.id_prefix | default(to_slug(board.room)) -%]
+  [%- if 'acoustics' in board -%][[ fail('input sensors[].acoustics was removed: room acoustics is not part of audio-sensor; delete it from the inputs file') ]][%- endif -%]
   [%- if board.room in ns.rooms -%][[ fail('duplicate room: ' ~ board.room) ]][%- endif -%]
   [%- if prefix in ns.prefixes -%][[ fail('duplicate id_prefix: ' ~ prefix) ]][%- endif -%]
   [%- for key in (board.entities | default({})) -%]
