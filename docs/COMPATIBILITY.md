@@ -26,7 +26,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | Remote package URL `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>` (ESPHome device files, `dashboard_import`; at most 255 characters) | FROZEN |
 | Component ids (the directory name, `^[a-z0-9]+(-[a-z0-9]+)*$`) | FROZEN |
 | Device ids (`devices/<id>.yaml`) | STABLE |
-| ESPHome `project:` name `domosenso.<component>` | STABLE |
+| ESPHome `project:` name `domosenso.<component>` (`domosenso.bermuda-presence`, `domosenso.audio-sensor`) | STABLE |
 | Card install path `www/domosenso/<id>/<version>/`, served as `/local/domosenso/<id>/<version>/` | FROZEN |
 
 ### Manifest (`component.yaml`, `schemas/component.schema.json`)
@@ -68,7 +68,7 @@ Each entry in a manifest's `provides.entities` carries its own `stability:` (`fr
 
 | surface | level |
 |---|---|
-| Element names `custom:<name>-card` (agenda, air, clock-weather, corner-taps, line-style, mains, now-playing, photo-frame, plants, rooms, status, tap-button) | STABLE |
+| Element names `custom:<name>-card` (ramka: agenda, air, clock-weather, corner-taps, line-style, mains, now-playing, photo-frame, plants, rooms, status, tap-button; audio-sensor: ambient-wave, room-meter) | STABLE |
 | Config keys a card's `setConfig` reads, and their meaning | STABLE; new optional keys are free |
 | Resource type `module`, ES modules without a build step, JSON imported `with { type: "json" }` | STABLE |
 
