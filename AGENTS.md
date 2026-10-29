@@ -179,7 +179,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
   renders a working tree, stamps get `-dirty`).
 - `deploy <target> --plan | --apply`, `rollback <target>`: copy the home to a target declared in
   `domosenso.yaml` (`local-docker` staging, `ssh-docker` production), `check_config`, restart,
-  Lovelace resources; an `orphan` blocks `--apply`.
+  Lovelace resources; an `orphan` blocks `--apply`. `deploy production` refuses `dev-render` files unless
+  `--apply --allow-dirty --confirm <hash>` of the plan read (SPEC-019).
 - `snapshot <target>`, `compare <a> <b>`, `verify <target> --baseline <snapshot>`: record a running
   home, compare two snapshots against `domosenso/equivalence.yaml`, check a target after a change
   against `domosenso/silent.yaml`.

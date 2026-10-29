@@ -79,6 +79,7 @@ class Plan:
     dirty: list[str] = field(default_factory=list)  # carried files rendered with --catalog-dev
     prune: bool = False  # unwanted resources are deleted (and shown as `resource delete`)
     recorded: dict[str, dict] = field(default_factory=dict)  # deployed.json `files` on the target now
+    running_dev: dict | None = None  # deployed.json `dev_render` on the target now, with its `deploy_id`
 
 
 @dataclass
@@ -206,12 +207,19 @@ def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: li
     keep = sorted(p for p in keep if not p.startswith(TOOL_DIR))
     actions = resources.plan(existing_resources, resources.wanted(home, lock))
     restart = needs_restart(add + change + remove)
-    digest = sha256(json.dumps({
+    hashed = {
         "add": add, "change": change, "remove": remove, "orphan": orphan, "keep": keep,
         "resources": [asdict(a) for a in actions], "prune": prune, "restart": restart,
         "content": {p: record[p]["sha256"] for p in add + change},
-    }, sort_keys=True, separators=(",", ":")).encode())[:HASH_LENGTH]
-    return Plan(add, change, remove, orphan, keep, actions, restart, digest, record, sources, dirty, prune, recorded)
+    }
+    if dirty:  # only then, so a plan without dev renders keeps its hash; covers a dirty file in `keep` too
+        hashed["dev_render"] = dirty
+    digest = sha256(json.dumps(hashed, sort_keys=True, separators=(",", ":")).encode())[:HASH_LENGTH]
+    running = None
+    if previous and isinstance(previous.get("dev_render"), dict):
+        running = {**previous["dev_render"], "deploy_id": previous.get("deploy_id")}
+    return Plan(add, change, remove, orphan, keep, actions, restart, digest, record, sources, dirty, prune, recorded,
+                running)
 
 
 def plan_lines(plan: Plan) -> list[list[str]]:
@@ -221,6 +229,9 @@ def plan_lines(plan: Plan) -> list[list[str]]:
     for a in plan.resources:
         fields = ["resource", "delete" if a.kind == "unwanted" and plan.prune else a.kind, a.url]
         lines.append([*fields, "from", a.old_url] if a.kind == "update" else fields)
+    if plan.running_dev:
+        lines.append(["warning", f"target runs a dev render: {len(plan.running_dev.get('paths', []))} files "
+                                  f"(deploy {plan.running_dev.get('deploy_id')})"])
     lines.append(["restart:", "yes" if plan.restart else "no"])
     lines.append(["hash", plan.hash])
     return lines
@@ -404,7 +415,7 @@ def _new_id() -> str:
 
 
 async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remove_orphans: list[str],
-                prune: bool, *, target: str, rep=None) -> str | None:
+                prune: bool, *, target: str, rep=None, allow_dirty: bool = False) -> str | None:
     """Deploy `plan` to `target`; returns the deploy id, or None when there is nothing to do (nothing
     is written then). Any failure before the restart leaves the target as it was, or raises naming
     the backup and the rollback command when even that fails."""
@@ -414,8 +425,9 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         raise DomosensoError(f"not an orphan: {', '.join(unknown)}")
     if blocking := [p for p in plan.orphan if p not in removed_orphans]:
         raise DomosensoError(f"orphan {', '.join(blocking)}")
-    if target == PRODUCTION and plan.dirty:
-        raise DomosensoError(f"dev render: {', '.join(plan.dirty)}: production takes only files rendered from a tag")
+    if target == PRODUCTION and plan.dirty and not allow_dirty:
+        raise DomosensoError(f"dev render: {', '.join(plan.dirty)}: production takes only files rendered from a tag "
+                             "(--allow-dirty with --confirm deploys them)")
     if prune != plan.prune:
         raise DomosensoError("--prune-resources differs from the plan's: plan again with the same options")
     resource_work = [a for a in plan.resources if a.kind != "unwanted" or prune]
@@ -429,6 +441,9 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         await asyncio.sleep(ID_WAIT_S)
         deploy_id = _new_id()
     record = {"deploy_id": deploy_id, "files": plan.record}
+    dev_render = {"paths": plan.dirty, "allowed": target == PRODUCTION and allow_dirty} if plan.dirty else None
+    if dev_render:  # a clean deploy writes no key, which clears it
+        record["dev_render"] = dev_render
     writes = {**contents, RECORD: json.dumps(record, indent=2, sort_keys=True).encode()}
     deletes = plan.remove + removed_orphans
     restart = plan.restart or needs_restart(removed_orphans)
@@ -450,6 +465,7 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         "target": target, "hash": plan.hash, "add": plan.add, "change": plan.change,
         "remove": deletes, "restart": restart,
         "created_resources": [a.url for a in plan.resources if a.kind == "create"],
+        "allow_dirty": allow_dirty, **({"dev_render": dev_render} if dev_render else {}),
     })
     _save_backup(home, io, target, deploy_id, backup)
     where = f"{_local_dir(home, target, deploy_id)} and {_backup_dir(deploy_id)} on the target"

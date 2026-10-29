@@ -121,6 +121,9 @@ production prints stale-explanation warnings; read them, do not add exemptions f
 record their tag commit separately. `render --catalog-dev` selects a framework working tree,
 stamps a development preview and bypasses normal hand-edit protection: preserve/reconcile all
 customizations before running it. Released adoption uses an explicit version and is tested again.
+`deploy production` refuses development-rendered files (`dev-render` plan lines); a maintainer can
+put them on a production target for a look with `--apply --allow-dirty --confirm <hash>` of the plan
+read (SPEC-019 A), and the next plan warns until a clean deploy replaces them.
 A development render does not currently update the deploy inventory/resource list in the lock.
 Asset changes or versioned/new files can therefore be refused or omitted. The agent must verify
 that the actual plan contains the complete candidate; otherwise the home PR preview is blocked.
