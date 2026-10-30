@@ -3,6 +3,33 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.7.0 (2026-10-30): the plants page for 1 to 50 plants
+
+SPEC-022, with plants 0.3.0.
+
+**The plants page** shows up to `input_number.<prefix>_plants_per_page` plants (default 6) on a page,
+the tiles growing to fill it; above that, pages of that many turn every
+`input_number.<prefix>_plants_page_s` seconds (default 10), the plants that need something first,
+with a strip of one dot per plant grouped by room and a count. A tile has the plant's photo (or its
+initial), name, room, the 7-day moisture line, the action, and "watered N days ago" or "water in ~N
+days" when plants 0.3.0 provides them. Three states, never red: good green, neutral grey (no
+reading, or water due within 3 days), needs something amber. Up to four tiles keep the three gauges.
+The plants stage of the ambient loop lasts two pages at most (one with the defaults and up to six
+plants: 10 s instead of 20 s); the card continues on the next pass where it stopped.
+
+**`plants: discover`** (new form of the input): the card finds every plant the plants component
+marks (`domosenso_plant`) and reads its room, limits, photo and names from it, so the Ramka's inputs
+no longer list the plants. A list keeps working as before; its `label` may be given per language.
+
+**Two settings** on the Plants settings page: plants per page (Basic) and time per page (Advanced),
+seeded at the next start and in the page's Reset.
+
+### What a home does
+
+`domosenso update ramka` and a deploy (the cards move to `www/domosenso/ramka/0.7.0/`). To drop the
+plant list from the Ramka's inputs: update plants to 0.3.0 and deploy it first (or in the same
+deploy), then set `plants: discover`; before plants 0.3.0 runs the page says "no plants".
+
 ## 0.6.0 (2026-10-30): the sensor update rate, the music view sets "watching", ten Climate rooms
 
 The music parts go with audio-sensor 0.2.0 (#99, #110); without audio-sensor they change nothing

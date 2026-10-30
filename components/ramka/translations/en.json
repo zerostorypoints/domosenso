@@ -79,7 +79,16 @@
       "tooCold": "Too cold",
       "tooWarm": "Too warm",
       "noReading": "no reading",
-      "toWater": "to water: {count}"
+      "toWater": "to water: {count}",
+      "wateredToday": "watered today",
+      "wateredYesterday": "watered yesterday",
+      "wateredAgo": "watered {count} days ago",
+      "waterToday": "water today",
+      "waterTomorrow": "water tomorrow",
+      "waterIn": "water in ~{count} days",
+      "needCount": "to tend: {count}",
+      "okCount": "fine: {count}",
+      "none": "no plants"
     },
     "air": {
       "level": {
@@ -273,6 +282,9 @@
       "photo_albums_how": "The photo series come from the ticked albums, the top-level folders of the photo folder. With All albums ticked they come from every album and the ticks wait, greyed out, for it to be unticked; none ticked is all of them too. The list follows the folder within 15 minutes.",
       "photo_count": "Photos per series",
       "photo_s": "Time per photo",
+      "plants_per_page": "Plants per page",
+      "plants_page_s": "Time per plants page",
+      "plants_discover": "found by the plants component",
       "climate_rooms": "Rooms",
       "climate_rooms_how": "Up to ten rooms, each a main reading and a second one, by default the temperature and the humidity. Room 1 is the first tile and the first line of the charts, in the colour of its dot. A room without a main reading is left out; an empty name becomes the sensor's area.",
       "air_score": "Show air quality",

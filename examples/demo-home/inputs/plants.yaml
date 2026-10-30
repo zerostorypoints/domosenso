@@ -2,11 +2,11 @@
 # list has the Ramka's shape plus the keys only this component reads: a friendly name, the basil's
 # own sensors and thresholds.
 plants:
-  - {entity: plant.monstera, label: Living room, name: Monstera}
+  - {entity: plant.monstera, label: Living room, name: Monstera, photo: /local/plants/monstera.jpg}
   - {entity: plant.ficus, label: Office, name: Ficus, min_temperature: 12, max_temperature: 30}
   - entity: plant.basil
-    label: Kitchen
-    name: Basil
+    label: {en: Kitchen, de: Küche, pl: Kuchnia}     # one per language: each Ramka dashboard shows its own
+    name: {en: Basil, de: Basilikum, pl: Bazylia}   # the first is Home Assistant's friendly name
     min_moisture: 25
     min_brightness: 1000
     sensors:

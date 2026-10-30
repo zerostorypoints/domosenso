@@ -60,6 +60,8 @@ for manifest in components/*/component.yaml; do
 done
 # ramka 0.2.0: climate, air, plants and photos left out, only the status page (SPEC-011 section 6.2).
 step "ha-check ramka (pages left out)" env INPUTS="$ROOT/tests/fixtures/ramka-without-pages.yaml" tools/ha-check.sh ramka
+# ramka 0.7.0: plants: discover (SPEC-022).
+step "ha-check ramka (plants discover)" env INPUTS="$ROOT/tests/fixtures/ramka-plants-discover.yaml" tools/ha-check.sh ramka
 step "home staging runtime" uv run tools/home-staging-check.py
 fi
 echo "skip demo acceptance (opt-in: run-demo PR label or explicit local demo command)"

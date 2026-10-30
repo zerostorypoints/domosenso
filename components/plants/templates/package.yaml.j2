@@ -25,7 +25,13 @@
 [%- elif band in defaults -%][%- set _ = limits.update({band: defaults[band]}) -%]
 [%- endif -%]
 [%- endfor -%]
-[%- set ns.rows = ns.rows + [{'id': p, 'name': item.name | default(item.label), 'sensors': sensors, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
+[#- A name or label may be given per language ({en: …, de: …, pl: …}): the first value is the
+    friendly name and the room; the map goes to the Ramka, which shows each dashboard's language. -#]
+[%- set given_name = item.name | default(item.label) -%]
+[%- set ns.rows = ns.rows + [{'id': p, 'name': given_name if given_name is string else given_name.values() | first,
+                              'label': item.label if item.label is string else item.label.values() | first,
+                              'names': given_name if given_name is mapping else none,
+                              'rooms': item.label if item.label is mapping else none, 'photo': item.photo | default(none), 'sensors': sensors, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
 [%- endfor -%]
 [%- set rows = ns.rows -%]
 [%- set watered = rows | selectattr('limits.min_moisture', 'defined') | list -%]
@@ -37,6 +43,18 @@
 {[% for row in items %]'[[ row.sensors.moisture ]]': [[ value(row) ]][% if not loop.last %], [% endif %][% endfor %]}
 [%- endmacro -%]
 [%- set silent_for = '%02d:00:00' % silent_hours -%]
+[%- set known_list = rows | map(attribute='sensors.moisture') | list | tojson | replace('"', "'") -%]
+[#- The Xiaomi BLE moisture sensors no plant uses that read more than 0 %: a sensor out of its pot
+    reads 0 %, so one appearing here was just pushed into soil (SPEC-022). -#]
+[%- macro unplaced() -%]
+{% set ns = namespace(out=[]) %}
+{% set known = [[ known_list ]] %}
+{% for e in integration_entities('xiaomi_ble') | select('search', '_moisture$') | reject('in', known) %}
+  {% if states(e) | float(0) > 0 %}
+    {% set ns.out = ns.out + [{'entity': e, 'device': device_attr(device_id(e), 'name_by_user') or device_attr(device_id(e), 'name') or e, 'value': states(e) | float}] %}
+  {% endif %}
+{% endfor %}
+[%- endmacro -%]
 # Houseplants, from the Domosenso catalog (component plants). Edit the inputs and render again
 # rather than editing this file.
 #
@@ -49,6 +67,26 @@ homeassistant:
 [%- for row in rows %]
     plant.[[ row.id ]]:
       friendly_name: [[ row.name | yaml ]]
+      # Read by the Ramka's plants card (SPEC-022): the marker, the room shown, the limits the plant
+      # integration does not expose, and the photo.
+      domosenso_plant: true
+      domosenso_room: [[ row.label | yaml ]]
+      domosenso_bands: [[ row.limits | yaml ]]
+[%- if row.names %]
+      domosenso_names: [[ row.names | yaml ]]
+[%- endif %]
+[%- if row.rooms %]
+      domosenso_rooms: [[ row.rooms | yaml ]]
+[%- endif %]
+[%- if row.photo %]
+      entity_picture: [[ row.photo | yaml ]]
+[%- endif %]
+[%- set watered_name = row.name ~ ' last watered' %]
+[%- set water_in_name = row.name ~ ' water in' %]
+    sensor.[[ row.id ]]_last_watered:
+      friendly_name: [[ watered_name | yaml ]]
+    sensor.[[ row.id ]]_water_in_days:
+      friendly_name: [[ water_in_name | yaml ]]
 [%- set peak_name = row.name ~ ' illuminance max 24h' %]
     sensor.[[ row.id ]]_illuminance_max_24h:
       friendly_name: [[ peak_name | yaml ]]
@@ -80,7 +118,83 @@ sensor:
     state_characteristic: value_max
     max_age:
       hours: 24
+  # The lowest moisture of the last 3 hours, for a watering that soaks in slowly, and the drying
+  # rate behind "water in": the change per second over the readings of the last 48 hours (loaded
+  # from the recorder at a start, so a shorter history gives the same rate, not half of it).
+  - platform: statistics
+    name: [[ row.id ]] moisture min 3h
+    unique_id: [[ row.id ]]_moisture_min_3h
+    entity_id: [[ row.sensors.moisture ]]
+    state_characteristic: value_min
+    max_age:
+      hours: 3
+  - platform: statistics
+    name: [[ row.id ]] moisture change 48h
+    unique_id: [[ row.id ]]_moisture_change_48h
+    entity_id: [[ row.sensors.moisture ]]
+    state_characteristic: change_second
+    max_age:
+      hours: 48
 [%- endfor %]
+
+template:
+[%- for row in rows %]
+  # Watered: a rise of 10 points between two readings (a watering shows within a minute), or 10
+  # points above the 3-hour minimum for one that soaks in slowly, at most once in 3 hours. The first
+  # reading after a start comes from nothing or from unavailable, which is_number(f) refuses. No
+  # availability: a watering stays true while the sensor is out of range, and the last one is kept.
+  - triggers:
+      - trigger: state
+        entity_id: [[ row.sensors.moisture ]]
+    sensor:
+      - name: [[ row.id ]] last watered
+        unique_id: [[ row.id ]]_last_watered
+        device_class: timestamp
+        state: >
+          {% set f = trigger.from_state.state if trigger.from_state else 'unknown' %}
+          {% set t = trigger.to_state.state %}
+          {% set last = as_datetime(this.state, none) if this is defined else none %}
+          {% set rise = is_number(f) and is_number(t) and (t | float - f | float) >= 10 %}
+          {% set soak = is_number(f) and is_number(t) and has_value('sensor.[[ row.id ]]_moisture_min_3h')
+             and (t | float - states('sensor.[[ row.id ]]_moisture_min_3h') | float) >= 10
+             and (last is none or now() - last > timedelta(hours=3)) %}
+          {{ now().isoformat() if rise or soak else (last.isoformat() if last is not none else none) }}
+[%- endfor %]
+  - sensor:
+[%- for row in rows %]
+      # Whole days until the moisture reaches the minimum at the last 48 hours' rate; unknown within
+      # 48 hours of a watering (the rate would include it) or while the soil is not drying.
+      - name: [[ row.id ]] water in days
+        unique_id: [[ row.id ]]_water_in_days
+        unit_of_measurement: d
+        availability: "{{ has_value('[[ row.sensors.moisture ]]') }}"
+        state: >
+          {% set m = states('[[ row.sensors.moisture ]]') | float(none) %}
+          {% set c = states('sensor.[[ row.id ]]_moisture_change_48h') | float(none) %}
+          {% set w = as_datetime(states('sensor.[[ row.id ]]_last_watered'), none) %}
+          {% if m is none or c is none or c >= 0 or (w is not none and now() - w < timedelta(hours=48)) %}
+            {{ none }}
+          {% else %}
+            {{ [0, ((m - [[ row.limits.min_moisture | default(15) ]]) / (-c * 86400)) | round(0, 'floor') | int] | max }}
+          {% endif %}
+[%- endfor %]
+  # Rebuilt every minute and at a start: integration_entities() registers no listener, so a sensor
+  # added to Xiaomi BLE later would otherwise never be looked at.
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: Plants unplaced in soil
+        unique_id: plants_unplaced_in_soil
+        state: >
+          [[ unplaced() | indent(10) ]]
+          {{ ns.out | count }}
+        attributes:
+          sensors: >
+            [[ unplaced() | indent(12) ]]
+            {{ ns.out }}
 
 automation:
 [%- if watered %]
@@ -160,3 +274,35 @@ automation:
             {% set plant = [[ sensor_map(rows, row_plant) ]][trigger.entity_id] %}
             {{ state_attr(plant, 'friendly_name') or plant | replace('plant.', '') }} has sent
             nothing for [[ silent_hours ]] hours. Replace the CR2032, or check it is in range of a Bluetooth proxy.
+
+  # A sensor that joins the unplaced list was just pushed into a pot: name it, so the home knows
+  # which device to rename and give to a plant (onboarding, README). Not on a start: the list is
+  # rebuilt then and would announce every sensor already in soil.
+  - id: plants_sensor_new
+    alias: Plant sensor new
+    description: Push a notification when a Mi Flora sensor no plant uses is pushed into soil.
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: sensor.plants_unplaced_in_soil
+        attribute: sensors
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable'] }}"
+    variables:
+      new: >
+        {% set before = (trigger.from_state.attributes.sensors or []) | map(attribute='entity') | list %}
+        {{ (trigger.to_state.attributes.sensors or []) | rejectattr('entity', 'in', before) | list }}
+      text: >
+        {{ new | map(attribute='device') | zip(new | map(attribute='value')) | map('join', ': ') | join(' %, ') ~ ' %' }}
+    actions:
+      - condition: template
+        value_template: "{{ new | count > 0 }}"
+      - action: persistent_notification.create
+        data:
+          title: New plant sensor in a pot
+          message: "{{ text }}"
+      - action: [[ inputs.notify ]]
+        data:
+          title: New plant sensor in a pot
+          message: "{{ text }}"
