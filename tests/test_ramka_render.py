@@ -1914,7 +1914,7 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
                             step["event_data"].pop("rooms")
         elif name.startswith("ramka-settings."):
             lang = name.split(".")[1]
-            new["views"] = [v for v in new["views"] if v["path"] != "about"]  # 0.7.0, another change (SPEC-022)
+            new["views"] = [v for v in new["views"] if v["path"] != "about"]  # another change (SPEC-022)
             for view in new["views"]:
                 for section in view["sections"]:
                     section["cards"] = [c for c in section["cards"] if SPECTRUM_RATE not in json.dumps(c)]
@@ -2235,7 +2235,7 @@ def test_no_script_field_has_an_empty_selector(demo):
                 assert options, f"{name}.{field}: selector {kind} is empty"
 
 
-# ---- 0.7.0: the About page (SPEC-022) ---------------------------------------------------------
+# ---- The About page (SPEC-022) ---------------------------------------------------------
 
 
 def _about_markdown(dashboard) -> str:
@@ -2265,7 +2265,8 @@ def test_about_page_lists_the_components(demo, lang):
     ]
     # Without the sensor: the Ramka alone, as rendered, and how to get the list.
     missing = env.from_string(content).render(state_attr=lambda entity, attr: None)
-    assert "| ramka | 0.7.0 |" in missing.splitlines()
+    version = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["version"]
+    assert f"| ramka | {version} |" in missing.splitlines()
     assert t["ui.settings.about_missing"].split(":")[0] in missing
 
 

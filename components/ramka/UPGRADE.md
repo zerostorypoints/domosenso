@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## 0.7.0 (2026-10-30): the About page in the settings
+## Unreleased: the About page in the settings
 
 **Settings, About** (SPEC-022): a last page lists every component the home runs, its version and the
 date the catalog released it, read live from `sensor.domosenso_components`. The `domosenso` command
@@ -12,7 +12,8 @@ writes that sensor into `packages/domosenso.yaml` at every `render`, `add`, `ado
 
 ### What a home does
 
-`domosenso update ramka` with a current `domosenso` command, and a deploy: the deploy adds
+With the release that carries it: `domosenso update ramka` with a current `domosenso` command,
+and a deploy. The deploy adds
 `packages/domosenso.yaml` (one template sensor, so a restart). A snapshot `compare` then shows the new
 entity `sensor.domosenso_components`.
 

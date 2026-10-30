@@ -1,4 +1,4 @@
-# SPEC-022: Component inventory sensor and the Ramka settings' About page (ramka 0.7.0)
+# SPEC-022: Component inventory sensor and the Ramka settings' About page (ramka, unreleased)
 
 - Status: approved 2026-10-30 by the maintainer, in conversation
 - Source: the maintainer, in conversation (2026-10-30): "in the Ramka Settings, provide the About
@@ -93,7 +93,7 @@ template:
 Template global `component` (`id`, `version`), today only in ESPHome device templates, goes to every
 template (ADDITIVE-ONLY). The Ramka's About page uses it as its fallback.
 
-## ramka 0.7.0
+## ramka (unreleased)
 
 Settings dashboard, new last view `about` (icon `mdi:information-outline`), one section:
 
@@ -105,7 +105,8 @@ Settings dashboard, new last view `about` (icon `mdi:information-outline`), one 
   `domosenso render` writes the full list.
 
 New `ui.settings.pages.about`, `ui.settings.about_*` keys in en, de, pl. No new input, helper or
-entity of the Ramka's own. `component.yaml` 0.7.0; `UPGRADE.md`: nothing to do in the home but render
+entity of the Ramka's own. No version bump: the release that carries it is the maintainer's decision; `UPGRADE.md` gets a
+`## Unreleased` entry: nothing to do in the home but render
 (the package appears on the next `render` or `update`, with a restart at its deploy).
 
 **Decision:** the sensor is the command's, not a component's, so it does not go under `consumes`
@@ -132,7 +133,7 @@ sensor and restarts. A snapshot `compare` then shows one new entity, `sensor.dom
 
 ## Website impact
 
-A line in the Ramka's catalog page once 0.7.0 is tagged (draft until the tag); the `domosenso`
+A line in the Ramka's catalog page once a release carries it (draft until the tag); the `domosenso`
 command reference gains the inventory sensor.
 
 ## Out of scope
