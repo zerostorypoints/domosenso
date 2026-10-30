@@ -184,8 +184,8 @@ The board's **Spectrum rate** select sets the profile:
 The intervals are measured (below). Each publish is one CSV of 31 values over the API,
 one state change and one alias render in Home Assistant, and one websocket message per open
 dashboard; the recorder excludes the spectrum in every profile. With a `music: true` board the
-package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a state that is no option
-reads as `normal`) and the flag `input_boolean.audio_sensor_music_watching`. Its automation sets
+package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a fresh one starts on
+`normal`, its first option; a state that is no option reads as `normal`) and the flag `input_boolean.audio_sensor_music_watching`. Its automation sets
 the music board's select to the choice, but `fast` only while the flag is on and back to `normal`
 10 s after it turns off, so a board is fast only while someone looks. The Ramka sets the flag
 while its music view shows. The automation re-applies the profile when Home Assistant starts, when

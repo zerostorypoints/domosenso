@@ -480,7 +480,7 @@ def rate_calls(package, states_by_id, trigger) -> list:
 
 def test_spectrum_rate_helpers_with_a_music_board(demo):
     rate = demo["input_select"]["audio_sensor_music_spectrum_rate"]
-    assert rate["options"] == ["eco", "normal", "fast"]
+    assert rate["options"] == ["normal", "eco", "fast"]  # a fresh helper takes the first
     assert "initial" not in rate
     watching = demo["input_boolean"]["audio_sensor_music_watching"]
     assert "initial" not in watching

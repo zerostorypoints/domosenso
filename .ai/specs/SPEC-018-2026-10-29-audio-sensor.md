@@ -179,7 +179,7 @@ its classic wave (below).
 | `input_select.audio_sensor_music_source` | stable | with a `music: true` board; options: the boards' areas, that board first; the four aliases above follow it (SPEC-021) |
 | `sensor.music_mic_gain`, `sensor.music_spl_calibration` (`calibrated` \| `estimate`, attribute `note`) | stable | aliases of the selected music board (SPEC-021) |
 | `input_boolean.<id_prefix>_spl_calibrated`, `input_text.<id_prefix>_spl_note` | stable | per board: offset calibrated or an estimate, and a note (SPEC-021) |
-| `input_select.audio_sensor_music_spectrum_rate` | stable | with a `music: true` board; options `eco`, `normal`, `fast` (additive-only); no `initial:`; a state that is no option reads as `normal` (#110) |
+| `input_select.audio_sensor_music_spectrum_rate` | stable | with a `music: true` board; options `normal`, `eco`, `fast` (additive-only), `normal` first so a fresh helper starts there; no `initial:`; a state that is no option reads as `normal` (#110) |
 | `input_boolean.audio_sensor_music_watching` | stable | with a `music: true` board; on while a view shows the music visual (the Ramka sets it); no `initial:` (#99) |
 | automation `audio_sensor_music_spectrum_rate` | additive-only | sets the selected music board's `Spectrum rate` to the choice, `fast` only while watching is on (else `normal`; 10 s after watching turns off); re-applies on HA start, a source change and the board's select becoming available; the board left by a source change goes back to `normal` |
 | `input_number.audio_sensor_measured_offset`, `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration` | stable | with a music board: apply a measured offset and a note to the selected board (SPEC-021) |
