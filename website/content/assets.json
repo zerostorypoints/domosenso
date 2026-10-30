@@ -74,7 +74,7 @@
   {
     "path": "/wiring/hlk-ld2410c-atom-lite.svg",
     "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
-    "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
+    "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
     "alt": "Wiring diagram: hlk ld2410c atom lite",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -84,8 +84,18 @@
   {
     "path": "/wiring/cc1101-atom-lite.svg",
     "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
-    "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
+    "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
     "alt": "Wiring diagram: cc1101 atom lite",
+    "kind": "wiring",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/wiring/shelly-pm-mini-gen3-socket.svg",
+    "sourcePath": "devices/wiring/shelly-pm-mini-gen3-socket.svg",
+    "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
+    "alt": "Wiring diagram: Shelly PM Mini Gen3 behind a socket",
     "kind": "wiring",
     "credit": "DomoSenso",
     "license": "Apache-2.0",

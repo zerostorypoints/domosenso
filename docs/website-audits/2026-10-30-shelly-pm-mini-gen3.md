@@ -26,5 +26,5 @@ lint, typecheck, static build with the CI analytics id, e2e on desktop and mobil
 
 ## Deferred evidence
 
-- The wiring guide and diagram (#123): once on main, the record's source moves to `devices/shelly-pm-mini-gen3.md`, the diagram joins `assets.json` and `documentationCommit` moves to that merge.
+- Done in a follow-up pull request: the record's source is the wiring guide `devices/shelly-pm-mini-gen3.md` (#123), the diagram is in `assets.json`, and `documentationCommit` and every device and wiring source are pinned to #123's merge `1578932`. That pull request also carries the photograph commit, which #122 was merged without.
 - After merge: check `/devices/shelly-pm-mini-gen3/`, `build.json` and the IndexNow run.
