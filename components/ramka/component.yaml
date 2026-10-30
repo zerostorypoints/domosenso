@@ -207,6 +207,7 @@ artifacts:
     - shell/ramka_pick.py       #    (shell_command.<prefix>_pick / _index call them with photo_dir)
     - shell/ramka_index.py
     - shell/domosenso_discover.py  #  the settings' About page: shell_command.<prefix>_discover (SPEC-023)
+    - shell/domosenso_catalog.json  # what it links with: tools/catalog_index.py (SPEC-023)
   themes:                       # -> /config/themes/, with `frontend: themes: !include_dir_merge_named themes`;
     - themes/ramka.yaml         #    the series colours the charts and the room tiles share; ramka-dark, ramka-light
 

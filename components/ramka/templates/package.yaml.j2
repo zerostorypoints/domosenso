@@ -607,6 +607,7 @@ template:
           uses: "{{ trigger.event.data.uses | default({}) }}"
           integrations: "{{ trigger.event.data.integrations | default({}) }}"
           declared_links: "{{ trigger.event.data.declared_links | default([]) }}"
+          links: "{{ trigger.event.data.links | default({}) }}"
 
 # Screen scripts. Each step is one Companion notification command
 # (https://companion.home-assistant.io/docs/notifications/notification-commands). Both scripts
@@ -1076,6 +1077,7 @@ script:
           uses: "{{ found.uses }}"
           integrations: "{{ found.integrations }}"
           declared_links: "{{ found.declared_links }}"
+          links: "{{ found.links | default({}) }}"
       - if: "{{ updates | count > 0 }}"
         then:
           - action: homeassistant.update_entity

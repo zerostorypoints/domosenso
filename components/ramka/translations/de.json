@@ -358,7 +358,10 @@
       "about_refresh": "Komponenten und Versionen",
       "about_refresh_action": "Aktualisieren",
       "about_board_reports": "Board meldet",
-      "about_found": "in Home Assistant gefunden"
+      "about_found": "in Home Assistant gefunden",
+      "about_nav_website": "Website",
+      "about_nav_get_started": "Erste Schritte",
+      "about_discovery_how": "Die Listen unten stammen daraus; Aktualisieren findet neue Komponenten, Geräte und Versionen."
     }
   },
   "meta": {

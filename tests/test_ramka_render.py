@@ -2248,7 +2248,8 @@ def test_no_script_field_has_an_empty_selector(demo):
 
 def _about_markdown(dashboard) -> str:
     cards = [c for _, c in view_cards(settings_views(dashboard)["about"]) if c.get("type") == "markdown"]
-    return cards[0]["content"]  # the Components table; Related and Devices follow
+    [table] = [c["content"] for c in cards if "sensor.domosenso_components" in c["content"]]
+    return table  # the Components table; the discovery row is above it, Related and Devices follow
 
 
 @pytest.mark.parametrize("lang", LANGS)

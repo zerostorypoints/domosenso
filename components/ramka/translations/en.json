@@ -358,7 +358,10 @@
       "about_refresh": "Components and versions",
       "about_refresh_action": "Refresh",
       "about_board_reports": "board reports",
-      "about_found": "found in Home Assistant"
+      "about_found": "found in Home Assistant",
+      "about_nav_website": "Website",
+      "about_nav_get_started": "Get started",
+      "about_discovery_how": "The lists below come from it; Refresh finds new components, devices and versions."
     }
   },
   "meta": {

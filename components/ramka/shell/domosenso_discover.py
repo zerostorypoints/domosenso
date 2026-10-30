@@ -10,7 +10,10 @@ attributes of sensor.domosenso_related:
                                                           or a board running a catalog firmware
      "uses": {"<id>": [entity ids]},                     what each component's rendered files reach
      "integrations": {"<domain>": {"name", "kind", "version", "update_entity"}},
-     "declared_links": [{"device", "via"}]}              links HA does not record, from the home's file
+     "declared_links": [{"device", "via"}],              links HA does not record, from the home's file
+     "links": {"components": {"<id>": url},              the catalog's pages, from domosenso_catalog.json
+               "devices": {"<device id>": {"id", "name", "url", "inference"}},  matched by its rules
+               "integrations": {"<domain>": url}}}       the manifest's documentation
 
 Strict only: an entity is used when a component's rendered file names it literally, or a template
 entity in packages/*.yaml that is reached names it, or a rule in <config>/domosenso_discovery.yaml
@@ -19,6 +22,7 @@ adds it (a pattern the home's own templates resolve at runtime). Read-only: it w
 from __future__ import annotations
 
 import datetime
+import fnmatch
 import importlib.metadata
 import json
 import re
@@ -36,6 +40,7 @@ NOT_INTEGRATIONS = {"template", "input_boolean", "input_number", "input_select",
                     "input_datetime", "script", "automation", "timer", "counter", "group", "shell_command",
                     "rest_command", "image", "schedule", "person", "zone", "sun"}
 RULES_FILE = "domosenso_discovery.yaml"
+INDEX = Path(__file__).with_name("domosenso_catalog.json")  # tools/catalog_index.py, shipped beside this file
 CORE = Path("/usr/src/homeassistant/homeassistant/components")
 
 
@@ -70,6 +75,76 @@ def manifest(domain: str, config: Path) -> tuple[dict, bool]:
         except (OSError, ValueError):
             continue
     return {}, False
+
+
+def _list(value) -> list[str]:
+    if value is None:
+        return []
+    return [str(v) for v in value] if isinstance(value, list) else [str(value)]
+
+
+def _glob(value, patterns) -> bool:
+    return value is not None and any(fnmatch.fnmatchcase(str(value).lower(), p.lower()) for p in _list(patterns))
+
+
+def matches(rule: dict, dev: dict) -> bool:
+    """A device rule of the catalog (SPEC-010), as tools/domosenso_cli/hwscan.py reads it."""
+    if "integration" in rule and not set(_list(rule["integration"])) & set(dev["integrations"]):
+        return False
+    if not set(_list(rule.get("with_integration"))) <= set(dev["integrations"]):
+        return False
+    for key in ("manufacturer", "model", "model_id"):
+        if key in rule and not _glob(dev[key], rule[key]):
+            return False
+    if "unless_manufacturer" in rule and _glob(dev["manufacturer"], rule["unless_manufacturer"]):
+        return False
+    if "entity_domain" in rule and not set(_list(rule["entity_domain"])) & dev["entity_domains"]:
+        return False
+    if not set(_list(rule.get("device_classes"))) <= dev["device_classes"]:
+        return False
+    return all(any(_glob(n, pattern) for n in dev["entity_names"]) for pattern in _list(rule.get("entity_names")))
+
+
+def links(config: Path, devices: list[dict], entities: dict, integrations: dict) -> dict:
+    """Pages for what was found: a component's on domosenso.org (else its folder in the repository),
+    a device's when a catalog rule tells it as that device, an integration's documentation."""
+    try:
+        index = json.loads(INDEX.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        index = {"components": {}, "devices": []}
+    site, repo = index.get("site", ""), index.get("repository", "")
+    components = {cid: f"{site}/components/{cid}/" if c.get("page") else f"{repo}/tree/main/components/{cid}"
+                  for cid, c in index.get("components", {}).items()}
+    domains = {e["entry_id"]: e["domain"] for e in storage(config, "core.config_entries").get("entries", [])}
+    owned: dict[str, list[dict]] = {}
+    for entry in entities.values():
+        if entry.get("device_id"):
+            owned.setdefault(entry["device_id"], []).append(entry)
+    found = {}
+    for device in devices:
+        if device.get("entry_type") == "service" or device.get("disabled_by"):
+            continue
+        own = owned.get(device["id"], [])
+        record = {
+            "manufacturer": device.get("manufacturer"), "model": device.get("model"), "model_id": device.get("model_id"),
+            "integrations": sorted({domains[c] for c in device.get("config_entries", []) if c in domains}),
+            "entity_domains": {e["entity_id"].split(".", 1)[0] for e in own},
+            "device_classes": {e.get("device_class") or e.get("original_device_class") for e in own} - {None},
+            "entity_names": [e.get("original_name") for e in own if e.get("original_name")],
+        }
+        for known in index.get("devices", []):
+            rule = next((r for r in known.get("match", []) if matches(r, record)), None)
+            if rule is not None:
+                url = f"{site}/devices/{known['id']}/" if known.get("page") else f"{repo}/blob/main/devices/{known['id']}.yaml"
+                found[device["id"]] = {"id": known["id"], "name": known.get("name", known["id"]), "url": url,
+                                       "inference": rule.get("note") == "inference"}
+                break
+    docs = {}
+    for domain in integrations:
+        data, _ = manifest(domain, config)
+        if data.get("documentation"):
+            docs[domain] = data["documentation"]
+    return {"components": components, "devices": found, "integrations": docs}
 
 
 def main(config: Path) -> dict:
@@ -169,6 +244,7 @@ def main(config: Path) -> dict:
         "uses": uses,
         "integrations": integrations,
         "declared_links": list(rules.get("declared_links") or []),
+        "links": links(config, devices, entities, integrations),
     }
 
 

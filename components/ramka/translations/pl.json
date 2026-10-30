@@ -358,7 +358,10 @@
       "about_refresh": "Komponenty i wersje",
       "about_refresh_action": "Odśwież",
       "about_board_reports": "płytka zgłasza",
-      "about_found": "znaleziony w Home Assistant"
+      "about_found": "znaleziony w Home Assistant",
+      "about_nav_website": "Strona",
+      "about_nav_get_started": "Pierwsze kroki",
+      "about_discovery_how": "Listy poniżej pochodzą z niego; Odśwież znajduje nowe komponenty, urządzenia i wersje."
     }
   },
   "meta": {
