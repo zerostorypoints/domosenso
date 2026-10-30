@@ -17,6 +17,8 @@
      Distinguish partial checks, full CI, running HA, browser and physical-device evidence. -->
 
 - Full catalog checks:
+- Demo decision (`skip` / `run`) and concrete reason:
+- If running: `run-demo` label, scenario, tested revision and result/evidence:
 - Applicable staging scenarios (first install, upgrade, restart, reconnect):
 - UI screenshots / device evidence, or why not applicable:
 - How to open the interactive staging preview (credentials supplied privately), tested SHA and things to try:

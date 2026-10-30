@@ -1,0 +1,18 @@
+{
+  "id": "m5stack-atom-echos3r",
+  "title": "M5Stack Atom EchoS3R",
+  "summary": "A small ESP32-S3 board with a microphone, used as a room sound sensor.",
+  "sourcePath": "devices/m5stack-atom-echos3r.yaml",
+  "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+  "components": [
+    "audio-sensor"
+  ],
+  "compatibility": [
+    {
+      "id": "audio-sensor",
+      "version": "0.1.0"
+    }
+  ],
+  "body": "## What it does here\n\nThe board runs the audio-sensor ESPHome package: a sound level every second and a third-octave spectrum (31 bands, 20 Hz to 20 kHz) about five times a second. It only measures; the package keeps the speaker amplifier off and adds no voice assistant or Bluetooth.\n\n## Power and first flash\n\nPower it from a plain 5 V USB supply. Flash it the first time over USB: hold the button while plugging in the cable, then run ESPHome with the device file the component writes for your home. Later updates go over Wi-Fi. Wi-Fi credentials and the API key stay in your private home project.\n\n## Limits\n\nIt is not a measurement microphone: one analog MEMS capsule and one offset per board. One board has been tested in one home.\n\n## Setup references\n\n- [M5Stack Atom EchoS3R — M5Stack documentation](https://docs.m5stack.com/en/core/Atom_EchoS3R)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+  "photo": null
+}

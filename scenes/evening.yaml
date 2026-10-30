@@ -22,4 +22,4 @@ states:
   cover.awning_kitchen: closed
 tablet: {mode: ambient}
 components: [bermuda-presence, calendar, lights, media, ramka, weather]
-devices: [hegel-h400, hlk-ld2410c, hue-bridge, m5stack-atom-lite, tcl-9469x]
+devices: [hegel-h400, hlk-ld2410c, hue-bridge, m5stack-atom-lite, shelly-pm-mini-gen3, tcl-9469x]

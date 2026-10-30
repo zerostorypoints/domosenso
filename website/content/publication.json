@@ -2,6 +2,15 @@
   "frameworkCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
   "components": [
     {
+      "id": "audio-sensor",
+      "version": "0.1.0",
+      "tag": "audio-sensor/0.1.0",
+      "commit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ]
+    },
+    {
       "id": "awnings",
       "version": "0.2.1",
       "tag": "awnings/0.2.1",
@@ -75,9 +84,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.3.0",
-      "tag": "ramka/0.3.0",
-      "commit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "version": "0.4.0",
+      "tag": "ramka/0.4.0",
+      "commit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
@@ -129,5 +138,5 @@
       "title": "Ramka photo slideshow"
     }
   ],
-  "documentationCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f"
+  "documentationCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c"
 }

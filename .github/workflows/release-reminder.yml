@@ -1,0 +1,61 @@
+name: Release reminder
+# Keeps one open issue listing the components on main that still wait for a tag or for the website,
+# and closes it when nothing is left. Tagging and publishing stay human decisions (AGENTS.md);
+# this only reminds. A tag push re-runs it, so the list shrinks as releases happen.
+on:
+  push:
+    branches: [main]
+    tags: ['*/*']
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: release-reminder
+  cancel-in-progress: false
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      - name: Open, update or close the reminder issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          # Development work that is not released on purpose (docs/getting-started.md).
+          HOLD: remote-access
+        run: |
+          set -u
+          holds=""
+          for id in $HOLD; do holds="$holds --hold $id"; done
+          if uv run tools/release_status.py $holds --format markdown > status.md; then pending=0; else pending=1; fi
+          cat status.md
+          gh label create release-reminder --color FBCA04 \
+            --description "Components on main waiting for a tag or the website" --force
+          issue=$(gh issue list --label release-reminder --state open --json number --jq '.[0].number // empty')
+          if [ "$pending" = 0 ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "Everything on main at $(git rev-parse --short HEAD) is tagged and published."
+            fi
+            exit 0
+          fi
+          {
+            echo "Automatic reminder from the Release reminder workflow at main $(git rev-parse --short HEAD). Not a work item to triage (docs/ISSUES.md)."
+            echo
+            echo "- \`untagged\`: tag the merged version with \`uv run tools/release.py <id>\` and push the tag (needs the maintainer's go-ahead)."
+            echo "- \`unpublished\`: select the tag in \`website/content/publication.json\` following the \`domosenso-website-audit\` skill, in a pull request."
+            echo
+            cat status.md
+          } > body.md
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file body.md
+          else
+            gh issue create --title "Release reminder: components waiting for a tag or the website" \
+              --label release-reminder --body-file body.md
+          fi

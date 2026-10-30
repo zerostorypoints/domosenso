@@ -1,0 +1,12 @@
+id: shelly-pm-mini-gen3
+names: {en: Shelly PM Mini Gen3 power meter, de: Shelly PM Mini Gen3 Leistungsmesser, pl: Miernik mocy Shelly PM Mini Gen3}
+description_key: meta.devices.shelly-pm-mini-gen3.description
+does_key: meta.devices.shelly-pm-mini-gen3.does
+photo: null
+component: media
+tested: {homes: 1}  # the maintainer's home (SPEC-011)
+# SPEC-010. Seen on HA 2026.9.2: integration shelly, manufacturer Shelly, model Shelly PM Mini Gen3,
+# model_id S3PM-001PCEU16, firmware 2.1.0.
+match:
+  - integration: shelly
+    model: "*PM Mini*"

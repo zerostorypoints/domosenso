@@ -153,6 +153,32 @@ configs, compose services), never Home Assistant's `.storage` or the recorder da
 Run everything from the repository root. Dependencies: `uv sync`, `npm install` (node 22 or newer),
 Docker for `ha-check`.
 
+### Opt-in demo acceptance
+
+The expensive runtime/browser demo is **off by default**. The implementing agent decides whether
+the PR needs it and records `Demo: skip|run`, a concrete reason and, when running, the scenario
+and tested revision in the PR's Verification section. Both Codex and Claude Code follow this rule.
+
+- Add the PR label **`run-demo`** only for a concrete risk covered by the demo: HA startup/restart,
+  restored state, component interactions, actual HA cards/reconnect, or changes to demo isolation,
+  its runner or CI gating. Use the smallest relevant test first; do not run demo "just in case".
+- Skip for website content/layout, docs, photos, catalog descriptions and agent instructions, or
+  logic adequately covered by focused tests without a runtime/browser risk. The demo does not
+  validate physical hardware or every integration; do not select it for uncovered risks.
+- Reassess when scope changes. A reviewer may require the label. While it remains present,
+  new commits, reopening and label changes rerun the full demo. Do not remove it to conceal a
+  failed applicable check; fix the failure or record why the scenario no longer applies.
+- Without the label, CI explicitly reports **demo skipped / not tested**. This is not runtime
+  acceptance evidence. `framework` and `website` keep their ordinary checks; `tools/check-all.sh`
+  no longer launches demo. Run the dedicated demo command locally only when useful, and avoid
+  repeating equivalent verification for an unchanged revision merely to complete a checklist.
+- `workflow_dispatch` explicitly runs demo on a selected ref (including main); there is no
+  automatic demo rerun after merge. Read live branch protection separately; do not change it or
+  bypass required checks as part of a demo decision. Contributors without label rights ask a
+  maintainer to apply `run-demo`.
+
+Commands, evidence and limitations: [Local catalog demo](docs/LOCAL_DEVELOPMENT.md).
+
 ```bash
 uv run tools/catalog_check.py --strict          # manifests, artifact paths, translations, devices, scenes
 uv run tools/domosenso_render.py components/<id> --inputs <inputs.yaml> --out <dir> [--lang en,de,pl] [--stamp]
@@ -162,6 +188,7 @@ tools/esphome-check.sh <id> [compile <file>...] # ESPHome config (and compile) o
 uv run tools/agents_check.py                    # AGENTS.md budget, CLAUDE.md, skills
 uv run tools/install_skills.py [--check]        # skill links for every agent
 uv run tools/issue_check.py <draft.md | --issue n>  # an issue against docs/ISSUES.md
+uv run tools/release_status.py [--hold <id>]    # components on main waiting for a tag or the website
 uv run tools/make_demo_media.py                 # regenerates examples/demo-home/media/
 tools/check-all.sh                              # everything
 ```
@@ -315,6 +342,8 @@ no-change or deferred evidence; follow up when a missing tag becomes public. A f
 merge is not a main release. This is an agent workflow, not an automatic publishing service.
 Every plan names its website impact. Content about behaviour that is not yet in a tag stays
 `draft` until the tag exists. The PR lists its pages with `uv run tools/website_changes.py --base origin/main`.
+The `Release reminder` workflow keeps one `release-reminder` issue open while
+`tools/release_status.py` finds an untagged version or an unpublished tag on main; it only reminds.
 
 ## Issues
 
