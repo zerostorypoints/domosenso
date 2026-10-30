@@ -12,7 +12,7 @@ export async function generateMetadata({params}:Props) {
   const {slug} = await params;
   const doc = docs.find(doc => doc.slug === slug);
   if (!doc) notFound();
-  return meta(doc.title,`/docs/${slug}/`);
+  return meta(doc.title,`/docs/${slug}/`,undefined,{markdown:true});
 }
 
 export default async function Page({params}:Props) {

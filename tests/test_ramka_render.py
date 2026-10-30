@@ -153,7 +153,7 @@ def test_every_mode_and_page_reference_is_an_option(demo):
                     if field in node:
                         used[entity].update(as_list(node[field]))
             target = (node.get("target") or {}).get("entity_id") if isinstance(node.get("target"), dict) else None
-            # Since 0.4.0 the page steps are templates over the live list (SPEC-020), evaluated in
+            # Since 0.4.0 the page steps are templates over the live list (SPEC-021), evaluated in
             # test_loop_and_swipes_read_the_live_list; the literal options are checked here.
             if isinstance(target, str) and target in allowed and "option" in (node.get("data") or {}) \
                     and "{{" not in str(node["data"]["option"]):
@@ -298,7 +298,7 @@ def without_pages(*pages) -> dict:
 
 def rotation(package) -> dict[str, str]:
     """page -> the page the ambient loop goes to after it with every page switch on, evaluated from
-    the rendered loop (since 0.4.0 each stage reads the live list, SPEC-020)."""
+    the rendered loop (since 0.4.0 each stage reads the live list, SPEC-021)."""
     stages = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"]
     steps = {}
     for stage in stages:
@@ -342,7 +342,7 @@ def test_a_page_without_its_input_is_left_out(tmp_path, dropped):
 
 def test_all_pages_step_through_the_live_list_too(demo):
     """Since 0.4.0 the page switches can take any page out, so with all five pages the swipes read
-    the live list as well and the loop's guard is always there (SPEC-020; was
+    the live list as well and the loop's guard is always there (SPEC-021; was
     test_all_pages_keep_select_next_and_no_guard)."""
     package = demo["package.yaml"]
     assert package["script"]["ramka_ambient_next"]["sequence"][0]["action"] == "input_select.select_option"
@@ -468,7 +468,7 @@ def test_status_page_false_without_another_page_fails(tmp_path):
 
 AUDIO_CARDS = REPO / "components" / "audio-sensor" / "cards"
 VISUAL_OPTIONS = ("spectrum", "level", "classic")
-# The views with a page switch (SPEC-020).
+# The views with a page switch (SPEC-021).
 PAGE_VIEWS = ["climate", "air", "plants", "photos", "status", "calendar", "music"]
 
 
@@ -514,7 +514,7 @@ def test_music_visual_absent_renders_wave_true(tmp_path):
 
 
 def test_music_visual_absent_renders_as_0_3_0(tmp_path):
-    """Without music_visual a home gets 0.3.0's files plus the live settings (SPEC-020,
+    """Without music_visual a home gets 0.3.0's files plus the live settings (SPEC-021,
     Compatibility): the package's new helpers, sensor, script and automations, the parts that read
     the page switches and fallbacks equal to the defaults; the dashboards without the view theme and
     with the calendar switch. Everything else is 0.3.0's, value for value."""
@@ -540,7 +540,7 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
             assert without_calendar_switch(new_dashboard) == old_dashboard, name
 
 
-# What 0.4.0's live settings add to and change in a package without music_visual (SPEC-020,
+# What 0.4.0's live settings add to and change in a package without music_visual (SPEC-021,
 # Compatibility); everything else is 0.3.0's, value for value.
 SETTINGS_ADDED = {
     "input_select": {"ramka_theme_mode"},
@@ -619,11 +619,11 @@ def test_music_visual_bad_input_fails(tmp_path, inputs, message):
         render(tmp_path, inputs)
 
 
-# ---- 0.4.0: live settings (SPEC-020) ------------------------------------------------------------
+# ---- 0.4.0: live settings (SPEC-021) ------------------------------------------------------------
 
 PRESENCE_NUMBERS = ["off_delay_s", "brightness_min", "brightness_max", "near_cm", "near_s", "controls_hold_s", "lux_max"]
 MUSIC_DB = ["music_spectrum_neutral_db", "music_spectrum_hot_db", "music_level_neutral_db", "music_level_hot_db"]
-# The catalog's defaults (SPEC-020, Provides): what the reset writes in a home without
+# The catalog's defaults (SPEC-021, Provides): what the reset writes in a home without
 # settings_defaults or music_visual_options.
 DEFAULTS = {
     "input_boolean.ramka_near_enabled": "on", "input_number.ramka_off_delay_s": 300,
@@ -642,7 +642,7 @@ MUSIC_DEFAULTS = {
     "input_number.ramka_music_level_neutral_db": 30, "input_number.ramka_music_level_hot_db": 70,
     "input_number.ramka_music_fps": 30,
 }
-# Which page and group each setting belongs to (SPEC-020's table); ambient_music is state the swipes
+# Which page and group each setting belongs to (SPEC-021's table); ambient_music is state the swipes
 # flip, set only by the presence_display group and the global reset.
 PAGE_OF = {
     **{e: "general" for e in DEFAULTS if not e.startswith("input_boolean.ramka_page_")},
@@ -656,7 +656,7 @@ GROUP_OF = {
     **{f"input_boolean.ramka_page_{v}": "pages" for v in PAGE_VIEWS},
     **{e: "music_visual" for e in MUSIC_DEFAULTS},
 }
-# Helpers that are state, not settings: no settings page shows them (SPEC-020, the standing rule).
+# Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
 STATE_HELPERS = {"input_select.ramka_mode", "input_select.ramka_ambient", "input_boolean.ramka_ambient_music",
                  "input_boolean.ramka_settings_seeded"}
@@ -896,15 +896,33 @@ def test_reset_page_and_groups(demo):
     assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual"]
 
 
-def test_every_setting_is_on_a_page_and_reset(tmp_path):
-    """The standing rule (SPEC-020): rendered with every optional input, every input_number,
-    input_boolean and input_select the package defines is a named state helper or on a settings
-    page; every helper on a page is one the global reset sets, and on its own page's reset. A new
-    state helper goes into STATE_HELPERS by name, in review."""
-    inputs = with_visual()
+def maximal_inputs() -> dict:
+    """Every optional input that adds a helper or a page: the music visual with its options, the
+    General defaults, the alerts, the photos and every page (the demo home has the rest)."""
+    inputs = with_visual(options={"level": {"flavour": "tide"}, "fps": 24})
     inputs["settings_defaults"] = {"off_delay_s": 600}
-    inputs["music_visual_options"] = {"level": {"flavour": "tide"}}
-    rendered = render(tmp_path, inputs)
+    assert inputs.get("alert_notify") and inputs.get("photo_dir") and inputs.get("status_page", True)
+    assert all(inputs.get(page) for page in ("climate", "air", "plants", "status"))
+    return inputs
+
+
+def without_optional_pages() -> dict:
+    inputs = without_visual()
+    for key in ("climate", "air", "plants", "photo_dir", "alert_notify", "outside", "pressure"):
+        inputs.pop(key, None)
+    return inputs
+
+
+@pytest.mark.parametrize("make_inputs, left_out", [
+    (maximal_inputs, set()), (without_visual, set()), (without_optional_pages, {"climate", "air", "plants", "photos"}),
+], ids=["maximal", "no-music-visual", "no-optional-pages"])
+def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
+    """The standing rule (SPEC-021): rendered with every optional input (and without the optional
+    ones), every input_number, input_boolean and input_select the package defines is a named state
+    helper or on a settings page; every helper on a page is one the global reset sets, and on its
+    own page's reset. A new state helper goes into STATE_HELPERS by name, in review. A view the
+    render left out shows "not configured" without its switch (SPEC-021), which still exists."""
+    rendered = render(tmp_path, make_inputs())
     package = rendered["package.yaml"]
     reset = run_reset(package)
     for entity in helpers(package):
@@ -915,6 +933,8 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path):
         for entity in helpers(package):
             if entity in STATE_HELPERS:
                 assert entity not in on_pages, f"{lang}: state helper {entity} on the {on_pages[entity]} page"
+            elif entity.removeprefix("input_boolean.ramka_page_") in left_out:
+                assert entity not in on_pages, f"{lang}: {entity} shown on a page the render left out"
             else:
                 assert entity in on_pages, f"{lang}: {entity} is on no settings page"
         for path, view in views.items():
@@ -1268,7 +1288,7 @@ def test_theme_mode(demo):
         assert all("theme" not in view for view in demo[f"dashboard.{lang}.yaml"]["views"]), lang
     themes = yaml.safe_load((COMP / "themes" / "ramka.yaml").read_text(encoding="utf-8"))
     assert {"ramka", "ramka-dark", "ramka-light"} <= set(themes)
-    # Single-mode themes (SPEC-020 amendment, C19): a theme whose modes hold only one mode is
+    # Single-mode themes (SPEC-021 amendment, C19): a theme whose modes hold only one mode is
     # forced into it (frontend 20260826.7, src/state/themes-mixin.ts), and the frontend applies its
     # own defaults of that mode, so nothing of the frontend is copied here to go stale.
     series = {mode: themes["ramka"]["modes"][mode] for mode in ("dark", "light")}
@@ -1294,13 +1314,13 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
     assert steps.index(pauses[0]) == len(steps) - 2
 
 
-# ---- 0.4.0: the "Ramka settings" dashboard (SPEC-020) --------------------------------------------
+# ---- 0.4.0: the "Ramka settings" dashboard (SPEC-021) --------------------------------------------
 
 SETTINGS_PAGES = ["general", *PAGE_VIEWS]
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
 SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
-# Where each setting sits (SPEC-020's page table): Basic or Advanced.
+# Where each setting sits (SPEC-021's page table): Basic or Advanced.
 BASIC = {
     "general": {"input_select.ramka_theme_mode", "input_boolean.ramka_near_enabled", "input_number.ramka_off_delay_s",
                 "input_number.ramka_brightness_min", "input_number.ramka_brightness_max",
@@ -1463,7 +1483,7 @@ def test_advanced_cards_follow_the_switch(demo):
                     assert not advanced(section, card), (lang, path, shown & basic)
                 if advanced(section, card):
                     assert not shown & basic, (lang, path)
-                    # Advanced cards carry the condition themselves (SPEC-020), not only their section.
+                    # Advanced cards carry the condition themselves (SPEC-021), not only their section.
                     assert ADVANCED_ON in card.get("visibility", []), (lang, path, card.get("type"))
             assert basic | extra <= seen, (lang, path, (basic | extra) - seen)
         # The switch sits on General and Music, the two pages with Advanced parts.
@@ -1498,9 +1518,11 @@ def test_music_page_sensor_and_calibration(demo):
     for lang in LANGS:
         t = translations(lang)
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        # The preview reads the music aliases too (the strip's own); every other card that reads
-        # audio-sensor is the music source or its calibration.
+        # The preview reads the music aliases too (the strip's own), and its classic note shows while
+        # the music source is unavailable; every other card that reads audio-sensor is the music
+        # source or its calibration.
         reading = [(s, c) for s, c in view_cards(view) if c.get("type") != "custom:ambient-wave-card"
+                   and c.get("content") != t["ui.settings.preview_classic"]
                    and any(e in json.dumps(c) for e in AUDIO_SENSOR_IDS)]
         assert reading
         for section, card in reading:
@@ -1542,11 +1564,16 @@ def test_settings_preview_is_the_now_playing_visual(demo):
             assert {k: v for k, v in card.items() if k not in ("height", "visibility", "grid_options")} == expected
             # The strip's height on the 1100 x 720 tablet (SPEC-018): 14 % of 720 - 272 px.
             assert card["height"] == "63px"
-            assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind}]
+            # Without audio-sensor the element does not exist: no preview card, the classic note.
+            assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind},
+                                          SOURCE_THERE]
             assert not advanced(section, card)
-        [classic] = [c for _, c in view_cards(view) if c.get("type") == "markdown" and
-                     {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]} in c.get("visibility", [])]
-        assert classic["content"] == translations(lang)["ui.settings.preview_classic"]
+        [classic] = [c for _, c in view_cards(view) if c.get("type") == "markdown"
+                     and c.get("content") == translations(lang)["ui.settings.preview_classic"]]
+        assert classic["visibility"] == [{"condition": "or", "conditions": [
+            {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]},
+            {"condition": "state", "entity": "input_select.audio_sensor_music_source", "state": "unavailable"},
+        ]}]
 
 
 def test_settings_preview_passes_the_card_normaliser(tmp_path, demo):

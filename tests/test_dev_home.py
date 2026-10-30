@@ -94,7 +94,7 @@ def test_render_uses_real_components_and_only_demo_inputs(tmp_path):
     assert (d.config / 'custom_components/domosenso_demo/weather.py').exists()
     assert not (d.config / '.storage').exists()
     assert 'shell_command:' in (d.config / 'packages/ramka.yaml').read_text()
-    # The settings dashboard (SPEC-020) is a dashboard, not a second package over packages/ramka.yaml.
+    # The settings dashboard (SPEC-021) is a dashboard, not a second package over packages/ramka.yaml.
     assert sorted(p.name for p in (d.config / 'packages').glob('*.yaml')) == ['ramka.yaml']
     assert (d.config / 'dashboards/ramka-settings.pl.yaml').read_text().startswith('# Rendered by Domosenso')
     assert 'filename: dashboards/ramka-settings.pl.yaml' in config

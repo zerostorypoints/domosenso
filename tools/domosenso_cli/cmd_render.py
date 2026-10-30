@@ -13,7 +13,8 @@ from pathlib import Path
 
 from domosenso_cli import dev_render
 from domosenso_cli.build import (
-    file_records, file_sha, git_short_head, load_manifest, open_catalog, plan_outputs, resource_urls, sha256,
+    file_records, file_sha, git_short_head, load_manifest, open_catalog, own_dev_files, plan_outputs, resource_urls,
+    sha256,
     write_outputs,
 )
 from domosenso_cli.catalog import dev_dir
@@ -54,6 +55,7 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
             head = git_short_head(dev)
             outputs = plan_outputs(home, home.components[cid], component_dir, version, head, dirty=True)
             _report(rep, write_outputs(home, lock, cid, outputs, force, dev=True))
+            _report_forgotten(home, lock, cid, {o.dest for o in outputs}, rep)
             dev_render.record(home.root, cid, version, f"{head}-dirty",
                               {o.dest: {"sha256": sha256(o.content), "layer": o.layer} for o in outputs},
                               resource_urls(component_dir))
@@ -61,6 +63,19 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
         locked = lock.components[cid]
         component_dir = catalog.checkout(cid, locked.version, locked.commit)
         apply_component(home, lock, cid, component_dir, locked.version, locked.commit, force, rep)
+
+
+def _report_forgotten(home: HomeConfig, lock: Lock, cid: str, produced: set[str], rep: Reporter) -> None:
+    """`stale` for each managed file the previous dev render of `cid` wrote and this one does not
+    (the dev tree's version moved, say): the inventory forgets it, so unless the lock describes the
+    file as it is, nothing tracks it any more. It is left for the human, as a render leaves a stale
+    file of the lock's."""
+    locked = lock.components.get(cid)
+    records = locked.files if locked else {}
+    for dest in sorted(set(own_dev_files(home, cid)) - produced):
+        path = home.root / dest
+        if path.is_file() and (dest not in records or file_sha(path) != records[dest].sha256):
+            rep.line("stale", dest)
 
 
 def apply_component(
@@ -78,9 +93,10 @@ def apply_component(
     produced = {o.dest for o in outputs}
     stale = sorted(p for p, r in locked.files.items() if r.layer == "managed" and p not in produced)
     if remove_stale and not force:
+        dev_files = own_dev_files(home, cid)  # a dev render's own output is not a hand edit
         for dest in stale:
             path = home.root / dest
-            if path.is_file() and file_sha(path) != locked.files[dest].sha256:
+            if path.is_file() and file_sha(path) not in (locked.files[dest].sha256, dev_files.get(dest)):
                 raise DomosensoError(f"hand-edited: {dest}")
     _report(rep, write_outputs(home, lock, cid, outputs, force))
     for dest in stale:

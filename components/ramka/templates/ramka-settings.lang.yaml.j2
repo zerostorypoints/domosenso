@@ -1,5 +1,5 @@
 [#
-  The "Ramka settings" dashboard (0.4.0, SPEC-020): one sections view per page, General and one per
+  The "Ramka settings" dashboard (0.4.0, SPEC-021): one sections view per page, General and one per
   Ramka view, where every live setting of the package is changed and seen on the tablet at once.
   Rendered once per language (ramka-settings.<lang>.yaml) by tools/domosenso_render.py; every label
   is t('ui.settings.…'). For admins: the home's lovelace: entry carries require_admin (README,
@@ -171,13 +171,14 @@ views:
     max_columns: 2
     sections:
 [%- if visuals %][[ switch_section('music', [('input_select', 'music_visual'), ('input_select', 'music_palette'), ('input_boolean', 'settings_advanced')]) ]]
-      # The visual as the tablet draws it, at the strip's height, the width of the page.
+      # The visual as the tablet draws it, at the strip's height, the width of the page. Without
+      # audio-sensor (its select unavailable) the card's element does not exist: the classic note.
       - type: grid
         column_span: 2
         cards:[[ heading('preview', 'mdi:waveform') ]]
 [%- for kind, config in visuals.items() %]
           - type: custom:ambient-wave-card
-            visibility: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]} ]
+            visibility: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}, [[ source_there ]] ]
 [%- for key, value in config.items() if key != 'type' %]
             [[ key ]]: [[ value | yaml ]]
 [%- endfor %]
@@ -185,7 +186,11 @@ views:
             grid_options: {columns: full, rows: auto}
 [%- endfor %]
           - type: markdown
-            visibility: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]} ]
+            visibility:
+              - condition: or
+                conditions:
+                  - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
+                  - {condition: state, entity: input_select.audio_sensor_music_source, state: unavailable}
             content: [[ t('ui.settings.preview_classic') | yaml ]]
       - type: grid
         cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]

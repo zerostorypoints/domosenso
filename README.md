@@ -82,6 +82,9 @@ first deploy. It reads Home Assistant freely and writes nothing to it until you 
 > Never change the catalog in place: a contribution is a pull request from a fork
 > ([CONTRIBUTING.md](CONTRIBUTING.md)). Stop at every question the skill asks the owner.
 > The rules are in [AGENTS.md](AGENTS.md).
+> Recipes for specific projects are the how-to guides at https://domosenso.org/how-to/; each
+> guide's supported situations carry a prompt for you. The index for agents is
+> https://domosenso.org/llms.txt.
 
 ## Where to start
 

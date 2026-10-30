@@ -1,6 +1,6 @@
 # SPEC-019: `deploy production --allow-dirty`, a typed exception for an unreleased render
 
-- Status: approved 2026-10-29 (docere-priv); issue #72
+- Status: approved 2026-10-29 by the maintainer; issue #72
 - Source: the maintainer's request (2026-10-29), for SPEC-018: a new card has to be seen on a real
   wall tablet before the catalog merges it. A home without a staging instance that its tablet can
   reach has no other place to look: local home staging (SPEC-016, `tools/home-staging.py`) serves

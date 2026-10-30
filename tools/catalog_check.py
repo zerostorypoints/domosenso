@@ -79,10 +79,7 @@ def _import_url_tag(path: Path) -> str | None:
 
 def _external_component_refs(path: Path) -> list[str]:
     """The `ref` of every git external_components source in the file that points at this repository."""
-    try:
-        data = yaml.load(path.read_text(encoding="utf-8"), Loader=_EsphomeLoader)
-    except (OSError, yaml.YAMLError):
-        return []  # not valid YAML for this purpose; ESPHome's own check owns that
+    data = _load_esphome(path)
     items = data.get("external_components") if isinstance(data, dict) else None
     refs = []
     for item in items if isinstance(items, list) else []:

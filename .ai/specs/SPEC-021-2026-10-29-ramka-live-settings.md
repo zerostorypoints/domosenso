@@ -1,6 +1,6 @@
-# SPEC-020: Ramka live settings (ramka 0.4.0, audio-sensor 0.1.0)
+# SPEC-021: Ramka live settings (ramka 0.4.0, audio-sensor 0.1.0)
 
-- Status: approved 2026-10-29 (docere-priv), after a revision on the maintainer's review (settings
+- Status: approved 2026-10-29 by the maintainer, after a revision on the maintainer's review (settings
   pages, Basic and Advanced, page switches, the Controls tile removed, the standing rule); issue #86,
   phase 2 in #87–#90
 - Source: the maintainer's design, approved in conversation (2026-10-29), after the wall check of
@@ -515,7 +515,16 @@ Ramka inputs gain no `settings_defaults`.
   with those additions taken out.
 - **The Controls tile of 0.4.0 is removed** before release; no home relies on it.
 - **audio-sensor 0.1.0:** more provided entities, nothing removed.
-- `docs/COMPATIBILITY.md`: nothing new; the entities are in the manifests, whose rules it states.
+- `docs/COMPATIBILITY.md`: the entities are in the manifests, whose rules it states. *Amended
+  2026-10-30 (final review):* the renderer's destination rule is new and is stated there (Tools,
+  "Renderer inputs").
+- **The renderer's destination for a language template** (*amended 2026-10-30, final review*): the
+  settings dashboard is the first `*.lang.yaml.j2` not named `dashboard`. `domosenso render` puts
+  `dashboard.lang.yaml.j2` at `dashboards/<id>.<lang>.yaml`, as before, and any other
+  `<name>.lang.yaml.j2` at `dashboards/<name>.<lang>.yaml` (here `dashboards/ramka-settings.<lang>.yaml`);
+  `outputs:` in `domosenso.yaml` overrides either. The name carries no component prefix, so a
+  component names such a template after itself (`ramka-settings`): two components with the same
+  template name would claim the same file, and the second render fails `owned by <id>: <path>`.
 - `docs/UPGRADE_NOTES.md`: the 2026-10-29 ramka 0.4.0 line gains "live settings on a settings
   dashboard and page switches; the theme follows a helper for every backend-selected browser; a home
   adds one `lovelace:` entry".

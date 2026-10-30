@@ -168,7 +168,7 @@ def _carried(home: HomeConfig, lock: Lock, dev: dict[str, dict]) -> tuple[dict[s
                     sources[rel] = source
                 continue
             if not source.is_file() or file_sha(source) != rendered.get("sha256"):
-                raise DomosensoError(f"dev render changed: {dest}: render again")
+                raise DomosensoError(f"dev render changed: {rel}: render again")
             dirty.append(rel)
             record[rel] = {"sha256": rendered["sha256"], "layer": "managed", "component": cid}
             sources[rel] = source

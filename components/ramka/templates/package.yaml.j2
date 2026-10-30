@@ -33,7 +33,7 @@
 [%- set music_visual = inputs.music_visual | default(none) -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
 [%- set other_visual = 'level' if music_visual == 'spectrum' else 'spectrum' -%]
-[#- ---- Live settings (0.4.0, SPEC-020) ----------------------------------------------------------
+[#- ---- Live settings (0.4.0, SPEC-021) ----------------------------------------------------------
     Every behaviour setting is a helper with this home's default: the catalog's, then
     settings_defaults (General) and music_visual_options (Music) over it. The seed, the reset script
     and the templates' `| int()` / `| float()` fallbacks all read `d`, so they cannot disagree.

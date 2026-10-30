@@ -5,6 +5,9 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.4.0 (2026-10-29): the now-playing view can draw the room's music; live settings
 
+0.4.0 includes 0.3.1 (the clock card's forecast comes back after a restart); a home on 0.3.0 gets
+both with one update.
+
 New optional inputs `music_visual` (`spectrum` or `level`), `music_visual_options` and
 `settings_defaults`. With `music_visual`, the now-playing card's wave strip shows audio-sensor's
 spectrum or level of the board marked `music: true`; a new helper `input_select.<prefix>_music_visual`
@@ -14,7 +17,7 @@ spectrum or level of the board marked `music: true`; a new helper `input_select.
 music visual's look and a switch per view (`input_boolean.<prefix>_page_<view>`). A new admin
 dashboard, "Ramka settings" (`dashboards/ramka-settings.<lang>.yaml`), has one page per view plus
 General, each in Basic and Advanced parts; add its `lovelace:` entry from the README ("Settings
-page"). The music-visual tile on the Controls page is gone: the visual is chosen on the Music page.
+page"). The visual is chosen on the settings dashboard's Music page.
 **Theme.** `input_select.<prefix>_theme_mode` sets the server's default theme (`ramka-dark` or
 `ramka-light`) for every browser on "Backend-selected", not only the tablet.
 **Starting values.** On the first start of 0.4.0 the automation `<prefix>_settings_seed` turns the
@@ -36,13 +39,27 @@ One step is required: add the "Ramka settings" dashboard's `lovelace:` entry to 
 `missing-dashboard-entry dashboards/ramka-settings.<lang>.yaml`. The tablet itself works without
 it, and the seed gives every new helper its value at the first start. Render with a `domosenso`
 command from this catalog release or later: an older one puts the settings dashboard under
-`packages/`, where Home Assistant refuses it. To use the visual, install `audio-sensor` with one sensor marked `music: true`, set `music_visual: spectrum` or
-`level`, render both and deploy. Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the
-twelve resource URLs with them (`domosenso update ramka` and a deploy do both); the deploy's restart
-creates the new helpers and runs the seed. Check after the restart that
-`input_boolean.<prefix>_settings_seeded` is on and every `input_boolean.<prefix>_page_<view>` is on.
-A dashboard or theme of the home's own that relied on the Ramka's view theme `ramka` keeps it: the
-theme stays in `themes/ramka.yaml`.
+`packages/`, where Home Assistant refuses it. To use the visual, install `audio-sensor` with one
+sensor marked `music: true`, set `music_visual: spectrum` or `level`, render both and deploy.
+Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the twelve resource URLs with them
+(`domosenso update ramka` and a deploy do both); the deploy's restart creates the new helpers and
+runs the seed. Check after the restart that `input_boolean.<prefix>_settings_seeded` is on and
+every `input_boolean.<prefix>_page_<view>` is on. A dashboard or theme of the home's own that relied
+on the Ramka's view theme `ramka` keeps it: the theme stays in `themes/ramka.yaml`.
+
+## 0.3.1 (2026-10-29): the forecast comes back after a restart
+
+An open page reconnects after a Home Assistant restart before the weather integration is back, so
+the clock card's forecast subscription was refused or answered with no days, and the forecast
+stayed empty until the page was reloaded. The card now subscribes again on every reconnect and as
+soon as the weather entity is back, and retries after 10 s, 30 s, 60 s and then every 5 minutes
+until days arrive. Card code only.
+
+### What a home does
+
+Nothing is required. Updating moves the cards to `www/domosenso/ramka/0.3.1/` and the twelve
+resource URLs with them (`domosenso update ramka` and a deploy do both). A home that added an
+automation reloading the tablet's page after every start for this can remove it.
 
 ## 0.3.0 (2026-10-27): the status page is optional
 

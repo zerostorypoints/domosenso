@@ -131,6 +131,24 @@ def test_offset_sensor_per_board(demo):
     assert "input_number.kids_room_spl_offset" in sensor["state"]
 
 
+def test_offset_sensor_carries_the_boards_calibrated_flag(demo):
+    """room-meter-card drops its "estimated" note only for an offset entity with `calibrated: true`."""
+    sensor = templates(demo)["audio_sensor_kids_room_spl_offset"]
+    calibrated = sensor["attributes"]["calibrated"]
+    assert "input_boolean.kids_room_spl_calibrated" in calibrated
+    assert evaluate(calibrated, {"input_boolean.kids_room_spl_calibrated": "on"}) == "True"
+    assert evaluate(calibrated, {"input_boolean.kids_room_spl_calibrated": "off"}) == "False"
+    assert evaluate(calibrated, {}) == "False"  # the flag not there yet: an estimate
+
+
+def test_music_offset_alias_carries_the_selected_boards_calibrated_flag(demo):
+    calibrated = templates(demo)["audio_sensor_music_spl_offset"]["attributes"]["calibrated"]
+    flags = {"input_boolean.living_room_spl_calibrated": "off", "input_boolean.kids_room_spl_calibrated": "on"}
+    assert evaluate(calibrated, {**flags, SELECT: "Kids' room"}) == "True"
+    assert evaluate(calibrated, {**flags, SELECT: "Living room"}) == "False"
+    assert evaluate(calibrated, {**flags, SELECT: "unknown"}) == "False"  # the music: true board
+
+
 def test_id_prefix_default_slugs_room(tmp_path):
     inputs = demo_inputs()
     package = render(tmp_path, inputs)
@@ -188,7 +206,7 @@ def test_entities_carry_the_component_and_boards_their_area(demo):
     assert "area" not in found["audio_sensor_music_level"]["attributes"]
 
 
-# --- SPEC-020: the music source and the calibration helpers -----------------------------------
+# --- SPEC-021: the music source and the calibration helpers -----------------------------------
 
 
 def test_music_source_select_options(tmp_path, demo):

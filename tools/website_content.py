@@ -88,6 +88,33 @@ def build_content(root, publication):
     require(len({d['id'] for d in devices}) == len(devices), 'duplicate device id')
     for component in components:
         require(all(d in {d['id'] for d in devices} for d in component['deviceIds']), 'unknown device reference')
+    device_ids = {d['id'] for d in devices}
+    howtos = []; howto_slugs = set()
+    for path in sorted((base/'how-to').glob('*.md')):
+        parts = path.read_text().split('---', 2)
+        require(len(parts) == 3 and not parts[0].strip(), 'invalid how-to frontmatter')
+        item = yaml.safe_load(parts[1]); body = parts[2].strip()
+        require(IDENTIFIER.fullmatch(str(item['slug'])) and item['slug'] == path.stem and item['slug'] not in howto_slugs, 'invalid or duplicate how-to slug')
+        howto_slugs.add(item['slug'])
+        require(item['status'] in ('draft','published'), 'invalid how-to status')
+        require(all(isinstance(item.get(k), str) and item[k].strip() for k in ('title','description')) and body, 'incomplete how-to')
+        require(1 <= len(item['description']) <= 160, 'invalid how-to description')
+        require(isinstance(item['updated'], str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', item['updated']), 'invalid how-to date')
+        date.fromisoformat(item['updated'])
+        require(all(c in selected for c in item['components']), 'unknown how-to component')
+        require(item['status'] == 'draft' or item['components'], 'published how-to needs a component')
+        require(all(d in device_ids for d in item['devices']), 'unknown how-to device')
+        require(item['sources'] and all(urlparse(s).scheme == 'https' and urlparse(s).netloc for s in item['sources']), 'unsafe how-to source')
+        require(item['branches'], 'how-to needs a branch')
+        for branch in item['branches']:
+            require(all(isinstance(branch.get(k), str) and branch[k].strip() for k in ('situation','needs','wiring')), 'incomplete how-to branch')
+            require(branch.get('supported') in ('yes','coming-soon','no'), 'invalid how-to branch support')
+            if branch['supported'] == 'coming-soon':
+                require(urlparse(branch.get('issue') or '').scheme == 'https' and urlparse(branch['issue']).netloc, 'coming-soon branch needs an issue')
+            if branch['supported'] == 'yes':
+                require(isinstance(branch.get('prompt'), str) and branch['prompt'].strip(), 'supported branch needs a prompt')
+        item['body'] = body
+        howtos.append(item)
     articles = []; slugs = set()
     for path in sorted((base/'journal').glob('*.md')):
         parts = path.read_text().split('---', 2)
@@ -106,6 +133,7 @@ def build_content(root, publication):
         require('date' in item and all(item.get(k) for k in ('title','summary','author')) and body, 'incomplete article')
         require(all(c in selected for c in item['components']), 'unknown article component')
         require(item['sources'] and all(urlparse(s).scheme == 'https' and urlparse(s).netloc for s in item['sources']), 'unsafe article source')
+        require(all(h in howto_slugs for h in item.get('howto', [])), 'unknown how-to reference')
         for release in item['releases']:
             verify_release(root, release)
         if item['category'] == 'releases':
@@ -114,7 +142,7 @@ def build_content(root, publication):
             require(item['cover'] in asset_paths, 'missing article cover asset')
         item['body'] = body
         articles.append(item)
-    return {'components':components, 'devices':devices, 'articles':sorted(articles,key=lambda a:(a['date'],a['slug']),reverse=True), 'assets':assets}
+    return {'components':components, 'devices':devices, 'articles':sorted(articles,key=lambda a:(a['date'],a['slug']),reverse=True), 'howTos':sorted(howtos,key=lambda h:h['slug']), 'assets':assets}
 
 
 def export_source_assets(root, publication, check):

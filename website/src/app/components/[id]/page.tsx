@@ -1,9 +1,10 @@
 import {ComponentExperience} from '@/components/component-experience';
+import {RelatedHowTos} from '@/components/howto-cards';
 import {RelatedJournal} from '@/components/journal-cards';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {PageIntro,Code} from '@/components/site';
-import {catalog,componentName,evidenceLabel} from '@/lib/catalog';
+import {catalog,componentName,evidenceLabel,requirementLabels} from '@/lib/catalog';
 import {metadata as meta} from '@/lib/seo';
 
 type Props = {params:Promise<{id:string}>};
@@ -13,10 +14,9 @@ export async function generateMetadata({params}:Props) {
   const {id} = await params;
   const component = catalog.find(component => component.id === id);
   if (!component) notFound();
-  return meta(componentName(id),`/components/${id}/`,component.summary);
+  return meta(componentName(id),`/components/${id}/`,component.summary,{markdown:true});
 }
 
-const requirementLabels:Record<string,string> = {recommend:'Recommended',via:'Connects through',count:'Quantity',note:'Setup note',app:'App',power:'Power',protocol:'Protocol',brand:'Brand'};
 
 export default async function Page({params}:Props) {
   const {id} = await params;
@@ -26,7 +26,7 @@ export default async function Page({params}:Props) {
 
   return <div className="page">
     <PageIntro label={`COMPONENT INDEX / ${isGuide?'INTEGRATION GUIDE':'INSTALLABLE COMPONENT'} / v${component.version}`} title={componentName(id)}><p>{component.summary}</p></PageIntro>
-    <ComponentExperience id={id}/><h2 id="release" className="release-detail-title">Release details</h2>
+    <ComponentExperience id={id}/><RelatedHowTos componentId={id}/><h2 id="release" className="release-detail-title">Release details</h2>
     <div className="component-detail">
       <aside className="release-panel">
         <span className="pill">{isGuide?'Integration guide':'Installable component'}</span><h2>Release record</h2>

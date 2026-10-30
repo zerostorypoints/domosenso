@@ -29,7 +29,7 @@ class Results:
             return False
 
     def finish(self):
-        report = {'scope': 'runtime-only (browser not run)' if self.runtime_only else 'runtime and browser', 'cases': self.cases, 'known_component_issues': ['#51 first-install tuning', '#52 startup reconciliation', '#53 forecast reconnect']}
+        report = {'scope': 'runtime-only (browser not run)' if self.runtime_only else 'runtime and browser', 'cases': self.cases, 'known_component_issues': ['#51 first-install tuning', '#52 startup reconciliation']}
         (self.path / 'check.json').write_text(json.dumps(report, indent=2))
         failed = [case['case'] for case in self.cases if case['status'] == 'fail']
         if failed:
@@ -199,5 +199,5 @@ def check(demo, runtime_only=False):
         results.case('real HA frontend, en/de/pl, desktop/tablet, open-page restart', browser)
     # Component defects are explicit observations, separate from launcher infrastructure gates.
     results.cases.append({'case': 'component reliability coverage', 'status': 'observation',
-                          'detail': 'Fresh and restored component observations are above. ' + ('Browser/#53 not run in runtime-only scope.' if runtime_only else 'See browser.json for delayed-weather #53 reconnect observation.') + ' No component fixes are included.'})
+                          'detail': 'Fresh and restored component observations are above. ' + ('Browser/#53 not run in runtime-only scope.' if runtime_only else 'The #53 forecast reconnect is a required browser case.') + ' The #51 and #52 fixes are not included.'})
     return results.finish()

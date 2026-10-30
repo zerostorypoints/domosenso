@@ -11,7 +11,7 @@ from website_content import build_content
 
 def seed(root, pub):
     base = root / 'website/content'
-    for folder in ('components', 'devices', 'journal'):
+    for folder in ('components', 'devices', 'journal', 'how-to'):
         (base / folder).mkdir(parents=True)
     (base / 'assets.json').write_text('[]')
     (base / 'components/sample.json').write_text(json.dumps({
@@ -30,6 +30,59 @@ def article(base, pub, status='published', **overrides):
                 releases=[pub['components'][0]], sources=['https://example.org/source'])
     meta.update(overrides)
     (base / 'journal/sample-release.md').write_text('---\n'+yaml.safe_dump(meta)+'---\n# A useful change\n\nA sample article.\n')
+
+
+def howto(base, name='sample-guide', **overrides):
+    import yaml
+    meta = dict(slug=name, title='Sample guide', description='A short description', components=['sample'], devices=[],
+                status='published', updated='2026-10-29', sources=['https://example.org/source'],
+                branches=[dict(situation='You have it', needs='Nothing', wiring='None', supported='yes', prompt='Do it')])
+    meta.update(overrides)
+    (base / f'how-to/{name}.md').write_text('---\n'+yaml.safe_dump(meta)+'---\n# Guide\n\nA sample guide.\n')
+
+
+def test_howto_published_and_draft_are_exported(catalog):
+    root, pub, _ = catalog
+    base = seed(root, pub); howto(base, 'b-draft', status='draft'); howto(base, 'a-live')
+    content = build_content(root, pub)
+    assert [h['status'] for h in content['howTos']] == ['published', 'draft']
+    assert [h['slug'] for h in content['howTos']] == ['a-live', 'b-draft']
+    assert all(h['body'].startswith('# Guide') for h in content['howTos'])
+
+
+def test_howto_draft_may_have_no_component(catalog):
+    root, pub, _ = catalog
+    base = seed(root, pub); howto(base, status='draft', components=[])
+    assert build_content(root, pub)['howTos'][0]['components'] == []
+
+
+def _branch(**kw):
+    return [dict(dict(situation='s', needs='n', wiring='w', supported='yes', prompt='p'), **kw)]
+
+
+@pytest.mark.parametrize('field,value,message', [
+    ('components', ['unknown'], 'unknown how-to component'),
+    ('components', [], 'published how-to needs a component'),
+    ('description', 'x'*161, 'invalid how-to description'),
+    ('updated', '2026-02-30', 'day is out of range|day 30 must be in range'),  # Python <3.14 | 3.14
+    ('branches', _branch(supported='coming-soon'), 'coming-soon branch needs an issue'),
+    ('branches', _branch(prompt=None), 'supported branch needs a prompt'),
+    ('sources', ['javascript:alert(1)'], 'unsafe how-to source'),
+    ('devices', ['unknown'], 'unknown how-to device'),
+    ('slug', 'other', 'invalid or duplicate how-to slug'),
+])
+def test_invalid_howto_fails(catalog, field, value, message):
+    root, pub, _ = catalog
+    base = seed(root, pub); howto(base, **{field: value})
+    with pytest.raises(ValueError, match=message): build_content(root, pub)
+
+
+def test_journal_howto_reference_must_exist(catalog):
+    root, pub, _ = catalog
+    base = seed(root, pub); article(base, pub, howto=['missing'])
+    with pytest.raises(ValueError, match='unknown how-to reference'): build_content(root, pub)
+    howto(base, 'missing')
+    assert build_content(root, pub)['articles'][0]['howto'] == ['missing']
 
 
 def test_content_excludes_draft_body_and_preserves_historical_refs(catalog):

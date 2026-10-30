@@ -137,7 +137,7 @@ approach toggle it has had since 0.1.0.
   two themes hold one mode each (`modes: {dark: …}`, `modes: {light: …}`, the series colours): the
   frontend forces a single-mode theme into that mode and draws its own defaults of it, whatever the
   browser's dark-mode setting (`themes/ramka.yaml` names the frontend version). That an open page
-  follows a change without a reload is inference until staging shows it (SPEC-020).
+  follows a change without a reload is inference until staging shows it (SPEC-021).
 
 ## Settings page
 
@@ -174,7 +174,8 @@ lovelace:
   now-playing switch and says the same of the visual.
 - **Preview** (Music): the now-playing card's two visual configs, bound to the same helpers but
   without `active`, so they draw while nothing plays; the one the visualization select names
-  shows, and `classic` shows a note. Each is 63 px high, the strip on the 1100 × 720 tablet, and
+  shows, and `classic` shows a note, as does a home without audio-sensor (its music source select
+  unavailable), where the card's element does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
   as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
   phone the strip is narrower at the same height.
 - **Music sensor and calibration** (Music, Advanced): audio-sensor's
@@ -183,7 +184,7 @@ lovelace:
   note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render
   cannot see audio-sensor, so these cards hide while the select is unavailable; that a missing
   entity counts as unavailable in a visibility condition is inference until staging shows it
-  (SPEC-020), and otherwise a home without audio-sensor sees "entity not available" rows there.
+  (SPEC-021), and otherwise a home without audio-sensor sees "entity not available" rows there.
   No reset touches the calibration: a measurement is not a preference.
 - **Option values** (`dune`, `series`, `dark`) read as they are: helper options are English, and a
   YAML `input_select` has no translated labels.
@@ -210,6 +211,9 @@ lovelace:
 - **`off_delay_s`**: the radar loses people who sit still, so a short delay sends the screen off
   and back on many times a day. In the first home 120 s gave 40 to 50 such offs a day; 300 s cut
   the short offs by 40 % and the median ambient stretch went from 2.3 to 9.6 minutes.
+- After a Home Assistant restart an open tablet page gets its forecast back by itself: the clock
+  card subscribes again when the page reconnects and when the weather entity is back, and retries
+  (10 s, 30 s, 60 s, then every 5 min) until the weather integration answers with days (0.3.1). No reload automation is needed.
 - A reload of the scripts stops the running ambient loop; the watchdog automation restarts it
   within five minutes. Template entities reload with `template.reload`.
 - After a change to the input_select options, restart Home Assistant rather than reloading them

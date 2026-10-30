@@ -124,15 +124,18 @@ and whether it is the music source (`music: true`; at most one sensor).
   has a state.
 - **The first flash and the factory image, by them.** Name both: download mode (hold the button
   while plugging in USB-C), `uvx esphome@<tested version> run <device file>`; a board nobody
-  configured yet takes `esphome/audio-sensor.factory.yaml` (Improv, then adoption). Then they
-  confirm the discovered ESPHome device with the API key.
+  configured yet takes `esphome/audio-sensor.factory.yaml` (Improv, then adoption in an ESPHome
+  Device Builder, which writes its own device file: add `area:` and the OTA `encryption:` by hand).
+  A Container home without a Device Builder container flashes the device file over USB instead.
+  Then they confirm the discovered ESPHome device with the API key.
 - **When `ramka` is installed**, ask: "Show this sensor's music on the Ramka: Spectrum, Level, or
   keep Classic?" Then:
   1. set `music_visual: spectrum` or `level` in `domosenso/ramka.inputs.yaml` (Classic: leave it
      absent); `music_visual_options` is optional, the look is tuned live;
   2. `domosenso render audio-sensor ramka` (ramka at 0.4.0 or newer; it reads the music sensor's
      aliases);
-  3. add the Ramka settings dashboard to `configuration.yaml`, one entry for the home's language
+  3. only when `domosenso status` prints `missing-dashboard-entry dashboards/ramka-settings.<lang>.yaml`:
+     add the Ramka settings dashboard to `configuration.yaml`, one entry for the home's language
      (`ramka/README.md`, "Settings page": `lovelace: dashboards: ramka-settings:` with
      `mode: yaml`, `filename: dashboards/ramka-settings.<lang>.yaml`, `require_admin: true`);
      a restart is theirs;
