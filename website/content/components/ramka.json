@@ -23,7 +23,7 @@
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -53,7 +53,7 @@
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -68,7 +68,7 @@
       "preview": "/previews/photos.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -79,11 +79,11 @@
         "ramka"
       ],
       "availability": "default",
-      "condition": "Enabled by default in Ramka 0.3.0; disable with status_page: false.",
+      "condition": "Enabled by default; turn it off on the Ramka settings dashboard or with status_page: false.",
       "preview": "/previews/status.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -100,7 +100,7 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -108,14 +108,15 @@
       "title": "Now playing",
       "owner": "ramka",
       "providers": [
-        "media"
+        "media",
+        "audio-sensor"
       ],
       "availability": "conditional",
-      "condition": "A configured media player is playing.",
+      "condition": "A configured media player is playing. With audio-sensor and music_visual set, the wave strip draws the room's spectrum or level instead of the classic wave.",
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -130,7 +131,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -145,18 +146,19 @@
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
   "setup": [
     "Set up the tablet and Companion app using the tablet guide.",
     "Install the radar through Room presence and map its presence and distance entities.",
-    "Choose the optional page inputs, render the dashboard and check each configured page before deployment."
+    "Choose the optional page inputs, render the dashboard and check each configured page before deployment.",
+    "Add the Ramka settings dashboard's lovelace entry; pages, presence, display and the music visual are tuned there live, without a render."
   ],
   "id": "ramka",
-  "version": "0.3.0",
-  "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+  "version": "0.4.0",
+  "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
   "evidencePaths": [
     "components/ramka/component.yaml"
   ],
