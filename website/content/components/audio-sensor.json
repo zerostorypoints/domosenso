@@ -1,0 +1,106 @@
+{
+  "outcome": "Hear the room on the wall: the music you play, drawn as it sounds.",
+  "categories": [
+    "media-display"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "m5stack-atom-echos3r"
+  ],
+  "views": [
+    {
+      "id": "music",
+      "title": "Now playing",
+      "owner": "ramka",
+      "providers": [
+        "media",
+        "audio-sensor"
+      ],
+      "availability": "opt-in",
+      "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 and mark one board music: true; without a reading the strip falls back to the classic wave.",
+      "preview": "/previews/music.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Flash the M5Stack Atom EchoS3R over USB the first time with the device file the component writes; later updates go over Wi-Fi.",
+    "Adopt the board in Home Assistant through ESPHome and map its entities in the component's inputs.",
+    "Calibrate the sound level against a reference meter, or keep the offset marked as an estimate.",
+    "To see it on the tablet, set Ramka's music_visual and choose the look on the Ramka settings dashboard."
+  ],
+  "id": "audio-sensor",
+  "version": "0.1.0",
+  "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+  "evidencePaths": [
+    "components/audio-sensor/component.yaml",
+    "components/audio-sensor/README.md"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Music",
+        "headline": "The strip follows the music",
+        "detail": "Fictional values: the third-octave spectrum from the board, about five updates a second.",
+        "values": [
+          {
+            "label": "Visual",
+            "value": "Spectrum"
+          },
+          {
+            "label": "Level",
+            "value": "68 dB SPL"
+          },
+          {
+            "label": "Source",
+            "value": "Living room"
+          }
+        ],
+        "level": 68
+      },
+      {
+        "label": "Quiet",
+        "headline": "A calm room",
+        "detail": "The level is reported every second, unweighted; the offset turns dBFS into dB SPL.",
+        "values": [
+          {
+            "label": "Visual",
+            "value": "Level"
+          },
+          {
+            "label": "Level",
+            "value": "34 dB SPL"
+          },
+          {
+            "label": "Calibration",
+            "value": "Estimate"
+          }
+        ],
+        "level": 34
+      },
+      {
+        "label": "Offline",
+        "headline": "Back to the classic wave",
+        "detail": "While the board has no reading, the now-playing strip shows the classic wave.",
+        "values": [
+          {
+            "label": "Sensor",
+            "value": "Offline"
+          },
+          {
+            "label": "Visual",
+            "value": "Classic"
+          },
+          {
+            "label": "Connection",
+            "value": "Local network"
+          }
+        ],
+        "level": 0
+      }
+    ]
+  }
+}

@@ -2,6 +2,69 @@
   "frameworkCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
   "components": [
     {
+      "id": "audio-sensor",
+      "version": "0.1.0",
+      "sourceTag": "audio-sensor/0.1.0",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "summary": "A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum",
+      "requirements": [
+        {
+          "kind": "sound-sensor",
+          "recommend": [
+            "m5stack-atom-echos3r"
+          ],
+          "count": "1 or more",
+          "power": "5 V USB"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "esphome",
+          "source": "core",
+          "setup": "adopt the board in Home Assistant once flashed (discovery confirmation), with the API key from the home's ESPHome secrets"
+        },
+        {
+          "name": "ESPHome (firmware)",
+          "source": "firmware",
+          "tested": "2026.9.1",
+          "setup": "flash the first time over USB (download mode: hold the button while plugging in); then OTA"
+        },
+        {
+          "name": "template",
+          "source": "core"
+        }
+      ],
+      "optionalRequirements": [],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [
+        "2026.9.1"
+      ],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [
+        {
+          "name": "sensors",
+          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/audio-sensor",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/audio-sensor/UPGRADE.md"
+    },
+    {
       "id": "awnings",
       "version": "0.2.1",
       "sourceTag": "awnings/0.2.1",
@@ -679,9 +742,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.3.0",
-      "sourceTag": "ramka/0.3.0",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "version": "0.4.0",
+      "sourceTag": "ramka/0.4.0",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -941,13 +1004,28 @@
           "required": false
         },
         {
+          "name": "music_visual",
+          "type": "spectrum | level",
+          "required": false
+        },
+        {
+          "name": "music_visual_options",
+          "type": "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?, fps?}",
+          "required": false
+        },
+        {
+          "name": "settings_defaults",
+          "type": "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}",
+          "required": false
+        },
+        {
           "name": "screen",
           "type": "{width: int, height: int}",
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",
