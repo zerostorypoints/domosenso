@@ -433,7 +433,7 @@ def test_plan_removes_file_dropped_from_record(tmp_path):
     assert "www/domosenso/ramka/0.1.0/cards/agenda-card.js" not in files
     assert record(home.target_dir) == {"deploy_id": deploy_id, "files": {
         "www/domosenso/ramka/0.1.1/cards/agenda-card.js": {"sha256": sha256(b"new"), "layer": "managed", "component": "ramka"},
-        inventory.PACKAGE: {"sha256": sha256(inventory.content(home.lock, {})), "layer": "managed", "component": None},
+        inventory.PACKAGE: {"sha256": sha256(inventory.content(home.lock, {}, inventory.packages(home.root / "esphome"))), "layer": "managed", "component": None},
     }}
 
 

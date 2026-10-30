@@ -175,7 +175,7 @@ def _carried(home: HomeConfig, lock: Lock, dev: dict[str, dict]) -> tuple[dict[s
     # The command's own package (SPEC-022): derived from the lock and the dev renders, so a copy that
     # says otherwise is out of date, never a hand edit to keep.
     listing = inventory.path(home)
-    wanted = inventory.content(lock, dev)
+    wanted = inventory.content(lock, dev, inventory.packages(home.esphome_dir))
     if wanted is not None or listing.is_file():
         if wanted is None or not listing.is_file() or file_sha(listing) != sha256(wanted):
             raise DomosensoError(f"inventory out of date: {inventory.PACKAGE}: run domosenso render")

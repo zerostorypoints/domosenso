@@ -8,6 +8,7 @@ component stamp, so nothing that reads stamps takes it for one.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from domosenso_cli import dev_render
@@ -18,6 +19,9 @@ from domosenso_cli.lock import Lock
 PACKAGE = "packages/domosenso.yaml"  # under config_dir
 STAMP = "# Rendered by Domosenso from domosenso.lock — do not edit\n"
 SHORT_SHA = 12  # as in the stamps (build.SHORT_SHA)
+# A remote ESPHome package of a catalog component at its tag, as a device file names it:
+# github://<owner>/<repo>/components/<id>/esphome/<file>@<id>/<version>
+_PACKAGE = re.compile(r"components/(?P<cid>[a-z0-9]+(?:-[a-z0-9]+)*)/esphome/[^@\s'\"]+@(?P=cid)/(?P<version>\d+\.\d+\.\d+)")
 
 _TEMPLATE = """\
 # sensor.domosenso_components: every component this home runs, its version, tag, commit and the
@@ -36,15 +40,37 @@ template:
 """
 
 
-def items(lock: Lock, dev: dict[str, dict]) -> list[dict]:
-    """One item per component, sorted by id; a dev render stands in for the lock's entry."""
+def packages(esphome_dir: Path | None) -> dict[str, tuple[str, str]]:
+    """Catalog components whose ESPHome package a device file pulls: id -> (version, device file name).
+    The first file in name order wins for a component named by several."""
+    found: dict[str, tuple[str, str]] = {}
+    if esphome_dir is None or not esphome_dir.is_dir():
+        return found
+    for path in sorted(esphome_dir.glob("*.yaml")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for match in _PACKAGE.finditer(text):
+            found.setdefault(match["cid"], (match["version"], path.name))
+    return found
+
+
+def items(lock: Lock, dev: dict[str, dict], borrowed: dict[str, tuple[str, str]] | None = None) -> list[dict]:
+    """One item per component, sorted by id; a dev render stands in for the lock's entry. A component
+    neither locked nor dev-rendered whose ESPHome package a board pulls is listed with `package`, the
+    device file (its release date is not known without the catalog)."""
     found = {}
+    for cid, (version, device_file) in (borrowed or {}).items():
+        found[cid] = {"id": cid, "version": version, "tag": f"{cid}/{version}", "commit": "", "released": "",
+                      "dev": False, "package": device_file}
     for cid, entry in lock.components.items():
         found[cid] = {"id": cid, "version": entry.version, "tag": entry.tag, "commit": entry.commit[:SHORT_SHA],
-                      "released": entry.released or "", "dev": False}
+                      "released": entry.released or "", "dev": False, "package": ""}
     for cid, entry in dev.items():
         found[cid] = {"id": cid, "version": str(entry.get("version", "")), "tag": "",
-                      "commit": str(entry.get("commit", "")), "released": str(entry.get("released", "")), "dev": True}
+                      "commit": str(entry.get("commit", "")), "released": str(entry.get("released", "")), "dev": True,
+                      "package": ""}
     return [found[cid] for cid in sorted(found)]
 
 
@@ -61,9 +87,9 @@ def _literal(value) -> str:
     raise TypeError(f"no literal for {value!r}")
 
 
-def content(lock: Lock, dev: dict[str, dict]) -> bytes | None:
+def content(lock: Lock, dev: dict[str, dict], borrowed: dict[str, tuple[str, str]] | None = None) -> bytes | None:
     """The file's bytes; None for a home without components (then there is no file)."""
-    listed = items(lock, dev)
+    listed = items(lock, dev, borrowed)
     if not listed:
         return None
     # The attribute is a template whose result Home Assistant parses into a list; the whole template
@@ -77,7 +103,7 @@ def path(home: HomeConfig) -> Path:
 
 
 def expected(home: HomeConfig, lock: Lock) -> bytes | None:
-    return content(lock, dev_render.load(home.root))
+    return content(lock, dev_render.load(home.root), packages(home.esphome_dir))
 
 
 def is_dev(home: HomeConfig) -> bool:

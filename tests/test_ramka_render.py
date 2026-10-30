@@ -2239,8 +2239,8 @@ def test_no_script_field_has_an_empty_selector(demo):
 
 
 def _about_markdown(dashboard) -> str:
-    [card] = [c for _, c in view_cards(settings_views(dashboard)["about"]) if c.get("type") == "markdown"]
-    return card["content"]
+    cards = [c for _, c in view_cards(settings_views(dashboard)["about"]) if c.get("type") == "markdown"]
+    return cards[0]["content"]  # the Components table; Related and Devices follow
 
 
 @pytest.mark.parametrize("lang", LANGS)
@@ -2251,17 +2251,20 @@ def test_about_page_lists_the_components(demo, lang):
     content = _about_markdown(demo[f"ramka-settings.{lang}.yaml"])
     items = [{"id": "audio-sensor", "version": "0.2.0", "tag": "audio-sensor/0.2.0", "commit": "0f1f0a7d060e",
               "released": "2026-10-30", "dev": False},
-             {"id": "ramka", "version": "0.8.0", "tag": "", "commit": "abc-dirty", "released": "2026-10-31", "dev": True}]
+             {"id": "ramka", "version": "0.8.0", "tag": "", "commit": "abc-dirty", "released": "2026-10-31", "dev": True},
+             {"id": "bermuda-presence", "version": "0.2.1", "tag": "bermuda-presence/0.2.1", "commit": "", "released": "",
+              "dev": False, "package": "ble-proxy.yaml"}]
     env = jinja2.Environment()
     shown = env.from_string(content).render(state_attr=lambda entity, attr: items if (entity, attr) == (
         "sensor.domosenso_components", "components") else None)
     lines = shown.splitlines()
     header = f"| {t['ui.settings.about_component']} | {t['ui.settings.about_version']} | {t['ui.settings.about_released']} |"
     at = lines.index(header)
-    assert lines[at + 1:at + 4] == [
+    assert lines[at + 1:at + 5] == [
         "|---|---|---|",
         "| audio-sensor | 0.2.0 | 2026-10-30 |",
         f"| ramka | 0.8.0 ({t['ui.settings.about_dev']}) | 2026-10-31 |",
+        f"| bermuda-presence | 0.2.1 ({t['ui.settings.about_package']} `ble-proxy.yaml`) | — |",
     ]
     # Without the sensor: the Ramka alone, as rendered, and how to get the list.
     missing = env.from_string(content).render(state_attr=lambda entity, attr: None)

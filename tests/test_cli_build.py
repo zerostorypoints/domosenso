@@ -546,7 +546,7 @@ def test_render_writes_the_inventory_and_released(home, catalog, capsys):
     assert sensor["attributes"]["component"] == "domosenso"
     assert listed == [
         {"id": cid, "version": "1.0.0", "tag": f"{cid}/1.0.0", "commit": commit_of(catalog, cid)[:12],
-         "released": date, "dev": False}
+         "released": date, "dev": False, "package": ""}
         for cid in ("panel",)
     ]
 
@@ -561,7 +561,7 @@ def test_dev_render_marks_its_item(home, catalog, capsys):
     _, listed = _listed(home)
     head = git(catalog, "rev-parse", "--short=12", "HEAD")
     assert listed == [{"id": "panel", "version": "1.0.0", "tag": "", "commit": f"{head}-dirty",
-                       "released": git(catalog, "log", "-1", "--format=%cs", "HEAD"), "dev": True}]
+                       "released": git(catalog, "log", "-1", "--format=%cs", "HEAD"), "dev": True, "package": ""}]
     # the tag again: the dev item goes
     run(home, "render", "panel", capsys=capsys)
     assert _listed(home)[1][0]["dev"] is False
@@ -607,3 +607,18 @@ def test_render_dates_every_locked_component_and_sees_the_manifest(home, catalog
     assert yaml.safe_load((home / HA / "packages/panel_about.yaml").read_text()) == {"about": "panel 1.0.1"}
     assert Lock.load(home).components["other"].released == git(catalog, "log", "-1", "--format=%cs", "other/1.0.0")
     assert all(item["released"] for item in _listed(home)[1])
+
+
+def test_inventory_lists_a_borrowed_esphome_package(home, catalog, capsys):
+    """A board that pulls a catalog component's ESPHome package, the component not locked (SPEC-022)."""
+    lock_in(home, catalog, "panel")
+    (home / "esphome").mkdir()
+    (home / "esphome" / "proxy.yaml").write_text(
+        "packages:\n  proxy: github://owner/repo/components/other/esphome/ble-proxy.yaml@other/0.2.1\n"
+        "  self: github://owner/repo/components/panel/esphome/x.yaml@panel/1.0.0\n")
+    code, out = run(home, "render", capsys=capsys)
+    assert code == 0, out
+    listed = {item["id"]: item for item in _listed(home)[1]}
+    assert listed["other"] == {"id": "other", "version": "0.2.1", "tag": "other/0.2.1", "commit": "", "released": "",
+                               "dev": False, "package": "proxy.yaml"}
+    assert listed["panel"]["package"] == ""  # locked: listed from the lock, not as a package

@@ -320,7 +320,23 @@
       "about_released": "Released",
       "about_dev": "development",
       "about_how": "Every Domosenso component this home runs, as the last `domosenso render` or `update` left it. Released: the date the catalog released that version.",
-      "about_missing": "Only the Ramka is listed: `sensor.domosenso_components` is missing. A `domosenso render` with a current `domosenso` command writes it, with every component of the home."
+      "about_missing": "Only the Ramka is listed: `sensor.domosenso_components` is missing. A `domosenso render` with a current `domosenso` command writes it, with every component of the home.",
+      "about_related": "Related components",
+      "about_related_how": "The integrations whose entities the components use, traced from their files (prototype).",
+      "about_integration": "Integration",
+      "about_kind": "Kind",
+      "about_used_by": "Used by",
+      "about_devices": "Devices",
+      "about_devices_how": "The devices behind those entities; firmware and status read live.",
+      "about_device": "Device",
+      "about_model": "Model",
+      "about_firmware": "Firmware",
+      "about_via": "Via",
+      "about_status": "Status",
+      "about_declared": "declared",
+      "about_ok": "ok",
+      "about_unavailable": "offline",
+      "about_package": "ESPHome package only:"
     }
   },
   "meta": {

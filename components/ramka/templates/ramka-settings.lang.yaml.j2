@@ -350,7 +350,7 @@ views:
               | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_released') ]] |
               |---|---|---|
               {%- for c in items %}
-              | {{ c.id }} | {{ c.version }}{{ ' (' ~ [[ t('ui.settings.about_dev') | yaml ]] ~ ')' if c.dev else '' }} | {{ c.released or '—' }} |
+              | {{ c.id }} | {{ c.version }}{{ ' (' ~ [[ t('ui.settings.about_dev') | yaml ]] ~ ')' if c.dev else '' }}{{ ' (' ~ [[ t('ui.settings.about_package') | yaml ]] ~ ' `' ~ c.get('package') ~ '`)' if c.get('package') else '' }} | {{ c.released or '—' }} |
               {%- endfor %}
               {%- else %}
               | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] |
@@ -359,3 +359,50 @@ views:
 
 [[ block(t('ui.settings.about_missing')) ]]
               {%- endif %}
+      # PROTOTYPE: what the components use from integrations and devices, from
+      # sensor.domosenso_related (which entities each component uses, traced strictly); integration,
+      # device, firmware, hub and update are looked up live. Hidden while the sensor is not there.
+      - type: grid
+        column_span: 2
+        visibility: [ {condition: state, entity: sensor.domosenso_related, state_not: unavailable} ]
+        cards:[[ heading('about_related', 'mdi:puzzle-outline') ]]
+          - type: markdown
+            content: |-
+              {% set uses = state_attr('sensor.domosenso_related', 'uses') or {} %}
+              {% set ints = state_attr('sensor.domosenso_related', 'integrations') or {} %}
+              [[ t('ui.settings.about_related_how') ]]
+
+              | [[ t('ui.settings.about_integration') ]] | [[ t('ui.settings.about_kind') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_used_by') ]] |
+              |---|---|---|---|
+              {%- for domain, i in ints.items() %}
+              {%- set provided = integration_entities(domain) %}
+              {%- set ns = namespace(users=[]) %}
+              {%- for cid, ids in uses.items() if ids | select('in', provided) | list %}{% set ns.users = ns.users + [cid] %}{% endfor %}
+              {%- set installed = state_attr(i.update_entity, 'installed_version') if i.update_entity else i.version %}
+              {%- set latest = state_attr(i.update_entity, 'latest_version') if i.update_entity else none %}
+              | {{ i.name }} | {{ i.kind }} | {{ installed }}{{ ' → ' ~ latest if latest and is_state(i.update_entity, 'on') else '' }} | {{ ns.users | join(', ') }} |
+              {%- endfor %}
+      - type: grid
+        column_span: 2
+        visibility: [ {condition: state, entity: sensor.domosenso_related, state_not: unavailable} ]
+        cards:[[ heading('about_devices', 'mdi:devices') ]]
+          - type: markdown
+            content: |-
+              {% set uses = state_attr('sensor.domosenso_related', 'uses') or {} %}
+              {% set declared_links = state_attr('sensor.domosenso_related', 'declared_links') or [] %}
+              {%- set ns = namespace(used=[], devices=[]) %}
+              {%- for cid, ids in uses.items() %}{% set ns.used = ns.used + ids %}{% endfor %}
+              {%- for e in ns.used %}{% set d = device_id(e) %}{% if d and d not in ns.devices %}{% set ns.devices = ns.devices + [d] %}{% endif %}{% endfor %}
+              {%- for x in declared_links if x.via not in ns.devices %}{% set ns.devices = ns.devices + [x.via] %}{% endfor %}
+              {%- macro name(d) %}{{ device_attr(d, 'name_by_user') or device_attr(d, 'name') }}{% endmacro %}
+              [[ t('ui.settings.about_devices_how') ]]
+
+              | [[ t('ui.settings.about_device') ]] | [[ t('ui.settings.about_model') ]] | [[ t('ui.settings.about_firmware') ]] | [[ t('ui.settings.about_via') ]] | [[ t('ui.settings.about_status') ]] |
+              |---|---|---|---|---|
+              {%- for d in ns.devices %}
+              {%- set via = device_attr(d, 'via_device_id') %}
+              {%- set said = (declared_links | selectattr('device', 'eq', d) | map(attribute='via') | list + [none]) | first %}
+              {%- set mine = device_entities(d) | select('in', ns.used) | list %}
+              {%- set down = mine | select('is_state', 'unavailable') | list %}
+              | {{ name(d) }} | {{ [device_attr(d, 'manufacturer'), device_attr(d, 'model')] | select | join(' ') }} | {{ device_attr(d, 'sw_version') or '—' }} | {{ name(via) if via else (name(said) ~ ' (' ~ [[ t('ui.settings.about_declared') | yaml ]] ~ ')' if said else '—') }} | {{ [[ t('ui.settings.about_unavailable') | yaml ]] if mine and down | count == mine | count else [[ t('ui.settings.about_ok') | yaml ]] }} |
+              {%- endfor %}
