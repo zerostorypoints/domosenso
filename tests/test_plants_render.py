@@ -121,3 +121,25 @@ def test_water_in_uses_the_rate_per_second(demo):
     inputs, package = demo
     _, water_in = template_sensors(package)["monstera_water_in_days"]
     assert "86400" in water_in["state"] and "/ 2" not in water_in["state"]
+
+
+def test_drying_rate_keeps_its_digits(demo):
+    """A rate per second is around -1e-5 %/s; statistics rounds to 2 decimals by default, which
+    made every rate 0.0 and water_in_days never known (production, 2026-10-30)."""
+    inputs, package = demo
+    statistics = {s["unique_id"]: s for s in package["sensor"]}
+    for plant in inputs["plants"]:
+        assert statistics[f"{object_id(plant['entity'])}_moisture_change_48h"]["precision"] >= 8
+
+
+def test_new_sensor_message_renders_with_plain_jinja(demo):
+    """Home Assistant has no `zip` filter: the automation was disabled at the start (production,
+    2026-10-30). Plain Jinja has none either, so rendering the message here proves the filters exist."""
+    import jinja2
+
+    inputs, package = demo
+    automation = next(a for a in package["automation"] if a["id"] == "plants_sensor_new")
+    new = [{"entity": "sensor.plant_sensor_9c2d_moisture", "device": "Plant Sensor 9C2D", "value": 11.0},
+           {"entity": "sensor.plant_sensor_ab12_moisture", "device": "Plant Sensor AB12", "value": 7.0}]
+    text = jinja2.Environment().from_string(automation["variables"]["text"]).render(new=new).strip()
+    assert text == "Plant Sensor 9C2D: 11.0 %, Plant Sensor AB12: 7.0 %"
