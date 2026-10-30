@@ -244,7 +244,11 @@
       "music_spectrum_hot_db": "Spectrum hot at",
       "music_level_neutral_db": "Level neutral at",
       "music_level_hot_db": "Level hot at",
-      "music_fps": "Refresh rate",
+      "music_fps": "Redraw rate",
+      "music_spectrum_rate": "Sensor update rate",
+      "music_spectrum_rate_eco": "least often, the lightest load on the network",
+      "music_spectrum_rate_normal": "the default",
+      "music_spectrum_rate_fast": "every new measurement, only while the tablet shows now playing",
       "music_source": "Music sensor",
       "inputs": {
         "screen": "Screen",
