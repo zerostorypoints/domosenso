@@ -219,3 +219,44 @@ def test_release_sees_untracked_files_even_when_user_hides_them(repo):
     with pytest.raises(release.ReleaseError, match='uncommitted'):
         release.release(repo, 'radio')
     assert git(repo, 'tag', '-l') == ''
+
+
+# ---- A squash merge: main's commit is new, its tree is the tested PR head's --------------------
+
+def pr_fixture(repo, monkeypatch, *, same_tree=True, merge_sha=None, pr_runs=True):
+    """main's HEAD has no checks of its own; the PR that produced it was tested at a head commit
+    whose tree is (or is not) the same."""
+    git(repo, "remote", "add", "origin", "https://github.com/example/catalog.git")
+    head = git(repo, "rev-parse", "HEAD")
+    tree = git(repo, "rev-parse", "HEAD^{tree}")
+    pr_head = "a" * 40
+    requirements = {"checks": [{"context": "framework", "app_id": 15368},
+                                {"context": "website", "app_id": 15368}]}
+    def api(root, endpoint, paginate=False):
+        if endpoint.endswith("required_status_checks"):
+            return requirements
+        if endpoint.endswith(f"commits/{head}/pulls"):
+            return [{"number": 7, "merged_at": "2026-10-30T22:00:00Z", "merge_commit_sha": merge_sha or head,
+                     "head": {"sha": pr_head}}]
+        if endpoint.endswith(f"git/commits/{pr_head}"):
+            return {"tree": {"sha": tree if same_tree else "b" * 40}}
+        if f"commits/{pr_head}/check-runs" in endpoint:
+            return [{"check_runs": [run("framework", pr_head), run("website", pr_head)] if pr_runs else []}]
+        if f"commits/{head}/check-runs" in endpoint:
+            return [{"check_runs": []}]
+        raise AssertionError(endpoint)
+    monkeypatch.setattr(release, "github_json", api, raising=False)
+    return head
+
+
+def test_ci_accepts_the_merged_prs_tested_head_with_the_same_tree(repo, monkeypatch):
+    head = pr_fixture(repo, monkeypatch)
+    release.verify_ci(repo, head)
+
+
+@pytest.mark.parametrize("case", ["other tree", "not this merge", "pr not green"])
+def test_ci_refuses_borrowed_evidence_that_does_not_match(repo, monkeypatch, case):
+    head = pr_fixture(repo, monkeypatch, same_tree=case != "other tree",
+                      merge_sha="c" * 40 if case == "not this merge" else None, pr_runs=case != "pr not green")
+    with pytest.raises(release.ReleaseError, match="CI framework: no current successful check"):
+        release.verify_ci(repo, head)

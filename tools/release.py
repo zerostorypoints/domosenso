@@ -8,7 +8,9 @@ The `domosenso` command reads components only from these tags. Refuses when
 - the tag `<id>/<version>` already exists (a published version is never moved);
 - the contract (`inputs`, `provides`, `artifacts`) differs from the newest earlier tag of the
   component and `components/<id>/UPGRADE.md` has no `## <version>` heading;
-- the full local gate fails, or --skip-checks has no successful exact-HEAD GitHub CI evidence.
+- the full local gate fails, or --skip-checks has no successful GitHub CI evidence for HEAD: its own
+  checks, or those of the merged pull request's last commit when that commit has the same tree (a
+  squash or merge commit holds exactly the files CI tested; the tree id is their hash).
 
 Prints `tag <id>/<version> at <short sha>` and `ok`, or `FAIL <reason>` (exit 1). Never pushes.
 """
@@ -88,17 +90,49 @@ def verify_ci(catalog: Path, head: str) -> None:
     pages = github_json(catalog, f"repos/{repo}/commits/{head}/check-runs?filter=all&per_page=100", paginate=True)
     if not isinstance(pages, list) or not all(isinstance(page, dict) and isinstance(page.get("check_runs"), list) for page in pages):
         raise ReleaseError("CI check response is malformed")
+    missing = _missing_check(requirements, pages, head)
+    if missing is None:
+        return
+    # A squash merge makes a new commit that CI may not have reached yet; the pull request that
+    # produced it was tested at its last commit. Same tree, same files: that evidence holds.
+    for sha in _merged_pr_heads(catalog, repo, head):
+        pages = github_json(catalog, f"repos/{repo}/commits/{sha}/check-runs?filter=all&per_page=100", paginate=True)
+        if _missing_check(requirements, pages, sha) is None:
+            return
+    raise ReleaseError(f"CI {missing}: no current successful check for {head}")
+
+
+def _missing_check(requirements: dict, pages, sha: str) -> str | None:
+    """The first required check without a current success for `sha`, or None when all have one."""
+    if not isinstance(pages, list) or not all(isinstance(page, dict) and isinstance(page.get("check_runs"), list) for page in pages):
+        raise ReleaseError("CI check response is malformed")
     runs = [run for page in pages for run in page["check_runs"]]
     for required in requirements["checks"]:
         name, app_id = required.get("context"), required.get("app_id")
         # An unbound context can be supplied by an unrelated app: don't use it for a release.
         if not name or not app_id:
             raise ReleaseError("CI required check has no trusted app; run the full local gate instead")
-        matching = [run for run in runs if run.get("name") == name and run.get("head_sha") == head
+        matching = [run for run in runs if run.get("name") == name and run.get("head_sha") == sha
                     and (run.get("app") or {}).get("id") == app_id]
         latest = max(matching, key=lambda run: run.get("id", 0), default={})
         if latest.get("status") != "completed" or latest.get("conclusion") != "success":
-            raise ReleaseError(f"CI {name}: no current successful check for {head}")
+            return name
+    return None
+
+
+def _merged_pr_heads(catalog: Path, repo: str, head: str) -> list[str]:
+    """Last commits of the pull requests merged as `head` whose tree is `head`'s tree."""
+    tree = git(catalog, "rev-parse", f"{head}^{{tree}}").stdout.strip()
+    pulls = github_json(catalog, f"repos/{repo}/commits/{head}/pulls")
+    heads = []
+    for pull in pulls if isinstance(pulls, list) else []:
+        pr_head = ((pull or {}).get("head") or {}).get("sha")
+        if not pull.get("merged_at") or pull.get("merge_commit_sha") != head or not pr_head:
+            continue
+        commit = github_json(catalog, f"repos/{repo}/git/commits/{pr_head}")
+        if isinstance(commit, dict) and (commit.get("tree") or {}).get("sha") == tree:
+            heads.append(pr_head)
+    return heads
 
 
 def newest_earlier_tag(catalog: Path, component_id: str) -> str | None:
