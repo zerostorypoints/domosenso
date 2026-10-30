@@ -12,6 +12,10 @@ implementer can hold a pull request to it.
   `review-issue` checks one and gives a verdict; `triage-issues` ranks the open backlog, proposes
   labels and picks the next issue to work on. All three follow this page.
 
+The `release-reminder` issue is written by the Release reminder workflow, not by a person: it
+lists components waiting for a tag or the website, is not triaged and closes itself when nothing
+is left.
+
 ## One issue, one change
 
 An issue is the size of **one pull request**: a reviewer can hold the result against its acceptance
