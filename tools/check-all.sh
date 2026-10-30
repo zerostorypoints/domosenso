@@ -59,6 +59,13 @@ collect() {  # waits for every background step, then reports each like step()
   done
 }
 
+ha_image() {  # home staging needs the image present and pulls nothing; ha-check's docker run would
+  local image
+  image=$(sed -n "s/^IMAGE = '\(.*\)'\$/\1/p" tools/dev_home/runtime.py)
+  [ -n "$image" ] || { echo "no IMAGE in tools/dev_home/runtime.py" >&2; return 1; }
+  docker image inspect "$image" > /dev/null 2>&1 || docker pull -q "$image"
+}
+
 step agents_check uv run tools/agents_check.py
 step pytest uv run pytest -q -n auto
 step "website content" uv run tools/export_website.py --check
@@ -76,6 +83,8 @@ if git diff --name-only origin/main...HEAD 2>/dev/null | grep -q '^website/'; th
 fi
 step "catalog_check --strict" uv run tools/catalog_check.py --strict
 if [ "$mode" = full ]; then
+# Before the pool: on a fresh machine home staging would start before any ha-check had pulled it.
+step "Home Assistant image" ha_image
 # Home staging first: it is the longest, the others fill the remaining slots.
 background "home staging runtime" uv run tools/home-staging-check.py
 for manifest in components/*/component.yaml; do
