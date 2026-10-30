@@ -1888,7 +1888,11 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
         text = (after / name).read_text(encoding="utf-8")
         assert set(AUDIO_SENSOR_ID.findall(text)) <= consumed, (name, set(AUDIO_SENSOR_ID.findall(text)) - consumed)
         old = load(before / name)
-        new = yaml.safe_load(text.replace("blob/audio-sensor/0.2.0/", "blob/audio-sensor/0.1.0/"))
+        text = text.replace("blob/audio-sensor/0.2.0/", "blob/audio-sensor/0.1.0/")
+        for ten, five in (("Up to ten rooms", "Up to five rooms"), ("Do dziesięciu pokoi", "Do pięciu pokoi"),
+                          ("Bis zu zehn Räume", "Bis zu fünf Räume")):  # amendment 3, not this change
+            text = text.replace(ten, five)
+        new = yaml.safe_load(text)
         if name == "package.yaml":
             new["automation"] = [a for a in new["automation"] if a["id"] != "ramka_music_watching"]
             sequence = new["script"]["ramka_settings_reset"]["sequence"]
@@ -1900,6 +1904,12 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
                     for entity in block.get("binary_sensor", []):
                         if entity["unique_id"] == "ramka_music_view":
                             entity.pop("attributes", None)
+                # Ten Climate rooms instead of five (amendment 3) is another change than this one.
+                package["script"].pop("ramka_climate_rooms_set", None)
+                for block in package["script"]["ramka_settings_reset"]["sequence"][1:]:
+                    for step in block["then"]:
+                        if step.get("event") == "ramka_climate_rooms":
+                            step["event_data"].pop("rooms")
         elif name.startswith("ramka-settings."):
             lang = name.split(".")[1]
             for view in new["views"]:
@@ -2142,16 +2152,22 @@ def test_calendar_page_links_to_ics_and_caldav(demo):
 
 
 def demo_rooms(inputs=None):
-    """The rooms the seed gives a home: the first five of `climate`, temperature and humidity."""
+    """The rooms the seed gives a home: the first ten of `climate`, temperature and humidity."""
     return [{"label": c["label"], "main": c["temperature"], "extra": c.get("humidity") or ""}
-            for c in (inputs or demo_inputs())["climate"][:5]]
+            for c in (inputs or demo_inputs())["climate"][:10]]
 
 
-def test_climate_rooms_default_to_the_first_five(demo):
+def test_climate_rooms_default_to_the_first_ten(demo, tmp_path):
     package = demo["package.yaml"]
-    assert len(demo_inputs()["climate"]) > 5
+    # The demo has seven, more than amendment 2's five: all of them now (amendment 3).
+    assert 5 < len(demo_inputs()["climate"]) <= 10
     rooms = run_reset(package, events=True)[CLIMATE]
-    assert rooms == demo_rooms() and len(rooms) == 5
+    assert rooms == demo_rooms() and len(rooms) == len(demo_inputs()["climate"])
+    # More than ten: the first ten.
+    inputs = demo_inputs()
+    inputs["climate"] = [dict(inputs["climate"][n % 7], label=f"R{n}") for n in range(12)]
+    many = run_reset(render(tmp_path, inputs)["package.yaml"], events=True)[CLIMATE]
+    assert many == demo_rooms(inputs) and len(many) == 10
     assert run_reset(package, page="climate", events=True) == {CLIMATE: rooms, "input_boolean.ramka_page_climate": "on"}
     assert run_reset(package, groups=["climate"], events=True) == {CLIMATE: rooms}
     assert CLIMATE not in run_reset(package, page="photos", events=True)
@@ -2170,8 +2186,8 @@ def test_climate_rooms_sensor_and_script(demo):
     [step] = script["sequence"]
     assert step["event"] == "ramka_climate_rooms"
     sent = lambda **f: ha_value(step["event_data"]["rooms"], **f)  # noqa: E731
-    six = [{"label": f"R{n}", "main": f"sensor.r{n}", "extra": f"sensor.h{n}"} for n in range(6)]
-    assert sent(rooms=six) == six[:5]
+    eleven = [{"label": f"R{n}", "main": f"sensor.r{n}", "extra": f"sensor.h{n}"} for n in range(11)]
+    assert sent(rooms=eleven) == eleven[:10]
     # A room without a sensor as its main reading is dropped; missing keys become empty.
     assert sent(rooms=[{"label": "x", "main": ""}, {"main": "sensor.a"}, "junk", {"label": "y", "main": "light.l"}]) == [
         {"label": "", "main": "sensor.a", "extra": ""}]

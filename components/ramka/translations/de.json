@@ -274,7 +274,7 @@
       "photo_count": "Fotos pro Serie",
       "photo_s": "Zeit pro Foto",
       "climate_rooms": "Räume",
-      "climate_rooms_how": "Bis zu fünf Räume, jeder mit einem Hauptmesswert und einem zweiten, standardmässig Temperatur und Luftfeuchtigkeit. Raum 1 ist die erste Kachel und die erste Linie der Diagramme, in der Farbe seines Punkts. Ein Raum ohne Hauptmesswert entfällt; ein leerer Name wird zum Bereich des Sensors.",
+      "climate_rooms_how": "Bis zu zehn Räume, jeder mit einem Hauptmesswert und einem zweiten, standardmässig Temperatur und Luftfeuchtigkeit. Raum 1 ist die erste Kachel und die erste Linie der Diagramme, in der Farbe seines Punkts. Ein Raum ohne Hauptmesswert entfällt; ein leerer Name wird zum Bereich des Sensors.",
       "air_score": "Luftqualität anzeigen",
       "air_co2": "CO₂ anzeigen",
       "air_pm2_5": "PM2.5 anzeigen",

@@ -27,7 +27,7 @@ function makeCard() {
 test("each reading is HA's entity picker, of sensors with a unit, holding the room's sensor", () => {
   const { card } = makeCard();
   const pickers = [...card.shadowRoot.querySelectorAll("ha-entity-picker")];
-  assert.equal(pickers.length, 10);
+  assert.equal(pickers.length, 20);  // ten rooms, two readings each
   assert.equal(card.shadowRoot.querySelectorAll("select").length, 0);
   assert.deepEqual(pickers.slice(0, 2).map((p) => p.value), ["sensor.k_t", ""]);
   assert.deepEqual(pickers[0].includeDomains, ["sensor"]);

@@ -30,11 +30,11 @@ const change = (el, value) => {
   el.dispatchEvent(new window.Event("change"));
 };
 
-test("five rooms, each a name and two dropdowns; the rooms fill the first rows", () => {
+test("ten rooms, each a name and two dropdowns; the rooms fill the first rows", () => {
   const { card } = makeCard({ rooms: [{ label: "Kitchen", main: "sensor.k_t", extra: "sensor.k_h" }] });
-  assert.equal(card.shadowRoot.querySelectorAll(".row").length, 5);
-  assert.deepEqual(selects(card).map((s) => s.value), ["sensor.k_t", "sensor.k_h", "", "", "", "", "", "", "", ""]);
-  assert.deepEqual(inputs(card).map((i) => i.value), ["Kitchen", "", "", "", ""]);
+  assert.equal(card.shadowRoot.querySelectorAll(".row").length, 10);
+  assert.deepEqual(selects(card).map((s) => s.value), ["sensor.k_t", "sensor.k_h", ...Array(18).fill("")]);
+  assert.deepEqual(inputs(card).map((i) => i.value), ["Kitchen", ...Array(9).fill("")]);
   assert.equal(card.shadowRoot.querySelector(".room").textContent, "Room 1");
 });
 

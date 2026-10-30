@@ -1,4 +1,4 @@
-// The Climate page's rooms, picked on the settings dashboard: five rows, each a name, a main reading
+// The Climate page's rooms, picked on the settings dashboard: ten rows, each a name, a main reading
 // and a supplementary one (by default the temperature and the humidity), chosen from the home's
 // sensors that have a unit with Home Assistant's own entity picker, which searches as you type. Room n is the n-th tile and the n-th line of the 7-day charts,
 // in the theme's series colour n, the swatch in front of the row.
@@ -22,7 +22,7 @@ import pl from "../translations/pl.json" with { type: "json" };
 
 const t = createT({ en, de, pl });
 
-const SLOTS = 5;
+const SLOTS = 10;
 // HA's own series colours when the theme has none (src/common/color/colors.ts), as rooms-card.
 const PALETTE = ["#4269d0", "#f4bd4a", "#ff725c", "#6cc5b0", "#a463f2"];
 
