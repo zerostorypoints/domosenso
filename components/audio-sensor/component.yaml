@@ -111,7 +111,7 @@ provides:                                 # contract surface; placeholders in <>
     # them to the selected board's Spectrum rate select. Only with a `music: true` board.
     - {id: "input_select.audio_sensor_music_spectrum_rate", stability: stable, note: "with a music board; options eco, normal, fast (additive-only); no initial:; a state that is no option reads as normal"}
     - {id: "input_boolean.audio_sensor_music_watching", stability: stable, note: "with a music board; on while a view shows the music visual (the Ramka sets it); no initial:"}
-    - {id: "automation.audio_sensor_music_spectrum_rate", unique_id: audio_sensor_music_spectrum_rate, stability: additive-only, note: "sets the selected board's Spectrum rate to the choice, fast only while watching is on (else normal, 10 s after watching turns off); re-applies on HA start, a source change and the board's select becoming available; the board a source change leaves goes back to normal"}
+    - {id: "automation.audio_sensor_music_spectrum_rate", unique_id: audio_sensor_music_spectrum_rate, stability: additive-only, note: "sets the selected board's Spectrum rate to the choice, fast only while watching is on (else normal, 10 s after watching turns off); re-applies on HA start, a source change and any change of the board's select, its 60 min timeout included; the board a source change leaves goes back to normal"}
 
   # The board's ESPHome entities. Home Assistant builds their ids from the device's area and names
   # when the board is adopted (a renamed device keeps its old ids), so they are declared, not

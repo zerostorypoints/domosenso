@@ -514,9 +514,19 @@ def test_spectrum_rate_automation_targets_the_selected_board(demo):
     assert has(trigger="state", entity_id=WATCHING, to="off", **{"for": {"seconds": 10}})
     assert has(trigger="state", entity_id=SELECT)
     assert has(trigger="homeassistant", event="start")
-    available = [t for t in triggers if t.get("from") == "unavailable"]
-    assert {e for t in available for e in ([t["entity_id"]] if isinstance(t["entity_id"], str) else t["entity_id"])} \
-        >= {LIVING_RATE, KIDS_RATE}
+    board = [t for t in triggers if t.get("id") == "board"]
+    assert len(board) == 1
+    assert set(board[0]["entity_id"]) == {LIVING_RATE, KIDS_RATE}
+
+
+def test_spectrum_rate_reapplies_on_any_change_of_the_boards_select(demo):
+    # The board's select coming back online and its own 60 min timeout (fast -> normal) both change
+    # its state: one trigger without `from` re-applies the profile for both. Setting the option the
+    # select already has changes no state, so it cannot loop.
+    board = next(t for t in rate_automation(demo)["triggers"] if t.get("id") == "board")
+    assert board["trigger"] == "state"
+    assert "from" not in board and "to" not in board
+    assert board["not_to"] == ["unavailable", "unknown"]
 
 
 def test_spectrum_rate_fast_only_while_watching(demo):

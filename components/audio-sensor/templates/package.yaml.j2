@@ -270,9 +270,11 @@ script:
 
 # Forwards the spectrum rate to the board the music source select holds, the same map as the aliases.
 # `fast` costs Wi-Fi airtime and the board's CPU, so it applies only while someone watches; 10 s after
-# the last view leaves, the board goes back to normal (a quick page flip keeps it fast). A board that
-# is offline cannot take the option: its select coming back is a trigger, and so is HA's start. A
-# source change sets the board it leaves to normal. The board's own 60 min timeout catches the rest.
+# the last view leaves, the board goes back to normal (a quick page flip keeps it fast). Any change of
+# a board's select re-applies the profile: its coming back online (an offline board cannot take the
+# option), its own 60 min timeout from fast to normal while someone still watches, a change made on
+# the board (HA owns the profile). Setting the option it already has changes no state, so no loop.
+# HA's start re-applies too. A source change sets the board it leaves to normal.
 automation:
   - id: audio_sensor_music_spectrum_rate
     alias: Audio sensor music spectrum rate
@@ -303,8 +305,10 @@ automation:
 [%- for b in ordered %]
           - [[ b.spectrum_rate ]]
 [%- endfor %]
-        from: unavailable
-        id: available
+        not_to:
+          - unavailable
+          - unknown
+        id: board
     actions:
       - variables:
           target: >-
