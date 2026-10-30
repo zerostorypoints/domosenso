@@ -1,10 +1,18 @@
-# Theme for the Ramka dashboard (templates/dashboard.lang.yaml.j2 sets `theme: ramka`); installed
-# as /config/themes/ramka.yaml, loaded by `frontend: themes: !include_dir_merge_named themes`.
-# It only sets the series colours: HA's charts take series N from --graph-color-N, and
+# Themes for the Ramka; installed as /config/themes/ramka.yaml, loaded by `frontend: themes:
+# !include_dir_merge_named themes`. HA's charts take series N from --graph-color-N, and
 # rooms-card.js colours a room's temperature from the same variable (the climate input's
 # `color: N`, by default the room's position), so a tile and its line on the 7-day chart match.
 # Eleven bright colours that read on the dark background; the default palette's brown (#9c6b4e)
 # and grey (#9498a0) did not.
+#
+# `ramka`: only the series colours, per mode (the Ramka's view theme until 0.3.0; kept for any
+# other dashboard that names it). `ramka-dark`, `ramka-light` (0.4.0): the server's default theme,
+# set by the automation <prefix>_theme_mode from input_select.<prefix>_theme_mode. Each holds one
+# mode only, which the frontend forces whatever the browser's own dark-mode setting, and then
+# applies its own defaults of that mode under the series colours: home-assistant-frontend
+# 20260826.7 (the version Home Assistant 2026.9.2 ships), src/state/themes-mixin.ts, where a theme
+# whose modes lack "light" runs dark and one whose modes lack "dark" runs light. Nothing of the
+# frontend's colours is copied here, so a frontend update cannot leave them stale.
 ramka:
   graph-color-1: "#5b8def"
   graph-color-2: "#f5c542"
@@ -30,6 +38,34 @@ ramka:
       graph-color-9: "#5be37a"
       graph-color-10: "#c7c7c7"
       graph-color-11: "#e040fb"
+    light:
+      graph-color-1: "#3b6fd6"
+      graph-color-2: "#d9a400"
+      graph-color-3: "#e65a3c"
+      graph-color-4: "#1fa98c"
+      graph-color-5: "#8a5cf6"
+      graph-color-6: "#e5609e"
+      graph-color-7: "#e68a1f"
+      graph-color-8: "#4aa3e0"
+      graph-color-9: "#2fb858"
+      graph-color-10: "#7a7a7a"
+      graph-color-11: "#b31fcc"
+ramka-dark:
+  modes:
+    dark:
+      graph-color-1: "#5b8def"
+      graph-color-2: "#f5c542"
+      graph-color-3: "#ff7a5c"
+      graph-color-4: "#4fd1b5"
+      graph-color-5: "#b388ff"
+      graph-color-6: "#ff8ac2"
+      graph-color-7: "#ffa94d"
+      graph-color-8: "#8fd3ff"
+      graph-color-9: "#5be37a"
+      graph-color-10: "#c7c7c7"
+      graph-color-11: "#e040fb"
+ramka-light:
+  modes:
     light:
       graph-color-1: "#3b6fd6"
       graph-color-2: "#d9a400"

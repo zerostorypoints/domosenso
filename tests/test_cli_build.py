@@ -433,6 +433,28 @@ def test_second_dev_render_of_an_unlocked_component_replaces_its_dirty_files(hom
     assert f"dev {HA}/packages/panel.yaml" in out.splitlines()
 
 
+def test_second_dev_render_replaces_its_unstamped_cards_and_translations(home, catalog, capsys):
+    """Cards and translations carry no stamp: the inventory's sha256 says they are the dev render's own."""
+    assert dev_render(home, catalog, capsys, "panel")[0] == 0
+    write_files(catalog / "components" / "panel", {
+        "cards/lib/i18n.js": "export const t = (k) => k + '!';\n", "translations/de.json": '{"ui": {"title": "Neu"}}',
+    })
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    assert "+ '!'" in (home / HA / "www/domosenso/panel/1.0.0/cards/lib/i18n.js").read_text()
+    assert "Neu" in (home / HA / "dashboards/panel.de.yaml").read_text()
+
+
+def test_second_dev_render_refuses_its_file_edited_by_hand(home, catalog, capsys):
+    assert dev_render(home, catalog, capsys, "panel")[0] == 0
+    i18n = home / HA / "www/domosenso/panel/1.0.0/cards/lib/i18n.js"
+    i18n.write_text("// mine\n")
+    write_files(catalog / "components" / "panel", {"cards/lib/i18n.js": "export const t = (k) => k + '!';\n"})
+    code, out = dev_render(home, catalog, capsys, "panel")
+    assert (code, out.splitlines()[-1]) == (1, f"FAIL hand-edited: {HA}/www/domosenso/panel/1.0.0/cards/lib/i18n.js")
+    assert i18n.read_text() == "// mine\n"
+
+
 def test_dev_render_still_refuses_a_file_that_is_not_its_own_dirty_output(home, catalog, capsys):
     package = home / HA / "packages/panel.yaml"
     package.parent.mkdir(parents=True)
@@ -478,3 +500,16 @@ def test_default_package_destination_is_a_valid_package_name():
     entry = ComponentEntry("climate-air", Path("domosenso/climate-air.inputs.yaml"))
     assert _template_destination(entry, "package.yaml", None) == "packages/climate_air.yaml"
     assert _template_destination(entry, "dashboard.<lang>.yaml", "de") == "dashboards/climate-air.de.yaml"
+
+
+def test_every_language_template_is_a_dashboard():
+    # A *.lang.yaml.j2 is rendered per language because it has labels: a dashboard, never a package
+    # (ramka's settings dashboard, SPEC-021).
+    from domosenso_cli.build import _template_destination
+    from domosenso_cli.home import ComponentEntry
+
+    entry = ComponentEntry("ramka", Path("domosenso/ramka.inputs.yaml"))
+    assert _template_destination(entry, "ramka-settings.<lang>.yaml", "de") == "dashboards/ramka-settings.de.yaml"
+    assert _template_destination(entry, "dashboard.<lang>.yaml", "pl") == "dashboards/ramka.pl.yaml"
+    entry.outputs["ramka-settings.<lang>.yaml"] = "dash/settings-<lang>.yaml"
+    assert _template_destination(entry, "ramka-settings.<lang>.yaml", "en") == "dash/settings-en.yaml"

@@ -196,8 +196,9 @@ class Demo:
         render_component(self.root / 'components/ramka', inputs, self.path / 'rendered', stamp=True)
         _, resource_urls = install(self.root / 'components/ramka', self.config)
         for source in (self.path / 'rendered').glob('*.yaml'):
-            target = self.config / ('dashboards' if source.name.startswith('dashboard.') else 'packages')
-            target = target / (source.name if source.name.startswith('dashboard.') else 'ramka.yaml')
+            # package.yaml is the package; every <name>.<lang>.yaml is a dashboard.
+            dashboard = source.name != 'package.yaml'
+            target = self.config / ('dashboards' if dashboard else 'packages') / (source.name if dashboard else 'ramka.yaml')
             shutil.copyfile(source, target)
         shutil.copytree(fixture / 'custom_components/domosenso_demo', self.config / 'custom_components/domosenso_demo', dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copytree(fixture / 'media', self.config / 'www/ramka', dirs_exist_ok=True)
@@ -245,6 +246,8 @@ lovelace:
         config += '  dashboards:\n'
         for lang in ['en', 'de', 'pl']:
             config += f'    dashboard-ramka-{lang}:\n      mode: yaml\n      title: Ramka {lang}\n      filename: dashboards/dashboard.{lang}.yaml\n'
+            config += (f'    ramka-settings-{lang}:\n      mode: yaml\n      title: Ramka settings {lang}\n'
+                       f'      filename: dashboards/ramka-settings.{lang}.yaml\n      require_admin: true\n')
         (self.config / 'configuration.yaml').write_text(config)
 
     def api(self, path, data=None, authenticated=True, method=None):

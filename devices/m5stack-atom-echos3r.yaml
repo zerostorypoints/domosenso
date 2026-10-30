@@ -1,0 +1,16 @@
+id: m5stack-atom-echos3r
+names: {en: M5Stack Atom EchoS3R, de: M5Stack Atom EchoS3R, pl: M5Stack Atom EchoS3R}
+description_key: meta.devices.m5stack-atom-echos3r.description
+does_key: meta.devices.m5stack-atom-echos3r.does
+photo: null
+component: audio-sensor
+tested: {homes: 1, note: "one board in one home"}  # SPEC-018
+# SPEC-018. The audio-sensor firmware sets `project: domosenso.audio-sensor`, which ESPHome reports
+# as manufacturer domosenso, model audio-sensor (inference, from ESPHome's device info, as for the
+# Atom Lite). The firmware does not set an ESPHome `board`, so the model of a board running other
+# firmware is not a rule we know.
+match:
+  - integration: esphome
+    manufacturer: domosenso
+    model: audio-sensor
+    note: inference

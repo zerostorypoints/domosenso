@@ -1,0 +1,251 @@
+[#
+  The audio-sensor component's Home Assistant package (SPEC-018, SPEC-021): the per-board SPL offset
+  and calibration flag and note, the recorder exclusions, the music-source select, the music aliases
+  and the calibration script. Rendered once per home (lang en) by
+  tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
+  Assistant. Inputs: component.yaml `inputs:`.
+#]
+[%- set boards = inputs.sensors -%]
+[#- Room acoustics was dropped before 0.1.0 shipped (SPEC-018, amended 2026-10-29): no bridge, a clear refusal. -#]
+[%- for removed in ['room_acoustics', 'playing'] -%]
+  [%- if removed in inputs -%][[ fail('input ' ~ removed ~ ' was removed: room acoustics is not part of audio-sensor; delete it from the inputs file') ]][%- endif -%]
+[%- endfor -%]
+[%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load'] -%]
+[#- A board's ids: the prefix of what this component creates, and the guessed ids of the ESPHome entities when `entities` does not name them (the area slug and the device name slug that Home Assistant builds them from). -#]
+[%- macro to_slug(text) -%][[ text | lower | replace("'", "") | replace("-", "_") | replace(" ", "_") ]][%- endmacro -%]
+[%- macro guess(board, domain, entity_slug) -%][[ domain ]].[[ to_slug(board.area) ]]_[[ to_slug(board.name | default('audio-sensor-' ~ board.room)) ]]_[[ entity_slug ]][%- endmacro -%]
+[#- A Home Assistant template string literal: double quotes, so an apostrophe in an area ("Kids' room") needs no escape. -#]
+[%- macro jstr(text) -%]"[[ text | replace("\\", "\\\\") | replace('"', '\\"') ]]"[%- endmacro -%]
+[%- set ns = namespace(rooms=[], prefixes=[], music=[], prepared=[]) -%]
+[%- for board in boards -%]
+  [%- set prefix = board.id_prefix | default(to_slug(board.room)) -%]
+  [%- if 'acoustics' in board -%][[ fail('input sensors[].acoustics was removed: room acoustics is not part of audio-sensor; delete it from the inputs file') ]][%- endif -%]
+  [%- if board.room in ns.rooms -%][[ fail('duplicate room: ' ~ board.room) ]][%- endif -%]
+  [%- if prefix in ns.prefixes -%][[ fail('duplicate id_prefix: ' ~ prefix) ]][%- endif -%]
+  [%- for key in (board.entities | default({})) -%]
+    [%- if key not in known -%][[ fail('unknown entity key: ' ~ key) ]][%- endif -%]
+  [%- endfor -%]
+  [%- set spectrum = (board.entities | default({})).spectrum | default(guess(board, 'sensor', 'spectrum')) -%]
+  [%- set level = (board.entities | default({})).level | default(guess(board, 'sensor', 'sound_level')) -%]
+  [%- set ns.rooms = ns.rooms + [board.room] -%]
+  [%- set ns.prefixes = ns.prefixes + [prefix] -%]
+  [%- set item = {
+    'room': board.room, 'area': board.area, 'prefix': prefix, 'label': board.area ~ ' SPL offset', 'calibrated_label': board.area ~ ' SPL calibrated', 'note_label': board.area ~ ' SPL note',
+    'spectrum': spectrum, 'level': level,
+    'mic_gain': (board.entities | default({})).mic_gain | default(guess(board, 'sensor', 'mic_gain')),
+    'offset': 'input_number.' ~ prefix ~ '_spl_offset',
+    'calibrated': 'input_boolean.' ~ prefix ~ '_spl_calibrated',
+    'note': 'input_text.' ~ prefix ~ '_spl_note'
+  } -%]
+  [%- set ns.prepared = ns.prepared + [item] -%]
+  [%- if board.music | default(false) -%][%- set ns.music = ns.music + [item] -%][%- endif -%]
+[%- endfor -%]
+[%- if ns.music | length > 1 -%][[ fail('two music sensors: ' ~ (ns.music | map(attribute='room') | join(', '))) ]][%- endif -%]
+[%- set source = (ns.music | first) if ns.music else none -%]
+[#- The select's options: the music board first, then the others in input order. -#]
+[%- set ordered = ([source] + (ns.prepared | rejectattr('room', 'equalto', source.room) | list)) if source else [] -%]
+[%- set seen = namespace(areas=[]) -%]
+[%- for b in ordered -%]
+  [%- if b.area in seen.areas -%][[ fail('duplicate area: ' ~ b.area) ]][%- endif -%]
+  [%- set seen.areas = seen.areas + [b.area] -%]
+[%- endfor -%]
+[#- A Home Assistant dict literal from the select's area to one field of that board, and the lookup with the select's state. A state that is not an option (`unknown` at a first start, `unavailable` while the helper is missing) reads the `music: true` board; keep that fallback in the lookup. -#]
+[%- macro board_map(field) -%]{[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b[field]) ]][% if not loop.last %], [% endif %][% endfor %]}[%- endmacro -%]
+[%- macro lookup(field) -%][[ board_map(field) ]].get(states("input_select.audio_sensor_music_source"), [[ jstr(source[field]) ]])[%- endmacro -%]
+# Room sound figures, from the Domosenso catalog (component audio-sensor). Edit the inputs and render
+# again rather than editing this file.
+#
+# Each board gets a calibration offset (dB SPL = dBFS + offset): a helper to type it in and a sensor
+# that shows it. A fresh helper starts at 0; the component's README says how to measure the offset.
+# No helper has an `initial:`, so a restart keeps the calibrated values. Each board also has a flag
+# (`<prefix>_spl_calibrated`, off = the offset is an estimate) and a note.
+
+input_number:
+[%- if source %]
+  # The measurement the apply script writes into the selected board's offset helper.
+  audio_sensor_measured_offset:
+    name: Audio sensor measured offset
+    min: 0
+    max: 140
+    step: 0.1
+    mode: box
+    unit_of_measurement: dB
+    icon: mdi:ruler
+[%- endif %]
+[%- for b in ns.prepared %]
+  [[ b.prefix ]]_spl_offset:
+    name: [[ b.label | yaml ]]
+    min: 0
+    max: 140
+    step: 0.1
+    mode: box
+    unit_of_measurement: dB
+    icon: mdi:ear-hearing
+[%- endfor %]
+
+# Per board: whether the offset was measured (off = an estimate) and a note on how.
+input_boolean:
+[%- for b in ns.prepared %]
+  [[ b.prefix ]]_spl_calibrated:
+    name: [[ b.calibrated_label | yaml ]]
+    icon: mdi:check-decagram
+[%- endfor %]
+
+input_text:
+[%- for b in ns.prepared %]
+  [[ b.prefix ]]_spl_note:
+    name: [[ b.note_label | yaml ]]
+    max: 255
+    icon: mdi:note-text
+[%- endfor %]
+[%- if source %]
+  audio_sensor_calibration_note:
+    name: Audio sensor calibration note
+    max: 255
+    icon: mdi:note-edit
+[%- endif %]
+[%- if source %]
+
+# Which board feeds the music aliases. The helper has no `initial:`: a restart keeps the choice, and
+# a fresh one reads `unknown`, which the aliases treat as the `music: true` board.
+input_select:
+  audio_sensor_music_source:
+    name: Audio sensor music source
+    icon: mdi:microphone-message
+    options:
+[%- for b in ordered %]
+      - [[ b.area | yaml ]]
+[%- endfor %]
+[%- endif %]
+
+# The spectrum (31 values, five times a second) is only for the live wave, never for history.
+recorder:
+  exclude:
+    entities:
+[%- for b in ns.prepared %]
+      - [[ b.spectrum ]]
+[%- endfor %]
+[%- if source %]
+      - sensor.music_spectrum
+[%- endif %]
+
+template:
+  - sensor:
+[%- for b in ns.prepared %]
+      - name: [[ b.label | yaml ]]
+        unique_id: audio_sensor_[[ b.prefix ]]_spl_offset
+        default_entity_id: sensor.[[ b.prefix ]]_spl_offset
+        unit_of_measurement: dB
+        state_class: measurement
+        state: "{{ states('input_number.[[ b.prefix ]]_spl_offset') | float(none) }}"
+        attributes:
+          component: audio-sensor
+          area: [[ b.area | yaml ]]
+          # room-meter-card drops its "estimated" note while this is true.
+          calibrated: "{{ is_state('input_boolean.[[ b.prefix ]]_spl_calibrated', 'on') }}"
+[%- endfor %]
+[%- if source %]
+      # The music sensor, under names that do not depend on the room. Each alias looks up the board
+      # whose area the select holds, in a map rendered here; the lookup is a dict get and one more
+      # states() call, cheap enough for the spectrum, which changes five times a second. A select
+      # that is unavailable, unknown or holds no board's area falls back to the `music: true` board,
+      # the last argument of every lookup, so the aliases never go dark because of the helper.
+      - name: Music spectrum
+        unique_id: audio_sensor_music_spectrum
+        default_entity_id: sensor.music_spectrum
+        icon: mdi:equalizer
+        state: >-
+          {{ states([[ lookup('spectrum') ]]) }}
+        attributes:
+          component: audio-sensor
+      - name: Music SPL offset
+        unique_id: audio_sensor_music_spl_offset
+        default_entity_id: sensor.music_spl_offset
+        unit_of_measurement: dB
+        state_class: measurement
+        state: >-
+          {{ states([[ lookup('offset') ]]) | float(none) }}
+        attributes:
+          component: audio-sensor
+          calibrated: >-
+            {{ is_state([[ lookup('calibrated') ]], 'on') }}
+      # dBFS plus the offset is dB SPL. No number from the source (or from the offset) gives none,
+      # never the text unknown.
+      - name: Music level
+        unique_id: audio_sensor_music_level
+        default_entity_id: sensor.music_level
+        device_class: sound_pressure
+        unit_of_measurement: dB
+        state_class: measurement
+        attributes:
+          component: audio-sensor
+        state: >-
+          {% set level = states([[ lookup('level') ]]) | float(none) %}
+          {% set offset = states([[ lookup('offset') ]]) | float(none) %}
+          {{ (level + offset) | round(1) if level is not none and offset is not none else none }}
+      - name: Music mic gain
+        unique_id: audio_sensor_music_mic_gain
+        default_entity_id: sensor.music_mic_gain
+        icon: mdi:microphone-settings
+        state: >-
+          {{ states([[ lookup('mic_gain') ]]) }}
+        attributes:
+          component: audio-sensor
+      # `calibrated` once the apply script (or the home) turned the board's flag on, else `estimate`.
+      - name: Music SPL calibration
+        unique_id: audio_sensor_music_spl_calibration
+        default_entity_id: sensor.music_spl_calibration
+        icon: mdi:tune
+        state: >-
+          {{ 'calibrated' if is_state([[ lookup('calibrated') ]], 'on') else 'estimate' }}
+        attributes:
+          component: audio-sensor
+          note: >-
+            {{ states([[ lookup('note') ]]) }}
+[%- endif %]
+[%- if source %]
+
+  - binary_sensor:
+      - name: Music sensor online
+        unique_id: audio_sensor_music_sensor_online
+        default_entity_id: binary_sensor.music_sensor_online
+        device_class: connectivity
+        state: >-
+          {{ states([[ lookup('spectrum') ]]) not in ['unavailable', 'unknown'] }}
+        attributes:
+          component: audio-sensor
+[%- endif %]
+[%- if source %]
+
+# Applies the measurement to the board the select holds: the offset, the note, and the flag that says
+# the offset is no longer an estimate. The same map as the aliases, so both agree on the board.
+script:
+  audio_sensor_apply_calibration:
+    alias: Audio sensor apply calibration
+    icon: mdi:check-decagram
+    mode: single
+    sequence:
+      # Stop, writing nothing, unless the measurement is a number and the note has a state: an
+      # unavailable helper must not set the offset to 0 or the note to "unavailable", nor turn the
+      # calibrated flag on.
+      - condition: template
+        value_template: >-
+          {{ states('input_number.audio_sensor_measured_offset') | is_number
+             and states('input_text.audio_sensor_calibration_note') not in ['unavailable', 'unknown'] }}
+      - variables:
+          board: >-
+            {{ {[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b.prefix) ]][% if not loop.last %], [% endif %][% endfor %]}.get(states("input_select.audio_sensor_music_source"), [[ jstr(source.prefix) ]]) }}
+      - action: input_number.set_value
+        target:
+          entity_id: "{{ 'input_number.' ~ board ~ '_spl_offset' }}"
+        data:
+          value: "{{ states('input_number.audio_sensor_measured_offset') | float }}"
+      - action: input_text.set_value
+        target:
+          entity_id: "{{ 'input_text.' ~ board ~ '_spl_note' }}"
+        data:
+          value: "{{ states('input_text.audio_sensor_calibration_note') }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: "{{ 'input_boolean.' ~ board ~ '_spl_calibrated' }}"
+[%- endif %]

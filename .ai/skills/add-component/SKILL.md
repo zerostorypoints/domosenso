@@ -112,6 +112,39 @@ computer through `uvx`, at the version the catalog pins.
 `<port>` and `<asset>` filled in and the `setup` steps (the component's README has them in full). A
 flash that erases a board in use erases its pairings: ask first.
 
+## 5.1 The audio-sensor (only for `audio-sensor`)
+
+An M5Stack Atom EchoS3R per room (SPEC-018). Ask, per sensor: the room and the Home Assistant area,
+and whether it is the music source (`music: true`; at most one sensor).
+
+- **`entities:` ids from Home Assistant, read-only.** HA builds the ids from the device and area
+  names when the board is adopted, so the default guess is wrong for a renamed or adopted board.
+  Read `GET /api/states` for each key of `entities:` (spectrum, level, peak, ...). An adopted board
+  can have both id styles, and ESPHome text sensors show as `sensor.*`: take the id that exists and
+  has a state.
+- **The first flash and the factory image, by them.** Name both: download mode (hold the button
+  while plugging in USB-C), `uvx esphome@<tested version> run <device file>`; a board nobody
+  configured yet takes `esphome/audio-sensor.factory.yaml` (Improv, then adoption in an ESPHome
+  Device Builder, which writes its own device file: add `area:` and the OTA `encryption:` by hand).
+  A Container home without a Device Builder container flashes the device file over USB instead.
+  Then they confirm the discovered ESPHome device with the API key.
+- **When `ramka` is installed**, ask: "Show this sensor's music on the Ramka: Spectrum, Level, or
+  keep Classic?" Then:
+  1. set `music_visual: spectrum` or `level` in `domosenso/ramka.inputs.yaml` (Classic: leave it
+     absent); `music_visual_options` is optional, the look is tuned live;
+  2. `domosenso render audio-sensor ramka` (ramka at 0.4.0 or newer; it reads the music sensor's
+     aliases);
+  3. only when `domosenso status` prints `missing-dashboard-entry dashboards/ramka-settings.<lang>.yaml`:
+     add the Ramka settings dashboard to `configuration.yaml`, one entry for the home's language
+     (`ramka/README.md`, "Settings page": `lovelace: dashboards: ramka-settings:` with
+     `mode: yaml`, `filename: dashboards/ramka-settings.<lang>.yaml`, `require_admin: true`);
+     a restart is theirs;
+  4. tell them: the visual type and the palette (Basic) and every parameter (Advanced) are tuned
+     live in Home Assistant, **Ramka settings, Music**, and show on the tablet at once.
+- **Calibration:** the offset starts at 0, so `sensor.music_level` is dBFS plus 0 until measured.
+  The Music page's Advanced block (measured offset, note, Apply) sets it against a reference meter
+  (`audio-sensor/README.md`, "The music source and calibration").
+
 ## 6. Render, plan, apply, verify
 
 ```bash

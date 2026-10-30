@@ -1,0 +1,149 @@
+{
+  "meta": {
+    "description": "Mierzy, jak głośno jest w pomieszczeniu, za pomocą małej płytki z mikrofonem: poziom dźwięku, widmo według wysokości tonu i skalibrowany poziom w dB SPL.",
+    "devices": {
+      "m5stack-atom-echos3r": {
+        "description": "Płytka ESP32-S3 wielkości dłoni z mikrofonem, układem audio i Wi-Fi, zasilana przez USB.",
+        "does": "Działa z ESPHome jako czujnik dźwięku w pomieszczeniu. Co sekundę podaje głośność i najgłośniejszy szczyt, pięć razy na sekundę widmo w 31 pasmach od głębokich basów po wysokie tony, a na życzenie także szybszy pomiar. Tylko słucha: wzmacniacz głośnika na płytce pozostaje wyłączony."
+      }
+    }
+  },
+  "card": {
+    "ambient_wave": {
+      "name": "Fala otoczenia",
+      "description": "Dźwięk lub dowolny czujnik jako spokojne fale, które rosną i nabierają ciepłych barw wraz z poziomem.",
+      "editor": {
+        "source": "Źródło",
+        "kind": "Rodzaj",
+        "entity": "Encja",
+        "demo": "Demo (symulowany dźwięk)",
+        "scenario": "Scenariusz demo",
+        "offset": "Przesunięcie (encja liczbowa)",
+        "flavour": "Wariant",
+        "colour": "Kolor",
+        "palette": "Paleta",
+        "neutral": "Neutralnie do",
+        "hot": "Pełny kolor od",
+        "dynamics": "Dynamika",
+        "rise": "Narastanie (ms)",
+        "fall": "Opadanie (s)",
+        "hold": "Podtrzymanie szczytu (s)",
+        "tilt": "Przywróć naturalny spadek widma muzyki",
+        "style": "Styl",
+        "line_width": "Grubość linii (px)",
+        "active": "Aktywna, gdy włączone",
+        "controls": "Pokaż panel sterowania",
+        "fallback": "Bez danych"
+      },
+      "kind": {
+        "spectrum": "Widmo (pasma)",
+        "scalar": "Pojedyncza wartość"
+      },
+      "scenario": {
+        "electronic": "Elektronika",
+        "jazz": "Jazz",
+        "vocal": "Wokal",
+        "orchestra": "Orkiestra",
+        "quiet": "Cichy pokój"
+      },
+      "palette": {
+        "zones": "Strefy",
+        "series": "Seria",
+        "calm": "Spokojna"
+      },
+      "flavour": {
+        "still": "Spokój",
+        "swell": "Fala",
+        "dune": "Wydma",
+        "veil": "Welon",
+        "voices": "Głosy",
+        "halo": "Poświata",
+        "afterglow": "Powidok",
+        "bars": "Słupki",
+        "tide": "Przypływ",
+        "centre": "Środek",
+        "timeline": "Oś czasu",
+        "clocks": "Zegary",
+        "ripples": "Kręgi",
+        "tint": "Odcień"
+      },
+      "message": {
+        "count": "Oczekiwano {expected} wartości, otrzymano {count}."
+      },
+      "aria": {
+        "spectrum": "Najgłośniej przy {frequency} Hz, {level} {unit}",
+        "scalar": "Bieżąca wartość {level} {unit}",
+        "calm": "Spokój, brak bieżącego odczytu",
+        "still": "Spokojne fale"
+      },
+      "console": {
+        "flavour": "Wariant",
+        "palette": "Paleta",
+        "demo": "Demo",
+        "scenario": "Scenariusz dema",
+        "rise": "Narastanie",
+        "fall": "Opadanie",
+        "line_width": "Grubość linii",
+        "neutral": "Neutralny do",
+        "hot": "Pełny kolor od",
+        "tilt": "Nachylenie widma",
+        "level": "Poziom",
+        "smoothed": "wygładzony",
+        "monitor": "Sygnał na żywo",
+        "monitor_hint": "słupki jak odebrane, linia wygładzona"
+      },
+      "error": {
+        "config": "Konfiguracja karty musi być obiektem.",
+        "source_kind": "source.kind musi mieć wartość \"spectrum\" lub \"scalar\".",
+        "source_entity": "source.entity jest wymagane, chyba że source.demo ma wartość true.",
+        "flavour": "flavour \"{flavour}\" jest nieznany albo nie pasuje do source.kind \"{kind}\".",
+        "colour_hot": "colour.hot musi być większe niż colour.neutral.",
+        "fps": "fps musi być liczbą od 1 do 60.",
+        "axis": "source.axis musi mieć wartość \"third_octave\"; inne osie nie są obsługiwane.",
+        "show": "source.show musi zawierać dwie częstotliwości w Hz, niższą jako pierwszą, oddalone o co najmniej jedno pasmo.",
+        "palette": "colour.palette musi mieć wartość zones, series lub calm, być encją albo listą punktów [wartość, kolor] z co najmniej jedną wartością liczbową.",
+        "history": "source.history musi być liczbą sekund większą od 0.",
+        "fallback": "fallback musi mieć wartość \"classic\" albo \"none\"."
+      },
+      "fallback": {
+        "none": "Brak (spokojnie)",
+        "classic": "Klasyczna fala",
+        "no_data": "Czujnik dźwięku nie wysyła danych: widać klasyczną falę"
+      }
+    },
+    "room_meter": {
+      "name": "Miernik hałasu",
+      "description": "Poziom dźwięku na żywo: wskazówka, drabinka diod z przytrzymaniem szczytu, pasek ostatnich odczytów i śledzenie na żywo.",
+      "zone": {
+        "near_silence": "Prawie cisza",
+        "very_quiet": "Bardzo cichy pokój",
+        "quiet": "Cichy pokój",
+        "background_music": "Muzyka w tle",
+        "conversation": "Rozmowa",
+        "lively_music": "Żywa muzyka",
+        "loud_music": "Głośna muzyka",
+        "very_loud": "Bardzo głośno",
+        "concert": "Jak na koncercie",
+        "painful": "Bolesny hałas"
+      },
+      "live": {
+        "off": "NA ŻYWO",
+        "fast": "NA ŻYWO · 10/s",
+        "waiting": "NA ŻYWO · czekam",
+        "to_slow": "Wróć do jednego odczytu na sekundę",
+        "to_fast": "Śledź poziom dziesięć razy na sekundę"
+      },
+      "no_reading": "Brak odczytu",
+      "unit": "dB SPL · Z · {window}",
+      "unit_estimated": "dB SPL (szacunkowo) · Z · {window}",
+      "chip": {
+        "leq": "Leq 1 min",
+        "peak": "Szczyt",
+        "hold": "Przytrzymanie",
+        "crest": "Współczynnik szczytu",
+        "headroom": "Zapas"
+      },
+      "offset_estimated": "Przesunięcie szacunkowe: skalibruj względem miernika wzorcowego"
+    }
+  }
+}

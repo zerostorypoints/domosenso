@@ -64,7 +64,7 @@ def _branch(**kw):
     ('components', ['unknown'], 'unknown how-to component'),
     ('components', [], 'published how-to needs a component'),
     ('description', 'x'*161, 'invalid how-to description'),
-    ('updated', '2026-02-30', 'day is out of range'),
+    ('updated', '2026-02-30', 'day is out of range|day 30 must be in range'),  # Python <3.14 | 3.14
     ('branches', _branch(supported='coming-soon'), 'coming-soon branch needs an issue'),
     ('branches', _branch(prompt=None), 'supported branch needs a prompt'),
     ('sources', ['javascript:alert(1)'], 'unsafe how-to source'),

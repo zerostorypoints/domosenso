@@ -98,7 +98,9 @@ The setup starts an isolated empty HA; home deployment, fixtures and acceptance 
 - A bug in a component is fixed **in the catalog** and released as a tag; this repository only
   moves to the new tag.
 - Develop a component against this home: `render --catalog-dev <catalog working tree>`. Stamps get
-  `-dirty`; `deploy production` refuses such files.
+  `-dirty`; `deploy production` refuses such files
+  unless `--allow-dirty --confirm <hash>`, a production write that needs the human's go-ahead like
+  any other; a clean deploy from a tag follows.
 - Before any production change: `domosenso snapshot production --out <snapshot file>`. After it:
   `domosenso verify production --baseline <snapshot file>`, once right after the restart and
   again after 10 minutes (`--day-after` the next morning).
