@@ -35,19 +35,19 @@ test("ticking an album adds it, unticking the last one is all again", () => {
   assert.deepEqual(disabled(card), [false, false, false, false]);
   tick(card, 1);
   tick(card, 2);
-  assert.deepEqual(calls, [["script", "ramka_photo_albums_set", { chosen: ["b", "a"], all: false }],
-                           ["script", "ramka_photo_albums_set", { chosen: [], all: true }]]);
+  assert.deepEqual(calls, [["script", "ramka_photo_albums_set", { chosen: ["b", "a"], all_albums: false }],
+                           ["script", "ramka_photo_albums_set", { chosen: [], all_albums: true }]]);
 });
 
 test("ticking All albums keeps the ticks and greys them out; unticking it brings them back", () => {
   const { card, calls } = makeCard({ available: ["a", "b"], chosen: ["a", "b"] });
   tick(card, 0);
-  assert.deepEqual(calls, [["script", "ramka_photo_albums_set", { chosen: ["a", "b"], all: true }]]);
+  assert.deepEqual(calls, [["script", "ramka_photo_albums_set", { chosen: ["a", "b"], all_albums: true }]]);
   const on = makeCard({ available: ["a", "b"], chosen: ["a"], all: true });
   assert.deepEqual(rows(on.card).map(([, ticked]) => ticked), [true, true, false]);
   assert.deepEqual(disabled(on.card), [false, true, true]);
   tick(on.card, 0);
-  assert.deepEqual(on.calls, [["script", "ramka_photo_albums_set", { chosen: ["a"], all: false }]]);
+  assert.deepEqual(on.calls, [["script", "ramka_photo_albums_set", { chosen: ["a"], all_albums: false }]]);
 });
 
 test("a chosen album no longer in the folder stays listed, marked", () => {

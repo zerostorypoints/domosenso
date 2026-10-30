@@ -3,7 +3,7 @@
 //
 //   type: custom:photo-albums-card
 //   entity: sensor.ramka_photo_albums          # attributes `available`, `chosen` (lists), `all`
-//   script: script.ramka_photo_albums_set      # called with {chosen: [...], all: true|false}
+//   script: script.ramka_photo_albums_set      # called with {chosen: [...], all_albums: true|false}
 //
 // "All albums" ticked is every album: the album boxes stay as they are, greyed out, and come back
 // when it is unticked. Ticking an album adds it, unticking removes it; with the last one gone it is
@@ -125,7 +125,7 @@ class PhotoAlbumsCard extends HTMLElement {
 
   _set(chosen, all) {
     const [domain, service] = this._config.script.split(".");
-    this._hass.callService(domain, service, { chosen, all });
+    this._hass.callService(domain, service, { chosen, all_albums: all });
   }
 }
 

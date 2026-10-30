@@ -754,8 +754,9 @@ album card showed its keys (`card.photo_albums.all`) from a cached 0.4.0 `en.jso
 
 **Albums.** Ticking "All albums" no longer clears the ticks: they stay, greyed out, until it is
 unticked. `sensor.<prefix>_photo_albums` gains the attribute `all` (absent on a 0.4.0 sensor: all is
-none chosen); `script.<prefix>_photo_albums_set` gains the field `all` (absent: none chosen is
-all), and the card always sends both. The loop passes no albums while `all` is true. The reset sends
+none chosen); `script.<prefix>_photo_albums_set` gains the field `all_albums` (absent: none chosen
+is all; not `all`, which Jinja code may know as a global), and the card always sends both.
+The loop passes no albums while `all` is true. The reset sends
 `{all: true}`, keeping the ticks; the reset's event entries now carry their whole event data.
 
 **Climate page** (with `climate`; group `climate`, page `climate`): up to five rooms, each a label,

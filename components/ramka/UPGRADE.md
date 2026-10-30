@@ -19,7 +19,7 @@ language is chosen; Calendar links to adding a calendar by URL.
 
 **Albums, all kept** (amendment 2). "All albums" on Photos → Advanced no longer clears the ticked
 albums: it greys them out until it is unticked. `sensor.<prefix>_photo_albums` gains the attribute
-`all`, `script.<prefix>_photo_albums_set` the field `all`; a sensor from 0.4.0 without it reads as
+`all`, `script.<prefix>_photo_albums_set` the field `all_albums`; a sensor from 0.4.0 without it reads as
 before (none chosen is all).
 
 **Climate rooms** (amendment 2). Climate → Advanced picks up to five rooms, each a name, a main

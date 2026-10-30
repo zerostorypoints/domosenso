@@ -1829,8 +1829,8 @@ def test_album_list_follows_the_folder(demo):
         picked = ha_value(variables["variables"]["picked"], **fields)
         return {k: ha_value(v, picked=picked, **fields) for k, v in step["event_data"].items()}
 
-    assert sent(chosen=["a", "b"], all=False) == {"chosen": ["a", "b"], "all": False}
-    assert sent(chosen=["a"], all=True) == {"chosen": ["a"], "all": True}
+    assert sent(chosen=["a", "b"], all_albums=False) == {"chosen": ["a", "b"], "all": False}
+    assert sent(chosen=["a"], all_albums=True) == {"chosen": ["a"], "all": True}
     assert sent(chosen=["a"]) == {"chosen": ["a"], "all": False}
     assert sent() == {"chosen": [], "all": True} and sent(chosen="a") == {"chosen": [], "all": True}
     assert run_reset(package, page="photos", events=True)[ALBUMS] == {"all": True}

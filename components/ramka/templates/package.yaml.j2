@@ -930,7 +930,8 @@ script:
 
 [%- if inputs.photo_dir is defined %]
   # The albums the photo series come from. Called by the settings page's album card, always with
-  # both fields: `all` keeps the ticks for when it is turned off again.
+  # both fields: all_albums keeps the ticks for when it is turned off again. Not `all`, a name
+  # Jinja code may know as a global.
   [[ p ]]_photo_albums_set:
     alias: [[ named(' photo albums set') ]]
     icon: mdi:folder-image
@@ -941,7 +942,7 @@ script:
         description: Top-level folders of the photo folder, a list; none for all.
         # No selector: HA 2026.9.2 refused `object: {}` here and disabled the script.
         example: '["2025", "2026"]'
-      all:
+      all_albums:
         name: All albums
         description: Every album, whatever is chosen; absent, all when none is chosen.
         selector:
@@ -952,7 +953,7 @@ script:
       - event: [[ p ]]_photo_albums
         event_data:
           chosen: "{{ picked }}"
-          all: "{{ all if all is defined else picked | count == 0 }}"
+          all: "{{ all_albums if all_albums is defined else picked | count == 0 }}"
 [%- endif %]
 [%- if inputs.climate is defined %]
 
