@@ -367,14 +367,18 @@ def factory(tag):
 
 
 def test_esphome_project_version_matches_version(catalog):
-    """With the component's own external components, the package's project version is the manifest's."""
+    """A package's project version is the manifest's: it is what a flashed board reports, and a home
+    reads it to know which release the board runs."""
     node = catalog / "components" / "demo-sensor" / "esphome" / "node.yaml"
     node.write_text(firmware("0.1.0"))
     assert cc.check_component(component_yaml(catalog)) == []
     node.write_text(firmware("0.0.9"))
     errors = cc.check_component(component_yaml(catalog))
     assert len(errors) == 1 and "project.version '0.0.9'" in errors[0] and "'0.1.0'" in errors[0]
-    node.write_text(firmware("0.0.9", external=False))  # no catalog external component: not this rule's business
+    node.write_text(firmware("0.0.9", external=False))  # a plain package too (bermuda-presence's proxy reported 0.1.0 at 0.2.1)
+    errors = cc.check_component(component_yaml(catalog))
+    assert len(errors) == 1 and "project.version '0.0.9'" in errors[0]
+    node.write_text("esphome: {name: demo}\n")  # no project block: nothing to check
     assert cc.check_component(component_yaml(catalog)) == []
 
 
