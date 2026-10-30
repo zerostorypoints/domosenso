@@ -328,29 +328,50 @@ views:
         cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
 [%- endif %][[ reset('music') ]]
 
-  # ---- About: every component the home runs (SPEC-022) ----------------------------------------
-  # Read live from sensor.domosenso_components, which the domosenso command writes from the lock,
-  # so the list is right after any component's update without a Ramka render. Without the sensor (a
-  # render by an older domosenso, or by domosenso_render.py alone) the Ramka's own version, as rendered.
+  # ---- About: Domosenso, every component the home runs, what they use (SPEC-022) ---------------
+  # A sections view like the other pages: the header is plain text over the page; Components and
+  # Related components in the first column, Devices (the longest list) in the second; one column on
+  # a narrow screen. sensor.domosenso_components is the lock's, written by the domosenso command;
+  # sensor.[[ p ]]_discovery is what shell/domosenso_discover.py found in Home Assistant, refreshed
+  # by the button, at start and nightly. Everything else is read live.
+[%- set discovery = 'sensor.' ~ p ~ '_discovery' %]
+[%- set repo = 'https://github.com/zerostorypoints/domosenso' %]
   - title: [[ t('ui.settings.pages.about') | yaml ]]
     path: about
     icon: [[ icons.about ]]
     type: sections
     max_columns: 2
+    header:
+      layout: start
+      card:
+        type: markdown
+        text_only: true
+        content: |-
+          # Domosenso
+          [[ t('ui.settings.about_tagline') ]]
+
+          <small>[[ t('ui.settings.about_license') ]] <a href="[[ repo ]]/blob/main/LICENSE">Apache-2.0</a> · © 2026 ZeroStoryPoints GmbH · [[ t('ui.settings.about_trademark') ]] (<a href="[[ repo ]]/blob/main/NOTICE">NOTICE</a>, <a href="[[ repo ]]/blob/main/THIRD_PARTY_NOTICES.md">[[ t('ui.settings.about_third_party') ]]</a>)<br><a href="[[ repo ]]">[[ t('ui.settings.about_repository') ]]</a> · <a href="https://domosenso.org">domosenso.org</a> · Home Assistant {{ state_attr('[[ discovery ]]', 'ha_version') or '—' }}</small>
     sections:
       - type: grid
-        column_span: 2
         cards:[[ heading('about_components', 'mdi:package-variant-closed') ]]
           - type: markdown
             content: |-
-              {% set items = state_attr('sensor.domosenso_components', 'components') %}
-              {%- if items %}
+              {% set items = state_attr('sensor.domosenso_components', 'components') or [] %}
+              {% set found = state_attr('[[ discovery ]]', 'found') or [] %}
+              {% set ids = items | map(attribute='id') | list %}
+              {%- if items or found %}
 [[ block(t('ui.settings.about_how')) ]]
 
               | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_released') ]] |
               |---|---|---|
               {%- for c in items %}
-              | {{ c.id }} | {{ c.version }}{{ ' (' ~ [[ t('ui.settings.about_dev') | yaml ]] ~ ')' if c.dev else '' }}{{ ' (' ~ [[ t('ui.settings.about_package') | yaml ]] ~ ' `' ~ c.get('package') ~ '`)' if c.get('package') else '' }} | {{ c.released or '—' }} |
+              {%- set mine = found | selectattr('id', 'eq', c.id) | list %}
+              {%- set boards = (mine[0].get('boards') or []) if mine else [] %}
+              {%- set other = boards | rejectattr('version', 'eq', c.version) | map(attribute='version') | unique | list %}
+              | {{ c.id }} | {{ c.version }}{{ ' (' ~ [[ t('ui.settings.about_dev') | yaml ]] ~ ')' if c.dev else '' }}{{ ' (' ~ [[ t('ui.settings.about_package') | yaml ]] ~ ' `' ~ c.get('package') ~ '`)' if c.get('package') else '' }}{{ ' — ' ~ [[ t('ui.settings.about_board_reports') | yaml ]] ~ ' ' ~ other | join(', ') if other else '' }} | {{ c.released or '—' }} |
+              {%- endfor %}
+              {%- for f in found if f.id not in ids %}
+              | {{ f.id }} | {{ f.version }} ({{ [[ t('ui.settings.about_found') | yaml ]] }}) | — |
               {%- endfor %}
               {%- else %}
               | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] |
@@ -359,17 +380,22 @@ views:
 
 [[ block(t('ui.settings.about_missing')) ]]
               {%- endif %}
-      # PROTOTYPE: what the components use from integrations and devices, from
-      # sensor.domosenso_related (which entities each component uses, traced strictly); integration,
-      # device, firmware, hub and update are looked up live. Hidden while the sensor is not there.
-      - type: grid
-        column_span: 2
-        visibility: [ {condition: state, entity: sensor.domosenso_related, state_not: unavailable} ]
-        cards:[[ heading('about_related', 'mdi:puzzle-outline') ]]
+
+              {% set when = as_timestamp(states('[[ discovery ]]'), none) %}
+              [[ t('ui.settings.about_last_discovery') ]]: **{{ when | timestamp_custom('%Y-%m-%d %H:%M') if when else '—' }}**
+          - type: entities
+            entities:
+              - type: button
+                icon: mdi:refresh
+                name: [[ t('ui.settings.about_refresh') | yaml ]]
+                action_name: [[ t('ui.settings.about_refresh_action') | yaml ]]
+                tap_action:
+                  action: perform-action
+                  perform_action: script.[[ p ]]_about_refresh[[ heading('about_related', 'mdi:puzzle-outline') ]]
           - type: markdown
             content: |-
-              {% set uses = state_attr('sensor.domosenso_related', 'uses') or {} %}
-              {% set ints = state_attr('sensor.domosenso_related', 'integrations') or {} %}
+              {% set uses = state_attr('[[ discovery ]]', 'uses') or {} %}
+              {% set ints = state_attr('[[ discovery ]]', 'integrations') or {} %}
               [[ t('ui.settings.about_related_how') ]]
 
               | [[ t('ui.settings.about_integration') ]] | [[ t('ui.settings.about_kind') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_used_by') ]] |
@@ -383,13 +409,11 @@ views:
               | {{ i.name }} | {{ i.kind }} | {{ installed }}{{ ' → ' ~ latest if latest and is_state(i.update_entity, 'on') else '' }} | {{ ns.users | join(', ') }} |
               {%- endfor %}
       - type: grid
-        column_span: 2
-        visibility: [ {condition: state, entity: sensor.domosenso_related, state_not: unavailable} ]
         cards:[[ heading('about_devices', 'mdi:devices') ]]
           - type: markdown
             content: |-
-              {% set uses = state_attr('sensor.domosenso_related', 'uses') or {} %}
-              {% set declared_links = state_attr('sensor.domosenso_related', 'declared_links') or [] %}
+              {% set uses = state_attr('[[ discovery ]]', 'uses') or {} %}
+              {% set declared_links = state_attr('[[ discovery ]]', 'declared_links') or [] %}
               {%- set ns = namespace(used=[], devices=[]) %}
               {%- for cid, ids in uses.items() %}{% set ns.used = ns.used + ids %}{% endfor %}
               {%- for e in ns.used %}{% set d = device_id(e) %}{% if d and d not in ns.devices %}{% set ns.devices = ns.devices + [d] %}{% endif %}{% endfor %}
@@ -404,5 +428,9 @@ views:
               {%- set said = (declared_links | selectattr('device', 'eq', d) | map(attribute='via') | list + [none]) | first %}
               {%- set mine = device_entities(d) | select('in', ns.used) | list %}
               {%- set down = mine | select('is_state', 'unavailable') | list %}
-              | {{ name(d) }} | {{ [device_attr(d, 'manufacturer'), device_attr(d, 'model')] | select | join(' ') }} | {{ device_attr(d, 'sw_version') or '—' }} | {{ name(via) if via else (name(said) ~ ' (' ~ [[ t('ui.settings.about_declared') | yaml ]] ~ ')' if said else '—') }} | {{ [[ t('ui.settings.about_unavailable') | yaml ]] if mine and down | count == mine | count else [[ t('ui.settings.about_ok') | yaml ]] }} |
+              {#- A device's own connection sensor (device_class connectivity) that is off says it is not
+                  connected, whatever its other entities show (an integration may keep them "off"). #}
+              {%- set cut = device_entities(d) | select('match', 'binary_sensor[.]') | select('is_state_attr', 'device_class', 'connectivity') | select('is_state', 'off') | map('state_attr', 'friendly_name') | list %}
+              {%- set gone = (mine and down | count == mine | count) or cut %}
+              | {{ name(d) }} | {{ [device_attr(d, 'manufacturer'), device_attr(d, 'model')] | select | join(' ') }} | {{ device_attr(d, 'sw_version') or '—' }} | {{ name(via) if via else (name(said) ~ ' (' ~ [[ t('ui.settings.about_declared') | yaml ]] ~ ')' if said else '—') }} | {{ ('<font color="#e53935">' ~ [[ t('ui.settings.about_unavailable') | yaml ]] ~ (' (' ~ cut | join(', ') ~ ')' if cut else '') ~ '</font>') if gone else ('<font color="#43a047">' ~ [[ t('ui.settings.about_ok') | yaml ]] ~ '</font>') }} |
               {%- endfor %}

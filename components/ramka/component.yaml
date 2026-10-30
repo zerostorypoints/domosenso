@@ -205,6 +205,7 @@ artifacts:
   shell:                        # -> /config/shell/: the photo loop's picker and the caption index
     - shell/ramka_pick.py       #    (shell_command.<prefix>_pick / _index call them with photo_dir)
     - shell/ramka_index.py
+    - shell/domosenso_discover.py  #  the settings' About page: shell_command.<prefix>_discover (SPEC-022)
   themes:                       # -> /config/themes/, with `frontend: themes: !include_dir_merge_named themes`;
     - themes/ramka.yaml         #    the series colours the charts and the room tiles share; ramka-dark, ramka-light
 
@@ -224,6 +225,8 @@ provides:                       # <prefix> from inputs
     - {id: "input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}", stability: stable, note: "with music_visual (0.4.0)"}
     - {id: "sensor.<prefix>_ambient_pages", stability: stable, note: "the ambient pages in the rotation now (state: how many; attributes pages, all_off, component: ramka; 0.4.0)"}
     - {id: "script.<prefix>_settings_reset", stability: stable, note: "fields page and groups, both optional (0.4.0)"}
+    - {id: "sensor.<prefix>_discovery", stability: stable, note: "the About page's discovery: state the last refresh (timestamp); attributes component: ramka, ha_version, found, uses, integrations, declared_links, set by event <prefix>_discovery (SPEC-022)"}
+    - {id: "script.<prefix>_about_refresh", stability: stable, note: "runs shell_command.<prefix>_discover, fires <prefix>_discovery, updates the HACS update entities it names (SPEC-022)"}
     - {id: "timer.<prefix>_controls", stability: stable}
     - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}
     - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
@@ -239,7 +242,7 @@ provides:                       # <prefix> from inputs
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
-  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without

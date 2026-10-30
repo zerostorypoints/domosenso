@@ -319,10 +319,10 @@
       "about_version": "Version",
       "about_released": "Released",
       "about_dev": "development",
-      "about_how": "Every Domosenso component this home runs, as the last `domosenso render` or `update` left it. Released: the date the catalog released that version.",
+      "about_how": "Every Domosenso component this home runs: the lock's, as the last `domosenso render` or `update` left it, and any Home Assistant shows otherwise. Released: the date the catalog released that version.",
       "about_missing": "Only the Ramka is listed: `sensor.domosenso_components` is missing. A `domosenso render` with a current `domosenso` command writes it, with every component of the home.",
       "about_related": "Related components",
-      "about_related_how": "The integrations whose entities the components use, traced from their files (prototype).",
+      "about_related_how": "The integrations whose entities the components use, traced from their files.",
       "about_integration": "Integration",
       "about_kind": "Kind",
       "about_used_by": "Used by",
@@ -336,7 +336,17 @@
       "about_declared": "declared",
       "about_ok": "ok",
       "about_unavailable": "offline",
-      "about_package": "ESPHome package only:"
+      "about_package": "ESPHome package only:",
+      "about_tagline": "Your home on Home Assistant, built with Claude or Codex from parts that already run in a real home.",
+      "about_license": "Licensed under",
+      "about_trademark": "The DomoSenso and ZeroStoryPoints names and trademarks are not licensed by the code license",
+      "about_third_party": "third-party notices",
+      "about_repository": "Source code",
+      "about_last_discovery": "Last discovery",
+      "about_refresh": "Components and versions",
+      "about_refresh_action": "Refresh",
+      "about_board_reports": "board reports",
+      "about_found": "found in Home Assistant"
     }
   },
   "meta": {

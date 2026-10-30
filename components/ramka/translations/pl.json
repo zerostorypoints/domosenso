@@ -319,10 +319,10 @@
       "about_version": "Wersja",
       "about_released": "Wydano",
       "about_dev": "wersja rozwojowa",
-      "about_how": "Wszystkie komponenty Domosenso w tym domu, w stanie z ostatniego `domosenso render` lub `update`. Wydano: data, w której katalog wydał tę wersję.",
+      "about_how": "Wszystkie komponenty Domosenso w tym domu: z pliku lock, w stanie z ostatniego `domosenso render` lub `update`, oraz inne, które pokazuje Home Assistant. Wydano: data, w której katalog wydał tę wersję.",
       "about_missing": "Na liście jest tylko Ramka: brakuje `sensor.domosenso_components`. Tworzy go `domosenso render` w aktualnej wersji polecenia `domosenso`, ze wszystkimi komponentami domu.",
       "about_related": "Powiązane komponenty",
-      "about_related_how": "Integracje, których encji używają komponenty, ustalone z ich plików (prototyp).",
+      "about_related_how": "Integracje, których encji używają komponenty, ustalone z ich plików.",
       "about_integration": "Integracja",
       "about_kind": "Rodzaj",
       "about_used_by": "Używa",
@@ -336,7 +336,17 @@
       "about_declared": "zadeklarowane",
       "about_ok": "działa",
       "about_unavailable": "niedostępne",
-      "about_package": "tylko pakiet ESPHome:"
+      "about_package": "tylko pakiet ESPHome:",
+      "about_tagline": "Twój dom w Home Assistant, zbudowany z Claude lub Codex z części, które już działają w prawdziwym domu.",
+      "about_license": "Licencja",
+      "about_trademark": "Licencja kodu nie obejmuje nazw ani znaków towarowych DomoSenso i ZeroStoryPoints",
+      "about_third_party": "informacje o komponentach zewnętrznych",
+      "about_repository": "Kod źródłowy",
+      "about_last_discovery": "Ostatnie wykrywanie",
+      "about_refresh": "Komponenty i wersje",
+      "about_refresh_action": "Odśwież",
+      "about_board_reports": "płytka zgłasza",
+      "about_found": "znaleziony w Home Assistant"
     }
   },
   "meta": {
