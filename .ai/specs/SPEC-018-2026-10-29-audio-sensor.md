@@ -20,6 +20,12 @@
   (Provides); the visual's options bind Ramka helpers, `music_visual_options` gives their starting
   values, the Controls tile is removed, and 0.4.0 without `music_visual` is no longer
   byte-identical to 0.3.0.
+- Amended 2026-10-30 by issues #99 (the visual lags fast bass) and #110 (eco / normal / fast), plan
+  `docs/superpowers/plans/2026-10-30-spectrum-latency.md`: the spectrum's publish interval is set at
+  runtime by a `Spectrum rate` select on the board (Firmware), the package forwards a choice and a
+  watching flag to the music board (Provides), and the card's rise never runs shorter than the gap
+  between pushes (Cards). The intervals are provisional until the wall measurement records them in
+  the README.
 
 ## Goal
 
@@ -86,6 +92,15 @@ A home gets:
   (`artifacts.esphome.secrets`), and `ota` encrypted with the API key, as `bermuda-presence`'s
   device files do.
 - `esphome/audio-sensor.factory.yaml`: Improv and `dashboard_import`, for a board flashed over USB.
+- Spectrum rate (amended 2026-10-30, #99, #110): a template `select` `Spectrum rate`
+  (`eco`, `normal`, `fast`) sets the spectrum's profile at runtime. **eco**: every 500 ms, the mean
+  of the frames since the last publish; **normal**: every 200 ms, the mean (the behaviour before);
+  **fast**: every 85 ms (the frame hop), the newest frame alone, since averaging blurs a hit. A
+  publish happens when a new frame has landed and the interval has passed (10 ms slack, so an
+  85 ms profile never skips a frame), never on a clock of its own, and never without a new frame.
+  `normal` after a boot; a board left on `fast` returns to `normal` after 60 min (the
+  `live_tracking_timeout` pattern). The publish rule lives in `publish_policy.h`, host-tested like
+  the band maths. The intervals are provisional: the README's measurement confirms or changes them.
 - Not in the package: `bluetooth_proxy` (#56 proposes it). A home adds it in its own device file;
   see Open questions.
 
@@ -115,6 +130,7 @@ The `entities` keys, their domain and the entity-name slug of the default:
 | `fast_level` | sensor | `fast_sound_level` | `bssid` | sensor | `connected_ap_bssid` |
 | `fast_peak` | sensor | `fast_sound_peak` | `restart` | button | `restart` |
 | `live_tracking` | switch | `live_tracking` | `load` | sensor | `spectrum_load` |
+| `spectrum_rate` | select | `spectrum_rate` | | | |
 
 Why the ids are inputs: Home Assistant builds an ESPHome entity's id from the device's names and
 area when the board is adopted, and a renamed device keeps its old ids, so they cannot be derived
@@ -158,6 +174,9 @@ its classic wave (below).
 | `input_select.audio_sensor_music_source` | stable | with a `music: true` board; options: the boards' areas, that board first; the four aliases above follow it (SPEC-021) |
 | `sensor.music_mic_gain`, `sensor.music_spl_calibration` (`calibrated` \| `estimate`, attribute `note`) | stable | aliases of the selected music board (SPEC-021) |
 | `input_boolean.<id_prefix>_spl_calibrated`, `input_text.<id_prefix>_spl_note` | stable | per board: offset calibrated or an estimate, and a note (SPEC-021) |
+| `input_select.audio_sensor_music_spectrum_rate` | stable | with a `music: true` board; options `eco`, `normal`, `fast` (additive-only); no `initial:`; a state that is no option reads as `normal` (#110) |
+| `input_boolean.audio_sensor_music_watching` | stable | with a `music: true` board; on while a view shows the music visual (the Ramka sets it); no `initial:` (#99) |
+| automation `audio_sensor_music_spectrum_rate` | additive-only | sets the selected music board's `Spectrum rate` to the choice, `fast` only while watching is on (else `normal`; 10 s after watching turns off); re-applies on HA start, a source change and the board's select becoming available; the board left by a source change goes back to `normal` |
 | `input_number.audio_sensor_measured_offset`, `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration` | stable | with a music board: apply a measured offset and a note to the selected board (SPEC-021) |
 | ~~`<domain>.<id_prefix>_<figure>` with `room_acoustics: true` and `acoustics: true`~~ | | ~~the room-acoustics figures below~~ *(dropped 2026-10-29)* |
 | ~~`input_select.room_acoustics_room`~~ | | ~~with `room_acoustics: true` and two or more acoustics sensors; options: the areas, the music sensor first~~ *(dropped 2026-10-29)* |
@@ -218,6 +237,11 @@ Fallback (`fallback: classic`, default `none`, which keeps today's calm behaviou
   `aria-label` say that the sound sensor sends no data, so the classic wave shows (`card.ambient_wave.*`
   keys, en, de, pl).
 - When data returns, the live visual comes back and the icon goes, without a page reload.
+
+Rise and the push rate (amended 2026-10-30, #99): the engine applies `dynamics.rise` as at least the
+gap between the last two pushes (clamped to 1 s). A rise shorter than that gap reaches the target
+and stands still until the next push, so the picture moves in steps; at the gap it glides. Fall and
+hold are unchanged.
 
 ## Ramka 0.4.0: the music visual
 
