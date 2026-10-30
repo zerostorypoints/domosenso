@@ -32,9 +32,9 @@ def checks(tmp_path):
         script.write_text(f'#!/bin/sh\necho "{name} $*" >> "$CHECK_TRACE"\n')
         script.chmod(0o755)
     env = {**os.environ, 'PATH': f'{commands}:{os.environ["PATH"]}', 'CHECK_TRACE': str(trace), 'CHECK_FAIL': ''}
-    def run(*args, fail=''):
+    def run(*args, fail='', **extra):
         result = subprocess.run(['bash', 'tools/check-all.sh', *args], cwd=tmp_path,
-                                env={**env, 'CHECK_FAIL': fail}, capture_output=True, text=True)
+                                env={**env, 'CHECK_FAIL': fail, **extra}, capture_output=True, text=True)
         calls = trace.read_text() if trace.exists() else ''
         return result, calls
     return run
@@ -78,3 +78,36 @@ def test_home_staging_failure_still_blocks_full_pass(checks):
     assert result.returncode == 1
     assert 'failed: home staging runtime' in result.stdout
     assert 'all checks passed' not in result.stdout
+
+
+def test_parallel_checks_report_in_order_as_whole_blocks(checks):
+    result, calls = checks()
+    assert result.returncode == 0
+    assert 'pytest -q -n auto' in calls
+    labels = ['home staging runtime', 'ha-check radio', 'esphome-check radio',
+              'ha-check ramka (pages left out)', 'ha-check ramka (plants discover)']
+    blocks = [result.stdout.index(f'==> {label}\n') for label in labels]
+    assert blocks == sorted(blocks)
+    for label in labels:
+        assert f'started {label}\n' in result.stdout and f'ok   {label}\n' in result.stdout
+
+
+def test_a_failed_parallel_check_blocks_the_pass(checks, tmp_path):
+    (tmp_path / 'tools/esphome-check.sh').write_text('#!/bin/sh\necho "no network" ; exit 1\n')
+    result, _ = checks()
+    assert result.returncode == 1
+    block = result.stdout.split('==> esphome-check radio\n', 1)[1]
+    assert block.startswith('no network\nFAIL esphome-check radio\n')
+    assert 'failed: esphome-check radio' in result.stdout
+
+
+def test_check_jobs_limits_how_many_run_at_once(checks, tmp_path):
+    # Each fake check records how many were running when it started.
+    (tmp_path / 'running').mkdir()
+    for name in ('ha-check.sh', 'esphome-check.sh'):
+        (tmp_path / 'tools' / name).write_text(
+            '#!/bin/sh\nmkdir running/$$; ls running | wc -l >> "$CHECK_TRACE.peak"; sleep 0.3; rmdir running/$$\n')
+    result, _ = checks(CHECK_JOBS='2')
+    assert result.returncode == 0
+    peaks = [int(n) for n in (tmp_path / 'calls.peak').read_text().split()]
+    assert len(peaks) == 4 and max(peaks) <= 2
