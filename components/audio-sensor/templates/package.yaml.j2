@@ -1,7 +1,7 @@
 [#
   The audio-sensor component's Home Assistant package (SPEC-018, SPEC-021): the per-board SPL offset
-  and calibration flag and note, the recorder exclusions, the music-source select, the music aliases
-  and the calibration script. Rendered once per home (lang en) by
+  and calibration flag and note, the recorder exclusions, the music-source select, the music aliases,
+  the calibration script, and the spectrum rate choice with its watching flag and forwarding (#99, #110). Rendered once per home (lang en) by
   tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
   Assistant. Inputs: component.yaml `inputs:`.
 #]
@@ -10,7 +10,7 @@
 [%- for removed in ['room_acoustics', 'playing'] -%]
   [%- if removed in inputs -%][[ fail('input ' ~ removed ~ ' was removed: room acoustics is not part of audio-sensor; delete it from the inputs file') ]][%- endif -%]
 [%- endfor -%]
-[%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load'] -%]
+[%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load', 'spectrum_rate'] -%]
 [#- A board's ids: the prefix of what this component creates, and the guessed ids of the ESPHome entities when `entities` does not name them (the area slug and the device name slug that Home Assistant builds them from). -#]
 [%- macro to_slug(text) -%][[ text | lower | replace("'", "") | replace("-", "_") | replace(" ", "_") ]][%- endmacro -%]
 [%- macro guess(board, domain, entity_slug) -%][[ domain ]].[[ to_slug(board.area) ]]_[[ to_slug(board.name | default('audio-sensor-' ~ board.room)) ]]_[[ entity_slug ]][%- endmacro -%]
@@ -33,6 +33,7 @@
     'room': board.room, 'area': board.area, 'prefix': prefix, 'label': board.area ~ ' SPL offset', 'calibrated_label': board.area ~ ' SPL calibrated', 'note_label': board.area ~ ' SPL note',
     'spectrum': spectrum, 'level': level,
     'mic_gain': (board.entities | default({})).mic_gain | default(guess(board, 'sensor', 'mic_gain')),
+    'spectrum_rate': (board.entities | default({})).spectrum_rate | default(guess(board, 'select', 'spectrum_rate')),
     'offset': 'input_number.' ~ prefix ~ '_spl_offset',
     'calibrated': 'input_boolean.' ~ prefix ~ '_spl_calibrated',
     'note': 'input_text.' ~ prefix ~ '_spl_note'
@@ -90,6 +91,13 @@ input_boolean:
     name: [[ b.calibrated_label | yaml ]]
     icon: mdi:check-decagram
 [%- endfor %]
+[%- if source %]
+  # On while some view shows the music visual (the Ramka sets it): the spectrum rate `fast` applies
+  # only then. One flag per home; no `initial:`, a restart keeps what the views last said.
+  audio_sensor_music_watching:
+    name: Audio sensor music watching
+    icon: mdi:eye
+[%- endif %]
 
 input_text:
 [%- for b in ns.prepared %]
@@ -116,6 +124,16 @@ input_select:
 [%- for b in ordered %]
       - [[ b.area | yaml ]]
 [%- endfor %]
+  # How often the music board publishes its spectrum: eco 500 ms, normal 200 ms, fast every 85 ms
+  # (the newest frame). No `initial:`, which would undo the choice at every restart; normal comes
+  # first because a fresh helper takes the first option (eco first started a new home on eco).
+  audio_sensor_music_spectrum_rate:
+    name: Audio sensor music spectrum rate
+    icon: mdi:timer-cog-outline
+    options:
+      - normal
+      - eco
+      - fast
 [%- endif %]
 
 # The spectrum (31 values, five times a second) is only for the live wave, never for history.
@@ -248,4 +266,77 @@ script:
       - action: input_boolean.turn_on
         target:
           entity_id: "{{ 'input_boolean.' ~ board ~ '_spl_calibrated' }}"
+[%- endif %]
+[%- if source %]
+
+# Forwards the spectrum rate to the board the music source select holds, the same map as the aliases.
+# `fast` costs Wi-Fi airtime and the board's CPU, so it applies only while someone watches; 10 s after
+# the last view leaves, the board goes back to normal (a quick page flip keeps it fast). Any change of
+# a board's select re-applies the profile: its coming back online (an offline board cannot take the
+# option), its own 60 min timeout from fast to normal while someone still watches, a change made on
+# the board (HA owns the profile). Setting the option it already has changes no state, so no loop.
+# HA's start re-applies too. A source change sets the board it leaves to normal.
+automation:
+  - id: audio_sensor_music_spectrum_rate
+    alias: Audio sensor music spectrum rate
+    description: Set the music board's Spectrum rate to the chosen profile, fast only while watching.
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: input_select.audio_sensor_music_spectrum_rate
+        id: choice
+      - trigger: state
+        entity_id: input_boolean.audio_sensor_music_watching
+        to: "on"
+        id: watching
+      - trigger: state
+        entity_id: input_boolean.audio_sensor_music_watching
+        to: "off"
+        for:
+          seconds: 10
+        id: watching
+      - trigger: state
+        entity_id: input_select.audio_sensor_music_source
+        id: source
+      - trigger: homeassistant
+        event: start
+        id: start
+      - trigger: state
+        entity_id:
+[%- for b in ordered %]
+          - [[ b.spectrum_rate ]]
+[%- endfor %]
+        not_to:
+          - unavailable
+          - unknown
+        id: board
+    actions:
+      - variables:
+          target: >-
+            {{ [[ lookup('spectrum_rate') ]] }}
+          previous: >-
+            {{ [[ board_map('spectrum_rate') ]].get(trigger.from_state.state, [[ jstr(source.spectrum_rate) ]])
+               if trigger.id == 'source' and trigger.from_state is not none else '' }}
+          option: >-
+            {% set choice = states('input_select.audio_sensor_music_spectrum_rate') %}
+            {% if choice == 'fast' %}{{ 'fast' if is_state('input_boolean.audio_sensor_music_watching', 'on') else 'normal' }}
+            {%- elif choice == 'eco' %}eco{% else %}normal{% endif %}
+      - if:
+          - condition: template
+            value_template: >-
+              {{ previous != '' and previous != target and states(previous) not in ['unavailable', 'unknown'] }}
+        then:
+          - action: select.select_option
+            target:
+              entity_id: "{{ previous }}"
+            data:
+              option: normal
+      - condition: template
+        value_template: >-
+          {{ states(target) not in ['unavailable', 'unknown'] }}
+      - action: select.select_option
+        target:
+          entity_id: "{{ target }}"
+        data:
+          option: "{{ option }}"
 [%- endif %]

@@ -11,7 +11,7 @@
 #   esphome:
 #     area: ${area}          # not in the package: an adopted device has no area until HA sets one
 #   packages:
-#     sensor: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.1.0
+#     sensor: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.2.0
 #   wifi:
 #     ssid: !secret wifi_ssid
 #     password: !secret wifi_password
@@ -52,7 +52,7 @@ esphome:
   # Required for ESPHome dashboard adoption; versions follow the component's manifest.
   project:
     name: domosenso.audio-sensor
-    version: 0.1.0
+    version: 0.2.0
 
 esp32:
   variant: esp32s3
@@ -73,6 +73,10 @@ wifi:
 
 # encryption: the key comes from the device file (api: encryption: key: !secret ...).
 api:
+  # The API keeps one state per entity in each batch: at the default 100 ms, a spectrum every
+  # 85 ms (`fast`) reached Home Assistant only every other frame, and every update waited up to
+  # 100 ms. 10 ms still groups the once-a-minute octave burst into one message.
+  batch_delay: 10ms
 
 # No encryption here, because a factory board has no API key yet and ESPHome refuses an OTA
 # encryption block with nothing to inherit. The device file adds `encryption:` (bare: it takes the
@@ -88,7 +92,7 @@ external_components:
   - source:
       type: git
       url: https://github.com/zerostorypoints/domosenso
-      ref: audio-sensor/0.1.0
+      ref: audio-sensor/0.2.0
       path: components/audio-sensor/esphome/components
 
 # ---- Audio: ES8311 ADC over I2S, read only -------------------------------------------------------
@@ -189,12 +193,15 @@ sensor:
 
 # Third-octave spectrum for the ambient wave card.
 # Passive, like the 100 ms meter: it only listens while the 1-second meter keeps the microphone
-# running, and never stops it for the others. 8192-point FFT (50 % overlap, a frame every 85 ms):
-# bins 5.86 Hz wide, about one per third at the bottom (the 20 Hz third is 4.6 Hz wide); 4096 points
-# would smear the lowest thirds into each other.
+# running, and never stops it for the others. 4096-point FFT (50 % overlap, a frame every 43 ms):
+# bins 11.7 Hz wide, so the lowest thirds share bins; 8192 points kept them apart but took twice as
+# long to show a hit (README, Latency).
 # The levels stay dBFS like the other meters: Home Assistant adds the same SPL offset. Always on:
-# the spectrum goes out every 200 ms; the octaves (1-minute Leq) and the worker's load every minute.
+# the spectrum goes out as the Spectrum rate select says (eco every 500 ms, normal every 200 ms as
+# the mean of the frames since the last; fast every 85 ms, the newest frame alone), only when a frame has
+# landed; the octaves (1-minute Leq) and the worker's load every minute.
 audio_spectrum:
+  id: spectrum
   microphone: mic
   spectrum:
     name: Spectrum
@@ -226,12 +233,49 @@ switch:
           id(fast_level).publish_state(NAN);
           id(fast_peak).publish_state(NAN);
 
+# How often the spectrum goes out. Home Assistant sets it (fast only while someone watches the
+# music view); normal after a boot.
+select:
+  - platform: template
+    id: spectrum_rate
+    name: Spectrum rate
+    icon: mdi:timer-cog-outline
+    options: [eco, normal, fast]
+    initial_option: normal
+    optimistic: true
+    restore_value: false
+    set_action:
+      - lambda: |-
+          if (x == "eco") {
+            id(spectrum).set_profile(::audio_spectrum::ECO);
+          } else if (x == "fast") {
+            id(spectrum).set_profile(::audio_spectrum::FAST);
+          } else {
+            id(spectrum).set_profile(::audio_spectrum::NORMAL);
+          }
+      - if:
+          condition:
+            lambda: return x == "fast";
+          then:
+            - script.execute: spectrum_rate_timeout
+          else:
+            - script.stop: spectrum_rate_timeout
+
 script:
   - id: live_tracking_timeout
     mode: restart
     then:
       - delay: 60min
       - switch.turn_off: live_tracking
+  # Back to normal an hour after fast, so a board Home Assistant forgot about (it restarted, the
+  # music source moved) does not send a spectrum every frame for days.
+  - id: spectrum_rate_timeout
+    mode: restart
+    then:
+      - delay: 60min
+      - select.set:
+          id: spectrum_rate
+          option: normal
 
 text_sensor:
   - platform: wifi_info

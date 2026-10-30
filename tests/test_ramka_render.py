@@ -389,14 +389,19 @@ def test_a_screen_no_tested_layout_fits_fails(tmp_path, screen):
 
 def tagged_ramka(tmp_path, version) -> Path:
     """components/ramka at the tag ramka/<version>, extracted under tmp_path."""
+    return ramka_at(tmp_path, f"refs/tags/ramka/{version}", f"ramka-{version}")
+
+
+def ramka_at(tmp_path, rev, name) -> Path:
+    """components/ramka at a revision, extracted under tmp_path/<name>."""
     import subprocess
 
-    if subprocess.run(["git", "-C", str(REPO), "rev-parse", "-q", "--verify", f"refs/tags/ramka/{version}"],
+    if subprocess.run(["git", "-C", str(REPO), "rev-parse", "-q", "--verify", f"{rev}^{{commit}}"],
                       capture_output=True).returncode:
-        pytest.skip(f"tag ramka/{version} not in this clone")
-    old = tmp_path / f"ramka-{version}"
+        pytest.skip(f"{rev} not in this clone")
+    old = tmp_path / name
     old.mkdir()
-    archive = subprocess.run(["git", "-C", str(REPO), "archive", f"refs/tags/ramka/{version}", "components/ramka"],
+    archive = subprocess.run(["git", "-C", str(REPO), "archive", rev, "components/ramka"],
                              capture_output=True, check=True).stdout
     subprocess.run(["tar", "-x", "-C", str(old)], input=archive, check=True)
     return old / "components" / "ramka"
@@ -745,9 +750,10 @@ def reset_script(package):
     return package["script"]["ramka_settings_reset"]
 
 
-def run_reset(package, page=None, groups=None, events=False) -> dict[str, object]:
-    """What script.<prefix>_settings_reset sets, evaluated with Jinja: entity -> value. With `events`,
-    also what its events set: ALBUMS -> the event data, CLIMATE -> the rooms."""
+def run_reset(package, page=None, groups=None, states=None, events=False) -> dict[str, object]:
+    """What script.<prefix>_settings_reset sets, evaluated with Jinja: entity -> value. `states`
+    are what its conditions read; an entity not given is unavailable (a home without audio-sensor).
+    With `events`, also what its events set: ALBUMS -> the event data, CLIMATE -> the rooms."""
     fields = {k: v for k, v in (("page", page), ("groups", groups)) if v is not None}
     sequence = reset_script(package)["sequence"]
     variables = {}
@@ -757,7 +763,7 @@ def run_reset(package, page=None, groups=None, events=False) -> dict[str, object
     for block in sequence[1:]:
         [condition] = block["if"]
         assert condition["condition"] == "template"
-        if ha(condition["value_template"], **variables) != "True":
+        if ha(condition["value_template"], states=states, **variables) != "True":
             continue
         for step in block["then"]:
             if "event" in step:
@@ -843,7 +849,8 @@ def test_settings_helpers_stable_ids(plain, demo):
                                 re.split(r",\s*(?![^{]*\})", manifest["provides"]["automations"].split(", with")[0])))
     rendered = defined_entities(demo["package.yaml"])
     assert {e for e in rendered if not e.startswith("automation.")} <= provided
-    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot"} <= automations
+    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching"} <= automations
+    assert "with music_visual also <prefix>_music_watching" in manifest["provides"]["automations"]
 
 
 def test_no_helper_has_initial(plain, demo):
@@ -957,10 +964,14 @@ def test_reset_page_and_groups(demo):
         "input_select.ramka_theme_mode", "input_boolean.ramka_settings_advanced"}
     assert set(run_reset(package, groups=["presence_display", "music_visual"])) == {
         e for e in everything if GROUP_OF[e] in ("presence_display", "music_visual")}
-    # Never audio-sensor's helpers: the music source and the calibration are not preferences.
+    # Never audio-sensor's helpers: the music source and the calibration are not preferences. The
+    # one exception is the sensor update rate on Music, Advanced, set only while it is there.
     for step in walk(reset_script(package)):
         target = step.get("target", {}).get("entity_id", "") if isinstance(step.get("target"), dict) else ""
-        assert target.startswith("input_") and ".ramka_" in target or not target, target
+        assert target.startswith("input_") and ".ramka_" in target or target == SPECTRUM_RATE or not target, target
+    assert run_reset(package, states={SPECTRUM_RATE: "eco"}) == {**everything, SPECTRUM_RATE: "normal"}
+    assert run_reset(package, groups=["pages"], states={SPECTRUM_RATE: "eco"}) == {
+        e: v for e, v in everything.items() if GROUP_OF[e] == "pages"}
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
     assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS
@@ -1017,6 +1028,26 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
                 assert PAGE_OF[entity] == path or (entity == "input_boolean.ramka_settings_advanced"
                                                    and path in ADVANCED_PAGES), (entity, path)
                 assert entity in run_reset(package, page=PAGE_OF[entity]), entity
+        # audio-sensor's sensor update rate (amended 2026-10-30, #110): on Music, Advanced with the
+        # music visual, hidden while audio-sensor does not provide it.
+        music = "input_select.ramka_music_visual" in helpers(package)
+        if music:
+            assert on_pages.get(SPECTRUM_RATE) == "music", lang
+            [(section, card)] = [(s, c) for s, c in view_cards(views["music"])
+                                 if SPECTRUM_RATE in {r.get("entity") for r in rows(c)}]
+            assert advanced(section, card) and RATE_THERE in card["visibility"], lang
+        else:
+            assert SPECTRUM_RATE not in on_pages and SPECTRUM_RATE not in json.dumps(views), lang
+    # The Music reset and the global reset set it to normal while it is there; a home without
+    # audio-sensor (unknown: no such entity; unavailable) skips it rather than fails.
+    there = {SPECTRUM_RATE: "fast"}
+    expected = {SPECTRUM_RATE: "normal"} if music else {}
+    for page in (None, "music"):
+        assert {e: v for e, v in run_reset(package, page=page, states=there).items() if e == SPECTRUM_RATE} == expected, page
+        for state in ("unknown", "unavailable"):
+            assert SPECTRUM_RATE not in run_reset(package, page=page, states={SPECTRUM_RATE: state}), (page, state)
+    for page in ["general"] + [v for v in PAGE_VIEWS if v != "music"]:
+        assert SPECTRUM_RATE not in run_reset(package, page=page, states=there), page
 
 
 FALLBACK = re.compile(r"states\('(input_\w+\.ramka_\w+)'\)\s*\|\s*(?:int|float)\(([\d.]+)\)")
@@ -1393,6 +1424,10 @@ SETTINGS_PAGES = ["general", *PAGE_VIEWS]
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
 SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
+# audio-sensor's sensor update rate and watching flag (SPEC-021, amended 2026-10-30, #99, #110).
+SPECTRUM_RATE = "input_select.audio_sensor_music_spectrum_rate"
+MUSIC_WATCHING = "input_boolean.audio_sensor_music_watching"
+RATE_THERE = {"condition": "state", "entity": SPECTRUM_RATE, "state_not": "unavailable"}
 # Where each setting sits (SPEC-021's page table): Basic or Advanced.
 BASIC = {
     "general": {"input_select.ramka_theme_mode", "input_boolean.ramka_near_enabled", "input_number.ramka_off_delay_s",
@@ -1413,7 +1448,7 @@ ADVANCED = {
     "music": {"input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
               "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s",
               "input_number.ramka_music_line_width_px", "input_boolean.ramka_music_tilt", *(f"input_number.ramka_{k}" for k in MUSIC_DB),
-              "input_number.ramka_music_fps", MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
+              "input_number.ramka_music_fps", SPECTRUM_RATE, MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
               "input_text.audio_sensor_calibration_note"},
     "photos": {"input_number.ramka_photo_s", ALBUMS},
     "climate": {CLIMATE},
@@ -1724,6 +1759,160 @@ def test_settings_dashboard_is_documented():
     entry = yaml.safe_load(block)["lovelace"]["dashboards"]["ramka-settings"]
     assert entry["filename"] == "dashboards/ramka-settings.en.yaml" and entry["require_admin"] is True
     assert entry["mode"] == "yaml"
+
+
+# ---- 0.4.0, amended 2026-10-30: sensor update rate and the watching flag (#99, #110) ----------
+
+class HAStates:
+    """`states` as a Home Assistant template reads it: `states('id')` and `states.<domain>`. An
+    entity not given is unavailable."""
+
+    def __init__(self, values, attrs=None):
+        self.values, self.attrs = values, attrs or {}
+
+    def __call__(self, entity_id):
+        return str(self.values.get(entity_id, "unavailable"))
+
+    def __getattr__(self, domain):
+        from types import SimpleNamespace
+
+        return [SimpleNamespace(entity_id=e, state=str(v), attributes=self.attrs.get(e, {}))
+                for e, v in self.values.items() if e.startswith(domain + ".")]
+
+
+def ha_states(template, values, attrs=None) -> str:
+    import jinja2
+
+    states = HAStates(values, attrs)
+    return jinja2.Environment().from_string(template).render(
+        states=states, is_state=lambda e, v: states(e) == v).strip()
+
+
+def run_watching(automation, values, attrs=None):
+    """What automation <prefix>_music_watching does to the flag: "on", "off" or None (nothing)."""
+    for condition in automation.get("conditions", []):
+        assert condition["condition"] == "template"
+        if ha_states(condition["value_template"], values, attrs) != "True":
+            return None
+    [step] = automation["actions"]
+    [condition] = step["if"]
+    branch = step["then"] if ha_states(condition["value_template"], values, attrs) == "True" else step["else"]
+    [action] = branch
+    assert action["target"]["entity_id"] == MUSIC_WATCHING
+    return {"input_boolean.turn_on": "on", "input_boolean.turn_off": "off"}[action["action"]]
+
+
+def test_music_view_drives_the_watching_flag(demo, plain):
+    """With music_visual, the music view turns audio-sensor's watching flag on and off; another
+    Ramka's music view keeps it on (one flag per home); without audio-sensor nothing runs."""
+    assert not [a for a in plain["package.yaml"]["automation"] if a["id"] == "ramka_music_watching"]
+    [automation] = [a for a in demo["package.yaml"]["automation"] if a["id"] == "ramka_music_watching"]
+    assert MUSIC_WATCHING not in json.dumps(plain["package.yaml"])
+    entities = {t.get("entity_id") for t in automation["triggers"] if t["trigger"] == "state"}
+    assert entities == {"binary_sensor.ramka_music_view"}
+    assert {"trigger": "homeassistant", "event": "start"} in automation["triggers"]
+    # The music view is a Ramka's: its marker lets another Ramka's automation find it.
+    [view] = [e for e in keyed(demo["package.yaml"], "template").values() if e["unique_id"] == "ramka_music_view"]
+    assert view["attributes"]["component"] == "ramka"
+    ramka = {"component": "ramka"}
+    mine, other = "binary_sensor.ramka_music_view", "binary_sensor.hall_frame_music_view"
+    flag = {MUSIC_WATCHING: "off"}
+    attrs = {mine: ramka, other: ramka}
+    assert run_watching(automation, {**flag, mine: "on"}, attrs) == "on"
+    assert run_watching(automation, {**flag, mine: "off"}, attrs) == "off"
+    assert run_watching(automation, {**flag, mine: "off", other: "on"}, attrs) == "on"
+    assert run_watching(automation, {**flag, mine: "off", other: "off"}, attrs) == "off"
+    # Some other integration's "…_music_view" is no Ramka's.
+    assert run_watching(automation, {**flag, mine: "off", "binary_sensor.den_music_view": "on"}, attrs) == "off"
+    # A home without audio-sensor: no flag, nothing to set.
+    assert run_watching(automation, {mine: "on"}, attrs) is None
+    assert run_watching(automation, {MUSIC_WATCHING: "unknown", mine: "on"}, attrs) is None
+
+
+def test_fps_is_the_redraw_rate(demo):
+    labels = {"en": "Redraw rate", "de": "Neuzeichnungsrate", "pl": "Częstotliwość rysowania"}
+    for lang, label in labels.items():
+        assert translations(lang)["ui.settings.music_fps"] == label
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        [row] = [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == "input_number.ramka_music_fps"]
+        assert row["name"] == label
+    helper = demo["package.yaml"]["input_number"]["ramka_music_fps"]
+    assert (helper["min"], helper["max"], helper["step"]) == (1, 60, 1)
+    assert helper["name"] == "Ramka music redraw rate (fps)"
+    assert run_reset(demo["package.yaml"])["input_number.ramka_music_fps"] == 30
+
+
+def test_spectrum_rate_row_and_options_translated(demo):
+    names = {"en": "Sensor update rate", "de": "Sensor-Aktualisierungsrate", "pl": "Częstotliwość odczytu czujnika"}
+    for lang, name in names.items():
+        t = translations(lang)
+        assert t["ui.settings.music_spectrum_rate"] == name
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        [card] = [c for _, c in view_cards(view) if SPECTRUM_RATE in {r.get("entity") for r in rows(c)}]
+        assert [r["name"] for r in rows(card)] == [name]
+        # The select shows the option values; a note under it says what each one does.
+        [note] = [c for _, c in view_cards(view) if c.get("type") == "markdown" and RATE_THERE in c.get("visibility", [])]
+        assert ADVANCED_ON in note["visibility"]
+        for option in ("eco", "normal", "fast"):
+            assert f"`{option}`" in note["content"] and t[f"ui.settings.music_spectrum_rate_{option}"] in note["content"]
+        if lang != "en":
+            for option in ("eco", "normal", "fast"):
+                key = f"ui.settings.music_spectrum_rate_{option}"
+                assert t[key] != translations("en")[key], (lang, key)
+
+
+# Ramka without the sensor update rate and the watching flag: main as last merged into the
+# feature branch (ramka 0.5.0).
+BEFORE_SPECTRUM_RATE = "12b24d7cbba26f0da2cfa19bf0cd8bc3880adc06"
+AUDIO_SENSOR_ID = re.compile(r"\b((?:input_select|input_boolean|input_number|input_text|sensor|binary_sensor|script)"
+                             r"\.(?:audio_sensor_|music_)\w+)")
+
+
+def test_render_without_audio_sensor_unchanged(tmp_path):
+    """The render cannot see audio-sensor, so it is one render for a home with or without it: the
+    new row, note and reset step are hidden or skipped while audio-sensor's ids are not there, and
+    they and the watching automation read only the ids Ramka consumes. Apart from them (and the fps
+    label and the audio-sensor version in the calibration link), the files are the ones before the
+    change, value for value."""
+    before, after = tmp_path / "before", tmp_path / "after"
+    dr.render_component(ramka_at(tmp_path, BEFORE_SPECTRUM_RATE, "ramka-before"), demo_inputs(), before)
+    dr.render_component(COMP, demo_inputs(), after)
+    names = sorted(p.name for p in before.iterdir())
+    assert names == sorted(p.name for p in after.iterdir())
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    consumed = {c["id"] for c in manifest["consumes"] if "id" in c and c["component"] == "audio-sensor"}
+    assert {SPECTRUM_RATE, MUSIC_WATCHING} <= consumed
+    load = lambda path: yaml.safe_load(path.read_text(encoding="utf-8"))  # noqa: E731
+    fps = {"en": "Redraw rate", "de": "Neuzeichnungsrate", "pl": "Częstotliwość rysowania"}
+    for name in names:
+        text = (after / name).read_text(encoding="utf-8")
+        assert set(AUDIO_SENSOR_ID.findall(text)) <= consumed, (name, set(AUDIO_SENSOR_ID.findall(text)) - consumed)
+        old = load(before / name)
+        new = yaml.safe_load(text.replace("blob/audio-sensor/0.2.0/", "blob/audio-sensor/0.1.0/"))
+        if name == "package.yaml":
+            new["automation"] = [a for a in new["automation"] if a["id"] != "ramka_music_watching"]
+            sequence = new["script"]["ramka_settings_reset"]["sequence"]
+            new["script"]["ramka_settings_reset"]["sequence"] = [b for b in sequence if SPECTRUM_RATE not in json.dumps(b)]
+            assert new["input_number"]["ramka_music_fps"].pop("name") == "Ramka music redraw rate (fps)"
+            old["input_number"]["ramka_music_fps"].pop("name")
+            for package in (old, new):
+                for block in package["template"]:
+                    for entity in block.get("binary_sensor", []):
+                        if entity["unique_id"] == "ramka_music_view":
+                            entity.pop("attributes", None)
+        elif name.startswith("ramka-settings."):
+            lang = name.split(".")[1]
+            for view in new["views"]:
+                for section in view["sections"]:
+                    section["cards"] = [c for c in section["cards"] if SPECTRUM_RATE not in json.dumps(c)]
+            for dashboard, label in ((old, None), (new, fps[lang])):
+                for view in dashboard["views"]:
+                    for _, card in view_cards(view):
+                        for row in rows(card):
+                            if row.get("entity") == "input_number.ramka_music_fps":
+                                assert label is None or row["name"] == label
+                                row.pop("name")
+        assert new == old, name
 
 
 # ---- SPEC-021 amendment 1: Photos, Air, the way to the view, language, calendar by URL ---------

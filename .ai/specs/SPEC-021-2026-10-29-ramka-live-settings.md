@@ -10,6 +10,11 @@
   Ramka's Controls tile removed; `music_visual_options` becomes the visual's starting values
   instead of literal card options). Both versions are unreleased, so this spec changes 0.4.0 and
   0.1.0 in place; no bridge.
+- Amended 2026-10-30 by issues #99 and #110 (plan `docs/superpowers/plans/2026-10-30-spectrum-latency.md`):
+  Music, Advanced gains the sensor update rate (audio-sensor's `input_select.audio_sensor_music_spectrum_rate`,
+  covered by the Music and global reset), the Ramka turns audio-sensor's
+  `input_boolean.audio_sensor_music_watching` on while its music view shows, and the fps row is
+  labelled the redraw rate.
 - Decisions this spec adds to the approved design, each forced by the code or left open by the
   review, are marked **Decision**. Inference is marked as such.
 - Later, each with its own issue on this page structure and the standing rule: photo album
@@ -119,6 +124,14 @@ is where the helper sits on its page; "group" is what the seed handles together 
 | `input_number.<prefix>_music_level_neutral_db` | 0–130 dB, step 1 | 30 | Music, Advanced | music_visual | stable |
 | `input_number.<prefix>_music_level_hot_db` | 0–130 dB, step 1 | 70 | Music, Advanced | music_visual | stable |
 | `input_number.<prefix>_music_fps` (new) | 1–60, step 1 | 30 | Music, Advanced | music_visual | stable |
+| `input_select.audio_sensor_music_spectrum_rate` (audio-sensor's, consumed; amended 2026-10-30, #110) | `eco`, `normal`, `fast` | `normal` | Music, Advanced; hidden while unavailable | music_visual (reset only when available) | stable |
+
+`music_fps` is the **redraw rate** (labels en "Redraw rate", de "Neuzeichnungsrate", pl
+"Częstotliwość rysowania"; amended 2026-10-30, #110): how often the browser draws, which cannot make
+the data newer. The sensor update rate is how often the board publishes; `fast` applies only while
+the music view is shown. With `music_visual`, automation `<prefix>_music_watching` turns
+`input_boolean.audio_sensor_music_watching` on when `binary_sensor.<prefix>_music_view` turns on and
+off when it turns off (the 10 s grace before the board drops to `normal` is audio-sensor's).
 
 The music-visual helpers exist only with `music_visual`; every other helper above exists in every
 home. Other entities this spec adds:
@@ -291,7 +304,8 @@ automation <prefix>_settings_seed: trigger homeassistant start
   `climate`, `air`, `plants`, `photos`, `status`, `calendar`, `music`): only that page's helpers.
   Field `groups` (`presence_display`, `pages`, `music_visual`): only those groups. Both absent: every
   helper, `ambient_music` included. Both given: the helpers in both. It never touches `audio-sensor`'s
-  helpers (music source, calibration). **Decision: one script with two optional fields**, so the
+  music source or calibration helpers; the one exception is the sensor update rate on Music,
+  Advanced, set to `normal` when it is available (amended 2026-10-30, #110). **Decision: one script with two optional fields**, so the
   page buttons, the global button and the seed share one list of values; each helper belongs to one
   page and one group (the table above).
 - **Decision: the rule for homes that already run the Ramka.** The flag is new in 0.4.0, so it is

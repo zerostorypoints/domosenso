@@ -25,7 +25,8 @@ part of it (dropped 2026-10-29: the Ramka's live settings cover the tuning).
 |---|---|
 | Sound level, Sound peak | every second: RMS and the loudest sample, in dBFS, unweighted (no A or C weighting) |
 | Fast sound level, Fast sound peak | every 100 ms, published only while **Live tracking** is on; the switch is off after a boot and turns itself off after an hour |
-| Spectrum | 31 comma-separated third-octave levels in dBFS (20 Hz to 20 kHz), about five times a second |
+| Spectrum | 31 comma-separated third-octave levels in dBFS (20 Hz to 20 kHz), as often as Spectrum rate says |
+| Spectrum rate | `eco`, `normal`, `fast` (below); `normal` after a boot and an hour after `fast` |
 | Octave 31.5 Hz to 16 kHz | ten sensors, the 1-minute Leq of each octave |
 | Spectrum load | how much of one core the spectrum worker uses |
 | Wi-Fi signal, Uptime, Connected AP (BSSID), Mic gain | diagnostics |
@@ -34,9 +35,11 @@ part of it (dropped 2026-10-29: the Ramka's live settings cover the tuning).
 Levels stay in dBFS on the board (0 dBFS is clipping). Home Assistant adds a per-board SPL offset to
 get dB SPL, so calibrating against a reference microphone needs no flash.
 
-Measured on one board: 31 bands about five times a second, the spectrum worker at about 19 % of one
-core. The bands below about 50 Hz hold one or two FFT bins: approximate, adequate for a visual, not
-for measurement. The FFT is 8192 points (Hann window, 50 % overlap) at 48 kHz, and the band sum
+Measured on one board at `normal`: 31 bands about five times a second (4.71), the spectrum worker at about 19 % of one
+core (measured with the earlier 8192-point FFT; 4096 points: about 22 %). The FFT is 4096 points
+(Hann window, 50 % overlap) at 48 kHz, bins 11.7 Hz wide: the bands below about 80 Hz share bins
+(25 and 31.5 Hz move together), approximate, adequate for a visual, not for measurement. 4096
+rather than 8192 halves the time a hit needs to reach the screen (see Latency). The band sum
 matches Sound level within about 1 dB.
 
 ## The microphone gain
@@ -157,13 +160,64 @@ live_level: sensor.living_room_audio_sensor_living_room_fast_sound_level
 live_peak: sensor.living_room_audio_sensor_living_room_fast_sound_peak
 ```
 
+## Latency and update rate
+
+How late the visual follows a bass hit is the sum of these stages. The times are read from the
+code, not measured yet (inference); the measurement below replaces them.
+
+| stage | `normal` | `fast` |
+|---|---|---|
+| FFT window (4096 points at 48 kHz, Hann; 8192 before): a hit reaches full weight | about 43 ms | about 43 ms |
+| wait for the publish, which happens when a frame lands and the interval has passed | 0 to 200 ms | 0 to about 5 ms |
+| what goes out | the mean of the frames since the last publish: a kick in one of two or three frames loses about 4 dB | the newest frame alone |
+| ESPHome API (`batch_delay: 10ms`; the default 100 ms halved `fast`), Home Assistant, the `sensor.music_spectrum` alias, the websocket | tens of ms (not timed) | same |
+| the card's rise (default 200 ms, never shorter than the gap between pushes) | about 200 ms to 90 % | about 200 ms to 90 %; a shorter rise works now |
+
+The board's **Spectrum rate** select sets the profile:
+
+| profile | interval | what goes out | cost |
+|---|---|---|---|
+| `eco` | 500 ms | mean of the frames | the lightest: two state changes a second |
+| `normal` | 200 ms | mean of the frames | today's rate: five a second |
+| `fast` | 85 ms (every other 43 ms frame hop; with 50 % overlap every sample is in a sent frame) | the newest frame | about twelve state changes a second, one websocket message per open dashboard each |
+
+The intervals are measured (below). Each publish is one CSV of 31 values over the API,
+one state change and one alias render in Home Assistant, and one websocket message per open
+dashboard; the recorder excludes the spectrum in every profile. With a `music: true` board the
+package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a fresh one starts on
+`normal`, its first option; a state that is no option reads as `normal`) and the flag `input_boolean.audio_sensor_music_watching`. Its automation sets
+the music board's select to the choice, but `fast` only while the flag is on and back to `normal`
+10 s after it turns off, so a board is fast only while someone looks. The Ramka sets the flag
+while its music view shows. The automation re-applies the profile when Home Assistant starts, when
+the music source changes (the board it leaves goes back to `normal`), and on any change of a
+board's select: a board coming back online, a change made on the board, and the board's own
+safety, which drops `fast` to `normal` after an hour.
+
+The card's `fps` (the Ramka's "Redraw rate") is how often the browser draws. It cannot make the
+data newer; on a weak tablet a lower value still saves work.
+
+**Measurement** (2026-10-30, one board, ESPHome 2026.9.1; the rest after a flash, results here):
+
+| what | method | result |
+|---|---|---|
+| publish rate per profile | 60 s each; count the board's spectrum `state_changed` events in Home Assistant; within 10 % of 500 / 200 / 85 ms | `eco` 2.02/s, mean 499 ms (p90 569); `normal` 5.00/s, mean 200 ms (p90 304); `fast` 11.52/s, mean 87 ms (p90 163), 98 % of the frames. Before, with the API's default `batch_delay` of 100 ms, `fast` gave 5.97/s, mean 168 ms; the old firmware's fixed 200 ms gave 4.70/s, mean 212 ms |
+| load, `eco` against `normal` | Spectrum load and the Home Assistant event rate over 10 min each | |
+| sound to screen, `fast` and `normal` | a tone burst or kick near the microphone, 10 trials filmed at 240 fps beside the tablet; median and 90th percentile; target under 300 ms in 9 of 10 on `fast` | `fast`, rise 50 ms, the card before the no-stepping change, one track filmed at 120 fps, time from the kick in the soundtrack to half of the wave's colour change at its bass end: FFT 8192, median 333 ms, 0 of 8 under 300; FFT 4096, median 280 ms (225–362), 9 of 12 under 300. `normal` not filmed yet |
+| the fallbacks | a restart gives `normal`; `fast` alone falls back after 60 min; the music view closed gives `normal` after 10 s | |
+
+What is left (the untimed stages, the skipped measurements, the fall, bass detail, a measuring
+tool) is collected in #126.
+
+A long `fall` (default 4 s) with kicks twice a second keeps the low bands high between kicks, which
+also reads as "not following" (inference); try a shorter fall on the Music page while measuring.
+
 ## In the Ramka
 
 With `music_visual: spectrum` or `level` in the Ramka's inputs (0.4.0), its now-playing view draws
 `ambient-wave-card` from the music aliases in its wave strip, with `fallback: classic`. Its look is
 live: the Ramka's settings dashboard, Music page, sets the visual, the flavours, palette, dynamics,
-line width and refresh rate through the Ramka's helpers, and its Advanced part holds this
-component's music source select and the calibration (`input_number.audio_sensor_measured_offset`,
+line width and redraw rate through the Ramka's helpers, and its Advanced part holds this
+component's sensor update rate (above), its music source select and the calibration (`input_number.audio_sensor_measured_offset`,
 `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration`). The Ramka's
 README ("Music visual", "Live settings", "Settings page") has the details.
 
@@ -191,7 +245,8 @@ A home that already runs its own copy of this firmware, package or cards keeps i
 this repository at the component's tag, so the `ref` in `external_components` is a literal that
 `tools/catalog_check.py` compares with the manifest's version. The band maths are in
 `spectrum_bands.h` with no ESPHome dependency, so `tests/test_audio_spectrum_bands.py` builds and
-checks them on the host.
+checks them on the host. When the spectrum goes out (the profiles and the publish rule) is in
+`publish_policy.h`, host-tested the same way.
 
 ## Limits
 

@@ -50,6 +50,7 @@
 [%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
 [%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
+[%- set rate_there = "{condition: state, entity: input_select.audio_sensor_music_spectrum_rate, state_not: unavailable}" -%]
 [#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. -#]
 [%- macro rows(helpers) -%]
 [%- for domain, suffix in helpers %]
@@ -269,6 +270,19 @@ views:
           ('input_number', 'music_fall_s'), ('input_number', 'music_line_width_px'), ('input_boolean', 'music_tilt'),
           ('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db'),
           ('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db'), ('input_number', 'music_fps')]) ]]
+          # audio-sensor's sensor update rate: how often the board publishes (the redraw rate above is
+          # how often the browser draws). Hidden while unavailable, as in a home without audio-sensor.
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ rate_there ]] ]
+            entities:
+              - entity: input_select.audio_sensor_music_spectrum_rate
+                name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
+          - type: markdown
+            visibility: [ [[ advanced_on ]], [[ rate_there ]] ]
+            content: |-
+[%- for option in ['eco', 'normal', 'fast'] %]
+              - `[[ option ]]`: [[ t('ui.settings.music_spectrum_rate_' ~ option) ]]
+[%- endfor %]
       # audio-sensor's music source and the calibration of the board it names. Ramka's render cannot
       # see audio-sensor, so these cards hide while the select is unavailable (a home without it).
       # Calibration is a measurement, not a preference: no Reset touches it.
@@ -291,7 +305,7 @@ views:
 
 [[ block(t('ui.settings.calibration_procedure')) ]]
 
-              <a href="https://github.com/zerostorypoints/domosenso/blob/audio-sensor/0.1.0/components/audio-sensor/README.md#the-music-source-and-calibration">[[ t('ui.settings.calibration_readme') ]]</a>
+              <a href="https://github.com/zerostorypoints/domosenso/blob/audio-sensor/0.2.0/components/audio-sensor/README.md#the-music-source-and-calibration">[[ t('ui.settings.calibration_readme') ]]</a>
           - type: entities
             visibility: [ [[ advanced_on ]], [[ source_there ]] ]
             entities:

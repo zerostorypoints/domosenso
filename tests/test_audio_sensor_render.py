@@ -430,3 +430,139 @@ def test_demo_inputs_and_manifest_carry_no_room_acoustics():
     assert not {"room_acoustics", "playing"} & set(demo_inputs())
     assert all("acoustics" not in board for board in demo_inputs()["sensors"])
     assert "apexcharts-card" not in [entry["name"] for entry in manifest["integrations"]]
+
+
+# --- #99, #110: the spectrum rate choice, the watching flag and their forwarding --------------
+
+RATE = "input_select.audio_sensor_music_spectrum_rate"
+WATCHING = "input_boolean.audio_sensor_music_watching"
+LIVING_RATE = "select.living_room_audio_sensor_living_room_spectrum_rate"
+KIDS_RATE = "select.kids_room_audio_sensor_kids_room_spectrum_rate"
+
+
+def rate_automation(package) -> dict:
+    return next(a for a in package["automation"] if a["id"] == "audio_sensor_music_spectrum_rate")
+
+
+def run_template(template, states_by_id, **context) -> str:
+    """A Home Assistant template with stub states and extra variables (trigger, earlier variables)."""
+    env = jinja2.Environment()
+
+    def states(entity_id):
+        return states_by_id.get(entity_id, "unavailable")
+
+    return env.from_string(template).render(
+        states=states, is_state=lambda e, v: states(e) == v, **context).strip()
+
+
+def rate_calls(package, states_by_id, trigger) -> list:
+    """The select.select_option calls the automation's actions make, run with stub states."""
+    actions = rate_automation(package)["actions"]
+    context = {"trigger": trigger}
+    for name, template in actions[0]["variables"].items():
+        context[name] = run_template(template, states_by_id, **context)
+    calls = []
+    for step in actions[1:]:
+        if "if" in step:
+            if all(run_template(c["value_template"], states_by_id, **context) == "True" for c in step["if"]):
+                for inner in step["then"]:
+                    calls.append((run_template(inner["target"]["entity_id"], states_by_id, **context),
+                                  run_template(inner["data"]["option"], states_by_id, **context)))
+        elif step.get("condition") == "template":
+            if run_template(step["value_template"], states_by_id, **context) != "True":
+                break
+        else:
+            assert step["action"] == "select.select_option"
+            calls.append((run_template(step["target"]["entity_id"], states_by_id, **context),
+                          run_template(step["data"]["option"], states_by_id, **context)))
+    return calls
+
+
+def test_spectrum_rate_helpers_with_a_music_board(demo):
+    rate = demo["input_select"]["audio_sensor_music_spectrum_rate"]
+    assert rate["options"] == ["normal", "eco", "fast"]  # a fresh helper takes the first
+    assert "initial" not in rate
+    watching = demo["input_boolean"]["audio_sensor_music_watching"]
+    assert "initial" not in watching
+
+
+def test_no_music_board_no_spectrum_rate(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"][0]["music"] = False
+    package = render(tmp_path, inputs)
+    assert "input_select" not in package
+    assert "audio_sensor_music_watching" not in package["input_boolean"]
+    assert all(a["id"] != "audio_sensor_music_spectrum_rate" for a in package.get("automation") or [])
+
+
+def test_spectrum_rate_automation_targets_the_selected_board(demo):
+    automation = rate_automation(demo)
+    assert automation["mode"] == "queued"
+    target = automation["actions"][0]["variables"]["target"]
+    # The same map and fallback as the aliases: the select's area, else the music: true board.
+    assert SELECT in target
+    for selected, board in (("Kids' room", KIDS_RATE), ("Living room", LIVING_RATE),
+                            ("unknown", LIVING_RATE), ("unavailable", LIVING_RATE)):
+        assert run_template(target, {SELECT: selected}) == board
+    triggers = automation["triggers"]
+
+    def has(**fields):
+        return any(all(t.get(k) == v for k, v in fields.items()) for t in triggers)
+
+    assert has(trigger="state", entity_id=RATE)
+    assert has(trigger="state", entity_id=WATCHING, to="on")
+    assert has(trigger="state", entity_id=WATCHING, to="off", **{"for": {"seconds": 10}})
+    assert has(trigger="state", entity_id=SELECT)
+    assert has(trigger="homeassistant", event="start")
+    board = [t for t in triggers if t.get("id") == "board"]
+    assert len(board) == 1
+    assert set(board[0]["entity_id"]) == {LIVING_RATE, KIDS_RATE}
+
+
+def test_spectrum_rate_reapplies_on_any_change_of_the_boards_select(demo):
+    # The board's select coming back online and its own 60 min timeout (fast -> normal) both change
+    # its state: one trigger without `from` re-applies the profile for both. Setting the option the
+    # select already has changes no state, so it cannot loop.
+    board = next(t for t in rate_automation(demo)["triggers"] if t.get("id") == "board")
+    assert board["trigger"] == "state"
+    assert "from" not in board and "to" not in board
+    assert board["not_to"] == ["unavailable", "unknown"]
+
+
+def test_spectrum_rate_fast_only_while_watching(demo):
+    option = rate_automation(demo)["actions"][0]["variables"]["option"]
+    for choice, watching, expected in (
+        ("fast", "on", "fast"), ("fast", "off", "normal"), ("eco", "off", "eco"), ("eco", "on", "eco"),
+        ("normal", "on", "normal"), ("unknown", "on", "normal"), ("unavailable", "off", "normal"),
+    ):
+        assert run_template(option, {RATE: choice, WATCHING: watching}) == expected, (choice, watching)
+    # The whole run: the selected board gets the option, an offline board gets nothing (its
+    # coming back is a trigger of its own).
+    states = {RATE: "fast", WATCHING: "on", SELECT: "Living room", LIVING_RATE: "normal", KIDS_RATE: "normal"}
+    trigger = {"id": "watching", "from_state": None}
+    assert rate_calls(demo, states, trigger) == [(LIVING_RATE, "fast")]
+    assert rate_calls(demo, {**states, LIVING_RATE: "unavailable"}, trigger) == []
+
+
+def test_spectrum_rate_resets_the_previous_board(demo):
+    states = {RATE: "fast", WATCHING: "on", SELECT: "Kids' room", LIVING_RATE: "fast", KIDS_RATE: "normal"}
+    trigger = {"id": "source", "from_state": {"state": "Living room"}}
+    assert rate_calls(demo, states, trigger) == [(LIVING_RATE, "normal"), (KIDS_RATE, "fast")]
+    # The old board offline: it boots on normal anyway; only the new one is set.
+    assert rate_calls(demo, {**states, LIVING_RATE: "unavailable"}, trigger) == [(KIDS_RATE, "fast")]
+    # Any other trigger leaves the other board alone.
+    assert rate_calls(demo, states, {"id": "choice", "from_state": {"state": "eco"}}) == [(KIDS_RATE, "fast")]
+    # A source change that lands on the same board (unknown -> its own area) resets nothing.
+    same = {**states, SELECT: "Living room"}
+    assert rate_calls(demo, same, {"id": "source", "from_state": {"state": "unknown"}}) == [(LIVING_RATE, "fast")]
+
+
+def test_entities_input_accepts_spectrum_rate(tmp_path):
+    inputs = demo_inputs()
+    inputs["sensors"][0]["entities"] = {"spectrum_rate": "select.lounge_mic_spectrum_rate"}
+    package = render(tmp_path, inputs)
+    target = rate_automation(package)["actions"][0]["variables"]["target"]
+    assert run_template(target, {SELECT: "Living room"}) == "select.lounge_mic_spectrum_rate"
+    assert any(t.get("entity_id") == "select.lounge_mic_spectrum_rate"
+               or "select.lounge_mic_spectrum_rate" in (t.get("entity_id") or [])
+               for t in rate_automation(package)["triggers"])

@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/. Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.5.0
+version: 0.6.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -239,7 +239,7 @@ provides:                       # <prefix> from inputs
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
-  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without
@@ -255,6 +255,10 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: input_number.audio_sensor_measured_offset}
   - {component: audio-sensor, id: input_text.audio_sensor_calibration_note}
   - {component: audio-sensor, id: script.audio_sensor_apply_calibration}
+  # Music, Advanced: the sensor update rate, hidden while unavailable and reset only while there; the
+  # music view turns the watching flag on and off (#99, #110).
+  - {component: audio-sensor, id: input_select.audio_sensor_music_spectrum_rate}
+  - {component: audio-sensor, id: input_boolean.audio_sensor_music_watching}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh ramka), 2026-10-20
