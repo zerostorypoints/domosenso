@@ -74,7 +74,7 @@
   {
     "path": "/wiring/hlk-ld2410c-atom-lite.svg",
     "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
-    "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
+    "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
     "alt": "Wiring diagram: hlk ld2410c atom lite",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -84,8 +84,18 @@
   {
     "path": "/wiring/cc1101-atom-lite.svg",
     "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
-    "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
+    "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
     "alt": "Wiring diagram: cc1101 atom lite",
+    "kind": "wiring",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/wiring/shelly-pm-mini-gen3-socket.svg",
+    "sourcePath": "devices/wiring/shelly-pm-mini-gen3-socket.svg",
+    "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
+    "alt": "Wiring diagram: Shelly PM Mini Gen3 behind a socket",
     "kind": "wiring",
     "credit": "DomoSenso",
     "license": "Apache-2.0",
@@ -242,5 +252,17 @@
     "width": 800,
     "height": 600,
     "sha256": "8f1accba5d3f83f01c438dd2ccb6281a435479f6d5e61d5126383d61403bc7e5"
+  },
+  {
+    "path": "/hardware/shelly-pm-mini-gen3.webp",
+    "alt": "Shelly PM Mini Gen3 power meter, front with the O, O, L and N screw terminals",
+    "kind": "photograph",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "owned-product-photo",
+    "retrievedAt": "2026-10-30",
+    "width": 820,
+    "height": 720,
+    "sha256": "779c75c02a6c2950ee873444717e1153eb17cc3ef00cc10c0b50ed9806a40d46"
   }
 ]

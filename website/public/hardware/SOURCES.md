@@ -12,6 +12,7 @@ These third-party images are supplied separately from DomoSenso’s Apache-2.0 c
 | `mi-flora.webp` | [ESPHome contributors](https://esphome.io/components/sensor/xiaomi_ble/) | CC-BY-NC-SA-4.0 |
 | `ruuvi-air.webp` | [Ruuvi](https://ruuvi.com/air/) | Ruuvi product image permission (see https://ruuvi.com/media/) |
 | `tapo-t315.webp` | [TP-Link / Tapo](https://www.tapo.com/en/product/smart-sensor/tapo-t315/) | Copyright TP-Link / Tapo; all rights reserved. Not covered by the repository Apache-2.0 licence. |
+| `shelly-pm-mini-gen3.webp` | DomoSenso, own photograph | Apache-2.0, like the repository. Cropped and levelled; the device was not altered. |
 | `tcl-9469x.webp` | [TCL](https://www.tcl.com/global/en/tablets/tcl-nxtpaper-11-plus) | Copyright TCL; all rights reserved. Not covered by the repository Apache-2.0 licence. |
 
 The Mi Flora image comes from the pinned ESPHome documentation revision recorded in the asset inventory. Its CC BY-NC-SA 4.0 terms are retained in [mi-flora-LICENSE.txt](mi-flora-LICENSE.txt); the image is not available under Apache-2.0.
