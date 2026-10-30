@@ -244,7 +244,11 @@
       "music_spectrum_hot_db": "Spektrum heiss ab",
       "music_level_neutral_db": "Pegel neutral ab",
       "music_level_hot_db": "Pegel heiss ab",
-      "music_fps": "Bildrate",
+      "music_fps": "Neuzeichnungsrate",
+      "music_spectrum_rate": "Sensor-Aktualisierungsrate",
+      "music_spectrum_rate_eco": "am seltensten, die geringste Netzlast",
+      "music_spectrum_rate_normal": "die Voreinstellung",
+      "music_spectrum_rate_fast": "jede neue Messung, nur solange das Tablet die Wiedergabe zeigt",
       "music_source": "Musiksensor",
       "inputs": {
         "screen": "Bildschirm",

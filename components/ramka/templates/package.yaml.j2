@@ -286,7 +286,7 @@ input_number:
       ('spectrum_hot_db', ' music spectrum hot (dB)', 'mdi:volume-high', 0, 130, 1, 'dB'),
       ('level_neutral_db', ' music level neutral (dB)', 'mdi:volume-low', 0, 130, 1, 'dB'),
       ('level_hot_db', ' music level hot (dB)', 'mdi:volume-high', 0, 130, 1, 'dB'),
-      ('fps', ' music refresh rate (fps)', 'mdi:speedometer', 1, 60, 1, 'fps')] %]
+      ('fps', ' music redraw rate (fps)', 'mdi:speedometer', 1, 60, 1, 'fps')] %]
   [[ p ]]_music_[[ key ]]:
     name: [[ named(label) ]]
     icon: [[ icon ]]
@@ -388,7 +388,8 @@ template:
         state: "{{ is_state('[[ inputs.media_player ]]', 'playing') }}"
       # Ambient shows the now-playing card: the player plays, the music face is chosen and the
       # music view is switched on (input_boolean.[[ p ]]_page_music; off, ambient keeps the
-      # rotation). Every view condition and the loop's start/stop read this one sensor.
+      # rotation). Every view condition and the loop's start/stop read this one sensor. The marker
+      # lets every Ramka's music_watching automation see the others' music views.
       - name: [[ named(' music view') ]]
         unique_id: [[ p ]]_music_view
         default_entity_id: binary_sensor.[[ p ]]_music_view
@@ -397,6 +398,8 @@ template:
           {{ is_state('binary_sensor.[[ p ]]_media_playing', 'on')
              and is_state('input_boolean.[[ p ]]_ambient_music', 'on')
              and is_state('input_boolean.[[ p ]]_page_music', 'on') }}
+        attributes:
+          component: ramka
       # "Someone at the tablet", debounced. An LD2410's moving-target flag flickers off for a
       # second or two every few seconds even with a person standing at the screen, and the
       # detection distance jumps to a farther object or to 0 in those gaps, so a trigger that
@@ -807,7 +810,9 @@ script:
   # catalog's). `page`: only that page's settings; `groups`: only those groups'; both: the settings
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
   # the settings dashboard's Reset buttons with a page or with nothing. It never touches
-  # audio-sensor's music source or calibration: a measurement is not a preference.
+  # audio-sensor's music source or calibration: a measurement is not a preference. The one
+  # audio-sensor helper it sets is the sensor update rate on Music, Advanced, and only while it is
+  # there: a home without audio-sensor skips the step.
   [[ p ]]_settings_reset:
     alias: [[ named(' reset settings') ]]
     icon: mdi:restore
@@ -857,6 +862,19 @@ script:
 [%- endif %]
 [%- endfor %]
 [%- endfor %]
+[%- if music_visual %]
+      - if:
+          - condition: template
+            value_template: >-
+              {{ only_page in ['', 'music'] and (not only_groups or 'music_visual' in only_groups)
+                 and states('input_select.audio_sensor_music_spectrum_rate') not in ['unknown', 'unavailable'] }}
+        then:
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.audio_sensor_music_spectrum_rate
+            data:
+              option: normal
+[%- endif %]
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
@@ -1119,6 +1137,38 @@ automation:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_ambient_music
+[%- if music_visual %]
+  # audio-sensor sends its fast data only while someone can see it: the watching flag is on while
+  # this Ramka's music view is, or another Ramka's (one flag per home, never toggled). The grace
+  # before the board drops back to normal is audio-sensor's. A home without audio-sensor has no flag.
+  - id: [[ p ]]_music_watching
+    alias: [[ named(' music watching') ]]
+    description: "The music view on or off: audio-sensor's watching flag follows, on while any Ramka's music view is."
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        to: ["on", "off"]
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: template
+        value_template: "{{ states('input_boolean.audio_sensor_music_watching') not in ['unknown', 'unavailable'] }}"
+    actions:
+      - if:
+          - condition: template
+            value_template: >-
+              {% set ns = namespace(on=false) %}{% for s in states.binary_sensor if s.entity_id.endswith('_music_view')
+                 and s.attributes.component == 'ramka' and s.state == 'on' %}{% set ns.on = true %}{% endfor %}{{ ns.on }}
+        then:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.audio_sensor_music_watching
+        else:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.audio_sensor_music_watching
+[%- endif %]
   - id: [[ p ]]_ambient_stop
     alias: [[ named(' ambient stop') ]]
     description: "Ambient left, or the music view on: stop the loop and rest on the climate page."
