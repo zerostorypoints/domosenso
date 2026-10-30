@@ -2,7 +2,7 @@
 # plant integration; from 0.2.0 a package with the plants, their light peak and two alerts (SPEC-006);
 # from 0.3.0 the photo and limits on the plant for the Ramka, last watered, water in, a new sensor in a pot (SPEC-022).
 id: plants
-version: 0.3.0
+version: 0.3.1
 summary: Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors
 description_key: meta.description
 photo: null
