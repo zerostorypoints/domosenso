@@ -1,5 +1,8 @@
 # SPEC-010. A smart plug or relay with metering reports power and voltage.
 id: mains-meter
 match:
+  - integration: shelly
+    device_classes: [power, voltage]
+    note: "a Shelly with a power meter (PM Mini, 1PM, 2PM); core shelly integration, local"
   - device_classes: [power, voltage]
     certainty: maybe

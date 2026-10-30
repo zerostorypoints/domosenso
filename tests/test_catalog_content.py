@@ -17,7 +17,7 @@ MEDIA = DEMO / "media"
 COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "remote-access", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
          "network-audio-player", "plant-sensor", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
-DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315", "tcl-9469x"]
+DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]
 
 # id -> (time, tablet)
 SCENES = {
@@ -72,6 +72,45 @@ def test_match_rules_are_one_language():
     assert device["$defs"] == kind["$defs"]
     for path in sorted((REPO / "kinds").glob("*.yaml")):
         assert cc.check_kind(path, REPO) == [], path.name
+
+
+def scanned(integrations, manufacturer, model, model_id=None, domains=(), classes=(), names=()):
+    """A device as `hwscan` hands it to the rules."""
+    return {"integrations": sorted(integrations), "manufacturer": manufacturer, "model": model,
+            "model_id": model_id, "entity_domains": set(domains), "device_classes": set(classes),
+            "entity_names": list(names)}
+
+
+def matched(device, certainty="found"):
+    """The device ids and kinds whose rules in the catalog's working tree match `device`."""
+    from domosenso_cli import hwscan
+    tokens = set()
+    for sub in hwscan.RULE_DIRS:
+        for path in (REPO / sub).glob("*.yaml"):
+            data = load(path)
+            for rule in data.get("match") or []:
+                if rule.get("certainty", "found") == certainty and "entry" not in rule and hwscan.matches(rule, device):
+                    tokens.add(data["id"])
+    return tokens
+
+
+# Seen on HA 2026.9.2 through the core shelly integration (registry and states, read-only).
+SHELLY_PM_MINI = scanned(["shelly"], "Shelly", "Shelly PM Mini Gen3", "S3PM-001PCEU16",
+                         ["sensor", "binary_sensor", "button", "update"],
+                         ["power", "voltage", "current", "frequency", "energy"], ["Power", "Voltage", "Energy"])
+# The ESPSomfy node with the awnings package's wind sensor: an MQTT binary_sensor of class safety.
+ESPSOMFY_WITH_WIND = scanned(["mqtt"], "rstrouse", "ESPSomfy-RTS", None, ["cover", "binary_sensor"],
+                             ["awning", "safety"], ["Awnings wind"])
+ESPSOMFY_WITHOUT_WIND = scanned(["mqtt"], "rstrouse", "ESPSomfy-RTS", None, ["cover"], ["awning"])
+
+
+def test_shelly_pm_mini_is_found_as_a_mains_meter():
+    assert {"shelly-pm-mini-gen3", "mains-meter"} <= matched(SHELLY_PM_MINI)
+
+
+def test_awnings_wind_sensor_is_found_on_the_espsomfy_node():
+    assert "wind-sensor" in matched(ESPSOMFY_WITH_WIND)
+    assert "wind-sensor" not in matched(ESPSOMFY_WITHOUT_WIND)
 
 
 def test_all_eight_scenes_valid():
@@ -303,6 +342,7 @@ ENTITY_OWNER = {
 DEVICE_ENTITIES = {
     "hlk-ld2410c": ["binary_sensor.dining_ble_proxy_dining_presence", "sensor.dining_ble_proxy_dining_detection_distance"],
     "hegel-h400": ["media_player.living_room_speaker"],
+    "shelly-pm-mini-gen3": ["sensor.media_plug_power", "sensor.media_plug_voltage"],
     "tapo-t315": [f"sensor.{room}_{kind}" for room in ROOMS_TAPO for kind in ("temperature", "humidity")],
     "ruuvi-air": [e for e in ENTITY_OWNER if e.startswith("sensor.dining_air_")],
     "mi-flora": ["plant.monstera", "plant.ficus", "plant.basil"],
