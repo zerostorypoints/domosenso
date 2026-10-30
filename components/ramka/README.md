@@ -257,9 +257,9 @@ in `<config_dir>/domosenso_discovery.yaml` (add it to `local:` in `domosenso.yam
 # Entity ids the home's own templates build at runtime: a template entity whose definition
 # contains a `when` string uses every id matching `match` (and the `also` ids built from its groups).
 rules:
-  - when: [audio_resolve]
-    match: 'binary_sensor[.]audio_(?!src_)(?P<d>.+)_present$'
-    also: ['binary_sensor.audio_{d}_playing', 'sensor.audio_{d}_source']
+  - when: [amp_active]           # a macro in the home's custom_templates/
+    match: 'binary_sensor[.]amp_(?P<d>.+)_present$'
+    also: ['sensor.amp_{d}_source']
 # Links Home Assistant does not record, by device id (Settings → Devices, the id in the URL): a
 # Bluetooth sensor and the ESPHome proxy that relays it.
 declared_links:

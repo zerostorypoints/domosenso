@@ -138,11 +138,11 @@ glob), read if present:
 
 ```yaml
 rules:                     # a template containing a `when` string uses every id matching `match`
-  - when: [audio_resolve]
-    match: 'binary_sensor[.]audio_(?!src_)(?P<d>.+)_present$'
-    also: ['binary_sensor.audio_{d}_playing']
+  - when: [amp_active]
+    match: 'binary_sensor[.]amp_(?P<d>.+)_present$'
+    also: ['sensor.amp_{d}_source']
 declared_links:            # device ids from the device registry
-  - {device: <ruuvi air>, via: <the bluetooth proxy>}
+  - {device: <a Bluetooth sensor's device id>, via: <its ESPHome proxy's device id>}
 ```
 
 ### Catalog index and links
