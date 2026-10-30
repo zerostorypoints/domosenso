@@ -124,6 +124,7 @@
             visibility: [ {condition: state, entity: input_boolean.[[ p ]]_page_[[ view ]], state: "off"} ]
             content: [[ t('ui.settings.page_off') | yaml ]]
 [%- endmacro -%]
+[%- macro plant_labels(items) -%][% for x in items %][[ x.label if x.label is string else x.label[lang] | default(x.label.values() | first) ]][% if not loop.last %], [% endif %][% endfor %][%- endmacro -%]
 [%- macro labels(items, key='label') -%][[ items | map(attribute=key) | join(', ') if items else '—' ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/ramka-settings.lang.yaml.j2),
 # language [[ lang ]]. Edit the inputs and render again rather than editing this file.
@@ -193,7 +194,7 @@ views:
             visibility: [ [[ advanced_on ]] ]
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
-[%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else labels(inputs.plants))]) ]][[ reset(view) ]]
+[%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else plant_labels(inputs.plants))]) ]][[ reset(view) ]]
 [%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]]
       # The rooms: ten rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
       # amendment 2. The tiles and the charts follow them.

@@ -2323,3 +2323,13 @@ def test_plants_settings_page_has_both_helpers(tmp_path):
         [page] = [v for v in out["ramka-settings.en.yaml"]["views"] if v["path"] == "plants"]
         found = {n for n in strings(page) if n.startswith("input_number.ramka_plants")}
         assert found == set(PLANT_SETTINGS)
+
+
+def test_plants_list_labels_per_language(tmp_path):
+    inputs = demo_inputs()
+    inputs["plants"][0]["label"] = {"en": "Living room", "de": "Wohnzimmer", "pl": "Salon"}
+    out = render(tmp_path, inputs)
+    for lang, room in (("en", "Living room"), ("de", "Wohnzimmer"), ("pl", "Salon")):
+        assert plants_card(out[f"dashboard.{lang}.yaml"])["plants"][0]["room"] == room, lang
+    [page] = [v for v in out["ramka-settings.pl.yaml"]["views"] if v["path"] == "plants"]
+    assert "Salon" in yaml.safe_dump(page, allow_unicode=True)

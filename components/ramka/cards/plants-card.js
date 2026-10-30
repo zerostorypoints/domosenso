@@ -29,7 +29,7 @@
 // when they exist. The page index is kept in the browser, so the next pass of the ambient loop
 // continues where the last one stopped.
 
-import { createT } from "./lib/i18n.js";
+import { createT, language } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -123,7 +123,7 @@ class PlantsCard extends HTMLElement {
       .sort()
       .map((id) => {
         const a = this._hass.states[id].attributes;
-        return { ...(a.domosenso_bands || {}), entity: id, room: a.domosenso_room };
+        return { ...(a.domosenso_bands || {}), entity: id, room: a.domosenso_room, rooms: a.domosenso_rooms };
       });
   }
 
@@ -327,7 +327,7 @@ class PlantsCard extends HTMLElement {
   _photo(el, p, a) {
     const box = el.querySelector(".photo");
     const src = a.entity_picture || "";
-    const name = a.friendly_name || objectId(p.entity);
+    const name = this._name(p, a);
     if (box.dataset.src === src && box.dataset.name === name) return;
     box.dataset.src = src;
     box.dataset.name = name;
@@ -367,6 +367,16 @@ class PlantsCard extends HTMLElement {
       t(this._hass, "card.plants.okCount", { count: rows.length - need })}`;
   }
 
+  // The plant's name and room in the dashboard's language when given per language (plants
+  // component: domosenso_names, domosenso_rooms), else the friendly name and the room.
+  _name(p, a) {
+    return (a.domosenso_names && a.domosenso_names[language(this._hass)]) || a.friendly_name || p.entity;
+  }
+
+  _room(p) {
+    return (p.rooms && p.rooms[language(this._hass)]) || p.room || "";
+  }
+
   _update() {
     // Needs something, then neutral, then good; within that the most urgent action, then the
     // driest against its threshold; no reading last.
@@ -402,8 +412,8 @@ class PlantsCard extends HTMLElement {
     shown.forEach(({ p, r }, i) => {
       const el = this._els[i];
       el.dataset.state = r.state;
-      el.querySelector(".name").textContent = r.a.friendly_name || p.entity;
-      el.querySelector(".room").textContent = p.room || "";
+      el.querySelector(".name").textContent = this._name(p, r.a);
+      el.querySelector(".room").textContent = this._room(p);
       this._photo(el, p, r.a);
       if (bars) {
         for (const g of GAUGES) {

@@ -20,6 +20,13 @@ A home with 1 to 50 plants gets:
 6. one list of plants: the Ramka finds the plants the `plants` component defines instead of
    listing them again.
 
+**Amendment 1 (2026-10-30, the maintainer's request during the build):** plant names and rooms
+in every Ramka language. A `name` or `label` may be a map per language; the first value is the
+friendly name, `domosenso_room` and the derived sensors' names; the maps go on the plant as
+`domosenso_names` / `domosenso_rooms`, and the card shows the dashboard's language, falling back to
+the friendly name and the room. The card's actions, gauges and lines were already in en, de and pl.
+The plants package's notifications stay in English (the renderer gives non-dashboard templates `en`).
+
 ## Devices
 
 Unchanged: Mi Flora (HHCCJCY01) through Bluetooth proxies. Verified on 2026-10-30 on one home with a
@@ -40,6 +47,7 @@ sensors. No HACS integration (the HACS plant integration was tried and its adopt
 | input | change |
 |---|---|
 | `plants[].photo` | new, optional: a URL path the browser loads, e.g. `/local/plants/monstera.jpg` (a file under the home's `www/`) |
+| `plants[].name`, `plants[].label` | may also be a map per language, `{en: Basil, de: Basilikum, pl: Bazylia}` (amendment 1, below) |
 | everything else | unchanged; `label` stays the room text shown on the tile |
 
 **ramka 0.7.0**
@@ -48,6 +56,7 @@ sensors. No HACS integration (the HACS plant integration was tried and its adopt
 |---|---|
 | `plants` | type becomes `"list[{...as 0.6.0...}] \| discover"`: the list works as before; `discover` makes the card find every `plant.*` entity with the attribute `domosenso_plant: true` |
 | `plant_defaults` | unchanged; used by the list form only (discover reads the bands from the plant) |
+| `plants[].label` | may be a map per language, as in plants (amendment 1); each dashboard shows its language |
 
 ## Provides
 
@@ -55,7 +64,7 @@ sensors. No HACS integration (the HACS plant integration was tried and its adopt
 
 | id | level | note |
 |---|---|---|
-| attributes on `plant.<plant>` (via `homeassistant: customize:`): `domosenso_plant: true`, `domosenso_room` (the `label`), `domosenso_bands` (map: `min_moisture`, `max_moisture`, `min_conductivity`, `max_conductivity`, `min_brightness`, and `min_temperature`/`max_temperature` when set), `entity_picture` (when `photo` is given) | stable | marker attributes, read by the Ramka |
+| attributes on `plant.<plant>` (via `homeassistant: customize:`): `domosenso_plant: true`, `domosenso_room` (the `label`), `domosenso_bands` (map: `min_moisture`, `max_moisture`, `min_conductivity`, `max_conductivity`, `min_brightness`, and `min_temperature`/`max_temperature` when set), `entity_picture` (when `photo` is given); `domosenso_names`, `domosenso_rooms` (the maps, when `name` or `label` is given per language) | stable | marker attributes, read by the Ramka |
 | `sensor.<plant>_moisture_min_3h` | stable | statistics `value_min`, 3 h |
 | `sensor.<plant>_moisture_change_48h` | stable | statistics `change`, 48 h |
 | `sensor.<plant>_last_watered` | stable | timestamp; a rise of ≥ 10 points between two readings, or ≥ 10 points above the 3-hour minimum (at most once per 3 h); the first reading after a start is never a watering |

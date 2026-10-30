@@ -472,7 +472,7 @@ views:
             defaults: [[ inputs.plant_defaults | default({'min_moisture': 15, 'max_moisture': 60, 'min_conductivity': 350, 'max_conductivity': 2000, 'min_brightness': 500}) | yaml ]]
             plants:
             [%- for plant in inputs.plants %]
-            [%- set item = {'entity': plant.entity, 'room': plant.label} %]
+            [%- set item = {'entity': plant.entity, 'room': plant.label if plant.label is string else plant.label[lang] | default(plant.label.values() | first)} %]
             [%- for key, value in plant.items() if key not in ('entity', 'label', 'room') %]
             [%- set _ = item.update({key: value}) %]
             [%- endfor %]

@@ -231,3 +231,15 @@ test("an unavailable moisture sensor: no reading, neutral, after the needy ones"
   assert.equal(silent.dataset.state, "neutral");
   assert.equal(silent.querySelector(".action").textContent, "brak odczytu");
 });
+
+test("names and rooms per language from domosenso_names and domosenso_rooms", () => {
+  const basil = plant("Basil", { domosenso_names: { en: "Basil", de: "Basilikum", pl: "Bazylia" },
+    domosenso_rooms: { en: "Kitchen", de: "Küche", pl: "Kuchnia" } });
+  for (const [lang, name, room] of [["pl", "Bazylia", "Kuchnia"], ["de", "Basilikum", "Küche"], ["en", "Basil", "Kitchen"], ["fr", "Basil", "Kitchen"]]) {
+    const card = discoverCard({ lang, plants: [basil] });
+    assert.deepEqual(names(card), [name], lang);
+    assert.equal(card.shadowRoot.querySelector(".room").textContent, room, lang);
+  }
+  const card = discoverCard({ lang: "pl", plants: [plant("Fern", { domosenso_names: { en: "Fern" } })] });
+  assert.deepEqual(names(card), ["Fern"]);
+});

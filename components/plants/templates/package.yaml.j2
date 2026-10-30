@@ -25,7 +25,13 @@
 [%- elif band in defaults -%][%- set _ = limits.update({band: defaults[band]}) -%]
 [%- endif -%]
 [%- endfor -%]
-[%- set ns.rows = ns.rows + [{'id': p, 'name': item.name | default(item.label), 'label': item.label, 'photo': item.photo | default(none), 'sensors': sensors, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
+[#- A name or label may be given per language ({en: …, de: …, pl: …}): the first value is the
+    friendly name and the room; the map goes to the Ramka, which shows each dashboard's language. -#]
+[%- set given_name = item.name | default(item.label) -%]
+[%- set ns.rows = ns.rows + [{'id': p, 'name': given_name if given_name is string else given_name.values() | first,
+                              'label': item.label if item.label is string else item.label.values() | first,
+                              'names': given_name if given_name is mapping else none,
+                              'rooms': item.label if item.label is mapping else none, 'photo': item.photo | default(none), 'sensors': sensors, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
 [%- endfor -%]
 [%- set rows = ns.rows -%]
 [%- set watered = rows | selectattr('limits.min_moisture', 'defined') | list -%]
@@ -66,6 +72,12 @@ homeassistant:
       domosenso_plant: true
       domosenso_room: [[ row.label | yaml ]]
       domosenso_bands: [[ row.limits | yaml ]]
+[%- if row.names %]
+      domosenso_names: [[ row.names | yaml ]]
+[%- endif %]
+[%- if row.rooms %]
+      domosenso_rooms: [[ row.rooms | yaml ]]
+[%- endif %]
 [%- if row.photo %]
       entity_picture: [[ row.photo | yaml ]]
 [%- endif %]

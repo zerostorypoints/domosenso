@@ -36,7 +36,8 @@ def test_customize_carries_room_photo_and_bands(demo):
     for plant in inputs["plants"]:
         attrs = customize[plant["entity"]]
         assert attrs["domosenso_plant"] is True
-        assert attrs["domosenso_room"] == plant["label"]
+        label = plant["label"]
+        assert attrs["domosenso_room"] == (label if isinstance(label, str) else next(iter(label.values())))
         assert attrs["domosenso_bands"]["min_moisture"] == plant.get("min_moisture", 15)
         assert attrs["domosenso_bands"]["max_conductivity"] == 2000
         if "photo" in plant:
@@ -88,3 +89,17 @@ def test_new_sensor_watch_excludes_known_sensors(demo):
     assert automation["triggers"][0]["entity_id"] == "sensor.plants_unplaced_in_soil"
     assert "notify" in automation["actions"][-1]["action"] or any(
         a.get("action") == inputs["notify"] for a in automation["actions"])
+
+
+def test_names_and_rooms_per_language(demo):
+    """A name or label given per language: the first is the friendly name and the room, and the whole
+    map goes to the Ramka, which shows each dashboard's language."""
+    inputs, package = demo
+    attrs = package["homeassistant"]["customize"]["plant.basil"]
+    assert attrs["friendly_name"] == "Basil" and attrs["domosenso_room"] == "Kitchen"
+    assert attrs["domosenso_names"] == {"en": "Basil", "de": "Basilikum", "pl": "Bazylia"}
+    assert attrs["domosenso_rooms"] == {"en": "Kitchen", "de": "Küche", "pl": "Kuchnia"}
+    monstera = package["homeassistant"]["customize"]["plant.monstera"]
+    assert monstera["friendly_name"] == "Monstera"
+    assert "domosenso_names" not in monstera and "domosenso_rooms" not in monstera
+    assert package["homeassistant"]["customize"]["sensor.basil_last_watered"]["friendly_name"] == "Basil last watered"
