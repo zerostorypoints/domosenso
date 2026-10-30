@@ -343,8 +343,11 @@ views:
     icon: [[ icons.about ]]
     type: sections
     max_columns: 2
+    # The discovery between the header and the tables: its date in the header's text, Refresh as the
+    # header's badge (a section spanning both columns stays in one on some widths).
     header:
       layout: start
+      badges_position: bottom
       card:
         type: markdown
         text_only: true
@@ -354,28 +357,22 @@ views:
 
           <a href="[[ site ]]/">[[ t('ui.settings.about_nav_website') ]]</a> · <a href="[[ site ]]/get-started/">[[ t('ui.settings.about_nav_get_started') ]]</a> · <a href="[[ site ]]/components/">[[ t('ui.settings.about_components') ]]</a> · <a href="[[ site ]]/devices/">[[ t('ui.settings.about_devices') ]]</a> · <a href="[[ repo ]]">GitHub</a>
 
+          {% set when = as_timestamp(states('[[ discovery ]]'), none) %}
+          [[ t('ui.settings.about_last_discovery') ]]: **{{ when | timestamp_custom('%Y-%m-%d %H:%M') if when else '—' }}** · [[ t('ui.settings.about_discovery_how') ]]
+
           <small>[[ t('ui.settings.about_license') ]] <a href="[[ repo ]]/blob/main/LICENSE">Apache-2.0</a> · © 2026 ZeroStoryPoints GmbH · [[ t('ui.settings.about_trademark') ]] (<a href="[[ repo ]]/blob/main/NOTICE">NOTICE</a>, <a href="[[ repo ]]/blob/main/THIRD_PARTY_NOTICES.md">[[ t('ui.settings.about_third_party') ]]</a>) · Home Assistant {{ state_attr('[[ discovery ]]', 'ha_version') or '—' }}</small>
+    badges:
+      - type: entity
+        entity: script.[[ p ]]_about_refresh
+        name: [[ t('ui.settings.about_refresh_action') | yaml ]]
+        icon: mdi:refresh
+        show_name: true
+        show_state: false
+        show_icon: true
+        tap_action:
+          action: perform-action
+          perform_action: script.[[ p ]]_about_refresh
     sections:
-      # The discovery, right under the header: when it last ran, and running it again.
-      - type: grid
-        column_span: 2
-        cards:
-          - type: markdown
-            grid_options: {columns: 6}
-            content: |-
-              {% set when = as_timestamp(states('[[ discovery ]]'), none) %}
-              [[ t('ui.settings.about_last_discovery') ]]: **{{ when | timestamp_custom('%Y-%m-%d %H:%M') if when else '—' }}**
-              [[ t('ui.settings.about_discovery_how') ]]
-          - type: entities
-            grid_options: {columns: 6}
-            entities:
-              - type: button
-                icon: mdi:refresh
-                name: [[ t('ui.settings.about_refresh') | yaml ]]
-                action_name: [[ t('ui.settings.about_refresh_action') | yaml ]]
-                tap_action:
-                  action: perform-action
-                  perform_action: script.[[ p ]]_about_refresh
       - type: grid
         cards:[[ heading('about_components', 'mdi:package-variant-closed') ]]
           - type: markdown
