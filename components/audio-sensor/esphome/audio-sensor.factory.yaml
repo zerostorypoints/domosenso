@@ -27,4 +27,4 @@ captive_portal:
 improv_serial:
 
 dashboard_import:
-  package_import_url: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.1.0
+  package_import_url: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.2.0

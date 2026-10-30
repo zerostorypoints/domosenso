@@ -4,7 +4,7 @@
 # two cards, `ambient-wave-card` and `room-meter-card`. No dashboard of its own: Ramka 0.4.0 shows the
 # music visual and its settings. Upgrade notes: UPGRADE.md; how a home uses it: README.md.
 id: audio-sensor
-version: 0.1.0
+version: 0.2.0
 summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum
 description_key: meta.description
 photo: null

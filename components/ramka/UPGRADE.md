@@ -3,6 +3,25 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.6.0 (2026-10-30): the sensor update rate, the music view sets "watching"
+
+With audio-sensor 0.2.0 (#99, #110). Without audio-sensor nothing changes but a label.
+
+**Music page, Advanced.** A "Sensor update rate" row sets audio-sensor's choice
+`input_select.audio_sensor_music_spectrum_rate`; it shows only while audio-sensor provides it. The
+Music page's reset and the global reset set it to `normal` when it is there. The redraw rate's
+label is now "Redraw rate" (it was "Refresh rate"): it is how often the browser draws, not how new
+the data is.
+
+**The automation `<prefix>_music_watching`** turns `input_boolean.audio_sensor_music_watching` on
+while any Ramka's music view shows (`binary_sensor.<prefix>_music_view`, which gains the attribute
+`component: ramka`) and off when none does; audio-sensor puts the board on `fast` only then.
+
+### What a home does
+
+`domosenso update ramka` and a deploy (the cards move to `www/domosenso/ramka/0.6.0/`). With
+audio-sensor, update it to 0.2.0 in the same deploy.
+
 ## 0.5.0 (2026-10-30): Photos, Air, Climate, Calendar and General settings
 
 Settings pages for more of the Ramka (SPEC-021 amendments 1 and 2); they need 0.4.0's "Ramka

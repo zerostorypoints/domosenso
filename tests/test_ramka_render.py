@@ -1872,7 +1872,8 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
     """The render cannot see audio-sensor, so it is one render for a home with or without it: the
     new row, note and reset step are hidden or skipped while audio-sensor's ids are not there, and
     they and the watching automation read only the ids Ramka consumes. Apart from them (and the fps
-    label), the files are the ones before the change, value for value."""
+    label and the audio-sensor version in the calibration link), the files are the ones before the
+    change, value for value."""
     before, after = tmp_path / "before", tmp_path / "after"
     dr.render_component(ramka_at(tmp_path, BEFORE_SPECTRUM_RATE, "ramka-before"), demo_inputs(), before)
     dr.render_component(COMP, demo_inputs(), after)
@@ -1886,7 +1887,8 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
     for name in names:
         text = (after / name).read_text(encoding="utf-8")
         assert set(AUDIO_SENSOR_ID.findall(text)) <= consumed, (name, set(AUDIO_SENSOR_ID.findall(text)) - consumed)
-        old, new = load(before / name), load(after / name)
+        old = load(before / name)
+        new = yaml.safe_load(text.replace("blob/audio-sensor/0.2.0/", "blob/audio-sensor/0.1.0/"))
         if name == "package.yaml":
             new["automation"] = [a for a in new["automation"] if a["id"] != "ramka_music_watching"]
             sequence = new["script"]["ramka_settings_reset"]["sequence"]

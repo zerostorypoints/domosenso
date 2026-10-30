@@ -205,6 +205,9 @@ data newer; on a weak tablet a lower value still saves work.
 | sound to screen, `fast` and `normal` | a tone burst or kick near the microphone, 10 trials filmed at 240 fps beside the tablet; median and 90th percentile; target under 300 ms in 9 of 10 on `fast` | `fast`, rise 50 ms, the card before the no-stepping change, one track filmed at 120 fps, time from the kick in the soundtrack to half of the wave's colour change at its bass end: FFT 8192, median 333 ms, 0 of 8 under 300; FFT 4096, median 280 ms (225–362), 9 of 12 under 300. `normal` not filmed yet |
 | the fallbacks | a restart gives `normal`; `fast` alone falls back after 60 min; the music view closed gives `normal` after 10 s | |
 
+What is left (the untimed stages, the skipped measurements, the fall, bass detail, a measuring
+tool) is collected in #126.
+
 A long `fall` (default 4 s) with kicks twice a second keeps the low bands high between kicks, which
 also reads as "not following" (inference); try a shorter fall on the Music page while measuring.
 
