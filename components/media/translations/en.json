@@ -5,6 +5,10 @@
       "hegel-h400": {
         "description": "An integrated amplifier with a built-in network streamer that plays Spotify, Qobuz and Google Cast.",
         "does": "Plays music from the network and from its inputs. Through the hegel_streaming integration Home Assistant switches it on and off, sets the volume, controls playback and reads what is playing."
+      },
+      "shelly-pm-mini-gen3": {
+        "description": "A small power meter that sits in the wall box behind a socket, in series with its phase. It does not switch.",
+        "does": "Measures the power, voltage, current and energy of what is plugged in, locally through the core shelly integration, without a cloud account. The now-playing view shows the player's draw and voltage from it."
       }
     }
   }

@@ -18,7 +18,7 @@
 [%- set photo_url = (inputs.ha_url | default('http://127.0.0.1:8123')) ~ '/local/' ~ photo_dir[12:] -%]
 [%- set folder_sensor = 'sensor.' ~ (photo_dir.split('/') | last | lower | replace('-', '_') | replace(' ', '_')) -%]
 [%- set index_command = 'python3 /config/shell/ramka_index.py ' ~ photo_dir -%]
-[%- set pick_command = 'python3 /config/shell/ramka_pick.py ' ~ photo_dir ~ ' 5' -%]
+[%- set albums_command = 'python3 /config/shell/ramka_pick.py ' ~ photo_dir ~ ' --albums' -%]
 [%- set index_description = 'Rebuild ' ~ photo_dir ~ '/index.json: at start, every 15 min, on a folder change.' -%]
 [%- endif -%]
 [#- The ambient pages this home has, in rotation order (0.2.0): climate, air, plants and photos only
@@ -110,6 +110,41 @@
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
 [%- endfor -%]
+[#- The Photos page (SPEC-021 amendment 1): the albums (top-level folders of photo_dir; none chosen
+    is all), the photos per series and the time per photo; the defaults are 0.3.0's five photos of 10 s
+    from all. The albums are not a helper (a list of any length): sensor.<prefix>_photo_albums keeps
+    them, and the reset sets them with its event, the ('event', key, page, group, event data) entry:
+    all albums, the ticked ones kept. -#]
+[%- set photo_defaults = {'photo_count': 5, 'photo_s': 10} -%]
+[%- if inputs.photo_dir is defined -%]
+[%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', {'all': true})) -%]
+[%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
+[%- endif -%]
+[#- The Air page: a switch per configured reading, and the two limits of each, where its colour
+    changes (good → raised → high; the score: good → fair → poor, higher is better). Defaults are the
+    air-card's literal levels (templates/dashboard.lang.yaml.j2): (lower key, upper key, lower,
+    upper, min, max, step, unit). -#]
+[%- set air_limits = {'score': ('fair', 'poor', 80, 60, 0, 100, 1, ''), 'co2': ('raised', 'high', 800, 1200, 400, 5000, 50, 'ppm'),
+    'pm2_5': ('raised', 'high', 15, 35, 1, 250, 1, 'µg/m³'), 'voc': ('raised', 'high', 150, 250, 1, 500, 1, ''),
+    'nox': ('raised', 'high', 20, 150, 1, 500, 1, '')} -%]
+[%- set air_readings = [] -%]
+[%- for reading in air_limits if inputs.air is defined and inputs.air[reading] is defined -%][%- set _ = air_readings.append(reading) -%][%- endfor -%]
+[%- for reading in air_readings -%][%- set _ = settings.append(('input_boolean', 'air_' ~ reading, 'air', 'air', true)) -%][%- endfor -%]
+[%- for reading in air_readings -%]
+[%- set l = air_limits[reading] -%]
+[%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
+[%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
+[%- endfor -%]
+[#- The Climate page's rooms (SPEC-021 amendment 2): up to five, each a label, a main reading and a
+    supplementary one, picked on the settings page; the defaults are the first five of inputs.climate,
+    temperature and humidity. A list again, so sensor.<prefix>_climate_rooms keeps it, as the albums. -#]
+[%- set climate_rooms = [] -%]
+[%- for c in (inputs.climate | default([]))[:5] -%]
+[%- set _ = climate_rooms.append({'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
+[%- endfor -%]
+[%- if inputs.climate is defined -%]
+[%- set _ = settings.append(('event', 'climate_rooms', 'climate', 'climate', {'rooms': climate_rooms})) -%]
+[%- endif -%]
 [#- A select's options: its default first, then the rest in the given order, so a fresh helper is
     right before the seed runs. -#]
 [%- macro options(default, all) -%]
@@ -217,6 +252,12 @@ input_boolean:
     name: [[ named(' music tilt') ]]
     icon: mdi:slope-uphill
   [%- endif %]
+  # One per configured air reading: off leaves its tile out of the air page (air-card's `show:`).
+  [%- for reading in air_readings %]
+  [[ p ]]_air_[[ reading ]]:
+    name: [[ named(' air ' ~ reading) ]]
+    icon: mdi:eye
+  [%- endfor %]
 
 input_number:
   [[ p ]]_near_cm:
@@ -297,6 +338,39 @@ input_number:
     mode: slider
   [%- endfor %]
   [%- endif %]
+  [%- if inputs.photo_dir is defined %]
+  [[ p ]]_photo_count:
+    name: [[ named(' photos per series') ]]
+    icon: mdi:image-multiple
+    min: 1
+    max: 20
+    step: 1
+    mode: slider
+  [[ p ]]_photo_s:
+    name: [[ named(' time per photo (s)') ]]
+    icon: mdi:timer-outline
+    min: 3
+    max: 120
+    step: 1
+    unit_of_measurement: s
+    mode: slider
+  [%- endif %]
+  # The air-card's limits, read live; an unusable state keeps the card's literal default.
+  [%- for reading in air_readings %]
+  [%- set l = air_limits[reading] %]
+  [%- for which in [l[0], l[1]] %]
+  [[ p ]]_air_[[ reading ]]_[[ which ]]:
+    name: [[ named(' air ' ~ reading ~ ' ' ~ which) ]]
+    icon: mdi:gauge
+    min: [[ l[4] ]]
+    max: [[ l[5] ]]
+    step: [[ l[6] ]]
+    [%- if l[7] %]
+    unit_of_measurement: [[ l[7] | yaml ]]
+    [%- endif %]
+    mode: box
+  [%- endfor %]
+  [%- endfor %]
 
 timer:
   [[ p ]]_controls:
@@ -334,9 +408,14 @@ sensor:
 # the photo card's caption; it runs at start and whenever the number of photos changes.
 shell_command:
   [[ p ]]_index: [[ index_command | yaml ]]
-  # The next series: one folder with photos drawn at random (any depth), five shuffled photos from
-  # it, as JSON on stdout for the loop's response_variable.
-  [[ p ]]_pick: [[ pick_command | yaml ]]
+  # The next series: one folder with photos drawn at random (any depth, inside the chosen albums
+  # when there are any), `count` shuffled photos from it, as JSON on stdout for the loop's
+  # response_variable. A templated command runs without a shell, its arguments split like a shell's:
+  # each album is single-quoted, a quote in its name closed, escaped and reopened.
+  [[ p ]]_pick: >-
+    python3 /config/shell/ramka_pick.py [[ photo_dir ]] {{ count | default(5) }}{% for a in (albums if albums is defined and albums is not string and albums is iterable else []) %} '{{ a | replace("'", "'\\''") }}'{% endfor %}
+  # The albums to choose from (sensor.[[ p ]]_photo_albums): the top-level folders that hold photos.
+  [[ p ]]_albums: [[ albums_command | yaml ]]
 [%- endif %]
 
 template:
@@ -429,6 +508,47 @@ template:
         url: >-
           [[ photo_url ]]/{{ states('input_text.[[ p ]]_photo').split('/') | map('urlencode') | join('/') }}
         availability: "{{ states('input_text.[[ p ]]_photo') not in ['', 'unknown', 'unavailable'] }}"
+  # The photo albums (SPEC-021 amendments 1 and 2): `available`, the top-level folders with photos
+  # (from the photo index), `chosen`, the ticked ones, and `all`: every album, the ticks kept for
+  # later (the settings page's album card; none chosen is all too). The state is how many are
+  # chosen. A list of any length, which no helper holds; a trigger-based entity restores its
+  # attributes after a restart. Event [[ p ]]_photo_albums sets any of the keys and keeps the rest;
+  # without `all` ever set (0.4.0's sensor), all is none chosen.
+  - triggers:
+      - trigger: event
+        event_type: [[ p ]]_photo_albums
+    sensor:
+      - name: [[ named(' photo albums') ]]
+        unique_id: [[ p ]]_photo_albums
+        default_entity_id: sensor.[[ p ]]_photo_albums
+        icon: mdi:folder-image
+        state: >-
+          {{ (trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([])) | count }}
+        attributes:
+          available: >-
+            {{ trigger.event.data.available if trigger.event.data.available is defined else this.attributes.available | default([]) }}
+          chosen: >-
+            {{ trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([]) }}
+          all: >-
+            {% set chosen = trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([]) %}
+            {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
+[%- endif %]
+[%- if inputs.climate is defined %]
+  # The Climate page's rooms (SPEC-021 amendment 2): `rooms`, up to five of {label, main, extra},
+  # entity ids, extra may be empty; the room tiles and the 7-day charts follow it, in its order
+  # (colour n is room n). Set by the settings page's climate card through event [[ p ]]_climate_rooms;
+  # the seed gives it inputs.climate's first five. Before that the cards show inputs.climate.
+  - triggers:
+      - trigger: event
+        event_type: [[ p ]]_climate_rooms
+    sensor:
+      - name: [[ named(' climate rooms') ]]
+        unique_id: [[ p ]]_climate_rooms
+        default_entity_id: sensor.[[ p ]]_climate_rooms
+        icon: mdi:home-thermometer
+        state: "{{ trigger.event.data.rooms | default([]) | count }}"
+        attributes:
+          rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
 
 # Screen scripts. Each step is one Companion notification command
@@ -653,8 +773,8 @@ script:
             command: 0
 
   # The ambient loop (see automation [[ p ]]_ambient_start). Each pass: climate page 30 s, air
-  # quality 15 s, plants 20 s, five photos of 10 s from one folder drawn at random, the status
-  # page 15 s: 130 s in all. With an empty folder the photos are skipped (an empty for_each runs
+  # quality 15 s, plants 20 s, a series of photos from one folder drawn at random (the Photos
+  # page's count and time, five of 10 s by default), the status page 15 s: 130 s in all by default. With an empty folder the photos are skipped (an empty for_each runs
   # nothing). The while-condition ends the loop by itself if the mode or the player changed and
   # the stop automation did not get to it first.
   [[ p ]]_ambient_loop:
@@ -742,15 +862,20 @@ script:
 [%- endif %]
 [%- if 'photos' in pages %]
             # 4. Photos: from the plants page, or straight in when the page already is photos.
-            #    shell/ramka_pick.py: one folder that holds photos, at any depth, drawn with equal
-            #    chances, then up to five different photos from it. An empty folder tree gives an
-            #    empty list: the photos are skipped after one 10 s slot.
+            #    shell/ramka_pick.py: one folder that holds photos, at any depth (inside the chosen
+            #    album), drawn with equal chances, then up to `count` different photos from it. An
+            #    empty folder tree gives an empty list: the photos are skipped after one slot.
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
                   state: photos
               then:
                 - action: shell_command.[[ p ]]_pick
+                  data:
+                    count: "{{ states('input_number.[[ p ]]_photo_count') | int([[ photo_defaults.photo_count ]]) }}"
+                    # All albums ticked, none chosen, or the sensor not there yet: every album.
+                    albums: >-
+                      {{ [] if state_attr('sensor.[[ p ]]_photo_albums', 'all') else state_attr('sensor.[[ p ]]_photo_albums', 'chosen') or [] }}
                   response_variable: pick
                 - variables:
                     # The JSON is the last line of stdout; anything the script printed before it
@@ -772,7 +897,7 @@ script:
                         data:
                           option: photos
                       - delay:
-                          seconds: 10
+                          seconds: "{{ states('input_number.[[ p ]]_photo_s') | int([[ photo_defaults.photo_s ]]) }}"
                 # An empty pick (no photos, or the folder not mounted) still takes one slot: with
                 # photos the only page switched on, the next page is photos again, and the loop
                 # would otherwise call the pick without a pause.
@@ -781,7 +906,7 @@ script:
                       value_template: "{{ picks | count == 0 }}"
                   then:
                     - delay:
-                        seconds: 10
+                        seconds: "{{ states('input_number.[[ p ]]_photo_s') | int([[ photo_defaults.photo_s ]]) }}"
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient
@@ -804,6 +929,59 @@ script:
                   data:
                     option: >-
                       [[ after('status') ]]
+[%- endif %]
+
+[%- if inputs.photo_dir is defined %]
+  # The albums the photo series come from. Called by the settings page's album card, always with
+  # both fields: all_albums keeps the ticks for when it is turned off again. Not `all`, a name
+  # Jinja code may know as a global.
+  [[ p ]]_photo_albums_set:
+    alias: [[ named(' photo albums set') ]]
+    icon: mdi:folder-image
+    mode: queued
+    fields:
+      chosen:
+        name: Albums
+        description: Top-level folders of the photo folder, a list; none for all.
+        # No selector: HA 2026.9.2 refused `object: {}` here and disabled the script.
+        example: '["2025", "2026"]'
+      all_albums:
+        name: All albums
+        description: Every album, whatever is chosen; absent, all when none is chosen.
+        # No selector either: 2026.9.2 refused `boolean: {}` too ("Only one type can be specified").
+        example: "true"
+    sequence:
+      - variables:
+          picked: "{{ chosen if chosen is defined and chosen is not string and chosen is iterable else [] }}"
+      - event: [[ p ]]_photo_albums
+        event_data:
+          chosen: "{{ picked }}"
+          all: "{{ all_albums if all_albums is defined else picked | count == 0 }}"
+[%- endif %]
+[%- if inputs.climate is defined %]
+
+  # The Climate page's rooms, up to five {label, main, extra}; a room without its main reading is
+  # dropped. Called by the settings page's climate card.
+  [[ p ]]_climate_rooms_set:
+    alias: [[ named(' climate rooms set') ]]
+    icon: mdi:home-thermometer
+    mode: queued
+    fields:
+      rooms:
+        name: Rooms
+        description: Up to five of {label, main, extra}, entity ids; extra may be empty.
+        # No selector, as the albums' script: object: {} is refused.
+        example: '[{"label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
+    sequence:
+      - event: [[ p ]]_climate_rooms
+        event_data:
+          rooms: >-
+            {% set given = rooms if rooms is defined and rooms is not string and rooms is iterable else [] %}
+            {% set kept = namespace(rooms=[]) %}
+            {% for r in given if r is mapping and (r.main | default('') | string).startswith('sensor.') %}
+            {% set kept.rooms = kept.rooms + [{'label': r.label | default('') | string, 'main': r.main, 'extra': r.extra | default('') | string}] %}
+            {% endfor %}
+            {{ kept.rooms[:5] }}
 [%- endif %]
 
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
@@ -830,7 +1008,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual"]
+            options: ["presence_display", "pages", "music_visual", "photos", "air", "climate"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -849,6 +1027,10 @@ script:
               {{ only_page [[ on_page ]] and (not only_groups or '[[ block.group ]]' in only_groups) }}
         then:
 [%- for domain, key, _page, _group, value in block['items'] %]
+[%- if domain == 'event' %]
+          - event: [[ p ]]_[[ key ]]
+            event_data: [[ value | tojson ]]
+[%- else %]
 [%- set verb = 'set_value' if domain == 'input_number' else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
           - action: [[ domain ]].[[ verb ]]
             target:
@@ -859,6 +1041,7 @@ script:
 [%- elif domain == 'input_select' %]
             data:
               option: [[ value | yaml ]]
+[%- endif %]
 [%- endif %]
 [%- endfor %]
 [%- endfor %]
@@ -1088,10 +1271,18 @@ automation:
         attribute: number_of_files
     actions:
       - action: shell_command.[[ p ]]_index
+      # The albums to choose from, for sensor.[[ p ]]_photo_albums (the chosen ones stay).
+      - action: shell_command.[[ p ]]_albums
+        response_variable: albums
+      - event: [[ p ]]_photo_albums
+        event_data:
+          available: >-
+            {% set lines = (albums.stdout | default('')).strip().splitlines() %}
+            {{ (lines | last | from_json).albums if lines else [] }}
 [%- endif %]
 
-  # 5. The ambient rhythm: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s,
-  #    and again.
+  # 5. The ambient rhythm: climate 30 s, air 15 s, plants 20 s, a photo series (five of 10 s by
+  #    default), status 15 s, and again.
   #    A looping script (mode restart) rather than a time_pattern, so the slots are exact. It
   #    starts when the tablet enters ambient or the player stops, and is stopped when the mode
   #    leaves ambient or the player starts (the dashboard shows now-playing then, and the photo
@@ -1201,7 +1392,9 @@ automation:
   # - pages (theme, the Advanced switch, the page switches): new in 0.4.0 in every home, so seeded
   #   whenever the flag is off, or an upgraded home would find every page switched off;
   # - music_visual: the four dB helpers untouched (0 dB); also after the flag is on, since a home
-  #   can add music_visual later.
+  #   can add music_visual later;
+  # - photos and air (SPEC-021 amendment 1): their numbers untouched; also after the flag is on, so
+  #   a home that ran 0.4.0 before them gets them at its next start.
   # Home Assistant's start trigger fires after the restored states are in place.
   - id: [[ p ]]_settings_seed
     alias: [[ named(' settings seed') ]]
@@ -1213,13 +1406,22 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, music=true) %}
+            {% set untouched = namespace(presence=true, music=true, photos=true, air=true) %}
+[%- if inputs.climate is defined %]
+            {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
+[%- endif %]
             {% for e in ['input_number.[[ p ]]_off_delay_s', 'input_number.[[ p ]]_brightness_min', 'input_number.[[ p ]]_brightness_max', 'input_number.[[ p ]]_near_cm', 'input_number.[[ p ]]_near_s', 'input_number.[[ p ]]_controls_hold_s', 'input_number.[[ p ]]_lux_max'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.presence = false %}{% endfor %}
+[%- set photo_numbers = [] if inputs.photo_dir is not defined else ['input_number.' ~ p ~ '_photo_count', 'input_number.' ~ p ~ '_photo_s'] %]
+[%- set air_numbers = [] %]
+[%- for s in settings if s[3] == 'air' and s[0] == 'input_number' %][% set _ = air_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
+[%- for group, numbers in [('photos', photo_numbers), ('air', air_numbers)] if numbers %]
+            {% for e in [[ numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.[[ group ]] = false %}{% endfor %}
+[%- endfor %]
 [%- if music_visual %]
             {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"

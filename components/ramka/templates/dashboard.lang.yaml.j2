@@ -261,9 +261,12 @@ views:
         column_span: 3
         visibility: *climate
         cards:
+          # The rooms picked on the settings page (sensor.[[ p ]]_climate_rooms); these until the
+          # seed has set it.
           - type: custom:rooms-card
             height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
+            entity: sensor.[[ p ]]_climate_rooms
             rooms:
             [%- for room in series %]
               - name: [[ room.label | yaml ]]
@@ -290,6 +293,14 @@ views:
             [%- else %]
             line_styles: {}
             [%- endif %]
+            # The settings page's rooms, their extra readings, then outside; the entities
+            # below until the seed has set them.
+            rooms:
+              entity: sensor.[[ p ]]_climate_rooms
+              key: extra
+            [%- if outside and outside.humidity is defined %]
+              after: [{entity: [[ outside.humidity ]], name: [[ t('ui.climate.outside') | yaml ]]}]
+            [%- endif %]
             grid_options: {columns: 18, rows: 4}
             card:
               type: statistics-graph
@@ -309,6 +320,14 @@ views:
               [[ outside.temperature ]]: {width: 3, type: [8, 5]}
             [%- else %]
             line_styles: {}
+            [%- endif %]
+            # The settings page's rooms, their main readings, then outside; the entities
+            # below until the seed has set them.
+            rooms:
+              entity: sensor.[[ p ]]_climate_rooms
+              key: main
+            [%- if outside %]
+              after: [{entity: [[ outside.temperature ]], name: [[ t('ui.climate.outside') | yaml ]]}]
             [%- endif %]
             grid_options: {columns: 18, rows: 4}
             card:
@@ -330,7 +349,9 @@ views:
       # air-card: the score and four readings, coloured good / raised / high. Limits: CO₂ 800 /
       # 1200 ppm (ventilation rules of thumb), PM2.5 15 / 35 µg/m³ (WHO 2021 24-hour guideline,
       # then the old US 24-hour limit), VOC and NOx on Sensirion's index scales (100 and 1 are the
-      # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means.
+      # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means. The settings
+      # dashboard's Air page switches each tile (show:) and moves its two limits, read live; the
+      # literal is the default, kept while a helper is unusable (SPEC-021 amendment 1).
       # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown.
       - type: grid
         column_span: 3
@@ -353,9 +374,10 @@ views:
               entity: [[ air.score ]]
               unit: /100
               higher_is_better: true
+              show: input_boolean.[[ p ]]_air_score
               levels:
-                - [80, [[ t('ui.air.score_good') | yaml ]] ]
-                - [60, [[ t('ui.air.score_fair') | yaml ]] ]
+                - [{entity: input_number.[[ p ]]_air_score_fair, default: 80}, [[ t('ui.air.score_good') | yaml ]] ]
+                - [{entity: input_number.[[ p ]]_air_score_poor, default: 60}, [[ t('ui.air.score_fair') | yaml ]] ]
                 - [0, [[ t('ui.air.score_poor') | yaml ]] ]
             [%- endif %]
             tiles:
@@ -363,9 +385,10 @@ views:
               - name: CO₂
                 entity: [[ air.co2 ]]
                 unit: ppm
+                show: input_boolean.[[ p ]]_air_co2
                 levels:
-                  - [800, [[ t('ui.air.co2_good') | yaml ]] ]
-                  - [1200, [[ t('ui.air.co2_soon') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_co2_raised, default: 800}, [[ t('ui.air.co2_good') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_co2_high, default: 1200}, [[ t('ui.air.co2_soon') | yaml ]] ]
                   - [null, [[ t('ui.air.co2_ventilate') | yaml ]] ]
             [%- endif %]
             [%- if air.pm2_5 is defined %]
@@ -373,25 +396,28 @@ views:
                 entity: [[ air.pm2_5 ]]
                 unit: µg/m³
                 digits: 1
+                show: input_boolean.[[ p ]]_air_pm2_5
                 levels:
-                  - [15, [[ t('ui.air.pm_good') | yaml ]] ]
-                  - [35, [[ t('ui.air.pm_raised') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_pm2_5_raised, default: 15}, [[ t('ui.air.pm_good') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: 35}, [[ t('ui.air.pm_raised') | yaml ]] ]
                   - [null, [[ t('ui.air.pm_high') | yaml ]] ]
             [%- endif %]
             [%- if air.voc is defined %]
               - name: VOC
                 entity: [[ air.voc ]]
+                show: input_boolean.[[ p ]]_air_voc
                 levels:
-                  - [150, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [250, [[ t('ui.air.index_raised') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_voc_raised, default: 150}, [[ t('ui.air.index_normal') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_voc_high, default: 250}, [[ t('ui.air.index_raised') | yaml ]] ]
                   - [null, [[ t('ui.air.index_high') | yaml ]] ]
             [%- endif %]
             [%- if air.nox is defined %]
               - name: NOx
                 entity: [[ air.nox ]]
+                show: input_boolean.[[ p ]]_air_nox
                 levels:
-                  - [20, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [150, [[ t('ui.air.index_raised') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_nox_raised, default: 20}, [[ t('ui.air.index_normal') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_nox_high, default: 150}, [[ t('ui.air.index_raised') | yaml ]] ]
                   - [null, [[ t('ui.air.index_high') | yaml ]] ]
             [%- endif %]
             grid_options: {columns: full, rows: auto}

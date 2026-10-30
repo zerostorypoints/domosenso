@@ -71,3 +71,24 @@ test("size hints fall back when the inner card gives none", async () => {
   assert.equal(card.getCardSize(), 4);
   assert.deepEqual(card.getGridOptions(), { columns: 12, rows: 4 });
 });
+
+test("with rooms, the inner card charts the rooms' readings, then `after`; without, its own entities", async () => {
+  const own = [{ entity: "sensor.a" }];
+  const { card, made } = await makeCard({
+    card: { type: "statistics-graph", entities: own },
+    rooms: { entity: "sensor.rooms", key: "extra", after: [{ entity: "sensor.out", name: "Outside" }] },
+  });
+  card.hass = { states: {} };
+  await flush();
+  assert.equal(made.length, 1);
+  assert.deepEqual(made[0].entities, own);
+  const rooms = [{ label: "K", main: "sensor.k_t", extra: "sensor.k_h" }, { label: "H", main: "sensor.h_t", extra: "" }];
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } } } };
+  await flush();
+  assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.k_h", name: "K" }, { entity: "sensor.out", name: "Outside" }]);
+  // The same rooms again build nothing new.
+  const count = made.length;
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } } } };
+  await flush();
+  assert.equal(made.length, count);
+});

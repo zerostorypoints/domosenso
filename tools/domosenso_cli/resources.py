@@ -47,7 +47,9 @@ def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None
     `.domosenso/dev-render.json`) replaces a locked component's URLs, or adds a component not locked.
 
     A home resource under `/local/` gets `?v=<sha8>` of its file in `config_dir/www`, so that a changed
-    file is a new URL; any other URL (a third party's) passes through unchanged."""
+    file is a new URL; any other URL (a third party's) passes through unchanged. So does a dev-rendered
+    card: it keeps its version's path, so without the hash browsers would keep the old card for the 31
+    days /local/ is cached. A locked card's URL changes with its version directory."""
     got: list[Resource] = []
     owners: dict[str, str] = {}  # file name -> where it was wanted from
     dev = dev or {}
@@ -56,6 +58,10 @@ def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None
     for cid, urls in by_component.items():
         for url in urls:
             _claim(owners, url, f"component {cid}")
+            if cid in dev and _bare(url).startswith(LOCAL) and ".." not in _bare(url).split("/"):
+                path = home.config_dir / "www" / _bare(url)[len(LOCAL):]
+                if path.is_file():
+                    url = f"{_bare(url)}?v={file_sha(path)[:HASH_LENGTH]}"
             got.append(Resource(url))
     for raw in home.resources:
         url, kind = raw["url"], raw.get("type", "module")

@@ -10,6 +10,10 @@
 //     sensor.outside_temperature: {width: 3, type: [8, 5]}
 //   grid_options: {columns: 18, rows: 4}          # also passed on to the inner card, which
 //                                                 # fills its rows only when it has them
+//   rooms:                                        # optional: the inner card's entities from
+//     entity: sensor.ramka_climate_rooms          # this entity's `rooms` ({label, main, extra}),
+//     key: main                                   # their `key` reading, then `after`; the card's
+//     after: [{entity: sensor.outside, name: Outside}]  # own entities while it holds none
 //   card:
 //     type: statistics-graph
 //     entities: [...]
@@ -31,8 +35,26 @@ class LineStyleCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    const entities = this._roomEntities();
+    const key = JSON.stringify(entities);
+    if (key !== this._roomsKey) {
+      const first = this._roomsKey === undefined;
+      this._roomsKey = key;
+      // The first time only when the rooms replace the card's own entities: setConfig built that.
+      if (!first || entities) this._make();
+    }
     if (this._inner) this._inner.hass = hass;
     this._hook();
+  }
+
+  // The rooms' readings, then `after`, as statistics-graph entities; null without rooms.
+  _roomEntities() {
+    const rooms = this._config.rooms;
+    const list = rooms && this._hass && this._hass.states[rooms.entity]?.attributes?.rooms;
+    if (!Array.isArray(list)) return null;
+    const live = list.filter((r) => r && typeof r.main === "string" && r.main && r[rooms.key])
+      .map((r) => ({ entity: r[rooms.key], name: String(r.label || "") }));
+    return list.some((r) => r && r.main) ? [...live, ...(rooms.after || [])] : null;
   }
 
   // hui-card sets these on the card it shows; the inner card needs them to lay out the same way.
@@ -51,6 +73,8 @@ class LineStyleCard extends HTMLElement {
     const helpers = await (window.__lineStyleHelpers ||= window.loadCardHelpers());
     if (token !== this._token) return;
     const config = { ...this._config.card };
+    const entities = this._hass ? this._roomEntities() : null;
+    if (entities) config.entities = entities;
     if (this._config.grid_options && !config.grid_options) config.grid_options = this._config.grid_options;
     const el = helpers.createCardElement(config);
     // A card type not loaded yet comes back as a placeholder that asks to be made again.

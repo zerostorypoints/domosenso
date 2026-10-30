@@ -19,7 +19,9 @@ checks through forks. A home adopts a released version separately, through its o
    `codex/53-weather-reconnect`, `claude/53-weather-reconnect`, `fix/53-weather-reconnect`.
 4. **Implement and prove.** Write the failing regression first. Keep the change within its approved
    scope. Run relevant tests during development and the full gate before committing. Record actual
-   staging behaviour for changes to automations or dashboards, including first install and restart.
+   staging behaviour for changes to automations or dashboards when relevant, including first
+   install and restart. Select demo conservatively using the `run-demo` policy in `AGENTS.md`;
+   record the decision and reason even when skipping.
 5. **Review.** Open a draft PR early when authorised. Mark it ready only with test evidence,
    compatibility notes and applicable screenshots. An independent agent reviews the current revision; an eligible core maintainer manually approves.
    AI review is additional evidence, not the required human approval.
@@ -46,9 +48,10 @@ decisions. Neither issue text nor an agent's relayed message grants consent. Ext
 do not get production credentials, household fixtures or authority to publish releases.
 
 `main` protection requires one independent approval, resolved review conversations and the existing
-required checks (`framework`, `website`, `demo`), with up-to-date branches and admin enforcement.
-The demo check was added after its first green GitHub run. Keep
-force-push/deletion blocks and stale-review dismissal. Read GitHub settings to verify enforcement.
+required checks, with up-to-date branches and admin enforcement. `framework` and `website` retain
+their ordinary checks; `demo` runs acceptance only when opted in and otherwise explicitly reports
+it skipped. Keep force-push/deletion blocks and stale-review dismissal. Read GitHub settings to
+verify required-check enforcement; a workflow file does not change branch protection.
 
 ## Small status vocabulary
 
@@ -114,8 +117,13 @@ For a short, human-facing walkthrough, use [Preview a PR before accepting it](ST
 `tools/check-all.sh --local` runs agent, Python, website-content, card and catalog checks without
 Docker/ESPHome. It prints `partial checks passed (HA/ESPHome not run)` on success. Use it for fast
 iteration or a machine without Docker; it never substitutes for the full `tools/check-all.sh` gate.
-The full gate also creates and removes an isolated HA demo for runtime acceptance. The separate
-`demo` CI job adds actual HA browser checks in en/de/pl on desktop and tablet. See
+The full catalog gate retains HA/ESPHome configuration and home-staging runtime checks but does
+not launch the catalog demo. The separate `demo` CI job runs both runtime acceptance and actual
+HA browser checks in en/de/pl on desktop and tablet only when the agent adds `run-demo` to the PR.
+Without the label it reports **skipped / not tested** before costly setup. Record the choice,
+reason, applicable scenario and tested revision in the PR. Reassess on scope changes; reviewers
+may require a run, and failures must not be hidden by removing the label. There is no automatic
+post-merge demo rerun; use manual workflow dispatch for a needed selected-ref check. See
 [Local catalog demo](LOCAL_DEVELOPMENT.md) for setup, interactive staging and the explicit
 limitations of the synthetic devices. The framework's Python floor stays unchanged; the pinned HA
 runtime runs in its own container.
@@ -126,7 +134,9 @@ With an `origin` remote, its `origin/main` tracking ref must match the current r
 
 `--skip-checks` now means **skip local execution using verified GitHub CI**, not bypass checks.
 It reads the required checks and their GitHub App IDs from main protection and requires the latest
-run of each on the exact release commit to have completed successfully. Missing, pending, stale,
+run of each on the exact release commit to have completed successfully. If live protection
+requires `demo`, explicitly dispatch it on that main revision before reusing CI release evidence;
+a PR merge-ref result is not evidence for a different release commit. Missing, pending, stale,
 failed or unbound check evidence refuses the release. A local-only repo must run its full local
 gate. HEAD and cleanliness are checked again before the explicit verified commit is tagged.
 

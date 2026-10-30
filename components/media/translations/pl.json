@@ -5,6 +5,10 @@
       "hegel-h400": {
         "description": "Wzmacniacz zintegrowany z wbudowanym streamerem sieciowym, który odtwarza Spotify, Qobuz i Google Cast.",
         "does": "Odtwarza muzykę z sieci i ze swoich wejść. Przez integrację hegel_streaming Home Assistant włącza go i wyłącza, ustawia głośność, steruje odtwarzaniem i odczytuje, co gra."
+      },
+      "shelly-pm-mini-gen3": {
+        "description": "Mały miernik mocy montowany w puszce za gniazdkiem, szeregowo na fazie. Niczego nie przełącza.",
+        "does": "Mierzy moc, napięcie, prąd i energię podłączonych urządzeń lokalnie, przez wbudowaną integrację Shelly, bez konta w chmurze. Widok odtwarzania pokazuje z niego pobór i napięcie odtwarzacza."
       }
     }
   }

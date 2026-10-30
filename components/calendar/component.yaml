@@ -1,7 +1,7 @@
 # Domosenso component manifest: a calendar from a CalDAV server.
 id: calendar
 version: 0.1.0
-summary: Calendar events from a CalDAV server, for example iCloud
+summary: Calendar events from a CalDAV server, for example iCloud, or an ICS link
 description_key: meta.description
 photo: null
 
@@ -14,6 +14,7 @@ host:
 
 integrations:
   - {name: caldav, source: core, setup: "the server's URL, a user name and an app-specific password (iCloud: created in the Apple account's security settings)"}
+  - {name: remote_calendar, source: core, optional: true, setup: "instead of CalDAV: a calendar's ICS URL; read-only, refreshed once a day"}
 
 inputs:
   calendar:

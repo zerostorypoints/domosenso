@@ -23,7 +23,7 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "5b89ebe0e07d196bc07e46c2b375a35d1b5ea6fe",
+      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

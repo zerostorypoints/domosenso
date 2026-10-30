@@ -17,7 +17,8 @@ verify ancestry against the actual remote main. A PR merged into a feature branc
 main. A version in a manifest is not a published release. Never create or move tags to make a
 website audit pass.
 
-Compare that range with `website/content/publication.json`, the editorial records under
+`uv run tools/release_status.py` lists what is untagged or unpublished on this commit (the open
+`release-reminder` issue shows the same for main). Compare that range with `website/content/publication.json`, the editorial records under
 `website/content/`, and existing notes under `docs/website-audits/`. The catalog uses exact tags
 and full SHAs; device guides have a separately pinned documentation SHA. View records name both
 the data provider and rendering owner. Check their conditions against the selected release,

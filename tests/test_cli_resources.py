@@ -138,3 +138,20 @@ def test_home_resource_with_parent_segment_refused(tmp_path, url):
     home = make_home(tmp_path, [{"url": url, "type": "module"}])
     with pytest.raises(DomosensoError, match=r"'\.\.'"):
         wanted(home, Lock())
+
+
+def test_dev_render_card_gets_hash_query(tmp_path):
+    """A dev render keeps its version's path (/0.4.0/), so only a hash makes a changed card a new URL;
+    without it browsers keep the old card for the 31 days /local/ is cached. A locked card's URL changes
+    with its version directory and stays as it is."""
+    home = make_home(tmp_path)
+    put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"one")
+    dev = {"ramka": [CARD]}
+    first = wanted(home, Lock(), dev)[0].url
+    put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"two")
+    assert first == f"{CARD}?v={sha256(b'one')[:8]}"
+    assert wanted(home, Lock(), dev)[0].url == f"{CARD}?v={sha256(b'two')[:8]}"
+    assert wanted(home, lock_with(CARD))[0].url == CARD
+    # A dev card that is not under /local/, or whose file is not rendered, passes through.
+    assert wanted(home, Lock(), {"x": ["/hacsfiles/x/x.js", "/local/missing.js"]}) == [
+        Resource("/hacsfiles/x/x.js"), Resource("/local/missing.js")]

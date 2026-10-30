@@ -120,11 +120,27 @@ statistics yet, so empty historical charts are expected.
 
 `--runtime-only` explicitly reports **browser not run** and does not claim full frontend acceptance.
 The repository static/configuration gate and this runtime/browser acceptance are different layers.
-The full `tools/check-all.sh` gate runs the bounded runtime-only runner;
-`tools/check-all.sh --local` is a partial local check. The separate
-[demo workflow](../.github/workflows/demo.yml) prepares dependencies and runs full runtime/browser
-acceptance. The `demo` check became required on main after its first successful GitHub run;
-branch-protection settings are managed and verified separately from this workflow file.
+`tools/check-all.sh` retains the catalog/configuration and home-staging checks but does not
+launch demo; `tools/check-all.sh --local` is a partial local check. Both explicitly state that
+demo was skipped. The separate [demo workflow](../.github/workflows/demo.yml) is **opt-in**:
+
+- No `run-demo` PR label: the job reports **Demo skipped / not tested**, without installing
+  dependencies, pulling an image or starting Docker.
+- Add `run-demo`: the job prepares dependencies and runs full runtime/browser acceptance once.
+  New commits, reopening and label changes refresh the decision using the current label set.
+  Changing another label while `run-demo` remains present also runs acceptance, so a failed
+  enabled run cannot be replaced by a skipped success. Superseded runs are cancelled per PR.
+- Remove `run-demo`: the next label event reports skipped. Never remove it merely to hide a
+  failure; document why demo no longer applies. Contributors without label rights need a
+  maintainer to apply it.
+- There is no automatic demo run on pushes to main. Use **Run workflow** (manual dispatch) on
+  the selected ref for explicit verification. Local commands above remain available.
+
+In the PR, record `Demo: skip|run`, the reason and, for a run, the relevant scenario and tested
+revision/result. Follow `AGENTS.md`: select conservatively for actual HA runtime/browser risks
+covered by this demo, not routine docs/website changes or as a default checklist item. An
+independent reviewer can request it. A skipped result is not a runtime pass; read the job summary
+and evidence, not just the green status. Branch protection is managed separately and unchanged.
 
 The CI runner owns a fresh uniquely named instance and removes its containers and networks even
 after a check fails. It preserves only allowlisted reports and PNG screenshots in

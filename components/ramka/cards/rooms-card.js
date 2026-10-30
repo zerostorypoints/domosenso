@@ -7,6 +7,9 @@
 //   type: custom:rooms-card
 //   height: calc(100vh - 304px)
 //   columns: 3
+//   entity: sensor.ramka_climate_rooms              # optional: its `rooms` attribute, a list of
+//                                                   # {label, main, extra}, replaces `rooms` while it
+//                                                   # holds one; room n gets colour n
 //   rooms:
 //     - name: Living room
 //       temperature: sensor.living_room_temperature
@@ -14,6 +17,8 @@
 //       color: 1                                    # optional: the temperature in the theme's
 //                                                   # --graph-color-1, the colour HA's charts
 //                                                   # give series 1; without it, plain text
+//
+// A reading shows its entity's unit; without one, °C for the temperature and % for the humidity.
 
 import { createT } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -38,14 +43,24 @@ class RoomsCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (!this._built) this._build();
-    this._update();
+    const rooms = this._live() || this._config.rooms;
+    if (this._built !== rooms.length) this._build(rooms.length);
+    this._update(rooms);
   }
 
-  _build() {
-    this._built = true;
-    const rows = Math.ceil(this._config.rooms.length / this._config.columns);
-    const root = this.attachShadow({ mode: "open" });
+  // The settings page's rooms, as `rooms` entries; null while the entity has none.
+  _live() {
+    const list = this._config.entity && this._hass.states[this._config.entity]?.attributes?.rooms;
+    if (!Array.isArray(list)) return null;
+    const rooms = list.filter((r) => r && typeof r.main === "string" && r.main)
+      .map((r, i) => ({ name: String(r.label || ""), temperature: r.main, humidity: r.extra || null, color: i + 1 }));
+    return rooms.length ? rooms : null;
+  }
+
+  _build(count) {
+    this._built = count;
+    const rows = Math.ceil(count / this._config.columns);
+    const root = this.shadowRoot || this.attachShadow({ mode: "open" });
     root.innerHTML = `
       <style>
         :host { display: block; height: 100%; }
@@ -60,7 +75,7 @@ class RoomsCard extends HTMLElement {
         .hum { font-size: calc(${Math.min(6, 20 / rows)} * var(--u)); color: var(--secondary-text-color); }
       </style>
       <ha-card>
-        ${this._config.rooms.map(() => `<div class="room"><div class="name"></div><div class="temp"></div><div class="hum"></div></div>`).join("")}
+        ${Array.from({ length: count }, () => `<div class="room"><div class="name"></div><div class="temp"></div><div class="hum"></div></div>`).join("")}
       </ha-card>`;
     if (this._config.height) this.style.height = this._config.height;
     this._rooms = Array.from(root.querySelectorAll(".room"));
@@ -81,16 +96,21 @@ class RoomsCard extends HTMLElement {
     return v || RoomsCard.PALETTE[(n - 1) % RoomsCard.PALETTE.length];
   }
 
-  _update() {
-    this._config.rooms.forEach((room, i) => {
+  _unit(id, fallback) {
+    const unit = this._hass.states[id]?.attributes?.unit_of_measurement;
+    return typeof unit === "string" ? unit : fallback;
+  }
+
+  _update(rooms) {
+    rooms.forEach((room, i) => {
       const el = this._rooms[i];
       el.querySelector(".name").textContent = room.name;
       const temperature = this._value(room.temperature, 1);
       const temp = el.querySelector(".temp");
-      temp.textContent = temperature == null ? t(this._hass, "card.common.noValue") : `${temperature} °C`;
+      temp.textContent = temperature == null ? t(this._hass, "card.common.noValue") : `${temperature} ${this._unit(room.temperature, "°C")}`.trim();
       temp.style.color = room.color ? this._color(room.color) : "";
       const h = this._value(room.humidity, 0);
-      el.querySelector(".hum").textContent = h == null ? "" : `${h} %`;
+      el.querySelector(".hum").textContent = h == null ? "" : `${h} ${this._unit(room.humidity, "%")}`.trim();
     });
   }
 }

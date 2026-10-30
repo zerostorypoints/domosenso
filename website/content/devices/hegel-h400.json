@@ -3,7 +3,7 @@
   "title": "Hegel",
   "summary": "The integrated amplifier used for the documented audio integration.",
   "sourcePath": "devices/hegel-h400.yaml",
-  "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+  "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
   "components": [
     "media"
   ],
@@ -13,6 +13,6 @@
       "version": "0.1.0"
     }
   ],
-  "body": "## Configure the amplifier\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. A model-specific electrical guide is not yet published here; do not infer Shelly compatibility or wiring from this audio example. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+  "body": "## Configure the amplifier\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. The indexed meter is the [Shelly PM Mini Gen3](/devices/shelly-pm-mini-gen3/); other meters need their own verification. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
   "photo": "/hardware/hegel-h400.webp"
 }

@@ -171,8 +171,39 @@ lovelace:
   also lists its render-time inputs read-only with this render's values (General: the screen size).
 - **Basic and Advanced.** The Advanced cards (General: near distance and hold, controls hold, lux
   for full brightness; Music: the flavours, rise, fall, line width, tilt, the four dB values, the
-  refresh rate, the music sensor and its calibration) show while "Show advanced settings"
-  (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on Music.
+  refresh rate, the music sensor and its calibration; Photos: the time per photo and the albums;
+  Air: the limits; Climate: the rooms) show while "Show advanced settings"
+  (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on every page with
+  Advanced parts (Music, Photos, Air, Climate).
+- **Open the Ramka view** (General): the tablet's dashboard in this browser, header and sidebar
+  shown (`/<path>/ramka?disable_km`), in the page's language when `dashboard_paths` maps it, else
+  `dashboard_path`. A desktop browser lays out the view for its own window, not the tablet's
+  1100 × 720, so it shows the values, not the tablet's exact layout.
+- **Language** (General): render-time. Each language is its own Ramka dashboard, and the tablet
+  shows the one it opens (the tablet user's default dashboard, or the Companion app's start page);
+  General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
+  has not run on the tested tablet yet.
+- **Photos**: photos per series (5) and, in Advanced, the time per photo (10 s) and the albums, a
+  checkbox each for the top-level folders of `photo_dir` that hold photos, "All albums" first (none
+  ticked is all too). "All albums" keeps the ticks, greyed out, for when it is unticked. The list follows the folder: the photo index sends it after each run (at start,
+  every 15 minutes). The choice is kept by `sensor.<prefix>_photo_albums` over a restart; a chosen
+  album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
+  With one folder per event the list is long: the card has a filter, and grouping folders (by year,
+  `2025/…`) gives a shorter list.
+- **Climate**: in Advanced, up to five rooms, each a name, a main reading and a second one, picked
+  with Home Assistant's entity picker, which searches the home's sensors with a unit as you type
+  (`climate-rooms-card`; a plain dropdown if the picker cannot be loaded). The room tiles and both
+  7-day charts follow them, room n in colour n, outside last; a reading shows its sensor's unit. A
+  room without a main reading is left out, an empty name becomes the sensor's area. They are kept by
+  `sensor.<prefix>_climate_rooms`; the defaults (and the reset) are the first five of `climate`,
+  temperature and humidity.
+- **Air**: a switch per configured reading (off leaves its tile out, the others share the room)
+  and, in Advanced, the two limits of each where its colour changes; the defaults are those in
+  "Dashboards and cards". An unusable limit keeps the default.
+- **Calendar by URL** (Calendar): links to Home Assistant's own add flows for an ICS link
+  (`remote_calendar`) or a CalDAV account (`caldav`, see `components/calendar`), and the step after:
+  the new `calendar.*` entity into `calendar`, a render and a deploy. Entering the URL or a password
+  is a human step in Home Assistant.
 - **Not configured.** A view the render left out (`climate`, `air`, `plants`, `photo_dir` absent,
   or `status_page: false`) shows only a note naming its input and the way to add it: the inputs
   file, `domosenso render ramka` and a deploy. Without `music_visual` the Music page keeps the

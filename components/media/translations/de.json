@@ -5,6 +5,10 @@
       "hegel-h400": {
         "description": "Ein Vollverstärker mit eingebautem Netzwerk-Streamer, der Spotify, Qobuz und Google Cast abspielt.",
         "does": "Spielt Musik aus dem Netzwerk und von seinen Eingängen. Über die Integration hegel_streaming schaltet Home Assistant ihn ein und aus, stellt die Lautstärke ein, steuert die Wiedergabe und liest den laufenden Titel."
+      },
+      "shelly-pm-mini-gen3": {
+        "description": "Ein kleiner Leistungsmesser in der Unterputzdose hinter einer Steckdose, in Reihe mit deren Phase. Er schaltet nicht.",
+        "does": "Misst Leistung, Spannung, Strom und Energie der angeschlossenen Geräte, lokal über die Shelly-Integration von Home Assistant, ohne Cloud-Konto. Die Wiedergabeansicht zeigt daraus Verbrauch und Spannung des Players."
       }
     }
   }

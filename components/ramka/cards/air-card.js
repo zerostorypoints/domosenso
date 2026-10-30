@@ -25,6 +25,14 @@
 // language (en, de, pl; anything else falls back to en); a label written out is shown as it is.
 // A tile whose entity is missing or unavailable is left out, so a room's sensor can be listed
 // before it is installed.
+//
+// Live settings (Ramka's settings dashboard): `show:` on the score or a tile names an
+// input_boolean; while it is `off` the tile is left out and the others share its room (any other
+// state, unavailable included, shows it). A level's limit may be `{entity, default}` instead of a
+// number: the entity's number, read on every update, or `default` while it is not a number.
+//
+//     show: input_boolean.ramka_air_co2
+//     levels: [[{entity: input_number.ramka_air_co2_raised, default: 800}], [{entity: input_number.ramka_air_co2_high, default: 1200}], [null]]
 
 import { createT } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -51,7 +59,7 @@ class AirCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    const shown = this._shown().map((tile) => tile.entity).join(",");
+    const shown = [this._scoreShown() ? "score" : "", ...this._shown().map((tile) => tile.entity)].join(",");
     if (shown !== this._built) this._build(shown);
     this._update();
   }
@@ -61,14 +69,30 @@ class AirCard extends HTMLElement {
     return !!s && !["unknown", "unavailable", ""].includes(s.state) && Number.isFinite(parseFloat(s.state));
   }
 
+  _visible(tile) {
+    return !tile.show || this._hass.states[tile.show]?.state !== "off";
+  }
+
   _shown() {
-    return this._config.tiles.filter((tile) => this._ok(tile.entity));
+    return this._config.tiles.filter((tile) => this._ok(tile.entity) && this._visible(tile));
+  }
+
+  _scoreShown() {
+    const score = this._config.score;
+    return !!score && this._ok(score.entity) && this._visible(score);
+  }
+
+  // A literal limit, or {entity, default}: the entity's number while it has one.
+  _limit(limit) {
+    if (limit === null || typeof limit !== "object") return limit;
+    const v = parseFloat(this._hass.states[limit.entity]?.state);
+    return Number.isFinite(v) ? v : limit.default;
   }
 
   _build(shown) {
     this._built = shown;
     const tiles = this._shown();
-    const score = this._config.score && this._ok(this._config.score.entity) ? this._config.score : null;
+    const score = this._scoreShown() ? this._config.score : null;
     const cols = Math.max(1, Math.ceil(tiles.length / 2));
     const root = this.shadowRoot || this.attachShadow({ mode: "open" });
     root.innerHTML = `
@@ -106,7 +130,8 @@ class AirCard extends HTMLElement {
     const levels = tile.levels || [];
     const colors = ["var(--good)", "var(--raised)", "var(--high)"];
     for (let i = 0; i < levels.length; i++) {
-      const [limit, label] = levels[i];
+      const [raw, label] = levels[i];
+      const limit = this._limit(raw);
       const holds = tile.higher_is_better ? v >= (limit ?? -Infinity) : limit == null || v < limit;
       const position = Math.min(i, 2);
       if (holds) return { label: label ?? t(this._hass, `card.air.level.${LEVEL_KEYS[position]}`), color: colors[position] };

@@ -44,3 +44,19 @@ test("a card without rooms is a config error", () => {
   const card = document.createElement("rooms-card");
   assert.throws(() => card.setConfig({ rooms: [] }), /rooms is required/);
 });
+
+test("the settings page's rooms replace the configured ones, in their order and colours", () => {
+  const card = document.createElement("rooms-card");
+  card.setConfig({ rooms, entity: "sensor.ramka_climate_rooms" });
+  const live = { "sensor.ramka_climate_rooms": { state: "2", attributes: { rooms: [
+    { label: "Hall", main: "sensor.h_co2", extra: "" }, { label: "Kitchen", main: "sensor.k_t", extra: "sensor.k_h" }, { label: "x", main: "" }] } },
+    "sensor.h_co2": { state: "612", attributes: { unit_of_measurement: "ppm" } } };
+  card.hass = { locale: { language: "en" }, states: { ...states, ...live } };
+  const tiles = [...card.shadowRoot.querySelectorAll(".room")];
+  assert.deepEqual(tiles.map((el) => [el.querySelector(".name").textContent, el.querySelector(".temp").textContent, el.querySelector(".hum").textContent]),
+                   [["Hall", "612.0 ppm", ""], ["Kitchen", "21.5 °C", "48 %"]]);
+  // Without rooms in the entity (before the seed) the configured ones show.
+  card.hass = { locale: { language: "en" }, states };
+  assert.equal(card.shadowRoot.querySelectorAll(".room").length, 2);
+  assert.equal(card.shadowRoot.querySelector(".name").textContent, "Kitchen");
+});

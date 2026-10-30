@@ -3,7 +3,7 @@
   "title": "Philips Hue Bridge",
   "summary": "Lighting through the bridge’s room groups.",
   "sourcePath": "devices/hue-bridge.yaml",
-  "sourceCommit": "5b012718dcce57a386b1f3cfe87b8d7512c39b2f",
+  "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
   "components": [
     "lights"
   ],
