@@ -227,6 +227,7 @@ provides:                       # <prefix> from inputs
     - {id: "sensor.<prefix>_ambient_pages", stability: stable, note: "the ambient pages in the rotation now (state: how many; attributes pages, all_off, component: ramka; 0.4.0)"}
     - {id: "script.<prefix>_settings_reset", stability: stable, note: "fields page and groups, both optional (0.4.0)"}
     - {id: "sensor.<prefix>_discovery", stability: stable, note: "the About page's discovery: state the last refresh (timestamp); attributes component: ramka, ha_version, found, uses, integrations, declared_links, set by event <prefix>_discovery (SPEC-023)"}
+    - {id: "shell_command.<prefix>_discover", stability: stable, note: "in every home: shell/domosenso_discover.py, JSON on stdout (SPEC-023)"}
     - {id: "script.<prefix>_about_refresh", stability: stable, note: "runs shell_command.<prefix>_discover, fires <prefix>_discovery, updates the HACS update entities it names (SPEC-023)"}
     - {id: "timer.<prefix>_controls", stability: stable}
     - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}

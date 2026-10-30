@@ -2060,7 +2060,8 @@ def test_album_card_on_photos_advanced(demo):
 def test_no_photo_helpers_without_photo_dir(tmp_path):
     package = render(tmp_path, without_pages("photos"))["package.yaml"]
     assert not {e for e in helpers(package) if ".ramka_photo" in e}
-    assert "shell_command" not in package and "input_text" not in package
+    # The About page's discovery is the only shell command a home without photos gets (SPEC-023).
+    assert set(package.get("shell_command", {})) == {"ramka_discover"} and "input_text" not in package
     assert ALBUMS not in defined_entities(package) and "ramka_photo_albums_set" not in package["script"]
     assert not [a for a in package["automation"] if a["id"].startswith("ramka_photo")]
 
@@ -2262,8 +2263,10 @@ def test_about_page_lists_the_components(demo, lang):
              {"id": "bermuda-presence", "version": "0.2.1", "tag": "bermuda-presence/0.2.1", "commit": "", "released": "",
               "dev": False, "package": "ble-proxy.yaml"}]
     env = jinja2.Environment()
+    # Home Assistant's own template functions, as far as the table uses them; no discovery has run.
+    ha = {"states": lambda entity: "unknown", "as_timestamp": lambda value, default=None: default}
     shown = env.from_string(content).render(state_attr=lambda entity, attr: items if (entity, attr) == (
-        "sensor.domosenso_components", "components") else None)
+        "sensor.domosenso_components", "components") else None, **ha)
     lines = shown.splitlines()
     header = f"| {t['ui.settings.about_component']} | {t['ui.settings.about_version']} | {t['ui.settings.about_released']} |"
     at = lines.index(header)
@@ -2274,7 +2277,7 @@ def test_about_page_lists_the_components(demo, lang):
         f"| bermuda-presence | 0.2.1 ({t['ui.settings.about_package']} `ble-proxy.yaml`) | — |",
     ]
     # Without the sensor: the Ramka alone, as rendered, and how to get the list.
-    missing = env.from_string(content).render(state_attr=lambda entity, attr: None)
+    missing = env.from_string(content).render(state_attr=lambda entity, attr: None, **ha)
     version = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["version"]
     assert f"| ramka | {version} |" in missing.splitlines()
     assert t["ui.settings.about_missing"].split(":")[0] in missing
@@ -2283,7 +2286,9 @@ def test_about_page_lists_the_components(demo, lang):
 def test_about_page_is_last_and_read_only(demo):
     view = settings_views(demo["ramka-settings.en.yaml"])["about"]
     assert [v["path"] for v in demo["ramka-settings.en.yaml"]["views"]][-1] == "about"
-    assert all(not rows(card) for _, card in view_cards(view))  # no helper, nothing to reset
+    # No helper, nothing to reset: the only row is the Refresh button, which runs the discovery.
+    assert [r for _, card in view_cards(view) for r in rows(card) if r.get("entity")] == []
+    assert not list(reset_actions(view))
 
 
 # ---- Plants (SPEC-022): discover, plants per page and seconds per page --------------------------
