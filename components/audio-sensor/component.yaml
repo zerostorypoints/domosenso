@@ -60,6 +60,7 @@ inputs:
           bssid: sensor.<..>_connected_ap_bssid
           restart: button.<..>_restart
           load: sensor.<..>_spectrum_load
+          spectrum_rate: select.<..>_spectrum_rate
 
 artifacts:
   esphome:
@@ -106,6 +107,12 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "input_text.audio_sensor_calibration_note", stability: stable, note: "with a music board; the note to apply, up to 255 characters; no initial:"}
     - {id: "script.audio_sensor_apply_calibration", stability: stable, note: "writes the measured offset and the note into the selected board's helpers and turns its calibrated flag on"}
 
+    # The spectrum rate (#99, #110): the choice, the watching flag and the automation that forwards
+    # them to the selected board's Spectrum rate select. Only with a `music: true` board.
+    - {id: "input_select.audio_sensor_music_spectrum_rate", stability: stable, note: "with a music board; options eco, normal, fast (additive-only); no initial:; a state that is no option reads as normal"}
+    - {id: "input_boolean.audio_sensor_music_watching", stability: stable, note: "with a music board; on while a view shows the music visual (the Ramka sets it); no initial:"}
+    - {id: "automation.audio_sensor_music_spectrum_rate", unique_id: audio_sensor_music_spectrum_rate, stability: additive-only, note: "sets the selected board's Spectrum rate to the choice, fast only while watching is on (else normal, 10 s after watching turns off); re-applies on HA start, a source change and any change of the board's select, its 60 min timeout included; the board a source change leaves goes back to normal"}
+
   # The board's ESPHome entities. Home Assistant builds their ids from the device's area and names
   # when the board is adopted (a renamed device keeps its old ids), so they are declared, not
   # promised (docs/COMPATIBILITY.md): the home's `entities` input maps each `entity_key` to its id.
@@ -119,6 +126,7 @@ provides:                                 # contract surface; placeholders in <>
     - {entity_key: fast_peak, owner: esphome, stability: additive-only, note: same}
     - {entity_key: live_tracking, owner: esphome, stability: stable, note: "off after a boot and after one hour"}
     - {entity_key: load, owner: esphome, stability: additive-only, note: "share of one core the spectrum worker uses"}
+    - {entity_key: spectrum_rate, owner: esphome, stability: stable, note: "select eco, normal, fast; normal after a boot and an hour after fast (#110)"}
     - {entity_key: mic_gain, owner: esphome, stability: additive-only}
     - {entity_key: wifi_signal, owner: esphome, stability: additive-only}
     - {entity_key: uptime, owner: esphome, stability: additive-only}
