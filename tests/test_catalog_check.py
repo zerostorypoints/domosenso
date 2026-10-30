@@ -326,3 +326,67 @@ def test_kind_files(catalog):
     assert any("ghost.yaml" in e and "no manifest names kind 'ghost'" in e for e in errors)
     assert any("named.yaml" in e and "does not match file name" in e for e in errors)
     assert any("empty.yaml" in e and "match" in e for e in errors)
+
+
+REPO_URL = "https://github.com/zerostorypoints/domosenso"
+
+
+def external_components(ref, url=REPO_URL):
+    return ("esphome: {name: demo}\n"
+            "external_components:\n"
+            f"  - source: {{type: git, url: {url}, ref: {ref}, path: components/demo-sensor/esphome/components}}\n")
+
+
+def test_esphome_external_ref_matches_version(catalog):
+    """An ESPHome package that pulls the catalog's own external components names the component's tag."""
+    node = catalog / "components" / "demo-sensor" / "esphome" / "node.yaml"
+    node.write_text(external_components("demo-sensor/0.1.0"))
+    assert cc.check_component(component_yaml(catalog)) == []
+    node.write_text(external_components("demo-sensor/0.0.9"))
+    errors = cc.check_component(component_yaml(catalog))
+    assert len(errors) == 1
+    assert "esphome/node.yaml" in errors[0] and "demo-sensor/0.0.9" in errors[0] and "demo-sensor/0.1.0" in errors[0]
+    node.write_text(external_components("main"))  # a branch is not a tag
+    assert len(cc.check_component(component_yaml(catalog))) == 1
+    node.write_text(external_components("elsewhere/0.0.9", url="https://github.com/someone/else"))  # not this repository
+    assert cc.check_component(component_yaml(catalog)) == []
+    node.write_text("esphome: {name: demo}\nexternal_components:\n  - source: {type: local, path: components}\n"
+                    "wifi:\n  ssid: !secret wifi_ssid\n")  # local sources and !secret tags are fine
+    assert cc.check_component(component_yaml(catalog)) == []
+
+
+def firmware(version, ref="demo-sensor/0.1.0", external=True):
+    ext = (f"external_components:\n  - source: {{type: git, url: {REPO_URL}, ref: {ref}, path: components/x}}\n"
+           if external else "")
+    return f"esphome:\n  name: demo\n  project: {{name: domosenso.demo, version: {version}}}\n{ext}"
+
+
+def factory(tag):
+    return ("packages:\n  node: !include node.yaml\n"
+            f"dashboard_import:\n  package_import_url: github://zerostorypoints/domosenso/components/demo-sensor/esphome/node.yaml@{tag}\n")
+
+
+def test_esphome_project_version_matches_version(catalog):
+    """With the component's own external components, the package's project version is the manifest's."""
+    node = catalog / "components" / "demo-sensor" / "esphome" / "node.yaml"
+    node.write_text(firmware("0.1.0"))
+    assert cc.check_component(component_yaml(catalog)) == []
+    node.write_text(firmware("0.0.9"))
+    errors = cc.check_component(component_yaml(catalog))
+    assert len(errors) == 1 and "project.version '0.0.9'" in errors[0] and "'0.1.0'" in errors[0]
+    node.write_text(firmware("0.0.9", external=False))  # no catalog external component: not this rule's business
+    assert cc.check_component(component_yaml(catalog)) == []
+
+
+def test_esphome_factory_import_tag_matches_version(catalog):
+    fixture = catalog / "components" / "demo-sensor" / "esphome"
+    manifest = component_yaml(catalog)
+    edit_yaml(manifest, lambda d: d["artifacts"]["esphome"].update(factory="esphome/node.factory.yaml"))
+    (fixture / "node.yaml").write_text(firmware("0.1.0"))
+    (fixture / "node.factory.yaml").write_text(factory("demo-sensor/0.1.0"))
+    assert cc.check_component(manifest) == []
+    (fixture / "node.factory.yaml").write_text(factory("demo-sensor/0.0.9"))
+    errors = cc.check_component(manifest)
+    assert len(errors) == 1 and "node.factory.yaml" in errors[0] and "demo-sensor/0.0.9" in errors[0]
+    (fixture / "node.yaml").write_text(firmware("0.1.0", external=False))  # a component without catalog external components
+    assert cc.check_component(manifest) == []

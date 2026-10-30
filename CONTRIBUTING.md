@@ -63,6 +63,7 @@ calendars or floor plans. A real home lives in its own repository.
 
 | Component | What it does |
 |---|---|
+| [audio-sensor](components/audio-sensor/component.yaml) | Room sound level and third-octave spectrum from an M5Stack Atom EchoS3R, calibrated in dB SPL, with a wave and a meter card |
 | [awnings](components/awnings/component.yaml) | Somfy RTS awnings through an ESPSomfy-RTS radio node, with the awnings' wind sensor |
 | [backup](components/backup/component.yaml) | Nightly backups with rolling retention, backup sensors and a stale alert |
 | [remote-access](components/remote-access/component.yaml) | Home Assistant from anywhere through a Cloudflare Tunnel: no open port, a country allow-list |

@@ -29,6 +29,11 @@ rm -rf "$WORK"; mkdir -p "$WORK/remote" "$WORK/home"
 # 1. A git "catalog" with the component at its tag.
 mkdir -p "$WORK/remote/components"
 cp -R "$CDIR" "$WORK/remote/components/"
+# A package that loads its own external_components from github (audio-sensor) points at this local
+# repo too, so the tag need not be published yet. The rewrite is of the checked copy only.
+for y in "$WORK"/remote/components/"$COMP"/esphome/*.yaml; do
+  sed -i.bak "s#url: https://github.com/zerostorypoints/domosenso\$#url: file://$WORK/remote#" "$y" && rm -f "$y.bak"
+done
 git -C "$WORK/remote" init -q
 git -C "$WORK/remote" add -A
 git -C "$WORK/remote" -c user.name=check -c user.email=check@localhost commit -qm "$TAG"
@@ -53,7 +58,7 @@ KEY=$(python3 -c 'import base64,os;print(base64.b64encode(os.urandom(32)).decode
 printf 'wifi_ssid: "check"\nwifi_password: "check-password"\napi_encryption_key: "%s"\n' "$KEY" > "$WORK/home/secrets.yaml"
 # The factory image includes the package locally; build it from a copy so .esphome/ stays out of
 # the catalog.
-cp -R "$CDIR/esphome" "$WORK/factory"
+cp -R "$WORK/remote/components/$COMP/esphome" "$WORK/factory"
 
 ESPHOME=(uvx --from "esphome==$ESPHOME_VERSION" esphome)
 fail=0

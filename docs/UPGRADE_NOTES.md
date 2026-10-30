@@ -3,6 +3,22 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## 2026-10-29: ramka 0.4.0, the room's music on the now-playing view
+
+New optional inputs `music_visual`, `music_visual_options` and `settings_defaults`, a new optional
+`visual:` key of the now-playing card, and `input_select.<prefix>_music_visual`, which exists only
+with the input. Live settings on a settings dashboard and page switches; the theme follows a helper
+for every backend-selected browser. A home adds one `lovelace:` entry for the settings dashboard;
+everything else is additive: the seed gives the new helpers their values and keeps a home's tuning
+([components/ramka/UPGRADE.md](../components/ramka/UPGRADE.md)).
+
+## 2026-10-29: deploy `--allow-dirty`
+
+New optional flag `deploy production --apply --allow-dirty --confirm <hash>` for dev-rendered files
+([SPEC-019](../.ai/specs/SPEC-019-2026-10-29-deploy-allow-dirty.md)). A `--catalog-dev` render now records
+its files and resource URLs in `.domosenso/dev-render.json`, so `deploy` carries a new component or card
+version complete; a render from the tag clears it. No home action.
+
 ## 2026-10-28: contributor checks and release verification
 
 No home migration. Maintainers must release from a clean commit already included in main, with an

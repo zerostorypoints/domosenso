@@ -102,6 +102,7 @@ Each component bundles its Home Assistant packages, cards, ESPHome configuration
 and a manifest that says what it needs and which versions it was tested on.
 
 - **ramka** — wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar. Tested in 1 home.
+- **audio-sensor** — a room sound sensor on an M5Stack Atom EchoS3R: sound level, a third-octave spectrum and a calibrated level in dB SPL, with two dashboard cards; feeds the Ramka's music visual. Tested in 1 home.
 - **climate-air** — temperature and humidity per room (Tapo sensors); CO₂, fine dust, VOC and NOx (Ruuvi Air). Tested in 1 home.
 - **bermuda-presence** — which room each phone, tablet and watch is in, from Bluetooth through ESPHome proxies and Bermuda. Tested in 1 home.
 - **plants** — soil moisture, conductivity, light and temperature of houseplants (Mi Flora). Tested in 1 home.

@@ -175,6 +175,8 @@ Present, in this order:
   `--json` gives it as `needs[].tested_homes`; absent = unknown). For a kind with no recommended
   device, say plainly: "the catalog names no tested model for <kind>". `optional ... lacks` lines are
   "would add <feature>". Never order or buy anything;
+- a sound sensor or an `m5stack-atom-echos3r` token: name `audio-sensor` (level and spectrum per room;
+  with the Ramka its music visual);
 - `describes` components install nothing (they say what the Ramka reads);
 - where each part of a chosen component runs, from the table "What runs where" in
   `<catalog>/docs/getting-started.md`: inside Home Assistant, as a container next to it, on their

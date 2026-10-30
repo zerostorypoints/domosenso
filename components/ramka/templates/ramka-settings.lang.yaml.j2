@@ -1,0 +1,245 @@
+[#
+  The "Ramka settings" dashboard (0.4.0, SPEC-021): one sections view per page, General and one per
+  Ramka view, where every live setting of the package is changed and seen on the tablet at once.
+  Rendered once per language (ramka-settings.<lang>.yaml) by tools/domosenso_render.py; every label
+  is t('ui.settings.…'). For admins: the home's lovelace: entry carries require_admin (README,
+  "Settings page"), so no kiosk_mode block here. Double square brackets are the renderer's; {{ }}
+  and {% %} are Home Assistant's, in the markdown cards.
+
+  The standing rule: a new Ramka setting gets its row here, on its view's page, in the same change
+  (tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset).
+#]
+[%- set p = inputs.prefix -%]
+[%- set music_visual = inputs.music_visual | default(none) -%]
+[%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
+[%- set screen = inputs.screen | default({'width': 1100, 'height': 720}) -%]
+[%- set status_input = inputs.status | default({}) -%]
+[#- Which views this render has, and the input that adds a missing one (the package's own rule). -#]
+[%- set configured = {'climate': inputs.climate is defined, 'air': inputs.air is defined, 'plants': inputs.plants is defined,
+    'photos': inputs.photo_dir is defined, 'status': inputs.status_page | default(true), 'calendar': true} -%]
+[%- set adds = {'climate': 'climate', 'air': 'air', 'plants': 'plants', 'photos': 'photo_dir', 'status': 'status_page'} -%]
+[%- set icons = {'general': 'mdi:tablet-dashboard', 'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower',
+    'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'music': 'mdi:music'} -%]
+[#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
+    `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
+    the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
+[%- set visuals = {} -%]
+[%- if music_visual is not none -%]
+[%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': 'sensor.music_spectrum', 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': 'sensor.music_level'})] -%]
+[%- set m = p ~ '_music_' -%]
+[%- set _ = visuals.update({kind: {
+    'type': 'custom:ambient-wave-card', 'source': source, 'fallback': 'classic',
+    'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
+    'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
+    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
+    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}}}) -%]
+[%- endfor -%]
+[%- endif -%]
+[%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
+[%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
+[#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. -#]
+[%- macro rows(helpers) -%]
+[%- for domain, suffix in helpers %]
+              - entity: [[ domain ]].[[ p ]]_[[ suffix ]]
+                name: [[ t('ui.settings.' ~ suffix) | yaml ]]
+[%- endfor -%]
+[%- endmacro -%]
+[%- macro heading(key, icon, visibility='') %]
+          - type: heading
+            heading: [[ t('ui.settings.' ~ key) | yaml ]]
+            icon: [[ icon ]]
+[%- if visibility %]
+            visibility: [ [[ visibility ]] ]
+[%- endif -%]
+[%- endmacro -%]
+[%- macro block(text) -%][[ text | indent(14, true) ]][%- endmacro -%]
+[%- macro cell(value) -%][[ value | string | replace('|', '\\|') ]][%- endmacro -%]
+[#- The render-time inputs of a page, read-only with this render's values: (label key, value). -#]
+[%- macro render_time(items, header='') %]
+      - type: grid
+        cards:[[ heading('render_time', 'mdi:file-cog-outline') ]]
+          - type: markdown
+            content: |-
+[[ block(t('ui.settings.render_time_how')) ]]
+
+              | [[ header ]] | |
+              |---|---|
+[%- for key, value in items %]
+              | [[ t('ui.settings.' ~ key) ]] | [[ cell(value) ]] |
+[%- endfor %]
+[%- endmacro -%]
+[%- macro reset(page) %]
+      - type: grid
+        cards:
+          - type: button
+            name: [[ t('ui.settings.reset' if page else 'ui.settings.reset_all') | yaml ]]
+            icon: mdi:restore
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: script.[[ p ]]_settings_reset
+[%- if page %]
+              data:
+                page: [[ page ]]
+[%- endif %]
+              confirmation:
+                text: [[ t('ui.settings.reset_confirm' if page else 'ui.settings.reset_all_confirm') | yaml ]]
+            grid_options: {columns: full}
+[%- endmacro -%]
+[%- macro not_configured(input) %]
+          - type: markdown
+            content: |-
+              **[[ t('ui.settings.not_configured') ]]**
+[[ block(t('ui.settings.not_configured_how') | replace('{input}', input)) ]]
+[%- endmacro -%]
+[#- The top of a view's page: its switch, and a note while it is off. -#]
+[%- macro switch_section(view, extra=[]) %]
+      - type: grid
+        cards:[[ heading('basic', 'mdi:tune') ]]
+          - type: entities
+            entities:[[ rows([('input_boolean', 'page_' ~ view)] + extra) ]]
+          - type: markdown
+            visibility: [ {condition: state, entity: input_boolean.[[ p ]]_page_[[ view ]], state: "off"} ]
+            content: [[ t('ui.settings.page_off') | yaml ]]
+[%- endmacro -%]
+[%- macro labels(items, key='label') -%][[ items | map(attribute=key) | join(', ') if items else '—' ]][%- endmacro -%]
+# Rendered from the Domosenso catalog, component ramka (templates/ramka-settings.lang.yaml.j2),
+# language [[ lang ]]. Edit the inputs and render again rather than editing this file.
+#
+# The Ramka's live settings, for admins: every row is a helper the tablet reads at once. Each page
+# but General starts with its view's switch and ends with its Reset; General's Reset sets every
+# setting. The Advanced cards show while input_boolean.[[ p ]]_settings_advanced is on.
+title: [[ t('ui.settings.title') | yaml ]]
+views:
+  # ---- General: the tablet as a whole --------------------------------------------------------
+  - title: [[ t('ui.settings.pages.general') | yaml ]]
+    path: general
+    icon: [[ icons.general ]]
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:[[ heading('basic', 'mdi:tune') ]]
+          # sensor.[[ p ]]_ambient_pages never empties the rotation: with every page off it keeps the
+          # first one and says so in all_off.
+          - type: markdown
+            show_empty: false
+            content: >-
+              {% if state_attr('sensor.[[ p ]]_ambient_pages', 'all_off') %}<ha-alert alert-type="warning">[[ t('ui.settings.all_off') ]]</ha-alert>{% endif %}
+          - type: entities
+            entities:[[ rows([('input_select', 'theme_mode'), ('input_boolean', 'near_enabled'), ('input_number', 'off_delay_s'),
+          ('input_number', 'brightness_min'), ('input_number', 'brightness_max'), ('input_boolean', 'settings_advanced')]) ]]
+      - type: grid
+        cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]] ]
+            entities:[[ rows([('input_number', 'near_cm'), ('input_number', 'near_s'), ('input_number', 'controls_hold_s'), ('input_number', 'lux_max')]) ]][[ render_time([('inputs.screen', screen.width ~ ' × ' ~ screen.height ~ ' CSS px')]) ]][[ reset(none) ]]
+[%- for view in ['climate', 'air', 'plants', 'photos', 'status', 'calendar'] %]
+
+  # ---- [[ view | capitalize ]]: its switch and its render-time inputs, or "not configured" ----
+  - title: [[ t('ui.settings.pages.' ~ view) | yaml ]]
+    path: [[ view ]]
+    icon: [[ icons[view] ]]
+    type: sections
+    max_columns: 2
+    sections:
+[%- if not configured[view] %]
+      # Left out by the render: its switch would change nothing.
+      - type: grid
+        cards:[[ not_configured(adds[view]) ]]
+[%- else %][[ switch_section(view) ]]
+[%- if view == 'climate' %][[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]]
+[%- elif view == 'air' %]
+[%- set readings = [] -%]
+[%- for key in ['score', 'co2', 'pm2_5', 'voc', 'nox'] if inputs.air[key] is defined -%][%- set _ = readings.append(('readings.' ~ key, inputs.air[key])) -%][%- endfor -%][[ render_time(readings, t('ui.settings.inputs.readings')) ]]
+[%- elif view == 'plants' %][[ render_time([('inputs.plants', labels(inputs.plants))]) ]]
+[%- elif view == 'photos' %][[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]]
+[%- elif view == 'status' %]
+[%- set covers = [] -%][%- for c in inputs.covers | default([]) -%][%- set _ = covers.append(c.status_label | default(c.label)) -%][%- endfor -%][[ render_time([('inputs.covers', covers | join(', ') or '—'), ('inputs.contacts', labels(status_input.contacts | default([]))),
+                 ('inputs.power', labels(status_input.power | default([]))), ('inputs.locks', labels(status_input.locks | default([]))),
+                 ('inputs.status_columns', inputs.status_columns | default(4))]) ]]
+[%- elif view == 'calendar' %][[ render_time([('inputs.calendars', ([inputs.calendar] if inputs.calendar is string else inputs.calendar) | join(', '))]) ]]
+[%- endif %][[ reset(view) ]]
+[%- endif %]
+[%- endfor %]
+
+  # ---- Music: the now-playing view and, with music_visual, its visual ---------------------------
+  - title: [[ t('ui.settings.pages.music') | yaml ]]
+    path: music
+    icon: [[ icons.music ]]
+    type: sections
+    max_columns: 2
+    sections:
+[%- if visuals %][[ switch_section('music', [('input_select', 'music_visual'), ('input_select', 'music_palette'), ('input_boolean', 'settings_advanced')]) ]]
+      # The visual as the tablet draws it, at the strip's height, the width of the page. Without
+      # audio-sensor (its select unavailable) the card's element does not exist: the classic note.
+      - type: grid
+        column_span: 2
+        cards:[[ heading('preview', 'mdi:waveform') ]]
+[%- for kind, config in visuals.items() %]
+          - type: custom:ambient-wave-card
+            visibility: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}, [[ source_there ]] ]
+[%- for key, value in config.items() if key != 'type' %]
+            [[ key ]]: [[ value | yaml ]]
+[%- endfor %]
+            height: 63px
+            grid_options: {columns: full, rows: auto}
+[%- endfor %]
+          - type: markdown
+            visibility:
+              - condition: or
+                conditions:
+                  - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
+                  - {condition: state, entity: input_select.audio_sensor_music_source, state: unavailable}
+            content: [[ t('ui.settings.preview_classic') | yaml ]]
+      - type: grid
+        cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]] ]
+            entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'), ('input_number', 'music_rise_ms'),
+          ('input_number', 'music_fall_s'), ('input_number', 'music_line_width_px'), ('input_boolean', 'music_tilt'),
+          ('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db'),
+          ('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db'), ('input_number', 'music_fps')]) ]]
+      # audio-sensor's music source and the calibration of the board it names. Ramka's render cannot
+      # see audio-sensor, so these cards hide while the select is unavailable (a home without it).
+      # Calibration is a measurement, not a preference: no Reset touches it.
+      - type: grid
+        cards:[[ heading('music_sensor', 'mdi:microphone', advanced_on ~ ', ' ~ source_there) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            entities:
+              - entity: input_select.audio_sensor_music_source
+                name: [[ t('ui.settings.music_source') | yaml ]][[ heading('calibration', 'mdi:tune-vertical', advanced_on ~ ', ' ~ source_there) ]]
+          - type: markdown
+            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            content: |-
+              {% set calibration = states('sensor.music_spl_calibration') %}
+              | | |
+              |---|---|
+              | [[ t('ui.settings.offset_in_use') ]] | **{{ states('sensor.music_spl_offset') }} dB**, {{ [[ t('ui.settings.calibrated') | yaml ]] if calibration == 'calibrated' else [[ t('ui.settings.estimate') | yaml ]] if calibration == 'estimate' else calibration }} |
+              | [[ t('ui.settings.mic_gain') ]] | {{ states('sensor.music_mic_gain') }} |
+              | [[ t('ui.settings.note') ]] | {{ state_attr('sensor.music_spl_calibration', 'note') or '—' }} |
+
+[[ block(t('ui.settings.calibration_procedure')) ]]
+
+              <a href="https://github.com/zerostorypoints/domosenso/blob/audio-sensor/0.1.0/components/audio-sensor/README.md#the-music-source-and-calibration">[[ t('ui.settings.calibration_readme') ]]</a>
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            entities:
+              - entity: input_number.audio_sensor_measured_offset
+                name: [[ t('ui.settings.measured_offset') | yaml ]]
+              - entity: input_text.audio_sensor_calibration_note
+                name: [[ t('ui.settings.calibration_note') | yaml ]]
+              - type: button
+                icon: mdi:check-circle-outline
+                name: [[ t('ui.settings.calibration_apply') | yaml ]]
+                action_name: [[ t('ui.settings.calibration_apply_action') | yaml ]]
+                tap_action:
+                  action: perform-action
+                  perform_action: script.audio_sensor_apply_calibration
+                  confirmation:
+                    text: [[ t('ui.settings.calibration_apply_confirm') | yaml ]][[ render_time([('inputs.music_visual', music_visual), ('inputs.media_player', inputs.media_player)]) ]]
+[%- else %][[ switch_section('music') ]]
+      - type: grid
+        cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
+[%- endif %][[ reset('music') ]]

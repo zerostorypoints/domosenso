@@ -1,0 +1,36 @@
+[#- One device file per item of the `sensors` input, written once by `domosenso add` into the home's
+   esphome_dir as audio-sensor-<room>.yaml (SPEC-018). The home owns it afterwards. `name`,
+   `friendly_name` and `mic_gain` are set only when the item has them, so a home can keep the
+   hostname and names of a board it already runs; otherwise the package's defaults apply. -#]
+# audio-sensor-[[ item.room ]]: a room sound sensor in [[ item.area ]]. Written once by `domosenso add`
+# from [[ component.id ]] [[ component.version ]], this home's file from now on; the package is the catalog's at that tag.
+substitutions:
+  room: [[ item.room | yaml ]]
+  area: [[ item.area | yaml ]]
+[%- if item.get('name') %]
+  name: [[ item.name | yaml ]]
+[%- endif %]
+[%- if item.get('friendly_name') %]
+  friendly_name: [[ item.friendly_name | yaml ]]
+[%- endif %]
+[%- if item.get('mic_gain') %]
+  mic_gain: [[ item.mic_gain | yaml ]]
+[%- endif %]
+
+esphome:
+  area: ${area}
+
+packages:
+  sensor: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/audio-sensor.yaml@[[ component.id ]]/[[ component.version ]]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:  # uploads authenticated with the API key

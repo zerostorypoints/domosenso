@@ -42,15 +42,19 @@ def _name(url: str) -> str:
     return _bare(url).rsplit("/", 1)[-1]
 
 
-def wanted(home: HomeConfig, lock: Lock) -> list[Resource]:
-    """Every locked component's cards, then the home's own resources.
+def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None) -> list[Resource]:
+    """Every locked component's cards, then the home's own resources. `dev` (component -> URLs, from
+    `.domosenso/dev-render.json`) replaces a locked component's URLs, or adds a component not locked.
 
     A home resource under `/local/` gets `?v=<sha8>` of its file in `config_dir/www`, so that a changed
     file is a new URL; any other URL (a third party's) passes through unchanged."""
     got: list[Resource] = []
     owners: dict[str, str] = {}  # file name -> where it was wanted from
-    for cid, entry in lock.components.items():
-        for url in entry.resources:
+    dev = dev or {}
+    by_component = {cid: entry.resources for cid, entry in lock.components.items()}
+    by_component.update({cid: dev[cid] for cid in sorted(dev)})
+    for cid, urls in by_component.items():
+        for url in urls:
             _claim(owners, url, f"component {cid}")
             got.append(Resource(url))
     for raw in home.resources:

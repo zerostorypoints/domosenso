@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 
 from catalog_check import install_dir, install_files, service_files
-from domosenso_cli import stamps
+from domosenso_cli import dev_render, stamps
 from domosenso_cli.catalog import Catalog
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import ComponentEntry, HomeConfig
@@ -101,6 +101,12 @@ def _dir_prefix(home: HomeConfig, directory: Path, name: str) -> str:
     return "" if relative == Path(".") else relative.as_posix() + "/"
 
 
+def is_dashboard_template(name: str) -> bool:
+    """A template rendered per language (`*.lang.yaml.j2`) has labels: it is a dashboard; so is a
+    template named `dashboard*`, as before."""
+    return Path(name).name.endswith(LANG_SUFFIX) or Path(name).name.startswith("dashboard")
+
+
 def _template_destination(entry: ComponentEntry, key: str, lang: str | None) -> str:
     """Where a rendered template goes, relative to config_dir. `key` is the template's output name:
     `package.yaml`, `dashboard.<lang>.yaml`, ..."""
@@ -113,6 +119,9 @@ def _template_destination(entry: ComponentEntry, key: str, lang: str | None) -> 
             chosen = f"packages/{package}.yaml"
         elif key == "dashboard.<lang>.yaml":
             chosen = f"dashboards/{entry.id}.<lang>.yaml"
+        elif key.endswith(".<lang>.yaml"):
+            # Any other language template has labels too, so it is a dashboard (ramka's settings).
+            chosen = f"dashboards/{key}"
         else:
             chosen = f"packages/{package}_{key}"
     return chosen.replace("<lang>", lang) if lang else chosen
@@ -245,14 +254,18 @@ def write_outputs(
 ) -> list[tuple[str, str]]:
     """Write `outputs`; returns `("write"|"same"|"dev", dest)` per file. Nothing is written when any file is refused.
 
-    A differing file with no lock record is replaced when its first line is this component's own dirty
-    stamp (a `--catalog-dev` render a tag now supersedes); other unmanaged differing files are refused.
-    `dev` (a `--catalog-dev` render, whose files the lock does not describe) also skips the hand-edit
-    check for this component's files, so that a second dev render can replace the first, and reports
-    `dev` instead of `write` for a file it replaces that differs from the lock. Ownership by another
+    A file that differs from the lock (or has no lock record) is replaced only when it is this
+    component's own dev output: its sha256 equals what the dev-render inventory recorded for it
+    (SPEC-019 B), so a second dev render and a later render from the tag both replace it, while a file
+    edited after the dev render is refused as `hand-edited`. A file the inventory does not name is
+    replaced when it has no lock record and its first line is this component's own dirty stamp, or,
+    in a dev render, when it has a lock record and that stamp; otherwise it is refused (`not managed,
+    differs` without a record, `hand-edited` with one). `dev` (a `--catalog-dev` render) reports `dev`
+    instead of `write` for a file it replaces that differs from the lock. Ownership by another
     component is always refused."""
     entry = lock.components.get(cid)
     records = entry.files if entry else {}
+    dev_files = own_dev_files(home, cid)
     plan: list[tuple[str, Output]] = []
     for output in outputs:
         other = lock.owner(output.dest)
@@ -271,11 +284,17 @@ def write_outputs(
                 action = "same"
             else:
                 record = records.get(output.dest)
-                off_lock = record is None or sha256(current) != record.sha256
-                if not force:
-                    if record is None and not _own_dirty_stamp(current, cid):
-                        raise DomosensoError(f"not managed, differs: {output.dest}")
-                    if not dev and record is not None and off_lock:
+                digest = sha256(current)
+                off_lock = record is None or digest != record.sha256
+                if off_lock and not force:
+                    recorded = dev_files.get(output.dest)
+                    if recorded is not None:
+                        if recorded != digest:
+                            raise DomosensoError(f"hand-edited: {output.dest}")
+                    elif record is None:
+                        if not _own_dirty_stamp(current, cid):
+                            raise DomosensoError(f"not managed, differs: {output.dest}")
+                    elif not (dev and _own_dirty_stamp(current, cid)):
                         raise DomosensoError(f"hand-edited: {output.dest}")
                 if dev and off_lock:
                     action = "dev"
@@ -296,6 +315,12 @@ def file_sha(path: Path) -> str:
         return sha256(path.read_bytes())
     except OSError as exc:
         raise DomosensoError(f"cannot read {path}: {exc.strerror or exc}") from exc
+
+
+def own_dev_files(home: HomeConfig, cid: str) -> dict[str, str]:
+    """dest -> sha256 of each managed file the last `--catalog-dev` render of `cid` wrote."""
+    files = dev_render.load(home.root).get(cid, {}).get("files", {})
+    return {dest: f.get("sha256") for dest, f in files.items() if f.get("layer") == "managed"}
 
 
 def _own_dirty_stamp(content: bytes, cid: str) -> bool:

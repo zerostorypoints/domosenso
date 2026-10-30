@@ -1,0 +1,23 @@
+# audio-sensor-living-room: a room sound sensor in Living room. Written once by `domosenso add`
+# from audio-sensor 0.1.0, this home's file from now on; the package is the catalog's at that tag.
+substitutions:
+  room: "living-room"
+  area: "Living room"
+
+esphome:
+  area: ${area}
+
+packages:
+  sensor: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.1.0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:  # uploads authenticated with the API key

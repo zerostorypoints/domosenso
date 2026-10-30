@@ -1,0 +1,200 @@
+# audio-sensor: field notes
+
+A room sound sensor on an M5Stack Atom EchoS3R: the sound level and a third-octave spectrum from
+the board, a calibrated level in dB SPL and the music aliases from the Home Assistant package, and
+two dashboard cards, `ambient-wave-card` and `room-meter-card` (SPEC-018). There is no dashboard of
+its own: the Ramka (0.4.0) shows the music visual and its settings. Room acoustics figures are not
+part of it (dropped 2026-10-29: the Ramka's live settings cover the tuning).
+
+## The board
+
+- **M5Stack Atom EchoS3R**: ESP32-S3-PICO-1-N8R8 (8 MB flash, 8 MB PSRAM), an ES8311 audio codec,
+  an analog MEMS microphone read through the codec (not a PDM microphone), and an NS4150B
+  speaker amplifier. The firmware keeps the amplifier off: an idle class-D amplifier is noise in the
+  microphone.
+- It only measures. There is no Bluetooth, no voice assistant and no speaker in the package, so the
+  radio and the CPU stay free for a clean audio stream. A Bluetooth proxy on the same board is not
+  tested together with the spectrum worker; a home that wants one adds `bluetooth_proxy:` to its
+  own device file and watches the Spectrum load sensor (inference: the S3 has room for it).
+- Power: 5 V USB. Wi-Fi power saving is off in the package, because the radio waking up pulses the
+  supply rail the microphone shares and shows up as noise in the quiet range.
+
+## What it reports
+
+| entity | what |
+|---|---|
+| Sound level, Sound peak | every second: RMS and the loudest sample, in dBFS, unweighted (no A or C weighting) |
+| Fast sound level, Fast sound peak | every 100 ms, published only while **Live tracking** is on; the switch is off after a boot and turns itself off after an hour |
+| Spectrum | 31 comma-separated third-octave levels in dBFS (20 Hz to 20 kHz), about five times a second |
+| Octave 31.5 Hz to 16 kHz | ten sensors, the 1-minute Leq of each octave |
+| Spectrum load | how much of one core the spectrum worker uses |
+| Wi-Fi signal, Uptime, Connected AP (BSSID), Mic gain | diagnostics |
+| Restart, Safe mode boot | buttons |
+
+Levels stay in dBFS on the board (0 dBFS is clipping). Home Assistant adds a per-board SPL offset to
+get dB SPL, so calibrating against a reference microphone needs no flash.
+
+Measured on one board: 31 bands about five times a second, the spectrum worker at about 19 % of one
+core. The bands below about 50 Hz hold one or two FFT bins: approximate, adequate for a visual, not
+for measurement. The FFT is 8192 points (Hann window, 50 % overlap) at 48 kHz, and the band sum
+matches Sound level within about 1 dB.
+
+## The microphone gain
+
+`mic_gain` (default `24DB`, M5Stack's value) is one gain for the life of a calibration: changing it
+moves every reading by the same step, so the SPL offset has to be measured again. If loud music
+brings Sound peak to 0 dBFS, the microphone clips; step down to `18DB` and calibrate again.
+
+## First flash
+
+The package is a remote ESPHome package; a home's device file is thin (its header is in
+[esphome/audio-sensor.yaml](esphome/audio-sensor.yaml)). A human flashes the first time:
+
+1. Put the board in download mode: hold its button while plugging in the USB-C cable.
+2. From the home's repository: `uvx esphome@2026.9.1 run <the device file>` and pick the serial port.
+3. In Home Assistant, confirm the discovered ESPHome device (the API key is the one in the home's
+   ESPHome `secrets.yaml`). Later updates go over Wi-Fi with the same command.
+
+Wi-Fi and the API key come from the device file, never from the package: a remote package cannot
+read a home's secrets. With wrong Wi-Fi credentials the fix is a USB flash again (no fallback AP).
+
+## The music source and calibration
+
+With a board marked `music: true`, `input_select.audio_sensor_music_source` lists the boards' areas,
+that board first and the others in input order. The music aliases (`sensor.music_spectrum`,
+`sensor.music_spl_offset`, `sensor.music_level`, `sensor.music_mic_gain`,
+`sensor.music_spl_calibration`, `binary_sensor.music_sensor_online`) read the board whose area the
+select holds, so another board can feed a music visual without a render. One board gives a
+one-option select. A select that is `unknown` (a first start) or unavailable reads the `music: true`
+board, so the aliases never depend on the helper being there. Two boards cannot share an area.
+There is no `initial:` on any helper: a restart keeps the choice.
+
+Every board has `input_boolean.<id_prefix>_spl_calibrated` (off = the offset is an estimate) and
+`input_text.<id_prefix>_spl_note`. To calibrate the selected board: put a reference meter next to
+it, play steady pink noise or music at a talking level, read both; the measured offset is the
+reference minus the board's level without offset. Type it into
+`input_number.audio_sensor_measured_offset`, add a note to `input_text.audio_sensor_calibration_note`
+and run `script.audio_sensor_apply_calibration`: it writes the offset and the note into that
+board's helpers and turns its flag on. Typing the offset straight into
+`input_number.<id_prefix>_spl_offset` works as before. Without a `music: true` board there is no
+select, no alias, no measured-offset or note input and no script; the per-board flag and note stay.
+
+## The cards
+
+Both are Lovelace resources of type `module`, installed with the component (`domosenso render` and a
+deploy) and served from `/local/domosenso/audio-sensor/<version>/cards/ambient-wave-card.js` and
+`.../cards/room-meter-card.js`; `domosenso status` and the deploy keep the resource URLs in step
+with the version. Their configuration keys are a contract (docs/COMPATIBILITY.md, STABLE: new
+optional keys only).
+
+### `ambient-wave-card`
+
+The live wave: a spectrum or one value drawn as calm waves that swell and warm with the level.
+
+| key | default | what |
+|---|---|---|
+| `source.kind` | (required) | `spectrum` (31 third-octave bands, comma-separated) or `scalar` (one number) |
+| `source.entity` | (required, unless `source.demo`) | the entity read, for example `sensor.music_spectrum` or `sensor.music_level` |
+| `source.attribute` | none | read this attribute instead of the state |
+| `source.offset` | `0` | dB added to every reading: dBFS plus the SPL offset is dB SPL (`sensor.music_spl_offset`) |
+| `source.axis` | `third_octave` | the only axis there is |
+| `source.show` | `[31.5, 16000]` | the lowest and highest band shown, Hz |
+| `source.history` | `40` | readings a time-based flavour keeps |
+| `source.demo`, `source.scenario` | `false`, `electronic` | draw generated data (`electronic`, `jazz`, `vocal`, `orchestra`, `quiet`) |
+| `flavour` | spectrum `dune`, scalar `centre` | spectrum: `still`, `swell`, `dune`, `veil`, `voices`, `halo`, `afterglow`, `bars`; scalar: `still`, `tide`, `centre`, `timeline`, `clocks`, `ripples`, `tint`, `bars` |
+| `flavour_options` | `{}` | options of the flavour itself |
+| `colour.palette` | `series` | `zones`, `series`, `calm`, or a list of colour stops `[[dB, colour], ...]` |
+| `colour.neutral` / `colour.hot` | `30` / `70` | dB SPL where the wave is neutral and fully warm; hot must be above neutral |
+| `colour.neutral_color` | `var(--primary-color)` | the neutral colour |
+| `dynamics.rise` / `fall` | `200` ms / `4` s | how fast the wave follows a louder and a quieter level |
+| `dynamics.hold` | `1.5` s | how long a band's peak holds before it sinks (afterglow) |
+| `dynamics.tilt` | `true` | spectrum only: weight the lowest and highest bands up when colouring, so the mids do not dominate |
+| `style.line_width` | `4` | CSS px, 0.5 to 12 |
+| `fps` | `30` | frames a second, 1 to 60 |
+| `height` | the card's | CSS height of the drawing area |
+| `controls` | `false` | a console on the card for trying options (a session only, nothing saved) |
+| `active` | none | an entity: while it is not `on` the card draws `still`, then its loop sleeps |
+| `fallback` | `none` | `classic`: while the source is `unavailable`, `unknown`, never seen, or a spectrum is older than 5 s, draw Ramka's classic wave with an info icon; `none` keeps the flavour, calming |
+
+Every number, boolean or choice above except `source.kind`, `source.entity`, `source.attribute`,
+`source.axis`, `source.show`, `active`, `fallback` and `height` may instead name an `input_number`,
+`input_select`, `input_boolean`, `number`, `select` or `sensor` entity: the card reads its state on
+every update, and an unusable state gives that option's default. `fallback` is a literal; entity
+support may come later as an addition.
+
+```yaml
+type: custom:ambient-wave-card
+source: {kind: spectrum, entity: sensor.music_spectrum, offset: sensor.music_spl_offset}
+fallback: classic
+```
+
+### `room-meter-card`
+
+An analogue meter of the room's level in dB SPL: needle, peak hold, zones, the clip mark, a strip of
+recent readings and, on request, live tracking at 100 ms.
+
+| key | default | what |
+|---|---|---|
+| `level` | (required) | 1 s RMS in dB SPL, for example `sensor.music_level` |
+| `peak` | none | the loudest sample in that second, dB SPL |
+| `leq` | none | a marker on the scale (an Leq sensor of the home's own) |
+| `offset` | none | the SPL offset entity: its state places the clip mark (0 dBFS); its attribute `calibrated`, when true, drops the "estimated" note (the package's `sensor.<id_prefix>_spl_offset` and `sensor.music_spl_offset` carry it, from the board's calibrated flag) |
+| `live_switch`, `live_level`, `live_peak` | none | the board's Live tracking switch and its fast level and peak (dBFS; the card adds the offset) |
+| `min` / `max` | `20` / `120` | the scale, dB |
+| `seconds` / `live_seconds` | `120` / `20` | length of the strip, normally and in live tracking |
+
+The entity keys take entity ids only. The board's own level and peak are dBFS; the package's
+`sensor.music_level` is the music board's level in dB SPL, and a peak in dB SPL (or a level for
+another board) is a template sensor of the home's own: the board's Sound peak plus
+`sensor.<id_prefix>_spl_offset`.
+
+```yaml
+type: custom:room-meter-card
+level: sensor.music_level
+offset: sensor.music_spl_offset
+live_switch: switch.living_room_audio_sensor_living_room_live_tracking
+live_level: sensor.living_room_audio_sensor_living_room_fast_sound_level
+live_peak: sensor.living_room_audio_sensor_living_room_fast_sound_peak
+```
+
+## In the Ramka
+
+With `music_visual: spectrum` or `level` in the Ramka's inputs (0.4.0), its now-playing view draws
+`ambient-wave-card` from the music aliases in its wave strip, with `fallback: classic`. Its look is
+live: the Ramka's settings dashboard, Music page, sets the visual, the flavours, palette, dynamics,
+line width and refresh rate through the Ramka's helpers, and its Advanced part holds this
+component's music source select and the calibration (`input_number.audio_sensor_measured_offset`,
+`input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration`). The Ramka's
+README ("Music visual", "Live settings", "Settings page") has the details.
+
+## Moving from a local copy
+
+A home that already runs its own copy of this firmware, package or cards keeps its entity ids:
+
+1. `domosenso add audio-sensor@<version>`; in `domosenso/audio-sensor.inputs.yaml` give each board
+   the values it runs today: `name` and `friendly_name` (the ESPHome substitutions, which fixed
+   the ids Home Assistant built when the board was adopted), `mic_gain`, and `id_prefix` (the prefix
+   of the home's own SPL offset helper, `input_number.<id_prefix>_spl_offset`).
+2. Set `entities` to the ids the board has in Home Assistant (Settings, Devices, the board), key by
+   key (`spectrum`, `level`, `peak`, ...); the default is only a guess from the names, and a renamed
+   device keeps its old ids. The text sensors (Mic gain, Connected AP) are `sensor.*` too.
+3. Point the device file at the remote package (the thin file `add` wrote) and keep the
+   substitutions; flash once over Wi-Fi.
+4. Remove the home's own copies the component now owns (package, cards and their Lovelace
+   resources), `domosenso render`, `deploy <target> --plan`: the plan must show the component's
+   files and no removed entity. A helper whose id is the same keeps its value, so a calibrated
+   offset survives.
+
+## The spectrum component
+
+`esphome/components/audio_spectrum/` is an ESPHome external component. The package loads it from
+this repository at the component's tag, so the `ref` in `external_components` is a literal that
+`tools/catalog_check.py` compares with the manifest's version. The band maths are in
+`spectrum_bands.h` with no ESPHome dependency, so `tests/test_audio_spectrum_bands.py` builds and
+checks them on the host.
+
+## Limits
+
+- Not a measurement microphone: an analog MEMS capsule on a small board, one gain, no frequency
+  correction curve. The SPL offset is one number per board.
+- Tested on one board in one home. A second board in the same home is assumed to work, not tested.
