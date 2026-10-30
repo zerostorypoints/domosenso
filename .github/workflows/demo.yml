@@ -1,10 +1,13 @@
 name: Isolated demo acceptance
 on:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: demo-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   demo:
     runs-on: ubuntu-latest
@@ -13,23 +16,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Decide whether demo is needed
+        id: policy
+        run: python3 tools/demo_ci_policy.py
       - uses: actions/setup-node@v4
+        if: steps.policy.outputs.run == 'true'
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: website/package-lock.json
       - uses: astral-sh/setup-uv@v6
+        if: steps.policy.outputs.run == 'true'
       - run: uv sync --frozen
+        if: steps.policy.outputs.run == 'true'
       - run: npm ci --prefix website
+        if: steps.policy.outputs.run == 'true'
       - name: Prepare Chromium before isolated runtime
+        if: steps.policy.outputs.run == 'true'
         working-directory: website
         run: npx playwright install --with-deps chromium
       - name: Prepare pinned Home Assistant image
+        if: steps.policy.outputs.run == 'true'
         run: docker pull homeassistant/home-assistant:2026.9.2
       - name: Runtime and actual HA browser acceptance
+        if: steps.policy.outputs.run == 'true'
         run: uv run tools/dev_home/ci.py
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.policy.outputs.run == 'true'
         with:
           name: demo-acceptance
           path: .domosenso/dev/*/evidence/**
