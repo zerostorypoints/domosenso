@@ -97,6 +97,7 @@ approach toggle it has had since 0.1.0.
 | General | `input_boolean.<prefix>_near_enabled`, `input_number.<prefix>_{off_delay_s,brightness_min,brightness_max,near_cm,near_s,controls_hold_s,lux_max}` | presence_display |
 | General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
 | each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
+| Plants (with `plants`, 0.7.0) | `input_number.<prefix>_{plants_per_page,plants_page_s}` | plants |
 | Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
 
 - **Defaults.** The catalog's: approach on, off delay 300 s, brightness 16 to 204, near 100 cm for
@@ -237,8 +238,9 @@ lovelace:
   `status_page: false` (0.3.0), and while its page switch is on (0.4.0, Live settings). The loop and
   the swipes step only through the pages that are there;
   `input_select.<prefix>_ambient` keeps all five options (FROZEN), and a render that leaves no page
-  fails. The times are fixed: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s;
-  one pass is their sum (130 s with all five). The package's comments still quote 130 s and the
+  fails. The times are fixed: climate 30 s, air 15 s, five photos of 10 s, status 15 s; plants take
+  `plants_page_s` per page for at most two pages (0.7.0; 10 s with the defaults and up to six
+  plants); one pass is their sum (130 s with all five before 0.7.0). The package's comments still quote 130 s and the
   status stage whichever pages a home has.
 - **Why `status_page: false`**: the status page is read-only. A home whose controls screen already
   shows its lights and covers, and that has no doors, power or locks to list, gains nothing from it

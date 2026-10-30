@@ -2327,9 +2327,9 @@ def test_plants_settings_page_has_both_helpers(tmp_path):
 
 def test_plants_list_labels_per_language(tmp_path):
     inputs = demo_inputs()
-    inputs["plants"][0]["label"] = {"en": "Living room", "de": "Wohnzimmer", "pl": "Salon"}
+    inputs["plants"][0]["label"] = {"en": "Living room", "de": "Wohnzimmer", "pl": "Pokój dzienny"}
     out = render(tmp_path, inputs)
-    for lang, room in (("en", "Living room"), ("de", "Wohnzimmer"), ("pl", "Salon")):
+    for lang, room in (("en", "Living room"), ("de", "Wohnzimmer"), ("pl", "Pokój dzienny")):
         assert plants_card(out[f"dashboard.{lang}.yaml"])["plants"][0]["room"] == room, lang
     [page] = [v for v in out["ramka-settings.pl.yaml"]["views"] if v["path"] == "plants"]
-    assert "Salon" in yaml.safe_dump(page, allow_unicode=True)
+    assert "Pokój dzienny" in yaml.safe_dump(page, allow_unicode=True)
