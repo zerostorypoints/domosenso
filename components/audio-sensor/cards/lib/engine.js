@@ -26,6 +26,7 @@ export const HISTORY_RATE = 4; // samples per s
 // its value changes (state_changed; the frontend never sees last_reported), so a quiet scalar is an
 // unchanged one, and it goes stale only through the card's NaN push for unavailable.
 const SPECTRUM_STALE_MS = 5000;
+const MAX_GAP_MS = 1000;
 const ENERGY_UNITS = new Set(["dB", "dBFS", "dBA"]);
 
 // The console and the editor allow rise and fall of 0: a 1 ms floor turns that into a jump instead
@@ -61,6 +62,7 @@ export class Engine {
     this._bands = kind === "spectrum" ? nb : 0;
     this._exc = new Float64Array(nb);
     this._lastPush = -Infinity;
+    this._gapMs = 0;
     this._seeded = false;
     this._avg = [NaN, NaN, NaN];
     this._histAcc = 0;
@@ -81,6 +83,7 @@ export class Engine {
 
   push(valuesOrValue, atMs) {
     const f = this._f;
+    if (this._lastPush !== -Infinity) this._gapMs = Math.min(MAX_GAP_MS, Math.max(0, atMs - this._lastPush));
     this._lastPush = atMs;
     if (this.kind === "spectrum") {
       for (let i = 0; i < this._bands; i++) {
@@ -102,7 +105,10 @@ export class Engine {
     f.showFrom = opts.showFrom ?? 0;
     f.showTo = opts.showTo ?? THIRD_OCTAVE.length - 1;
     const { neutral } = palette;
-    const riseS = opts.rise / 1000;
+    // A rise shorter than the gap between pushes reaches the target and stands still until the next
+    // push, so the picture moves in steps; at least the gap, it glides from push to push. Clamped so
+    // a slow sensor does not make the rise sluggish.
+    const riseS = Math.max(opts.rise, this._gapMs) / 1000;
     const fallS = opts.fall;
     f.stale = this.kind === "spectrum"
       ? nowMs - this._lastPush > SPECTRUM_STALE_MS

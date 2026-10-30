@@ -193,8 +193,11 @@ sensor:
 # bins 5.86 Hz wide, about one per third at the bottom (the 20 Hz third is 4.6 Hz wide); 4096 points
 # would smear the lowest thirds into each other.
 # The levels stay dBFS like the other meters: Home Assistant adds the same SPL offset. Always on:
-# the spectrum goes out every 200 ms; the octaves (1-minute Leq) and the worker's load every minute.
+# the spectrum goes out as the Spectrum rate select says (eco every 500 ms, normal every 200 ms as
+# the mean of the frames since the last; fast with each new frame, alone), only when a frame has
+# landed; the octaves (1-minute Leq) and the worker's load every minute.
 audio_spectrum:
+  id: spectrum
   microphone: mic
   spectrum:
     name: Spectrum
@@ -226,12 +229,49 @@ switch:
           id(fast_level).publish_state(NAN);
           id(fast_peak).publish_state(NAN);
 
+# How often the spectrum goes out. Home Assistant sets it (fast only while someone watches the
+# music view); normal after a boot.
+select:
+  - platform: template
+    id: spectrum_rate
+    name: Spectrum rate
+    icon: mdi:timer-cog-outline
+    options: [eco, normal, fast]
+    initial_option: normal
+    optimistic: true
+    restore_value: false
+    set_action:
+      - lambda: |-
+          if (x == "eco") {
+            id(spectrum).set_profile(::audio_spectrum::ECO);
+          } else if (x == "fast") {
+            id(spectrum).set_profile(::audio_spectrum::FAST);
+          } else {
+            id(spectrum).set_profile(::audio_spectrum::NORMAL);
+          }
+      - if:
+          condition:
+            lambda: return x == "fast";
+          then:
+            - script.execute: spectrum_rate_timeout
+          else:
+            - script.stop: spectrum_rate_timeout
+
 script:
   - id: live_tracking_timeout
     mode: restart
     then:
       - delay: 60min
       - switch.turn_off: live_tracking
+  # Back to normal an hour after fast, so a board Home Assistant forgot about (it restarted, the
+  # music source moved) does not send a spectrum every frame for days.
+  - id: spectrum_rate_timeout
+    mode: restart
+    then:
+      - delay: 60min
+      - select.set:
+          id: spectrum_rate
+          option: normal
 
 text_sensor:
   - platform: wifi_info
