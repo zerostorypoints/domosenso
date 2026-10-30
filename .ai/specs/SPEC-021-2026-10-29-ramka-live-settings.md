@@ -672,23 +672,26 @@ Issues #87 (follow-up f), #88 (g), #89 (h), #102 (the spike's interim note, part
 
 | helper | where | range | default |
 |---|---|---|---|
-| `input_select.<prefix>_photo_album` | Basic | `all`, then the top-level folders of `photo_dir` that hold photos | `all` |
 | `input_number.<prefix>_photo_count` | Basic | 1 to 20 | 5 |
 | `input_number.<prefix>_photo_s` | Advanced | 3 to 120 s | 10 |
+| the albums, `sensor.<prefix>_photo_albums` | Advanced | any of the top-level folders of `photo_dir` that hold photos | none (all) |
 
-- `shell/ramka_pick.py <root> <count> [<album>]` draws only from the folders under `<root>/<album>`;
-  an album that is not a top-level folder with photos falls back to all, with
-  `album <name> not found, using all` on stderr. `ramka_pick.py <root> --albums` prints
-  `{"albums": [...]}` for the new `shell_command.<prefix>_albums`.
-- `shell_command.<prefix>_pick` takes `count` and `album` as action data (a templated command runs
-  without a shell; the album is single-quoted for its split). The loop passes the helpers, with
-  `| int(5)` and `| int(10)` fallbacks equal to the defaults; every photo slot, and the empty
-  pick's slot, lasts `photo_s`.
-- The photo index automation, after each index, sets the select's options (`input_select.set_options`)
-  and puts back `input_text.<prefix>_photo_album_choice` when it is one of them. A new automation
-  `<prefix>_photo_album_keep` writes the choice whenever the select's state changes and its options
-  did not (a person's pick or the reset, not set_options), so an album whose folder is gone for a
-  while comes back with it. `input_text.<prefix>_photo_album_choice` is state, not a setting.
+- The albums are a checkbox each ("All albums" first) on a new card, `photo-albums-card`, which calls
+  `script.<prefix>_photo_albums_set` with `chosen`. They are no helper: a choice of any of ~100
+  folders fits neither an `input_select` nor a 255-character `input_text`. A trigger-based template
+  sensor, `sensor.<prefix>_photo_albums`, keeps `available` and `chosen` as attributes (restored
+  after a restart) and is set by event `<prefix>_photo_albums`, which sets either key and keeps the
+  other. Its state is how many are chosen; none is all. The photo index sends `available` after
+  each run; the reset sends `chosen: []` (the `('event', ...)` entry of the settings list).
+- `shell/ramka_pick.py <root> <count> [<album> ...]` draws only from the folders under the chosen
+  albums; one that is gone is skipped (`album <name> not found`), and with none left every folder is
+  (`..., using all`). `ramka_pick.py <root> --albums` prints `{"albums": [...]}` for the new
+  `shell_command.<prefix>_albums`.
+- `shell_command.<prefix>_pick` takes `count` and `albums` (a list) as action data; a templated
+  command runs without a shell, so each album is single-quoted for its split. The loop passes the
+  helpers, with `| int(5)` and `| int(10)` fallbacks equal to the defaults; every photo slot, and
+  the empty pick's slot, lasts `photo_s`. A chosen album that is gone stays chosen and listed,
+  marked, so it comes back with its folder.
 
 **Air page** (with `air`; group `air`, page `air`), only for the readings the input names:
 
@@ -730,8 +733,14 @@ in 2026.9.2, read from their manifests and coordinators), then the step after: t
 entity into the `calendar` input, a render and a deploy. No helper: a calendar is an integration.
 `components/calendar` gains the ICS path in its README and manifest.
 
-Tests: `tests/test_ramka_shell.py` (album, missing album, `--albums`); `tests/test_ramka_render.py`
+**Dev-rendered cards get `?v=<sha8>`.** A dev render keeps its version's path (`/0.4.0/`), so a
+changed card was the same URL and browsers kept the old one for the 31 days `/local/` is cached:
+after this amendment's first deploy every air tile was red, the old card reading the new
+`{entity, default}` limits as "high". `domosenso deploy` now gives a dev-rendered card's resource
+`?v=` of its file, as it does the home's own; a locked card still changes with its version directory.
+
+Tests: `tests/test_ramka_shell.py` (album, several albums, missing albums, `--albums`); `tests/test_ramka_render.py`
 (the helpers on their pages and groups, the loop, the album options and their restore, nothing
 without `photo_dir` or a reading, the card's bindings, the link per language and its failure, the
-language note, the calendar links; the standing rule); `cards/air-card.test.mjs` (`show:`, entity
+language note, the calendar links; the standing rule); `tests/test_cli_resources.py` (the dev card's hash); `cards/photo-albums-card.test.mjs`; `cards/air-card.test.mjs` (`show:`, entity
 limits, an unusable limit, unchanged without the new keys).

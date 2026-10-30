@@ -98,6 +98,12 @@
         "lossless": "Lossless",
         "lossy": "Lossy"
       }
+    },
+    "photo_albums": {
+      "all": "Wszystkie albumy",
+      "missing": "nie znaleziono",
+      "filter": "Filtruj albumy",
+      "none": "Brak albumów w folderze zdjęć."
     }
   },
   "ui": {
@@ -251,7 +257,8 @@
       "language_how": "Każdy język to osobny dashboard Ramki: {paths}. Tablet pokazuje język dashboardu, który otwiera: domyślny dashboard w profilu użytkownika tabletu albo stronę startową aplikacji Companion. Przełącznik na tej stronie pojawi się po teście na tablecie.",
       "calendar_by_url": "Kalendarz z adresu URL",
       "calendar_by_url_how": "Bez logowania do konta: [link ICS](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, odświeżany raz dziennie) albo [konto CalDAV](/config/integrations/dashboard/add?domain=caldav) (adres serwera, użytkownik i hasło aplikacji, odświeżane co 15 minut). Potem wpisz nową encję `calendar.*` w `calendar` w `domosenso/ramka.inputs.yaml`, uruchom `domosenso render ramka` i wdróż.",
-      "photo_album": "Album",
+      "photo_albums": "Albumy",
+      "photo_albums_how": "Serie zdjęć pochodzą z zaznaczonych albumów, czyli folderów najwyższego poziomu w folderze zdjęć; bez zaznaczenia ze wszystkich. Lista nadąża za folderem w ciągu 15 minut.",
       "photo_count": "Zdjęć w serii",
       "photo_s": "Czas na zdjęcie",
       "air_score": "Pokaż jakość powietrza",

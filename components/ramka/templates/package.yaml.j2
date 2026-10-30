@@ -110,11 +110,13 @@
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
 [%- endfor -%]
-[#- The Photos page (SPEC-021 amendment 1): the album (a top-level folder of photo_dir, or all), the
-    photos per series and the time per photo; the defaults are 0.3.0's five photos of 10 s from all. -#]
+[#- The Photos page (SPEC-021 amendment 1): the albums (top-level folders of photo_dir; none chosen
+    is all), the photos per series and the time per photo; the defaults are 0.3.0's five photos of 10 s
+    from all. The albums are not a helper (a list of any length): sensor.<prefix>_photo_albums keeps
+    them, and the reset sets them with its event, the ('event', ...) entry. -#]
 [%- set photo_defaults = {'photo_count': 5, 'photo_s': 10} -%]
 [%- if inputs.photo_dir is defined -%]
-[%- set _ = settings.append(('input_select', 'photo_album', 'photos', 'photos', 'all')) -%]
+[%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', [])) -%]
 [%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
 [%- endif -%]
 [#- The Air page: a switch per configured reading, and the two limits of each, where its colour
@@ -201,17 +203,6 @@ input_select:
     name: [[ named(' music level flavour') ]]
     icon: mdi:waveform
     options:[[ options(mv.music_level_flavour, flavours.level) ]]
-  [%- endif %]
-  [%- if inputs.photo_dir is defined %]
-  # The album the photo series come from: all, or one top-level folder of the photo folder. The
-  # folders are not known at render: the photo index automation sets the options after each index
-  # and puts back the choice kept in input_text.[[ p ]]_photo_album_choice (set_options does not
-  # survive a restart).
-  [[ p ]]_photo_album:
-    name: [[ named(' photo album') ]]
-    icon: mdi:folder-image
-    options:
-      - all
   [%- endif %]
 
 # No `initial:` on any helper: HA would reset it to that value at every restart and throw away the
@@ -392,11 +383,6 @@ input_text:
     name: [[ named(' photo') ]]
     icon: mdi:image
     max: 255
-  # The album chosen on the settings page, restored at a restart (automation [[ p ]]_photo_album_keep).
-  [[ p ]]_photo_album_choice:
-    name: [[ named(' photo album choice') ]]
-    icon: mdi:folder-image
-    max: 255
 
 # The photo folder: folders at any depth, the photo's own folder name is the caption. The folder
 # platform names the entity after the last path component ([[ folder_sensor ]]); it only sees one
@@ -411,13 +397,13 @@ sensor:
 # the photo card's caption; it runs at start and whenever the number of photos changes.
 shell_command:
   [[ p ]]_index: [[ index_command | yaml ]]
-  # The next series: one folder with photos drawn at random (any depth, inside the album when one is
-  # given), `count` shuffled photos from it, as JSON on stdout for the loop's response_variable. A
-  # templated command runs without a shell, its arguments split like a shell's: the album is single-
-  # quoted, a quote in its name closed, escaped and reopened.
+  # The next series: one folder with photos drawn at random (any depth, inside the chosen albums
+  # when there are any), `count` shuffled photos from it, as JSON on stdout for the loop's
+  # response_variable. A templated command runs without a shell, its arguments split like a shell's:
+  # each album is single-quoted, a quote in its name closed, escaped and reopened.
   [[ p ]]_pick: >-
-    python3 /config/shell/ramka_pick.py [[ photo_dir ]] {{ count | default(5) }} '{{ album | default('') | replace("'", "'\\''") }}'
-  # The albums for input_select.[[ p ]]_photo_album: the top-level folders that hold photos.
+    python3 /config/shell/ramka_pick.py [[ photo_dir ]] {{ count | default(5) }}{% for a in (albums if albums is defined and albums is not string and albums is iterable else []) %} '{{ a | replace("'", "'\\''") }}'{% endfor %}
+  # The albums to choose from (sensor.[[ p ]]_photo_albums): the top-level folders that hold photos.
   [[ p ]]_albums: [[ albums_command | yaml ]]
 [%- endif %]
 
@@ -508,6 +494,26 @@ template:
         url: >-
           [[ photo_url ]]/{{ states('input_text.[[ p ]]_photo').split('/') | map('urlencode') | join('/') }}
         availability: "{{ states('input_text.[[ p ]]_photo') not in ['', 'unknown', 'unavailable'] }}"
+  # The photo albums (SPEC-021 amendment 1): `available`, the top-level folders with photos (from the
+  # photo index), and `chosen`, the ones the series come from (the settings page's album card; none
+  # is all). The state is how many are chosen. A list of any length, which no helper holds; a
+  # trigger-based entity restores its attributes after a restart. Event [[ p ]]_photo_albums sets
+  # either key and keeps the other.
+  - triggers:
+      - trigger: event
+        event_type: [[ p ]]_photo_albums
+    sensor:
+      - name: [[ named(' photo albums') ]]
+        unique_id: [[ p ]]_photo_albums
+        default_entity_id: sensor.[[ p ]]_photo_albums
+        icon: mdi:folder-image
+        state: >-
+          {{ (trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([])) | count }}
+        attributes:
+          available: >-
+            {{ trigger.event.data.available if trigger.event.data.available is defined else this.attributes.available | default([]) }}
+          chosen: >-
+            {{ trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([]) }}
 [%- endif %]
 
 # Screen scripts. Each step is one Companion notification command
@@ -832,8 +838,8 @@ script:
                 - action: shell_command.[[ p ]]_pick
                   data:
                     count: "{{ states('input_number.[[ p ]]_photo_count') | int([[ photo_defaults.photo_count ]]) }}"
-                    album: >-
-                      {{ '' if states('input_select.[[ p ]]_photo_album') in ['all', 'unknown', 'unavailable'] else states('input_select.[[ p ]]_photo_album') }}
+                    # None chosen (or the sensor not there yet): every album.
+                    albums: "{{ state_attr('sensor.[[ p ]]_photo_albums', 'chosen') or [] }}"
                   response_variable: pick
                 - variables:
                     # The JSON is the last line of stdout; anything the script printed before it
@@ -889,6 +895,24 @@ script:
                       [[ after('status') ]]
 [%- endif %]
 
+[%- if inputs.photo_dir is defined %]
+  # The albums the photo series come from; [] is all. Called by the settings page's album card.
+  [[ p ]]_photo_albums_set:
+    alias: [[ named(' photo albums set') ]]
+    icon: mdi:folder-image
+    mode: queued
+    fields:
+      chosen:
+        name: Albums
+        description: Top-level folders of the photo folder; none for all.
+        selector:
+          object: {}
+    sequence:
+      - event: [[ p ]]_photo_albums
+        event_data:
+          chosen: "{{ chosen if chosen is defined and chosen is not string and chosen is iterable else [] }}"
+[%- endif %]
+
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
   # catalog's). `page`: only that page's settings; `groups`: only those groups'; both: the settings
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
@@ -930,6 +954,11 @@ script:
               {{ only_page [[ on_page ]] and (not only_groups or '[[ block.group ]]' in only_groups) }}
         then:
 [%- for domain, key, _page, _group, value in block['items'] %]
+[%- if domain == 'event' %]
+          - event: [[ p ]]_[[ key ]]
+            event_data:
+              chosen: [[ value | tojson ]]
+[%- else %]
 [%- set verb = 'set_value' if domain == 'input_number' else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
           - action: [[ domain ]].[[ verb ]]
             target:
@@ -940,6 +969,7 @@ script:
 [%- elif domain == 'input_select' %]
             data:
               option: [[ value | yaml ]]
+[%- endif %]
 [%- endif %]
 [%- endfor %]
 [%- endfor %]
@@ -1156,48 +1186,14 @@ automation:
         attribute: number_of_files
     actions:
       - action: shell_command.[[ p ]]_index
-      # The album select's options from the folder, then the kept choice back (a restart leaves
-      # the select with `all` only).
+      # The albums to choose from, for sensor.[[ p ]]_photo_albums (the chosen ones stay).
       - action: shell_command.[[ p ]]_albums
         response_variable: albums
-      - action: input_select.set_options
-        target:
-          entity_id: input_select.[[ p ]]_photo_album
-        data:
-          options: >-
+      - event: [[ p ]]_photo_albums
+        event_data:
+          available: >-
             {% set lines = (albums.stdout | default('')).strip().splitlines() %}
-            {{ ['all'] + ((lines | last | from_json).albums | reject('eq', 'all') | list if lines else []) }}
-      - if:
-          - condition: template
-            value_template: >-
-              {{ states('input_text.[[ p ]]_photo_album_choice') in (state_attr('input_select.[[ p ]]_photo_album', 'options') or []) }}
-        then:
-          - action: input_select.select_option
-            target:
-              entity_id: input_select.[[ p ]]_photo_album
-            data:
-              option: "{{ states('input_text.[[ p ]]_photo_album_choice') }}"
-
-  # Keeps the album a person (or the reset) chose. Not when set_options changed the list: an album
-  # whose folder is gone for a while moves the select to `all` and must come back with its folder.
-  - id: [[ p ]]_photo_album_keep
-    alias: [[ named(' photo album keep') ]]
-    description: "The photo album chosen: keep it for the next restart."
-    mode: queued
-    triggers:
-      - trigger: state
-        entity_id: input_select.[[ p ]]_photo_album
-        to: ~
-    conditions:
-      - condition: template
-        value_template: >-
-          {{ trigger.from_state is not none and trigger.to_state is not none and trigger.from_state.attributes.options == trigger.to_state.attributes.options }}
-    actions:
-      - action: input_text.set_value
-        target:
-          entity_id: input_text.[[ p ]]_photo_album_choice
-        data:
-          value: "{{ trigger.to_state.state }}"
+            {{ (lines | last | from_json).albums if lines else [] }}
 [%- endif %]
 
   # 5. The ambient rhythm: climate 30 s, air 15 s, plants 20 s, a photo series (five of 10 s by

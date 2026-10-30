@@ -69,6 +69,20 @@ def test_pick_from_an_album(tmp_path):
     assert json.loads(run("ramka_pick.py", root, 1, "").stdout)["photos"]
 
 
+def test_pick_from_several_albums(tmp_path):
+    """Several albums: a folder is drawn from any of them, never from one not chosen."""
+    root = tmp_path / "www" / "ramka"
+    for name in ("2024 Kreta", "2025 Tallin", "2026 Bern"):
+        photo(root / name / "a.jpg")
+    seen = {json.loads(run("ramka_pick.py", root, 1, "2024 Kreta", "2026 Bern").stdout)["folder"] for _ in range(8)}
+    assert seen == {"2024 Kreta", "2026 Bern"}
+    # One of them gone: the rest; all of them gone: every folder.
+    result = run("ramka_pick.py", root, 1, "2024 Kreta", "1999")
+    assert json.loads(result.stdout)["folder"] == "2024 Kreta" and "album 1999 not found" in result.stderr
+    result = run("ramka_pick.py", root, 1, "1999", "1998")
+    assert json.loads(result.stdout)["photos"] and "using all" in result.stderr
+
+
 def test_pick_from_a_missing_album_uses_all(tmp_path):
     root = tmp_path / "www" / "ramka"
     photo(root / "garden" / "a.jpg")

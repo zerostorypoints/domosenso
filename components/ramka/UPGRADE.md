@@ -27,9 +27,9 @@ runs the Ramka keeps its tuned values:** the presence and display helpers are se
 seven numbers still sit at their minimum, as on a first install. To start over later, press
 "Reset to defaults" on a page or on General.
 
-**Photos, Air, Calendar and General pages** (SPEC-021 amendment 1). Photos: the album, photos per
-series and time per photo (`input_select.<prefix>_photo_album`, `input_number.<prefix>_photo_count`,
-`_photo_s`). Air: a switch and two limits per configured reading (`input_boolean.<prefix>_air_<reading>`,
+**Photos, Air, Calendar and General pages** (SPEC-021 amendment 1). Photos: photos per series, time
+per photo and the albums (`input_number.<prefix>_photo_count`, `_photo_s`, `sensor.<prefix>_photo_albums`
+with the new card `photo-albums-card`, a new Lovelace resource the deploy creates). Air: a switch and two limits per configured reading (`input_boolean.<prefix>_air_<reading>`,
 `input_number.<prefix>_air_<reading>_<level>`), read live by `air-card`'s new `show:` and
 `{entity, default}` limits. Their defaults are 0.3.0's five photos of 10 s from all folders and the
 air page's former limits, set by the seed at the next start; nothing to do. General links to the

@@ -98,6 +98,12 @@
         "lossless": "Lossless",
         "lossy": "Lossy"
       }
+    },
+    "photo_albums": {
+      "all": "All albums",
+      "missing": "not found",
+      "filter": "Filter albums",
+      "none": "No albums in the photo folder yet."
     }
   },
   "ui": {
@@ -251,7 +257,8 @@
       "language_how": "Each language is its own Ramka dashboard: {paths}. The tablet shows the language of the dashboard it opens: the default dashboard in the tablet user's profile, or the Companion app's start page. A switch on this page follows once it has been tested on a tablet.",
       "calendar_by_url": "Add a calendar by URL",
       "calendar_by_url_how": "No account login needed: [an ICS link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, refreshed once a day) or [a CalDAV account](/config/integrations/dashboard/add?domain=caldav) (server URL, user and app password, refreshed every 15 minutes). Then put the new `calendar.*` entity into `calendar` in `domosenso/ramka.inputs.yaml`, run `domosenso render ramka` and deploy.",
-      "photo_album": "Album",
+      "photo_albums": "Albums",
+      "photo_albums_how": "The photo series come from the ticked albums, the top-level folders of the photo folder; none ticked is all of them. The list follows the folder within 15 minutes.",
       "photo_count": "Photos per series",
       "photo_s": "Time per photo",
       "air_score": "Show air quality",

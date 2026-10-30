@@ -200,18 +200,23 @@ def test_prefix_names_every_helper(tmp_path):
     for automation in package["automation"]:
         assert automation["id"].startswith("hall_frame_")
     for block in package["template"]:
-        for entities in block.values():
+        for entities in template_entities(block):
             for entity in entities:
                 assert entity["unique_id"].startswith("hall_frame_")
                 assert entity["default_entity_id"].split(".")[1].startswith("hall_frame_")
 
 
+def template_entities(block):
+    """A template block's entity lists: a trigger-based block's `triggers` are not entities."""
+    return [entities for kind, entities in block.items() if kind != "triggers"]
+
+
 def defined_entities(package) -> set[str]:
     ids = set()
     for domain in ("input_select", "input_boolean", "input_number", "timer", "input_button", "input_text", "script", "shell_command"):
-        ids |= {f"{domain}.{key}" for key in package[domain]}
+        ids |= {f"{domain}.{key}" for key in package.get(domain) or {}}
     for block in package["template"]:
-        for entities in block.values():
+        for entities in template_entities(block):
             ids |= {entity["default_entity_id"] for entity in entities}
     ids |= {f"automation.{a['id']}" for a in package["automation"]}
     return ids
@@ -545,8 +550,9 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
 AIR_READINGS = ["score", "co2", "pm2_5", "voc", "nox"]
 AIR_LIMITS = {"score_fair": 80, "score_poor": 60, "co2_raised": 800, "co2_high": 1200, "pm2_5_raised": 15,
               "pm2_5_high": 35, "voc_raised": 150, "voc_high": 250, "nox_raised": 20, "nox_high": 150}
-PHOTO_DEFAULTS = {"input_select.ramka_photo_album": "all", "input_number.ramka_photo_count": 5,
-                  "input_number.ramka_photo_s": 10}
+PHOTO_DEFAULTS = {"input_number.ramka_photo_count": 5, "input_number.ramka_photo_s": 10}
+# The albums are no helper: the reset sends event ramka_photo_albums with none chosen (all).
+ALBUMS = "sensor.ramka_photo_albums"
 AIR_DEFAULTS = {**{f"input_boolean.ramka_air_{r}": "on" for r in AIR_READINGS},
                 **{f"input_number.ramka_air_{k}": v for k, v in AIR_LIMITS.items()}}
 
@@ -554,14 +560,14 @@ AIR_DEFAULTS = {**{f"input_boolean.ramka_air_{r}": "on" for r in AIR_READINGS},
 # What 0.4.0's live settings add to and change in a package without music_visual (SPEC-021,
 # Compatibility); everything else is 0.3.0's, value for value.
 SETTINGS_ADDED = {
-    "input_select": {"ramka_theme_mode", "ramka_photo_album"},
+    "input_select": {"ramka_theme_mode"},
     "input_boolean": {"ramka_settings_advanced", "ramka_settings_seeded", *(f"ramka_page_{v}" for v in PAGE_VIEWS),
                       *(f"ramka_air_{r}" for r in AIR_READINGS)},
     "input_number": {"ramka_photo_count", "ramka_photo_s", *(f"ramka_air_{k}" for k in AIR_LIMITS)},
-    "timer": set(), "input_button": set(), "input_text": {"ramka_photo_album_choice"}, "shell_command": {"ramka_albums"},
-    "script": {"ramka_settings_reset"},
-    "automation": {"ramka_settings_seed", "ramka_theme_mode", "ramka_photo_album_keep"},
-    "template": {"ramka_ambient_pages"},
+    "timer": set(), "input_button": set(), "input_text": set(), "shell_command": {"ramka_albums"},
+    "script": {"ramka_settings_reset", "ramka_photo_albums_set"},
+    "automation": {"ramka_settings_seed", "ramka_theme_mode"},
+    "template": {"ramka_ambient_pages", "ramka_photo_albums"},
 }
 SETTINGS_CHANGED = {
     # The live list of pages (page switches).
@@ -581,7 +587,7 @@ def keyed(package, domain) -> dict[str, object]:
     if domain == "automation":
         return {a["id"]: a for a in package["automation"]}
     if domain == "template":
-        return {e["unique_id"]: e for block in package["template"] for entities in block.values() for e in entities}
+        return {e["unique_id"]: e for block in package["template"] for entities in template_entities(block) for e in entities}
     return dict(package.get(domain) or {})
 
 
@@ -726,8 +732,9 @@ def reset_script(package):
     return package["script"]["ramka_settings_reset"]
 
 
-def run_reset(package, page=None, groups=None) -> dict[str, object]:
-    """What script.<prefix>_settings_reset sets, evaluated with Jinja: entity -> value."""
+def run_reset(package, page=None, groups=None, events=False) -> dict[str, object]:
+    """What script.<prefix>_settings_reset sets, evaluated with Jinja: entity -> value. With `events`,
+    also the albums its event sets (ALBUMS -> chosen)."""
     fields = {k: v for k, v in (("page", page), ("groups", groups)) if v is not None}
     sequence = reset_script(package)["sequence"]
     variables = {}
@@ -740,6 +747,11 @@ def run_reset(package, page=None, groups=None) -> dict[str, object]:
         if ha(condition["value_template"], **variables) != "True":
             continue
         for step in block["then"]:
+            if "event" in step:
+                assert step["event"] == "ramka_photo_albums" and set(step["event_data"]) == {"chosen"}
+                if events:
+                    written[ALBUMS] = step["event_data"]["chosen"]
+                continue
             entity = step["target"]["entity_id"]
             action = step["action"]
             if action.endswith("set_value"):
@@ -1367,7 +1379,7 @@ BASIC = {
 }
 BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
                    "input_boolean.ramka_settings_advanced"}
-BASIC["photos"] |= {"input_select.ramka_photo_album", "input_number.ramka_photo_count", "input_boolean.ramka_settings_advanced"}
+BASIC["photos"] |= {"input_number.ramka_photo_count", "input_boolean.ramka_settings_advanced"}
 BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
 # The pages besides General that have Advanced parts, and so the Advanced switch too.
 ADVANCED_PAGES = {"music", "photos", "air"}
@@ -1379,7 +1391,7 @@ ADVANCED = {
               "input_number.ramka_music_line_width_px", "input_boolean.ramka_music_tilt", *(f"input_number.ramka_{k}" for k in MUSIC_DB),
               "input_number.ramka_music_fps", MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
               "input_text.audio_sensor_calibration_note"},
-    "photos": {"input_number.ramka_photo_s"},
+    "photos": {"input_number.ramka_photo_s", ALBUMS},
     "air": {f"input_number.ramka_air_{k}" for k in AIR_LIMITS},
 }
 # What audio-sensor provides that the Music page reads (its manifest's provides, Ramka's consumes).
@@ -1704,62 +1716,96 @@ def photo_stage(package):
 
 def test_photo_settings_drive_the_loop(demo):
     package = demo["package.yaml"]
-    album = package["input_select"]["ramka_photo_album"]
-    assert album["options"] == ["all"]
     count, seconds = package["input_number"]["ramka_photo_count"], package["input_number"]["ramka_photo_s"]
     assert (count["min"], count["max"], seconds["min"], seconds["max"]) == (1, 20, 3, 120)
-    assert "ramka_photo_album_choice" in package["input_text"]
     stage = photo_stage(package)
     [pick] = [s for s in stage if s.get("action") == "shell_command.ramka_pick"]
-    states = {"input_number.ramka_photo_count": "3", "input_select.ramka_photo_album": "2026"}
-    assert ha(pick["data"]["count"], states=states) == "3"
-    assert ha(pick["data"]["album"], states=states) == "2026"
-    # All, or the select not there yet: every folder; the count falls back to the default.
-    assert ha(pick["data"]["album"], states={"input_select.ramka_photo_album": "all"}) == ""
-    assert ha(pick["data"]["album"]) == "" and ha(pick["data"]["count"]) == "5"
+    assert ha(pick["data"]["count"], states={"input_number.ramka_photo_count": "3"}) == "3"
+    attrs = {ALBUMS: {"chosen": ["2024 Kreta", "2026 Bern"]}}
+    assert ha_value(pick["data"]["albums"], attrs=attrs) == ["2024 Kreta", "2026 Bern"]
+    # None chosen, or the sensor not there yet: every album; the count falls back to the default.
+    assert ha_value(pick["data"]["albums"], attrs={ALBUMS: {"chosen": []}}) == []
+    assert ha_value(pick["data"]["albums"]) == [] and ha(pick["data"]["count"]) == "5"
     delays = [n["delay"]["seconds"] for n in walk(stage) if isinstance(n.get("delay"), dict)]
     assert delays and all(ha(d, states={"input_number.ramka_photo_s": "20"}) == "20" for d in delays)
     assert all(ha(d) == "10" for d in delays)
 
 
-def test_pick_command_quotes_the_album(demo):
+def test_pick_command_quotes_every_album(demo):
     import shlex
 
     package = demo["package.yaml"]
     prog, args = package["shell_command"]["ramka_pick"].split(" ", 1)
-    for name in ("2026", "Wakacje nad morzem", "Tom's party", ""):
-        rendered = ha(args, count=3, album=name)
-        assert shlex.split(f"{prog} {rendered}") == ["python3", "/config/shell/ramka_pick.py", "/config/www/ramka", "3", name]
+    head = ["python3", "/config/shell/ramka_pick.py", "/config/www/ramka", "3"]
+    for albums in (["2026"], ["Wakacje nad morzem", "Tom's party"], []):
+        assert shlex.split(f"{prog} {ha(args, count=3, albums=albums)}") == head + albums
+    # A string is not a list of albums (a template that did not render to a list): every album.
+    assert shlex.split(f"{prog} {ha(args, count=3, albums='2026')}") == head
     assert package["shell_command"]["ramka_albums"] == "python3 /config/shell/ramka_pick.py /config/www/ramka --albums"
 
 
-def test_album_options_follow_the_folder_and_survive_a_restart(demo):
+def albums_sensor(package):
+    [block] = [b for b in package["template"] if "triggers" in b]
+    assert block["triggers"] == [{"trigger": "event", "event_type": "ramka_photo_albums"}]
+    [sensor] = block["sensor"]
+    return sensor
+
+
+def run_albums_sensor(package, before, data):
+    """The sensor after event ramka_photo_albums with `data`: (state, attributes)."""
+    sensor = albums_sensor(package)
+    trigger = {"event": {"data": data}}
+    this = {"attributes": before}
+    attributes = {k: ha_value(v, trigger=trigger, this=this) for k, v in sensor["attributes"].items()}
+    return ha(sensor["state"], trigger=trigger, this=this), attributes
+
+
+def test_albums_sensor_keeps_what_the_event_does_not_set(demo):
+    package = demo["package.yaml"]
+    assert albums_sensor(package)["default_entity_id"] == ALBUMS
+    state, attrs = run_albums_sensor(package, {}, {"available": ["2025", "2026"]})
+    assert (state, attrs) == ("0", {"available": ["2025", "2026"], "chosen": []})
+    state, attrs = run_albums_sensor(package, attrs, {"chosen": ["2026"]})
+    assert (state, attrs) == ("1", {"available": ["2025", "2026"], "chosen": ["2026"]})
+    # A new index keeps the choice, even of an album that is gone for now.
+    state, attrs = run_albums_sensor(package, attrs, {"available": ["2025"]})
+    assert (state, attrs) == ("1", {"available": ["2025"], "chosen": ["2026"]})
+
+
+def test_album_list_follows_the_folder(demo):
     package = demo["package.yaml"]
     actions = automation(package, "photo_index")["actions"]
     [albums] = [a for a in actions if a.get("action") == "shell_command.ramka_albums"]
-    [options] = [a for a in actions if a.get("action") == "input_select.set_options"]
+    [event] = [a for a in actions if a.get("event") == "ramka_photo_albums"]
     reply = {"stdout": 'index rebuilt\n{"albums": ["2025", "2026"]}'}
-    assert ha_value(options["data"]["options"], **{albums["response_variable"]: reply}) == ["all", "2025", "2026"]
-    assert ha_value(options["data"]["options"], **{albums["response_variable"]: {"stdout": ""}}) == ["all"]
-    # Then the kept choice goes back, when it is one of the options.
-    [restore] = [a for a in actions if a.get("if") and "photo_album_choice" in json.dumps(a["if"])]
-    condition = restore["if"][0]["value_template"]
-    attrs = {"input_select.ramka_photo_album": {"options": ["all", "2025", "2026"]}}
-    assert ha(condition, states={"input_text.ramka_photo_album_choice": "2026"}, attrs=attrs) == "True"
-    assert ha(condition, states={"input_text.ramka_photo_album_choice": "1999"}, attrs=attrs) == "False"
-    # The choice is kept when a person (or the reset) picks an album, not when set_options changes the list.
-    keep = automation(package, "photo_album_keep")
-    [cond] = keep["conditions"]
-    same = {"from_state": {"attributes": {"options": ["all", "2026"]}}, "to_state": {"state": "2026", "attributes": {"options": ["all", "2026"]}}}
-    moved = {"from_state": {"attributes": {"options": ["all"]}}, "to_state": {"state": "all", "attributes": {"options": ["all", "2026"]}}}
-    assert ha(cond["value_template"], trigger=same) == "True"
-    assert ha(cond["value_template"], trigger=moved) == "False"
+    assert ha_value(event["event_data"]["available"], **{albums["response_variable"]: reply}) == ["2025", "2026"]
+    assert ha_value(event["event_data"]["available"], **{albums["response_variable"]: {"stdout": ""}}) == []
+    assert "chosen" not in event["event_data"]
+    # The card's script sets the choice; the reset sets none (all).
+    script = package["script"]["ramka_photo_albums_set"]
+    [step] = script["sequence"]
+    assert step["event"] == "ramka_photo_albums"
+    assert ha_value(step["event_data"]["chosen"], chosen=["a", "b"]) == ["a", "b"]
+    assert ha_value(step["event_data"]["chosen"]) == [] and ha_value(step["event_data"]["chosen"], chosen="a") == []
+    assert run_reset(package, page="photos", events=True)[ALBUMS] == []
+    assert run_reset(package, events=True)[ALBUMS] == []
+    assert ALBUMS not in run_reset(package, page="air", events=True)
+
+
+def test_album_card_on_photos_advanced(demo):
+    for lang in LANGS:
+        photos = settings_views(demo[f"ramka-settings.{lang}.yaml"])["photos"]
+        [(section, card)] = [(s, c) for s, c in view_cards(photos) if c.get("type") == "custom:photo-albums-card"]
+        assert card["entity"] == ALBUMS and card["script"] == "script.ramka_photo_albums_set"
+        assert advanced(section, card) and ADVANCED_ON in card["visibility"]
+        assert translations(lang)["ui.settings.photo_albums_how"] in markdown(photos)
 
 
 def test_no_photo_helpers_without_photo_dir(tmp_path):
     package = render(tmp_path, without_pages("photos"))["package.yaml"]
     assert not {e for e in helpers(package) if ".ramka_photo" in e}
     assert "shell_command" not in package and "input_text" not in package
+    assert ALBUMS not in defined_entities(package) and "ramka_photo_albums_set" not in package["script"]
     assert not [a for a in package["automation"] if a["id"].startswith("ramka_photo")]
 
 

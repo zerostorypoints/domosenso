@@ -183,7 +183,15 @@ views:
       # Left out by the render: its switch would change nothing.
       - type: grid
         cards:[[ not_configured(adds[view]) ]]
-[%- elif view == 'photos' %][[ switch_section('photos', [('input_select', 'photo_album'), ('input_number', 'photo_count'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'photo_s')]) ]][[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
+[%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'photo_s')]) ]]
+          # The albums: a checkbox each (photo-albums-card), none ticked is all.[[ heading('photo_albums', 'mdi:folder-image', advanced_on) ]]
+          - type: markdown
+            visibility: [ [[ advanced_on ]] ]
+            content: [[ t('ui.settings.photo_albums_how') | yaml ]]
+          - type: custom:photo-albums-card
+            visibility: [ [[ advanced_on ]] ]
+            entity: sensor.[[ p ]]_photo_albums
+            script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
 [%- elif view == 'air' %]
 [%- set readings = [] -%][%- set switches = [] -%][%- set limits = [] -%]
 [%- for key in ['score', 'co2', 'pm2_5', 'voc', 'nox'] if inputs.air[key] is defined -%]

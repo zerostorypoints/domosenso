@@ -177,10 +177,13 @@ lovelace:
   shows the one it opens (the tablet user's default dashboard, or the Companion app's start page);
   General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
   has not run on the tested tablet yet.
-- **Photos**: the album (`all`, or one top-level folder of `photo_dir` that holds photos), photos
-  per series (5) and, in Advanced, the time per photo (10 s). The album list follows the folder:
-  the photo index sets it after each run (at start, every 15 minutes) and puts the choice back
-  after a restart; an album whose folder is gone shows `all` until the folder is back.
+- **Photos**: photos per series (5) and, in Advanced, the time per photo (10 s) and the albums, a
+  checkbox each for the top-level folders of `photo_dir` that hold photos, "All albums" first (none
+  ticked is all). The list follows the folder: the photo index sends it after each run (at start,
+  every 15 minutes). The choice is kept by `sensor.<prefix>_photo_albums` over a restart; a chosen
+  album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
+  With one folder per event the list is long: the card has a filter, and grouping folders (by year,
+  `2025/…`) gives a shorter list.
 - **Air**: a switch per configured reading (off leaves its tile out, the others share the room)
   and, in Advanced, the two limits of each where its colour changes; the defaults are those in
   "Dashboards and cards". An unusable limit keeps the default.
