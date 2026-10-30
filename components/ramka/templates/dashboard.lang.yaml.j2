@@ -445,9 +445,10 @@ views:
 [%- if inputs.plants is defined %]
 
       # ---- Plants: ambient, music view off, page "plants" ------------------------------------
-      # plants-card: sun, fertiliser and water as bars against each plant's band, one line saying
-      # what to do, a smoothed 7-day moisture line; the ones that need something first. The bands
-      # are defaults plus per-plant overrides (the plant entity does not expose them).
+      # plants-card (SPEC-022): pages of plants_per_page tiles with photo, state, action and a
+      # 7-day moisture line, the ones that need something first. `plants: discover` finds the
+      # plants the plants component marks and reads their bands from them; a list gives defaults
+      # plus per-plant overrides (the plant entity does not expose them).
       - type: grid
         column_span: 3
         visibility:
@@ -463,15 +464,21 @@ views:
         cards:
           - type: custom:plants-card
             height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
+            per_page: input_number.[[ p ]]_plants_per_page
+            page_s: input_number.[[ p ]]_plants_page_s
+[%- if inputs.plants is string %]
+            discover: true
+[%- else %]
             defaults: [[ inputs.plant_defaults | default({'min_moisture': 15, 'max_moisture': 60, 'min_conductivity': 350, 'max_conductivity': 2000, 'min_brightness': 500}) | yaml ]]
             plants:
             [%- for plant in inputs.plants %]
-            [%- set item = {'entity': plant.entity, 'room': plant.label} %]
+            [%- set item = {'entity': plant.entity, 'room': plant.label if plant.label is string else plant.label[lang] | default(plant.label.values() | first)} %]
             [%- for key, value in plant.items() if key not in ('entity', 'label', 'room') %]
             [%- set _ = item.update({key: value}) %]
             [%- endfor %]
               - [[ item | yaml ]]
             [%- endfor %]
+[%- endif %]
             grid_options: {columns: full, rows: auto}
 [%- endif %]
 [%- if inputs.photo_dir is defined %]

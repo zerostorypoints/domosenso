@@ -116,6 +116,12 @@
     them, and the reset sets them with its event, the ('event', key, page, group, event data) entry:
     all albums, the ticked ones kept. -#]
 [%- set photo_defaults = {'photo_count': 5, 'photo_s': 10} -%]
+[#- The Plants page (SPEC-022): plants per page and seconds per page, read live by plants-card and
+    by the plants stage of the ambient loop. -#]
+[%- set plant_defaults_live = {'plants_per_page': 6, 'plants_page_s': 10} -%]
+[%- if inputs.plants is defined -%]
+[%- for key, value in plant_defaults_live.items() -%][%- set _ = settings.append(('input_number', key, 'plants', 'plants', value)) -%][%- endfor -%]
+[%- endif -%]
 [%- if inputs.photo_dir is defined -%]
 [%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', {'all': true})) -%]
 [%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
@@ -351,6 +357,23 @@ input_number:
     icon: mdi:timer-outline
     min: 3
     max: 120
+    step: 1
+    unit_of_measurement: s
+    mode: slider
+  [%- endif %]
+  [%- if inputs.plants is defined %]
+  [[ p ]]_plants_per_page:
+    name: [[ named(' plants per page') ]]
+    icon: mdi:view-grid-outline
+    min: 1
+    max: 12
+    step: 1
+    mode: slider
+  [[ p ]]_plants_page_s:
+    name: [[ named(' time per plants page (s)') ]]
+    icon: mdi:timer-outline
+    min: 5
+    max: 30
     step: 1
     unit_of_measurement: s
     mode: slider
@@ -879,14 +902,24 @@ script:
                       [[ after('air') ]]
 [%- endif %]
 [%- if 'plants' in pages %]
-            # 3. Plants, 20 s: the ones to water first.
+            # 3. Plants: the ones that need something first, at most two pages of plants_page_s
+            #    (plants-card turns them and continues on the next pass); no plants found: 1 s, so a
+            #    rotation of plants alone never runs without a pause.
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
                   state: plants
               then:
                 - delay:
-                    seconds: 20
+                    seconds: >-
+[%- if inputs.plants is string %]
+                      {% set n = states.plant | selectattr('attributes.domosenso_plant', 'defined') | list | count %}
+[%- else %]
+                      {% set n = [[ inputs.plants | length ]] %}
+[%- endif %]
+                      {% set per = states('input_number.[[ p ]]_plants_per_page') | int(6) %}
+                      {% set per = per if per > 0 else 6 %}
+                      {{ [([((n + per - 1) // per), 2] | min) * (states('input_number.[[ p ]]_plants_page_s') | int(10)), 1] | max }}
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient
@@ -1073,7 +1106,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual", "photos", "air", "climate"]
+            options: ["presence_display", "pages", "music_visual", "photos", "plants", "air", "climate"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -1485,22 +1518,23 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, music=true, photos=true, air=true) %}
+            {% set untouched = namespace(presence=true, music=true, photos=true, plants=true, air=true) %}
 [%- if inputs.climate is defined %]
             {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
 [%- endif %]
             {% for e in ['input_number.[[ p ]]_off_delay_s', 'input_number.[[ p ]]_brightness_min', 'input_number.[[ p ]]_brightness_max', 'input_number.[[ p ]]_near_cm', 'input_number.[[ p ]]_near_s', 'input_number.[[ p ]]_controls_hold_s', 'input_number.[[ p ]]_lux_max'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.presence = false %}{% endfor %}
 [%- set photo_numbers = [] if inputs.photo_dir is not defined else ['input_number.' ~ p ~ '_photo_count', 'input_number.' ~ p ~ '_photo_s'] %]
+[%- set plant_numbers = [] if inputs.plants is not defined else ['input_number.' ~ p ~ '_plants_per_page', 'input_number.' ~ p ~ '_plants_page_s'] %]
 [%- set air_numbers = [] %]
 [%- for s in settings if s[3] == 'air' and s[0] == 'input_number' %][% set _ = air_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
-[%- for group, numbers in [('photos', photo_numbers), ('air', air_numbers)] if numbers %]
+[%- for group, numbers in [('photos', photo_numbers), ('plants', plant_numbers), ('air', air_numbers)] if numbers %]
             {% for e in [[ numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.[[ group ]] = false %}{% endfor %}
 [%- endfor %]
 [%- if music_visual %]
             {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"

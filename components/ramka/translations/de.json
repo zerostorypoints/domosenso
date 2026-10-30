@@ -79,7 +79,16 @@
       "tooCold": "Zu kalt",
       "tooWarm": "Zu warm",
       "noReading": "kein Messwert",
-      "toWater": "zu giessen: {count}"
+      "toWater": "zu giessen: {count}",
+      "wateredToday": "heute gegossen",
+      "wateredYesterday": "gestern gegossen",
+      "wateredAgo": "vor {count} Tagen gegossen",
+      "waterToday": "heute giessen",
+      "waterTomorrow": "morgen giessen",
+      "waterIn": "giessen in ~{count} Tagen",
+      "needCount": "zu pflegen: {count}",
+      "okCount": "in Ordnung: {count}",
+      "none": "keine Pflanzen"
     },
     "air": {
       "level": {
@@ -274,6 +283,9 @@
       "photo_albums_how": "Die Fotoserien kommen aus den angehakten Alben, den obersten Ordnern des Fotoordners. Mit Alle Alben angehakt kommen sie aus allen, und die Haken warten ausgegraut, bis es wieder abgehakt ist; ohne Haken ebenfalls aus allen. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
       "photo_count": "Fotos pro Serie",
       "photo_s": "Zeit pro Foto",
+      "plants_per_page": "Pflanzen pro Seite",
+      "plants_page_s": "Zeit pro Pflanzenseite",
+      "plants_discover": "von der Pflanzen-Komponente gefunden",
       "climate_rooms": "Räume",
       "climate_rooms_how": "Bis zu zehn Räume, jeder mit einem Hauptmesswert und einem zweiten, standardmässig Temperatur und Luftfeuchtigkeit. Raum 1 ist die erste Kachel und die erste Linie der Diagramme, in der Farbe seines Punkts. Ein Raum ohne Hauptmesswert entfällt; ein leerer Name wird zum Bereich des Sensors.",
       "air_score": "Luftqualität anzeigen",
