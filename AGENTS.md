@@ -189,6 +189,7 @@ uv run tools/agents_check.py                    # AGENTS.md budget, CLAUDE.md, s
 uv run tools/install_skills.py [--check]        # skill links for every agent
 uv run tools/issue_check.py <draft.md | --issue n>  # an issue against docs/ISSUES.md
 uv run tools/release_status.py [--hold <id>]    # components on main waiting for a tag or the website
+uv run tools/catalog_index.py [--check]         # the Ramka's catalog index (shell/domosenso_catalog.json)
 uv run tools/make_demo_media.py                 # regenerates examples/demo-home/media/
 tools/check-all.sh                              # everything
 ```

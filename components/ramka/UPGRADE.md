@@ -5,17 +5,23 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## Unreleased: the About page in the settings
 
-**Settings, About** (SPEC-023): a last page lists every component the home runs, its version and the
-date the catalog released it, read live from `sensor.domosenso_components`. The `domosenso` command
-writes that sensor into `packages/domosenso.yaml` at every `render`, `add`, `adopt` and `update`
-(and adds `released` to each entry of `domosenso.lock`). Without it the page lists the Ramka alone.
+**Settings, About** (SPEC-023): a last page with DomoSenso's header and links, the components the
+home runs (`sensor.domosenso_components`, which the `domosenso` command now writes into
+`packages/domosenso.yaml`, adding `released` to each entry of `domosenso.lock`), the integrations
+they use and the devices behind them, each linked to its page (README, "About page").
+
+New in the package: `shell_command.<prefix>_discover` (in every home, also without photos),
+`script.<prefix>_about_refresh`, `sensor.<prefix>_discovery` (excluded from the recorder) and
+`automation.<prefix>_about_discover`; new shell files `domosenso_discover.py` and
+`domosenso_catalog.json` in `/config/shell/`.
 
 ### What a home does
 
-With the release that carries it: `domosenso update ramka` with a current `domosenso` command,
-and a deploy. The deploy adds
-`packages/domosenso.yaml` (one template sensor, so a restart). A snapshot `compare` then shows the new
-entity `sensor.domosenso_components`.
+- With the release that carries it: `domosenso update ramka` with a current `domosenso` command,
+  and a deploy (a restart: new template entities). A snapshot `compare` then shows the new entities
+  `sensor.domosenso_components` and `sensor.<prefix>_discovery`.
+- Optional: a home whose templates build entity ids at runtime, or with a Bluetooth sensor behind an
+  ESPHome proxy, writes `domosenso_discovery.yaml` (README, "About page") and adds it to `local:`.
 
 ## 0.7.0 (2026-10-30): the plants page for 1 to 50 plants
 

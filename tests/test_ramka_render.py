@@ -2386,3 +2386,36 @@ def test_plants_list_labels_per_language(tmp_path):
         assert plants_card(out[f"dashboard.{lang}.yaml"])["plants"][0]["room"] == room, lang
     [page] = [v for v in out["ramka-settings.pl.yaml"]["views"] if v["path"] == "plants"]
     assert "Pokój dzienny" in yaml.safe_dump(page, allow_unicode=True)
+
+
+def test_about_discovery_in_the_package(demo):
+    """The About page's discovery (SPEC-023): the command in every home, the refresh script publishing
+    the result and updating the HACS update entities, the sensor out of the recorder, start and nightly."""
+    package = demo["package.yaml"]
+    assert package["shell_command"]["ramka_discover"] == "python3 /config/shell/domosenso_discover.py /config"
+    steps = package["script"]["ramka_about_refresh"]["sequence"]
+    assert steps[0] == {"action": "shell_command.ramka_discover", "response_variable": "run"}
+    [event] = [s for s in steps if "event" in s]
+    assert event["event"] == "ramka_discovery"
+    assert set(event["event_data"]) == {"refreshed", "ha_version", "found", "uses", "integrations", "declared_links", "links"}
+    assert any("homeassistant.update_entity" in json.dumps(s) for s in steps)
+    assert "sensor.ramka_discovery" in package["recorder"]["exclude"]["entities"]
+    [block] = [b for b in package["template"] if any(t.get("event_type") == "ramka_discovery" for t in b.get("triggers", []))]
+    [sensor] = block["sensor"]
+    assert sensor["default_entity_id"] == "sensor.ramka_discovery" and "device_class" not in sensor
+    assert set(sensor["attributes"]) == {"component", "ha_version", "found", "uses", "integrations", "declared_links", "links"}
+    [auto] = [a for a in package["automation"] if a["id"] == "ramka_about_discover"]
+    assert {t["trigger"] for t in auto["triggers"]} == {"homeassistant", "time"}
+    assert auto["actions"][-1] == {"action": "script.ramka_about_refresh"}
+
+
+def test_about_header_and_refresh_badge(demo):
+    for lang in LANGS:
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["about"]
+        assert view["type"] == "sections" and view["header"]["card"]["text_only"] is True
+        header = view["header"]["card"]["content"]
+        assert "/cards/assets/domosenso-mark.svg" in header and "https://domosenso.org/get-started/" in header
+        assert "Apache-2.0" in header and "ZeroStoryPoints GmbH" in header
+        [badge] = view["badges"]
+        assert badge["tap_action"]["perform_action"] == "script.ramka_about_refresh"
+        assert len(view["sections"]) == 2  # Components and Related; Devices

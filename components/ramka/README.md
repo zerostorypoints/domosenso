@@ -231,6 +231,44 @@ lovelace:
   `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset` fails on a helper that is
   neither a named state helper nor on a page, and on one on a page that the reset does not set.
 
+## About page
+
+The settings dashboard's last page (SPEC-023) says what the home runs, read-only:
+
+- **Components**: the lock's (`sensor.domosenso_components`, written by the `domosenso` command
+  into `packages/domosenso.yaml`) and any other Domosenso component Home Assistant shows (a rendered
+  file's stamp, a board flashing a catalog firmware); a board that reports another version than its
+  device file pins says so.
+- **Related components**: the integrations whose entities the components really use, core or HACS,
+  their version and, for HACS, a newer one.
+- **Devices**: the devices behind those entities, model, firmware, the hub they connect through, and
+  their status (red when unavailable, or when the device's own connection sensor is off).
+
+Names link to their page: a component to domosenso.org, a device the catalog knows to its device
+page, an integration to its documentation. A device or integration the catalog does not know is
+listed all the same, without a link.
+
+The lists come from `shell/domosenso_discover.py`, which reads Home Assistant's own registries
+inside the container (read-only), at start, nightly at 04:10 and on **Refresh**. Its result is
+`sensor.<prefix>_discovery`, kept out of the recorder. What the registries cannot say, a home writes
+in `<config_dir>/domosenso_discovery.yaml` (add it to `local:` in `domosenso.yaml`):
+
+```yaml
+# Entity ids the home's own templates build at runtime: a template entity whose definition
+# contains a `when` string uses every id matching `match` (and the `also` ids built from its groups).
+rules:
+  - when: [audio_resolve]
+    match: 'binary_sensor[.]audio_(?!src_)(?P<d>.+)_present$'
+    also: ['binary_sensor.audio_{d}_playing', 'sensor.audio_{d}_source']
+# Links Home Assistant does not record, by device id (Settings → Devices, the id in the URL): a
+# Bluetooth sensor and the ESPHome proxy that relays it.
+declared_links:
+  - {device: <the sensor's device id>, via: <the proxy's device id>}
+```
+
+The links come from `shell/domosenso_catalog.json`, which ships with the Ramka
+(`tools/catalog_index.py`): a device added to the catalog is linked after the next Ramka update.
+
 ## Behaviour
 
 - **The ambient pages** (climate, air, plants, photos, status) are each optional: a page is in the

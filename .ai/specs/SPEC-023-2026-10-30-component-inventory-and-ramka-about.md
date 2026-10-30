@@ -1,13 +1,15 @@
 # SPEC-023: Component inventory sensor and the Ramka settings' About page (ramka, unreleased)
 
-- Status: approved 2026-10-30 by the maintainer, in conversation
+- Status: approved 2026-10-30 by the maintainer, in conversation; amended the same day (Amendment 1)
+  after prototypes on the maintainer's test instance, each looked at and accepted before the next
 - Source: the maintainer, in conversation (2026-10-30): "in the Ramka Settings, provide the About
   view, which will list all the components' version and when it was last updated", built in the
   catalog so every home gets it. Two decisions taken in that conversation: the list comes from a
   sensor the `domosenso` command writes (not from Ramka's render), and "last updated" is the
   **catalog release date** of the version the home runs (the date of the commit its tag names).
 - Touches: the `domosenso` command (render, add, adopt, update, deploy, status), the lock schema
-  (one optional key), the renderer's template globals, `ramka` (a new settings page).
+  (one optional key), the renderer's template globals, `ramka` (a new settings page, a discovery
+  script and its catalog index), `tools/catalog_index.py`.
 - Decisions this spec adds are marked **Decision**. Inference is marked as such.
 
 ## Goal
@@ -93,24 +95,105 @@ template:
 Template global `component` (`id`, `version`), today only in ESPHome device templates, goes to every
 template (ADDITIVE-ONLY). The Ramka's About page uses it as its fallback.
 
-## ramka (unreleased)
+## ramka (unreleased): the About page
 
-Settings dashboard, new last view `about` (icon `mdi:information-outline`), one section:
+Replaced by Amendment 1 below; kept here: no version bump (the release that carries it is the
+maintainer's decision), `UPGRADE.md` gets a `## Unreleased` entry, and the fallback while
+`sensor.domosenso_components` is missing (the Ramka alone, from the `component` global).
 
-- a markdown card: the table from `state_attr('sensor.domosenso_components', 'components')`,
-  Component · Version · Released (ISO date: readable the same in every language), `(dev)` after a
-  dev version;
-- while the sensor is unavailable (a home rendered by an older `domosenso`, or by
-  `domosenso_render.py` alone): one line "Ramka <version>" from the `component` global and a note that
-  `domosenso render` writes the full list.
+**Decision:** `sensor.domosenso_components` is the command's, not a component's, so it does not go
+under `consumes` (which names a component); the Ramka's manifest says in a comment that the About
+page reads it.
 
-New `ui.settings.pages.about`, `ui.settings.about_*` keys in en, de, pl. No new input, helper or
-entity of the Ramka's own. No version bump: the release that carries it is the maintainer's decision; `UPGRADE.md` gets a
-`## Unreleased` entry: nothing to do in the home but render
-(the package appears on the next `render` or `update`, with a restart at its deploy).
+## Amendment 1 (2026-10-30): what the components use, links, the page as built
 
-**Decision:** the sensor is the command's, not a component's, so it does not go under `consumes`
-(which names a component); the Ramka's manifest says in a comment that the About page reads it.
+Asked by the maintainer after the first prototype: list the related (third-party) components and
+the devices really used, strictly, not every integration Home Assistant has; their versions and
+status; a refresh; links to domosenso.org; a header. Each step was deployed as a dev render to the
+maintainer's test instance and accepted there.
+
+### Discovery inside Home Assistant
+
+`components/ramka/shell/domosenso_discover.py`, installed to `/config/shell/`, run by
+`shell_command.<prefix>_discover`, read-only, prints one JSON document:
+
+- **found**: the components seen in Home Assistant, from the stamps of rendered files and from
+  boards whose ESPHome firmware reports manufacturer `domosenso` and a component as model (with
+  each board's version: a board that reports another version than the device file pins shows it);
+- **uses**: per component, the entities an integration provides that the component's rendered files
+  reach: literal entity ids, followed through template entities in `packages/*.yaml` (by
+  `unique_id`), and through **rules** for ids a home's own templates build at runtime;
+- **integrations**: per domain of those entities, name, kind (`core`, `HACS`, `custom`), version
+  (Home Assistant's for core, HACS's installed version) and the HACS update entity;
+- **declared_links**: device links Home Assistant does not record;
+- **links**: pages for what was found (below).
+
+It reads `.storage` (entity, device, config entry registries; HACS repositories), the integrations'
+manifests and `.HA_VERSION`. **Decision:** strict only: an edge is a literal id or a registry link;
+anything else is declared by the home, never guessed. Nothing is filtered out by the catalog:
+a home's own devices and integrations stay listed.
+
+The home's rules and links: `<config_dir>/domosenso_discovery.yaml`, the home's own file (a `local:`
+glob), read if present:
+
+```yaml
+rules:                     # a template containing a `when` string uses every id matching `match`
+  - when: [audio_resolve]
+    match: 'binary_sensor[.]audio_(?!src_)(?P<d>.+)_present$'
+    also: ['binary_sensor.audio_{d}_playing']
+declared_links:            # device ids from the device registry
+  - {device: <ruuvi air>, via: <the bluetooth proxy>}
+```
+
+### Catalog index and links
+
+`tools/catalog_index.py` writes `components/ramka/shell/domosenso_catalog.json`: every component and
+whether domosenso.org publishes its page (`website/content/publication.json`), every device with its
+English name, its page and the match rules of `devices/*.yaml` (SPEC-010). A pytest fails when the
+file is stale. **Decision** (the maintainer's): the index ships with the Ramka, so the page works
+offline (`local_only`); a device added to the catalog is linked after the next Ramka update.
+
+Links, each as the thing's name, never a bare URL: a component to `domosenso.org/components/<id>/`
+(else its folder on GitHub); a device a rule matches to `domosenso.org/devices/<id>/` (a rule the
+catalog marks `note: inference` links too); an integration to its manifest's `documentation`.
+
+### Refresh, sensor, recorder
+
+- `script.<prefix>_about_refresh`: runs the discovery, fires `<prefix>_discovery` with its result,
+  and updates the HACS update entities it names (versions checked again).
+- `sensor.<prefix>_discovery` (trigger-based template, `component: ramka`): state the time of the last
+  refresh, attributes `ha_version`, `found`, `uses`, `integrations`, `declared_links`, `links`.
+  **Decision:** excluded from the recorder in the Ramka's package (a snapshot for one page, not
+  history; a few kB per refresh); no `device_class`: the page shows the date itself.
+- `automation.<prefix>_about_discover`: at start (after a minute) and at 04:10.
+
+### The page
+
+A `sections` view like the other settings pages (their margins; one column on a narrow screen):
+
+- **header** (plain text, not a card): the DomoSenso mark (`cards/assets/domosenso-mark.svg`, the
+  site's, in its accent so it reads on both themes) and wordmark, the README's tagline; links
+  Website · Get started · Components · Devices · GitHub; "Last discovery: <local date and time>";
+  the license line (Apache-2.0, © ZeroStoryPoints GmbH, the trademark note, NOTICE, third-party
+  notices) and Home Assistant's version; a **Refresh** badge under it;
+- first column: **Components** (the lock's, plus any found only in Home Assistant, a board's other
+  version noted) and **Related components** (integration, kind, version with `→ newer` when HACS
+  has one, used by);
+- second column: **Devices** (name, model, firmware, via, status). Status: green `ok`, red
+  `offline` when all used entities of the device are unavailable, or when one of its own
+  `connectivity` sensors is off (named: an integration may keep its other entities `off`, as the
+  Hegel's does).
+
+Every markdown card renders in strict mode (`render_template` with `strict: true`), as the
+dashboard renders them.
+
+### Contract surface (additions)
+
+| surface | stability |
+|---|---|
+| `sensor.<prefix>_discovery`, `script.<prefix>_about_refresh`, `shell_command.<prefix>_discover`, `automation.<prefix>_about_discover` | STABLE (Ramka's `provides`) |
+| `<config_dir>/domosenso_discovery.yaml`: `rules` (`when`, `match`, `also`), `declared_links` (`device`, `via`) | STABLE; new keys ADDITIVE-ONLY |
+| `components/ramka/shell/domosenso_catalog.json` | not a contract: written by `tools/catalog_index.py` |
 
 ## Compatibility
 
@@ -125,7 +208,12 @@ sensor and restarts. A snapshot `compare` then shows one new entity, `sensor.dom
   package; dev render marks `dev`/`-dirty`; the package parses as YAML and its attribute template
   renders to the list (jinja2); `status` `managed` / `managed-modified`; `deploy --plan` carries it
   and fails `inventory out of date` on a stale file; renderer `component` global in a plain template.
-- `test_ramka_render.py`: the settings dashboard has an `about` view in every language, last.
+- `test_ramka_render.py`: the settings dashboard has an `about` view in every language, last,
+  read-only but for Refresh; the package's discovery command, sensor, script, automation and recorder
+  exclusion; the Components table rendered with Jinja.
+- `test_domosenso_discover.py`: the discovery on a config in the 2026.9 storage format (one
+  `config_entry_id` per device): uses, components found, device and component links.
+- `test_catalog_index.py`: the shipped index equals what the catalog gives.
 - `npm test`, `catalog_check --strict` (translations), `tools/ha-check.sh ramka` (check_config with
   the dashboard), `tools/check-all.sh`.
 - The maintainer's home: `render --catalog-dev` from this branch, review the diff, `deploy production
@@ -138,9 +226,11 @@ command reference gains the inventory sensor.
 
 ## Out of scope
 
-- Links from the table to each component's release notes (a home's catalog may be a fork or local
-  path; the URL is not known in Home Assistant). Possible later from `domosenso.yaml`'s catalog.
+- A fork's own website: links go to domosenso.org and the upstream repository.
+- Fetching the index from domosenso.org at a refresh (always current, needs the internet).
+- Discovery for a home without a Ramka: it belongs to the framework; a later core component.
 - The date the home itself moved to a version (would need a lock key written only on a version
   change; the maintainer chose the release date).
 - Home Assistant's and ESPHome's own versions on the About page.
-- An "update available" marker (needs the catalog's newest tags at runtime).
+- An "update available" marker for Domosenso components (needs the catalog's newest tags at
+  runtime); HACS integrations show theirs.
