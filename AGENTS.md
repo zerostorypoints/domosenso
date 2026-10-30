@@ -162,6 +162,7 @@ tools/esphome-check.sh <id> [compile <file>...] # ESPHome config (and compile) o
 uv run tools/agents_check.py                    # AGENTS.md budget, CLAUDE.md, skills
 uv run tools/install_skills.py [--check]        # skill links for every agent
 uv run tools/issue_check.py <draft.md | --issue n>  # an issue against docs/ISSUES.md
+uv run tools/release_status.py [--hold <id>]    # components on main waiting for a tag or the website
 uv run tools/make_demo_media.py                 # regenerates examples/demo-home/media/
 tools/check-all.sh                              # everything
 ```
@@ -315,6 +316,8 @@ no-change or deferred evidence; follow up when a missing tag becomes public. A f
 merge is not a main release. This is an agent workflow, not an automatic publishing service.
 Every plan names its website impact. Content about behaviour that is not yet in a tag stays
 `draft` until the tag exists. The PR lists its pages with `uv run tools/website_changes.py --base origin/main`.
+The `Release reminder` workflow keeps one `release-reminder` issue open while
+`tools/release_status.py` finds an untagged version or an unpublished tag on main; it only reminds.
 
 ## Issues
 
