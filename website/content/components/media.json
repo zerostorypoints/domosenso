@@ -6,7 +6,8 @@
   "hardware": "required",
   "ui": "consumer",
   "deviceIds": [
-    "hegel-h400"
+    "hegel-h400",
+    "shelly-pm-mini-gen3"
   ],
   "views": [
     {
