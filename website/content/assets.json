@@ -74,7 +74,7 @@
   {
     "path": "/wiring/hlk-ld2410c-atom-lite.svg",
     "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
-    "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+    "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
     "alt": "Wiring diagram: hlk ld2410c atom lite",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -84,7 +84,7 @@
   {
     "path": "/wiring/cc1101-atom-lite.svg",
     "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
-    "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+    "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
     "alt": "Wiring diagram: cc1101 atom lite",
     "kind": "wiring",
     "credit": "DomoSenso",
