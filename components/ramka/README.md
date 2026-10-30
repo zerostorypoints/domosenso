@@ -186,7 +186,8 @@ lovelace:
   With one folder per event the list is long: the card has a filter, and grouping folders (by year,
   `2025/…`) gives a shorter list.
 - **Climate**: in Advanced, up to five rooms, each a name, a main reading and a second one, picked
-  from dropdowns of the home's sensors with a unit (`climate-rooms-card`). The room tiles and both
+  with Home Assistant's entity picker, which searches the home's sensors with a unit as you type
+  (`climate-rooms-card`; a plain dropdown if the picker cannot be loaded). The room tiles and both
   7-day charts follow them, room n in colour n, outside last; a reading shows its sensor's unit. A
   room without a main reading is left out, an empty name becomes the sensor's area. They are kept by
   `sensor.<prefix>_climate_rooms`; the defaults (and the reset) are the first five of `climate`,

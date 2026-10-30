@@ -23,7 +23,7 @@ albums: it greys them out until it is unticked. `sensor.<prefix>_photo_albums` g
 before (none chosen is all).
 
 **Climate rooms** (amendment 2). Climate → Advanced picks up to five rooms, each a name, a main
-reading and a second one from dropdowns of the home's sensors with a unit (new card
+reading and a second one with Home Assistant's searchable entity picker (sensors with a unit; new card
 `climate-rooms-card`, a new Lovelace resource the deploy creates). The room tiles and both 7-day
 charts follow them, outside stays last. They live in `sensor.<prefix>_climate_rooms` (set by
 `script.<prefix>_climate_rooms_set`); the seed fills it once with the first five of `climate`,

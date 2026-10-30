@@ -761,8 +761,10 @@ The loop passes no albums while `all` is true. The reset sends
 
 **Climate page** (with `climate`; group `climate`, page `climate`): up to five rooms, each a label,
 a main reading and a supplementary one, entity ids, picked in Advanced on a new card,
-`climate-rooms-card`: a name field and two dropdowns per room of every `sensor.*` with a unit, by
-name. A room without a main reading is dropped (the ones below move up); an empty name becomes the
+`climate-rooms-card`: a name field and two of Home Assistant's entity pickers per room (search as
+you type), limited to `sensor.*` with a unit. The picker is frontend internals a dashboard does not
+load: the card loads it through the entities card's editor, and falls back to a plain dropdown of
+the same sensors by name when it is not there. A room without a main reading is dropped (the ones below move up); an empty name becomes the
 main sensor's area, else its name. No helper, as the albums: `sensor.<prefix>_climate_rooms` keeps
 `rooms` (restored after a restart), set by event `<prefix>_climate_rooms` from
 `script.<prefix>_climate_rooms_set`, which keeps at most five rooms whose main is a `sensor.*`.

@@ -1,11 +1,15 @@
 // The Climate page's rooms, picked on the settings dashboard: five rows, each a name, a main reading
-// and a supplementary one (by default the temperature and the humidity), chosen from dropdowns of
-// the home's sensors that have a unit. Room n is the n-th tile and the n-th line of the 7-day charts,
+// and a supplementary one (by default the temperature and the humidity), chosen from the home's
+// sensors that have a unit with Home Assistant's own entity picker, which searches as you type. Room n is the n-th tile and the n-th line of the 7-day charts,
 // in the theme's series colour n, the swatch in front of the row.
 //
 //   type: custom:climate-rooms-card
 //   entity: sensor.ramka_climate_rooms         # attribute `rooms`: [{label, main, extra}]
 //   script: script.ramka_climate_rooms_set     # called with {rooms: [...]}
+//
+// The picker is frontend internals a dashboard does not load by itself: the entities card's editor
+// imports it (HA 2026.9.2), so the card asks for that editor once. If the picker still is not there
+// (a renamed element), each reading is a plain dropdown of the same sensors.
 //
 // A row without a main reading is no room: the rooms below it move up. A name left empty becomes
 // the main sensor's area, else its own name. A sensor that is gone stays chosen, marked, until
@@ -39,6 +43,8 @@ class ClimateRoomsCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadPicker();
+    for (const picker of this._pickers || []) picker.hass = hass;
     const list = hass.states[this._config.entity]?.attributes?.rooms;
     const rooms = (Array.isArray(list) ? list : []).filter((r) => r && typeof r.main === "string" && r.main).slice(0, SLOTS)
       .map((r) => ({ label: String(r.label || ""), main: r.main, extra: typeof r.extra === "string" ? r.extra : "" }));
@@ -48,6 +54,20 @@ class ClimateRoomsCard extends HTMLElement {
     this._built = key;
     this._rooms = rooms;
     this._render(sensors);
+  }
+
+  // Loads ha-entity-picker through the entities card's editor, then draws the rows again with it.
+  _loadPicker() {
+    if (this._pickerAsked || customElements.get("ha-entity-picker") || !window.loadCardHelpers) return;
+    this._pickerAsked = true;
+    window.loadCardHelpers()
+      .then((helpers) => helpers.createCardElement({ type: "entities", entities: [] }))
+      .then((card) => card.constructor.getConfigElement && card.constructor.getConfigElement())
+      .then(() => customElements.whenDefined("ha-entity-picker"))
+      .then(() => {
+        this._built = null;
+        if (this._hass) this.hass = this._hass;
+      }, () => {});
   }
 
   // Every sensor with a unit, by name: [entity id, name, unit].
@@ -71,11 +91,13 @@ class ClimateRoomsCard extends HTMLElement {
         input, select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color);
                         border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; min-width: 0; width: 100%;
                         box-sizing: border-box; }
+        ha-entity-picker { display: block; min-width: 0; width: 100%; }
         .room { font-weight: 500; color: var(--primary-text-color); grid-column: 2; }
       </style>
       <ha-card></ha-card>`;
     const card = root.querySelector("ha-card");
     this._rows = [];
+    this._pickers = [];
     for (let n = 0; n < SLOTS; n++) {
       const room = this._rooms[n] || { label: "", main: "", extra: "" };
       const row = document.createElement("div");
@@ -91,10 +113,8 @@ class ClimateRoomsCard extends HTMLElement {
       label.value = room.label;
       label.placeholder = room.main ? this._defaultLabel(room.main) : "";
       label.addEventListener("change", () => this._save());
-      const main = this._select(sensors, room.main);
-      const extra = this._select(sensors, room.extra);
-      main.addEventListener("change", () => this._save());
-      extra.addEventListener("change", () => this._save());
+      const main = this._reading(sensors, room.main);
+      const extra = this._reading(sensors, room.extra);
       row.append(swatch, title, this._field("card.climate_rooms.label", label), this._field("card.climate_rooms.main", main),
                  this._field("card.climate_rooms.extra", extra));
       card.append(row);
@@ -109,6 +129,28 @@ class ClimateRoomsCard extends HTMLElement {
     label.append(span, control);
     label.style.gridColumn = "2";
     return label;
+  }
+
+  // A reading's control: the entity picker when it is loaded, else a dropdown. Both have `value`.
+  _reading(sensors, value) {
+    if (!customElements.get("ha-entity-picker")) {
+      const select = this._select(sensors, value);
+      select.addEventListener("change", () => this._save());
+      return select;
+    }
+    const picker = document.createElement("ha-entity-picker");
+    picker.hass = this._hass;
+    picker.includeDomains = ["sensor"];
+    picker.entityFilter = (state) => typeof state?.attributes?.unit_of_measurement === "string";
+    picker.allowCustomEntity = false;
+    picker.value = value || "";
+    picker.addEventListener("value-changed", (ev) => {
+      ev.stopPropagation();
+      picker.value = ev.detail?.value || "";
+      this._save();
+    });
+    this._pickers.push(picker);
+    return picker;
   }
 
   _select(sensors, value) {
