@@ -24,7 +24,6 @@ static constexpr size_t HOP = FFT_SIZE / 2;
 static constexpr size_t HALF = FFT_SIZE / 2;
 // One second of int16 samples: room for the worker to fall a few frames behind without a gap.
 static constexpr size_t RING_BUFFER_BYTES = SAMPLE_RATE * sizeof(int16_t);
-static constexpr uint32_t FAST_INTERVAL_MS = 200;
 static constexpr uint32_t SLOW_INTERVAL_MS = 60000;
 
 static constexpr uint32_t WORKER_STACK = 8192;
@@ -124,6 +123,7 @@ void AudioSpectrumComponent::process_frame_() {
   for (size_t i = 0; i < bands::NUM_BANDS; i++) {
     this->fast_ms_[i] += frame_ms[i];
     this->slow_ms_[i] += frame_ms[i];
+    this->latest_ms_[i] = frame_ms[i];
   }
   this->fast_frames_++;
   this->slow_frames_++;
@@ -132,10 +132,7 @@ void AudioSpectrumComponent::process_frame_() {
 
 void AudioSpectrumComponent::loop() {
   const uint32_t now = millis();
-  if (now - this->last_fast_ms_ >= FAST_INTERVAL_MS) {
-    this->last_fast_ms_ = now;
-    this->publish_fast_();
-  }
+  this->publish_fast_(now);
   if (now - this->last_slow_ms_ >= SLOW_INTERVAL_MS) {
     const uint32_t elapsed = now - this->last_slow_ms_;
     this->last_slow_ms_ = now;
@@ -143,20 +140,35 @@ void AudioSpectrumComponent::loop() {
   }
 }
 
-void AudioSpectrumComponent::publish_fast_() {
+void AudioSpectrumComponent::set_profile(const bands::Profile &profile) {
+  std::lock_guard<std::mutex> lock(this->mutex_);
+  this->profile_ = profile;
+  std::memset(this->fast_ms_, 0, sizeof(this->fast_ms_));
+  this->fast_frames_ = 0;
+}
+
+void AudioSpectrumComponent::publish_fast_(uint32_t now) {
   uint32_t frames;
+  bands::Mix mix;
   {
     std::lock_guard<std::mutex> lock(this->mutex_);
-    std::memcpy(this->fast_copy_, this->fast_ms_, sizeof(this->fast_ms_));
-    std::memset(this->fast_ms_, 0, sizeof(this->fast_ms_));
+    // Timed to the frames, not to a clock: no new frame (the microphone is stopped) means no
+    // publish, so the last spectrum stays rather than a repeat of it.
+    if (!bands::publish_due(now, this->last_fast_ms_, this->profile_.interval_ms, this->fast_frames_))
+      return;
+    mix = this->profile_.mix;
     frames = this->fast_frames_;
+    std::memcpy(this->fast_copy_, mix == bands::Mix::LATEST ? this->latest_ms_ : this->fast_ms_,
+                sizeof(this->fast_copy_));
+    std::memset(this->fast_ms_, 0, sizeof(this->fast_ms_));
     this->fast_frames_ = 0;
   }
-  // No frame in the window (the microphone is stopped): keep the last spectrum rather than invent one.
-  if (frames == 0 || this->spectrum_sensor_ == nullptr)
+  this->last_fast_ms_ = now;
+  if (this->spectrum_sensor_ == nullptr)
     return;
+  const double divisor = mix == bands::Mix::LATEST ? 1.0 : (double) frames;
   for (size_t i = 0; i < bands::NUM_BANDS; i++) {
-    this->dbfs_[i] = bands::to_dbfs(this->fast_copy_[i] / frames);
+    this->dbfs_[i] = bands::to_dbfs(this->fast_copy_[i] / divisor);
   }
   const size_t len = bands::format_csv(this->dbfs_, bands::NUM_BANDS, this->csv_, sizeof(this->csv_));
   this->spectrum_sensor_->publish_state(this->csv_, len);
@@ -188,14 +200,20 @@ void AudioSpectrumComponent::publish_slow_(uint32_t elapsed_ms) {
 }
 
 void AudioSpectrumComponent::dump_config() {
+  bands::Profile profile;
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    profile = this->profile_;
+  }
   ESP_LOGCONFIG(TAG,
                 "Audio Spectrum:\n"
                 "  FFT size: %u, hop: %u (Hann, 50%% overlap)\n"
                 "  Sample rate: %" PRIu32 " Hz, bin width: %.2f Hz\n"
                 "  Bands: %u third-octave, %u octave\n"
-                "  Rates: spectrum %" PRIu32 " ms, octaves and load %" PRIu32 " ms",
+                "  Rates: spectrum %" PRIu32 " ms (%s), octaves and load %" PRIu32 " ms",
                 (unsigned) FFT_SIZE, (unsigned) HOP, SAMPLE_RATE, (float) SAMPLE_RATE / FFT_SIZE,
-                (unsigned) bands::NUM_BANDS, (unsigned) bands::NUM_OCTAVES, FAST_INTERVAL_MS, SLOW_INTERVAL_MS);
+                (unsigned) bands::NUM_BANDS, (unsigned) bands::NUM_OCTAVES, profile.interval_ms,
+                profile.mix == bands::Mix::LATEST ? "newest frame" : "mean of frames", SLOW_INTERVAL_MS);
   LOG_TEXT_SENSOR("  ", "Spectrum", this->spectrum_sensor_);
   for (size_t j = 0; j < bands::NUM_OCTAVES; j++) {
     LOG_SENSOR("  ", "Octave", this->octave_sensors_[j]);
