@@ -79,7 +79,16 @@
       "tooCold": "Too cold",
       "tooWarm": "Too warm",
       "noReading": "no reading",
-      "toWater": "to water: {count}"
+      "toWater": "to water: {count}",
+      "wateredToday": "watered today",
+      "wateredYesterday": "watered yesterday",
+      "wateredAgo": "watered {count} days ago",
+      "waterToday": "water today",
+      "waterTomorrow": "water tomorrow",
+      "waterIn": "water in ~{count} days",
+      "needCount": "to tend: {count}",
+      "okCount": "fine: {count}",
+      "none": "no plants"
     },
     "air": {
       "level": {

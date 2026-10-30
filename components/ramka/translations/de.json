@@ -79,7 +79,16 @@
       "tooCold": "Zu kalt",
       "tooWarm": "Zu warm",
       "noReading": "kein Messwert",
-      "toWater": "zu giessen: {count}"
+      "toWater": "zu giessen: {count}",
+      "wateredToday": "heute gegossen",
+      "wateredYesterday": "gestern gegossen",
+      "wateredAgo": "vor {count} Tagen gegossen",
+      "waterToday": "heute giessen",
+      "waterTomorrow": "morgen giessen",
+      "waterIn": "giessen in ~{count} Tagen",
+      "needCount": "zu pflegen: {count}",
+      "okCount": "in Ordnung: {count}",
+      "none": "keine Pflanzen"
     },
     "air": {
       "level": {

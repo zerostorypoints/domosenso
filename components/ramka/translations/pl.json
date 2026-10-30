@@ -79,7 +79,16 @@
       "tooCold": "Za zimno",
       "tooWarm": "Za ciepło",
       "noReading": "brak odczytu",
-      "toWater": "do podlania: {count}"
+      "toWater": "do podlania: {count}",
+      "wateredToday": "podlana dziś",
+      "wateredYesterday": "podlana wczoraj",
+      "wateredAgo": "podlana {count} dni temu",
+      "waterToday": "podlej dziś",
+      "waterTomorrow": "podlej jutro",
+      "waterIn": "podlej za ~{count} dni",
+      "needCount": "{count} do uwagi",
+      "okCount": "{count} w porządku",
+      "none": "brak roślin"
     },
     "air": {
       "level": {
