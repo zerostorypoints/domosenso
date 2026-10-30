@@ -243,3 +243,21 @@ test("names and rooms per language from domosenso_names and domosenso_rooms", ()
   const card = discoverCard({ lang: "pl", plants: [plant("Fern", { domosenso_names: { en: "Fern" } })] });
   assert.deepEqual(names(card), ["Fern"]);
 });
+
+test("watered today and yesterday follow the calendar, not 24 hours", () => {
+  const lastNight = new Date(); lastNight.setHours(0, 0, 0, 0); lastNight.setMinutes(-60);  // 23:00 yesterday
+  const states = { "sensor.d0_last_watered": { state: lastNight.toISOString(), attributes: {} } };
+  assert.equal(meta(discoverCard({ plants: [plant("Fern")], states })), "podlana wczoraj");
+});
+
+test("an update that changes none of the card's entities does no work", () => {
+  const card = discoverCard({ plants: [plant("Fern")] });
+  const states = card._hass.states;
+  let updates = 0;
+  const original = card._update.bind(card);
+  card._update = () => { updates += 1; original(); };
+  card.hass = { locale: { language: "pl" }, states: { ...states, "sensor.radar": { state: "1", attributes: {} } }, callWS: async () => ({}) };
+  assert.equal(updates, 0);
+  card.hass = { locale: { language: "pl" }, states: { ...states, "plant.d0": { state: "ok", attributes: plant("Fern", { moisture: 5 }) } }, callWS: async () => ({}) };
+  assert.equal(updates, 1);
+});

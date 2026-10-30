@@ -57,6 +57,7 @@ No app is needed: Home Assistant tells which sensor went into which pot.
 - **Water in** (`sensor.<plant>_water_in_days`): whole days until `min_moisture` at the last 48
   hours' rate. Unknown for 48 hours after a watering (the rate would include it; the first reading
   after one also overshoots, free water draining for about 10 minutes) and while the soil is not
-  drying. After an update it stays unknown until 48 hours of readings exist.
+  drying. The rate is the change per second over the readings of the last 48 hours, loaded from the
+  recorder at a start.
 - **Silent automations** add `automation.plant_sensor_new` (`loaded_on`): it fires only when a new
   sensor goes into soil.

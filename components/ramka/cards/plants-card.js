@@ -82,8 +82,23 @@ class PlantsCard extends HTMLElement {
     return { columns: "full", rows: this._config.height ? "auto" : 6 };
   }
 
+  // Home Assistant hands over a new hass for every state change in the house, several a second
+  // with a radar; the card works only when one of its own entities changed (states are replaced,
+  // never mutated, so identity says it).
+  _watched(hass) {
+    const ids = [this._config.per_page, this._config.page_s].filter((v) => typeof v === "string");
+    for (const id of Object.keys(hass.states)) {
+      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days)$/.test(id)) ids.push(id);
+    }
+    return ids.map((id) => hass.states[id]);
+  }
+
   set hass(hass) {
+    const watched = this._watched(hass);
+    const same = this._seen && watched.length === this._seen.length && watched.every((s, i) => s === this._seen[i]);
     this._hass = hass;
+    this._seen = watched;
+    if (same) return;
     if (!this._built) this._build();
     this._update();
     const ids = this._plants().map((p) => this._moistureId(p)).filter(Boolean).join(",");
@@ -267,7 +282,9 @@ class PlantsCard extends HTMLElement {
     }
     const at = Date.parse(this._hass.states[`sensor.${id}_last_watered`]?.state);
     if (!Number.isFinite(at)) return { inDays: null, text: "" };
-    const ago = Math.floor((Date.now() - at) / DAY);
+    // Calendar days: watered at 23:00 is "yesterday" the next morning.
+    const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const ago = Math.round((midnight(new Date()) - midnight(new Date(at))) / DAY);
     const key = ago <= 0 ? "wateredToday" : ago === 1 ? "wateredYesterday" : "wateredAgo";
     return { inDays: null, text: t(this._hass, `card.plants.${key}`, { count: ago }) };
   }

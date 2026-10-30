@@ -66,10 +66,10 @@ sensors. No HACS integration (the HACS plant integration was tried and its adopt
 |---|---|---|
 | attributes on `plant.<plant>` (via `homeassistant: customize:`): `domosenso_plant: true`, `domosenso_room` (the `label`), `domosenso_bands` (map: `min_moisture`, `max_moisture`, `min_conductivity`, `max_conductivity`, `min_brightness`, and `min_temperature`/`max_temperature` when set), `entity_picture` (when `photo` is given); `domosenso_names`, `domosenso_rooms` (the maps, when `name` or `label` is given per language) | stable | marker attributes, read by the Ramka |
 | `sensor.<plant>_moisture_min_3h` | stable | statistics `value_min`, 3 h |
-| `sensor.<plant>_moisture_change_48h` | stable | statistics `change`, 48 h |
+| `sensor.<plant>_moisture_change_48h` | stable | statistics `change_second` over 48 h (% per second; review fix: a history shorter than 48 h gives the true rate) |
 | `sensor.<plant>_last_watered` | stable | timestamp; a rise of ≥ 10 points between two readings, or ≥ 10 points above the 3-hour minimum (at most once per 3 h); the first reading after a start is never a watering |
 | `sensor.<plant>_water_in_days` | stable | whole days ≥ 0 until moisture reaches `min_moisture` at the last 48 h's rate; unknown when watered less than 48 h ago or not drying; unavailable when the moisture sensor is |
-| `sensor.plants_unplaced_in_soil` | stable | count of Xiaomi BLE moisture sensors not used by a plant reading > 0 %; attribute `sensors`: list of `{entity, device, value}` |
+| `sensor.plants_unplaced_in_soil` | stable | count of Xiaomi BLE moisture sensors not used by a plant reading > 0 %; attribute `sensors`: list of `{entity, device, value}`; rebuilt every minute and at a start (`integration_entities()` registers no listener) |
 | `automation.plant_sensor_new` (unique_id `plants_sensor_new`) | stable | push to `notify` and a persistent notification when a sensor joins that list |
 
 **ramka 0.7.0**, `<prefix>` = the `prefix` input, only when `plants` is given:
@@ -83,7 +83,7 @@ sensors. No HACS integration (the HACS plant integration was tried and its adopt
 **Decision:** the plants stage of the ambient loop lasts `min(pages, 2) × page_s`, with `pages =
 ceil(plants / per_page)`; the card advances its own page every `page_s` while shown and keeps the
 index in the browser (`localStorage`), so the next pass continues where the last stopped and wraps to
-page 1. With no plants found the stage lasts 0 s.
+page 1. With no plants found the stage lasts 1 s (review fix: 0 s would spin a rotation of plants alone).
 
 **Decision:** state colours good `#5be37a`, neutral `#9aa0a6`, needs something `#f5b942`; the card's
 red `#ff6b5c` for "water" goes. Neutral = in range but `water_in_days` ≤ 3, or no reading.

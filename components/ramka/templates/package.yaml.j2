@@ -869,7 +869,8 @@ script:
 [%- endif %]
 [%- if 'plants' in pages %]
             # 3. Plants: the ones that need something first, at most two pages of plants_page_s
-            #    (plants-card turns them and continues on the next pass); no plants found: 0 s.
+            #    (plants-card turns them and continues on the next pass); no plants found: 1 s, so a
+            #    rotation of plants alone never runs without a pause.
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
@@ -884,7 +885,7 @@ script:
 [%- endif %]
                       {% set per = states('input_number.[[ p ]]_plants_per_page') | int(6) %}
                       {% set per = per if per > 0 else 6 %}
-                      {{ ([((n + per - 1) // per), 2] | min) * (states('input_number.[[ p ]]_plants_page_s') | int(10)) }}
+                      {{ [([((n + per - 1) // per), 2] | min) * (states('input_number.[[ p ]]_plants_page_s') | int(10)), 1] | max }}
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient

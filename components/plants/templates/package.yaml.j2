@@ -118,8 +118,9 @@ sensor:
     state_characteristic: value_max
     max_age:
       hours: 24
-  # The lowest moisture of the last 3 hours, for a watering that soaks in slowly, and the change
-  # over 48 hours, the drying rate behind "water in".
+  # The lowest moisture of the last 3 hours, for a watering that soaks in slowly, and the drying
+  # rate behind "water in": the change per second over the readings of the last 48 hours (loaded
+  # from the recorder at a start, so a shorter history gives the same rate, not half of it).
   - platform: statistics
     name: [[ row.id ]] moisture min 3h
     unique_id: [[ row.id ]]_moisture_min_3h
@@ -131,7 +132,7 @@ sensor:
     name: [[ row.id ]] moisture change 48h
     unique_id: [[ row.id ]]_moisture_change_48h
     entity_id: [[ row.sensors.moisture ]]
-    state_characteristic: change
+    state_characteristic: change_second
     max_age:
       hours: 48
 [%- endfor %]
@@ -140,7 +141,8 @@ template:
 [%- for row in rows %]
   # Watered: a rise of 10 points between two readings (a watering shows within a minute), or 10
   # points above the 3-hour minimum for one that soaks in slowly, at most once in 3 hours. The first
-  # reading after a start comes from nothing or from unavailable, which is_number(f) refuses.
+  # reading after a start comes from nothing or from unavailable, which is_number(f) refuses. No
+  # availability: a watering stays true while the sensor is out of range, and the last one is kept.
   - triggers:
       - trigger: state
         entity_id: [[ row.sensors.moisture ]]
@@ -148,7 +150,6 @@ template:
       - name: [[ row.id ]] last watered
         unique_id: [[ row.id ]]_last_watered
         device_class: timestamp
-        availability: "{{ has_value('[[ row.sensors.moisture ]]') }}"
         state: >
           {% set f = trigger.from_state.state if trigger.from_state else 'unknown' %}
           {% set t = trigger.to_state.state %}
@@ -162,7 +163,7 @@ template:
   - sensor:
 [%- for row in rows %]
       # Whole days until the moisture reaches the minimum at the last 48 hours' rate; unknown within
-      # 48 hours of a watering (the change would include it) or while the soil is not drying.
+      # 48 hours of a watering (the rate would include it) or while the soil is not drying.
       - name: [[ row.id ]] water in days
         unique_id: [[ row.id ]]_water_in_days
         unit_of_measurement: d
@@ -174,9 +175,17 @@ template:
           {% if m is none or c is none or c >= 0 or (w is not none and now() - w < timedelta(hours=48)) %}
             {{ none }}
           {% else %}
-            {{ [0, ((m - [[ row.limits.min_moisture | default(15) ]]) / (-c / 2)) | round(0, 'floor') | int] | max }}
+            {{ [0, ((m - [[ row.limits.min_moisture | default(15) ]]) / (-c * 86400)) | round(0, 'floor') | int] | max }}
           {% endif %}
 [%- endfor %]
+  # Rebuilt every minute and at a start: integration_entities() registers no listener, so a sensor
+  # added to Xiaomi BLE later would otherwise never be looked at.
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/1"
+    sensor:
       - name: Plants unplaced in soil
         unique_id: plants_unplaced_in_soil
         state: >

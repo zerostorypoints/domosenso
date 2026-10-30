@@ -2305,7 +2305,7 @@ def test_plants_stage_length_follows_pages(demo, tmp_path):
     marked = [{"domosenso_plant": True}] * 15 + [{}]
     assert stage_seconds(delay, plants=marked) == "20"            # three pages of six: two per pass
     assert stage_seconds(delay, plants=marked[:6]) == "10"
-    assert stage_seconds(delay, plants=[]) == "0"                 # no plants found: on to the next page
+    assert stage_seconds(delay, plants=[]) == "1"                 # no plants found: on, but never a 0 s spin
 
 
 def test_plants_helpers_reset_and_seeded(demo):

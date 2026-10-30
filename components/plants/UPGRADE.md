@@ -13,8 +13,9 @@ attributes `domosenso_plant`, `domosenso_room`, `domosenso_bands`, `entity_pictu
 ### What a home does
 
 `domosenso update plants`, a deploy and its restart. Optionally a `photo` per plant (files under the
-home's `www/`, listed in `local:`), and names or rooms per language. `water_in_days` stays unknown for
-48 hours after the update. A sensor already in soil that no plant uses shows on
+home's `www/`, listed in `local:`), and names or rooms per language. The 48-hour statistics load the
+recorder's history at the start, so `water_in_days` has a value at once unless a watering was less
+than 48 hours ago. A sensor already in soil that no plant uses shows on
 `sensor.plants_unplaced_in_soil` without a push (none at a start); add it to the inputs.
 
 ## 0.2.0 (2026-10-21): a package with the plants, their light peak and two alerts

@@ -58,7 +58,8 @@ def test_derived_sensors_per_plant(demo):
         p = object_id(plant["entity"])
         assert statistics[f"{p}_moisture_min_3h"]["state_characteristic"] == "value_min"
         assert statistics[f"{p}_moisture_min_3h"]["entity_id"] == moisture(plant)
-        assert statistics[f"{p}_moisture_change_48h"]["state_characteristic"] == "change"
+        # The rate over the readings actually held, so less than 48 h of history does not halve it.
+        assert statistics[f"{p}_moisture_change_48h"]["state_characteristic"] == "change_second"
         assert f"{p}_last_watered" in templates
         assert f"{p}_water_in_days" in templates
 
@@ -72,7 +73,8 @@ def test_last_watered_ignores_a_start(demo):
         assert sensor["device_class"] == "timestamp"
         assert block["triggers"][0]["entity_id"] == moisture(plant)
         assert "trigger.from_state" in sensor["state"] and "is_number(f)" in sensor["state"]
-        assert moisture(plant) in sensor["availability"]
+        # A watering stays true while the sensor is out of range (review item 1): no availability.
+        assert "availability" not in sensor
         _, water_in = templates[f"{p}_water_in_days"]
         assert moisture(plant) in water_in["availability"]
         assert f"sensor.{p}_last_watered" in water_in["state"]
@@ -103,3 +105,19 @@ def test_names_and_rooms_per_language(demo):
     assert monstera["friendly_name"] == "Monstera"
     assert "domosenso_names" not in monstera and "domosenso_rooms" not in monstera
     assert package["homeassistant"]["customize"]["sensor.basil_last_watered"]["friendly_name"] == "Basil last watered"
+
+
+def test_unplaced_list_is_rebuilt_every_minute(demo):
+    """integration_entities() registers no listener: without a time trigger a sensor added later
+    would never be seen (review item 2)."""
+    inputs, package = demo
+    block, _ = template_sensors(package)["plants_unplaced_in_soil"]
+    kinds = {t["trigger"] for t in block["triggers"]}
+    assert kinds == {"time_pattern", "homeassistant"}
+    assert next(t for t in block["triggers"] if t["trigger"] == "time_pattern")["minutes"] == "/1"
+
+
+def test_water_in_uses_the_rate_per_second(demo):
+    inputs, package = demo
+    _, water_in = template_sensors(package)["monstera_water_in_days"]
+    assert "86400" in water_in["state"] and "/ 2" not in water_in["state"]
