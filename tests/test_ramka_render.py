@@ -1783,6 +1783,7 @@ def test_album_list_follows_the_folder(demo):
     assert "chosen" not in event["event_data"]
     # The card's script sets the choice; the reset sets none (all).
     script = package["script"]["ramka_photo_albums_set"]
+    assert "selector" not in script["fields"]["chosen"]  # refused by 2026.9.2, which disabled the script
     [step] = script["sequence"]
     assert step["event"] == "ramka_photo_albums"
     assert ha_value(step["event_data"]["chosen"], chosen=["a", "b"]) == ["a", "b"]

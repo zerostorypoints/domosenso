@@ -904,9 +904,9 @@ script:
     fields:
       chosen:
         name: Albums
-        description: Top-level folders of the photo folder; none for all.
-        selector:
-          object: {}
+        description: Top-level folders of the photo folder, a list; none for all.
+        # No selector: HA 2026.9.2 refused `object: {}` here and disabled the script.
+        example: '["2025", "2026"]'
     sequence:
       - event: [[ p ]]_photo_albums
         event_data:
