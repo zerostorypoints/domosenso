@@ -1,0 +1,66 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 980 700' width='980' height='700' font-family='Helvetica, Arial, sans-serif'>
+<defs>
+<pattern id='pe' patternUnits='userSpaceOnUse' width='14' height='14' patternTransform='rotate(45)'><rect width='14' height='14' fill='#2e9e3a'/><rect width='7' height='14' fill='#f2d21b'/></pattern>
+</defs>
+<rect width='980' height='700' fill='#ffffff'/>
+<text x='490' y='38' text-anchor='middle' font-size='22' font-weight='700' fill='#111'>Shelly PM Mini Gen3 behind a socket, in series with its phase</text>
+<text x='490' y='62' text-anchor='middle' font-size='14' fill='#444'>Wall box seen from the front. Phase drawn brown; wire colours follow your country's code.</text>
+<rect x='30' y='84' width='920' height='400' rx='10' fill='#f4f6f8' stroke='#9aa5b1' stroke-width='1.5'/>
+<text x='44' y='106' font-size='13' fill='#555'>wall box</text>
+
+<rect x='300' y='160' width='120' height='64' rx='6' fill='#fff3e0' stroke='#e8801a' stroke-width='1.8'/>
+<text x='360' y='186' text-anchor='middle' font-size='13' font-weight='700' fill='#333'>connector L</text>
+<text x='360' y='204' text-anchor='middle' font-size='11' fill='#555'>3-way lever</text>
+<rect x='300' y='266' width='120' height='54' rx='6' fill='#fff3e0' stroke='#e8801a' stroke-width='1.8'/>
+<text x='360' y='290' text-anchor='middle' font-size='13' font-weight='700' fill='#333'>connector N</text>
+<text x='360' y='307' text-anchor='middle' font-size='11' fill='#555'>3-way lever</text>
+
+<rect x='490' y='150' width='200' height='110' rx='8' fill='#e9ebee' stroke='#333' stroke-width='1.8'/>
+<text x='590' y='192' text-anchor='middle' font-size='15' font-weight='700' fill='#111'>Shelly PM Mini Gen3</text>
+<text x='590' y='212' text-anchor='middle' font-size='12' fill='#444'>measures what flows L → O</text>
+<text x='590' y='228' text-anchor='middle' font-size='12' fill='#444'>does not switch</text>
+<rect x='476' y='170' width='28' height='22' fill='#222'/><text x='490' y='186' text-anchor='middle' font-size='13' font-weight='700' fill='#fff'>L</text>
+<rect x='476' y='222' width='28' height='22' fill='#222'/><text x='490' y='238' text-anchor='middle' font-size='13' font-weight='700' fill='#fff'>N</text>
+<rect x='676' y='170' width='28' height='22' fill='#222'/><text x='690' y='186' text-anchor='middle' font-size='13' font-weight='700' fill='#fff'>O</text>
+<text x='590' y='250' text-anchor='middle' font-size='11' fill='#555'>the case's two O terminals are bridged</text>
+
+<rect x='770' y='130' width='160' height='340' rx='8' fill='#ffffff' stroke='#333' stroke-width='1.6'/>
+<text x='850' y='152' text-anchor='middle' font-size='14' font-weight='700' fill='#111'>socket insert</text>
+<rect x='790' y='168' width='120' height='40' rx='4' fill='#f4f4f4' stroke='#333'/><text x='850' y='193' text-anchor='middle' font-size='13' fill='#333'>L</text>
+<rect x='790' y='288' width='120' height='46' rx='4' fill='#f4f4f4' stroke='#333'/><text x='850' y='316' text-anchor='middle' font-size='13' fill='#333'>N</text>
+<rect x='790' y='400' width='120' height='54' rx='4' fill='#f4f4f4' stroke='#333'/><text x='850' y='432' text-anchor='middle' font-size='13' fill='#333'>PE</text>
+<circle cx='779' cy='199' r='5' fill='#ffffff' stroke='#999'/>
+<text x='850' y='226' text-anchor='middle' font-size='11' fill='#555'>second L hole free</text>
+
+<path d='M44 176 H300' fill='none' stroke='#8b4513' stroke-width='5' stroke-linecap='round'/>
+<text x='60' y='168' font-size='12' fill='#333'>L from the supply</text>
+<path d='M44 210 H300' fill='none' stroke='#8b4513' stroke-width='5' stroke-linecap='round'/>
+<text x='60' y='202' font-size='12' fill='#333'>L onward, to the next socket</text>
+<path d='M44 293 H300' fill='none' stroke='#2f7fd3' stroke-width='5' stroke-linecap='round'/>
+<text x='60' y='285' font-size='12' fill='#333'>N from the supply</text>
+<path d='M44 360 H740 V324 H779' fill='none' stroke='#2f7fd3' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>
+<text x='60' y='352' font-size='12' fill='#333'>N onward: stays in the socket</text>
+<path d='M44 412 H779' fill='none' stroke='url(#pe)' stroke-width='5' stroke-linecap='round'/>
+<text x='60' y='404' font-size='12' fill='#333'>PE from the supply: unchanged</text>
+<path d='M44 444 H779' fill='none' stroke='url(#pe)' stroke-width='5' stroke-linecap='round'/>
+<text x='60' y='436' font-size='12' fill='#333'>PE onward: unchanged</text>
+
+<path d='M420 181 H476' fill='none' stroke='#8b4513' stroke-width='5' stroke-linecap='round'/>
+<text x='444' y='172' font-size='14' font-weight='700' fill='#111'>A</text>
+<path d='M704 181 H779' fill='none' stroke='#8b4513' stroke-width='5' stroke-linecap='round'/>
+<text x='736' y='172' font-size='14' font-weight='700' fill='#111'>B</text>
+<path d='M420 280 H450 V233 H476' fill='none' stroke='#2f7fd3' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>
+<text x='432' y='262' font-size='14' font-weight='700' fill='#111'>D</text>
+<path d='M420 306 H779' fill='none' stroke='#2f7fd3' stroke-width='5' stroke-linecap='round'/>
+<text x='600' y='298' font-size='14' font-weight='700' fill='#111'>C</text>
+
+<rect x='30' y='502' width='920' height='180' rx='8' fill='#ffffff' stroke='#bbb'/>
+<text x='46' y='528' font-size='14' fill='#111'><tspan font-weight='700'>A</tspan> connector L → Shelly L</text>
+<text x='330' y='528' font-size='14' fill='#111'><tspan font-weight='700'>B</tspan> Shelly O → socket L</text>
+<text x='46' y='552' font-size='14' fill='#111'><tspan font-weight='700'>C</tspan> connector N → socket N</text>
+<text x='330' y='552' font-size='14' fill='#111'><tspan font-weight='700'>D</tspan> connector N → Shelly N</text>
+<text x='46' y='584' font-size='13' fill='#333'>The onward phase leaves before the meter: only what is plugged into this socket is measured.</text>
+<text x='46' y='606' font-size='13' fill='#333'>Short leads of the supply's cross-section. Shelly terminals: 0.5–4 mm², strip 6–7 mm, 0.4 Nm (manufacturer's data).</text>
+<text x='46' y='628' font-size='13' fill='#333'>Circuit breaker B or C, 16 A at most. Switch it off and prove 0 V on L and N before touching a wire.</text>
+<text x='46' y='660' font-size='13' font-weight='700' fill='#b03a2e'>Mains work: done by a qualified electrician, or as your local rules allow. This drawing is not an installation approval.</text>
+</svg>

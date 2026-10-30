@@ -78,13 +78,13 @@ test('catalog sections lead from components to hardware and back from a guide',a
  await expect(sections.getByRole('link',{name:/Hardware/})).toHaveAttribute('aria-current','page');
  await expect(page.locator('.hardware-card')).toHaveCount(11);
  const photos=page.locator('.hardware-photo img');
- await expect(photos).toHaveCount(9);
+ await expect(photos).toHaveCount(10);
  for(const photo of await photos.all()){
   await photo.scrollIntoViewIfNeeded();
   await expect(photo).toHaveAttribute('alt',/.+/);
   await expect.poll(()=>photo.evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>0)).toBe(true);
  }
- await expect(page.locator('.hardware-photo figcaption')).toHaveCount(9);
+ await expect(page.locator('.hardware-photo figcaption')).toHaveCount(10);
  await page.evaluate(()=>window.scrollTo(0,0));
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://domosenso.org/devices/');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
