@@ -2,6 +2,17 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
+## 0.3.1 (2026-10-30): water in and the new-sensor push work
+
+Two fixes found on the first production home. `sensor.<plant>_moisture_change_48h` kept the
+statistics default of 2 decimals, which rounded every drying rate (about -1e-5 %/s) to 0, so
+`water_in_days` was never known; it now keeps 10. `automation.plant_sensor_new` used a `zip` filter
+Home Assistant does not have and was disabled at the start; its message is now built with a loop.
+
+### What a home does
+
+`domosenso update plants` and a deploy.
+
 ## 0.3.0 (2026-10-30): what the Ramka needs, last watered, water in, a new sensor in a pot
 
 SPEC-022. Additive: new optional plant keys `photo`, and `name` / `label` per language; the

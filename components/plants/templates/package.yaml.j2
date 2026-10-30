@@ -133,6 +133,8 @@ sensor:
     unique_id: [[ row.id ]]_moisture_change_48h
     entity_id: [[ row.sensors.moisture ]]
     state_characteristic: change_second
+    # About -1e-5 %/s: the default 2 decimals would round every rate to 0.
+    precision: 10
     max_age:
       hours: 48
 [%- endfor %]
@@ -294,7 +296,9 @@ automation:
         {% set before = (trigger.from_state.attributes.sensors or []) | map(attribute='entity') | list %}
         {{ (trigger.to_state.attributes.sensors or []) | rejectattr('entity', 'in', before) | list }}
       text: >
-        {{ new | map(attribute='device') | zip(new | map(attribute='value')) | map('join', ': ') | join(' %, ') ~ ' %' }}
+        {% set ns = namespace(out=[]) %}
+        {% for s in new %}{% set ns.out = ns.out + [s.device ~ ': ' ~ s.value ~ ' %'] %}{% endfor %}
+        {{ ns.out | join(', ') }}
     actions:
       - condition: template
         value_template: "{{ new | count > 0 }}"
