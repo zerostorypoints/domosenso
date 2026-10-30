@@ -193,6 +193,7 @@ views:
             visibility: [ [[ advanced_on ]] ]
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
+[%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else labels(inputs.plants))]) ]][[ reset(view) ]]
 [%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]]
       # The rooms: ten rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
       # amendment 2. The tiles and the charts follow them.
@@ -223,8 +224,7 @@ views:
               **[[ t('ui.settings.calendar_by_url') ]]**
 [[ block(t('ui.settings.calendar_by_url_how')) ]]
 [%- endif %]
-[%- if view == 'plants' %][[ render_time([('inputs.plants', labels(inputs.plants))]) ]]
-[%- elif view == 'status' %]
+[%- if view == 'status' %]
 [%- set covers = [] -%][%- for c in inputs.covers | default([]) -%][%- set _ = covers.append(c.status_label | default(c.label)) -%][%- endfor -%][[ render_time([('inputs.covers', covers | join(', ') or '—'), ('inputs.contacts', labels(status_input.contacts | default([]))),
                  ('inputs.power', labels(status_input.power | default([]))), ('inputs.locks', labels(status_input.locks | default([]))),
                  ('inputs.status_columns', inputs.status_columns | default(4))]) ]]

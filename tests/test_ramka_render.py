@@ -530,7 +530,8 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
     with the calendar switch. Everything else is 0.3.0's, value for value."""
     before, after = tmp_path / "before", tmp_path / "after"
     dr.render_component(tagged_ramka(tmp_path, "0.3.0"), without_visual(), before)
-    dr.render_component(COMP, without_visual(), after)
+    # 0.6.0, the last release before SPEC-022 changed the plants parts on purpose (tested below).
+    dr.render_component(tagged_ramka(tmp_path, "0.6.0"), without_visual(), after)
     names = sorted(p.name for p in before.iterdir())
     # The settings dashboard is new in 0.4.0.
     assert sorted(p.name for p in after.iterdir()) == sorted(names + [f"ramka-settings.{lang}.yaml" for lang in LANGS])
@@ -556,6 +557,8 @@ AIR_READINGS = ["score", "co2", "pm2_5", "voc", "nox"]
 AIR_LIMITS = {"score_fair": 80, "score_poor": 60, "co2_raised": 800, "co2_high": 1200, "pm2_5_raised": 15,
               "pm2_5_high": 35, "voc_raised": 150, "voc_high": 250, "nox_raised": 20, "nox_high": 150}
 PHOTO_DEFAULTS = {"input_number.ramka_photo_count": 5, "input_number.ramka_photo_s": 10}
+# The Plants page's settings (SPEC-022), with the demo home's plants.
+PLANT_SETTINGS = {"input_number.ramka_plants_per_page": 6, "input_number.ramka_plants_page_s": 10}
 # The albums are no helper: the reset sends event ramka_photo_albums with all albums, the ticks kept.
 ALBUMS = "sensor.ramka_photo_albums"
 # Nor are the Climate page's rooms (amendment 2): the reset sends event ramka_climate_rooms.
@@ -683,7 +686,7 @@ DEFAULTS = {
     "input_number.ramka_lux_max": 200, "input_boolean.ramka_ambient_music": "on",
     "input_select.ramka_theme_mode": "dark", "input_boolean.ramka_settings_advanced": "off",
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
-    **PHOTO_DEFAULTS, **AIR_DEFAULTS,
+    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS,
 }
 MUSIC_DEFAULTS = {
     "input_select.ramka_music_visual": "spectrum", "input_select.ramka_music_palette": "series",
@@ -699,7 +702,7 @@ MUSIC_DEFAULTS = {
 PAGE_OF = {
     **{e: "general" for e in DEFAULTS if not e.startswith("input_boolean.ramka_page_")},
     "input_boolean.ramka_ambient_music": None,
-    **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "air" for e in AIR_DEFAULTS},
+    **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
     **{f"input_boolean.ramka_page_{v}": v for v in PAGE_VIEWS},
     **{e: "music" for e in MUSIC_DEFAULTS},
 }
@@ -708,7 +711,7 @@ GROUP_OF = {
     "input_select.ramka_theme_mode": "pages", "input_boolean.ramka_settings_advanced": "pages",
     **{f"input_boolean.ramka_page_{v}": "pages" for v in PAGE_VIEWS},
     **{e: "music_visual" for e in MUSIC_DEFAULTS},
-    **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "air" for e in AIR_DEFAULTS},
+    **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
 }
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
@@ -902,9 +905,9 @@ def tuned(package, **values) -> dict[str, object]:
 def test_seed_rule_keeps_tuned_values(demo, plain):
     package = demo["package.yaml"]
     fresh = at_minimum(package)
-    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_visual", "photos", "air", "climate"]
+    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_visual", "photos", "plants", "air", "climate"]
     upgraded = {**fresh, "input_number.ramka_off_delay_s": 600.0}
-    assert seed_groups(package, upgraded) == ["pages", "music_visual", "photos", "air", "climate"]
+    assert seed_groups(package, upgraded) == ["pages", "music_visual", "photos", "plants", "air", "climate"]
     on_purpose = {**tuned(package), "input_number.ramka_near_s": 1.0}
     assert seed_groups(package, on_purpose, rooms=[]) == ["pages", "music_visual"]
     seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on"}
@@ -914,13 +917,13 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
     assert seed_groups(package, music_tuned, rooms=[]) == []
     # unknown and unavailable count as untouched.
     unknown = {**fresh, "input_number.ramka_lux_max": "unknown", "input_number.ramka_near_cm": "unavailable"}
-    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_visual", "photos", "air", "climate"]
+    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_visual", "photos", "plants", "air", "climate"]
     # Without music_visual there is no music group at all.
-    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "photos", "air", "climate"]
+    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "photos", "plants", "air", "climate"]
     # Photos and air are seeded while untouched after the flag too: a home that ran 0.4.0 before
     # amendment 1 gets them at its next start (unknown), one that tuned them keeps them.
     assert seed_groups(plain["package.yaml"], {**at_minimum(plain["package.yaml"]),
-                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["photos", "air"]
+                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["photos", "plants", "air"]
     one_tuned = {**music_tuned, "input_number.ramka_photo_count": "unknown", "input_number.ramka_photo_s": "unknown",
                  **{f"input_number.ramka_air_{k}": "unknown" for k in AIR_LIMITS}, "input_number.ramka_air_co2_high": 1500.0}
     assert seed_groups(package, one_tuned, rooms=[]) == ["photos"]
@@ -957,7 +960,7 @@ def test_reset_page_and_groups(demo):
     assert run_reset(package) == everything
     for page in ["general"] + PAGE_VIEWS:
         assert set(run_reset(package, page=page)) == {e for e in everything if PAGE_OF[e] == page}, page
-    for group in ("presence_display", "pages", "music_visual", "photos", "air", "climate"):
+    for group in ("presence_display", "pages", "music_visual", "photos", "plants", "air", "climate"):
         assert set(run_reset(package, groups=[group])) == {e for e in everything if GROUP_OF[e] == group}, group
     assert set(run_reset(package, groups="pages")) == {e for e in everything if GROUP_OF[e] == "pages"}
     assert set(run_reset(package, page="general", groups=["pages"])) == {
@@ -975,7 +978,7 @@ def test_reset_page_and_groups(demo):
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
     assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS
-    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual", "photos", "air", "climate"]
+    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual", "photos", "plants", "air", "climate"]
 
 
 def maximal_inputs() -> dict:
@@ -1439,9 +1442,10 @@ BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_
                    "input_boolean.ramka_settings_advanced"}
 BASIC["photos"] |= {"input_number.ramka_photo_count", "input_boolean.ramka_settings_advanced"}
 BASIC["climate"] |= {"input_boolean.ramka_settings_advanced"}
+BASIC["plants"] |= {"input_number.ramka_plants_per_page", "input_boolean.ramka_settings_advanced"}
 BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
 # The pages besides General that have Advanced parts, and so the Advanced switch too.
-ADVANCED_PAGES = {"music", "photos", "air", "climate"}
+ADVANCED_PAGES = {"music", "photos", "air", "climate", "plants"}
 ADVANCED = {
     "general": {"input_number.ramka_near_cm", "input_number.ramka_near_s", "input_number.ramka_controls_hold_s",
                 "input_number.ramka_lux_max"},
@@ -1452,6 +1456,7 @@ ADVANCED = {
               "input_text.audio_sensor_calibration_note"},
     "photos": {"input_number.ramka_photo_s", ALBUMS},
     "climate": {CLIMATE},
+    "plants": {"input_number.ramka_plants_page_s"},
     "air": {f"input_number.ramka_air_{k}" for k in AIR_LIMITS},
 }
 # What audio-sensor provides that the Music page reads (its manifest's provides, Ramka's consumes).
@@ -1876,10 +1881,12 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
     change, value for value."""
     before, after = tmp_path / "before", tmp_path / "after"
     dr.render_component(ramka_at(tmp_path, BEFORE_SPECTRUM_RATE, "ramka-before"), demo_inputs(), before)
-    dr.render_component(COMP, demo_inputs(), after)
+    # 0.6.0, the last release before SPEC-022 changed the plants parts on purpose (tested below).
+    after_comp = tagged_ramka(tmp_path, "0.6.0")
+    dr.render_component(after_comp, demo_inputs(), after)
     names = sorted(p.name for p in before.iterdir())
     assert names == sorted(p.name for p in after.iterdir())
-    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    manifest = yaml.safe_load((after_comp / "component.yaml").read_text(encoding="utf-8"))
     consumed = {c["id"] for c in manifest["consumes"] if "id" in c and c["component"] == "audio-sensor"}
     assert {SPECTRUM_RATE, MUSIC_WATCHING} <= consumed
     load = lambda path: yaml.safe_load(path.read_text(encoding="utf-8"))  # noqa: E731
@@ -2230,3 +2237,89 @@ def test_no_script_field_has_an_empty_selector(demo):
         for field, spec in (script.get("fields") or {}).items():
             for kind, options in (spec.get("selector") or {}).items():
                 assert options, f"{name}.{field}: selector {kind} is empty"
+
+
+# ---- Plants (SPEC-022): discover, plants per page and seconds per page --------------------------
+
+DISCOVER_INPUTS = REPO / "tests" / "fixtures" / "ramka-plants-discover.yaml"
+
+
+def plants_card(dashboard):
+    [card] = [n for n in walk(dashboard) if isinstance(n, dict) and n.get("type") == "custom:plants-card"]
+    return card
+
+
+def plants_stage(package):
+    loop = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"]
+    [stage] = [s for s in loop if s.get("if") and s["if"][0].get("state") == "plants"]
+    return stage["then"]
+
+
+def stage_seconds(template, states=None, plants=()):
+    """The plants stage's delay with stub states and `plants` as the plant entities' attributes."""
+    import types
+
+    import jinja2
+
+    states = states or {}
+
+    class States:
+        plant = [types.SimpleNamespace(attributes=a) for a in plants]
+
+        def __call__(self, entity_id):
+            return str(states.get(entity_id, "unavailable"))
+
+    env = jinja2.Environment()
+    return env.from_string(template).render(states=States()).strip()
+
+
+def test_plants_discover_renders_a_discovering_card(tmp_path):
+    out = render(tmp_path, yaml.safe_load(DISCOVER_INPUTS.read_text(encoding="utf-8")))
+    card = plants_card(out["dashboard.en.yaml"])
+    assert card["discover"] is True and "plants" not in card
+    assert card["per_page"] == "input_number.ramka_plants_per_page"
+    assert card["page_s"] == "input_number.ramka_plants_page_s"
+
+
+def test_plants_list_still_renders_as_before(demo):
+    card = plants_card(demo["dashboard.en.yaml"])
+    assert [p["entity"] for p in card["plants"]] == [p["entity"] for p in demo_inputs()["plants"]]
+    assert "discover" not in card
+    assert (card["per_page"], card["page_s"]) == ("input_number.ramka_plants_per_page", "input_number.ramka_plants_page_s")
+
+
+def test_plants_helpers_and_their_ranges(demo):
+    numbers = demo["package.yaml"]["input_number"]
+    per, secs = numbers["ramka_plants_per_page"], numbers["ramka_plants_page_s"]
+    assert (per["min"], per["max"], per["step"]) == (1, 12, 1)
+    assert (secs["min"], secs["max"], secs["unit_of_measurement"]) == (5, 30, "s")
+
+
+def test_plants_stage_length_follows_pages(demo, tmp_path):
+    [delay] = [n["delay"]["seconds"] for n in walk(plants_stage(demo["package.yaml"])) if isinstance(n.get("delay"), dict)]
+    # The demo lists three plants: one page of 10 s, with the defaults or the helpers' values.
+    assert stage_seconds(delay) == "10"
+    assert stage_seconds(delay, {"input_number.ramka_plants_per_page": "2", "input_number.ramka_plants_page_s": "7"}) == "14"
+    out = render(tmp_path, yaml.safe_load(DISCOVER_INPUTS.read_text(encoding="utf-8")))
+    [delay] = [n["delay"]["seconds"] for n in walk(plants_stage(out["package.yaml"])) if isinstance(n.get("delay"), dict)]
+    marked = [{"domosenso_plant": True}] * 15 + [{}]
+    assert stage_seconds(delay, plants=marked) == "20"            # three pages of six: two per pass
+    assert stage_seconds(delay, plants=marked[:6]) == "10"
+    assert stage_seconds(delay, plants=[]) == "0"                 # no plants found: on to the next page
+
+
+def test_plants_helpers_reset_and_seeded(demo):
+    package = demo["package.yaml"]
+    text = yaml.safe_dump(reset_script(package))
+    for entity, value in PLANT_SETTINGS.items():
+        assert entity in text
+    seed = automation(package, "settings_seed")
+    assert "ramka_plants_per_page" in yaml.safe_dump(seed) and "'plants'" in yaml.safe_dump(seed)
+
+
+def test_plants_settings_page_has_both_helpers(tmp_path):
+    for inputs in (demo_inputs(), yaml.safe_load(DISCOVER_INPUTS.read_text(encoding="utf-8"))):
+        out = render(tmp_path / str(id(inputs)), inputs)
+        [page] = [v for v in out["ramka-settings.en.yaml"]["views"] if v["path"] == "plants"]
+        found = {n for n in strings(page) if n.startswith("input_number.ramka_plants")}
+        assert found == set(PLANT_SETTINGS)
