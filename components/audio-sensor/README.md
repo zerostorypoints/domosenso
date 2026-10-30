@@ -36,8 +36,10 @@ Levels stay in dBFS on the board (0 dBFS is clipping). Home Assistant adds a per
 get dB SPL, so calibrating against a reference microphone needs no flash.
 
 Measured on one board at `normal`: 31 bands about five times a second (4.71), the spectrum worker at about 19 % of one
-core. The bands below about 50 Hz hold one or two FFT bins: approximate, adequate for a visual, not
-for measurement. The FFT is 8192 points (Hann window, 50 % overlap) at 48 kHz, and the band sum
+core (measured with the earlier 8192-point FFT; 4096 points: about 22 %). The FFT is 4096 points
+(Hann window, 50 % overlap) at 48 kHz, bins 11.7 Hz wide: the bands below about 80 Hz share bins
+(25 and 31.5 Hz move together), approximate, adequate for a visual, not for measurement. 4096
+rather than 8192 halves the time a hit needs to reach the screen (see Latency). The band sum
 matches Sound level within about 1 dB.
 
 ## The microphone gain
@@ -165,7 +167,7 @@ code, not measured yet (inference); the measurement below replaces them.
 
 | stage | `normal` | `fast` |
 |---|---|---|
-| FFT window (8192 points at 48 kHz, Hann): a hit reaches full weight | about 85 ms | about 85 ms |
+| FFT window (4096 points at 48 kHz, Hann; 8192 before): a hit reaches full weight | about 43 ms | about 43 ms |
 | wait for the publish, which happens when a frame lands and the interval has passed | 0 to 200 ms | 0 to about 5 ms |
 | what goes out | the mean of the frames since the last publish: a kick in one of two or three frames loses about 4 dB | the newest frame alone |
 | ESPHome API (`batch_delay: 10ms`; the default 100 ms halved `fast`), Home Assistant, the `sensor.music_spectrum` alias, the websocket | tens of ms (not timed) | same |
@@ -177,7 +179,7 @@ The board's **Spectrum rate** select sets the profile:
 |---|---|---|---|
 | `eco` | 500 ms | mean of the frames | the lightest: two state changes a second |
 | `normal` | 200 ms | mean of the frames | today's rate: five a second |
-| `fast` | 85 ms (the frame hop; faster would repeat a frame) | the newest frame | about twelve state changes a second, one websocket message per open dashboard each |
+| `fast` | 85 ms (every other 43 ms frame hop; with 50 % overlap every sample is in a sent frame) | the newest frame | about twelve state changes a second, one websocket message per open dashboard each |
 
 The intervals are measured (below). Each publish is one CSV of 31 values over the API,
 one state change and one alias render in Home Assistant, and one websocket message per open
@@ -200,7 +202,7 @@ data newer; on a weak tablet a lower value still saves work.
 |---|---|---|
 | publish rate per profile | 60 s each; count the board's spectrum `state_changed` events in Home Assistant; within 10 % of 500 / 200 / 85 ms | `eco` 2.02/s, mean 499 ms (p90 569); `normal` 5.00/s, mean 200 ms (p90 304); `fast` 11.52/s, mean 87 ms (p90 163), 98 % of the frames. Before, with the API's default `batch_delay` of 100 ms, `fast` gave 5.97/s, mean 168 ms; the old firmware's fixed 200 ms gave 4.70/s, mean 212 ms |
 | load, `eco` against `normal` | Spectrum load and the Home Assistant event rate over 10 min each | |
-| sound to screen, `fast` and `normal` | a tone burst or kick near the microphone, 10 trials filmed at 240 fps beside the tablet; median and 90th percentile; target under 300 ms in 9 of 10 on `fast` | |
+| sound to screen, `fast` and `normal` | a tone burst or kick near the microphone, 10 trials filmed at 240 fps beside the tablet; median and 90th percentile; target under 300 ms in 9 of 10 on `fast` | `fast`, rise 50 ms, the card before the no-stepping change, one track filmed at 120 fps, time from the kick in the soundtrack to half of the wave's colour change at its bass end: FFT 8192, median 333 ms, 0 of 8 under 300; FFT 4096, median 280 ms (225–362), 9 of 12 under 300. `normal` not filmed yet |
 | the fallbacks | a restart gives `normal`; `fast` alone falls back after 60 min; the music view closed gives `normal` after 10 s | |
 
 A long `fall` (default 4 s) with kicks twice a second keeps the low bands high between kicks, which

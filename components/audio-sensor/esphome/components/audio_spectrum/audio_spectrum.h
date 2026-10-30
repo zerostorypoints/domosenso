@@ -59,8 +59,9 @@ class AudioSpectrumComponent : public Component {
   // PSRAM, 16-byte aligned for esp-dsp's SIMD paths. Owned for the device's lifetime.
   int16_t *samples_{nullptr};   // the last FFT_SIZE samples, oldest first
   float *window_{nullptr};      // Hann, FFT_SIZE
-  float *fft_{nullptr};         // FFT_SIZE floats: windowed input, then spectrum, then power in place
-  float *fft_table_{nullptr};   // esp-dsp's radix-4 twiddles
+  float *fft_{nullptr};         // FFT_SIZE complex: windowed input, then spectrum, then power in place
+  float *fft_table_{nullptr};   // esp-dsp's radix-2 twiddles, FFT_SIZE floats
+  bool fft_error_logged_{false};  // the worker logs a refused transform once
 
   // Shared between the worker (adds) and loop() (takes and resets).
   std::mutex mutex_;

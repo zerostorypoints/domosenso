@@ -13,7 +13,8 @@ struct Profile {
   Mix mix;
 };
 
-// FAST is the frame hop (4096 samples at 48 kHz, 85.3 ms): one publish per new frame.
+// FAST is every other frame hop (2048 samples at 48 kHz, 42.7 ms), the newest frame: with 50 %
+// overlap every sample is in a published frame, at half the state changes of every hop.
 inline constexpr Profile ECO{500, Mix::MEAN}, NORMAL{200, Mix::MEAN}, FAST{85, Mix::LATEST};
 
 // A frame lands a little after the hop and loop() sees it a little later: without slack, an 85 ms

@@ -193,12 +193,12 @@ sensor:
 
 # Third-octave spectrum for the ambient wave card.
 # Passive, like the 100 ms meter: it only listens while the 1-second meter keeps the microphone
-# running, and never stops it for the others. 8192-point FFT (50 % overlap, a frame every 85 ms):
-# bins 5.86 Hz wide, about one per third at the bottom (the 20 Hz third is 4.6 Hz wide); 4096 points
-# would smear the lowest thirds into each other.
+# running, and never stops it for the others. 4096-point FFT (50 % overlap, a frame every 43 ms):
+# bins 11.7 Hz wide, so the lowest thirds share bins; 8192 points kept them apart but took twice as
+# long to show a hit (README, Latency).
 # The levels stay dBFS like the other meters: Home Assistant adds the same SPL offset. Always on:
 # the spectrum goes out as the Spectrum rate select says (eco every 500 ms, normal every 200 ms as
-# the mean of the frames since the last; fast with each new frame, alone), only when a frame has
+# the mean of the frames since the last; fast every 85 ms, the newest frame alone), only when a frame has
 # landed; the octaves (1-minute Leq) and the worker's load every minute.
 audio_spectrum:
   id: spectrum

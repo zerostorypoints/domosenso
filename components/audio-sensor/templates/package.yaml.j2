@@ -124,8 +124,8 @@ input_select:
 [%- for b in ordered %]
       - [[ b.area | yaml ]]
 [%- endfor %]
-  # How often the music board publishes its spectrum: eco 500 ms, normal 200 ms, fast every frame
-  # (85 ms). No `initial:`; a state that is no option (a fresh helper) reads as normal.
+  # How often the music board publishes its spectrum: eco 500 ms, normal 200 ms, fast every 85 ms
+  # (the newest frame). No `initial:`; a state that is no option (a fresh helper) reads as normal.
   audio_sensor_music_spectrum_rate:
     name: Audio sensor music spectrum rate
     icon: mdi:timer-cog-outline

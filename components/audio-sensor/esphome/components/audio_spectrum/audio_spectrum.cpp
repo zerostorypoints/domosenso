@@ -17,10 +17,13 @@ namespace esphome::audio_spectrum {
 static const char *const TAG = "audio_spectrum";
 
 static constexpr uint32_t SAMPLE_RATE = 48000;
-static constexpr size_t FFT_SIZE = 8192;
+// 4096 points (85 ms, hop 43 ms): a hit reaches full weight in half the time of 8192, which was
+// the largest stage of the sound-to-screen delay; the bins widen to 11.7 Hz, so the lowest
+// thirds share a bin. The CONFIG_DSP_MAX_FFT_SIZE default (4096) is the radix-2 table's limit.
+static constexpr size_t FFT_SIZE = 4096;
 // 50 % overlap: a Hann frame weighs its ends near zero, so the next frame starts halfway.
 static constexpr size_t HOP = FFT_SIZE / 2;
-// esp-dsp's real FFT runs as a complex FFT of half the length.
+// Bins 0..HALF of the real input's spectrum.
 static constexpr size_t HALF = FFT_SIZE / 2;
 // One second of int16 samples: room for the worker to fall a few frames behind without a gap.
 static constexpr size_t RING_BUFFER_BYTES = SAMPLE_RATE * sizeof(int16_t);
@@ -40,9 +43,8 @@ void AudioSpectrumComponent::setup() {
   this->ring_buffer_ = ring_buffer::RingBuffer::create(RING_BUFFER_BYTES);
   this->samples_ = alloc_psram<int16_t>(FFT_SIZE);
   this->window_ = alloc_psram<float>(FFT_SIZE);
-  this->fft_ = alloc_psram<float>(FFT_SIZE);
-  // dsps_fft4r_init_fc32 with a caller's buffer writes 2 * HALF (cos, sin) pairs into it.
-  this->fft_table_ = alloc_psram<float>(4 * HALF);
+  this->fft_ = alloc_psram<float>(2 * FFT_SIZE);
+  this->fft_table_ = alloc_psram<float>(FFT_SIZE);
   if (this->ring_buffer_ == nullptr || this->samples_ == nullptr || this->window_ == nullptr ||
       this->fft_ == nullptr || this->fft_table_ == nullptr) {
     ESP_LOGE(TAG, "Could not allocate buffers");
@@ -50,9 +52,9 @@ void AudioSpectrumComponent::setup() {
     return;
   }
 
-  // esp-dsp keeps the fft4r twiddle table in a global, not per caller: no other component on this
-  // device may init fft4r with another size, or this worker's transforms would use its table.
-  const esp_err_t err = dsps_fft4r_init_fc32(this->fft_table_, HALF);
+  // esp-dsp keeps the fft2r twiddle table in a global, not per caller: no other component on this
+  // device may init fft2r with a smaller size, or this worker's transforms would use its table.
+  const esp_err_t err = dsps_fft2r_init_fc32(this->fft_table_, FFT_SIZE);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "FFT init failed: %d", err);
     this->mark_failed();
@@ -97,23 +99,30 @@ void AudioSpectrumComponent::worker_loop_() {
 void AudioSpectrumComponent::process_frame_() {
   const int64_t start = esp_timer_get_time();
 
+  // Complex radix-2 FFT of the real frame (imaginary parts 0). Not radix-4: esp-dsp's fft4r takes
+  // only lengths with an even log2, and its real-FFT split would run it at FFT_SIZE / 2 = 2048.
   float *const x = this->fft_;
   for (size_t i = 0; i < FFT_SIZE; i++) {
-    x[i] = (float) this->samples_[i] * this->window_[i];
+    x[2 * i] = (float) this->samples_[i] * this->window_[i];
+    x[2 * i + 1] = 0.0f;
   }
-  // Real FFT: the frame as HALF complex points, then esp-dsp's split into the real spectrum.
-  // Result: x[0] = X[0] (DC), x[1] = X[HALF] (Nyquist), (x[2k], x[2k + 1]) = X[k].
-  dsps_fft4r_fc32(x, HALF);
-  dsps_bit_rev4r_fc32(x, HALF);
-  dsps_cplx2real_fc32(x, HALF);
+  esp_err_t err = dsps_fft2r_fc32(x, FFT_SIZE);
+  if (err == ESP_OK)
+    err = dsps_bit_rev_fc32(x, FFT_SIZE);
+  if (err != ESP_OK) {
+    // A refused transform leaves the samples in x: drop the frame rather than publish them as a
+    // spectrum. No frame, no publish, so the cards show the spectrum as stale.
+    if (!this->fft_error_logged_) {
+      ESP_LOGE(TAG, "FFT failed: %d", err);
+      this->fft_error_logged_ = true;
+    }
+    return;
+  }
 
   // Power in place: power[k] lands at index k, which every later read (2k and up) is past.
-  const float nyquist = x[1] * x[1];
-  x[0] = x[0] * x[0];
-  for (size_t k = 1; k < HALF; k++) {
+  for (size_t k = 0; k <= HALF; k++) {
     x[k] = x[2 * k] * x[2 * k] + x[2 * k + 1] * x[2 * k + 1];
   }
-  x[HALF] = nyquist;
 
   double frame_ms[bands::NUM_BANDS] = {};
   bands::accumulate_bands(x, *this->band_map_, FFT_SIZE, frame_ms);

@@ -80,7 +80,9 @@ A home gets:
   `name` (`audio-sensor-${room}`), `friendly_name` (`Audio sensor ${area}`), `mic_gain` (`24DB`).
   No `!secret`: a remote package cannot read the home's secrets.
 - `esphome/components/audio_spectrum/` (`__init__.py`, `audio_spectrum.h/.cpp`, `spectrum_bands.h`):
-  8192-point real FFT, Hann window, 50 % overlap at 48 kHz; energy per ISO 266 third-octave band,
+  4096-point FFT (amended 2026-10-30, #110: 8192 before; esp-dsp's radix-2 FFT on the real frame,
+  since its radix-4 real FFT refuses this length), Hann window, 50 % overlap at 48 kHz; a refused
+  transform drops the frame and logs once; energy per ISO 266 third-octave band,
   normalised so the band sum matches Sound level within about 1 dB; the band maths in
   `spectrum_bands.h` with no ESPHome dependency, tested on the host. The package loads it with
   `external_components: [{source: {type: git, url: https://github.com/zerostorypoints/domosenso,
@@ -95,12 +97,13 @@ A home gets:
 - Spectrum rate (amended 2026-10-30, #99, #110): a template `select` `Spectrum rate`
   (`eco`, `normal`, `fast`) sets the spectrum's profile at runtime. **eco**: every 500 ms, the mean
   of the frames since the last publish; **normal**: every 200 ms, the mean (the behaviour before);
-  **fast**: every 85 ms (the frame hop), the newest frame alone, since averaging blurs a hit. A
-  publish happens when a new frame has landed and the interval has passed (10 ms slack, so an
-  85 ms profile never skips a frame), never on a clock of its own, and never without a new frame.
+  **fast**: every 85 ms (every other 43 ms frame hop), the newest frame alone, since averaging
+  blurs a hit. A publish happens when a new frame has landed and the interval has passed (10 ms
+  slack, so a profile at a multiple of the hop never waits a frame longer), never on a clock of its own, and never without a new frame.
   `normal` after a boot; a board left on `fast` returns to `normal` after 60 min (the
   `live_tracking_timeout` pattern). The publish rule lives in `publish_policy.h`, host-tested like
-  the band maths. Measured 2026-10-30 (README): 499 / 200 / 87 ms. The firmware sets
+  the band maths. Measured 2026-10-30 (README): 499 / 200 / 87 ms; sound to screen on `fast`, median 333 ms
+  with 8192 points, 280 ms with 4096. The firmware sets
   `api: batch_delay: 10ms`: the API keeps one state per entity in a batch, and its default 100 ms
   let `fast` through only every other frame.
 - Not in the package: `bluetooth_proxy` (#56 proposes it). A home adds it in its own device file;
