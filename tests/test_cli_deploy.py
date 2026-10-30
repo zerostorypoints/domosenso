@@ -250,6 +250,156 @@ def test_dev_render_goes_to_staging_but_not_production(tmp_path):
     assert (home.target_dir / "packages/ramka.yaml").read_text().endswith("a: 2\n")
 
 
+# --- --allow-dirty (SPEC-019 A) ---------------------------------------------------------------
+
+DIRTY = "packages/ramka.yaml"
+
+
+def dirty_home(tmp_path) -> Home:
+    home = Home(tmp_path)
+    home.managed(DIRTY, "a: 1\n")
+    home.write(DIRTY, stamp("ramka", "0.1.1", "abcdef1", dirty=True) + "a: 2\n")
+    home.declare()
+    return home
+
+
+class Terminal(io.StringIO):
+    def isatty(self):
+        return True
+
+
+def plan_hash(capsys, home: Home) -> str:
+    assert cli(home, "deploy", "production", "--plan") == 0
+    return capsys.readouterr().out.splitlines()[-2].removeprefix("hash ")
+
+
+def test_production_refuses_dirty_without_flag(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    digest = plan_hash(capsys, home)
+    assert cli(home, "deploy", "production", "--apply", "--confirm", digest) == 1
+    assert f"FAIL dev render: {DIRTY}: production takes only files rendered from a tag" in capsys.readouterr().out
+    assert target_files(home.target_dir) == {}
+
+
+def test_allow_dirty_needs_confirm(tmp_path, fakes, capsys, monkeypatch):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "production", "--apply", "--allow-dirty") == 1
+    assert "FAIL dev render needs --confirm" in capsys.readouterr().out
+    monkeypatch.setattr("sys.stdin", Terminal("production\n"))  # typing the word is not enough
+    assert cli(home, "deploy", "production", "--apply", "--allow-dirty") == 1
+    assert "FAIL dev render needs --confirm" in capsys.readouterr().out
+    assert target_files(home.target_dir) == {}
+
+
+def test_allow_dirty_with_confirm_deploys(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    digest = plan_hash(capsys, home)
+    assert cli(home, "deploy", "production", "--apply", "--allow-dirty", "--confirm", digest) == 0
+    out = capsys.readouterr().out
+    assert f"dev-render {DIRTY}" in out
+    assert (home.target_dir / DIRTY).read_text().endswith("a: 2\n")
+    deployed = record(home.target_dir)
+    assert deployed["dev_render"] == {"paths": [DIRTY], "allowed": True}
+    plan_json = json.loads((home.target_dir / f".domosenso/predeploy-{deployed['deploy_id']}/plan.json").read_text())
+    assert plan_json["dev_render"] == {"paths": [DIRTY], "allowed": True}
+    assert plan_json["allow_dirty"] is True
+    local = home.root / ".domosenso/deploys/production" / deployed["deploy_id"] / "plan.json"
+    assert json.loads(local.read_text())["dev_render"] == {"paths": [DIRTY], "allowed": True}
+
+
+def test_allow_dirty_stale_hash(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "production", "--apply", "--allow-dirty", "--confirm", "000000000000") == 1
+    assert "FAIL the plan changed" in capsys.readouterr().out
+    assert target_files(home.target_dir) == {}
+
+
+def test_allow_dirty_on_a_clean_plan_changes_nothing(tmp_path, fakes, capsys):
+    home = Home(tmp_path)
+    home.write("packages/mine.yaml", "b: 1\n")
+    home.declare()
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "production", "--apply", "--allow-dirty", "--confirm", plan_hash(capsys, home)) == 0
+    assert "dev_render" not in record(home.target_dir)
+
+
+def test_clean_plan_hash_unchanged(tmp_path):
+    home = Home(tmp_path)
+    home.managed("packages/ramka.yaml", "a: 1\n")
+    home.write("packages/mine.yaml", "b: 1\n")
+    # Recorded before SPEC-019: a plan without dev renders keeps the hash it had.
+    assert plan_for(home, FakeTarget(home.target_dir)).hash == "57ce143907e4"
+
+
+def test_dirty_keep_changes_hash(tmp_path):
+    home = Home(tmp_path)
+    home.managed(DIRTY, "a: 1\n")
+    target = FakeTarget(home.target_dir)
+    on_target(target, DIRTY, "a: 1\n")
+    clean = plan_for(home, target)
+    assert clean.keep == [DIRTY] and clean.dirty == []
+    text = stamp("ramka", "0.1.1", "abcdef1", dirty=True) + "a: 2\n"
+    home.write(DIRTY, text)
+    on_target(target, DIRTY, text)  # already on the target: still `keep`, but the human must read it
+    dirty = plan_for(home, target)
+    assert dirty.keep == [DIRTY] and dirty.dirty == [DIRTY]
+    assert dirty.hash != clean.hash
+
+
+def test_plan_warns_target_runs_dev_render(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "staging", "--apply") == 0
+    deploy_id = record(home.target_dir)["deploy_id"]
+    capsys.readouterr()
+    assert cli(home, "deploy", "staging", "--plan") == 0
+    lines = capsys.readouterr().out.splitlines()
+    warning = f"warning target runs a dev render: 1 files (deploy {deploy_id})"
+    assert warning in lines
+    assert lines[lines.index(warning) + 1].startswith("restart:")
+    assert record(home.target_dir)["dev_render"] == {"paths": [DIRTY], "allowed": False}
+
+
+def test_clean_deploy_clears_dev_render(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "staging", "--apply") == 0
+    home.managed(DIRTY, "a: 3\n")  # a render from a tag replaces the dev render
+    home.declare()
+    assert cli(home, "deploy", "staging", "--apply") == 0
+    assert "dev_render" not in record(home.target_dir)
+    capsys.readouterr()
+    assert cli(home, "deploy", "staging", "--plan") == 0
+    assert "target runs a dev render" not in capsys.readouterr().out
+
+
+def test_allow_dirty_with_plan_fails(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    fakes.update(target=FakeTarget(home.target_dir), ha=Resources([]).ha())
+    assert cli(home, "deploy", "production", "--plan", "--allow-dirty") == 1
+    assert "FAIL --allow-dirty goes with --apply" in capsys.readouterr().out
+
+
+def test_staging_takes_dirty_without_flag(tmp_path, fakes, capsys):
+    home = dirty_home(tmp_path)
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    fakes.update(target=target, ha=Resources([]).ha())
+    assert cli(home, "deploy", "staging", "--apply") == 0
+    assert (home.target_dir / DIRTY).read_text().endswith("a: 2\n")
+    assert cli(home, "deploy", "staging", "--apply", "--allow-dirty") == 0
+
+
 # --- remove, orphan, unmanaged -----------------------------------------------------------------
 
 

@@ -44,6 +44,52 @@ def _load_yaml(path: Path):
         return None, f"{path}: cannot read: {exc}"
 
 
+CATALOG_REPO_URL = "https://github.com/zerostorypoints/domosenso"
+
+
+class _EsphomeLoader(yaml.SafeLoader):
+    """Reads an ESPHome file for its structure: `!secret`, `!include` and friends are kept as text."""
+
+
+_EsphomeLoader.add_multi_constructor("!", lambda loader, suffix, node: loader.construct_scalar(node)
+                                     if isinstance(node, yaml.ScalarNode) else None)
+
+
+def _load_esphome(path: Path):
+    try:
+        return yaml.load(path.read_text(encoding="utf-8"), Loader=_EsphomeLoader)
+    except (OSError, yaml.YAMLError):
+        return None  # ESPHome's own check owns invalid YAML
+
+
+def _esphome_project_version(path: Path) -> str | None:
+    data = _load_esphome(path)
+    esphome = data.get("esphome") if isinstance(data, dict) else None
+    project = esphome.get("project") if isinstance(esphome, dict) else None
+    return str(project["version"]) if isinstance(project, dict) and "version" in project else None
+
+
+def _import_url_tag(path: Path) -> str | None:
+    """The tag after the last `@` of dashboard_import's package_import_url."""
+    data = _load_esphome(path)
+    section = data.get("dashboard_import") if isinstance(data, dict) else None
+    url = section.get("package_import_url") if isinstance(section, dict) else None
+    return str(url).rpartition("@")[2] if isinstance(url, str) and "@" in url else None
+
+
+def _external_component_refs(path: Path) -> list[str]:
+    """The `ref` of every git external_components source in the file that points at this repository."""
+    data = _load_esphome(path)
+    items = data.get("external_components") if isinstance(data, dict) else None
+    refs = []
+    for item in items if isinstance(items, list) else []:
+        source = item.get("source") if isinstance(item, dict) else None
+        if isinstance(source, dict) and source.get("type") == "git" and \
+                str(source.get("url", "")).removesuffix(".git").rstrip("/") == CATALOG_REPO_URL:
+            refs.append(str(source.get("ref")))
+    return refs
+
+
 def _catalog_root(component_yaml: Path) -> Path:
     # <catalog>/components/<id>/component.yaml
     return component_yaml.resolve().parent.parent.parent
@@ -127,6 +173,32 @@ def check_component(path: Path) -> list[str]:
             target = target.parent
         if not target.exists():
             errors.append(f"{path}: {label}: path does not exist: {rel}")
+    # The tag a package pulls its external components from is the component's own version; it is a
+    # literal in the file (a remote package cannot take a substitution there), so it is checked here.
+    esphome = data["artifacts"].get("esphome") or {}
+    tag = f"{data['id']}/{data['version']}"
+    package_files = [pkg["file"] for pkg in esphome.get("packages") or []]
+    factory_file = esphome.get("factory")
+    uses_catalog_components = False
+    for rel in package_files + ([factory_file] if factory_file else []):
+        if (comp_dir / rel).is_file():
+            for ref in _external_component_refs(comp_dir / rel):
+                uses_catalog_components = True
+                if ref != tag:
+                    errors.append(f"{path}: {rel}: external_components ref '{ref}' must be '{tag}' (the manifest's version)")
+    # A firmware that ships its own external components is released as one unit with them, so the
+    # other version literals in its files follow the manifest too (a remote package cannot take a
+    # substitution). Narrow on purpose: other components' literals (bermuda-presence) are not checked.
+    if uses_catalog_components:
+        for rel in package_files:
+            if (comp_dir / rel).is_file():
+                found = _esphome_project_version(comp_dir / rel)
+                if found is not None and found != data["version"]:
+                    errors.append(f"{path}: {rel}: esphome.project.version '{found}' must be '{data['version']}' (the manifest's version)")
+        if factory_file and (comp_dir / factory_file).is_file():
+            found = _import_url_tag(comp_dir / factory_file)
+            if found is not None and found != tag:
+                errors.append(f"{path}: {factory_file}: dashboard_import package_import_url tag '{found}' must be '{tag}' (the manifest's version)")
     install = data["artifacts"].get("install_path")
     if install and install.split("/")[2] != data["id"]:
         errors.append(f"{path}: artifacts.install_path: '{install}' must be www/domosenso/{data['id']}/<version>/")

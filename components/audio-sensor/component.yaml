@@ -1,0 +1,134 @@
+# Domosenso component manifest (SPEC-018): a room sound sensor on an M5Stack Atom EchoS3R. A remote
+# ESPHome package with its spectrum component, the device file template and a factory image; a Home
+# Assistant package (SPL offsets, calibration helpers, the music aliases and their source select);
+# two cards, `ambient-wave-card` and `room-meter-card`. No dashboard of its own: Ramka 0.4.0 shows the
+# music visual and its settings. Upgrade notes: UPGRADE.md; how a home uses it: README.md.
+id: audio-sensor
+version: 0.1.0
+summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: sound-sensor
+      recommend: [m5stack-atom-echos3r]
+      count: "1 or more"                  # one board per room; at most one of them marks `music: true`
+      power: "5 V USB"
+
+host:
+  installs: [container, haos]             # container = no apps; nothing here needs a service
+  ha_min: "2026.9"
+
+integrations:
+  - {name: esphome, source: core, setup: "adopt the board in Home Assistant once flashed (discovery confirmation), with the API key from the home's ESPHome secrets"}
+  - {name: "ESPHome (firmware)", source: firmware, tested: "2026.9.1", setup: "flash the first time over USB (download mode: hold the button while plugging in); then OTA"}
+  - {name: template, source: core}
+
+# Values the home supplies; `domosenso add` writes the inputs skeleton, the add-component skill fills it.
+inputs:
+  sensors:                                # one item per board; one device file each
+    type: "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]"
+    example:
+      - {room: living-room, area: Living room, music: true}
+      - {room: kids-room, area: "Kids' room"}
+    item:
+      room: {type: slug, note: "the board's hostname part (audio-sensor-<room>), words joined by -"}
+      area: {type: area_name, note: "the Home Assistant area"}
+      music: {type: bool, default: false, note: "this board is the default music source (the select's first option); at most one item"}
+      id_prefix: {type: slug, default: "the room slug with _", note: "prefix of the ids this component creates for the board"}
+      name: {type: str, default: "audio-sensor-<room>", note: "ESPHome substitution"}
+      friendly_name: {type: str, default: "Audio sensor <area>", note: "ESPHome substitution"}
+      mic_gain: {type: str, default: 24DB, note: "ES8311 gain, 0DB to 42DB; changing it means calibrating again"}
+      entities:
+        type: "map[key, entity_id]"
+        # Home Assistant builds an ESPHome entity's id from the device's names and area when the board
+        # is adopted, and a renamed device keeps its old ids, so they cannot be derived from `room`
+        # and `area` reliably. The default is a guess the add-component skill corrects from the
+        # running Home Assistant.
+        default: "<domain>.<area slug>_<name slug with _>_<key slug>"
+        keys:
+          spectrum: sensor.<..>_spectrum
+          level: sensor.<..>_sound_level
+          peak: sensor.<..>_sound_peak
+          fast_level: sensor.<..>_fast_sound_level
+          fast_peak: sensor.<..>_fast_sound_peak
+          live_tracking: switch.<..>_live_tracking
+          mic_gain: sensor.<..>_mic_gain
+          wifi_signal: sensor.<..>_wi_fi_signal
+          uptime: sensor.<..>_uptime
+          bssid: sensor.<..>_connected_ap_bssid
+          restart: button.<..>_restart
+          load: sensor.<..>_spectrum_load
+
+artifacts:
+  esphome:
+    packages:                             # remote package, github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/<version>
+      - {file: esphome/audio-sensor.yaml, project: domosenso.audio-sensor}
+    factory: esphome/audio-sensor.factory.yaml   # Improv + dashboard_import, for boards nobody configured yet
+    instance: examples/demo-home/esphome/audio-sensor-<room>.yaml   # the demo home's device files, as `devices` renders them from its inputs
+    devices:                              # `domosenso add` writes one thin device file per `sensors` item, once; the home owns it
+      {template: esphome/device.yaml.j2, each: sensors, file: audio-sensor-<room>.yaml}
+    secrets: [wifi_ssid, wifi_password, api_encryption_key]   # what the device files read; `status` names a missing one
+  # The spectrum component the package loads with external_components; it is not an artifact a home
+  # receives, ESPHome pulls it from the tag (a fixed `ref`, checked against `version`).
+  templates:                            # rendered per home by tools/domosenso_render.py
+    - templates/package.yaml.j2         # -> package.yaml, the home's packages/: offsets, recorder exclusions, music aliases
+  ha_packages: []
+  # Where the cards go in the home's config, served as /local/domosenso/audio-sensor/<version>/:
+  # cards/*.js, cards/lib/** and translations/ keep their paths from this directory (tests and
+  # cards/testing/ stay behind). The cards have no version of their own: a new component version is
+  # a new directory, so the /local/ cache cannot serve an old lib/ to a new card.
+  install_path: www/domosenso/audio-sensor/<version>/
+  dashboard_cards:                      # Lovelace resources (type: module); they import lib/ and translations/
+    - cards/ambient-wave-card.js        # the live wave from the spectrum or the level; classic fallback
+    - cards/room-meter-card.js          # the analogue meter: needle, zones, clip mark
+
+provides:                                 # contract surface; placeholders in <> come from inputs
+  project: {name: domosenso.audio-sensor, stability: stable}   # reported to Home Assistant as manufacturer domosenso
+  entities:
+    # The Home Assistant package (templates/package.yaml.j2).
+    - {id: "input_number.<id_prefix>_spl_offset", stability: stable, note: "0-140 dB, step 0.1, no initial: a fresh helper starts at 0 and the README's calibration sets it"}
+    - {id: "sensor.<id_prefix>_spl_offset", stability: stable, note: "the offset as a sensor; attribute calibrated (true while input_boolean.<id_prefix>_spl_calibrated is on)"}
+    - {id: "sensor.music_spectrum", stability: stable, note: "the selected board's Spectrum CSV, dBFS, unchanged; excluded from the recorder"}
+    - {id: "sensor.music_spl_offset", stability: stable, note: "that board's offset, dB; attribute calibrated, from that board's flag"}
+    - {id: "sensor.music_level", stability: stable, note: "its 1 s Sound level plus the offset, dB SPL; none while the source has no number"}
+    - {id: "binary_sensor.music_sensor_online", stability: stable, note: "on while the selected board's Spectrum sensor is neither unavailable nor unknown"}
+
+    # The music source and the calibration helpers (SPEC-021). With a `music: true` board the aliases
+    # above follow the select; a select state that is no option reads that board.
+    - {id: "input_select.audio_sensor_music_source", stability: stable, note: "with a music board: the boards' areas, the music board first, then input order; no initial:; one board gives one option"}
+    - {id: "sensor.music_mic_gain", stability: stable, note: "the selected board's Mic gain text, unchanged"}
+    - {id: "sensor.music_spl_calibration", stability: stable, note: "calibrated or estimate, from the selected board's flag; attribute note"}
+    - {id: "input_boolean.<id_prefix>_spl_calibrated", stability: stable, note: "per board; off = the offset is an estimate; no initial:"}
+    - {id: "input_text.<id_prefix>_spl_note", stability: stable, note: "per board, up to 255 characters; no initial:"}
+    - {id: "input_number.audio_sensor_measured_offset", stability: stable, note: "with a music board; 0-140 dB, step 0.1, the measurement to apply; no initial:"}
+    - {id: "input_text.audio_sensor_calibration_note", stability: stable, note: "with a music board; the note to apply, up to 255 characters; no initial:"}
+    - {id: "script.audio_sensor_apply_calibration", stability: stable, note: "writes the measured offset and the note into the selected board's helpers and turns its calibrated flag on"}
+
+  # The board's ESPHome entities. Home Assistant builds their ids from the device's area and names
+  # when the board is adopted (a renamed device keeps its old ids), so they are declared, not
+  # promised (docs/COMPATIBILITY.md): the home's `entities` input maps each `entity_key` to its id.
+  # `stability` is about the entity and its state, which the firmware owns, not about its id.
+  upstream:
+    - {entity_key: spectrum, owner: esphome, stability: stable,
+       state: "31 comma-separated third-octave levels in dBFS, 20 Hz to 20 kHz"}
+    - {entity_key: level, owner: esphome, stability: stable, note: "1 s RMS in dBFS, unweighted"}
+    - {entity_key: peak, owner: esphome, stability: stable, note: "loudest sample in that second, dBFS"}
+    - {entity_key: fast_level, owner: esphome, stability: additive-only, note: "100 ms, only while Live tracking is on"}
+    - {entity_key: fast_peak, owner: esphome, stability: additive-only, note: same}
+    - {entity_key: live_tracking, owner: esphome, stability: stable, note: "off after a boot and after one hour"}
+    - {entity_key: load, owner: esphome, stability: additive-only, note: "share of one core the spectrum worker uses"}
+    - {entity_key: mic_gain, owner: esphome, stability: additive-only}
+    - {entity_key: wifi_signal, owner: esphome, stability: additive-only}
+    - {entity_key: uptime, owner: esphome, stability: additive-only}
+    - {entity_key: bssid, owner: esphome, stability: additive-only}
+    - {entity_key: restart, owner: esphome, stability: additive-only}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]                        # the board adopted and its entities read on this version; check_config comes with the Home Assistant package
+  esphome: ["2026.9.1"]                   # config of the package; compile with the device file task
+  homes: 1
+local_only: true

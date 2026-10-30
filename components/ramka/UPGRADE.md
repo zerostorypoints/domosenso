@@ -3,6 +3,50 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.4.0 (2026-10-29): the now-playing view can draw the room's music; live settings
+
+0.4.0 includes 0.3.1 (the clock card's forecast comes back after a restart); a home on 0.3.0 gets
+both with one update.
+
+New optional inputs `music_visual` (`spectrum` or `level`), `music_visual_options` and
+`settings_defaults`. With `music_visual`, the now-playing card's wave strip shows audio-sensor's
+spectrum or level of the board marked `music: true`; a new helper `input_select.<prefix>_music_visual`
+(`spectrum`, `level`, `classic`, the input's choice first, no `initial:`) picks it.
+
+**Live settings.** Every behaviour setting is a helper the tablet reads live, now including the
+music visual's look and a switch per view (`input_boolean.<prefix>_page_<view>`). A new admin
+dashboard, "Ramka settings" (`dashboards/ramka-settings.<lang>.yaml`), has one page per view plus
+General, each in Basic and Advanced parts; add its `lovelace:` entry from the README ("Settings
+page"). The visual is chosen on the settings dashboard's Music page.
+**Theme.** `input_select.<prefix>_theme_mode` sets the server's default theme (`ramka-dark` or
+`ramka-light`) for every browser on "Backend-selected", not only the tablet.
+**Starting values.** On the first start of 0.4.0 the automation `<prefix>_settings_seed` turns the
+page switches on, sets the helpers that are new to their defaults (new optional input
+`settings_defaults`) and turns `input_boolean.<prefix>_settings_seeded` on. **A home that already
+runs the Ramka keeps its tuned values:** the presence and display helpers are set only when all
+seven numbers still sit at their minimum, as on a first install. To start over later, press
+"Reset to defaults" on a page or on General.
+
+`music_visual_options` keeps its keys, gains `fps` and now gives the visual's starting values (what
+the seed and the reset write into its helpers) instead of literal card options; the render checks
+them (README, "Music visual"). The templates' fallbacks now equal the defaults (they were 120 s off
+delay, 3 s near hold, 50 cm, brightness 20 to 255, a 15 s controls hold in two places).
+
+### What a home does
+
+One step is required: add the "Ramka settings" dashboard's `lovelace:` entry to the home's
+`configuration.yaml` (README, "Settings page"); until then `domosenso status` prints
+`missing-dashboard-entry dashboards/ramka-settings.<lang>.yaml`. The tablet itself works without
+it, and the seed gives every new helper its value at the first start. Render with a `domosenso`
+command from this catalog release or later: an older one puts the settings dashboard under
+`packages/`, where Home Assistant refuses it. To use the visual, install `audio-sensor` with one
+sensor marked `music: true`, set `music_visual: spectrum` or `level`, render both and deploy.
+Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the twelve resource URLs with them
+(`domosenso update ramka` and a deploy do both); the deploy's restart creates the new helpers and
+runs the seed. Check after the restart that `input_boolean.<prefix>_settings_seeded` is on and
+every `input_boolean.<prefix>_page_<view>` is on. A dashboard or theme of the home's own that relied
+on the Ramka's view theme `ramka` keeps it: the theme stays in `themes/ramka.yaml`.
+
 ## 0.3.1 (2026-10-29): the forecast comes back after a restart
 
 An open page reconnects after a Home Assistant restart before the weather integration is back, so

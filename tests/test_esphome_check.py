@@ -107,3 +107,26 @@ def test_ha_check_work_dir_is_per_checkout(tmp_path):
         assert result.returncode == 2
     dirs = sorted((tmp_path / "tmp" / "domosenso-ha-check").glob("*/ghost"))
     assert len(dirs) == 2
+
+
+def test_external_components_url_points_at_the_local_remote(catalog, tmp_path):
+    """The checked copy and the factory copy load a package's own external components from the local
+    repo (the tag need not be published); the source is untouched, other urls and files stay."""
+    root, bin_dir, _ = catalog
+    esphome = root / "components" / "radio" / "esphome"
+    github = "https://github.com/zerostorypoints/domosenso"
+    ext = "external_components:\n  - source:\n      type: git\n      url: {}\n      ref: radio/1.2.3\n"
+    (esphome / "node.yaml").write_text("esphome: {}\n" + ext.format(github))
+    (esphome / "other.yaml").write_text("esphome: {}\n" + ext.format("https://github.com/someone/else"))
+    before = {p.name: p.read_text() for p in esphome.glob("*.yaml")}
+    result = run(root, bin_dir, tmp_path, "radio")
+    assert result.returncode == 0, result.stdout + result.stderr
+    work = Path(_work_dir(result))
+    remote = f"url: file://{work}/remote"
+    assert remote in (work / "remote/components/radio/esphome/node.yaml").read_text()
+    assert remote in (work / "factory/node.yaml").read_text()
+    assert "url: https://github.com/" not in (work / "factory/node.yaml").read_text()
+    for copy in (work / "remote/components/radio/esphome", work / "factory"):
+        assert (copy / "other.yaml").read_text() == before["other.yaml"]  # a different url is left alone
+        assert (copy / "node.factory.yaml").read_text() == before["node.factory.yaml"]  # no url, no change
+    assert {p.name: p.read_text() for p in esphome.glob("*.yaml")} == before  # the source is untouched

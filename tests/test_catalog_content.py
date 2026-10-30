@@ -14,10 +14,10 @@ REPO = Path(__file__).resolve().parent.parent
 DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
-COMPONENTS = ["awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "remote-access", "weather"]
+COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "remote-access", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
-         "network-audio-player", "plant-sensor", "rts-awning", "temperature-humidity-sensor", "wind-sensor"]
-DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315", "tcl-9469x"]
+         "network-audio-player", "plant-sensor", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
+DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "tapo-t315", "tcl-9469x"]
 
 # id -> (time, tablet)
 SCENES = {
@@ -236,6 +236,8 @@ def entity_reads(node, key=None):
 
 
 def test_every_entity_the_demo_dashboard_reads_has_a_state_or_comes_from_the_package(tmp_path):
+    """...or from a component the Ramka consumes (audio-sensor's music aliases, 0.4.0), whose own
+    package creates it in the demo home."""
     out = tmp_path / "ramka"
     dr.render_component(REPO / "components" / "ramka", ramka_inputs(), out, ["en"])
     dashboard = yaml.safe_load((out / "dashboard.en.yaml").read_text(encoding="utf-8"))
@@ -246,9 +248,11 @@ def test_every_entity_the_demo_dashboard_reads_has_a_state_or_comes_from_the_pac
     for block in package["template"]:
         for entities in block.values():
             created |= {e["default_entity_id"] for e in entities}
+    manifest = yaml.safe_load((REPO / "components" / "ramka" / "component.yaml").read_text(encoding="utf-8"))
+    consumed = {c["id"] for c in manifest["consumes"] if "id" in c}
     reads = set(entity_reads(dashboard))
     assert len(reads) > 40
-    assert sorted(reads - set(demo_states()["states"]) - created) == []
+    assert sorted(reads - set(demo_states()["states"]) - created - consumed) == []
 
 
 def test_scene_values_agree_with_what_the_ramka_shows():

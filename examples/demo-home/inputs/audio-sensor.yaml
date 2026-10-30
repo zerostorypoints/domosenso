@@ -1,0 +1,6 @@
+# The values the demo home supplies to the audio-sensor component (its `inputs:` in component.yaml).
+# Alex's living room board is the music source; Sam's room has the second board. The entity ids are
+# the ones Home Assistant builds from the boards' names and areas.
+sensors:
+  - {room: living-room, area: Living room, music: true}
+  - {room: kids-room, area: "Kids' room"}

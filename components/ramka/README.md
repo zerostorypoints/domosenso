@@ -54,11 +54,152 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - Day stepping in the agenda must use calendar dates, not 24-hour steps: on the day the clocks go
   back a 24-hour step shows one day twice (`agenda-card.test.mjs` covers it).
 
+## Music visual
+
+With `music_visual: spectrum` or `level` (0.4.0) the now-playing view draws the room's music in its
+wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board marked
+`music: true` (`sensor.music_spectrum` with `sensor.music_spl_offset`, or `sensor.music_level`).
+
+- **Switching.** `input_select.<prefix>_music_visual` holds `spectrum`, `level` and `classic`, the
+  input's choice first, so a fresh helper starts there; it has no `initial:`, so the choice survives
+  a restart. It is set in Home Assistant (the settings dashboard's Music page), not on the tablet:
+  the Controls page has no visual tile. `classic`, or any other state, draws Ramka's own wave and
+  creates no visual card.
+- **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
+  check that the aliases exist. Without them the card falls back to the classic wave with an info
+  icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
+- **The look is live.** Every option of the two visual configs names a helper (Live settings
+  below): the flavour per kind (`input_select.<prefix>_music_spectrum_flavour`, `_level_flavour`),
+  the palette, rise, fall, line width, tilt, the neutral and hot dB per kind and the refresh rate
+  (`fps`). The card reads their states on every update, so a change shows on the tablet at once.
+  `music_visual_options` gives their starting values, key by key, for example
+  `{level: {flavour: tide}, line_width: 3}`; absent keys take the card's defaults (spectrum `dune`,
+  level `centre`, 30 to 70 dB SPL, the `series` palette, rise 200 ms, fall 4 s, 30 fps), the line
+  Ramka's 2.8 px, the width of its own wave in that strip. The render checks them: a flavour of the
+  other kind, a palette other than `zones`, `series` or `calm` (a palette of colour stops cannot be a
+  select option), a number outside its helper's range, or hot not above neutral fails it.
+- **What the card does with an unusable state:** `unknown` or `unavailable` (only while a helper
+  does not exist yet) gives that option's card default, so the line falls to the card's 4 px. A hot
+  set at or below neutral on the settings page is not stopped there: the visual shows the kind's
+  default pair (30 to 70 dB) until it is corrected.
+- Try flavours on the Ramka's settings, Music (Preview) before writing them down.
+- The visual moves while `binary_sensor.<prefix>_media_playing` is on, as the wave does.
+
+## Live settings
+
+Since 0.4.0 every behaviour setting of the Ramka is a helper its automations and cards read live;
+none has an `initial:` (Home Assistant would reset it at every restart), each is restored across
+restarts. **Settings live only in Home Assistant**: the tablet's Controls page keeps only the
+approach toggle it has had since 0.1.0.
+
+| part | helpers | group |
+|---|---|---|
+| General | `input_boolean.<prefix>_near_enabled`, `input_number.<prefix>_{off_delay_s,brightness_min,brightness_max,near_cm,near_s,controls_hold_s,lux_max}` | presence_display |
+| General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
+| each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
+| Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
+
+- **Defaults.** The catalog's: approach on, off delay 300 s, brightness 16 to 204, near 100 cm for
+  1 s, controls hold 5 s, full brightness at 200 lx, theme `dark`, every page on, Advanced off; the
+  music values above. `settings_defaults` overrides the General ones for a home, for example
+  `{off_delay_s: 600}`; an unknown key, a value outside its helper's range or `brightness_min` above
+  `brightness_max` fails the render. The templates' fallbacks (`| int(…)`, `| float(…)`) are the
+  same values.
+- **Seeding.** The automation `<prefix>_settings_seed` runs at every start. While
+  `input_boolean.<prefix>_settings_seeded` is off it hands `script.<prefix>_settings_reset` the
+  groups that are still untouched and turns the flag on. A group is untouched when each of its
+  numbers is `unknown`, `unavailable` or at its own minimum, which is what Home Assistant gives a
+  helper without `initial:` and without a restored state (the sliders of issue #51). The
+  presence_display group needs all seven numbers so; the pages group is new in 0.4.0 and is seeded
+  whenever the flag is off; the music_visual group needs its four dB helpers at 0 and is also seeded
+  after the flag is on, for a home that adds `music_visual` later. **A home that already runs the
+  Ramka keeps its tuning**: its numbers are not all at their minimum, so neither they nor the
+  booleans of that group are touched; it gets every page switch on and the music defaults.
+- **Reset.** `script.<prefix>_settings_reset` writes the defaults again. Field `page` (`general`, a
+  view) limits it to that page's helpers, field `groups` (`presence_display`, `pages`,
+  `music_visual`) to those groups; with both, the helpers in both; with neither, every helper and
+  `input_boolean.<prefix>_ambient_music` too. It never touches audio-sensor's music source or
+  calibration: a measurement is not a preference.
+- **Page switches.** `input_boolean.<prefix>_page_<view>` takes a view out live; the render is the
+  outer limit (a view the render left out stays out whatever its switch says). The ambient pages:
+  `sensor.<prefix>_ambient_pages` lists the rendered pages whose switch is on, in rotation order;
+  the loop, the swipes and swipe up step through that list. It is never empty: with every switch off
+  it lists the first rendered page and its attribute `all_off` is `true`. A page switched off while
+  it shows leaves at the end of its stage (at most 50 s, the photos), or at once with a swipe.
+  Music off: `binary_sensor.<prefix>_music_view` stays off, so ambient shows the rotation while the
+  player plays. Calendar off: the calendar buttons on the controls hide and
+  `script.<prefix>_show_calendar` does nothing.
+- **Theme mode.** `input_select.<prefix>_theme_mode` (`dark`, `light`) sets the server's default
+  theme, `ramka-dark` or `ramka-light` (`themes/ramka.yaml`), through the automation
+  `<prefix>_theme_mode` at start and on every change. That reaches every browser and user whose
+  profile theme is "Backend-selected", on every dashboard, not only the tablet; the Ramka's views
+  carry no theme of their own. A user who wants another look picks a theme in the profile. The
+  two themes hold one mode each (`modes: {dark: …}`, `modes: {light: …}`, the series colours): the
+  frontend forces a single-mode theme into that mode and draws its own defaults of it, whatever the
+  browser's dark-mode setting (`themes/ramka.yaml` names the frontend version). That an open page
+  follows a change without a reload is inference until staging shows it (SPEC-021).
+
+## Settings page
+
+The "Ramka settings" dashboard (`dashboards/ramka-settings.<lang>.yaml`, one per language the home
+renders) changes every live setting from Home Assistant. It is for admins: a YAML dashboard cannot
+restrict itself, so the home's `configuration.yaml` entry does, with `require_admin: true`, and it
+stays out of the kiosk user's sidebar. Add it by hand (the catalog does not render
+`configuration.yaml`); until it is there `domosenso status` prints `missing-dashboard-entry
+dashboards/ramka-settings.<lang>.yaml`.
+
+```yaml
+lovelace:
+  dashboards:
+    ramka-settings:                  # the URL path needs a hyphen
+      mode: yaml
+      filename: dashboards/ramka-settings.en.yaml   # or .de / .pl
+      title: Ramka settings
+      icon: mdi:tune-vertical
+      show_in_sidebar: true
+      require_admin: true
+```
+
+- **Pages**, in this order: General, Climate, Air, Plants, Photos, Status, Calendar, Music. Every
+  page but General starts with its view's switch (with a note while it is off) and ends with "Reset
+  to defaults" for that page; General's resets every setting. Each asks for a confirmation. Each page
+  also lists its render-time inputs read-only with this render's values (General: the screen size).
+- **Basic and Advanced.** The Advanced cards (General: near distance and hold, controls hold, lux
+  for full brightness; Music: the flavours, rise, fall, line width, tilt, the four dB values, the
+  refresh rate, the music sensor and its calibration) show while "Show advanced settings"
+  (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on Music.
+- **Not configured.** A view the render left out (`climate`, `air`, `plants`, `photo_dir` absent,
+  or `status_page: false`) shows only a note naming its input and the way to add it: the inputs
+  file, `domosenso render ramka` and a deploy. Without `music_visual` the Music page keeps the
+  now-playing switch and says the same of the visual.
+- **Preview** (Music): the now-playing card's two visual configs, bound to the same helpers but
+  without `active`, so they draw while nothing plays; the one the visualization select names
+  shows, and `classic` shows a note, as does a home without audio-sensor (its music source select
+  unavailable), where the card's element does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
+  as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
+  phone the strip is narrower at the same height.
+- **Music sensor and calibration** (Music, Advanced): audio-sensor's
+  `input_select.audio_sensor_music_source`, the offset in use with "calibrated" or "estimate", the
+  mic gain (read-only: changing it is a flash), the note, the procedure, the measured offset and
+  note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render
+  cannot see audio-sensor, so these cards hide while the select is unavailable; that a missing
+  entity counts as unavailable in a visibility condition is inference until staging shows it
+  (SPEC-021), and otherwise a home without audio-sensor sees "entity not available" rows there.
+  No reset touches the calibration: a measurement is not a preference.
+- **Option values** (`dune`, `series`, `dark`) read as they are: helper options are English, and a
+  YAML `input_select` has no translated labels.
+- **The standing rule, for implementers:** every Ramka extension updates the settings dashboard in
+  the same change. A new behaviour gets its live setting on its view's page, Basic or Advanced,
+  belongs to one page and one group, and is covered by the page's reset and the global one;
+  `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset` fails on a helper that is
+  neither a named state helper nor on a page, and on one on a page that the reset does not set.
+
 ## Behaviour
 
 - **The ambient pages** (climate, air, plants, photos, status) are each optional: a page is in the
   rotation when its input is given (`climate`, `air`, `plants`, `photo_dir`), and status unless
-  `status_page: false` (0.3.0). The loop and the swipes step only through the pages that are there;
+  `status_page: false` (0.3.0), and while its page switch is on (0.4.0, Live settings). The loop and
+  the swipes step only through the pages that are there;
   `input_select.<prefix>_ambient` keeps all five options (FROZEN), and a render that leaves no page
   fails. The times are fixed: climate 30 s, air 15 s, plants 20 s, five photos of 10 s, status 15 s;
   one pass is their sum (130 s with all five). The package's comments still quote 130 s and the
