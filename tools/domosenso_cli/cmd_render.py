@@ -55,6 +55,7 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
             head = git_short_head(dev)
             outputs = plan_outputs(home, home.components[cid], component_dir, version, head, dirty=True)
             _report(rep, write_outputs(home, lock, cid, outputs, force, dev=True))
+            _report_forgotten(home, lock, cid, {o.dest for o in outputs}, rep)
             dev_render.record(home.root, cid, version, f"{head}-dirty",
                               {o.dest: {"sha256": sha256(o.content), "layer": o.layer} for o in outputs},
                               resource_urls(component_dir))
@@ -62,6 +63,19 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
         locked = lock.components[cid]
         component_dir = catalog.checkout(cid, locked.version, locked.commit)
         apply_component(home, lock, cid, component_dir, locked.version, locked.commit, force, rep)
+
+
+def _report_forgotten(home: HomeConfig, lock: Lock, cid: str, produced: set[str], rep: Reporter) -> None:
+    """`stale` for each managed file the previous dev render of `cid` wrote and this one does not
+    (the dev tree's version moved, say): the inventory forgets it, so unless the lock describes the
+    file as it is, nothing tracks it any more. It is left for the human, as a render leaves a stale
+    file of the lock's."""
+    locked = lock.components.get(cid)
+    records = locked.files if locked else {}
+    for dest in sorted(set(own_dev_files(home, cid)) - produced):
+        path = home.root / dest
+        if path.is_file() and (dest not in records or file_sha(path) != records[dest].sha256):
+            rep.line("stale", dest)
 
 
 def apply_component(

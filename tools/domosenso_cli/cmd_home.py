@@ -362,10 +362,14 @@ def _matches(globs: list[re.Pattern], *candidates: str) -> bool:
 
 def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
     """The layer of every file under config_dir and esphome_dir, keyed by its path relative to the home root:
-    `managed` (the lock's, unchanged) or `managed-modified`, `instance`, `local` (a `local:` glob),
+    `managed` (the lock's, unchanged) or `managed-modified`, `managed-dev` (a dev render's, unchanged),
+    `instance`, `local` (a `local:` glob),
     `unmanaged` (an `unmanaged_on_target` glob, the files Home Assistant keeps, the tool's own) and
     `unclassified`. Globs are tried against the path under config_dir and against the path from the root."""
     records = {path: record for entry in lock.components.values() for path, record in entry.files.items()}
+    # A `--catalog-dev` render's files, as it wrote them (SPEC-019 B): its instance files are the
+    # home's, its managed ones `managed-dev` while their sha256 is the recorded one.
+    dev = {path: f for entry in dev_render.load(home.root).values() for path, f in entry["files"].items()}
     local = [_glob(g) for g in home.local]
     unmanaged = [_glob(g) for g in home.unmanaged_on_target]
     result: dict[str, str] = {}
@@ -383,8 +387,13 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
                 in_config = path.is_relative_to(home.config_dir)
                 names_to_try = (from_root, path.relative_to(home.config_dir).as_posix()) if in_config else (from_root,)
                 record = records.get(from_root)
+                developed = dev.get(from_root)
                 if record is not None and record.layer == "instance":
                     kind = "instance"
+                elif developed is not None and developed.get("layer") == "instance":
+                    kind = "instance"
+                elif developed is not None and file_sha(path) == developed.get("sha256"):
+                    kind = "managed-dev"
                 elif record is not None:
                     kind = "managed" if file_sha(path) == record.sha256 else "managed-modified"
                 elif _matches(local, *names_to_try):

@@ -28,12 +28,12 @@ def load(root: Path) -> dict[str, dict]:
     except FileNotFoundError:
         return {}
     except (OSError, ValueError) as exc:
-        raise DomosensoError(f"{INVENTORY}: {exc}; render again with --catalog-dev or delete it") from exc
+        raise DomosensoError(f"{INVENTORY}: {exc}; delete {INVENTORY}, then render again with --catalog-dev") from exc
     if not isinstance(data, dict) or not all(
         isinstance(e, dict) and isinstance(e.get("files"), dict) and isinstance(e.get("resources", []), list)
         for e in data.values()
     ):
-        raise DomosensoError(f"{INVENTORY}: not an inventory of dev renders; render again with --catalog-dev")
+        raise DomosensoError(f"{INVENTORY}: not an inventory of dev renders; delete {INVENTORY}, then render again with --catalog-dev")
     return data
 
 

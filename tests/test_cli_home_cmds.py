@@ -756,6 +756,41 @@ def test_a_dev_file_edited_after_the_render_is_still_refused(added, catalog, cap
     assert "panel" in inventory(added)
 
 
+def test_a_corrupt_inventory_says_to_delete_it(added, catalog, capsys):
+    (added / DEV_RENDER).parent.mkdir(exist_ok=True)
+    (added / DEV_RENDER).write_text("[]")
+    code, out = run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)
+    assert code == 1 and out.splitlines()[-1] == (
+        f"FAIL {DEV_RENDER}: not an inventory of dev renders; delete {DEV_RENDER}, then render again with --catalog-dev")
+
+
+def test_dev_render_reports_the_files_the_previous_one_wrote_as_stale(added, catalog, capsys):
+    dev_card(catalog, "export const v = 9;\n")
+    assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    dev_110(catalog)  # the working tree moves to 1.1.0: the 1.0.0 card is no longer produced
+    code, out = run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)
+    assert (code, out.splitlines()[-1]) == (0, "ok"), out
+    old_card = f"{HA}/www/domosenso/panel/1.0.0/cards/panel-card.js"
+    assert f"stale {old_card}" in out.splitlines()  # neither the lock's nor the inventory's any more
+    assert old_card not in inventory(added)["panel"]["files"]
+    # the 1.0.0 files the lock still describes as they are (en, pl) are the lock's, not stale
+    assert [line for line in out.splitlines() if line.startswith("stale ")] == [
+        f"stale {old_card}", f"stale {HA}/www/domosenso/panel/1.0.0/translations/de.json"]
+
+
+def test_status_lists_dev_render_files(home, catalog, capsys):
+    assert run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
+    code, out = run(home, "status", capsys=capsys)
+    lines = out.splitlines()
+    assert f"managed-dev {HA}/www/domosenso/panel/1.0.0/cards/panel-card.js" in lines
+    assert f"managed-dev {HA}/packages/panel.yaml" in lines
+    assert f"instance {HA}/local.yaml" in lines
+    assert not [line for line in lines if line.startswith("unclassified ")], out
+    (home / HA / "packages/panel.yaml").write_text("# mine\n")  # edited after the render: not the dev render's
+    lines = run(home, "status", capsys=capsys)[1].splitlines()
+    assert f"unclassified {HA}/packages/panel.yaml" in lines
+
+
 def test_deploy_carries_new_component_from_inventory(home, catalog, capsys, tmp_path):
     assert run(home, "add", "panel", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
     assert Lock.load(home).components == {}
@@ -800,7 +835,7 @@ def test_inventory_file_changed_fails(added, catalog, capsys, tmp_path):
     (added / card).write_text("export const v = 3;\n")
     with pytest.raises(DomosensoError) as e:
         deploy_plan(added, tmp_path / "target")
-    assert str(e.value) == f"dev render changed: {card}: render again"
+    assert str(e.value) == f"dev render changed: {card.removeprefix(HA + '/')}: render again"  # config-relative
     (added / card).unlink()
     with pytest.raises(DomosensoError, match="dev render changed: .*: render again"):
         deploy_plan(added, tmp_path / "target")
