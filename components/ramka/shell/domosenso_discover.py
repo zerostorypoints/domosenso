@@ -105,6 +105,14 @@ def matches(rule: dict, dev: dict) -> bool:
     return all(any(_glob(n, pattern) for n in dev["entity_names"]) for pattern in _list(rule.get("entity_names")))
 
 
+def entry_ids(device: dict) -> list[str]:
+    """The device's config entries: a list from the websocket API, one `config_entry_id` (and the
+    primary one) in the 2026.9 storage file this script reads."""
+    ids = list(device.get("config_entries") or [])
+    ids += [device.get(k) for k in ("config_entry_id", "primary_config_entry") if device.get(k)]
+    return ids
+
+
 def links(config: Path, devices: list[dict], entities: dict, integrations: dict) -> dict:
     """Pages for what was found: a component's on domosenso.org (else its folder in the repository),
     a device's when a catalog rule tells it as that device, an integration's documentation."""
@@ -127,7 +135,7 @@ def links(config: Path, devices: list[dict], entities: dict, integrations: dict)
         own = owned.get(device["id"], [])
         record = {
             "manufacturer": device.get("manufacturer"), "model": device.get("model"), "model_id": device.get("model_id"),
-            "integrations": sorted({domains[c] for c in device.get("config_entries", []) if c in domains}),
+            "integrations": sorted({domains[c] for c in entry_ids(device) if c in domains}),
             "entity_domains": {e["entity_id"].split(".", 1)[0] for e in own},
             "device_classes": {e.get("device_class") or e.get("original_device_class") for e in own} - {None},
             "entity_names": [e.get("original_name") for e in own if e.get("original_name")],
