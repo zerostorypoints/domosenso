@@ -95,6 +95,11 @@ class Catalog:
             raise DomosensoError(f"tag {tag} has no components/{cid}/{path}")
         return done.stdout
 
+    def commit_date(self, commit: str) -> str:
+        """The committer date of `commit`, YYYY-MM-DD: a version's release date (SPEC-022)."""
+        self.ensure()
+        return self._run("log", "-1", "--format=%cs", commit, "--", error="read a commit date").stdout.decode().strip()
+
     def head_commit(self) -> str:
         """The commit the repository's HEAD names (a mirror's HEAD is the remote's default branch)."""
         self.ensure()

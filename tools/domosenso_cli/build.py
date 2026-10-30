@@ -55,6 +55,14 @@ def git_short_head(path: Path) -> str:
     return done.stdout.decode().strip()
 
 
+def git_head_date(path: Path) -> str:
+    """The date of a catalog working tree's HEAD, YYYY-MM-DD: a dev render's release date (SPEC-022)."""
+    done = subprocess.run(["git", "-C", str(path), "log", "-1", "--format=%cs", "HEAD"], capture_output=True)
+    if done.returncode != 0:
+        raise DomosensoError(f"{path} is not a git repository with a commit: {done.stderr.decode().strip()}")
+    return done.stdout.decode().strip()
+
+
 def load_manifest(component_dir: Path) -> dict:
     path = Path(component_dir) / "component.yaml"
     try:
@@ -231,7 +239,8 @@ def _esphome_devices(home: HomeConfig, entry: ComponentEntry, component_dir: Pat
 
 
 def _renderable_copy(component_dir: Path, destination: Path, instance: bool) -> Path:
-    """Just what the renderer reads (templates, translations); `templates/instance/` only for an instance
+    """Just what the renderer reads (templates, translations, the manifest for the `component` global);
+    `templates/instance/` only for an instance
     render, so that a template of the home's own layer cannot fail a managed render for want of an input."""
     templates = component_dir / "templates"
 
@@ -241,6 +250,7 @@ def _renderable_copy(component_dir: Path, destination: Path, instance: bool) -> 
     shutil.copytree(templates, destination / "templates", ignore=ignore)
     if (component_dir / "translations").is_dir():
         shutil.copytree(component_dir / "translations", destination / "translations")
+    shutil.copy2(component_dir / "component.yaml", destination / "component.yaml")
     return destination
 
 

@@ -19,7 +19,8 @@
     'photos': inputs.photo_dir is defined, 'status': inputs.status_page | default(true), 'calendar': true} -%]
 [%- set adds = {'climate': 'climate', 'air': 'air', 'plants': 'plants', 'photos': 'photo_dir', 'status': 'status_page'} -%]
 [%- set icons = {'general': 'mdi:tablet-dashboard', 'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower',
-    'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'music': 'mdi:music'} -%]
+    'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'music': 'mdi:music',
+    'about': 'mdi:information-outline'} -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
@@ -326,3 +327,35 @@ views:
       - type: grid
         cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
 [%- endif %][[ reset('music') ]]
+
+  # ---- About: every component the home runs (SPEC-022) ----------------------------------------
+  # Read live from sensor.domosenso_components, which the domosenso command writes from the lock,
+  # so the list is right after any component's update without a Ramka render. Without the sensor (a
+  # render by an older domosenso, or by domosenso_render.py alone) the Ramka's own version, as rendered.
+  - title: [[ t('ui.settings.pages.about') | yaml ]]
+    path: about
+    icon: [[ icons.about ]]
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        column_span: 2
+        cards:[[ heading('about_components', 'mdi:package-variant-closed') ]]
+          - type: markdown
+            content: |-
+              {% set items = state_attr('sensor.domosenso_components', 'components') %}
+              {%- if items %}
+[[ block(t('ui.settings.about_how')) ]]
+
+              | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_released') ]] |
+              |---|---|---|
+              {%- for c in items %}
+              | {{ c.id }} | {{ c.version }}{{ ' (' ~ [[ t('ui.settings.about_dev') | yaml ]] ~ ')' if c.dev else '' }} | {{ c.released or '—' }} |
+              {%- endfor %}
+              {%- else %}
+              | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] |
+              |---|---|
+              | [[ component.id ]] | [[ component.version ]] |
+
+[[ block(t('ui.settings.about_missing')) ]]
+              {%- endif %}

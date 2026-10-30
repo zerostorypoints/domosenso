@@ -17,13 +17,13 @@ from types import SimpleNamespace
 
 import yaml
 
-from domosenso_cli import dev_render
+from domosenso_cli import dev_render, inventory
 from domosenso_cli.build import (
     file_records, file_sha, git_short_head, is_dashboard_template, load_manifest, open_catalog, parse_spec,
-    plan_outputs,
+    plan_outputs, sha256,
 )
 from domosenso_cli.catalog import SEMVER, TagMoved, dev_dir
-from domosenso_cli.cmd_render import apply_component, render_ids
+from domosenso_cli.cmd_render import apply_component, render_ids, write_inventory
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HOME_FILE, ComponentEntry, HomeConfig
 from domosenso_cli.lock import LOCK_FILE, Lock, LockEntry
@@ -183,7 +183,9 @@ def _add_run(args: argparse.Namespace, rep: Reporter) -> int:
     lock.components[cid] = LockEntry(
         version=version, tag=f"{cid}/{version}", commit=commit, files=file_records(home, instance),
     )
-    apply_component(home, lock, cid, component_dir, version, commit, False, rep)
+    apply_component(home, lock, cid, component_dir, version, commit, False, rep,
+                    released=catalog.commit_date(commit))
+    write_inventory(home, lock, rep, catalog)
     return rep.ok()
 
 
@@ -327,7 +329,9 @@ def _update_run(args: argparse.Namespace, rep: Reporter) -> int:
             for line in section.splitlines():
                 if line.strip():
                     rep.line("note", line)
-    apply_component(home, lock, cid, component_dir, target, commit, args.force, rep, remove_stale=True)
+    apply_component(home, lock, cid, component_dir, target, commit, args.force, rep, remove_stale=True,
+                    released=catalog.commit_date(commit))
+    write_inventory(home, lock, rep, catalog)
     return rep.ok()
 
 
@@ -372,6 +376,10 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
     dev = {path: f for entry in dev_render.load(home.root).values() for path, f in entry["files"].items()}
     local = [_glob(g) for g in home.local]
     unmanaged = [_glob(g) for g in home.unmanaged_on_target]
+    # The command's own package (SPEC-022): managed while it is what the lock gives.
+    listing = inventory.path(home)
+    listing_sha = file_sha(listing) if listing.is_file() else None
+    wanted = inventory.expected(home, lock)
     result: dict[str, str] = {}
     for base in (home.config_dir, home.esphome_dir):
         if not base.is_dir():
@@ -388,7 +396,9 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
                 names_to_try = (from_root, path.relative_to(home.config_dir).as_posix()) if in_config else (from_root,)
                 record = records.get(from_root)
                 developed = dev.get(from_root)
-                if record is not None and record.layer == "instance":
+                if path == listing:
+                    kind = "managed" if wanted is not None and listing_sha == sha256(wanted) else "managed-modified"
+                elif record is not None and record.layer == "instance":
                     kind = "instance"
                 elif developed is not None and developed.get("layer") == "instance":
                     kind = "instance"

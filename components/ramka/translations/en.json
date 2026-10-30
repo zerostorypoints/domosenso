@@ -199,7 +199,8 @@
         "photos": "Photos",
         "status": "Status",
         "calendar": "Calendar",
-        "music": "Music"
+        "music": "Music",
+        "about": "About"
       },
       "basic": "Basic",
       "advanced": "Advanced",
@@ -312,7 +313,14 @@
         "pm2_5": "PM2.5",
         "voc": "VOC index",
         "nox": "NOx index"
-      }
+      },
+      "about_components": "Components",
+      "about_component": "Component",
+      "about_version": "Version",
+      "about_released": "Released",
+      "about_dev": "development",
+      "about_how": "Every Domosenso component this home runs, as the last `domosenso render` or `update` left it. Released: the date the catalog released that version.",
+      "about_missing": "Only the Ramka is listed: `sensor.domosenso_components` is missing. A `domosenso render` with a current `domosenso` command writes it, with every component of the home."
     }
   },
   "meta": {

@@ -3,6 +3,19 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.7.0 (2026-10-30): the About page in the settings
+
+**Settings, About** (SPEC-022): a last page lists every component the home runs, its version and the
+date the catalog released it, read live from `sensor.domosenso_components`. The `domosenso` command
+writes that sensor into `packages/domosenso.yaml` at every `render`, `add`, `adopt` and `update`
+(and adds `released` to each entry of `domosenso.lock`). Without it the page lists the Ramka alone.
+
+### What a home does
+
+`domosenso update ramka` with a current `domosenso` command, and a deploy: the deploy adds
+`packages/domosenso.yaml` (one template sensor, so a restart). A snapshot `compare` then shows the new
+entity `sensor.domosenso_components`.
+
 ## 0.6.0 (2026-10-30): the sensor update rate, the music view sets "watching", ten Climate rooms
 
 The music parts go with audio-sensor 0.2.0 (#99, #110); without audio-sensor they change nothing

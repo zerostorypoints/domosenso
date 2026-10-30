@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from domosenso_cli import cmd_deploy, deploy
+from domosenso_cli import cmd_deploy, deploy, inventory
 from domosenso_cli.build import sha256
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
@@ -82,6 +82,10 @@ class Home:
         entry = self.lock.components.setdefault(cid, LockEntry("0.1.1", f"{cid}/0.1.1", COMMIT))
         entry.files[f"{CONFIG}/{rel}"] = FileRecord(sha256(path.read_bytes()), "templates/x.j2", layer)
 
+    def sync_inventory(self) -> None:
+        """packages/domosenso.yaml as `render` would leave it for this lock and these dev renders (SPEC-022)."""
+        inventory.write(self.config_obj(), self.lock)
+
     def config_obj(self) -> HomeConfig:
         return HomeConfig(
             root=self.root, catalog="c", config_dir=self.config, esphome_dir=self.root / "esphome",
@@ -103,6 +107,7 @@ class Home:
         }
         (self.root / "domosenso.yaml").write_text(yaml.safe_dump(declaration))
         self.lock.save(self.root)
+        self.sync_inventory()
 
 
 def on_target(target: FakeTarget, rel: str, text: str) -> None:
@@ -125,6 +130,7 @@ def record(target_dir: Path) -> dict | None:
 
 
 def plan_for(home: Home, target: FakeTarget, existing: list[dict] | None = None) -> deploy.Plan:
+    home.sync_inventory()
     return deploy.make_plan(home.config_obj(), home.lock, target, existing or [])
 
 
@@ -171,7 +177,7 @@ def test_plan_lines(tmp_path, fakes, capsys):
     on_target(target, "dashboards/ramka.en.yaml", "views: []\n")
 
     plan = plan_for(home, target)
-    assert plan.add == ["packages/mine.yaml"]
+    assert plan.add == ["packages/domosenso.yaml", "packages/mine.yaml"]
     assert plan.change == ["packages/ramka.yaml"]
     assert plan.keep == ["dashboards/ramka.en.yaml"]
     assert plan.remove == [] and plan.orphan == []
@@ -183,6 +189,7 @@ def test_plan_lines(tmp_path, fakes, capsys):
     assert cli(home, "deploy", "staging", "--plan") == 0
     lines = capsys.readouterr().out.splitlines()
     assert lines == [
+        "add packages/domosenso.yaml",
         "add packages/mine.yaml",
         "change packages/ramka.yaml",
         "keep dashboards/ramka.en.yaml",
@@ -198,7 +205,7 @@ def test_plan_lists_resource_actions(tmp_path):
     home.lock.components["ramka"] = LockEntry("0.1.1", "ramka/0.1.1", COMMIT, resources=[CARD])
     plan = plan_for(home, FakeTarget(home.target_dir), [{"id": "r1", "url": "/local/agenda-card.js?v=6", "type": "module"}])
     assert plan.resources == [Action("update", CARD, "r1", "/local/agenda-card.js?v=6")]
-    assert deploy.plan_lines(plan)[0] == ["resource", "update", CARD, "from", "/local/agenda-card.js?v=6"]
+    assert ["resource", "update", CARD, "from", "/local/agenda-card.js?v=6"] in deploy.plan_lines(plan)
 
 
 def test_change_limited_to_www_and_dashboards_needs_no_restart(tmp_path):
@@ -225,7 +232,7 @@ def test_esphome_files_in_the_lock_are_not_carried(tmp_path):
     entry = home.lock.components.setdefault("ramka", LockEntry("0.1.1", "ramka/0.1.1", COMMIT))
     entry.files["esphome/ramka.yaml"] = FileRecord(sha256(device.read_bytes()), "esphome/x.yaml", "instance")
     plan = plan_for(home, FakeTarget(home.target_dir))
-    assert plan.add == []
+    assert plan.add == [inventory.PACKAGE]  # the inventory, not the device file
 
 
 def test_hand_edited_managed_file_is_refused(tmp_path):
@@ -334,10 +341,10 @@ def test_allow_dirty_on_a_clean_plan_changes_nothing(tmp_path, fakes, capsys):
 
 def test_clean_plan_hash_unchanged(tmp_path):
     home = Home(tmp_path)
-    home.managed("packages/ramka.yaml", "a: 1\n")
     home.write("packages/mine.yaml", "b: 1\n")
-    # Recorded before SPEC-019: a plan without dev renders keeps the hash it had.
-    assert plan_for(home, FakeTarget(home.target_dir)).hash == "57ce143907e4"
+    # Recorded before SPEC-019 and SPEC-022 (no component, so no inventory): a plan without dev renders
+    # keeps the hash it had.
+    assert plan_for(home, FakeTarget(home.target_dir)).hash == "b3f0f3391221"
 
 
 def test_dirty_keep_changes_hash(tmp_path):
@@ -426,6 +433,7 @@ def test_plan_removes_file_dropped_from_record(tmp_path):
     assert "www/domosenso/ramka/0.1.0/cards/agenda-card.js" not in files
     assert record(home.target_dir) == {"deploy_id": deploy_id, "files": {
         "www/domosenso/ramka/0.1.1/cards/agenda-card.js": {"sha256": sha256(b"new"), "layer": "managed", "component": "ramka"},
+        inventory.PACKAGE: {"sha256": sha256(inventory.content(home.lock, {})), "layer": "managed", "component": None},
     }}
 
 
@@ -518,7 +526,7 @@ def test_apply_writes_backup_record_and_restarts(tmp_path):
     local = home.root / ".domosenso" / "deploys" / "staging" / deploy_id
     for directory in (remote, local):
         assert sorted(p.name for p in directory.iterdir()) == sorted(deploy.BACKUP_FILES)
-        assert json.loads((directory / "added.json").read_text()) == [deploy.RECORD]
+        assert json.loads((directory / "added.json").read_text()) == [deploy.RECORD, inventory.PACKAGE]
         assert json.loads((directory / "resources.json").read_text()) == [
             {"id": "r1", "url": "/local/agenda-card.js?v=6", "type": "module"}]
         files = tarfile.open(fileobj=io.BytesIO((directory / "files.tar").read_bytes()))
@@ -1013,3 +1021,24 @@ def test_target_record_corrupted_after_the_plan_stops_before_the_backup(tmp_path
         run_apply(home, target, Resources([]).ha(), plan)
     assert not (home.root / ".domosenso").exists()
     assert set(target_files(home.target_dir)) == {deploy.RECORD}
+
+
+def test_stale_inventory_blocks_the_plan(tmp_path):
+    """packages/domosenso.yaml is derived from the lock: a copy that differs is out of date (SPEC-022)."""
+    home = Home(tmp_path)
+    home.managed("packages/ramka.yaml", "a: 1\n")
+    home.sync_inventory()
+    home.lock.components["ramka"].version = "0.1.2"  # the lock moved, the file did not
+    with pytest.raises(DomosensoError, match=r"inventory out of date: packages/domosenso\.yaml: run domosenso render"):
+        deploy.make_plan(home.config_obj(), home.lock, FakeTarget(home.target_dir), [])
+
+
+def test_inventory_with_a_dev_item_is_a_dev_render(tmp_path):
+    home = Home(tmp_path)
+    home.managed("packages/ramka.yaml", "a: 1\n")
+    (home.root / ".domosenso").mkdir()
+    (home.root / ".domosenso" / "dev-render.json").write_text(json.dumps(
+        {"ramka": {"version": "0.2.0", "commit": "abc-dirty", "released": "2026-10-30", "files": {}, "resources": []}}))
+    home.sync_inventory()
+    record, _, dirty = deploy._carried(home.config_obj(), home.lock, deploy.dev_render.load(home.root))
+    assert inventory.PACKAGE in record and inventory.PACKAGE in dirty

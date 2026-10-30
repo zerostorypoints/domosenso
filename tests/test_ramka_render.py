@@ -1420,7 +1420,7 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
 
 # ---- 0.4.0: the "Ramka settings" dashboard (SPEC-021) --------------------------------------------
 
-SETTINGS_PAGES = ["general", *PAGE_VIEWS]
+SETTINGS_PAGES = ["general", *PAGE_VIEWS, "about"]
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
 SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
@@ -1611,6 +1611,7 @@ def test_settings_reset_buttons(demo):
     for lang in LANGS:
         t = translations(lang)
         views = settings_views(demo[f"ramka-settings.{lang}.yaml"])
+        assert not list(reset_actions(views.pop("about")))  # read-only: nothing to reset (SPEC-022)
         for path, view in views.items():
             [action] = list(reset_actions(view))
             if path == "general":
@@ -1736,7 +1737,8 @@ def test_settings_read_only_inputs(demo):
     assert t["ui.settings.inputs.status_columns"] in status
     assert inputs["calendar"] in markdown(views["calendar"])
     for path, view in views.items():
-        assert t["ui.settings.render_time"] in json.dumps(view, ensure_ascii=False), path
+        if path != "about":  # the About page has no input (SPEC-022)
+            assert t["ui.settings.render_time"] in json.dumps(view, ensure_ascii=False), path
 
 
 def test_settings_all_off_warning(demo):
@@ -1912,6 +1914,7 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
                             step["event_data"].pop("rooms")
         elif name.startswith("ramka-settings."):
             lang = name.split(".")[1]
+            new["views"] = [v for v in new["views"] if v["path"] != "about"]  # 0.7.0, another change (SPEC-022)
             for view in new["views"]:
                 for section in view["sections"]:
                     section["cards"] = [c for c in section["cards"] if SPECTRUM_RATE not in json.dumps(c)]
@@ -2230,3 +2233,43 @@ def test_no_script_field_has_an_empty_selector(demo):
         for field, spec in (script.get("fields") or {}).items():
             for kind, options in (spec.get("selector") or {}).items():
                 assert options, f"{name}.{field}: selector {kind} is empty"
+
+
+# ---- 0.7.0: the About page (SPEC-022) ---------------------------------------------------------
+
+
+def _about_markdown(dashboard) -> str:
+    [card] = [c for _, c in view_cards(settings_views(dashboard)["about"]) if c.get("type") == "markdown"]
+    return card["content"]
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_about_page_lists_the_components(demo, lang):
+    """The table comes from sensor.domosenso_components, rendered by Home Assistant's Jinja."""
+    import jinja2
+    t = settings_texts(lang)
+    content = _about_markdown(demo[f"ramka-settings.{lang}.yaml"])
+    items = [{"id": "audio-sensor", "version": "0.2.0", "tag": "audio-sensor/0.2.0", "commit": "0f1f0a7d060e",
+              "released": "2026-10-30", "dev": False},
+             {"id": "ramka", "version": "0.8.0", "tag": "", "commit": "abc-dirty", "released": "2026-10-31", "dev": True}]
+    env = jinja2.Environment()
+    shown = env.from_string(content).render(state_attr=lambda entity, attr: items if (entity, attr) == (
+        "sensor.domosenso_components", "components") else None)
+    lines = shown.splitlines()
+    header = f"| {t['ui.settings.about_component']} | {t['ui.settings.about_version']} | {t['ui.settings.about_released']} |"
+    at = lines.index(header)
+    assert lines[at + 1:at + 4] == [
+        "|---|---|---|",
+        "| audio-sensor | 0.2.0 | 2026-10-30 |",
+        f"| ramka | 0.8.0 ({t['ui.settings.about_dev']}) | 2026-10-31 |",
+    ]
+    # Without the sensor: the Ramka alone, as rendered, and how to get the list.
+    missing = env.from_string(content).render(state_attr=lambda entity, attr: None)
+    assert "| ramka | 0.7.0 |" in missing.splitlines()
+    assert t["ui.settings.about_missing"].split(":")[0] in missing
+
+
+def test_about_page_is_last_and_read_only(demo):
+    view = settings_views(demo["ramka-settings.en.yaml"])["about"]
+    assert [v["path"] for v in demo["ramka-settings.en.yaml"]["views"]][-1] == "about"
+    assert all(not rows(card) for _, card in view_cards(view))  # no helper, nothing to reset
