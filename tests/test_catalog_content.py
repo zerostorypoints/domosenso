@@ -285,8 +285,9 @@ def test_every_entity_the_demo_dashboard_reads_has_a_state_or_comes_from_the_pac
     for domain in ("input_select", "input_boolean", "input_number", "input_text", "input_button", "timer", "script"):
         created |= {f"{domain}.{key}" for key in package.get(domain) or {}}
     for block in package["template"]:
-        for entities in block.values():
-            created |= {e["default_entity_id"] for e in entities}
+        for kind, entities in block.items():
+            if kind != "triggers":  # a trigger-based block's triggers, not entities
+                created |= {e["default_entity_id"] for e in entities}
     manifest = yaml.safe_load((REPO / "components" / "ramka" / "component.yaml").read_text(encoding="utf-8"))
     consumed = {c["id"] for c in manifest["consumes"] if "id" in c}
     reads = set(entity_reads(dashboard))

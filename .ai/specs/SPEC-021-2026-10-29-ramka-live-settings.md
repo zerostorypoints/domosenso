@@ -662,3 +662,127 @@ Each follows this page structure and the standing rule:
    `set_theme`), checked on staging; if either fails, it goes back to render time.
 3. **Issue #51** is covered by this spec (seed, flag, defaults input). Proposed: close it when this
    lands, with a link.
+
+## Amendment 1 (2026-10-30): Photos, Air, the way to the view, language, calendar by URL
+
+Issues #87 (follow-up f), #88 (g), #89 (h), #102 (the spike's interim note, part a of its triage) and
+#103. ramka 0.4.0 is not tagged yet, so this amends 0.4.0. #100 (music sources) is not part of it.
+
+**Photos page** (with `photo_dir`; group `photos`, page `photos`):
+
+| helper | where | range | default |
+|---|---|---|---|
+| `input_number.<prefix>_photo_count` | Basic | 1 to 20 | 5 |
+| `input_number.<prefix>_photo_s` | Advanced | 3 to 120 s | 10 |
+| the albums, `sensor.<prefix>_photo_albums` | Advanced | any of the top-level folders of `photo_dir` that hold photos | none (all) |
+
+- The albums are a checkbox each ("All albums" first) on a new card, `photo-albums-card`, which calls
+  `script.<prefix>_photo_albums_set` with `chosen`. They are no helper: a choice of any of ~100
+  folders fits neither an `input_select` nor a 255-character `input_text`. A trigger-based template
+  sensor, `sensor.<prefix>_photo_albums`, keeps `available` and `chosen` as attributes (restored
+  after a restart) and is set by event `<prefix>_photo_albums`, which sets either key and keeps the
+  other. Its state is how many are chosen; none is all. The photo index sends `available` after
+  each run; the reset sends `chosen: []` (the `('event', ...)` entry of the settings list).
+- `shell/ramka_pick.py <root> <count> [<album> ...]` draws only from the folders under the chosen
+  albums; one that is gone is skipped (`album <name> not found`), and with none left every folder is
+  (`..., using all`). `ramka_pick.py <root> --albums` prints `{"albums": [...]}` for the new
+  `shell_command.<prefix>_albums`.
+- `shell_command.<prefix>_pick` takes `count` and `albums` (a list) as action data; a templated
+  command runs without a shell, so each album is single-quoted for its split. The loop passes the
+  helpers, with `| int(5)` and `| int(10)` fallbacks equal to the defaults; every photo slot, and
+  the empty pick's slot, lasts `photo_s`. A chosen album that is gone stays chosen and listed,
+  marked, so it comes back with its folder.
+
+**Air page** (with `air`; group `air`, page `air`), only for the readings the input names:
+
+| helper | where | range | default |
+|---|---|---|---|
+| `input_boolean.<prefix>_air_<reading>` (`score`, `co2`, `pm2_5`, `voc`, `nox`) | Basic | | on |
+| `input_number.<prefix>_air_score_{fair,poor}` | Advanced | 0 to 100 | 80, 60 |
+| `input_number.<prefix>_air_co2_{raised,high}` | Advanced | 400 to 5000 ppm | 800, 1200 |
+| `input_number.<prefix>_air_pm2_5_{raised,high}` | Advanced | 1 to 250 µg/m³ | 15, 35 |
+| `input_number.<prefix>_air_voc_{raised,high}` | Advanced | 1 to 500 | 150, 250 |
+| `input_number.<prefix>_air_nox_{raised,high}` | Advanced | 1 to 500 | 20, 150 |
+
+A limit is where its level begins: CO₂ is raised from `co2_raised`, high from `co2_high`; the score
+(higher is better) is fair below `score_fair`, poor below `score_poor`. `air-card` gains two
+additive keys (STABLE surface): `show:` on the score and on a tile (an `input_boolean`; `off` leaves
+the tile out and the others share its room, any other state shows it), and a level limit written
+`{entity, default}`, the entity's number on every update, `default` while it is not a number. The
+dashboard binds both; literal levels and no `show:` render as before.
+
+**Seeding.** Groups `photos` and `air` are seeded while their numbers are untouched (unknown,
+unavailable or at their minimum), also after `settings_seeded` is on, so a home that ran 0.4.0
+before this amendment gets them at its next start. The reset script's `groups` field lists
+`presence_display`, `pages`, `music_visual`, `photos`, `air`. The Advanced switch also sits on the
+Photos and Air pages, which now have Advanced parts.
+
+**General, Basic: the way to the view.** A button "Open the Ramka view" navigates to
+`/<path>/ramka?disable_km`, where `<path>` is the new optional input `dashboard_paths` (a map
+language → URL path) for the page's language, else `dashboard_path`. Every path is a plain URL path
+(letters, digits, `-`, `_`; no slash), or the render fails with `ramka: dashboard paths must be plain
+url paths`. The Ramka dashboard's own top-right exit keeps `dashboard_path`.
+
+**General, Basic: language.** The spike above has not run. Until it does, General shows a note:
+each language is its own dashboard (the `dashboard_paths`, else `dashboard_path`), the tablet shows
+the language of the one it opens, and a switch follows after the spike. No helper.
+
+**Calendar, Basic: by URL.** A note with links to Home Assistant's add flows for `remote_calendar`
+(an ICS URL, refreshed once a day) and `caldav` (refreshed every 15 minutes; both are config flows
+in 2026.9.2, read from their manifests and coordinators), then the step after: the new `calendar.*`
+entity into the `calendar` input, a render and a deploy. No helper: a calendar is an integration.
+`components/calendar` gains the ICS path in its README and manifest.
+
+**Dev-rendered cards get `?v=<sha8>`.** A dev render keeps its version's path (`/0.4.0/`), so a
+changed card was the same URL and browsers kept the old one for the 31 days `/local/` is cached:
+after this amendment's first deploy every air tile was red, the old card reading the new
+`{entity, default}` limits as "high". `domosenso deploy` now gives a dev-rendered card's resource
+`?v=` of its file, as it does the home's own; a locked card still changes with its version directory.
+
+Tests: `tests/test_ramka_shell.py` (album, several albums, missing albums, `--albums`); `tests/test_ramka_render.py`
+(the helpers on their pages and groups, the loop, the album options and their restore, nothing
+without `photo_dir` or a reading, the card's bindings, the link per language and its failure, the
+language note, the calendar links; the standing rule); `tests/test_cli_resources.py` (the dev card's hash); `cards/photo-albums-card.test.mjs`; `cards/air-card.test.mjs` (`show:`, entity
+limits, an unusable limit, unchanged without the new keys).
+
+## Amendment 2 (2026-10-30): albums kept under "All", the Climate page's rooms, ramka 0.5.0
+
+From the first look at amendment 1 on the wall. ramka 0.4.0 is tagged, so both amendments ship as
+**0.5.0**; the version directory changes with it, which also gives the cards' imports
+(`lib/`, `translations/`) new URLs: a `?v=` on a card does not reach the files it imports, and the
+album card showed its keys (`card.photo_albums.all`) from a cached 0.4.0 `en.json`.
+
+**Albums.** Ticking "All albums" no longer clears the ticks: they stay, greyed out, until it is
+unticked. `sensor.<prefix>_photo_albums` gains the attribute `all` (absent on a 0.4.0 sensor: all is
+none chosen); `script.<prefix>_photo_albums_set` gains the field `all_albums` (absent: none chosen
+is all; not `all`, which Jinja code may know as a global), and the card always sends both.
+The loop passes no albums while `all` is true. The reset sends
+`{all: true}`, keeping the ticks; the reset's event entries now carry their whole event data.
+
+**Climate page** (with `climate`; group `climate`, page `climate`): up to five rooms, each a label,
+a main reading and a supplementary one, entity ids, picked in Advanced on a new card,
+`climate-rooms-card`: a name field and two of Home Assistant's entity pickers per room (search as
+you type), limited to `sensor.*` with a unit. The picker is frontend internals a dashboard does not
+load: the card loads it through the entities card's editor, and falls back to a plain dropdown of
+the same sensors by name when it is not there. A room without a main reading is dropped (the ones below move up); an empty name becomes the
+main sensor's area, else its name. No helper, as the albums: `sensor.<prefix>_climate_rooms` keeps
+`rooms` (restored after a restart), set by event `<prefix>_climate_rooms` from
+`script.<prefix>_climate_rooms_set`, which keeps at most five rooms whose main is a `sensor.*`.
+
+- `rooms-card` gains `entity`: while its `rooms` attribute holds a room, the tiles are those rooms
+  (room n in colour n) and each reading shows its entity's unit (else °C and %, as before).
+- `line-style-card` gains `rooms: {entity, key, after}`: while the entity holds rooms, the inner
+  card's entities are the rooms' `key` readings, then `after` (outside); it rebuilds the inner card
+  when they change. Both charts bind it (`extra` on the left, `main` on the right).
+- Default and reset: the first five of `climate`, `temperature` as main, `humidity` (or empty) as
+  extra. The seed seeds group `climate` while the sensor has no `rooms`, whatever the flag; any list
+  the settings page saved is the home's. Before the seed the cards show `climate` as rendered. A
+  home with more than five `climate` rooms shows five after the update (UPGRADE.md says so).
+- The Advanced switch also sits on the Climate page. The reset's `groups` gain `climate`.
+
+Tests: `tests/test_ramka_render.py` (the rooms' defaults and reset, the sensor and the script's
+filtering, the dashboard bindings, the card on Climate → Advanced, nothing without `climate`, the
+seed, the album `all` through the sensor, the script and the loop; the standing rule);
+`cards/climate-rooms-card.test.mjs`; `cards/rooms-card.test.mjs` and `cards/line-style-card.test.mjs`
+(the live rooms); `cards/photo-albums-card.test.mjs` (the ticks kept and greyed out);
+`tests/test_cli_home_cmds.py` (a dev card's resource carries its hash).

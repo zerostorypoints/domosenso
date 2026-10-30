@@ -98,6 +98,20 @@
         "lossless": "Lossless",
         "lossy": "Lossy"
       }
+    },
+    "photo_albums": {
+      "all": "All albums",
+      "missing": "not found",
+      "filter": "Filter albums",
+      "none": "No albums in the photo folder yet."
+    },
+    "climate_rooms": {
+      "room": "Room {n}",
+      "label": "Name",
+      "main": "Main reading",
+      "extra": "Second reading",
+      "none": "—",
+      "missing": "not found"
     }
   },
   "ui": {
@@ -246,6 +260,32 @@
       "music_level_hot_db": "Level hot at",
       "music_fps": "Refresh rate",
       "music_source": "Music sensor",
+      "open_view": "Open the Ramka view",
+      "language": "Language",
+      "language_how": "Each language is its own Ramka dashboard: {paths}. The tablet shows the language of the dashboard it opens: the default dashboard in the tablet user's profile, or the Companion app's start page. A switch on this page follows once it has been tested on a tablet.",
+      "calendar_by_url": "Add a calendar by URL",
+      "calendar_by_url_how": "No account login needed: [an ICS link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, refreshed once a day) or [a CalDAV account](/config/integrations/dashboard/add?domain=caldav) (server URL, user and app password, refreshed every 15 minutes). Then put the new `calendar.*` entity into `calendar` in `domosenso/ramka.inputs.yaml`, run `domosenso render ramka` and deploy.",
+      "photo_albums": "Albums",
+      "photo_albums_how": "The photo series come from the ticked albums, the top-level folders of the photo folder. With All albums ticked they come from every album and the ticks wait, greyed out, for it to be unticked; none ticked is all of them too. The list follows the folder within 15 minutes.",
+      "photo_count": "Photos per series",
+      "photo_s": "Time per photo",
+      "climate_rooms": "Rooms",
+      "climate_rooms_how": "Up to five rooms, each a main reading and a second one, by default the temperature and the humidity. Room 1 is the first tile and the first line of the charts, in the colour of its dot. A room without a main reading is left out; an empty name becomes the sensor's area.",
+      "air_score": "Show air quality",
+      "air_co2": "Show CO₂",
+      "air_pm2_5": "Show PM2.5",
+      "air_voc": "Show VOC index",
+      "air_nox": "Show NOx index",
+      "air_score_fair": "Air quality fair below",
+      "air_score_poor": "Air quality poor below",
+      "air_co2_raised": "CO₂ raised from",
+      "air_co2_high": "CO₂ high from",
+      "air_pm2_5_raised": "PM2.5 raised from",
+      "air_pm2_5_high": "PM2.5 high from",
+      "air_voc_raised": "VOC index raised from",
+      "air_voc_high": "VOC index high from",
+      "air_nox_raised": "NOx index raised from",
+      "air_nox_high": "NOx index high from",
       "inputs": {
         "screen": "Screen",
         "rooms": "Rooms",

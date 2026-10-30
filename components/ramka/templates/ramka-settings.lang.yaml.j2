@@ -35,6 +35,19 @@
     'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}}}) -%]
 [%- endfor -%]
 [%- endif -%]
+[#- The way to the Ramka view (SPEC-021 amendment 1): the dashboard of this page's language, from
+    dashboard_paths, else dashboard_path; plain URL paths only, as in configuration.yaml. -#]
+[%- set dashboard_path = inputs.dashboard_path | default('dashboard-ramka') -%]
+[%- set dashboard_paths = inputs.dashboard_paths | default({}) -%]
+[%- set plain = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' -%]
+[%- if dashboard_paths is not mapping -%][[ fail('ramka: dashboard paths must be plain url paths') ]][%- endif -%]
+[%- for path in [dashboard_path] + (dashboard_paths.values() | list) if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: dashboard paths must be plain url paths') ]][%- endfor -%]
+[%- set view_url = '/' ~ dashboard_paths.get(lang, dashboard_path) ~ '/ramka?disable_km' -%]
+[%- set language_paths = [] -%]
+[%- for code, path in dashboard_paths.items() -%][%- set _ = language_paths.append(code ~ ': `/' ~ path ~ '`') -%][%- endfor -%]
+[%- set language_paths = language_paths | join(', ') if language_paths else '`/' ~ dashboard_path ~ '`' -%]
+[#- The Air page's limits, two per reading, as the package names them. -#]
+[%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
 [%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
 [#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. -#]
@@ -92,6 +105,14 @@
               **[[ t('ui.settings.not_configured') ]]**
 [[ block(t('ui.settings.not_configured_how') | replace('{input}', input)) ]]
 [%- endmacro -%]
+[#- A page's Advanced card: its rows, shown while the Advanced switch is on. -#]
+[%- macro advanced_section(helpers) %]
+      - type: grid
+        cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]] ]
+            entities:[[ rows(helpers) ]]
+[%- endmacro -%]
 [#- The top of a view's page: its switch, and a note while it is off. -#]
 [%- macro switch_section(view, extra=[]) %]
       - type: grid
@@ -129,6 +150,21 @@ views:
           - type: entities
             entities:[[ rows([('input_select', 'theme_mode'), ('input_boolean', 'near_enabled'), ('input_number', 'off_delay_s'),
           ('input_number', 'brightness_min'), ('input_number', 'brightness_max'), ('input_boolean', 'settings_advanced')]) ]]
+          # The Ramka view in this browser, header and sidebar shown (kiosk-mode's ?disable_km).
+          - type: button
+            name: [[ t('ui.settings.open_view') | yaml ]]
+            icon: mdi:open-in-app
+            show_state: false
+            tap_action:
+              action: navigate
+              navigation_path: [[ view_url | yaml ]]
+            grid_options: {columns: full}
+          # The language is render-time: one Ramka dashboard per language. A live switch waits for the
+          # spike on the tablet (README, "Language").
+          - type: markdown
+            content: |-
+              **[[ t('ui.settings.language') ]]**
+[[ block(t('ui.settings.language_how') | replace('{paths}', language_paths)) ]]
       - type: grid
         cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
           - type: entities
@@ -147,13 +183,46 @@ views:
       # Left out by the render: its switch would change nothing.
       - type: grid
         cards:[[ not_configured(adds[view]) ]]
-[%- else %][[ switch_section(view) ]]
-[%- if view == 'climate' %][[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]]
+[%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'photo_s')]) ]]
+          # The albums: a checkbox each (photo-albums-card), none ticked is all.[[ heading('photo_albums', 'mdi:folder-image', advanced_on) ]]
+          - type: markdown
+            visibility: [ [[ advanced_on ]] ]
+            content: [[ t('ui.settings.photo_albums_how') | yaml ]]
+          - type: custom:photo-albums-card
+            visibility: [ [[ advanced_on ]] ]
+            entity: sensor.[[ p ]]_photo_albums
+            script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
+[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]]
+      # The rooms: five rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
+      # amendment 2. The tiles and the charts follow them.
+      - type: grid
+        cards:[[ heading('climate_rooms', 'mdi:home-thermometer', advanced_on) ]]
+          - type: markdown
+            visibility: [ [[ advanced_on ]] ]
+            content: [[ t('ui.settings.climate_rooms_how') | yaml ]]
+          - type: custom:climate-rooms-card
+            visibility: [ [[ advanced_on ]] ]
+            entity: sensor.[[ p ]]_climate_rooms
+            script: script.[[ p ]]_climate_rooms_set[[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]][[ reset(view) ]]
 [%- elif view == 'air' %]
-[%- set readings = [] -%]
-[%- for key in ['score', 'co2', 'pm2_5', 'voc', 'nox'] if inputs.air[key] is defined -%][%- set _ = readings.append(('readings.' ~ key, inputs.air[key])) -%][%- endfor -%][[ render_time(readings, t('ui.settings.inputs.readings')) ]]
-[%- elif view == 'plants' %][[ render_time([('inputs.plants', labels(inputs.plants))]) ]]
-[%- elif view == 'photos' %][[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]]
+[%- set readings = [] -%][%- set switches = [] -%][%- set limits = [] -%]
+[%- for key in ['score', 'co2', 'pm2_5', 'voc', 'nox'] if inputs.air[key] is defined -%]
+[%- set _ = readings.append(('readings.' ~ key, inputs.air[key])) -%]
+[%- set _ = switches.append(('input_boolean', 'air_' ~ key)) -%]
+[%- for which in air_limits[key] -%][%- set _ = limits.append(('input_number', 'air_' ~ key ~ '_' ~ which)) -%][%- endfor -%]
+[%- endfor -%][[ switch_section('air', switches + [('input_boolean', 'settings_advanced')]) ]][[ advanced_section(limits) ]][[ render_time(readings, t('ui.settings.inputs.readings')) ]][[ reset(view) ]]
+[%- else %][[ switch_section(view) ]]
+[%- if view == 'calendar' %]
+      # A calendar by URL: Home Assistant's own add flows (a human enters the URL and any password),
+      # then the entity goes into the inputs; a calendar is an integration, not a helper.
+      - type: grid
+        cards:
+          - type: markdown
+            content: |-
+              **[[ t('ui.settings.calendar_by_url') ]]**
+[[ block(t('ui.settings.calendar_by_url_how')) ]]
+[%- endif %]
+[%- if view == 'plants' %][[ render_time([('inputs.plants', labels(inputs.plants))]) ]]
 [%- elif view == 'status' %]
 [%- set covers = [] -%][%- for c in inputs.covers | default([]) -%][%- set _ = covers.append(c.status_label | default(c.label)) -%][%- endfor -%][[ render_time([('inputs.covers', covers | join(', ') or '—'), ('inputs.contacts', labels(status_input.contacts | default([]))),
                  ('inputs.power', labels(status_input.power | default([]))), ('inputs.locks', labels(status_input.locks | default([]))),
