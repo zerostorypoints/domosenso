@@ -2,7 +2,7 @@
 # list has the Ramka's shape plus the keys only this component reads: a friendly name, the basil's
 # own sensors and thresholds.
 plants:
-  - {entity: plant.monstera, label: Living room, name: Monstera}
+  - {entity: plant.monstera, label: Living room, name: Monstera, photo: /local/plants/monstera.jpg}
   - {entity: plant.ficus, label: Office, name: Ficus, min_temperature: 12, max_temperature: 30}
   - entity: plant.basil
     label: Kitchen

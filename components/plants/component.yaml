@@ -1,7 +1,8 @@
 # Domosenso component manifest: houseplant sensors (Xiaomi Mi Flora) rated by Home Assistant's
-# plant integration; from 0.2.0 a package with the plants, their light peak and two alerts (SPEC-006).
+# plant integration; from 0.2.0 a package with the plants, their light peak and two alerts (SPEC-006);
+# from 0.3.0 the photo and limits on the plant for the Ramka, last watered, water in, a new sensor in a pot (SPEC-022).
 id: plants
-version: 0.2.0
+version: 0.3.0
 summary: Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors
 description_key: meta.description
 photo: null
@@ -23,11 +24,12 @@ integrations:
   - {name: xiaomi_ble, source: core, setup: "discovers the sensors on its own once a proxy hears them"}
   - {name: plant, source: core, setup: "one plant entity per sensor, with the thresholds in YAML; a change needs a Home Assistant restart"}
   - {name: statistics, source: core}
+  - {name: template, source: core}
 
 inputs:
-  plants:                       # the Ramka's plants shape; name, sensors, the temperature band and check_days from 0.2.0
-    type: "list[{entity: plant.*, label, name?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
-    example: [{entity: plant.monstera, label: Living room}]
+  plants:                       # the Ramka's plants shape; name, sensors, the temperature band and check_days from 0.2.0; photo from 0.3.0
+    type: "list[{entity: plant.*, label, name?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
+    example: [{entity: plant.monstera, label: Living room, photo: /local/plants/monstera.jpg}]
   plant_defaults:               # a plant's own value wins, then this, then nothing (check_days: 3)
     type: map
     default: {min_moisture: 15, max_moisture: 60, min_conductivity: 350, max_conductivity: 2000, min_brightness: 500}
@@ -55,12 +57,19 @@ artifacts:
 
 provides:
   entities:
-    - {id: "plant.<plant>", stability: stable, note: "state ok or problem; attributes moisture, conductivity, brightness, temperature, problem"}
+    - {id: "plant.<plant>", stability: stable, note: "state ok or problem; attributes moisture, conductivity, brightness, temperature, problem; from 0.3.0 domosenso_plant, domosenso_room, domosenso_bands, entity_picture (with photo)"}
     - {id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}", stability: stable}
     # From the package (0.2.0). <plant> is the object id of the plant's entity input.
     - {id: "sensor.<plant>_illuminance_max_24h", unique_id: "<plant>_illuminance_max_24h", stability: stable, note: "lx, brightest reading of the last 24 hours"}
     - {id: automation.plants_need_water, unique_id: plants_water_reminder, stability: stable}
     - {id: automation.plant_sensor_silent, unique_id: plants_sensor_silent, stability: stable}
+    # From 0.3.0 (SPEC-022).
+    - {id: "sensor.<plant>_moisture_min_3h", unique_id: "<plant>_moisture_min_3h", stability: stable, note: "%, lowest moisture of the last 3 hours"}
+    - {id: "sensor.<plant>_moisture_change_48h", unique_id: "<plant>_moisture_change_48h", stability: stable, note: "% points, moisture change over 48 hours"}
+    - {id: "sensor.<plant>_last_watered", unique_id: "<plant>_last_watered", stability: stable, note: "timestamp of the last watering seen in the moisture"}
+    - {id: "sensor.<plant>_water_in_days", unique_id: "<plant>_water_in_days", stability: stable, note: "d until min_moisture at the 48-hour rate; unknown within 48 h of a watering"}
+    - {id: sensor.plants_unplaced_in_soil, unique_id: plants_unplaced_in_soil, stability: stable, note: "Xiaomi BLE moisture sensors no plant uses reading > 0 %; attribute sensors"}
+    - {id: automation.plant_sensor_new, unique_id: plants_sensor_new, stability: stable}
 
 consumes: []
 

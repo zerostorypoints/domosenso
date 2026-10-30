@@ -1,6 +1,6 @@
 # SPEC-022: Plants display and onboarding (plants 0.3.0, ramka 0.7.0)
 
-- Status: draft 2026-10-30
+- Status: approved 2026-10-30 by the maintainer
 - Source: the maintainer's design for a home going from 4 to 15 plant sensors (brainstorming and a
   trial on 2026-10-29/30; the design and its plan live in that home's repository). This spec
   restates the contract for any home; the examples are the demo home's.
