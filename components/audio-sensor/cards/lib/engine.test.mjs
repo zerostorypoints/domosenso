@@ -153,3 +153,64 @@ test("the frame carries the shown band range", () => {
   assert.equal(e.frame.showFrom, 2);
   assert.equal(e.frame.showTo, 29);
 });
+
+// Frames at 30 fps; a push lands on the first frame at or after each push time.
+const runPushes = (o, pushAt, valueAt, untilMs, onFrame) => {
+  const e = new Engine("spectrum");
+  const dt = 1 / 30;
+  let next = 0;
+  for (let k = 0; k * dt * 1000 <= untilMs; k++) {
+    const now = k * dt * 1000;
+    if (next < pushAt.length && now >= pushAt[next] - 1e-6) { e.push(fill(valueAt(next)), now); next++; }
+    e.step(dt, now, palette, opts(o));
+    onFrame?.(now, e.frame, next);
+  }
+  return e;
+};
+
+test("a short rise does not stand still between pushes", () => {
+  // Neutral, then one more step towards hot every 200 ms (5 pushes a second).
+  const pushAt = [0, 200, 400, 600, 800];
+  const valueAt = (n) => 60 + 10 * n;
+  let prev = null;
+  const gap = [];
+  runPushes({ rise: 50 }, pushAt, valueAt, 580, (now, f) => {
+    if (now >= 400 && prev !== null) gap.push([prev, f.smooth[10]]);
+    prev = f.smooth[10];
+  });
+  assert.ok(gap.length >= 5, String(gap.length));
+  // Every frame up to the next push still climbs and is not yet within 0.5 dB, where it would stand.
+  for (const [a, b] of gap) {
+    assert.ok(b > a, `${b} after ${a}`);
+    assert.ok(80 - b >= 0.5, `stands at ${b} before the next push`);
+  }
+});
+
+test("rise of 200 ms at 5 pushes a second is unchanged", () => {
+  const pushAt = [0, 200, 400, 600, 800, 1000];
+  const valueAt = (n) => (n === 0 ? 60 : n % 2 ? 100 : 75);
+  let ref = null;
+  let ref1 = null;
+  let target = 60;
+  let pushed = 0;
+  runPushes({ rise: 200 }, pushAt, valueAt, 1150, (now, f, n) => {
+    if (n !== pushed) { target = valueAt(n - 1); pushed = n; }
+    ref = ref === null ? target : approach(ref, target, 1 / 30, 0.2, 4);
+    const lvl = f.value;
+    ref1 = ref1 === null ? lvl : approach(ref1, lvl, 1 / 30, 0.2, 4);
+    assert.equal(f.smooth[10], ref, `smooth at ${now} ms`);
+    assert.equal(f.smoothValue, ref1, `smoothValue at ${now} ms`);
+  });
+});
+
+test("a gap over 1 s is clamped", () => {
+  // Pushes 3 s apart: the rise follows the gap only up to 1 s, so 90 % of the step is there after 1 s.
+  const pushAt = [0, 3000, 6000];
+  const valueAt = (n) => (n < 2 ? 60 : 100);
+  let at1s = null;
+  runPushes({ rise: 50 }, pushAt, valueAt, 7010, (now, f) => {
+    if (at1s === null && now >= 7000 - 1e-6) at1s = f.smooth[10];
+  });
+  const progress = (at1s - 60) / 40;
+  assert.ok(progress >= 0.9 * 0.99, String(progress));
+});
