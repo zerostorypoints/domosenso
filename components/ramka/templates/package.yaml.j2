@@ -945,8 +945,8 @@ script:
       all_albums:
         name: All albums
         description: Every album, whatever is chosen; absent, all when none is chosen.
-        selector:
-          boolean: {}
+        # No selector either: 2026.9.2 refused `boolean: {}` too ("Only one type can be specified").
+        example: "true"
     sequence:
       - variables:
           picked: "{{ chosen if chosen is defined and chosen is not string and chosen is iterable else [] }}"

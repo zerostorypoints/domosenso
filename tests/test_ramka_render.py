@@ -1821,7 +1821,8 @@ def test_album_list_follows_the_folder(demo):
     assert "chosen" not in event["event_data"]
     # The card's script sets the choice and all; the reset sets all, the ticks kept.
     script = package["script"]["ramka_photo_albums_set"]
-    assert "selector" not in script["fields"]["chosen"]  # refused by 2026.9.2, which disabled the script
+    # 2026.9.2 refused `object: {}` and `boolean: {}` here and disabled the script.
+    assert not any("selector" in field for field in script["fields"].values())
     variables, step = script["sequence"]
     assert step["event"] == "ramka_photo_albums"
 
@@ -2015,3 +2016,12 @@ def test_no_climate_rooms_without_climate(tmp_path):
     assert CLIMATE not in defined_entities(package) and "ramka_climate_rooms_set" not in package["script"]
     assert CLIMATE not in run_reset(package, events=True)
     assert "climate" not in seed_groups(package, at_minimum(package))
+
+
+def test_no_script_field_has_an_empty_selector(demo):
+    """Home Assistant 2026.9.2 disabled a script whose field selector was a type with an empty
+    mapping (`object: {}`, then `boolean: {}`: "Only one type can be specified")."""
+    for name, script in demo["package.yaml"]["script"].items():
+        for field, spec in (script.get("fields") or {}).items():
+            for kind, options in (spec.get("selector") or {}).items():
+                assert options, f"{name}.{field}: selector {kind} is empty"
