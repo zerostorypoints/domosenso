@@ -194,7 +194,7 @@ views:
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
 [%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]]
-      # The rooms: five rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
+      # The rooms: ten rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
       # amendment 2. The tiles and the charts follow them.
       - type: grid
         cards:[[ heading('climate_rooms', 'mdi:home-thermometer', advanced_on) ]]

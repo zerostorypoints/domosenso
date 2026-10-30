@@ -274,7 +274,7 @@
       "photo_count": "Photos per series",
       "photo_s": "Time per photo",
       "climate_rooms": "Rooms",
-      "climate_rooms_how": "Up to five rooms, each a main reading and a second one, by default the temperature and the humidity. Room 1 is the first tile and the first line of the charts, in the colour of its dot. A room without a main reading is left out; an empty name becomes the sensor's area.",
+      "climate_rooms_how": "Up to ten rooms, each a main reading and a second one, by default the temperature and the humidity. Room 1 is the first tile and the first line of the charts, in the colour of its dot. A room without a main reading is left out; an empty name becomes the sensor's area.",
       "air_score": "Show air quality",
       "air_co2": "Show CO₂",
       "air_pm2_5": "Show PM2.5",

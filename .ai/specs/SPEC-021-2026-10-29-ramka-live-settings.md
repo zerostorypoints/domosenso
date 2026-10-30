@@ -800,3 +800,13 @@ seed, the album `all` through the sensor, the script and the loop; the standing 
 `cards/climate-rooms-card.test.mjs`; `cards/rooms-card.test.mjs` and `cards/line-style-card.test.mjs`
 (the live rooms); `cards/photo-albums-card.test.mjs` (the ticks kept and greyed out);
 `tests/test_cli_home_cmds.py` (a dev card's resource carries its hash).
+
+## Amendment 3 (2026-10-30): ten Climate rooms, ramka 0.6.0
+
+Amendment 2's limit of five rooms becomes ten: a home with more rooms than five had to give some up.
+The settings card has ten rows, `script.<prefix>_climate_rooms_set` keeps at most ten rooms, and the
+default and the reset are the first ten of `climate`. Nothing else changes: the tiles and both
+7-day charts already follow `sensor.<prefix>_climate_rooms` whatever its length, room n in the
+theme's series colour n (the Ramka theme has eleven: ten rooms and outside), and the tiles wrap into
+rows of `rooms_columns`. Tests: `cards/climate-rooms-card.test.mjs` (ten rows),
+`tests/test_ramka_render.py` (the default, the reset and the script's cap at ten).

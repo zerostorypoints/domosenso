@@ -3,9 +3,10 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## 0.6.0 (2026-10-30): the sensor update rate, the music view sets "watching"
+## 0.6.0 (2026-10-30): the sensor update rate, the music view sets "watching", ten Climate rooms
 
-With audio-sensor 0.2.0 (#99, #110). Without audio-sensor nothing changes but a label.
+The music parts go with audio-sensor 0.2.0 (#99, #110); without audio-sensor they change nothing
+but a label.
 
 **Music page, Advanced.** A "Sensor update rate" row sets audio-sensor's choice
 `input_select.audio_sensor_music_spectrum_rate`; it shows only while audio-sensor provides it. The
@@ -16,6 +17,11 @@ the data is.
 **The automation `<prefix>_music_watching`** turns `input_boolean.audio_sensor_music_watching` on
 while any Ramka's music view shows (`binary_sensor.<prefix>_music_view`, which gains the attribute
 `component: ramka`) and off when none does; audio-sensor puts the board on `fast` only then.
+
+**Ten Climate rooms** (SPEC-021 amendment 3). Climate → Advanced takes up to ten rooms instead of
+five; the default and the reset are the first ten of `climate`. A home whose rooms were set on the
+page keeps them; one with more than five `climate` rooms adds the others on the page, or presses the
+Climate page's reset to take the first ten.
 
 ### What a home does
 

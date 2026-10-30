@@ -135,11 +135,11 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
-[#- The Climate page's rooms (SPEC-021 amendment 2): up to five, each a label, a main reading and a
-    supplementary one, picked on the settings page; the defaults are the first five of inputs.climate,
+[#- The Climate page's rooms (SPEC-021 amendments 2, 3): up to ten, each a label, a main reading and a
+    supplementary one, picked on the settings page; the defaults are the first ten of inputs.climate,
     temperature and humidity. A list again, so sensor.<prefix>_climate_rooms keeps it, as the albums. -#]
 [%- set climate_rooms = [] -%]
-[%- for c in (inputs.climate | default([]))[:5] -%]
+[%- for c in (inputs.climate | default([]))[:10] -%]
 [%- set _ = climate_rooms.append({'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
 [%- endfor -%]
 [%- if inputs.climate is defined -%]
@@ -534,10 +534,10 @@ template:
             {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
 [%- endif %]
 [%- if inputs.climate is defined %]
-  # The Climate page's rooms (SPEC-021 amendment 2): `rooms`, up to five of {label, main, extra},
+  # The Climate page's rooms (SPEC-021 amendments 2, 3): `rooms`, up to ten of {label, main, extra},
   # entity ids, extra may be empty; the room tiles and the 7-day charts follow it, in its order
   # (colour n is room n). Set by the settings page's climate card through event [[ p ]]_climate_rooms;
-  # the seed gives it inputs.climate's first five. Before that the cards show inputs.climate.
+  # the seed gives it inputs.climate's first ten. Before that the cards show inputs.climate.
   - triggers:
       - trigger: event
         event_type: [[ p ]]_climate_rooms
@@ -960,7 +960,7 @@ script:
 [%- endif %]
 [%- if inputs.climate is defined %]
 
-  # The Climate page's rooms, up to five {label, main, extra}; a room without its main reading is
+  # The Climate page's rooms, up to ten {label, main, extra}; a room without its main reading is
   # dropped. Called by the settings page's climate card.
   [[ p ]]_climate_rooms_set:
     alias: [[ named(' climate rooms set') ]]
@@ -969,7 +969,7 @@ script:
     fields:
       rooms:
         name: Rooms
-        description: Up to five of {label, main, extra}, entity ids; extra may be empty.
+        description: Up to ten of {label, main, extra}, entity ids; extra may be empty.
         # No selector, as the albums' script: object: {} is refused.
         example: '[{"label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
     sequence:
@@ -981,7 +981,7 @@ script:
             {% for r in given if r is mapping and (r.main | default('') | string).startswith('sensor.') %}
             {% set kept.rooms = kept.rooms + [{'label': r.label | default('') | string, 'main': r.main, 'extra': r.extra | default('') | string}] %}
             {% endfor %}
-            {{ kept.rooms[:5] }}
+            {{ kept.rooms[:10] }}
 [%- endif %]
 
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
