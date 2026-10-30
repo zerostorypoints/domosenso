@@ -73,6 +73,10 @@ wifi:
 
 # encryption: the key comes from the device file (api: encryption: key: !secret ...).
 api:
+  # The API keeps one state per entity in each batch: at the default 100 ms, a spectrum every
+  # 85 ms (`fast`) reached Home Assistant only every other frame, and every update waited up to
+  # 100 ms. 10 ms still groups the once-a-minute octave burst into one message.
+  batch_delay: 10ms
 
 # No encryption here, because a factory board has no API key yet and ESPHome refuses an OTA
 # encryption block with nothing to inherit. The device file adds `encryption:` (bare: it takes the

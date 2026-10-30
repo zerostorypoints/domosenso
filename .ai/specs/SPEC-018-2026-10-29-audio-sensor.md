@@ -100,7 +100,9 @@ A home gets:
   85 ms profile never skips a frame), never on a clock of its own, and never without a new frame.
   `normal` after a boot; a board left on `fast` returns to `normal` after 60 min (the
   `live_tracking_timeout` pattern). The publish rule lives in `publish_policy.h`, host-tested like
-  the band maths. The intervals are provisional: the README's measurement confirms or changes them.
+  the band maths. Measured 2026-10-30 (README): 499 / 200 / 87 ms. The firmware sets
+  `api: batch_delay: 10ms`: the API keeps one state per entity in a batch, and its default 100 ms
+  let `fast` through only every other frame.
 - Not in the package: `bluetooth_proxy` (#56 proposes it). A home adds it in its own device file;
   see Open questions.
 

@@ -168,7 +168,7 @@ code, not measured yet (inference); the measurement below replaces them.
 | FFT window (8192 points at 48 kHz, Hann): a hit reaches full weight | about 85 ms | about 85 ms |
 | wait for the publish, which happens when a frame lands and the interval has passed | 0 to 200 ms | 0 to about 5 ms |
 | what goes out | the mean of the frames since the last publish: a kick in one of two or three frames loses about 4 dB | the newest frame alone |
-| ESPHome API, Home Assistant, the `sensor.music_spectrum` alias, the websocket | tens of ms (not timed) | same |
+| ESPHome API (`batch_delay: 10ms`; the default 100 ms halved `fast`), Home Assistant, the `sensor.music_spectrum` alias, the websocket | tens of ms (not timed) | same |
 | the card's rise (default 200 ms, never shorter than the gap between pushes) | about 200 ms to 90 % | about 200 ms to 90 %; a shorter rise works now |
 
 The board's **Spectrum rate** select sets the profile:
@@ -179,7 +179,7 @@ The board's **Spectrum rate** select sets the profile:
 | `normal` | 200 ms | mean of the frames | today's rate: five a second |
 | `fast` | 85 ms (the frame hop; faster would repeat a frame) | the newest frame | about twelve state changes a second, one websocket message per open dashboard each |
 
-The intervals are provisional until measured. Each publish is one CSV of 31 values over the API,
+The intervals are measured (below). Each publish is one CSV of 31 values over the API,
 one state change and one alias render in Home Assistant, and one websocket message per open
 dashboard; the recorder excludes the spectrum in every profile. With a `music: true` board the
 package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a state that is no option
@@ -194,11 +194,11 @@ safety, which drops `fast` to `normal` after an hour.
 The card's `fps` (the Ramka's "Redraw rate") is how often the browser draws. It cannot make the
 data newer; on a weak tablet a lower value still saves work.
 
-**Measurement (to do after a flash, results here):**
+**Measurement** (2026-10-30, one board, ESPHome 2026.9.1; the rest after a flash, results here):
 
 | what | method | result |
 |---|---|---|
-| publish rate per profile | 60 s each; count the board's spectrum `state_changed` events in Home Assistant; within 10 % of 500 / 200 / 85 ms | |
+| publish rate per profile | 60 s each; count the board's spectrum `state_changed` events in Home Assistant; within 10 % of 500 / 200 / 85 ms | `eco` 2.02/s, mean 499 ms (p90 569); `normal` 5.00/s, mean 200 ms (p90 304); `fast` 11.52/s, mean 87 ms (p90 163), 98 % of the frames. Before, with the API's default `batch_delay` of 100 ms, `fast` gave 5.97/s, mean 168 ms; the old firmware's fixed 200 ms gave 4.70/s, mean 212 ms |
 | load, `eco` against `normal` | Spectrum load and the Home Assistant event rate over 10 min each | |
 | sound to screen, `fast` and `normal` | a tone burst or kick near the microphone, 10 trials filmed at 240 fps beside the tablet; median and 90th percentile; target under 300 ms in 9 of 10 on `fast` | |
 | the fallbacks | a restart gives `normal`; `fast` alone falls back after 60 min; the music view closed gives `normal` after 10 s | |

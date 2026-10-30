@@ -53,7 +53,7 @@ Sum today: about 300–600 ms plus the dilution, which matches "up to about 1 s 
 | 4 audio-sensor package: choice, watching flag, forwarding | `task/spectrum-package` | spectrum-package | merged (#117) |
 | 5 ramka: Music Advanced row, reset, watching, fps label | `task/spectrum-ramka` | spectrum-ramka | merged (#116) |
 | 6 docs: README, manifests, check-all | `feature/spectrum-latency` | coordinator | done |
-| 7 measurement on the wall (human) | — | — | waiting for a board flashed from the feature branch |
+| 7 measurement on the wall (human) | — | coordinator records | publish rates measured 2026-10-30 (pass, after `api: batch_delay: 10ms`); load, sound to screen, fallbacks waiting for the human |
 
 Order of merging into the feature branch: 1, then 2 and 3 (independent, parallel), then 4, then 5, then 6. Task 7 runs after a human flashes a board from the feature branch.
 
