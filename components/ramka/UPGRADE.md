@@ -17,7 +17,7 @@ spectrum or level of the board marked `music: true`; a new helper `input_select.
 music visual's look and a switch per view (`input_boolean.<prefix>_page_<view>`). A new admin
 dashboard, "Ramka settings" (`dashboards/ramka-settings.<lang>.yaml`), has one page per view plus
 General, each in Basic and Advanced parts; add its `lovelace:` entry from the README ("Settings
-page"). The music-visual tile on the Controls page is gone: the visual is chosen on the Music page.
+page"). The visual is chosen on the settings dashboard's Music page.
 **Theme.** `input_select.<prefix>_theme_mode` sets the server's default theme (`ramka-dark` or
 `ramka-light`) for every browser on "Backend-selected", not only the tablet.
 **Starting values.** On the first start of 0.4.0 the automation `<prefix>_settings_seed` turns the
@@ -39,13 +39,13 @@ One step is required: add the "Ramka settings" dashboard's `lovelace:` entry to 
 `missing-dashboard-entry dashboards/ramka-settings.<lang>.yaml`. The tablet itself works without
 it, and the seed gives every new helper its value at the first start. Render with a `domosenso`
 command from this catalog release or later: an older one puts the settings dashboard under
-`packages/`, where Home Assistant refuses it. To use the visual, install `audio-sensor` with one sensor marked `music: true`, set `music_visual: spectrum` or
-`level`, render both and deploy. Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the
-twelve resource URLs with them (`domosenso update ramka` and a deploy do both); the deploy's restart
-creates the new helpers and runs the seed. Check after the restart that
-`input_boolean.<prefix>_settings_seeded` is on and every `input_boolean.<prefix>_page_<view>` is on.
-A dashboard or theme of the home's own that relied on the Ramka's view theme `ramka` keeps it: the
-theme stays in `themes/ramka.yaml`.
+`packages/`, where Home Assistant refuses it. To use the visual, install `audio-sensor` with one
+sensor marked `music: true`, set `music_visual: spectrum` or `level`, render both and deploy.
+Updating moves the cards to `www/domosenso/ramka/0.4.0/` and the twelve resource URLs with them
+(`domosenso update ramka` and a deploy do both); the deploy's restart creates the new helpers and
+runs the seed. Check after the restart that `input_boolean.<prefix>_settings_seeded` is on and
+every `input_boolean.<prefix>_page_<view>` is on. A dashboard or theme of the home's own that relied
+on the Ramka's view theme `ramka` keeps it: the theme stays in `themes/ramka.yaml`.
 
 ## 0.3.1 (2026-10-29): the forecast comes back after a restart
 

@@ -896,15 +896,33 @@ def test_reset_page_and_groups(demo):
     assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual"]
 
 
-def test_every_setting_is_on_a_page_and_reset(tmp_path):
-    """The standing rule (SPEC-020): rendered with every optional input, every input_number,
-    input_boolean and input_select the package defines is a named state helper or on a settings
-    page; every helper on a page is one the global reset sets, and on its own page's reset. A new
-    state helper goes into STATE_HELPERS by name, in review."""
-    inputs = with_visual()
+def maximal_inputs() -> dict:
+    """Every optional input that adds a helper or a page: the music visual with its options, the
+    General defaults, the alerts, the photos and every page (the demo home has the rest)."""
+    inputs = with_visual(options={"level": {"flavour": "tide"}, "fps": 24})
     inputs["settings_defaults"] = {"off_delay_s": 600}
-    inputs["music_visual_options"] = {"level": {"flavour": "tide"}}
-    rendered = render(tmp_path, inputs)
+    assert inputs.get("alert_notify") and inputs.get("photo_dir") and inputs.get("status_page", True)
+    assert all(inputs.get(page) for page in ("climate", "air", "plants", "status"))
+    return inputs
+
+
+def without_optional_pages() -> dict:
+    inputs = without_visual()
+    for key in ("climate", "air", "plants", "photo_dir", "alert_notify", "outside", "pressure"):
+        inputs.pop(key, None)
+    return inputs
+
+
+@pytest.mark.parametrize("make_inputs, left_out", [
+    (maximal_inputs, set()), (without_visual, set()), (without_optional_pages, {"climate", "air", "plants", "photos"}),
+], ids=["maximal", "no-music-visual", "no-optional-pages"])
+def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
+    """The standing rule (SPEC-020): rendered with every optional input (and without the optional
+    ones), every input_number, input_boolean and input_select the package defines is a named state
+    helper or on a settings page; every helper on a page is one the global reset sets, and on its
+    own page's reset. A new state helper goes into STATE_HELPERS by name, in review. A view the
+    render left out shows "not configured" without its switch (SPEC-020), which still exists."""
+    rendered = render(tmp_path, make_inputs())
     package = rendered["package.yaml"]
     reset = run_reset(package)
     for entity in helpers(package):
@@ -915,6 +933,8 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path):
         for entity in helpers(package):
             if entity in STATE_HELPERS:
                 assert entity not in on_pages, f"{lang}: state helper {entity} on the {on_pages[entity]} page"
+            elif entity.removeprefix("input_boolean.ramka_page_") in left_out:
+                assert entity not in on_pages, f"{lang}: {entity} shown on a page the render left out"
             else:
                 assert entity in on_pages, f"{lang}: {entity} is on no settings page"
         for path, view in views.items():
@@ -1498,9 +1518,11 @@ def test_music_page_sensor_and_calibration(demo):
     for lang in LANGS:
         t = translations(lang)
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        # The preview reads the music aliases too (the strip's own); every other card that reads
-        # audio-sensor is the music source or its calibration.
+        # The preview reads the music aliases too (the strip's own), and its classic note shows while
+        # the music source is unavailable; every other card that reads audio-sensor is the music
+        # source or its calibration.
         reading = [(s, c) for s, c in view_cards(view) if c.get("type") != "custom:ambient-wave-card"
+                   and c.get("content") != t["ui.settings.preview_classic"]
                    and any(e in json.dumps(c) for e in AUDIO_SENSOR_IDS)]
         assert reading
         for section, card in reading:
@@ -1542,11 +1564,16 @@ def test_settings_preview_is_the_now_playing_visual(demo):
             assert {k: v for k, v in card.items() if k not in ("height", "visibility", "grid_options")} == expected
             # The strip's height on the 1100 x 720 tablet (SPEC-018): 14 % of 720 - 272 px.
             assert card["height"] == "63px"
-            assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind}]
+            # Without audio-sensor the element does not exist: no preview card, the classic note.
+            assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind},
+                                          SOURCE_THERE]
             assert not advanced(section, card)
-        [classic] = [c for _, c in view_cards(view) if c.get("type") == "markdown" and
-                     {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]} in c.get("visibility", [])]
-        assert classic["content"] == translations(lang)["ui.settings.preview_classic"]
+        [classic] = [c for _, c in view_cards(view) if c.get("type") == "markdown"
+                     and c.get("content") == translations(lang)["ui.settings.preview_classic"]]
+        assert classic["visibility"] == [{"condition": "or", "conditions": [
+            {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]},
+            {"condition": "state", "entity": "input_select.audio_sensor_music_source", "state": "unavailable"},
+        ]}]
 
 
 def test_settings_preview_passes_the_card_normaliser(tmp_path, demo):

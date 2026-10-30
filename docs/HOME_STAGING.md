@@ -132,7 +132,9 @@ component the lock does not have yet and a new card version directory arrive com
 move (`resource update … from …`) and the locked version's files are removed through the record. A
 file edited after the render fails the plan with `dev render changed: <path>: render again`. A
 render, `add` or `update` from the tag replaces the dev render's own files without `--force` and
-removes the component's entry; a file edited after the dev render is still refused (`hand-edited`). Read the plan before applying:
+removes the component's entry; a file edited after the dev render is still refused (`hand-edited`).
+`status` lists the dev render's files as `managed-dev`; a dev render reports `stale` for a file the
+previous one wrote and this one does not (the dev tree's version moved): nothing tracks it then. Read the plan before applying:
 it must list the whole candidate.
 Use the fictional framework preview, then test the released version in home staging. Do not
 hand-edit the lock to pretend that an unreleased candidate is a release. Neither rendering nor

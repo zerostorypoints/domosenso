@@ -1,6 +1,6 @@
 # SPEC-018: `audio-sensor` 0.1.0, and the Ramka's music visual (ramka 0.4.0)
 
-- Status: approved 2026-10-29 (docere-priv); issues #70, #71, #73
+- Status: approved 2026-10-29 by the maintainer; issues #70, #71, #73
 - Source: the maintainer's request (2026-10-29): bring a room sound sensor that one home built and
   runs (firmware with a third-octave spectrum, a wave card, a room-acoustics dashboard) into the
   catalog as one component, and let the Ramka show its music. Builds on issues #56 (the Atom EchoS3R
@@ -195,7 +195,8 @@ third_octave`, `show`, `history`, `demo`, `scenario`), `flavour`, `flavour_optio
 (`palette`, `neutral`, `hot`, `neutral_color`), `dynamics` (`rise`, `fall`, `hold`, `tilt`),
 `style.line_width`, `active`, `fallback`, `controls`, `fps`, `height`. Any number, boolean or choice
 may name an `input_*`, `number`, `select` or `sensor` entity read on every update; an unusable
-state gives that option's default.
+state gives that option's default. `fallback` is a literal (`none` or `classic`); letting it name an entity
+later is an addition (amended 2026-10-30, final review).
 
 Defaults, so every use looks as the reference home tuned it without configuration:
 

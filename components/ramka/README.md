@@ -174,7 +174,8 @@ lovelace:
   now-playing switch and says the same of the visual.
 - **Preview** (Music): the now-playing card's two visual configs, bound to the same helpers but
   without `active`, so they draw while nothing plays; the one the visualization select names
-  shows, and `classic` shows a note. Each is 63 px high, the strip on the 1100 × 720 tablet, and
+  shows, and `classic` shows a note, as does a home without audio-sensor (its music source select
+  unavailable), where the card's element does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
   as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
   phone the strip is narrower at the same height.
 - **Music sensor and calibration** (Music, Advanced): audio-sensor's
