@@ -1,0 +1,18 @@
+{
+  "id": "shelly-pm-mini-gen3",
+  "title": "Shelly PM Mini Gen3",
+  "summary": "A small in-wall power meter behind the player's socket, read locally.",
+  "sourcePath": "devices/shelly-pm-mini-gen3.yaml",
+  "sourceCommit": "703424fd168b550ce6d1e68354a4903e62e1ca34",
+  "components": [
+    "media"
+  ],
+  "compatibility": [
+    {
+      "id": "media",
+      "version": "0.1.0"
+    }
+  ],
+  "body": "## What it does here\n\nThe meter sits in the wall box behind the player's socket, in series with its phase, and only measures: power, voltage, current and energy. It does not switch the socket. Home Assistant reads it locally through the core shelly integration, without a cloud account. Map its power and voltage sensors to Ramka's `mains` input and the now-playing view shows the player's draw and voltage.\n\n## Installation\n\nMains wiring in a wall box is work for a qualified electrician. Follow the manufacturer's wiring diagram for the model; no DomoSenso wiring diagram is published for it.\n\n## Verify readings\n\nAfter adding the device in Home Assistant, check that power and voltage sensors update while the player is on and in standby. The catalog recognises the meter by the shelly integration and a model name containing PM Mini.\n\n## Limits\n\nOne meter has been tested in one home, behind one amplifier. Other metering Shelly models are reported as likely mains meters, not as indexed devices.\n\n## Setup references\n\n- [Shelly PM Mini Gen3 — Shelly knowledge base](https://kb.shelly.cloud/knowledge-base/shelly-pm-mini-gen3)\n- [Shelly — Home Assistant](https://www.home-assistant.io/integrations/shelly/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+  "photo": null
+}
