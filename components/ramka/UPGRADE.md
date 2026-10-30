@@ -3,6 +3,39 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.5.0 (2026-10-30): Photos, Air, Climate, Calendar and General settings
+
+Settings pages for more of the Ramka (SPEC-021 amendments 1 and 2); they need 0.4.0's "Ramka
+settings" dashboard entry, nothing else.
+
+**Photos, Air, Calendar and General pages** (SPEC-021 amendment 1). Photos: photos per series, time
+per photo and the albums (`input_number.<prefix>_photo_count`, `_photo_s`, `sensor.<prefix>_photo_albums`
+with the new card `photo-albums-card`, a new Lovelace resource the deploy creates). Air: a switch and two limits per configured reading (`input_boolean.<prefix>_air_<reading>`,
+`input_number.<prefix>_air_<reading>_<level>`), read live by `air-card`'s new `show:` and
+`{entity, default}` limits. Their defaults are 0.3.0's five photos of 10 s from all folders and the
+air page's former limits, set by the seed at the next start; nothing to do. General links to the
+Ramka view (new optional input `dashboard_paths` for a dashboard per language) and says how the
+language is chosen; Calendar links to adding a calendar by URL.
+
+**Albums, all kept** (amendment 2). "All albums" on Photos → Advanced no longer clears the ticked
+albums: it greys them out until it is unticked. `sensor.<prefix>_photo_albums` gains the attribute
+`all`, `script.<prefix>_photo_albums_set` the field `all`; a sensor from 0.4.0 without it reads as
+before (none chosen is all).
+
+**Climate rooms** (amendment 2). Climate → Advanced picks up to five rooms, each a name, a main
+reading and a second one from dropdowns of the home's sensors with a unit (new card
+`climate-rooms-card`, a new Lovelace resource the deploy creates). The room tiles and both 7-day
+charts follow them, outside stays last. They live in `sensor.<prefix>_climate_rooms` (set by
+`script.<prefix>_climate_rooms_set`); the seed fills it once with the first five of `climate`,
+temperature and humidity, so the page looks as before. A home with more than five `climate` rooms
+shows its first five after the update: pick the others on the page, or keep `climate` to five.
+
+### What a home does
+
+`domosenso update ramka` and a deploy: the cards move to `www/domosenso/ramka/0.5.0/` with their
+resource URLs, the restart creates the new helpers and the seed sets them. Check after the restart
+that `sensor.<prefix>_climate_rooms` lists the rooms.
+
 ## 0.4.0 (2026-10-29): the now-playing view can draw the room's music; live settings
 
 0.4.0 includes 0.3.1 (the clock card's forecast comes back after a restart); a home on 0.3.0 gets
@@ -26,15 +59,6 @@ page switches on, sets the helpers that are new to their defaults (new optional 
 runs the Ramka keeps its tuned values:** the presence and display helpers are set only when all
 seven numbers still sit at their minimum, as on a first install. To start over later, press
 "Reset to defaults" on a page or on General.
-
-**Photos, Air, Calendar and General pages** (SPEC-021 amendment 1). Photos: photos per series, time
-per photo and the albums (`input_number.<prefix>_photo_count`, `_photo_s`, `sensor.<prefix>_photo_albums`
-with the new card `photo-albums-card`, a new Lovelace resource the deploy creates). Air: a switch and two limits per configured reading (`input_boolean.<prefix>_air_<reading>`,
-`input_number.<prefix>_air_<reading>_<level>`), read live by `air-card`'s new `show:` and
-`{entity, default}` limits. Their defaults are 0.3.0's five photos of 10 s from all folders and the
-air page's former limits, set by the seed at the next start; nothing to do. General links to the
-Ramka view (new optional input `dashboard_paths` for a dashboard per language) and says how the
-language is chosen; Calendar links to adding a calendar by URL.
 
 `music_visual_options` keeps its keys, gains `fps` and now gives the visual's starting values (what
 the seed and the reset write into its helpers) instead of literal card options; the render checks

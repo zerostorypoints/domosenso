@@ -104,6 +104,14 @@
       "missing": "nicht gefunden",
       "filter": "Alben filtern",
       "none": "Noch keine Alben im Fotoordner."
+    },
+    "climate_rooms": {
+      "room": "Raum {n}",
+      "label": "Name",
+      "main": "Hauptmesswert",
+      "extra": "Zweiter Messwert",
+      "none": "—",
+      "missing": "nicht gefunden"
     }
   },
   "ui": {
@@ -258,9 +266,11 @@
       "calendar_by_url": "Kalender per URL hinzufügen",
       "calendar_by_url_how": "Ohne Konto-Anmeldung: [ein ICS-Link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote-Kalender, einmal am Tag aktualisiert) oder [ein CalDAV-Konto](/config/integrations/dashboard/add?domain=caldav) (Server-URL, Benutzer und App-Passwort, alle 15 Minuten aktualisiert). Danach die neue `calendar.*`-Entität unter `calendar` in `domosenso/ramka.inputs.yaml` eintragen, `domosenso render ramka` ausführen und bereitstellen.",
       "photo_albums": "Alben",
-      "photo_albums_how": "Die Fotoserien kommen aus den angehakten Alben, den obersten Ordnern des Fotoordners; ohne Haken aus allen. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
+      "photo_albums_how": "Die Fotoserien kommen aus den angehakten Alben, den obersten Ordnern des Fotoordners. Mit Alle Alben angehakt kommen sie aus allen, und die Haken warten ausgegraut, bis es wieder abgehakt ist; ohne Haken ebenfalls aus allen. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
       "photo_count": "Fotos pro Serie",
       "photo_s": "Zeit pro Foto",
+      "climate_rooms": "Räume",
+      "climate_rooms_how": "Bis zu fünf Räume, jeder mit einem Hauptmesswert und einem zweiten, standardmässig Temperatur und Luftfeuchtigkeit. Raum 1 ist die erste Kachel und die erste Linie der Diagramme, in der Farbe seines Punkts. Ein Raum ohne Hauptmesswert entfällt; ein leerer Name wird zum Bereich des Sensors.",
       "air_score": "Luftqualität anzeigen",
       "air_co2": "CO₂ anzeigen",
       "air_pm2_5": "PM2.5 anzeigen",

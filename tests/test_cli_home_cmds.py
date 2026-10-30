@@ -581,6 +581,12 @@ def test_status_broken_configuration_is_named(added, capsys):
 
 DEV_RENDER = ".domosenso/dev-render.json"
 CARD_100 = "/local/domosenso/panel/1.0.0/cards/panel-card.js"
+
+
+def dev_url(home, url):
+    """A dev-rendered card's resource URL: its path plus ?v= and its file's hash (resources.wanted)."""
+    path = home / "home-assistant/www" / url.removeprefix("/local/")
+    return f"{url}?v={hashlib.sha256(path.read_bytes()).hexdigest()[:8]}"
 CARD_110 = "/local/domosenso/panel/1.1.0/cards/panel-card.js"
 
 
@@ -802,7 +808,7 @@ def test_deploy_carries_new_component_from_inventory(home, catalog, capsys, tmp_
     # every file of the dev render is a dev-render line; the instance file is the home's own
     managed = [rel for rel in added_files if rel != "local.yaml"]
     assert [line for line in lines if line.startswith("dev-render ")] == [f"dev-render {rel}" for rel in managed]
-    assert f"resource create {CARD_100}" in lines
+    assert f"resource create {dev_url(home, CARD_100)}" in lines
 
 
 def test_deploy_new_version_moves_resources(added, catalog, capsys, tmp_path):
@@ -813,7 +819,7 @@ def test_deploy_new_version_moves_resources(added, catalog, capsys, tmp_path):
     assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
 
     lines = plan_text(deploy_plan(added, target, resources.items))
-    assert f"resource update {CARD_110} from {CARD_100}" in lines
+    assert f"resource update {dev_url(added, CARD_110)} from {CARD_100}" in lines
     assert "remove www/domosenso/panel/1.0.0/cards/panel-card.js" in lines
     assert "add www/domosenso/panel/1.1.0/cards/panel-card.js" in lines
     assert "dev-render www/domosenso/panel/1.1.0/cards/panel-card.js" in lines
@@ -822,7 +828,7 @@ def test_deploy_new_version_moves_resources(added, catalog, capsys, tmp_path):
     assert deploy_apply(added, target, resources)
     assert not [p for p in (target / "www/domosenso/panel/1.0.0").rglob("*") if p.is_file()]
     assert (target / "www/domosenso/panel/1.1.0/cards/panel-card.js").read_text() == "export const v = 2;\n"
-    assert [i["url"] for i in resources.items] == [CARD_110]
+    assert [i["url"] for i in resources.items] == [dev_url(added, CARD_110)]
     record = json.loads((target / ".domosenso/deployed.json").read_text())
     assert "www/domosenso/panel/1.1.0/cards/panel-card.js" in record["dev_render"]["paths"]
 

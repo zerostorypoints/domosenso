@@ -744,3 +744,42 @@ Tests: `tests/test_ramka_shell.py` (album, several albums, missing albums, `--al
 without `photo_dir` or a reading, the card's bindings, the link per language and its failure, the
 language note, the calendar links; the standing rule); `tests/test_cli_resources.py` (the dev card's hash); `cards/photo-albums-card.test.mjs`; `cards/air-card.test.mjs` (`show:`, entity
 limits, an unusable limit, unchanged without the new keys).
+
+## Amendment 2 (2026-10-30): albums kept under "All", the Climate page's rooms, ramka 0.5.0
+
+From the first look at amendment 1 on the wall. ramka 0.4.0 is tagged, so both amendments ship as
+**0.5.0**; the version directory changes with it, which also gives the cards' imports
+(`lib/`, `translations/`) new URLs: a `?v=` on a card does not reach the files it imports, and the
+album card showed its keys (`card.photo_albums.all`) from a cached 0.4.0 `en.json`.
+
+**Albums.** Ticking "All albums" no longer clears the ticks: they stay, greyed out, until it is
+unticked. `sensor.<prefix>_photo_albums` gains the attribute `all` (absent on a 0.4.0 sensor: all is
+none chosen); `script.<prefix>_photo_albums_set` gains the field `all` (absent: none chosen is
+all), and the card always sends both. The loop passes no albums while `all` is true. The reset sends
+`{all: true}`, keeping the ticks; the reset's event entries now carry their whole event data.
+
+**Climate page** (with `climate`; group `climate`, page `climate`): up to five rooms, each a label,
+a main reading and a supplementary one, entity ids, picked in Advanced on a new card,
+`climate-rooms-card`: a name field and two dropdowns per room of every `sensor.*` with a unit, by
+name. A room without a main reading is dropped (the ones below move up); an empty name becomes the
+main sensor's area, else its name. No helper, as the albums: `sensor.<prefix>_climate_rooms` keeps
+`rooms` (restored after a restart), set by event `<prefix>_climate_rooms` from
+`script.<prefix>_climate_rooms_set`, which keeps at most five rooms whose main is a `sensor.*`.
+
+- `rooms-card` gains `entity`: while its `rooms` attribute holds a room, the tiles are those rooms
+  (room n in colour n) and each reading shows its entity's unit (else °C and %, as before).
+- `line-style-card` gains `rooms: {entity, key, after}`: while the entity holds rooms, the inner
+  card's entities are the rooms' `key` readings, then `after` (outside); it rebuilds the inner card
+  when they change. Both charts bind it (`extra` on the left, `main` on the right).
+- Default and reset: the first five of `climate`, `temperature` as main, `humidity` (or empty) as
+  extra. The seed seeds group `climate` while the sensor has no `rooms`, whatever the flag; any list
+  the settings page saved is the home's. Before the seed the cards show `climate` as rendered. A
+  home with more than five `climate` rooms shows five after the update (UPGRADE.md says so).
+- The Advanced switch also sits on the Climate page. The reset's `groups` gain `climate`.
+
+Tests: `tests/test_ramka_render.py` (the rooms' defaults and reset, the sensor and the script's
+filtering, the dashboard bindings, the card on Climate → Advanced, nothing without `climate`, the
+seed, the album `all` through the sensor, the script and the loop; the standing rule);
+`cards/climate-rooms-card.test.mjs`; `cards/rooms-card.test.mjs` and `cards/line-style-card.test.mjs`
+(the live rooms); `cards/photo-albums-card.test.mjs` (the ticks kept and greyed out);
+`tests/test_cli_home_cmds.py` (a dev card's resource carries its hash).

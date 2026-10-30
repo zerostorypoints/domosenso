@@ -113,10 +113,11 @@
 [#- The Photos page (SPEC-021 amendment 1): the albums (top-level folders of photo_dir; none chosen
     is all), the photos per series and the time per photo; the defaults are 0.3.0's five photos of 10 s
     from all. The albums are not a helper (a list of any length): sensor.<prefix>_photo_albums keeps
-    them, and the reset sets them with its event, the ('event', ...) entry. -#]
+    them, and the reset sets them with its event, the ('event', key, page, group, event data) entry:
+    all albums, the ticked ones kept. -#]
 [%- set photo_defaults = {'photo_count': 5, 'photo_s': 10} -%]
 [%- if inputs.photo_dir is defined -%]
-[%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', [])) -%]
+[%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', {'all': true})) -%]
 [%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
 [%- endif -%]
 [#- The Air page: a switch per configured reading, and the two limits of each, where its colour
@@ -134,6 +135,16 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
+[#- The Climate page's rooms (SPEC-021 amendment 2): up to five, each a label, a main reading and a
+    supplementary one, picked on the settings page; the defaults are the first five of inputs.climate,
+    temperature and humidity. A list again, so sensor.<prefix>_climate_rooms keeps it, as the albums. -#]
+[%- set climate_rooms = [] -%]
+[%- for c in (inputs.climate | default([]))[:5] -%]
+[%- set _ = climate_rooms.append({'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
+[%- endfor -%]
+[%- if inputs.climate is defined -%]
+[%- set _ = settings.append(('event', 'climate_rooms', 'climate', 'climate', {'rooms': climate_rooms})) -%]
+[%- endif -%]
 [#- A select's options: its default first, then the rest in the given order, so a fresh helper is
     right before the seed runs. -#]
 [%- macro options(default, all) -%]
@@ -494,11 +505,12 @@ template:
         url: >-
           [[ photo_url ]]/{{ states('input_text.[[ p ]]_photo').split('/') | map('urlencode') | join('/') }}
         availability: "{{ states('input_text.[[ p ]]_photo') not in ['', 'unknown', 'unavailable'] }}"
-  # The photo albums (SPEC-021 amendment 1): `available`, the top-level folders with photos (from the
-  # photo index), and `chosen`, the ones the series come from (the settings page's album card; none
-  # is all). The state is how many are chosen. A list of any length, which no helper holds; a
-  # trigger-based entity restores its attributes after a restart. Event [[ p ]]_photo_albums sets
-  # either key and keeps the other.
+  # The photo albums (SPEC-021 amendments 1 and 2): `available`, the top-level folders with photos
+  # (from the photo index), `chosen`, the ticked ones, and `all`: every album, the ticks kept for
+  # later (the settings page's album card; none chosen is all too). The state is how many are
+  # chosen. A list of any length, which no helper holds; a trigger-based entity restores its
+  # attributes after a restart. Event [[ p ]]_photo_albums sets any of the keys and keeps the rest;
+  # without `all` ever set (0.4.0's sensor), all is none chosen.
   - triggers:
       - trigger: event
         event_type: [[ p ]]_photo_albums
@@ -514,6 +526,26 @@ template:
             {{ trigger.event.data.available if trigger.event.data.available is defined else this.attributes.available | default([]) }}
           chosen: >-
             {{ trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([]) }}
+          all: >-
+            {% set chosen = trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([]) %}
+            {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
+[%- endif %]
+[%- if inputs.climate is defined %]
+  # The Climate page's rooms (SPEC-021 amendment 2): `rooms`, up to five of {label, main, extra},
+  # entity ids, extra may be empty; the room tiles and the 7-day charts follow it, in its order
+  # (colour n is room n). Set by the settings page's climate card through event [[ p ]]_climate_rooms;
+  # the seed gives it inputs.climate's first five. Before that the cards show inputs.climate.
+  - triggers:
+      - trigger: event
+        event_type: [[ p ]]_climate_rooms
+    sensor:
+      - name: [[ named(' climate rooms') ]]
+        unique_id: [[ p ]]_climate_rooms
+        default_entity_id: sensor.[[ p ]]_climate_rooms
+        icon: mdi:home-thermometer
+        state: "{{ trigger.event.data.rooms | default([]) | count }}"
+        attributes:
+          rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
 
 # Screen scripts. Each step is one Companion notification command
@@ -838,8 +870,9 @@ script:
                 - action: shell_command.[[ p ]]_pick
                   data:
                     count: "{{ states('input_number.[[ p ]]_photo_count') | int([[ photo_defaults.photo_count ]]) }}"
-                    # None chosen (or the sensor not there yet): every album.
-                    albums: "{{ state_attr('sensor.[[ p ]]_photo_albums', 'chosen') or [] }}"
+                    # All albums ticked, none chosen, or the sensor not there yet: every album.
+                    albums: >-
+                      {{ [] if state_attr('sensor.[[ p ]]_photo_albums', 'all') else state_attr('sensor.[[ p ]]_photo_albums', 'chosen') or [] }}
                   response_variable: pick
                 - variables:
                     # The JSON is the last line of stdout; anything the script printed before it
@@ -896,7 +929,8 @@ script:
 [%- endif %]
 
 [%- if inputs.photo_dir is defined %]
-  # The albums the photo series come from; [] is all. Called by the settings page's album card.
+  # The albums the photo series come from. Called by the settings page's album card, always with
+  # both fields: `all` keeps the ticks for when it is turned off again.
   [[ p ]]_photo_albums_set:
     alias: [[ named(' photo albums set') ]]
     icon: mdi:folder-image
@@ -907,10 +941,43 @@ script:
         description: Top-level folders of the photo folder, a list; none for all.
         # No selector: HA 2026.9.2 refused `object: {}` here and disabled the script.
         example: '["2025", "2026"]'
+      all:
+        name: All albums
+        description: Every album, whatever is chosen; absent, all when none is chosen.
+        selector:
+          boolean: {}
     sequence:
+      - variables:
+          picked: "{{ chosen if chosen is defined and chosen is not string and chosen is iterable else [] }}"
       - event: [[ p ]]_photo_albums
         event_data:
-          chosen: "{{ chosen if chosen is defined and chosen is not string and chosen is iterable else [] }}"
+          chosen: "{{ picked }}"
+          all: "{{ all if all is defined else picked | count == 0 }}"
+[%- endif %]
+[%- if inputs.climate is defined %]
+
+  # The Climate page's rooms, up to five {label, main, extra}; a room without its main reading is
+  # dropped. Called by the settings page's climate card.
+  [[ p ]]_climate_rooms_set:
+    alias: [[ named(' climate rooms set') ]]
+    icon: mdi:home-thermometer
+    mode: queued
+    fields:
+      rooms:
+        name: Rooms
+        description: Up to five of {label, main, extra}, entity ids; extra may be empty.
+        # No selector, as the albums' script: object: {} is refused.
+        example: '[{"label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
+    sequence:
+      - event: [[ p ]]_climate_rooms
+        event_data:
+          rooms: >-
+            {% set given = rooms if rooms is defined and rooms is not string and rooms is iterable else [] %}
+            {% set kept = namespace(rooms=[]) %}
+            {% for r in given if r is mapping and (r.main | default('') | string).startswith('sensor.') %}
+            {% set kept.rooms = kept.rooms + [{'label': r.label | default('') | string, 'main': r.main, 'extra': r.extra | default('') | string}] %}
+            {% endfor %}
+            {{ kept.rooms[:5] }}
 [%- endif %]
 
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
@@ -935,7 +1002,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual", "photos", "air"]
+            options: ["presence_display", "pages", "music_visual", "photos", "air", "climate"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -956,8 +1023,7 @@ script:
 [%- for domain, key, _page, _group, value in block['items'] %]
 [%- if domain == 'event' %]
           - event: [[ p ]]_[[ key ]]
-            event_data:
-              chosen: [[ value | tojson ]]
+            event_data: [[ value | tojson ]]
 [%- else %]
 [%- set verb = 'set_value' if domain == 'input_number' else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
           - action: [[ domain ]].[[ verb ]]
@@ -1290,6 +1356,9 @@ automation:
       - variables:
           seed_groups: >-
             {% set untouched = namespace(presence=true, music=true, photos=true, air=true) %}
+[%- if inputs.climate is defined %]
+            {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
+[%- endif %]
             {% for e in ['input_number.[[ p ]]_off_delay_s', 'input_number.[[ p ]]_brightness_min', 'input_number.[[ p ]]_brightness_max', 'input_number.[[ p ]]_near_cm', 'input_number.[[ p ]]_near_s', 'input_number.[[ p ]]_controls_hold_s', 'input_number.[[ p ]]_lux_max'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.presence = false %}{% endfor %}
 [%- set photo_numbers = [] if inputs.photo_dir is not defined else ['input_number.' ~ p ~ '_photo_count', 'input_number.' ~ p ~ '_photo_s'] %]
 [%- set air_numbers = [] %]
@@ -1301,7 +1370,7 @@ automation:
             {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"

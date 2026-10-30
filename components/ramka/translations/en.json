@@ -104,6 +104,14 @@
       "missing": "not found",
       "filter": "Filter albums",
       "none": "No albums in the photo folder yet."
+    },
+    "climate_rooms": {
+      "room": "Room {n}",
+      "label": "Name",
+      "main": "Main reading",
+      "extra": "Second reading",
+      "none": "—",
+      "missing": "not found"
     }
   },
   "ui": {
@@ -258,9 +266,11 @@
       "calendar_by_url": "Add a calendar by URL",
       "calendar_by_url_how": "No account login needed: [an ICS link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, refreshed once a day) or [a CalDAV account](/config/integrations/dashboard/add?domain=caldav) (server URL, user and app password, refreshed every 15 minutes). Then put the new `calendar.*` entity into `calendar` in `domosenso/ramka.inputs.yaml`, run `domosenso render ramka` and deploy.",
       "photo_albums": "Albums",
-      "photo_albums_how": "The photo series come from the ticked albums, the top-level folders of the photo folder; none ticked is all of them. The list follows the folder within 15 minutes.",
+      "photo_albums_how": "The photo series come from the ticked albums, the top-level folders of the photo folder. With All albums ticked they come from every album and the ticks wait, greyed out, for it to be unticked; none ticked is all of them too. The list follows the folder within 15 minutes.",
       "photo_count": "Photos per series",
       "photo_s": "Time per photo",
+      "climate_rooms": "Rooms",
+      "climate_rooms_how": "Up to five rooms, each a main reading and a second one, by default the temperature and the humidity. Room 1 is the first tile and the first line of the charts, in the colour of its dot. A room without a main reading is left out; an empty name becomes the sensor's area.",
       "air_score": "Show air quality",
       "air_co2": "Show CO₂",
       "air_pm2_5": "Show PM2.5",

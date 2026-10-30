@@ -261,9 +261,12 @@ views:
         column_span: 3
         visibility: *climate
         cards:
+          # The rooms picked on the settings page (sensor.[[ p ]]_climate_rooms); these until the
+          # seed has set it.
           - type: custom:rooms-card
             height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
+            entity: sensor.[[ p ]]_climate_rooms
             rooms:
             [%- for room in series %]
               - name: [[ room.label | yaml ]]
@@ -290,6 +293,14 @@ views:
             [%- else %]
             line_styles: {}
             [%- endif %]
+            # The settings page's rooms, their extra readings, then outside; the entities
+            # below until the seed has set them.
+            rooms:
+              entity: sensor.[[ p ]]_climate_rooms
+              key: extra
+            [%- if outside and outside.humidity is defined %]
+              after: [{entity: [[ outside.humidity ]], name: [[ t('ui.climate.outside') | yaml ]]}]
+            [%- endif %]
             grid_options: {columns: 18, rows: 4}
             card:
               type: statistics-graph
@@ -309,6 +320,14 @@ views:
               [[ outside.temperature ]]: {width: 3, type: [8, 5]}
             [%- else %]
             line_styles: {}
+            [%- endif %]
+            # The settings page's rooms, their main readings, then outside; the entities
+            # below until the seed has set them.
+            rooms:
+              entity: sensor.[[ p ]]_climate_rooms
+              key: main
+            [%- if outside %]
+              after: [{entity: [[ outside.temperature ]], name: [[ t('ui.climate.outside') | yaml ]]}]
             [%- endif %]
             grid_options: {columns: 18, rows: 4}
             card:

@@ -104,6 +104,14 @@
       "missing": "nie znaleziono",
       "filter": "Filtruj albumy",
       "none": "Brak albumów w folderze zdjęć."
+    },
+    "climate_rooms": {
+      "room": "Pokój {n}",
+      "label": "Nazwa",
+      "main": "Główny pomiar",
+      "extra": "Drugi pomiar",
+      "none": "—",
+      "missing": "nie znaleziono"
     }
   },
   "ui": {
@@ -258,9 +266,11 @@
       "calendar_by_url": "Kalendarz z adresu URL",
       "calendar_by_url_how": "Bez logowania do konta: [link ICS](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, odświeżany raz dziennie) albo [konto CalDAV](/config/integrations/dashboard/add?domain=caldav) (adres serwera, użytkownik i hasło aplikacji, odświeżane co 15 minut). Potem wpisz nową encję `calendar.*` w `calendar` w `domosenso/ramka.inputs.yaml`, uruchom `domosenso render ramka` i wdróż.",
       "photo_albums": "Albumy",
-      "photo_albums_how": "Serie zdjęć pochodzą z zaznaczonych albumów, czyli folderów najwyższego poziomu w folderze zdjęć; bez zaznaczenia ze wszystkich. Lista nadąża za folderem w ciągu 15 minut.",
+      "photo_albums_how": "Serie zdjęć pochodzą z zaznaczonych albumów, czyli folderów najwyższego poziomu w folderze zdjęć. Gdy zaznaczone są Wszystkie albumy, pochodzą ze wszystkich, a zaznaczenia czekają wyszarzone na jego odznaczenie; bez zaznaczenia także ze wszystkich. Lista nadąża za folderem w ciągu 15 minut.",
       "photo_count": "Zdjęć w serii",
       "photo_s": "Czas na zdjęcie",
+      "climate_rooms": "Pokoje",
+      "climate_rooms_how": "Do pięciu pokoi, każdy z głównym pomiarem i drugim, domyślnie temperaturą i wilgotnością. Pokój 1 to pierwszy kafelek i pierwsza linia wykresów, w kolorze jego kropki. Pokój bez głównego pomiaru jest pomijany; pusta nazwa staje się obszarem czujnika.",
       "air_score": "Pokaż jakość powietrza",
       "air_co2": "Pokaż CO₂",
       "air_pm2_5": "Pokaż PM2.5",

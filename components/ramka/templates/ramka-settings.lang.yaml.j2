@@ -192,6 +192,18 @@ views:
             visibility: [ [[ advanced_on ]] ]
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
+[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]]
+      # The rooms: five rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
+      # amendment 2. The tiles and the charts follow them.
+      - type: grid
+        cards:[[ heading('climate_rooms', 'mdi:home-thermometer', advanced_on) ]]
+          - type: markdown
+            visibility: [ [[ advanced_on ]] ]
+            content: [[ t('ui.settings.climate_rooms_how') | yaml ]]
+          - type: custom:climate-rooms-card
+            visibility: [ [[ advanced_on ]] ]
+            entity: sensor.[[ p ]]_climate_rooms
+            script: script.[[ p ]]_climate_rooms_set[[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]][[ reset(view) ]]
 [%- elif view == 'air' %]
 [%- set readings = [] -%][%- set switches = [] -%][%- set limits = [] -%]
 [%- for key in ['score', 'co2', 'pm2_5', 'voc', 'nox'] if inputs.air[key] is defined -%]
@@ -210,8 +222,7 @@ views:
               **[[ t('ui.settings.calendar_by_url') ]]**
 [[ block(t('ui.settings.calendar_by_url_how')) ]]
 [%- endif %]
-[%- if view == 'climate' %][[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]]
-[%- elif view == 'plants' %][[ render_time([('inputs.plants', labels(inputs.plants))]) ]]
+[%- if view == 'plants' %][[ render_time([('inputs.plants', labels(inputs.plants))]) ]]
 [%- elif view == 'status' %]
 [%- set covers = [] -%][%- for c in inputs.covers | default([]) -%][%- set _ = covers.append(c.status_label | default(c.label)) -%][%- endfor -%][[ render_time([('inputs.covers', covers | join(', ') or '—'), ('inputs.contacts', labels(status_input.contacts | default([]))),
                  ('inputs.power', labels(status_input.power | default([]))), ('inputs.locks', labels(status_input.locks | default([]))),
