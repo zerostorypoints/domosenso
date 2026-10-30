@@ -70,8 +70,8 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
   icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
 - **The look is live.** Every option of the two visual configs names a helper (Live settings
   below): the flavour per kind (`input_select.<prefix>_music_spectrum_flavour`, `_level_flavour`),
-  the palette, rise, fall, line width, tilt, the neutral and hot dB per kind and the refresh rate
-  (`fps`). The card reads their states on every update, so a change shows on the tablet at once.
+  the palette, rise, fall, line width, tilt, the neutral and hot dB per kind and the redraw rate
+  (`fps`: how often the browser draws, which cannot make the data newer). The card reads their states on every update, so a change shows on the tablet at once.
   `music_visual_options` gives their starting values, key by key, for example
   `{level: {flavour: tide}, line_width: 3}`; absent keys take the card's defaults (spectrum `dune`,
   level `centre`, 30 to 70 dB SPL, the `series` palette, rise 200 ms, fall 4 s, 30 fps), the line
@@ -119,7 +119,12 @@ approach toggle it has had since 0.1.0.
   view) limits it to that page's helpers, field `groups` (`presence_display`, `pages`,
   `music_visual`) to those groups; with both, the helpers in both; with neither, every helper and
   `input_boolean.<prefix>_ambient_music` too. It never touches audio-sensor's music source or
-  calibration: a measurement is not a preference.
+  calibration: a measurement is not a preference. The one audio-sensor helper it sets, while it is
+  there, is the sensor update rate (`input_select.audio_sensor_music_spectrum_rate`, to `normal`).
+- **Sensor update rate.** Music, Advanced also shows audio-sensor's update rate (`eco`, `normal`,
+  `fast`; hidden in a home without audio-sensor). `<prefix>_music_watching` keeps
+  `input_boolean.audio_sensor_music_watching` on while any Ramka's music view is on, and `fast`
+  applies only then; audio-sensor's README ("Latency and update rate") has the profiles.
 - **Page switches.** `input_boolean.<prefix>_page_<view>` takes a view out live; the render is the
   outer limit (a view the render left out stays out whatever its switch says). The ambient pages:
   `sensor.<prefix>_ambient_pages` lists the rendered pages whose switch is on, in rotation order;
