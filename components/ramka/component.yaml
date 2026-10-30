@@ -137,6 +137,10 @@ inputs:
   alert_title: {type: string, default: "<name>"}
   kiosk_user: {type: string, default: null}               # HA user that gets kiosk-mode
   dashboard_path: {type: string, default: dashboard-ramka}  # the top-right corner's way out
+  dashboard_paths:              # the Ramka dashboard of each language, for the settings page's "Open the
+    type: "map[lang, string]"   # Ramka view" (0.4.0); a language not in it takes dashboard_path. Plain
+    default: null               # URL paths, as registered in configuration.yaml.
+    example: {en: dashboard-ramka, de: dashboard-ramka-de}
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
@@ -221,12 +225,17 @@ provides:                       # <prefix> from inputs
     - {id: "timer.<prefix>_controls", stability: stable}
     - {id: "input_button.<prefix>_reload", stability: stable, note: "pressing it reloads the tablet's page"}
     - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
+    - {id: "input_select.<prefix>_photo_album", stability: stable, options: [all], note: "with photo_dir; all, then the top-level folders, set by the photo index (SPEC-021 amendment 1)"}
+    - {id: "input_number.<prefix>_{photo_count,photo_s}", stability: stable, note: "with photo_dir (SPEC-021 amendment 1)"}
+    - {id: "input_text.<prefix>_photo_album_choice", stability: stable, note: "with photo_dir; the album kept over a restart"}
+    - {id: "input_boolean.<prefix>_air_{score,co2,pm2_5,voc,nox}", stability: stable, note: "one per reading the air input names (SPEC-021 amendment 1)"}
+    - {id: "input_number.<prefix>_air_{score_fair,score_poor,co2_raised,co2_high,pm2_5_raised,pm2_5_high,voc_raised,voc_high,nox_raised,nox_high}", stability: stable, note: "the limits of the readings the air input names (SPEC-021 amendment 1)"}
     - {id: "image.<prefix>_photo", stability: stable, note: "with photo_dir"}
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
-    - {id: "shell_command.<prefix>_{index,pick}", stability: stable, note: "with photo_dir"}
-  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+    - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
+  automations: "<prefix>_{presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,photo_album_keep,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without

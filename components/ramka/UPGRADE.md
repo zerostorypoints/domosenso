@@ -27,6 +27,15 @@ runs the Ramka keeps its tuned values:** the presence and display helpers are se
 seven numbers still sit at their minimum, as on a first install. To start over later, press
 "Reset to defaults" on a page or on General.
 
+**Photos, Air, Calendar and General pages** (SPEC-021 amendment 1). Photos: the album, photos per
+series and time per photo (`input_select.<prefix>_photo_album`, `input_number.<prefix>_photo_count`,
+`_photo_s`). Air: a switch and two limits per configured reading (`input_boolean.<prefix>_air_<reading>`,
+`input_number.<prefix>_air_<reading>_<level>`), read live by `air-card`'s new `show:` and
+`{entity, default}` limits. Their defaults are 0.3.0's five photos of 10 s from all folders and the
+air page's former limits, set by the seed at the next start; nothing to do. General links to the
+Ramka view (new optional input `dashboard_paths` for a dashboard per language) and says how the
+language is chosen; Calendar links to adding a calendar by URL.
+
 `music_visual_options` keeps its keys, gains `fps` and now gives the visual's starting values (what
 the seed and the reset write into its helpers) instead of literal card options; the render checks
 them (README, "Music visual"). The templates' fallbacks now equal the defaults (they were 120 s off

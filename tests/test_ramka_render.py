@@ -537,25 +537,40 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
             old_dashboard, new_dashboard = load(before / name), load(after / name)
             assert old_dashboard["views"][0].pop("theme") == "ramka"
             assert "theme" not in new_dashboard["views"][0]
-            assert without_calendar_switch(new_dashboard) == old_dashboard, name
+            assert without_air_settings(without_calendar_switch(new_dashboard)) == old_dashboard, name
+
+
+# The Photos and Air pages' settings (SPEC-021, amendment 1), with the demo home's photo_dir and
+# all five readings.
+AIR_READINGS = ["score", "co2", "pm2_5", "voc", "nox"]
+AIR_LIMITS = {"score_fair": 80, "score_poor": 60, "co2_raised": 800, "co2_high": 1200, "pm2_5_raised": 15,
+              "pm2_5_high": 35, "voc_raised": 150, "voc_high": 250, "nox_raised": 20, "nox_high": 150}
+PHOTO_DEFAULTS = {"input_select.ramka_photo_album": "all", "input_number.ramka_photo_count": 5,
+                  "input_number.ramka_photo_s": 10}
+AIR_DEFAULTS = {**{f"input_boolean.ramka_air_{r}": "on" for r in AIR_READINGS},
+                **{f"input_number.ramka_air_{k}": v for k, v in AIR_LIMITS.items()}}
 
 
 # What 0.4.0's live settings add to and change in a package without music_visual (SPEC-021,
 # Compatibility); everything else is 0.3.0's, value for value.
 SETTINGS_ADDED = {
-    "input_select": {"ramka_theme_mode"},
-    "input_boolean": {"ramka_settings_advanced", "ramka_settings_seeded", *(f"ramka_page_{v}" for v in PAGE_VIEWS)},
-    "input_number": set(), "timer": set(), "input_button": set(), "input_text": set(), "shell_command": set(),
+    "input_select": {"ramka_theme_mode", "ramka_photo_album"},
+    "input_boolean": {"ramka_settings_advanced", "ramka_settings_seeded", *(f"ramka_page_{v}" for v in PAGE_VIEWS),
+                      *(f"ramka_air_{r}" for r in AIR_READINGS)},
+    "input_number": {"ramka_photo_count", "ramka_photo_s", *(f"ramka_air_{k}" for k in AIR_LIMITS)},
+    "timer": set(), "input_button": set(), "input_text": {"ramka_photo_album_choice"}, "shell_command": {"ramka_albums"},
     "script": {"ramka_settings_reset"},
-    "automation": {"ramka_settings_seed", "ramka_theme_mode"},
+    "automation": {"ramka_settings_seed", "ramka_theme_mode", "ramka_photo_album_keep"},
     "template": {"ramka_ambient_pages"},
 }
 SETTINGS_CHANGED = {
     # The live list of pages (page switches).
-    "script": {"ramka_ambient_next": "live list", "ramka_ambient_prev": "live list", "ramka_ambient_loop": "live list",
+    "script": {"ramka_ambient_next": "live list", "ramka_ambient_prev": "live list", "ramka_ambient_loop": "live list, photo settings",
                "ramka_swipe_up": "live list", "ramka_show_calendar": "calendar switch",
                "ramka_show_controls": "fallback = default"},
+    "shell_command": {"ramka_pick": "count and album (amendment 1)"},
     "automation": {"ramka_ambient_stop": "live list", "ramka_presence_off": "fallback = default",
+                   "ramka_photo_index": "album options (amendment 1)",
                    "ramka_near": "fallback = default", "ramka_near_left": "fallback = default"},
     "template": {"ramka_music_view": "music switch", "ramka_brightness_target": "fallback = default",
                  "ramka_near": "fallback = default"},
@@ -568,6 +583,18 @@ def keyed(package, domain) -> dict[str, object]:
     if domain == "template":
         return {e["unique_id"]: e for block in package["template"] for entities in block.values() for e in entities}
     return dict(package.get(domain) or {})
+
+
+def without_air_settings(node):
+    """The air-card as 0.3.0 had it: no show:, literal limits (the defaults the helpers start at)."""
+    if isinstance(node, dict):
+        if set(node) == {"entity", "default"} and str(node["entity"]).startswith("input_number.ramka_air_"):
+            return node["default"]
+        return {k: without_air_settings(v) for k, v in node.items()
+                if not (k == "show" and str(v).startswith("input_boolean.ramka_air_"))}
+    if isinstance(node, list):
+        return [without_air_settings(v) for v in node]
+    return node
 
 
 def without_calendar_switch(node):
@@ -632,6 +659,7 @@ DEFAULTS = {
     "input_number.ramka_lux_max": 200, "input_boolean.ramka_ambient_music": "on",
     "input_select.ramka_theme_mode": "dark", "input_boolean.ramka_settings_advanced": "off",
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
+    **PHOTO_DEFAULTS, **AIR_DEFAULTS,
 }
 MUSIC_DEFAULTS = {
     "input_select.ramka_music_visual": "spectrum", "input_select.ramka_music_palette": "series",
@@ -647,6 +675,7 @@ MUSIC_DEFAULTS = {
 PAGE_OF = {
     **{e: "general" for e in DEFAULTS if not e.startswith("input_boolean.ramka_page_")},
     "input_boolean.ramka_ambient_music": None,
+    **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "air" for e in AIR_DEFAULTS},
     **{f"input_boolean.ramka_page_{v}": v for v in PAGE_VIEWS},
     **{e: "music" for e in MUSIC_DEFAULTS},
 }
@@ -655,6 +684,7 @@ GROUP_OF = {
     "input_select.ramka_theme_mode": "pages", "input_boolean.ramka_settings_advanced": "pages",
     **{f"input_boolean.ramka_page_{v}": "pages" for v in PAGE_VIEWS},
     **{e: "music_visual" for e in MUSIC_DEFAULTS},
+    **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "air" for e in AIR_DEFAULTS},
 }
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
@@ -675,6 +705,7 @@ def ha(template, states=None, attrs=None, **variables) -> str:
         return value if isinstance(value, str) else str(value)
 
     env = jinja2.Environment()
+    env.filters["from_json"] = json.loads
     return env.from_string(template).render(
         states=state, is_state=lambda e, v: state(e) == v,
         state_attr=lambda e, a: attrs.get(e, {}).get(a), **variables).strip()
@@ -832,9 +863,9 @@ def tuned(package, **values) -> dict[str, object]:
 def test_seed_rule_keeps_tuned_values(demo, plain):
     package = demo["package.yaml"]
     fresh = at_minimum(package)
-    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_visual"]
+    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_visual", "photos", "air"]
     upgraded = {**fresh, "input_number.ramka_off_delay_s": 600.0}
-    assert seed_groups(package, upgraded) == ["pages", "music_visual"]
+    assert seed_groups(package, upgraded) == ["pages", "music_visual", "photos", "air"]
     on_purpose = {**tuned(package), "input_number.ramka_near_s": 1.0}
     assert seed_groups(package, on_purpose) == ["pages", "music_visual"]
     seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on"}
@@ -844,11 +875,16 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
     assert seed_groups(package, music_tuned) == []
     # unknown and unavailable count as untouched.
     unknown = {**fresh, "input_number.ramka_lux_max": "unknown", "input_number.ramka_near_cm": "unavailable"}
-    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_visual"]
+    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_visual", "photos", "air"]
     # Without music_visual there is no music group at all.
-    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display"]
+    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "photos", "air"]
+    # Photos and air are seeded while untouched after the flag too: a home that ran 0.4.0 before
+    # amendment 1 gets them at its next start (unknown), one that tuned them keeps them.
     assert seed_groups(plain["package.yaml"], {**at_minimum(plain["package.yaml"]),
-                                               "input_boolean.ramka_settings_seeded": "on"}) == []
+                                               "input_boolean.ramka_settings_seeded": "on"}) == ["photos", "air"]
+    one_tuned = {**music_tuned, "input_number.ramka_photo_count": "unknown", "input_number.ramka_photo_s": "unknown",
+                 **{f"input_number.ramka_air_{k}": "unknown" for k in AIR_LIMITS}, "input_number.ramka_air_co2_high": 1500.0}
+    assert seed_groups(package, one_tuned) == ["photos"]
 
 
 def test_a_home_upgraded_from_0_3_0_keeps_its_tuning(demo):
@@ -879,7 +915,7 @@ def test_reset_page_and_groups(demo):
     assert run_reset(package) == everything
     for page in ["general"] + PAGE_VIEWS:
         assert set(run_reset(package, page=page)) == {e for e in everything if PAGE_OF[e] == page}, page
-    for group in ("presence_display", "pages", "music_visual"):
+    for group in ("presence_display", "pages", "music_visual", "photos", "air"):
         assert set(run_reset(package, groups=[group])) == {e for e in everything if GROUP_OF[e] == group}, group
     assert set(run_reset(package, groups="pages")) == {e for e in everything if GROUP_OF[e] == "pages"}
     assert set(run_reset(package, page="general", groups=["pages"])) == {
@@ -893,7 +929,7 @@ def test_reset_page_and_groups(demo):
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
     assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS
-    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual"]
+    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual", "photos", "air"]
 
 
 def maximal_inputs() -> dict:
@@ -942,8 +978,9 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
                 if not entity.startswith("input_") or ".ramka_" not in entity:
                     continue
                 assert entity in reset, f"{lang}: {entity} on the {path} page and not reset"
-                # On its own page's reset; the Advanced switch also sits on Music.
-                assert PAGE_OF[entity] == path or (entity, path) == ("input_boolean.ramka_settings_advanced", "music"), (entity, path)
+                # On its own page's reset; the Advanced switch also sits on the pages with Advanced parts.
+                assert PAGE_OF[entity] == path or (entity == "input_boolean.ramka_settings_advanced"
+                                                   and path in ADVANCED_PAGES), (entity, path)
                 assert entity in run_reset(package, page=PAGE_OF[entity]), entity
 
 
@@ -1300,7 +1337,7 @@ def test_theme_mode(demo):
 def test_an_empty_photo_pick_still_takes_a_slot(demo):
     """With photos the only live page and an empty pick (an empty folder, a share not mounted), the
     stage hands on to photos again: without a pause the loop would spin and call the pick on every
-    pass. An empty pick waits one photo slot (10 s) instead; a pick with photos does not."""
+    pass. An empty pick waits one photo slot (the time per photo) instead; a pick with photos does not."""
     [stage] = [s for s in loop_stages(demo["package.yaml"])
                if s["if"][0].get("state") == "photos"]
     pauses = [step for step in stage["then"] if "if" in step and any("delay" in t for t in step["then"])]
@@ -1308,7 +1345,8 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
     [condition] = pauses[0]["if"]
     assert ha(condition["value_template"], picks=[]) == "True"
     assert ha(condition["value_template"], picks=["a/1.jpg"]) == "False"
-    assert [t["delay"] for t in pauses[0]["then"] if "delay" in t] == [{"seconds": 10}]
+    [pause] = [t["delay"]["seconds"] for t in pauses[0]["then"] if "delay" in t]
+    assert ha(pause) == "10" and ha(pause, states={"input_number.ramka_photo_s": "25"}) == "25"
     # The pause sits after the photos and before the hand-on to the next page.
     steps = stage["then"]
     assert steps.index(pauses[0]) == len(steps) - 2
@@ -1329,6 +1367,10 @@ BASIC = {
 }
 BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
                    "input_boolean.ramka_settings_advanced"}
+BASIC["photos"] |= {"input_select.ramka_photo_album", "input_number.ramka_photo_count", "input_boolean.ramka_settings_advanced"}
+BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
+# The pages besides General that have Advanced parts, and so the Advanced switch too.
+ADVANCED_PAGES = {"music", "photos", "air"}
 ADVANCED = {
     "general": {"input_number.ramka_near_cm", "input_number.ramka_near_s", "input_number.ramka_controls_hold_s",
                 "input_number.ramka_lux_max"},
@@ -1337,6 +1379,8 @@ ADVANCED = {
               "input_number.ramka_music_line_width_px", "input_boolean.ramka_music_tilt", *(f"input_number.ramka_{k}" for k in MUSIC_DB),
               "input_number.ramka_music_fps", MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
               "input_text.audio_sensor_calibration_note"},
+    "photos": {"input_number.ramka_photo_s"},
+    "air": {f"input_number.ramka_air_{k}" for k in AIR_LIMITS},
 }
 # What audio-sensor provides that the Music page reads (its manifest's provides, Ramka's consumes).
 AUDIO_SENSOR_IDS = {MUSIC_SOURCE, "sensor.music_spl_offset", "sensor.music_spl_calibration", "sensor.music_mic_gain",
@@ -1486,9 +1530,9 @@ def test_advanced_cards_follow_the_switch(demo):
                     # Advanced cards carry the condition themselves (SPEC-021), not only their section.
                     assert ADVANCED_ON in card.get("visibility", []), (lang, path, card.get("type"))
             assert basic | extra <= seen, (lang, path, (basic | extra) - seen)
-        # The switch sits on General and Music, the two pages with Advanced parts.
+        # The switch sits on General and on every page with Advanced parts.
         on = {p for p, v in views.items() if "input_boolean.ramka_settings_advanced" in shown_entities(v)}
-        assert on == {"general", "music"}
+        assert on == {"general", *ADVANCED_PAGES}
 
 
 def test_settings_reset_buttons(demo):
@@ -1643,3 +1687,170 @@ def test_settings_dashboard_is_documented():
     entry = yaml.safe_load(block)["lovelace"]["dashboards"]["ramka-settings"]
     assert entry["filename"] == "dashboards/ramka-settings.en.yaml" and entry["require_admin"] is True
     assert entry["mode"] == "yaml"
+
+
+# ---- SPEC-021 amendment 1: Photos, Air, the way to the view, language, calendar by URL ---------
+
+def automation(package, suffix):
+    [a] = [a for a in package["automation"] if a["id"] == f"ramka_{suffix}"]
+    return a
+
+
+def photo_stage(package):
+    loop = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"]
+    [stage] = [s for s in loop if s.get("if") and s["if"][0].get("state") == "photos"]
+    return stage["then"]
+
+
+def test_photo_settings_drive_the_loop(demo):
+    package = demo["package.yaml"]
+    album = package["input_select"]["ramka_photo_album"]
+    assert album["options"] == ["all"]
+    count, seconds = package["input_number"]["ramka_photo_count"], package["input_number"]["ramka_photo_s"]
+    assert (count["min"], count["max"], seconds["min"], seconds["max"]) == (1, 20, 3, 120)
+    assert "ramka_photo_album_choice" in package["input_text"]
+    stage = photo_stage(package)
+    [pick] = [s for s in stage if s.get("action") == "shell_command.ramka_pick"]
+    states = {"input_number.ramka_photo_count": "3", "input_select.ramka_photo_album": "2026"}
+    assert ha(pick["data"]["count"], states=states) == "3"
+    assert ha(pick["data"]["album"], states=states) == "2026"
+    # All, or the select not there yet: every folder; the count falls back to the default.
+    assert ha(pick["data"]["album"], states={"input_select.ramka_photo_album": "all"}) == ""
+    assert ha(pick["data"]["album"]) == "" and ha(pick["data"]["count"]) == "5"
+    delays = [n["delay"]["seconds"] for n in walk(stage) if isinstance(n.get("delay"), dict)]
+    assert delays and all(ha(d, states={"input_number.ramka_photo_s": "20"}) == "20" for d in delays)
+    assert all(ha(d) == "10" for d in delays)
+
+
+def test_pick_command_quotes_the_album(demo):
+    import shlex
+
+    package = demo["package.yaml"]
+    prog, args = package["shell_command"]["ramka_pick"].split(" ", 1)
+    for name in ("2026", "Wakacje nad morzem", "Tom's party", ""):
+        rendered = ha(args, count=3, album=name)
+        assert shlex.split(f"{prog} {rendered}") == ["python3", "/config/shell/ramka_pick.py", "/config/www/ramka", "3", name]
+    assert package["shell_command"]["ramka_albums"] == "python3 /config/shell/ramka_pick.py /config/www/ramka --albums"
+
+
+def test_album_options_follow_the_folder_and_survive_a_restart(demo):
+    package = demo["package.yaml"]
+    actions = automation(package, "photo_index")["actions"]
+    [albums] = [a for a in actions if a.get("action") == "shell_command.ramka_albums"]
+    [options] = [a for a in actions if a.get("action") == "input_select.set_options"]
+    reply = {"stdout": 'index rebuilt\n{"albums": ["2025", "2026"]}'}
+    assert ha_value(options["data"]["options"], **{albums["response_variable"]: reply}) == ["all", "2025", "2026"]
+    assert ha_value(options["data"]["options"], **{albums["response_variable"]: {"stdout": ""}}) == ["all"]
+    # Then the kept choice goes back, when it is one of the options.
+    [restore] = [a for a in actions if a.get("if") and "photo_album_choice" in json.dumps(a["if"])]
+    condition = restore["if"][0]["value_template"]
+    attrs = {"input_select.ramka_photo_album": {"options": ["all", "2025", "2026"]}}
+    assert ha(condition, states={"input_text.ramka_photo_album_choice": "2026"}, attrs=attrs) == "True"
+    assert ha(condition, states={"input_text.ramka_photo_album_choice": "1999"}, attrs=attrs) == "False"
+    # The choice is kept when a person (or the reset) picks an album, not when set_options changes the list.
+    keep = automation(package, "photo_album_keep")
+    [cond] = keep["conditions"]
+    same = {"from_state": {"attributes": {"options": ["all", "2026"]}}, "to_state": {"state": "2026", "attributes": {"options": ["all", "2026"]}}}
+    moved = {"from_state": {"attributes": {"options": ["all"]}}, "to_state": {"state": "all", "attributes": {"options": ["all", "2026"]}}}
+    assert ha(cond["value_template"], trigger=same) == "True"
+    assert ha(cond["value_template"], trigger=moved) == "False"
+
+
+def test_no_photo_helpers_without_photo_dir(tmp_path):
+    package = render(tmp_path, without_pages("photos"))["package.yaml"]
+    assert not {e for e in helpers(package) if ".ramka_photo" in e}
+    assert "shell_command" not in package and "input_text" not in package
+    assert not [a for a in package["automation"] if a["id"].startswith("ramka_photo")]
+
+
+def air_card(dashboard):
+    [card] = [n for n in walk(dashboard) if n.get("type") == "custom:air-card"]
+    return card
+
+
+def test_air_settings_bound_in_the_card(demo):
+    card = air_card(demo["dashboard.en.yaml"])
+    assert card["score"]["show"] == "input_boolean.ramka_air_score"
+    assert [lv[0] for lv in card["score"]["levels"]] == [
+        {"entity": "input_number.ramka_air_score_fair", "default": 80},
+        {"entity": "input_number.ramka_air_score_poor", "default": 60}, 0]
+    for tile, reading in zip(card["tiles"], ["co2", "pm2_5", "voc", "nox"]):
+        assert tile["show"] == f"input_boolean.ramka_air_{reading}"
+        assert [lv[0] for lv in tile["levels"]] == [
+            {"entity": f"input_number.ramka_air_{reading}_raised", "default": AIR_LIMITS[f"{reading}_raised"]},
+            {"entity": f"input_number.ramka_air_{reading}_high", "default": AIR_LIMITS[f"{reading}_high"]}, None]
+    package = demo["package.yaml"]
+    for key, value in AIR_LIMITS.items():
+        helper = package["input_number"][f"ramka_air_{key}"]
+        assert helper["min"] <= value <= helper["max"], key
+
+
+def test_air_helpers_only_for_configured_readings(tmp_path):
+    inputs = demo_inputs()
+    del inputs["air"]["nox"]
+    rendered = render(tmp_path, inputs)
+    assert not {e for e in helpers(rendered["package.yaml"]) if "air_nox" in e}
+    assert "input_boolean.ramka_air_voc" in helpers(rendered["package.yaml"])
+    for lang in LANGS:
+        view = settings_views(rendered[f"ramka-settings.{lang}.yaml"])["air"]
+        assert not {e for e in shown_entities(view) if "nox" in e}
+    no_air = render(tmp_path / "no-air", without_pages("air"))["package.yaml"]
+    assert not {e for e in helpers(no_air) if ".ramka_air_" in e}
+
+
+def open_view_cards(view):
+    return [c for _, c in view_cards(view) if c.get("tap_action", {}).get("action") == "navigate"]
+
+
+def test_settings_link_to_dashboard(demo):
+    for lang in LANGS:
+        general = settings_views(demo[f"ramka-settings.{lang}.yaml"])["general"]
+        [card] = open_view_cards(general)
+        assert card["tap_action"]["navigation_path"] == "/dashboard-ramka/ramka?disable_km"
+        assert card["name"] == translations(lang)["ui.settings.open_view"]
+        [section] = [s for s, c in view_cards(general) if c is card]
+        assert not advanced(section, card)
+
+
+def test_settings_link_per_language(tmp_path):
+    inputs = demo_inputs()
+    inputs["dashboard_paths"] = {"en": "dashboard-ramka", "de": "ramka-de"}
+    rendered = render(tmp_path, inputs)
+    paths = {lang: open_view_cards(settings_views(rendered[f"ramka-settings.{lang}.yaml"])["general"])[0]["tap_action"]["navigation_path"]
+             for lang in LANGS}
+    # pl has no entry: dashboard_path.
+    assert paths == {"en": "/dashboard-ramka/ramka?disable_km", "de": "/ramka-de/ramka?disable_km", "pl": "/dashboard-ramka/ramka?disable_km"}
+
+
+@pytest.mark.parametrize("key, value", [("dashboard_paths", {"en": "/dashboard-ramka"}), ("dashboard_paths", {"de": "ramka de"}),
+                                        ("dashboard_path", "/dashboard-ramka"), ("dashboard_paths", ["ramka-de"])])
+def test_settings_link_bad_path_fails(tmp_path, key, value):
+    inputs = demo_inputs()
+    inputs[key] = value
+    with pytest.raises(dr.RenderError, match=r"ramka: dashboard paths must be plain url paths"):
+        render(tmp_path, inputs)
+
+
+def test_settings_language_note(tmp_path, demo):
+    for lang in LANGS:
+        t = translations(lang)
+        general = settings_views(demo[f"ramka-settings.{lang}.yaml"])["general"]
+        [note] = [c for s, c in view_cards(general) if c.get("type") == "markdown" and t["ui.settings.language"] in c["content"]]
+        [section] = [s for s, c in view_cards(general) if c is note]
+        assert not advanced(section, note)
+        assert "`/dashboard-ramka`" in note["content"]
+        assert "input_select.ramka_language" not in json.dumps(general)
+    inputs = demo_inputs()
+    inputs["dashboard_paths"] = {"en": "dashboard-ramka", "pl": "dashboard-ramka-pl"}
+    general = settings_views(render(tmp_path, inputs)["ramka-settings.en.yaml"])["general"]
+    assert "en: `/dashboard-ramka`" in markdown(general) and "pl: `/dashboard-ramka-pl`" in markdown(general)
+
+
+def test_calendar_page_links_to_ics_and_caldav(demo):
+    for lang in LANGS:
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["calendar"]
+        text = markdown(view)
+        assert "/config/integrations/dashboard/add?domain=remote_calendar" in text
+        assert "/config/integrations/dashboard/add?domain=caldav" in text
+        assert "`calendar`" in text and "`domosenso/ramka.inputs.yaml`" in text
+        assert translations(lang)["ui.settings.calendar_by_url"] in text

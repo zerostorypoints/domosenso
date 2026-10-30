@@ -662,3 +662,76 @@ Each follows this page structure and the standing rule:
    `set_theme`), checked on staging; if either fails, it goes back to render time.
 3. **Issue #51** is covered by this spec (seed, flag, defaults input). Proposed: close it when this
    lands, with a link.
+
+## Amendment 1 (2026-10-30): Photos, Air, the way to the view, language, calendar by URL
+
+Issues #87 (follow-up f), #88 (g), #89 (h), #102 (the spike's interim note, part a of its triage) and
+#103. ramka 0.4.0 is not tagged yet, so this amends 0.4.0. #100 (music sources) is not part of it.
+
+**Photos page** (with `photo_dir`; group `photos`, page `photos`):
+
+| helper | where | range | default |
+|---|---|---|---|
+| `input_select.<prefix>_photo_album` | Basic | `all`, then the top-level folders of `photo_dir` that hold photos | `all` |
+| `input_number.<prefix>_photo_count` | Basic | 1 to 20 | 5 |
+| `input_number.<prefix>_photo_s` | Advanced | 3 to 120 s | 10 |
+
+- `shell/ramka_pick.py <root> <count> [<album>]` draws only from the folders under `<root>/<album>`;
+  an album that is not a top-level folder with photos falls back to all, with
+  `album <name> not found, using all` on stderr. `ramka_pick.py <root> --albums` prints
+  `{"albums": [...]}` for the new `shell_command.<prefix>_albums`.
+- `shell_command.<prefix>_pick` takes `count` and `album` as action data (a templated command runs
+  without a shell; the album is single-quoted for its split). The loop passes the helpers, with
+  `| int(5)` and `| int(10)` fallbacks equal to the defaults; every photo slot, and the empty
+  pick's slot, lasts `photo_s`.
+- The photo index automation, after each index, sets the select's options (`input_select.set_options`)
+  and puts back `input_text.<prefix>_photo_album_choice` when it is one of them. A new automation
+  `<prefix>_photo_album_keep` writes the choice whenever the select's state changes and its options
+  did not (a person's pick or the reset, not set_options), so an album whose folder is gone for a
+  while comes back with it. `input_text.<prefix>_photo_album_choice` is state, not a setting.
+
+**Air page** (with `air`; group `air`, page `air`), only for the readings the input names:
+
+| helper | where | range | default |
+|---|---|---|---|
+| `input_boolean.<prefix>_air_<reading>` (`score`, `co2`, `pm2_5`, `voc`, `nox`) | Basic | | on |
+| `input_number.<prefix>_air_score_{fair,poor}` | Advanced | 0 to 100 | 80, 60 |
+| `input_number.<prefix>_air_co2_{raised,high}` | Advanced | 400 to 5000 ppm | 800, 1200 |
+| `input_number.<prefix>_air_pm2_5_{raised,high}` | Advanced | 1 to 250 µg/m³ | 15, 35 |
+| `input_number.<prefix>_air_voc_{raised,high}` | Advanced | 1 to 500 | 150, 250 |
+| `input_number.<prefix>_air_nox_{raised,high}` | Advanced | 1 to 500 | 20, 150 |
+
+A limit is where its level begins: CO₂ is raised from `co2_raised`, high from `co2_high`; the score
+(higher is better) is fair below `score_fair`, poor below `score_poor`. `air-card` gains two
+additive keys (STABLE surface): `show:` on the score and on a tile (an `input_boolean`; `off` leaves
+the tile out and the others share its room, any other state shows it), and a level limit written
+`{entity, default}`, the entity's number on every update, `default` while it is not a number. The
+dashboard binds both; literal levels and no `show:` render as before.
+
+**Seeding.** Groups `photos` and `air` are seeded while their numbers are untouched (unknown,
+unavailable or at their minimum), also after `settings_seeded` is on, so a home that ran 0.4.0
+before this amendment gets them at its next start. The reset script's `groups` field lists
+`presence_display`, `pages`, `music_visual`, `photos`, `air`. The Advanced switch also sits on the
+Photos and Air pages, which now have Advanced parts.
+
+**General, Basic: the way to the view.** A button "Open the Ramka view" navigates to
+`/<path>/ramka?disable_km`, where `<path>` is the new optional input `dashboard_paths` (a map
+language → URL path) for the page's language, else `dashboard_path`. Every path is a plain URL path
+(letters, digits, `-`, `_`; no slash), or the render fails with `ramka: dashboard paths must be plain
+url paths`. The Ramka dashboard's own top-right exit keeps `dashboard_path`.
+
+**General, Basic: language.** The spike above has not run. Until it does, General shows a note:
+each language is its own dashboard (the `dashboard_paths`, else `dashboard_path`), the tablet shows
+the language of the one it opens, and a switch follows after the spike. No helper.
+
+**Calendar, Basic: by URL.** A note with links to Home Assistant's add flows for `remote_calendar`
+(an ICS URL, refreshed once a day) and `caldav` (refreshed every 15 minutes; both are config flows
+in 2026.9.2, read from their manifests and coordinators), then the step after: the new `calendar.*`
+entity into the `calendar` input, a render and a deploy. No helper: a calendar is an integration.
+`components/calendar` gains the ICS path in its README and manifest.
+
+Tests: `tests/test_ramka_shell.py` (album, missing album, `--albums`); `tests/test_ramka_render.py`
+(the helpers on their pages and groups, the loop, the album options and their restore, nothing
+without `photo_dir` or a reading, the card's bindings, the link per language and its failure, the
+language note, the calendar links; the standing rule); `cards/air-card.test.mjs` (`show:`, entity
+limits, an unusable limit, unchanged without the new keys).

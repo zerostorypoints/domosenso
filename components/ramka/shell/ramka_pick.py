@@ -4,14 +4,21 @@ with equal chances (folders at any depth, e.g. 2026/07/lake-trip; folders that o
 other folders, hidden folders and @-folders such as a NAS's @eaDir are skipped), then up to N
 different photos from it in random order. The folder shown last time (remembered in
 <root>/../.ramka_last_pick, outside the photo tree) is left out when there is more than one, so
-events alternate instead of streaking. Prints JSON for the ambient loop's response_variable:
+events alternate instead of streaking. With an album (a top-level folder of the photo tree, the
+settings dashboard's input_select.<prefix>_photo_album), only the folders under it are drawn from;
+an album that is gone falls back to every folder and says so on stderr. Prints JSON for the ambient
+loop's response_variable:
 
     {"event": "lake-trip", "folder": "2026/07/lake-trip", "photos": ["2026/07/lake-trip/a.jpg", ...]}
 
 Called by the ramka package's shell_command.<prefix>_pick with the photo_dir input (installed as
 /config/shell/ramka_pick.py):
 
-    python3 /config/shell/ramka_pick.py [/config/www/ramka] [5]
+    python3 /config/shell/ramka_pick.py [/config/www/ramka] [5] [<album>]
+
+and with --albums, the albums for the select (the index automation's shell_command.<prefix>_albums):
+
+    python3 /config/shell/ramka_pick.py /config/www/ramka --albums  ->  {"albums": ["2025", "2026"]}
 """
 import json
 import os
@@ -29,8 +36,18 @@ def leaf_folders(root):
     return out
 
 
-def main(root, count):
+def albums(folders):
+    """The top-level folders that hold photos at some depth, sorted."""
+    return sorted({folder.split(os.sep)[0] for folder in folders})
+
+
+def main(root, count, album=""):
     folders = leaf_folders(root)
+    if album:
+        if album in albums(folders):
+            folders = {f: p for f, p in folders.items() if f.split(os.sep)[0] == album}
+        else:
+            print(f"album {album} not found, using all", file=sys.stderr)
     if not folders:
         print(json.dumps({"event": "", "folder": "", "photos": []}))
         return
@@ -74,4 +91,8 @@ def refresh_index_if_stale(root, picked):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "/config/www/ramka", int(sys.argv[2]) if len(sys.argv) > 2 else 5)
+    root = sys.argv[1] if len(sys.argv) > 1 else "/config/www/ramka"
+    if sys.argv[2:3] == ["--albums"]:
+        print(json.dumps({"albums": albums(leaf_folders(root))}, ensure_ascii=False))
+    else:
+        main(root, int(sys.argv[2]) if len(sys.argv) > 2 else 5, sys.argv[3] if len(sys.argv) > 3 else "")
