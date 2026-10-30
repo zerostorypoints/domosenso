@@ -138,7 +138,7 @@ recent readings and, on request, live tracking at 100 ms.
 | `level` | (required) | 1 s RMS in dB SPL, for example `sensor.music_level` |
 | `peak` | none | the loudest sample in that second, dB SPL |
 | `leq` | none | a marker on the scale (an Leq sensor of the home's own) |
-| `offset` | none | the SPL offset entity: its state places the clip mark (0 dBFS); its attribute `calibrated`, when true, drops the "estimated" note |
+| `offset` | none | the SPL offset entity: its state places the clip mark (0 dBFS); its attribute `calibrated`, when true, drops the "estimated" note (the package's `sensor.<id_prefix>_spl_offset` and `sensor.music_spl_offset` carry it, from the board's calibrated flag) |
 | `live_switch`, `live_level`, `live_peak` | none | the board's Live tracking switch and its fast level and peak (dBFS; the card adds the offset) |
 | `min` / `max` | `20` / `120` | the scale, dB |
 | `seconds` / `live_seconds` | `120` / `20` | length of the strip, normally and in live tracking |

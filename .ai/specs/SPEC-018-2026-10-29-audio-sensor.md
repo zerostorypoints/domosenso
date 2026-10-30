@@ -8,14 +8,14 @@
 - Amended before drafting by the plan's rulings: the sensor's entity ids are inputs, not derived;
   the visual's defaults live in the card, not in this component's inputs; the Ramka switches the
   visual at runtime; one music sensor is checked when the package renders.
-- Amended 2026-10-29 (dropped by the maintainer): live settings (SPEC-020) cover the tuning; room
+- Amended 2026-10-29 (dropped by the maintainer): live settings (SPEC-021) cover the tuning; room
   acoustics figures and dashboard are not part of audio-sensor. Struck through and marked below
   (goal 4, the `apexcharts-card`, `playing`, `room_acoustics` and `sensors[].acoustics` inputs, the
   room-acoustics provides, the dashboard artifact, the questions, tests and the open question about
   the dashboard); the text stays readable as history. The website task is dropped too. Issue #70's
   acceptance criteria follow.
 - Deploy of an unreleased render for the pre-merge look on a wall tablet: SPEC-019.
-- Amended by SPEC-020 (Ramka live settings): `input_select.audio_sensor_music_source` picks the
+- Amended by SPEC-021 (Ramka live settings): `input_select.audio_sensor_music_source` picks the
   music board live and the music board's calibration is applied from the Ramka's settings
   (Provides); the visual's options bind Ramka helpers, `music_visual_options` gives their starting
   values, the Controls tile is removed, and 0.4.0 without `music_visual` is no longer
@@ -150,15 +150,15 @@ its classic wave (below).
 | entity | stability | note |
 |---|---|---|
 | `input_number.<id_prefix>_spl_offset` | stable | 0–140 dB, step 0.1, restored, no `initial:`; a fresh helper starts at 0 and the README's calibration sets it |
-| `sensor.<id_prefix>_spl_offset` | stable | the offset as a sensor, `component: audio-sensor`, `area:` |
+| `sensor.<id_prefix>_spl_offset` | stable | the offset as a sensor, `component: audio-sensor`, `area:`, `calibrated:` (the board's flag; added 2026-10-30, for room-meter-card) |
 | `sensor.music_spectrum` | stable | the music sensor's Spectrum CSV, dBFS, unchanged; excluded from the recorder |
-| `sensor.music_spl_offset` | stable | that sensor's offset, dB |
+| `sensor.music_spl_offset` | stable | that sensor's offset, dB; `calibrated:` from its flag (added 2026-10-30) |
 | `sensor.music_level` | stable | its 1 s Sound level plus the offset, dB SPL; `none` while the source has no number |
 | `binary_sensor.music_sensor_online` | stable | `on` while the Spectrum sensor is neither `unavailable` nor `unknown` |
-| `input_select.audio_sensor_music_source` | stable | with a `music: true` board; options: the boards' areas, that board first; the four aliases above follow it (SPEC-020) |
-| `sensor.music_mic_gain`, `sensor.music_spl_calibration` (`calibrated` \| `estimate`, attribute `note`) | stable | aliases of the selected music board (SPEC-020) |
-| `input_boolean.<id_prefix>_spl_calibrated`, `input_text.<id_prefix>_spl_note` | stable | per board: offset calibrated or an estimate, and a note (SPEC-020) |
-| `input_number.audio_sensor_measured_offset`, `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration` | stable | with a music board: apply a measured offset and a note to the selected board (SPEC-020) |
+| `input_select.audio_sensor_music_source` | stable | with a `music: true` board; options: the boards' areas, that board first; the four aliases above follow it (SPEC-021) |
+| `sensor.music_mic_gain`, `sensor.music_spl_calibration` (`calibrated` \| `estimate`, attribute `note`) | stable | aliases of the selected music board (SPEC-021) |
+| `input_boolean.<id_prefix>_spl_calibrated`, `input_text.<id_prefix>_spl_note` | stable | per board: offset calibrated or an estimate, and a note (SPEC-021) |
+| `input_number.audio_sensor_measured_offset`, `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration` | stable | with a music board: apply a measured offset and a note to the selected board (SPEC-021) |
 | ~~`<domain>.<id_prefix>_<figure>` with `room_acoustics: true` and `acoustics: true`~~ | | ~~the room-acoustics figures below~~ *(dropped 2026-10-29)* |
 | ~~`input_select.room_acoustics_room`~~ | | ~~with `room_acoustics: true` and two or more acoustics sensors; options: the areas, the music sensor first~~ *(dropped 2026-10-29)* |
 | ~~`event` `audio_sensor_spike` (`room`, `level`)~~ | | ~~with `room_acoustics: true`~~ *(dropped 2026-10-29)* |
@@ -278,7 +278,7 @@ visual:
 
 ### Controls tile
 
-> Removed by SPEC-020 before release: settings live only in Home Assistant; the visual is chosen
+> Removed by SPEC-021 before release: settings live only in Home Assistant; the visual is chosen
 > on the Ramka settings dashboard's Music page.
 
 A `tap-button-card` on the Controls page, only with `music_visual`: its label is the current option

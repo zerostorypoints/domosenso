@@ -50,7 +50,7 @@ def test_missing_declared_instance_stops_before_docker(tmp_path):
 
 
 def test_every_language_template_becomes_a_dashboard(tmp_path):
-    # A second dashboard rendered per language (ramka's settings, SPEC-020) is no package.
+    # A second dashboard rendered per language (ramka's settings, SPEC-021) is no package.
     result = run_check(tmp_path, rendered=('package.yaml', 'dashboard.en.yaml', 'sample-settings.en.yaml'))
     assert result.returncode == 0, result.stderr
     [fresh] = (tmp_path/'scratch'/'domosenso-ha-check').glob('*/sample/fresh')

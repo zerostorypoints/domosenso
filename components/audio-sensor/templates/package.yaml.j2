@@ -1,5 +1,5 @@
 [#
-  The audio-sensor component's Home Assistant package (SPEC-018, SPEC-020): the per-board SPL offset
+  The audio-sensor component's Home Assistant package (SPEC-018, SPEC-021): the per-board SPL offset
   and calibration flag and note, the recorder exclusions, the music-source select, the music aliases
   and the calibration script. Rendered once per home (lang en) by
   tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
@@ -141,6 +141,8 @@ template:
         attributes:
           component: audio-sensor
           area: [[ b.area | yaml ]]
+          # room-meter-card drops its "estimated" note while this is true.
+          calibrated: "{{ is_state('input_boolean.[[ b.prefix ]]_spl_calibrated', 'on') }}"
 [%- endfor %]
 [%- if source %]
       # The music sensor, under names that do not depend on the room. Each alias looks up the board
@@ -165,6 +167,8 @@ template:
           {{ states([[ lookup('offset') ]]) | float(none) }}
         attributes:
           component: audio-sensor
+          calibrated: >-
+            {{ is_state([[ lookup('calibrated') ]], 'on') }}
       # dBFS plus the offset is dB SPL. No number from the source (or from the offset) gives none,
       # never the text unknown.
       - name: Music level

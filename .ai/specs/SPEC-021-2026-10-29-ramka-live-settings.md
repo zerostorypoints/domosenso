@@ -1,4 +1,4 @@
-# SPEC-020: Ramka live settings (ramka 0.4.0, audio-sensor 0.1.0)
+# SPEC-021: Ramka live settings (ramka 0.4.0, audio-sensor 0.1.0)
 
 - Status: approved 2026-10-29 by the maintainer, after a revision on the maintainer's review (settings
   pages, Basic and Advanced, page switches, the Controls tile removed, the standing rule); issue #86,

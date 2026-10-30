@@ -549,7 +549,7 @@ def test_status_without_a_configuration_file_names_every_dashboard(added, capsys
 
 
 def test_status_names_every_language_template_as_a_dashboard(home, catalog, capsys):
-    # A second language template (ramka's settings dashboard, SPEC-020) is a dashboard too.
+    # A second language template (ramka's settings dashboard, SPEC-021) is a dashboard too.
     write_files(catalog / "components" / "panel", {"templates/panel-settings.lang.yaml.j2": "title: [[ t('ui.title') ]]\n"})
     release(catalog, "1.1.0")
     code, out = run(home, "add", "panel@1.1.0", capsys=capsys)

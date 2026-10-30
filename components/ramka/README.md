@@ -137,7 +137,7 @@ approach toggle it has had since 0.1.0.
   two themes hold one mode each (`modes: {dark: …}`, `modes: {light: …}`, the series colours): the
   frontend forces a single-mode theme into that mode and draws its own defaults of it, whatever the
   browser's dark-mode setting (`themes/ramka.yaml` names the frontend version). That an open page
-  follows a change without a reload is inference until staging shows it (SPEC-020).
+  follows a change without a reload is inference until staging shows it (SPEC-021).
 
 ## Settings page
 
@@ -184,7 +184,7 @@ lovelace:
   note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render
   cannot see audio-sensor, so these cards hide while the select is unavailable; that a missing
   entity counts as unavailable in a visibility condition is inference until staging shows it
-  (SPEC-020), and otherwise a home without audio-sensor sees "entity not available" rows there.
+  (SPEC-021), and otherwise a home without audio-sensor sees "entity not available" rows there.
   No reset touches the calibration: a measurement is not a preference.
 - **Option values** (`dune`, `series`, `dark`) read as they are: helper options are English, and a
   YAML `input_select` has no translated labels.

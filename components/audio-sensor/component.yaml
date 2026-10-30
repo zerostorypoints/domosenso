@@ -89,13 +89,13 @@ provides:                                 # contract surface; placeholders in <>
   entities:
     # The Home Assistant package (templates/package.yaml.j2).
     - {id: "input_number.<id_prefix>_spl_offset", stability: stable, note: "0-140 dB, step 0.1, no initial: a fresh helper starts at 0 and the README's calibration sets it"}
-    - {id: "sensor.<id_prefix>_spl_offset", stability: stable, note: "the offset as a sensor"}
+    - {id: "sensor.<id_prefix>_spl_offset", stability: stable, note: "the offset as a sensor; attribute calibrated (true while input_boolean.<id_prefix>_spl_calibrated is on)"}
     - {id: "sensor.music_spectrum", stability: stable, note: "the selected board's Spectrum CSV, dBFS, unchanged; excluded from the recorder"}
-    - {id: "sensor.music_spl_offset", stability: stable, note: "that board's offset, dB"}
+    - {id: "sensor.music_spl_offset", stability: stable, note: "that board's offset, dB; attribute calibrated, from that board's flag"}
     - {id: "sensor.music_level", stability: stable, note: "its 1 s Sound level plus the offset, dB SPL; none while the source has no number"}
     - {id: "binary_sensor.music_sensor_online", stability: stable, note: "on while the selected board's Spectrum sensor is neither unavailable nor unknown"}
 
-    # The music source and the calibration helpers (SPEC-020). With a `music: true` board the aliases
+    # The music source and the calibration helpers (SPEC-021). With a `music: true` board the aliases
     # above follow the select; a select state that is no option reads that board.
     - {id: "input_select.audio_sensor_music_source", stability: stable, note: "with a music board: the boards' areas, the music board first, then input order; no initial:; one board gives one option"}
     - {id: "sensor.music_mic_gain", stability: stable, note: "the selected board's Mic gain text, unchanged"}

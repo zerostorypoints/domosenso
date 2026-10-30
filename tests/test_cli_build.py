@@ -504,7 +504,7 @@ def test_default_package_destination_is_a_valid_package_name():
 
 def test_every_language_template_is_a_dashboard():
     # A *.lang.yaml.j2 is rendered per language because it has labels: a dashboard, never a package
-    # (ramka's settings dashboard, SPEC-020).
+    # (ramka's settings dashboard, SPEC-021).
     from domosenso_cli.build import _template_destination
     from domosenso_cli.home import ComponentEntry
 
