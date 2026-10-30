@@ -50,11 +50,13 @@ def test_local_runs_fast_checks_and_explicitly_reports_partial(checks):
     assert 'all checks passed' not in result.stdout
 
 
-def test_default_keeps_complete_gate(checks):
+def test_default_keeps_catalog_gate_without_duplicate_demo(checks):
     result, calls = checks()
     assert result.returncode == 0
     assert 'ha-check.sh radio' in calls and 'esphome-check.sh radio' in calls
-    assert 'dev_home/ci.py --runtime-only' in calls
+    assert 'dev_home/ci.py' not in calls
+    assert 'home-staging-check.py' in calls
+    assert 'skip demo acceptance (opt-in: run-demo PR label or explicit local demo command)' in result.stdout
     assert result.stdout.rstrip().endswith('all checks passed')
 
 
@@ -71,8 +73,8 @@ def test_unknown_flag_is_not_silently_ignored(checks):
     assert calls == ''
 
 
-def test_demo_failure_blocks_full_pass(checks):
-    result, _ = checks(fail='dev_home/ci.py')
+def test_home_staging_failure_still_blocks_full_pass(checks):
+    result, _ = checks(fail='home-staging-check.py')
     assert result.returncode == 1
-    assert 'failed: demo runtime' in result.stdout
+    assert 'failed: home staging runtime' in result.stdout
     assert 'all checks passed' not in result.stdout

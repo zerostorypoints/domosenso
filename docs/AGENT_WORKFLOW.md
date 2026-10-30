@@ -110,7 +110,7 @@ or certify another machine. Baseline inspected here: Codex CLI 0.164.0-alpha.11.
 | Trusted PreToolUse hook | Refuses primary checkout, main/detached task work and explicit tool workdir/file-edit escapes | Supported intercepted tool paths; needs activation/trust |
 | SessionStart hook | Saves and injects actual repository/worktree identity and the human approval rule on start/resume | Context reminder; not relied on to block execution |
 | Installed Git hooks | Refuse commit/push outside a named linked worktree; retain main/tag push guard | Local hooks are not a security boundary against someone disabling them |
-| Required CI | Regression tests and committed hook wiring, plus framework/website/demo | Cannot inspect a contributor's local activation or session ownership |
+| CI | Regression tests and committed hook wiring, framework/website, plus opt-in demo | A skipped demo is not runtime evidence; cannot inspect local activation or session ownership |
 | GitHub main protection | Required approval, green app-bound checks, current branch, resolved conversations | Server-side merge gate; retain admin enforcement |
 
 No local hook guarantees obedience to every instruction. Arbitrary shell commands can change
@@ -120,6 +120,12 @@ hook can also prevent interception. Use supported entry points, activation tests
 review; stronger isolation needs a managed sandbox/OS policy, outside this repository change.
 
 ## Agent task and human decision
+
+Follow the shared **Opt-in demo acceptance** policy in `AGENTS.md`. Default to skipping the
+expensive demo; add `run-demo` only with a named risk/scenario covered by the existing demo.
+Record the decision and reason in every PR, reassess scope changes and preserve failure evidence.
+The label is a verification request, not human approval or authority to merge. `framework` no
+longer duplicates demo runtime; a manual dispatch can verify a selected ref when needed.
 
 Use skill [`preview-pr`](../.ai/skills/preview-pr/SKILL.md) when preparing an interactive PR preview
 for human acceptance. It ends at the live-preview handoff; approval and adoption remain separate.
