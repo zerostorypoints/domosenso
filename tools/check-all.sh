@@ -8,7 +8,7 @@
 #   catalog_check --strict,
 #   tools/ha-check.sh for every component with a Home Assistant part (ha/, templates/ or
 #   artifacts.ha_instance), tools/esphome-check.sh for every component with esphome/,
-#   isolated demo HA runtime acceptance (browser matrix runs in the separate demo CI job).
+#   home staging runtime acceptance. Demo acceptance is a separate opt-in check.
 #
 #   tools/check-all.sh [--local]
 # --local excludes HA/ESPHome runtime checks and never reports a full pass.
@@ -60,9 +60,9 @@ for manifest in components/*/component.yaml; do
 done
 # ramka 0.2.0: climate, air, plants and photos left out, only the status page (SPEC-011 section 6.2).
 step "ha-check ramka (pages left out)" env INPUTS="$ROOT/tests/fixtures/ramka-without-pages.yaml" tools/ha-check.sh ramka
-step "demo runtime" uv run tools/dev_home/ci.py --runtime-only
 step "home staging runtime" uv run tools/home-staging-check.py
 fi
+echo "skip demo acceptance (opt-in: run-demo PR label or explicit local demo command)"
 
 echo
 if [ ${#failed[@]} -eq 0 ]; then
