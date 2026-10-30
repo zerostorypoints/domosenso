@@ -68,8 +68,8 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
 
 
 def write_inventory(home: HomeConfig, lock: Lock, rep: Reporter, catalog=None) -> None:
-    """`packages/domosenso.yaml` after the lock or the dev renders changed (SPEC-022). With `catalog`
-    (a command that may change the lock: not a dev render), a lock from before SPEC-022 gets every
+    """`packages/domosenso.yaml` after the lock or the dev renders changed (SPEC-023). With `catalog`
+    (a command that may change the lock: not a dev render), a lock from before SPEC-023 gets every
     release date at once, not only the components this command touched."""
     undated = [entry for entry in lock.components.values() if not entry.released] if catalog else []
     for entry in undated:
@@ -104,7 +104,7 @@ def apply_component(
     (the lock forgets it), or with `remove_stale` (an update) deleted, refusing a hand-edited one
     first. Instance files (the home's own, written once by `add`) are never rendered, checked or
     reported stale here; their lock records are kept as they are. `released` is the date of `commit`
-    (SPEC-022); the caller writes the inventory once its components are done."""
+    (SPEC-023); the caller writes the inventory once its components are done."""
     locked = lock.components[cid]
     outputs = plan_outputs(home, home.components[cid], component_dir, version, commit)
     produced = {o.dest for o in outputs}

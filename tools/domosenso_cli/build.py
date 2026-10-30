@@ -56,7 +56,7 @@ def git_short_head(path: Path) -> str:
 
 
 def git_head_date(path: Path) -> str:
-    """The date of a catalog working tree's HEAD, YYYY-MM-DD: a dev render's release date (SPEC-022)."""
+    """The date of a catalog working tree's HEAD, YYYY-MM-DD: a dev render's release date (SPEC-023)."""
     done = subprocess.run(["git", "-C", str(path), "log", "-1", "--format=%cs", "HEAD"], capture_output=True)
     if done.returncode != 0:
         raise DomosensoError(f"{path} is not a git repository with a commit: {done.stderr.decode().strip()}")

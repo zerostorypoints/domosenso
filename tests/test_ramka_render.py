@@ -1616,7 +1616,7 @@ def test_settings_reset_buttons(demo):
     for lang in LANGS:
         t = translations(lang)
         views = settings_views(demo[f"ramka-settings.{lang}.yaml"])
-        assert not list(reset_actions(views.pop("about")))  # read-only: nothing to reset (SPEC-022)
+        assert not list(reset_actions(views.pop("about")))  # read-only: nothing to reset (SPEC-023)
         for path, view in views.items():
             [action] = list(reset_actions(view))
             if path == "general":
@@ -1742,7 +1742,7 @@ def test_settings_read_only_inputs(demo):
     assert t["ui.settings.inputs.status_columns"] in status
     assert inputs["calendar"] in markdown(views["calendar"])
     for path, view in views.items():
-        if path != "about":  # the About page has no input (SPEC-022)
+        if path != "about":  # the About page has no input (SPEC-023)
             assert t["ui.settings.render_time"] in json.dumps(view, ensure_ascii=False), path
 
 
@@ -1921,7 +1921,7 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
                             step["event_data"].pop("rooms")
         elif name.startswith("ramka-settings."):
             lang = name.split(".")[1]
-            new["views"] = [v for v in new["views"] if v["path"] != "about"]  # another change (SPEC-022)
+            new["views"] = [v for v in new["views"] if v["path"] != "about"]  # another change (SPEC-023)
             for view in new["views"]:
                 for section in view["sections"]:
                     section["cards"] = [c for c in section["cards"] if SPECTRUM_RATE not in json.dumps(c)]
@@ -2242,7 +2242,7 @@ def test_no_script_field_has_an_empty_selector(demo):
                 assert options, f"{name}.{field}: selector {kind} is empty"
 
 
-# ---- The About page (SPEC-022) ---------------------------------------------------------
+# ---- The About page (SPEC-023) ---------------------------------------------------------
 
 
 def _about_markdown(dashboard) -> str:

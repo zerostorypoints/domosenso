@@ -344,7 +344,7 @@ def test_cli_stamp(comp, tmp_path):
 
 
 def test_component_global_in_every_template(comp, tmp_path):
-    """`component` (id, version from the manifest) is a global of every template, not only device files (SPEC-022)."""
+    """`component` (id, version from the manifest) is a global of every template, not only device files (SPEC-023)."""
     (comp / "component.yaml").write_text("id: render-comp\nversion: 1.2.3\n", encoding="utf-8")
     (comp / "templates" / "about.yaml.j2").write_text("about: '[[ component.id ]] [[ component.version ]]'\n", encoding="utf-8")
     out = tmp_path / "out"

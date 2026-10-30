@@ -517,7 +517,7 @@ def test_every_language_template_is_a_dashboard():
     assert _template_destination(entry, "ramka-settings.<lang>.yaml", "en") == "dash/settings-en.yaml"
 
 
-# --- the inventory, packages/domosenso.yaml (SPEC-022) -----------------------------------------------
+# --- the inventory, packages/domosenso.yaml (SPEC-023) -----------------------------------------------
 
 
 def _listed(home: Path) -> tuple[dict, list[dict]]:
@@ -532,7 +532,7 @@ def _listed(home: Path) -> tuple[dict, list[dict]]:
 
 def test_render_writes_the_inventory_and_released(home, catalog, capsys):
     lock_in(home, catalog, "panel")
-    assert Lock.load(home).components["panel"].released is None  # a lock from before SPEC-022
+    assert Lock.load(home).components["panel"].released is None  # a lock from before SPEC-023
     code, out = run(home, "render", capsys=capsys)
     assert code == 0, out
     assert f"write {HA}/{inventory.PACKAGE}" in out.splitlines()
@@ -591,7 +591,7 @@ def test_lock_without_components_has_no_inventory(home, catalog, capsys):
 
 
 def test_render_dates_every_locked_component_and_sees_the_manifest(home, catalog, capsys):
-    """`render panel` dates `other` too; the command's render has the `component` global (SPEC-022)."""
+    """`render panel` dates `other` too; the command's render has the `component` global (SPEC-023)."""
     panel = catalog / "components" / "panel"
     (panel / "component.yaml").write_text(MANIFEST.format(cid="panel").replace("version: 1.0.0", "version: 1.0.1"))
     (panel / "templates" / "about.yaml.j2").write_text("about: '[[ component.id ]] [[ component.version ]]'\n")
@@ -610,7 +610,7 @@ def test_render_dates_every_locked_component_and_sees_the_manifest(home, catalog
 
 
 def test_inventory_lists_a_borrowed_esphome_package(home, catalog, capsys):
-    """A board that pulls a catalog component's ESPHome package, the component not locked (SPEC-022)."""
+    """A board that pulls a catalog component's ESPHome package, the component not locked (SPEC-023)."""
     lock_in(home, catalog, "panel")
     (home / "esphome").mkdir()
     (home / "esphome" / "proxy.yaml").write_text(

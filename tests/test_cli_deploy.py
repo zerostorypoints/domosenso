@@ -83,7 +83,7 @@ class Home:
         entry.files[f"{CONFIG}/{rel}"] = FileRecord(sha256(path.read_bytes()), "templates/x.j2", layer)
 
     def sync_inventory(self) -> None:
-        """packages/domosenso.yaml as `render` would leave it for this lock and these dev renders (SPEC-022)."""
+        """packages/domosenso.yaml as `render` would leave it for this lock and these dev renders (SPEC-023)."""
         inventory.write(self.config_obj(), self.lock)
 
     def config_obj(self) -> HomeConfig:
@@ -342,7 +342,7 @@ def test_allow_dirty_on_a_clean_plan_changes_nothing(tmp_path, fakes, capsys):
 def test_clean_plan_hash_unchanged(tmp_path):
     home = Home(tmp_path)
     home.write("packages/mine.yaml", "b: 1\n")
-    # Recorded before SPEC-019 and SPEC-022 (no component, so no inventory): a plan without dev renders
+    # Recorded before SPEC-019 and SPEC-023 (no component, so no inventory): a plan without dev renders
     # keeps the hash it had.
     assert plan_for(home, FakeTarget(home.target_dir)).hash == "b3f0f3391221"
 
@@ -1024,7 +1024,7 @@ def test_target_record_corrupted_after_the_plan_stops_before_the_backup(tmp_path
 
 
 def test_stale_inventory_blocks_the_plan(tmp_path):
-    """packages/domosenso.yaml is derived from the lock: a copy that differs is out of date (SPEC-022)."""
+    """packages/domosenso.yaml is derived from the lock: a copy that differs is out of date (SPEC-023)."""
     home = Home(tmp_path)
     home.managed("packages/ramka.yaml", "a: 1\n")
     home.sync_inventory()

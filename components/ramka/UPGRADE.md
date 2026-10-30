@@ -5,7 +5,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## Unreleased: the About page in the settings
 
-**Settings, About** (SPEC-022): a last page lists every component the home runs, its version and the
+**Settings, About** (SPEC-023): a last page lists every component the home runs, its version and the
 date the catalog released it, read live from `sensor.domosenso_components`. The `domosenso` command
 writes that sensor into `packages/domosenso.yaml` at every `render`, `add`, `adopt` and `update`
 (and adds `released` to each entry of `domosenso.lock`). Without it the page lists the Ramka alone.

@@ -96,7 +96,7 @@ class Catalog:
         return done.stdout
 
     def commit_date(self, commit: str) -> str:
-        """The committer date of `commit`, YYYY-MM-DD: a version's release date (SPEC-022)."""
+        """The committer date of `commit`, YYYY-MM-DD: a version's release date (SPEC-023)."""
         self.ensure()
         return self._run("log", "-1", "--format=%cs", commit, "--", error="read a commit date").stdout.decode().strip()
 

@@ -205,7 +205,7 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
   files from the lock (the catalog is read at a tag, never the working tree; `--catalog-dev <path>`
   renders a working tree, stamps get `-dirty`, its files and resources go to `.domosenso/dev-render.json` for `deploy`
   until a render from the tag). Each of them also writes `packages/domosenso.yaml`, the inventory sensor
-  `sensor.domosenso_components` (SPEC-022).
+  `sensor.domosenso_components` (SPEC-023).
 - `deploy <target> --plan | --apply`, `rollback <target>`: copy the home to a target declared in
   `domosenso.yaml` (`local-docker` staging, `ssh-docker` production), `check_config`, restart,
   Lovelace resources; an `orphan` blocks `--apply`. `deploy production` refuses `dev-render` files unless

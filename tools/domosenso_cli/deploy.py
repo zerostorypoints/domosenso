@@ -172,7 +172,7 @@ def _carried(home: HomeConfig, lock: Lock, dev: dict[str, dict]) -> tuple[dict[s
             dirty.append(rel)
             record[rel] = {"sha256": rendered["sha256"], "layer": "managed", "component": cid}
             sources[rel] = source
-    # The command's own package (SPEC-022): derived from the lock and the dev renders, so a copy that
+    # The command's own package (SPEC-023): derived from the lock and the dev renders, so a copy that
     # says otherwise is out of date, never a hand edit to keep.
     listing = inventory.path(home)
     wanted = inventory.content(lock, dev, inventory.packages(home.esphome_dir))

@@ -28,7 +28,7 @@ class LockEntry:
     commit: str
     files: dict[str, FileRecord] = field(default_factory=dict)
     resources: list[str] = field(default_factory=list)
-    released: str | None = None  # the tag commit's date, YYYY-MM-DD (SPEC-022); absent in older locks
+    released: str | None = None  # the tag commit's date, YYYY-MM-DD (SPEC-023); absent in older locks
 
 
 @dataclass

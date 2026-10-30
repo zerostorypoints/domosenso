@@ -376,7 +376,7 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
     dev = {path: f for entry in dev_render.load(home.root).values() for path, f in entry["files"].items()}
     local = [_glob(g) for g in home.local]
     unmanaged = [_glob(g) for g in home.unmanaged_on_target]
-    # The command's own package (SPEC-022): managed while it is what the lock gives.
+    # The command's own package (SPEC-023): managed while it is what the lock gives.
     listing = inventory.path(home)
     listing_sha = file_sha(listing) if listing.is_file() else None
     wanted = inventory.expected(home, lock)

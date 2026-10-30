@@ -429,7 +429,7 @@ sensor:
 [%- endif %]
 
 shell_command:
-  # The settings' About page (SPEC-022): what the home's Domosenso components use, read from Home
+  # The settings' About page (SPEC-023): what the home's Domosenso components use, read from Home
   # Assistant's own registries and files by shell/domosenso_discover.py (read-only), as JSON on
   # stdout for script.[[ p ]]_about_refresh.
   [[ p ]]_discover: python3 /config/shell/domosenso_discover.py /config
@@ -448,7 +448,7 @@ shell_command:
 [%- endif %]
 
 # The About page's discovery is a snapshot for that page, not history: its state and its few kB of
-# attributes stay out of the database (SPEC-022).
+# attributes stay out of the database (SPEC-023).
 recorder:
   exclude:
     entities:
@@ -586,7 +586,7 @@ template:
         attributes:
           rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
-  # The About page's discovery (SPEC-022): the time of the last refresh, and as attributes what
+  # The About page's discovery (SPEC-023): the time of the last refresh, and as attributes what
   # shell/domosenso_discover.py found (components, the entities each uses, their integrations, the
   # home's declared links). Set by script.[[ p ]]_about_refresh through event [[ p ]]_discovery;
   # a trigger-based entity keeps its last value over a restart. No device_class: the page shows the
@@ -1051,7 +1051,7 @@ script:
             {{ kept.rooms[:10] }}
 [%- endif %]
 
-  # The About page's Refresh (SPEC-022): runs the discovery, publishes it to sensor.[[ p ]]_discovery
+  # The About page's Refresh (SPEC-023): runs the discovery, publishes it to sensor.[[ p ]]_discovery
   # and asks the HACS update entities it names to check for a newer version. Also at start and
   # nightly (automation [[ p ]]_about_discover).
   [[ p ]]_about_refresh:
@@ -1160,7 +1160,7 @@ script:
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
   # The About page's discovery at start and nightly, so the list is current without a Refresh
-  # (SPEC-022). The registries are on disk before start ends; a minute lets HACS load first.
+  # (SPEC-023). The registries are on disk before start ends; a minute lets HACS load first.
   - id: [[ p ]]_about_discover
     alias: [[ named(' about discover') ]]
     mode: single

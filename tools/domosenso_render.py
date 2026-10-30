@@ -15,7 +15,7 @@ A nested YAML flow list needs spaces, `[ [ 80 ] ]`: `[[80]]` would read as an
 expression, so a `[[` followed by anything but a letter or underscore is an error.
 
 Template globals: t(key), inputs, lang, fail(message), component (id, version: the manifest's;
-SPEC-022). Filter: yaml (a YAML-safe scalar).
+SPEC-023). Filter: yaml (a YAML-safe scalar).
 An input whose value is null counts as absent (`is defined` is false), at every depth.
 
 --stamp puts a first line on every file written:

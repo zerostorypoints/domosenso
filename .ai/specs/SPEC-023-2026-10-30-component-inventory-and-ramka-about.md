@@ -1,4 +1,4 @@
-# SPEC-022: Component inventory sensor and the Ramka settings' About page (ramka, unreleased)
+# SPEC-023: Component inventory sensor and the Ramka settings' About page (ramka, unreleased)
 
 - Status: approved 2026-10-30 by the maintainer, in conversation
 - Source: the maintainer, in conversation (2026-10-30): "in the Ramka Settings, provide the About

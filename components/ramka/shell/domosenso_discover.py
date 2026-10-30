@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""What the home's Domosenso components use, found strictly from Home Assistant's own files (SPEC-022).
+"""What the home's Domosenso components use, found strictly from Home Assistant's own files (SPEC-023).
 
 Run by shell_command.<prefix>_discover inside the Home Assistant container: `domosenso_discover.py
 /config`. Prints one JSON document for the About page's refresh, which a script turns into the

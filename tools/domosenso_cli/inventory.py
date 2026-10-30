@@ -1,4 +1,4 @@
-"""`<config_dir>/packages/domosenso.yaml`: `sensor.domosenso_components`, what the home runs (SPEC-022).
+"""`<config_dir>/packages/domosenso.yaml`: `sensor.domosenso_components`, what the home runs (SPEC-023).
 
 The file is a pure function of `domosenso.lock` and `.domosenso/dev-render.json`, so `status` and
 `deploy` check it without the catalog: every command that changes either writes it again (`add`,
@@ -25,7 +25,7 @@ _PACKAGE = re.compile(r"components/(?P<cid>[a-z0-9]+(?:-[a-z0-9]+)*)/esphome/[^@
 
 _TEMPLATE = """\
 # sensor.domosenso_components: every component this home runs, its version, tag, commit and the
-# catalog's release date of that version. Written by `domosenso` from the lock (SPEC-022); `render`
+# catalog's release date of that version. Written by `domosenso` from the lock (SPEC-023); `render`
 # writes it again.
 template:
   - sensor:
