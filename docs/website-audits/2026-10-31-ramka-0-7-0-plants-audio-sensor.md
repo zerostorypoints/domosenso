@@ -5,8 +5,8 @@ Tags selected: `ramka/0.7.0` at `c54b824` (#130), `plants/0.3.1` at `7be07cb` (#
 2026-10-31 during this audit), `audio-sensor/0.2.0` at `0f1f0a7` (#127, #128). `plants/0.3.0`
 (`c54b824`) is covered by the 0.3.1 selection. `ramka/0.5.0` (`12b24d7`, #124) and `ramka/0.6.0` (`0f1f0a7`) are covered by
 the 0.7.0 selection and the article. Status: Ramka 0.7.0, plants 0.3.0 and audio-sensor 0.2.0
-merged in #137 (`af1b38c`); the move to plants 0.3.1 is a follow-up pull request. Not verified
-live; this note is not deployment evidence.
+merged in #137 (`af1b38c`), plants 0.3.1 in #138 (`74c9f19`); both live and verified on
+2026-10-31 (below).
 
 Why the site fell behind: the five tags were pushed in the evening of 30 October, after the last
 publication (`c0be4b7`, 10:45). The `Release reminder` workflow listed them in issue #125, but
@@ -28,6 +28,16 @@ Validation: `export_website.py --verify-remote` and `--check --verify-remote` (`
 content`), website lint, typecheck, unit tests (42 passed), static build, e2e on desktop and mobile
 (47 passed, 7 skipped). `release_status.py --hold remote-access`: `ok`.
 
-## Deferred evidence
+## Live verification (2026-10-31)
 
-- After merge: check the live routes, `build.json`, the IndexNow run and the sitemap resubmission.
+- `https://domosenso.org/build.json` shows `74c9f19`, the merge commit of #138.
+- Every route `website_changes.py --base 878d5ac --head 74c9f19 --format urls` lists (30, with the
+  `index.md` copies, `llms.txt` and `llms-full.txt`) returns 200.
+- The component pages show Ramka 0.7.0, plants 0.3.1 and audio-sensor 0.2.0; Mi Flora and Atom
+  Lite name plants 0.3.1; `/releases/` lists the three versions; `/journal/ramka-0-7-0/` names
+  `plants/0.3.1` at `7be07cb`; the article is in `llms.txt` and `sitemap.xml`.
+- The IndexNow runs for #137 and #138 succeeded. The Release reminder run after #138 closed #125.
+- Sitemap resubmitted at 13:06: Search Console (`sc-domain:domosenso.org`) accepted it, pending
+  processing; Bing Webmaster (`https://domosenso.org/`) accepted it.
+
+Nothing deferred.
