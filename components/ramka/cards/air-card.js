@@ -47,7 +47,7 @@ import pl from "../translations/pl.json" with { type: "json" };
 
 const t = createT({ en, de, pl });
 
-// The named colours carry this module's own ?v= (the deploy's hash of this file): /local/ is served
+// The named colours carry this module's own ?v= (the deploy's hash of its version directory): /local/ is served
 // with a 31-day cache, so an import without it can stay the old file after a deploy.
 const { selectedColour } = await import(new URL("./lib/colours.js", import.meta.url).href + new URL(import.meta.url).search);
 

@@ -24,7 +24,7 @@
 //     type: statistics-graph
 //     entities: [...]
 
-// The shared widget module carries this module's own ?v= (the deploy's hash of this file): /local/
+// The shared widget module carries this module's own ?v= (the deploy's hash of its version directory): /local/
 // is served with a 31-day cache, so an import without it can stay the old file after a deploy.
 const { seriesSlot, slotColor, readWidget, hasReading } =
   await import(new URL("./lib/climate-widgets.js", import.meta.url).href + new URL(import.meta.url).search);

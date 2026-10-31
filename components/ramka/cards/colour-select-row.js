@@ -16,8 +16,8 @@
 
 import { createT } from "./lib/i18n.js";
 
-// The shared modules and the translations carry this module's own ?v= (the deploy's hash of this
-// file): /local/ is served with a 31-day cache, so an import without it can stay the old file.
+// The shared modules and the translations carry this module's own ?v= (the deploy's hash of
+// its version directory): /local/ is served with a 31-day cache, so an import without it can stay the old file.
 const version = new URL(import.meta.url).search;
 const load = (path, json) => import(new URL(path, import.meta.url).href + version, json ? { with: { type: "json" } } : undefined);
 const [colours, list, en, de, pl] = await Promise.all([
