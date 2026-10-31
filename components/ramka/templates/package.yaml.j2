@@ -154,16 +154,20 @@
     that tuned its music window before the looks existed must still get a flat EQ and 1.5 s hold, not
     the sliders' minimum (-18 dB, 0 s). The template select before the EQ select, so the reset's
     `flat` reaches the EQ loader (Custom only) with Custom already selected. -#]
+[%- set look_ids = ['custom'] + (looks | list) -%]
 [%- if music_visual is not none -%]
 [%- set _ = settings.append(('input_select', 'music_template', 'music', 'music_look', 'custom')) -%]
 [%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', 'flat')) -%]
 [%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_eq_' ~ key, 'music', 'music_look', 0)) -%][%- endfor -%]
 [%- set _ = settings.append(('input_number', 'music_hold_s', 'music', 'music_look', 1.5)) -%]
+[#- The audition's interval and list are settings (reset restores them); its switch and its return
+    entry are state, so they are no setting. The list is an input_text: the seed does not look at it. -#]
+[%- set _ = settings.append(('input_number', 'music_audition_s', 'music', 'music_look', 30)) -%]
+[%- set _ = settings.append(('input_text', 'music_audition_list', 'music', 'music_look', look_ids | join(','))) -%]
 [%- endif -%]
 [#- The look sensor's tables, rendered here so Home Assistant only looks an entry up (it has no zip
     filter, and the catalog package carries no custom_templates file): the entry ids, the select's
     order, and per template its attributes in the card's `look` shape (spec 3.2). -#]
-[%- set look_ids = ['custom'] + (looks | list) -%]
 [%- set look_attrs = {} -%]
 [%- for id, l in looks.items() -%]
 [%- set _ = look_attrs.update({id: {'rise': l.rise, 'fall': l.fall, 'hold': l.hold, 'tilt': l.tilt, 'eq': eq_presets[l.eq_id],
@@ -328,6 +332,13 @@ input_boolean:
   [[ p ]]_music_tilt:
     name: [[ named(' music tilt') ]]
     icon: mdi:slope-uphill
+  # A blind walk through the music looks (spec 5); on selects the next entry every
+  # [[ p ]]_music_audition_s seconds of playback and off selects the entry it began on. Always off at
+  # a start: state, not a setting.
+  [[ p ]]_music_audition:
+    name: [[ named(' music audition') ]]
+    icon: mdi:shuffle-variant
+    initial: false
   [%- endif %]
   # One per configured air reading: off leaves its tile out of the air page (air-card's `show:`).
   [%- for reading in air_readings %]
@@ -433,6 +444,14 @@ input_number:
     step: 0.1
     unit_of_measurement: s
     mode: slider
+  [[ p ]]_music_audition_s:
+    name: [[ named(' music audition interval (s)') ]]
+    icon: mdi:timer-outline
+    min: 20
+    max: 120
+    step: 5
+    unit_of_measurement: s
+    mode: slider
   [%- endif %]
   [%- if inputs.photo_dir is defined %]
   [[ p ]]_photo_count:
@@ -499,14 +518,32 @@ input_button:
     name: [[ named(' reload page') ]]
     icon: mdi:reload
 
-[%- if inputs.photo_dir is defined %]
+[%- if inputs.photo_dir is defined or music_visual %]
 
-# The photo on screen, "<folder>/<file>" under the photo folder.
 input_text:
+[%- if inputs.photo_dir is defined %]
+  # The photo on screen, "<folder>/<file>" under the photo folder.
   [[ p ]]_photo:
     name: [[ named(' photo') ]]
     icon: mdi:image
     max: 255
+[%- endif %]
+[%- if music_visual %]
+  # The audition's entries (spec 5), comma separated; anything that is no entry id is skipped. The
+  # initial value is every entry, Custom included: it is what a restart and the reset give back.
+  [[ p ]]_music_audition_list:
+    name: [[ named(' music audition list') ]]
+    icon: mdi:playlist-music
+    max: 255
+    initial: [[ look_ids | join(',') | yaml ]]
+  # The entry on screen when the audition began; empty while no audition runs.
+  [[ p ]]_music_audition_return:
+    name: [[ named(' music audition return') ]]
+    icon: mdi:undo-variant
+    max: 32
+[%- endif %]
+[%- endif %]
+[%- if inputs.photo_dir is defined %]
 
 # The photo folder: folders at any depth, the photo's own folder name is the caption. The folder
 # platform names the entity after the last path component ([[ folder_sensor ]]); it only sees one
@@ -1300,6 +1337,82 @@ script:
         data:
           value: "{{ gains.[[ key ]] }}"
 [%- endfor %]
+
+  # The blind audition (spec 5). Started by automation [[ p ]]_music_audition_start with the entry on
+  # screen remembered. It reads the list (split on commas, trimmed, lower-cased, only entry ids, each
+  # once); with none left it switches the audition off. While the audition is on and the media player
+  # plays it waits the interval, then selects the entry after the current one (the first when the
+  # current one is not in the list) and writes its id to the logbook, which is the only place it is
+  # named. The interval's clock is the wait itself: a pause (playback off) ends the wait and the
+  # interval starts again at the next play. wait.remaining cannot carry what was left across the
+  # loop's iterations (variables set in a repeat do not outlive it), so a pause costs the time already
+  # waited. It only ever writes the template select: Custom's helpers and the EQ select are not touched.
+  [[ p ]]_music_audition_run:
+    alias: [[ named(' music audition run') ]]
+    icon: mdi:shuffle-variant
+    mode: restart
+    sequence:
+      - variables:
+          ids: >-
+            {{ states('input_text.[[ p ]]_music_audition_list').split(',') | map('trim') | map('lower') | select('in', [[ look_ids | tojson ]]) | unique | list }}
+      - if:
+          - condition: template
+            value_template: "{{ ids | count == 0 }}"
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.[[ p ]]_music_audition
+          - stop: No entry left in the audition list
+      - repeat:
+          while:
+            - condition: state
+              entity_id: input_boolean.[[ p ]]_music_audition
+              state: "on"
+          sequence:
+            - wait_template: "{{ is_state('binary_sensor.[[ p ]]_media_playing', 'on') }}"
+            - wait_for_trigger:
+                - trigger: state
+                  entity_id: binary_sensor.[[ p ]]_media_playing
+                  to: "off"
+              timeout: "{{ states('input_number.[[ p ]]_music_audition_s') | float(30) }}"
+              continue_on_timeout: true
+            - if:
+                - condition: template
+                  value_template: "{{ wait.trigger is none and is_state('input_boolean.[[ p ]]_music_audition', 'on') }}"
+              then:
+                - variables:
+                    next: >-
+                      {% set current = states('input_select.[[ p ]]_music_template') %}{{ ids[(ids.index(current) + 1) % (ids | count)] if current in ids else ids[0] }}
+                - action: input_select.select_option
+                  target:
+                    entity_id: input_select.[[ p ]]_music_template
+                  data:
+                    option: "{{ next }}"
+                - action: logbook.log
+                  data:
+                    name: [[ named(' music audition') ]]
+                    message: "{{ next }}"
+                    entity_id: input_select.[[ p ]]_music_template
+
+  # "Keep this one": the entry on screen is the one to return to, then the audition goes off; the stop
+  # automation selects the remembered entry (this one) and forgets it. Nothing happens while no
+  # audition runs, so nothing is left remembered.
+  [[ p ]]_music_audition_keep:
+    alias: [[ named(' music audition keep') ]]
+    icon: mdi:pin
+    mode: single
+    sequence:
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_music_audition
+        state: "on"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.[[ p ]]_music_audition_return
+        data:
+          value: "{{ states('input_select.[[ p ]]_music_template') }}"
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_music_audition
 [%- endif %]
 
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
@@ -1349,13 +1462,16 @@ script:
           - event: [[ p ]]_[[ key ]]
             event_data: [[ value | tojson ]]
 [%- else %]
-[%- set verb = 'set_value' if domain == 'input_number' else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
+[%- set verb = 'set_value' if domain in ['input_number', 'input_text'] else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
           - action: [[ domain ]].[[ verb ]]
             target:
               entity_id: [[ domain ]].[[ p ]]_[[ key ]]
 [%- if domain == 'input_number' %]
             data:
               value: [[ value ]]
+[%- elif domain == 'input_text' %]
+            data:
+              value: [[ value | yaml ]]
 [%- elif domain == 'input_select' %]
             data:
               option: [[ value | yaml ]]
@@ -1712,6 +1828,84 @@ automation:
       - action: script.[[ p ]]_music_load_eq
         data:
           preset: "{{ trigger.to_state.state }}"
+
+  # The blind audition (spec 5): on remembers the entry on screen and starts the walk; off ends it and
+  # selects the remembered entry, so the wall never stays on an entry the human did not keep (Keep
+  # sets the remembered entry to the one on screen first). Only the template select is changed.
+  - id: [[ p ]]_music_audition_start
+    alias: [[ named(' music audition start') ]]
+    description: "Audition on: remember the entry on screen and run the walk."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.[[ p ]]_music_audition
+        from: "off"
+        to: "on"
+    actions:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.[[ p ]]_music_audition_return
+        data:
+          value: "{{ states('input_select.[[ p ]]_music_template') }}"
+      - action: script.turn_on
+        target:
+          entity_id: script.[[ p ]]_music_audition_run
+  - id: [[ p ]]_music_audition_stop
+    alias: [[ named(' music audition stop') ]]
+    description: "Audition off: end the walk, select the remembered entry, forget it."
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.[[ p ]]_music_audition
+        from: "on"
+        to: "off"
+    actions:
+      - action: script.turn_off
+        target:
+          entity_id: script.[[ p ]]_music_audition_run
+      - if:
+          - condition: template
+            value_template: >-
+              {{ states('input_text.[[ p ]]_music_audition_return') in [[ look_ids | tojson ]] }}
+        then:
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.[[ p ]]_music_template
+            data:
+              option: "{{ states('input_text.[[ p ]]_music_audition_return') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.[[ p ]]_music_audition_return
+        data:
+          value: ""
+  # A restart during the audition: the switch starts off, the select is restored at its last step,
+  # and the remembered entry is still in its text helper; put it back.
+  - id: [[ p ]]_music_audition_restart_cleanup
+    alias: [[ named(' music audition restart cleanup') ]]
+    description: "Start with an entry remembered: select it and forget it."
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: template
+        value_template: "{{ states('input_text.[[ p ]]_music_audition_return') not in ['', 'unknown', 'unavailable'] }}"
+    actions:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ states('input_text.[[ p ]]_music_audition_return') in [[ look_ids | tojson ]] }}
+        then:
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.[[ p ]]_music_template
+            data:
+              option: "{{ states('input_text.[[ p ]]_music_audition_return') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.[[ p ]]_music_audition_return
+        data:
+          value: ""
 [%- endif %]
   - id: [[ p ]]_ambient_stop
     alias: [[ named(' ambient stop') ]]

@@ -694,6 +694,7 @@ EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 LOOK_DEFAULTS = {
     "input_select.ramka_music_template": "custom", "input_select.ramka_music_eq": "flat",
     **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5,
+    "input_number.ramka_music_audition_s": 30, "input_text.ramka_music_audition_list": "custom,mlp_match,lively,calm,analyser",
 }
 MUSIC_DEFAULTS = {
     **LOOK_DEFAULTS,
@@ -728,6 +729,8 @@ LOOK_NOT_ON_A_PAGE_YET = set(LOOK_DEFAULTS)
 # A new one is added here by name, in review.
 STATE_HELPERS = {"input_select.ramka_mode", "input_select.ramka_ambient", "input_boolean.ramka_ambient_music",
                  "input_boolean.ramka_settings_seeded"}
+# State with music_visual: the audition switch (always off at a start), no setting.
+MUSIC_STATE_HELPERS = {"input_boolean.ramka_music_audition"}
 
 
 def ha(template, states=None, attrs=None, **variables) -> str:
@@ -853,7 +856,9 @@ def expand(pattern: str) -> set[str]:
 def test_settings_helpers_stable_ids(plain, demo):
     for package, music in ((plain["package.yaml"], False), (demo["package.yaml"], True)):
         settings = {**DEFAULTS, **(MUSIC_DEFAULTS if music else {})}
-        assert set(helpers(package)) == set(settings) | STATE_HELPERS, music
+        # input_text settings (the audition's list) are no input_boolean, input_number or input_select.
+        settings = {e for e in settings if not e.startswith("input_text.")}
+        assert set(helpers(package)) == settings | STATE_HELPERS | (MUSIC_STATE_HELPERS if music else set()), music
         ids = defined_entities(package)
         assert {"sensor.ramka_ambient_pages", "script.ramka_settings_reset",
                 "automation.ramka_settings_seed", "automation.ramka_theme_mode"} <= ids
@@ -863,14 +868,17 @@ def test_settings_helpers_stable_ids(plain, demo):
                                 re.split(r",\s*(?![^{]*\})", manifest["provides"]["automations"].split(", with")[0])))
     rendered = defined_entities(demo["package.yaml"])
     assert {e for e in rendered if not e.startswith("automation.")} <= provided
-    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching", "ramka_music_eq_load"} <= automations
-    assert "with music_visual also <prefix>_music_watching and <prefix>_music_eq_load" in manifest["provides"]["automations"]
+    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching", "ramka_music_eq_load",
+                                                                                          "ramka_music_audition_start", "ramka_music_audition_stop",
+                                                                                          "ramka_music_audition_restart_cleanup"} <= automations
+    assert "with music_visual also <prefix>_music_watching, <prefix>_music_eq_load and <prefix>_music_audition_{start,stop,restart_cleanup}" in manifest["provides"]["automations"]
 
 
 def test_no_helper_has_initial(plain, demo):
     for package in (plain["package.yaml"], demo["package.yaml"]):
         for entity, helper in helpers(package).items():
-            assert "initial" not in helper, entity
+            # The audition switch is the one exception: it must be off at every start (spec 5).
+            assert "initial" not in helper or entity == "input_boolean.ramka_music_audition", entity
 
 
 def test_seed_defaults_follow_the_inputs(tmp_path, plain, demo):
@@ -1026,13 +1034,14 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
     rendered = render(tmp_path, make_inputs())
     package = rendered["package.yaml"]
     reset = run_reset(package)
+    state_helpers = STATE_HELPERS | MUSIC_STATE_HELPERS
     for entity in helpers(package):
-        assert entity in STATE_HELPERS or entity in reset, f"{entity}: neither a state helper nor reset"
+        assert entity in state_helpers or entity in reset, f"{entity}: neither a state helper nor reset"
     for lang in LANGS:
         views = settings_views(rendered[f"ramka-settings.{lang}.yaml"])
         on_pages = {e: path for path, view in views.items() for e in shown_entities(view)}
         for entity in helpers(package):
-            if entity in STATE_HELPERS:
+            if entity in state_helpers:
                 assert entity not in on_pages, f"{lang}: state helper {entity} on the {on_pages[entity]} page"
             elif entity.removeprefix("input_boolean.ramka_page_") in left_out:
                 assert entity not in on_pages, f"{lang}: {entity} shown on a page the render left out"
@@ -2103,7 +2112,7 @@ def test_no_photo_helpers_without_photo_dir(tmp_path):
     package = render(tmp_path, without_pages("photos"))["package.yaml"]
     assert not {e for e in helpers(package) if ".ramka_photo" in e}
     # The About page's discovery is the only shell command a home without photos gets (SPEC-023).
-    assert set(package.get("shell_command", {})) == {"ramka_discover"} and "input_text" not in package
+    assert set(package.get("shell_command", {})) == {"ramka_discover"} and "ramka_photo" not in package.get("input_text", {})
     assert ALBUMS not in defined_entities(package) and "ramka_photo_albums_set" not in package["script"]
     assert not [a for a in package["automation"] if a["id"].startswith("ramka_photo")]
 
@@ -2683,7 +2692,160 @@ def test_music_reset_writes_custom_defaults(demo):
         written = run_reset(package, **fields)
         assert {e: written.get(e) for e in LOOK_DEFAULTS} == {
             TEMPLATE_SELECT: "custom", "input_select.ramka_music_eq": "flat",
-            **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5}, fields
+            **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5,
+            "input_number.ramka_music_audition_s": 30, "input_text.ramka_music_audition_list": ",".join(LOOK_IDS)}, fields
     # The reset selects custom before it loads flat, so the EQ loader (custom only) agrees with it.
     order = [s["target"]["entity_id"] for s in walk(reset_script(package)["sequence"]) if isinstance(s.get("target"), dict)]
     assert order.index(TEMPLATE_SELECT) < order.index("input_select.ramka_music_eq")
+
+
+# The audition (spec 5): a blind walk through the entries; it changes the template select only.
+AUDITION = "input_boolean.ramka_music_audition"
+AUDITION_RETURN = "input_text.ramka_music_audition_return"
+AUDITION_LIST = "input_text.ramka_music_audition_list"
+AUDITION_HELPERS = {AUDITION, "input_number.ramka_music_audition_s", AUDITION_LIST, AUDITION_RETURN}
+AUDITION_SCRIPTS = {"script.ramka_music_audition_run", "script.ramka_music_audition_keep"}
+
+
+def audition_script(package, name="run"):
+    return package["script"][f"ramka_music_audition_{name}"]
+
+
+def test_music_audition_helpers(demo, plain):
+    package = demo["package.yaml"]
+    assert package["input_boolean"]["ramka_music_audition"]["initial"] is False
+    seconds = package["input_number"]["ramka_music_audition_s"]
+    assert (seconds["min"], seconds["max"], seconds["step"], seconds["unit_of_measurement"]) == (20, 120, 5, "s")
+    assert "initial" not in seconds  # the seed gives it 30, like every other number
+    listing = package["input_text"]["ramka_music_audition_list"]
+    assert listing["initial"] == ",".join(LOOK_IDS) and listing["max"] >= len(listing["initial"])
+    assert "ramka_music_audition_return" in package["input_text"]
+    assert "ramka_photo" in package["input_text"]  # the photo helper shares the block
+    # The interval and the list are settings (reset restores them); the boolean and the return are state.
+    for fields in ({}, {"page": "music"}, {"groups": ["music_look"]}):
+        written = run_reset(package, **fields)
+        assert written["input_number.ramka_music_audition_s"] == 30 and written[AUDITION_LIST] == ",".join(LOOK_IDS), fields
+        assert AUDITION not in written and AUDITION_RETURN not in written, fields
+    # Everything only with music_visual.
+    without = plain["package.yaml"]
+    assert not {e for e in defined_entities(without) if "audition" in e}
+    assert "audition" not in json.dumps(without)
+
+
+def parse_list(package, text) -> list:
+    [variables] = [s for s in audition_script(package)["sequence"] if "variables" in s][:1]
+    return ha_value(variables["variables"]["ids"], states={AUDITION_LIST: text})
+
+
+def test_music_audition_list_parsing(demo):
+    package = demo["package.yaml"]
+    assert parse_list(package, "MLP_match, Calm , foo") == ["mlp_match", "calm"]
+    assert parse_list(package, "foo") == []
+    assert parse_list(package, "") == []
+    assert parse_list(package, ",".join(LOOK_IDS)) == LOOK_IDS
+    assert parse_list(package, "calm,CALM, lively") == ["calm", "lively"]
+    # Nothing left: audition switches itself off, before it loops.
+    sequence = audition_script(package)["sequence"]
+    [guard] = [s for s in sequence if "if" in s]
+    assert ha(guard["if"][0]["value_template"], ids=[]) == "True" and ha(guard["if"][0]["value_template"], ids=["calm"]) == "False"
+    assert guard["then"][0]["target"]["entity_id"] == AUDITION
+    assert sequence.index(guard) < [i for i, s in enumerate(sequence) if "repeat" in s][0]
+    assert audition_script(package)["mode"] == "restart"
+
+
+def test_music_audition_steps_to_the_next_entry(demo):
+    package = demo["package.yaml"]
+    [loop] = [s for s in audition_script(package)["sequence"] if "repeat" in s]
+    assert "audition" in loop["repeat"]["while"][0]["entity_id"] or AUDITION in str(loop["repeat"]["while"])
+    steps = loop["repeat"]["sequence"]
+    # Waits for playback, then for the interval, which a pause (playback off) interrupts.
+    assert steps[0]["wait_template"].count("binary_sensor.ramka_media_playing") == 1
+    [wait] = [s for s in steps if "wait_for_trigger" in s]
+    [trigger] = wait["wait_for_trigger"]
+    assert (trigger["entity_id"], trigger["to"]) == ("binary_sensor.ramka_media_playing", "off")
+    assert wait["continue_on_timeout"] is True
+    assert ha(wait["timeout"], states={"input_number.ramka_music_audition_s": "45.0"}) == "45.0"
+    [step] = [s for s in steps if "if" in s]
+    # Only a timeout steps; a pause starts the interval again.
+    stepped = lambda wait_trigger, audition="on": ha(step["if"][0]["value_template"] if "value_template" in step["if"][0] else "False",
+                                                    wait={"trigger": wait_trigger}, states={AUDITION: audition})
+    assert stepped(None) == "True" and stepped({"x": 1}) == "False"
+    then = step["then"]
+    [pick] = [s for s in then if "variables" in s]
+
+    def next_entry(current, ids):
+        return ha_value(pick["variables"]["next"], ids=ids, states={TEMPLATE_SELECT: current})
+
+    ids = ["mlp_match", "calm", "lively"]
+    assert [next_entry(c, ids) for c in ("mlp_match", "calm", "lively")] == ["calm", "lively", "mlp_match"]
+    assert next_entry("custom", ids) == "mlp_match" and next_entry("analyser", ids) == "mlp_match"
+    assert next_entry("calm", ["calm"]) == "calm"
+    selected = [s for s in then if s.get("action") == "input_select.select_option"]
+    logged = [s for s in then if s.get("action") == "logbook.log"]
+    assert len(selected) == 1 and selected[0]["target"]["entity_id"] == TEMPLATE_SELECT
+    assert len(logged) == 1 and "{{ next }}" in logged[0]["data"]["message"].replace("{{next}}", "{{ next }}")
+    assert then.index(selected[0]) < then.index(logged[0])
+
+
+def test_music_audition_never_writes_custom(demo):
+    package = demo["package.yaml"]
+    allowed = {TEMPLATE_SELECT, "logbook.log"} | AUDITION_HELPERS | AUDITION_SCRIPTS
+    owners = [(f"script.ramka_music_audition_{n}", audition_script(package, n)) for n in ("run", "keep")]
+    owners += [(a["id"], a) for a in package["automation"] if a["id"].startswith("ramka_music_audition_")]
+    assert {o for o, _ in owners} >= {"script.ramka_music_audition_run", "script.ramka_music_audition_keep",
+                                      "ramka_music_audition_start", "ramka_music_audition_stop", "ramka_music_audition_restart_cleanup"}
+    for owner, node in owners:
+        for step in walk(node):
+            target = step.get("target")
+            ids = as_list(target.get("entity_id", [])) if isinstance(target, dict) else []
+            assert not CUSTOM_HELPERS & set(ids) and "input_select.ramka_music_eq" not in ids, owner
+            assert set(ids) <= allowed, (owner, ids)
+            if "action" in step and ids:
+                assert step["action"].split(".")[0] in {"input_select", "input_boolean", "input_text", "input_number", "script"}, owner
+        text = json.dumps(node)
+        assert "music_eq" not in text and "music_hold" not in text and "music_rise" not in text, owner
+    # Not even the Custom writers know about it: reset is the only one that writes the audition's settings.
+    assert "logbook.log" in json.dumps(audition_script(package))
+
+
+def test_music_audition_restores(demo):
+    package = demo["package.yaml"]
+    start = automation(package, "music_audition_start")
+    stop = automation(package, "music_audition_stop")
+    cleanup = automation(package, "music_audition_restart_cleanup")
+    # On: remember the entry on screen, then run the walk without waiting for it.
+    [trigger] = start["triggers"]
+    assert (trigger["entity_id"], trigger["to"], trigger["from"]) == (AUDITION, "on", "off")
+    first, second = start["actions"]
+    assert first["action"] == "input_text.set_value" and first["target"]["entity_id"] == AUDITION_RETURN
+    assert ha(first["data"]["value"], states={TEMPLATE_SELECT: "calm"}) == "calm"
+    assert second["action"] == "script.turn_on" and second["target"]["entity_id"] == "script.ramka_music_audition_run"
+    # Off: stop the walk, select what was remembered, forget it.
+    [trigger] = stop["triggers"]
+    assert (trigger["entity_id"], trigger["from"], trigger["to"]) == (AUDITION, "on", "off")
+    actions = stop["actions"]
+    assert actions[0]["action"] == "script.turn_off" and actions[0]["target"]["entity_id"] == "script.ramka_music_audition_run"
+    select = [a for a in walk(actions) if a.get("action") == "input_select.select_option"]
+    assert [ha(a["data"]["option"], states={AUDITION_RETURN: "mlp_match"}) for a in select] == ["mlp_match"]
+    assert select[0]["target"]["entity_id"] == TEMPLATE_SELECT
+    clear = [a for a in walk(actions) if a.get("action") == "input_text.set_value"]
+    assert clear[-1]["target"]["entity_id"] == AUDITION_RETURN and clear[-1]["data"]["value"] == ""
+    # Keep: the entry on screen becomes the one to return to, then audition goes off (the stop automation does the rest).
+    keep = audition_script(package, "keep")["sequence"]
+    [guard] = [s for s in keep if s.get("condition") == "state"]
+    assert (guard["entity_id"], guard["state"]) == (AUDITION, "on") and keep[0] is guard
+    [remember] = [s for s in keep if s.get("action") == "input_text.set_value"]
+    assert remember["target"]["entity_id"] == AUDITION_RETURN
+    assert ha(remember["data"]["value"], states={TEMPLATE_SELECT: "lively"}) == "lively"
+    [off] = [s for s in keep if s.get("action") == "input_boolean.turn_off"]
+    assert off["target"]["entity_id"] == AUDITION and keep.index(remember) < keep.index(off)
+    assert not [s for s in walk(keep) if s.get("action") == "input_select.select_option"]
+    # An HA start with something remembered selects it and clears it (audition itself starts off).
+    assert [t["trigger"] for t in cleanup["triggers"]] == ["homeassistant"] and cleanup["triggers"][0]["event"] == "start"
+    selects = [a for a in walk(cleanup["actions"]) if a.get("action") == "input_select.select_option"]
+    assert [ha(a["data"]["option"], states={AUDITION_RETURN: "calm"}) for a in selects] == ["calm"]
+    clear = [a for a in walk(cleanup["actions"]) if a.get("action") == "input_text.set_value"]
+    assert clear[-1]["data"]["value"] == ""
+    guards = [c["value_template"] for c in cleanup["conditions"] if c["condition"] == "template"]
+    assert guards and all(ha(g, states={AUDITION_RETURN: ""}) == "False" for g in guards)
+    assert all(ha(g, states={AUDITION_RETURN: "calm"}) == "True" for g in guards)
