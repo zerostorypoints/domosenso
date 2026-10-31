@@ -879,6 +879,9 @@ def test_no_helper_has_initial(plain, demo):
         for entity, helper in helpers(package).items():
             # The audition switch is the one exception: it must be off at every start (spec 5).
             assert "initial" not in helper or entity == "input_boolean.ramka_music_audition", entity
+        # helpers() leaves input_text out (it is no setting domain of the page checks), so look at it here.
+        for key, helper in (package.get("input_text") or {}).items():
+            assert "initial" not in helper, key
 
 
 def test_seed_defaults_follow_the_inputs(tmp_path, plain, demo):
@@ -2718,7 +2721,7 @@ def test_music_audition_helpers(demo, plain):
     assert (seconds["min"], seconds["max"], seconds["step"], seconds["unit_of_measurement"]) == (20, 120, 5, "s")
     assert "initial" not in seconds  # the seed gives it 30, like every other number
     listing = package["input_text"]["ramka_music_audition_list"]
-    assert listing["initial"] == ",".join(LOOK_IDS) and listing["max"] >= len(listing["initial"])
+    assert "initial" not in listing and listing["max"] >= len(",".join(LOOK_IDS))  # a setting the user edits: it persists
     assert "ramka_music_audition_return" in package["input_text"]
     assert "ramka_photo" in package["input_text"]  # the photo helper shares the block
     # The interval and the list are settings (reset restores them); the boolean and the return are state.
@@ -2804,7 +2807,7 @@ def test_music_audition_never_writes_custom(demo):
                 assert step["action"].split(".")[0] in {"input_select", "input_boolean", "input_text", "input_number", "script"}, owner
         text = json.dumps(node)
         assert "music_eq" not in text and "music_hold" not in text and "music_rise" not in text, owner
-    # Not even the Custom writers know about it: reset is the only one that writes the audition's settings.
+    # The walk writes its log entries through logbook.log.
     assert "logbook.log" in json.dumps(audition_script(package))
 
 

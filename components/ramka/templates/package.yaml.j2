@@ -529,13 +529,13 @@ input_text:
     max: 255
 [%- endif %]
 [%- if music_visual %]
-  # The audition's entries (spec 5), comma separated; anything that is no entry id is skipped. The
-  # initial value is every entry, Custom included: it is what a restart and the reset give back.
+  # The audition's entries (spec 5), comma separated; anything that is no entry id is skipped. A
+  # setting the user edits, so no `initial:` (it would undo the edit at every restart); the seed and
+  # the reset give it every entry, Custom included.
   [[ p ]]_music_audition_list:
     name: [[ named(' music audition list') ]]
     icon: mdi:playlist-music
     max: 255
-    initial: [[ look_ids | join(',') | yaml ]]
   # The entry on screen when the audition began; empty while no audition runs.
   [[ p ]]_music_audition_return:
     name: [[ named(' music audition return') ]]
