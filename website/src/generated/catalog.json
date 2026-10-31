@@ -646,9 +646,9 @@
     },
     {
       "id": "plants",
-      "version": "0.3.0",
-      "sourceTag": "plants/0.3.0",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "version": "0.3.1",
+      "sourceTag": "plants/0.3.1",
+      "sourceCommit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47",
       "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
       "requirements": [
         {
@@ -741,8 +741,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/plants",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/plants/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/7be07cb1707ea10aa9e6277dd0cd860eee33bc47/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/7be07cb1707ea10aa9e6277dd0cd860eee33bc47/components/plants/UPGRADE.md"
     },
     {
       "id": "ramka",
