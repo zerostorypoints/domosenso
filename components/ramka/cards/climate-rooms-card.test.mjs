@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import "./testing/dom-env.mjs";
 import { shadowText } from "./testing/dom-env.mjs";
-import "./climate-rooms-card.js";
+import { isReading } from "./climate-rooms-card.js";
 import { COLOUR_IDS } from "./lib/colours.js";
 
 const ENTITY = "sensor.ramka_climate_rooms";
@@ -14,7 +14,7 @@ const STATES = {
   "sensor.k_h": sensor("Kitchen humidity", "%", "humidity"),
   "sensor.b_t": sensor("Bedroom temperature", "°C", "temperature"),
   "sensor.b_co2": sensor("Bedroom CO2", "ppm", "carbon_dioxide"),
-  "sensor.weather_text": sensor("Weather text"),
+  "sensor.weather_text": { state: "sunny", attributes: { friendly_name: "Weather text" } },
   "binary_sensor.door": sensor("Door", "%"),
 };
 
@@ -97,8 +97,26 @@ test("the translations are imported with the card's own ?v=, so the 31-day cache
 
 // ---- Pickers -------------------------------------------------------------------------------------
 
-test("each type's pickers offer its device classes; Custom any sensor with a unit", () => {
-  const states = { "sensor.b_pm": sensor("Bedroom PM2.5", "µg/m³", "pm25") };
+// An air quality score as some devices report it: no unit, a state class.
+const IAQ = { state: "45", attributes: { friendly_name: "Kitchen indoor air quality score", state_class: "measurement" } };
+
+test("a reading: a unit, a state class or a number; not a text, an empty or an unavailable state", () => {
+  assert.equal(isReading(IAQ), true);
+  assert.equal(isReading({ state: "unknown", attributes: { state_class: "total_increasing" } }), true);
+  assert.equal(isReading({ state: "3", attributes: { state_class: "total" } }), true);
+  assert.equal(isReading({ state: "12.5", attributes: {} }), true);
+  assert.equal(isReading({ state: "-3", attributes: {} }), true);
+  assert.equal(isReading({ state: "on", attributes: { unit_of_measurement: "%" } }), true);
+  assert.equal(isReading({ state: "sunny", attributes: {} }), false);
+  assert.equal(isReading({ state: "", attributes: {} }), false);
+  assert.equal(isReading({ state: "unavailable", attributes: {} }), false);
+  assert.equal(isReading({ state: "3", attributes: { state_class: "weird" } }), true);  // its number
+  assert.equal(isReading({ state: "x", attributes: { state_class: "weird" } }), false);
+  assert.equal(isReading(undefined), false);
+});
+
+test("each type's pickers offer its device classes; Custom any sensor with a reading", () => {
+  const states = { "sensor.b_pm": sensor("Bedroom PM2.5", "µg/m³", "pm25"), "sensor.k_iaq": IAQ };
   const { card } = makeCard({ rooms: [KT, { type: "air", label: "B", main: "sensor.b_co2", extra: "" },
                                       { type: "custom", label: "C", main: "sensor.k_t", extra: "" }], states });
   const [tMain, tExtra, aMain, aExtra, cMain] = readings(card);
@@ -106,25 +124,32 @@ test("each type's pickers offer its device classes; Custom any sensor with a uni
   assert.deepEqual(optionIds(tExtra), ["", "sensor.k_h"]);
   assert.deepEqual(optionIds(aMain), ["", "sensor.b_co2"]);
   assert.deepEqual(optionIds(aExtra), ["", "sensor.b_pm"]);
-  assert.deepEqual(optionIds(cMain), ["", "sensor.b_co2", "sensor.b_pm", "sensor.b_t", "sensor.k_h", "sensor.k_t"]);
+  // The score without a unit is offered to Custom, never to a type of a device class; the widgets'
+  // own sensor (a number too) is not.
+  assert.deepEqual(optionIds(cMain), ["", "sensor.b_co2", "sensor.b_pm", "sensor.b_t", "sensor.k_h", "sensor.k_iaq", "sensor.k_t"]);
   // The labels follow the type.
   const labels = [...rows(card)[1].querySelectorAll("label > span")].map((s) => s.textContent);
   assert.deepEqual(labels, ["Name", "CO₂", "PM2.5"]);
   assert.deepEqual([...rows(card)[0].querySelectorAll("label > span")].map((s) => s.textContent), ["Name", "Temperature", "Humidity"]);
 });
 
-test("a device class no sensor of the home has falls back to every sensor with a unit", () => {
+test("a device class no sensor of the home has falls back to every sensor with a reading", () => {
   const { card } = makeCard({ rooms: [{ type: "air", label: "B", main: "sensor.b_co2", extra: "" }] });
   const [main, extra] = readings(card);
   assert.deepEqual(optionIds(main), ["", "sensor.b_co2"]);
   assert.deepEqual(optionIds(extra), ["", "sensor.b_co2", "sensor.b_t", "sensor.k_h", "sensor.k_t"]);
 });
 
-test("the custom dropdowns list the sensors with a unit, by name, after the empty choice", () => {
-  const { card } = makeCard({ rooms: [{ type: "custom", label: "", main: "", extra: "" }] });
+test("the custom dropdowns list the sensors with a reading, by name, after the empty choice; no unit, no brackets", () => {
+  const { card } = makeCard({ rooms: [{ type: "custom", label: "", main: "", extra: "" }], states: { "sensor.k_iaq": IAQ } });
   const options = [...readings(card)[0].options].map((o) => [o.value, o.textContent]);
   assert.deepEqual(options, [["", "—"], ["sensor.b_co2", "Bedroom CO2 (ppm)"], ["sensor.b_t", "Bedroom temperature (°C)"],
-                             ["sensor.k_h", "Kitchen humidity (%)"], ["sensor.k_t", "Kitchen temperature (°C)"]]);
+                             ["sensor.k_h", "Kitchen humidity (%)"], ["sensor.k_iaq", "Kitchen indoor air quality score"],
+                             ["sensor.k_t", "Kitchen temperature (°C)"]]);
+  // The score once picked is saved as any other reading.
+  const { card: picked, calls } = makeCard({ rooms: [{ type: "custom", label: "Air", main: "", extra: "" }], states: { "sensor.k_iaq": IAQ } });
+  change(readings(picked)[0], "sensor.k_iaq");
+  assert.deepEqual(saved(calls), [{ type: "custom", label: "Air", main: "sensor.k_iaq", extra: "" }]);
 });
 
 test("a new type keeps the name and the readings that fit it", () => {
@@ -413,28 +438,68 @@ test("an Air quality widget's dialog edits the Air page's own limits; a reading 
   assert.equal(bare.querySelectorAll("input[type=number]").length, 0);
 });
 
-test("a Custom widget's dialog picks its colour from the named colours, or neutral", () => {
+// The Custom dialog's colour dropdown (lib/colour-list.js): its button and its choices.
+const colourButton = (dialog) => dialog.querySelector(".widget-colour .colour-value");
+const colourChoices = (dialog) => [...dialog.querySelectorAll(".widget-colour .colour-option")];
+const key = (el, k) => {
+  const ev = new window.Event("keydown", { bubbles: true, cancelable: true, composed: true });
+  ev.key = k;
+  el.dispatchEvent(ev);
+  return ev;
+};
+
+test("a Custom widget's dialog picks its colour from the named colours, or neutral, each with its dot", () => {
   const custom = { type: "custom", label: "Power", main: "sensor.k_t", extra: "" };
   const { card, calls } = makeCard({ rooms: [custom], lang: "de" });
   const dialog = openDialog(card);
-  const select = dialog.querySelector("select[name=colour]");
-  // Neutral, then the named colours in their order, named in the page's language.
-  assert.deepEqual([...select.options].map((o) => o.value), ["", ...COLOUR_IDS]);
-  assert.deepEqual([...select.options].slice(0, 4).map((o) => o.textContent), ["Neutral", "Grün", "Türkis", "Blau"]);
-  assert.equal(select.value, "");
-  select.value = "light blue";
-  select.dispatchEvent(new Event("change"));
-  assert.equal(dialog.querySelector(".dot").style.background, "var(--graph-color-8, #8fd3ff)");
+  assert.equal(dialog.querySelector("select[name=colour]"), null);
+  // Neutral, then the named colours in their order, named in the page's language, each with its dot.
+  const choices = colourChoices(dialog);
+  assert.deepEqual(choices.map((o) => o.dataset.value), ["", ...COLOUR_IDS]);
+  assert.deepEqual(choices.slice(0, 4).map((o) => o.textContent), ["Neutral", "Grün", "Türkis", "Blau"]);
+  assert.deepEqual(choices.map((o) => o.querySelector(".swatch").className),
+                   ["swatch empty", ...COLOUR_IDS.map(() => "swatch")]);
+  assert.equal(choices[4].querySelector(".swatch").style.background, "var(--graph-color-8, #8fd3ff)");
+  // The value: Neutral, its dot in front.
+  assert.equal(colourButton(dialog).querySelector(".text").textContent, "Neutral");
+  assert.equal(choices[0].getAttribute("aria-selected"), "true");
+  // A tap opens the list, a tap on Hellblau picks it: the value's dot is that colour.
+  const list = dialog.querySelector(".colour-options");
+  assert.equal(list.hidden, true);
+  colourButton(dialog).click();
+  assert.equal(list.hidden, false);
+  assert.equal(colourButton(dialog).getAttribute("aria-expanded"), "true");
+  choices[4].click();
+  assert.equal(list.hidden, true);
+  assert.equal(colourButton(dialog).querySelector(".swatch").style.background, "var(--graph-color-8, #8fd3ff)");
+  assert.equal(colourButton(dialog).querySelector(".text").textContent, choices[4].textContent);
   submit(dialog);
   assert.deepEqual(saved(calls), [{ ...custom, color: "light blue" }]);
-  // Back to neutral: no colour stored.
+  // Back to neutral, by keyboard: no colour stored.
   card.hass = { ...card._hass, states: { ...card._hass.states, [ENTITY]: { state: "1", attributes: { rooms: [{ ...custom, color: "light blue" }] } } } };
   const again = openDialog(card);
-  const choice = again.querySelector("select[name=colour]");
-  assert.equal(choice.value, "light blue");
-  choice.value = "";
+  assert.equal(colourChoices(again)[4].getAttribute("aria-selected"), "true");
+  key(colourButton(again), "ArrowDown");
+  assert.equal(again.querySelector(".colour-options").hidden, false);
+  assert.equal(card.shadowRoot.activeElement, colourChoices(again)[4]);  // on the chosen one
+  key(colourChoices(again)[4], "Home");
+  key(colourChoices(again)[0], "Enter");
+  assert.equal(again.querySelector(".colour-options").hidden, true);
   submit(again);
   assert.deepEqual(saved(calls), [custom]);
+});
+
+test("Escape in the open colour list closes the list, not the dialog", () => {
+  const custom = { type: "custom", label: "Power", main: "sensor.k_t", extra: "" };
+  const { card, calls } = makeCard({ rooms: [custom] });
+  const dialog = openDialog(card);
+  colourButton(dialog).click();
+  const ev = key(colourChoices(dialog)[2], "Escape");
+  assert.equal(ev.defaultPrevented, true);
+  assert.equal(dialog.querySelector(".colour-options").hidden, true);
+  assert.ok(card.shadowRoot.querySelector("dialog"));
+  assert.equal(calls.length, 0);
+  card.remove();
 });
 
 test("a colour stored as a theme slot number by the build before is kept: the dialog shows it, a save stores its id", () => {
@@ -442,16 +507,24 @@ test("a colour stored as a theme slot number by the build before is kept: the di
   for (const [slot, id] of [[4, "teal"], [5, "purple"], [6, "pink"], [9, "green"], [11, "magenta"], [10, "grey"]]) {
     const { card, calls } = makeCard({ rooms: [{ ...custom, color: slot }] });
     const dialog = openDialog(card);
-    assert.equal(dialog.querySelector("select[name=colour]").value, id, String(slot));
+    const [chosen] = colourChoices(dialog).filter((o) => o.getAttribute("aria-selected") === "true");
+    assert.equal(chosen.dataset.value, id, String(slot));
     submit(dialog);
     assert.deepEqual(saved(calls), [{ ...custom, color: id }]);
   }
 });
 
-test("the dialog's Neutral dot is the Climate page's neutral colour", () => {
+test("the dialog's Neutral dot is the Climate page's neutral colour, the climate picker's swatch", () => {
   const custom = { type: "custom", label: "Power", main: "sensor.k_t", extra: "" };
   const NEUTRAL_SELECT = "input_select.ramka_climate_color_neutral";
   const { card } = makeCard({ rooms: [custom], config: { neutral_color: NEUTRAL_SELECT },
                               states: { [NEUTRAL_SELECT]: { state: "grey", attributes: {} } } });
-  assert.equal(openDialog(card).querySelector(".dot").style.background, "var(--graph-color-10, #c7c7c7)");
+  const dialog = openDialog(card);
+  assert.equal(colourButton(dialog).querySelector(".swatch").style.background, "var(--graph-color-10, #c7c7c7)");
+  assert.equal(colourChoices(dialog)[0].querySelector(".swatch").className, "swatch");
+  assert.equal(colourChoices(dialog)[0].querySelector(".swatch").style.background, "var(--graph-color-10, #c7c7c7)");
+  // The same dot as the row's swatch: one rule for its size and shape.
+  const css = card.shadowRoot.querySelector("style").textContent;
+  assert.match(css, /\.swatch \{ width: 14px; height: 14px; border-radius: 50%;/);
+  assert.equal(card.shadowRoot.querySelector(".row > .swatch").classList.contains("swatch"), true);
 });

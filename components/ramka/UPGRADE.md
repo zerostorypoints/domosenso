@@ -3,6 +3,31 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: colour dots in the colour choices, readings without a unit, the albums' column
+
+- **Colour dots**: every colour choice shows the colour: the value and each choice of the list have
+  the colour's dot in front, the climate picker's swatch, the names in the page's language. The
+  settings page's four colour selects (`input_select.<prefix>_air_color_{good,fair,poor}`,
+  `input_select.<prefix>_climate_color_neutral`) become the new row
+  `custom:ramka-colour-select-row` (`cards/colour-select-row.js`, a new Lovelace resource; entity,
+  name, `lang`), which selects with `input_select.select_option`; the Custom widget's dialog has the
+  same list (new module `cards/lib/colour-list.js`), Neutral with the neutral colour's dot. The list
+  is an overlay (a tap, or an arrow, Enter or Space on the keyboard); Escape closes only the list.
+- **Readings without a unit**: the climate picker (Home Assistant's entity picker and the plain
+  dropdown) offers a sensor with a unit, a state class (`measurement`, `total`,
+  `total_increasing`) or a number for its state, so a score without a unit (an indoor air quality
+  score) can be a Custom widget's reading; Temperature and Air quality keep their device classes.
+  The widgets' own sensor is never offered. On the Ramka an Air quality or Custom widget's reading
+  without a unit shows none (it showed °C or %); a Temperature widget keeps °C and %.
+- **Photos page**: the albums are their own section, in the right column next to Basic; the
+  render-time inputs and Reset below.
+- No new texts (the colours' names are the `card.colours.*` of the release before).
+
+### What a home does
+
+- Render and deploy: the deploy adds the resource `cards/colour-select-row.js` (`deploy --plan`
+  prints `resource create`). Nothing else changes in a home's state.
+
 ## Unreleased: named colours for Air and Climate, fair / poor, page titles
 
 - **One colour list**: the Ramka's named colours (`cards/lib/colours.js`: green, teal, blue, light

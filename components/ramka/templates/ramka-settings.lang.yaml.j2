@@ -67,12 +67,19 @@
 [#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. A helper given as
     (domain, suffix, descriptions) is a select with an info tooltip (custom:ramka-info-select-row,
     cards/info-select-row.js): Home Assistant's own row and an (i) that tells what the selected option
-    does; descriptions maps every option to its text in this page's language. A fourth element names
-    the label key when it is not the suffix. -#]
+    does; descriptions maps every option to its text in this page's language. One given as
+    (domain, suffix, 'colour') is a colour select (custom:ramka-colour-select-row,
+    cards/colour-select-row.js): the value and every choice with its colour's dot, the colours named
+    in this page's language. A fourth element names the label key when it is not the suffix. -#]
 [%- macro rows(helpers) -%]
 [%- for h in helpers %]
 [%- set label = h[3] if h | length > 3 else h[1] %]
-[%- if h | length > 2 and h[2] %]
+[%- if h | length > 2 and h[2] == 'colour' %]
+              - type: custom:ramka-colour-select-row
+                entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+                name: [[ t('ui.settings.' ~ label) | yaml ]]
+                lang: [[ lang ]]
+[%- elif h | length > 2 and h[2] %]
               - type: custom:ramka-info-select-row
                 entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
                 name: [[ t('ui.settings.' ~ label) | yaml ]]
@@ -331,7 +338,11 @@ views:
       - type: grid
         cards:[[ not_configured(adds[view]) ]]
 [%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_number', 'photo_s'), ('input_boolean', 'settings_advanced')]) ]]
-          # The albums: a checkbox each (photo-albums-card), none ticked is all.[[ heading('photo_albums', 'mdi:folder-image', advanced_on) ]]
+      # The albums: a checkbox each (photo-albums-card), none ticked is all. A long list, so its own
+      # section, the second: the right column next to Basic (max_columns 2); the rest below.
+      - type: grid
+        visibility: [ [[ advanced_on ]] ]
+        cards:[[ heading('photo_albums', 'mdi:folder-image', advanced_on) ]]
           - type: markdown
             visibility: [ [[ advanced_on ]] ]
             content: [[ t('ui.settings.photo_albums_how') | yaml ]]
@@ -340,7 +351,7 @@ views:
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
 [%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else plant_labels(inputs.plants))]) ]][[ reset(view) ]]
-[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'climate_slots'), ('input_boolean', 'climate_thresholds'), ('input_select', 'climate_color_neutral')]) ]]
+[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'climate_slots'), ('input_boolean', 'climate_thresholds'), ('input_select', 'climate_color_neutral', 'colour')]) ]]
       # The widgets: one row per widget (climate_slots) of a type, a name and two sensor pickers, a
       # settings dialog each, in an order changed by dragging or the up and down buttons
       # (climate-rooms-card), SPEC-021 amendment 2. The tiles and the charts follow them. An Air
@@ -369,7 +380,7 @@ views:
 [%- set _ = switches.append(('input_boolean', 'air_' ~ key)) -%]
 [%- for which in air_limits[key] -%][%- set _ = limits.append(('input_number', 'air_' ~ key ~ '_' ~ which)) -%][%- endfor -%]
 [%- endfor -%]
-[%- set colour_rows = [('input_select', 'air_color_good'), ('input_select', 'air_color_fair'), ('input_select', 'air_color_poor')] -%]
+[%- set colour_rows = [('input_select', 'air_color_good', 'colour'), ('input_select', 'air_color_fair', 'colour'), ('input_select', 'air_color_poor', 'colour')] -%]
 [[ switch_section('air', switches + [('input_boolean', 'settings_advanced')]) ]][[ advanced_section(limits + colour_rows) ]][[ render_time(readings, t('ui.settings.inputs.readings')) ]][[ reset(view) ]]
 [%- else %][[ switch_section(view) ]]
 [%- if view == 'calendar' %]

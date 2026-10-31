@@ -209,6 +209,7 @@ artifacts:
     - cards/air-card.js
     - cards/climate-rooms-card.js
     - cards/clock-weather-card.js
+    - cards/colour-select-row.js  # custom:ramka-colour-select-row, an entities-card row for a colour select, each choice with its dot (settings page)
     - cards/corner-taps-card.js
     - cards/info-select-row.js    # custom:ramka-info-select-row, an entities-card row with an info tooltip (settings page)
     - cards/line-style-card.js
@@ -265,19 +266,19 @@ provides:                       # <prefix> from inputs
     - {id: "script.<prefix>_climate_rooms_set", stability: stable, note: "with climate; field rooms; keeps each widget's type and its own values, gives an untyped entry its type, makes a row without a type or a sensor an empty one, drops empty ones at the end (SPEC-021 amendment 2)"}
     - {id: "input_number.<prefix>_climate_slots", stability: stable, note: "with climate (unreleased): the number of widgets, 1-20 default 10, Climate, Advanced; rows of the settings picker, tiles on the Ramka; widgets beyond it are kept, unseen"}
     - {id: "input_boolean.<prefix>_climate_thresholds", stability: stable, note: "with climate (unreleased): threshold-based colours, default off, Climate, Advanced; on, the tiles colour their values by the widgets' comfort ranges and the Air page's limits and colours"}
-    - {id: "input_select.<prefix>_climate_color_neutral", stability: stable, note: "with climate (unreleased): the neutral colour, a named colour (green, teal, blue, light blue, purple, pink, magenta, amber, orange, red, grey), default green, Climate, Advanced; a Temperature widget within its range and a Custom widget without its own colour, while threshold-based colours are on"}
+    - {id: "input_select.<prefix>_climate_color_neutral", stability: stable, note: "with climate (unreleased): the neutral colour, a named colour (green, teal, blue, light blue, purple, pink, magenta, amber, orange, red, grey), default green, Climate, Advanced; a Temperature widget within its range and a Custom widget without its own colour, while threshold-based colours are on; on the settings page a custom:ramka-colour-select-row"}
     - {id: "input_number.<prefix>_{photo_count,photo_s}", stability: stable, note: "with photo_dir (SPEC-021 amendment 1)"}
     - {id: "input_number.<prefix>_{plants_per_page,plants_page_s}", stability: stable, note: "with plants (SPEC-022): 1-12 default 6, 5-30 s default 10"}
     - {id: "input_boolean.<prefix>_air_{score,co2,pm2_5,voc,nox}", stability: stable, note: "one per reading the air input names (SPEC-021 amendment 1)"}
     - {id: "input_number.<prefix>_air_{score_fair,score_poor,co2_raised,co2_high,pm2_5_raised,pm2_5_high,voc_raised,voc_high,nox_raised,nox_high}", stability: stable, note: "the limits of the readings the air input names (SPEC-021 amendment 1); a reading's raised and high are named fair from and poor from (unreleased), the ids unchanged"}
-    - {id: "input_select.<prefix>_air_color_{good,fair,poor}", stability: stable, note: "with air (unreleased): the Air page's good (the neutral one), fair and poor colours, named colours as the climate neutral colour, defaults green, amber, red, Air, Advanced, group air; the air-card's levels and the Climate page's Air quality widgets"}
+    - {id: "input_select.<prefix>_air_color_{good,fair,poor}", stability: stable, note: "with air (unreleased): the Air page's good (the neutral one), fair and poor colours, named colours as the climate neutral colour, defaults green, amber, red, Air, Advanced, group air; the air-card's levels and the Climate page's Air quality widgets; on the settings page a custom:ramka-colour-select-row each"}
     - {id: "image.<prefix>_photo", stability: stable, note: "with photo_dir"}
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
   dashboards:
-    - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, unreleased), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first)"}
+    - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, unreleased), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first); the colour selects (air_color_{good,fair,poor}, climate_color_neutral) are custom:ramka-colour-select-row rows, each choice with its colour's dot (unreleased); the Photos page's albums are its second section, the right column next to Basic (unreleased)"}
     - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard: one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
   automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 

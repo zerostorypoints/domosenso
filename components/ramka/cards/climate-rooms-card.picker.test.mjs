@@ -55,3 +55,16 @@ test("a pick saves the rooms", () => {
   pickers[0].dispatchEvent(new window.CustomEvent("value-changed", { detail: { value: "" } }));
   assert.deepEqual(calls.at(-1)[2].rooms[0], { type: "temperature", label: "Kitchen", main: "", extra: "sensor.k_h" });
 });
+
+test("HA's picker offers a sensor without a unit that has a state class or a number, not the widgets' own sensor", () => {
+  const { card } = makeCard();
+  const [tMain, , cMain] = card.shadowRoot.querySelectorAll("ha-entity-picker");
+  const iaq = { entity_id: "sensor.k_iaq", state: "45", attributes: { friendly_name: "Kitchen IAQ", state_class: "measurement" } };
+  const count = { entity_id: "sensor.count", state: "7", attributes: {} };
+  assert.equal(cMain.entityFilter(iaq), true);
+  assert.equal(cMain.entityFilter(count), true);
+  assert.equal(cMain.entityFilter({ entity_id: ENTITY, ...states[ENTITY] }), false);
+  assert.equal(cMain.entityFilter({ entity_id: "sensor.text", ...states["sensor.text"] }), false);
+  // A Temperature widget keeps its device class.
+  assert.equal(tMain.entityFilter(iaq), false);
+});

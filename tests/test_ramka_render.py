@@ -2251,6 +2251,23 @@ def test_album_card_on_photos_advanced(demo):
         assert translations(lang)["ui.settings.photo_albums_how"] in markdown(photos)
 
 
+def test_albums_in_their_own_section_in_the_right_column(demo):
+    """The albums, a long list, are the Photos page's second section: the right column next to Basic
+    in its two-column sections view, Advanced like the list; the render-time inputs and Reset below."""
+    for lang in LANGS:
+        t = translations(lang)
+        photos = settings_views(demo[f"ramka-settings.{lang}.yaml"])["photos"]
+        assert photos["type"] == "sections" and photos["max_columns"] == 2
+        basic, albums, *rest = photos["sections"]
+        assert heading_of(basic) == t["ui.settings.basic"], lang
+        assert not [c for c in basic["cards"] if c.get("type") == "custom:photo-albums-card"], lang
+        assert heading_of(albums) == t["ui.settings.photo_albums"], lang
+        assert ADVANCED_ON in albums["visibility"], lang
+        assert [c["type"] for c in albums["cards"]] == ["heading", "markdown", "custom:photo-albums-card"], lang
+        assert heading_of(rest[0]) == t["ui.settings.render_time"], lang
+        assert any(c.get("type") == "button" for c in rest[-1]["cards"]), lang
+
+
 def test_time_per_photo_in_photos_basic(demo):
     """Time per photo sits in Basic after the photos per series; the Advanced card it left is gone
     (the albums keep their own Advanced section)."""
@@ -3304,6 +3321,32 @@ def test_music_settings_page_layout(demo):
         written = run_reset(package, page="music")
         assert set(f"input_number.ramka_{k}" for k in MUSIC_DB) <= set(written), lang
         assert set(LOOK_DEFAULTS) | set(PROFILE_DEFAULTS) <= set(written), lang
+
+
+COLOUR_ROW = "custom:ramka-colour-select-row"
+
+
+def test_colour_selects_are_colour_rows(demo):
+    """The Air page's good, fair and poor colours and the Climate page's neutral colour are colour rows
+    (each choice with its dot), entity and name, the colours named in the page's language; no other
+    row is one."""
+    expected = {*AIR_COLOUR_SELECTS.values(), NEUTRAL_COLOUR}
+    for lang in LANGS:
+        t = translations(lang)
+        dashboard = demo[f"ramka-settings.{lang}.yaml"]
+        found = {n["entity"]: n for n in walk(dashboard) if n.get("type") == COLOUR_ROW}
+        assert set(found) == expected, lang
+        for entity, row in found.items():
+            assert set(row) == {"type", "entity", "name", "lang"} and row["lang"] == lang, (lang, entity)
+            assert row["name"] == t["ui.settings." + entity.removeprefix("input_select.ramka_")], (lang, entity)
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    assert "cards/colour-select-row.js" in manifest["artifacts"]["dashboard_cards"]
+    source = (COMP / "cards" / "colour-select-row.js").read_text(encoding="utf-8")
+    assert f'customElements.define("{COLOUR_ROW.removeprefix("custom:")}"' in source
+    assert "select_option" in source
+    # The climate picker and the row draw the same dot: the shared list module's swatch.
+    for card in ("colour-select-row.js", "climate-rooms-card.js"):
+        assert 'load("./lib/colour-list.js")' in (COMP / "cards" / card).read_text(encoding="utf-8"), card
 
 
 def test_info_select_row_is_a_card_resource():

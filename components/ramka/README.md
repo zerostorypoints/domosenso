@@ -237,7 +237,8 @@ lovelace:
   shows the one it opens (the tablet user's default dashboard, or the Companion app's start page);
   General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
   has not run on the tested tablet yet.
-- **Photos**: photos per series (5), the time per photo (10 s) and, in Advanced, the albums, a
+- **Photos**: photos per series (5), the time per photo (10 s) and, in Advanced, the albums (their
+  own section, in the right column next to Basic; the render-time inputs and Reset below), a
   checkbox each for the top-level folders of `photo_dir` that hold photos, "All albums" first (none
   ticked is all too). "All albums" keeps the ticks, greyed out, for when it is unticked. The list follows the folder: the photo index sends it after each run (at start,
   every 15 minutes). The choice is kept by `sensor.<prefix>_photo_albums` over a restart; a chosen
@@ -247,8 +248,15 @@ lovelace:
 - **Colours.** Every colour a setting picks comes from one list, the Ramka's named colours
   (`cards/lib/colours.js`): green, teal, blue, light blue, purple, pink, magenta, amber, orange,
   red, grey, each a series colour of the Ramka's theme, so it follows the theme mode. A select
-  stores the colour's id (the options read in English; the Custom widget's dropdown names them in
-  the page's language).
+  stores the colour's id. Every colour choice shows the colour itself: the value and each choice
+  of its list have the colour's dot in front (the climate picker's swatch), the names in the page's
+  language. The settings page's colour selects are `custom:ramka-colour-select-row`
+  (`cards/colour-select-row.js`, an entities-card row: entity, name and the page's `lang`; a pick
+  calls `input_select.select_option`), the Custom widget's dialog has the same list
+  (`cards/lib/colour-list.js`). The list opens as an overlay below the value (above it without
+  room, scrolling when long, over the cards without moving them): a tap opens it and picks, a tap
+  elsewhere or a scroll closes it; by keyboard an arrow, Enter or Space opens it, the arrows, Home
+  and End move, Enter or Space picks, Escape closes only the list.
 - **Climate**: in Advanced, the number of widgets (`input_number.<prefix>_climate_slots`, 1 to 20,
   default 10), the switch **Threshold-based colours** (`input_boolean.<prefix>_climate_thresholds`,
   default off), next to it **Neutral colour** (`input_select.<prefix>_climate_color_neutral`, a named
@@ -256,13 +264,15 @@ lovelace:
   chosen in the dropdown of its header; a new row is Empty:
   - **Temperature**: a temperature sensor and a humidity sensor;
   - **Air quality**: a CO₂ sensor and a PM2.5 sensor;
-  - **Custom**: any two sensors with a unit;
+  - **Custom**: any two sensors with a reading: a unit, a state class (`measurement`, `total`,
+    `total_increasing`) or a number for a state, so a score without a unit (an indoor air quality
+    score) can be picked;
   - **Empty**: an empty tile on the Ramka, the size of the others, so widgets can be placed where
     they should sit in the grid; empty rows at the end are left out.
 
   Each reading is picked with Home Assistant's entity picker, which searches as you type, of the
-  sensors with a unit of the type's device class (`temperature`, `humidity`, `carbon_dioxide`,
-  `pm25`; every sensor with a unit when the home has none of that class); a plain dropdown if the
+  sensors with a reading of the type's device class (`temperature`, `humidity`, `carbon_dioxide`,
+  `pm25`; every sensor with a reading when the home has none of that class); a plain dropdown if the
   picker cannot be loaded. A new type keeps the name and the readings that fit it. Each row's
   **Settings** opens a dialog (a modal over the page; Escape, a tap beside it or Cancel close it):
   a Temperature widget's comfort ranges (temperature 20 to 24 °C and humidity 40 to 60 % unless
@@ -270,7 +280,7 @@ lovelace:
   (`input_number.<prefix>_air_{co2,pm2_5}_{raised,high}`, fair from and poor from, a change shows
   on the Air page too; a reading without them, as in a home whose `air` input lacks it, is said to
   be not set up); a Custom widget's colour, a dropdown of the named colours or Neutral (the neutral
-  colour), stored as the colour's id (a theme slot number stored by the build before reads as its
+  colour, its dot that colour), stored as the colour's id (a theme slot number stored by the build before reads as its
   colour, and the next save stores the id). The order changes by dragging a row by its handle
   (mouse, touch or pen: pointer events, so it works on the tablet and a phone) or with the row's up
   and down buttons (keyboard, screen readers); the picker is a plain ordered list, not the Ramka's
@@ -286,7 +296,8 @@ lovelace:
   red above; an Air quality widget's CO₂ and PM2.5 in the Air page's colours, good, fair or poor by
   the Air page's limits, so the Ramka and the Air page agree; a Custom widget's main value in its
   chosen colour, else the neutral colour. The chart lines keep the series colours, and the layout is the same either way. A
-  reading shows its sensor's unit, an empty name becomes the sensor's area. Fewer widgets than
+  reading shows its sensor's unit (without one, a Temperature widget's °C and %, an Air quality or
+  Custom widget's none), an empty name becomes the sensor's area. Fewer widgets than
   filled rows deletes nothing: the widgets beyond are kept but not shown on the Ramka, and the
   picker says how many there are, with a button to remove them. The rows are kept by
   `sensor.<prefix>_climate_rooms` (attribute `rooms`: up to twenty widgets, each

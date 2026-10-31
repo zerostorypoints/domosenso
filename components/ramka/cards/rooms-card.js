@@ -35,7 +35,9 @@
 //                                                   # --graph-color-1, the colour HA's charts
 //                                                   # give series 1; without it, plain text
 //
-// A reading shows its entity's unit; without one, °C for the temperature and % for the humidity.
+// A reading shows its entity's unit. Without one, a configured room's and a Temperature widget's
+// readings show °C for the temperature and % for the humidity; an Air quality or Custom widget's show
+// none (a score without a unit, an air quality index, is a plain number).
 //
 // Threshold-based colours (`thresholds` on): a Temperature widget's temperature is blue below its
 // comfort range, the neutral colour (`neutral_color`) within it, red above; its humidity the same
@@ -189,12 +191,14 @@ class RoomsCard extends HTMLElement {
       el.querySelector(".name").textContent = room.name;
       const temperature = this._value(room.temperature, 1);
       const temp = el.querySelector(".temp");
-      temp.textContent = temperature == null ? t(this._hass, "card.common.noValue") : `${temperature} ${this._unit(room.temperature, "°C")}`.trim();
+      const fallback = !room.widget || room.widget.type === "temperature";
+      temp.textContent = temperature == null ? t(this._hass, "card.common.noValue")
+        : `${temperature} ${this._unit(room.temperature, fallback ? "°C" : "")}`.trim();
       const [mainColor, secondColor] = this._colors(room);
       temp.style.color = mainColor;
       const h = this._value(room.humidity, 0);
       const hum = el.querySelector(".hum");
-      hum.textContent = h == null ? "" : `${h} ${this._unit(room.humidity, "%")}`.trim();
+      hum.textContent = h == null ? "" : `${h} ${this._unit(room.humidity, fallback ? "%" : "")}`.trim();
       hum.style.color = secondColor;
     });
   }

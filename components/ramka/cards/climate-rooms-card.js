@@ -2,14 +2,16 @@
 // number of widgets; ten without it). Each row has a type, chosen in the dropdown of its header:
 //   - Temperature: main = a temperature sensor, second = a humidity sensor;
 //   - Air quality: main = a CO2 sensor, second = a PM2.5 sensor;
-//   - Custom: main and second = any sensor with a unit;
+//   - Custom: main and second = any sensor with a reading (below);
 //   - Empty: an empty tile on the Ramka (no readings).
-// The pickers offer the sensors of the type's device class (any sensor with a unit when the home
+// The pickers offer the sensors of the type's device class (any sensor with a reading when the home
 // has none of that class), with Home Assistant's own entity picker, which searches as you type. A
+// sensor has a reading when it has a unit, a state class (measurement, total, total_increasing) or a
+// number for its state: a score without a unit (an air quality index) is a reading too. A
 // name, and a "Settings" link that opens the widget's dialog: a Temperature widget's comfort ranges,
 // an Air quality widget's limits (the Air page's helpers, shared with it), a Custom widget's colour
 // (a dropdown of the Ramka's named colours, lib/colours.js, or Neutral: the Climate page's neutral
-// colour, stored as no colour).
+// colour, stored as no colour; lib/colour-list.js, each choice with its colour's dot, the swatch's).
 // The n-th widget with a reading is the n-th tile and the n-th line of the 7-day charts, in series
 // colour n (lib/climate-widgets.js), the swatch in front of the row.
 //
@@ -48,11 +50,12 @@ import { createT } from "./lib/i18n.js";
 // after a deploy in the same version, and a new key then shows raw (as card.climate_rooms.spacer did).
 const version = new URL(import.meta.url).search;
 const load = (path, json) => import(new URL(path, import.meta.url).href + version, json ? { with: { type: "json" } } : undefined);
-const [widgets, en, de, pl] = await Promise.all([
-  load("./lib/climate-widgets.js"), load("../translations/en.json", true), load("../translations/de.json", true),
-  load("../translations/pl.json", true)]);
+const [widgets, colourLists, en, de, pl] = await Promise.all([
+  load("./lib/climate-widgets.js"), load("./lib/colour-list.js"), load("../translations/en.json", true),
+  load("../translations/de.json", true), load("../translations/pl.json", true)]);
 const { TYPES, DEVICE_CLASSES, COMFORT, COLOUR_IDS, NEUTRAL, colourKey, colourCss, selectedColour, seriesSlot, slotColor,
   readWidget, hasReading, storedWidget } = widgets;
+const { colourList, COLOUR_LIST_CSS } = colourLists;
 
 const t = createT({ en: en.default, de: de.default, pl: pl.default });
 
@@ -67,6 +70,17 @@ const READINGS = {
 };
 // The Air page's readings an Air quality widget shows, with their legend in its dialog.
 const AIR_KEYS = { co2: "card.climate_rooms.co2_limits", pm2_5: "card.climate_rooms.pm2_5_limits" };
+// The state classes of a reading (a sensor without a unit is one with any of them).
+const STATE_CLASSES = ["measurement", "total", "total_increasing"];
+
+// Whether a sensor's state is a reading a widget can show: a unit, a state class or a number.
+export function isReading(state) {
+  const a = state?.attributes || {};
+  if (typeof a.unit_of_measurement === "string") return true;
+  if (STATE_CLASSES.includes(a.state_class)) return true;
+  const value = state?.state;
+  return typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value));
+}
 
 class ClimateRoomsCard extends HTMLElement {
   setConfig(config) {
@@ -121,12 +135,14 @@ class ClimateRoomsCard extends HTMLElement {
       }, () => {});
   }
 
-  // Every sensor with a unit, by name: [entity id, name, unit, device class].
+  // Every sensor with a reading, by name: [entity id, name, unit ("" without one), device class]; not
+  // the widgets' own sensor (its state, how many have a reading, is a number too).
   _sensors() {
     return Object.entries(this._hass.states)
-      .filter(([id, s]) => id.startsWith("sensor.") && typeof s.attributes?.unit_of_measurement === "string")
-      .map(([id, s]) => [id, String(s.attributes.friendly_name || id), s.attributes.unit_of_measurement,
-                         typeof s.attributes.device_class === "string" ? s.attributes.device_class : ""])
+      .filter(([id, s]) => id.startsWith("sensor.") && id !== this._config.entity && isReading(s))
+      .map(([id, s]) => [id, String(s.attributes?.friendly_name || id),
+                         typeof s.attributes?.unit_of_measurement === "string" ? s.attributes.unit_of_measurement : "",
+                         typeof s.attributes?.device_class === "string" ? s.attributes.device_class : ""])
       .sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
   }
 
@@ -150,8 +166,8 @@ class ClimateRoomsCard extends HTMLElement {
         .handle { grid-row: span 4; align-self: stretch; display: flex; align-items: center; justify-content: center;
                   cursor: grab; touch-action: none; user-select: none; color: var(--secondary-text-color); border-radius: 6px; }
         .row.dragging .handle { cursor: grabbing; }
-        .swatch { width: 14px; height: 14px; border-radius: 50%; grid-row: span 4; align-self: start; margin-top: 11px;
-                  box-sizing: border-box; }
+        ${COLOUR_LIST_CSS}
+        .row > .swatch { grid-row: span 4; align-self: start; margin-top: 11px; }
         .swatch.spacer { border: 2px dashed var(--divider-color); }
         .head { grid-column: 3; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
         .head select.type { flex: 1; min-width: 9em; width: auto; font-weight: 500; }
@@ -181,9 +197,7 @@ class ClimateRoomsCard extends HTMLElement {
                    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         legend { padding: 0 4px; color: var(--primary-text-color); }
         fieldset label { grid-column: auto; grid-template-columns: 1fr; gap: 4px; }
-        .colours { display: flex; align-items: center; gap: 10px; }
-        .colours select { flex: 1; }
-        .dot { width: 22px; height: 22px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
+        .colours .colour-select { display: block; }
         .error { color: var(--error-color, #db4437); }
         .error:empty { display: none; }
         .actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -381,7 +395,7 @@ class ClimateRoomsCard extends HTMLElement {
   }
 
   // A reading's control: the entity picker when it is loaded, else a dropdown; both of the sensors
-  // with a unit, of `deviceClass` when given. `set` takes the new value, then the rows are saved.
+  // with a reading (isReading), of `deviceClass` when given. `set` takes the new value, then the rows are saved.
   _reading(sensors, value, deviceClass, set) {
     if (!customElements.get("ha-entity-picker")) {
       const select = this._select(deviceClass ? sensors.filter((s) => s[3] === deviceClass) : sensors, value);
@@ -395,8 +409,8 @@ class ClimateRoomsCard extends HTMLElement {
     picker.hass = this._hass;
     picker.includeDomains = ["sensor"];
     if (deviceClass) picker.includeDeviceClasses = [deviceClass];
-    picker.entityFilter = (state) => typeof state?.attributes?.unit_of_measurement === "string"
-      && (!deviceClass || state.attributes.device_class === deviceClass);
+    picker.entityFilter = (state) => state?.entity_id !== this._config.entity && isReading(state)
+      && (!deviceClass || state.attributes?.device_class === deviceClass);
     picker.allowCustomEntity = false;
     picker.value = value || "";
     picker.addEventListener("value-changed", (ev) => {
@@ -586,38 +600,27 @@ class ClimateRoomsCard extends HTMLElement {
   }
 
   // Custom: the value's colour with threshold-based colours on: a dropdown of the named colours, the
-  // first entry Neutral (no colour stored: the Climate page's neutral colour); a dot shows the pick.
+  // first entry Neutral (no colour stored: the Climate page's neutral colour, its dot that colour);
+  // each choice and the value with its colour's dot (lib/colour-list.js).
   _customSettings(body, w) {
     const how = document.createElement("p");
     how.id = "widget-colour-how";
     how.textContent = t(this._hass, "card.climate_rooms.colour_how");
     const group = document.createElement("div");
     group.className = "colours";
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    const select = document.createElement("select");
-    select.id = "widget-colour";
-    select.name = "colour";
-    select.setAttribute("aria-labelledby", how.id);
-    for (const [value, text] of [["", t(this._hass, "card.climate_rooms.neutral")],
-                                 ...COLOUR_IDS.map((id) => [id, t(this._hass, colourKey(id))])]) {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = text;
-      select.append(option);
-    }
-    select.value = COLOUR_IDS.includes(w.color) ? w.color : "";
-    const neutral = this._config.neutral_color ? selectedColour(this._hass.states, this._config.neutral_color, NEUTRAL) : "transparent";
-    const paint = () => {
-      dot.style.background = colourCss(select.value) || neutral;
-      dot.style.border = select.value || this._config.neutral_color ? "" : "2px solid var(--primary-text-color)";
-    };
-    paint();
-    select.addEventListener("change", paint);
-    group.append(dot, select);
+    const neutral = this._config.neutral_color ? selectedColour(this._hass.states, this._config.neutral_color, NEUTRAL) : null;
+    const choice = colourList({
+      options: [{ value: "", text: t(this._hass, "card.climate_rooms.neutral"), colour: neutral },
+                ...COLOUR_IDS.map((id) => ({ value: id, text: t(this._hass, colourKey(id)), colour: colourCss(id) }))],
+      value: COLOUR_IDS.includes(w.color) ? w.color : "",
+      label: how.textContent,
+    });
+    choice.element.classList.add("widget-colour");
+    group.append(choice.element);
     body.append(how, group);
     return () => {
-      if (select.value) w.color = select.value;
+      choice.close();
+      if (choice.value) w.color = choice.value;
       else delete w.color;
       this._save();
       return null;

@@ -15,7 +15,7 @@ export const { COLOURS, COLOUR_IDS, colourKey, colourCss, selectedColour, colour
 
 export const TYPES = ["temperature", "air", "custom", "empty"];
 
-// Per type, the device classes of its main and second pickers (null: any sensor with a unit).
+// Per type, the device classes of its main and second pickers (null: any sensor with a reading).
 export const DEVICE_CLASSES = {
   temperature: ["temperature", "humidity"],
   air: ["carbon_dioxide", "pm25"],

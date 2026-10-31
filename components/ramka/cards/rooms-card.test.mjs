@@ -18,7 +18,8 @@ const rooms = [
   { name: "Kitchen", temperature: "sensor.k_t", humidity: "sensor.k_h" },
   { name: "Hall", temperature: "sensor.h_t" },
 ];
-const states = { "sensor.k_t": sensor("21.46"), "sensor.k_h": sensor("48.4"), "sensor.h_t": sensor("unavailable") };
+const states = { "sensor.k_t": { state: "21.46", attributes: { device_class: "temperature" } }, "sensor.k_h": sensor("48.4"),
+                 "sensor.h_t": sensor("unavailable") };
 
 test("temperature and humidity are formatted as before", () => {
   const card = makeCard({ states, rooms });
@@ -232,4 +233,20 @@ test("an entry from before the types: Temperature with a temperature sensor, els
   // A typed widget without a sensor is an empty tile; at the end it goes, as a spacer did.
   assert.deepEqual(tiles.map((el) => el.classList.contains("spacer")), [false, true, false]);
   assert.deepEqual(colours(card), [[RED, NEUTRAL], ["", ""], [NEUTRAL, ""]]);
+});
+
+test("a reading without a unit shows none on an Air quality or Custom tile; a Temperature tile keeps °C and %", () => {
+  const card = document.createElement("rooms-card");
+  card.setConfig({ rooms, entity: "sensor.ramka_climate_rooms" });
+  const live = { "sensor.ramka_climate_rooms": { state: "3", attributes: { rooms: [
+    { type: "custom", label: "Air", main: "sensor.k_iaq", extra: "sensor.k_n" },
+    { type: "air", label: "Hall", main: "sensor.h_co2", extra: "" },
+    { type: "temperature", label: "Kitchen", main: "sensor.k_t", extra: "sensor.k_h" }] } },
+    "sensor.k_iaq": { state: "45", attributes: { state_class: "measurement" } },
+    "sensor.k_n": { state: "3", attributes: {} },
+    "sensor.h_co2": { state: "612", attributes: {} } };
+  card.hass = { locale: { language: "en" }, states: { ...states, ...live } };
+  const tiles = [...card.shadowRoot.querySelectorAll(".room")];
+  assert.deepEqual(tiles.map((el) => [el.querySelector(".temp").textContent, el.querySelector(".hum").textContent]),
+                   [["45.0", "3"], ["612.0", ""], ["21.5 °C", "48 %"]]);
 });
