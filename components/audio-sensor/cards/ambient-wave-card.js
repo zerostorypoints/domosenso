@@ -154,6 +154,7 @@ class AmbientWaveCard extends HTMLElement {
         { name: "style", type: "expandable", schema: [
           { name: "line_width", selector: number({ min: 0.5, max: 12, step: 0.1 }) },
         ] },
+        { name: "look", selector: { entity: { domain: "sensor" } } },
         { name: "active", selector: { entity: {} } },
         { name: "fallback", selector: select("fallback", FALLBACKS) },
         { name: "controls", selector: { boolean: {} } },

@@ -112,6 +112,8 @@ The live wave: a spectrum or one value drawn as calm waves that swell and warm w
 | `dynamics.rise` / `fall` | `200` ms / `4` s | how fast the wave follows a louder and a quieter level |
 | `dynamics.hold` | `1.5` s | how long a band's peak holds before it sinks (afterglow) |
 | `dynamics.tilt` | `true` | spectrum only: weight the lowest and highest bands up when colouring, so the mids do not dominate |
+| `dynamics.eq.<range>` | `0` | a gain in dB, -18 to +12, for each of six ranges: `sub`, `bass`, `low_mid`, `mid`, `presence`, `air`; a number or an entity |
+| `look` | none | a `sensor.` entity whose attributes set a whole look (`rise` ms, `fall` s, `hold` s, `tilt`, `eq`, `spectrum` and `level` as `{neutral, hot}`); it overrides the options it names, and is ignored while unavailable |
 | `style.line_width` | `4` | CSS px, 0.5 to 12 |
 | `fps` | `30` | frames a second, 1 to 60 |
 | `height` | the card's | CSS height of the drawing area |
