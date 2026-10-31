@@ -46,6 +46,16 @@ def test_plain_template_renders_once(comp, tmp_path):
     assert all(p.is_file() for p in written)
 
 
+def test_compiled_templates_are_reused_until_the_source_changes(comp, tmp_path):
+    dr.render_component(comp, INPUTS, tmp_path / "first")
+    dr.render_component(comp, {**INPUTS, "name": "Kitchen"}, tmp_path / "second")
+    assert load(tmp_path / "second" / "plain.yaml") == {"name": "Kitchen"}  # inputs are not compiled in
+    template = comp / "templates" / "plain.yaml.j2"
+    template.write_text(template.read_text(encoding="utf-8") + "edited: true\n", encoding="utf-8")
+    dr.render_component(comp, INPUTS, tmp_path / "third")
+    assert load(tmp_path / "third" / "plain.yaml") == {"name": "Hall", "edited": True}
+
+
 def test_missing_input_names_it(comp, tmp_path):
     with pytest.raises(dr.RenderError, match="name"):
         dr.render_component(comp, {"prefix": "p", "lights": []}, tmp_path / "out")
@@ -341,3 +351,12 @@ def test_cli_stamp(comp, tmp_path):
                           "--out", str(tmp_path / "out"), "--lang", "en", "--stamp"], capture_output=True, text=True)
     assert run.returncode == 0, run.stderr
     assert (tmp_path / "out" / "plain.yaml").read_text(encoding="utf-8").startswith(f"# Rendered by Domosenso from render-comp@{sha} ")
+
+
+def test_component_global_in_every_template(comp, tmp_path):
+    """`component` (id, version from the manifest) is a global of every template, not only device files (SPEC-023)."""
+    (comp / "component.yaml").write_text("id: render-comp\nversion: 1.2.3\n", encoding="utf-8")
+    (comp / "templates" / "about.yaml.j2").write_text("about: '[[ component.id ]] [[ component.version ]]'\n", encoding="utf-8")
+    out = tmp_path / "out"
+    dr.render_component(comp, INPUTS, out)
+    assert load(out / "about.yaml") == {"about": "render-comp 1.2.3"}

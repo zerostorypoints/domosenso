@@ -28,6 +28,7 @@ class LockEntry:
     commit: str
     files: dict[str, FileRecord] = field(default_factory=dict)
     resources: list[str] = field(default_factory=list)
+    released: str | None = None  # the tag commit's date, YYYY-MM-DD (SPEC-023); absent in older locks
 
 
 @dataclass
@@ -50,6 +51,7 @@ class Lock:
                         for path, rec in raw["files"].items()
                     },
                     resources=list(raw.get("resources", [])),
+                    released=raw.get("released"),
                 )
                 for cid, raw in data["components"].items()
             }
@@ -82,10 +84,13 @@ def _entry_data(entry: LockEntry) -> dict:
         if record.layer != "managed":
             item["layer"] = record.layer
         files[path] = item
-    return {
+    data = {
         "version": entry.version,
         "tag": entry.tag,
         "commit": entry.commit,
         "files": files,
         "resources": list(entry.resources),
     }
+    if entry.released:
+        data["released"] = entry.released
+    return data

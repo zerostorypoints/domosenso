@@ -11,9 +11,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from domosenso_cli import dev_render
+from domosenso_cli import dev_render, inventory
 from domosenso_cli.build import (
-    file_records, file_sha, git_short_head, load_manifest, open_catalog, own_dev_files, plan_outputs, resource_urls,
+    file_records, file_sha, git_head_date, git_short_head, load_manifest, open_catalog, own_dev_files, plan_outputs, resource_urls,
     sha256,
     write_outputs,
 )
@@ -58,11 +58,27 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
             _report_forgotten(home, lock, cid, {o.dest for o in outputs}, rep)
             dev_render.record(home.root, cid, version, f"{head}-dirty",
                               {o.dest: {"sha256": sha256(o.content), "layer": o.layer} for o in outputs},
-                              resource_urls(component_dir))
+                              resource_urls(component_dir), git_head_date(dev))
             continue
         locked = lock.components[cid]
         component_dir = catalog.checkout(cid, locked.version, locked.commit)
-        apply_component(home, lock, cid, component_dir, locked.version, locked.commit, force, rep)
+        apply_component(home, lock, cid, component_dir, locked.version, locked.commit, force, rep,
+                        released=catalog.commit_date(locked.commit))
+    write_inventory(home, lock, rep, catalog)
+
+
+def write_inventory(home: HomeConfig, lock: Lock, rep: Reporter, catalog=None) -> None:
+    """`packages/domosenso.yaml` after the lock or the dev renders changed (SPEC-023). With `catalog`
+    (a command that may change the lock: not a dev render), a lock from before SPEC-023 gets every
+    release date at once, not only the components this command touched."""
+    undated = [entry for entry in lock.components.values() if not entry.released] if catalog else []
+    for entry in undated:
+        entry.released = catalog.commit_date(entry.commit)
+    if undated:
+        lock.save(home.root)
+    done = inventory.write(home, lock)
+    if done is not None:
+        rep.line(*done)
 
 
 def _report_forgotten(home: HomeConfig, lock: Lock, cid: str, produced: set[str], rep: Reporter) -> None:
@@ -80,14 +96,15 @@ def _report_forgotten(home: HomeConfig, lock: Lock, cid: str, produced: set[str]
 
 def apply_component(
     home: HomeConfig, lock: Lock, cid: str, component_dir: Path, version: str, commit: str,
-    force: bool, rep: Reporter, remove_stale: bool = False,
+    force: bool, rep: Reporter, remove_stale: bool = False, released: str | None = None,
 ) -> None:
     """Write the component as it is at `version`/`commit` and move its lock entry there.
 
     A managed file the lock holds that this version no longer produces is reported `stale` and left
     (the lock forgets it), or with `remove_stale` (an update) deleted, refusing a hand-edited one
     first. Instance files (the home's own, written once by `add`) are never rendered, checked or
-    reported stale here; their lock records are kept as they are."""
+    reported stale here; their lock records are kept as they are. `released` is the date of `commit`
+    (SPEC-023); the caller writes the inventory once its components are done."""
     locked = lock.components[cid]
     outputs = plan_outputs(home, home.components[cid], component_dir, version, commit)
     produced = {o.dest for o in outputs}
@@ -106,6 +123,7 @@ def apply_component(
         else:
             rep.line("stale", dest)
     locked.version, locked.tag, locked.commit = version, f"{cid}/{version}", commit
+    locked.released = released
     locked.files = {
         **{p: r for p, r in locked.files.items() if r.layer == "instance"}, **file_records(home, outputs),
     }

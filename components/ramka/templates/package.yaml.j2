@@ -426,10 +426,16 @@ sensor:
   - platform: folder
     folder: [[ photo_dir | yaml ]]
     filter: "*/*.jp*g"
+[%- endif %]
 
-# shell/ramka_index.py writes index.json (event and EXIF date per photo) into the photo folder for
-# the photo card's caption; it runs at start and whenever the number of photos changes.
 shell_command:
+  # The settings' About page (SPEC-023): what the home's Domosenso components use, read from Home
+  # Assistant's own registries and files by shell/domosenso_discover.py (read-only), as JSON on
+  # stdout for script.[[ p ]]_about_refresh.
+  [[ p ]]_discover: python3 /config/shell/domosenso_discover.py /config
+[%- if inputs.photo_dir is defined %]
+  # shell/ramka_index.py writes index.json (event and EXIF date per photo) into the photo folder for
+  # the photo card's caption; it runs at start and whenever the number of photos changes.
   [[ p ]]_index: [[ index_command | yaml ]]
   # The next series: one folder with photos drawn at random (any depth, inside the chosen albums
   # when there are any), `count` shuffled photos from it, as JSON on stdout for the loop's
@@ -440,6 +446,13 @@ shell_command:
   # The albums to choose from (sensor.[[ p ]]_photo_albums): the top-level folders that hold photos.
   [[ p ]]_albums: [[ albums_command | yaml ]]
 [%- endif %]
+
+# The About page's discovery is a snapshot for that page, not history: its state and its few kB of
+# attributes stay out of the database (SPEC-023).
+recorder:
+  exclude:
+    entities:
+      - sensor.[[ p ]]_discovery
 
 template:
   - sensor:
@@ -573,6 +586,28 @@ template:
         attributes:
           rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
+  # The About page's discovery (SPEC-023): the time of the last refresh, and as attributes what
+  # shell/domosenso_discover.py found (components, the entities each uses, their integrations, the
+  # home's declared links). Set by script.[[ p ]]_about_refresh through event [[ p ]]_discovery;
+  # a trigger-based entity keeps its last value over a restart. No device_class: the page shows the
+  # date itself, and the recorder leaves the entity out (below).
+  - triggers:
+      - trigger: event
+        event_type: [[ p ]]_discovery
+    sensor:
+      - name: [[ named(' discovery') ]]
+        unique_id: [[ p ]]_discovery
+        default_entity_id: sensor.[[ p ]]_discovery
+        icon: mdi:magnify-scan
+        state: "{{ trigger.event.data.refreshed }}"
+        attributes:
+          component: ramka
+          ha_version: "{{ trigger.event.data.ha_version | default('') }}"
+          found: "{{ trigger.event.data.found | default([]) }}"
+          uses: "{{ trigger.event.data.uses | default({}) }}"
+          integrations: "{{ trigger.event.data.integrations | default({}) }}"
+          declared_links: "{{ trigger.event.data.declared_links | default([]) }}"
+          links: "{{ trigger.event.data.links | default({}) }}"
 
 # Screen scripts. Each step is one Companion notification command
 # (https://companion.home-assistant.io/docs/notifications/notification-commands). Both scripts
@@ -1019,6 +1054,38 @@ script:
             {{ kept.rooms[:10] }}
 [%- endif %]
 
+  # The About page's Refresh (SPEC-023): runs the discovery, publishes it to sensor.[[ p ]]_discovery
+  # and asks the HACS update entities it names to check for a newer version. Also at start and
+  # nightly (automation [[ p ]]_about_discover).
+  [[ p ]]_about_refresh:
+    alias: [[ named(' about refresh') ]]
+    icon: mdi:refresh
+    mode: single
+    sequence:
+      - action: shell_command.[[ p ]]_discover
+        response_variable: run
+      - if: "{{ run.returncode != 0 }}"
+        then:
+          - stop: "{{ 'discovery failed: ' ~ (run.stderr | default('') | string)[-300:] }}"
+            error: true
+      - variables:
+          found: "{{ run.stdout | from_json }}"
+          updates: "{{ found.integrations.values() | map(attribute='update_entity') | select | list }}"
+      - event: [[ p ]]_discovery
+        event_data:
+          refreshed: "{{ found.refreshed }}"
+          ha_version: "{{ found.ha_version }}"
+          found: "{{ found.found }}"
+          uses: "{{ found.uses }}"
+          integrations: "{{ found.integrations }}"
+          declared_links: "{{ found.declared_links }}"
+          links: "{{ found.links | default({}) }}"
+      - if: "{{ updates | count > 0 }}"
+        then:
+          - action: homeassistant.update_entity
+            target:
+              entity_id: "{{ updates }}"
+
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
   # catalog's). `page`: only that page's settings; `groups`: only those groups'; both: the settings
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
@@ -1096,6 +1163,20 @@ script:
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
+  # The About page's discovery at start and nightly, so the list is current without a Refresh
+  # (SPEC-023). The registries are on disk before start ends; a minute lets HACS load first.
+  - id: [[ p ]]_about_discover
+    alias: [[ named(' about discover') ]]
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time
+        at: "04:10:00"
+    actions:
+      - delay: "00:01:00"
+      - action: script.[[ p ]]_about_refresh
+
   # 1. Someone arrives while the tablet sleeps.
   - id: [[ p ]]_presence_on
     alias: [[ named(' presence on') ]]

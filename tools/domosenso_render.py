@@ -14,7 +14,8 @@ inside them, e.g. "{{ is_state('input_select.[[ inputs.prefix ]]_mode', 'on') }}
 A nested YAML flow list needs spaces, `[ [ 80 ] ]`: `[[80]]` would read as an
 expression, so a `[[` followed by anything but a letter or underscore is an error.
 
-Template globals: t(key), inputs, lang, fail(message). Filter: yaml (a YAML-safe scalar).
+Template globals: t(key), inputs, lang, fail(message), component (id, version: the manifest's;
+SPEC-023). Filter: yaml (a YAML-safe scalar).
 An input whose value is null counts as absent (`is defined` is false), at every depth.
 
 --stamp puts a first line on every file written:
@@ -31,7 +32,7 @@ import sys
 from pathlib import Path
 
 import yaml
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateError, Undefined
+from jinja2 import BytecodeCache, Environment, FileSystemLoader, StrictUndefined, TemplateError, Undefined
 
 from catalog_check import flatten
 
@@ -41,6 +42,26 @@ LANG_SUFFIX = ".lang.yaml.j2"
 
 class RenderError(Exception):
     pass
+
+
+class _MemoryBytecodeCache(BytecodeCache):
+    """Compiled templates kept for the process. Every environment is built with the same syntax and
+    a new one per render and language, so without it each render compiles every template again;
+    Jinja checks the source checksum, so an edited template is compiled afresh."""
+
+    def __init__(self) -> None:
+        self._code: dict[str, bytes] = {}
+
+    def load_bytecode(self, bucket) -> None:
+        code = self._code.get(bucket.key)
+        if code is not None:
+            bucket.bytecode_from_string(code)
+
+    def dump_bytecode(self, bucket) -> None:
+        self._code[bucket.key] = bucket.bytecode_to_string()
+
+
+_BYTECODE_CACHE = _MemoryBytecodeCache()
 
 
 def yaml_scalar(value) -> str:
@@ -87,6 +108,7 @@ def _make_env(
 
     env = Environment(
         loader=FileSystemLoader(str(component_dir / root)),
+        bytecode_cache=_BYTECODE_CACHE,
         undefined=StrictUndefined,
         keep_trailing_newline=True,
         variable_start_string="[[",
@@ -169,10 +191,13 @@ def render_component(
     templates_dir = component_dir / "templates"
     names = sorted(p.relative_to(templates_dir).as_posix() for p in templates_dir.rglob("*.j2"))
     en = _load_translations(component_dir, "en")
+    manifest_file = component_dir / "component.yaml"
+    manifest = (yaml.safe_load(manifest_file.read_text(encoding="utf-8")) or {}) if manifest_file.is_file() else {}
     envs = {}
     for lang in set(langs) | {"en"}:
         current = en if lang == "en" else _load_translations(component_dir, lang)
         envs[lang] = _make_env(component_dir, inputs, lang, en, current)
+        envs[lang].globals["component"] = {"id": manifest.get("id"), "version": manifest.get("version")}
 
     written: list[Path] = []
     for name in names:
