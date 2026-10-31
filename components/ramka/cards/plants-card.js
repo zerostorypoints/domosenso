@@ -231,17 +231,17 @@ class PlantsCard extends HTMLElement {
         .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .photo .leaf { width: 55%; height: 55%; }
         .list { flex: 1; min-height: 0; display: grid; gap: 1.2cqh; }
-        .row { display: grid; grid-template-columns: var(--rh) 1.3fr 1fr 1fr 1fr 1.2fr; align-items: center;
+        .row { display: grid; grid-template-columns: var(--rh) 1.7fr 1fr 1fr 1fr 1.2fr; align-items: center;
                gap: 1.6cqw; min-height: 0; padding: 0 1.4cqw 0 0; border-radius: calc(1.5 * var(--u));
                background: var(--secondary-background-color); border-left: calc(0.7 * var(--u)) solid var(--c);
                overflow: hidden; }
         .row .photo { height: 100%; border-radius: 0; }
         .row.top { background: none; border: none; color: var(--secondary-text-color); font-size: calc(3 * var(--u)); }
         .rowname { display: flex; flex-direction: column; min-width: 0; }
-        .rowname .name { font-size: calc(4.2 * var(--u)); }
-        .sub { font-size: calc(3.2 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-               color: var(--secondary-text-color); }
-        .sub .act { color: var(--c); font-weight: 600; }
+        .rowname .name { font-size: calc(4 * var(--u)); }
+        .rm, .what { font-size: calc(3.1 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                     color: var(--secondary-text-color); min-height: 1.2em; }
+        .what.act { color: var(--c); font-weight: 600; }
         .row .g { display: block; }
         .row .gl { display: none; }
         .body { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; min-height: 0; }
@@ -375,7 +375,7 @@ class PlantsCard extends HTMLElement {
         <span class="dot" style="width: calc(3 * var(--u)); height: calc(3 * var(--u))"></span></span></div>`;
     el.innerHTML = `<div class="row top"><span></span>${head.map(() => "<span></span>").join("")}</div>` +
       rows.map(() => `<div class="row"><div class="photo"></div>
-        <div class="rowname"><span class="name"></span><span class="sub"><span class="rm"></span><span class="what"></span></span></div>
+        <div class="rowname"><span class="name"></span><span class="rm"></span><span class="what"></span></div>
         ${GAUGES.map(gauge).join("")}
         <svg class="chart" style="height: calc(8 * var(--u))" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
         </div>`).join("");
@@ -520,7 +520,7 @@ class PlantsCard extends HTMLElement {
         // The room always (with many plants it is how to find the pot), then what to do.
         const what = el.querySelector(".what");
         el.querySelector(".rm").textContent = this._room(p);
-        what.textContent = r.text || r.m.text ? ` · ${r.text || r.m.text}` : "";
+        what.textContent = r.text || r.m.text;
         what.classList.toggle("act", Boolean(r.text));
         return;
       }
