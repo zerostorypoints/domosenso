@@ -767,7 +767,7 @@ GROUP_OF = {
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
 STATE_HELPERS = {"input_select.ramka_mode", "input_select.ramka_ambient", "input_boolean.ramka_ambient_music",
-                 "input_boolean.ramka_settings_seeded"}
+                 "input_boolean.ramka_settings_seeded", "input_boolean.ramka_climate_slots_seeded"}
 # State with music_visual: none (the blind audition is gone).
 MUSIC_STATE_HELPERS: set[str] = set()
 # State a settings page drives: shown, never reset. None at present.
@@ -863,6 +863,8 @@ def run_seed(package, states) -> dict[str, object]:
     if groups:
         after.update(run_reset(package, groups=groups))
     after["input_boolean.ramka_settings_seeded"] = "on"
+    if "input_boolean.ramka_climate_slots_seeded" in helpers(package):
+        after["input_boolean.ramka_climate_slots_seeded"] = "on"
     return after
 
 
@@ -2554,8 +2556,9 @@ def test_climate_cards_follow_the_rooms(demo):
 
 
 def test_climate_slots_helper_and_seed(demo):
-    """The number of places (1 to 20, default 10): a slider on Climate, Basic; seeded while
-    untouched, also after the flag is on and whatever the rooms; a home's number stays."""
+    """The number of places (1 to 20, default 10): a slider on Climate, Basic; seeded once, by its
+    own flag (a fresh helper's 1 cannot be told from a chosen 1), whatever the rooms and also after
+    the settings flag is on; a home's number stays, a chosen 1 too; unknown is seeded again."""
     package = demo["package.yaml"]
     helper = package["input_number"]["ramka_climate_slots"]
     assert (helper["min"], helper["max"], helper["step"], helper["mode"]) == (1, 20, 1, "slider") and "initial" not in helper
@@ -2564,10 +2567,17 @@ def test_climate_slots_helper_and_seed(demo):
               "input_number.ramka_music_hold_s": 0.5, "input_number.ramka_music_calm_fall_s": 6.0}
     rooms = demo_rooms()
     assert seed_groups(package, seeded, rooms=rooms) == []
+    slots_seeded = {**seeded, "input_boolean.ramka_climate_slots_seeded": "on"}
     for untouched in (1.0, "unknown", "unavailable"):
         assert seed_groups(package, {**seeded, SLOTS: untouched}, rooms=rooms) == ["climate_slots"], untouched
-        assert run_seed(package, {**seeded, SLOTS: untouched})[SLOTS] == 10
+        after = run_seed(package, {**seeded, SLOTS: untouched})
+        assert after[SLOTS] == 10 and after["input_boolean.ramka_climate_slots_seeded"] == "on"
+    for unusable in ("unknown", "unavailable"):
+        assert seed_groups(package, {**slots_seeded, SLOTS: unusable}, rooms=rooms) == ["climate_slots"], unusable
+    # A home's number stays: one it had before the flag, and a 1 it chose after the first seed.
     assert seed_groups(package, {**seeded, SLOTS: 4.0}, rooms=rooms) == []
+    assert seed_groups(package, {**slots_seeded, SLOTS: 1.0}, rooms=rooms) == []
+    assert run_seed(package, {**slots_seeded, SLOTS: 1.0})[SLOTS] == 1.0
     # The rooms are not sent again when only the number is seeded.
     assert run_reset(package, groups=["climate_slots"], events=True) == {SLOTS: 10}
     for lang in LANGS:

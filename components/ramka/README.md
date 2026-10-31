@@ -162,7 +162,9 @@ approach toggle it has had since 0.1.0.
   whenever the flag is off; the music_visual group needs its four dB helpers at 0 and is also seeded
   after the flag is on, for a home that adds `music_visual` later; music_look (Custom's EQ and hold)
   and music_profiles (the templates' numbers) likewise, so a home that had the profiles before they
-  were editable gets the templates' values at its next start. **A home that already runs the
+  were editable gets the templates' values at its next start. The number of Climate widgets has its own flag,
+  `input_boolean.<prefix>_climate_slots_seeded`: its minimum (1) is also a home's choice, so it is
+  seeded once, while the flag is off and the number is at 1 (or whenever it is `unknown`). **A home that already runs the
   Ramka keeps its tuning**: its numbers are not all at their minimum, so neither they nor the
   booleans of that group are touched; it gets every page switch on and the music defaults.
 - **Reset.** `script.<prefix>_settings_reset` writes the defaults again. Field `page` (`general`, a

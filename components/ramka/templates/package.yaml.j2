@@ -233,7 +233,7 @@
     first ten of inputs.climate, Temperature widgets of their temperature and humidity. A list again,
     so sensor.<prefix>_climate_rooms keeps it, as the albums. How many widgets the Ramka shows is
     input_number.<prefix>_climate_slots, a group of its own: the widgets (and the threshold-based
-    colours switch, off) are seeded while the sensor has none, the number while it is untouched. -#]
+    colours switch, off) are seeded while the sensor has none, the number once (its own seeded flag). -#]
 [%- set climate_rooms = [] -%]
 [%- for c in (inputs.climate | default([]))[:10] -%]
 [%- set _ = climate_rooms.append({'type': 'temperature', 'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
@@ -398,6 +398,11 @@ input_boolean:
   [[ p ]]_climate_thresholds:
     name: [[ named(' climate threshold colours') ]]
     icon: mdi:thermometer-lines
+  # On once the seed has given input_number.[[ p ]]_climate_slots its starting value: a fresh slider
+  # restores to its min (1), which a home may also choose, so the number alone cannot say untouched.
+  [[ p ]]_climate_slots_seeded:
+    name: [[ named(' climate widgets seeded') ]]
+    icon: mdi:sprout
   [%- endif %]
 
 input_number:
@@ -1845,9 +1850,10 @@ automation:
   #   on, so a home that had the profiles before they were editable gets their values;
   # - photos and air (SPEC-021 amendment 1): their numbers untouched; also after the flag is on, so
   #   a home that ran 0.4.0 before them gets them at its next start.
-  # - climate: the rooms while sensor.<prefix>_climate_rooms has none; climate_slots: the number of
-  #   places untouched, also after the flag is on (one number: set to 1 on purpose, it reads as
-  #   untouched and is seeded again at the next start).
+  # - climate: the rooms while sensor.<prefix>_climate_rooms has none; climate_slots: the number
+  #   until input_boolean.<prefix>_climate_slots_seeded is on, and only while it is the slider's min
+  #   (a fresh helper's state; a home that had another number keeps it), or whenever it is unknown.
+  #   Its own flag, since 1 is also a home's choice: after the first seed a 1 stays.
   # Home Assistant's start trigger fires after the restored states are in place.
   - id: [[ p ]]_settings_seed
     alias: [[ named(' settings seed') ]]
@@ -1868,10 +1874,13 @@ automation:
 [%- set plant_numbers = [] if inputs.plants is not defined else ['input_number.' ~ p ~ '_plants_per_page', 'input_number.' ~ p ~ '_plants_page_s'] %]
 [%- set air_numbers = [] %]
 [%- for s in settings if s[3] == 'air' and s[0] == 'input_number' %][% set _ = air_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
-[%- set climate_numbers = [] if inputs.climate is not defined else ['input_number.' ~ p ~ '_climate_slots'] %]
-[%- for group, numbers in [('photos', photo_numbers), ('plants', plant_numbers), ('air', air_numbers), ('climate_slots', climate_numbers)] if numbers %]
+[%- for group, numbers in [('photos', photo_numbers), ('plants', plant_numbers), ('air', air_numbers)] if numbers %]
             {% for e in [[ numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.[[ group ]] = false %}{% endfor %}
 [%- endfor %]
+[%- if inputs.climate is defined %]
+            {% set slots = 'input_number.[[ p ]]_climate_slots' %}
+            {% set untouched.climate_slots = states(slots) in ['unknown', 'unavailable'] or (not is_state('input_boolean.[[ p ]]_climate_slots_seeded', 'on') and states(slots) | float(-1) == state_attr(slots, 'min') | float(-2)) %}
+[%- endif %]
 [%- if music_visual %]
             {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
 [%- set look_numbers = [] %]
@@ -1893,6 +1902,11 @@ automation:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_settings_seeded
+[%- if inputs.climate is defined %]
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.[[ p ]]_climate_slots_seeded
+[%- endif %]
 
   # The server's default theme follows the theme mode, at start and on every change. Both of the
   # server's default-theme slots get it (frontend.set_theme without mode and with mode: dark), so a
