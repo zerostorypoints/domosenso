@@ -1300,9 +1300,12 @@ script:
         data:
           option: custom
 
-  # Loads an EQ preset's six gains into Custom's EQ; called by automation [[ p ]]_music_eq_load. The
-  # presets are rendered in (the catalog's, the home's music_eq_presets over its own three). An id
-  # that is no preset writes nothing and says so.
+  # Loads an EQ preset's six gains into Custom's EQ; called by automation [[ p ]]_music_eq_load and,
+  # without a preset, by the settings page's Load button, which loads the EQ select's preset (the
+  # same preset chosen again changes no state, so the automation cannot re-apply it). The presets
+  # are rendered in (the catalog's, the home's music_eq_presets over its own three). While a template
+  # is active it does nothing, whoever calls it (spec 5). An id that is no preset writes nothing and
+  # says so.
   [[ p ]]_music_load_eq:
     alias: [[ named(' music load EQ preset') ]]
     icon: mdi:tune-vertical-variant
@@ -1310,26 +1313,31 @@ script:
     fields:
       preset:
         name: Preset
-        description: An EQ preset id, one of input_select.[[ p ]]_music_eq's options.
-        required: true
+        description: An EQ preset id, one of input_select.[[ p ]]_music_eq's options; without it, the select's state.
+        required: false
         selector:
           select:
             options: [[ eq_presets | list | tojson ]]
     sequence:
+      - condition: state
+        entity_id: input_select.[[ p ]]_music_template
+        state: custom
+      - variables:
+          chosen: "{{ preset | default(states('input_select.[[ p ]]_music_eq')) }}"
       - if:
           - condition: template
             value_template: >-
-              {{ preset | default('') not in [[ eq_presets | list | tojson ]] }}
+              {{ chosen not in [[ eq_presets | list | tojson ]] }}
         then:
           - action: system_log.write
             data:
               level: warning
               logger: [[ p ]].music_look
-              message: "no EQ preset '{{ preset | default('') }}', so Custom's EQ is unchanged"
+              message: "no EQ preset '{{ chosen }}', so Custom's EQ is unchanged"
           - stop: No such EQ preset
       - variables:
           gains: >-
-            {{ [[ eq_presets | tojson ]][preset] }}
+            {{ [[ eq_presets | tojson ]][chosen] }}
 [%- for key in eq_keys %]
       - action: input_number.set_value
         target:

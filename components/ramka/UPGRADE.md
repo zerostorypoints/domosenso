@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: music looks
+
+**Music looks** (with `music_visual`): a look select (`custom`, `mlp_match`, `lively`, `calm`,
+`analyser`), Custom's EQ and hold, EQ presets, Copy to custom and a blind audition (README, "Music
+looks"). The visual cards bind `sensor.<prefix>_music_look`. On the settings page's Music page the
+rise, fall, tilt and the four dB values move from Advanced to the Custom look card, shown while
+`custom` is selected.
+
+### What a home does
+
+- With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers
+  and a template sensor). The seed gives Custom a flat EQ and a 1.5 s hold and selects `custom`, so
+  the visual looks as before.
+- Optional: the home's measured curves in `music_eq_presets` (`mlp_match`, `half_match`, `fitted`),
+  then a render.
+
 ## Unreleased: the About page in the settings
 
 **Settings, About** (SPEC-023): a last page with DomoSenso's header and links, the components the

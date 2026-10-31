@@ -40,7 +40,9 @@
 [#- The now-playing card's music visual (0.4.0): audio-sensor's ambient-wave-card in the wave strip,
     reading the home's music aliases, one config per option of input_select.<prefix>_music_visual.
     Every option of the look names a helper (SPEC-021), so the settings dashboard changes the
-    visual live; the card reads the states on every update. Their starting values
+    visual live; the card reads the states on every update. `look` binds the music look
+    (sensor.<prefix>_music_look, spec 5): its attributes override rise, fall, hold, tilt, the EQ and
+    the colour window, and while it is unavailable the card reads the helpers. Their starting values
     (music_visual_options) are the package's: its seed and reset write them, and it checks them.
     A render cannot see audio-sensor's inputs: a home without its music aliases gets the classic
     wave from the card's fallback, not a failed render. -#]
@@ -55,7 +57,7 @@
     'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
     'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
     'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
-    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}}}) -%]
+    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look'}}) -%]
 [%- endfor -%]
 [%- endif -%]
 [%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]

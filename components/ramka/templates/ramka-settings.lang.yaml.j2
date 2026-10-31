@@ -33,7 +33,7 @@
     'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
     'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
     'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
-    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}}}) -%]
+    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look'}}) -%]
 [%- endfor -%]
 [%- endif -%]
 [#- The way to the Ramka view (SPEC-021 amendment 1): the dashboard of this page's language, from
@@ -127,6 +127,107 @@
 [%- endmacro -%]
 [%- macro plant_labels(items) -%][% for x in items %][[ x.label if x.label is string else x.label[lang] | default(x.label.values() | first) ]][% if not loop.last %], [% endif %][% endfor %][%- endmacro -%]
 [%- macro labels(items, key='label') -%][[ items | map(attribute=key) | join(', ') if items else '—' ]][%- endmacro -%]
+[#- The music look (spec 7): the template select with the selected entry's description and its
+    values, Custom's rows while Custom is selected ("Copy to custom" while a template is), and the
+    blind audition. The select keeps the entry ids; this card names them in the page's language,
+    as the update rate's options are explained. A select state that is no entry id is Custom, as
+    the look sensor reads it. The ids are the package's (look_ids, eq_presets, eq_keys in
+    templates/package.yaml.j2); tests/test_ramka_render.py holds both to the same lists. -#]
+[%- set template_select = 'input_select.' ~ p ~ '_music_template' -%]
+[%- set custom_on = "{condition: state, entity: " ~ template_select ~ ", state: custom}" -%]
+[%- set custom_off = "{condition: state, entity: " ~ template_select ~ ", state_not: custom}" -%]
+[%- set look_ids = ['custom', 'mlp_match', 'lively', 'calm', 'analyser'] -%]
+[%- set eq_preset_ids = ['flat', 'mlp_match', 'half_match', 'wled_big_speakers', 'wled_big_speakers_ics', 'wled_pink', 'bass_light', 'voices', 'sparkle', 'fitted'] -%]
+[%- set eq_keys = ['sub', 'bass', 'low_mid', 'mid', 'presence', 'air'] -%]
+[%- set look = 'sensor.' ~ p ~ '_music_look' -%]
+[%- set eq_rows = [] -%][%- for key in eq_keys -%][%- set _ = eq_rows.append(('input_number', 'music_eq_' ~ key)) -%][%- endfor -%]
+[%- macro describe(id) %]
+              **[[ t('ui.settings.music_template_' ~ id) ]]**: [[ t('ui.settings.music_template_' ~ id ~ '_purpose') ]]
+
+              **[[ t('ui.settings.music_look_best') ]]**: [[ t('ui.settings.music_template_' ~ id ~ '_best') ]]
+
+              **[[ t('ui.settings.music_look_why') ]]**: [[ t('ui.settings.music_template_' ~ id ~ '_why') ]]
+[%- endmacro -%]
+[%- macro look_sections() %]
+      - type: grid
+        cards:[[ heading('music_look', 'mdi:palette-swatch') ]]
+          - type: entities
+            entities:[[ rows([('input_select', 'music_template')]) ]]
+          - type: markdown
+            content: |-
+              {% set id = states('[[ template_select ]]') %}
+[%- for id in look_ids if id != 'custom' %]
+              {%- [% if loop.first %]if[% else %]elif[% endif %] id == '[[ id ]]' %}[[ describe(id) ]]
+[%- endfor %]
+              {%- else %}[[ describe('custom') ]]
+              {%- endif %}
+          - type: markdown
+            content: |-
+              **[[ t('ui.settings.music_look_values') ]]**
+              {% set eq = state_attr('[[ look ]]', 'eq') or {} %}{% set spectrum = state_attr('[[ look ]]', 'spectrum') or {} %}{% set level = state_attr('[[ look ]]', 'level') or {} %}
+
+              | | |
+              |---|---|
+              | [[ t('ui.settings.music_rise_ms') ]] | {{ state_attr('[[ look ]]', 'rise') }} ms |
+              | [[ t('ui.settings.music_fall_s') ]] | {{ state_attr('[[ look ]]', 'fall') }} s |
+              | [[ t('ui.settings.music_hold_s') ]] | {{ state_attr('[[ look ]]', 'hold') }} s |
+              | [[ t('ui.settings.music_tilt') ]] | {{ '✓' if state_attr('[[ look ]]', 'tilt') else '—' }} |
+[%- for kind in ['spectrum', 'level'] %][% for end in ['neutral', 'hot'] %]
+              | [[ t('ui.settings.music_' ~ kind ~ '_' ~ end ~ '_db') ]] | {{ [[ kind ]].[[ end ]] }} dB |
+[%- endfor %][% endfor %]
+[%- for key in eq_keys %]
+              | [[ t('ui.settings.music_eq_' ~ key) ]] | {{ eq.[[ key ]] }} dB |
+[%- endfor %]
+          - type: button
+            visibility: [ [[ custom_off ]] ]
+            name: [[ t('ui.settings.music_copy_to_custom') | yaml ]]
+            icon: mdi:content-copy
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: script.[[ p ]]_music_copy_to_custom
+              confirmation:
+                text: [[ t('ui.settings.music_copy_to_custom_confirm') | yaml ]]
+            grid_options: {columns: full}
+      # Custom's helpers, which only the user and Copy to custom change. The Load button applies the
+      # EQ select's preset again: choosing the preset already selected changes no state.
+      - type: grid
+        cards:[[ heading('music_custom', 'mdi:tune', custom_on) ]]
+          - type: entities
+            visibility: [ [[ custom_on ]] ]
+            entities:[[ rows([('input_number', 'music_rise_ms'), ('input_number', 'music_fall_s'), ('input_number', 'music_hold_s'),
+          ('input_boolean', 'music_tilt'), ('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db'),
+          ('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db'), ('input_select', 'music_eq')]) ]]
+              - type: button
+                icon: mdi:tune-vertical-variant
+                name: [[ t('ui.settings.music_eq_load') | yaml ]]
+                action_name: [[ t('ui.settings.music_eq_load_action') | yaml ]]
+                tap_action:
+                  action: perform-action
+                  perform_action: script.[[ p ]]_music_load_eq[[ rows(eq_rows) ]]
+          - type: markdown
+            visibility: [ [[ custom_on ]] ]
+            content: |-
+[%- for preset in eq_preset_ids %]
+              - `[[ preset ]]`: [[ t('ui.settings.music_eq_' ~ preset) ]]
+[%- endfor %]
+      # The blind audition (spec 5): the wall never names the look; the logbook does.
+      - type: grid
+        cards:[[ heading('music_audition_title', 'mdi:shuffle-variant') ]]
+          - type: markdown
+            content: [[ t('ui.settings.music_audition_how') | yaml ]]
+          - type: entities
+            entities:[[ rows([('input_boolean', 'music_audition'), ('input_number', 'music_audition_s'), ('input_text', 'music_audition_list')]) ]]
+          - type: button
+            visibility: [ {condition: state, entity: input_boolean.[[ p ]]_music_audition, state: "on"} ]
+            name: [[ t('ui.settings.music_audition_keep') | yaml ]]
+            icon: mdi:check-circle-outline
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: script.[[ p ]]_music_audition_keep
+            grid_options: {columns: full}
+[%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/ramka-settings.lang.yaml.j2),
 # language [[ lang ]]. Edit the inputs and render again rather than editing this file.
 #
@@ -263,15 +364,13 @@ views:
                 conditions:
                   - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
                   - {condition: state, entity: input_select.audio_sensor_music_source, state: unavailable}
-            content: [[ t('ui.settings.preview_classic') | yaml ]]
+            content: [[ t('ui.settings.preview_classic') | yaml ]][[ look_sections() ]]
       - type: grid
         cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
           - type: entities
             visibility: [ [[ advanced_on ]] ]
-            entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'), ('input_number', 'music_rise_ms'),
-          ('input_number', 'music_fall_s'), ('input_number', 'music_line_width_px'), ('input_boolean', 'music_tilt'),
-          ('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db'),
-          ('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db'), ('input_number', 'music_fps')]) ]]
+            entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'),
+          ('input_number', 'music_line_width_px'), ('input_number', 'music_fps')]) ]]
           # audio-sensor's sensor update rate: how often the board publishes (the redraw rate above is
           # how often the browser draws). Hidden while unavailable, as in a home without audio-sensor.
           - type: entities
