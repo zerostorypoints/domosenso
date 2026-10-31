@@ -117,12 +117,14 @@ test("discover finds plants by domosenso_plant and ignores other plant entities"
   assert.equal(card.shadowRoot.querySelector(".room").textContent, "Living room");
 });
 
-test("photo: entity_picture becomes the tile image; without it a placeholder with the initial", () => {
+test("photo: entity_picture becomes the tile image; without it a leaf in the state's colour, no letter", () => {
   const card = discoverCard({ plants: [plant("Fern", { entity_picture: "/local/plants/fern.jpg" }), plant("Basil")] });
   const photos = [...card.shadowRoot.querySelectorAll(".photo")];
   assert.equal(photos[0].querySelector("img").getAttribute("src"), "/local/plants/fern.jpg");
-  assert.equal(photos[1].querySelector("img"), null);
-  assert.equal(photos[1].textContent.trim(), "B");
+  assert.ok(!photos[1].querySelector("img"));
+  assert.equal(photos[1].textContent.trim(), "");
+  assert.ok(photos[1].querySelector(".leaf"));
+  assert.match(card.shadowRoot.innerHTML, /\.photo\s*\{[^}]*color:\s*var\(--c\)/);
 });
 
 test("states: good, neutral and needs something; no red anywhere", () => {
@@ -136,26 +138,26 @@ test("states: good, neutral and needs something; no red anywhere", () => {
   assert.match(card.shadowRoot.innerHTML.toLowerCase(), /#f5b942/);
 });
 
-test("up to per_page plants: one page, no strip; 1 fills the card; up to 4 show the bars, 5-6 do not", () => {
+test("up to per_page plants: one tile page; 1 fills the card; up to 4 show the bars, 5-6 do not", () => {
   const one = discoverCard({ plants: [plant("A")] });
   assert.equal(one.shadowRoot.querySelector(".page").style.gridTemplateColumns, "repeat(1, 1fr)");
-  assert.equal(one.shadowRoot.querySelector(".strip"), null);
+  assert.ok(!one.shadowRoot.querySelector(".strip"));
   const four = discoverCard({ plants: ["A", "B", "C", "D"].map((n) => plant(n)) });
   assert.equal(four.shadowRoot.querySelectorAll(".plant .g").length, 12);
   const six = discoverCard({ plants: ["A", "B", "C", "D", "E", "F"].map((n) => plant(n)) });
   assert.equal(six.shadowRoot.querySelectorAll(".plant").length, 6);
   assert.equal(six.shadowRoot.querySelectorAll(".plant .g").length, 0);
-  assert.equal(six.shadowRoot.querySelector(".strip"), null);
+  assert.match(stripText(six), /^1 \/ 2/);  // the list page follows (amendment 2)
 });
 
-test("15 plants, per_page 6: three pages, needy first, strip with 15 dots and the count", () => {
+test("15 plants, per_page 6: three tile pages (and three list pages), needy first, strip with 15 dots and the count", () => {
   const plants = Array.from({ length: 15 }, (_, i) => plant(`P${i}`, i >= 12 ? { moisture: 5 } : {}));
   const card = discoverCard({ plants });
   assert.equal(card.shadowRoot.querySelectorAll(".plant").length, 6);
   assert.deepEqual(names(card).slice(0, 3).sort(), ["P12", "P13", "P14"]);
   assert.equal(card.shadowRoot.querySelectorAll(".dots i").length, 15);
   assert.equal(card.shadowRoot.querySelectorAll(".dots i.here").length, 6);
-  assert.match(stripText(card), /^1 \/ 3 .*3 do uwagi · 12 w porządku$/);
+  assert.match(stripText(card), /^1 \/ 6 .*3 do uwagi · 12 w porządku$/);
 });
 
 test("50 plants: the strip's dots are grouped by room", () => {
@@ -165,7 +167,7 @@ test("50 plants: the strip's dots are grouped by room", () => {
   const dots = [...card.shadowRoot.querySelectorAll(".dots i")].map((d) => d.dataset.room);
   const firstKitchen = dots.indexOf("Kitchen");
   assert.ok(dots.slice(0, firstKitchen).every((r) => r === dots[0]) && dots.slice(firstKitchen).every((r) => r === "Kitchen"));
-  assert.match(stripText(card), /^1 \/ 9/);
+  assert.match(stripText(card), /^1 \/ 17/);
 });
 
 test("pages advance every page_s and the index survives a new card element", () => {
@@ -174,12 +176,12 @@ test("pages advance every page_s and the index survives a new card element", () 
   mock.timers.enable({ apis: ["setTimeout"] });
   const plants = Array.from({ length: 15 }, (_, i) => plant(`P${String(i).padStart(2, "0")}`));
   const card = discoverCard({ plants, config: { page_s: 10 }, attach: true });
-  assert.match(stripText(card), /^1 \/ 3/);
+  assert.match(stripText(card), /^1 \/ 6/);
   mock.timers.tick(10000);
-  assert.match(stripText(card), /^2 \/ 3/);
+  assert.match(stripText(card), /^2 \/ 6/);
   card.remove();
   const again = discoverCard({ plants, config: { page_s: 10 }, attach: true });
-  assert.match(stripText(again), /^2 \/ 3/);
+  assert.match(stripText(again), /^2 \/ 6/);
   again.remove();
   delete globalThis.localStorage;
 });
@@ -189,14 +191,14 @@ test("per_page and page_s may be helper entities", () => {
   const card = discoverCard({ plants, config: { per_page: "input_number.r_plants_per_page" },
     states: { "input_number.r_plants_per_page": { state: "4.0", attributes: {} } } });
   assert.equal(card.shadowRoot.querySelectorAll(".plant").length, 4);
-  assert.match(stripText(card), /^1 \/ 2/);
+  assert.match(stripText(card), /^1 \/ 4/);
 });
 
 test("a page fewer: a stored index past the last page clamps to the first", () => {
   globalThis.localStorage = window.localStorage;
-  window.localStorage.setItem("domosenso.ramka.plants.page", "2");
+  window.localStorage.setItem("domosenso.ramka.plants.page", "4");
   const card = discoverCard({ plants: Array.from({ length: 8 }, (_, i) => plant(`P${i}`)) });
-  assert.match(stripText(card), /^1 \/ 2/);
+  assert.match(stripText(card), /^1 \/ 4/);
   delete globalThis.localStorage;
 });
 
@@ -267,4 +269,107 @@ test("an update that changes none of the card's entities does no work", () => {
   assert.equal(updates, 0);
   card.hass = { locale: { language: "pl" }, states: { ...states, "plant.d0": { state: "ok", attributes: plant("Fern", { moisture: 5 }) } }, callWS: async () => ({}) };
   assert.equal(updates, 1);
+});
+
+// ---- Amendment 2: the list page ----------------------------------------------------------------
+
+const listRows = (card) => [...card.shadowRoot.querySelectorAll(".list .row:not(.top)")];
+const turn = (card, n = 1) => { for (let i = 0; i < n; i++) mock.timers.tick(10000); };
+
+test("five plants: the tiles, then a list page with every plant, its bars and line", () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const plants = ["A", "B", "C", "D", "E"].map((n) => plant(n));
+  const card = discoverCard({ lang: "en", plants, config: { page_s: 10 }, attach: true });
+  assert.equal(card.shadowRoot.querySelectorAll(".plant").length, 5);
+  assert.match(stripText(card), /^1 \/ 2/);
+  turn(card);
+  assert.equal(card.shadowRoot.querySelectorAll(".plant").length, 0);
+  const rows = listRows(card);
+  assert.equal(rows.length, 5);
+  assert.deepEqual(rows.map((r) => r.querySelector(".name").textContent), ["A", "B", "C", "D", "E"]);
+  for (const r of rows) {
+    assert.equal(r.querySelectorAll(".g").length, 3);
+    assert.ok(r.querySelector("svg.chart"));
+    assert.ok(r.querySelector(".photo svg.leaf"));
+  }
+  assert.match(stripText(card), /^2 \/ 2/);
+  card.remove();
+});
+
+test("the list's header per language", () => {
+  const plants = ["A", "B", "C", "D", "E"].map((n) => plant(n));
+  for (const [lang, head] of [["en", ["Plant", "Sun", "Fertiliser", "Water", "Last 7 days"]],
+    ["de", ["Pflanze", "Sonne", "Dünger", "Wasser", "Letzte 7 Tage"]],
+    ["pl", ["Roślina", "Słońce", "Nawóz", "Woda", "Ostatnie 7 dni"]]]) {
+    globalThis.localStorage = window.localStorage;
+    window.localStorage.setItem("domosenso.ramka.plants.page", "1");
+    const card = discoverCard({ lang, plants });
+    const cells = [...card.shadowRoot.querySelectorAll(".list .row.top > span")].map((e) => e.textContent).filter(Boolean);
+    assert.deepEqual(cells, head, lang);
+    delete globalThis.localStorage;
+  }
+});
+
+test("a row's lines: the room always, under it the action, else watered / water in", () => {
+  globalThis.localStorage = window.localStorage;
+  window.localStorage.setItem("domosenso.ramka.plants.page", "1");
+  const plants = [plant("Dry", { moisture: 5 }), plant("Watered"), plant("C"), plant("D"), plant("E")];
+  const days = new Date(Date.now() - 5 * 86400000 - 3600000).toISOString();
+  const card = discoverCard({ lang: "en", plants, states: { "sensor.d1_last_watered": { state: days, attributes: {} } } });
+  const row = (name) => listRows(card).find((r) => r.querySelector(".name").textContent === name);
+  const lines = (name) => [row(name).querySelector(".rm").textContent, row(name).querySelector(".what").textContent];
+  assert.deepEqual(lines("Dry"), ["Living room", "Water"]);
+  assert.deepEqual(lines("Watered"), ["Living room", "watered 5 days ago"]);
+  assert.deepEqual(lines("C"), ["Living room", ""]);
+  assert.ok(row("Dry").querySelector(".what").classList.contains("act"));
+  assert.ok(!row("Watered").querySelector(".what").classList.contains("act"));
+  delete globalThis.localStorage;
+});
+
+test("four plants or fewer: no list page", () => {
+  const card = discoverCard({ plants: ["A", "B", "C", "D"].map((n) => plant(n)) });
+  assert.ok(!card.shadowRoot.querySelector(".strip"));
+  assert.ok(!card.shadowRoot.querySelector(".list"));
+});
+
+test("list: false drops the list pages", () => {
+  const card = discoverCard({ plants: ["A", "B", "C", "D", "E"].map((n) => plant(n)), config: { list: false } });
+  assert.ok(!card.shadowRoot.querySelector(".strip"));
+});
+
+test("15 plants: three tile pages, then three list pages of five rows", () => {
+  globalThis.localStorage = window.localStorage;
+  const plants = Array.from({ length: 15 }, (_, i) => plant(`P${String(i).padStart(2, "0")}`));
+  const counts = [];
+  for (const page of [3, 4, 5]) {
+    window.localStorage.setItem("domosenso.ramka.plants.page", String(page));
+    const card = discoverCard({ plants });
+    assert.match(stripText(card), new RegExp(`^${page + 1} / 6`));
+    counts.push(listRows(card).length);
+    assert.equal(card.shadowRoot.querySelectorAll(".dots i.here").length, 5);
+  }
+  assert.deepEqual(counts, [5, 5, 5]);
+  window.localStorage.setItem("domosenso.ramka.plants.page", "3");
+  const rows = discoverCard({ plants, config: { list_rows: 8 } });
+  assert.match(stripText(rows), /^4 \/ 5/);
+  assert.equal(listRows(rows).length, 8);
+  delete globalThis.localStorage;
+});
+
+test("a row without a photo keeps its leaf; the moisture line goes to the line column", async () => {
+  globalThis.localStorage = window.localStorage;
+  window.localStorage.setItem("domosenso.ramka.plants.page", "1");
+  const now = Date.now();
+  const stats = { "sensor.m0": Array.from({ length: 24 }, (_, i) => ({ start: now - (24 - i) * 3600000, mean: 30 + i })) };
+  const card = document.createElement("plants-card");
+  card.setConfig({ discover: true });
+  const states = {};
+  ["A", "B", "C", "D", "E"].forEach((n, i) => { states[`plant.d${i}`] = { state: "ok", attributes: plant(n, { sensors: { moisture: `sensor.m${i}` } }) }; });
+  card.hass = { locale: { language: "en" }, states, callWS: async () => stats };
+  await new Promise((r) => setTimeout(r, 0));
+  const row = listRows(card).find((r) => r.querySelector(".name").textContent === "A");
+  assert.ok(row.querySelector(".photo .leaf"));
+  assert.match(row.querySelector("svg.chart").innerHTML, /<path/);
+  assert.ok(!card.shadowRoot.querySelector(".list .head"));  // .head is the tiles' name block
+  delete globalThis.localStorage;
 });

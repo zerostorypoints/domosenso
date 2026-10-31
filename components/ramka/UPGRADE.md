@@ -226,7 +226,17 @@ audio-sensor card ignores both and draws without them, so update the two compone
   from that curve; a home that changes the curve later and wants it in the profile loads the preset
   into it, or resets the Music page.
 
-## Unreleased: the About page in the settings
+## 0.8.0 (2026-10-31): a list of every plant, a leaf instead of the initial, the About page
+
+SPEC-022 amendment 2, SPEC-023.
+
+**The list page.** With more than four plants, list pages follow the tile pages: one row per plant
+with its photo, name, room and action (or the watered / water-in line), the sun, fertiliser
+and water bars and the moisture line, at most seven rows a page, shared evenly. The plants stage of
+the ambient loop counts them: with five or six plants it now lasts 20 s (the tiles, then the list)
+instead of 10 s. `list: false` on the card drops them; `list_rows` sets the rows per page.
+
+**A plant without a photo** shows a leaf in its state's colour instead of its initial.
 
 **Settings, About** (SPEC-023): a last page with DomoSenso's header and links, the components the
 home runs (`sensor.domosenso_components`, which the `domosenso` command now writes into
@@ -240,9 +250,10 @@ New in the package: `shell_command.<prefix>_discover` (in every home, also witho
 
 ### What a home does
 
-- With the release that carries it: `domosenso update ramka` with a current `domosenso` command,
-  and a deploy (a restart: new template entities). A snapshot `compare` then shows the new entities
-  `sensor.domosenso_components` and `sensor.<prefix>_discovery`.
+- `domosenso update ramka` with a current `domosenso` command, and a deploy (the cards move to
+  `www/domosenso/ramka/0.8.0/`; a restart: new template entities); press the Ramka's reload. No
+  inputs change. A snapshot `compare` then shows the new entities `sensor.domosenso_components` and
+  `sensor.<prefix>_discovery`.
 - Optional: a home whose templates build entity ids at runtime, or with a Bluetooth sensor behind an
   ESPHome proxy, writes `domosenso_discovery.yaml` (README, "About page") and adds it to `local:`.
 

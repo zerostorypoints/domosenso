@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and with preview_dashboard ramka-preview.<lang>.yaml. Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.7.0
+version: 0.8.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -111,6 +111,7 @@ inputs:
   pressure: {type: entity_id, default: null}               # after the wind on the climate page
   plants:                       # the plants page; any extra key but room is a band override; absent: no plants page (0.2.0);
                                 # discover: every plant the plants component marks, bands from it (0.7.0, SPEC-022)
+                                # with more than four plants a list page follows the tiles (0.8.0)
     type: "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}] | discover"
     default: null
     example: [{entity: plant.monstera, label: Living room, room: living_room}]
