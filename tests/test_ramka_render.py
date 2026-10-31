@@ -126,8 +126,9 @@ def test_pl_dashboard_has_no_english_ui_labels(demo):
     en, pl = translations("en"), translations("pl")
     shown = list(strings(demo["dashboard.pl.yaml"]))
     for key, pl_value in pl.items():
-        # ui.settings.* label the settings dashboard (test_settings_dashboard_pages_per_language).
-        if not key.startswith("ui.") or key.startswith("ui.settings.") or pl_value == en[key]:
+        # ui.settings.* label the settings dashboard (test_settings_dashboard_pages_per_language),
+        # ui.preview.* the preview dashboard (test_preview_links_point_at_existing_settings_views).
+        if not key.startswith("ui.") or key.startswith(("ui.settings.", "ui.preview.")) or pl_value == en[key]:
             continue
         assert any(word(pl_value).search(s) for s in shown), f"{key}: {pl_value!r} not in the pl dashboard"
         assert not any(word(en[key]).search(s) for s in shown), f"{key}: English {en[key]!r} in the pl dashboard"
@@ -2950,3 +2951,133 @@ def test_music_translations_complete():
     # en: spec 4.1's texts word for word.
     for entry, texts_ in LOOK_TEXTS.items():
         assert tuple(en[f"ui.settings.music_template_{entry}_{p}"] for p in ("purpose", "best", "why")) == texts_, entry
+
+
+# ---- the preview dashboard: one view per screen, the Ramka's own cards in a frame --------------
+
+PREVIEW_VIEWS = ["climate", "air", "plants", "photos", "status", "calendar", "music"]
+VIEWPORT = "100dvh - var(--kiosk-header-height, var(--header-height, 0px))"
+
+
+def ramka_screens(dashboard) -> dict[str, list]:
+    """The Ramka dashboard's sections per screen, read from their visibility."""
+    screens: dict[str, list] = {}
+    for section in sections(dashboard):
+        states = {c.get("entity", "").split(".", 1)[-1].removeprefix("ramka_"): c.get("state") for c in section.get("visibility", [])}
+        if states.get("mode") == "calendar":
+            screens.setdefault("calendar", []).append(section)
+        elif states.get("mode") == "ambient" and states.get("music_view") == "on":
+            screens.setdefault("music", []).append(section)
+        elif states.get("mode") == "ambient" and "ambient" in states:
+            screens.setdefault(states["ambient"], []).append(section)
+    return screens
+
+
+def framed(section, height=720):
+    """A Ramka section as the preview shows it: no visibility, heights from the frame, the photo
+    layer contained instead of switched by show_when."""
+    text = json.dumps({k: v for k, v in section.items() if k != "visibility"}).replace(VIEWPORT, f"{height}px")
+    section = json.loads(text)
+    for card in section["cards"]:
+        if card.get("type") == "custom:photo-frame-card":
+            del card["show_when"]
+            card["contained"] = True
+    return section
+
+
+def preview_frame(view):
+    [card] = view["cards"]
+    assert card["type"] == "custom:screen-frame-card"
+    return card
+
+
+@pytest.fixture(scope="module")
+def preview(tmp_path_factory):
+    return render(tmp_path_factory.mktemp("preview"), {**with_visual(), "preview_dashboard": True})
+
+
+def test_preview_dashboard_only_with_its_input(demo, preview, tmp_path):
+    assert not any(name.startswith("ramka-preview.") for name in demo)
+    assert {f"ramka-preview.{lang}.yaml" for lang in LANGS} <= set(preview)
+    off = render(tmp_path, {**demo_inputs(), "preview_dashboard": False})
+    assert not any(name.startswith("ramka-preview.") for name in off)
+
+
+def test_preview_leaves_the_ramka_dashboard_as_it_was(preview, tmp_path):
+    without = render(tmp_path, with_visual())
+    for lang in LANGS:
+        assert preview[f"dashboard.{lang}.yaml"] == without[f"dashboard.{lang}.yaml"], lang
+
+
+def test_preview_has_one_view_per_screen_with_the_settings_title_and_icon(preview):
+    for lang in LANGS:
+        views = preview[f"ramka-preview.{lang}.yaml"]["views"]
+        assert [v["path"] for v in views] == PREVIEW_VIEWS, lang
+        settings = settings_views(preview[f"ramka-settings.{lang}.yaml"])
+        for view in views:
+            assert (view["title"], view["icon"]) == (settings[view["path"]]["title"], settings[view["path"]]["icon"]), (lang, view["path"])
+        assert preview[f"ramka-preview.{lang}.yaml"]["title"] == translations(lang)["ui.preview.title"]
+        assert "kiosk_mode" not in preview[f"ramka-preview.{lang}.yaml"]
+
+
+def test_preview_views_follow_the_screens_the_home_has(tmp_path):
+    inputs = {**demo_inputs(), "preview_dashboard": True, "status_page": False}
+    for key in ("air", "plants", "photo_dir"):
+        inputs.pop(key)
+    views = render(tmp_path, inputs)["ramka-preview.en.yaml"]["views"]
+    assert [v["path"] for v in views] == ["climate", "calendar", "music"]
+
+
+def test_preview_cards_are_the_ramka_dashboards(preview):
+    for lang in LANGS:
+        screens = ramka_screens(preview[f"dashboard.{lang}.yaml"])
+        assert set(screens) == set(PREVIEW_VIEWS), lang
+        for view in preview[f"ramka-preview.{lang}.yaml"]["views"]:
+            frame = preview_frame(view)
+            assert frame["sections"] == [framed(s) for s in screens[view["path"]]], (lang, view["path"])
+            assert all("visibility" not in s for s in frame["sections"])
+    music = preview_frame(settings_views(preview["ramka-preview.en.yaml"])["music"])
+    assert music["sections"][0]["cards"][0]["visual"]["select"] == "input_select.ramka_music_visual"
+
+
+def test_preview_frames_the_screen_size_and_counts_heights_from_it(tmp_path):
+    rendered = render(tmp_path, {**demo_inputs(), "preview_dashboard": True, "screen": {"width": 1280, "height": 800}})
+    text = json.dumps(rendered["ramka-preview.en.yaml"])
+    assert "dvh" not in text and "calc(800px - 16px)" in text
+    for view in rendered["ramka-preview.en.yaml"]["views"]:
+        frame = preview_frame(view)
+        assert (frame["width"], frame["height"]) == (1280, 800)
+    for section in sections(rendered["dashboard.en.yaml"]):
+        assert "800px" not in json.dumps(section)
+
+
+def test_preview_links_point_at_existing_settings_views(preview, tmp_path):
+    for lang in LANGS:
+        settings = settings_views(preview[f"ramka-settings.{lang}.yaml"])
+        for view in preview[f"ramka-preview.{lang}.yaml"]["views"]:
+            link = preview_frame(view)["link"]
+            dashboard, page = link["path"].strip("/").split("/")
+            assert dashboard == "ramka-settings" and page == view["path"] and page in settings, (lang, link)
+            assert link["label"] == translations(lang)["ui.preview.settings_link"]
+    rendered = render(tmp_path, {**demo_inputs(), "preview_dashboard": True, "settings_paths": {"de": "ramka-settings-de"}})
+    assert preview_frame(rendered["ramka-preview.de.yaml"]["views"][0])["link"]["path"] == "/ramka-settings-de/climate"
+    assert preview_frame(rendered["ramka-preview.en.yaml"]["views"][0])["link"]["path"] == "/ramka-settings/climate"
+
+
+@pytest.mark.parametrize("value", [{"en": "/ramka-settings"}, {"de": "ramka settings"}, ["ramka-settings"]])
+def test_preview_settings_paths_must_be_plain(tmp_path, value):
+    with pytest.raises(dr.RenderError, match="settings paths must be plain url paths"):
+        render(tmp_path, {**demo_inputs(), "preview_dashboard": True, "settings_paths": value})
+
+
+def test_preview_dashboard_is_documented_and_its_card_is_a_resource():
+    manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
+    assert "templates/ramka-preview.lang.yaml.j2" in manifest["artifacts"]["templates"]
+    assert "cards/screen-frame-card.js" in manifest["artifacts"]["dashboard_cards"]
+    assert {"preview_dashboard", "settings_paths"} <= set(manifest["inputs"])
+    assert any(d["file"] == "ramka-preview.<lang>.yaml" for d in manifest["provides"]["dashboards"])
+    readme = (COMP / "README.md").read_text(encoding="utf-8")
+    block = readme.split("## Preview dashboard", 1)[1].split("```yaml", 1)[1].split("```", 1)[0]
+    entry = yaml.safe_load(block)["lovelace"]["dashboards"]["ramka-preview"]
+    assert entry["filename"] == "dashboards/ramka-preview.en.yaml" and entry["require_admin"] is True
+    assert "Unreleased: preview dashboard" in (COMP / "UPGRADE.md").read_text(encoding="utf-8")

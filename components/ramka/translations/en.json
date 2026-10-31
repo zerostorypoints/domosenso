@@ -201,6 +201,10 @@
         "jammed": "Jammed"
       }
     },
+    "preview": {
+      "title": "Ramka preview",
+      "settings_link": "Settings for this screen"
+    },
     "settings": {
       "title": "Ramka settings",
       "pages": {

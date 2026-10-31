@@ -201,6 +201,10 @@
         "jammed": "Blockiert"
       }
     },
+    "preview": {
+      "title": "Ramka-Vorschau",
+      "settings_link": "Einstellungen für diese Ansicht"
+    },
     "settings": {
       "title": "Ramka-Einstellungen",
       "pages": {

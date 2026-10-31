@@ -6,7 +6,7 @@
 #
 # Instance: `uv run tools/domosenso_render.py components/ramka --inputs <inputs.yaml> --out <dir>`
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
-# from templates/. Upgrade notes for an existing home: UPGRADE.md.
+# from templates/, and with preview_dashboard ramka-preview.<lang>.yaml. Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
 version: 0.7.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
@@ -142,6 +142,13 @@ inputs:
     type: "map[lang, string]"   # Ramka view" (0.4.0); a language not in it takes dashboard_path. Plain
     default: null               # URL paths, as registered in configuration.yaml.
     example: {en: dashboard-ramka, de: dashboard-ramka-de}
+  preview_dashboard:            # true: also ramka-preview.<lang>.yaml, the admins' preview with one view per
+    type: bool                  # screen, each in a frame of the screen's size (README, "Preview dashboard").
+    default: false              # False: the template renders empty and writes no file.
+  settings_paths:               # the settings dashboard of each language, for the preview's links to its
+    type: "map[lang, string]"   # pages; a language not in it takes ramka-settings. Plain URL paths, as
+    default: null               # registered in configuration.yaml. Read only with preview_dashboard.
+    example: {en: ramka-settings, de: ramka-settings-de}
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
@@ -181,6 +188,8 @@ artifacts:
     - templates/package.yaml.j2          # -> package.yaml, the home's packages/
     - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
     - templates/ramka-settings.lang.yaml.j2   # -> dashboards/ramka-settings.<lang>.yaml, the admins' live settings (0.4.0)
+    - templates/ramka-preview.lang.yaml.j2    # -> dashboards/ramka-preview.<lang>.yaml, with preview_dashboard only;
+                                              #    extends dashboard.lang.yaml.j2 and calls its screen blocks
   ha_packages: []
   # Where the cards go in the home's config: www/domosenso/<id>/<version>/, served as
   # /local/domosenso/ramka/<version>/. The cards (cards/*.js), what they import (cards/lib/) and
@@ -205,6 +214,7 @@ artifacts:
     - cards/photo-frame-card.js
     - cards/plants-card.js
     - cards/rooms-card.js
+    - cards/screen-frame-card.js  # custom:screen-frame-card, one screen at the tablet's size (preview dashboard)
     - cards/status-card.js
     - cards/tap-button-card.js
   services: []
@@ -258,6 +268,8 @@ provides:                       # <prefix> from inputs
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
+  dashboards:
+    - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard: one view per screen the render has, paths climate, air, plants, photos, status, calendar, music, each a custom:screen-frame-card with the Ramka dashboard's sections of that screen and a link to the settings page of the same path"}
   automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.

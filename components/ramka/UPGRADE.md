@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: preview dashboard
+
+**Preview dashboard** (optional): with `preview_dashboard: true` the render also writes
+`dashboards/ramka-preview.<lang>.yaml`, one view per screen the home has (climate, air, plants,
+photos, status, calendar, music), each screen with the Ramka dashboard's own cards in a frame of
+`screen`'s size and a link to that screen's settings page (README, "Preview dashboard"). The
+Ramka dashboard renders as before, byte for byte: its screens are now blocks the preview calls.
+
+- **New card resource**: `cards/screen-frame-card.js` (`custom:screen-frame-card`); the deploy
+  creates its Lovelace resource. `photo-frame-card` takes `contained: true` (the preview's).
+- **New inputs**: `preview_dashboard` (default false) and `settings_paths` (the settings
+  dashboard's URL path per language, default `ramka-settings`).
+- **Renderer**: a template whose output is only whitespace writes no file; that is how the preview
+  stays out of a home without the input.
+
+### What a home does
+
+- Nothing, without the input. To use it: set `preview_dashboard: true` (and `settings_paths` when
+  the settings dashboard is not at `/ramka-settings`), render, add the `lovelace:` entry with
+  `require_admin: true` (README) and deploy (a restart for the entry, and a new resource).
+  Setting the input back to false leaves the rendered files in place: remove them and the entry.
+
 ## Unreleased: music looks
 
 **Response profiles** (with `music_visual`): a profile select (`custom`, `behind_speakers`, `lively`,

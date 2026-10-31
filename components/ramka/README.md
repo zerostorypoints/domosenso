@@ -284,6 +284,42 @@ lovelace:
   `tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset` fails on a helper that is
   neither a named state helper nor on a page, and on one on a page that the reset does not set.
 
+## Preview dashboard
+
+With `preview_dashboard: true` the render also writes the "Ramka preview" dashboard
+(`dashboards/ramka-preview.<lang>.yaml`, one per language), to look at every screen one by one and
+change its settings without waiting for the rotation; the live Ramka (or "Open the Ramka view" on
+the settings' General page) stays the live view. Without the input the template renders empty and
+no file is written. It is for admins, like the settings dashboard:
+
+```yaml
+lovelace:
+  dashboards:
+    ramka-preview:
+      mode: yaml
+      filename: dashboards/ramka-preview.en.yaml   # or .de / .pl
+      title: Ramka preview
+      icon: mdi:monitor-eye
+      show_in_sidebar: true
+      require_admin: true
+```
+
+- **Views**: the ambient pages the home renders, in the rotation's order (climate, air, plants,
+  photos, status), then the calendar and the now-playing screen (with the music visual when
+  `music_visual` is set). Each has the title, icon and path of its settings page.
+- **Same cards.** `templates/ramka-preview.lang.yaml.j2` extends the Ramka dashboard's template and
+  calls its screen blocks (`music`, `climate`, `air`, `plants`, `photos`, `status`, `calendar`), so
+  a screen cannot look different here. With `preview` set the blocks leave out their visibility,
+  count the card heights from `screen`'s height instead of the viewport, and the photo layer
+  (`contained: true`) stays in the frame. No kiosk mode, corner taps, presence or rotation, and no
+  controls screen: the cards read the live helpers, whatever the tablet shows.
+- **The frame**: `custom:screen-frame-card` lays the sections out as the sections view does on the
+  tablet (36 columns, 56 px rows, 8 px gaps and padding) in a box of `screen` (width x height CSS
+  px), scaled down as a whole in a narrower browser. Under it a link to the screen's settings page,
+  `/<settings path>/<view>`; `settings_paths` names the settings dashboard per language when it is
+  not at `ramka-settings`. A card's own `visibility` is not applied (the screens' cards have none),
+  and the photo caption still sizes itself from the browser's width (`vw`).
+
 ## About page
 
 The settings dashboard's last page (SPEC-023) says what the home runs, read-only:
