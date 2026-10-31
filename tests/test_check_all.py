@@ -15,6 +15,8 @@ def checks(tmp_path):
     tools.mkdir()
     shutil.copyfile(ROOT / 'tools/check-all.sh', tools / 'check-all.sh')
     (tools / 'catalog_check.py').touch()
+    (tools / 'dev_home').mkdir()
+    (tools / 'dev_home/runtime.py').write_text("IMAGE = 'homeassistant/home-assistant:1.0'\n")
     component = tmp_path / 'components/radio'
     (component / 'templates').mkdir(parents=True)
     (component / 'esphome').mkdir()
@@ -27,14 +29,18 @@ def checks(tmp_path):
         script.write_text('#!/bin/sh\necho "$*" >> "$CHECK_TRACE"\n'
                           'case "$*" in *"$CHECK_FAIL"*) [ -z "$CHECK_FAIL" ] || exit 1;; esac\nexit 0\n')
         script.chmod(0o755)
+    docker = commands / 'docker'  # an image is present only when CHECK_IMAGE is set
+    docker.write_text('#!/bin/sh\necho "docker $*" >> "$CHECK_TRACE"\n'
+                      'case "$1 $2" in "image inspect") [ -n "$CHECK_IMAGE" ];; *) exit 0;; esac\n')
+    docker.chmod(0o755)
     for name in ('ha-check.sh', 'esphome-check.sh'):
         script = tools / name
         script.write_text(f'#!/bin/sh\necho "{name} $*" >> "$CHECK_TRACE"\n')
         script.chmod(0o755)
-    env = {**os.environ, 'PATH': f'{commands}:{os.environ["PATH"]}', 'CHECK_TRACE': str(trace), 'CHECK_FAIL': ''}
-    def run(*args, fail=''):
+    env = {**os.environ, 'PATH': f'{commands}:{os.environ["PATH"]}', 'CHECK_TRACE': str(trace), 'CHECK_FAIL': '', 'CHECK_IMAGE': ''}
+    def run(*args, fail='', **extra):
         result = subprocess.run(['bash', 'tools/check-all.sh', *args], cwd=tmp_path,
-                                env={**env, 'CHECK_FAIL': fail}, capture_output=True, text=True)
+                                env={**env, 'CHECK_FAIL': fail, **extra}, capture_output=True, text=True)
         calls = trace.read_text() if trace.exists() else ''
         return result, calls
     return run
@@ -78,3 +84,45 @@ def test_home_staging_failure_still_blocks_full_pass(checks):
     assert result.returncode == 1
     assert 'failed: home staging runtime' in result.stdout
     assert 'all checks passed' not in result.stdout
+
+
+def test_parallel_checks_report_in_order_as_whole_blocks(checks):
+    result, calls = checks()
+    assert result.returncode == 0
+    assert 'pytest -q -n auto' in calls
+    labels = ['home staging runtime', 'ha-check radio', 'esphome-check radio',
+              'ha-check ramka (pages left out)', 'ha-check ramka (plants discover)']
+    blocks = [result.stdout.index(f'==> {label}\n') for label in labels]
+    assert blocks == sorted(blocks)
+    for label in labels:
+        assert f'started {label}\n' in result.stdout and f'ok   {label}\n' in result.stdout
+
+
+def test_a_failed_parallel_check_blocks_the_pass(checks, tmp_path):
+    (tmp_path / 'tools/esphome-check.sh').write_text('#!/bin/sh\necho "no network" ; exit 1\n')
+    result, _ = checks()
+    assert result.returncode == 1
+    block = result.stdout.split('==> esphome-check radio\n', 1)[1]
+    assert block.startswith('no network\nFAIL esphome-check radio\n')
+    assert 'failed: esphome-check radio' in result.stdout
+
+
+def test_check_jobs_limits_how_many_run_at_once(checks, tmp_path):
+    # Each fake check records how many were running when it started.
+    (tmp_path / 'running').mkdir()
+    for name in ('ha-check.sh', 'esphome-check.sh'):
+        (tmp_path / 'tools' / name).write_text(
+            '#!/bin/sh\nmkdir running/$$; ls running | wc -l >> "$CHECK_TRACE.peak"; sleep 0.3; rmdir running/$$\n')
+    result, _ = checks(CHECK_JOBS='2')
+    assert result.returncode == 0
+    peaks = [int(n) for n in (tmp_path / 'calls.peak').read_text().split()]
+    assert len(peaks) == 4 and max(peaks) <= 2
+
+
+def test_the_image_is_pulled_before_home_staging_starts(checks):
+    result, calls = checks()
+    assert result.returncode == 0
+    pull = calls.index('docker pull -q homeassistant/home-assistant:1.0')
+    assert pull < calls.index('home-staging-check.py')
+    _, calls = checks(CHECK_IMAGE='present')
+    assert calls.count('docker pull') == 1  # the first run's only

@@ -46,6 +46,16 @@ def test_plain_template_renders_once(comp, tmp_path):
     assert all(p.is_file() for p in written)
 
 
+def test_compiled_templates_are_reused_until_the_source_changes(comp, tmp_path):
+    dr.render_component(comp, INPUTS, tmp_path / "first")
+    dr.render_component(comp, {**INPUTS, "name": "Kitchen"}, tmp_path / "second")
+    assert load(tmp_path / "second" / "plain.yaml") == {"name": "Kitchen"}  # inputs are not compiled in
+    template = comp / "templates" / "plain.yaml.j2"
+    template.write_text(template.read_text(encoding="utf-8") + "edited: true\n", encoding="utf-8")
+    dr.render_component(comp, INPUTS, tmp_path / "third")
+    assert load(tmp_path / "third" / "plain.yaml") == {"name": "Hall", "edited": True}
+
+
 def test_missing_input_names_it(comp, tmp_path):
     with pytest.raises(dr.RenderError, match="name"):
         dr.render_component(comp, {"prefix": "p", "lights": []}, tmp_path / "out")
