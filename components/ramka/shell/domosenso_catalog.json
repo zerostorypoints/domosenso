@@ -1,0 +1,195 @@
+{
+ "components": {
+  "audio-sensor": {
+   "page": true
+  },
+  "awnings": {
+   "page": true
+  },
+  "backup": {
+   "page": true
+  },
+  "bermuda-presence": {
+   "page": true
+  },
+  "calendar": {
+   "page": true
+  },
+  "climate-air": {
+   "page": true
+  },
+  "lights": {
+   "page": true
+  },
+  "media": {
+   "page": true
+  },
+  "plants": {
+   "page": true
+  },
+  "ramka": {
+   "page": true
+  },
+  "remote-access": {
+   "page": false
+  },
+  "weather": {
+   "page": true
+  }
+ },
+ "devices": [
+  {
+   "id": "cc1101",
+   "match": [
+    {
+     "integration": [
+      "mqtt",
+      "espsomfy_rts"
+     ],
+     "manufacturer": "rstrouse*"
+    }
+   ],
+   "name": "CC1101 radio module",
+   "page": true
+  },
+  {
+   "id": "hegel-h400",
+   "match": [
+    {
+     "integration": "hegel_streaming",
+     "model": "*H400*"
+    }
+   ],
+   "name": "Hegel H400",
+   "page": true
+  },
+  {
+   "id": "hlk-ld2410c",
+   "match": [
+    {
+     "entity_names": [
+      "Still distance",
+      "Detection distance"
+     ],
+     "integration": "esphome"
+    }
+   ],
+   "name": "HLK-LD2410C radar",
+   "page": true
+  },
+  {
+   "id": "hue-bridge",
+   "match": [
+    {
+     "integration": "hue",
+     "model_id": "BSB00*"
+    },
+    {
+     "integration": "hue",
+     "model": "Hue Bridge*"
+    }
+   ],
+   "name": "Philips Hue Bridge",
+   "page": true
+  },
+  {
+   "id": "m5stack-atom-echos3r",
+   "match": [
+    {
+     "integration": "esphome",
+     "manufacturer": "domosenso",
+     "model": "audio-sensor",
+     "note": "inference"
+    }
+   ],
+   "name": "M5Stack Atom EchoS3R",
+   "page": true
+  },
+  {
+   "id": "m5stack-atom-lite",
+   "match": [
+    {
+     "integration": "esphome",
+     "model": "m5stack-atom*"
+    },
+    {
+     "integration": "esphome",
+     "manufacturer": "domosenso",
+     "model": "bermuda-presence",
+     "note": "inference"
+    },
+    {
+     "integration": [
+      "mqtt",
+      "espsomfy_rts"
+     ],
+     "manufacturer": "rstrouse*",
+     "model": "*M5Stack Atom Lite*"
+    }
+   ],
+   "name": "M5Stack Atom Lite",
+   "page": true
+  },
+  {
+   "id": "mi-flora",
+   "match": [
+    {
+     "integration": "xiaomi_ble",
+     "model": "HHCCJCY01*"
+    }
+   ],
+   "name": "Xiaomi Mi Flora plant sensor",
+   "page": true
+  },
+  {
+   "id": "ruuvi-air",
+   "match": [
+    {
+     "integration": "ruuvitag_ble",
+     "model": "*Air*"
+    }
+   ],
+   "name": "Ruuvi Air",
+   "page": true
+  },
+  {
+   "id": "shelly-pm-mini-gen3",
+   "match": [
+    {
+     "integration": "shelly",
+     "model": "*PM Mini*"
+    }
+   ],
+   "name": "Shelly PM Mini Gen3 power meter",
+   "page": true
+  },
+  {
+   "id": "tapo-t315",
+   "match": [
+    {
+     "integration": [
+      "tplink",
+      "tapo"
+     ],
+     "model": "T315*"
+    }
+   ],
+   "name": "Tapo T315 temperature and humidity sensor",
+   "page": true
+  },
+  {
+   "id": "tcl-9469x",
+   "match": [
+    {
+     "integration": "mobile_app",
+     "manufacturer": "TCL",
+     "model": "9469X"
+    }
+   ],
+   "name": "TCL tablet 9469X",
+   "page": true
+  }
+ ],
+ "repository": "https://github.com/zerostorypoints/domosenso",
+ "site": "https://domosenso.org"
+}

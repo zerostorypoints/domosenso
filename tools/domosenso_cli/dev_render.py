@@ -6,7 +6,7 @@ resource URLs. `render --catalog-dev` and `add --catalog-dev` write an entry; a 
 `update` of the component from a tag removes it. The file lives under the git-ignored `.domosenso/`:
 it describes this working copy, not the home's history.
 
-    {"<id>": {"version": "1.1.0", "commit": "<short head>-dirty",
+    {"<id>": {"version": "1.1.0", "commit": "<short head>-dirty", "released": "<head's date>",
               "files": {"<dest from the home root>": {"sha256": "...", "layer": "managed"}},
               "resources": ["/local/domosenso/<id>/1.1.0/cards/<card>.js"]}}
 """
@@ -52,13 +52,15 @@ def _save(root: Path, data: dict[str, dict]) -> None:
         raise
 
 
-def record(root: Path, cid: str, version: str, commit: str, files: dict[str, dict], resources: list[str]) -> None:
+def record(root: Path, cid: str, version: str, commit: str, files: dict[str, dict], resources: list[str],
+           released: str = "") -> None:
     """Replace `cid`'s entry. Instance files an earlier entry holds (from `add --catalog-dev`) are kept:
     a later dev render does not render them again, and the deploy still needs them."""
     data = load(root)
     kept = {p: f for p, f in (data.get(cid) or {}).get("files", {}).items()
             if f.get("layer") == "instance" and p not in files}
-    data[cid] = {"version": version, "commit": commit, "files": {**kept, **files}, "resources": list(resources)}
+    data[cid] = {"version": version, "commit": commit, "released": released, "files": {**kept, **files},
+                 "resources": list(resources)}
     _save(root, data)
 
 

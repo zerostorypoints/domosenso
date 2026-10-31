@@ -1423,7 +1423,7 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
 
 # ---- 0.4.0: the "Ramka settings" dashboard (SPEC-021) --------------------------------------------
 
-SETTINGS_PAGES = ["general", *PAGE_VIEWS]
+SETTINGS_PAGES = ["general", *PAGE_VIEWS, "about"]
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
 SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
@@ -1616,6 +1616,7 @@ def test_settings_reset_buttons(demo):
     for lang in LANGS:
         t = translations(lang)
         views = settings_views(demo[f"ramka-settings.{lang}.yaml"])
+        assert not list(reset_actions(views.pop("about")))  # read-only: nothing to reset (SPEC-023)
         for path, view in views.items():
             [action] = list(reset_actions(view))
             if path == "general":
@@ -1741,7 +1742,8 @@ def test_settings_read_only_inputs(demo):
     assert t["ui.settings.inputs.status_columns"] in status
     assert inputs["calendar"] in markdown(views["calendar"])
     for path, view in views.items():
-        assert t["ui.settings.render_time"] in json.dumps(view, ensure_ascii=False), path
+        if path != "about":  # the About page has no input (SPEC-023)
+            assert t["ui.settings.render_time"] in json.dumps(view, ensure_ascii=False), path
 
 
 def test_settings_all_off_warning(demo):
@@ -1919,6 +1921,7 @@ def test_render_without_audio_sensor_unchanged(tmp_path):
                             step["event_data"].pop("rooms")
         elif name.startswith("ramka-settings."):
             lang = name.split(".")[1]
+            new["views"] = [v for v in new["views"] if v["path"] != "about"]  # another change (SPEC-023)
             for view in new["views"]:
                 for section in view["sections"]:
                     section["cards"] = [c for c in section["cards"] if SPECTRUM_RATE not in json.dumps(c)]
@@ -2057,7 +2060,8 @@ def test_album_card_on_photos_advanced(demo):
 def test_no_photo_helpers_without_photo_dir(tmp_path):
     package = render(tmp_path, without_pages("photos"))["package.yaml"]
     assert not {e for e in helpers(package) if ".ramka_photo" in e}
-    assert "shell_command" not in package and "input_text" not in package
+    # The About page's discovery is the only shell command a home without photos gets (SPEC-023).
+    assert set(package.get("shell_command", {})) == {"ramka_discover"} and "input_text" not in package
     assert ALBUMS not in defined_entities(package) and "ramka_photo_albums_set" not in package["script"]
     assert not [a for a in package["automation"] if a["id"].startswith("ramka_photo")]
 
@@ -2239,6 +2243,55 @@ def test_no_script_field_has_an_empty_selector(demo):
                 assert options, f"{name}.{field}: selector {kind} is empty"
 
 
+# ---- The About page (SPEC-023) ---------------------------------------------------------
+
+
+def _about_markdown(dashboard) -> str:
+    cards = [c for _, c in view_cards(settings_views(dashboard)["about"]) if c.get("type") == "markdown"]
+    [table] = [c["content"] for c in cards if "sensor.domosenso_components" in c["content"]]
+    return table  # the Components table; the discovery row is above it, Related and Devices follow
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_about_page_lists_the_components(demo, lang):
+    """The table comes from sensor.domosenso_components, rendered by Home Assistant's Jinja."""
+    import jinja2
+    t = settings_texts(lang)
+    content = _about_markdown(demo[f"ramka-settings.{lang}.yaml"])
+    items = [{"id": "audio-sensor", "version": "0.2.0", "tag": "audio-sensor/0.2.0", "commit": "0f1f0a7d060e",
+              "released": "2026-10-30", "dev": False},
+             {"id": "ramka", "version": "0.8.0", "tag": "", "commit": "abc-dirty", "released": "2026-10-31", "dev": True},
+             {"id": "bermuda-presence", "version": "0.2.1", "tag": "bermuda-presence/0.2.1", "commit": "", "released": "",
+              "dev": False, "package": "ble-proxy.yaml"}]
+    env = jinja2.Environment()
+    # Home Assistant's own template functions, as far as the table uses them; no discovery has run.
+    ha = {"states": lambda entity: "unknown", "as_timestamp": lambda value, default=None: default}
+    shown = env.from_string(content).render(state_attr=lambda entity, attr: items if (entity, attr) == (
+        "sensor.domosenso_components", "components") else None, **ha)
+    lines = shown.splitlines()
+    header = f"| {t['ui.settings.about_component']} | {t['ui.settings.about_version']} | {t['ui.settings.about_released']} |"
+    at = lines.index(header)
+    assert lines[at + 1:at + 5] == [
+        "|---|---|---|",
+        "| audio-sensor | 0.2.0 | 2026-10-30 |",
+        f"| ramka | 0.8.0 ({t['ui.settings.about_dev']}) | 2026-10-31 |",
+        f"| bermuda-presence | 0.2.1 ({t['ui.settings.about_package']} `ble-proxy.yaml`) | — |",
+    ]
+    # Without the sensor: the Ramka alone, as rendered, and how to get the list.
+    missing = env.from_string(content).render(state_attr=lambda entity, attr: None, **ha)
+    version = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["version"]
+    assert f"| ramka | {version} |" in missing.splitlines()
+    assert t["ui.settings.about_missing"].split(":")[0] in missing
+
+
+def test_about_page_is_last_and_read_only(demo):
+    view = settings_views(demo["ramka-settings.en.yaml"])["about"]
+    assert [v["path"] for v in demo["ramka-settings.en.yaml"]["views"]][-1] == "about"
+    # No helper, nothing to reset: the only row is the Refresh button, which runs the discovery.
+    assert [r for _, card in view_cards(view) for r in rows(card) if r.get("entity")] == []
+    assert not list(reset_actions(view))
+
+
 # ---- Plants (SPEC-022): discover, plants per page and seconds per page --------------------------
 
 DISCOVER_INPUTS = REPO / "tests" / "fixtures" / "ramka-plants-discover.yaml"
@@ -2333,3 +2386,36 @@ def test_plants_list_labels_per_language(tmp_path):
         assert plants_card(out[f"dashboard.{lang}.yaml"])["plants"][0]["room"] == room, lang
     [page] = [v for v in out["ramka-settings.pl.yaml"]["views"] if v["path"] == "plants"]
     assert "Pokój dzienny" in yaml.safe_dump(page, allow_unicode=True)
+
+
+def test_about_discovery_in_the_package(demo):
+    """The About page's discovery (SPEC-023): the command in every home, the refresh script publishing
+    the result and updating the HACS update entities, the sensor out of the recorder, start and nightly."""
+    package = demo["package.yaml"]
+    assert package["shell_command"]["ramka_discover"] == "python3 /config/shell/domosenso_discover.py /config"
+    steps = package["script"]["ramka_about_refresh"]["sequence"]
+    assert steps[0] == {"action": "shell_command.ramka_discover", "response_variable": "run"}
+    [event] = [s for s in steps if "event" in s]
+    assert event["event"] == "ramka_discovery"
+    assert set(event["event_data"]) == {"refreshed", "ha_version", "found", "uses", "integrations", "declared_links", "links"}
+    assert any("homeassistant.update_entity" in json.dumps(s) for s in steps)
+    assert "sensor.ramka_discovery" in package["recorder"]["exclude"]["entities"]
+    [block] = [b for b in package["template"] if any(t.get("event_type") == "ramka_discovery" for t in b.get("triggers", []))]
+    [sensor] = block["sensor"]
+    assert sensor["default_entity_id"] == "sensor.ramka_discovery" and "device_class" not in sensor
+    assert set(sensor["attributes"]) == {"component", "ha_version", "found", "uses", "integrations", "declared_links", "links"}
+    [auto] = [a for a in package["automation"] if a["id"] == "ramka_about_discover"]
+    assert {t["trigger"] for t in auto["triggers"]} == {"homeassistant", "time"}
+    assert auto["actions"][-1] == {"action": "script.ramka_about_refresh"}
+
+
+def test_about_header_and_refresh_badge(demo):
+    for lang in LANGS:
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["about"]
+        assert view["type"] == "sections" and view["header"]["card"]["text_only"] is True
+        header = view["header"]["card"]["content"]
+        assert "/cards/assets/domosenso-mark.svg" in header and "https://domosenso.org/get-started/" in header
+        assert "Apache-2.0" in header and "ZeroStoryPoints GmbH" in header
+        [badge] = view["badges"]
+        assert badge["tap_action"]["perform_action"] == "script.ramka_about_refresh"
+        assert len(view["sections"]) == 2  # Components and Related; Devices

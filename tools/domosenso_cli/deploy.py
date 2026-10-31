@@ -34,7 +34,7 @@ from pathlib import Path
 import yaml
 
 from check_config_parse import NO_JSON, summarize
-from domosenso_cli import dev_render, resources
+from domosenso_cli import dev_render, inventory, resources
 from domosenso_cli.build import file_sha, sha256
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
@@ -172,6 +172,17 @@ def _carried(home: HomeConfig, lock: Lock, dev: dict[str, dict]) -> tuple[dict[s
             dirty.append(rel)
             record[rel] = {"sha256": rendered["sha256"], "layer": "managed", "component": cid}
             sources[rel] = source
+    # The command's own package (SPEC-023): derived from the lock and the dev renders, so a copy that
+    # says otherwise is out of date, never a hand edit to keep.
+    listing = inventory.path(home)
+    wanted = inventory.content(lock, dev, inventory.packages(home.esphome_dir))
+    if wanted is not None or listing.is_file():
+        if wanted is None or not listing.is_file() or file_sha(listing) != sha256(wanted):
+            raise DomosensoError(f"inventory out of date: {inventory.PACKAGE}: run domosenso render")
+        record[inventory.PACKAGE] = {"sha256": sha256(wanted), "layer": "managed", "component": None}
+        sources[inventory.PACKAGE] = listing
+        if dev:
+            dirty.append(inventory.PACKAGE)
     configuration = home.config_dir / CONFIGURATION
     if CONFIGURATION not in record and configuration.is_file() and not _untouchable(home, CONFIGURATION):
         record[CONFIGURATION] = {"sha256": file_sha(configuration), "layer": "instance", "component": None}

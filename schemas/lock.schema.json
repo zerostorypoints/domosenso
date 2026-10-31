@@ -27,7 +27,8 @@
         "tag": {"type": "string", "minLength": 1},
         "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
         "files": {"type": "object", "propertyNames": {"$ref": "#/$defs/relpath"}, "additionalProperties": {"$ref": "#/$defs/file"}},
-        "resources": {"type": "array", "items": {"type": "string"}}
+        "resources": {"type": "array", "items": {"type": "string"}},
+        "released": {"description": "The date of the commit the tag names (SPEC-023).", "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
       }
     },
     "file": {
