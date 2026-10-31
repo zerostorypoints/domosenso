@@ -188,6 +188,8 @@ def plan_outputs(
                     plain = name[: -len(".j2")]
                     produced = [(plain, None, plain)]
                 for key, lang, rendered in produced:
+                    if not (out / rendered).is_file():
+                        continue  # rendered empty: an optional output its inputs leave out
                     content = (out / rendered).read_bytes()
                     if name.startswith(INSTANCE_DIR):  # the home's own once written: no stamp, it is not "do not edit"
                         text = stamps.body(content.decode("utf-8")).encode("utf-8")

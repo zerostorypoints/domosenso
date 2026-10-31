@@ -360,3 +360,13 @@ def test_component_global_in_every_template(comp, tmp_path):
     out = tmp_path / "out"
     dr.render_component(comp, INPUTS, out)
     assert load(out / "about.yaml") == {"about": "render-comp 1.2.3"}
+
+
+def test_a_template_that_renders_empty_writes_no_file(comp, tmp_path):
+    (comp / "templates" / "optional.lang.yaml.j2").write_text(
+        "[% if inputs.name == 'Hall' %]title: [[ inputs.name ]]\n[% endif %]\n", encoding="utf-8")
+    out = tmp_path / "out"
+    written = dr.render_component(comp, INPUTS, out)
+    assert out / "optional.en.yaml" in written and load(out / "optional.pl.yaml") == {"title": "Hall"}
+    written = dr.render_component(comp, {**INPUTS, "name": "Kitchen"}, out)
+    assert not list(out.glob("optional.*")) and all(p.is_file() for p in written)

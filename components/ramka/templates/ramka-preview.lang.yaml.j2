@@ -1,0 +1,65 @@
+[#
+  The "Ramka preview" dashboard: one view per screen the home has, each screen in a frame of the
+  tablet's size, to look at them one by one and open that screen's settings page without waiting for
+  the rotation. Only with the input `preview_dashboard`: otherwise it renders empty, and an empty
+  render writes no file. For admins: the home's lovelace: entry carries require_admin (README,
+  "Preview dashboard").
+
+  It extends the Ramka dashboard and calls its screen blocks, so the cards and their configuration
+  are the Ramka's own; with `preview` set those blocks leave out their visibility, count the heights
+  from the frame (inputs.screen) instead of the browser's viewport and keep the photo layer inside
+  the frame. No kiosk mode, no presence or rotation, no corner taps, no controls.
+#]
+[%- extends 'dashboard.lang.yaml.j2' -%]
+[%- set preview = true -%]
+[%- block dashboard -%]
+[%- if inputs.preview_dashboard | default(false) -%]
+[%- set settings_paths = inputs.settings_paths | default({}) -%]
+[%- set plain = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' -%]
+[%- if settings_paths is not mapping -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endif -%]
+[%- for path in settings_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
+[%- set settings_url = '/' ~ settings_paths.get(lang, 'ramka-settings') ~ '/' -%]
+[#- The screens in the rotation's order, then the calendar and the now-playing screen; the settings
+    page of each has the same path and the same title and icon (templates/ramka-settings.lang.yaml.j2). -#]
+[%- set has = {'climate': inputs.climate is defined, 'air': air is not none, 'plants': inputs.plants is defined,
+    'photos': inputs.photo_dir is defined, 'status': inputs.status_page | default(true), 'calendar': true, 'music': true} -%]
+[%- set icons = {'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower', 'photos': 'mdi:image-multiple',
+    'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'music': 'mdi:music'} -%]
+# Rendered from the Domosenso catalog, component ramka (templates/ramka-preview.lang.yaml.j2),
+# language [[ lang ]]. Edit the inputs and render again rather than editing this file.
+#
+# Every Ramka screen in a frame of the tablet's size ([[ screen.width ]] x [[ screen.height ]] CSS px), with
+# the same cards as the Ramka dashboard and the live helpers, whatever the tablet shows now.
+title: [[ t('ui.preview.title') | yaml ]]
+views:
+[%- for view in ['climate', 'air', 'plants', 'photos', 'status', 'calendar', 'music'] if has[view] %]
+[%- set settings_page = settings_url ~ view %]
+
+  # ---- [[ view | capitalize ]] ----
+  - title: [[ t('ui.settings.pages.' ~ view) | yaml ]]
+    path: [[ view ]]
+    icon: [[ icons[view] ]]
+    type: panel
+    background: "#000000"
+    cards:
+    # The sections of the screen, laid out as the Ramka's sections view lays them out, in a box of
+    # the screen's size, scaled down to fit a narrower browser; the link to the settings page under it.
+    - type: custom:screen-frame-card
+      width: [[ screen.width ]]
+      height: [[ screen.height ]]
+      background: "#000000"
+      link:
+        label: [[ t('ui.preview.settings_link') | yaml ]]
+        path: [[ settings_page | yaml ]]
+      sections:
+[%- if view == 'climate' %][[ self.climate() ]]
+[%- elif view == 'air' %][[ self.air() ]]
+[%- elif view == 'plants' %][[ self.plants() ]]
+[%- elif view == 'photos' %][[ self.photos() ]]
+[%- elif view == 'status' %][[ self.status() ]]
+[%- elif view == 'calendar' %][[ self.calendar() ]]
+[%- else %][[ self.music() ]]
+[%- endif %]
+[%- endfor %]
+[%- endif %]
+[%- endblock %]

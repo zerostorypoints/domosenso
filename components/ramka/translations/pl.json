@@ -201,6 +201,10 @@
         "jammed": "Zacięty"
       }
     },
+    "preview": {
+      "title": "Podgląd Ramki",
+      "settings_link": "Ustawienia tego ekranu"
+    },
     "settings": {
       "title": "Ustawienia Ramki",
       "pages": {
