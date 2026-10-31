@@ -1,8 +1,9 @@
 [#
   The "Ramka preview" dashboard: one view per screen the component has, whether or not this home
   renders it, each screen in a frame of the tablet's size, to look at them one by one and open that
-  screen's settings page without waiting for the rotation. Only with the input `preview_dashboard`:
-  otherwise it renders empty, and an empty render writes no file. For admins: the home's lovelace:
+  screen's settings page without waiting for the rotation. Rendered unless the input
+  `preview_dashboard` is false (default true); then it renders empty, and an empty render writes no
+  file. For admins: the home's lovelace:
   entry carries require_admin (README, "Preview dashboard").
 
   It extends the Ramka dashboard and calls its screen blocks, so the cards and their configuration
@@ -15,7 +16,7 @@
 [%- extends 'dashboard.lang.yaml.j2' -%]
 [%- set preview = true -%]
 [%- block dashboard -%]
-[%- if inputs.preview_dashboard | default(false) -%]
+[%- if inputs.preview_dashboard | default(true) -%]
 [%- set settings_paths = inputs.settings_paths | default({}) -%]
 [%- set plain = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' -%]
 [%- if settings_paths is not mapping -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endif -%]

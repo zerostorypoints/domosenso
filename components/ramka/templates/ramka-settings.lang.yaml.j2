@@ -52,7 +52,7 @@
     only: its URL path in this page's language from preview_paths, plain URL paths as above. Each
     view's page links to the preview's tab of the same path, General to the preview's first tab. -#]
 [%- set preview_url = none -%]
-[%- if inputs.preview_dashboard | default(false) -%]
+[%- if inputs.preview_dashboard | default(true) -%]
 [%- set preview_paths = inputs.preview_paths | default({}) -%]
 [%- if preview_paths is not mapping -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endif -%]
 [%- for path in preview_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
@@ -192,13 +192,13 @@
 [%- set eq_preset_ids = ['flat', 'behind_speakers', 'half_match', 'wled_big_speakers', 'wled_big_speakers_ics', 'wled_pink', 'bass_light', 'voices', 'sparkle', 'fitted'] -%]
 [%- set eq_keys = ['sub', 'bass', 'low_mid', 'mid', 'presence', 'air'] -%]
 [#- The EQ presets' gains, the package's table (eq_presets in templates/package.yaml.j2) with the
-    home's music_eq_presets over its three own ones (the package validates them), so a preset's
+    home's music_eq_presets in place of its three own ones (the package validates them), so a preset's
     tooltip names the curve this home loads; tests/test_ramka_render.py holds the two to the same
     numbers. -#]
 [%- set eq_presets = {
     'flat': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
-    'behind_speakers': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
-    'half_match': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'behind_speakers': {'sub': -5, 'bass': -10, 'low_mid': -3, 'mid': 0, 'presence': 3, 'air': 2},
+    'half_match': {'sub': -2, 'bass': -5, 'low_mid': -1, 'mid': 0, 'presence': 2, 'air': 1},
     'wled_big_speakers': {'sub': -4, 'bass': -2, 'low_mid': -5, 'mid': 0, 'presence': 1, 'air': 2},
     'wled_big_speakers_ics': {'sub': -3, 'bass': -4, 'low_mid': -4, 'mid': 0, 'presence': 2, 'air': -1},
     'wled_pink': {'sub': -2, 'bass': 1, 'low_mid': 2, 'mid': 0, 'presence': 2, 'air': 4},
@@ -208,12 +208,13 @@
     'fitted': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0}} -%]
 [%- set meq = inputs.music_eq_presets | default({}) -%]
 [%- if music_visual is not none and meq is mapping -%]
-[%- for id, own in meq.items() if id in eq_presets and own is mapping -%][%- set _ = eq_presets[id].update(own) -%][%- endfor -%]
+[%- for id, own in meq.items() if id in eq_presets and own is mapping -%][%- set gains = dict(eq_presets.flat) -%][%- set _ = gains.update(own) -%][%- set _ = eq_presets.update({id: gains}) -%][%- endfor -%]
 [%- endif -%]
 [#- A gain as the tooltip writes it: a true minus sign, a plus for a lift, no ".0". -#]
 [%- macro db(value) -%][%- set v = (value | int) if value == (value | int) else value -%][%- if v < 0 -%]−[[ v | abs ]][%- elif v > 0 -%]+[[ v ]][%- else -%]0[%- endif %] dB[%- endmacro -%]
 [#- The tooltips' texts: a profile's or a preset's purpose, best use and why / when, one line each;
-    a preset's also its curve, from the table above (a flat one says so, the home's own until set). -#]
+    a preset's also its curve, from the table above (a flat one says so; `fitted` that it waits for the
+    home's curve until music_eq_presets sets it). -#]
 [%- set profile_texts = {} -%]
 [%- for id in look_ids -%]
 [%- set _ = profile_texts.update({id: t('ui.settings.music_template_' ~ id ~ '_purpose') ~ '\n'
@@ -227,7 +228,7 @@
 [%- set bands = [] -%][%- for key in eq_keys -%][%- set _ = bands.append(t('ui.settings.music_eq_band_' ~ key) ~ ' ' ~ db(gains[key])) -%][%- endfor -%]
 [%- set curve = bands | join(', ') -%]
 [%- else -%]
-[%- set curve = t('ui.settings.music_eq_curve_flat' if preset == 'flat' else 'ui.settings.music_eq_curve_unset') -%]
+[%- set curve = t('ui.settings.music_eq_curve_unset' if preset == 'fitted' and not (meq is mapping and preset in meq) else 'ui.settings.music_eq_curve_flat') -%]
 [%- endif -%]
 [%- set _ = preset_texts.update({preset: t('ui.settings.music_eq_' ~ preset ~ '_purpose') ~ '\n'
     ~ t('ui.settings.music_look_best') ~ ': ' ~ t('ui.settings.music_eq_' ~ preset ~ '_best') ~ '\n'

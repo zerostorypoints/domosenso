@@ -88,6 +88,9 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
 
 ### Response profile (unreleased)
 
+The design and its reasons, with what was tried and dropped: SPEC-024
+(`.ai/specs/SPEC-024-2026-10-31-music-response-profiles.md`).
+
 A response profile sets how the visual reacts: rise, fall, hold, tilt and a six-range EQ. It does
 not change the colour range: the neutral and hot dB values stay the user's own helpers whichever
 profile is on, as do flavour and palette. `input_select.<prefix>_music_template` picks one. **Every
@@ -114,11 +117,16 @@ is unavailable.
 - **EQ presets.** `input_select.<prefix>_music_eq` loads a preset's six gains into the selected
   profile's EQ (`script.<prefix>_music_load_eq`, field `preset`; an id that is no preset writes
   nothing and logs a warning). The catalog carries `flat`, the WLED-derived curves, `bass_light`,
-  `voices` and `sparkle`; `behind_speakers`, `half_match` and `fitted` are flat until the home sets
-  them with the input `music_eq_presets`, for example `{fitted: {bass: -6, air: 2}}` (a key left out
-  is 0; an unknown preset or key, or a value outside −18…+12, fails the render). `fitted` comes from
-  a pink-noise calibration: a profile's EQ adjusted until the bands sit level at 50–75 % of the
-  window, the values copied into the input.
+  `voices` and `sparkle`; `behind_speakers` is one measurement, a sensor on an amplifier between the
+  speakers against the listening position (sub −5, bass −10, low mids −3, mids 0, presence +3,
+  air +2 dB), and `half_match` half of it (−2, −5, −1, 0, +2, +1): a starting point, not this
+  room's curve. `fitted` is flat until set. The input `music_eq_presets` replaces any of the three
+  with the home's own curve, for example `{fitted: {bass: -6, air: 2}}` (a curve replaces the
+  catalog's as a whole, a key left out is 0, so `{behind_speakers: {}}` makes it flat; an unknown
+  preset or key, or a value outside −18…+12, fails the render). `fitted` comes from a pink-noise
+  calibration: a profile's EQ adjusted until the bands sit level at 50–75 % of the window, the
+  values copied into the input. Why each preset and profile is what it is: SPEC-024; where to put
+  the sensor: audio-sensor's README, "Placement".
 
 ## Live settings
 
@@ -208,11 +216,11 @@ lovelace:
 ```
 
 - **Pages**, in this order: General, Climate, Air, Plants, Photos, Status, Calendar, Controls,
-  Music, About. Every page but About starts with a short header: the page's title (the tab's own
+  Music, About. Every page but About starts with a short header (SPEC-024): the page's title (the tab's own
   name, as its tooltip shows it), then what its view shows, what it is for
   and when it is on the screen (the ambient rotation for Climate to Status, the calendar button for
   Calendar, a hand near the tablet for Controls, the playing media player for Music); General's
-  explains the Ramka as a whole. With `preview_dashboard` the header ends with a link to the preview
+  explains the Ramka as a whole. With `preview_dashboard` (the default) the header ends with a link to the preview
   tab of the same path (General: the preview's first tab); `preview_paths` names the preview
   dashboard per language when it is not at `ramka-preview`. Every view's page (Climate to Music,
   Controls aside, which has none) has its view's switch at the top (with a note while it is off),
@@ -220,7 +228,7 @@ lovelace:
   setting. Each asks for a confirmation. Each page also lists its render-time inputs read-only with
   this render's values (General: the screen size; Controls: the radar, the player, the awnings and
   the lights).
-- **Controls** (unreleased): when the controls come up. In Basic "Controls on approach"
+- **Controls** (unreleased, SPEC-024): when the controls come up. In Basic "Controls on approach"
   (`input_boolean.<prefix>_near_enabled`), in Advanced the near distance and time and how long the
   controls stay up; these were General's. Its Reset sets these four.
 - **Basic and Advanced.** The Advanced cards (General: lux for full brightness; Controls: near
@@ -245,7 +253,7 @@ lovelace:
   album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
   With one folder per event the list is long: the card has a filter, and grouping folders (by year,
   `2025/…`) gives a shorter list.
-- **Colours.** Every colour a setting picks comes from one list, the Ramka's named colours
+- **Colours** (SPEC-024). Every colour a setting picks comes from one list, the Ramka's named colours
   (`cards/lib/colours.js`): green, teal, blue, light blue, purple, pink, magenta, amber, orange,
   red, grey, each a series colour of the Ramka's theme, so it follows the theme mode. A select
   stores the colour's id. Every colour choice shows the colour itself: the value and each choice
@@ -257,7 +265,7 @@ lovelace:
   room, scrolling when long, over the cards without moving them): a tap opens it and picks, a tap
   elsewhere or a scroll closes it; by keyboard an arrow, Enter or Space opens it, the arrows, Home
   and End move, Enter or Space picks, Escape closes only the list.
-- **Climate**: in Advanced, the number of widgets (`input_number.<prefix>_climate_slots`, 1 to 20,
+- **Climate** (widgets: SPEC-024): in Advanced, the number of widgets (`input_number.<prefix>_climate_slots`, 1 to 20,
   default 10), the switch **Threshold-based colours** (`input_boolean.<prefix>_climate_thresholds`,
   default off), next to it **Neutral colour** (`input_select.<prefix>_climate_color_neutral`, a named
   colour, default green) and one row per widget (`climate-rooms-card`). Every row is a widget of a type,
@@ -343,7 +351,7 @@ lovelace:
   card per profile, shown while that profile is selected: rise, fall, hold, tilt, the EQ preset
   select (with an (i) that tells what the selected preset does, its best use, why / when, and its
   curve, "Curve: sub −5 dB, bass −10 dB, …", built at render time from the preset table with the
-  home's `music_eq_presets`; a flat one says it is flat until set), "Apply the selected preset" (it loads the
+  home's `music_eq_presets`; a flat one says so, and `fitted` that it is flat until set), "Apply the selected preset" (it loads the
   select's preset again into this profile) and the six EQ ranges. The Colour range grid holds the
   four neutral and hot dB values, which no profile changes. The page's "Reset to default" restores
   everything on the Music page, every profile included.
@@ -366,11 +374,13 @@ lovelace:
 
 ## Preview dashboard
 
-With `preview_dashboard: true` the render also writes the "Ramka preview" dashboard
-(`dashboards/ramka-preview.<lang>.yaml`, one per language), to look at every screen one by one and
-change its settings without waiting for the rotation; the live Ramka (or "Open the Ramka view" on
-the settings' General page) stays the live view. Without the input the template renders empty and
-no file is written. It is for admins, like the settings dashboard:
+The render also writes the "Ramka preview" dashboard (`dashboards/ramka-preview.<lang>.yaml`, one
+per language; `preview_dashboard` defaults to true, unreleased), to look at every screen one by one
+and change its settings without waiting for the rotation; the live Ramka (or "Open the Ramka view"
+on the settings' General page) stays the live view. With `preview_dashboard: false` the template
+renders empty and no file is written. The `lovelace:` entry is the home's; until it is there,
+`domosenso status` prints `missing-dashboard-entry` for each language's file. It is for admins,
+like the settings dashboard (SPEC-024):
 
 ```yaml
 lovelace:

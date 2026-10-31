@@ -84,7 +84,9 @@ def as_list(value):
 
 
 def test_demo_renders_three_dashboards_and_package(demo):
-    assert set(demo) == {"package.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings") for lang in LANGS)}
+    # The preview is on by default (preview_dashboard: true).
+    assert set(demo) == {"package.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings", "ramka-preview")
+                                           for lang in LANGS)}
     package = demo["package.yaml"]
     for domain in ("input_select", "input_boolean", "input_number", "timer", "input_button", "script", "automation", "template"):
         assert package[domain], domain
@@ -374,9 +376,11 @@ def test_a_screen_the_tested_layout_fits_renders_as_without_one(tmp_path, screen
     inputs = demo_inputs()
     inputs["screen"] = screen
     given, default = texts(tmp_path / "a", inputs), texts(tmp_path / "b", demo_inputs())
-    # The settings dashboard lists the screen among the render-time inputs; nothing else changes.
+    # The settings dashboard lists the screen among the render-time inputs and the preview's frames
+    # take its size; nothing else changes.
     settings = {name for name in given if name.startswith("ramka-settings.")}
-    assert {k: v for k, v in given.items() if k not in settings} == {k: v for k, v in default.items() if k not in settings}
+    sized = settings | {name for name in given if name.startswith("ramka-preview.")}
+    assert {k: v for k, v in given.items() if k not in sized} == {k: v for k, v in default.items() if k not in sized}
     assert all(f"{screen['width']} × {screen['height']}" in given[name] for name in settings)
 
 
@@ -713,9 +717,9 @@ LOOK_DEFAULTS = {
     **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5,
 }
 # Each template's own values (group music_profiles): the looks table's rows (spec 4.1) in the
-# template's ten helpers; the EQ is the row's preset (catalog values, behind_speakers flat here).
+# template's ten helpers; the EQ is the row's preset (catalog values, behind_speakers the measured one).
 PROFILE_ROWS = {
-    "behind_speakers": (100, 2, 1.5, True, (0, 0, 0, 0, 0, 0)),
+    "behind_speakers": (100, 2, 1.5, True, (-5, -10, -3, 0, 3, 2)),
     "lively": (50, 0.3, 0.5, False, (-3, -4, -4, 0, 2, -1)),
     "calm": (80, 4.2, 2.0, True, (-4, -2, -5, 0, 1, 2)),
     "analyser": (0, 0.5, 1.0, False, (0, 0, 0, 0, 0, 0)),
@@ -1895,12 +1899,13 @@ def header_text(view) -> str:
     return card["content"]
 
 
-def test_settings_pages_start_with_a_header(demo, preview):
+def test_settings_pages_start_with_a_header(demo, preview, tmp_path):
     """Every page but About says what its view shows, what for and when it is on the screen (General:
-    the Ramka as a whole); with the preview dashboard also the link to the preview's tab."""
+    the Ramka as a whole); with the preview dashboard (the default) also the link to the preview's tab."""
+    off = render(tmp_path, {**demo_inputs(), "preview_dashboard": False})
     for lang in LANGS:
         t = translations(lang)
-        for rendered, linked in ((demo, False), (preview, True)):
+        for rendered, linked in ((off, False), (demo, True), (preview, True)):
             views = settings_views(rendered[f"ramka-settings.{lang}.yaml"])
             for path, view in views.items():
                 if path == "about":
@@ -2841,9 +2846,10 @@ def eq(*gains) -> dict:
 
 
 FLAT = eq(0, 0, 0, 0, 0, 0)
-# Spec 3.3; behind_speakers, half_match and fitted are a home's (music_eq_presets), flat in the catalog.
+# SPEC-024; behind_speakers and half_match are one measurement on an amplifier (the full and the half
+# correction), fitted is flat until set; a home's music_eq_presets replaces any of the three.
 CATALOG_EQ = {
-    "flat": FLAT, "behind_speakers": FLAT, "half_match": FLAT,
+    "flat": FLAT, "behind_speakers": eq(-5, -10, -3, 0, 3, 2), "half_match": eq(-2, -5, -1, 0, 2, 1),
     "wled_big_speakers": eq(-4, -2, -5, 0, 1, 2), "wled_big_speakers_ics": eq(-3, -4, -4, 0, 2, -1),
     "wled_pink": eq(-2, 1, 2, 0, 2, 4), "bass_light": eq(-8, -6, 0, 0, 0, 0), "voices": eq(-6, -8, -2, 3, 4, 0),
     "sparkle": eq(-3, -3, 0, 0, 3, 5), "fitted": FLAT,
@@ -3023,6 +3029,22 @@ def test_music_look_behind_speakers_takes_fitted_when_set(tmp_path):
         assert loaded == eq_written("calm", mlp), name
 
 
+def test_behind_speakers_starts_from_the_measured_curve_and_a_home_can_flatten_it(tmp_path):
+    """The catalog's behind_speakers and half_match are a measured starting point (SPEC-024); a home
+    that wants the flat curve of before sets music_eq_presets.behind_speakers all zeros."""
+    measured = render(tmp_path / "measured", with_visual())["package.yaml"]
+    assert run_look(measured, {TEMPLATE_SELECT: "behind_speakers"})[1]["eq"] == eq(-5, -10, -3, 0, 3, 2)
+    assert package_eq_table(measured)["half_match"] == eq(-2, -5, -1, 0, 2, 1)
+    inputs = with_visual()
+    inputs["music_eq_presets"] = {"behind_speakers": dict.fromkeys(EQ_KEYS, 0)}
+    flat = render(tmp_path / "flat", inputs)
+    assert run_look(flat["package.yaml"], {TEMPLATE_SELECT: "behind_speakers"})[1]["eq"] == FLAT
+    written = run_reset(flat["package.yaml"], groups=["music_profiles"])
+    assert {e: written[e] for e in eq_written("behind_speakers", FLAT)} == eq_written("behind_speakers", FLAT)
+    [tip, *_] = eq_tooltips(flat["ramka-settings.en.yaml"])
+    assert tip["behind_speakers"].splitlines()[-1] == "Curve: " + translations("en")["ui.settings.music_eq_curve_flat"]
+
+
 def test_music_profile_helpers_have_few_writers(demo):
     """A profile's values are written by the user, the seed and reset, and the EQ loader only:
     choosing a profile, the templates and every other automation leave them alone."""
@@ -3099,8 +3121,8 @@ LOOK_TEXTS = {
     "custom": ("Your own profile; starts as today's design.", "Anything, once you have tuned it.",
                "When no template fits. Every profile keeps its own values, so tuning one never changes another."),
     "behind_speakers": ("Look like your listening position does.", "Music and TV with the sensor behind or near the speakers, or on the amplifier.",
-                  "Undoes the difference you measured between the sensor's spot and your listening position "
-                  "(the home's behind_speakers EQ, or the fitted one once calibrated); flat until you set one."),
+                  "Undoes the difference between the sensor's spot and your listening position: the catalog's curve, "
+                  "measured with a sensor on an amplifier, until the home sets its own behind_speakers EQ, or the fitted one once calibrated."),
     "lively": ("Every beat shows.", "Parties, electronic and pop.",
                "WLED-MM's fast limiter (50 / 300 ms): a quick attack and release. Expect flicker on quiet material."),
     "calm": ("Slow and ambient.", "Background music, classical, evenings.",
@@ -3134,12 +3156,13 @@ def db(value) -> str:
     return f"\u2212{-v} dB" if v < 0 else f"+{v} dB" if v > 0 else "0 dB"
 
 
-def preset_text(t, preset, gains) -> str:
-    """The tooltip of an EQ preset: purpose, best use, why / when and its curve, a line each."""
+def preset_text(t, preset, gains, own=False) -> str:
+    """The tooltip of an EQ preset: purpose, best use, why / when and its curve, a line each; `own`:
+    the home set it in music_eq_presets (a flat `fitted` waits for the home's curve until then)."""
     if any(gains.values()):
         curve = ", ".join(f"{t[f'ui.settings.music_eq_band_{k}']} {db(gains[k])}" for k in EQ_KEYS)
     else:
-        curve = t["ui.settings.music_eq_curve_flat" if preset == "flat" else "ui.settings.music_eq_curve_unset"]
+        curve = t["ui.settings.music_eq_curve_unset" if preset == "fitted" and not own else "ui.settings.music_eq_curve_flat"]
     return "\n".join([t[f"ui.settings.music_eq_{preset}_purpose"],
                       f"{t['ui.settings.music_look_best']}: {t[f'ui.settings.music_eq_{preset}_best']}",
                       f"{t['ui.settings.music_look_why']}: {t[f'ui.settings.music_eq_{preset}_why']}",
@@ -3172,22 +3195,24 @@ def test_eq_preset_tooltips_name_their_curve(tmp_path, demo):
         for tip in tips:
             assert tip == {p: preset_text(translations(lang), p, CATALOG_EQ[p]) for p in EQ_PRESET_IDS}, lang
             assert all(len(text.splitlines()) == 4 for text in tip.values()), lang
-    # A home's own curves show its numbers (a fraction kept); one it leaves empty stays "until set".
+    # A home's own curves replace the catalog's as a whole (a key left out is 0, a fraction kept); one
+    # it sets empty is flat.
     inputs = with_visual()
-    inputs["music_eq_presets"] = {"behind_speakers": {"sub": -5, "bass": -10, "low_mid": -3, "presence": 3, "air": 2.5},
+    inputs["music_eq_presets"] = {"behind_speakers": {"sub": -4, "bass": -10, "low_mid": -3, "presence": 3, "air": 2.5},
                                   "half_match": {}}
     rendered = render(tmp_path, inputs)
     table = package_eq_table(rendered["package.yaml"])
-    assert table["behind_speakers"] == eq(-5, -10, -3, 0, 3, 2.5) and table["half_match"] == FLAT
+    assert table["behind_speakers"] == eq(-4, -10, -3, 0, 3, 2.5) and table["half_match"] == FLAT
     for lang in LANGS:
         t = translations(lang)
         for tip in eq_tooltips(rendered[f"ramka-settings.{lang}.yaml"]):
             # The settings page's table is the package's.
-            assert tip == {p: preset_text(t, p, table[p]) for p in EQ_PRESET_IDS}, lang
+            assert tip == {p: preset_text(t, p, table[p], own=p in inputs["music_eq_presets"]) for p in EQ_PRESET_IDS}, lang
     [tip, *_] = eq_tooltips(rendered["ramka-settings.en.yaml"])
     assert tip["behind_speakers"].splitlines()[-1] == (
-        "Curve: sub \u22125 dB, bass \u221210 dB, low mids \u22123 dB, mids 0 dB, presence +3 dB, air +2.5 dB")
-    assert tip["half_match"].splitlines()[-1] == "Curve: " + en["ui.settings.music_eq_curve_unset"]
+        "Curve: sub \u22124 dB, bass \u221210 dB, low mids \u22123 dB, mids 0 dB, presence +3 dB, air +2.5 dB")
+    assert tip["half_match"].splitlines()[-1] == "Curve: " + en["ui.settings.music_eq_curve_flat"]
+    assert tip["fitted"].splitlines()[-1] == "Curve: " + en["ui.settings.music_eq_curve_unset"]
     # The catalog's table, as the package carries it.
     assert package_eq_table(demo["package.yaml"]) == CATALOG_EQ
 
@@ -3425,11 +3450,16 @@ def preview(tmp_path_factory):
     return render(tmp_path_factory.mktemp("preview"), {**with_visual(), "preview_dashboard": True})
 
 
-def test_preview_dashboard_only_with_its_input(demo, preview, tmp_path):
-    assert not any(name.startswith("ramka-preview.") for name in demo)
+def test_preview_dashboard_by_default_and_off_with_false(demo, preview, tmp_path):
+    """preview_dashboard defaults to true: a home without the input gets the preview; false leaves it
+    out, and the settings pages' headers then have no preview link."""
+    assert "preview_dashboard" not in demo_inputs()
+    assert {f"ramka-preview.{lang}.yaml" for lang in LANGS} <= set(demo)
     assert {f"ramka-preview.{lang}.yaml" for lang in LANGS} <= set(preview)
     off = render(tmp_path, {**demo_inputs(), "preview_dashboard": False})
     assert not any(name.startswith("ramka-preview.") for name in off)
+    assert "/ramka-preview/" in json.dumps(demo["ramka-settings.en.yaml"])
+    assert "/ramka-preview/" not in json.dumps(off["ramka-settings.en.yaml"])
 
 
 def test_preview_leaves_the_ramka_dashboard_as_it_was(preview, tmp_path):

@@ -6,7 +6,7 @@
 #
 # Instance: `uv run tools/domosenso_render.py components/ramka --inputs <inputs.yaml> --out <dir>`
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
-# from templates/, and with preview_dashboard ramka-preview.<lang>.yaml. Upgrade notes for an existing home: UPGRADE.md.
+# from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
 version: 0.8.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
@@ -143,9 +143,9 @@ inputs:
     type: "map[lang, string]"   # Ramka view" (0.4.0); a language not in it takes dashboard_path. Plain
     default: null               # URL paths, as registered in configuration.yaml.
     example: {en: dashboard-ramka, de: dashboard-ramka-de}
-  preview_dashboard:            # true: also ramka-preview.<lang>.yaml, the admins' preview with one view per
-    type: bool                  # screen, each in a frame of the screen's size (README, "Preview dashboard").
-    default: false              # False: the template renders empty and writes no file.
+  preview_dashboard:            # true (the default): also ramka-preview.<lang>.yaml, the admins' preview with one
+    type: bool                  # view per screen, each in a frame of the screen's size (README, "Preview dashboard");
+    default: true               # its lovelace: entry is the home's. False: the template renders empty, no file.
   settings_paths:               # the settings dashboard of each language, for the preview's links to its
     type: "map[lang, string]"   # pages; a language not in it takes ramka-settings. Plain URL paths, as
     default: null               # registered in configuration.yaml. Read only with preview_dashboard.
@@ -165,10 +165,10 @@ inputs:
     default: null               # its helpers, which the card reads live; absent keys take the card's defaults,
     example: {level: {flavour: tide}}   # line_width Ramka's 2.8 px. Checked at render (flavour of its kind,
                                 # palette zones | series | calm, ranges, hot above neutral).
-  music_eq_presets:             # the home's fills of the EQ presets that are flat in the catalog (`behind_speakers`, `half_match`,
+  music_eq_presets:             # the home's own curves for `behind_speakers`, `half_match` (the catalog's: one measurement on an
     type: "{behind_speakers?, half_match?, fitted?: {sub?, bass?, low_mid?, mid?, presence?, air?}}"
-    default: null               # `fitted`), dB per range, each -18...+12; absent keys are 0. Read only when `music_visual`
-    example: {fitted: {bass: -6, air: 2}}   # is set. Checked at render (preset id, range key, range).
+    default: null               # amplifier, a starting point) and `fitted` (flat until set), dB per range, each -18...+12; a curve
+    example: {fitted: {bass: -6, air: 2}}   # replaces the catalog's whole, absent keys 0. Read only with `music_visual`. Checked at render.
   settings_defaults:            # the General settings' starting values (0.4.0), what the seed and "Reset to defaults"
     type: "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}"
     default: null               # write; absent keys keep the catalog's (true, 100 cm, 1 s, 5 s, 300 s, 16, 204,
@@ -193,7 +193,7 @@ artifacts:
     - templates/package.yaml.j2          # -> package.yaml, the home's packages/
     - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
     - templates/ramka-settings.lang.yaml.j2   # -> dashboards/ramka-settings.<lang>.yaml, the admins' live settings (0.4.0)
-    - templates/ramka-preview.lang.yaml.j2    # -> dashboards/ramka-preview.<lang>.yaml, with preview_dashboard only;
+    - templates/ramka-preview.lang.yaml.j2    # -> dashboards/ramka-preview.<lang>.yaml, unless preview_dashboard is false;
                                               #    extends dashboard.lang.yaml.j2 and calls its screen blocks
   ha_packages: []
   # Where the cards go in the home's config: www/domosenso/<id>/<version>/, served as
@@ -280,7 +280,7 @@ provides:                       # <prefix> from inputs
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
   dashboards:
     - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, unreleased), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first); the colour selects (air_color_{good,fair,poor}, climate_color_neutral) are custom:ramka-colour-select-row rows, each choice with its colour's dot (unreleased); the Photos page's albums are its second section, the right column next to Basic (unreleased)"}
-    - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard: one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
+    - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard (default true): one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
   automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.

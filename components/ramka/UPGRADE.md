@@ -3,7 +3,41 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: a measured Behind speakers curve, the preview dashboard by default
+
+SPEC-024.
+
+- **Behind speakers and Half match are no longer flat.** The catalog's EQ presets `behind_speakers`
+  (sub −5, bass −10, low mids −3, mids 0, presence +3, air +2 dB) and `half_match` (−2, −5, −1, 0,
+  +2, +1) are one measurement: a sensor on an amplifier between the speakers against the listening
+  position, and half of it. A starting point; `fitted` stays flat until set. The Behind speakers
+  profile starts from that curve (or from `fitted` once it is not flat); the preset's name no longer
+  says "flat until set", and its tooltip names the curve.
+- **`music_eq_presets` replaces a curve as a whole**: a key left out is 0, as the input always said;
+  with the catalog's curves no longer flat, a home's `{behind_speakers: {bass: -6}}` is that one cut
+  and nothing else.
+- **`preview_dashboard` defaults to true**: a home without the input now gets
+  `dashboards/ramka-preview.<lang>.yaml` rendered, and the settings pages' headers link to it.
+- Translations: `ui.settings.music_template_behind_speakers_why`, `ui.settings.music_eq_behind_speakers`,
+  `ui.settings.music_eq_behind_speakers_why` and `ui.settings.music_eq_half_match_why` change (en,
+  de, pl); no new keys.
+
+### What a home does
+
+- A home that relied on the flat default and wants it keeps it with
+  `music_eq_presets: {behind_speakers: {sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0}}`
+  (or `{behind_speakers: {}}`), then a render. The new curve reaches the Behind speakers profile's
+  own helpers only through the seed of a fresh helper or the Music page's Reset; a home whose
+  helpers were seeded flat loads the preset into the profile ("Apply the selected preset") or
+  resets the Music page to get it.
+- The preview: add its `lovelace:` entry with `require_admin: true` (README, "Preview dashboard")
+  and deploy (a restart for the entry; the preview's resource `cards/screen-frame-card.js`). Until
+  the entry is there, `domosenso status` prints `missing-dashboard-entry dashboards/ramka-preview.<lang>.yaml`
+  for each language. A home that does not want it sets `preview_dashboard: false` and renders.
+
 ## Unreleased: colour dots in the colour choices, readings without a unit, the albums' column
+
+SPEC-024.
 
 - **Colour dots**: every colour choice shows the colour: the value and each choice of the list have
   the colour's dot in front, the climate picker's swatch, the names in the page's language. The
@@ -29,6 +63,8 @@ Newest first. Each entry says what changed and what a home that already runs the
   prints `resource create`). Nothing else changes in a home's state.
 
 ## Unreleased: named colours for Air and Climate, fair / poor, page titles
+
+SPEC-024.
 
 - **One colour list**: the Ramka's named colours (`cards/lib/colours.js`: green, teal, blue, light
   blue, purple, pink, magenta, amber, orange, red, grey), each a series colour of the Ramka's theme,
@@ -69,6 +105,8 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## Unreleased: settings page headers, the Controls page, every screen in the preview
 
+SPEC-024.
+
 - **Headers**: every settings page but About starts with a short text: what its view shows, what
   it is for and when it is on the screen (General: the Ramka as a whole). With `preview_dashboard`
   it links to the preview's tab of the same path; the new input `preview_paths` (the preview
@@ -96,6 +134,8 @@ Newest first. Each entry says what changed and what a home that already runs the
   `ramka-preview`, set `preview_paths`.
 
 ## Unreleased: climate widgets
+
+SPEC-024.
 
 The Climate page's rows (with `climate`) become **widgets** of a type, each with its own settings.
 
@@ -132,6 +172,8 @@ The Climate page's rows (with `climate`) become **widgets** of a type, each with
 
 ## Unreleased: preview dashboard
 
+SPEC-024.
+
 **Preview dashboard** (optional): with `preview_dashboard: true` the render also writes
 `dashboards/ramka-preview.<lang>.yaml`, one view per screen the home has (climate, air, plants,
 photos, status, calendar, music), each screen with the Ramka dashboard's own cards in a frame of
@@ -140,14 +182,15 @@ Ramka dashboard renders as before, byte for byte: its screens are now blocks the
 
 - **New card resource**: `cards/screen-frame-card.js` (`custom:screen-frame-card`); the deploy
   creates its Lovelace resource. `photo-frame-card` takes `contained: true` (the preview's).
-- **New inputs**: `preview_dashboard` (default false) and `settings_paths` (the settings
+- **New inputs**: `preview_dashboard` (default false; true since the newest entry) and `settings_paths` (the settings
   dashboard's URL path per language, default `ramka-settings`).
 - **Renderer**: a template whose output is only whitespace writes no file; that is how the preview
   stays out of a home without the input.
 
 ### What a home does
 
-- Nothing, without the input. To use it: set `preview_dashboard: true` (and `settings_paths` when
+- (Superseded: the input now defaults to true, see the newest entry.) Nothing, without the input.
+  To use it: set `preview_dashboard: true` (and `settings_paths` when
   the settings dashboard is not at `/ramka-settings`), render, add the `lovelace:` entry with
   `require_admin: true` (README) and deploy (a restart for the entry, and a new resource).
   Setting the input back to false leaves the rendered files in place: remove them and the entry.
@@ -179,6 +222,8 @@ The Climate page (with `climate`) gets a number of places, a reorderable picker 
   resources. Nothing else to do.
 
 ## Unreleased: music looks
+
+SPEC-024.
 
 **Response profiles** (with `music_visual`): a profile select (`custom`, `behind_speakers`, `lively`,
 `calm`, `analyser`), each profile editable with its own values, and EQ presets (README, "Response
