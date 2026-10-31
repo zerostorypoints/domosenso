@@ -88,7 +88,11 @@
       "waterIn": "podlej za ~{count} dni",
       "needCount": "{count} do uwagi",
       "okCount": "{count} w porządku",
-      "none": "brak roślin"
+      "none": "brak roślin",
+      "list": {
+        "plant": "Roślina",
+        "days": "Ostatnie {count} dni"
+      }
     },
     "air": {
       "level": {

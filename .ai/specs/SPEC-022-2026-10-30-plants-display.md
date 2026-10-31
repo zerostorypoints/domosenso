@@ -27,6 +27,23 @@ friendly name, `domosenso_room` and the derived sensors' names; the maps go on t
 the friendly name and the room. The card's actions, gauges and lines were already in en, de and pl.
 The plants package's notifications stay in English (the renderer gives non-dashboard templates `en`).
 
+**Amendment 2 (2026-10-31, approved by the maintainer from mockups; ramka 0.8.0):** after a day on
+the tablet, with five plants the tiles had lost their bars and nothing showed every plant's sun,
+fertiliser and water; and the initial on a plant without a photo ("P", "C") read as a code.
+
+- A plant without a photo shows a leaf in its state's colour on a dim square, instead of its initial.
+- **A list page** follows the tile pages: one row per plant, in the tiles' order, with its photo (or
+  the leaf), its name, two lines (the room; under it the action, else the watered / water-in line), the
+  three bars and the moisture line. Above it a header row: plant, sun, fertiliser, water, "last
+  N days". At most `list_rows` rows a page (default 7); more plants make more list pages, the rows
+  shared evenly between them (15 → 5, 5, 5). The list comes only with more than four plants: up to
+  four, every tile already shows its bars.
+- Card config: `list` (default `true`; `false` drops the list pages), `list_rows` (default 7).
+  The Ramka's dashboard keeps the defaults; no new helper.
+- **Decision:** the ambient stage counts the list pages: `pages = ceil(n / per_page) + (n > 4 ?
+  ceil(n / list_rows) : 0)`, the stage still `min(pages, 2) × page_s`. With five plants that is the
+  tiles and then the list, 20 s; with more, the pages continue on the next pass as before.
+
 ## Devices
 
 Unchanged: Mi Flora (HHCCJCY01) through Bluetooth proxies. Verified on 2026-10-30 on one home with a
@@ -79,6 +96,7 @@ sensors. No HACS integration (the HACS plant integration was tried and its adopt
 | `input_number.<prefix>_plants_per_page` | stable | 1–12, default 6; Plants settings page, Advanced; in the page's and the global reset |
 | `input_number.<prefix>_plants_page_s` | stable | 5–30 s, default 10; same place |
 | `custom:plants-card` config `discover`, `per_page`, `page_s` (entity id or number) | stable | |
+| `custom:plants-card` config `list` (boolean), `list_rows` (number) | stable | ramka 0.8.0, amendment 2 |
 
 **Decision:** the plants stage of the ambient loop lasts `min(pages, 2) × page_s`, with `pages =
 ceil(plants / per_page)`; the card advances its own page every `page_s` while shown and keeps the

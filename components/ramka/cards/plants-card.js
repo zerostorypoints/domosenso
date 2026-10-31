@@ -1,10 +1,12 @@
 // Plants for a wall tablet, readable from across the room at any count (SPEC-022): a page of up to
 // `per_page` tiles that grow to fill it, and above that pages that turn every `page_s` seconds, the
 // plants that need something first, with a strip of one dot per plant. A tile has the plant's photo
-// (or its initial), its name and room, a smoothed line of the soil moisture over the last days
+// (or a leaf in its state's colour), its name and room, a smoothed line of the soil moisture over the last days
 // against the watering threshold, one line saying what to do, and when it was watered or when it
 // will need water. Up to four tiles also show three gauges, sun, fertiliser and water, each a bar
-// with the plant's good band and a dot for where it is. Three states, never red: good (green),
+// with the plant's good band and a dot for where it is. With more than four plants list pages
+// follow the tiles: one row per plant with its room, action, bars and line, at most `list_rows` rows a page
+// (SPEC-022 amendment 2). Three states, never red: good (green),
 // neutral (grey: no reading, or water due within three days) and needs something (amber). Labels
 // follow the Home Assistant language (en, de, pl; anything else falls back to en). Sizes are shares
 // of the card's own height (cqh), capped by its width (--u) so that in a window squarer than the
@@ -24,6 +26,8 @@
 //   page_s: input_number.ramka_plants_page_s       # a number or an entity; default 10
 //   days: 7                            # optional: the moisture line's span (hourly means from
 //                                      # the statistics of the plant's moisture sensor)
+//   list: true                         # optional: false drops the list pages
+//   list_rows: 7                       # optional: rows per list page
 //
 // "Watered" and "water in" come from sensor.<plant>_last_watered and sensor.<plant>_water_in_days
 // when they exist. The page index is kept in the browser, so the next pass of the ambient loop
@@ -44,6 +48,7 @@ const GAUGES = [
 const STATE_ORDER = { need: 0, neutral: 1, good: 2 };
 const PAGE_KEY = "domosenso.ramka.plants.page";
 const DAY = 86400000;
+const LEAF = `<svg class="leaf" viewBox="0 0 24 24"><path fill="currentColor" d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/></svg>`;
 
 // The page index survives a new card element; without localStorage (a private window, tests) it
 // lives as long as the module.
@@ -184,7 +189,7 @@ class PlantsCard extends HTMLElement {
   // The scale follows the data (a week moves a few points, which a 0-75 % axis flattens to a
   // line) and always takes in the watering threshold, drawn dashed.
   _chart(el, p, r) {
-    const svg = el.querySelector("svg");
+    const svg = el.querySelector("svg.chart");
     const rows = (this._stats && this._stats[this._moistureId(p)]) || [];
     const pts = rows.filter((x) => x.mean != null).map((x) => [x.start, x.mean]);
     if (pts.length < 2) { svg.innerHTML = ""; return; }
@@ -218,12 +223,27 @@ class PlantsCard extends HTMLElement {
         .plant { display: grid; grid-template-columns: var(--photo) 1fr; gap: 3%; min-width: 0; min-height: 0;
                  padding: 2.5%; box-sizing: border-box; border-radius: calc(2 * var(--u));
                  background: var(--secondary-background-color); border-left: calc(0.8 * var(--u)) solid var(--c); }
-        .plant[data-state="good"] { --c: var(--good); }
-        .plant[data-state="neutral"] { --c: var(--neutral); }
-        .plant[data-state="need"] { --c: var(--act); }
+        [data-state="good"] { --c: var(--good); }
+        [data-state="neutral"] { --c: var(--neutral); }
+        [data-state="need"] { --c: var(--act); }
         .photo { border-radius: calc(1.5 * var(--u)); overflow: hidden; display: flex; align-items: center;
-                 justify-content: center; min-height: 0; font-weight: 600; color: rgba(255,255,255,0.55); }
+                 justify-content: center; min-height: 0; color: var(--c); background: rgba(255,255,255,0.06); }
         .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo .leaf { width: 55%; height: 55%; }
+        .list { flex: 1; min-height: 0; display: grid; gap: 1.2cqh; }
+        .row { display: grid; grid-template-columns: var(--rh) 1.7fr 1fr 1fr 1fr 1.2fr; align-items: center;
+               gap: 1.6cqw; min-height: 0; padding: 0 1.4cqw 0 0; border-radius: calc(1.5 * var(--u));
+               background: var(--secondary-background-color); border-left: calc(0.7 * var(--u)) solid var(--c);
+               overflow: hidden; }
+        .row .photo { height: 100%; border-radius: 0; }
+        .row.top { background: none; border: none; color: var(--secondary-text-color); font-size: calc(3 * var(--u)); }
+        .rowname { display: flex; flex-direction: column; min-width: 0; }
+        .rowname .name { font-size: calc(4 * var(--u)); }
+        .rm, .what { font-size: calc(3.1 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                     color: var(--secondary-text-color); min-height: 1.2em; }
+        .what.act { color: var(--c); font-weight: 600; }
+        .row .g { display: block; }
+        .row .gl { display: none; }
         .body { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; min-height: 0; }
         .head { display: flex; flex-direction: column; min-width: 0; }
         .name, .room, .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -241,9 +261,6 @@ class PlantsCard extends HTMLElement {
         .pg, .cnt { white-space: nowrap; }
         .dots { display: flex; flex-wrap: wrap; gap: 0.35em; flex: 1; }
         .dots i { display: block; width: 0.8em; height: 0.8em; border-radius: 50%; background: var(--c); }
-        .dots i[data-state="good"] { --c: var(--good); }
-        .dots i[data-state="neutral"] { --c: var(--neutral); }
-        .dots i[data-state="need"] { --c: var(--act); }
         .dots i.here { outline: 0.15em solid var(--primary-text-color); outline-offset: 0.12em; }
         .none { margin: auto; font-size: calc(6 * var(--u)); color: var(--secondary-text-color); }
       </style>
@@ -251,6 +268,8 @@ class PlantsCard extends HTMLElement {
     if (this._config.height) this.style.height = this._config.height;
     this._card = root.querySelector("ha-card");
     this._pageEl = root.querySelector(".page");
+    this._listEl = document.createElement("div");
+    this._listEl.className = "list";
   }
 
   _bands(p) {
@@ -341,6 +360,48 @@ class PlantsCard extends HTMLElement {
     this._els = Array.from(el.querySelectorAll(".plant"));
   }
 
+  // The rows of one list page, under a header row; built again only when the plants on it change.
+  _buildList(rows) {
+    const el = this._listEl;
+    const per = this._listRows;
+    el.style.gridTemplateRows = `auto repeat(${per}, 1fr)`;
+    // The photo is square: as wide as a row is high (the card's height less the header, the strip
+    // and the gaps, shared by the rows).
+    el.style.setProperty("--rh", `calc((100cqh - ${12 + per * 1.2}cqh) / ${per})`);
+    const head = [t(this._hass, "card.plants.list.plant"), ...GAUGES.map((g) => t(this._hass, g.label)),
+      t(this._hass, "card.plants.list.days", { count: this._config.days || 7 })];
+    const gauge = (g) => `<div class="g" data-k="${g.key}"><span class="gl"></span>
+        <span class="bar" style="display: block; height: calc(1.8 * var(--u))"><span class="band"></span>
+        <span class="dot" style="width: calc(3 * var(--u)); height: calc(3 * var(--u))"></span></span></div>`;
+    el.innerHTML = `<div class="row top"><span></span>${head.map(() => "<span></span>").join("")}</div>` +
+      rows.map(() => `<div class="row"><div class="photo"></div>
+        <div class="rowname"><span class="name"></span><span class="rm"></span><span class="what"></span></div>
+        ${GAUGES.map(gauge).join("")}
+        <svg class="chart" style="height: calc(8 * var(--u))" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
+        </div>`).join("");
+    [...el.querySelector(".top").children].slice(1).forEach((span, i) => { span.textContent = head[i]; });
+    this._els = Array.from(el.querySelectorAll(".row:not(.top)"));
+  }
+
+  // The three bars of a tile or a row: the good band, and a dot where the plant is.
+  _gauges(el, r) {
+    for (const g of GAUGES) {
+      const b = r.b[g.key], val = r.v[g.key];
+      const row = el.querySelector(`[data-k="${g.key}"]`);
+      row.querySelector(".gl").textContent = t(this._hass, g.label);
+      const band = row.querySelector(".band");
+      const lo = this._pos(b, b.lo), hi = b.hi === Infinity ? 100 : this._pos(b, b.hi);
+      band.style.left = `${lo}%`;
+      band.style.width = `${hi - lo}%`;
+      const dot = row.querySelector(".dot");
+      const ok = Number.isFinite(val);
+      dot.style.display = ok ? "" : "none";
+      if (!ok) continue;
+      dot.style.left = `${this._pos(b, val)}%`;
+      dot.style.color = val >= b.lo && val <= b.hi ? "var(--good)" : "var(--act)";
+    }
+  }
+
   _photo(el, p, a) {
     const box = el.querySelector(".photo");
     const src = a.entity_picture || "";
@@ -353,9 +414,10 @@ class PlantsCard extends HTMLElement {
       box.innerHTML = "<img alt=\"\">";
       box.querySelector("img").setAttribute("src", src);
     } else {
-      const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
-      box.style.background = `linear-gradient(135deg, hsl(${hue} 35% 32%), hsl(${hue} 35% 18%))`;
-      box.textContent = name.slice(0, 1).toUpperCase();
+      // The leaf takes the state's colour from the tile (currentColor), so a change of state needs
+      // no rebuild.
+      box.style.background = "";
+      box.innerHTML = LEAF;
     }
   }
 
@@ -418,38 +480,51 @@ class PlantsCard extends HTMLElement {
     }
     if (none) none.remove();
     const per = Math.round(this._number("per_page", 6));
-    const pages = Math.ceil(rows.length / per);
+    const tilePages = Math.ceil(rows.length / per);
+    // The list pages, with the rows shared evenly (15 plants at 7 a page: 5, 5, 5).
+    const listPages = this._config.list !== false && rows.length > 4
+      ? Math.ceil(rows.length / Math.max(1, Math.round(this._config.list_rows || 7))) : 0;
+    const pages = tilePages + listPages;
     this._pages = pages;
     if (this._page == null) this._page = loadPage();
     if (this._page >= pages || this._page < 0) this._page = 0;
-    const shown = rows.slice(this._page * per, this._page * per + per);
-    const bars = shown.length <= 4;
-    const key = `${bars}:${shown.map((x) => x.p.entity).join(",")}`;
-    if (key !== this._key) { this._key = key; this._buildPage(shown, bars); }
+    const list = this._page >= tilePages;
+    let shown;
+    if (list) {
+      this._listRows = Math.ceil(rows.length / listPages);
+      const j = this._page - tilePages;
+      shown = rows.slice(j * this._listRows, j * this._listRows + this._listRows);
+    } else {
+      shown = rows.slice(this._page * per, this._page * per + per);
+    }
+    const bars = list || shown.length <= 4;
+    const key = `${list ? `list${this._listRows}` : bars}:${shown.map((x) => x.p.entity).join(",")}`;
+    if (key !== this._key) {
+      this._key = key;
+      if (list) {
+        this._pageEl.replaceWith(this._listEl);
+        this._buildList(shown);
+      } else {
+        this._listEl.replaceWith(this._pageEl);
+        this._buildPage(shown, bars);
+      }
+    }
     shown.forEach(({ p, r }, i) => {
       const el = this._els[i];
       el.dataset.state = r.state;
       el.querySelector(".name").textContent = this._name(p, r.a);
-      el.querySelector(".room").textContent = this._room(p);
       this._photo(el, p, r.a);
-      if (bars) {
-        for (const g of GAUGES) {
-          const b = r.b[g.key], val = r.v[g.key];
-          const row = el.querySelector(`[data-k="${g.key}"]`);
-          row.querySelector(".gl").textContent = t(this._hass, g.label);
-          const band = row.querySelector(".band");
-          const lo = this._pos(b, b.lo), hi = b.hi === Infinity ? 100 : this._pos(b, b.hi);
-          band.style.left = `${lo}%`;
-          band.style.width = `${hi - lo}%`;
-          const dot = row.querySelector(".dot");
-          const ok = Number.isFinite(val);
-          dot.style.display = ok ? "" : "none";
-          if (!ok) continue;
-          dot.style.left = `${this._pos(b, val)}%`;
-          dot.style.color = val >= b.lo && val <= b.hi ? "var(--good)" : "var(--act)";
-        }
-      }
+      if (bars) this._gauges(el, r);
       this._chart(el, p, r);
+      if (list) {
+        // The room always (with many plants it is how to find the pot), then what to do.
+        const what = el.querySelector(".what");
+        el.querySelector(".rm").textContent = this._room(p);
+        what.textContent = r.text || r.m.text;
+        what.classList.toggle("act", Boolean(r.text));
+        return;
+      }
+      el.querySelector(".room").textContent = this._room(p);
       el.querySelector(".action").textContent = r.text;
       el.querySelector(".meta").textContent = r.m.text;
     });

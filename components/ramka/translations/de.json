@@ -88,7 +88,11 @@
       "waterIn": "giessen in ~{count} Tagen",
       "needCount": "zu pflegen: {count}",
       "okCount": "in Ordnung: {count}",
-      "none": "keine Pflanzen"
+      "none": "keine Pflanzen",
+      "list": {
+        "plant": "Pflanze",
+        "days": "Letzte {count} Tage"
+      }
     },
     "air": {
       "level": {

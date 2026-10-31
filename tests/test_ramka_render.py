@@ -2359,7 +2359,9 @@ def test_plants_stage_length_follows_pages(demo, tmp_path):
     [delay] = [n["delay"]["seconds"] for n in walk(plants_stage(out["package.yaml"])) if isinstance(n.get("delay"), dict)]
     marked = [{"domosenso_plant": True}] * 15 + [{}]
     assert stage_seconds(delay, plants=marked) == "20"            # three pages of six: two per pass
-    assert stage_seconds(delay, plants=marked[:6]) == "10"
+    assert stage_seconds(delay, plants=marked[:6]) == "20"        # the tiles, then the list (0.8.0)
+    assert stage_seconds(delay, plants=marked[:5]) == "20"
+    assert stage_seconds(delay, plants=marked[:4]) == "10"        # up to four: no list page
     assert stage_seconds(delay, plants=[]) == "1"                 # no plants found: on, but never a 0 s spin
 
 
