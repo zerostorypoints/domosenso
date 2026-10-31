@@ -108,15 +108,17 @@ test("with rooms, spacers are skipped, only the first `slots` places count, and 
                                           { entity: "sensor.out", name: "Outside" }]);
   card._hook();
   chart.data = [series("sensor.k_h-mean"), series("sensor.b_h-mean"), series("sensor.out-mean"), series("sensor.x-mean")];
-  const palette = card.constructor.PALETTE;
-  assert.deepEqual(chart.data.map((s) => s.color), [palette[0], palette[2], palette[3], undefined]);
-  assert.deepEqual(chart.data.map((s) => s.lineStyle.color), [palette[0], palette[2], palette[3], undefined]);
-  assert.equal(chart.data[0].itemStyle.color, palette[0]);
+  // Series colours 1, 3 and 4: the theme's slots 4, 6 and 9 (blue, amber and red left out), here
+  // HA's fallbacks for them.
+  const [first, third, fourth] = ["#6cc5b0", "#ff8ab7", "#01ab63"];
+  assert.deepEqual(chart.data.map((s) => s.color), [first, third, fourth, undefined]);
+  assert.deepEqual(chart.data.map((s) => s.lineStyle.color), [first, third, fourth, undefined]);
+  assert.equal(chart.data[0].itemStyle.color, first);
   // The line style and the colour together.
-  assert.deepEqual(chart.data[2].lineStyle, { width: 3, color: palette[3] });
+  assert.deepEqual(chart.data[2].lineStyle, { width: 3, color: fourth });
   // The theme's series colour wins over the fallback.
   document.body.append(card);  // computed styles need a connected element
-  card.style.setProperty("--graph-color-3", "#123456");
+  card.style.setProperty("--graph-color-6", "#123456");
   chart.data = [series("sensor.b_h-mean")];
   assert.equal(chart.data[0].color, "#123456");
   card.remove();

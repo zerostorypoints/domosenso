@@ -3,6 +3,41 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: climate widgets
+
+The Climate page's rows (with `climate`) become **widgets** of a type, each with its own settings.
+
+- **Types**: Temperature (a temperature and a humidity sensor), Air quality (CO₂ and PM2.5), Custom
+  (any two sensors with a unit) and Empty (an empty tile), chosen in each row's dropdown; the pickers
+  offer the type's device classes. Every row is editable: a row without a widget is Empty, and takes
+  a type. `sensor.<prefix>_climate_rooms` stores `type` per entry and the type's own values
+  (`temp_low`, `temp_high`, `hum_low`, `hum_high`; `color`), an empty one as
+  `{type: empty, spacer: true}`. **Existing lists keep every room**: an entry without a type reads
+  as Temperature when its main sensor's `device_class` is `temperature`, else Custom (cards and
+  `script.<prefix>_climate_rooms_set`), and is stored with its type at the next save. A widget of a
+  type whose sensor is not picked yet keeps its row (an empty tile on the Ramka until it has one);
+  the sensor's state counts widgets with a reading.
+- **Settings dialog** per widget: Temperature, comfort ranges (default 20 to 24 °C, 40 to 60 %);
+  Air quality, the Air page's own limits (`input_number.<prefix>_air_{co2,pm2_5}_{raised,high}`, the
+  same helpers); Custom, a colour.
+- **Threshold-based colours**: `input_boolean.<prefix>_climate_thresholds` (default off; Climate,
+  Advanced; group `climate`, reset with the page and seeded with the widgets). Off, the tiles look as
+  before, in the series colours; on, the values are blue / neutral / red by their comfort ranges,
+  neutral / amber / red by the Air page's limits, a Custom widget's neutral or its colour.
+- **Series colours change**: the widgets, the picker's dots and the 7-day chart lines leave out the
+  theme's blue, amber, red, orange and light blue (slots 1, 2, 3, 7, 8), so they are never read as a
+  threshold: the n-th widget takes slot 4, 5, 6, 9, 11, 10 in turn. Every room's colour changes
+  once; with more than six widgets the colours repeat.
+- **Number of widgets**: the slider `input_number.<prefix>_climate_slots`, renamed "Number of
+  widgets", moves from Climate, Basic to Climate, Advanced; its value and its seed stay.
+- **Translations after a deploy**: `climate-rooms-card` and `rooms-card` load their translations and
+  the new `cards/lib/climate-widgets.js` with their own `?v=`, so a browser's 31-day cache of
+  `/local/` no longer serves an old translation after a deploy in the same version (the picker showed
+  the raw key `card.climate_rooms.spacer`).
+- Render and deploy; the deploy updates the card resources. The rooms-card gets `thresholds` and,
+  for a home with the Air page's CO₂ or PM2.5, `air_limits`; the settings card `air_limits`. Nothing
+  else to do.
+
 ## Unreleased: preview dashboard
 
 **Preview dashboard** (optional): with `preview_dashboard: true` the render also writes

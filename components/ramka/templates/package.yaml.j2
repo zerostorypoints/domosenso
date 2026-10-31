@@ -212,18 +212,20 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
-[#- The Climate page's rooms (SPEC-021 amendments 2, 3): a list of places, each a room (a label, a main
-    reading and a supplementary one) or a spacer ({spacer: true}, an empty tile), picked on the settings
-    page; the defaults are the first ten of inputs.climate, temperature and humidity. A list again, so
-    sensor.<prefix>_climate_rooms keeps it, as the albums. How many places the Ramka shows is
-    input_number.<prefix>_climate_slots, a group of its own: the rooms are seeded while the sensor has
-    none, the number while it is untouched. -#]
+[#- The Climate page's widgets (SPEC-021 amendments 2, 3): a list, each a widget of a type (temperature,
+    air, custom: a label, a main reading, a second one and the type's own values) or an empty one
+    ({type: empty, spacer: true}, an empty tile), picked on the settings page; the defaults are the
+    first ten of inputs.climate, Temperature widgets of their temperature and humidity. A list again,
+    so sensor.<prefix>_climate_rooms keeps it, as the albums. How many widgets the Ramka shows is
+    input_number.<prefix>_climate_slots, a group of its own: the widgets (and the threshold-based
+    colours switch, off) are seeded while the sensor has none, the number while it is untouched. -#]
 [%- set climate_rooms = [] -%]
 [%- for c in (inputs.climate | default([]))[:10] -%]
-[%- set _ = climate_rooms.append({'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
+[%- set _ = climate_rooms.append({'type': 'temperature', 'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
 [%- endfor -%]
 [%- if inputs.climate is defined -%]
 [%- set _ = settings.append(('event', 'climate_rooms', 'climate', 'climate', {'rooms': climate_rooms})) -%]
+[%- set _ = settings.append(('input_boolean', 'climate_thresholds', 'climate', 'climate', false)) -%]
 [%- set _ = settings.append(('input_number', 'climate_slots', 'climate', 'climate_slots', 10)) -%]
 [%- endif -%]
 [#- A select's options: its default first, then the rest in the given order, so a fresh helper is
@@ -356,6 +358,13 @@ input_boolean:
     name: [[ named(' air ' ~ reading) ]]
     icon: mdi:eye
   [%- endfor %]
+  [%- if inputs.climate is defined %]
+  # Threshold-based colours on the Climate page: on, the widgets' values are coloured by their
+  # comfort ranges and the Air page's limits (rooms-card); off, each in its series colour.
+  [[ p ]]_climate_thresholds:
+    name: [[ named(' climate threshold colours') ]]
+    icon: mdi:thermometer-lines
+  [%- endif %]
 
 input_number:
   [[ p ]]_near_cm:
@@ -515,9 +524,9 @@ input_number:
     mode: slider
   [%- endif %]
   [%- if inputs.climate is defined %]
-  # How many places the Climate page has: rows of the settings page's picker, tiles on the Ramka.
+  # How many widgets the Climate page has: rows of the settings page's picker, tiles on the Ramka.
   [[ p ]]_climate_slots:
-    name: [[ named(' climate places') ]]
+    name: [[ named(' climate widgets') ]]
     icon: mdi:view-grid-outline
     min: 1
     max: 20
@@ -760,11 +769,13 @@ template:
             {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
 [%- endif %]
 [%- if inputs.climate is defined %]
-  # The Climate page's rooms (SPEC-021 amendments 2, 3): `rooms`, up to twenty places in order, each
-  # a room {label, main, extra} (entity ids, extra may be empty) or a spacer {spacer: true}, an empty
-  # tile; never a trailing spacer. The room tiles and the 7-day charts follow it, the first
-  # input_number.[[ p ]]_climate_slots places of it (colour n is the n-th room, spacers skipped).
-  # State: how many rooms. Set by the settings page's climate card through event
+  # The Climate page's widgets (SPEC-021 amendments 2, 3): `rooms`, up to twenty in order, each a
+  # widget {type, label, main, extra, ...} (type temperature, air or custom; entity ids, main and
+  # extra may be empty; a temperature's temp_low, temp_high, hum_low, hum_high, a custom's color) or
+  # an empty one {type: empty, spacer: true}, an empty tile; never an empty one at the end. An entry
+  # without a type (before the types) reads as temperature or custom. The tiles and the 7-day charts
+  # follow it, the first input_number.[[ p ]]_climate_slots of it (colour n is the n-th widget with
+  # a reading). State: how many widgets have a reading. Set by the settings page's climate card through event
   # [[ p ]]_climate_rooms; the seed gives it inputs.climate's first ten. Before that the cards show
   # inputs.climate.
   - triggers:
@@ -775,7 +786,7 @@ template:
         unique_id: [[ p ]]_climate_rooms
         default_entity_id: sensor.[[ p ]]_climate_rooms
         icon: mdi:home-thermometer
-        state: "{{ trigger.event.data.rooms | default([]) | rejectattr('spacer', 'defined') | list | count }}"
+        state: "{{ trigger.event.data.rooms | default([]) | rejectattr('spacer', 'defined') | selectattr('main') | list | count }}"
         attributes:
           rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
@@ -1221,9 +1232,12 @@ script:
 [%- endif %]
 [%- if inputs.climate is defined %]
 
-  # The Climate page's places, up to twenty: a room {label, main, extra}, or a spacer where a row has
-  # no sensor as its main reading (it keeps its position: an empty tile); trailing spacers are
-  # dropped. Called by the settings page's climate card.
+  # The Climate page's widgets, up to twenty: {type, label, main, extra} with the type's own values
+  # (a temperature's four comfort numbers, a custom's color), or an empty one {type: empty, spacer:
+  # true}, which keeps its position (an empty tile); empty ones at the end are dropped. An entry
+  # without a type (before the types, or from an automation) is a temperature when its main sensor's
+  # device_class is temperature, else custom; without a sensor as its main reading, an empty one. A
+  # main reading that is no sensor is left empty. Called by the settings page's climate card.
   [[ p ]]_climate_rooms_set:
     alias: [[ named(' climate rooms set') ]]
     icon: mdi:home-thermometer
@@ -1231,24 +1245,32 @@ script:
     fields:
       rooms:
         name: Rooms
-        description: "Up to twenty places, each {label, main, extra} (entity ids; extra may be empty) or {spacer: true}."
+        description: "Up to twenty widgets, each {type, label, main, extra} (type temperature, air or custom; entity ids, may be empty; temperature: temp_low, temp_high, hum_low, hum_high; custom: color) or {type: empty}."
         # No selector, as the albums' script: object: {} is refused.
-        example: '[{"label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
+        example: '[{"type": "temperature", "label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
     sequence:
       - event: [[ p ]]_climate_rooms
         event_data:
           rooms: >-
             {% set given = rooms if rooms is defined and rooms is not string and rooms is iterable else [] %}
+            {% set kinds = ['temperature', 'air', 'custom'] %}
             {% set kept = namespace(rooms=[]) %}
             {% for r in given if r is mapping %}
-            {% if (r.main | default('') | string).startswith('sensor.') %}
-            {% set kept.rooms = kept.rooms + [{'label': r.label | default('') | string, 'main': r.main, 'extra': r.extra | default('') | string}] %}
+            {% set main = r.main | default('') | string %}
+            {% set main = main if main.startswith('sensor.') else '' %}
+            {% set kind = r.type | default('') | string %}
+            {% if r.spacer | default(false) or kind == 'empty' or (kind not in kinds and not main) %}
+            {% set kept.rooms = kept.rooms + [{'type': 'empty', 'spacer': true}] %}
             {% else %}
-            {% set kept.rooms = kept.rooms + [{'spacer': true}] %}
+            {% if kind not in kinds %}{% set kind = 'temperature' if state_attr(main, 'device_class') == 'temperature' else 'custom' %}{% endif %}
+            {% set more = namespace(items=[('type', kind), ('label', r.label | default('') | string), ('main', main), ('extra', r.extra | default('') | string)]) %}
+            {% if kind == 'temperature' %}{% for k in ['temp_low', 'temp_high', 'hum_low', 'hum_high'] if r[k] is number and r[k] is not boolean %}{% set more.items = more.items + [(k, r[k] | float)] %}{% endfor %}{% endif %}
+            {% if kind == 'custom' and r.color is number and r.color is not boolean and r.color | int == r.color and 1 <= r.color <= 20 %}{% set more.items = more.items + [('color', r.color | int)] %}{% endif %}
+            {% set kept.rooms = kept.rooms + [dict(more.items)] %}
             {% endif %}
             {% endfor %}
             {% set last = namespace(n=0) %}
-            {% for r in kept.rooms[:20] %}{% if r.spacer is not defined %}{% set last.n = loop.index %}{% endif %}{% endfor %}
+            {% for r in kept.rooms[:20] %}{% if r.type != 'empty' %}{% set last.n = loop.index %}{% endif %}{% endfor %}
             {{ kept.rooms[:last.n] }}
 [%- endif %]
 

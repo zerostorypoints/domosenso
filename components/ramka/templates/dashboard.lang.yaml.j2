@@ -281,13 +281,21 @@ views:
         visibility: *climate
         [%- endif %]
         cards:
-          # The rooms picked on the settings page (sensor.[[ p ]]_climate_rooms), its first `slots`
-          # places, a spacer an empty tile; these until the seed has set it.
+          # The widgets picked on the settings page (sensor.[[ p ]]_climate_rooms), its first `slots`,
+          # an empty one an empty tile; these until the seed has set it. With the threshold-based
+          # colours on, the values take their comfort ranges' and the Air page's limits' colours.
           - type: custom:rooms-card
             height: calc([[ vh ]] - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
             entity: sensor.[[ p ]]_climate_rooms
             slots: input_number.[[ p ]]_climate_slots
+            thresholds: input_boolean.[[ p ]]_climate_thresholds
+            [%- if air and (air.co2 is defined or air.pm2_5 is defined) %]
+            air_limits:
+              [%- for reading in ['co2', 'pm2_5'] if air[reading] is defined %]
+              [[ reading ]]: [input_number.[[ p ]]_air_[[ reading ]]_raised, input_number.[[ p ]]_air_[[ reading ]]_high]
+              [%- endfor %]
+            [%- endif %]
             rooms:
             [%- for room in series %]
               - name: [[ room.label | yaml ]]

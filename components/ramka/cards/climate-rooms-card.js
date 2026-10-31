@@ -1,14 +1,27 @@
-// The Climate page's rooms, picked on the settings dashboard: one row per place (`slots`, the number
-// of places; ten without it), each a name, a main reading and a supplementary one (by default the
-// temperature and the humidity), chosen from the home's sensors that have a unit with Home
-// Assistant's own entity picker, which searches as you type. The n-th room is the n-th room tile and
-// the n-th line of the 7-day charts, in the theme's series colour n, the swatch in front of the row.
+// The Climate page's widgets, picked on the settings dashboard: one row per widget (`slots`, the
+// number of widgets; ten without it). Each row has a type, chosen in the dropdown of its header:
+//   - Temperature: main = a temperature sensor, second = a humidity sensor;
+//   - Air quality: main = a CO2 sensor, second = a PM2.5 sensor;
+//   - Custom: main and second = any sensor with a unit;
+//   - Empty: an empty tile on the Ramka (no readings).
+// The pickers offer the sensors of the type's device class (any sensor with a unit when the home
+// has none of that class), with Home Assistant's own entity picker, which searches as you type. A
+// name, and a "Settings" link that opens the widget's dialog: a Temperature widget's comfort ranges,
+// an Air quality widget's limits (the Air page's helpers, shared with it), a Custom widget's colour.
+// The n-th widget with a reading is the n-th tile and the n-th line of the 7-day charts, in series
+// colour n (lib/climate-widgets.js), the swatch in front of the row.
 //
 //   type: custom:climate-rooms-card
-//   entity: sensor.ramka_climate_rooms         # attribute `rooms`: places in order, each
-//                                              # {label, main, extra} or a spacer {spacer: true}
+//   entity: sensor.ramka_climate_rooms         # attribute `rooms`: widgets in order, each
+//                                              # {type, label, main, extra, ...} or {type: empty, spacer: true}
 //   slots: input_number.ramka_climate_slots    # optional: how many rows (a number or an entity), 1-20
 //   script: script.ramka_climate_rooms_set     # called with {rooms: [...]}
+//   air_limits:                                # optional: the Air page's limits, raised and high, of
+//     co2: [input_number.ramka_air_co2_raised, input_number.ramka_air_co2_high]       # the readings
+//     pm2_5: [input_number.ramka_air_pm2_5_raised, input_number.ramka_air_pm2_5_high] # it has
+//
+// An entry from before the types reads as Temperature when its main sensor is a temperature, else
+// Custom (lib/climate-widgets.js); the next save stores the type, no room is lost.
 //
 // The picker is frontend internals a dashboard does not load by itself: the entities card's editor
 // imports it (HA 2026.9.2), so the card asks for that editor once. If the picker still is not there
@@ -18,26 +31,36 @@
 // handle takes the touch, so the page does not scroll under the finger) or with the row's up and down
 // buttons (keyboard, screen readers). It is a plain ordered list, not the Ramka's grid.
 //
-// A row without a main reading is a spacer: it keeps its place, an empty tile on the Ramka; empty
-// rows at the end are left out. Rooms beyond the number of places stay in the list, unseen on the
-// Ramka, until the user removes them here or raises the number. A name left empty becomes the main
-// sensor's area, else its own name. A sensor that is gone stays chosen, marked, until another is
-// picked (it may come back).
+// Empty widgets at the end are left out when saved. Widgets beyond the number stay in the list,
+// unseen on the Ramka, until the user removes them here or raises the number. A name left empty
+// becomes the main sensor's area, else its own name. A sensor that is gone stays chosen, marked,
+// until another is picked (it may come back).
 
 import { createT } from "./lib/i18n.js";
-import en from "../translations/en.json" with { type: "json" };
-import de from "../translations/de.json" with { type: "json" };
-import pl from "../translations/pl.json" with { type: "json" };
 
-const t = createT({ en, de, pl });
+// The translations and the shared widget module carry this module's own ?v= (the deploy's hash of
+// this file): /local/ is served with a 31-day cache, so an import without it can stay the old file
+// after a deploy in the same version, and a new key then shows raw (as card.climate_rooms.spacer did).
+const version = new URL(import.meta.url).search;
+const load = (path, json) => import(new URL(path, import.meta.url).href + version, json ? { with: { type: "json" } } : undefined);
+const [widgets, en, de, pl] = await Promise.all([
+  load("./lib/climate-widgets.js"), load("../translations/en.json", true), load("../translations/de.json", true),
+  load("../translations/pl.json", true)]);
+const { TYPES, DEVICE_CLASSES, COMFORT, SERIES_SLOTS, seriesSlot, slotColor, readWidget, hasReading, storedWidget } = widgets;
+
+const t = createT({ en: en.default, de: de.default, pl: pl.default });
 
 const DEFAULT_SLOTS = 10;
 const MAX_SLOTS = 20;
-// HA's own series colours when the theme has none (src/common/color/colors.ts), as rooms-card.
-const PALETTE = ["#4269d0", "#f4bd4a", "#ff725c", "#6cc5b0", "#a463f2", "#ff8ab7", "#9c6b4e", "#97bbf5", "#01ab63", "#9498a0"];
-
-const EMPTY = { label: "", main: "", extra: "" };
-const isRoom = (r) => !!(r && r.main);
+const EMPTY = { type: "empty" };
+// Per type, the label keys of its main and second readings.
+const READINGS = {
+  temperature: ["card.climate_rooms.main_temperature", "card.climate_rooms.extra_temperature"],
+  air: ["card.climate_rooms.main_air", "card.climate_rooms.extra_air"],
+  custom: ["card.climate_rooms.main", "card.climate_rooms.extra"],
+};
+// The Air page's readings an Air quality widget shows, with their legend in its dialog.
+const AIR_KEYS = { co2: "card.climate_rooms.co2_limits", pm2_5: "card.climate_rooms.pm2_5_limits" };
 
 class ClimateRoomsCard extends HTMLElement {
   setConfig(config) {
@@ -59,18 +82,14 @@ class ClimateRoomsCard extends HTMLElement {
     this._loadPicker();
     for (const picker of this._pickers || []) picker.hass = hass;
     const list = hass.states[this._config.entity]?.attributes?.rooms;
-    // The stored places: a room, or EMPTY for a spacer (or anything that is not a room).
-    const places = (Array.isArray(list) ? list : []).slice(0, MAX_SLOTS).map((r) =>
-      (r && typeof r === "object" && !r.spacer && typeof r.main === "string" && r.main
-        ? { label: String(r.label || ""), main: r.main, extra: typeof r.extra === "string" ? r.extra : "" }
-        : EMPTY));
+    const places = (Array.isArray(list) ? list : []).slice(0, MAX_SLOTS).map((r) => readWidget(r, hass.states));
     const slots = this._slots();
     const sensors = this._sensors();
     const key = JSON.stringify([places, slots, sensors, hass.locale?.language]);
-    // Not under a finger: after the drop, the next update draws the rows.
-    if (key === this._built || this._drag) return;
+    // Not under a finger or an open dialog: the next update after it draws the rows.
+    if (key === this._built || this._drag || this._dialog) return;
     this._built = key;
-    this._rooms = Array.from({ length: slots }, (_, n) => places[n] || EMPTY);
+    this._rooms = Array.from({ length: slots }, (_, n) => ({ ...(places[n] || EMPTY) }));
     this._beyond = places.slice(slots);
     this._render(sensors);
   }
@@ -96,12 +115,18 @@ class ClimateRoomsCard extends HTMLElement {
       }, () => {});
   }
 
-  // Every sensor with a unit, by name: [entity id, name, unit].
+  // Every sensor with a unit, by name: [entity id, name, unit, device class].
   _sensors() {
     return Object.entries(this._hass.states)
       .filter(([id, s]) => id.startsWith("sensor.") && typeof s.attributes?.unit_of_measurement === "string")
-      .map(([id, s]) => [id, String(s.attributes.friendly_name || id), s.attributes.unit_of_measurement])
+      .map(([id, s]) => [id, String(s.attributes.friendly_name || id), s.attributes.unit_of_measurement,
+                         typeof s.attributes.device_class === "string" ? s.attributes.device_class : ""])
       .sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+  }
+
+  // The device class a picker filters by: its type's, while the home has a sensor of it; else none.
+  _filterClass(sensors, deviceClass) {
+    return deviceClass && sensors.some((s) => s[3] === deviceClass) ? deviceClass : null;
   }
 
   _render(sensors) {
@@ -119,33 +144,54 @@ class ClimateRoomsCard extends HTMLElement {
         .handle { grid-row: span 4; align-self: stretch; display: flex; align-items: center; justify-content: center;
                   cursor: grab; touch-action: none; user-select: none; color: var(--secondary-text-color); border-radius: 6px; }
         .row.dragging .handle { cursor: grabbing; }
-        .swatch { width: 14px; height: 14px; border-radius: 50%; grid-row: span 4; align-self: start; margin-top: 8px;
+        .swatch { width: 14px; height: 14px; border-radius: 50%; grid-row: span 4; align-self: start; margin-top: 11px;
                   box-sizing: border-box; }
         .swatch.spacer { border: 2px dashed var(--divider-color); }
-        .head { grid-column: 3; display: flex; align-items: center; gap: 4px; }
-        .room { font-weight: 500; color: var(--primary-text-color); flex: 1; }
-        .head.spacer .room { color: var(--secondary-text-color); font-style: italic; }
+        .head { grid-column: 3; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+        .head select.type { flex: 1; min-width: 9em; width: auto; font-weight: 500; }
+        .head.spacer select.type { color: var(--secondary-text-color); font-style: italic; }
         button { font: inherit; color: var(--primary-text-color); background: none; border: 1px solid var(--divider-color);
-                 border-radius: 6px; min-width: 36px; min-height: 32px; cursor: pointer; }
+                 border-radius: 6px; min-width: 36px; min-height: 36px; cursor: pointer; }
         button:disabled { opacity: 0.35; cursor: default; }
+        button.settings { border: none; color: var(--primary-color); text-decoration: underline; padding: 0 8px; }
         label { display: grid; grid-template-columns: 9em minmax(0, 1fr); align-items: center; gap: 8px;
                 color: var(--secondary-text-color); grid-column: 3; }
         input, select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color);
                         border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; min-width: 0; width: 100%;
-                        box-sizing: border-box; }
+                        box-sizing: border-box; min-height: 36px; }
         ha-entity-picker { display: block; min-width: 0; width: 100%; }
         .beyond { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; padding: 8px 12px;
                   border-radius: 6px; background: var(--secondary-background-color); color: var(--primary-text-color); }
         .beyond span { flex: 1; min-width: 12em; }
         .beyond button { padding: 0 12px; }
+        dialog { border: none; border-radius: 12px; padding: 0; max-width: min(92vw, 440px); width: 100%; box-sizing: border-box;
+                 background: var(--card-background-color, #fff); color: var(--primary-text-color);
+                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+        .body { padding: 20px; display: grid; gap: 14px; }
+        .body h2 { margin: 0; font-size: 1.2em; font-weight: 500; }
+        .body p { margin: 0; color: var(--secondary-text-color); }
+        fieldset { border: 1px solid var(--divider-color); border-radius: 8px; margin: 0; padding: 8px 12px 12px;
+                   display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        legend { padding: 0 4px; color: var(--primary-text-color); }
+        fieldset label { grid-column: auto; grid-template-columns: 1fr; gap: 4px; }
+        .colours { display: flex; flex-wrap: wrap; gap: 10px; }
+        .colours label { display: flex; align-items: center; gap: 6px; cursor: pointer; min-height: 36px; color: var(--primary-text-color); }
+        .colours input { width: 20px; height: 20px; min-height: 0; margin: 0; }
+        .dot { width: 22px; height: 22px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
+        .error { color: var(--error-color, #db4437); }
+        .error:empty { display: none; }
+        .actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .actions button { padding: 0 16px; }
+        .actions button.save { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
       </style>
       <ha-card></ha-card>`;
     const card = root.querySelector("ha-card");
     this._rows = [];
     this._pickers = [];
     let n = 0;
-    this._rooms.forEach((room, index) => {
-      const number = isRoom(room) ? ++n : 0;
+    this._rooms.forEach((w, index) => {
+      const number = hasReading(w) ? ++n : 0;
       const row = document.createElement("div");
       row.className = "row";
       const handle = document.createElement("div");
@@ -159,28 +205,45 @@ class ClimateRoomsCard extends HTMLElement {
       this._dragHandle(handle, index);
       const swatch = document.createElement("div");
       swatch.className = number ? "swatch" : "swatch spacer";
-      if (number) swatch.style.background = this._color(number);
+      if (number) swatch.style.background = slotColor(this, seriesSlot(number));
       const head = document.createElement("div");
-      head.className = number ? "head" : "head spacer";
-      const title = document.createElement("span");
-      title.className = "room";
-      title.textContent = number ? t(this._hass, "card.climate_rooms.room", { n: number }) : t(this._hass, "card.climate_rooms.spacer");
-      const up = this._moveButton("up", "mdi:chevron-up", index, index - 1);
-      const down = this._moveButton("down", "mdi:chevron-down", index, index + 1);
-      head.append(title, up, down);
-      const label = document.createElement("input");
-      label.type = "text";
-      label.value = room.label;
-      label.placeholder = room.main ? this._defaultLabel(room.main) : "";
-      label.addEventListener("change", () => this._save());
-      const main = this._reading(sensors, room.main);
-      const extra = this._reading(sensors, room.extra);
-      row.append(handle, swatch, head, this._field("card.climate_rooms.label", label), this._field("card.climate_rooms.main", main),
-                 this._field("card.climate_rooms.extra", extra));
+      head.className = w.type === "empty" ? "head spacer" : "head";
+      const type = this._typeSelect(w, index);
+      const controls = { row, type };
+      head.append(type);
+      if (w.type !== "empty") {
+        const settings = document.createElement("button");
+        settings.type = "button";
+        settings.className = "settings";
+        settings.textContent = t(this._hass, "card.climate_rooms.settings");
+        settings.addEventListener("click", () => this._openSettings(index));
+        head.append(settings);
+        controls.settings = settings;
+      }
+      controls.up = this._moveButton("up", "mdi:chevron-up", index, index - 1);
+      controls.down = this._moveButton("down", "mdi:chevron-down", index, index + 1);
+      head.append(controls.up, controls.down);
+      row.append(handle, swatch, head);
+      if (w.type !== "empty") {
+        const label = document.createElement("input");
+        label.type = "text";
+        label.value = w.label;
+        label.placeholder = w.main ? this._defaultLabel(w.main) : "";
+        label.addEventListener("change", () => {
+          w.label = label.value;
+          this._save();
+        });
+        const [mainClass, extraClass] = DEVICE_CLASSES[w.type];
+        const main = this._reading(sensors, w.main, this._filterClass(sensors, mainClass), (v) => { w.main = v; });
+        const extra = this._reading(sensors, w.extra, this._filterClass(sensors, extraClass), (v) => { w.extra = v; });
+        const [mainKey, extraKey] = READINGS[w.type];
+        row.append(this._field("card.climate_rooms.label", label), this._field(mainKey, main), this._field(extraKey, extra));
+        Object.assign(controls, { label, main, extra });
+      }
       card.append(row);
-      this._rows.push({ row, label, main, extra, up, down });
+      this._rows.push(controls);
     });
-    const hidden = this._beyond.filter(isRoom).length;
+    const hidden = this._beyond.filter(hasReading).length;
     if (hidden) {
       const note = document.createElement("div");
       note.className = "beyond";
@@ -191,14 +254,45 @@ class ClimateRoomsCard extends HTMLElement {
       remove.className = "remove-beyond";
       remove.textContent = t(this._hass, "card.climate_rooms.remove_beyond");
       remove.addEventListener("click", () => {
-        this._rooms = this._current();
         this._beyond = [];
-        this._save(this._rooms);
+        this._save();
         this._render(this._sensorList);
       });
       note.append(text, remove);
       card.append(note);
     }
+  }
+
+  // The row's type, a dropdown in its header. A new type keeps the name and the readings that fit
+  // its pickers (a Custom widget takes any), and draws the row again with that type's fields.
+  _typeSelect(w, index) {
+    const select = document.createElement("select");
+    select.className = "type";
+    select.setAttribute("aria-label", t(this._hass, "card.climate_rooms.type", { n: index + 1 }));
+    for (const type of TYPES) {
+      const option = document.createElement("option");
+      option.value = type;
+      option.textContent = t(this._hass, `card.climate_rooms.types.${type}`);
+      select.append(option);
+    }
+    select.value = w.type;
+    select.addEventListener("change", () => {
+      const type = select.value;
+      if (type === "empty") {
+        this._rooms[index] = { ...EMPTY };
+      } else {
+        const fits = (id, deviceClass) => {
+          const dc = this._filterClass(this._sensorList, deviceClass);
+          return id && (!dc || this._hass.states[id]?.attributes?.device_class === dc) ? id : "";
+        };
+        const [mainClass, extraClass] = DEVICE_CLASSES[type];
+        this._rooms[index] = { type, label: w.label || "", main: fits(w.main, mainClass), extra: fits(w.extra, extraClass) };
+      }
+      this._save();
+      this._render(this._sensorList);
+      this._rows[index].type.focus();
+    });
+    return select;
   }
 
   _moveButton(which, icon, from, to) {
@@ -263,21 +357,14 @@ class ClimateRoomsCard extends HTMLElement {
   // or its twin when that one is now disabled.
   _move(from, to, focus) {
     if (to < 0 || to >= this._rows.length || to === from) return;
-    const rows = this._current();
-    const [row] = rows.splice(from, 1);
-    rows.splice(to, 0, row);
-    this._rooms = rows;
-    this._save(rows);
+    const [row] = this._rooms.splice(from, 1);
+    this._rooms.splice(to, 0, row);
+    this._save();
     this._render(this._sensorList);
     if (focus) {
       const moved = this._rows[to];
       (moved[focus].disabled ? moved[focus === "up" ? "down" : "up"] : moved[focus]).focus();
     }
-  }
-
-  // The rows as they stand in the controls: {label, main, extra}, raw.
-  _current() {
-    return this._rows.map((r) => ({ label: r.label.value, main: r.main.value || "", extra: r.extra.value || "" }));
   }
 
   _field(key, control) {
@@ -288,28 +375,37 @@ class ClimateRoomsCard extends HTMLElement {
     return label;
   }
 
-  // A reading's control: the entity picker when it is loaded, else a dropdown. Both have `value`.
-  _reading(sensors, value) {
+  // A reading's control: the entity picker when it is loaded, else a dropdown; both of the sensors
+  // with a unit, of `deviceClass` when given. `set` takes the new value, then the rows are saved.
+  _reading(sensors, value, deviceClass, set) {
     if (!customElements.get("ha-entity-picker")) {
-      const select = this._select(sensors, value);
-      select.addEventListener("change", () => this._save());
+      const select = this._select(deviceClass ? sensors.filter((s) => s[3] === deviceClass) : sensors, value);
+      select.addEventListener("change", () => {
+        set(select.value || "");
+        this._save();
+      });
       return select;
     }
     const picker = document.createElement("ha-entity-picker");
     picker.hass = this._hass;
     picker.includeDomains = ["sensor"];
-    picker.entityFilter = (state) => typeof state?.attributes?.unit_of_measurement === "string";
+    if (deviceClass) picker.includeDeviceClasses = [deviceClass];
+    picker.entityFilter = (state) => typeof state?.attributes?.unit_of_measurement === "string"
+      && (!deviceClass || state.attributes.device_class === deviceClass);
     picker.allowCustomEntity = false;
     picker.value = value || "";
     picker.addEventListener("value-changed", (ev) => {
       ev.stopPropagation();
       picker.value = ev.detail?.value || "";
+      set(picker.value);
       this._save();
     });
     this._pickers.push(picker);
     return picker;
   }
 
+  // A dropdown of `sensors`; a chosen one that is not among them stays, by its name, or marked when
+  // it is gone.
   _select(sensors, value) {
     const select = document.createElement("select");
     const none = document.createElement("option");
@@ -317,7 +413,10 @@ class ClimateRoomsCard extends HTMLElement {
     none.textContent = t(this._hass, "card.climate_rooms.none");
     select.append(none);
     const options = sensors.map(([id, name, unit]) => [id, unit ? `${name} (${unit})` : name]);
-    if (value && !sensors.some(([id]) => id === value)) options.push([value, `${value} (${t(this._hass, "card.climate_rooms.missing")})`]);
+    if (value && !sensors.some(([id]) => id === value)) {
+      const known = this._hass.states[value];
+      options.push([value, known ? String(known.attributes?.friendly_name || value) : `${value} (${t(this._hass, "card.climate_rooms.missing")})`]);
+    }
     for (const [id, text] of options) {
       const option = document.createElement("option");
       option.value = id;
@@ -329,6 +428,195 @@ class ClimateRoomsCard extends HTMLElement {
     return select;
   }
 
+  // ---- The widget's settings dialog -------------------------------------------------------------
+
+  // A modal <dialog> over the page (the browser's top layer, so no card clips it): Escape, a tap on
+  // the backdrop or Cancel close it unchanged; Save writes and closes. Updates wait while it is open.
+  _openSettings(index) {
+    const w = this._rooms[index];
+    const dialog = document.createElement("dialog");
+    dialog.className = "widget-settings";
+    const body = document.createElement("form");
+    body.className = "body";
+    const title = document.createElement("h2");
+    title.id = "widget-settings-title";
+    const name = w.label.trim() || (w.main ? this._defaultLabel(w.main) : t(this._hass, "card.climate_rooms.widget", { n: index + 1 }));
+    title.textContent = t(this._hass, "card.climate_rooms.settings_title", { name });
+    dialog.setAttribute("aria-labelledby", title.id);
+    body.append(title);
+    const error = document.createElement("p");
+    error.className = "error";
+    error.setAttribute("role", "alert");
+    const apply = { temperature: () => this._temperatureSettings(body, w), air: () => this._airSettings(body),
+                    custom: () => this._customSettings(body, w) }[w.type]();
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cancel";
+    cancel.textContent = t(this._hass, "card.climate_rooms.cancel");
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "save";
+    save.textContent = t(this._hass, "card.climate_rooms.save");
+    actions.append(cancel, save);
+    body.append(error, actions);
+    dialog.append(body);
+    const close = () => {
+      if (dialog.open && dialog.close) dialog.close();
+      dialog.remove();
+      if (this._dialog !== dialog) return;
+      this._dialog = null;
+      // What came in while it was open.
+      this._built = null;
+      if (this._hass) this.hass = this._hass;
+    };
+    cancel.addEventListener("click", close);
+    dialog.addEventListener("cancel", (ev) => { ev.preventDefault(); close(); });
+    dialog.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { ev.preventDefault(); close(); } });
+    // A click on the dialog itself, not on the form that fills its box, is on the backdrop.
+    dialog.addEventListener("click", (ev) => { if (ev.target === dialog) close(); });
+    body.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const problem = apply();
+      if (problem) {
+        error.textContent = t(this._hass, problem);
+        return;
+      }
+      close();
+    });
+    this.shadowRoot.append(dialog);
+    this._dialog = dialog;
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute("open", "");
+    return dialog;
+  }
+
+  // A number input with its label; `attrs` are min, max, step.
+  _number(key, value, attrs = {}) {
+    const label = document.createElement("label");
+    const span = document.createElement("span");
+    span.textContent = t(this._hass, key);
+    const input = document.createElement("input");
+    input.type = "number";
+    input.inputMode = "decimal";
+    for (const [k, v] of Object.entries(attrs)) if (v !== undefined && v !== null) input.setAttribute(k, String(v));
+    input.value = Number.isFinite(value) ? String(value) : "";
+    label.append(span, input);
+    return [label, input];
+  }
+
+  _fieldset(legendKey, items) {
+    const set = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.textContent = t(this._hass, legendKey);
+    set.append(legend, ...items);
+    return set;
+  }
+
+  // Temperature: the comfort ranges of the temperature and of the humidity, kept in the widget.
+  _temperatureSettings(body, w) {
+    const inputs = {};
+    const pair = (legend, lowKey, highKey, step) => {
+      const [lowLabel, low] = this._number("card.climate_rooms.low", w[lowKey] ?? COMFORT[lowKey], { step });
+      const [highLabel, high] = this._number("card.climate_rooms.high", w[highKey] ?? COMFORT[highKey], { step });
+      low.name = lowKey;
+      high.name = highKey;
+      inputs[lowKey] = low;
+      inputs[highKey] = high;
+      return this._fieldset(legend, [lowLabel, highLabel]);
+    };
+    body.append(pair("card.climate_rooms.temp_range", "temp_low", "temp_high", 0.5),
+                pair("card.climate_rooms.hum_range", "hum_low", "hum_high", 1));
+    return () => {
+      const v = Object.fromEntries(Object.entries(inputs).map(([k, input]) => [k, parseFloat(input.value)]));
+      if (!Object.values(v).every(Number.isFinite) || v.temp_low >= v.temp_high || v.hum_low >= v.hum_high) {
+        return "card.climate_rooms.invalid";
+      }
+      Object.assign(w, v);
+      this._save();
+      return null;
+    };
+  }
+
+  // Air quality: the Air page's own limits, the same helpers (input_number.set_value), so a change
+  // shows on the Air page too; only those the home has, the others said to be not set up.
+  _airSettings(body) {
+    const pairs = [];
+    const how = document.createElement("p");
+    how.textContent = t(this._hass, "card.climate_rooms.air_how");
+    body.append(how);
+    for (const [reading, legendKey] of Object.entries(AIR_KEYS)) {
+      const entities = this._config.air_limits?.[reading];
+      const states = Array.isArray(entities) && entities.length === 2 ? entities.map((e) => this._hass.states[e]) : [];
+      if (!states.length || !states.every(Boolean)) {
+        const note = document.createElement("p");
+        note.className = "not-set-up";
+        note.textContent = t(this._hass, "card.climate_rooms.air_not_set_up", { reading: t(this._hass, legendKey) });
+        body.append(note);
+        continue;
+      }
+      const pair = [];
+      const items = ["card.climate_rooms.raised", "card.climate_rooms.high_from"].map((key, i) => {
+        const a = states[i].attributes || {};
+        const old = parseFloat(states[i].state);
+        const [label, input] = this._number(key, old, { min: a.min, max: a.max, step: a.step });
+        input.name = entities[i];
+        pair.push({ entity: entities[i], input, old });
+        return label;
+      });
+      pairs.push(pair);
+      body.append(this._fieldset(legendKey, items));
+    }
+    return () => {
+      const values = pairs.map((pair) => pair.map((f) => ({ ...f, value: parseFloat(f.input.value) })));
+      if (values.some(([raised, high]) => !Number.isFinite(raised.value) || !Number.isFinite(high.value) || raised.value >= high.value)) {
+        return "card.climate_rooms.invalid";
+      }
+      for (const { entity, value, old } of values.flat()) {
+        if (value !== old) this._hass.callService("input_number", "set_value", { entity_id: entity, value });
+      }
+      return null;
+    };
+  }
+
+  // Custom: the value's colour with threshold-based colours on: neutral, or one of the series colours.
+  _customSettings(body, w) {
+    const how = document.createElement("p");
+    how.id = "widget-colour-how";
+    how.textContent = t(this._hass, "card.climate_rooms.colour_how");
+    const group = document.createElement("div");
+    group.className = "colours";
+    group.setAttribute("role", "radiogroup");
+    group.setAttribute("aria-labelledby", how.id);
+    const choice = (value, text, color) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "colour";
+      input.value = String(value);
+      input.checked = (w.color || 0) === value;
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = color;
+      if (!value) dot.style.border = "2px solid var(--primary-text-color)";
+      const span = document.createElement("span");
+      span.textContent = text;
+      label.append(input, dot, span);
+      return label;
+    };
+    group.append(choice(0, t(this._hass, "card.climate_rooms.neutral"), "transparent"),
+                 ...SERIES_SLOTS.map((slot, i) => choice(slot, t(this._hass, "card.climate_rooms.colour", { n: i + 1 }), slotColor(this, slot))));
+    body.append(how, group);
+    return () => {
+      const picked = parseInt(group.querySelector("input:checked")?.value || "0", 10);
+      if (picked) w.color = picked;
+      else delete w.color;
+      this._save();
+      return null;
+    };
+  }
+
   // The main sensor's area (its own, else its device's), else the sensor's name.
   _defaultLabel(id) {
     const entity = this._hass.entities?.[id];
@@ -336,18 +624,10 @@ class ClimateRoomsCard extends HTMLElement {
     return this._hass.areas?.[area]?.name || String(this._hass.states[id]?.attributes?.friendly_name || id);
   }
 
-  _color(n) {
-    const v = getComputedStyle(this).getPropertyValue(`--graph-color-${n}`).trim();
-    return v || PALETTE[(n - 1) % PALETTE.length];
-  }
-
-  // Every row in order (as the controls hold them, or `rows`), a spacer where it has no main
-  // reading, then the rooms beyond the number of places as they were; no spacer at the end.
-  _save(rows = this._current()) {
-    const rooms = [...rows, ...this._beyond].map((r) => (r.main
-      ? { label: r.label.trim() || this._defaultLabel(r.main), main: r.main, extra: r.extra }
-      : { spacer: true }));
-    while (rooms.length && rooms.at(-1).spacer) rooms.pop();
+  // Every row in order, then the widgets beyond the number as they were; no empty one at the end.
+  _save() {
+    const rooms = [...this._rooms, ...this._beyond].map((w) => storedWidget(w, (id) => this._defaultLabel(id)));
+    while (rooms.length && rooms.at(-1).type === "empty") rooms.pop();
     const [domain, service] = this._config.script.split(".");
     this._hass.callService(domain, service, { rooms });
   }
