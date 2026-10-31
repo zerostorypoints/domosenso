@@ -62,6 +62,45 @@
     'level': ['still', 'tide', 'centre', 'timeline', 'clocks', 'ripples', 'tint', 'bars']} -%]
 [%- set palettes = ['zones', 'series', 'calm'] -%]
 [%- macro within(key, value, lo, hi) -%][%- if value is boolean or value is not number or value < lo or value > hi -%][[ fail('ramka: music_visual_options.' ~ key ~ ' must be within ' ~ lo ~ ' and ' ~ hi) ]][%- endif -%][%- endmacro -%]
+[#- The music EQ (Tasks 5-7 render helpers, a sensor and dashboards from these two tables). Six
+    ranges in dB, each -18...+12 (the card's range, spec 3.1); a key a preset leaves out is 0.
+    `mlp_match`, `half_match` and `fitted` are flat here: a home fills them with music_eq_presets, and
+    the catalog carries no measured value. The WLED rows are derived from WLED-MM's frequency profiles
+    (spec 3.3). -#]
+[%- set eq_keys = ['sub', 'bass', 'low_mid', 'mid', 'presence', 'air'] -%]
+[%- set eq_presets = {
+    'flat': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'mlp_match': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'half_match': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'wled_big_speakers': {'sub': -4, 'bass': -2, 'low_mid': -5, 'mid': 0, 'presence': 1, 'air': 2},
+    'wled_big_speakers_ics': {'sub': -3, 'bass': -4, 'low_mid': -4, 'mid': 0, 'presence': 2, 'air': -1},
+    'wled_pink': {'sub': -2, 'bass': 1, 'low_mid': 2, 'mid': 0, 'presence': 2, 'air': 4},
+    'bass_light': {'sub': -8, 'bass': -6, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'voices': {'sub': -6, 'bass': -8, 'low_mid': -2, 'mid': 3, 'presence': 4, 'air': 0},
+    'sparkle': {'sub': -3, 'bass': -3, 'low_mid': 0, 'mid': 0, 'presence': 3, 'air': 5},
+    'fitted': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0}} -%]
+[%- set meq = inputs.music_eq_presets | default({}) -%]
+[%- if music_visual is not none and meq is not none -%]
+[%- if meq is not mapping -%][[ fail('ramka: music_eq_presets must be a mapping') ]][%- endif -%]
+[%- for id, own in meq.items() -%]
+[%- if id not in ['mlp_match', 'half_match', 'fitted'] -%][[ fail("ramka: music_eq_presets: unknown preset '" ~ id ~ "'") ]][%- endif -%]
+[%- if own is not mapping -%][[ fail('ramka: music_eq_presets.' ~ id ~ ' must be a mapping') ]][%- endif -%]
+[%- for key in own if key not in eq_keys -%][[ fail('ramka: music_eq_presets.' ~ id ~ ": unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- for key, value in own.items() -%]
+[%- if value is boolean or value is not number or value < -18 or value > 12 -%][[ fail('ramka: music_eq_presets.' ~ id ~ '.' ~ key ~ ' must be within -18 and 12') ]][%- endif -%]
+[%- set _ = eq_presets[id].update({key: value}) -%]
+[%- endfor -%]
+[%- endfor -%]
+[%- endif -%]
+[#- The templates of the music looks (spec 4.1); Custom is read from the helpers, so it is not here.
+    On `fast` a frame arrives every 85 ms, so a rise under that acts as a jump. The level's colour
+    pair equals the spectrum's, hence one pair per row. -#]
+[%- set looks = {
+    'mlp_match': {'eq_id': 'fitted' if eq_presets.fitted.values() | select('!=', 0) | list else 'mlp_match',
+        'tilt': true, 'rise': 100, 'fall': 2, 'hold': 1.5, 'neutral': 30, 'hot': 80},
+    'lively': {'eq_id': 'wled_big_speakers_ics', 'tilt': false, 'rise': 50, 'fall': 0.3, 'hold': 0.5, 'neutral': 35, 'hot': 78},
+    'calm': {'eq_id': 'wled_big_speakers', 'tilt': true, 'rise': 80, 'fall': 4.2, 'hold': 2.0, 'neutral': 28, 'hot': 85},
+    'analyser': {'eq_id': 'flat', 'tilt': false, 'rise': 0, 'fall': 0.5, 'hold': 1.0, 'neutral': 35, 'hot': 80}} -%]
 [%- set mv = {} -%]
 [%- if music_visual is not none -%]
 [%- set mvo = inputs.music_visual_options | default({}) -%]

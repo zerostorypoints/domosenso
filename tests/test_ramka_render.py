@@ -1111,6 +1111,32 @@ def test_music_visual_options_bad_values_fail(tmp_path, options, message):
         render(tmp_path, with_visual(options=options))
 
 
+@pytest.mark.parametrize("presets, message", [
+    ({"wled_pink": {}}, r"ramka: music_eq_presets: unknown preset 'wled_pink'"),
+    ({"mlp_match": {"treble": 1}}, r"ramka: music_eq_presets.mlp_match: unknown key 'treble'"),
+    ({"mlp_match": {"bass": -19}}, r"ramka: music_eq_presets.mlp_match.bass must be within -18 and 12"),
+    ({"half_match": {"air": 13}}, r"ramka: music_eq_presets.half_match.air must be within -18 and 12"),
+    ({"fitted": 3}, r"ramka: music_eq_presets.fitted must be a mapping"),
+])
+def test_music_eq_presets_bad_input_fails(tmp_path, presets, message):
+    inputs = with_visual()
+    inputs["music_eq_presets"] = presets
+    with pytest.raises(dr.RenderError, match=message):
+        render(tmp_path, inputs)
+
+
+def test_music_eq_presets_at_the_limits_render(tmp_path):
+    inputs = with_visual()
+    inputs["music_eq_presets"] = {"mlp_match": {"bass": -18, "air": 12}, "fitted": {}}
+    render(tmp_path, inputs)
+
+
+def test_music_eq_presets_alone_change_nothing(tmp_path):
+    inputs = without_visual()
+    inputs["music_eq_presets"] = {"mlp_match": {"bass": -10}}
+    assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", without_visual())
+
+
 def test_settings_defaults_at_the_limits_render(tmp_path, plain):
     numbers = plain["package.yaml"]["input_number"]
     inputs = with_visual(options={"rise": 0, "fall": 30, "line_width": 12, "fps": 1,
