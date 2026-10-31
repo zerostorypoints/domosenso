@@ -28,7 +28,14 @@ profile's own helpers). There is no blind audition.
   while it is selected), Colour range, Calibration. The description card, "Values in use" and the
   preset list are gone: the profile and EQ preset selects carry an (i) tooltip instead.
 - **New card resource**: `cards/info-select-row.js` (`custom:ramka-info-select-row`), an entities-card
-  row; the deploy creates its Lovelace resource.
+  row; the deploy creates its Lovelace resource. Its description is a floating tooltip next to the
+  (i) (hover shows it, a tap pins it, a tap elsewhere, Escape or a scroll closes it); no layout moves.
+- **Settings polish**: on Music, Profile settings and the Colour range show only while "Show advanced
+  settings" is on; the music source and the sensor update rate share one "Music sensor" card in
+  Advanced; the redraw rate (`input_number.<prefix>_music_fps`) has no row any more (the helper, its
+  default 30 and the cards' binding stay; a home that changed it keeps its value). Each EQ preset's
+  tooltip explains it and names its curve from the preset table, the home's `music_eq_presets`
+  included. On Photos, the time per photo moved from Advanced to Basic. Nothing to do.
 
 The looks need the audio-sensor release that carries the `look` option and `dynamics.eq`; an older
 audio-sensor card ignores both and draws without them, so update the two components together.

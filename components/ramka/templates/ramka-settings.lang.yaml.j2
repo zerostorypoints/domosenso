@@ -153,7 +153,29 @@
 [%- set look_ids = ['custom', 'behind_speakers', 'lively', 'calm', 'analyser'] -%]
 [%- set eq_preset_ids = ['flat', 'behind_speakers', 'half_match', 'wled_big_speakers', 'wled_big_speakers_ics', 'wled_pink', 'bass_light', 'voices', 'sparkle', 'fitted'] -%]
 [%- set eq_keys = ['sub', 'bass', 'low_mid', 'mid', 'presence', 'air'] -%]
-[#- The tooltips' texts: a profile's purpose, best use and why / when, one line each; a preset's name. -#]
+[#- The EQ presets' gains, the package's table (eq_presets in templates/package.yaml.j2) with the
+    home's music_eq_presets over its three own ones (the package validates them), so a preset's
+    tooltip names the curve this home loads; tests/test_ramka_render.py holds the two to the same
+    numbers. -#]
+[%- set eq_presets = {
+    'flat': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'behind_speakers': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'half_match': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'wled_big_speakers': {'sub': -4, 'bass': -2, 'low_mid': -5, 'mid': 0, 'presence': 1, 'air': 2},
+    'wled_big_speakers_ics': {'sub': -3, 'bass': -4, 'low_mid': -4, 'mid': 0, 'presence': 2, 'air': -1},
+    'wled_pink': {'sub': -2, 'bass': 1, 'low_mid': 2, 'mid': 0, 'presence': 2, 'air': 4},
+    'bass_light': {'sub': -8, 'bass': -6, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
+    'voices': {'sub': -6, 'bass': -8, 'low_mid': -2, 'mid': 3, 'presence': 4, 'air': 0},
+    'sparkle': {'sub': -3, 'bass': -3, 'low_mid': 0, 'mid': 0, 'presence': 3, 'air': 5},
+    'fitted': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0}} -%]
+[%- set meq = inputs.music_eq_presets | default({}) -%]
+[%- if music_visual is not none and meq is mapping -%]
+[%- for id, own in meq.items() if id in eq_presets and own is mapping -%][%- set _ = eq_presets[id].update(own) -%][%- endfor -%]
+[%- endif -%]
+[#- A gain as the tooltip writes it: a true minus sign, a plus for a lift, no ".0". -#]
+[%- macro db(value) -%][%- set v = (value | int) if value == (value | int) else value -%][%- if v < 0 -%]−[[ v | abs ]][%- elif v > 0 -%]+[[ v ]][%- else -%]0[%- endif %] dB[%- endmacro -%]
+[#- The tooltips' texts: a profile's or a preset's purpose, best use and why / when, one line each;
+    a preset's also its curve, from the table above (a flat one says so, the home's own until set). -#]
 [%- set profile_texts = {} -%]
 [%- for id in look_ids -%]
 [%- set _ = profile_texts.update({id: t('ui.settings.music_template_' ~ id ~ '_purpose') ~ '\n'
@@ -161,7 +183,19 @@
     ~ t('ui.settings.music_look_why') ~ ': ' ~ t('ui.settings.music_template_' ~ id ~ '_why')}) -%]
 [%- endfor -%]
 [%- set preset_texts = {} -%]
-[%- for preset in eq_preset_ids -%][%- set _ = preset_texts.update({preset: t('ui.settings.music_eq_' ~ preset)}) -%][%- endfor -%]
+[%- for preset in eq_preset_ids -%]
+[%- set gains = eq_presets[preset] -%]
+[%- if gains.values() | select('!=', 0) | list -%]
+[%- set bands = [] -%][%- for key in eq_keys -%][%- set _ = bands.append(t('ui.settings.music_eq_band_' ~ key) ~ ' ' ~ db(gains[key])) -%][%- endfor -%]
+[%- set curve = bands | join(', ') -%]
+[%- else -%]
+[%- set curve = t('ui.settings.music_eq_curve_flat' if preset == 'flat' else 'ui.settings.music_eq_curve_unset') -%]
+[%- endif -%]
+[%- set _ = preset_texts.update({preset: t('ui.settings.music_eq_' ~ preset ~ '_purpose') ~ '\n'
+    ~ t('ui.settings.music_look_best') ~ ': ' ~ t('ui.settings.music_eq_' ~ preset ~ '_best') ~ '\n'
+    ~ t('ui.settings.music_look_why') ~ ': ' ~ t('ui.settings.music_eq_' ~ preset ~ '_why') ~ '\n'
+    ~ t('ui.settings.music_eq_curve') ~ ': ' ~ curve}) -%]
+[%- endfor -%]
 [#- One profile's rows: rise, fall, hold, tilt, the EQ preset select (it loads into the selected
     profile, which is this card's), the Load button, the six EQ gains; labelled as Custom's. -#]
 [%- macro profile_rows(id) -%]
@@ -182,23 +216,27 @@
 [%- macro profile_sections() %]
       # Each profile's own values, its card shown while it is selected (Custom also for a state that is
       # no entry id). The Load button applies the EQ select's preset again: choosing the preset already
-      # selected changes no state.
+      # selected changes no state. Advanced, as the colour range: the section and each card shown
+      # while the Advanced switch is on.
       - type: grid
-        cards:[[ heading('music_profile_settings', 'mdi:tune') ]]
+        visibility: [ [[ advanced_on ]] ]
+        cards:[[ heading('music_profile_settings', 'mdi:tune', advanced_on) ]]
 [%- for id in look_ids %]
           - type: entities
 [%- if id == 'custom' %]
-            visibility: [ {condition: state, entity: [[ template_select ]], state_not: [[ look_ids[1:] | tojson ]]} ]
+            visibility: [ [[ advanced_on ]], {condition: state, entity: [[ template_select ]], state_not: [[ look_ids[1:] | tojson ]]} ]
 [%- else %]
-            visibility: [ {condition: state, entity: [[ template_select ]], state: [[ id ]]} ]
+            visibility: [ [[ advanced_on ]], {condition: state, entity: [[ template_select ]], state: [[ id ]]} ]
 [%- endif %]
             title: [[ t('ui.settings.music_template_' ~ id) | yaml ]]
             entities:[[ profile_rows(id) ]]
 [%- endfor %]
       # The colour range: where the palette starts and where it is hot, the user's whichever profile is on.
       - type: grid
-        cards:[[ heading('music_colour', 'mdi:palette') ]]
+        visibility: [ [[ advanced_on ]] ]
+        cards:[[ heading('music_colour', 'mdi:palette', advanced_on) ]]
           - type: entities
+            visibility: [ [[ advanced_on ]] ]
             entities:[[ rows([('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db'),
           ('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db')]) ]]
 [%- endmacro -%]
@@ -261,7 +299,7 @@ views:
       # Left out by the render: its switch would change nothing.
       - type: grid
         cards:[[ not_configured(adds[view]) ]]
-[%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'photo_s')]) ]]
+[%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_number', 'photo_s'), ('input_boolean', 'settings_advanced')]) ]]
           # The albums: a checkbox each (photo-albums-card), none ticked is all.[[ heading('photo_albums', 'mdi:folder-image', advanced_on) ]]
           - type: markdown
             visibility: [ [[ advanced_on ]] ]
@@ -319,26 +357,31 @@ views:
     sections:
 [%- if visuals %][[ switch_section('music', [('input_select', 'music_visual'), ('input_select', 'music_palette'), ('input_select', 'music_template', profile_texts), ('input_boolean', 'settings_advanced')]) ]]
       # Advanced, right after Basic (the second column), the whole section shown while the Advanced
-      # switch is on; its cards carry the condition too (SPEC-021). audio-sensor's music source and
-      # its sensor update rate (how often the board publishes; the redraw rate is how often the
-      # browser draws) hide while unavailable, as in a home without audio-sensor.
+      # switch is on; its cards carry the condition too (SPEC-021). The Music sensor card holds
+      # audio-sensor's music source and its sensor update rate (how often the board publishes), each
+      # row hidden while unavailable and the card while both are, as in a home without audio-sensor.
+      # The redraw rate (input_number.[[ p ]]_music_fps) is no row: it stays at its default.
       - type: grid
         visibility: [ [[ advanced_on ]] ]
         cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
           - type: entities
-            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            title: [[ t('ui.settings.music_source') | yaml ]]
+            visibility: [ [[ advanced_on ]], {condition: or, conditions: [ [[ source_there ]], [[ rate_there ]] ]} ]
             entities:
-              - entity: input_select.audio_sensor_music_source
-                name: [[ t('ui.settings.music_source') | yaml ]]
+              - type: conditional
+                conditions: [ [[ source_there ]] ]
+                row:
+                  entity: input_select.audio_sensor_music_source
+                  name: [[ t('ui.settings.music_source_row') | yaml ]]
+              - type: conditional
+                conditions: [ [[ rate_there ]] ]
+                row:
+                  entity: input_select.audio_sensor_music_spectrum_rate
+                  name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
           - type: entities
             visibility: [ [[ advanced_on ]] ]
             entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'),
-          ('input_number', 'music_line_width_px'), ('input_number', 'music_fps')]) ]]
-          - type: entities
-            visibility: [ [[ advanced_on ]], [[ rate_there ]] ]
-            entities:
-              - entity: input_select.audio_sensor_music_spectrum_rate
-                name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
+          ('input_number', 'music_line_width_px')]) ]]
       # The visual as the tablet draws it, at the strip's height, the width of the page. Without
       # audio-sensor (its select unavailable) the card's element does not exist: the classic note.
       - type: grid

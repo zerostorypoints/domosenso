@@ -71,7 +71,8 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
 - **The look is live.** Every option of the two visual configs names a helper (Live settings
   below): the flavour per kind (`input_select.<prefix>_music_spectrum_flavour`, `_level_flavour`),
   the palette, rise, fall, line width, tilt, the neutral and hot dB per kind and the redraw rate
-  (`fps`: how often the browser draws, which cannot make the data newer). The card reads their states on every update, so a change shows on the tablet at once.
+  (`fps`: how often the browser draws, which cannot make the data newer; no settings page shows
+  it, so it stays at its starting value, 30, unless changed in Home Assistant). The card reads their states on every update, so a change shows on the tablet at once.
   `music_visual_options` gives their starting values, key by key, for example
   `{level: {flavour: tide}, line_width: 3}`; absent keys take the card's defaults (spectrum `dune`,
   level `centre`, 30 to 70 dB SPL, the `series` palette, rise 200 ms, fall 4 s, 30 fps), the line
@@ -209,8 +210,8 @@ lovelace:
   to defaults" for that page; General's resets every setting. Each asks for a confirmation. Each page
   also lists its render-time inputs read-only with this render's values (General: the screen size).
 - **Basic and Advanced.** The Advanced cards (General: near distance and hold, controls hold, lux
-  for full brightness; Music: the flavours, line width, the refresh rate, the music sensor and its
-  calibration; Photos: the time per photo and the albums;
+  for full brightness; Music: the music sensor (source and update rate), the flavours, line width,
+  the profile settings, the colour range and the calibration; Photos: the albums;
   Air: the limits; Climate: the rooms) show while "Show advanced settings"
   (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on every page with
   Advanced parts (Music, Photos, Air, Climate).
@@ -222,7 +223,7 @@ lovelace:
   shows the one it opens (the tablet user's default dashboard, or the Companion app's start page);
   General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
   has not run on the tested tablet yet.
-- **Photos**: photos per series (5) and, in Advanced, the time per photo (10 s) and the albums, a
+- **Photos**: photos per series (5), the time per photo (10 s) and, in Advanced, the albums, a
   checkbox each for the top-level folders of `photo_dir` that hold photos, "All albums" first (none
   ticked is all too). "All albums" keeps the ticks, greyed out, for when it is unticked. The list follows the folder: the photo index sends it after each run (at start,
   every 15 minutes). The choice is kept by `sensor.<prefix>_photo_albums` over a restart; a chosen
@@ -255,20 +256,25 @@ lovelace:
   phone the strip is narrower at the same height.
 - **Music page layout** (unreleased): Basic (the page switch, visualization, palette, the response
   profile and the Advanced switch), then Advanced, the whole section shown while the switch is on
-  (audio-sensor's music source, the two flavours, line width, redraw rate and audio-sensor's sensor
-  update rate; the audio-sensor rows hide while unavailable), the Preview across both columns,
-  Profile settings, the Colour range and the Calibration.
+  (one "Music sensor" card with audio-sensor's music source and its sensor update rate, each row
+  hidden while unavailable and the card while both are; the two flavours and line width), the
+  Preview across both columns, then Profile settings and the Colour range, both shown only while
+  the Advanced switch is on, and the Calibration. The redraw rate has no row.
 - **Response profile** (Music, unreleased): the profile select has an (i) at its end
   (`custom:ramka-info-select-row`, `cards/info-select-row.js`): hovering with a mouse shows the
-  selected profile's purpose, best use and why / when (translated; the select shows the ids), a tap
-  pins it open on a tablet or phone, a tap elsewhere or Escape closes it. Profile settings holds one
+  selected profile's purpose, best use and why / when (translated; the select shows the ids) in a
+  floating tooltip beside the (i) (below it, above when there is no room, kept inside the window,
+  over the cards without moving them), a tap pins it open on a tablet or phone, a tap elsewhere,
+  Escape or a scroll closes it. Profile settings holds one
   card per profile, shown while that profile is selected: rise, fall, hold, tilt, the EQ preset
-  select (with an (i) naming the selected preset), "Apply the selected preset" (it loads the
+  select (with an (i) that tells what the selected preset does, its best use, why / when, and its
+  curve, "Curve: sub −5 dB, bass −10 dB, …", built at render time from the preset table with the
+  home's `music_eq_presets`; a flat one says it is flat until set), "Apply the selected preset" (it loads the
   select's preset again into this profile) and the six EQ ranges. The Colour range grid holds the
   four neutral and hot dB values, which no profile changes. The page's "Reset to default" restores
   everything on the Music page, every profile included.
 - **Music sensor and calibration** (Music, Advanced): audio-sensor's
-  `input_select.audio_sensor_music_source` (in the Advanced section) and, in the Calibration
+  `input_select.audio_sensor_music_source` (in the Advanced section's Music sensor card) and, in the Calibration
   section, the offset in use with "calibrated" or "estimate", the
   mic gain (read-only: changing it is a flash), the note, the procedure, the measured offset and
   note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render

@@ -1071,6 +1071,8 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
                 assert on_pages.get(entity) == PAGE_CONTROLS[entity], f"{lang}: {entity} not on its page"
             elif entity in state_helpers:
                 assert entity not in on_pages, f"{lang}: state helper {entity} on the {on_pages[entity]} page"
+            elif entity in OFF_PAGE_SETTINGS:
+                assert entity not in on_pages, f"{lang}: {entity} is on the {on_pages[entity]} page"
             elif entity.removeprefix("input_boolean.ramka_page_") in left_out:
                 assert entity not in on_pages, f"{lang}: {entity} shown on a page the render left out"
             else:
@@ -1091,7 +1093,7 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
             assert on_pages.get(SPECTRUM_RATE) == "music", lang
             [(section, card)] = [(s, c) for s, c in view_cards(views["music"])
                                  if SPECTRUM_RATE in {r.get("entity") for r in rows(c)}]
-            assert advanced(section, card) and RATE_THERE in card["visibility"], lang
+            assert advanced(section, card) and row_conditions(card, SPECTRUM_RATE) == [RATE_THERE], lang
         else:
             assert SPECTRUM_RATE not in on_pages and SPECTRUM_RATE not in json.dumps(views), lang
     # The Music reset and the global reset set it to normal while it is there; a home without
@@ -1105,6 +1107,9 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
     for page in ["general"] + [v for v in PAGE_VIEWS if v != "music"]:
         assert SPECTRUM_RATE not in run_reset(package, page=page, states=there), page
 
+
+# Settings no page shows, which the resets still set (the redraw rate stays at its default, 30).
+OFF_PAGE_SETTINGS = {"input_number.ramka_music_fps"}
 
 FALLBACK = re.compile(r"states\('(input_\w+\.ramka_\w+)'\)\s*\|\s*(?:int|float)\(([\d.]+)\)")
 
@@ -1521,14 +1526,9 @@ BASIC = {
 }
 BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
                    "input_boolean.ramka_settings_advanced",
-                   # The profile (spec 7): the template, Custom's rows (its own card) and the colour range.
-                   "input_select.ramka_music_template", "input_select.ramka_music_eq", "input_number.ramka_music_hold_s",
-                   *(f"input_number.ramka_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")),
-                   "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_boolean.ramka_music_tilt",
-                   *(f"input_number.ramka_{k}" for k in MUSIC_DB),
-                   # Each template's own rows, in its card under Profile settings.
-                   *PROFILE_DEFAULTS}
-BASIC["photos"] |= {"input_number.ramka_photo_count", "input_boolean.ramka_settings_advanced"}
+                   # The profile (spec 7): the select; its values are Advanced.
+                   "input_select.ramka_music_template"}
+BASIC["photos"] |= {"input_number.ramka_photo_count", "input_number.ramka_photo_s", "input_boolean.ramka_settings_advanced"}
 BASIC["climate"] |= {"input_boolean.ramka_settings_advanced"}
 BASIC["plants"] |= {"input_number.ramka_plants_per_page", "input_boolean.ramka_settings_advanced"}
 BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
@@ -1538,9 +1538,14 @@ ADVANCED = {
     "general": {"input_number.ramka_near_cm", "input_number.ramka_near_s", "input_number.ramka_controls_hold_s",
                 "input_number.ramka_lux_max"},
     "music": {"input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
-              "input_number.ramka_music_line_width_px", "input_number.ramka_music_fps", SPECTRUM_RATE, MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
-              "input_text.audio_sensor_calibration_note"},
-    "photos": {"input_number.ramka_photo_s", ALBUMS},
+              "input_number.ramka_music_line_width_px", SPECTRUM_RATE, MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
+              "input_text.audio_sensor_calibration_note",
+              # Profile settings (Custom's rows and each template's own, the EQ select) and the colour range.
+              "input_select.ramka_music_eq", "input_number.ramka_music_hold_s",
+              *(f"input_number.ramka_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")),
+              "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_boolean.ramka_music_tilt",
+              *(f"input_number.ramka_{k}" for k in MUSIC_DB), *PROFILE_DEFAULTS},
+    "photos": {ALBUMS},
     "climate": {CLIMATE},
     "plants": {"input_number.ramka_plants_page_s"},
     "air": {f"input_number.ramka_air_{k}" for k in AIR_LIMITS},
@@ -1566,7 +1571,19 @@ def view_cards(view):
 
 
 def rows(card) -> list[dict]:
-    return [r if isinstance(r, dict) else {"entity": r} for r in card.get("entities", [])] if card.get("type") == "entities" else []
+    """An entities card's rows; a conditional row as the row it shows."""
+    if card.get("type") != "entities":
+        return []
+    out = [r if isinstance(r, dict) else {"entity": r} for r in card.get("entities", [])]
+    return [r["row"] if r.get("type") == "conditional" else r for r in out]
+
+
+def row_conditions(card, entity) -> list[dict]:
+    """The conditions of an entities card's conditional row for `entity` ([] for a plain row)."""
+    for r in card.get("entities", []):
+        if isinstance(r, dict) and r.get("type") == "conditional" and r["row"].get("entity") == entity:
+            return r["conditions"]
+    return []
 
 
 def shown_entities(view) -> set[str]:
@@ -1623,8 +1640,8 @@ def test_settings_dashboard_pages_per_language(demo):
             continue
         shown = list(strings(dashboard))
         for key, value in t.items():
-            if value == en[key] or "`" in en[key] or "\n" in en[key]:
-                continue
+            if value == en[key] or "`" in en[key] or "\n" in en[key] or en[key] in SETTINGS_PAGES:
+                continue  # (a page path, such as "air", is no English text)
             assert not any(word(en[key]).search(s) for s in shown), f"{lang}: English {en[key]!r} ({key})"
     assert "ß" not in json.dumps(demo["ramka-settings.de.yaml"], ensure_ascii=False)
 
@@ -1737,9 +1754,12 @@ def test_music_page_sensor_and_calibration(demo):
         assert reading
         for section, card in reading:
             conditions = (section.get("visibility") or []) + (card.get("visibility") or [])
-            assert SOURCE_THERE in card.get("visibility", []) and ADVANCED_ON in conditions, (lang, card.get("type"))
+            there = SOURCE_THERE in card.get("visibility", []) or row_conditions(card, MUSIC_SOURCE) == [SOURCE_THERE]
+            assert there and ADVANCED_ON in conditions, (lang, card.get("type"))
+        # The Music sensor card: the source row, hidden while unavailable, and the update rate's.
         [select] = [c for _, c in reading if MUSIC_SOURCE in {r.get("entity") for r in rows(c)}]
-        assert [r["name"] for r in rows(select)] == [t["ui.settings.music_source"]]
+        assert select["title"] == t["ui.settings.music_source"]
+        assert [r["name"] for r in rows(select)] == [t["ui.settings.music_source_row"], t["ui.settings.music_spectrum_rate"]]
         [table] = [c for _, c in reading if c.get("type") == "markdown"]
         for entity in ("sensor.music_spl_offset", "sensor.music_spl_calibration", "sensor.music_mic_gain"):
             assert entity in table["content"]
@@ -1925,12 +1945,13 @@ def test_music_view_drives_the_watching_flag(demo, plain):
 
 
 def test_fps_is_the_redraw_rate(demo):
-    labels = {"en": "Redraw rate", "de": "Neuzeichnungsrate", "pl": "Częstotliwość rysowania"}
-    for lang, label in labels.items():
-        assert translations(lang)["ui.settings.music_fps"] == label
+    # Not on the settings page; the helper, its default and the cards' binding stay.
+    for lang in LANGS:
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        [row] = [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == "input_number.ramka_music_fps"]
-        assert row["name"] == label
+        assert "input_number.ramka_music_fps" not in json.dumps(view["sections"][:2] + view["sections"][3:]), lang
+        assert "input_number.ramka_music_fps" not in shown_entities(view), lang
+        for card in preview_cards(view):
+            assert card[1]["fps"] == "input_number.ramka_music_fps", lang
     helper = demo["package.yaml"]["input_number"]["ramka_music_fps"]
     assert (helper["min"], helper["max"], helper["step"]) == (1, 60, 1)
     assert helper["name"] == "Ramka music redraw rate (fps)"
@@ -1943,8 +1964,8 @@ def test_spectrum_rate_row_translated(demo):
         t = translations(lang)
         assert t["ui.settings.music_spectrum_rate"] == name
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        [card] = [c for _, c in view_cards(view) if SPECTRUM_RATE in {r.get("entity") for r in rows(c)}]
-        assert [r["name"] for r in rows(card)] == [name]
+        [row] = [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == SPECTRUM_RATE]
+        assert row["name"] == name
         # The select shows the option values, with no note on what each one does (the page's
         # Advanced panel stays rows only).
         assert not [c for _, c in view_cards(view) if c.get("type") == "markdown" and RATE_THERE in c.get("visibility", [])], lang
@@ -2137,6 +2158,21 @@ def test_album_card_on_photos_advanced(demo):
         assert card["entity"] == ALBUMS and card["script"] == "script.ramka_photo_albums_set"
         assert advanced(section, card) and ADVANCED_ON in card["visibility"]
         assert translations(lang)["ui.settings.photo_albums_how"] in markdown(photos)
+
+
+def test_time_per_photo_in_photos_basic(demo):
+    """Time per photo sits in Basic after the photos per series; the Advanced card it left is gone
+    (the albums keep their own Advanced section)."""
+    for lang in LANGS:
+        t = translations(lang)
+        photos = settings_views(demo[f"ramka-settings.{lang}.yaml"])["photos"]
+        basic = photos["sections"][0]
+        assert heading_of(basic) == t["ui.settings.basic"], lang
+        [entities] = [c for c in basic["cards"] if c["type"] == "entities"]
+        assert [r["entity"] for r in rows(entities)] == [
+            "input_boolean.ramka_page_photos", "input_number.ramka_photo_count", "input_number.ramka_photo_s",
+            "input_boolean.ramka_settings_advanced"], lang
+        assert t["ui.settings.advanced"] not in [heading_of(s) for s in photos["sections"]], lang
 
 
 def test_no_photo_helpers_without_photo_dir(tmp_path):
@@ -2789,6 +2825,9 @@ LOOK_TEXTS = {
 }
 LOOK_KEYS = ["music_template", *(f"music_template_{i}{part}" for i in LOOK_IDS for part in ("", "_purpose", "_best", "_why")),
              "music_eq", *(f"music_eq_{p}" for p in EQ_PRESET_IDS), *(f"music_eq_{k}" for k in EQ_KEYS), "music_eq_load",
+             *(f"music_eq_{p}{part}" for p in EQ_PRESET_IDS for part in ("_purpose", "_best", "_why")),
+             "music_eq_curve", "music_eq_curve_flat", "music_eq_curve_unset", *(f"music_eq_band_{k}" for k in EQ_KEYS),
+             "music_source_row",
              "music_hold_s", "music_rise_ms", "music_fall_s", "music_tilt",
              # The page's own labels around them.
              "music_look_best", "music_look_why", "music_profile_settings", "music_colour", "music_eq_load_action"]
@@ -2802,6 +2841,70 @@ def profile_text(t, profile) -> str:
     return "\n".join([t[f"ui.settings.music_template_{profile}_purpose"],
                       f"{t['ui.settings.music_look_best']}: {t[f'ui.settings.music_template_{profile}_best']}",
                       f"{t['ui.settings.music_look_why']}: {t[f'ui.settings.music_template_{profile}_why']}"])
+
+
+def db(value) -> str:
+    """A gain as the tooltip writes it: a true minus, a plus for a lift, no ".0"."""
+    v = int(value) if value == int(value) else value
+    return f"\u2212{-v} dB" if v < 0 else f"+{v} dB" if v > 0 else "0 dB"
+
+
+def preset_text(t, preset, gains) -> str:
+    """The tooltip of an EQ preset: purpose, best use, why / when and its curve, a line each."""
+    if any(gains.values()):
+        curve = ", ".join(f"{t[f'ui.settings.music_eq_band_{k}']} {db(gains[k])}" for k in EQ_KEYS)
+    else:
+        curve = t["ui.settings.music_eq_curve_flat" if preset == "flat" else "ui.settings.music_eq_curve_unset"]
+    return "\n".join([t[f"ui.settings.music_eq_{preset}_purpose"],
+                      f"{t['ui.settings.music_look_best']}: {t[f'ui.settings.music_eq_{preset}_best']}",
+                      f"{t['ui.settings.music_look_why']}: {t[f'ui.settings.music_eq_{preset}_why']}",
+                      f"{t['ui.settings.music_eq_curve']}: {curve}"])
+
+
+def eq_tooltips(dashboard) -> list[dict]:
+    """The descriptions of every EQ preset select on a settings dashboard."""
+    return [n["descriptions"] for n in walk(dashboard) if n.get("type") == INFO_ROW and n.get("entity") == EQ_SELECT]
+
+
+def package_eq_table(package) -> dict:
+    """The preset table the package's loader script carries (eq_presets in templates/package.yaml.j2)."""
+    [gains] = [step["variables"]["gains"] for step in package["script"]["ramka_music_load_eq"]["sequence"]
+               if "gains" in step.get("variables", {})]
+    return json.loads(gains.strip().removeprefix("{{").rsplit("[chosen]", 1)[0])
+
+
+def test_eq_preset_tooltips_name_their_curve(tmp_path, demo):
+    """Every EQ preset's (i) tells what it does, its best use, why / when and the curve it loads,
+    built at render time from the preset table: the catalog's, and a home's own in music_eq_presets."""
+    en = translations("en")
+    assert preset_text(en, "wled_pink", CATALOG_EQ["wled_pink"]).endswith(
+        "Curve: sub \u22122 dB, bass +1 dB, low mids +2 dB, mids 0 dB, presence +2 dB, air +4 dB")
+    assert preset_text(en, "flat", FLAT).endswith("Curve: flat, 0 dB in every range")
+    assert "music_eq_presets" in preset_text(en, "fitted", FLAT).splitlines()[-1]
+    for lang in LANGS:
+        tips = eq_tooltips(demo[f"ramka-settings.{lang}.yaml"])
+        assert len(tips) == len(LOOK_IDS), lang
+        for tip in tips:
+            assert tip == {p: preset_text(translations(lang), p, CATALOG_EQ[p]) for p in EQ_PRESET_IDS}, lang
+            assert all(len(text.splitlines()) == 4 for text in tip.values()), lang
+    # A home's own curves show its numbers (a fraction kept); one it leaves empty stays "until set".
+    inputs = with_visual()
+    inputs["music_eq_presets"] = {"behind_speakers": {"sub": -5, "bass": -10, "low_mid": -3, "presence": 3, "air": 2.5},
+                                  "half_match": {}}
+    rendered = render(tmp_path, inputs)
+    table = package_eq_table(rendered["package.yaml"])
+    assert table["behind_speakers"] == eq(-5, -10, -3, 0, 3, 2.5) and table["half_match"] == FLAT
+    for lang in LANGS:
+        t = translations(lang)
+        for tip in eq_tooltips(rendered[f"ramka-settings.{lang}.yaml"]):
+            # The settings page's table is the package's.
+            assert tip == {p: preset_text(t, p, table[p]) for p in EQ_PRESET_IDS}, lang
+    [tip, *_] = eq_tooltips(rendered["ramka-settings.en.yaml"])
+    assert tip["behind_speakers"].splitlines()[-1] == (
+        "Curve: sub \u22125 dB, bass \u221210 dB, low mids \u22123 dB, mids 0 dB, presence +3 dB, air +2.5 dB")
+    assert tip["half_match"].splitlines()[-1] == "Curve: " + en["ui.settings.music_eq_curve_unset"]
+    # The catalog's table, as the package carries it.
+    assert package_eq_table(demo["package.yaml"]) == CATALOG_EQ
 
 
 def taps(card) -> list[dict]:
@@ -2866,30 +2969,40 @@ def test_music_settings_page_layout(demo):
         assert profile_row["entity"] == TEMPLATE_SELECT and profile_row["name"] == t["ui.settings.music_template"], lang
         assert profile_row["descriptions"] == {p: profile_text(t, p) for p in LOOK_IDS}, lang
         assert not basic.get("visibility") and not entities.get("visibility"), lang
-        # Advanced: the whole section and each card shown with the switch; the music source, the
-        # flavours, line width, redraw rate and the sensor update rate, the audio-sensor rows hidden
-        # while unavailable. No explanation of eco / normal / fast.
+        # Advanced: the whole section and each card shown with the switch; one Music sensor card with
+        # the music source and the sensor update rate, each row hidden while unavailable (the card
+        # while both are); then the flavours and line width. No redraw rate, no explanation of
+        # eco / normal / fast.
         assert adv["visibility"] == [ADVANCED_ON], lang
-        assert [c["type"] for c in adv["cards"]] == ["heading", "entities", "entities", "entities"], lang
+        assert [c["type"] for c in adv["cards"]] == ["heading", "entities", "entities"], lang
         assert [r["entity"] for c in adv["cards"] for r in rows(c)] == [
-            MUSIC_SOURCE, "input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
-            "input_number.ramka_music_line_width_px", "input_number.ramka_music_fps", SPECTRUM_RATE], lang
-        source, look, rate = adv["cards"][1:]
-        assert source["visibility"] == [ADVANCED_ON, SOURCE_THERE] and rate["visibility"] == [ADVANCED_ON, RATE_THERE], lang
+            MUSIC_SOURCE, SPECTRUM_RATE, "input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
+            "input_number.ramka_music_line_width_px"], lang
+        sensor, look = adv["cards"][1:]
+        assert sensor["title"] == t["ui.settings.music_source"], lang
+        assert sensor["visibility"] == [ADVANCED_ON, {"condition": "or", "conditions": [SOURCE_THERE, RATE_THERE]}], lang
+        assert [r["type"] for r in sensor["entities"]] == ["conditional", "conditional"], lang
+        assert row_conditions(sensor, MUSIC_SOURCE) == [SOURCE_THERE] and row_conditions(sensor, SPECTRUM_RATE) == [RATE_THERE], lang
         assert look["visibility"] == [ADVANCED_ON], lang
+        assert "ramka_music_fps" not in json.dumps(adv), lang
         assert "`eco`" not in json.dumps(view) and "`fast`" not in json.dumps(view), lang
         # Calibration keeps its own section; the Music sensor heading is gone (its row moved).
         assert MUSIC_SOURCE not in {r.get("entity") for c in calibration["cards"] for r in rows(c)}, lang
         # Profile settings: one card per profile, shown while it is selected (Custom also for a state
         # that is no entry id); Custom's rows labelled as before, each template's rows its own helpers.
-        assert profiles["cards"][0]["icon"] == "mdi:tune" and not profiles.get("visibility"), lang
+        # Profile settings and the colour range are Advanced: the section and each card shown with the
+        # switch, as the Advanced panel.
+        assert profiles["cards"][0]["icon"] == "mdi:tune" and profiles["visibility"] == [ADVANCED_ON], lang
+        assert colour["visibility"] == [ADVANCED_ON], lang
+        for card in profiles["cards"] + colour["cards"]:
+            assert card["visibility"][0] == ADVANCED_ON, (lang, card.get("type"))
         profile_cards = profiles["cards"][1:]
         assert [c["type"] for c in profile_cards] == ["entities"] * len(LOOK_IDS), lang
         for profile, card in zip(LOOK_IDS, profile_cards):
             if profile == "custom":
-                assert card["visibility"] == [{"condition": "state", "entity": TEMPLATE_SELECT, "state_not": TEMPLATE_IDS}], lang
+                assert card["visibility"] == [ADVANCED_ON, {"condition": "state", "entity": TEMPLATE_SELECT, "state_not": TEMPLATE_IDS}], lang
             else:
-                assert card["visibility"] == [{"condition": "state", "entity": TEMPLATE_SELECT, "state": profile}], (lang, profile)
+                assert card["visibility"] == [ADVANCED_ON, {"condition": "state", "entity": TEMPLATE_SELECT, "state": profile}], (lang, profile)
             h = profile_helpers(profile)
             listed = rows(card)
             assert [r.get("entity") for r in listed] == [h["rise"], h["fall"], h["hold"], h["tilt"], EQ_SELECT, None,
@@ -2899,13 +3012,13 @@ def test_music_settings_page_layout(demo):
                                                 *(f"music_eq_{k}" for k in EQ_KEYS))], (lang, profile)
             [preset] = [r for r in listed if r.get("entity") == EQ_SELECT]
             assert preset["type"] == INFO_ROW and preset["name"] == t["ui.settings.music_eq"], (lang, profile)
-            assert preset["descriptions"] == {p: t[f"ui.settings.music_eq_{p}"] for p in EQ_PRESET_IDS}, (lang, profile)
+            assert preset["descriptions"] == {p: preset_text(t, p, CATALOG_EQ[p]) for p in EQ_PRESET_IDS}, (lang, profile)
             [load] = [r for r in listed if r.get("type") == "button"]
             assert load["name"] == t["ui.settings.music_eq_load"]
             assert load["tap_action"] == {"action": "perform-action", "perform_action": "script.ramka_music_load_eq"}, (lang, profile)
-        # The colour range: its own grid, always shown, the four neutral/hot rows and nothing else.
+        # The colour range: its own grid, the four neutral/hot rows and nothing else.
         assert [c["type"] for c in colour["cards"]] == ["heading", "entities"], lang
-        assert colour["cards"][0]["icon"] == "mdi:palette" and not colour.get("visibility"), lang
+        assert colour["cards"][0]["icon"] == "mdi:palette", lang
         assert [r["entity"] for r in rows(colour["cards"][1])] == [f"input_number.ramka_{k}" for k in MUSIC_DB], lang
         # Gone: the description markdown, the values in use, Copy to custom, the preset list.
         assert "copy_to_custom" not in json.dumps(view) and "`wled_pink`" not in json.dumps(view), lang

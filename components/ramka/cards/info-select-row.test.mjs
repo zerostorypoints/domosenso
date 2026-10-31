@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import "./testing/dom-env.mjs";
-import { descriptionFor } from "./info-select-row.js";
+import { descriptionFor, placeTip } from "./info-select-row.js";
 
 // Home Assistant's card helpers, stubbed: the row they make records its config and hass.
 const made = [];
@@ -94,6 +94,56 @@ test("a tap outside or Escape closes it", async () => {
   key.key = "Escape";
   document.dispatchEvent(key);
   assert.equal(tip(row).hidden, true);
+});
+
+test("a scroll closes it, pinned or hovered", async () => {
+  const row = await makeRow("calm");
+  click(button(row));
+  assert.equal(tip(row).hidden, false);
+  window.dispatchEvent(new window.Event("scroll"));
+  assert.equal(tip(row).hidden, true);
+  assert.equal(button(row).getAttribute("aria-expanded"), "false");
+  pointer(button(row), "pointerenter", "mouse");
+  assert.equal(tip(row).hidden, false);
+  document.body.dispatchEvent(new window.Event("scroll"));  // a scroller inside the page (captured)
+  assert.equal(tip(row).hidden, true);
+});
+
+test("it floats: fixed, above the cards, out of the row's layout, theme colours, at most 360 px wide", async () => {
+  const row = await makeRow("calm");
+  const css = row.shadowRoot.querySelector("style").textContent;
+  const rule = css.slice(css.indexOf(".tip {"), css.indexOf("}", css.indexOf(".tip {")));
+  assert.match(rule, /position: fixed/);
+  assert.match(rule, /z-index: \d{4,}/);
+  assert.match(rule, /max-width: min\(360px/);
+  assert.match(rule, /var\(--primary-text-color\)/);
+  assert.match(rule, /var\(--divider-color\)/);
+  assert.doesNotMatch(css, /accordion|max-height/);
+  // In the top layer where the browser has popovers; positioned when shown.
+  assert.equal(tip(row).getAttribute("popover"), "manual");
+  click(button(row));
+  assert.match(tip(row).style.left, /^\d+px$/);
+  assert.match(tip(row).style.top, /^\d+px$/);
+  assert.ok(["below", "above"].includes(tip(row).dataset.side));
+});
+
+test("placement: below the button, above when there is no room, clamped to the viewport", () => {
+  const viewport = { width: 1100, height: 720 };
+  const at = (left, top) => ({ left, top, right: left + 40, bottom: top + 40 });
+  const size = { width: 300, height: 120 };
+  // Room below: under the button, centred on it.
+  assert.deepEqual(placeTip(at(500, 100), size, viewport), { left: 370, top: 146, side: "below" });
+  // Near the bottom: above it.
+  assert.deepEqual(placeTip(at(500, 650), size, viewport), { left: 370, top: 524, side: "above" });
+  // At the right edge and the left edge: kept 8 px inside.
+  assert.equal(placeTip(at(1060, 100), size, viewport).left, 1100 - 8 - 300);
+  assert.equal(placeTip(at(0, 100), size, viewport).left, 8);
+  // Taller than the room either way: on the roomier side, still inside the viewport.
+  const tall = placeTip(at(500, 300), { width: 300, height: 700 }, viewport);
+  assert.deepEqual(tall, { left: 370, top: 12, side: "below" });
+  // A phone: wider than the screen is impossible (max-width), a 359 px tooltip on 375 px stays in.
+  const phone = placeTip(at(320, 200), { width: 359, height: 80 }, { width: 375, height: 812 });
+  assert.equal(phone.left, 8);
 });
 
 test("without a description for the current option the icon is hidden and nothing opens", async () => {
