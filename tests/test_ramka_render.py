@@ -696,7 +696,6 @@ EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 LOOK_DEFAULTS = {
     "input_select.ramka_music_template": "custom", "input_select.ramka_music_eq": "flat",
     **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5,
-    "input_number.ramka_music_audition_s": 30, "input_text.ramka_music_audition_list": "custom,mlp_match,lively,calm,analyser",
 }
 MUSIC_DEFAULTS = {
     **LOOK_DEFAULTS,
@@ -728,10 +727,10 @@ GROUP_OF = {
 # A new one is added here by name, in review.
 STATE_HELPERS = {"input_select.ramka_mode", "input_select.ramka_ambient", "input_boolean.ramka_ambient_music",
                  "input_boolean.ramka_settings_seeded"}
-# State with music_visual: the audition switch (always off at a start), no setting.
-MUSIC_STATE_HELPERS = {"input_boolean.ramka_music_audition"}
-# State a settings page drives (spec 7: the audition's toggle on the Music page): shown, never reset.
-PAGE_CONTROLS = {"input_boolean.ramka_music_audition": "music"}
+# State with music_visual: none (the blind audition is gone).
+MUSIC_STATE_HELPERS: set[str] = set()
+# State a settings page drives: shown, never reset. None at present.
+PAGE_CONTROLS: dict[str, str] = {}
 
 
 def ha(template, states=None, attrs=None, **variables) -> str:
@@ -857,7 +856,7 @@ def expand(pattern: str) -> set[str]:
 def test_settings_helpers_stable_ids(plain, demo):
     for package, music in ((plain["package.yaml"], False), (demo["package.yaml"], True)):
         settings = {**DEFAULTS, **(MUSIC_DEFAULTS if music else {})}
-        # input_text settings (the audition's list) are no input_boolean, input_number or input_select.
+        # input_text settings are no input_boolean, input_number or input_select.
         settings = {e for e in settings if not e.startswith("input_text.")}
         assert set(helpers(package)) == settings | STATE_HELPERS | (MUSIC_STATE_HELPERS if music else set()), music
         ids = defined_entities(package)
@@ -869,17 +868,15 @@ def test_settings_helpers_stable_ids(plain, demo):
                                 re.split(r",\s*(?![^{]*\})", manifest["provides"]["automations"].split(", with")[0])))
     rendered = defined_entities(demo["package.yaml"])
     assert {e for e in rendered if not e.startswith("automation.")} <= provided
-    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching", "ramka_music_eq_load",
-                                                                                          "ramka_music_audition_start", "ramka_music_audition_stop",
-                                                                                          "ramka_music_audition_restart_cleanup"} <= automations
-    assert "with music_visual also <prefix>_music_watching, <prefix>_music_eq_load and <prefix>_music_audition_{start,stop,restart_cleanup}" in manifest["provides"]["automations"]
+    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching", "ramka_music_eq_load"} <= automations
+    assert "with music_visual also <prefix>_music_watching and <prefix>_music_eq_load," in manifest["provides"]["automations"]
+    assert "audition" not in json.dumps(manifest["provides"]) and "audition" not in json.dumps(demo["package.yaml"])
 
 
 def test_no_helper_has_initial(plain, demo):
     for package in (plain["package.yaml"], demo["package.yaml"]):
         for entity, helper in helpers(package).items():
-            # The audition switch is the one exception: it must be off at every start (spec 5).
-            assert "initial" not in helper or entity == "input_boolean.ramka_music_audition", entity
+            assert "initial" not in helper, entity
         # helpers() leaves input_text out (it is no setting domain of the page checks), so look at it here.
         for key, helper in (package.get("input_text") or {}).items():
             assert "initial" not in helper, key
@@ -1144,8 +1141,8 @@ def test_music_visual_options_bad_values_fail(tmp_path, options, message):
 
 @pytest.mark.parametrize("presets, message", [
     ({"wled_pink": {}}, r"ramka: music_eq_presets: unknown preset 'wled_pink'"),
-    ({"mlp_match": {"treble": 1}}, r"ramka: music_eq_presets.mlp_match: unknown key 'treble'"),
-    ({"mlp_match": {"bass": -19}}, r"ramka: music_eq_presets.mlp_match.bass must be within -18 and 12"),
+    ({"behind_speakers": {"treble": 1}}, r"ramka: music_eq_presets.behind_speakers: unknown key 'treble'"),
+    ({"behind_speakers": {"bass": -19}}, r"ramka: music_eq_presets.behind_speakers.bass must be within -18 and 12"),
     ({"half_match": {"air": 13}}, r"ramka: music_eq_presets.half_match.air must be within -18 and 12"),
     ({"fitted": 3}, r"ramka: music_eq_presets.fitted must be a mapping"),
 ])
@@ -1158,13 +1155,13 @@ def test_music_eq_presets_bad_input_fails(tmp_path, presets, message):
 
 def test_music_eq_presets_at_the_limits_render(tmp_path):
     inputs = with_visual()
-    inputs["music_eq_presets"] = {"mlp_match": {"bass": -18, "air": 12}, "fitted": {}}
+    inputs["music_eq_presets"] = {"behind_speakers": {"bass": -18, "air": 12}, "fitted": {}}
     render(tmp_path, inputs)
 
 
 def test_music_eq_presets_alone_change_nothing(tmp_path):
     inputs = without_visual()
-    inputs["music_eq_presets"] = {"mlp_match": {"bass": -10}}
+    inputs["music_eq_presets"] = {"behind_speakers": {"bass": -10}}
     assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", without_visual())
 
 
@@ -1499,13 +1496,11 @@ BASIC = {
 }
 BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
                    "input_boolean.ramka_settings_advanced",
-                   # The look (spec 7): the template, Custom's rows (its own card) and the audition.
+                   # The profile (spec 7): the template, Custom's rows (its own card) and the colour range.
                    "input_select.ramka_music_template", "input_select.ramka_music_eq", "input_number.ramka_music_hold_s",
                    *(f"input_number.ramka_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")),
                    "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_boolean.ramka_music_tilt",
-                   *(f"input_number.ramka_{k}" for k in MUSIC_DB),
-                   "input_boolean.ramka_music_audition", "input_number.ramka_music_audition_s",
-                   "input_text.ramka_music_audition_list"}
+                   *(f"input_number.ramka_{k}" for k in MUSIC_DB)}
 BASIC["photos"] |= {"input_number.ramka_photo_count", "input_boolean.ramka_settings_advanced"}
 BASIC["climate"] |= {"input_boolean.ramka_settings_advanced"}
 BASIC["plants"] |= {"input_number.ramka_plants_per_page", "input_boolean.ramka_settings_advanced"}
@@ -2487,8 +2482,8 @@ def test_about_header_and_refresh_badge(demo):
 
 # ---- music looks: Custom, the templates, Copy to custom and the EQ loader (spec 4.1, 5, 8) -------
 
-LOOK_IDS = ["custom", "mlp_match", "lively", "calm", "analyser"]
-EQ_PRESET_IDS = ["flat", "mlp_match", "half_match", "wled_big_speakers", "wled_big_speakers_ics", "wled_pink",
+LOOK_IDS = ["custom", "behind_speakers", "lively", "calm", "analyser"]
+EQ_PRESET_IDS = ["flat", "behind_speakers", "half_match", "wled_big_speakers", "wled_big_speakers_ics", "wled_pink",
                  "bass_light", "voices", "sparkle", "fitted"]
 LOOK = "sensor.ramka_music_look"
 TEMPLATE_SELECT = "input_select.ramka_music_template"
@@ -2499,31 +2494,30 @@ def eq(*gains) -> dict:
 
 
 FLAT = eq(0, 0, 0, 0, 0, 0)
-# Spec 3.3; mlp_match, half_match and fitted are a home's (music_eq_presets), flat in the catalog.
+# Spec 3.3; behind_speakers, half_match and fitted are a home's (music_eq_presets), flat in the catalog.
 CATALOG_EQ = {
-    "flat": FLAT, "mlp_match": FLAT, "half_match": FLAT,
+    "flat": FLAT, "behind_speakers": FLAT, "half_match": FLAT,
     "wled_big_speakers": eq(-4, -2, -5, 0, 1, 2), "wled_big_speakers_ics": eq(-3, -4, -4, 0, 2, -1),
     "wled_pink": eq(-2, 1, 2, 0, 2, 4), "bass_light": eq(-8, -6, 0, 0, 0, 0), "voices": eq(-6, -8, -2, 3, 4, 0),
     "sparkle": eq(-3, -3, 0, 0, 3, 5), "fitted": FLAT,
 }
-# Spec 4.1, the templates: EQ preset, tilt, rise ms, fall s, hold s, neutral dB, hot dB.
+# Spec 4.1, the templates: EQ preset, tilt, rise ms, fall s, hold s. No colour window.
 LOOK_ROWS = {
-    "mlp_match": ("mlp_match", True, 100, 2, 1.5, 30, 80),
-    "lively": ("wled_big_speakers_ics", False, 50, 0.3, 0.5, 35, 78),
-    "calm": ("wled_big_speakers", True, 80, 4.2, 2.0, 28, 85),
-    "analyser": ("flat", False, 0, 0.5, 1.0, 35, 80),
+    "behind_speakers": ("behind_speakers", True, 100, 2, 1.5),
+    "lively": ("wled_big_speakers_ics", False, 50, 0.3, 0.5),
+    "calm": ("wled_big_speakers", True, 80, 4.2, 2.0),
+    "analyser": ("flat", False, 0, 0.5, 1.0),
 }
-# Custom's 14 helpers: what only the user, the seed and reset, the EQ loader and Copy to custom write.
+# Custom's helpers: what only the user, the seed and reset, the EQ loader and Copy to custom write. The
+# colour range (MUSIC_DB) is the user's whichever profile is on; a profile does not carry it.
 CUSTOM_HELPERS = {*(f"input_number.ramka_music_eq_{k}" for k in EQ_KEYS), "input_number.ramka_music_hold_s",
-                  "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_boolean.ramka_music_tilt",
-                  *(f"input_number.ramka_{k}" for k in MUSIC_DB)}
+                  "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_boolean.ramka_music_tilt"}
 
 
 def look_row(row) -> dict:
     """A template's attributes in the card's `look` shape (spec 3.2)."""
-    preset, tilt, rise, fall, hold, neutral, hot = row
-    return {"rise": rise, "fall": fall, "hold": hold, "tilt": tilt, "eq": CATALOG_EQ[preset],
-            "spectrum": {"neutral": neutral, "hot": hot}, "level": {"neutral": neutral, "hot": hot}}
+    preset, tilt, rise, fall, hold = row
+    return {"rise": rise, "fall": fall, "hold": hold, "tilt": tilt, "eq": CATALOG_EQ[preset]}
 
 
 def look_sensor(package) -> dict:
@@ -2598,7 +2592,7 @@ def test_music_look_sensor(demo):
     package = demo["package.yaml"]
     sensor = look_sensor(package)
     assert sensor["default_entity_id"] == LOOK
-    assert set(sensor["attributes"]) == {"rise", "fall", "hold", "tilt", "eq", "spectrum", "level"}
+    assert set(sensor["attributes"]) == {"rise", "fall", "hold", "tilt", "eq"}
     assert LOOK in package["recorder"]["exclude"]["entities"]
     # Each template: its row of spec 4.1, typed as the card reads them, hot above neutral.
     for entry, row in LOOK_ROWS.items():
@@ -2606,39 +2600,38 @@ def test_music_look_sensor(demo):
         assert state == entry
         assert attributes == look_row(row), entry
         assert isinstance(attributes["tilt"], bool) and all(isinstance(attributes[k], (int, float)) for k in ("rise", "fall", "hold"))
-        for kind in ("spectrum", "level"):
-            assert attributes[kind]["hot"] > attributes[kind]["neutral"], (entry, kind)
+        # A profile carries no colour window: the cards keep the user's neutral and hot helpers.
+        assert "spectrum" not in attributes and "level" not in attributes, entry
     # Custom: read from its helpers.
     custom = {TEMPLATE_SELECT: "custom", "input_number.ramka_music_rise_ms": 120.0, "input_number.ramka_music_fall_s": 3.5,
               "input_number.ramka_music_hold_s": 0.8, "input_boolean.ramka_music_tilt": "off",
               **{f"input_number.ramka_music_eq_{k}": g for k, g in zip(EQ_KEYS, (-1.5, -6.0, 0.0, 1.0, 2.5, 3.0))},
+              # The colour range is read by the cards, not by the sensor.
               "input_number.ramka_music_spectrum_neutral_db": 31.0, "input_number.ramka_music_spectrum_hot_db": 77.0,
               "input_number.ramka_music_level_neutral_db": 32.0, "input_number.ramka_music_level_hot_db": 79.0}
-    expected = {"rise": 120.0, "fall": 3.5, "hold": 0.8, "tilt": False, "eq": eq(-1.5, -6.0, 0.0, 1.0, 2.5, 3.0),
-                "spectrum": {"neutral": 31.0, "hot": 77.0}, "level": {"neutral": 32.0, "hot": 79.0}}
+    expected = {"rise": 120.0, "fall": 3.5, "hold": 0.8, "tilt": False, "eq": eq(-1.5, -6.0, 0.0, 1.0, 2.5, 3.0)}
     assert run_look(package, custom) == ("custom", expected)
     # A state that is no entry id (a dropped entry, unknown, unavailable) is Custom (spec 8).
     for other in ("half_match", "cinema", "unknown", "unavailable"):
         assert run_look(package, {**custom, TEMPLATE_SELECT: other}) == ("custom", expected), other
     # Custom's helpers unavailable: the defaults the seed writes.
     assert run_look(package, {TEMPLATE_SELECT: "custom"})[1] == {
-        "rise": 200, "fall": 4, "hold": 1.5, "tilt": True, "eq": FLAT,
-        "spectrum": {"neutral": 30, "hot": 70}, "level": {"neutral": 30, "hot": 70}}
+        "rise": 200, "fall": 4, "hold": 1.5, "tilt": True, "eq": FLAT}
 
 
-def test_music_look_mlp_match_takes_fitted_when_set(tmp_path):
-    """MLP match uses the home's fitted curve once it is not flat, else its mlp_match (spec 3.3, 4.1)."""
+def test_music_look_behind_speakers_takes_fitted_when_set(tmp_path):
+    """MLP match uses the home's fitted curve once it is not flat, else its behind_speakers (spec 3.3, 4.1)."""
     mlp = eq(-5, -10, -3, 0, 3, 2)
     inputs = with_visual()
-    for name, presets, expected in (("mlp", {"mlp_match": mlp}, mlp),
-                                    ("flat-fitted", {"mlp_match": mlp, "fitted": {"bass": 0}}, mlp),
-                                    ("fitted", {"mlp_match": mlp, "fitted": {"bass": -4, "air": 1.5}}, eq(0, -4, 0, 0, 0, 1.5))):
+    for name, presets, expected in (("mlp", {"behind_speakers": mlp}, mlp),
+                                    ("flat-fitted", {"behind_speakers": mlp, "fitted": {"bass": 0}}, mlp),
+                                    ("fitted", {"behind_speakers": mlp, "fitted": {"bass": -4, "air": 1.5}}, eq(0, -4, 0, 0, 0, 1.5))):
         inputs["music_eq_presets"] = presets
         package = render(tmp_path / name, inputs)["package.yaml"]
-        assert run_look(package, {TEMPLATE_SELECT: "mlp_match"})[1]["eq"] == expected, name
-        # The home's presets are what the EQ select loads too.
-        loaded, _ = run_script(package["script"]["ramka_music_load_eq"]["sequence"], states={TEMPLATE_SELECT: "custom"},
-                               preset="mlp_match")
+        assert run_look(package, {TEMPLATE_SELECT: "behind_speakers"})[1]["eq"] == expected, name
+        # The home's presets are what the EQ select loads too (while a template is selected as well).
+        loaded, _ = run_script(package["script"]["ramka_music_load_eq"]["sequence"], states={TEMPLATE_SELECT: "calm"},
+                               preset="behind_speakers")
         assert loaded == {f"input_number.ramka_music_eq_{k}": g for k, g in mlp.items()}, name
 
 
@@ -2651,22 +2644,22 @@ def test_music_copy_to_custom_writes_only_custom(demo):
     sequence = package["script"]["ramka_music_copy_to_custom"]["sequence"]
     for entry, row in LOOK_ROWS.items():
         written, logs = run_script(sequence, attrs=look_attrs(entry))
-        preset, tilt, rise, fall, hold, neutral, hot = row
+        preset, tilt, rise, fall, hold = row
         assert written == {
             **{f"input_number.ramka_music_eq_{k}": g for k, g in CATALOG_EQ[preset].items()},
             "input_number.ramka_music_hold_s": hold, "input_number.ramka_music_rise_ms": rise,
             "input_number.ramka_music_fall_s": fall, "input_boolean.ramka_music_tilt": "on" if tilt else "off",
-            "input_number.ramka_music_spectrum_neutral_db": neutral, "input_number.ramka_music_spectrum_hot_db": hot,
-            "input_number.ramka_music_level_neutral_db": neutral, "input_number.ramka_music_level_hot_db": hot,
             TEMPLATE_SELECT: "custom"}, entry
+        # The colour range is the user's: copying a profile never touches it.
+        assert not any(e.endswith(("_neutral_db", "_hot_db")) for e in written), entry
         assert not logs
-    # The 14 helpers, then custom selected, last.
+    # The 10 helpers, then custom selected, last.
     targets = [s["target"]["entity_id"] for s in sequence if "target" in s]
-    assert len(targets) == 15 and set(targets[:-1]) == CUSTOM_HELPERS and targets[-1] == TEMPLATE_SELECT
+    assert len(targets) == 11 and set(targets[:-1]) == CUSTOM_HELPERS and targets[-1] == TEMPLATE_SELECT
     # The look sensor unavailable: a warning, nothing written (spec 8).
     written, logs = run_script(sequence)
     assert written == {} and [log["level"] for log in logs] == ["warning"]
-    # Nobody else writes Custom: not the templates, the audition or any automation.
+    # Nobody else writes Custom: not the templates or any automation.
     writers = {"ramka_settings_reset", "ramka_music_copy_to_custom", "ramka_music_load_eq"}
     for owner, node in [*((f"script.{k}", v) for k, v in package["script"].items() if k not in writers),
                         *((f"automation.{a['id']}", a) for a in package["automation"])]:
@@ -2677,12 +2670,14 @@ def test_music_copy_to_custom_writes_only_custom(demo):
             assert not any("ramka_music_eq_" in str(i) for i in ids), owner
 
 
-def test_music_eq_load_only_in_custom(demo):
+def test_music_eq_load_whichever_profile(demo):
     package = demo["package.yaml"]
     [auto] = [a for a in package["automation"] if a["id"] == "ramka_music_eq_load"]
     [trigger] = auto["triggers"]
     assert trigger["trigger"] == "state" and trigger["entity_id"] == "input_select.ramka_music_eq"
-    assert {"condition": "state", "entity_id": TEMPLATE_SELECT, "state": "custom"} in auto["conditions"]
+    # Custom's helpers are always editable: no Custom condition, only the from_state guard.
+    assert all(c["condition"] == "template" for c in auto["conditions"]), auto["conditions"]
+    assert TEMPLATE_SELECT not in json.dumps(auto["conditions"])
     [call] = auto["actions"]
     assert call["action"] == "script.ramka_music_load_eq"
 
@@ -2702,11 +2697,12 @@ def test_music_eq_load_only_in_custom(demo):
     for unknown in ("loud", ""):
         written, logs = run_script(sequence, states=custom, preset=unknown)
         assert written == {} and [log["level"] for log in logs] == ["warning"], unknown
-    # Its own guard (spec 5): while a template is active (or the select is not there) it does
-    # nothing, whoever calls it, before it looks at the preset.
-    assert sequence[0] == {"condition": "state", "entity_id": TEMPLATE_SELECT, "state": "custom"}
-    for other in ("mlp_match", "lively", "calm", "analyser", "unavailable"):
-        assert run_script(sequence, states={TEMPLATE_SELECT: other}, preset="voices") == ({}, []), other
+    # No guard on the active profile: it writes Custom's EQ while a template is selected (or the
+    # select is not there) too, and does not touch the select.
+    assert TEMPLATE_SELECT not in json.dumps(sequence) and sequence[0].get("condition") != "state"
+    for other in ("behind_speakers", "lively", "calm", "analyser", "unavailable"):
+        assert run_script(sequence, states={TEMPLATE_SELECT: other}, preset="voices") == (
+            {f"input_number.ramka_music_eq_{k}": g for k, g in CATALOG_EQ["voices"].items()}, []), other
     # Called without a preset (the settings page's Load button), it loads the EQ select's preset, so
     # choosing the preset already selected applies it again.
     assert run_script(sequence, states={**custom, "input_select.ramka_music_eq": "sparkle"}) == (
@@ -2721,173 +2717,21 @@ def test_music_reset_writes_custom_defaults(demo):
         assert {e: written.get(e) for e in LOOK_DEFAULTS} == {
             TEMPLATE_SELECT: "custom", "input_select.ramka_music_eq": "flat",
             **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5,
-            "input_number.ramka_music_audition_s": 30, "input_text.ramka_music_audition_list": ",".join(LOOK_IDS)}, fields
-    # The reset selects custom before it loads flat, so the EQ loader (custom only) agrees with it.
+            }, fields
+    # The reset selects custom before it loads flat (the select is the profile the cards then follow).
     order = [s["target"]["entity_id"] for s in walk(reset_script(package)["sequence"]) if isinstance(s.get("target"), dict)]
     assert order.index(TEMPLATE_SELECT) < order.index("input_select.ramka_music_eq")
-
-
-# The audition (spec 5): a blind walk through the entries; it changes the template select only.
-AUDITION = "input_boolean.ramka_music_audition"
-AUDITION_RETURN = "input_text.ramka_music_audition_return"
-AUDITION_LIST = "input_text.ramka_music_audition_list"
-AUDITION_HELPERS = {AUDITION, "input_number.ramka_music_audition_s", AUDITION_LIST, AUDITION_RETURN}
-AUDITION_SCRIPTS = {"script.ramka_music_audition_run", "script.ramka_music_audition_keep"}
-
-
-def audition_script(package, name="run"):
-    return package["script"][f"ramka_music_audition_{name}"]
-
-
-def test_music_audition_helpers(demo, plain):
-    package = demo["package.yaml"]
-    assert package["input_boolean"]["ramka_music_audition"]["initial"] is False
-    seconds = package["input_number"]["ramka_music_audition_s"]
-    assert (seconds["min"], seconds["max"], seconds["step"], seconds["unit_of_measurement"]) == (20, 120, 5, "s")
-    assert "initial" not in seconds  # the seed gives it 30, like every other number
-    listing = package["input_text"]["ramka_music_audition_list"]
-    assert "initial" not in listing and listing["max"] >= len(",".join(LOOK_IDS))  # a setting the user edits: it persists
-    assert "ramka_music_audition_return" in package["input_text"]
-    assert "ramka_photo" in package["input_text"]  # the photo helper shares the block
-    # The interval and the list are settings (reset restores them); the boolean and the return are state.
-    for fields in ({}, {"page": "music"}, {"groups": ["music_look"]}):
-        written = run_reset(package, **fields)
-        assert written["input_number.ramka_music_audition_s"] == 30 and written[AUDITION_LIST] == ",".join(LOOK_IDS), fields
-        assert AUDITION not in written and AUDITION_RETURN not in written, fields
-    # Everything only with music_visual.
-    without = plain["package.yaml"]
-    assert not {e for e in defined_entities(without) if "audition" in e}
-    assert "audition" not in json.dumps(without)
-
-
-def parse_list(package, text) -> list:
-    [variables] = [s for s in audition_script(package)["sequence"] if "variables" in s][:1]
-    return ha_value(variables["variables"]["ids"], states={AUDITION_LIST: text})
-
-
-def test_music_audition_list_parsing(demo):
-    package = demo["package.yaml"]
-    assert parse_list(package, "MLP_match, Calm , foo") == ["mlp_match", "calm"]
-    assert parse_list(package, "foo") == []
-    assert parse_list(package, "") == []
-    assert parse_list(package, ",".join(LOOK_IDS)) == LOOK_IDS
-    assert parse_list(package, "calm,CALM, lively") == ["calm", "lively"]
-    # Nothing left: audition switches itself off, before it loops.
-    sequence = audition_script(package)["sequence"]
-    [guard] = [s for s in sequence if "if" in s]
-    assert ha(guard["if"][0]["value_template"], ids=[]) == "True" and ha(guard["if"][0]["value_template"], ids=["calm"]) == "False"
-    assert guard["then"][0]["target"]["entity_id"] == AUDITION
-    assert sequence.index(guard) < [i for i, s in enumerate(sequence) if "repeat" in s][0]
-    assert audition_script(package)["mode"] == "restart"
-
-
-def test_music_audition_steps_to_the_next_entry(demo):
-    package = demo["package.yaml"]
-    [loop] = [s for s in audition_script(package)["sequence"] if "repeat" in s]
-    assert "audition" in loop["repeat"]["while"][0]["entity_id"] or AUDITION in str(loop["repeat"]["while"])
-    steps = loop["repeat"]["sequence"]
-    # Waits for playback, then for the interval, which a pause (playback off) interrupts.
-    assert steps[0]["wait_template"].count("binary_sensor.ramka_media_playing") == 1
-    [wait] = [s for s in steps if "wait_for_trigger" in s]
-    [trigger] = wait["wait_for_trigger"]
-    assert (trigger["entity_id"], trigger["to"]) == ("binary_sensor.ramka_media_playing", "off")
-    assert wait["continue_on_timeout"] is True
-    assert ha(wait["timeout"], states={"input_number.ramka_music_audition_s": "45.0"}) == "45.0"
-    [step] = [s for s in steps if "if" in s]
-    # Only a timeout steps; a pause starts the interval again.
-    stepped = lambda wait_trigger, audition="on": ha(step["if"][0]["value_template"] if "value_template" in step["if"][0] else "False",
-                                                    wait={"trigger": wait_trigger}, states={AUDITION: audition})
-    assert stepped(None) == "True" and stepped({"x": 1}) == "False"
-    then = step["then"]
-    [pick] = [s for s in then if "variables" in s]
-
-    def next_entry(current, ids):
-        return ha_value(pick["variables"]["next"], ids=ids, states={TEMPLATE_SELECT: current})
-
-    ids = ["mlp_match", "calm", "lively"]
-    assert [next_entry(c, ids) for c in ("mlp_match", "calm", "lively")] == ["calm", "lively", "mlp_match"]
-    assert next_entry("custom", ids) == "mlp_match" and next_entry("analyser", ids) == "mlp_match"
-    assert next_entry("calm", ["calm"]) == "calm"
-    selected = [s for s in then if s.get("action") == "input_select.select_option"]
-    logged = [s for s in then if s.get("action") == "logbook.log"]
-    assert len(selected) == 1 and selected[0]["target"]["entity_id"] == TEMPLATE_SELECT
-    assert len(logged) == 1 and "{{ next }}" in logged[0]["data"]["message"].replace("{{next}}", "{{ next }}")
-    assert then.index(selected[0]) < then.index(logged[0])
-
-
-def test_music_audition_never_writes_custom(demo):
-    package = demo["package.yaml"]
-    allowed = {TEMPLATE_SELECT, "logbook.log"} | AUDITION_HELPERS | AUDITION_SCRIPTS
-    owners = [(f"script.ramka_music_audition_{n}", audition_script(package, n)) for n in ("run", "keep")]
-    owners += [(a["id"], a) for a in package["automation"] if a["id"].startswith("ramka_music_audition_")]
-    assert {o for o, _ in owners} >= {"script.ramka_music_audition_run", "script.ramka_music_audition_keep",
-                                      "ramka_music_audition_start", "ramka_music_audition_stop", "ramka_music_audition_restart_cleanup"}
-    for owner, node in owners:
-        for step in walk(node):
-            target = step.get("target")
-            ids = as_list(target.get("entity_id", [])) if isinstance(target, dict) else []
-            assert not CUSTOM_HELPERS & set(ids) and "input_select.ramka_music_eq" not in ids, owner
-            assert set(ids) <= allowed, (owner, ids)
-            if "action" in step and ids:
-                assert step["action"].split(".")[0] in {"input_select", "input_boolean", "input_text", "input_number", "script"}, owner
-        text = json.dumps(node)
-        assert "music_eq" not in text and "music_hold" not in text and "music_rise" not in text, owner
-    # The walk writes its log entries through logbook.log.
-    assert "logbook.log" in json.dumps(audition_script(package))
-
-
-def test_music_audition_restores(demo):
-    package = demo["package.yaml"]
-    start = automation(package, "music_audition_start")
-    stop = automation(package, "music_audition_stop")
-    cleanup = automation(package, "music_audition_restart_cleanup")
-    # On: remember the entry on screen, then run the walk without waiting for it.
-    [trigger] = start["triggers"]
-    assert (trigger["entity_id"], trigger["to"], trigger["from"]) == (AUDITION, "on", "off")
-    first, second = start["actions"]
-    assert first["action"] == "input_text.set_value" and first["target"]["entity_id"] == AUDITION_RETURN
-    assert ha(first["data"]["value"], states={TEMPLATE_SELECT: "calm"}) == "calm"
-    assert second["action"] == "script.turn_on" and second["target"]["entity_id"] == "script.ramka_music_audition_run"
-    # Off: stop the walk, select what was remembered, forget it.
-    [trigger] = stop["triggers"]
-    assert (trigger["entity_id"], trigger["from"], trigger["to"]) == (AUDITION, "on", "off")
-    actions = stop["actions"]
-    assert actions[0]["action"] == "script.turn_off" and actions[0]["target"]["entity_id"] == "script.ramka_music_audition_run"
-    select = [a for a in walk(actions) if a.get("action") == "input_select.select_option"]
-    assert [ha(a["data"]["option"], states={AUDITION_RETURN: "mlp_match"}) for a in select] == ["mlp_match"]
-    assert select[0]["target"]["entity_id"] == TEMPLATE_SELECT
-    clear = [a for a in walk(actions) if a.get("action") == "input_text.set_value"]
-    assert clear[-1]["target"]["entity_id"] == AUDITION_RETURN and clear[-1]["data"]["value"] == ""
-    # Keep: the entry on screen becomes the one to return to, then audition goes off (the stop automation does the rest).
-    keep = audition_script(package, "keep")["sequence"]
-    [guard] = [s for s in keep if s.get("condition") == "state"]
-    assert (guard["entity_id"], guard["state"]) == (AUDITION, "on") and keep[0] is guard
-    [remember] = [s for s in keep if s.get("action") == "input_text.set_value"]
-    assert remember["target"]["entity_id"] == AUDITION_RETURN
-    assert ha(remember["data"]["value"], states={TEMPLATE_SELECT: "lively"}) == "lively"
-    [off] = [s for s in keep if s.get("action") == "input_boolean.turn_off"]
-    assert off["target"]["entity_id"] == AUDITION and keep.index(remember) < keep.index(off)
-    assert not [s for s in walk(keep) if s.get("action") == "input_select.select_option"]
-    # An HA start with something remembered selects it and clears it (audition itself starts off).
-    assert [t["trigger"] for t in cleanup["triggers"]] == ["homeassistant"] and cleanup["triggers"][0]["event"] == "start"
-    selects = [a for a in walk(cleanup["actions"]) if a.get("action") == "input_select.select_option"]
-    assert [ha(a["data"]["option"], states={AUDITION_RETURN: "calm"}) for a in selects] == ["calm"]
-    clear = [a for a in walk(cleanup["actions"]) if a.get("action") == "input_text.set_value"]
-    assert clear[-1]["data"]["value"] == ""
-    guards = [c["value_template"] for c in cleanup["conditions"] if c["condition"] == "template"]
-    assert guards and all(ha(g, states={AUDITION_RETURN: ""}) == "False" for g in guards)
-    assert all(ha(g, states={AUDITION_RETURN: "calm"}) == "True" for g in guards)
 
 
 # ---- music looks on the dashboards and the settings page (spec 4.1, 5, 7) ---------------------
 
 # Spec 4.1's descriptions (en), word for word: purpose, best use, why / when.
 LOOK_TEXTS = {
-    "custom": ("Your own look; starts as today's design.", "Anything, once you have tuned it.",
+    "custom": ("Your own profile; starts as today's design.", "Anything, once you have tuned it.",
                "When you have found values you like. Templates never change it; \"Copy to custom\" starts it from a template."),
-    "mlp_match": ("Look like your listening position does.", "Music and TV with the sensor near the speakers.",
+    "behind_speakers": ("Look like your listening position does.", "Music and TV with the sensor behind or near the speakers, or on the amplifier.",
                   "Undoes the difference you measured between the sensor's spot and your listening position "
-                  "(`music_eq_presets.mlp_match`, or `fitted` once calibrated); flat until you set one."),
+                  "(`music_eq_presets.behind_speakers`, or `fitted` once calibrated); flat until you set one."),
     "lively": ("Every beat shows.", "Parties, electronic and pop.",
                "WLED-MM's fast limiter (50 / 300 ms) with a narrow colour window. Expect flicker on quiet material."),
     "calm": ("Slow and ambient.", "Background music, classical, evenings.",
@@ -2898,15 +2742,13 @@ LOOK_TEXTS = {
 CUSTOM_ON = {"condition": "state", "entity": TEMPLATE_SELECT, "state": "custom"}
 CUSTOM_OFF = {"condition": "state", "entity": TEMPLATE_SELECT, "state_not": "custom"}
 CUSTOM_ROWS = ["input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_number.ramka_music_hold_s",
-               "input_boolean.ramka_music_tilt", *(f"input_number.ramka_{k}" for k in MUSIC_DB),
-               "input_select.ramka_music_eq", *(f"input_number.ramka_music_eq_{k}" for k in EQ_KEYS)]
+               "input_boolean.ramka_music_tilt", "input_select.ramka_music_eq", *(f"input_number.ramka_music_eq_{k}" for k in EQ_KEYS)]
 LOOK_KEYS = ["music_template", *(f"music_template_{i}{part}" for i in LOOK_IDS for part in ("", "_purpose", "_best", "_why")),
              "music_eq", *(f"music_eq_{p}" for p in EQ_PRESET_IDS), *(f"music_eq_{k}" for k in EQ_KEYS), "music_eq_load",
-             "music_hold_s", "music_look_values", "music_copy_to_custom", "music_audition", "music_audition_s",
-             "music_audition_list", "music_audition_keep",
+             "music_hold_s", "music_look_values", "music_copy_to_custom",
              # The page's own labels around them.
              "music_look", "music_look_best", "music_look_why", "music_copy_to_custom_confirm", "music_custom",
-             "music_eq_load_action", "music_audition_title", "music_audition_how"]
+             "music_colour", "music_eq_load_action"]
 
 
 def taps(card) -> list[dict]:
@@ -2934,20 +2776,35 @@ def test_music_visuals_without_music_visual_have_no_look(plain):
     assert LOOK not in json.dumps(plain)
     for lang in LANGS:
         view = settings_views(plain[f"ramka-settings.{lang}.yaml"])["music"]
-        assert "music_template" not in json.dumps(view) and "audition" not in json.dumps(view)
+        assert "music_template" not in json.dumps(view) and "music_colour" not in json.dumps(view) and "audition" not in json.dumps(view)
+
+
+def grid_with_heading(view, text):
+    """The section (grid) of a view whose heading card says `text`."""
+    [section] = [sec for sec in view["sections"]
+                 if any(c.get("type") == "heading" and c.get("heading") == text for c in sec["cards"])]
+    return section
 
 
 def test_music_settings_page_looks(demo):
+    package = demo["package.yaml"]
     for lang in LANGS:
         t = translations(lang)
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
         cards = list(view_cards(view))
-        # The template select: a row of its own, always shown, not Advanced.
-        [(section, select)] = [(s, c) for s, c in cards if TEMPLATE_SELECT in {r.get("entity") for r in rows(c)}]
-        assert not advanced(section, select) and not select.get("visibility"), lang
-        assert [r["entity"] for r in rows(select)] == [TEMPLATE_SELECT]
+        # The template select sits in the Basic entities card with the visual, palette and Advanced
+        # switch: always shown, not Advanced.
+        [(section, basic)] = [(s, c) for s, c in cards if TEMPLATE_SELECT in {r.get("entity") for r in rows(c)}]
+        assert [r["entity"] for r in rows(basic)] == [
+            "input_boolean.ramka_page_music", "input_select.ramka_music_visual", "input_select.ramka_music_palette", TEMPLATE_SELECT,
+            "input_boolean.ramka_settings_advanced"], lang
+        assert not advanced(section, basic) and not basic.get("visibility"), lang
+        # The response profile grid: the description, the values in use and Copy to custom.
+        profile = grid_with_heading(view, t["ui.settings.music_look"])
+        assert [c["type"] for c in profile["cards"]] == ["heading", "markdown", "markdown", "button"], lang
+        about, values, copy = profile["cards"][1:]
         # The description: keyed by the select's state, each entry's name, purpose, best use and why.
-        [about] = [c for _, c in cards if c.get("type") == "markdown" and f"states('{TEMPLATE_SELECT}')" in c["content"]]
+        assert f"states('{TEMPLATE_SELECT}')" in about["content"]
         for entry in LOOK_IDS:
             out = ha(about["content"], states={TEMPLATE_SELECT: entry})
             assert t[f"ui.settings.music_template_{entry}"] in out, (lang, entry)
@@ -2960,47 +2817,64 @@ def test_music_settings_page_looks(demo):
         if lang == "en":
             for entry, texts_ in LOOK_TEXTS.items():
                 assert tuple(t[f"ui.settings.music_template_{entry}_{p}"] for p in ("purpose", "best", "why")) == texts_, entry
-        # The read-out of the look's values, from the look sensor.
-        [values] = [c for _, c in cards if c.get("type") == "markdown" and t["ui.settings.music_look_values"] in c["content"]]
+        # The read-out of the profile's values, from the look sensor: rise, fall, hold, tilt and the
+        # six EQ gains; no colour rows (a profile carries no colour window).
+        assert t["ui.settings.music_look_values"] in values["content"]
         attrs = {LOOK: look_row(LOOK_ROWS["calm"])}
         out = ha(values["content"], attrs=attrs)
-        assert "4.2" in out and "85" in out and "-5" in out, (lang, out)
-        # Custom's rows: one card, shown only while Custom is selected; the EQ select with its Load
-        # button, which calls the loader with the select's state (no data: the script reads it).
-        [(section, custom)] = [(s, c) for s, c in cards if "input_number.ramka_music_eq_sub" in {r.get("entity") for r in rows(c)}]
-        assert CUSTOM_ON in custom["visibility"] and not advanced(section, custom), lang
+        assert "4.2" in out and "85" not in out and "-4 dB" in out and "-2 dB" in out and "-5 dB" in out, (lang, out)
+        table = [line for line in out.splitlines() if line.startswith("| ") and "---" not in line and line != "| | |"]
+        assert len(table) == 4 + 6, (lang, table)
+        for key in ("music_rise_ms", "music_fall_s", "music_hold_s", "music_tilt", *(f"music_eq_{k}" for k in EQ_KEYS)):
+            assert any(line.startswith(f"| {t['ui.settings.' + key]} |") for line in table), (lang, key)
+        assert not any(t[f"ui.settings.{k}"] in out for k in ("music_spectrum_neutral_db", "music_spectrum_hot_db",
+                                                              "music_level_neutral_db", "music_level_hot_db")), lang
+        # Copy to custom: only while a template is active.
+        assert copy["name"] == t["ui.settings.music_copy_to_custom"]
+        assert copy["visibility"] == [CUSTOM_OFF] and copy["tap_action"]["perform_action"] == "script.ramka_music_copy_to_custom"
+        # Custom's grid: always shown (no visibility on the grid, its cards or its rows), the five rows,
+        # then the EQ select's Load button (calls the loader with the select's state: no data, the
+        # script reads it), then the six EQ sliders; plus the preset list.
+        custom_grid = grid_with_heading(view, t["ui.settings.music_custom"])
+        assert [c["type"] for c in custom_grid["cards"]] == ["heading", "entities", "markdown"], lang
+        _, custom, names = custom_grid["cards"]
+        assert not advanced(custom_grid, custom) and not advanced(custom_grid, names), lang
         listed = [r.get("entity") for r in rows(custom)]
         assert [e for e in listed if e] == CUSTOM_ROWS, lang
+        assert listed[:5] == CUSTOM_ROWS[:3] + ["input_boolean.ramka_music_tilt", "input_select.ramka_music_eq"], lang
         [load] = [r for r in rows(custom) if r.get("type") == "button"]
         assert listed.index(None) == listed.index("input_select.ramka_music_eq") + 1
         assert load["name"] == t["ui.settings.music_eq_load"]
         assert load["tap_action"]["action"] == "perform-action"
         assert load["tap_action"]["perform_action"] == "script.ramka_music_load_eq" and not load["tap_action"].get("data")
+        for card in (*custom_grid["cards"], custom_grid, *rows(custom)):
+            assert not card.get("visibility") and "state_not" not in json.dumps(card.get("visibility", "")), lang
         # The EQ preset names, shown with the Custom rows.
-        [names] = [c for _, c in cards if c.get("type") == "markdown" and "`wled_pink`" in c["content"]]
-        assert CUSTOM_ON in names["visibility"]
+        assert "`wled_pink`" in names["content"]
         for preset in EQ_PRESET_IDS:
             assert f"`{preset}`: {t['ui.settings.music_eq_' + preset]}" in names["content"], (lang, preset)
-        # Copy to custom only while a template is active.
-        [copy] = [c for _, c in cards if any(a.get("perform_action") == "script.ramka_music_copy_to_custom" for a in taps(c))]
-        assert copy["name"] == t["ui.settings.music_copy_to_custom"]
-        assert CUSTOM_OFF in copy["visibility"] and CUSTOM_ON not in copy["visibility"]
-        # Nothing else on the page is shown only with Custom or only without it.
+        # The colour range: its own grid, always shown, the four neutral/hot rows and nothing else.
+        colour = grid_with_heading(view, t["ui.settings.music_colour"])
+        assert [c["type"] for c in colour["cards"]] == ["heading", "entities"], lang
+        assert colour["cards"][0]["icon"] == "mdi:palette" and not colour.get("visibility"), lang
+        assert [r["entity"] for r in rows(colour["cards"][1])] == [f"input_number.ramka_{k}" for k in MUSIC_DB], lang
+        assert not any(c.get("visibility") for c in colour["cards"]) and not advanced(colour, colour["cards"][1]), lang
+        # Nothing else on the page is shown only with Custom or only without it: just Copy to custom.
         for _, c in cards:
             if CUSTOM_ON in c.get("visibility", []) or CUSTOM_OFF in c.get("visibility", []):
-                assert c in (custom, names, copy) or c.get("type") == "heading", (lang, c)
-        # The audition: its toggle, interval and list, and Keep (calls the keep script).
-        [(section, audition)] = [(s, c) for s, c in cards if AUDITION in {r.get("entity") for r in rows(c)}]
-        assert [r["entity"] for r in rows(audition)] == [AUDITION, "input_number.ramka_music_audition_s", AUDITION_LIST]
-        assert not advanced(section, audition)
-        [keep] = [c for _, c in cards if any(a.get("perform_action") == "script.ramka_music_audition_keep" for a in taps(c))]
-        assert keep["name"] == t["ui.settings.music_audition_keep"]
+                assert c is copy, (lang, c)
+        # The audition is gone from the page.
+        assert "audition" not in json.dumps(view), lang
         # Every perform_action names a script the package defines.
-        package = demo["package.yaml"]
         for _, c in cards:
             for tap in taps(c):
                 if tap.get("perform_action", "").startswith("script.ramka_"):
                     assert tap["perform_action"].removeprefix("script.") in package["script"], tap
+        # The page's Reset to default still covers the profile and the colour range (the music_visual
+        # and music_look groups), so it restores everything on the page.
+        written = run_reset(package, page="music")
+        assert set(f"input_number.ramka_{k}" for k in MUSIC_DB) <= set(written), lang
+        assert set(LOOK_DEFAULTS) <= set(written), lang
 
 
 def test_music_translations_complete():

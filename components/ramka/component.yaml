@@ -153,8 +153,8 @@ inputs:
     default: null               # its helpers, which the card reads live; absent keys take the card's defaults,
     example: {level: {flavour: tide}}   # line_width Ramka's 2.8 px. Checked at render (flavour of its kind,
                                 # palette zones | series | calm, ranges, hot above neutral).
-  music_eq_presets:             # the home's fills of the EQ presets that are flat in the catalog (`mlp_match`, `half_match`,
-    type: "{mlp_match?, half_match?, fitted?: {sub?, bass?, low_mid?, mid?, presence?, air?}}"
+  music_eq_presets:             # the home's fills of the EQ presets that are flat in the catalog (`behind_speakers`, `half_match`,
+    type: "{behind_speakers?, half_match?, fitted?: {sub?, bass?, low_mid?, mid?, presence?, air?}}"
     default: null               # `fitted`), dB per range, each -18...+12; absent keys are 0. Read only when `music_visual`
     example: {fitted: {bass: -6, air: 2}}   # is set. Checked at render (preset id, range key, range).
   settings_defaults:            # the General settings' starting values (0.4.0), what the seed and "Reset to defaults"
@@ -229,15 +229,11 @@ provides:                       # <prefix> from inputs
     - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0)"}
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
     - {id: "input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}", stability: stable, note: "with music_visual (0.4.0)"}
-    - {id: "input_select.<prefix>_music_template", stability: stable, options: [custom, mlp_match, lively, calm, analyser], note: "with music_visual; the music look, custom first; options additive-only"}
-    - {id: "input_select.<prefix>_music_eq", stability: stable, options: [flat, mlp_match, half_match, wled_big_speakers, wled_big_speakers_ics, wled_pink, bass_light, voices, sparkle, fitted], note: "with music_visual; an EQ preset to load into Custom's EQ; options additive-only"}
+    - {id: "input_select.<prefix>_music_template", stability: stable, options: [custom, behind_speakers, lively, calm, analyser], note: "with music_visual; the music look, custom first; options additive-only"}
+    - {id: "input_select.<prefix>_music_eq", stability: stable, options: [flat, behind_speakers, half_match, wled_big_speakers, wled_big_speakers_ics, wled_pink, bass_light, voices, sparkle, fitted], note: "with music_visual; an EQ preset to load into Custom's EQ; options additive-only"}
     - {id: "input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}", stability: stable, note: "with music_visual; Custom's EQ (-18...12 dB) and hold (0...10 s)"}
-    - {id: "sensor.<prefix>_music_look", stability: stable, note: "with music_visual; state the entry id, attributes rise, fall, hold, tilt, eq, spectrum, level (ambient-wave-card's `look`)"}
+    - {id: "sensor.<prefix>_music_look", stability: stable, note: "with music_visual; state the entry id, attributes rise, fall, hold, tilt, eq (ambient-wave-card's `look`; no colour window)"}
     - {id: "script.<prefix>_{music_copy_to_custom,music_load_eq}", stability: stable, note: "with music_visual; music_load_eq takes field preset"}
-    - {id: "input_boolean.<prefix>_music_audition", stability: stable, note: "with music_visual; a blind walk through the music looks, always off at a start"}
-    - {id: "input_number.<prefix>_music_audition_s", stability: stable, note: "with music_visual; seconds of playback per entry (20...120)"}
-    - {id: "input_text.<prefix>_music_audition_{list,return}", stability: stable, note: "with music_visual; list: comma separated entry ids; return: the entry to go back to, empty when no audition runs"}
-    - {id: "script.<prefix>_{music_audition_run,music_audition_keep}", stability: stable, note: "with music_visual; keep ends the audition and keeps the entry on screen"}
     - {id: "sensor.<prefix>_ambient_pages", stability: stable, note: "the ambient pages in the rotation now (state: how many; attributes pages, all_off, component: ramka; 0.4.0)"}
     - {id: "script.<prefix>_settings_reset", stability: stable, note: "fields page and groups, both optional (0.4.0)"}
     - {id: "sensor.<prefix>_discovery", stability: stable, note: "the About page's discovery: state the last refresh (timestamp); attributes component: ramka, ha_version, found, uses, integrations, declared_links, set by event <prefix>_discovery (SPEC-023)"}
@@ -259,7 +255,7 @@ provides:                       # <prefix> from inputs
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
-  automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching, <prefix>_music_eq_load and <prefix>_music_audition_{start,stop,restart_cleanup}, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without

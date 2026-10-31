@@ -5,11 +5,14 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## Unreleased: music looks
 
-**Music looks** (with `music_visual`): a look select (`custom`, `mlp_match`, `lively`, `calm`,
-`analyser`), Custom's EQ and hold, EQ presets, Copy to custom and a blind audition (README, "Music
-looks"). The visual cards bind `sensor.<prefix>_music_look`. On the settings page's Music page the
-rise, fall, tilt and the four dB values move from Advanced to the Custom look card, shown while
-`custom` is selected.
+**Response profiles** (with `music_visual`): a profile select (`custom`, `behind_speakers`, `lively`,
+`calm`, `analyser`), Custom's EQ and hold, EQ presets and Copy to custom (README, "Response
+profile"). A profile sets rise, fall, hold, tilt and the EQ; it does not change the colour range, so
+the four neutral and hot dB values stay the user's whichever profile is on. The visual cards bind
+`sensor.<prefix>_music_look` (attributes rise, fall, hold, tilt, eq). On the settings page's Music
+page the template select sits in the Basic entities card; the rise, fall, tilt and the EQ move from
+Advanced to an always-editable Custom grid, and the four dB values to a Colour range grid. There is
+no blind audition.
 
 The looks need the audio-sensor release that carries the `look` option and `dynamics.eq`; an older
 audio-sensor card ignores both and draws without them, so update the two components together.
@@ -19,8 +22,9 @@ audio-sensor card ignores both and draws without them, so update the two compone
 - With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers
   and a template sensor). The seed gives Custom a flat EQ and a 1.5 s hold and selects `custom`, so
   the visual looks as before.
-- Optional: the home's measured curves in `music_eq_presets` (`mlp_match`, `half_match`, `fitted`),
-  then a render.
+- Optional: the home's measured curves in `music_eq_presets` (`behind_speakers`, `half_match`, `fitted`),
+  then a render. A home that set `music_eq_presets.mlp_match` while the feature was unreleased renames
+  that key to `behind_speakers` (an unknown key fails the render).
 
 ## Unreleased: the About page in the settings
 
