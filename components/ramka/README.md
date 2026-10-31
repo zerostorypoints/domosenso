@@ -239,8 +239,8 @@ lovelace:
   the swipes step only through the pages that are there;
   `input_select.<prefix>_ambient` keeps all five options (FROZEN), and a render that leaves no page
   fails. The times are fixed: climate 30 s, air 15 s, five photos of 10 s, status 15 s; plants take
-  `plants_page_s` per page for at most two pages (0.7.0; 10 s with the defaults and up to six
-  plants); one pass is their sum (130 s with all five before 0.7.0). The package's comments still quote 130 s and the
+  `plants_page_s` per page for at most two pages (0.7.0; 10 s with the defaults and up to four
+  plants, 20 s from five, when the list page follows the tiles, 0.8.0); one pass is their sum (130 s with all five before 0.7.0). The package's comments still quote 130 s and the
   status stage whichever pages a home has.
 - **Why `status_page: false`**: the status page is read-only. A home whose controls screen already
   shows its lights and covers, and that has no doors, power or locks to list, gains nothing from it

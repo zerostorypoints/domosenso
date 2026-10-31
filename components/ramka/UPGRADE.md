@@ -3,6 +3,23 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.8.0 (2026-10-31): a list of every plant, a leaf instead of the initial
+
+SPEC-022 amendment 2.
+
+**The list page.** With more than four plants, list pages follow the tile pages: one row per plant
+with its photo, name, the action (or the watered / water-in line, or the room), the sun, fertiliser
+and water bars and the moisture line, at most seven rows a page, shared evenly. The plants stage of
+the ambient loop counts them: with five or six plants it now lasts 20 s (the tiles, then the list)
+instead of 10 s. `list: false` on the card drops them; `list_rows` sets the rows per page.
+
+**A plant without a photo** shows a leaf in its state's colour instead of its initial.
+
+### What a home does
+
+`domosenso update ramka` and a deploy (the cards move to `www/domosenso/ramka/0.8.0/`); press the
+Ramka's reload. No inputs change.
+
 ## 0.7.0 (2026-10-30): the plants page for 1 to 50 plants
 
 SPEC-022, with plants 0.3.0.
