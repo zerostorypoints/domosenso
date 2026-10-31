@@ -12,6 +12,7 @@ from domosenso_cli.build import file_records, open_catalog, parse_spec, plan_out
 from domosenso_cli import stamps
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
+from domosenso_cli.cmd_render import write_inventory
 from domosenso_cli.lock import Lock, LockEntry
 from domosenso_cli.report import Reporter
 
@@ -47,10 +48,12 @@ def run(args: argparse.Namespace, rep: Reporter) -> int:
     lock.components[cid] = LockEntry(
         version=version, tag=f"{cid}/{version}", commit=commit,
         files=file_records(home, outputs), resources=resource_urls(component_dir),
+        released=catalog.commit_date(commit),
     )
     lock.save(args.home)
     for output in outputs:
         rep.line("adopt", output.dest)
+    write_inventory(home, lock, rep, catalog)
     return rep.ok()
 
 

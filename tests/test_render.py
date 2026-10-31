@@ -351,3 +351,12 @@ def test_cli_stamp(comp, tmp_path):
                           "--out", str(tmp_path / "out"), "--lang", "en", "--stamp"], capture_output=True, text=True)
     assert run.returncode == 0, run.stderr
     assert (tmp_path / "out" / "plain.yaml").read_text(encoding="utf-8").startswith(f"# Rendered by Domosenso from render-comp@{sha} ")
+
+
+def test_component_global_in_every_template(comp, tmp_path):
+    """`component` (id, version from the manifest) is a global of every template, not only device files (SPEC-023)."""
+    (comp / "component.yaml").write_text("id: render-comp\nversion: 1.2.3\n", encoding="utf-8")
+    (comp / "templates" / "about.yaml.j2").write_text("about: '[[ component.id ]] [[ component.version ]]'\n", encoding="utf-8")
+    out = tmp_path / "out"
+    dr.render_component(comp, INPUTS, out)
+    assert load(out / "about.yaml") == {"about": "render-comp 1.2.3"}

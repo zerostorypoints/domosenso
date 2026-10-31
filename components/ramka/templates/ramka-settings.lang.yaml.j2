@@ -19,7 +19,8 @@
     'photos': inputs.photo_dir is defined, 'status': inputs.status_page | default(true), 'calendar': true} -%]
 [%- set adds = {'climate': 'climate', 'air': 'air', 'plants': 'plants', 'photos': 'photo_dir', 'status': 'status_page'} -%]
 [%- set icons = {'general': 'mdi:tablet-dashboard', 'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower',
-    'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'music': 'mdi:music'} -%]
+    'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'music': 'mdi:music',
+    'about': 'mdi:information-outline'} -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
@@ -327,3 +328,124 @@ views:
       - type: grid
         cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
 [%- endif %][[ reset('music') ]]
+
+  # ---- About: Domosenso, every component the home runs, what they use (SPEC-023) ---------------
+  # A sections view like the other pages: the header is plain text over the page; Components and
+  # Related components in the first column, Devices (the longest list) in the second; one column on
+  # a narrow screen. sensor.domosenso_components is the lock's, written by the domosenso command;
+  # sensor.[[ p ]]_discovery is what shell/domosenso_discover.py found in Home Assistant, refreshed
+  # by the button, at start and nightly. Everything else is read live.
+[%- set discovery = 'sensor.' ~ p ~ '_discovery' %]
+[%- set repo = 'https://github.com/zerostorypoints/domosenso' %]
+[%- set site = 'https://domosenso.org' %]
+  - title: [[ t('ui.settings.pages.about') | yaml ]]
+    path: about
+    icon: [[ icons.about ]]
+    type: sections
+    max_columns: 2
+    # The discovery between the header and the tables: its date in the header's text, Refresh as the
+    # header's badge (a section spanning both columns stays in one on some widths).
+    header:
+      layout: start
+      badges_position: bottom
+      card:
+        type: markdown
+        text_only: true
+        content: |-
+          # <img src="/local/domosenso/ramka/[[ component.version ]]/cards/assets/domosenso-mark.svg" width="34" height="34" alt=""> Domo**Senso.**
+          [[ t('ui.settings.about_tagline') ]]
+
+          <a href="[[ site ]]/">[[ t('ui.settings.about_nav_website') ]]</a> · <a href="[[ site ]]/get-started/">[[ t('ui.settings.about_nav_get_started') ]]</a> · <a href="[[ site ]]/components/">[[ t('ui.settings.about_components') ]]</a> · <a href="[[ site ]]/devices/">[[ t('ui.settings.about_devices') ]]</a> · <a href="[[ repo ]]">GitHub</a>
+
+          {% set when = as_timestamp(states('[[ discovery ]]'), none) %}
+          [[ t('ui.settings.about_last_discovery') ]]: **{{ when | timestamp_custom('%Y-%m-%d %H:%M') if when else '—' }}** · [[ t('ui.settings.about_discovery_how') ]]
+
+          <small>[[ t('ui.settings.about_license') ]] <a href="[[ repo ]]/blob/main/LICENSE">Apache-2.0</a> · © 2026 ZeroStoryPoints GmbH · [[ t('ui.settings.about_trademark') ]] (<a href="[[ repo ]]/blob/main/NOTICE">NOTICE</a>, <a href="[[ repo ]]/blob/main/THIRD_PARTY_NOTICES.md">[[ t('ui.settings.about_third_party') ]]</a>) · Home Assistant {{ state_attr('[[ discovery ]]', 'ha_version') or '—' }}</small>
+    badges:
+      - type: entity
+        entity: script.[[ p ]]_about_refresh
+        name: [[ t('ui.settings.about_refresh_action') | yaml ]]
+        icon: mdi:refresh
+        show_name: true
+        show_state: false
+        show_icon: true
+        tap_action:
+          action: perform-action
+          perform_action: script.[[ p ]]_about_refresh
+    sections:
+      - type: grid
+        cards:[[ heading('about_components', 'mdi:package-variant-closed') ]]
+          - type: markdown
+            content: |-
+              {% set items = state_attr('sensor.domosenso_components', 'components') or [] %}
+              {% set found = state_attr('[[ discovery ]]', 'found') or [] %}
+              {% set ids = items | map(attribute='id') | list %}
+              {% set pages = (state_attr('[[ discovery ]]', 'links') or {}).get('components') or {} %}
+              {%- macro linked(cid) %}{{ '[' ~ cid ~ '](' ~ pages[cid] ~ ')' if cid in pages else cid }}{% endmacro %}
+              {%- if items or found %}
+[[ block(t('ui.settings.about_how')) ]]
+
+              | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_released') ]] |
+              |---|---|---|
+              {%- for c in items %}
+              {%- set mine = found | selectattr('id', 'eq', c.id) | list %}
+              {%- set boards = (mine[0].get('boards') or []) if mine else [] %}
+              {%- set other = boards | rejectattr('version', 'eq', c.version) | map(attribute='version') | unique | list %}
+              | {{ linked(c.id) }} | {{ c.version }}{{ ' (' ~ [[ t('ui.settings.about_dev') | yaml ]] ~ ')' if c.dev else '' }}{{ ' (' ~ [[ t('ui.settings.about_package') | yaml ]] ~ ' `' ~ c.get('package') ~ '`)' if c.get('package') else '' }}{{ ' — ' ~ [[ t('ui.settings.about_board_reports') | yaml ]] ~ ' ' ~ other | join(', ') if other else '' }} | {{ c.released or '—' }} |
+              {%- endfor %}
+              {%- for f in found if f.id not in ids %}
+              | {{ linked(f.id) }} | {{ f.version }} ({{ [[ t('ui.settings.about_found') | yaml ]] }}) | — |
+              {%- endfor %}
+              {%- else %}
+              | [[ t('ui.settings.about_component') ]] | [[ t('ui.settings.about_version') ]] |
+              |---|---|
+              | [[ component.id ]] | [[ component.version ]] |
+
+[[ block(t('ui.settings.about_missing')) ]]
+              {%- endif %}[[ heading('about_related', 'mdi:puzzle-outline') ]]
+          - type: markdown
+            content: |-
+              {% set uses = state_attr('[[ discovery ]]', 'uses') or {} %}
+              {% set ints = state_attr('[[ discovery ]]', 'integrations') or {} %}
+              {% set docs = (state_attr('[[ discovery ]]', 'links') or {}).get('integrations') or {} %}
+              [[ t('ui.settings.about_related_how') ]]
+
+              | [[ t('ui.settings.about_integration') ]] | [[ t('ui.settings.about_kind') ]] | [[ t('ui.settings.about_version') ]] | [[ t('ui.settings.about_used_by') ]] |
+              |---|---|---|---|
+              {%- for domain, i in ints.items() %}
+              {%- set provided = integration_entities(domain) %}
+              {%- set ns = namespace(users=[]) %}
+              {%- for cid, ids in uses.items() if ids | select('in', provided) | list %}{% set ns.users = ns.users + [cid] %}{% endfor %}
+              {%- set installed = state_attr(i.update_entity, 'installed_version') if i.update_entity else i.version %}
+              {%- set latest = state_attr(i.update_entity, 'latest_version') if i.update_entity else none %}
+              | {{ '[' ~ i.name ~ '](' ~ docs[domain] ~ ')' if domain in docs else i.name }} | {{ i.kind }} | {{ installed }}{{ ' → ' ~ latest if latest and is_state(i.update_entity, 'on') else '' }} | {{ ns.users | join(', ') }} |
+              {%- endfor %}
+      - type: grid
+        cards:[[ heading('about_devices', 'mdi:devices') ]]
+          - type: markdown
+            content: |-
+              {% set uses = state_attr('[[ discovery ]]', 'uses') or {} %}
+              {% set declared_links = state_attr('[[ discovery ]]', 'declared_links') or [] %}
+              {% set catalog = (state_attr('[[ discovery ]]', 'links') or {}).get('devices') or {} %}
+              {%- set ns = namespace(used=[], devices=[]) %}
+              {%- for cid, ids in uses.items() %}{% set ns.used = ns.used + ids %}{% endfor %}
+              {%- for e in ns.used %}{% set d = device_id(e) %}{% if d and d not in ns.devices %}{% set ns.devices = ns.devices + [d] %}{% endif %}{% endfor %}
+              {%- for x in declared_links if x.via not in ns.devices %}{% set ns.devices = ns.devices + [x.via] %}{% endfor %}
+              {%- macro plain(d) %}{{ device_attr(d, 'name_by_user') or device_attr(d, 'name') }}{% endmacro %}
+              {#- A device the catalog knows links to its page; any other is listed as it is. #}
+              {%- macro name(d) %}{{ '[' ~ plain(d) ~ '](' ~ catalog[d].url ~ ')' if d in catalog else plain(d) }}{% endmacro %}
+              [[ t('ui.settings.about_devices_how') ]]
+
+              | [[ t('ui.settings.about_device') ]] | [[ t('ui.settings.about_model') ]] | [[ t('ui.settings.about_firmware') ]] | [[ t('ui.settings.about_via') ]] | [[ t('ui.settings.about_status') ]] |
+              |---|---|---|---|---|
+              {%- for d in ns.devices %}
+              {%- set via = device_attr(d, 'via_device_id') %}
+              {%- set said = (declared_links | selectattr('device', 'eq', d) | map(attribute='via') | list + [none]) | first %}
+              {%- set mine = device_entities(d) | select('in', ns.used) | list %}
+              {%- set down = mine | select('is_state', 'unavailable') | list %}
+              {#- A device's own connection sensor (device_class connectivity) that is off says it is not
+                  connected, whatever its other entities show (an integration may keep them "off"). #}
+              {%- set cut = device_entities(d) | select('match', 'binary_sensor[.]') | select('is_state_attr', 'device_class', 'connectivity') | select('is_state', 'off') | map('state_attr', 'friendly_name') | list %}
+              {%- set gone = (mine and down | count == mine | count) or cut %}
+              | {{ name(d) }} | {{ [device_attr(d, 'manufacturer'), device_attr(d, 'model')] | select | join(' ') }} | {{ device_attr(d, 'sw_version') or '—' }} | {{ name(via) if via else (name(said) ~ ' (' ~ [[ t('ui.settings.about_declared') | yaml ]] ~ ')' if said else '—') }} | {{ ('<font color="#e53935">' ~ [[ t('ui.settings.about_unavailable') | yaml ]] ~ (' (' ~ cut | join(', ') ~ ')' if cut else '') ~ '</font>') if gone else ('<font color="#43a047">' ~ [[ t('ui.settings.about_ok') | yaml ]] ~ '</font>') }} |
+              {%- endfor %}

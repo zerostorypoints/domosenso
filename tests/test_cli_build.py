@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from domosenso_cli import main as cli
-from domosenso_cli import stamps
+from domosenso_cli import inventory, stamps
 from domosenso_cli.lock import Lock, LockEntry
 
 MANIFEST = """\
@@ -177,7 +177,7 @@ def test_render_is_idempotent(home, catalog, capsys):
     assert code == 0
     lines = out.splitlines()
     assert lines[-1] == "ok"
-    assert [line.split()[0] for line in lines[:-1]] == ["same"] * len(PANEL_DESTS)
+    assert [line.split()[0] for line in lines[:-1]] == ["same"] * (len(PANEL_DESTS) + 1)  # and the inventory
     assert (home / "domosenso.lock").read_text() == before
 
 
@@ -336,10 +336,12 @@ def render_by_hand(home: Path, catalog: Path, cid: str, old_stamp: bool = True) 
 def test_adopt_equal(home, catalog, capsys):
     render_by_hand(home, catalog, "panel")
     capsys.readouterr()
-    snapshot = {p: p.read_bytes() for p in (home / HA).rglob("*") if p.is_file()}
+    listing = home / HA / inventory.PACKAGE
+    snapshot = {p: p.read_bytes() for p in (home / HA).rglob("*") if p.is_file() and p != listing}
     code, out = run(home, "adopt", "panel@1.0.0", capsys=capsys)
     assert (code, out.splitlines()[-1]) == (0, "ok"), out
-    assert {p: p.read_bytes() for p in (home / HA).rglob("*") if p.is_file()} == snapshot
+    assert listing.is_file()  # the one file adopt writes: the inventory
+    assert {p: p.read_bytes() for p in (home / HA).rglob("*") if p.is_file() and p != listing} == snapshot
     entry = Lock.load(home).components["panel"]
     assert entry.version == "1.0.0" and entry.tag == "panel/1.0.0" and entry.commit == commit_of(catalog, "panel")
     assert sorted(entry.files) == PANEL_DESTS
@@ -513,3 +515,110 @@ def test_every_language_template_is_a_dashboard():
     assert _template_destination(entry, "dashboard.<lang>.yaml", "pl") == "dashboards/ramka.pl.yaml"
     entry.outputs["ramka-settings.<lang>.yaml"] = "dash/settings-<lang>.yaml"
     assert _template_destination(entry, "ramka-settings.<lang>.yaml", "en") == "dash/settings-en.yaml"
+
+
+# --- the inventory, packages/domosenso.yaml (SPEC-023) -----------------------------------------------
+
+
+def _listed(home: Path) -> tuple[dict, list[dict]]:
+    """The inventory's sensor and its `components`, as Home Assistant would render the attribute."""
+    import jinja2
+    document = yaml.safe_load((home / HA / inventory.PACKAGE).read_text())
+    sensor = document["template"][0]["sensor"][0]
+    rendered = jinja2.Environment().from_string(sensor["attributes"]["components"]).render()
+    import ast
+    return sensor, ast.literal_eval(rendered)
+
+
+def test_render_writes_the_inventory_and_released(home, catalog, capsys):
+    lock_in(home, catalog, "panel")
+    assert Lock.load(home).components["panel"].released is None  # a lock from before SPEC-023
+    code, out = run(home, "render", capsys=capsys)
+    assert code == 0, out
+    assert f"write {HA}/{inventory.PACKAGE}" in out.splitlines()
+    date = git(catalog, "log", "-1", "--format=%cs", "panel/1.0.0")
+    assert Lock.load(home).components["panel"].released == date
+    assert yaml.safe_load((home / "domosenso.lock").read_text())["components"]["panel"]["released"] == date
+    text = (home / HA / inventory.PACKAGE).read_text()
+    assert text.startswith(inventory.STAMP) and stamps.parse(text.splitlines()[0]) is None
+    sensor, listed = _listed(home)
+    assert sensor["default_entity_id"] == "sensor.domosenso_components" and sensor["state"] == "1"
+    assert sensor["attributes"]["component"] == "domosenso"
+    assert listed == [
+        {"id": cid, "version": "1.0.0", "tag": f"{cid}/1.0.0", "commit": commit_of(catalog, cid)[:12],
+         "released": date, "dev": False, "package": ""}
+        for cid in ("panel",)
+    ]
+
+
+def test_dev_render_marks_its_item(home, catalog, capsys):
+    lock_in(home, catalog, "panel")
+    run(home, "render", capsys=capsys)
+    before = (home / "domosenso.lock").read_text()
+    code, out = run(home, "render", "--catalog-dev", str(catalog), "panel", capsys=capsys)
+    assert code == 0, out
+    assert (home / "domosenso.lock").read_text() == before  # a dev render leaves the lock alone
+    _, listed = _listed(home)
+    head = git(catalog, "rev-parse", "--short=12", "HEAD")
+    assert listed == [{"id": "panel", "version": "1.0.0", "tag": "", "commit": f"{head}-dirty",
+                       "released": git(catalog, "log", "-1", "--format=%cs", "HEAD"), "dev": True, "package": ""}]
+    # the tag again: the dev item goes
+    run(home, "render", "panel", capsys=capsys)
+    assert _listed(home)[1][0]["dev"] is False
+
+
+def test_status_classifies_the_inventory(home, catalog, capsys):
+    lock_in(home, catalog, "panel")
+    run(home, "render", capsys=capsys)
+    code, out = run(home, "status", capsys=capsys)
+    assert f"managed {HA}/{inventory.PACKAGE}" in out.splitlines()
+    (home / HA / inventory.PACKAGE).write_text("changed\n")
+    code, out = run(home, "status", capsys=capsys)
+    assert f"managed-modified {HA}/{inventory.PACKAGE}" in out.splitlines()
+    run(home, "render", capsys=capsys)  # derived: render puts it back without --force
+    code, out = run(home, "status", capsys=capsys)
+    assert f"managed {HA}/{inventory.PACKAGE}" in out.splitlines()
+
+
+def test_lock_without_components_has_no_inventory(home, catalog, capsys):
+    lock_in(home, catalog)
+    (home / HA / "packages").mkdir(parents=True)
+    (home / HA / inventory.PACKAGE).write_text("left over\n")
+    code, out = run(home, "render", capsys=capsys)
+    assert f"remove {HA}/{inventory.PACKAGE}" in out.splitlines()
+    assert not (home / HA / inventory.PACKAGE).exists()
+
+
+
+def test_render_dates_every_locked_component_and_sees_the_manifest(home, catalog, capsys):
+    """`render panel` dates `other` too; the command's render has the `component` global (SPEC-023)."""
+    panel = catalog / "components" / "panel"
+    (panel / "component.yaml").write_text(MANIFEST.format(cid="panel").replace("version: 1.0.0", "version: 1.0.1"))
+    (panel / "templates" / "about.yaml.j2").write_text("about: '[[ component.id ]] [[ component.version ]]'\n")
+    git(catalog, "add", "-A")
+    git(catalog, "commit", "-q", "-m", "about")
+    git(catalog, "tag", "-a", "panel/1.0.1", "-m", "panel/1.0.1")
+    lock = Lock.load(home)
+    lock.components["panel"] = LockEntry("1.0.1", "panel/1.0.1", git(catalog, "rev-parse", "panel/1.0.1^{commit}"))
+    lock.components["other"] = LockEntry("1.0.0", "other/1.0.0", commit_of(catalog, "other"))
+    lock.save(home)
+    code, out = run(home, "render", "panel", capsys=capsys)
+    assert code == 0, out
+    assert yaml.safe_load((home / HA / "packages/panel_about.yaml").read_text()) == {"about": "panel 1.0.1"}
+    assert Lock.load(home).components["other"].released == git(catalog, "log", "-1", "--format=%cs", "other/1.0.0")
+    assert all(item["released"] for item in _listed(home)[1])
+
+
+def test_inventory_lists_a_borrowed_esphome_package(home, catalog, capsys):
+    """A board that pulls a catalog component's ESPHome package, the component not locked (SPEC-023)."""
+    lock_in(home, catalog, "panel")
+    (home / "esphome").mkdir()
+    (home / "esphome" / "proxy.yaml").write_text(
+        "packages:\n  proxy: github://owner/repo/components/other/esphome/ble-proxy.yaml@other/0.2.1\n"
+        "  self: github://owner/repo/components/panel/esphome/x.yaml@panel/1.0.0\n")
+    code, out = run(home, "render", capsys=capsys)
+    assert code == 0, out
+    listed = {item["id"]: item for item in _listed(home)[1]}
+    assert listed["other"] == {"id": "other", "version": "0.2.1", "tag": "other/0.2.1", "commit": "", "released": "",
+                               "dev": False, "package": "proxy.yaml"}
+    assert listed["panel"]["package"] == ""  # locked: listed from the lock, not as a package

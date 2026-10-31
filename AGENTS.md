@@ -189,6 +189,7 @@ uv run tools/agents_check.py                    # AGENTS.md budget, CLAUDE.md, s
 uv run tools/install_skills.py [--check]        # skill links for every agent
 uv run tools/issue_check.py <draft.md | --issue n>  # an issue against docs/ISSUES.md
 uv run tools/release_status.py [--hold <id>]    # components on main waiting for a tag or the website
+uv run tools/catalog_index.py [--check]         # the Ramka's catalog index (shell/domosenso_catalog.json)
 uv run tools/make_demo_media.py                 # regenerates examples/demo-home/media/
 tools/check-all.sh                              # everything
 ```
@@ -204,7 +205,8 @@ and ends with `ok` or `FAIL <reason>` (`--json`: one document); the lines are ST
   over files rendered by hand. `render [<id>]`, `update <id> [--to <version>]`, `status`: managed
   files from the lock (the catalog is read at a tag, never the working tree; `--catalog-dev <path>`
   renders a working tree, stamps get `-dirty`, its files and resources go to `.domosenso/dev-render.json` for `deploy`
-  until a render from the tag).
+  until a render from the tag). Each of them also writes `packages/domosenso.yaml`, the inventory sensor
+  `sensor.domosenso_components` (SPEC-023).
 - `deploy <target> --plan | --apply`, `rollback <target>`: copy the home to a target declared in
   `domosenso.yaml` (`local-docker` staging, `ssh-docker` production), `check_config`, restart,
   Lovelace resources; an `orphan` blocks `--apply`. `deploy production` refuses `dev-render` files unless
@@ -230,7 +232,8 @@ is a change to a STABLE surface (spec first).
 Renderer: `templates/**/*.j2`; `*.lang.yaml.j2` renders once per language to `<name>.<lang>.yaml`, a
 dashboard in a home: `dashboards/<id>.<lang>.yaml` for `dashboard`, else `dashboards/<name>.<lang>.yaml`.
 Delimiters are `[[ ... ]]`, `[% ... %]`, `[# ... #]`, so Home Assistant's own `{{ }}` and `{% %}`
-pass through untouched; `[[ ]]` still substitutes inside them. Globals `t(key)`, `inputs`, `lang`;
+pass through untouched; `[[ ]]` still substitutes inside them. Globals `t(key)`, `inputs`, `lang`,
+`component` (`id`, `version`);
 filter `yaml` (a YAML-safe scalar). Inputs are `StrictUndefined`: a missing input is an error naming
 it; an input set to `null` counts as absent. A nested YAML flow list needs spaces, `[ [ 80 ] ]`.
 `templates/instance/**.j2` is the home's own layer: `domosenso add` renders it once (never overwrites) and the lock records it as `instance`.
