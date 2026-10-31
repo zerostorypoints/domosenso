@@ -116,7 +116,7 @@ is unavailable.
 
 - **EQ presets.** `input_select.<prefix>_music_eq` loads a preset's six gains into the selected
   profile's EQ (`script.<prefix>_music_load_eq`, field `preset`; an id that is no preset writes
-  nothing and logs a warning). The catalog carries `flat`, the WLED-derived curves, `bass_light`,
+  nothing and logs a warning), then returns to `—`, no preset: one select serves every profile. The catalog carries `flat`, the WLED-derived curves, `bass_light`,
   `voices` and `sparkle`; `behind_speakers` is one measurement, a sensor on an amplifier between the
   speakers against the listening position (sub −5, bass −10, low mids −3, mids 0, presence +3,
   air +2 dB), and `half_match` half of it (−2, −5, −1, 0, +2, +1): a starting point, not this
@@ -353,8 +353,7 @@ lovelace:
   card per profile, shown while that profile is selected: rise, fall, hold, tilt, the EQ preset
   select (with an (i) that tells what the selected preset does, its best use, why / when, and its
   curve, "Curve: sub −5 dB, bass −10 dB, …", built at render time from the preset table with the
-  home's `music_eq_presets`; a flat one says so, and `fitted` that it is flat until set), "Apply the selected preset" (it loads the
-  select's preset again into this profile) and the six EQ ranges. The Colour range grid holds the
+  home's `music_eq_presets`; a flat one says so, and `fitted` that it is flat until set), and the six EQ ranges. The Colour range grid holds the
   four neutral and hot dB values, which no profile changes. The page's "Reset to default" restores
   everything on the Music page, every profile included.
 - **Music sensor and calibration** (Music, Advanced): audio-sensor's

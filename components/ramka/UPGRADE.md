@@ -28,8 +28,14 @@ SPEC-024.
   `music_eq_presets: {behind_speakers: {sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0}}`
   (or `{behind_speakers: {}}`), then a render. The new curve reaches the Behind speakers profile's
   own helpers only through the seed of a fresh helper or the Music page's Reset; a home whose
-  helpers were seeded flat loads the preset into the profile ("Apply the selected preset") or
-  resets the Music page to get it.
+  helpers were seeded flat picks the preset in that profile's EQ preset select or resets the Music
+  page to get it.
+- **The EQ preset select rests on `—`** (no preset): a choice loads into the selected profile and
+  the select returns to `—`, so a profile's card never shows another profile's preset and the same
+  preset can be chosen again. The "Apply the selected preset" button is gone, and with it
+  `ui.settings.music_eq_load` and `ui.settings.music_eq_load_action`. A script that read the select's
+  state as the profile's preset reads `—` now; one that calls `script.<prefix>_music_load_eq` passes
+  `preset`.
 - The preview: add its `lovelace:` entry with `require_admin: true` (README, "Preview dashboard")
   and deploy (a restart for the entry; the preview's resource `cards/screen-frame-card.js`). Until
   the entry is there, `domosenso status` prints `missing-dashboard-entry dashboards/ramka-preview.<lang>.yaml`

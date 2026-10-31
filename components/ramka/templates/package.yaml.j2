@@ -66,7 +66,7 @@
     ranges in dB, each -18...+12 (the card's range, spec 3.1), and the presets are templates/music-tables.j2's,
     shared with the settings dashboard. A home's music_eq_presets replaces any of behind_speakers,
     half_match and fitted as a whole curve (a key it leaves out is 0). -#]
-[%- from 'music-tables.j2' import eq_keys, catalog_eq_presets, look_ids -%]
+[%- from 'music-tables.j2' import eq_keys, catalog_eq_presets, look_ids, eq_none -%]
 [%- set eq_presets = {} -%]
 [%- for id, gains in catalog_eq_presets.items() -%][%- set _ = eq_presets.update({id: dict(gains)}) -%][%- endfor -%]
 [%- set meq = inputs.music_eq_presets | default({}) -%]
@@ -149,7 +149,7 @@
 [%- if ['custom'] + (looks | list) != look_ids -%][[ fail('ramka: the looks table and look_ids of templates/music-tables.j2 differ') ]][%- endif -%]
 [%- if music_visual is not none -%]
 [%- set _ = settings.append(('input_select', 'music_template', 'music', 'music_look', 'custom')) -%]
-[%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', 'flat')) -%]
+[%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', eq_none)) -%]
 [%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_eq_' ~ key, 'music', 'music_look', 0)) -%][%- endfor -%]
 [%- set _ = settings.append(('input_number', 'music_hold_s', 'music', 'music_look', 1.5)) -%]
 [%- endif -%]
@@ -308,11 +308,12 @@ input_select:
     name: [[ named(' response profile') ]]
     icon: mdi:palette-swatch
     options:[[ options('custom', look_ids) ]]
-  # An EQ preset to load into the selected profile's EQ (automation [[ p ]]_music_eq_load).
+  # An EQ preset to load into the selected profile's EQ (automation [[ p ]]_music_eq_load); it rests on
+  # [[ eq_none ]], no preset, and returns to it after each load.
   [[ p ]]_music_eq:
     name: [[ named(' music EQ preset') ]]
     icon: mdi:tune-vertical-variant
-    options:[[ options('flat', eq_presets | list) ]]
+    options:[[ options(eq_none, eq_presets | list) ]]
   [%- endif %]
   [%- if inputs.air is defined %]
   # The Air page's colours (named colours, cards/lib/colours.js): good (the neutral one), fair and
@@ -1342,9 +1343,8 @@ script:
 [%- if music_visual %]
 
   # Loads an EQ preset's six gains into the selected profile's EQ (a select state that is no entry id
-  # is Custom, as the look sensor reads it); called by automation [[ p ]]_music_eq_load and, without a
-  # preset, by the settings page's Load button, which loads the EQ select's preset (the same preset
-  # chosen again changes no state, so the automation cannot re-apply it). The presets are rendered in
+  # is Custom, as the look sensor reads it); called by automation [[ p ]]_music_eq_load or, with the
+  # preset, by any script. The presets are rendered in
   # (the catalog's, the home's music_eq_presets over its own three). An id that is no preset writes
   # nothing and says so.
   [[ p ]]_music_load_eq:
@@ -1354,7 +1354,7 @@ script:
     fields:
       preset:
         name: Preset
-        description: An EQ preset id, one of input_select.[[ p ]]_music_eq's options; without it, the select's state.
+        description: An EQ preset id, one of input_select.[[ p ]]_music_eq's options but [[ eq_none ]]; without it, the select's state.
         required: false
         selector:
           select:
@@ -1781,9 +1781,11 @@ automation:
           - action: input_boolean.turn_off
             target:
               entity_id: input_boolean.audio_sensor_music_watching
-  # An EQ preset chosen loads into the selected profile's EQ (spec 5). Not when the select appears at a
-  # start or a reload (no old state, or unavailable): that is the restored state, no choice, and would
-  # undo the profile's sliders.
+  # An EQ preset chosen loads into the selected profile's EQ (spec 5), and the select returns to
+  # [[ eq_none ]]: one select serves every profile card, so it must not keep showing the preset loaded
+  # into another, and the same preset chosen again is a change. Not when the select appears at a start
+  # or a reload (no old state, or unavailable): that is the restored state, no choice, and would undo
+  # the profile's sliders; not for [[ eq_none ]] itself (the return, a reset).
   - id: [[ p ]]_music_eq_load
     alias: [[ named(' music EQ load') ]]
     description: "An EQ preset chosen: write its six gains into the selected profile's EQ."
@@ -1795,10 +1797,17 @@ automation:
     conditions:
       - condition: template
         value_template: "{{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable'] }}"
+      - condition: template
+        value_template: "{{ trigger.to_state.state != '[[ eq_none ]]' }}"
     actions:
       - action: script.[[ p ]]_music_load_eq
         data:
           preset: "{{ trigger.to_state.state }}"
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_music_eq
+        data:
+          option: "[[ eq_none ]]"
 [%- endif %]
   - id: [[ p ]]_ambient_stop
     alias: [[ named(' ambient stop') ]]

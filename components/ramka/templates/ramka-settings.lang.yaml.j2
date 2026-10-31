@@ -222,27 +222,20 @@
     ~ t('ui.settings.music_look_why') ~ ': ' ~ t('ui.settings.music_eq_' ~ preset ~ '_why') ~ '\n'
     ~ t('ui.settings.music_eq_curve') ~ ': ' ~ curve}) -%]
 [%- endfor -%]
-[#- One profile's rows: rise, fall, hold, tilt, the EQ preset select (it loads into the selected
-    profile, which is this card's), the Load button, the six EQ gains; labelled as Custom's. -#]
+[#- One profile's rows: rise, fall, hold, tilt, the EQ preset select (a choice loads into the selected
+    profile, which is this card's, and the select returns to no preset), the six EQ gains; labelled as
+    Custom's. -#]
 [%- macro profile_rows(id) -%]
 [%- set h = 'music_' if id == 'custom' else 'music_' ~ id ~ '_' -%]
 [[ rows([('input_number', h ~ 'rise_ms', none, 'music_rise_ms'), ('input_number', h ~ 'fall_s', none, 'music_fall_s'),
          ('input_number', h ~ 'hold_s', none, 'music_hold_s'), ('input_boolean', h ~ 'tilt', none, 'music_tilt'),
          ('input_select', 'music_eq', preset_texts)]) ]]
-              - type: button
-                icon: mdi:tune-vertical-variant
-                name: [[ t('ui.settings.music_eq_load') | yaml ]]
-                action_name: [[ t('ui.settings.music_eq_load_action') | yaml ]]
-                tap_action:
-                  action: perform-action
-                  perform_action: script.[[ p ]]_music_load_eq
 [%- set eq_rows = [] -%][%- for key in eq_keys -%][%- set _ = eq_rows.append(('input_number', h ~ 'eq_' ~ key, none, 'music_eq_' ~ key)) -%][%- endfor -%]
 [[ rows(eq_rows) ]]
 [%- endmacro -%]
 [%- macro profile_sections() %]
       # Each profile's own values, its card shown while it is selected (Custom also for a state that is
-      # no entry id). The Load button applies the EQ select's preset again: choosing the preset already
-      # selected changes no state. Advanced, as the colour range: the section and each card shown
+      # no entry id). Advanced, as the colour range: the section and each card shown
       # while the Advanced switch is on.
       - type: grid
         visibility: [ [[ advanced_on ]] ]

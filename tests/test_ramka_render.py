@@ -713,7 +713,7 @@ EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 # Custom's look (spec 5): its own group, so an upgraded home whose music window is tuned still gets
 # a flat EQ and 1.5 s hold rather than the sliders' minimum (-18 dB, 0 s).
 LOOK_DEFAULTS = {
-    "input_select.ramka_music_template": "custom", "input_select.ramka_music_eq": "flat",
+    "input_select.ramka_music_template": "custom", "input_select.ramka_music_eq": "—",
     **{f"input_number.ramka_music_eq_{k}": 0 for k in EQ_KEYS}, "input_number.ramka_music_hold_s": 1.5,
 }
 # Each template's own values (group music_profiles): the looks table's rows (spec 4.1) in the
@@ -2975,7 +2975,7 @@ def test_music_look_helpers(demo, plain):
             assert "initial" not in helper, entity
     selects = package["input_select"]
     assert selects["ramka_music_template"]["options"] == LOOK_IDS
-    assert selects["ramka_music_eq"]["options"] == EQ_PRESET_IDS
+    assert selects["ramka_music_eq"]["options"] == ["—", *EQ_PRESET_IDS]
     # Copy to custom is gone: every profile is edited in place.
     assert "copy_to_custom" not in json.dumps(demo) and "ramka_music_copy_to_custom" not in package["script"]
     # Only with music_visual, as the other music helpers.
@@ -3075,15 +3075,19 @@ def test_music_eq_load_targets_the_selected_profile(demo):
     [trigger] = auto["triggers"]
     assert trigger["trigger"] == "state" and trigger["entity_id"] == EQ_SELECT
     assert all(c["condition"] == "template" for c in auto["conditions"]), auto["conditions"]
-    [call] = auto["actions"]
+    [call, rest] = auto["actions"]
     assert call["action"] == "script.ramka_music_load_eq"
+    # Then the select returns to no preset: one select serves every profile card.
+    assert rest == {"action": "input_select.select_option", "target": {"entity_id": EQ_SELECT}, "data": {"option": "—"}}
 
     def fires(before, after) -> bool:
         event = {"from_state": None if before is None else {"state": before}, "to_state": {"state": after}}
         return all(ha(c["value_template"], trigger=event) == "True" for c in auto["conditions"] if c["condition"] == "template")
 
     # A choice loads; a start (no old state, or unavailable before) does not overwrite the profile's EQ.
-    assert fires("flat", "voices") and not fires(None, "voices") and not fires("unavailable", "voices")
+    assert fires("—", "voices") and not fires(None, "voices") and not fires("unavailable", "voices")
+    # The return to no preset (and a reset to it) loads nothing.
+    assert not fires("voices", "—")
     assert ha(call["data"]["preset"], trigger={"to_state": {"state": "voices"}}) == "voices"
     # The script: the preset's six gains into the selected profile's EQ, whichever it is; a state that
     # is no entry id is Custom; an unknown preset logs a warning and writes nothing.
@@ -3100,10 +3104,11 @@ def test_music_eq_load_targets_the_selected_profile(demo):
         assert written == {} and [log["level"] for log in logs] == ["warning"], unknown
     # It never changes the profile itself.
     assert all(TEMPLATE_SELECT != s.get("target", {}).get("entity_id") for s in sequence if isinstance(s.get("target"), dict))
-    # Called without a preset (the settings page's Load button), it loads the EQ select's preset, so
-    # choosing the preset already selected applies it again.
+    # Called without a preset, it loads the EQ select's preset; at rest (no preset) it writes nothing.
     assert run_script(sequence, states={TEMPLATE_SELECT: "lively", EQ_SELECT: "sparkle"}) == (
         eq_written("lively", CATALOG_EQ["sparkle"]), [])
+    written, logs = run_script(sequence, states={TEMPLATE_SELECT: "lively", EQ_SELECT: "—"})
+    assert written == {} and [log["level"] for log in logs] == ["warning"]
 
 
 def test_music_reset_restores_every_profile(demo):
@@ -3141,13 +3146,13 @@ LOOK_TEXTS = {
                  "Instant attack and a short release, like the MSGEQ7 spectrum analysers sold on AliExpress and broadcast peak meters."),
 }
 LOOK_KEYS = ["music_template", *(f"music_template_{i}{part}" for i in LOOK_IDS for part in ("", "_purpose", "_best", "_why")),
-             "music_eq", *(f"music_eq_{p}" for p in EQ_PRESET_IDS), *(f"music_eq_{k}" for k in EQ_KEYS), "music_eq_load",
+             "music_eq", *(f"music_eq_{p}" for p in EQ_PRESET_IDS), *(f"music_eq_{k}" for k in EQ_KEYS),
              *(f"music_eq_{p}{part}" for p in EQ_PRESET_IDS for part in ("_purpose", "_best", "_why")),
              "music_eq_curve", "music_eq_curve_flat", "music_eq_curve_unset", *(f"music_eq_band_{k}" for k in EQ_KEYS),
              "music_source_row",
              "music_hold_s", "music_rise_ms", "music_fall_s", "music_tilt",
              # The page's own labels around them.
-             "music_look_best", "music_look_why", "music_profile_settings", "music_colour", "music_eq_load_action"]
+             "music_look_best", "music_look_why", "music_profile_settings", "music_colour"]
 # Gone with Copy to custom, the description card, the values read-out and the rate explanation.
 GONE_KEYS = ["music_look_values", "music_copy_to_custom", "music_copy_to_custom_confirm", "music_custom", "music_look",
              "music_sensor", "music_spectrum_rate_eco", "music_spectrum_rate_normal", "music_spectrum_rate_fast"]
@@ -3325,7 +3330,7 @@ def test_music_settings_page_layout(demo):
                 assert card["visibility"] == [ADVANCED_ON, {"condition": "state", "entity": TEMPLATE_SELECT, "state": profile}], (lang, profile)
             h = profile_helpers(profile)
             listed = rows(card)
-            assert [r.get("entity") for r in listed] == [h["rise"], h["fall"], h["hold"], h["tilt"], EQ_SELECT, None,
+            assert [r.get("entity") for r in listed] == [h["rise"], h["fall"], h["hold"], h["tilt"], EQ_SELECT,
                                                          *(h[f"eq_{k}"] for k in EQ_KEYS)], (lang, profile)
             assert [r.get("name") for r in listed if r.get("entity") != EQ_SELECT and r.get("type") != "button"] == [
                 t[f"ui.settings.{k}"] for k in ("music_rise_ms", "music_fall_s", "music_hold_s", "music_tilt",
@@ -3333,9 +3338,7 @@ def test_music_settings_page_layout(demo):
             [preset] = [r for r in listed if r.get("entity") == EQ_SELECT]
             assert preset["type"] == INFO_ROW and preset["name"] == t["ui.settings.music_eq"], (lang, profile)
             assert preset["descriptions"] == {p: preset_text(t, p, CATALOG_EQ[p]) for p in EQ_PRESET_IDS}, (lang, profile)
-            [load] = [r for r in listed if r.get("type") == "button"]
-            assert load["name"] == t["ui.settings.music_eq_load"]
-            assert load["tap_action"] == {"action": "perform-action", "perform_action": "script.ramka_music_load_eq"}, (lang, profile)
+            assert not [r for r in listed if r.get("type") == "button"], (lang, profile)
         # The colour range: its own grid, the four neutral/hot rows and nothing else.
         assert [c["type"] for c in colour["cards"]] == ["heading", "entities"], lang
         assert colour["cards"][0]["icon"] == "mdi:palette", lang

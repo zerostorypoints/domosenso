@@ -80,7 +80,9 @@ the Ramka binds it.
 ## The EQ presets (ramka)
 
 `input_select.<prefix>_music_eq` and `script.<prefix>_music_load_eq` (field `preset`) load a
-preset's six gains into the selected profile's EQ; "Apply the selected preset" loads it again.
+preset's six gains into the selected profile's EQ. The select rests on `—` (no preset) and returns
+to it after each load: one select serves every profile's card, so it never shows a preset loaded
+into another profile, and choosing the same preset again loads it again (review of the PR).
 
 | preset | sub | bass | low_mid | mid | presence | air | origin |
 |---|---|---|---|---|---|---|---|
@@ -136,7 +138,7 @@ out. Sources and figures: audio-sensor's README, "Placement" (inference is marke
   Advanced switch); Advanced (one "Music sensor" card with audio-sensor's music source and update
   rate, the flavours, the line width); the Preview across both columns; then, while Advanced is on,
   **Profile settings** (one card per profile, shown while it is selected: rise, fall, hold, tilt,
-  the EQ preset select with its (i), "Apply the selected preset", the six ranges) and the **Colour
+  the EQ preset select with its (i), the six ranges) and the **Colour
   range**; the Calibration. The redraw rate has no row (its helper and binding stay). The page's
   Reset restores everything on it, every profile included.
 - **Headers**: every page but About starts with its title, what its view shows, what it is for and

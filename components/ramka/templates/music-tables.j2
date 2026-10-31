@@ -16,4 +16,7 @@
     'voices': {'sub': -6, 'bass': -8, 'low_mid': -2, 'mid': 3, 'presence': 4, 'air': 0},
     'sparkle': {'sub': -3, 'bass': -3, 'low_mid': 0, 'mid': 0, 'presence': 3, 'air': 5},
     'fitted': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0}} -%]
+[#- The EQ select's resting option: no preset; a choice loads and the select returns to it, so a
+    profile card never shows a preset another profile loaded, and the same preset can be chosen again. -#]
+[%- set eq_none = '—' -%]
 [%- set look_ids = ['custom', 'behind_speakers', 'lively', 'calm', 'analyser'] -%]
