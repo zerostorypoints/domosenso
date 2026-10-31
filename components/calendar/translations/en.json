@@ -1,5 +1,21 @@
 {
   "meta": {
-    "description": "Calendar events from a CalDAV server, for example iCloud with an app-specific password. The Ramka shows today's and tomorrow's events as its agenda."
+    "description": "Calendar events from a CalDAV server, for example iCloud with an app-specific password. The Ramka shows today's and tomorrow's events as its agenda.",
+    "assistant": {
+      "agenda": {
+        "title": "Agenda",
+        "description": "Read permitted events for today, tomorrow or the next seven local dates.",
+        "examples": [
+          "What is on the calendar tomorrow?"
+        ]
+      },
+      "explain": {
+        "title": "About calendar",
+        "description": "Calendar supplies permitted events; provider refresh may be delayed.",
+        "examples": [
+          "What does calendar do?"
+        ]
+      }
+    }
   }
 }

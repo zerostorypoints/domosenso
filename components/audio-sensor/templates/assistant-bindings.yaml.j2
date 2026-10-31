@@ -1,0 +1,6 @@
+[%- from '_audio-ids.jinja' import to_slug -%]
+[%- set prefixes = {} -%]
+[%- for board in inputs.sensors -%]
+[%- set _ = prefixes.update({board.room: board.id_prefix | default(to_slug(board.room))}) -%]
+[%- endfor -%]
+[[ component_bindings(component.id, inputs, {'audio_prefixes': prefixes}) | yaml ]]

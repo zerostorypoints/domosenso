@@ -375,6 +375,22 @@
         "description": "Ein 11,5-Zoll-Android-Tablet (TCL, Modell 9469X) mit einem Bildschirm von 2200 × 1440 Pixeln.",
         "does": "Hängt als Ramka an der Wand: Die Home Assistant Companion App zeigt das Dashboard bildschirmfüllend, weckt und dimmt den Bildschirm auf Befehl von Home Assistant und meldet Lichtsensor und Akku. Es hört bei 80 % von selbst auf zu laden und kann deshalb dauernd am Ladegerät bleiben."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Rahmenstatus",
+        "description": "Modus, Seite, Thema, Rotation und Weckeinstellung des Rahmens lesen.",
+        "examples": [
+          "In welchem Modus ist der Rahmen?"
+        ]
+      },
+      "explain": {
+        "title": "Über den Wandrahmen",
+        "description": "Der Wandrahmen zeigt Hausinformationen; der Modus beweist keinen Bildschirmzustand.",
+        "examples": [
+          "Was bietet den Wandrahmen?"
+        ]
+      }
     }
   }
 }

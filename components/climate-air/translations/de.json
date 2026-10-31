@@ -10,6 +10,50 @@
         "description": "Ein Bluetooth-Luftqualitätssensor (Sensirion SEN66), der CO2, Feinstaub, VOC, NOx, Temperatur, Luftfeuchtigkeit und Luftdruck misst und die Luft mit einer Note bewertet.",
         "does": "Home Assistant empfängt seine Meldungen über Bluetooth-Proxys und die Kernintegration ruuvitag_ble. Ein Proxy auf einem klassischen ESP32 empfängt nur das Datenformat 6, das kein PM1, PM4 und PM10 enthält."
       }
+    },
+    "assistant": {
+      "temperature": {
+        "title": "Temperatur",
+        "description": "Gemeldete Raumtemperaturen sowie Innen- und Aussenquellen anzeigen.",
+        "examples": [
+          "Wie warm ist es?"
+        ]
+      },
+      "humidity": {
+        "title": "Luftfeuchtigkeit",
+        "description": "Gemeldete Luftfeuchtigkeit der konfigurierten Raumsensoren anzeigen.",
+        "examples": [
+          "Wie hoch ist die Luftfeuchtigkeit?"
+        ]
+      },
+      "status": {
+        "title": "Raumklima",
+        "description": "Klimawerte und den zeitlich geprüften Feuchtealarm melden.",
+        "examples": [
+          "Wie ist das Raumklima?"
+        ]
+      },
+      "air_readings": {
+        "title": "Luftwerte",
+        "description": "Konfigurierte Luftwerte mit ihren gemeldeten Einheiten anzeigen.",
+        "examples": [
+          "Welche Luftwerte werden angezeigt?"
+        ]
+      },
+      "air_assessment": {
+        "title": "Luftqualität",
+        "description": "Luftwerte nur anhand einer passenden konfigurierten Regel beurteilen.",
+        "examples": [
+          "Wie ist die Luftqualität?"
+        ]
+      },
+      "explain": {
+        "title": "Über Raumklima und Luft",
+        "description": "Klima- und Luftsensoren melden Werte; ihre Bewertung braucht passende Regeln.",
+        "examples": [
+          "Was bietet Raumklima und Luft?"
+        ]
+      }
     }
   }
 }

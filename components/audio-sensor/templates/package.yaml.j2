@@ -12,7 +12,7 @@
 [%- endfor -%]
 [%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load', 'spectrum_rate'] -%]
 [#- A board's ids: the prefix of what this component creates, and the guessed ids of the ESPHome entities when `entities` does not name them (the area slug and the device name slug that Home Assistant builds them from). -#]
-[%- macro to_slug(text) -%][[ text | lower | replace("'", "") | replace("-", "_") | replace(" ", "_") ]][%- endmacro -%]
+[%- from '_audio-ids.jinja' import to_slug -%]
 [%- macro guess(board, domain, entity_slug) -%][[ domain ]].[[ to_slug(board.area) ]]_[[ to_slug(board.name | default('audio-sensor-' ~ board.room)) ]]_[[ entity_slug ]][%- endmacro -%]
 [#- A Home Assistant template string literal: double quotes, so an apostrophe in an area ("Kids' room") needs no escape. -#]
 [%- macro jstr(text) -%]"[[ text | replace("\\", "\\\\") | replace('"', '\\"') ]]"[%- endmacro -%]

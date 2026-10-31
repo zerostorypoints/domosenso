@@ -28,7 +28,7 @@ integrations:
 
 inputs:
   plants:                       # the Ramka's plants shape; name, sensors, the temperature band and check_days from 0.2.0; photo from 0.3.0
-    type: "list[{entity: plant.*, label, name?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
+    type: "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
     example: [{entity: plant.monstera, label: Living room, photo: /local/plants/monstera.jpg}]
   plant_defaults:               # a plant's own value wins, then this, then nothing (check_days: 3)
     type: map
@@ -49,8 +49,14 @@ inputs:
     type: int
     default: 6
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/plants.yaml
   ha_packages: []
   services: []

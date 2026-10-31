@@ -1,5 +1,21 @@
 {
   "meta": {
-    "description": "Kalendereinträge von einem CalDAV-Server, zum Beispiel iCloud mit einem App-spezifischen Passwort. Die Ramka zeigt die Termine von heute und morgen als Tagesübersicht."
+    "description": "Kalendereinträge von einem CalDAV-Server, zum Beispiel iCloud mit einem App-spezifischen Passwort. Die Ramka zeigt die Termine von heute und morgen als Tagesübersicht.",
+    "assistant": {
+      "agenda": {
+        "title": "Agenda",
+        "description": "Freigegebene Termine für heute, morgen oder die nächsten sieben lokalen Tage lesen.",
+        "examples": [
+          "Was steht morgen im Kalender?"
+        ]
+      },
+      "explain": {
+        "title": "Über Kalender",
+        "description": "Der Kalender liefert freigegebene Termine; die Aktualisierung kann verzögert sein.",
+        "examples": [
+          "Was bietet Kalender?"
+        ]
+      }
+    }
   }
 }

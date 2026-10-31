@@ -1,5 +1,21 @@
 {
   "meta": {
-    "description": "A full Home Assistant backup every night and again after a start when the newest one is too old, a retention that keeps the newest few plus one per recent week, sensors for the newest backup's age, the number of backups and the folder's size, and a notification when backups stop."
+    "description": "A full Home Assistant backup every night and again after a start when the newest one is too old, a retention that keeps the newest few plus one per recent week, sensors for the newest backup's age, the number of backups and the folder's size, and a notification when backups stop.",
+    "assistant": {
+      "status": {
+        "title": "Backup status",
+        "description": "Report archive count, newest age and folder size; existence does not prove restoration.",
+        "examples": [
+          "How old is the latest backup?"
+        ]
+      },
+      "explain": {
+        "title": "About backups",
+        "description": "Backup keeps local archives and reports their presence, not restoreability or an off-site copy.",
+        "examples": [
+          "What does backups do?"
+        ]
+      }
+    }
   }
 }

@@ -24,7 +24,7 @@ integrations:
 
 inputs:
   lights:                       # the Ramka's room tiles read these
-    type: "list[{entity, label}]"
+    type: "list[{entity, label, room?}]"
     example: [{entity: light.living_room, label: Living room}]
   lights_all_off:
     type: entity_id
@@ -39,8 +39,14 @@ inputs:
     default: []
     example: [sensor.hall_motion_sensor_battery]
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/lights.yaml
   ha_packages: []
   services: []

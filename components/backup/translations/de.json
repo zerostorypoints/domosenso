@@ -1,5 +1,21 @@
 {
   "meta": {
-    "description": "Jede Nacht eine vollständige Sicherung von Home Assistant, nach einem Start eine weitere, wenn die neueste zu alt ist, eine Aufbewahrung, die die neuesten und je eine aus den letzten Wochen behält, Sensoren für das Alter der neuesten Sicherung, die Anzahl der Sicherungen und die Grösse des Ordners, und eine Benachrichtigung, wenn keine Sicherungen mehr entstehen."
+    "description": "Jede Nacht eine vollständige Sicherung von Home Assistant, nach einem Start eine weitere, wenn die neueste zu alt ist, eine Aufbewahrung, die die neuesten und je eine aus den letzten Wochen behält, Sensoren für das Alter der neuesten Sicherung, die Anzahl der Sicherungen und die Grösse des Ordners, und eine Benachrichtigung, wenn keine Sicherungen mehr entstehen.",
+    "assistant": {
+      "status": {
+        "title": "Backupstatus",
+        "description": "Anzahl, Alter und Grösse der Backups melden; ihre Existenz beweist keine Wiederherstellung.",
+        "examples": [
+          "Wie alt ist das letzte Backup?"
+        ]
+      },
+      "explain": {
+        "title": "Über Backups",
+        "description": "Backup verwaltet lokale Archive; es beweist weder Wiederherstellbarkeit noch externe Kopien.",
+        "examples": [
+          "Was bietet Backups?"
+        ]
+      }
+    }
   }
 }

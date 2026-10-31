@@ -10,6 +10,36 @@
         "description": "Ein kleiner Leistungsmesser in der Unterputzdose hinter einer Steckdose, in Reihe mit deren Phase. Er schaltet nicht.",
         "does": "Misst Leistung, Spannung, Strom und Energie der angeschlossenen Geräte, lokal über die Shelly-Integration von Home Assistant, ohne Cloud-Konto. Die Wiedergabeansicht zeigt daraus Verbrauch und Spannung des Players."
       }
+    },
+    "assistant": {
+      "now_playing": {
+        "title": "Aktuelle Wiedergabe",
+        "description": "Playerstatus und verfügbare Titel- und Dienstdetails anzeigen.",
+        "examples": [
+          "Was wird gerade abgespielt?"
+        ]
+      },
+      "status": {
+        "title": "Playerstatus",
+        "description": "Playerstatus, Quelle, Lautstärke und Stummschaltung anzeigen.",
+        "examples": [
+          "Wie ist der Playerstatus?"
+        ]
+      },
+      "mains": {
+        "title": "Strommessung",
+        "description": "Leistung oder Spannung nur von einem ausdrücklich zugeordneten Messgerät lesen.",
+        "examples": [
+          "Wie hoch ist die Leistungsaufnahme?"
+        ]
+      },
+      "explain": {
+        "title": "Über Medien",
+        "description": "Medien melden Wiedergabe und optionale Messwerte; hier erfolgt keine Steuerung.",
+        "examples": [
+          "Was bietet Medien?"
+        ]
+      }
     }
   }
 }

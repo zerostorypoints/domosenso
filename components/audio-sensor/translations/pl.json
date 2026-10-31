@@ -6,6 +6,22 @@
         "description": "Płytka ESP32-S3 wielkości dłoni z mikrofonem, układem audio i Wi-Fi, zasilana przez USB.",
         "does": "Działa z ESPHome jako czujnik dźwięku w pomieszczeniu. Co sekundę podaje głośność i najgłośniejszy szczyt, pięć razy na sekundę widmo w 31 pasmach od głębokich basów po wysokie tony, a na życzenie także szybszy pomiar. Tylko słucha: wzmacniacz głośnika na płytce pozostaje wyłączony."
       }
+    },
+    "assistant": {
+      "level": {
+        "title": "Poziom dźwięku",
+        "description": "Podaje poziom dźwięku i kalibrację; nie ocenia narażenia na hałas.",
+        "examples": [
+          "Jaki poziom dźwięku jest zgłaszany?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: poziom dźwięku",
+        "description": "Czujnik podaje nieważony poziom dźwięku; interpretacja zależy od kalibracji.",
+        "examples": [
+          "Do czego służy poziom dźwięku?"
+        ]
+      }
     }
   },
   "card": {

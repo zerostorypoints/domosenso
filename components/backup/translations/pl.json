@@ -1,5 +1,21 @@
 {
   "meta": {
-    "description": "Pełna kopia zapasowa Home Assistanta co noc, a po starcie dodatkowa, gdy najnowsza jest za stara; z kopii zostają najnowsze i po jednej z ostatnich tygodni. Czujniki pokazują wiek najnowszej kopii, liczbę kopii i rozmiar folderu, a powiadomienie przychodzi, gdy kopie przestają powstawać."
+    "description": "Pełna kopia zapasowa Home Assistanta co noc, a po starcie dodatkowa, gdy najnowsza jest za stara; z kopii zostają najnowsze i po jednej z ostatnich tygodni. Czujniki pokazują wiek najnowszej kopii, liczbę kopii i rozmiar folderu, a powiadomienie przychodzi, gdy kopie przestają powstawać.",
+    "assistant": {
+      "status": {
+        "title": "Stan kopii zapasowej",
+        "description": "Podaje liczbę, wiek i rozmiar kopii; ich obecność nie potwierdza możliwości odtworzenia.",
+        "examples": [
+          "Jak dawno wykonano najnowszą kopię zapasową?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: kopie zapasowe",
+        "description": "Kopie zapasowe są lokalnymi archiwami; ich obecność nie dowodzi możliwości odtworzenia ani kopii poza domem.",
+        "examples": [
+          "Do czego służy kopie zapasowe?"
+        ]
+      }
+    }
   }
 }

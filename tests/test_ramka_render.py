@@ -83,8 +83,9 @@ def as_list(value):
 # ---- the brief's five ----------------------------------------------------------------------
 
 
-def test_demo_renders_three_dashboards_and_package(demo):
-    assert set(demo) == {"package.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings") for lang in LANGS)}
+def test_demo_renders_dashboards_package_and_private_assistant_bindings(demo):
+    assert set(demo) == {"package.yaml", "assistant-bindings.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings") for lang in LANGS)}
+    assert set(demo["assistant-bindings.yaml"]) == {"subjects", "policies"}
     package = demo["package.yaml"]
     for domain in ("input_select", "input_boolean", "input_number", "timer", "input_button", "script", "automation", "template"):
         assert package[domain], domain

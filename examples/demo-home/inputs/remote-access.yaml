@@ -1,0 +1,3 @@
+hostname: ha.example.org
+# The assistant renders no host, token, proxy or country configuration.
+allowed_countries: [DE, AT]

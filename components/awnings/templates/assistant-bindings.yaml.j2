@@ -1,0 +1,2 @@
+[%- from '_wind-defaults.jinja' import wind_last_heard -%]
+[[ component_bindings(component.id, inputs, {'wind_last_heard': wind_last_heard}) | yaml ]]

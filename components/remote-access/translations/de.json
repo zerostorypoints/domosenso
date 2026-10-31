@@ -1,5 +1,14 @@
 {
   "meta": {
-    "description": "Macht Home Assistant von überall erreichbar, auch für die Companion App, über einen Cloudflare-Tunnel: Am Router wird kein Port geöffnet, die eigene Anmeldung von Home Assistant mit Zwei-Faktor-Authentisierung ist die Schranke, und Cloudflare sperrt jedes Land ausserhalb der Liste, die der Haushalt angibt. Braucht ein Cloudflare-Konto mit einer Domain."
+    "description": "Macht Home Assistant von überall erreichbar, auch für die Companion App, über einen Cloudflare-Tunnel: Am Router wird kein Port geöffnet, die eigene Anmeldung von Home Assistant mit Zwei-Faktor-Authentisierung ist die Schranke, und Cloudflare sperrt jedes Land ausserhalb der Liste, die der Haushalt angibt. Braucht ein Cloudflare-Konto mit einer Domain.",
+    "assistant": {
+      "explain": {
+        "title": "Über Fernzugriff",
+        "description": "Fernzugriff ermöglicht Zugriff von aussen; Metadaten belegen keinen Tunnelstatus.",
+        "examples": [
+          "Was bietet Fernzugriff?"
+        ]
+      }
+    }
   }
 }

@@ -32,7 +32,14 @@ inputs:
     type: "list[country code]"
     example: [DE, AT]
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
   ha_packages: []
   services:
     # The connector, a compose service on the host network; `add` copies it into the home (SPEC-015).

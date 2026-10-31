@@ -33,7 +33,7 @@ integrations:
 
 inputs:
   climate:                      # 0.2.0: indoor (default true), bathroom (default false), battery read by the package
-    type: "list[{label, temperature, humidity?, indoor?, bathroom?, battery?}]"
+    type: "list[{label, temperature, humidity?, room?, indoor?, bathroom?, battery?}]"
     example: [{label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity}]
   air:
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
@@ -49,8 +49,14 @@ inputs:
     type: int
     default: 65
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/climate_air.yaml
   ha_packages: []
   services: []

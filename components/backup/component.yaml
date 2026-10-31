@@ -40,8 +40,14 @@ inputs:
     type: action
     example: notify.mobile_app_alex_phone
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/backup.yaml
   ha_packages: []
   shell:                          # -> /config/shell/, called by shell_command.prune_old_backups

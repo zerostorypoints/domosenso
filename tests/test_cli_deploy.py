@@ -1042,3 +1042,25 @@ def test_inventory_with_a_dev_item_is_a_dev_render(tmp_path):
     home.sync_inventory()
     record, _, dirty = deploy._carried(home.config_obj(), home.lock, deploy.dev_render.load(home.root))
     assert inventory.PACKAGE in record and inventory.PACKAGE in dirty
+
+
+def test_assistant_bundle_deploy_remove_and_rollback_preserve_endpoint_storage(tmp_path):
+    home = Home(tmp_path)
+    path = 'domosenso/assistant/ramka.yaml'
+    home.managed(path, 'schema: 1\ncomponent: {id: ramka}\n')
+    target = FakeTarget(home.target_dir, check_output=CLEAN)
+    on_target(target, '.storage/domosenso_frame', '{"mapping":"local"}')
+    store = Resources([])
+    plan = plan_for(home, target)
+    assert path in plan.add and plan.restart
+    run_apply(home, target, store.ha(), plan)
+    original = (home.target_dir / path).read_bytes()
+    home.lock.components['ramka'].files.pop(f'{CONFIG}/{path}')
+    (home.config / path).unlink()
+    removal = plan_for(home, target)
+    assert path in removal.remove
+    deployment = run_apply(home, target, store.ha(), removal)
+    assert not (home.target_dir / path).exists()
+    run_rollback(home, target, store.ha(), deployment)
+    assert (home.target_dir / path).read_bytes() == original
+    assert (home.target_dir / '.storage/domosenso_frame').read_text() == '{"mapping":"local"}'

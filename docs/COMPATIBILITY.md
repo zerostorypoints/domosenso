@@ -43,6 +43,25 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | `artifacts.services` items ([SPEC-015](../.ai/specs/SPEC-015-2026-10-27-add-component-end-to-end.md)): `name`, `kind` `container` (`compose`, `files`, `env_example`, `image` or `build: true`) or `firmware` (`repo`, `version`, `asset`, `flash`, `setup`); a container's files copied once by `add` to `services/<name>/`, layer `instance`; a plain path (a tag from before SPEC-015) ignored by the tools | ADDITIVE-ONLY |
 | `artifacts.esphome.devices` (`template`, `each`, `file` with `<field>` placeholders) rendered once by `add` per item into `esphome_dir/<file>` with the globals `item` and `component`, layer `instance`; `artifacts.esphome.secrets` ([SPEC-015](../.ai/specs/SPEC-015-2026-10-27-add-component-end-to-end.md)) | ADDITIVE-ONLY |
 
+### Assistant metadata (SPEC-024; unreleased)
+
+| surface | level |
+|---|---|
+| Optional manifest `assistant: {version, definition, bindings}`; version 1 | ADDITIVE-ONLY |
+| Private managed `<config_dir>/domosenso/assistant/<id>.yaml`, schema 1, pinned component identity, definitions, translations and typed bindings | STABLE |
+| Capability id + revision, query/answer type pairs and allowlisted evaluator semantics | STABLE; a meaning change requires a new revision and negotiated dual support |
+| `meta.assistant.*` translation keys | ADDITIVE-ONLY; English fallback, en/de/pl catalog coverage |
+
+Definitions cannot contain executable prompts, service calls or code. Their fact sources must be
+listed in the owning manifest's `provides`, `upstream` or declared `consumes`. Rendered bindings
+contain only declared typed roles, never the full input object or live readings. They are not
+Home Assistant packages or files under `www`. The normal lock, dirty-render ownership, deployment
+plan and rollback cover their bytes. Homes without assistant metadata retain existing output.
+
+The separate Frame HA bridge and app negotiate capabilities, filter endpoint and HA permissions,
+and evaluate live evidence. Installing metadata is not permission to read its sources. Legacy
+protocol 1 and its three topics remain supported. See [assistant setup](ASSISTANT.md).
+
 ### Entities a component provides
 
 Each entry in a manifest's `provides.entities` carries its own `stability:` (`frozen`, `stable` or

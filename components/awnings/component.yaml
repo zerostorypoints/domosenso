@@ -41,7 +41,7 @@ integrations:
 
 inputs:
   covers:                       # one MQTT cover per awning; entity_id (0.2.0) pins the cover's id
-    type: "list[{name, shade_id, entity_id?}]"
+    type: "list[{name, shade_id, entity_id?, room?}]"
     example: [{name: Awning Living room, shade_id: 1}, {name: Awning Kitchen, shade_id: 2}]
   mqtt_root_topic: {type: string, default: espsomfy}
   wind_sensor:                  # 0.2.0: the package declares the sensor under this id; absent, no wind entities
@@ -76,8 +76,14 @@ inputs:
     type: action
     example: notify.mobile_app_alex_phone
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     # The covers and the wind sensor against the node's MQTT topics: the node's own Home Assistant
     # discovery is rejected by HA with firmware 2.4.6 ("A device can not be its own via device"), so
     # it is switched off there.

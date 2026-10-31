@@ -4,36 +4,12 @@
   tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
   Assistant. Inputs: component.yaml `inputs:`.
 #]
-[%- set defaults = inputs.plant_defaults | default({'min_moisture': 15, 'max_moisture': 60, 'min_conductivity': 350, 'max_conductivity': 2000, 'min_brightness': 500}) -%]
-[%- set bands = ['min_moisture', 'max_moisture', 'min_conductivity', 'max_conductivity', 'min_temperature', 'max_temperature', 'min_brightness'] -%]
 [%- set notify_from = inputs.notify_from | default('08:00:00') -%]
 [%- set notify_until = inputs.notify_until | default('21:00:00') -%]
 [%- set dry_for = inputs.dry_for | default('01:00:00') -%]
 [%- set silent_hours = inputs.silent_hours | default(6) -%]
-[#- One row per plant: object id, friendly name, sensors, thresholds. -#]
-[%- set ns = namespace(rows=[]) -%]
-[%- for item in inputs.plants -%]
-[%- set p = item.entity.split('.', 1)[1] -%]
-[%- set given = item.sensors | default({}) -%]
-[%- set sensors = {'moisture': given.moisture | default('sensor.' ~ p ~ '_moisture'),
-                   'conductivity': given.conductivity | default('sensor.' ~ p ~ '_conductivity'),
-                   'brightness': given.brightness | default('sensor.' ~ p ~ '_illuminance'),
-                   'temperature': given.temperature | default('sensor.' ~ p ~ '_temperature')} -%]
-[%- set limits = {} -%]
-[%- for band in bands -%]
-[%- if item[band] is defined -%][%- set _ = limits.update({band: item[band]}) -%]
-[%- elif band in defaults -%][%- set _ = limits.update({band: defaults[band]}) -%]
-[%- endif -%]
-[%- endfor -%]
-[#- A name or label may be given per language ({en: …, de: …, pl: …}): the first value is the
-    friendly name and the room; the map goes to the Ramka, which shows each dashboard's language. -#]
-[%- set given_name = item.name | default(item.label) -%]
-[%- set ns.rows = ns.rows + [{'id': p, 'name': given_name if given_name is string else given_name.values() | first,
-                              'label': item.label if item.label is string else item.label.values() | first,
-                              'names': given_name if given_name is mapping else none,
-                              'rooms': item.label if item.label is mapping else none, 'photo': item.photo | default(none), 'sensors': sensors, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
-[%- endfor -%]
-[%- set rows = ns.rows -%]
+[%- set rows = plant_rows(inputs) -%]
+[%- set bands = plant_bands -%]
 [%- set watered = rows | selectattr('limits.min_moisture', 'defined') | list -%]
 [%- set watered_list = watered | map(attribute='sensors.moisture') | list | tojson | replace('"', "'") -%]
 [%- set thresholds = watered | map(attribute='limits.min_moisture') | unique | list -%]

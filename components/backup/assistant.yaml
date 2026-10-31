@@ -1,0 +1,55 @@
+capabilities:
+- id: backup.status
+  revision: 1
+  operation: read
+  query_type: status-query.v1
+  answer_type: backup.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: age
+    type: number
+    units:
+    - h
+    source:
+      relation: provides
+      id: sensor.newest_backup_age
+  - role: count
+    type: number
+    units:
+    - count
+    source:
+      relation: provides
+      id: sensor.backup_count
+  optional_facts:
+  - role: size
+    type: number
+    units:
+    - MB
+    source:
+      relation: provides
+      id: sensor.backup_folder_size
+  policy:
+    evaluator: backup.status
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+- id: backup.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: backup.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

@@ -20,7 +20,14 @@ inputs:
     type: entity_id
     example: weather.forecast_home
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
   ha_packages: []
   services: []
 

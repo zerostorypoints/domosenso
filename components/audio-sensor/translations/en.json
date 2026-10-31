@@ -6,6 +6,22 @@
         "description": "A palm-sized ESP32-S3 board with a microphone, a sound chip and Wi-Fi, powered over USB.",
         "does": "Runs ESPHome as a room sound sensor. Every second it reports the loudness and the loudest peak, five times a second a spectrum in 31 bands from deep bass to treble, and it can stream a faster reading on demand. It listens only: the speaker amplifier on the board stays off."
       }
+    },
+    "assistant": {
+      "level": {
+        "title": "Sound level",
+        "description": "Report a mapped sound level with available calibration evidence; not an exposure verdict.",
+        "examples": [
+          "What sound level is reported?"
+        ]
+      },
+      "explain": {
+        "title": "About sound level",
+        "description": "The sound sensor reports an unweighted level; calibration determines how it is qualified.",
+        "examples": [
+          "What does sound level do?"
+        ]
+      }
     }
   },
   "card": {

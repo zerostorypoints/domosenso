@@ -6,6 +6,43 @@
         "description": "Ein Bluetooth-Pflanzensensor (HHCC Flower Care, Modell HHCCJCY01), der in die Erde gesteckt wird.",
         "does": "Misst Bodenfeuchte, Leitfähigkeit, Licht und Temperatur und meldet sie über Bluetooth Low Energy; Home Assistant empfängt sie über Bluetooth-Proxys und die Kernintegration Xiaomi BLE."
       }
+    },
+    "assistant": {
+      "watering_need": {
+        "title": "Pflanzen giessen",
+        "description": "Bodenfeuchte mit dem Bereich jeder Pflanze vergleichen.",
+        "examples": [
+          "Welche Pflanzen brauchen Wasser?"
+        ]
+      },
+      "status": {
+        "title": "Pflanzenzustand",
+        "description": "Pflanzenprobleme anhand verfügbarer Sensorwerte und Lichtverlauf melden.",
+        "examples": [
+          "Wie geht es den Pflanzen?"
+        ]
+      },
+      "last_watered": {
+        "title": "Erkanntes Giessen",
+        "description": "Das zuletzt anhand der Feuchte erkannte Giessen melden.",
+        "examples": [
+          "Wann wurde diese Pflanze gegossen?"
+        ]
+      },
+      "water_in": {
+        "title": "Giessschätzung",
+        "description": "Die Giessschätzung melden, sofern die Messhistorie sie stützt.",
+        "examples": [
+          "Wann braucht diese Pflanze Wasser?"
+        ]
+      },
+      "explain": {
+        "title": "Über Pflanzen",
+        "description": "Pflanzensensoren überwachen Boden und Licht; Giessschätzungen brauchen Messhistorie.",
+        "examples": [
+          "Was bietet Pflanzen?"
+        ]
+      }
     }
   }
 }

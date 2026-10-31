@@ -20,6 +20,8 @@ def run_check(tmp_path, instance='', rendered=()):
     uv.write_text('''#!/usr/bin/env python3
 import pathlib, sys
 args=sys.argv
+if '-c' in args and 'ASSISTANT_BINDINGS' in __import__('os').environ:
+    print(__import__('os').environ['ASSISTANT_BINDINGS'])
 if any('domosenso_render.py' in x for x in args):
     out=pathlib.Path(args[args.index('--out')+1]); out.mkdir(parents=True)
     for name in filter(None, __import__('os').environ.get('CHECK_RENDERED', '').split(',')):
@@ -33,7 +35,8 @@ if any('check_config_parse.py' in x for x in args):
     docker.chmod(0o755)
     env = {**os.environ, 'PATH': str(bins)+os.pathsep+os.environ['PATH'],
            'TMPDIR': str(tmp_path/'scratch'), 'CHECK_DOCKER_CALLED': str(tmp_path/'called'),
-           'CHECK_RENDERED': ','.join(rendered)}
+           'CHECK_RENDERED': ','.join(rendered),
+           'ASSISTANT_BINDINGS': 'assistant-bindings.yaml' if 'assistant:' in instance else ''}
     return subprocess.run(['bash',str(SCRIPT),'sample'],cwd=tmp_path,env=env,capture_output=True,text=True)
 
 
@@ -57,3 +60,11 @@ def test_every_language_template_becomes_a_dashboard(tmp_path):
     assert sorted(p.name for p in (fresh/'packages').iterdir()) == ['sample.yaml']
     assert sorted(p.name for p in (fresh/'dashboards').iterdir()) == ['sample-settings.en.yaml', 'sample.en.yaml']
     assert 'filename: dashboards/sample-settings.en.yaml' in (fresh/'configuration.yaml').read_text()
+
+
+def test_assistant_bindings_are_never_loaded_as_ha_packages(tmp_path):
+    result = run_check(tmp_path, 'assistant:\n  version: 1\n  definition: assistant.yaml\n  bindings: templates/assistant-bindings.yaml.j2\n',
+                       rendered=('package.yaml', 'assistant-bindings.yaml'))
+    assert result.returncode == 0, result.stderr
+    [fresh] = (tmp_path/'scratch'/'domosenso-ha-check').glob('*/sample/fresh')
+    assert sorted(p.name for p in (fresh/'packages').iterdir()) == ['sample.yaml']

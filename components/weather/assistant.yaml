@@ -1,0 +1,65 @@
+capabilities:
+- id: weather.current
+  revision: 1
+  operation: read
+  query_type: weather-query.v1
+  answer_type: weather.v1
+  title_key: meta.assistant.current.title
+  description_key: meta.assistant.current.description
+  examples_key: meta.assistant.current.examples
+  required_facts:
+  - role: weather
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: weather.<home>
+  optional_facts: []
+  policy:
+    evaluator: weather.current
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+  - unknown_freshness
+- id: weather.forecast
+  revision: 1
+  operation: read
+  query_type: weather-query.v1
+  answer_type: weather.v1
+  title_key: meta.assistant.forecast.title
+  description_key: meta.assistant.forecast.description
+  examples_key: meta.assistant.forecast.examples
+  required_facts:
+  - role: weather
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: weather.<home>
+  optional_facts: []
+  policy:
+    evaluator: weather.forecast
+  freshness:
+    max_age_seconds: null
+    basis: provider_response
+  limitations:
+  - missing_source
+  - provider_history_unknown
+- id: weather.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: weather.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

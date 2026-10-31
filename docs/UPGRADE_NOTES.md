@@ -3,6 +3,17 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: component assistant contracts (SPEC-024)
+
+No existing HA helper, dashboard setting or endpoint grant changes. New component definitions
+compile into private managed assistant bundles. Upgrade the catalog tooling before rendering a
+component with `assistant` metadata; older tooling would mistake the bindings template for an HA
+package. Keep the previous tooling and tagged component versions together when reverting.
+
+The compatible Frame bridge and app are separate installations. Until their supported schemas
+intersect and the user explicitly shares sources with an endpoint, no new voice capabilities are
+advertised. Calendar and presence require explicit exposure. See [setup and verification](ASSISTANT.md).
+
 ## 2026-10-29: ramka 0.4.0, the room's music on the now-playing view
 
 New optional inputs `music_visual`, `music_visual_options` and `settings_defaults`, a new optional

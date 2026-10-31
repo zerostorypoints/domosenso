@@ -375,6 +375,22 @@
         "description": "Tablet z Androidem 11,5 cala (TCL, model 9469X) z ekranem 2200 × 1440 pikseli.",
         "does": "Wisi na ścianie jako Ramka: aplikacja Home Assistant Companion pokazuje panel na całym ekranie, budzi i przyciemnia ekran na polecenie Home Assistanta i przekazuje odczyty czujnika światła i baterii. Sam przestaje się ładować przy 80 %, więc może stale wisieć na ładowarce."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Stan ramki",
+        "description": "Podaje tryb, stronę, motyw, rotację i ustawienie wybudzania ramki.",
+        "examples": [
+          "W jakim trybie jest ramka?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: ramkę ścienną",
+        "description": "Ramka ścienna pokazuje informacje o domu; tryb nie potwierdza zasilania ekranu.",
+        "examples": [
+          "Do czego służy ramkę ścienną?"
+        ]
+      }
     }
   }
 }

@@ -128,11 +128,9 @@
 [%- endif -%]
 [#- The Air page: a switch per configured reading, and the two limits of each, where its colour
     changes (good → raised → high; the score: good → fair → poor, higher is better). Defaults are the
-    air-card's literal levels (templates/dashboard.lang.yaml.j2): (lower key, upper key, lower,
+    air-card's rendered levels: (lower key, upper key, lower,
     upper, min, max, step, unit). -#]
-[%- set air_limits = {'score': ('fair', 'poor', 80, 60, 0, 100, 1, ''), 'co2': ('raised', 'high', 800, 1200, 400, 5000, 50, 'ppm'),
-    'pm2_5': ('raised', 'high', 15, 35, 1, 250, 1, 'µg/m³'), 'voc': ('raised', 'high', 150, 250, 1, 500, 1, ''),
-    'nox': ('raised', 'high', 20, 150, 1, 500, 1, '')} -%]
+[%- from '_air-policy.jinja' import air_limits -%]
 [%- set air_readings = [] -%]
 [%- for reading in air_limits if inputs.air is defined and inputs.air[reading] is defined -%][%- set _ = air_readings.append(reading) -%][%- endfor -%]
 [%- for reading in air_readings -%][%- set _ = settings.append(('input_boolean', 'air_' ~ reading, 'air', 'air', true)) -%][%- endfor -%]

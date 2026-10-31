@@ -6,6 +6,29 @@
         "description": "A radio transceiver module for the sub-gigahertz bands, wired to the ESP32 board over SPI.",
         "does": "Sends and receives the 433 MHz frames of Somfy RTS, so the node can drive the awnings, hear the handset and hear the wind sensor."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Awning status",
+        "description": "Read configured cover state and its estimated position.",
+        "examples": [
+          "Are the awnings extended?"
+        ]
+      },
+      "wind": {
+        "title": "Wind report",
+        "description": "Report the wind alarm and when the sensor was last heard.",
+        "examples": [
+          "What does the wind sensor report?"
+        ]
+      },
+      "explain": {
+        "title": "About awnings",
+        "description": "Awnings report estimated positions and wind alarms; a cleared alarm does not prove calm.",
+        "examples": [
+          "What does awnings do?"
+        ]
+      }
     }
   }
 }

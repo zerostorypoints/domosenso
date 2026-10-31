@@ -10,6 +10,50 @@
         "description": "A Bluetooth air-quality sensor (Sensirion SEN66) that measures CO2, fine dust, VOC, NOx, temperature, humidity and pressure and rates the air with a score.",
         "does": "Home Assistant picks up its broadcasts through Bluetooth proxies and the core ruuvitag_ble integration. A proxy on a classic ESP32 receives only data format 6, which carries no PM1, PM4 or PM10."
       }
+    },
+    "assistant": {
+      "temperature": {
+        "title": "Temperature",
+        "description": "Read reported room temperatures and identify indoor and outdoor sources.",
+        "examples": [
+          "What is the temperature?"
+        ]
+      },
+      "humidity": {
+        "title": "Humidity",
+        "description": "Read reported humidity from configured room sensors.",
+        "examples": [
+          "What is the humidity?"
+        ]
+      },
+      "status": {
+        "title": "Climate status",
+        "description": "Report available climate readings and the time-qualified humidity alert.",
+        "examples": [
+          "What is the climate status?"
+        ]
+      },
+      "air_readings": {
+        "title": "Air readings",
+        "description": "Read configured air quality metrics with their reported units.",
+        "examples": [
+          "What are the air readings?"
+        ]
+      },
+      "air_assessment": {
+        "title": "Air assessment",
+        "description": "Assess air readings only against a matching configured policy.",
+        "examples": [
+          "How is the air quality?"
+        ]
+      },
+      "explain": {
+        "title": "About climate and air",
+        "description": "Climate and air sensors report conditions; air assessment needs a matching policy.",
+        "examples": [
+          "What does climate and air do?"
+        ]
+      }
     }
   }
 }

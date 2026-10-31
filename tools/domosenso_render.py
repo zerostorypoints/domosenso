@@ -35,6 +35,7 @@ import yaml
 from jinja2 import BytecodeCache, Environment, FileSystemLoader, StrictUndefined, TemplateError, Undefined
 
 from catalog_check import flatten
+from assistant_bindings import PLANT_BANDS, plant_bindings, plant_rows, ramka_bindings, component_bindings
 
 DEFAULT_LANGS = ["en", "de", "pl"]
 LANG_SUFFIX = ".lang.yaml.j2"
@@ -123,7 +124,9 @@ def _make_env(
         raise RenderError(message)
 
     env.filters["yaml"] = yaml_scalar
-    env.globals.update(t=t, inputs=inputs, lang=lang, fail=fail)
+    env.globals.update(t=t, inputs=inputs, lang=lang, fail=fail, plant_rows=plant_rows,
+                       plant_bands=PLANT_BANDS, plant_bindings=plant_bindings,
+                       ramka_bindings=ramka_bindings, component_bindings=component_bindings)
     return env
 
 

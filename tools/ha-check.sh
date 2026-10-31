@@ -34,6 +34,12 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 
 # artifacts.ha_instance, a path from the repository root (one line in the manifest).
 HA_INSTANCE=$(sed -n 's/^  ha_instance: *\([^ #]*\).*/\1/p' "$SRC/component.yaml")
+# Assistant bindings are compiler input, never a Home Assistant package.
+ASSISTANT_BINDINGS=$(uv run --project "$ROOT" python -c '
+import sys, yaml
+data = yaml.safe_load(open(sys.argv[1]))
+print((data.get("assistant") or {}).get("bindings", "").removeprefix("templates/").removesuffix(".j2"))
+' "$SRC/component.yaml")
 
 render_component() {  # renders templates/ into $WORK/rendered
   [ -d "$SRC/templates" ] || return 0
@@ -51,6 +57,7 @@ install_component() {  # $1 = config dir
   [ -d "$WORK/rendered" ] || return 0
   local f name
   for f in "$WORK"/rendered/*.yaml; do
+    [ "${f#"$WORK/rendered/"}" = "$ASSISTANT_BINDINGS" ] && continue
     name=$(basename "$f" .yaml)
     case "$name" in
       dashboard.*)
