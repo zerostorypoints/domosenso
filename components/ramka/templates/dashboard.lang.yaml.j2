@@ -48,8 +48,9 @@
     reading the home's music aliases, one config per option of input_select.<prefix>_music_visual.
     Every option of the look names a helper (SPEC-021), so the settings dashboard changes the
     visual live; the card reads the states on every update. `look` binds the music look
-    (sensor.<prefix>_music_look, spec 5): its attributes override rise, fall, hold, tilt, the EQ and
-    the colour window, and while it is unavailable the card reads the helpers. Their starting values
+    (sensor.<prefix>_music_look, spec 5): its attributes override rise, fall, hold, tilt and the EQ
+    (no profile carries a colour window: the neutral and hot levels stay the helpers'), and while it is
+    unavailable the card reads the helpers. Their starting values
     (music_visual_options) are the package's: its seed and reset write them, and it checks them.
     A render cannot see audio-sensor's inputs: a home without its music aliases gets the classic
     wave from the card's fallback, not a failed render. -#]
