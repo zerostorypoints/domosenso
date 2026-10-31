@@ -98,7 +98,7 @@
 [%- set mvo = inputs.music_visual_options | default({}) -%]
 [%- if mvo is not mapping -%][[ fail('ramka: music_visual_options must be a mapping') ]][%- endif -%]
 [%- for key in mvo if key not in ['spectrum', 'level', 'palette', 'rise', 'fall', 'line_width', 'tilt', 'fps'] -%][[ fail("ramka: music_visual_options: unknown key '" ~ key ~ "'") ]][%- endfor -%]
-[%- set _ = mv.update({'music_visual': music_visual}) -%]
+[%- set _ = mv.update({'music_visual': 'classic'}) -%]
 [%- set palette = mvo.palette | default('series') -%]
 [%- if palette is not string or palette not in palettes -%][[ fail('ramka: music_visual_options.palette must be zones, series or calm') ]][%- endif -%]
 [%- set _ = mv.update({'music_palette': palette}) -%]
@@ -280,16 +280,16 @@ input_select:
     options:[[ options(d.theme_mode, ['dark', 'light']) ]]
   [%- if music_visual %]
   # What the now-playing card draws in its wave strip (0.4.0): the room's music as audio-sensor's
-  # spectrum or level, or the card's own classic wave. The input's choice comes first, so a fresh
-  # helper starts there; no `initial:`, which would undo the choice at every restart. The settings
+  # spectrum or level, or the card's own classic wave. Classic comes first, so a fresh
+  # helper starts there (SPEC-025); no `initial:`, which would undo the choice at every restart. The settings
   # dashboard's Music page sets it, with the look below; the card reads every one of them live.
   [[ p ]]_music_visual:
     name: [[ named(' music visual') ]]
     icon: mdi:waveform
     options:
+      - classic
       - [[ music_visual ]]
       - [[ other_visual ]]
-      - classic
   [[ p ]]_music_palette:
     name: [[ named(' music palette') ]]
     icon: mdi:palette

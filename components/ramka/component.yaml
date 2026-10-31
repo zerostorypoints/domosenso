@@ -158,7 +158,7 @@ inputs:
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
     type: "spectrum | level"    # board with `music: true`) instead of the wave; the tablet switches
-    default: null               # between spectrum, level and classic. Absent: the wave as before (0.4.0)
+    default: null               # between spectrum, level and classic; Classic is the starting visual (SPEC-025). Absent: the wave as before (0.4.0)
     example: spectrum
   music_visual_options:         # the visual's starting values (0.4.0): what the seed and "Reset to defaults" write into
     type: "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?, fps?}"
@@ -236,7 +236,7 @@ provides:                       # <prefix> from inputs
   entities:
     - {id: "input_select.<prefix>_mode", stability: frozen, options: ["off", ambient, controls, calendar]}
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
-    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level, classic], note: "with music_visual; its value first (0.4.0)"}
+    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level, classic], note: "with music_visual; classic first, then the input's visual (SPEC-025, unreleased; the input's visual was first)"}
     - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
     - {id: "input_select.<prefix>_{music_palette,music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the card's palettes and flavours, the default first; options additive-only (0.4.0)"}
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}

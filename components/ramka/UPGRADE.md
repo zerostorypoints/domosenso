@@ -3,6 +3,13 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: the music source contract (SPEC-025)
+
+- **Classic is the default music visual.** `input_select.<prefix>_music_visual` lists `classic`
+  first, then the input's visual and the other, and the seed and "Reset to defaults" write
+  `classic`. The input `music_visual` still turns the feature and its helpers on. A home's own
+  choice stays: an existing helper keeps its state and a seeded home is not reseeded.
+
 ## Unreleased: a measured Behind speakers curve, the preview dashboard by default
 
 SPEC-024.

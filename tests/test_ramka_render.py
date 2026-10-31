@@ -514,6 +514,18 @@ def visual_tiles(dashboard):
             and n.get("action") == "input_select.select_next"]
 
 
+def test_music_visual_defaults_to_classic(demo):
+    """The input turns the feature on; the visual a fresh home shows is Classic (SPEC-025)."""
+    package = demo["package.yaml"]
+    assert package["input_select"]["ramka_music_visual"]["options"] == ["classic", "spectrum", "level"]
+    assert run_reset(package, page="music")["input_select.ramka_music_visual"] == "classic"
+    # An untouched music_visual group (the dB helpers at 0) is seeded, and the visual lands on classic.
+    states = at_minimum(package)
+    states["input_select.ramka_music_visual"] = "spectrum"
+    assert "music_visual" in seed_groups(package, states)
+    assert run_seed(package, states)["input_select.ramka_music_visual"] == "classic"
+
+
 def test_demo_inputs_show_the_spectrum():
     """The demo home is what ha-check and the website render: it shows the visual."""
     assert demo_inputs()["music_visual"] == "spectrum"
@@ -660,11 +672,11 @@ def test_music_visual_options_alone_change_nothing(tmp_path):
     assert texts(tmp_path / "a", inputs) == texts(tmp_path / "b", without_visual())
 
 
-@pytest.mark.parametrize("choice, options", [("spectrum", ["spectrum", "level", "classic"]),
-                                             ("level", ["level", "spectrum", "classic"])])
-def test_music_visual_spectrum_first_option(tmp_path, choice, options):
-    """The input's choice is the first option, so a fresh helper starts there; no initial:, which
-    would reset the tablet's choice at every restart."""
+@pytest.mark.parametrize("choice, options", [("spectrum", ["classic", "spectrum", "level"]),
+                                             ("level", ["classic", "level", "spectrum"])])
+def test_music_visual_classic_first_option(tmp_path, choice, options):
+    """Classic is the first option, so a fresh helper starts there, then the input's visual; no
+    initial:, which would reset the tablet's choice at every restart."""
     package = render(tmp_path, with_visual(choice))["package.yaml"]
     helper = package["input_select"]["ramka_music_visual"]
     assert helper["options"] == options
@@ -733,7 +745,7 @@ PROFILE_DEFAULTS = {
 }
 MUSIC_DEFAULTS = {
     **LOOK_DEFAULTS, **PROFILE_DEFAULTS,
-    "input_select.ramka_music_visual": "spectrum", "input_select.ramka_music_palette": "series",
+    "input_select.ramka_music_visual": "classic", "input_select.ramka_music_palette": "series",
     "input_select.ramka_music_spectrum_flavour": "dune", "input_select.ramka_music_level_flavour": "centre",
     "input_number.ramka_music_rise_ms": 200, "input_number.ramka_music_fall_s": 4,
     "input_number.ramka_music_line_width_px": 2.8, "input_boolean.ramka_music_tilt": "on",
@@ -938,7 +950,7 @@ def test_seed_defaults_follow_the_inputs(tmp_path, plain, demo):
         "input_number.ramka_brightness_min": 30, "input_number.ramka_brightness_max": 180,
         "input_number.ramka_near_cm": 80, "input_number.ramka_near_s": 2, "input_number.ramka_controls_hold_s": 10,
         "input_number.ramka_lux_max": 400, "input_select.ramka_theme_mode": "light",
-        **MUSIC_DEFAULTS, "input_select.ramka_music_visual": "level", "input_select.ramka_music_palette": "calm",
+        **MUSIC_DEFAULTS, "input_select.ramka_music_visual": "classic", "input_select.ramka_music_palette": "calm",
         "input_select.ramka_music_spectrum_flavour": "bars", "input_select.ramka_music_level_flavour": "tide",
         "input_number.ramka_music_rise_ms": 100, "input_number.ramka_music_fall_s": 2,
         "input_number.ramka_music_line_width_px": 3.5, "input_boolean.ramka_music_tilt": "off",
@@ -947,7 +959,7 @@ def test_seed_defaults_follow_the_inputs(tmp_path, plain, demo):
     }
     # The selects start with the home's default, so a fresh helper is right before the seed runs.
     selects = package["input_select"]
-    for key, first in (("theme_mode", "light"), ("music_visual", "level"), ("music_palette", "calm"),
+    for key, first in (("theme_mode", "light"), ("music_visual", "classic"), ("music_palette", "calm"),
                        ("music_spectrum_flavour", "bars"), ("music_level_flavour", "tide")):
         assert selects[f"ramka_{key}"]["options"][0] == first, key
     for key, first in (("theme_mode", "dark"), ("music_palette", "series"), ("music_spectrum_flavour", "dune"),

@@ -60,8 +60,9 @@ With `music_visual: spectrum` or `level` (0.4.0) the now-playing view draws the 
 wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board marked
 `music: true` (`sensor.music_spectrum` with `sensor.music_spl_offset`, or `sensor.music_level`).
 
-- **Switching.** `input_select.<prefix>_music_visual` holds `spectrum`, `level` and `classic`, the
-  input's choice first, so a fresh helper starts there; it has no `initial:`, so the choice survives
+- **Switching.** `input_select.<prefix>_music_visual` holds `classic` first, then the input's
+  visual and the other (SPEC-025), so a fresh helper starts on Classic and the seed and "Reset to
+  defaults" write `classic`; the input only turns the feature on; it has no `initial:`, so the choice survives
   a restart. It is set in Home Assistant (the settings dashboard's Music page), not on the tablet:
   the Controls page has no visual tile. `classic`, or any other state, draws Ramka's own wave and
   creates no visual card.
