@@ -4,6 +4,9 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## Unreleased: a six-range EQ and a look option for the music cards
 
+SPEC-024. The README's new "Placement" section is a field note: where to put the board, and
+why the firmware stays as it is.
+
 `ambient-wave-card` takes a six-range EQ (`dynamics.eq`: `sub`, `bass`, `low_mid`, `mid`,
 `presence`, `air`, dB each) and a `look` entity option, a sensor whose attributes carry a whole music
 look and override the card's dynamics, EQ and colour window. The Ramka's music looks need this card
