@@ -20,7 +20,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

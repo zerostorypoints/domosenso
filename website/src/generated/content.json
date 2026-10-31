@@ -20,11 +20,11 @@
             "audio-sensor"
           ],
           "availability": "opt-in",
-          "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 and mark one board music: true; without a reading the strip falls back to the classic wave.",
+          "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 or later and mark one board music: true; with Ramka 0.6.0 the board updates faster while the music view shows. Without a reading the strip falls back to the classic wave.",
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -32,11 +32,11 @@
         "Flash the M5Stack Atom EchoS3R over USB the first time with the device file the component writes; later updates go over Wi-Fi.",
         "Adopt the board in Home Assistant through ESPHome and map its entities in the component's inputs.",
         "Calibrate the sound level against a reference meter, or keep the offset marked as an estimate.",
-        "To see it on the tablet, set Ramka's music_visual and choose the look on the Ramka settings dashboard."
+        "To see it on the tablet, set Ramka's music_visual and choose the look on the Ramka settings dashboard. A board flashed before 0.2.0 needs the new firmware for the faster update rate."
       ],
       "id": "audio-sensor",
-      "version": "0.1.0",
-      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "version": "0.2.0",
+      "sourceCommit": "0f1f0a7d060ec4bcb5ed0f4389363f24f7439250",
       "evidencePaths": [
         "components/audio-sensor/component.yaml",
         "components/audio-sensor/README.md"
@@ -46,7 +46,7 @@
           {
             "label": "Music",
             "headline": "The strip follows the music",
-            "detail": "Fictional values: the third-octave spectrum from the board, about five updates a second.",
+            "detail": "Fictional values: the third-octave spectrum from the board, five updates a second by default and about twelve while Ramka's music view shows.",
             "values": [
               {
                 "label": "Visual",
@@ -132,7 +132,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -403,7 +403,7 @@
           "preview": "/previews/calendar.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -484,11 +484,11 @@
             "climate-air"
           ],
           "availability": "conditional",
-          "condition": "Provide climate inputs to Ramka.",
+          "condition": "Provide climate inputs to Ramka; pick up to ten rooms and their readings on the Ramka settings dashboard.",
           "preview": "/previews/climate.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -499,11 +499,11 @@
             "climate-air"
           ],
           "availability": "conditional",
-          "condition": "Provide air inputs and compatible air-quality readings to Ramka.",
+          "condition": "Provide air inputs and compatible air-quality readings to Ramka; each reading and its limits can be changed on the Ramka settings dashboard.",
           "preview": "/previews/air.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -588,7 +588,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -693,7 +693,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -710,7 +710,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -810,22 +810,22 @@
             "plants"
           ],
           "availability": "conditional",
-          "condition": "Provide plants inputs to Ramka.",
+          "condition": "With plants 0.3.0, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first.",
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
       "setup": [
         "Place the Mi Flora probe in the soil following the device instructions.",
         "Provide Bluetooth coverage and verify fresh readings in Home Assistant.",
-        "Map each plant and its thresholds; optionally show the readings in Ramka."
+        "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 finds the plants itself with plants: discover."
       ],
       "id": "plants",
-      "version": "0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.3.1",
+      "sourceCommit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47",
       "evidencePaths": [
         "components/plants/component.yaml"
       ],
@@ -895,11 +895,11 @@
             "climate-air"
           ],
           "availability": "conditional",
-          "condition": "Provide climate inputs to Ramka.",
+          "condition": "Provide climate inputs to Ramka; pick up to ten rooms and their readings on the Ramka settings dashboard.",
           "preview": "/previews/climate.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -910,11 +910,11 @@
             "climate-air"
           ],
           "availability": "conditional",
-          "condition": "Provide air inputs and compatible air-quality readings to Ramka.",
+          "condition": "Provide air inputs and compatible air-quality readings to Ramka; each reading and its limits can be changed on the Ramka settings dashboard.",
           "preview": "/previews/air.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -925,11 +925,11 @@
             "plants"
           ],
           "availability": "conditional",
-          "condition": "Provide plants inputs to Ramka.",
+          "condition": "With plants 0.3.0, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first.",
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -940,11 +940,11 @@
             "ramka"
           ],
           "availability": "conditional",
-          "condition": "Provide photo_dir and permit the directory in Home Assistant.",
+          "condition": "Provide photo_dir and permit the directory in Home Assistant; albums, photos per series and time per photo are set on the Ramka settings dashboard.",
           "preview": "/previews/photos.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -959,7 +959,7 @@
           "preview": "/previews/status.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -976,7 +976,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -992,7 +992,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1007,7 +1007,7 @@
           "preview": "/previews/calendar.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1022,7 +1022,7 @@
           "preview": "/previews/clock-weather.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1030,11 +1030,11 @@
         "Set up the tablet and Companion app using the tablet guide.",
         "Install the radar through Room presence and map its presence and distance entities.",
         "Choose the optional page inputs, render the dashboard and check each configured page before deployment.",
-        "Add the Ramka settings dashboard's lovelace entry; pages, presence, display and the music visual are tuned there live, without a render."
+        "Add the Ramka settings dashboard's lovelace entry; pages, presence, display, photos, air limits, climate rooms, plants per page and the music visual are tuned there live, without a render."
       ],
       "id": "ramka",
-      "version": "0.4.0",
-      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "version": "0.7.0",
+      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
       "evidencePaths": [
         "components/ramka/component.yaml"
       ],
@@ -1145,7 +1145,7 @@
           "preview": "/previews/clock-weather.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+          "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1258,7 +1258,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.4.0"
+          "version": "0.7.0"
         },
         {
           "id": "bermuda-presence",
@@ -1300,7 +1300,7 @@
       "compatibility": [
         {
           "id": "audio-sensor",
-          "version": "0.1.0"
+          "version": "0.2.0"
         }
       ],
       "body": "## What it does here\n\nThe board runs the audio-sensor ESPHome package: a sound level every second and a third-octave spectrum (31 bands, 20 Hz to 20 kHz) about five times a second. It only measures; the package keeps the speaker amplifier off and adds no voice assistant or Bluetooth.\n\n## Power and first flash\n\nPower it from a plain 5 V USB supply. Flash it the first time over USB: hold the button while plugging in the cable, then run ESPHome with the device file the component writes for your home. Later updates go over Wi-Fi. Wi-Fi credentials and the API key stay in your private home project.\n\n## Limits\n\nIt is not a measurement microphone: one analog MEMS capsule and one offset per board. One board has been tested in one home.\n\n## Setup references\n\n- [M5Stack Atom EchoS3R — M5Stack documentation](https://docs.m5stack.com/en/core/Atom_EchoS3R)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
@@ -1335,11 +1335,11 @@
         },
         {
           "id": "plants",
-          "version": "0.2.0"
+          "version": "0.3.1"
         },
         {
           "id": "ramka",
-          "version": "0.4.0"
+          "version": "0.7.0"
         }
       ],
       "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
@@ -1358,7 +1358,7 @@
       "compatibility": [
         {
           "id": "plants",
-          "version": "0.2.0"
+          "version": "0.3.1"
         }
       ],
       "body": "## Place and discover\n\nInstall the sensor as instructed by its manufacturer and provide Bluetooth coverage with a proxy. Set up the Xiaomi BLE integration (xiaomi_ble) in Home Assistant.\n\n## Check each plant\n\nConfirm soil moisture, conductivity, light and temperature update before assigning the plant. Choose suitable thresholds for the plant and substrate. Ramka can display a plant page when configured; this sensor does not provide automatic watering.\n\n## Setup references\n\n- [Xiaomi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/xiaomi_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
@@ -1434,7 +1434,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.4.0"
+          "version": "0.7.0"
         }
       ],
       "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/1578932c0a7013b73016b110ca10acc5eda2dc00/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's two top corners are its way out\ninstead: top-left opens `exit_left`, top-right reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |",
@@ -1443,6 +1443,47 @@
     }
   ],
   "articles": [
+    {
+      "slug": "ramka-0-7-0",
+      "title": "Ramka finds the plants itself",
+      "summary": "Ramka 0.7.0 shows 1 to 50 plants in pages, with plants 0.3.1 saying when each was watered and when it will need water. Ramka 0.5.0 and 0.6.0 bring more settings, and audio-sensor 0.2.0 a faster spectrum.",
+      "category": "releases",
+      "date": "2026-10-31",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "ramka",
+        "plants",
+        "audio-sensor",
+        "climate-air"
+      ],
+      "releases": [
+        {
+          "id": "ramka",
+          "version": "0.7.0",
+          "tag": "ramka/0.7.0",
+          "commit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b"
+        },
+        {
+          "id": "plants",
+          "version": "0.3.1",
+          "tag": "plants/0.3.1",
+          "commit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47"
+        },
+        {
+          "id": "audio-sensor",
+          "version": "0.2.0",
+          "tag": "audio-sensor/0.2.0",
+          "commit": "0f1f0a7d060ec4bcb5ed0f4389363f24f7439250"
+        }
+      ],
+      "sources": [
+        "https://github.com/zerostorypoints/domosenso/tree/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+        "https://github.com/zerostorypoints/domosenso/tree/0f1f0a7d060ec4bcb5ed0f4389363f24f7439250",
+        "https://github.com/zerostorypoints/domosenso/tree/7be07cb1707ea10aa9e6277dd0cd860eee33bc47"
+      ],
+      "body": "Three Ramka releases, two plants releases and an audio-sensor release were tagged on 30 and 31 October 2026. This article covers them together.\n\n## Plants, from one to fifty\n\nWith plants 0.3.0, each plant carries its room, its limits, an optional photo and its names, so Ramka 0.7.0 can find every plant with `plants: discover` instead of a list in its inputs. The plants page shows up to six plants at a time by default, the tiles growing to fill the screen; with more plants, pages turn every ten seconds, the plants that need something first, with one dot per plant grouped by room. A tile shows the photo or the plant's initial, its 7-day moisture line and, from plants 0.3.0, \"watered N days ago\" or \"water in ~N days\". The colours are green, grey and amber, never red. Plants per page and time per page are on the settings dashboard.\n\nPlants 0.3.0 also lists a moisture sensor that sits in soil but belongs to no plant, so a new probe in a pot is noticed. Plants 0.3.1 fixes two faults found on the first home: \"water in\" was never known because the drying rate was rounded to zero, and the new-sensor notice was disabled at start.\n\n## More settings without a render\n\nRamka 0.5.0 adds settings pages for Photos (albums, photos per series, time per photo), Air (each reading and its two limits), Climate (the rooms and their readings) and Calendar, plus a General page. Ramka 0.6.0 raises the Climate rooms from five to ten.\n\n## A faster spectrum\n\naudio-sensor 0.2.0 follows a bass hit in about 0.3 s instead of up to about 1 s. The board has three update rates; with Ramka 0.6.0 it runs on the fast one only while the music view is on screen and returns to normal afterwards. The faster rate needs the board flashed with the 0.2.0 firmware; until then the spectrum keeps its old pace.\n\n## Upgrade deliberately\n\nUpdate plants to 0.3.1 before, or in the same deploy as, Ramka 0.7.0 when you switch to `plants: discover`; before plants 0.3.0 runs, the page says there are no plants. A plant list in Ramka's inputs keeps working. Update audio-sensor together with Ramka 0.6.0 or later. The component pages link each release's upgrade notes."
+    },
     {
       "slug": "ramka-0-4-0",
       "title": "Ramka draws the music in the room",

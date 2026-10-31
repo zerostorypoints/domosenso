@@ -7,7 +7,10 @@ description: Run every check of the Domosenso catalog (tools/check-all.sh) and r
 
 Run from the repository root. It needs `uv`, node 22 or newer (`npm install` once) and Docker; it
 flashes nothing and talks to no Home Assistant instance. A full run takes a few minutes (each
-`ha-check` starts a container), so run it in the background where the tool allows.
+`ha-check` starts a container), so run it in the background where the tool allows. pytest runs on
+every CPU; the `ha-check`, `esphome-check` and home staging steps run side by side, `CHECK_JOBS` at a
+time (default 4, `CHECK_JOBS=1` one by one): `started <step>` as each begins, then their blocks in
+order once all have finished.
 
 ```bash
 tools/check-all.sh

@@ -2,6 +2,17 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
+## Unreleased: the proxy reports the release it was built from
+
+`esphome/ble-proxy.yaml`'s `project.version` was `0.1.0` at every tag; it now follows the
+manifest's version (`catalog_check` enforces it for every package with a `project:` block), so a
+board flashed from a release reports that release, as audio-sensor's does.
+
+### What a home does
+
+- Nothing. A board reports the new value after its next flash from the release that carries it;
+  boards flashed from 0.1.0 to 0.2.1 keep reporting `0.1.0` (those tags do not move).
+
 ## 0.2.1 (2026-10-27): `add` writes the ESPHome device files
 
 New `artifacts.esphome.devices` (SPEC-015): `domosenso add` writes one thin device file per item of

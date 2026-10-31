@@ -24,7 +24,9 @@ def demo_inputs() -> dict:
 def render(tmp_path, inputs) -> dict[str, object]:
     out = tmp_path / "out"
     dr.render_component(COMP, inputs, out)
-    return {p.name: yaml.safe_load(p.read_text(encoding="utf-8")) for p in sorted(out.glob("*.yaml"))}
+    # libyaml: the pure-Python loader takes most of a render test's time on these files.
+    return {p.name: yaml.load(p.read_text(encoding="utf-8"), Loader=yaml.CSafeLoader)
+            for p in sorted(out.glob("*.yaml"))}
 
 
 def texts(tmp_path, inputs) -> dict[str, str]:
