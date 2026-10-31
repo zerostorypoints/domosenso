@@ -5,7 +5,7 @@
 // against the watering threshold, one line saying what to do, and when it was watered or when it
 // will need water. Up to four tiles also show three gauges, sun, fertiliser and water, each a bar
 // with the plant's good band and a dot for where it is. With more than four plants list pages
-// follow the tiles: one row per plant with its bars and line, at most `list_rows` rows a page
+// follow the tiles: one row per plant with its room, action, bars and line, at most `list_rows` rows a page
 // (SPEC-022 amendment 2). Three states, never red: good (green),
 // neutral (grey: no reading, or water due within three days) and needs something (amber). Labels
 // follow the Home Assistant language (en, de, pl; anything else falls back to en). Sizes are shares
@@ -241,7 +241,7 @@ class PlantsCard extends HTMLElement {
         .rowname .name { font-size: calc(4.2 * var(--u)); }
         .sub { font-size: calc(3.2 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                color: var(--secondary-text-color); }
-        .sub.act { color: var(--c); font-weight: 600; }
+        .sub .act { color: var(--c); font-weight: 600; }
         .row .g { display: block; }
         .row .gl { display: none; }
         .body { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; min-height: 0; }
@@ -375,7 +375,7 @@ class PlantsCard extends HTMLElement {
         <span class="dot" style="width: calc(3 * var(--u)); height: calc(3 * var(--u))"></span></span></div>`;
     el.innerHTML = `<div class="row top"><span></span>${head.map(() => "<span></span>").join("")}</div>` +
       rows.map(() => `<div class="row"><div class="photo"></div>
-        <div class="rowname"><span class="name"></span><span class="sub"></span></div>
+        <div class="rowname"><span class="name"></span><span class="sub"><span class="rm"></span><span class="what"></span></span></div>
         ${GAUGES.map(gauge).join("")}
         <svg class="chart" style="height: calc(8 * var(--u))" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
         </div>`).join("");
@@ -517,9 +517,11 @@ class PlantsCard extends HTMLElement {
       if (bars) this._gauges(el, r);
       this._chart(el, p, r);
       if (list) {
-        const sub = el.querySelector(".sub");
-        sub.textContent = r.text || r.m.text || this._room(p);
-        sub.classList.toggle("act", Boolean(r.text));
+        // The room always (with many plants it is how to find the pot), then what to do.
+        const what = el.querySelector(".what");
+        el.querySelector(".rm").textContent = this._room(p);
+        what.textContent = r.text || r.m.text ? ` · ${r.text || r.m.text}` : "";
+        what.classList.toggle("act", Boolean(r.text));
         return;
       }
       el.querySelector(".room").textContent = this._room(p);

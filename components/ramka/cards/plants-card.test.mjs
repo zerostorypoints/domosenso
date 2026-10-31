@@ -303,16 +303,19 @@ test("the list's header per language", () => {
   }
 });
 
-test("a row's line: the action, else watered / water in, else the room", () => {
+test("a row's line: the room always, then the action, else watered / water in", () => {
   globalThis.localStorage = window.localStorage;
   window.localStorage.setItem("domosenso.ramka.plants.page", "1");
   const plants = [plant("Dry", { moisture: 5 }), plant("Watered"), plant("C"), plant("D"), plant("E")];
   const days = new Date(Date.now() - 5 * 86400000 - 3600000).toISOString();
   const card = discoverCard({ lang: "en", plants, states: { "sensor.d1_last_watered": { state: days, attributes: {} } } });
   const line = (name) => listRows(card).find((r) => r.querySelector(".name").textContent === name).querySelector(".sub").textContent;
-  assert.equal(line("Dry"), "Water");
-  assert.equal(line("Watered"), "watered 5 days ago");
+  assert.equal(line("Dry"), "Living room · Water");
+  assert.equal(line("Watered"), "Living room · watered 5 days ago");
   assert.equal(line("C"), "Living room");
+  const dry = listRows(card).find((r) => r.querySelector(".name").textContent === "Dry");
+  assert.equal(dry.querySelector(".sub .what").textContent, " · Water");
+  assert.ok(dry.querySelector(".sub .what").classList.contains("act"));
   delete globalThis.localStorage;
 });
 

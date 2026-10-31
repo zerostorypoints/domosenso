@@ -8,7 +8,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 SPEC-022 amendment 2.
 
 **The list page.** With more than four plants, list pages follow the tile pages: one row per plant
-with its photo, name, the action (or the watered / water-in line, or the room), the sun, fertiliser
+with its photo, name, room and action (or the watered / water-in line), the sun, fertiliser
 and water bars and the moisture line, at most seven rows a page, shared evenly. The plants stage of
 the ambient loop counts them: with five or six plants it now lasts 20 s (the tiles, then the list)
 instead of 10 s. `list: false` on the card drops them; `list_rows` sets the rows per page.

@@ -33,7 +33,7 @@ fertiliser and water; and the initial on a plant without a photo ("P", "C") read
 
 - A plant without a photo shows a leaf in its state's colour on a dim square, instead of its initial.
 - **A list page** follows the tile pages: one row per plant, in the tiles' order, with its photo (or
-  the leaf), its name, one line (the action, else the watered / water-in line, else the room), the
+  the leaf), its name, one line (the room, then the action or else the watered / water-in line; 2026-10-31: the room always), the
   three bars and the moisture line. Above it a header row: plant, sun, fertiliser, water, "last
   N days". At most `list_rows` rows a page (default 7); more plants make more list pages, the rows
   shared evenly between them (15 → 5, 5, 5). The list comes only with more than four plants: up to
