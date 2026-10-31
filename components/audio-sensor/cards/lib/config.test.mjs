@@ -246,3 +246,15 @@ test("look: a hot at or below neutral puts the kind's defaults back", () => {
   const r = resolveOptions(c, lookState({ spectrum: { neutral: 80, hot: 30 } }), KINDS);
   assert.deepEqual([r.colour.neutral, r.colour.hot], [30, 70]);
 });
+
+test("eq: a dynamics.eq that is not a mapping resolves to the six defaults, with and without a look", () => {
+  const zeros = { sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0 };
+  for (const eq of ["input_number.x", 3]) {
+    const plain = resolveOptions(normaliseConfig(base({ dynamics: { eq } }), KINDS), {}, KINDS);
+    assert.deepEqual(plain.dynamics.eq, zeros);
+    const spec = normaliseConfig(base({ dynamics: { eq }, look: "sensor.x_look" }), KINDS);
+    const r = resolveOptions(spec, lookState({ eq: { bass: -4, air: 1.5 } }), KINDS);
+    assert.deepEqual(r.dynamics.eq, { ...zeros, bass: -4, air: 1.5 });
+    assert.ok(Object.values(r.dynamics.eq).every((v) => Number.isFinite(v)));
+  }
+});

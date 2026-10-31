@@ -72,6 +72,9 @@ const ENTITY_OPTIONS = {
   flavour: { type: "choice" },
 };
 
+// A dynamics.eq that is not a mapping (an entity id, a number) is a mistake: the six zeros instead.
+const flatEq = () => Object.fromEntries(EQ_KEYS.map((k) => [k, 0]));
+
 const get = (obj, path) => path.split(".").reduce((o, k) => o?.[k], obj);
 function set(obj, path, value) {
   const keys = path.split(".");
@@ -97,6 +100,7 @@ export function normaliseConfig(raw, flavourKinds) {
   const defaults = { ...DEFAULTS, flavour: undefined, colour: { ...DEFAULTS.colour, ...DEFAULT_COLOUR[kind] } };
   const config = merge(defaults, raw);
   config.flavour ??= DEFAULT_FLAVOUR[kind];
+  if (!isObject(config.dynamics.eq)) config.dynamics.eq = flatEq();
 
   // The engine has the 31 third-octave slots only: another axis would fill some and leave the rest
   // neutral, so it is refused rather than drawn wrong.
@@ -177,6 +181,7 @@ const finite = (v) => typeof v === "number" && Number.isFinite(v);
 function applyLook(out, entity) {
   const a = entity?.attributes;
   if (!entity || ["unavailable", "unknown"].includes(entity.state) || !isObject(a)) return;
+  if (!isObject(out.dynamics.eq)) out.dynamics.eq = flatEq();
   for (const k of ["rise", "fall", "hold"]) if (finite(a[k])) out.dynamics[k] = a[k];
   if (typeof a.tilt === "boolean") out.dynamics.tilt = a.tilt;
   if (isObject(a.eq)) for (const k of EQ_KEYS) if (finite(a.eq[k])) out.dynamics.eq[k] = a.eq[k];

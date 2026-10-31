@@ -11,6 +11,9 @@ looks"). The visual cards bind `sensor.<prefix>_music_look`. On the settings pag
 rise, fall, tilt and the four dB values move from Advanced to the Custom look card, shown while
 `custom` is selected.
 
+The looks need the audio-sensor release that carries the `look` option and `dynamics.eq`; an older
+audio-sensor card ignores both and draws without them, so update the two components together.
+
 ### What a home does
 
 - With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers

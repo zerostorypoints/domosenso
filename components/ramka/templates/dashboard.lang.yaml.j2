@@ -56,7 +56,8 @@
     'type': 'custom:ambient-wave-card', 'source': source, 'active': 'binary_sensor.' ~ p ~ '_media_playing', 'fallback': 'classic',
     'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
     'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
-    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
+    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt',
+      'hold': 'input_number.' ~ m ~ 'hold_s', 'eq': {'sub': 'input_number.' ~ m ~ 'eq_sub', 'bass': 'input_number.' ~ m ~ 'eq_bass', 'low_mid': 'input_number.' ~ m ~ 'eq_low_mid', 'mid': 'input_number.' ~ m ~ 'eq_mid', 'presence': 'input_number.' ~ m ~ 'eq_presence', 'air': 'input_number.' ~ m ~ 'eq_air'}},
     'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look'}}) -%]
 [%- endfor -%]
 [%- endif -%]

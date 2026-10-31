@@ -32,7 +32,8 @@
     'type': 'custom:ambient-wave-card', 'source': source, 'fallback': 'classic',
     'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
     'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
-    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
+    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt',
+      'hold': 'input_number.' ~ m ~ 'hold_s', 'eq': {'sub': 'input_number.' ~ m ~ 'eq_sub', 'bass': 'input_number.' ~ m ~ 'eq_bass', 'low_mid': 'input_number.' ~ m ~ 'eq_low_mid', 'mid': 'input_number.' ~ m ~ 'eq_mid', 'presence': 'input_number.' ~ m ~ 'eq_presence', 'air': 'input_number.' ~ m ~ 'eq_air'}},
     'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look'}}) -%]
 [%- endfor -%]
 [%- endif -%]
@@ -164,19 +165,19 @@
           - type: markdown
             content: |-
               **[[ t('ui.settings.music_look_values') ]]**
-              {% set eq = state_attr('[[ look ]]', 'eq') or {} %}{% set spectrum = state_attr('[[ look ]]', 'spectrum') or {} %}{% set level = state_attr('[[ look ]]', 'level') or {} %}
+              {% set eq = state_attr('[[ look ]]', 'eq') or {} %}{% set spectrum = state_attr('[[ look ]]', 'spectrum') or {} %}{% set level = state_attr('[[ look ]]', 'level') or {} %}{% macro n(v, unit) %}{{ ('%g' % v ~ ' ' ~ unit) if v is number else '—' }}{% endmacro %}
 
               | | |
               |---|---|
-              | [[ t('ui.settings.music_rise_ms') ]] | {{ state_attr('[[ look ]]', 'rise') }} ms |
-              | [[ t('ui.settings.music_fall_s') ]] | {{ state_attr('[[ look ]]', 'fall') }} s |
-              | [[ t('ui.settings.music_hold_s') ]] | {{ state_attr('[[ look ]]', 'hold') }} s |
+              | [[ t('ui.settings.music_rise_ms') ]] | {{ n(state_attr('[[ look ]]', 'rise'), 'ms') }} |
+              | [[ t('ui.settings.music_fall_s') ]] | {{ n(state_attr('[[ look ]]', 'fall'), 's') }} |
+              | [[ t('ui.settings.music_hold_s') ]] | {{ n(state_attr('[[ look ]]', 'hold'), 's') }} |
               | [[ t('ui.settings.music_tilt') ]] | {{ '✓' if state_attr('[[ look ]]', 'tilt') else '—' }} |
 [%- for kind in ['spectrum', 'level'] %][% for end in ['neutral', 'hot'] %]
-              | [[ t('ui.settings.music_' ~ kind ~ '_' ~ end ~ '_db') ]] | {{ [[ kind ]].[[ end ]] }} dB |
+              | [[ t('ui.settings.music_' ~ kind ~ '_' ~ end ~ '_db') ]] | {{ n([[ kind ]].[[ end ]], 'dB') }} |
 [%- endfor %][% endfor %]
 [%- for key in eq_keys %]
-              | [[ t('ui.settings.music_eq_' ~ key) ]] | {{ eq.[[ key ]] }} dB |
+              | [[ t('ui.settings.music_eq_' ~ key) ]] | {{ n(eq.[[ key ]], 'dB') }} |
 [%- endfor %]
           - type: button
             visibility: [ [[ custom_off ]] ]

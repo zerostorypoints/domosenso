@@ -1329,7 +1329,8 @@ def bound(prefix, kind):
                    "neutral": f"input_number.{prefix}_music_{helper}_neutral_db",
                    "hot": f"input_number.{prefix}_music_{helper}_hot_db"},
         "dynamics": {"rise": f"input_number.{prefix}_music_rise_ms", "fall": f"input_number.{prefix}_music_fall_s",
-                     "tilt": f"input_boolean.{prefix}_music_tilt"},
+                     "tilt": f"input_boolean.{prefix}_music_tilt", "hold": f"input_number.{prefix}_music_hold_s",
+                     "eq": {k: f"input_number.{prefix}_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")}},
         "style": {"line_width": f"input_number.{prefix}_music_line_width_px"},
         "look": f"sensor.{prefix}_music_look",
     }
@@ -2882,9 +2883,9 @@ def test_music_audition_restores(demo):
 LOOK_TEXTS = {
     "custom": ("Your own look; starts as today's design.", "Anything, once you have tuned it.",
                "When you have found values you like. Templates never change it; \"Copy to custom\" starts it from a template."),
-    "mlp_match": ("Look like the sofa did.", "Music and TV with the sensor near the speakers.",
-                  "Takes out the near-field bass (about −10 dB at 80 Hz) and restores the highs the cabinet shadows, so the "
-                  "picture matches what you hear at the listening position."),
+    "mlp_match": ("Look like your listening position does.", "Music and TV with the sensor near the speakers.",
+                  "Undoes the difference you measured between the sensor's spot and your listening position "
+                  "(`music_eq_presets.mlp_match`, or `fitted` once calibrated); flat until you set one."),
     "lively": ("Every beat shows.", "Parties, electronic and pop.",
                "WLED-MM's fast limiter (50 / 300 ms) with a narrow colour window. Expect flicker on quiet material."),
     "calm": ("Slow and ambient.", "Background music, classical, evenings.",

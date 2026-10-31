@@ -104,7 +104,7 @@ ambient-wave-card of the visual (the now-playing view, the settings preview) bin
   (`script.<prefix>_music_load_eq`, only while Custom is selected). The catalog carries `flat`, the
   WLED-derived curves, `bass_light`, `voices` and `sparkle`; `mlp_match`, `half_match` and `fitted`
   are flat until the home sets them with the input `music_eq_presets`, for example
-  `{mlp_match: {bass: -10, presence: 3}}` (a key left out is 0; an unknown preset or key, or a
+  `{fitted: {bass: -6, air: 2}}` (a key left out is 0; an unknown preset or key, or a
   value outside −18…+12, fails the render). `fitted` comes from a pink-noise calibration: Custom's
   EQ adjusted until the bands sit level at 50–75 % of the window, the values copied into the input.
 - **Copy to custom.** `script.<prefix>_music_copy_to_custom` copies the active look into Custom's

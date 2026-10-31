@@ -156,7 +156,7 @@ inputs:
   music_eq_presets:             # the home's fills of the EQ presets that are flat in the catalog (`mlp_match`, `half_match`,
     type: "{mlp_match?, half_match?, fitted?: {sub?, bass?, low_mid?, mid?, presence?, air?}}"
     default: null               # `fitted`), dB per range, each -18...+12; absent keys are 0. Read only when `music_visual`
-    example: {half_match: {bass: -5}}   # is set. Checked at render (preset id, range key, range).
+    example: {fitted: {bass: -6, air: 2}}   # is set. Checked at render (preset id, range key, range).
   settings_defaults:            # the General settings' starting values (0.4.0), what the seed and "Reset to defaults"
     type: "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}"
     default: null               # write; absent keys keep the catalog's (true, 100 cm, 1 s, 5 s, 300 s, 16, 204,

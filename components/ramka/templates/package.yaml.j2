@@ -62,7 +62,7 @@
     'level': ['still', 'tide', 'centre', 'timeline', 'clocks', 'ripples', 'tint', 'bars']} -%]
 [%- set palettes = ['zones', 'series', 'calm'] -%]
 [%- macro within(key, value, lo, hi) -%][%- if value is boolean or value is not number or value < lo or value > hi -%][[ fail('ramka: music_visual_options.' ~ key ~ ' must be within ' ~ lo ~ ' and ' ~ hi) ]][%- endif -%][%- endmacro -%]
-[#- The music EQ (Tasks 5-7 render helpers, a sensor and dashboards from these two tables). Six
+[#- The music EQ (the helpers, the look sensor and the dashboards below render from these two tables). Six
     ranges in dB, each -18...+12 (the card's range, spec 3.1); a key a preset leaves out is 0.
     `mlp_match`, `half_match` and `fitted` are flat here: a home fills them with music_eq_presets, and
     the catalog carries no measured value. The WLED rows are derived from WLED-MM's frequency profiles
