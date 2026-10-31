@@ -133,7 +133,7 @@ approach toggle it has had since 0.1.0.
 | General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
 | each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
 | Plants (with `plants`, 0.7.0) | `input_number.<prefix>_{plants_per_page,plants_page_s}` | plants |
-| Climate (with `climate`, unreleased) | `input_number.<prefix>_climate_slots`; the rooms, `sensor.<prefix>_climate_rooms`, are group climate | climate_slots |
+| Climate (with `climate`, unreleased) | `input_number.<prefix>_climate_slots`; the widgets, `sensor.<prefix>_climate_rooms`, and `input_boolean.<prefix>_climate_thresholds` are group climate | climate_slots |
 | Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
 | Music look (with `music_visual`, unreleased) | `input_select.<prefix>_music_{template,eq}`, `input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}` | music_look |
 | Music profiles (with `music_visual`, unreleased) | per template (`behind_speakers`, `lively`, `calm`, `analyser`): `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`, `input_boolean.<prefix>_music_<id>_tilt` | music_profiles |
@@ -242,23 +242,48 @@ lovelace:
   album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
   With one folder per event the list is long: the card has a filter, and grouping folders (by year,
   `2025/…`) gives a shorter list.
-- **Climate**: in Basic, the number of places (`input_number.<prefix>_climate_slots`, 1 to 20,
-  default 10); in Advanced, one row per place, each a name, a main reading and a second one, picked
-  with Home Assistant's entity picker, which searches the home's sensors with a unit as you type
-  (`climate-rooms-card`; a plain dropdown if the picker cannot be loaded). The order changes by
-  dragging a row by its handle (mouse, touch or pen: pointer events, so it works on the tablet and a
-  phone) or with the row's up and down buttons (keyboard, screen readers); the picker is a plain
-  ordered list, not the Ramka's grid. A row without a main reading is a **spacer**: an empty tile
-  on the Ramka, the size of a room tile, so rooms can be placed where they should sit in the grid;
-  empty rows at the end are left out. The room tiles and both 7-day charts follow the rows: the
-  n-th room (spacers skipped) in series colour n, in its tile, the picker's dot and its chart lines
-  (also when an earlier room has no second reading), outside last; the charts skip spacers. A
-  reading shows its sensor's unit, an empty name becomes the sensor's area. Fewer places than
-  filled rows deletes nothing: the rooms beyond are kept but not shown on the Ramka, and the picker
-  says how many there are, with a button to remove them. The rows are kept by
-  `sensor.<prefix>_climate_rooms` (attribute `rooms`: up to twenty places, each
-  `{label, main, extra}` or `{spacer: true}`, never a spacer at the end; state: how many rooms);
-  the defaults (and the reset) are the first ten of `climate`, temperature and humidity.
+- **Climate**: in Advanced, the number of widgets (`input_number.<prefix>_climate_slots`, 1 to 20,
+  default 10), the switch **Threshold-based colours** (`input_boolean.<prefix>_climate_thresholds`,
+  default off) and one row per widget (`climate-rooms-card`). Every row is a widget of a type,
+  chosen in the dropdown of its header; a new row is Empty:
+  - **Temperature**: a temperature sensor and a humidity sensor;
+  - **Air quality**: a CO₂ sensor and a PM2.5 sensor;
+  - **Custom**: any two sensors with a unit;
+  - **Empty**: an empty tile on the Ramka, the size of the others, so widgets can be placed where
+    they should sit in the grid; empty rows at the end are left out.
+
+  Each reading is picked with Home Assistant's entity picker, which searches as you type, of the
+  sensors with a unit of the type's device class (`temperature`, `humidity`, `carbon_dioxide`,
+  `pm25`; every sensor with a unit when the home has none of that class); a plain dropdown if the
+  picker cannot be loaded. A new type keeps the name and the readings that fit it. Each row's
+  **Settings** opens a dialog (a modal over the page; Escape, a tap beside it or Cancel close it):
+  a Temperature widget's comfort ranges (temperature 20 to 24 °C and humidity 40 to 60 % unless
+  set), kept in the widget; an Air quality widget's limits, which are the Air page's own helpers
+  (`input_number.<prefix>_air_{co2,pm2_5}_{raised,high}`, a change shows on the Air page too; a
+  reading without them, as in a home whose `air` input lacks it, is said to be not set up); a Custom widget's
+  colour, neutral or one of the series colours. The order changes by dragging a row by its handle
+  (mouse, touch or pen: pointer events, so it works on the tablet and a phone) or with the row's up
+  and down buttons (keyboard, screen readers); the picker is a plain ordered list, not the Ramka's
+  grid.
+
+  The tiles and both 7-day charts follow the rows: the n-th widget with a reading (empty ones
+  skipped) in series colour n, in its tile's main value, the picker's dot and its chart lines (also
+  when an earlier widget has no second reading), outside last; Air quality widgets have no chart
+  lines (CO₂ and PM2.5 are no temperature or humidity). The series colours are the theme's
+  without its threshold colours (blue, amber, red, orange, light blue): slots 4, 5, 6, 9, 11, 10 in
+  turn. With **Threshold-based colours** on, the tiles colour by the thresholds instead: a
+  Temperature widget's temperature and humidity blue below their range, neutral (the theme's text
+  colour) within, red above; an Air quality widget's CO₂ and PM2.5 neutral while good, amber
+  raised, red high, from the Air page's limits; a Custom widget's main value neutral or its chosen
+  colour. The chart lines keep the series colours, and the layout is the same either way. A
+  reading shows its sensor's unit, an empty name becomes the sensor's area. Fewer widgets than
+  filled rows deletes nothing: the widgets beyond are kept but not shown on the Ramka, and the
+  picker says how many there are, with a button to remove them. The rows are kept by
+  `sensor.<prefix>_climate_rooms` (attribute `rooms`: up to twenty widgets, each
+  `{type, label, main, extra, ...}` or `{type: empty, spacer: true}`, never an empty one at the end;
+  state: how many have a reading); an entry from before the types reads as Temperature when its
+  main sensor is a temperature, else Custom, and is stored so at the next save. The defaults (and
+  the reset) are the first ten of `climate`, Temperature widgets of their temperature and humidity.
 - **Air**: a switch per configured reading (off leaves its tile out, the others share the room)
   and, in Advanced, the two limits of each where its colour changes; the defaults are those in
   "Dashboards and cards". An unusable limit keeps the default.

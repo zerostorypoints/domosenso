@@ -336,10 +336,11 @@ views:
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
 [%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else plant_labels(inputs.plants))]) ]][[ reset(view) ]]
-[%- elif view == 'climate' %][[ switch_section('climate', [('input_number', 'climate_slots'), ('input_boolean', 'settings_advanced')]) ]]
-      # The rooms: one row per place (climate_slots) of a name and two sensor pickers, in an order
-      # changed by dragging or the up and down buttons (climate-rooms-card), SPEC-021 amendment 2.
-      # The tiles and the charts follow them.
+[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'climate_slots'), ('input_boolean', 'climate_thresholds')]) ]]
+      # The widgets: one row per widget (climate_slots) of a type, a name and two sensor pickers, a
+      # settings dialog each, in an order changed by dragging or the up and down buttons
+      # (climate-rooms-card), SPEC-021 amendment 2. The tiles and the charts follow them. An Air
+      # quality widget's dialog edits the Air page's own limits, of the readings this home has.
       - type: grid
         cards:[[ heading('climate_rooms', 'mdi:home-thermometer', advanced_on) ]]
           - type: markdown
@@ -349,6 +350,12 @@ views:
             visibility: [ [[ advanced_on ]] ]
             entity: sensor.[[ p ]]_climate_rooms
             slots: input_number.[[ p ]]_climate_slots
+[%- if inputs.air is defined and (inputs.air.co2 is defined or inputs.air.pm2_5 is defined) %]
+            air_limits:
+[%- for reading in ['co2', 'pm2_5'] if inputs.air[reading] is defined %]
+              [[ reading ]]: [input_number.[[ p ]]_air_[[ reading ]]_raised, input_number.[[ p ]]_air_[[ reading ]]_high]
+[%- endfor %]
+[%- endif %]
             script: script.[[ p ]]_climate_rooms_set[[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]][[ reset(view) ]]
 [%- elif view == 'air' %]
 [%- set readings = [] -%][%- set switches = [] -%][%- set limits = [] -%]

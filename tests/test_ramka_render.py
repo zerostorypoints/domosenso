@@ -569,6 +569,10 @@ CLIMATE = "sensor.ramka_climate_rooms"
 # The number of places on the Climate page: a helper of its own group, seeded while untouched.
 CLIMATE_SLOTS = {"input_number.ramka_climate_slots": 10}
 SLOTS = "input_number.ramka_climate_slots"
+# Threshold-based colours on the Climate page: off, in group climate with the widgets (seeded while
+# the rooms sensor has none).
+THRESHOLDS = "input_boolean.ramka_climate_thresholds"
+CLIMATE_THRESHOLDS = {THRESHOLDS: "off"}
 AIR_DEFAULTS = {**{f"input_boolean.ramka_air_{r}": "on" for r in AIR_READINGS},
                 **{f"input_number.ramka_air_{k}": v for k, v in AIR_LIMITS.items()}}
 
@@ -692,7 +696,7 @@ DEFAULTS = {
     "input_number.ramka_lux_max": 200, "input_boolean.ramka_ambient_music": "on",
     "input_select.ramka_theme_mode": "dark", "input_boolean.ramka_settings_advanced": "off",
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
-    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_SLOTS,
+    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_THRESHOLDS, **CLIMATE_SLOTS,
 }
 EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 # Custom's look (spec 5): its own group, so an upgraded home whose music window is tuned still gets
@@ -736,7 +740,7 @@ PAGE_OF = {
     **{e: "controls" for e in CONTROLS_SETTINGS},
     "input_boolean.ramka_ambient_music": None,
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
-    **{e: "climate" for e in CLIMATE_SLOTS},
+    **{e: "climate" for e in {**CLIMATE_SLOTS, **CLIMATE_THRESHOLDS}},
     **{f"input_boolean.ramka_page_{v}": v for v in PAGE_VIEWS},
     **{e: "music" for e in MUSIC_DEFAULTS},
 }
@@ -747,7 +751,7 @@ GROUP_OF = {
     **{e: "music_visual" for e in MUSIC_DEFAULTS}, **{e: "music_look" for e in LOOK_DEFAULTS},
     **{e: "music_profiles" for e in PROFILE_DEFAULTS},
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
-    **{e: "climate_slots" for e in CLIMATE_SLOTS},
+    **{e: "climate_slots" for e in CLIMATE_SLOTS}, **{e: "climate" for e in CLIMATE_THRESHOLDS},
 }
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
@@ -1541,7 +1545,7 @@ BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_
                    # The profile (spec 7): the select; its values are Advanced.
                    "input_select.ramka_music_template"}
 BASIC["photos"] |= {"input_number.ramka_photo_count", "input_number.ramka_photo_s", "input_boolean.ramka_settings_advanced"}
-BASIC["climate"] |= {"input_number.ramka_climate_slots", "input_boolean.ramka_settings_advanced"}
+BASIC["climate"] |= {"input_boolean.ramka_settings_advanced"}
 BASIC["plants"] |= {"input_number.ramka_plants_per_page", "input_boolean.ramka_settings_advanced"}
 BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
 # The pages besides General that have Advanced parts, and so the Advanced switch too.
@@ -1558,7 +1562,8 @@ ADVANCED = {
               "input_number.ramka_music_rise_ms", "input_number.ramka_music_fall_s", "input_boolean.ramka_music_tilt",
               *(f"input_number.ramka_{k}" for k in MUSIC_DB), *PROFILE_DEFAULTS},
     "photos": {ALBUMS},
-    "climate": {CLIMATE},
+    # The number of widgets and the threshold-based colours sit in the Advanced card with the widgets.
+    "climate": {CLIMATE, SLOTS, THRESHOLDS},
     "plants": {"input_number.ramka_plants_page_s"},
     "air": {f"input_number.ramka_air_{k}" for k in AIR_LIMITS},
 }
@@ -2359,7 +2364,7 @@ def test_calendar_page_links_to_ics_and_caldav(demo):
 
 def demo_rooms(inputs=None):
     """The rooms the seed gives a home: the first ten of `climate`, temperature and humidity."""
-    return [{"label": c["label"], "main": c["temperature"], "extra": c.get("humidity") or ""}
+    return [{"type": "temperature", "label": c["label"], "main": c["temperature"], "extra": c.get("humidity") or ""}
             for c in (inputs or demo_inputs())["climate"][:10]]
 
 
@@ -2374,8 +2379,9 @@ def test_climate_rooms_default_to_the_first_ten(demo, tmp_path):
     inputs["climate"] = [dict(inputs["climate"][n % 7], label=f"R{n}") for n in range(12)]
     many = run_reset(render(tmp_path, inputs)["package.yaml"], events=True)[CLIMATE]
     assert many == demo_rooms(inputs) and len(many) == 10
-    assert run_reset(package, page="climate", events=True) == {CLIMATE: rooms, "input_boolean.ramka_page_climate": "on", **CLIMATE_SLOTS}
-    assert run_reset(package, groups=["climate"], events=True) == {CLIMATE: rooms}
+    assert run_reset(package, page="climate", events=True) == {CLIMATE: rooms, "input_boolean.ramka_page_climate": "on", **CLIMATE_SLOTS,
+                                                              **CLIMATE_THRESHOLDS}
+    assert run_reset(package, groups=["climate"], events=True) == {CLIMATE: rooms, **CLIMATE_THRESHOLDS}
     assert run_reset(package, groups=["climate_slots"], events=True) == CLIMATE_SLOTS
     assert CLIMATE not in run_reset(package, page="photos", events=True)
 
@@ -2384,26 +2390,50 @@ def test_climate_rooms_sensor_and_script(demo):
     package = demo["package.yaml"]
     sensor = event_sensor(package, "ramka_climate_rooms")
     assert sensor["default_entity_id"] == CLIMATE
-    rooms = [{"spacer": True}, {"label": "K", "main": "sensor.k_t", "extra": ""}]
+    rooms = [{"type": "empty", "spacer": True}, {"type": "temperature", "label": "K", "main": "sensor.k_t", "extra": ""},
+             {"type": "air", "label": "No sensor yet", "main": "", "extra": ""}, {"label": "Old", "main": "sensor.o", "extra": ""}]
     trigger = {"event": {"data": {"rooms": rooms}}}
-    # The state counts the rooms, not the spacers.
-    assert ha(sensor["state"], trigger=trigger) == "1"
+    # The state counts the widgets with a reading, not the empty ones nor one without its sensor.
+    assert ha(sensor["state"], trigger=trigger) == "2"
     assert ha_value(sensor["attributes"]["rooms"], trigger=trigger) == rooms
     script = package["script"]["ramka_climate_rooms_set"]
     assert "selector" not in script["fields"]["rooms"]
     [step] = script["sequence"]
     assert step["event"] == "ramka_climate_rooms"
-    sent = lambda **f: ha_value(step["event_data"]["rooms"], **f)  # noqa: E731
-    many = [{"label": f"R{n}", "main": f"sensor.r{n}", "extra": f"sensor.h{n}"} for n in range(21)]
+    sent = lambda attrs=None, **f: ha_value(step["event_data"]["rooms"], attrs=attrs, **f)  # noqa: E731
+    empty = {"type": "empty", "spacer": True}
+    many = [{"type": "custom", "label": f"R{n}", "main": f"sensor.r{n}", "extra": f"sensor.h{n}"} for n in range(21)]
     assert sent(rooms=many) == many[:20]
-    # A row without a sensor as its main reading is a spacer in its place (an empty tile); missing
-    # keys become empty; a spacer at the end goes, and junk that is no row at all.
-    assert sent(rooms=[{"label": "x", "main": ""}, {"main": "sensor.a"}, "junk", {"label": "y", "main": "light.l"},
-                       {"spacer": True}, {"label": "B", "main": "sensor.b", "extra": "sensor.c"}, {"spacer": True}, {"main": ""}]) == [
-        {"spacer": True}, {"label": "", "main": "sensor.a", "extra": ""}, {"spacer": True}, {"spacer": True},
-        {"label": "B", "main": "sensor.b", "extra": "sensor.c"}]
-    assert sent(rooms=[{"spacer": True}, {"main": ""}]) == []
-    # Twenty places at most, counted before the trailing spacers go.
+    # The type and its own values are kept: a temperature's comfort numbers, a custom's colour; a
+    # typed widget without its sensor yet keeps its place and type.
+    typed = [{"type": "temperature", "label": "K", "main": "sensor.k_t", "extra": "sensor.k_h", "temp_low": 19.5, "temp_high": 23,
+              "hum_low": 35, "hum_high": 55},
+             {"type": "air", "label": "B", "main": "sensor.b_co2", "extra": "sensor.b_pm"},
+             {"type": "custom", "label": "P", "main": "sensor.p", "extra": "", "color": 9},
+             {"type": "temperature", "label": "", "main": "", "extra": ""},
+             {"type": "custom", "label": "Q", "main": "sensor.q", "extra": ""}]
+    expected = [{**typed[0], "temp_high": 23.0, "hum_low": 35.0, "hum_high": 55.0}, *typed[1:]]
+    assert sent(rooms=typed) == expected
+    # Values that do not belong to the type, or are no number, go.
+    assert sent(rooms=[{"type": "air", "label": "A", "main": "sensor.a", "extra": "", "temp_low": 18, "color": 9},
+                       {"type": "temperature", "label": "T", "main": "sensor.t", "extra": "", "temp_low": "cold", "color": 9},
+                       {"type": "custom", "label": "C", "main": "sensor.c", "extra": "", "color": "red"},
+                       {"type": "custom", "label": "D", "main": "sensor.d", "extra": "", "color": 2.5}]) == [
+        {"type": "air", "label": "A", "main": "sensor.a", "extra": ""}, {"type": "temperature", "label": "T", "main": "sensor.t", "extra": ""},
+        {"type": "custom", "label": "C", "main": "sensor.c", "extra": ""}, {"type": "custom", "label": "D", "main": "sensor.d", "extra": ""}]
+    # An entry without a type (before the types): a temperature when its main sensor is one, else
+    # custom; without a sensor as its main reading an empty one in its place (an empty tile); missing
+    # keys become empty; empty ones at the end go, and junk that is no row at all.
+    attrs = {"sensor.a": {"device_class": "temperature"}, "sensor.b": {"device_class": "carbon_dioxide"}}
+    assert sent(attrs, rooms=[{"label": "x", "main": ""}, {"main": "sensor.a"}, "junk", {"label": "y", "main": "light.l"},
+                              {"spacer": True}, {"label": "B", "main": "sensor.b", "extra": "sensor.c"}, {"type": "empty"},
+                              {"spacer": True}, {"main": ""}]) == [
+        empty, {"type": "temperature", "label": "", "main": "sensor.a", "extra": ""}, empty, empty,
+        {"type": "custom", "label": "B", "main": "sensor.b", "extra": "sensor.c"}]
+    # A typed widget whose main reading is no sensor keeps its type, the reading empty.
+    assert sent(rooms=[{"type": "custom", "label": "L", "main": "light.l"}]) == [{"type": "custom", "label": "L", "main": "", "extra": ""}]
+    assert sent(rooms=[{"spacer": True}, {"main": ""}, {"type": "empty"}]) == []
+    # Twenty at most, counted before the empty ones at the end go.
     assert sent(rooms=[{"spacer": True}] * 20 + [{"main": "sensor.a"}]) == []
     assert sent() == [] and sent(rooms="sensor.a") == []
 
@@ -2443,6 +2473,45 @@ def test_climate_slots_helper_and_seed(demo):
         assert card["slots"] == SLOTS
         assert any(r.get("entity") == SLOTS and r.get("name") == translations(lang)["ui.settings.climate_slots"]
                    for _, c in view_cards(climate) for r in rows(c))
+
+
+def test_climate_thresholds_switch_and_air_limits(demo, tmp_path):
+    """Threshold-based colours (default off) and the number of widgets sit in Climate's Advanced card;
+    the rooms-card reads the switch and, as the settings card, the Air page's CO2 and PM2.5 limits of
+    the readings the home has."""
+    package = demo["package.yaml"]
+    assert package["input_boolean"]["ramka_climate_thresholds"]["name"] and "initial" not in package["input_boolean"]["ramka_climate_thresholds"]
+    assert package["input_number"]["ramka_climate_slots"]["name"].endswith("climate widgets")
+    # Reset with the page and with the widgets' group; seeded with the widgets, while the sensor has none.
+    assert run_reset(package, page="climate")[THRESHOLDS] == "off"
+    assert run_reset(package, groups=["climate"]) == CLIMATE_THRESHOLDS
+    assert THRESHOLDS not in run_reset(package, groups=["climate_slots"])
+    limits = {"co2": ["input_number.ramka_air_co2_raised", "input_number.ramka_air_co2_high"],
+              "pm2_5": ["input_number.ramka_air_pm2_5_raised", "input_number.ramka_air_pm2_5_high"]}
+    for lang in LANGS:
+        t = translations(lang)
+        climate = settings_views(demo[f"ramka-settings.{lang}.yaml"])["climate"]
+        [(section, card)] = [(s, c) for s, c in view_cards(climate) if any(r.get("entity") == THRESHOLDS for r in rows(c))]
+        assert [r["entity"] for r in rows(card)] == [SLOTS, THRESHOLDS] and advanced(section, card)
+        assert [r["name"] for r in rows(card)] == [t["ui.settings.climate_slots"], t["ui.settings.climate_thresholds"]]
+        [picker] = [c for _, c in view_cards(climate) if c.get("type") == "custom:climate-rooms-card"]
+        assert picker["air_limits"] == limits
+        [rooms_card] = [n for n in walk(demo[f"dashboard.{lang}.yaml"]) if n.get("type") == "custom:rooms-card"]
+        assert rooms_card["thresholds"] == THRESHOLDS and rooms_card["air_limits"] == limits
+    assert (translations("en")["ui.settings.climate_slots"], translations("de")["ui.settings.climate_slots"],
+            translations("pl")["ui.settings.climate_slots"]) == ("Number of widgets", "Zahl der Widgets", "Liczba widżetów")
+    # A home whose air input has no PM2.5: only CO2's limits; without the air input none.
+    inputs = demo_inputs()
+    inputs["air"] = {k: v for k, v in inputs["air"].items() if k != "pm2_5"}
+    rendered = render(tmp_path / "co2", inputs)
+    [rooms_card] = [n for n in walk(rendered["dashboard.en.yaml"]) if n.get("type") == "custom:rooms-card"]
+    assert rooms_card["air_limits"] == {"co2": limits["co2"]}
+    rendered = render(tmp_path / "noair", without_pages("air"))
+    [rooms_card] = [n for n in walk(rendered["dashboard.en.yaml"]) if n.get("type") == "custom:rooms-card"]
+    assert "air_limits" not in rooms_card and rooms_card["thresholds"] == THRESHOLDS
+    climate = settings_views(rendered["ramka-settings.en.yaml"])["climate"]
+    assert all("air_limits" not in c for _, c in view_cards(climate))
+    assert THRESHOLDS not in defined_entities(render(tmp_path / "noclimate", without_pages("climate"))["package.yaml"])
 
 
 def test_climate_card_on_climate_advanced(demo):
