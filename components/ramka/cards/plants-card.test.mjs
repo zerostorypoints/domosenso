@@ -201,7 +201,14 @@ test("a page fewer: a stored index past the last page clamps to the first", () =
 });
 
 test("derived lines: last watered and water in", () => {
-  const days = (n) => new Date(Date.now() - n * 86400000 - 3600000).toISOString();
+  // Noon n calendar days ago: "now minus n days" crosses into the day before during the first
+  // hour after midnight, and the card counts calendar days.
+  const days = (n) => {
+    const at = new Date();
+    at.setDate(at.getDate() - n);
+    at.setHours(12, 0, 0, 0);
+    return at.toISOString();
+  };
   const cases = [
     [{ "sensor.d0_last_watered": days(5) }, "podlana 5 dni temu", "watered 5 days ago"],
     [{ "sensor.d0_last_watered": days(0) }, "podlana dziś", "watered today"],

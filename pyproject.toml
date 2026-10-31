@@ -30,4 +30,5 @@ py-modules = ["catalog_check", "domosenso_render", "domosenso_install", "check_c
 dev = [
     "pytest",
     "pillow",
+    "pytest-xdist>=3.8.0",
 ]
