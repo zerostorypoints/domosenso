@@ -39,7 +39,11 @@ Domosenso is a framework of tested Home Assistant components, on the Open Mercat
 versioned catalog of components, each with a manifest and a declared contract surface; a home
 installs components from the catalog into its own repository (the home repo, an instance of the
 catalog) and keeps only its own files there. Commercial design, installation and maintenance are
-offered separately; nothing commercial lives here.
+offered separately; nothing commercial lives here. The five principles, the placement test every
+change answers first and why the Ramka exists: `docs/PRINCIPLES.md`. In one line each: the
+metadata is the asset; components, not configuration; contracts between components; Home
+Assistant stays the home's interface and Domosenso builds the surfaces it does not have; agents
+do the work, people approve it.
 
 - Home Assistant runs as a **Container**: no add-ons (apps). Every service a component needs ships
   as a compose service.
@@ -115,6 +119,10 @@ Manifest, in short (the full shape: `components/ramka/component.yaml`, the small
 
 Rules:
 
+- **Never rebuild a control or editor Home Assistant has; compose it.** A card or page exists where
+  Home Assistant has no card or flow for the surface (`docs/PRINCIPLES.md`, 4), and is built from
+  Home Assistant's own primitives. The placement test comes before the spec: Home Assistant has it →
+  use it; a second home needs it → a component; one home → its local layer.
 - **No component references another's entities** unless its manifest lists them under `consumes`
   and the other lists them under `provides`.
 - **A thing enters the catalog when it could work in a second home without changes.** What only
