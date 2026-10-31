@@ -3,9 +3,9 @@
   "components": [
     {
       "id": "audio-sensor",
-      "version": "0.1.0",
-      "sourceTag": "audio-sensor/0.1.0",
-      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "version": "0.2.0",
+      "sourceTag": "audio-sensor/0.2.0",
+      "sourceCommit": "0f1f0a7d060ec4bcb5ed0f4389363f24f7439250",
       "summary": "A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum",
       "requirements": [
         {
@@ -61,8 +61,8 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/audio-sensor",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/audio-sensor/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/0f1f0a7d060ec4bcb5ed0f4389363f24f7439250/components/audio-sensor",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/0f1f0a7d060ec4bcb5ed0f4389363f24f7439250/components/audio-sensor/UPGRADE.md"
     },
     {
       "id": "awnings",
@@ -646,9 +646,9 @@
     },
     {
       "id": "plants",
-      "version": "0.2.0",
-      "sourceTag": "plants/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.3.0",
+      "sourceTag": "plants/0.3.0",
+      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
       "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
       "requirements": [
         {
@@ -680,6 +680,10 @@
         {
           "name": "statistics",
           "source": "core"
+        },
+        {
+          "name": "template",
+          "source": "core"
         }
       ],
       "optionalRequirements": [],
@@ -703,7 +707,7 @@
       "inputs": [
         {
           "name": "plants",
-          "type": "list[{entity: plant.*, label, name?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
+          "type": "list[{entity: plant.*, label, name?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
           "required": true
         },
         {
@@ -737,14 +741,14 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/plants",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/plants/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/plants/UPGRADE.md"
     },
     {
       "id": "ramka",
-      "version": "0.4.0",
-      "sourceTag": "ramka/0.4.0",
-      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "version": "0.7.0",
+      "sourceTag": "ramka/0.7.0",
+      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -930,7 +934,7 @@
         },
         {
           "name": "plants",
-          "type": "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}]",
+          "type": "list[{entity: plant.*, label, room?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_brightness?}] | discover",
           "required": false
         },
         {
@@ -994,6 +998,11 @@
           "required": false
         },
         {
+          "name": "dashboard_paths",
+          "type": "map[lang, string]",
+          "required": false
+        },
+        {
           "name": "exit_left",
           "type": "string",
           "required": false
@@ -1024,8 +1033,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",
