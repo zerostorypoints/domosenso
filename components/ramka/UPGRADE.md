@@ -34,6 +34,9 @@ SPEC-024.
   and deploy (a restart for the entry; the preview's resource `cards/screen-frame-card.js`). Until
   the entry is there, `domosenso status` prints `missing-dashboard-entry dashboards/ramka-preview.<lang>.yaml`
   for each language. A home that does not want it sets `preview_dashboard: false` and renders.
+  `domosenso update` removes the preview files it no longer renders; a plain `render` only reports
+  them (`stale dashboards/ramka-preview.<lang>.yaml`) and leaves them, unlocked. Delete them by hand
+  then: a home that lists `dashboards/*.yaml` under `local:` would otherwise deploy them as its own.
 
 ## Unreleased: colour dots in the colour choices, readings without a unit, the albums' column
 
