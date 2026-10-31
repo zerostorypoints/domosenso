@@ -2779,11 +2779,11 @@ LOOK_TEXTS = {
                "When no template fits. Every profile keeps its own values, so tuning one never changes another."),
     "behind_speakers": ("Look like your listening position does.", "Music and TV with the sensor behind or near the speakers, or on the amplifier.",
                   "Undoes the difference you measured between the sensor's spot and your listening position "
-                  "(`music_eq_presets.behind_speakers`, or `fitted` once calibrated); flat until you set one."),
+                  "(the home's behind_speakers EQ, or the fitted one once calibrated); flat until you set one."),
     "lively": ("Every beat shows.", "Parties, electronic and pop.",
-               "WLED-MM's fast limiter (50 / 300 ms) with a narrow colour window. Expect flicker on quiet material."),
+               "WLED-MM's fast limiter (50 / 300 ms): a quick attack and release. Expect flicker on quiet material."),
     "calm": ("Slow and ambient.", "Background music, classical, evenings.",
-             "WLED's \"Lazy\" for strong dynamics: a 4.2 s decay and a wide window keep loud passages from jumping."),
+             "WLED's \"Lazy\" for strong dynamics: a 4.2 s decay keeps loud passages from jumping."),
     "analyser": ("A meter to read.", "Watching the sound itself; best with the `bars` or `afterglow` flavour.",
                  "Instant attack and a short release, like the MSGEQ7 spectrum analysers sold on AliExpress and broadcast peak meters."),
 }
