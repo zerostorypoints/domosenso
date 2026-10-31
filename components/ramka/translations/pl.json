@@ -121,6 +121,9 @@
       "extra": "Drugi pomiar",
       "none": "—",
       "missing": "nie znaleziono"
+    },
+    "info_select_row": {
+      "about": "O tym wyborze"
     }
   },
   "ui": {
@@ -225,7 +228,6 @@
       "reset_confirm": "Przywrócić domyślne wartości ustawień tej strony?",
       "reset_all": "Przywróć wszystkie ustawienia domyślne",
       "reset_all_confirm": "Przywrócić domyślne wartości wszystkich ustawień Ramki?",
-      "music_sensor": "Czujnik muzyki",
       "calibration": "Kalibracja",
       "calibration_procedure": "Postaw miernik referencyjny obok płytki i odtwarzaj równy szum różowy albo muzykę na poziomie rozmowy. Odczytaj oba wskazania: zmierzona poprawka to wskazanie miernika minus poziom płytki bez poprawki. Wpisz ją poniżej z notatką i zastosuj.",
       "calibration_readme": "README komponentu audio-sensor",
@@ -278,11 +280,10 @@
       "music_eq_presence": "EQ prezencja (4 kHz)",
       "music_eq_air": "EQ najwyższe tony (12,5 kHz)",
       "music_hold_s": "Podtrzymanie",
-      "music_look": "Profil reakcji",
       "music_template_custom": "Własny",
       "music_template_custom_purpose": "Twój własny profil; zaczyna od dotychczasowego projektu.",
       "music_template_custom_best": "Wszystko, gdy już go dostroisz.",
-      "music_template_custom_why": "Gdy znajdziesz wartości, które ci odpowiadają. Szablony nigdy go nie zmieniają; „Skopiuj do własnego” zaczyna go od szablonu.",
+      "music_template_custom_why": "Gdy żaden szablon nie pasuje. Każdy profil ma własne wartości, więc zmiana jednego nie zmienia innych.",
       "music_template_behind_speakers": "Za głośnikami",
       "music_template_behind_speakers_purpose": "Wyglądać tak, jak w miejscu odsłuchu.",
       "music_template_behind_speakers_best": "Muzyka i telewizja z czujnikiem za głośnikami, blisko nich lub na wzmacniaczu.",
@@ -301,11 +302,8 @@
       "music_template_analyser_why": "Natychmiastowe narastanie i krótkie opadanie, jak w analizatorach widma MSGEQ7 z AliExpress i w szczytowych miernikach wysterowania w radiofonii.",
       "music_look_best": "Najlepiej do",
       "music_look_why": "Dlaczego / kiedy",
-      "music_look_values": "Używane wartości",
-      "music_copy_to_custom": "Skopiuj do własnego",
-      "music_copy_to_custom_confirm": "Zastąpić wartości własnego profilu wartościami tego profilu?",
-      "music_custom": "Własny profil",
       "music_colour": "Zakres kolorów",
+      "music_profile_settings": "Ustawienia profilu",
       "music_eq_load": "Zastosuj wybrane ustawienie",
       "music_eq_load_action": "Wczytaj",
       "music_eq_flat": "Płaski",
@@ -319,9 +317,6 @@
       "music_eq_sparkle": "Blask",
       "music_eq_fitted": "Dopasowane (kalibracja)",
       "music_spectrum_rate": "Częstotliwość odczytu czujnika",
-      "music_spectrum_rate_eco": "najrzadziej, najmniejsze obciążenie sieci",
-      "music_spectrum_rate_normal": "ustawienie domyślne",
-      "music_spectrum_rate_fast": "każdy nowy pomiar, tylko gdy tablet pokazuje odtwarzanie",
       "music_source": "Czujnik muzyki",
       "open_view": "Otwórz widok Ramki",
       "language": "Język",

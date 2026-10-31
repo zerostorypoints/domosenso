@@ -121,6 +121,9 @@
       "extra": "Second reading",
       "none": "—",
       "missing": "not found"
+    },
+    "info_select_row": {
+      "about": "About this choice"
     }
   },
   "ui": {
@@ -225,7 +228,6 @@
       "reset_confirm": "Set this page's settings back to their defaults?",
       "reset_all": "Reset every setting to its default",
       "reset_all_confirm": "Set every Ramka setting back to its default?",
-      "music_sensor": "Music sensor",
       "calibration": "Calibration",
       "calibration_procedure": "Put a reference meter next to the board and play steady pink noise or music at a talking level. Read both: the measured offset is the reference minus the board's level without offset. Enter it below with a note, then apply it.",
       "calibration_readme": "audio-sensor's README",
@@ -278,11 +280,10 @@
       "music_eq_presence": "EQ presence (4 kHz)",
       "music_eq_air": "EQ air (12.5 kHz)",
       "music_hold_s": "Hold",
-      "music_look": "Response profile",
       "music_template_custom": "Custom",
       "music_template_custom_purpose": "Your own profile; starts as today's design.",
       "music_template_custom_best": "Anything, once you have tuned it.",
-      "music_template_custom_why": "When you have found values you like. Templates never change it; \"Copy to custom\" starts it from a template.",
+      "music_template_custom_why": "When no template fits. Every profile keeps its own values, so tuning one never changes another.",
       "music_template_behind_speakers": "Behind speakers",
       "music_template_behind_speakers_purpose": "Look like your listening position does.",
       "music_template_behind_speakers_best": "Music and TV with the sensor behind or near the speakers, or on the amplifier.",
@@ -301,11 +302,8 @@
       "music_template_analyser_why": "Instant attack and a short release, like the MSGEQ7 spectrum analysers sold on AliExpress and broadcast peak meters.",
       "music_look_best": "Best use",
       "music_look_why": "Why / when",
-      "music_look_values": "Values in use",
-      "music_copy_to_custom": "Copy to custom",
-      "music_copy_to_custom_confirm": "Replace Custom's values with this profile's?",
-      "music_custom": "Custom profile",
       "music_colour": "Colour range",
+      "music_profile_settings": "Profile settings",
       "music_eq_load": "Apply the selected preset",
       "music_eq_load_action": "Load",
       "music_eq_flat": "Flat",
@@ -319,9 +317,6 @@
       "music_eq_sparkle": "Sparkle",
       "music_eq_fitted": "Fitted (calibration)",
       "music_spectrum_rate": "Sensor update rate",
-      "music_spectrum_rate_eco": "least often, the lightest load on the network",
-      "music_spectrum_rate_normal": "the default",
-      "music_spectrum_rate_fast": "every new measurement, only while the tablet shows now playing",
       "music_source": "Music sensor",
       "open_view": "Open the Ramka view",
       "language": "Language",

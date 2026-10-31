@@ -89,28 +89,35 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
 
 A response profile sets how the visual reacts: rise, fall, hold, tilt and a six-range EQ. It does
 not change the colour range: the neutral and hot dB values stay the user's own helpers whichever
-profile is on, as do flavour and palette. `input_select.<prefix>_music_template` picks one:
+profile is on, as do flavour and palette. `input_select.<prefix>_music_template` picks one. **Every
+profile is editable and keeps its own values**:
 
-- `custom`: the user's own, from the helpers above plus `input_number.<prefix>_music_hold_s` and
+- `custom`: the helpers above (`input_number.<prefix>_music_{rise_ms,fall_s}`,
+  `input_boolean.<prefix>_music_tilt`) plus `input_number.<prefix>_music_hold_s` and
   `input_number.<prefix>_music_eq_{sub,bass,low_mid,mid,presence,air}` (−18…+12 dB, flat at first).
-  Only the user, the reset and the two scripts below write them. They are always editable, whichever
-  profile is on; the cards follow them when `custom` is selected.
-- `behind_speakers`, `lively`, `calm`, `analyser`: fixed templates rendered from the catalog's table. MLP
-  match takes the home's `fitted` EQ once that is not flat, else its `behind_speakers` EQ.
+  Their ids are those of the Custom profile before the templates were editable, so a home's tuning stays.
+- `behind_speakers`, `lively`, `calm`, `analyser`: ten helpers each,
+  `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`
+  and `input_boolean.<prefix>_music_<id>_tilt`, with Custom's ranges. They start at the catalog's
+  values for the template (the table in `templates/package.yaml.j2`); `behind_speakers` starts from
+  the home's `fitted` EQ once that is not flat, else its `behind_speakers` EQ.
 
-`sensor.<prefix>_music_look` carries the active profile (attributes rise, fall, hold, tilt, eq) in the card's `look` shape; every
-ambient-wave-card of the visual (the now-playing view, the settings preview) binds it with
-`look:`, next to its helper bindings, which the card reads while the sensor is unavailable.
+Only the user, the seed and the reset, and the EQ loader below write a profile's helpers; choosing a
+profile writes none. `sensor.<prefix>_music_look` carries the selected profile (attributes rise,
+fall, hold, tilt, eq, read from that profile's own helpers, each falling back to the profile's
+starting value while its helper is unavailable) in the card's `look` shape; a select state that is
+no entry id is Custom. Every ambient-wave-card of the visual (the now-playing view, the settings
+preview) binds it with `look:`, next to its helper bindings, which the card reads while the sensor
+is unavailable.
 
-- **EQ presets.** `input_select.<prefix>_music_eq` loads a preset's six gains into Custom's EQ
-  (`script.<prefix>_music_load_eq`, whichever profile is on). The catalog carries `flat`, the
-  WLED-derived curves, `bass_light`, `voices` and `sparkle`; `behind_speakers`, `half_match` and `fitted`
-  are flat until the home sets them with the input `music_eq_presets`, for example
-  `{fitted: {bass: -6, air: 2}}` (a key left out is 0; an unknown preset or key, or a
-  value outside −18…+12, fails the render). `fitted` comes from a pink-noise calibration: Custom's
-  EQ adjusted until the bands sit level at 50–75 % of the window, the values copied into the input.
-- **Copy to custom.** `script.<prefix>_music_copy_to_custom` copies the active profile's rise, fall,
-  hold, tilt and six EQ gains into Custom's helpers and selects `custom`; the colour range is left alone.
+- **EQ presets.** `input_select.<prefix>_music_eq` loads a preset's six gains into the selected
+  profile's EQ (`script.<prefix>_music_load_eq`, field `preset`; an id that is no preset writes
+  nothing and logs a warning). The catalog carries `flat`, the WLED-derived curves, `bass_light`,
+  `voices` and `sparkle`; `behind_speakers`, `half_match` and `fitted` are flat until the home sets
+  them with the input `music_eq_presets`, for example `{fitted: {bass: -6, air: 2}}` (a key left out
+  is 0; an unknown preset or key, or a value outside −18…+12, fails the render). `fitted` comes from
+  a pink-noise calibration: a profile's EQ adjusted until the bands sit level at 50–75 % of the
+  window, the values copied into the input.
 
 ## Live settings
 
@@ -127,6 +134,7 @@ approach toggle it has had since 0.1.0.
 | Plants (with `plants`, 0.7.0) | `input_number.<prefix>_{plants_per_page,plants_page_s}` | plants |
 | Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
 | Music look (with `music_visual`, unreleased) | `input_select.<prefix>_music_{template,eq}`, `input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}` | music_look |
+| Music profiles (with `music_visual`, unreleased) | per template (`behind_speakers`, `lively`, `calm`, `analyser`): `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`, `input_boolean.<prefix>_music_<id>_tilt` | music_profiles |
 
 - **Defaults.** The catalog's: approach on, off delay 300 s, brightness 16 to 204, near 100 cm for
   1 s, controls hold 5 s, full brightness at 200 lx, theme `dark`, every page on, Advanced off; the
@@ -141,12 +149,14 @@ approach toggle it has had since 0.1.0.
   helper without `initial:` and without a restored state (the sliders of issue #51). The
   presence_display group needs all seven numbers so; the pages group is new in 0.4.0 and is seeded
   whenever the flag is off; the music_visual group needs its four dB helpers at 0 and is also seeded
-  after the flag is on, for a home that adds `music_visual` later. **A home that already runs the
+  after the flag is on, for a home that adds `music_visual` later; music_look (Custom's EQ and hold)
+  and music_profiles (the templates' numbers) likewise, so a home that had the profiles before they
+  were editable gets the templates' values at its next start. **A home that already runs the
   Ramka keeps its tuning**: its numbers are not all at their minimum, so neither they nor the
   booleans of that group are touched; it gets every page switch on and the music defaults.
 - **Reset.** `script.<prefix>_settings_reset` writes the defaults again. Field `page` (`general`, a
   view) limits it to that page's helpers, field `groups` (`presence_display`, `pages`,
-  `music_visual`) to those groups; with both, the helpers in both; with neither, every helper and
+  `music_visual`, `music_look`, `music_profiles`, …) to those groups; with both, the helpers in both; with neither, every helper and
   `input_boolean.<prefix>_ambient_music` too. It never touches audio-sensor's music source or
   calibration: a measurement is not a preference. The one audio-sensor helper it sets, while it is
   there, is the sensor update rate (`input_select.audio_sensor_music_spectrum_rate`, to `normal`).
@@ -243,16 +253,23 @@ lovelace:
   unavailable), where the card's element does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
   as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
   phone the strip is narrower at the same height.
-- **Response profile** (Music, unreleased): the profile select sits in the Basic entities card. The
-  Response profile grid shows the selected profile's name, purpose, best use and why (translated; the
-  select shows the ids), its values as the look sensor has them (rise, fall, hold, tilt, the six EQ
-  gains) and, while a template is selected, "Copy to custom". The Custom grid is always shown and
-  editable: rise, fall, hold, tilt, the EQ preset select with "Apply the selected preset" (it loads
-  the select's preset again; it works whichever profile is on), the six EQ ranges and the presets'
-  names. The Colour range grid holds the four neutral and hot dB values, which no profile changes.
-  The page's "Reset to default" restores everything on the Music page.
+- **Music page layout** (unreleased): Basic (the page switch, visualization, palette, the response
+  profile and the Advanced switch), then Advanced, the whole section shown while the switch is on
+  (audio-sensor's music source, the two flavours, line width, redraw rate and audio-sensor's sensor
+  update rate; the audio-sensor rows hide while unavailable), the Preview across both columns,
+  Profile settings, the Colour range and the Calibration.
+- **Response profile** (Music, unreleased): the profile select has an (i) at its end
+  (`custom:ramka-info-select-row`, `cards/info-select-row.js`): hovering with a mouse shows the
+  selected profile's purpose, best use and why / when (translated; the select shows the ids), a tap
+  pins it open on a tablet or phone, a tap elsewhere or Escape closes it. Profile settings holds one
+  card per profile, shown while that profile is selected: rise, fall, hold, tilt, the EQ preset
+  select (with an (i) naming the selected preset), "Apply the selected preset" (it loads the
+  select's preset again into this profile) and the six EQ ranges. The Colour range grid holds the
+  four neutral and hot dB values, which no profile changes. The page's "Reset to default" restores
+  everything on the Music page, every profile included.
 - **Music sensor and calibration** (Music, Advanced): audio-sensor's
-  `input_select.audio_sensor_music_source`, the offset in use with "calibrated" or "estimate", the
+  `input_select.audio_sensor_music_source` (in the Advanced section) and, in the Calibration
+  section, the offset in use with "calibrated" or "estimate", the
   mic gain (read-only: changing it is a flash), the note, the procedure, the measured offset and
   note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render
   cannot see audio-sensor, so these cards hide while the select is unavailable; that a missing

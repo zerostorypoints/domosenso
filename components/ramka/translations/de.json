@@ -121,6 +121,9 @@
       "extra": "Zweiter Messwert",
       "none": "—",
       "missing": "nicht gefunden"
+    },
+    "info_select_row": {
+      "about": "Zu dieser Auswahl"
     }
   },
   "ui": {
@@ -225,7 +228,6 @@
       "reset_confirm": "Die Einstellungen dieser Seite auf ihre Standardwerte zurücksetzen?",
       "reset_all": "Alle Einstellungen zurücksetzen",
       "reset_all_confirm": "Alle Ramka-Einstellungen auf ihre Standardwerte zurücksetzen?",
-      "music_sensor": "Musiksensor",
       "calibration": "Kalibrierung",
       "calibration_procedure": "Ein Referenzmessgerät neben die Platine stellen und gleichmässiges rosa Rauschen oder Musik in Gesprächslautstärke abspielen. Beide ablesen: Der gemessene Offset ist der Referenzwert minus der Pegel der Platine ohne Offset. Ihn unten mit einer Notiz eintragen und dann anwenden.",
       "calibration_readme": "README von audio-sensor",
@@ -278,11 +280,10 @@
       "music_eq_presence": "EQ Präsenz (4 kHz)",
       "music_eq_air": "EQ Luft (12,5 kHz)",
       "music_hold_s": "Halten",
-      "music_look": "Reaktionsprofil",
       "music_template_custom": "Eigener",
       "music_template_custom_purpose": "Ihr eigenes Profil; beginnt mit dem bisherigen Design.",
       "music_template_custom_best": "Alles, sobald Sie ihn abgestimmt haben.",
-      "music_template_custom_why": "Wenn Sie Werte gefunden haben, die Ihnen gefallen. Vorlagen ändern ihn nie; „Als eigenen Stil übernehmen“ startet ihn aus einer Vorlage.",
+      "music_template_custom_why": "Wenn keine Vorlage passt. Jedes Profil behält seine eigenen Werte; wer eines einstellt, ändert kein anderes.",
       "music_template_behind_speakers": "Hinter den Lautsprechern",
       "music_template_behind_speakers_purpose": "So aussehen wie am Hörplatz.",
       "music_template_behind_speakers_best": "Musik und Fernsehen mit dem Sensor hinter oder nahe an den Lautsprechern oder auf dem Verstärker.",
@@ -301,11 +302,8 @@
       "music_template_analyser_why": "Sofortiger Anstieg und kurzes Abklingen, wie bei den MSGEQ7-Spektrumanalysatoren von AliExpress und bei Spitzenpegelmessern im Rundfunk.",
       "music_look_best": "Am besten für",
       "music_look_why": "Warum / wann",
-      "music_look_values": "Aktuelle Werte",
-      "music_copy_to_custom": "Als eigenen Stil übernehmen",
-      "music_copy_to_custom_confirm": "Die Werte des eigenen Profils durch die dieses Profils ersetzen?",
-      "music_custom": "Eigenes Profil",
       "music_colour": "Farbbereich",
+      "music_profile_settings": "Profileinstellungen",
       "music_eq_load": "Gewählte Voreinstellung anwenden",
       "music_eq_load_action": "Laden",
       "music_eq_flat": "Flach",
@@ -319,9 +317,6 @@
       "music_eq_sparkle": "Brillanz",
       "music_eq_fitted": "Angepasst (Kalibrierung)",
       "music_spectrum_rate": "Sensor-Aktualisierungsrate",
-      "music_spectrum_rate_eco": "am seltensten, die geringste Netzlast",
-      "music_spectrum_rate_normal": "die Voreinstellung",
-      "music_spectrum_rate_fast": "jede neue Messung, nur solange das Tablet die Wiedergabe zeigt",
       "music_source": "Musiksensor",
       "open_view": "Ramka-Ansicht öffnen",
       "language": "Sprache",

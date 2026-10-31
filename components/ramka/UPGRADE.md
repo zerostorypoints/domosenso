@@ -6,25 +6,43 @@ Newest first. Each entry says what changed and what a home that already runs the
 ## Unreleased: music looks
 
 **Response profiles** (with `music_visual`): a profile select (`custom`, `behind_speakers`, `lively`,
-`calm`, `analyser`), Custom's EQ and hold, EQ presets and Copy to custom (README, "Response
+`calm`, `analyser`), each profile editable with its own values, and EQ presets (README, "Response
 profile"). A profile sets rise, fall, hold, tilt and the EQ; it does not change the colour range, so
 the four neutral and hot dB values stay the user's whichever profile is on. The visual cards bind
-`sensor.<prefix>_music_look` (attributes rise, fall, hold, tilt, eq). On the settings page's Music
-page the template select sits in the Basic entities card; the rise, fall, tilt and the EQ move from
-Advanced to an always-editable Custom grid, and the four dB values to a Colour range grid. There is
-no blind audition.
+`sensor.<prefix>_music_look` (attributes rise, fall, hold, tilt, eq, read from the selected
+profile's own helpers). There is no blind audition.
+
+- **Per-profile values.** Custom keeps its helpers and ids (`input_number.<prefix>_music_{rise_ms,fall_s,hold_s}`,
+  `input_number.<prefix>_music_eq_<range>`, `input_boolean.<prefix>_music_tilt`), so its tuning stays.
+  New: ten helpers per template, `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`
+  and `input_boolean.<prefix>_music_<id>_tilt`, in the new settings group `music_profiles`; the seed
+  gives them the catalog's values at the next start (also after the seeded flag is on), and the Music
+  page's Reset and the global reset restore them.
+- **EQ presets** load into the selected profile's EQ (`script.<prefix>_music_load_eq`, field `preset`),
+  no longer always into Custom's.
+- **Copy to custom is gone**: `script.<prefix>_music_copy_to_custom` and its button. A template is now
+  tuned in place; a home that called the script from its own automations removes the call.
+- **Settings, Music**: Basic (with the profile select), Advanced right after it (the whole section
+  with the switch: music source, flavours, line width, redraw rate, sensor update rate; no longer an
+  explanation of `eco` / `normal` / `fast`), Preview, Profile settings (one card per profile, shown
+  while it is selected), Colour range, Calibration. The description card, "Values in use" and the
+  preset list are gone: the profile and EQ preset selects carry an (i) tooltip instead.
+- **New card resource**: `cards/info-select-row.js` (`custom:ramka-info-select-row`), an entities-card
+  row; the deploy creates its Lovelace resource.
 
 The looks need the audio-sensor release that carries the `look` option and `dynamics.eq`; an older
 audio-sensor card ignores both and draws without them, so update the two components together.
 
 ### What a home does
 
-- With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers
-  and a template sensor). The seed gives Custom a flat EQ and a 1.5 s hold and selects `custom`, so
-  the visual looks as before.
+- With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers,
+  a template sensor and a new Lovelace resource). The seed gives Custom a flat EQ and a 1.5 s hold
+  and selects `custom`, and gives each template its starting values, so the visual looks as before.
 - Optional: the home's measured curves in `music_eq_presets` (`behind_speakers`, `half_match`, `fitted`),
   then a render. A home that set `music_eq_presets.mlp_match` while the feature was unreleased renames
-  that key to `behind_speakers` (an unknown key fails the render).
+  that key to `behind_speakers` (an unknown key fails the render). `behind_speakers`' own EQ starts
+  from that curve; a home that changes the curve later and wants it in the profile loads the preset
+  into it, or resets the Music page.
 
 ## Unreleased: the About page in the settings
 

@@ -53,11 +53,26 @@
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
 [%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
 [%- set rate_there = "{condition: state, entity: input_select.audio_sensor_music_spectrum_rate, state_not: unavailable}" -%]
-[#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. -#]
+[#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. A helper given as
+    (domain, suffix, descriptions) is a select with an info tooltip (custom:ramka-info-select-row,
+    cards/info-select-row.js): Home Assistant's own row and an (i) that tells what the selected option
+    does; descriptions maps every option to its text in this page's language. A fourth element names
+    the label key when it is not the suffix. -#]
 [%- macro rows(helpers) -%]
-[%- for domain, suffix in helpers %]
-              - entity: [[ domain ]].[[ p ]]_[[ suffix ]]
-                name: [[ t('ui.settings.' ~ suffix) | yaml ]]
+[%- for h in helpers %]
+[%- set label = h[3] if h | length > 3 else h[1] %]
+[%- if h | length > 2 and h[2] %]
+              - type: custom:ramka-info-select-row
+                entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+                name: [[ t('ui.settings.' ~ label) | yaml ]]
+                descriptions:
+[%- for option, text in h[2].items() %]
+                  [[ option ]]: [[ text | tojson ]]
+[%- endfor %]
+[%- else %]
+              - entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+                name: [[ t('ui.settings.' ~ label) | yaml ]]
+[%- endif %]
 [%- endfor -%]
 [%- endmacro -%]
 [%- macro heading(key, icon, visibility='') %]
@@ -128,82 +143,57 @@
 [%- endmacro -%]
 [%- macro plant_labels(items) -%][% for x in items %][[ x.label if x.label is string else x.label[lang] | default(x.label.values() | first) ]][% if not loop.last %], [% endif %][% endfor %][%- endmacro -%]
 [%- macro labels(items, key='label') -%][[ items | map(attribute=key) | join(', ') if items else '—' ]][%- endmacro -%]
-[#- The response profile (spec 7): its select sits in Basic; this card has the selected entry's
-    description and its values ("Copy to custom" while a template is selected), then Custom's rows,
-    always shown and editable whichever profile is on, and the colour range, which no profile
-    changes. The select keeps the entry ids; this card names them in the page's language,
-    as the update rate's options are explained. A select state that is no entry id is Custom, as
-    the look sensor reads it. The ids are the package's (look_ids, eq_presets, eq_keys in
-    templates/package.yaml.j2); tests/test_ramka_render.py holds both to the same lists. -#]
+[#- The response profiles (spec 7): the select sits in Basic with an info tooltip that tells what the
+    selected profile is for; every profile keeps its own values, edited in its own card under "Profile
+    settings", shown while that profile is selected. A select state that is no entry id is Custom, as
+    the look sensor reads it. The colour range is the user's whichever profile is on. The ids are the
+    package's (look_ids, eq_presets, eq_keys, profile_prefix in templates/package.yaml.j2);
+    tests/test_ramka_render.py holds both to the same lists. -#]
 [%- set template_select = 'input_select.' ~ p ~ '_music_template' -%]
-[%- set custom_off = "{condition: state, entity: " ~ template_select ~ ", state_not: custom}" -%]
 [%- set look_ids = ['custom', 'behind_speakers', 'lively', 'calm', 'analyser'] -%]
 [%- set eq_preset_ids = ['flat', 'behind_speakers', 'half_match', 'wled_big_speakers', 'wled_big_speakers_ics', 'wled_pink', 'bass_light', 'voices', 'sparkle', 'fitted'] -%]
 [%- set eq_keys = ['sub', 'bass', 'low_mid', 'mid', 'presence', 'air'] -%]
-[%- set look = 'sensor.' ~ p ~ '_music_look' -%]
-[%- set eq_rows = [] -%][%- for key in eq_keys -%][%- set _ = eq_rows.append(('input_number', 'music_eq_' ~ key)) -%][%- endfor -%]
-[%- macro describe(id) %]
-              **[[ t('ui.settings.music_template_' ~ id) ]]**: [[ t('ui.settings.music_template_' ~ id ~ '_purpose') ]]
-
-              **[[ t('ui.settings.music_look_best') ]]**: [[ t('ui.settings.music_template_' ~ id ~ '_best') ]]
-
-              **[[ t('ui.settings.music_look_why') ]]**: [[ t('ui.settings.music_template_' ~ id ~ '_why') ]]
-[%- endmacro -%]
-[%- macro look_sections() %]
-      - type: grid
-        cards:[[ heading('music_look', 'mdi:palette-swatch') ]]
-          - type: markdown
-            content: |-
-              {% set id = states('[[ template_select ]]') %}
-[%- for id in look_ids if id != 'custom' %]
-              {%- [% if loop.first %]if[% else %]elif[% endif %] id == '[[ id ]]' %}[[ describe(id) ]]
-[%- endfor %]
-              {%- else %}[[ describe('custom') ]]
-              {%- endif %}
-          - type: markdown
-            content: |-
-              **[[ t('ui.settings.music_look_values') ]]**
-              {% set eq = state_attr('[[ look ]]', 'eq') or {} %}{% macro n(v, unit) %}{{ ('%g' % v ~ ' ' ~ unit) if v is number else '—' }}{% endmacro %}
-
-              | | |
-              |---|---|
-              | [[ t('ui.settings.music_rise_ms') ]] | {{ n(state_attr('[[ look ]]', 'rise'), 'ms') }} |
-              | [[ t('ui.settings.music_fall_s') ]] | {{ n(state_attr('[[ look ]]', 'fall'), 's') }} |
-              | [[ t('ui.settings.music_hold_s') ]] | {{ n(state_attr('[[ look ]]', 'hold'), 's') }} |
-              | [[ t('ui.settings.music_tilt') ]] | {{ '✓' if state_attr('[[ look ]]', 'tilt') else '—' }} |
-[%- for key in eq_keys %]
-              | [[ t('ui.settings.music_eq_' ~ key) ]] | {{ n(eq.[[ key ]], 'dB') }} |
-[%- endfor %]
-          - type: button
-            visibility: [ [[ custom_off ]] ]
-            name: [[ t('ui.settings.music_copy_to_custom') | yaml ]]
-            icon: mdi:content-copy
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: script.[[ p ]]_music_copy_to_custom
-              confirmation:
-                text: [[ t('ui.settings.music_copy_to_custom_confirm') | yaml ]]
-            grid_options: {columns: full}
-      # Custom's helpers, which only the user and Copy to custom change; shown and editable whichever
-      # profile is on. The Load button applies the EQ select's preset again: choosing the preset
-      # already selected changes no state.
-      - type: grid
-        cards:[[ heading('music_custom', 'mdi:tune') ]]
-          - type: entities
-            entities:[[ rows([('input_number', 'music_rise_ms'), ('input_number', 'music_fall_s'), ('input_number', 'music_hold_s'),
-          ('input_boolean', 'music_tilt'), ('input_select', 'music_eq')]) ]]
+[#- The tooltips' texts: a profile's purpose, best use and why / when, one line each; a preset's name. -#]
+[%- set profile_texts = {} -%]
+[%- for id in look_ids -%]
+[%- set _ = profile_texts.update({id: t('ui.settings.music_template_' ~ id ~ '_purpose') ~ '\n'
+    ~ t('ui.settings.music_look_best') ~ ': ' ~ t('ui.settings.music_template_' ~ id ~ '_best') ~ '\n'
+    ~ t('ui.settings.music_look_why') ~ ': ' ~ t('ui.settings.music_template_' ~ id ~ '_why')}) -%]
+[%- endfor -%]
+[%- set preset_texts = {} -%]
+[%- for preset in eq_preset_ids -%][%- set _ = preset_texts.update({preset: t('ui.settings.music_eq_' ~ preset)}) -%][%- endfor -%]
+[#- One profile's rows: rise, fall, hold, tilt, the EQ preset select (it loads into the selected
+    profile, which is this card's), the Load button, the six EQ gains; labelled as Custom's. -#]
+[%- macro profile_rows(id) -%]
+[%- set h = 'music_' if id == 'custom' else 'music_' ~ id ~ '_' -%]
+[[ rows([('input_number', h ~ 'rise_ms', none, 'music_rise_ms'), ('input_number', h ~ 'fall_s', none, 'music_fall_s'),
+         ('input_number', h ~ 'hold_s', none, 'music_hold_s'), ('input_boolean', h ~ 'tilt', none, 'music_tilt'),
+         ('input_select', 'music_eq', preset_texts)]) ]]
               - type: button
                 icon: mdi:tune-vertical-variant
                 name: [[ t('ui.settings.music_eq_load') | yaml ]]
                 action_name: [[ t('ui.settings.music_eq_load_action') | yaml ]]
                 tap_action:
                   action: perform-action
-                  perform_action: script.[[ p ]]_music_load_eq[[ rows(eq_rows) ]]
-          - type: markdown
-            content: |-
-[%- for preset in eq_preset_ids %]
-              - `[[ preset ]]`: [[ t('ui.settings.music_eq_' ~ preset) ]]
+                  perform_action: script.[[ p ]]_music_load_eq
+[%- set eq_rows = [] -%][%- for key in eq_keys -%][%- set _ = eq_rows.append(('input_number', h ~ 'eq_' ~ key, none, 'music_eq_' ~ key)) -%][%- endfor -%]
+[[ rows(eq_rows) ]]
+[%- endmacro -%]
+[%- macro profile_sections() %]
+      # Each profile's own values, its card shown while it is selected (Custom also for a state that is
+      # no entry id). The Load button applies the EQ select's preset again: choosing the preset already
+      # selected changes no state.
+      - type: grid
+        cards:[[ heading('music_profile_settings', 'mdi:tune') ]]
+[%- for id in look_ids %]
+          - type: entities
+[%- if id == 'custom' %]
+            visibility: [ {condition: state, entity: [[ template_select ]], state_not: [[ look_ids[1:] | tojson ]]} ]
+[%- else %]
+            visibility: [ {condition: state, entity: [[ template_select ]], state: [[ id ]]} ]
+[%- endif %]
+            title: [[ t('ui.settings.music_template_' ~ id) | yaml ]]
+            entities:[[ profile_rows(id) ]]
 [%- endfor %]
       # The colour range: where the palette starts and where it is hot, the user's whichever profile is on.
       - type: grid
@@ -327,7 +317,28 @@ views:
     type: sections
     max_columns: 2
     sections:
-[%- if visuals %][[ switch_section('music', [('input_select', 'music_visual'), ('input_select', 'music_palette'), ('input_select', 'music_template'), ('input_boolean', 'settings_advanced')]) ]]
+[%- if visuals %][[ switch_section('music', [('input_select', 'music_visual'), ('input_select', 'music_palette'), ('input_select', 'music_template', profile_texts), ('input_boolean', 'settings_advanced')]) ]]
+      # Advanced, right after Basic (the second column), the whole section shown while the Advanced
+      # switch is on; its cards carry the condition too (SPEC-021). audio-sensor's music source and
+      # its sensor update rate (how often the board publishes; the redraw rate is how often the
+      # browser draws) hide while unavailable, as in a home without audio-sensor.
+      - type: grid
+        visibility: [ [[ advanced_on ]] ]
+        cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            entities:
+              - entity: input_select.audio_sensor_music_source
+                name: [[ t('ui.settings.music_source') | yaml ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]] ]
+            entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'),
+          ('input_number', 'music_line_width_px'), ('input_number', 'music_fps')]) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ rate_there ]] ]
+            entities:
+              - entity: input_select.audio_sensor_music_spectrum_rate
+                name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
       # The visual as the tablet draws it, at the strip's height, the width of the page. Without
       # audio-sensor (its select unavailable) the card's element does not exist: the classic note.
       - type: grid
@@ -348,36 +359,12 @@ views:
                 conditions:
                   - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
                   - {condition: state, entity: input_select.audio_sensor_music_source, state: unavailable}
-            content: [[ t('ui.settings.preview_classic') | yaml ]][[ look_sections() ]]
-      - type: grid
-        cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
-          - type: entities
-            visibility: [ [[ advanced_on ]] ]
-            entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'),
-          ('input_number', 'music_line_width_px'), ('input_number', 'music_fps')]) ]]
-          # audio-sensor's sensor update rate: how often the board publishes (the redraw rate above is
-          # how often the browser draws). Hidden while unavailable, as in a home without audio-sensor.
-          - type: entities
-            visibility: [ [[ advanced_on ]], [[ rate_there ]] ]
-            entities:
-              - entity: input_select.audio_sensor_music_spectrum_rate
-                name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
-          - type: markdown
-            visibility: [ [[ advanced_on ]], [[ rate_there ]] ]
-            content: |-
-[%- for option in ['eco', 'normal', 'fast'] %]
-              - `[[ option ]]`: [[ t('ui.settings.music_spectrum_rate_' ~ option) ]]
-[%- endfor %]
-      # audio-sensor's music source and the calibration of the board it names. Ramka's render cannot
-      # see audio-sensor, so these cards hide while the select is unavailable (a home without it).
+            content: [[ t('ui.settings.preview_classic') | yaml ]][[ profile_sections() ]]
+      # The calibration of the board audio-sensor's music source names. Ramka's render cannot see
+      # audio-sensor, so these cards hide while the select is unavailable (a home without it).
       # Calibration is a measurement, not a preference: no Reset touches it.
       - type: grid
-        cards:[[ heading('music_sensor', 'mdi:microphone', advanced_on ~ ', ' ~ source_there) ]]
-          - type: entities
-            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
-            entities:
-              - entity: input_select.audio_sensor_music_source
-                name: [[ t('ui.settings.music_source') | yaml ]][[ heading('calibration', 'mdi:tune-vertical', advanced_on ~ ', ' ~ source_there) ]]
+        cards:[[ heading('calibration', 'mdi:tune-vertical', advanced_on ~ ', ' ~ source_there) ]]
           - type: markdown
             visibility: [ [[ advanced_on ]], [[ source_there ]] ]
             content: |-
