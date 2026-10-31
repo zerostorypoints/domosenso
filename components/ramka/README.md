@@ -133,6 +133,7 @@ approach toggle it has had since 0.1.0.
 | General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
 | each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
 | Plants (with `plants`, 0.7.0) | `input_number.<prefix>_{plants_per_page,plants_page_s}` | plants |
+| Climate (with `climate`, unreleased) | `input_number.<prefix>_climate_slots`; the rooms, `sensor.<prefix>_climate_rooms`, are group climate | climate_slots |
 | Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
 | Music look (with `music_visual`, unreleased) | `input_select.<prefix>_music_{template,eq}`, `input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}` | music_look |
 | Music profiles (with `music_visual`, unreleased) | per template (`behind_speakers`, `lively`, `calm`, `analyser`): `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`, `input_boolean.<prefix>_music_<id>_tilt` | music_profiles |
@@ -230,13 +231,23 @@ lovelace:
   album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
   With one folder per event the list is long: the card has a filter, and grouping folders (by year,
   `2025/…`) gives a shorter list.
-- **Climate**: in Advanced, up to ten rooms, each a name, a main reading and a second one, picked
+- **Climate**: in Basic, the number of places (`input_number.<prefix>_climate_slots`, 1 to 20,
+  default 10); in Advanced, one row per place, each a name, a main reading and a second one, picked
   with Home Assistant's entity picker, which searches the home's sensors with a unit as you type
-  (`climate-rooms-card`; a plain dropdown if the picker cannot be loaded). The room tiles and both
-  7-day charts follow them, room n in colour n, outside last; a reading shows its sensor's unit. A
-  room without a main reading is left out, an empty name becomes the sensor's area. They are kept by
-  `sensor.<prefix>_climate_rooms`; the defaults (and the reset) are the first ten of `climate`,
-  temperature and humidity.
+  (`climate-rooms-card`; a plain dropdown if the picker cannot be loaded). The order changes by
+  dragging a row by its handle (mouse, touch or pen: pointer events, so it works on the tablet and a
+  phone) or with the row's up and down buttons (keyboard, screen readers); the picker is a plain
+  ordered list, not the Ramka's grid. A row without a main reading is a **spacer**: an empty tile
+  on the Ramka, the size of a room tile, so rooms can be placed where they should sit in the grid;
+  empty rows at the end are left out. The room tiles and both 7-day charts follow the rows: the
+  n-th room (spacers skipped) in series colour n, in its tile, the picker's dot and its chart lines
+  (also when an earlier room has no second reading), outside last; the charts skip spacers. A
+  reading shows its sensor's unit, an empty name becomes the sensor's area. Fewer places than
+  filled rows deletes nothing: the rooms beyond are kept but not shown on the Ramka, and the picker
+  says how many there are, with a button to remove them. The rows are kept by
+  `sensor.<prefix>_climate_rooms` (attribute `rooms`: up to twenty places, each
+  `{label, main, extra}` or `{spacer: true}`, never a spacer at the end; state: how many rooms);
+  the defaults (and the reset) are the first ten of `climate`, temperature and humidity.
 - **Air**: a switch per configured reading (off leaves its tile out, the others share the room)
   and, in Advanced, the two limits of each where its colour changes; the defaults are those in
   "Dashboards and cards". An unusable limit keeps the default.

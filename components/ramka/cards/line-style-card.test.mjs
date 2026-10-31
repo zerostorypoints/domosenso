@@ -92,3 +92,36 @@ test("with rooms, the inner card charts the rooms' readings, then `after`; witho
   await flush();
   assert.equal(made.length, count);
 });
+
+test("with rooms, spacers are skipped, only the first `slots` places count, and each line has its room's colour", async () => {
+  const { card, made, chart } = await makeCard({
+    card: { type: "statistics-graph", entities: [{ entity: "sensor.a" }] },
+    line_styles: { "sensor.out": { width: 3 } },
+    rooms: { entity: "sensor.rooms", slots: "input_number.slots", key: "extra", after: [{ entity: "sensor.out", name: "Outside" }] },
+  });
+  const rooms = [{ spacer: true }, { label: "K", main: "sensor.k_t", extra: "sensor.k_h" }, { label: "H", main: "sensor.h_t", extra: "" },
+                 { label: "B", main: "sensor.b_t", extra: "sensor.b_h" }, { label: "Z", main: "sensor.z_t", extra: "sensor.z_h" }];
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } }, "input_number.slots": { state: "4.0" } } };
+  await flush();
+  // Z is beyond the four places; H has no humidity, so B is the second line but the third room.
+  assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.k_h", name: "K" }, { entity: "sensor.b_h", name: "B" },
+                                          { entity: "sensor.out", name: "Outside" }]);
+  card._hook();
+  chart.data = [series("sensor.k_h-mean"), series("sensor.b_h-mean"), series("sensor.out-mean"), series("sensor.x-mean")];
+  const palette = card.constructor.PALETTE;
+  assert.deepEqual(chart.data.map((s) => s.color), [palette[0], palette[2], palette[3], undefined]);
+  assert.deepEqual(chart.data.map((s) => s.lineStyle.color), [palette[0], palette[2], palette[3], undefined]);
+  assert.equal(chart.data[0].itemStyle.color, palette[0]);
+  // The line style and the colour together.
+  assert.deepEqual(chart.data[2].lineStyle, { width: 3, color: palette[3] });
+  // The theme's series colour wins over the fallback.
+  document.body.append(card);  // computed styles need a connected element
+  card.style.setProperty("--graph-color-3", "#123456");
+  chart.data = [series("sensor.b_h-mean")];
+  assert.equal(chart.data[0].color, "#123456");
+  card.remove();
+  // Only spacers within the places: the card's own entities.
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } }, "input_number.slots": { state: "1" } } };
+  await flush();
+  assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.a" }]);
+});

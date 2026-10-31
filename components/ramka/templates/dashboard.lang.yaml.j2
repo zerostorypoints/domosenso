@@ -281,12 +281,13 @@ views:
         visibility: *climate
         [%- endif %]
         cards:
-          # The rooms picked on the settings page (sensor.[[ p ]]_climate_rooms); these until the
-          # seed has set it.
+          # The rooms picked on the settings page (sensor.[[ p ]]_climate_rooms), its first `slots`
+          # places, a spacer an empty tile; these until the seed has set it.
           - type: custom:rooms-card
             height: calc([[ vh ]] - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
             entity: sensor.[[ p ]]_climate_rooms
+            slots: input_number.[[ p ]]_climate_slots
             rooms:
             [%- for room in series %]
               - name: [[ room.label | yaml ]]
@@ -315,10 +316,12 @@ views:
             [%- else %]
             line_styles: {}
             [%- endif %]
-            # The settings page's rooms, their extra readings, then outside; the entities
-            # below until the seed has set them.
+            # The settings page's rooms (its first `slots` places, spacers skipped), their extra
+            # readings in the rooms' colours, then outside; the entities below until the seed has
+            # set them.
             rooms:
               entity: sensor.[[ p ]]_climate_rooms
+              slots: input_number.[[ p ]]_climate_slots
               key: extra
             [%- if outside and outside.humidity is defined %]
               after: [{entity: [[ outside.humidity ]], name: [[ t('ui.climate.outside') | yaml ]]}]
@@ -343,10 +346,12 @@ views:
             [%- else %]
             line_styles: {}
             [%- endif %]
-            # The settings page's rooms, their main readings, then outside; the entities
-            # below until the seed has set them.
+            # The settings page's rooms (its first `slots` places, spacers skipped), their main
+            # readings in the rooms' colours, then outside; the entities below until the seed has
+            # set them.
             rooms:
               entity: sensor.[[ p ]]_climate_rooms
+              slots: input_number.[[ p ]]_climate_slots
               key: main
             [%- if outside %]
               after: [{entity: [[ outside.temperature ]], name: [[ t('ui.climate.outside') | yaml ]]}]

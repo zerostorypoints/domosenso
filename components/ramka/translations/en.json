@@ -120,7 +120,13 @@
       "main": "Main reading",
       "extra": "Second reading",
       "none": "—",
-      "missing": "not found"
+      "missing": "not found",
+      "spacer": "Empty place",
+      "handle": "Drag to move this row",
+      "up": "Move up",
+      "down": "Move down",
+      "beyond": "Rooms beyond the number of places, not on the Ramka: {n}. Raise the number to show them again.",
+      "remove_beyond": "Remove them"
     },
     "info_select_row": {
       "about": "About this choice"
@@ -375,7 +381,8 @@
       "plants_page_s": "Time per plants page",
       "plants_discover": "found by the plants component",
       "climate_rooms": "Rooms",
-      "climate_rooms_how": "Up to ten rooms, each a main reading and a second one, by default the temperature and the humidity. Room 1 is the first tile and the first line of the charts, in the colour of its dot. A room without a main reading is left out; an empty name becomes the sensor's area.",
+      "climate_rooms_how": "One row per place (Number of places, in Basic), each a name, a main reading and a second one, by default the temperature and the humidity. Drag a row by its handle, or use the arrows, to change the order. The n-th room is the n-th room tile and the n-th line of the charts, in the colour of its dot. A row without a main reading is an empty place: an empty tile on the Ramka, so rooms can be placed where you want them; empty rows at the end are left out. An empty name becomes the sensor's area.",
+      "climate_slots": "Number of places",
       "air_score": "Show air quality",
       "air_co2": "Show CO₂",
       "air_pm2_5": "Show PM2.5",

@@ -566,6 +566,9 @@ PLANT_SETTINGS = {"input_number.ramka_plants_per_page": 6, "input_number.ramka_p
 ALBUMS = "sensor.ramka_photo_albums"
 # Nor are the Climate page's rooms (amendment 2): the reset sends event ramka_climate_rooms.
 CLIMATE = "sensor.ramka_climate_rooms"
+# The number of places on the Climate page: a helper of its own group, seeded while untouched.
+CLIMATE_SLOTS = {"input_number.ramka_climate_slots": 10}
+SLOTS = "input_number.ramka_climate_slots"
 AIR_DEFAULTS = {**{f"input_boolean.ramka_air_{r}": "on" for r in AIR_READINGS},
                 **{f"input_number.ramka_air_{k}": v for k, v in AIR_LIMITS.items()}}
 
@@ -689,7 +692,7 @@ DEFAULTS = {
     "input_number.ramka_lux_max": 200, "input_boolean.ramka_ambient_music": "on",
     "input_select.ramka_theme_mode": "dark", "input_boolean.ramka_settings_advanced": "off",
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
-    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS,
+    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_SLOTS,
 }
 EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 # Custom's look (spec 5): its own group, so an upgraded home whose music window is tuned still gets
@@ -729,6 +732,7 @@ PAGE_OF = {
     **{e: "general" for e in DEFAULTS if not e.startswith("input_boolean.ramka_page_")},
     "input_boolean.ramka_ambient_music": None,
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
+    **{e: "climate" for e in CLIMATE_SLOTS},
     **{f"input_boolean.ramka_page_{v}": v for v in PAGE_VIEWS},
     **{e: "music" for e in MUSIC_DEFAULTS},
 }
@@ -739,6 +743,7 @@ GROUP_OF = {
     **{e: "music_visual" for e in MUSIC_DEFAULTS}, **{e: "music_look" for e in LOOK_DEFAULTS},
     **{e: "music_profiles" for e in PROFILE_DEFAULTS},
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
+    **{e: "climate_slots" for e in CLIMATE_SLOTS},
 }
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
@@ -943,9 +948,9 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
     package = demo["package.yaml"]
     fresh = at_minimum(package)
     music = ["music_visual", "music_look", "music_profiles"]
-    assert seed_groups(package, fresh) == ["pages", "presence_display", *music, "photos", "plants", "air", "climate"]
+    assert seed_groups(package, fresh) == ["pages", "presence_display", *music, "photos", "plants", "air", "climate", "climate_slots"]
     upgraded = {**fresh, "input_number.ramka_off_delay_s": 600.0}
-    assert seed_groups(package, upgraded) == ["pages", *music, "photos", "plants", "air", "climate"]
+    assert seed_groups(package, upgraded) == ["pages", *music, "photos", "plants", "air", "climate", "climate_slots"]
     on_purpose = {**tuned(package), "input_number.ramka_near_s": 1.0}
     assert seed_groups(package, on_purpose, rooms=[]) == ["pages", *music]
     seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on"}
@@ -967,13 +972,13 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
                                                                      if e.startswith("input_number.")}}, rooms=[])
     # unknown and unavailable count as untouched.
     unknown = {**fresh, "input_number.ramka_lux_max": "unknown", "input_number.ramka_near_cm": "unavailable"}
-    assert seed_groups(package, unknown) == ["pages", "presence_display", *music, "photos", "plants", "air", "climate"]
+    assert seed_groups(package, unknown) == ["pages", "presence_display", *music, "photos", "plants", "air", "climate", "climate_slots"]
     # Without music_visual there is no music group at all.
-    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "photos", "plants", "air", "climate"]
+    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "photos", "plants", "air", "climate", "climate_slots"]
     # Photos and air are seeded while untouched after the flag too: a home that ran 0.4.0 before
     # amendment 1 gets them at its next start (unknown), one that tuned them keeps them.
     assert seed_groups(plain["package.yaml"], {**at_minimum(plain["package.yaml"]),
-                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["photos", "plants", "air"]
+                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["photos", "plants", "air", "climate_slots"]
     one_tuned = {**music_tuned, "input_number.ramka_photo_count": "unknown", "input_number.ramka_photo_s": "unknown",
                  **{f"input_number.ramka_air_{k}": "unknown" for k in AIR_LIMITS}, "input_number.ramka_air_co2_high": 1500.0}
     assert seed_groups(package, one_tuned, rooms=[]) == ["photos"]
@@ -1010,7 +1015,8 @@ def test_reset_page_and_groups(demo):
     assert run_reset(package) == everything
     for page in ["general"] + PAGE_VIEWS:
         assert set(run_reset(package, page=page)) == {e for e in everything if PAGE_OF[e] == page}, page
-    for group in ("presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate"):
+    for group in ("presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate",
+                  "climate_slots"):
         assert set(run_reset(package, groups=[group])) == {e for e in everything if GROUP_OF[e] == group}, group
     assert set(run_reset(package, groups="pages")) == {e for e in everything if GROUP_OF[e] == "pages"}
     assert set(run_reset(package, page="general", groups=["pages"])) == {
@@ -1029,7 +1035,7 @@ def test_reset_page_and_groups(demo):
     assert set(fields) == {"page", "groups"}
     assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS
     assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual", "music_look", "music_profiles",
-                                                                 "photos", "plants", "air", "climate"]
+                                                                 "photos", "plants", "air", "climate", "climate_slots"]
 
 
 def maximal_inputs() -> dict:
@@ -1530,7 +1536,7 @@ BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_
                    # The profile (spec 7): the select; its values are Advanced.
                    "input_select.ramka_music_template"}
 BASIC["photos"] |= {"input_number.ramka_photo_count", "input_number.ramka_photo_s", "input_boolean.ramka_settings_advanced"}
-BASIC["climate"] |= {"input_boolean.ramka_settings_advanced"}
+BASIC["climate"] |= {"input_number.ramka_climate_slots", "input_boolean.ramka_settings_advanced"}
 BASIC["plants"] |= {"input_number.ramka_plants_per_page", "input_boolean.ramka_settings_advanced"}
 BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
 # The pages besides General that have Advanced parts, and so the Advanced switch too.
@@ -2298,8 +2304,9 @@ def test_climate_rooms_default_to_the_first_ten(demo, tmp_path):
     inputs["climate"] = [dict(inputs["climate"][n % 7], label=f"R{n}") for n in range(12)]
     many = run_reset(render(tmp_path, inputs)["package.yaml"], events=True)[CLIMATE]
     assert many == demo_rooms(inputs) and len(many) == 10
-    assert run_reset(package, page="climate", events=True) == {CLIMATE: rooms, "input_boolean.ramka_page_climate": "on"}
+    assert run_reset(package, page="climate", events=True) == {CLIMATE: rooms, "input_boolean.ramka_page_climate": "on", **CLIMATE_SLOTS}
     assert run_reset(package, groups=["climate"], events=True) == {CLIMATE: rooms}
+    assert run_reset(package, groups=["climate_slots"], events=True) == CLIMATE_SLOTS
     assert CLIMATE not in run_reset(package, page="photos", events=True)
 
 
@@ -2307,8 +2314,9 @@ def test_climate_rooms_sensor_and_script(demo):
     package = demo["package.yaml"]
     sensor = event_sensor(package, "ramka_climate_rooms")
     assert sensor["default_entity_id"] == CLIMATE
-    rooms = [{"label": "K", "main": "sensor.k_t", "extra": ""}]
+    rooms = [{"spacer": True}, {"label": "K", "main": "sensor.k_t", "extra": ""}]
     trigger = {"event": {"data": {"rooms": rooms}}}
+    # The state counts the rooms, not the spacers.
     assert ha(sensor["state"], trigger=trigger) == "1"
     assert ha_value(sensor["attributes"]["rooms"], trigger=trigger) == rooms
     script = package["script"]["ramka_climate_rooms_set"]
@@ -2316,11 +2324,17 @@ def test_climate_rooms_sensor_and_script(demo):
     [step] = script["sequence"]
     assert step["event"] == "ramka_climate_rooms"
     sent = lambda **f: ha_value(step["event_data"]["rooms"], **f)  # noqa: E731
-    eleven = [{"label": f"R{n}", "main": f"sensor.r{n}", "extra": f"sensor.h{n}"} for n in range(11)]
-    assert sent(rooms=eleven) == eleven[:10]
-    # A room without a sensor as its main reading is dropped; missing keys become empty.
-    assert sent(rooms=[{"label": "x", "main": ""}, {"main": "sensor.a"}, "junk", {"label": "y", "main": "light.l"}]) == [
-        {"label": "", "main": "sensor.a", "extra": ""}]
+    many = [{"label": f"R{n}", "main": f"sensor.r{n}", "extra": f"sensor.h{n}"} for n in range(21)]
+    assert sent(rooms=many) == many[:20]
+    # A row without a sensor as its main reading is a spacer in its place (an empty tile); missing
+    # keys become empty; a spacer at the end goes, and junk that is no row at all.
+    assert sent(rooms=[{"label": "x", "main": ""}, {"main": "sensor.a"}, "junk", {"label": "y", "main": "light.l"},
+                       {"spacer": True}, {"label": "B", "main": "sensor.b", "extra": "sensor.c"}, {"spacer": True}, {"main": ""}]) == [
+        {"spacer": True}, {"label": "", "main": "sensor.a", "extra": ""}, {"spacer": True}, {"spacer": True},
+        {"label": "B", "main": "sensor.b", "extra": "sensor.c"}]
+    assert sent(rooms=[{"spacer": True}, {"main": ""}]) == []
+    # Twenty places at most, counted before the trailing spacers go.
+    assert sent(rooms=[{"spacer": True}] * 20 + [{"main": "sensor.a"}]) == []
     assert sent() == [] and sent(rooms="sensor.a") == []
 
 
@@ -2328,12 +2342,37 @@ def test_climate_cards_follow_the_rooms(demo):
     for lang in LANGS:
         dashboard = demo[f"dashboard.{lang}.yaml"]
         [rooms_card] = [n for n in walk(dashboard) if n.get("type") == "custom:rooms-card"]
-        assert rooms_card["entity"] == CLIMATE
+        assert rooms_card["entity"] == CLIMATE and rooms_card["slots"] == SLOTS
         charts = [n for n in walk(dashboard) if n.get("type") == "custom:line-style-card"]
         outside = translations(lang)["ui.climate.outside"]
         assert [c["rooms"] for c in charts] == [
-            {"entity": CLIMATE, "key": "extra", "after": [{"entity": "sensor.outside_humidity", "name": outside}]},
-            {"entity": CLIMATE, "key": "main", "after": [{"entity": "sensor.outside_temperature", "name": outside}]}]
+            {"entity": CLIMATE, "slots": SLOTS, "key": "extra", "after": [{"entity": "sensor.outside_humidity", "name": outside}]},
+            {"entity": CLIMATE, "slots": SLOTS, "key": "main", "after": [{"entity": "sensor.outside_temperature", "name": outside}]}]
+
+
+def test_climate_slots_helper_and_seed(demo):
+    """The number of places (1 to 20, default 10): a slider on Climate, Basic; seeded while
+    untouched, also after the flag is on and whatever the rooms; a home's number stays."""
+    package = demo["package.yaml"]
+    helper = package["input_number"]["ramka_climate_slots"]
+    assert (helper["min"], helper["max"], helper["step"], helper["mode"]) == (1, 20, 1, "slider") and "initial" not in helper
+    seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on",
+              **{f"input_number.ramka_{k}": v for k, v in zip(MUSIC_DB, (35.0, 75.0, 30.0, 70.0))},
+              "input_number.ramka_music_hold_s": 0.5, "input_number.ramka_music_calm_fall_s": 6.0}
+    rooms = demo_rooms()
+    assert seed_groups(package, seeded, rooms=rooms) == []
+    for untouched in (1.0, "unknown", "unavailable"):
+        assert seed_groups(package, {**seeded, SLOTS: untouched}, rooms=rooms) == ["climate_slots"], untouched
+        assert run_seed(package, {**seeded, SLOTS: untouched})[SLOTS] == 10
+    assert seed_groups(package, {**seeded, SLOTS: 4.0}, rooms=rooms) == []
+    # The rooms are not sent again when only the number is seeded.
+    assert run_reset(package, groups=["climate_slots"], events=True) == {SLOTS: 10}
+    for lang in LANGS:
+        climate = settings_views(demo[f"ramka-settings.{lang}.yaml"])["climate"]
+        [(section, card)] = [(s, c) for s, c in view_cards(climate) if c.get("type") == "custom:climate-rooms-card"]
+        assert card["slots"] == SLOTS
+        assert any(r.get("entity") == SLOTS and r.get("name") == translations(lang)["ui.settings.climate_slots"]
+                   for _, c in view_cards(climate) for r in rows(c))
 
 
 def test_climate_card_on_climate_advanced(demo):

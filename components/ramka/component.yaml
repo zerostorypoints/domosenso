@@ -257,8 +257,9 @@ provides:                       # <prefix> from inputs
     - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
     - {id: "sensor.<prefix>_photo_albums", stability: stable, note: "with photo_dir; attributes available and chosen (lists) and all (every album, the ticks kept; absent: none chosen is all), set by event <prefix>_photo_albums; state: how many chosen (SPEC-021 amendments 1, 2)"}
     - {id: "script.<prefix>_photo_albums_set", stability: stable, note: "with photo_dir; fields chosen and all_albums (SPEC-021 amendments 1, 2)"}
-    - {id: "sensor.<prefix>_climate_rooms", stability: stable, note: "with climate; attribute rooms, up to ten {label, main, extra} (entity ids), set by event <prefix>_climate_rooms; the tiles and the 7-day charts follow it; state: how many (SPEC-021 amendment 2)"}
-    - {id: "script.<prefix>_climate_rooms_set", stability: stable, note: "with climate; field rooms (SPEC-021 amendment 2)"}
+    - {id: "sensor.<prefix>_climate_rooms", stability: stable, note: "with climate; attribute rooms, up to twenty places in order, each a room {label, main, extra} (entity ids) or a spacer {spacer: true} (an empty tile), never a trailing spacer, set by event <prefix>_climate_rooms; the tiles and the 7-day charts follow its first climate_slots places, the n-th room in colour n; state: how many rooms (SPEC-021 amendment 2; spacers unreleased)"}
+    - {id: "script.<prefix>_climate_rooms_set", stability: stable, note: "with climate; field rooms; a row without a sensor as its main reading becomes a spacer, trailing spacers are dropped (SPEC-021 amendment 2)"}
+    - {id: "input_number.<prefix>_climate_slots", stability: stable, note: "with climate (unreleased): the number of places, 1-20 default 10; rows of the settings picker, tiles on the Ramka; rooms beyond it are kept, unseen"}
     - {id: "input_number.<prefix>_{photo_count,photo_s}", stability: stable, note: "with photo_dir (SPEC-021 amendment 1)"}
     - {id: "input_number.<prefix>_{plants_per_page,plants_page_s}", stability: stable, note: "with plants (SPEC-022): 1-12 default 6, 5-30 s default 10"}
     - {id: "input_boolean.<prefix>_air_{score,co2,pm2_5,voc,nox}", stability: stable, note: "one per reading the air input names (SPEC-021 amendment 1)"}

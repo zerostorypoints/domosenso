@@ -25,6 +25,32 @@ Ramka dashboard renders as before, byte for byte: its screens are now blocks the
   `require_admin: true` (README) and deploy (a restart for the entry, and a new resource).
   Setting the input back to false leaves the rendered files in place: remove them and the entry.
 
+## Unreleased: climate places, order and spacers
+
+The Climate page (with `climate`) gets a number of places, a reorderable picker and spacers.
+
+- **Number of places**: `input_number.<prefix>_climate_slots` (1 to 20, default 10) on the settings
+  page's Climate, Basic, in the new settings group `climate_slots`. The seed gives it 10 at the next
+  start while it is untouched (also after the seeded flag is on); the Climate page's Reset and the
+  global reset restore it. A number set to 1 on purpose reads as untouched and is set to 10 again at
+  the next start (one number, as the seed rule goes).
+- **Order**: rows are dragged by a handle (mouse and touch) or moved with up and down buttons; no
+  values to enter again.
+- **Spacers**: a row without a main reading now keeps its place, an empty tile on the Ramka, instead
+  of the rooms below moving up. `sensor.<prefix>_climate_rooms` stores it as `{spacer: true}`; its
+  state counts rooms only. A home whose list has no gaps sees no change. `script.<prefix>_climate_rooms_set`
+  turns a row without a sensor as its main reading into a spacer (it used to drop it), drops spacers at
+  the end and keeps up to twenty places (it used to keep ten). An automation that calls the script
+  with gaps on purpose gets them as empty tiles now.
+- **Colours**: the n-th room (spacers skipped) has series colour n in its tile, the picker's dot and
+  both 7-day charts; the charts set it per line, so a room without a second reading no longer shifts
+  the humidity lines' colours.
+- **Fewer places than rooms**: the rooms beyond are kept in the list but not shown on the Ramka; the
+  picker counts them and offers to remove them.
+- The rooms-card and both line-style-cards on the Climate view read `slots`
+  (`input_number.<prefix>_climate_slots`); render and deploy, and the deploy updates the card
+  resources. Nothing else to do.
+
 ## Unreleased: music looks
 
 **Response profiles** (with `music_visual`): a profile select (`custom`, `behind_speakers`, `lively`,

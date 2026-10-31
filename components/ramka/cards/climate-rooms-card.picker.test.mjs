@@ -43,5 +43,5 @@ test("a pick saves the rooms", () => {
   assert.deepEqual(calls.at(-1), ["script", "ramka_climate_rooms_set", { rooms: [
     { label: "Kitchen", main: "sensor.k_t", extra: "" }, { label: "Kitchen temperature", main: "sensor.k_t", extra: "" }] }]);
   pickers[0].dispatchEvent(new window.CustomEvent("value-changed", { detail: { value: "" } }));
-  assert.deepEqual(calls.at(-1)[2].rooms.map((r) => r.label), ["Kitchen temperature"]);
+  assert.deepEqual(calls.at(-1)[2].rooms, [{ spacer: true }, { label: "Kitchen temperature", main: "sensor.k_t", extra: "" }]);
 });
