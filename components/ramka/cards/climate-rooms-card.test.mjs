@@ -110,6 +110,11 @@ test("a reading: a unit, a state class or a number; not a text, an empty or an u
   assert.equal(isReading({ state: "sunny", attributes: {} }), false);
   assert.equal(isReading({ state: "", attributes: {} }), false);
   assert.equal(isReading({ state: "unavailable", attributes: {} }), false);
+  // A Domosenso package's count (sensor.<prefix>_ambient_pages, _photo_albums) is no reading; its
+  // readings with a unit or a state class are.
+  assert.equal(isReading({ state: "5", attributes: { component: "ramka" } }), false);
+  assert.equal(isReading({ state: "7.5", attributes: { component: "climate-air", unit_of_measurement: "°C" } }), true);
+  assert.equal(isReading({ state: "40", attributes: { component: "audio-sensor", state_class: "measurement" } }), true);
   assert.equal(isReading({ state: "3", attributes: { state_class: "weird" } }), true);  // its number
   assert.equal(isReading({ state: "x", attributes: { state_class: "weird" } }), false);
   assert.equal(isReading(undefined), false);

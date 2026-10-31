@@ -73,11 +73,14 @@ const AIR_KEYS = { co2: "card.climate_rooms.co2_limits", pm2_5: "card.climate_ro
 // The state classes of a reading (a sensor without a unit is one with any of them).
 const STATE_CLASSES = ["measurement", "total", "total_increasing"];
 
-// Whether a sensor's state is a reading a widget can show: a unit, a state class or a number.
+// Whether a sensor's state is a reading a widget can show: a unit, a state class or a number. A bare
+// number from a Domosenso package (its `component` marker: a count of pages or albums) is no reading;
+// a marked sensor with a unit, as climate-air's outside temperature, is one.
 export function isReading(state) {
   const a = state?.attributes || {};
   if (typeof a.unit_of_measurement === "string") return true;
   if (STATE_CLASSES.includes(a.state_class)) return true;
+  if (typeof a.component === "string") return false;
   const value = state?.state;
   return typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value));
 }
