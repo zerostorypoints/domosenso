@@ -186,15 +186,19 @@ def check_component(path: Path) -> list[str]:
                 uses_catalog_components = True
                 if ref != tag:
                     errors.append(f"{path}: {rel}: external_components ref '{ref}' must be '{tag}' (the manifest's version)")
-    # A firmware that ships its own external components is released as one unit with them, so the
-    # other version literals in its files follow the manifest too (a remote package cannot take a
-    # substitution). Narrow on purpose: other components' literals (bermuda-presence) are not checked.
+    # The project version is what a flashed board reports, and a home reads it to know which release
+    # the board runs, so every package that has one follows the manifest (a remote package cannot
+    # take a substitution). Widened from firmware with external components only: bermuda-presence's
+    # proxy still said 0.1.0 at 0.2.1, so its boards could not be told apart (2026-10-30).
+    for rel in package_files:
+        if (comp_dir / rel).is_file():
+            found = _esphome_project_version(comp_dir / rel)
+            if found is not None and found != data["version"]:
+                errors.append(f"{path}: {rel}: esphome.project.version '{found}' must be '{data['version']}' (the manifest's version)")
+    # A firmware that ships its own external components is released as one unit with them, so its
+    # factory image's import URL names the same tag. Narrow on purpose: other components' factory
+    # images are not checked.
     if uses_catalog_components:
-        for rel in package_files:
-            if (comp_dir / rel).is_file():
-                found = _esphome_project_version(comp_dir / rel)
-                if found is not None and found != data["version"]:
-                    errors.append(f"{path}: {rel}: esphome.project.version '{found}' must be '{data['version']}' (the manifest's version)")
         if factory_file and (comp_dir / factory_file).is_file():
             found = _import_url_tag(comp_dir / factory_file)
             if found is not None and found != tag:
