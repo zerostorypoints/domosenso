@@ -58,23 +58,6 @@
 [%- macro lookup(field) -%][[ board_map(field) ]].get(states("input_select.audio_sensor_music_source"), [[ fallback(field) ]])[%- endmacro -%]
 [#- The aliases' availability: a board is selected and its entity has a value. -#]
 [%- macro available(field) -%]{% set entity = [[ lookup(field) ]] %}{{ entity != '' and has_value(entity) }}[%- endmacro -%]
-[#- The abilities' expressions (SPEC-025): an ability is what the board can do, not whether it sends data now. An existing entity that is unavailable or unknown keeps its ability; a missing one, or no sensor (""), has none. -#]
-[%- set gone = "['unavailable', 'unknown']" -%]
-[%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain'} -%]
-[%- macro ability(kind) -%]
-{% set e = [[ lookup(ability_field[kind]) ]] %}
-{% set here = e != '' and expand(e) | count == 1 %}
-[%- if kind == 'spectrum' %]
-{{ here and (states(e) in [[ gone ]] or states(e).split(',') | count == 31) }}
-[%- elif kind in ['level', 'calibration'] %]
-{{ here and (states(e) in [[ gone ]] or states(e) | is_number) }}
-[%- elif kind == 'rate' %]
-{% set options = state_attr(e, 'options') %}
-{{ here and ((options is none and states(e) in [[ gone ]]) or (options is not none and ['eco', 'normal', 'fast'] | reject('in', options) | list | count == 0)) }}
-[%- else %]
-{{ here }}
-[%- endif %]
-[%- endmacro -%]
 [#- The abilities' expressions (SPEC-025): an ability is what the board can do, not whether it sends data now. An existing entity that is unavailable or unknown keeps its ability; a missing one, or no sensor (""), has none. `ability(kind)` sets a Home Assistant variable named `kind`. -#]
 [%- set gone = "['unavailable', 'unknown']" -%]
 [%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain'} -%]

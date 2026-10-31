@@ -1,4 +1,5 @@
 """The audio-sensor component's Home Assistant package, rendered for the demo home (SPEC-018)."""
+import ast
 import copy
 from pathlib import Path
 
@@ -627,6 +628,8 @@ ALL_ON = {"spectrum": "on", "level": "on", "rate": "on", "calibration": "on"}
     ({SELECT: "Living room", LIVING_LEVEL: "-40"}, {}, {**ALL_ON, "spectrum": "off", "rate": "off"}),
     (FULL, {LIVING_RATE: {"options": ["eco", "normal"]}}, {**ALL_ON, "rate": "off"}),
     ({**FULL, SELECT: NONE}, RATE_ATTRS, {a: "off" for a in ALL_ON}),
+    ({**FULL, LIVING_LEVEL: "abc"}, RATE_ATTRS, {**ALL_ON, "level": "off", "calibration": "off"}),
+    ({**FULL, LIVING: "unknown"}, RATE_ATTRS, ALL_ON),
 ])
 def test_abilities(demo, states, attrs, expected):
     found = templates(demo)
@@ -638,7 +641,6 @@ def test_abilities(demo, states, attrs, expected):
 
 
 def test_music_source_sensor_names_the_board_and_its_abilities(demo):
-    import ast
     sensor = templates(demo)["audio_sensor_music_source"]
     assert sensor["default_entity_id"] == "sensor.music_source"
     assert sensor["attributes"]["interface"] == 1
@@ -665,3 +667,10 @@ def test_abilities_are_trigger_based_and_cheap(demo):
     assert {"trigger": "time_pattern", "minutes": "/1"} in triggers
     assert len(triggers) == 3
     assert "spectrum" not in str([t for t in triggers if t["trigger"] == "state"])
+
+
+def test_gain_stays_listed_while_the_mic_gain_entity_is_unavailable(demo):
+    sensor = templates(demo)["audio_sensor_music_source"]
+    states = {**FULL, GAIN: "unavailable"}
+    caps = ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], states, RATE_ATTRS))
+    assert "gain" in caps
