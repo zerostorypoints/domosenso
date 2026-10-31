@@ -149,6 +149,26 @@
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
 [%- endfor -%]
+[#- The music look (spec 5): the entry on screen, and Custom's EQ and hold (its rise, fall, tilt and
+    windows are the music_visual helpers above). A group of its own, seeded by its own numbers: a home
+    that tuned its music window before the looks existed must still get a flat EQ and 1.5 s hold, not
+    the sliders' minimum (-18 dB, 0 s). The template select before the EQ select, so the reset's
+    `flat` reaches the EQ loader (Custom only) with Custom already selected. -#]
+[%- if music_visual is not none -%]
+[%- set _ = settings.append(('input_select', 'music_template', 'music', 'music_look', 'custom')) -%]
+[%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', 'flat')) -%]
+[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_eq_' ~ key, 'music', 'music_look', 0)) -%][%- endfor -%]
+[%- set _ = settings.append(('input_number', 'music_hold_s', 'music', 'music_look', 1.5)) -%]
+[%- endif -%]
+[#- The look sensor's tables, rendered here so Home Assistant only looks an entry up (it has no zip
+    filter, and the catalog package carries no custom_templates file): the entry ids, the select's
+    order, and per template its attributes in the card's `look` shape (spec 3.2). -#]
+[%- set look_ids = ['custom'] + (looks | list) -%]
+[%- set look_attrs = {} -%]
+[%- for id, l in looks.items() -%]
+[%- set _ = look_attrs.update({id: {'rise': l.rise, 'fall': l.fall, 'hold': l.hold, 'tilt': l.tilt, 'eq': eq_presets[l.eq_id],
+    'spectrum': {'neutral': l.neutral, 'hot': l.hot}, 'level': {'neutral': l.neutral, 'hot': l.hot}}}) -%]
+[%- endfor -%]
 [#- The Photos page (SPEC-021 amendment 1): the albums (top-level folders of photo_dir; none chosen
     is all), the photos per series and the time per photo; the defaults are 0.3.0's five photos of 10 s
     from all. The albums are not a helper (a list of any length): sensor.<prefix>_photo_albums keeps
@@ -259,6 +279,18 @@ input_select:
     name: [[ named(' music level flavour') ]]
     icon: mdi:waveform
     options:[[ options(mv.music_level_flavour, flavours.level) ]]
+  # The music look (spec 4.1): Custom or a template; sensor.[[ p ]]_music_look follows it, and the
+  # cards follow the sensor. Choosing a template never touches Custom's helpers.
+  [[ p ]]_music_template:
+    name: [[ named(' music look') ]]
+    icon: mdi:palette-swatch
+    options:[[ options('custom', look_ids) ]]
+  # An EQ preset to load into Custom's EQ (automation [[ p ]]_music_eq_load); while a template is
+  # active it loads nothing.
+  [[ p ]]_music_eq:
+    name: [[ named(' music EQ preset') ]]
+    icon: mdi:tune-vertical-variant
+    options:[[ options('flat', eq_presets | list) ]]
   [%- endif %]
 
 # No `initial:` on any helper: HA would reset it to that value at every restart and throw away the
@@ -382,6 +414,25 @@ input_number:
     unit_of_measurement: [[ unit ]]
     mode: slider
   [%- endfor %]
+  # Custom's EQ, one gain per range in the card's range order and limits (spec 3.1), and its hold.
+  [%- for key in eq_keys %]
+  [[ p ]]_music_eq_[[ key ]]:
+    name: [[ named(' music EQ ' ~ key | replace('_', ' ') ~ ' (dB)') ]]
+    icon: mdi:equalizer
+    min: -18
+    max: 12
+    step: 0.5
+    unit_of_measurement: dB
+    mode: slider
+  [%- endfor %]
+  [[ p ]]_music_hold_s:
+    name: [[ named(' music hold (s)') ]]
+    icon: mdi:timer-sand
+    min: 0
+    max: 10
+    step: 0.1
+    unit_of_measurement: s
+    mode: slider
   [%- endif %]
   [%- if inputs.photo_dir is defined %]
   [[ p ]]_photo_count:
@@ -492,6 +543,10 @@ recorder:
   exclude:
     entities:
       - sensor.[[ p ]]_discovery
+[%- if music_visual %]
+      # The look follows input_select.[[ p ]]_music_template and the Custom helpers, all recorded.
+      - sensor.[[ p ]]_music_look
+[%- endif %]
 
 template:
   - sensor:
@@ -526,6 +581,33 @@ template:
             [[ switched_on() ]]{{ ns.on if ns.on else [[ pages[:1] | tojson ]] }}
           all_off: >-
             [[ switched_on() ]]{{ ns.on | count == 0 }}
+[%- if music_visual %]
+[%- set select = "states('input_select." ~ p ~ "_music_template')" %]
+[%- set m = 'input_number.' ~ p ~ '_music_' %]
+[%- macro number(helper, default) %]states('[[ m ~ helper ]]') | float([[ default ]])[% endmacro %]
+[%- macro window(kind) %]{'neutral': [[ number(kind ~ '_neutral_db', mv['music_' ~ kind ~ '_neutral_db']) ]], 'hot': [[ number(kind ~ '_hot_db', mv['music_' ~ kind ~ '_hot_db']) ]]}[% endmacro %]
+[%- set custom_eq = [] %]
+[%- for key in eq_keys %][% set _ = custom_eq.append("'" ~ key ~ "': " ~ number('eq_' ~ key, 0)) %][% endfor %]
+      # The music look the cards bind (`look:`): the state is the entry on screen, a select state
+      # that is no entry id is Custom (spec 8); the attributes are the card's `look` shape, a
+      # template's from its row (rendered from the catalog's table and the home's EQ presets),
+      # Custom's from its helpers, falling back to the seed's values while one is unavailable.
+      - name: [[ named(' music look') ]]
+        unique_id: [[ p ]]_music_look
+        default_entity_id: sensor.[[ p ]]_music_look
+        icon: mdi:palette-swatch
+        state: >-
+          {% set id = [[ select ]] %}{{ id if id in [[ look_ids | tojson ]] else 'custom' }}
+        attributes:
+[%- for key, custom in [('rise', number('rise_ms', mv.music_rise_ms)), ('fall', number('fall_s', mv.music_fall_s)), ('hold', number('hold_s', 1.5)),
+    ('tilt', ("not is_state('input_boolean." ~ p ~ "_music_tilt', 'off')") if mv.music_tilt else ("is_state('input_boolean." ~ p ~ "_music_tilt', 'on')")),
+    ('eq', '{' ~ custom_eq | join(', ') ~ '}'), ('spectrum', window('spectrum')), ('level', window('level'))] %]
+[%- set table = {} %]
+[%- for id, a in look_attrs.items() %][% set _ = table.update({id: a[key]}) %][% endfor %]
+          [[ key ]]: >-
+            {{ [[ table | tojson ]].get([[ select ]], [[ custom ]]) }}
+[%- endfor %]
+[%- endif %]
   - binary_sensor:
       # The media player playing, with track changes bridged. Between two tracks a player can
       # report playing → buffering → playing (or paused for buffering), each gap 0.5-3 s, and
@@ -1123,6 +1205,103 @@ script:
             target:
               entity_id: "{{ updates }}"
 
+[%- if music_visual %]
+
+  # "Copy to custom" (spec 5): the entry on screen becomes Custom's starting point. It copies the
+  # look sensor's attributes, which are what the cards show, into Custom's 14 helpers, then selects
+  # Custom. With the sensor unavailable or an attribute missing it writes nothing and says so.
+  [[ p ]]_music_copy_to_custom:
+    alias: [[ named(' music copy to custom') ]]
+    icon: mdi:content-copy
+    mode: single
+    sequence:
+      - variables:
+[%- for key in ['rise', 'fall', 'hold', 'tilt', 'eq', 'spectrum', 'level'] %]
+          [[ key ]]: "{{ state_attr('sensor.[[ p ]]_music_look', '[[ key ]]') }}"
+[%- endfor %]
+      - if:
+          - condition: template
+            value_template: >-
+              {{ not (rise is number and fall is number and hold is number and tilt is boolean
+                      and eq is mapping and [[ eq_keys | tojson ]] | reject('in', eq) | list | count == 0
+                      and spectrum is mapping and ['neutral', 'hot'] | reject('in', spectrum) | list | count == 0
+                      and level is mapping and ['neutral', 'hot'] | reject('in', level) | list | count == 0) }}
+        then:
+          - action: system_log.write
+            data:
+              level: warning
+              logger: [[ p ]].music_look
+              message: sensor.[[ p ]]_music_look has no complete look, so Custom is unchanged
+          - stop: The look sensor has no complete look
+[%- for key in eq_keys %]
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.[[ p ]]_music_eq_[[ key ]]
+        data:
+          value: "{{ eq.[[ key ]] }}"
+[%- endfor %]
+[%- for helper, value in [('hold_s', 'hold'), ('rise_ms', 'rise'), ('fall_s', 'fall')] %]
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.[[ p ]]_music_[[ helper ]]
+        data:
+          value: "{{ [[ value ]] }}"
+[%- endfor %]
+      - action: "input_boolean.turn_{{ 'on' if tilt else 'off' }}"
+        target:
+          entity_id: input_boolean.[[ p ]]_music_tilt
+[%- for kind in ['spectrum', 'level'] %][% for end in ['neutral', 'hot'] %]
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.[[ p ]]_music_[[ kind ]]_[[ end ]]_db
+        data:
+          value: "{{ [[ kind ]].[[ end ]] }}"
+[%- endfor %][% endfor %]
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_music_template
+        data:
+          option: custom
+
+  # Loads an EQ preset's six gains into Custom's EQ; called by automation [[ p ]]_music_eq_load. The
+  # presets are rendered in (the catalog's, the home's music_eq_presets over its own three). An id
+  # that is no preset writes nothing and says so.
+  [[ p ]]_music_load_eq:
+    alias: [[ named(' music load EQ preset') ]]
+    icon: mdi:tune-vertical-variant
+    mode: restart
+    fields:
+      preset:
+        name: Preset
+        description: An EQ preset id, one of input_select.[[ p ]]_music_eq's options.
+        required: true
+        selector:
+          select:
+            options: [[ eq_presets | list | tojson ]]
+    sequence:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ preset | default('') not in [[ eq_presets | list | tojson ]] }}
+        then:
+          - action: system_log.write
+            data:
+              level: warning
+              logger: [[ p ]].music_look
+              message: "no EQ preset '{{ preset | default('') }}', so Custom's EQ is unchanged"
+          - stop: No such EQ preset
+      - variables:
+          gains: >-
+            {{ [[ eq_presets | tojson ]][preset] }}
+[%- for key in eq_keys %]
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.[[ p ]]_music_eq_[[ key ]]
+        data:
+          value: "{{ gains.[[ key ]] }}"
+[%- endfor %]
+[%- endif %]
+
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
   # catalog's). `page`: only that page's settings; `groups`: only those groups'; both: the settings
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
@@ -1147,7 +1326,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual", "photos", "plants", "air", "climate"]
+            options: ["presence_display", "pages", "music_visual", "music_look", "photos", "plants", "air", "climate"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -1512,6 +1691,27 @@ automation:
           - action: input_boolean.turn_off
             target:
               entity_id: input_boolean.audio_sensor_music_watching
+  # An EQ preset chosen while Custom is active loads into Custom's EQ (spec 5); while a template is
+  # active the select loads nothing. Not when the select appears at a start or a reload (no old
+  # state, or unavailable): that is the restored state, no choice, and would undo Custom's sliders.
+  - id: [[ p ]]_music_eq_load
+    alias: [[ named(' music EQ load') ]]
+    description: "An EQ preset chosen while Custom is active: write its six gains into Custom's EQ."
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_music_eq
+        to: ~
+    conditions:
+      - condition: state
+        entity_id: input_select.[[ p ]]_music_template
+        state: custom
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable'] }}"
+    actions:
+      - action: script.[[ p ]]_music_load_eq
+        data:
+          preset: "{{ trigger.to_state.state }}"
 [%- endif %]
   - id: [[ p ]]_ambient_stop
     alias: [[ named(' ambient stop') ]]
@@ -1546,6 +1746,8 @@ automation:
   #   whenever the flag is off, or an upgraded home would find every page switched off;
   # - music_visual: the four dB helpers untouched (0 dB); also after the flag is on, since a home
   #   can add music_visual later;
+  # - music_look: Custom's six EQ gains and its hold untouched (-18 dB, 0 s); also after the flag is
+  #   on, so a home that had music_visual before the looks gets a flat EQ;
   # - photos and air (SPEC-021 amendment 1): their numbers untouched; also after the flag is on, so
   #   a home that ran 0.4.0 before them gets them at its next start.
   # Home Assistant's start trigger fires after the restored states are in place.
@@ -1559,7 +1761,7 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, music=true, photos=true, plants=true, air=true) %}
+            {% set untouched = namespace(presence=true, music=true, look=true, photos=true, plants=true, air=true) %}
 [%- if inputs.climate is defined %]
             {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
 [%- endif %]
@@ -1573,9 +1775,12 @@ automation:
 [%- endfor %]
 [%- if music_visual %]
             {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
+[%- set look_numbers = [] %]
+[%- for s in settings if s[3] == 'music_look' and s[0] == 'input_number' %][% set _ = look_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
+            {% for e in [[ look_numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.look = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"
