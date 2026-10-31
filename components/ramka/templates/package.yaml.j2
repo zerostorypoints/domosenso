@@ -63,23 +63,12 @@
 [%- set palettes = ['zones', 'series', 'calm'] -%]
 [%- macro within(key, value, lo, hi) -%][%- if value is boolean or value is not number or value < lo or value > hi -%][[ fail('ramka: music_visual_options.' ~ key ~ ' must be within ' ~ lo ~ ' and ' ~ hi) ]][%- endif -%][%- endmacro -%]
 [#- The music EQ (the helpers, the look sensor and the dashboards below render from these two tables). Six
-    ranges in dB, each -18...+12 (the card's range, spec 3.1); a key a preset leaves out is 0.
-    `behind_speakers` and `half_match` are one measurement, a sensor on an amplifier between the speakers
-    against the listening position (and half of it): a starting point. `fitted` is flat until set. A
-    home's music_eq_presets replaces any of the three as a whole curve (a key it leaves out is 0). The
-    WLED rows are derived from WLED-MM's frequency profiles (SPEC-024). -#]
-[%- set eq_keys = ['sub', 'bass', 'low_mid', 'mid', 'presence', 'air'] -%]
-[%- set eq_presets = {
-    'flat': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
-    'behind_speakers': {'sub': -5, 'bass': -10, 'low_mid': -3, 'mid': 0, 'presence': 3, 'air': 2},
-    'half_match': {'sub': -2, 'bass': -5, 'low_mid': -1, 'mid': 0, 'presence': 2, 'air': 1},
-    'wled_big_speakers': {'sub': -4, 'bass': -2, 'low_mid': -5, 'mid': 0, 'presence': 1, 'air': 2},
-    'wled_big_speakers_ics': {'sub': -3, 'bass': -4, 'low_mid': -4, 'mid': 0, 'presence': 2, 'air': -1},
-    'wled_pink': {'sub': -2, 'bass': 1, 'low_mid': 2, 'mid': 0, 'presence': 2, 'air': 4},
-    'bass_light': {'sub': -8, 'bass': -6, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0},
-    'voices': {'sub': -6, 'bass': -8, 'low_mid': -2, 'mid': 3, 'presence': 4, 'air': 0},
-    'sparkle': {'sub': -3, 'bass': -3, 'low_mid': 0, 'mid': 0, 'presence': 3, 'air': 5},
-    'fitted': {'sub': 0, 'bass': 0, 'low_mid': 0, 'mid': 0, 'presence': 0, 'air': 0}} -%]
+    ranges in dB, each -18...+12 (the card's range, spec 3.1), and the presets are templates/music-tables.j2's,
+    shared with the settings dashboard. A home's music_eq_presets replaces any of behind_speakers,
+    half_match and fitted as a whole curve (a key it leaves out is 0). -#]
+[%- from 'music-tables.j2' import eq_keys, catalog_eq_presets, look_ids -%]
+[%- set eq_presets = {} -%]
+[%- for id, gains in catalog_eq_presets.items() -%][%- set _ = eq_presets.update({id: dict(gains)}) -%][%- endfor -%]
 [%- set meq = inputs.music_eq_presets | default({}) -%]
 [%- if music_visual is not none and meq is not none -%]
 [%- if meq is not mapping -%][[ fail('ramka: music_eq_presets must be a mapping') ]][%- endif -%]
@@ -157,7 +146,7 @@
     windows are the music_visual helpers above). A group of its own, seeded by its own numbers: a home
     that tuned its music window before the looks existed must still get a flat EQ and 1.5 s hold, not
     the sliders' minimum (-18 dB, 0 s). -#]
-[%- set look_ids = ['custom'] + (looks | list) -%]
+[%- if ['custom'] + (looks | list) != look_ids -%][[ fail('ramka: the looks table and look_ids of templates/music-tables.j2 differ') ]][%- endif -%]
 [%- if music_visual is not none -%]
 [%- set _ = settings.append(('input_select', 'music_template', 'music', 'music_look', 'custom')) -%]
 [%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', 'flat')) -%]
