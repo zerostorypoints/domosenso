@@ -37,15 +37,27 @@ def templates(package) -> dict:
     return found
 
 
-def evaluate(template, states_by_id) -> str:
-    """A Home Assistant template run with stub states (an entity not listed is `unavailable`)."""
+def evaluate(template, states_by_id, attrs=None) -> str:
+    """A Home Assistant template run with stub states (an entity not listed is `unavailable` and does not exist: `expand` gives none)."""
     env = jinja2.Environment()
+    attrs = attrs or {}
 
     def states(entity_id):
         return states_by_id.get(entity_id, "unavailable")
 
+    def is_number(value):
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return False
+        return True
+
+    env.tests["is_number"] = is_number
+    env.filters["is_number"] = is_number
     return env.from_string(template).render(
         states=states, is_state=lambda e, v: states(e) == v,
+        expand=lambda e: [e] if e in states_by_id else [],
+        state_attr=lambda e, a: attrs.get(e, {}).get(a),
         has_value=lambda e: states(e) not in ("unknown", "unavailable")).strip()
 
 
@@ -191,7 +203,7 @@ def test_alias_templates_stay_cheap(demo):
 
 def test_entities_carry_the_component_and_boards_their_area(demo):
     found = templates(demo)
-    assert len(found) == 8
+    assert len(found) == 13
     for entity in found.values():
         assert entity["attributes"]["component"] == "audio-sensor"
     assert found["audio_sensor_kids_room_spl_offset"]["attributes"]["area"] == "Kids' room"
@@ -599,3 +611,57 @@ def test_entities_input_accepts_spectrum_rate(tmp_path):
     assert any(t.get("entity_id") == "select.lounge_mic_spectrum_rate"
                or "select.lounge_mic_spectrum_rate" in (t.get("entity_id") or [])
                for t in rate_automation(package)["triggers"])
+
+
+ABILITY = {a: f"audio_sensor_music_source_{a}" for a in ("spectrum", "level", "rate", "calibration")}
+GAIN = "sensor.living_room_audio_sensor_living_room_mic_gain"
+FULL = {SELECT: "Living room", LIVING: ",".join(["-50"] * 31), LIVING_LEVEL: "-40", LIVING_RATE: "normal"}
+RATE_ATTRS = {LIVING_RATE: {"options": ["eco", "normal", "fast"]}}
+ALL_ON = {"spectrum": "on", "level": "on", "rate": "on", "calibration": "on"}
+
+
+@pytest.mark.parametrize("states, attrs, expected", [
+    (FULL, RATE_ATTRS, ALL_ON),
+    ({**FULL, LIVING: ",".join(["-50"] * 30)}, RATE_ATTRS, {**ALL_ON, "spectrum": "off"}),
+    ({**FULL, LIVING: "unavailable", LIVING_LEVEL: "unavailable", LIVING_RATE: "unavailable"}, RATE_ATTRS, ALL_ON),
+    ({SELECT: "Living room", LIVING_LEVEL: "-40"}, {}, {**ALL_ON, "spectrum": "off", "rate": "off"}),
+    (FULL, {LIVING_RATE: {"options": ["eco", "normal"]}}, {**ALL_ON, "rate": "off"}),
+    ({**FULL, SELECT: NONE}, RATE_ATTRS, {a: "off" for a in ALL_ON}),
+])
+def test_abilities(demo, states, attrs, expected):
+    found = templates(demo)
+    for ability, want in expected.items():
+        entity = found[ABILITY[ability]]
+        assert entity["default_entity_id"] == f"binary_sensor.music_source_{ability}"
+        got = evaluate(entity["state"], states, attrs)
+        assert {"True": "on", "False": "off"}[got] == want, ability
+
+
+def test_music_source_sensor_names_the_board_and_its_abilities(demo):
+    import ast
+    sensor = templates(demo)["audio_sensor_music_source"]
+    assert sensor["default_entity_id"] == "sensor.music_source"
+    assert sensor["attributes"]["interface"] == 1
+    full = {**FULL, GAIN: "30"}
+    assert evaluate(sensor["state"], full) == "Living room"
+    caps = ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], full, RATE_ATTRS))
+    assert caps == ["spectrum", "level", "rate", "calibration", "gain"]
+    assert evaluate(sensor["state"], {**full, SELECT: NONE}) == "none"
+    assert ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], {**full, SELECT: NONE}, RATE_ATTRS)) == []
+    # Without the gain entity, gain is not listed.
+    assert "gain" not in ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], FULL, RATE_ATTRS))
+
+
+def test_abilities_are_trigger_based_and_cheap(demo):
+    blocks = [b for b in demo["template"] if any(
+        e.get("unique_id") == "audio_sensor_music_source"
+        for e in b.get("sensor", []))]
+    assert len(blocks) == 1
+    block = blocks[0]
+    assert {e["unique_id"] for e in block["binary_sensor"]} == set(ABILITY.values())
+    triggers = block["triggers"]
+    assert {"trigger": "homeassistant", "event": "start"} in triggers
+    assert {"trigger": "state", "entity_id": SELECT} in triggers
+    assert {"trigger": "time_pattern", "minutes": "/1"} in triggers
+    assert len(triggers) == 3
+    assert "spectrum" not in str([t for t in triggers if t["trigger"] == "state"])

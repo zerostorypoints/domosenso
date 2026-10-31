@@ -58,6 +58,38 @@
 [%- macro lookup(field) -%][[ board_map(field) ]].get(states("input_select.audio_sensor_music_source"), [[ fallback(field) ]])[%- endmacro -%]
 [#- The aliases' availability: a board is selected and its entity has a value. -#]
 [%- macro available(field) -%]{% set entity = [[ lookup(field) ]] %}{{ entity != '' and has_value(entity) }}[%- endmacro -%]
+[#- The abilities' expressions (SPEC-025): an ability is what the board can do, not whether it sends data now. An existing entity that is unavailable or unknown keeps its ability; a missing one, or no sensor (""), has none. -#]
+[%- set gone = "['unavailable', 'unknown']" -%]
+[%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain'} -%]
+[%- macro ability(kind) -%]
+{% set e = [[ lookup(ability_field[kind]) ]] %}
+{% set here = e != '' and expand(e) | count == 1 %}
+[%- if kind == 'spectrum' %]
+{{ here and (states(e) in [[ gone ]] or states(e).split(',') | count == 31) }}
+[%- elif kind in ['level', 'calibration'] %]
+{{ here and (states(e) in [[ gone ]] or states(e) | is_number) }}
+[%- elif kind == 'rate' %]
+{% set options = state_attr(e, 'options') %}
+{{ here and ((options is none and states(e) in [[ gone ]]) or (options is not none and ['eco', 'normal', 'fast'] | reject('in', options) | list | count == 0)) }}
+[%- else %]
+{{ here }}
+[%- endif %]
+[%- endmacro -%]
+[#- The abilities' expressions (SPEC-025): an ability is what the board can do, not whether it sends data now. An existing entity that is unavailable or unknown keeps its ability; a missing one, or no sensor (""), has none. `ability(kind)` sets a Home Assistant variable named `kind`. -#]
+[%- set gone = "['unavailable', 'unknown']" -%]
+[%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain'} -%]
+[%- macro ability(kind) -%]
+{% set e = [[ lookup(ability_field[kind]) ]] %}{% set here = e != '' and expand(e) | count == 1 %}
+[%- if kind == 'spectrum' -%]
+{% set spectrum = here and (states(e) in [[ gone ]] or states(e).split(',') | count == 31) %}
+[%- elif kind in ['level', 'calibration'] -%]
+{% set [[ kind ]] = here and (states(e) in [[ gone ]] or states(e) | is_number) %}
+[%- elif kind == 'rate' -%]
+{% set options = state_attr(e, 'options') %}{% set rate = here and ((options is none and states(e) in [[ gone ]]) or (options is not none and ['eco', 'normal', 'fast'] | reject('in', options) | list | count == 0)) %}
+[%- else -%]
+{% set gain = here %}
+[%- endif -%]
+[%- endmacro -%]
 # Room sound figures, from the Domosenso catalog (component audio-sensor). Edit the inputs and render
 # again rather than editing this file.
 #
@@ -253,6 +285,60 @@ template:
         device_class: connectivity
         state: >-
           {{ states([[ lookup('spectrum') ]]) not in ['unavailable', 'unknown'] }}
+        attributes:
+          component: audio-sensor
+[%- endif %]
+[%- if boards %]
+
+  # The music source contract (SPEC-025): the board the select holds, and what it can do. An ability
+  # is the board's capability, not whether data flows now, so these update on start, on a change of
+  # the select and once a minute, never on the spectrum.
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: input_select.audio_sensor_music_source
+      - trigger: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: Music source
+        unique_id: audio_sensor_music_source
+        default_entity_id: sensor.music_source
+        icon: mdi:microphone-message
+        state: >-
+          {{ [[ lookup('area') ]] or 'none' }}
+        attributes:
+          component: audio-sensor
+          interface: 1
+          capabilities: >-
+            [[ ability('spectrum') ]][[ ability('level') ]][[ ability('rate') ]][[ ability('calibration') ]][[ ability('gain') ]]{{ (['spectrum'] if spectrum else []) + (['level'] if level else []) + (['rate'] if rate else []) + (['calibration'] if calibration else []) + (['gain'] if gain else []) }}
+    binary_sensor:
+      - name: Music source spectrum
+        unique_id: audio_sensor_music_source_spectrum
+        default_entity_id: binary_sensor.music_source_spectrum
+        state: >-
+          [[ ability('spectrum') ]]{{ spectrum }}
+        attributes:
+          component: audio-sensor
+      - name: Music source level
+        unique_id: audio_sensor_music_source_level
+        default_entity_id: binary_sensor.music_source_level
+        state: >-
+          [[ ability('level') ]]{{ level }}
+        attributes:
+          component: audio-sensor
+      - name: Music source rate
+        unique_id: audio_sensor_music_source_rate
+        default_entity_id: binary_sensor.music_source_rate
+        state: >-
+          [[ ability('rate') ]]{{ rate }}
+        attributes:
+          component: audio-sensor
+      - name: Music source calibration
+        unique_id: audio_sensor_music_source_calibration
+        default_entity_id: binary_sensor.music_source_calibration
+        state: >-
+          [[ ability('calibration') ]]{{ calibration }}
         attributes:
           component: audio-sensor
 [%- endif %]

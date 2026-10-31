@@ -190,6 +190,36 @@ board's helpers and turns its flag on. Typing the offset straight into
 `input_number.<id_prefix>_spl_offset` works as before. With `—` selected the
 script does nothing, and the spectrum rate goes back to `normal` on the board the select left.
 
+## The music source contract
+
+SPEC-025, unreleased. Consumers (the Ramka, any later component) read only the music aliases, never a
+board's own entities. The aliases are the interface, version 1:
+
+| alias | shape | ability |
+|---|---|---|
+| `sensor.music_spectrum` | 31 comma-separated dBFS values, third octaves 20 Hz to 20 kHz | `spectrum` |
+| `sensor.music_level` | one number, dBFS | `level` |
+| `sensor.music_spl_offset` | dB; attribute `calibrated` | `calibration` (with `level`) |
+| `input_select.audio_sensor_music_spectrum_rate`, forwarded to the board's select with options eco, normal, fast | | `rate` |
+| `sensor.music_mic_gain` | the board's gain, read only | `gain` |
+
+A board meets the contract when it gives `spectrum` or `level`; the other abilities are optional. A
+board that is not this catalog's firmware meets it by giving the same shapes, mapped by
+`sensors[].entities`.
+
+`sensor.music_source` holds the selected board's area (`none` for `—`) and the attributes
+`interface: 1` and `capabilities`, the abilities in the order spectrum, level, rate, calibration,
+gain. `binary_sensor.music_source_spectrum`, `_level`, `_rate` and `_calibration` are on while the
+selected board has the ability (one entity per ability, because a visibility condition tests a state,
+not an attribute). They are `on` or `off`, never `unavailable`.
+
+An ability is what the board can do, not whether it sends data now. An existing entity that is
+`unavailable` or `unknown` keeps its ability, so a board that is rebooting does not flicker the
+page; a missing entity has none. `spectrum` needs a spectrum entity whose state, while it has one,
+is 31 numbers; `level` one whose state is a number; `rate` a select whose options include eco,
+normal and fast; `calibration` follows `level`; `gain` is the mic-gain entity existing. They are
+re-read on start, on a change of the select and every minute, never on a spectrum frame.
+
 ## The cards
 
 Both are Lovelace resources of type `module`, installed with the component (`domosenso render` and a

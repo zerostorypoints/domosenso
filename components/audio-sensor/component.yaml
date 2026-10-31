@@ -107,6 +107,14 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "input_text.audio_sensor_calibration_note", stability: stable, note: "with a music board; the note to apply, up to 255 characters; no initial:"}
     - {id: "script.audio_sensor_apply_calibration", stability: stable, note: "writes the measured offset and the note into the selected board's helpers and turns its calibrated flag on"}
 
+    # The music source contract (SPEC-025, unreleased): which board feeds the aliases and what it can
+    # do. A trigger-based template (HA start, a change of the select, every minute), never on the spectrum.
+    - {id: "sensor.music_source", stability: additive-only, note: "SPEC-025, unreleased; the selected board's area, or none; attributes interface (1) and capabilities, a list of spectrum, level, rate, calibration, gain in that order"}
+    - {id: "binary_sensor.music_source_spectrum", stability: additive-only, note: "SPEC-025, unreleased; on while the selected board has a spectrum entity that is unavailable, unknown or 31 numbers; never unavailable"}
+    - {id: "binary_sensor.music_source_level", stability: additive-only, note: "SPEC-025, unreleased; on while the selected board has a level entity that is unavailable, unknown or a number"}
+    - {id: "binary_sensor.music_source_rate", stability: additive-only, note: "SPEC-025, unreleased; on while the selected board has a spectrum-rate select offering eco, normal and fast"}
+    - {id: "binary_sensor.music_source_calibration", stability: additive-only, note: "SPEC-025, unreleased; on with level (the offset applies to the level)"}
+
     # The spectrum rate (#99, #110): the choice, the watching flag and the automation that forwards
     # them to the selected board's Spectrum rate select. Only with a `music: true` board.
     - {id: "input_select.audio_sensor_music_spectrum_rate", stability: stable, note: "with a music board; options eco, normal, fast (additive-only); no initial:; a state that is no option reads as normal"}

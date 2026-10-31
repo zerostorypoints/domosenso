@@ -19,6 +19,14 @@ release (README, "Music looks" there).
 board now gets the select, the aliases, the calibration inputs and script, and the spectrum rate
 automation (before: none of them); its aliases are unavailable until a board is chosen.
 
+### The music source contract: abilities
+
+SPEC-025. New entities, for every home with a board: `sensor.music_source` (the selected board's
+area or `none`; attributes `interface: 1` and `capabilities`) and `binary_sensor.music_source_spectrum`,
+`_level`, `_rate`, `_calibration` (on while the selected board has the ability; never unavailable).
+They update on start, on a change of the select and every minute. README, "The music source
+contract". Nothing existing changes.
+
 ### What a home does
 
 - Nothing: a card without either option draws as before. With the Ramka's music looks, update both
