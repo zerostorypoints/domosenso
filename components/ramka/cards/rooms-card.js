@@ -18,9 +18,15 @@
 //                                                   # stay in the list, unseen
 //   thresholds: input_boolean.ramka_climate_thresholds  # optional, with entity: while on, the values
 //                                                   # are coloured by their thresholds (below)
-//   air_limits:                                     # optional: the Air page's limits, raised and
-//     co2: [input_number.ramka_air_co2_raised, input_number.ramka_air_co2_high]     # high, for Air
-//     pm2_5: [input_number.ramka_air_pm2_5_raised, input_number.ramka_air_pm2_5_high]  # quality
+//   air_limits:                                     # optional: the Air page's limits, fair from and
+//     co2: [input_number.ramka_air_co2_raised, input_number.ramka_air_co2_high]     # poor from, for
+//     pm2_5: [input_number.ramka_air_pm2_5_raised, input_number.ramka_air_pm2_5_high]  # Air quality
+//   air_colors:                                     # optional: the Air page's colours (ids of
+//     good: input_select.ramka_air_color_good       # lib/colours.js), for Air quality; without
+//     fair: input_select.ramka_air_color_fair       # them neutral, amber and red
+//     poor: input_select.ramka_air_color_poor
+//   neutral_color: input_select.ramka_climate_color_neutral  # optional: the neutral colour (an id);
+//                                                   # without it the primary text colour
 //   rooms:
 //     - name: Living room
 //       temperature: sensor.living_room_temperature
@@ -32,11 +38,12 @@
 // A reading shows its entity's unit; without one, °C for the temperature and % for the humidity.
 //
 // Threshold-based colours (`thresholds` on): a Temperature widget's temperature is blue below its
-// comfort range, neutral (the primary text colour) within it, red above; its humidity the same with
-// its own range. An Air quality widget's CO2 and PM2.5: neutral while good, amber raised, red high,
-// from the Air page's limits (their defaults while a helper has no number; neutral without them). A
-// Custom widget's main value: neutral, or the colour chosen in its settings. Off: each widget's
-// main value in its series colour, as before the types. The layout is the same either way.
+// comfort range, the neutral colour (`neutral_color`) within it, red above; its humidity the same
+// with its own range. An Air quality widget's CO2 and PM2.5 in the Air page's colours (`air_colors`),
+// good, fair or poor by the Air page's limits (their defaults while a helper has no number; the good
+// colour without them), so the Ramka and the Air page agree. A Custom widget's main value: the colour
+// chosen in its settings, else the neutral colour. Off: each widget's main value in its series
+// colour, as before the types. The layout is the same either way.
 
 import { createT } from "./lib/i18n.js";
 
@@ -48,7 +55,8 @@ const load = (path, json) => import(new URL(path, import.meta.url).href + versio
 const [widgets, en, de, pl] = await Promise.all([
   load("./lib/climate-widgets.js"), load("../translations/en.json", true), load("../translations/de.json", true),
   load("../translations/pl.json", true)]);
-const { COMFORT, AIR_READINGS, THRESHOLD, seriesSlot, slotColor, readWidget, hasReading, band, level } = widgets;
+const { COMFORT, AIR_READINGS, THRESHOLD, NEUTRAL, AIR_COLOURS, colourCss, selectedColour, seriesSlot, slotColor, readWidget,
+  hasReading, band, level } = widgets;
 
 const t = createT({ en: en.default, de: de.default, pl: pl.default });
 
@@ -143,19 +151,26 @@ class RoomsCard extends HTMLElement {
     if (!this._config.thresholds || this._hass.states[this._config.thresholds]?.state !== "on") return off;
     // The configured rooms (before the seed) are temperatures and humidities.
     const w = room.widget || { type: "temperature" };
-    const { low, raised, high, neutral } = THRESHOLD;
+    const { low, high } = THRESHOLD;
+    const states = this._hass.states;
+    const own = this._config.neutral_color;
+    const neutral = own ? selectedColour(states, own, NEUTRAL) : THRESHOLD.neutral;
     if (w.type === "temperature") {
       const range = (value, lowKey, highKey) =>
         ({ low, within: neutral, high, null: "" })[band(value, w[lowKey] ?? COMFORT[lowKey], w[highKey] ?? COMFORT[highKey])];
       return [range(this._number(room.temperature), "temp_low", "temp_high"), range(this._number(room.humidity), "hum_low", "hum_high")];
     }
     if (w.type === "air") {
+      const picked = this._config.air_colors;
+      const colours = picked
+        ? Object.fromEntries(Object.entries(AIR_COLOURS).map(([key, id]) => [key, selectedColour(states, picked[key], id)]))
+        : { good: THRESHOLD.neutral, fair: THRESHOLD.raised, poor: THRESHOLD.high };
       const air = (value, reading) => (this._config.air_limits?.[reading]
-        ? ({ good: neutral, raised, high, null: "" })[level(value, this._airLimit(reading, 0), this._airLimit(reading, 1))]
-        : (value === null ? "" : neutral));
+        ? ({ ...colours, null: "" })[level(value, this._airLimit(reading, 0), this._airLimit(reading, 1))]
+        : (value === null ? "" : colours.good));
       return [air(this._number(room.temperature), "co2"), air(this._number(room.humidity), "pm2_5")];
     }
-    return [w.color ? slotColor(this, w.color) : neutral, ""];
+    return [colourCss(w.color) || neutral, ""];
   }
 
   _unit(id, fallback) {

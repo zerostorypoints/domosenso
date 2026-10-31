@@ -3,6 +3,45 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: named colours for Air and Climate, fair / poor, page titles
+
+- **One colour list**: the Ramka's named colours (`cards/lib/colours.js`: green, teal, blue, light
+  blue, purple, pink, magenta, amber, orange, red, grey), each a series colour of the Ramka's theme,
+  so it follows the theme mode. Every colour setting below picks from it and stores the colour's id.
+- **Air page colours** (with `air`): `input_select.<prefix>_air_color_good` (the neutral one),
+  `_air_color_fair` and `_air_color_poor`, in the Air page's Advanced card after the limits,
+  defaults green, amber, red; group `air` (reset with the Air page, seeded while the air numbers are
+  untouched; a fresh select starts at its default). The air-card colours its levels from them; its
+  theme variables `--air-good`, `--air-raised`, `--air-high` are no longer read. Red is now the
+  theme's red (`--graph-color-3`, `#ff7a5c` dark) rather than the air-card's own `#ff6b5c`.
+- **Fair and poor**: the Air page's limits read "CO₂ fair from / poor from" (PM2.5, VOC and NOx the
+  same; the score keeps "fair below / poor below"), the air-card's own level words are good, fair,
+  poor, and PM2.5's and the indexes' labels on the Ramka "fair" and "poor". The helper ids stay
+  `input_number.<prefix>_air_<reading>_raised` / `_high`.
+- **Climate**: an Air quality widget's colours, with threshold-based colours on, are the Air page's
+  three, so both views agree. New `input_select.<prefix>_climate_color_neutral` ("Neutral colour",
+  Climate, Advanced, next to "Threshold-based colours", default green, group `climate`): a
+  Temperature widget within its range and a Custom widget without a colour of its own (it was the
+  theme's text colour). Below (blue) and above (red) are unchanged.
+- **Custom widget colour**: the dialog's radio buttons become a dropdown of the named colours
+  (names in the page's language) plus Neutral; the widget stores the id (`color: teal`). A colour
+  stored as a theme slot number by the build before reads as its colour (4 teal, 5 purple, 6 pink,
+  9 green, 11 magenta, 10 grey), in the cards and in `script.<prefix>_climate_rooms_set`, and the
+  next save stores the id: no choice is lost.
+- **Page titles**: every settings page's header starts with the page's title (the tab's name,
+  as its tooltip shows it), then the description and the preview link.
+- **Translations**: new `card.colours.*`, `ui.settings.air_color_{good,fair,poor}`,
+  `ui.settings.climate_color_neutral`; `card.air.level.{raised,high}` become `.fair`, `.poor`,
+  `card.climate_rooms.{raised,high_from}` become `.fair_from`, `.poor_from`,
+  `ui.air.{pm,index}_{raised,high}` become `_fair`, `_poor`; `card.climate_rooms.colour` is gone
+  (en, de, pl).
+
+### What a home does
+
+- Render and deploy (new module `cards/lib/colours.js`, no new resource). The four selects start at
+  their defaults. A theme or dashboard that set `--air-good`, `--air-raised` or `--air-high` picks
+  the colours on the Air page instead.
+
 ## Unreleased: settings page headers, the Controls page, every screen in the preview
 
 - **Headers**: every settings page but About starts with a short text: what its view shows, what

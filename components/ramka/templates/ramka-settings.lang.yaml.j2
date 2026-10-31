@@ -58,7 +58,8 @@
 [%- for path in preview_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
 [%- set preview_url = '/' ~ preview_paths.get(lang, 'ramka-preview') ~ '/' -%]
 [%- endif -%]
-[#- The Air page's limits, two per reading, as the package names them. -#]
+[#- The Air page's limits, two per reading, as the package names them (the readings' raised and high
+    are their fair from and poor from). -#]
 [%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
 [%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
@@ -94,8 +95,9 @@
 [%- endif -%]
 [%- endmacro -%]
 [%- macro block(text) -%][[ text | indent(14, true) ]][%- endmacro -%]
-[#- A page's header: what its view shows, what for and when it is on the screen (General: the Ramka
-    as a whole), and with the preview dashboard the link to its preview tab. -#]
+[#- A page's header: the page's title (the tab's, ui.settings.pages), what its view shows, what for
+    and when it is on the screen (General: the Ramka as a whole), and with the preview dashboard the
+    link to its preview tab. -#]
 [%- macro page_header(page) %]
     header:
       layout: start
@@ -103,6 +105,8 @@
         type: markdown
         text_only: true
         content: |-
+          ## [[ t('ui.settings.pages.' ~ page) ]]
+
 [[ t('ui.settings.header.' ~ page) | indent(10, true) ]]
 [%- if preview_url %]
 [%- set target = preview_url ~ ('climate' if page == 'general' else page) %]
@@ -336,7 +340,7 @@ views:
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
 [%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else plant_labels(inputs.plants))]) ]][[ reset(view) ]]
-[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'climate_slots'), ('input_boolean', 'climate_thresholds')]) ]]
+[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'climate_slots'), ('input_boolean', 'climate_thresholds'), ('input_select', 'climate_color_neutral')]) ]]
       # The widgets: one row per widget (climate_slots) of a type, a name and two sensor pickers, a
       # settings dialog each, in an order changed by dragging or the up and down buttons
       # (climate-rooms-card), SPEC-021 amendment 2. The tiles and the charts follow them. An Air
@@ -350,6 +354,7 @@ views:
             visibility: [ [[ advanced_on ]] ]
             entity: sensor.[[ p ]]_climate_rooms
             slots: input_number.[[ p ]]_climate_slots
+            neutral_color: input_select.[[ p ]]_climate_color_neutral
 [%- if inputs.air is defined and (inputs.air.co2 is defined or inputs.air.pm2_5 is defined) %]
             air_limits:
 [%- for reading in ['co2', 'pm2_5'] if inputs.air[reading] is defined %]
@@ -363,7 +368,9 @@ views:
 [%- set _ = readings.append(('readings.' ~ key, inputs.air[key])) -%]
 [%- set _ = switches.append(('input_boolean', 'air_' ~ key)) -%]
 [%- for which in air_limits[key] -%][%- set _ = limits.append(('input_number', 'air_' ~ key ~ '_' ~ which)) -%][%- endfor -%]
-[%- endfor -%][[ switch_section('air', switches + [('input_boolean', 'settings_advanced')]) ]][[ advanced_section(limits) ]][[ render_time(readings, t('ui.settings.inputs.readings')) ]][[ reset(view) ]]
+[%- endfor -%]
+[%- set colour_rows = [('input_select', 'air_color_good'), ('input_select', 'air_color_fair'), ('input_select', 'air_color_poor')] -%]
+[[ switch_section('air', switches + [('input_boolean', 'settings_advanced')]) ]][[ advanced_section(limits + colour_rows) ]][[ render_time(readings, t('ui.settings.inputs.readings')) ]][[ reset(view) ]]
 [%- else %][[ switch_section(view) ]]
 [%- if view == 'calendar' %]
       # A calendar by URL: Home Assistant's own add flows (a human enters the URL and any password),

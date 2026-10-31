@@ -93,8 +93,8 @@
     "air": {
       "level": {
         "good": "Dobry",
-        "raised": "Podwyższony",
-        "high": "Wysoki"
+        "fair": "Umiarkowany",
+        "poor": "Zły"
       }
     },
     "mains": {
@@ -143,18 +143,30 @@
       "hum_range": "Komfortowa wilgotność (%)",
       "low": "Od",
       "high": "Do",
-      "air_how": "Progi strony Powietrze: zmiana tutaj zmienia też stronę Powietrze. Poniżej pierwszego wartość jest dobra (neutralna), od niego podwyższona (bursztynowa), od drugiego wysoka (czerwona).",
+      "air_how": "Progi strony Powietrze: zmiana tutaj zmienia też stronę Powietrze. Poniżej pierwszego wartość jest dobra, od niego umiarkowana, od drugiego zła, każda w kolorze, jaki ma dla niej strona Powietrze.",
       "co2_limits": "CO₂ (ppm)",
       "pm2_5_limits": "PM2.5 (µg/m³)",
-      "raised": "Podwyższona od",
-      "high_from": "Wysoka od",
+      "fair_from": "Umiarkowana od",
+      "poor_from": "Zła od",
       "air_not_set_up": "{reading}: nieskonfigurowane, strona Powietrze nie ma tego pomiaru.",
-      "colour_how": "Kolor wartości, gdy kolory według progów są włączone.",
+      "colour_how": "Kolor wartości, gdy kolory według progów są włączone. Neutralny: neutralny kolor strony Klimat.",
       "neutral": "Neutralny",
-      "colour": "Kolor {n}",
       "cancel": "Anuluj",
       "save": "Zapisz",
       "invalid": "Każdy zakres potrzebuje liczby i wyższej od niej."
+    },
+    "colours": {
+      "green": "Zielony",
+      "teal": "Morski",
+      "blue": "Niebieski",
+      "light_blue": "Jasnoniebieski",
+      "purple": "Fioletowy",
+      "pink": "Różowy",
+      "magenta": "Magenta",
+      "amber": "Bursztynowy",
+      "orange": "Pomarańczowy",
+      "red": "Czerwony",
+      "grey": "Szary"
     },
     "info_select_row": {
       "about": "O tym wyborze"
@@ -210,11 +222,11 @@
       "co2_soon": "przewietrz wkrótce",
       "co2_ventilate": "przewietrz",
       "pm_good": "dobre",
-      "pm_raised": "podwyższone",
-      "pm_high": "wysokie",
+      "pm_fair": "umiarkowane",
+      "pm_poor": "złe",
       "index_normal": "normalne",
-      "index_raised": "podwyższone",
-      "index_high": "wysokie"
+      "index_fair": "umiarkowany",
+      "index_poor": "zły"
     },
     "status": {
       "awning": {
@@ -266,7 +278,7 @@
       "header": {
         "general": "Ramka to jedyny pulpit tabletu na ścianie: budzi się, gdy ktoś jest w pokoju, i pokazuje jeden ekran naraz: rotację ekranów, muzykę, gdy gra, kontrolki, gdy zbliża się dłoń, i wydarzenia z kalendarza po dotknięciu jego przycisku. Ta strona zawiera to, co dotyczy całego tabletu: motyw, opóźnienie wygaszenia i jasność.",
         "climate": "Zegar, pogoda i prognoza, temperatura i wilgotność każdego pomieszczenia dużą czcionką oraz ich wykresy z 7 dni. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
-        "air": "Wskaźnik jakości powietrza i jego odczyty w kolorach: dobrze, podwyższone, wysokie, z CO₂ i PM2.5 z ostatnich 24 godzin. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
+        "air": "Wskaźnik jakości powietrza i jego odczyty w kolorach: dobra, umiarkowana, zła, z CO₂ i PM2.5 z ostatnich 24 godzin. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
         "plants": "Rośliny, najpierw te, które czegoś potrzebują, każda z wilgotnością gleby z ostatniego tygodnia. Na ekranie w rotacji, strona kafelków po stronie, gdy nie jest pokazywana muzyka.",
         "photos": "Seria zdjęć z folderu zdjęć na cały ekran. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
         "status": "Co dzieje się w domu, tylko do podglądu: markizy, drzwi, światła, moc i zamki. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
@@ -428,6 +440,7 @@
       "climate_rooms_how": "Jeden wiersz na widżet (Liczba widżetów, w Zaawansowanych). Jego rodzaj, z listy w wierszu: Temperatura (temperatura i wilgotność), Jakość powietrza (CO₂ i PM2.5), Własny (dowolne dwa czujniki z jednostką) albo Pusty (pusty kafelek na Ramce, dzięki czemu pozostałe stoją tam, gdzie chcesz; puste wiersze na końcu są pomijane). Ustawienia, w każdym wierszu: komfortowe zakresy widżetu Temperatura, progi widżetu Jakość powietrza (te ze strony Powietrze), kolor widżetu Własny. Przeciągnij wiersz za uchwyt albo użyj strzałek, aby zmienić kolejność. N-ty widżet z pomiarem to n-ty kafelek i n-ta linia wykresów, w kolorze jego kropki. Pusta nazwa staje się obszarem czujnika.",
       "climate_slots": "Liczba widżetów",
       "climate_thresholds": "Kolory według progów",
+      "climate_color_neutral": "Kolor neutralny",
       "air_score": "Pokaż jakość powietrza",
       "air_co2": "Pokaż CO₂",
       "air_pm2_5": "Pokaż PM2.5",
@@ -435,14 +448,17 @@
       "air_nox": "Pokaż indeks NOx",
       "air_score_fair": "Jakość powietrza średnia poniżej",
       "air_score_poor": "Jakość powietrza słaba poniżej",
-      "air_co2_raised": "CO₂ podwyższone od",
-      "air_co2_high": "CO₂ wysokie od",
-      "air_pm2_5_raised": "PM2.5 podwyższone od",
-      "air_pm2_5_high": "PM2.5 wysokie od",
-      "air_voc_raised": "Indeks VOC podwyższony od",
-      "air_voc_high": "Indeks VOC wysoki od",
-      "air_nox_raised": "Indeks NOx podwyższony od",
-      "air_nox_high": "Indeks NOx wysoki od",
+      "air_co2_raised": "CO₂ umiarkowane od",
+      "air_co2_high": "CO₂ złe od",
+      "air_pm2_5_raised": "PM2.5 umiarkowane od",
+      "air_pm2_5_high": "PM2.5 złe od",
+      "air_voc_raised": "Indeks VOC umiarkowany od",
+      "air_voc_high": "Indeks VOC zły od",
+      "air_nox_raised": "Indeks NOx umiarkowany od",
+      "air_nox_high": "Indeks NOx zły od",
+      "air_color_good": "Kolor: dobra",
+      "air_color_fair": "Kolor: umiarkowana",
+      "air_color_poor": "Kolor: zła",
       "inputs": {
         "screen": "Ekran",
         "rooms": "Pomieszczenia",

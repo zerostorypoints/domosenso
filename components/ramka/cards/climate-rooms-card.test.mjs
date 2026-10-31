@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import "./testing/dom-env.mjs";
 import { shadowText } from "./testing/dom-env.mjs";
 import "./climate-rooms-card.js";
+import { COLOUR_IDS } from "./lib/colours.js";
 
 const ENTITY = "sensor.ramka_climate_rooms";
 const sensor = (name, unit, device_class) => ({ state: "21", attributes: { friendly_name: name, ...(unit ? { unit_of_measurement: unit } : {}),
@@ -412,23 +413,45 @@ test("an Air quality widget's dialog edits the Air page's own limits; a reading 
   assert.equal(bare.querySelectorAll("input[type=number]").length, 0);
 });
 
-test("a Custom widget's dialog picks its colour from the series palette, or neutral", () => {
+test("a Custom widget's dialog picks its colour from the named colours, or neutral", () => {
   const custom = { type: "custom", label: "Power", main: "sensor.k_t", extra: "" };
-  const { card, calls } = makeCard({ rooms: [custom] });
+  const { card, calls } = makeCard({ rooms: [custom], lang: "de" });
   const dialog = openDialog(card);
-  const radios = [...dialog.querySelectorAll("input[type=radio]")];
-  // Neutral and the six series colours (the theme's slots without blue, amber and red).
-  assert.deepEqual(radios.map((r) => r.value), ["0", "4", "5", "6", "9", "11", "10"]);
-  assert.ok(radios[0].checked);
-  radios[3].checked = true;
+  const select = dialog.querySelector("select[name=colour]");
+  // Neutral, then the named colours in their order, named in the page's language.
+  assert.deepEqual([...select.options].map((o) => o.value), ["", ...COLOUR_IDS]);
+  assert.deepEqual([...select.options].slice(0, 4).map((o) => o.textContent), ["Neutral", "Grün", "Türkis", "Blau"]);
+  assert.equal(select.value, "");
+  select.value = "light blue";
+  select.dispatchEvent(new Event("change"));
+  assert.equal(dialog.querySelector(".dot").style.background, "var(--graph-color-8, #8fd3ff)");
   submit(dialog);
-  assert.deepEqual(saved(calls), [{ ...custom, color: 6 }]);
+  assert.deepEqual(saved(calls), [{ ...custom, color: "light blue" }]);
   // Back to neutral: no colour stored.
-  card.hass = { ...card._hass, states: { ...card._hass.states, [ENTITY]: { state: "1", attributes: { rooms: [{ ...custom, color: 6 }] } } } };
+  card.hass = { ...card._hass, states: { ...card._hass.states, [ENTITY]: { state: "1", attributes: { rooms: [{ ...custom, color: "light blue" }] } } } };
   const again = openDialog(card);
-  const [neutral] = again.querySelectorAll("input[type=radio]");
-  assert.ok(again.querySelector("input[value='6']").checked);
-  neutral.checked = true;
+  const choice = again.querySelector("select[name=colour]");
+  assert.equal(choice.value, "light blue");
+  choice.value = "";
   submit(again);
   assert.deepEqual(saved(calls), [custom]);
+});
+
+test("a colour stored as a theme slot number by the build before is kept: the dialog shows it, a save stores its id", () => {
+  const custom = { type: "custom", label: "Power", main: "sensor.k_t", extra: "" };
+  for (const [slot, id] of [[4, "teal"], [5, "purple"], [6, "pink"], [9, "green"], [11, "magenta"], [10, "grey"]]) {
+    const { card, calls } = makeCard({ rooms: [{ ...custom, color: slot }] });
+    const dialog = openDialog(card);
+    assert.equal(dialog.querySelector("select[name=colour]").value, id, String(slot));
+    submit(dialog);
+    assert.deepEqual(saved(calls), [{ ...custom, color: id }]);
+  }
+});
+
+test("the dialog's Neutral dot is the Climate page's neutral colour", () => {
+  const custom = { type: "custom", label: "Power", main: "sensor.k_t", extra: "" };
+  const NEUTRAL_SELECT = "input_select.ramka_climate_color_neutral";
+  const { card } = makeCard({ rooms: [custom], config: { neutral_color: NEUTRAL_SELECT },
+                              states: { [NEUTRAL_SELECT]: { state: "grey", attributes: {} } } });
+  assert.equal(openDialog(card).querySelector(".dot").style.background, "var(--graph-color-10, #c7c7c7)");
 });

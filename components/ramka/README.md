@@ -133,7 +133,8 @@ approach toggle it has had since 0.1.0.
 | General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
 | each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
 | Plants (with `plants`, 0.7.0) | `input_number.<prefix>_{plants_per_page,plants_page_s}` | plants |
-| Climate (with `climate`, unreleased) | `input_number.<prefix>_climate_slots`; the widgets, `sensor.<prefix>_climate_rooms`, and `input_boolean.<prefix>_climate_thresholds` are group climate | climate_slots |
+| Climate (with `climate`, unreleased) | `input_number.<prefix>_climate_slots`; the widgets, `sensor.<prefix>_climate_rooms`, `input_boolean.<prefix>_climate_thresholds` and `input_select.<prefix>_climate_color_neutral` are group climate | climate_slots |
+| Air (with `air`) | `input_boolean.<prefix>_air_<reading>`, `input_number.<prefix>_air_<reading>_{raised,high}` (the score's `_{fair,poor}`), `input_select.<prefix>_air_color_{good,fair,poor}` (unreleased) | air |
 | Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
 | Music look (with `music_visual`, unreleased) | `input_select.<prefix>_music_{template,eq}`, `input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}` | music_look |
 | Music profiles (with `music_visual`, unreleased) | per template (`behind_speakers`, `lively`, `calm`, `analyser`): `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`, `input_boolean.<prefix>_music_<id>_tilt` | music_profiles |
@@ -207,7 +208,8 @@ lovelace:
 ```
 
 - **Pages**, in this order: General, Climate, Air, Plants, Photos, Status, Calendar, Controls,
-  Music, About. Every page but About starts with a short header: what its view shows, what it is for
+  Music, About. Every page but About starts with a short header: the page's title (the tab's own
+  name, as its tooltip shows it), then what its view shows, what it is for
   and when it is on the screen (the ambient rotation for Climate to Status, the calendar button for
   Calendar, a hand near the tablet for Controls, the playing media player for Music); General's
   explains the Ramka as a whole. With `preview_dashboard` the header ends with a link to the preview
@@ -242,9 +244,15 @@ lovelace:
   album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
   With one folder per event the list is long: the card has a filter, and grouping folders (by year,
   `2025/…`) gives a shorter list.
+- **Colours.** Every colour a setting picks comes from one list, the Ramka's named colours
+  (`cards/lib/colours.js`): green, teal, blue, light blue, purple, pink, magenta, amber, orange,
+  red, grey, each a series colour of the Ramka's theme, so it follows the theme mode. A select
+  stores the colour's id (the options read in English; the Custom widget's dropdown names them in
+  the page's language).
 - **Climate**: in Advanced, the number of widgets (`input_number.<prefix>_climate_slots`, 1 to 20,
   default 10), the switch **Threshold-based colours** (`input_boolean.<prefix>_climate_thresholds`,
-  default off) and one row per widget (`climate-rooms-card`). Every row is a widget of a type,
+  default off), next to it **Neutral colour** (`input_select.<prefix>_climate_color_neutral`, a named
+  colour, default green) and one row per widget (`climate-rooms-card`). Every row is a widget of a type,
   chosen in the dropdown of its header; a new row is Empty:
   - **Temperature**: a temperature sensor and a humidity sensor;
   - **Air quality**: a CO₂ sensor and a PM2.5 sensor;
@@ -259,9 +267,11 @@ lovelace:
   **Settings** opens a dialog (a modal over the page; Escape, a tap beside it or Cancel close it):
   a Temperature widget's comfort ranges (temperature 20 to 24 °C and humidity 40 to 60 % unless
   set), kept in the widget; an Air quality widget's limits, which are the Air page's own helpers
-  (`input_number.<prefix>_air_{co2,pm2_5}_{raised,high}`, a change shows on the Air page too; a
-  reading without them, as in a home whose `air` input lacks it, is said to be not set up); a Custom widget's
-  colour, neutral or one of the series colours. The order changes by dragging a row by its handle
+  (`input_number.<prefix>_air_{co2,pm2_5}_{raised,high}`, fair from and poor from, a change shows
+  on the Air page too; a reading without them, as in a home whose `air` input lacks it, is said to
+  be not set up); a Custom widget's colour, a dropdown of the named colours or Neutral (the neutral
+  colour), stored as the colour's id (a theme slot number stored by the build before reads as its
+  colour, and the next save stores the id). The order changes by dragging a row by its handle
   (mouse, touch or pen: pointer events, so it works on the tablet and a phone) or with the row's up
   and down buttons (keyboard, screen readers); the picker is a plain ordered list, not the Ramka's
   grid.
@@ -272,10 +282,10 @@ lovelace:
   lines (CO₂ and PM2.5 are no temperature or humidity). The series colours are the theme's
   without its threshold colours (blue, amber, red, orange, light blue): slots 4, 5, 6, 9, 11, 10 in
   turn. With **Threshold-based colours** on, the tiles colour by the thresholds instead: a
-  Temperature widget's temperature and humidity blue below their range, neutral (the theme's text
-  colour) within, red above; an Air quality widget's CO₂ and PM2.5 neutral while good, amber
-  raised, red high, from the Air page's limits; a Custom widget's main value neutral or its chosen
-  colour. The chart lines keep the series colours, and the layout is the same either way. A
+  Temperature widget's temperature and humidity blue below their range, the neutral colour within,
+  red above; an Air quality widget's CO₂ and PM2.5 in the Air page's colours, good, fair or poor by
+  the Air page's limits, so the Ramka and the Air page agree; a Custom widget's main value in its
+  chosen colour, else the neutral colour. The chart lines keep the series colours, and the layout is the same either way. A
   reading shows its sensor's unit, an empty name becomes the sensor's area. Fewer widgets than
   filled rows deletes nothing: the widgets beyond are kept but not shown on the Ramka, and the
   picker says how many there are, with a button to remove them. The rows are kept by
@@ -285,8 +295,14 @@ lovelace:
   main sensor is a temperature, else Custom, and is stored so at the next save. The defaults (and
   the reset) are the first ten of `climate`, Temperature widgets of their temperature and humidity.
 - **Air**: a switch per configured reading (off leaves its tile out, the others share the room)
-  and, in Advanced, the two limits of each where its colour changes; the defaults are those in
-  "Dashboards and cards". An unusable limit keeps the default.
+  and, in Advanced, the two limits of each where its colour changes, "… fair from" and "… poor
+  from" (the score: "fair below", "poor below"; the helpers keep their ids,
+  `input_number.<prefix>_air_<reading>_{raised,high}`); the defaults are those in "Dashboards and
+  cards". An unusable limit keeps the default. Also in Advanced, the three colours:
+  **Good colour** (the neutral one), **Fair colour** and **Poor colour**
+  (`input_select.<prefix>_air_color_{good,fair,poor}`, named colours, default green, amber, red),
+  read live by the air-card and by the Climate page's Air quality widgets; reset and seeded with
+  the other Air settings.
 - **Calendar by URL** (Calendar): links to Home Assistant's own add flows for an ICS link
   (`remote_calendar`) or a CalDAV account (`caldav`, see `components/calendar`), and the step after:
   the new `calendar.*` entity into `calendar`, a render and a deploy. Entering the URL or a password

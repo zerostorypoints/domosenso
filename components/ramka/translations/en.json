@@ -93,8 +93,8 @@
     "air": {
       "level": {
         "good": "Good",
-        "raised": "Raised",
-        "high": "High"
+        "fair": "Fair",
+        "poor": "Poor"
       }
     },
     "mains": {
@@ -143,18 +143,30 @@
       "hum_range": "Comfortable humidity (%)",
       "low": "From",
       "high": "To",
-      "air_how": "The Air page's limits: a change here changes the Air page too. Below the first the value is good (neutral), from it raised (amber), from the second high (red).",
+      "air_how": "The Air page's limits: a change here changes the Air page too. Below the first the value is good, from it fair, from the second poor, each in the Air page's colour for it.",
       "co2_limits": "CO₂ (ppm)",
       "pm2_5_limits": "PM2.5 (µg/m³)",
-      "raised": "Raised from",
-      "high_from": "High from",
+      "fair_from": "Fair from",
+      "poor_from": "Poor from",
       "air_not_set_up": "{reading}: not set up, the Air page has no such reading.",
-      "colour_how": "The value's colour while threshold-based colours are on.",
+      "colour_how": "The value's colour while threshold-based colours are on. Neutral: the Climate page's neutral colour.",
       "neutral": "Neutral",
-      "colour": "Colour {n}",
       "cancel": "Cancel",
       "save": "Save",
       "invalid": "Each range needs a number and a higher one."
+    },
+    "colours": {
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "light_blue": "Light blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "magenta": "Magenta",
+      "amber": "Amber",
+      "orange": "Orange",
+      "red": "Red",
+      "grey": "Grey"
     },
     "info_select_row": {
       "about": "About this choice"
@@ -210,11 +222,11 @@
       "co2_soon": "ventilate soon",
       "co2_ventilate": "ventilate",
       "pm_good": "fine",
-      "pm_raised": "raised",
-      "pm_high": "high",
+      "pm_fair": "fair",
+      "pm_poor": "poor",
       "index_normal": "normal",
-      "index_raised": "raised",
-      "index_high": "high"
+      "index_fair": "fair",
+      "index_poor": "poor"
     },
     "status": {
       "awning": {
@@ -266,7 +278,7 @@
       "header": {
         "general": "The Ramka is the wall tablet's one dashboard: it wakes when someone is in the room and shows one screen at a time, the ambient rotation, the music while it plays, the controls when a hand comes near and the calendar from its button. This page holds what applies to the whole tablet: theme, screen-off delay and brightness.",
         "climate": "Clock, weather and forecast, every room's temperature and humidity in large type and their 7-day charts. On the screen in the ambient rotation, at its turn, while no music is shown.",
-        "air": "The air-quality score and its readings, coloured good, raised or high, with the last 24 hours of CO₂ and PM2.5. On the screen in the ambient rotation, at its turn, while no music is shown.",
+        "air": "The air-quality score and its readings, coloured good, fair or poor, with the last 24 hours of CO₂ and PM2.5. On the screen in the ambient rotation, at its turn, while no music is shown.",
         "plants": "The plants, the ones that need something first, each with its moisture over the last week. On the screen in the ambient rotation, a page of tiles at a time, while no music is shown.",
         "photos": "A series of photos from the photo folder, edge to edge. On the screen in the ambient rotation, at its turn, while no music is shown.",
         "status": "What the home is doing, to look at only: awnings, doors, lights, power and locks. On the screen in the ambient rotation, at its turn, while no music is shown.",
@@ -428,6 +440,7 @@
       "climate_rooms_how": "One row per widget (Number of widgets, in Advanced). Its type, in the row's dropdown: Temperature (a temperature and a humidity sensor), Air quality (CO₂ and PM2.5), Custom (any two sensors with a unit) or Empty (an empty tile on the Ramka, so the others sit where you want them; empty rows at the end are left out). Settings, in each row: a Temperature widget's comfort ranges, an Air quality widget's limits (the Air page's), a Custom widget's colour. Drag a row by its handle, or use the arrows, to change the order. The n-th widget with a reading is the n-th tile and the n-th line of the charts, in the colour of its dot. An empty name becomes the sensor's area.",
       "climate_slots": "Number of widgets",
       "climate_thresholds": "Threshold-based colours",
+      "climate_color_neutral": "Neutral colour",
       "air_score": "Show air quality",
       "air_co2": "Show CO₂",
       "air_pm2_5": "Show PM2.5",
@@ -435,14 +448,17 @@
       "air_nox": "Show NOx index",
       "air_score_fair": "Air quality fair below",
       "air_score_poor": "Air quality poor below",
-      "air_co2_raised": "CO₂ raised from",
-      "air_co2_high": "CO₂ high from",
-      "air_pm2_5_raised": "PM2.5 raised from",
-      "air_pm2_5_high": "PM2.5 high from",
-      "air_voc_raised": "VOC index raised from",
-      "air_voc_high": "VOC index high from",
-      "air_nox_raised": "NOx index raised from",
-      "air_nox_high": "NOx index high from",
+      "air_co2_raised": "CO₂ fair from",
+      "air_co2_high": "CO₂ poor from",
+      "air_pm2_5_raised": "PM2.5 fair from",
+      "air_pm2_5_high": "PM2.5 poor from",
+      "air_voc_raised": "VOC index fair from",
+      "air_voc_high": "VOC index poor from",
+      "air_nox_raised": "NOx index fair from",
+      "air_nox_high": "NOx index poor from",
+      "air_color_good": "Good colour",
+      "air_color_fair": "Fair colour",
+      "air_color_poor": "Poor colour",
       "inputs": {
         "screen": "Screen",
         "rooms": "Rooms",

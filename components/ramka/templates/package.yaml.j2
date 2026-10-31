@@ -198,10 +198,18 @@
 [%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', {'all': true})) -%]
 [%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
 [%- endif -%]
+[#- The Ramka's named colours (cards/lib/colours.js, COLOURS: the ids in the dropdowns' order, each a
+    series colour of the theme): the options of every colour select. colour_slots: the theme slot of
+    each, for a Custom widget's colour stored as a slot number by the build before them.
+    tests/test_ramka_render.py holds both to the cards' list. -#]
+[%- set colours = ['green', 'teal', 'blue', 'light blue', 'purple', 'pink', 'magenta', 'amber', 'orange', 'red', 'grey'] -%]
+[%- set colour_slots = {9: 'green', 4: 'teal', 1: 'blue', 8: 'light blue', 5: 'purple', 6: 'pink', 11: 'magenta', 2: 'amber', 7: 'orange', 3: 'red', 10: 'grey'} -%]
 [#- The Air page: a switch per configured reading, and the two limits of each, where its colour
-    changes (good → raised → high; the score: good → fair → poor, higher is better). Defaults are the
-    air-card's literal levels (templates/dashboard.lang.yaml.j2): (lower key, upper key, lower,
-    upper, min, max, step, unit). -#]
+    changes (good → fair → poor; the score: higher is better). Defaults are the air-card's literal
+    levels (templates/dashboard.lang.yaml.j2): (lower key, upper key, lower, upper, min, max, step,
+    unit). The readings' keys stay raised and high (input_number.<prefix>_air_<reading>_raised /
+    _high, a stable contract); their names say fair from and poor from. The three colours, good
+    (the neutral one), fair and poor, are colour selects of the same group (air_colours). -#]
 [%- set air_limits = {'score': ('fair', 'poor', 80, 60, 0, 100, 1, ''), 'co2': ('raised', 'high', 800, 1200, 400, 5000, 50, 'ppm'),
     'pm2_5': ('raised', 'high', 15, 35, 1, 250, 1, 'µg/m³'), 'voc': ('raised', 'high', 150, 250, 1, 500, 1, ''),
     'nox': ('raised', 'high', 20, 150, 1, 500, 1, '')} -%]
@@ -213,6 +221,10 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
+[%- set air_colours = {'good': 'green', 'fair': 'amber', 'poor': 'red'} -%]
+[%- if inputs.air is defined -%]
+[%- for key, colour in air_colours.items() -%][%- set _ = settings.append(('input_select', 'air_color_' ~ key, 'air', 'air', colour)) -%][%- endfor -%]
+[%- endif -%]
 [#- The Climate page's widgets (SPEC-021 amendments 2, 3): a list, each a widget of a type (temperature,
     air, custom: a label, a main reading, a second one and the type's own values) or an empty one
     ({type: empty, spacer: true}, an empty tile), picked on the settings page; the defaults are the
@@ -227,6 +239,7 @@
 [%- if inputs.climate is defined -%]
 [%- set _ = settings.append(('event', 'climate_rooms', 'climate', 'climate', {'rooms': climate_rooms})) -%]
 [%- set _ = settings.append(('input_boolean', 'climate_thresholds', 'climate', 'climate', false)) -%]
+[%- set _ = settings.append(('input_select', 'climate_color_neutral', 'climate', 'climate', air_colours.good)) -%]
 [%- set _ = settings.append(('input_number', 'climate_slots', 'climate', 'climate_slots', 10)) -%]
 [%- endif -%]
 [#- A select's options: its default first, then the rest in the given order, so a fresh helper is
@@ -309,6 +322,24 @@ input_select:
     name: [[ named(' music EQ preset') ]]
     icon: mdi:tune-vertical-variant
     options:[[ options('flat', eq_presets | list) ]]
+  [%- endif %]
+  [%- if inputs.air is defined %]
+  # The Air page's colours (named colours, cards/lib/colours.js): good (the neutral one), fair and
+  # poor, read live by the air-card and by the Climate page's Air quality widgets.
+  [%- for key, colour in air_colours.items() %]
+  [[ p ]]_air_color_[[ key ]]:
+    name: [[ named(' air colour ' ~ key) ]]
+    icon: mdi:palette
+    options:[[ options(colour, colours) ]]
+  [%- endfor %]
+  [%- endif %]
+  [%- if inputs.climate is defined %]
+  # The Climate page's neutral colour: a Temperature widget within its range and a Custom widget
+  # without a colour of its own, while the threshold-based colours are on (rooms-card).
+  [[ p ]]_climate_color_neutral:
+    name: [[ named(' climate neutral colour') ]]
+    icon: mdi:palette
+    options:[[ options(air_colours.good, colours) ]]
   [%- endif %]
 
 # No `initial:` on any helper: HA would reset it to that value at every restart and throw away the
@@ -1234,7 +1265,8 @@ script:
 [%- if inputs.climate is defined %]
 
   # The Climate page's widgets, up to twenty: {type, label, main, extra} with the type's own values
-  # (a temperature's four comfort numbers, a custom's color), or an empty one {type: empty, spacer:
+  # (a temperature's four comfort numbers, a custom's color: a named colour's id; a theme slot number,
+  # as the build before the named colours stored it, becomes its colour's id), or an empty one {type: empty, spacer:
   # true}, which keeps its position (an empty tile); empty ones at the end are dropped. An entry
   # without a type (before the types, or from an automation) is a temperature when its main sensor's
   # device_class is temperature, else custom; without a sensor as its main reading, an empty one. A
@@ -1246,7 +1278,7 @@ script:
     fields:
       rooms:
         name: Rooms
-        description: "Up to twenty widgets, each {type, label, main, extra} (type temperature, air or custom; entity ids, may be empty; temperature: temp_low, temp_high, hum_low, hum_high; custom: color) or {type: empty}."
+        description: "Up to twenty widgets, each {type, label, main, extra} (type temperature, air or custom; entity ids, may be empty; temperature: temp_low, temp_high, hum_low, hum_high; custom: color, a colour id: [[ colours | join(', ') ]]) or {type: empty}."
         # No selector, as the albums' script: object: {} is refused.
         example: '[{"type": "temperature", "label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
     sequence:
@@ -1266,7 +1298,9 @@ script:
             {% if kind not in kinds %}{% set kind = 'temperature' if state_attr(main, 'device_class') == 'temperature' else 'custom' %}{% endif %}
             {% set more = namespace(items=[('type', kind), ('label', r.label | default('') | string), ('main', main), ('extra', r.extra | default('') | string)]) %}
             {% if kind == 'temperature' %}{% for k in ['temp_low', 'temp_high', 'hum_low', 'hum_high'] if r[k] is number and r[k] is not boolean %}{% set more.items = more.items + [(k, r[k] | float)] %}{% endfor %}{% endif %}
-            {% if kind == 'custom' and r.color is number and r.color is not boolean and r.color | int == r.color and 1 <= r.color <= 20 %}{% set more.items = more.items + [('color', r.color | int)] %}{% endif %}
+            {% set color = r.color | default('') %}
+            {% if color is number and color is not boolean and color | int == color %}{% set color = [[ colour_slots | tojson ]].get(color | int | string, '') %}{% endif %}
+            {% if kind == 'custom' and color is string and color in [[ colours | tojson ]] %}{% set more.items = more.items + [('color', color)] %}{% endif %}
             {% set kept.rooms = kept.rooms + [dict(more.items)] %}
             {% endif %}
             {% endfor %}

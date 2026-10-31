@@ -23,17 +23,17 @@ const bare = {
   tiles: [{ name: "CO₂", entity: "sensor.co2", unit: "ppm", levels: [[800], [1200], [null]] }],
 };
 
-test("default level names per language: good, raised, high", () => {
+test("default level names per language: good, fair, poor", () => {
   const cases = {
-    en: ["Good", "Raised", "High"], de: ["Gut", "Erhöht", "Hoch"], pl: ["Dobry", "Podwyższony", "Wysoki"],
+    en: ["Good", "Fair", "Poor"], de: ["Gut", "Mässig", "Schlecht"], pl: ["Dobry", "Umiarkowany", "Zły"],
   };
-  for (const [lang, [good, raised, high]] of Object.entries(cases)) {
-    for (const [co2, expected] of [["500", good], ["1000", raised], ["1500", high]]) {
+  for (const [lang, [good, fair, poor]] of Object.entries(cases)) {
+    for (const [co2, expected] of [["500", good], ["1000", fair], ["1500", poor]]) {
       const card = makeCard({ lang, states: { "sensor.score": sensor("90"), "sensor.co2": sensor(co2) }, config: bare });
       assert.deepEqual(labels(card), [good, expected], `${lang} ${co2}`);
     }
-    const poor = makeCard({ lang, states: { "sensor.score": sensor("40"), "sensor.co2": sensor("500") }, config: bare });
-    assert.equal(labels(poor)[0], high, `${lang}: score 40`);
+    const low = makeCard({ lang, states: { "sensor.score": sensor("40"), "sensor.co2": sensor("500") }, config: bare });
+    assert.equal(labels(low)[0], poor, `${lang}: score 40`);
   }
 });
 
@@ -50,7 +50,7 @@ test("value, unit and the colour of the level", () => {
   const card = makeCard({ lang: "en", states: { "sensor.score": sensor("90"), "sensor.co2": sensor("1500") }, config: bare });
   const tile = card.shadowRoot.querySelector('[data-i="0"]');
   assert.equal(tile.querySelector(".value").textContent, "1500ppm");
-  assert.equal(tile.querySelector(".label").style.color, "var(--high)");
+  assert.equal(tile.querySelector(".label").style.color, "var(--poor)");
 });
 
 test("a tile whose entity is unavailable is left out", () => {
@@ -92,8 +92,8 @@ test("show: off leaves a tile out, the others share its room, and on brings it b
 test("an entity limit moves the colour, read on every update", () => {
   const states = { "sensor.co2": sensor("900"), "sensor.score": sensor("75") };
   const card = makeCard({ lang: "en", states, config: live });
-  assert.equal(colour(card, 0), "var(--raised)");          // 900 ≥ the default 800
-  assert.equal(colour(card, "score"), "var(--raised)");    // 75 < the default 80: fair
+  assert.equal(colour(card, 0), "var(--fair)");            // 900 ≥ the default 800
+  assert.equal(colour(card, "score"), "var(--fair)");      // 75 < the default 80: fair
   card.hass = { locale: { language: "en" }, states: { ...states, "input_number.co2_raised": sensor("1000.0"), "input_number.score_fair": sensor("70") } };
   assert.equal(colour(card, 0), "var(--good)");
   assert.equal(colour(card, "score"), "var(--good)");
@@ -102,7 +102,7 @@ test("an entity limit moves the colour, read on every update", () => {
 test("an unusable limit keeps the literal default", () => {
   for (const state of ["unavailable", "unknown", "", "high"]) {
     const card = makeCard({ lang: "en", states: { "sensor.co2": sensor("900"), "input_number.co2_raised": sensor(state) }, config: live });
-    assert.equal(colour(card, 0), "var(--raised)", state);
+    assert.equal(colour(card, 0), "var(--fair)", state);
   }
 });
 
@@ -110,5 +110,25 @@ test("without show: and with literal levels the card is as before", () => {
   const states = { "sensor.score": sensor("90"), "sensor.co2": sensor("1000") };
   const card = makeCard({ lang: "en", states, config: bare });
   assert.deepEqual(names(card), ["Score", "CO₂"]);
-  assert.deepEqual(labels(card), ["Good", "Raised"]);
+  assert.deepEqual(labels(card), ["Good", "Fair"]);
+});
+
+// The Air page's colours: an input_select per level whose state is a named colour's id.
+const level = (card, key) => card.style.getPropertyValue(`--${key}`);
+
+test("the levels' colours are the colour selects' named colours, green, amber and red without them", () => {
+  const states = { "sensor.score": sensor("90"), "sensor.co2": sensor("1000") };
+  const plain = makeCard({ lang: "en", states, config: bare });
+  assert.deepEqual(["good", "fair", "poor"].map((k) => level(plain, k)),
+                   ["var(--graph-color-9, #5be37a)", "var(--graph-color-2, #f5c542)", "var(--graph-color-3, #ff7a5c)"]);
+  const colors = { good: "input_select.good", fair: "input_select.fair", poor: "input_select.poor" };
+  const card = makeCard({ lang: "en", states: { ...states, "input_select.good": sensor("teal"), "input_select.fair": sensor("light blue"),
+                                                "input_select.poor": sensor("magenta") }, config: { ...bare, colors } });
+  assert.deepEqual(["good", "fair", "poor"].map((k) => level(card, k)),
+                   ["var(--graph-color-4, #4fd1b5)", "var(--graph-color-8, #8fd3ff)", "var(--graph-color-11, #e040fb)"]);
+  // The tile in the fair level shows the fair colour; a select that is no colour id keeps the default, live.
+  assert.equal(colour(card, 0), "var(--fair)");
+  card.hass = { locale: { language: "en" }, states: { ...states, "input_select.good": sensor("unavailable"), "input_select.poor": sensor("violet") } };
+  assert.deepEqual(["good", "fair", "poor"].map((k) => level(card, k)),
+                   ["var(--graph-color-9, #5be37a)", "var(--graph-color-2, #f5c542)", "var(--graph-color-3, #ff7a5c)"]);
 });

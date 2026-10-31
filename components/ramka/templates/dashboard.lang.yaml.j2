@@ -285,13 +285,18 @@ views:
         cards:
           # The widgets picked on the settings page (sensor.[[ p ]]_climate_rooms), its first `slots`,
           # an empty one an empty tile; these until the seed has set it. With the threshold-based
-          # colours on, the values take their comfort ranges' and the Air page's limits' colours.
+          # colours on, the values take their comfort ranges' colours (within: the neutral colour) and
+          # an Air quality widget the Air page's limits and colours, so both views agree.
           - type: custom:rooms-card
             height: calc([[ vh ]] - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
             entity: sensor.[[ p ]]_climate_rooms
             slots: input_number.[[ p ]]_climate_slots
             thresholds: input_boolean.[[ p ]]_climate_thresholds
+            neutral_color: input_select.[[ p ]]_climate_color_neutral
+            [%- if air %]
+            air_colors: {good: input_select.[[ p ]]_air_color_good, fair: input_select.[[ p ]]_air_color_fair, poor: input_select.[[ p ]]_air_color_poor}
+            [%- endif %]
             [%- if air and (air.co2 is defined or air.pm2_5 is defined) %]
             air_limits:
               [%- for reading in ['co2', 'pm2_5'] if air[reading] is defined %]
@@ -385,7 +390,8 @@ views:
 [%- if air %]
 
       # ---- Air quality: ambient, music view off, page "air" ----------------------------------
-      # air-card: the score and four readings, coloured good / raised / high. Limits: CO₂ 800 /
+      # air-card: the score and four readings, coloured good / fair / poor in the Air page's colours
+      # (its three colour selects, read live). Limits: CO₂ 800 /
       # 1200 ppm (ventilation rules of thumb), PM2.5 15 / 35 µg/m³ (WHO 2021 24-hour guideline,
       # then the old US 24-hour limit), VOC and NOx on Sensirion's index scales (100 and 1 are the
       # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means. The settings
@@ -409,6 +415,7 @@ views:
         cards:
           - type: custom:air-card
             height: calc([[ vh ]] - 272px)
+            colors: {good: input_select.[[ p ]]_air_color_good, fair: input_select.[[ p ]]_air_color_fair, poor: input_select.[[ p ]]_air_color_poor}
             [%- if air.score is defined %]
             score:
               name: [[ t('ui.air.score') | yaml ]]
@@ -440,8 +447,8 @@ views:
                 show: input_boolean.[[ p ]]_air_pm2_5
                 levels:
                   - [{entity: input_number.[[ p ]]_air_pm2_5_raised, default: 15}, [[ t('ui.air.pm_good') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: 35}, [[ t('ui.air.pm_raised') | yaml ]] ]
-                  - [null, [[ t('ui.air.pm_high') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: 35}, [[ t('ui.air.pm_fair') | yaml ]] ]
+                  - [null, [[ t('ui.air.pm_poor') | yaml ]] ]
             [%- endif %]
             [%- if air.voc is defined %]
               - name: VOC
@@ -449,8 +456,8 @@ views:
                 show: input_boolean.[[ p ]]_air_voc
                 levels:
                   - [{entity: input_number.[[ p ]]_air_voc_raised, default: 150}, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_voc_high, default: 250}, [[ t('ui.air.index_raised') | yaml ]] ]
-                  - [null, [[ t('ui.air.index_high') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_voc_high, default: 250}, [[ t('ui.air.index_fair') | yaml ]] ]
+                  - [null, [[ t('ui.air.index_poor') | yaml ]] ]
             [%- endif %]
             [%- if air.nox is defined %]
               - name: NOx
@@ -458,8 +465,8 @@ views:
                 show: input_boolean.[[ p ]]_air_nox
                 levels:
                   - [{entity: input_number.[[ p ]]_air_nox_raised, default: 20}, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_nox_high, default: 150}, [[ t('ui.air.index_raised') | yaml ]] ]
-                  - [null, [[ t('ui.air.index_high') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_nox_high, default: 150}, [[ t('ui.air.index_fair') | yaml ]] ]
+                  - [null, [[ t('ui.air.index_poor') | yaml ]] ]
             [%- endif %]
             grid_options: {columns: full, rows: auto}
       [%- if air.co2 is defined or air.pm2_5 is defined %]

@@ -7,7 +7,9 @@
 // The pickers offer the sensors of the type's device class (any sensor with a unit when the home
 // has none of that class), with Home Assistant's own entity picker, which searches as you type. A
 // name, and a "Settings" link that opens the widget's dialog: a Temperature widget's comfort ranges,
-// an Air quality widget's limits (the Air page's helpers, shared with it), a Custom widget's colour.
+// an Air quality widget's limits (the Air page's helpers, shared with it), a Custom widget's colour
+// (a dropdown of the Ramka's named colours, lib/colours.js, or Neutral: the Climate page's neutral
+// colour, stored as no colour).
 // The n-th widget with a reading is the n-th tile and the n-th line of the 7-day charts, in series
 // colour n (lib/climate-widgets.js), the swatch in front of the row.
 //
@@ -16,12 +18,15 @@
 //                                              # {type, label, main, extra, ...} or {type: empty, spacer: true}
 //   slots: input_number.ramka_climate_slots    # optional: how many rows (a number or an entity), 1-20
 //   script: script.ramka_climate_rooms_set     # called with {rooms: [...]}
-//   air_limits:                                # optional: the Air page's limits, raised and high, of
-//     co2: [input_number.ramka_air_co2_raised, input_number.ramka_air_co2_high]       # the readings
-//     pm2_5: [input_number.ramka_air_pm2_5_raised, input_number.ramka_air_pm2_5_high] # it has
+//   air_limits:                                # optional: the Air page's limits, fair from and poor
+//     co2: [input_number.ramka_air_co2_raised, input_number.ramka_air_co2_high]       # from, of the
+//     pm2_5: [input_number.ramka_air_pm2_5_raised, input_number.ramka_air_pm2_5_high] # readings it has
+//   neutral_color: input_select.ramka_climate_color_neutral  # optional: the neutral colour's swatch
 //
 // An entry from before the types reads as Temperature when its main sensor is a temperature, else
-// Custom (lib/climate-widgets.js); the next save stores the type, no room is lost.
+// Custom (lib/climate-widgets.js); the next save stores the type, no room is lost. A Custom widget's
+// colour stored as a theme slot number (the build before the named colours) reads as that colour's
+// id, and the next save stores the id.
 //
 // The picker is frontend internals a dashboard does not load by itself: the entities card's editor
 // imports it (HA 2026.9.2), so the card asks for that editor once. If the picker still is not there
@@ -46,7 +51,8 @@ const load = (path, json) => import(new URL(path, import.meta.url).href + versio
 const [widgets, en, de, pl] = await Promise.all([
   load("./lib/climate-widgets.js"), load("../translations/en.json", true), load("../translations/de.json", true),
   load("../translations/pl.json", true)]);
-const { TYPES, DEVICE_CLASSES, COMFORT, SERIES_SLOTS, seriesSlot, slotColor, readWidget, hasReading, storedWidget } = widgets;
+const { TYPES, DEVICE_CLASSES, COMFORT, COLOUR_IDS, NEUTRAL, colourKey, colourCss, selectedColour, seriesSlot, slotColor,
+  readWidget, hasReading, storedWidget } = widgets;
 
 const t = createT({ en: en.default, de: de.default, pl: pl.default });
 
@@ -175,9 +181,8 @@ class ClimateRoomsCard extends HTMLElement {
                    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         legend { padding: 0 4px; color: var(--primary-text-color); }
         fieldset label { grid-column: auto; grid-template-columns: 1fr; gap: 4px; }
-        .colours { display: flex; flex-wrap: wrap; gap: 10px; }
-        .colours label { display: flex; align-items: center; gap: 6px; cursor: pointer; min-height: 36px; color: var(--primary-text-color); }
-        .colours input { width: 20px; height: 20px; min-height: 0; margin: 0; }
+        .colours { display: flex; align-items: center; gap: 10px; }
+        .colours select { flex: 1; }
         .dot { width: 22px; height: 22px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
         .error { color: var(--error-color, #db4437); }
         .error:empty { display: none; }
@@ -557,7 +562,7 @@ class ClimateRoomsCard extends HTMLElement {
         continue;
       }
       const pair = [];
-      const items = ["card.climate_rooms.raised", "card.climate_rooms.high_from"].map((key, i) => {
+      const items = ["card.climate_rooms.fair_from", "card.climate_rooms.poor_from"].map((key, i) => {
         const a = states[i].attributes || {};
         const old = parseFloat(states[i].state);
         const [label, input] = this._number(key, old, { min: a.min, max: a.max, step: a.step });
@@ -580,37 +585,39 @@ class ClimateRoomsCard extends HTMLElement {
     };
   }
 
-  // Custom: the value's colour with threshold-based colours on: neutral, or one of the series colours.
+  // Custom: the value's colour with threshold-based colours on: a dropdown of the named colours, the
+  // first entry Neutral (no colour stored: the Climate page's neutral colour); a dot shows the pick.
   _customSettings(body, w) {
     const how = document.createElement("p");
     how.id = "widget-colour-how";
     how.textContent = t(this._hass, "card.climate_rooms.colour_how");
     const group = document.createElement("div");
     group.className = "colours";
-    group.setAttribute("role", "radiogroup");
-    group.setAttribute("aria-labelledby", how.id);
-    const choice = (value, text, color) => {
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = "colour";
-      input.value = String(value);
-      input.checked = (w.color || 0) === value;
-      const dot = document.createElement("span");
-      dot.className = "dot";
-      dot.style.background = color;
-      if (!value) dot.style.border = "2px solid var(--primary-text-color)";
-      const span = document.createElement("span");
-      span.textContent = text;
-      label.append(input, dot, span);
-      return label;
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    const select = document.createElement("select");
+    select.id = "widget-colour";
+    select.name = "colour";
+    select.setAttribute("aria-labelledby", how.id);
+    for (const [value, text] of [["", t(this._hass, "card.climate_rooms.neutral")],
+                                 ...COLOUR_IDS.map((id) => [id, t(this._hass, colourKey(id))])]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    }
+    select.value = COLOUR_IDS.includes(w.color) ? w.color : "";
+    const neutral = this._config.neutral_color ? selectedColour(this._hass.states, this._config.neutral_color, NEUTRAL) : "transparent";
+    const paint = () => {
+      dot.style.background = colourCss(select.value) || neutral;
+      dot.style.border = select.value || this._config.neutral_color ? "" : "2px solid var(--primary-text-color)";
     };
-    group.append(choice(0, t(this._hass, "card.climate_rooms.neutral"), "transparent"),
-                 ...SERIES_SLOTS.map((slot, i) => choice(slot, t(this._hass, "card.climate_rooms.colour", { n: i + 1 }), slotColor(this, slot))));
+    paint();
+    select.addEventListener("change", paint);
+    group.append(dot, select);
     body.append(how, group);
     return () => {
-      const picked = parseInt(group.querySelector("input:checked")?.value || "0", 10);
-      if (picked) w.color = picked;
+      if (select.value) w.color = select.value;
       else delete w.color;
       this._save();
       return null;

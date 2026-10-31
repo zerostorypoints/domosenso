@@ -142,7 +142,7 @@ test("thresholds on: a Temperature widget's values blue below, neutral within, r
   assert.deepEqual(colours(widgetCard([temperature()], { extra: { "sensor.t": sensor("unavailable") } }))[0], ["", ""]);
 });
 
-test("thresholds on: an Air quality widget's CO2 and PM2.5 neutral while good, amber raised, red high, from the Air page's limits", () => {
+test("thresholds on, no colour selects: an Air quality widget's CO2 and PM2.5 neutral while good, amber fair, red poor, from the Air page's limits", () => {
   const air = { type: "air", label: "A", main: "sensor.co2", extra: "sensor.pm" };
   const at = (co2, pm, limits = {}) => colours(widgetCard([air], { extra: { "sensor.co2": sensor(String(co2)), "sensor.pm": sensor(String(pm)), ...limits } }))[0];
   // The helpers without a number: the package's defaults, 800/1200 ppm and 15/35 µg/m³.
@@ -161,14 +161,56 @@ test("thresholds on: an Air quality widget's CO2 and PM2.5 neutral while good, a
 
 test("thresholds on: a Custom widget neutral, or the colour of its settings", () => {
   const custom = (extra) => ({ type: "custom", label: "C", main: "sensor.t", extra: "sensor.h", ...extra });
-  const card = widgetCard([custom(), custom({ color: 9 })], { extra: { "sensor.t": sensor("5"), "sensor.h": sensor("5") } });
-  // Slot 9: the theme's green, here HA's fallback for it.
-  assert.deepEqual(colours(card), [[NEUTRAL, ""], ["#01ab63", ""]]);
+  const list = [custom(), custom({ color: "pink" }), custom({ color: 9 })];
+  const card = widgetCard(list, { extra: { "sensor.t": sensor("5"), "sensor.h": sensor("5") } });
+  // A colour id: the theme's variable with its fallback; slot 9 from the build before: green.
+  assert.deepEqual(colours(card), [[NEUTRAL, ""], [PINK, ""], [GREEN, ""]]);
+});
+
+// The settings' colours: the Climate page's neutral colour and the Air page's good, fair and poor.
+const NEUTRAL_SELECT = "input_select.ramka_climate_color_neutral";
+const AIR_COLORS = { good: "input_select.ramka_air_color_good", fair: "input_select.ramka_air_color_fair",
+                     poor: "input_select.ramka_air_color_poor" };
+const GREEN = "var(--graph-color-9, #5be37a)";
+const PINK = "var(--graph-color-6, #ff8ac2)";
+const TEAL = "var(--graph-color-4, #4fd1b5)";
+const GREY = "var(--graph-color-10, #c7c7c7)";
+const AMBER_N = "var(--graph-color-2, #f5c542)";
+const RED_N = "var(--graph-color-3, #ff7a5c)";
+const PURPLE = "var(--graph-color-5, #b388ff)";
+
+test("the neutral colour: a Temperature widget within its range and a Custom widget without a colour; green by default", () => {
+  const custom = { type: "custom", label: "C", main: "sensor.c", extra: "" };
+  const extra = { "sensor.t": sensor("22"), "sensor.h": sensor("70"), "sensor.c": sensor("5") };
+  const config = { neutral_color: NEUTRAL_SELECT };
+  // The select not there yet (or no colour id): its default, green; below and above stay blue and red.
+  assert.deepEqual(colours(widgetCard([temperature(), custom], { config, extra })), [[GREEN, RED], [GREEN, ""]]);
+  assert.deepEqual(colours(widgetCard([temperature(), custom], { config, extra: { ...extra, [NEUTRAL_SELECT]: sensor("violet") } })),
+                   [[GREEN, RED], [GREEN, ""]]);
+  const grey = colours(widgetCard([temperature(), custom, { ...custom, color: "pink" }],
+                                  { config, extra: { ...extra, "sensor.h": sensor("30"), [NEUTRAL_SELECT]: sensor("grey") } }));
+  assert.deepEqual(grey, [[GREY, BLUE], [GREY, ""], [PINK, ""]]);
+});
+
+test("thresholds on: an Air quality widget in the Air page's colours, good, fair and poor, so both views agree", () => {
+  const air = { type: "air", label: "A", main: "sensor.co2", extra: "sensor.pm" };
+  const config = { air_colors: AIR_COLORS, neutral_color: NEUTRAL_SELECT };
+  const at = (co2, pm, extra = {}) => colours(widgetCard([air], { config, extra: { "sensor.co2": sensor(String(co2)), "sensor.pm": sensor(String(pm)), ...extra } }))[0];
+  // The selects' defaults: green, amber, red; the neutral colour plays no part.
+  assert.deepEqual(at(799, 14, { [NEUTRAL_SELECT]: sensor("grey") }), [GREEN, GREEN]);
+  assert.deepEqual(at(800, 35), [AMBER_N, RED_N]);
+  // The Air page's own choices.
+  const picked = { [AIR_COLORS.good]: sensor("teal"), [AIR_COLORS.fair]: sensor("purple"), [AIR_COLORS.poor]: sensor("pink") };
+  assert.deepEqual(at(500, 20, picked), [TEAL, PURPLE]);
+  assert.deepEqual(at(1500, 5, picked), [PINK, TEAL]);
+  // Without the Air page's limits: the good colour.
+  const card = widgetCard([air], { config: { ...config, air_limits: undefined }, extra: { "sensor.co2": sensor("2000"), "sensor.pm": sensor("99"), ...picked } });
+  assert.deepEqual(colours(card)[0], [TEAL, TEAL]);
 });
 
 test("thresholds off: each widget's main value in its series colour, as before; the blue, amber and red are no series colour", () => {
   const list = [temperature(), { type: "air", label: "A", main: "sensor.co2", extra: "" }, { type: "empty", spacer: true },
-                { type: "custom", label: "C", main: "sensor.t", extra: "", color: 9 }];
+                { type: "custom", label: "C", main: "sensor.t", extra: "", color: "green" }];
   const extra = { "sensor.t": sensor("30"), "sensor.h": sensor("90"), "sensor.co2": sensor("2000") };
   const off = colours(widgetCard(list, { on: false, extra }));
   // Series colours 1, 2, 3: the theme's slots 4, 5, 6 (HA's fallbacks), the empty tile skipped.

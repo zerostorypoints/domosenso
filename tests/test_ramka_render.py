@@ -573,8 +573,15 @@ SLOTS = "input_number.ramka_climate_slots"
 # the rooms sensor has none).
 THRESHOLDS = "input_boolean.ramka_climate_thresholds"
 CLIMATE_THRESHOLDS = {THRESHOLDS: "off"}
+# The Climate page's neutral colour, the Air page's good colour by default; in group climate too.
+NEUTRAL_COLOUR = "input_select.ramka_climate_color_neutral"
+CLIMATE_NEUTRAL = {NEUTRAL_COLOUR: "green"}
+AIR_COLOUR_SELECTS = {key: f"input_select.ramka_air_color_{key}" for key in ("good", "fair", "poor")}
+# The Air page's colours (named colours, cards/lib/colours.js): good, fair and poor, in group air.
+AIR_COLOURS = {"input_select.ramka_air_color_good": "green", "input_select.ramka_air_color_fair": "amber",
+               "input_select.ramka_air_color_poor": "red"}
 AIR_DEFAULTS = {**{f"input_boolean.ramka_air_{r}": "on" for r in AIR_READINGS},
-                **{f"input_number.ramka_air_{k}": v for k, v in AIR_LIMITS.items()}}
+                **{f"input_number.ramka_air_{k}": v for k, v in AIR_LIMITS.items()}, **AIR_COLOURS}
 
 
 # What 0.4.0's live settings add to and change in a package without music_visual (SPEC-021,
@@ -696,7 +703,7 @@ DEFAULTS = {
     "input_number.ramka_lux_max": 200, "input_boolean.ramka_ambient_music": "on",
     "input_select.ramka_theme_mode": "dark", "input_boolean.ramka_settings_advanced": "off",
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
-    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_THRESHOLDS, **CLIMATE_SLOTS,
+    **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL, **CLIMATE_SLOTS,
 }
 EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 # Custom's look (spec 5): its own group, so an upgraded home whose music window is tuned still gets
@@ -740,7 +747,7 @@ PAGE_OF = {
     **{e: "controls" for e in CONTROLS_SETTINGS},
     "input_boolean.ramka_ambient_music": None,
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
-    **{e: "climate" for e in {**CLIMATE_SLOTS, **CLIMATE_THRESHOLDS}},
+    **{e: "climate" for e in {**CLIMATE_SLOTS, **CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL}},
     **{f"input_boolean.ramka_page_{v}": v for v in PAGE_VIEWS},
     **{e: "music" for e in MUSIC_DEFAULTS},
 }
@@ -751,7 +758,7 @@ GROUP_OF = {
     **{e: "music_visual" for e in MUSIC_DEFAULTS}, **{e: "music_look" for e in LOOK_DEFAULTS},
     **{e: "music_profiles" for e in PROFILE_DEFAULTS},
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
-    **{e: "climate_slots" for e in CLIMATE_SLOTS}, **{e: "climate" for e in CLIMATE_THRESHOLDS},
+    **{e: "climate_slots" for e in CLIMATE_SLOTS}, **{e: "climate" for e in {**CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL}},
 }
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
@@ -1899,7 +1906,9 @@ def test_settings_pages_start_with_a_header(demo, preview):
                 if path == "about":
                     continue
                 text = header_text(view)
-                assert text.startswith(t[f"ui.settings.header.{path}"]), (lang, path)
+                # The page's title first, the tab's own (its tooltip), then what the view is.
+                assert text.startswith(f"## {t[f'ui.settings.pages.{path}']}\n\n{t[f'ui.settings.header.{path}']}"), (lang, path)
+                assert view["title"] == t[f"ui.settings.pages.{path}"], (lang, path)
                 assert 2 <= t[f"ui.settings.header.{path}"].count(". ") + 1 <= 3, (lang, path)
                 link = f"[{t['ui.settings.preview_link_general' if path == 'general' else 'ui.settings.preview_link']}]"
                 target = f"(/ramka-preview/{'climate' if path == 'general' else path})"
@@ -2301,6 +2310,72 @@ def test_air_helpers_only_for_configured_readings(tmp_path):
     assert not {e for e in helpers(no_air) if ".ramka_air_" in e}
 
 
+def named_colours() -> list[tuple[str, int, str]]:
+    """cards/lib/colours.js's COLOURS: (id, theme slot, fallback), in the dropdowns' order."""
+    text = (COMP / "cards" / "lib" / "colours.js").read_text(encoding="utf-8")
+    return [(id, int(slot), hue) for id, slot, hue in re.findall(r'\["([a-z ]+)", (\d+), "(#[0-9a-f]{6})"\]', text)]
+
+
+def test_named_colours_are_one_list(demo):
+    """The colour selects' options are the cards' named colours, in their order with the default first;
+    each a series colour of the theme, its fallback the theme's dark colour; named in en, de, pl."""
+    colours = named_colours()
+    ids = [id for id, _, _ in colours]
+    assert ids[:3] == ["green", "teal", "blue"] and {"amber", "red", "grey", "light blue"} <= set(ids) and len(ids) == 11
+    theme = yaml.safe_load((COMP / "themes" / "ramka.yaml").read_text(encoding="utf-8"))["ramka-dark"]["modes"]["dark"]
+    assert sorted(slot for _, slot, _ in colours) == list(range(1, 12))
+    for id, slot, hue in colours:
+        assert theme[f"graph-color-{slot}"] == hue, id
+    for lang in LANGS:
+        t = translations(lang)
+        names = [t[f"card.colours.{id.replace(' ', '_')}"] for id in ids]
+        assert len(set(names)) == len(names), lang
+    selects = demo["package.yaml"]["input_select"]
+    for entity, default in {**AIR_COLOURS, **CLIMATE_NEUTRAL}.items():
+        assert selects[entity.split(".")[1]]["options"] == [default] + [i for i in ids if i != default], entity
+    # The package's slot map for the stored slot numbers (the climate script) is the cards' too.
+    text = (COMP / "templates" / "package.yaml.j2").read_text(encoding="utf-8")
+    [slots] = re.findall(r"set colour_slots = (\{[^}]*\})", text)
+    assert yaml.safe_load(slots) == {slot: id for id, slot, _ in colours}
+
+
+def test_air_colours_on_air_advanced_and_in_the_card(demo):
+    """The Air page's good, fair and poor colours: three selects in its Advanced card after the limits,
+    reset and seeded with the air group; the air-card reads them."""
+    package = demo["package.yaml"]
+    assert run_reset(package, page="air")["input_select.ramka_air_color_good"] == "green"
+    assert set(AIR_COLOURS) <= set(run_reset(package, groups=["air"]))
+    assert {e: run_reset(package, groups=["air"])[e] for e in AIR_COLOURS} == AIR_COLOURS
+    for lang in LANGS:
+        t = translations(lang)
+        air = settings_views(demo[f"ramka-settings.{lang}.yaml"])["air"]
+        [(section, card)] = [(s, c) for s, c in view_cards(air)
+                             if any(r.get("entity") == "input_select.ramka_air_color_good" for r in rows(c))]
+        entities = [r["entity"] for r in rows(card)]
+        assert entities[-3:] == list(AIR_COLOUR_SELECTS.values()) and "input_number.ramka_air_co2_raised" in entities
+        assert advanced(section, card)
+        assert [r["name"] for r in rows(card)][-3:] == [t[f"ui.settings.air_color_{k}"] for k in ("good", "fair", "poor")]
+        assert air_card(demo[f"dashboard.{lang}.yaml"])["colors"] == AIR_COLOUR_SELECTS
+    assert translations("en")["ui.settings.air_color_good"] == "Good colour"
+
+
+def test_air_limits_are_named_fair_and_poor(demo):
+    """The readings' limits read "fair from" / "poor from" (the score "fair below" / "poor below"); the
+    helper ids keep raised and high, a stable contract; the air-card's own level words are good, fair, poor."""
+    en = translations("en")
+    assert en["ui.settings.air_co2_raised"] == "CO₂ fair from" and en["ui.settings.air_co2_high"] == "CO₂ poor from"
+    assert en["ui.settings.air_pm2_5_raised"] == "PM2.5 fair from" and en["ui.settings.air_nox_high"] == "NOx index poor from"
+    assert en["ui.settings.air_score_fair"] == "Air quality fair below"
+    assert {"input_number.ramka_air_co2_raised", "input_number.ramka_air_co2_high"} <= set(helpers(demo["package.yaml"]))
+    for lang, words in {"en": ("Good", "Fair", "Poor"), "de": ("Gut", "Mässig", "Schlecht"), "pl": ("Dobry", "Umiarkowany", "Zły")}.items():
+        t = translations(lang)
+        assert tuple(t[f"card.air.level.{k}"] for k in ("good", "fair", "poor")) == words, lang
+        assert not any(k.startswith("card.air.level.") and k.split(".")[-1] in ("raised", "high") for k in t), lang
+        for key, text in t.items():
+            if key.startswith("ui.settings.air_") and key.endswith(("_raised", "_high")):
+                assert not re.search(r"raised|high|erhöht|hoch\b|podwyższ|wysok", text, re.I), (lang, key, text)
+
+
 def open_view_cards(view):
     return [c for _, c in view_cards(view) if c.get("tap_action", {}).get("action") == "navigate"]
 
@@ -2380,8 +2455,8 @@ def test_climate_rooms_default_to_the_first_ten(demo, tmp_path):
     many = run_reset(render(tmp_path, inputs)["package.yaml"], events=True)[CLIMATE]
     assert many == demo_rooms(inputs) and len(many) == 10
     assert run_reset(package, page="climate", events=True) == {CLIMATE: rooms, "input_boolean.ramka_page_climate": "on", **CLIMATE_SLOTS,
-                                                              **CLIMATE_THRESHOLDS}
-    assert run_reset(package, groups=["climate"], events=True) == {CLIMATE: rooms, **CLIMATE_THRESHOLDS}
+                                                              **CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL}
+    assert run_reset(package, groups=["climate"], events=True) == {CLIMATE: rooms, **CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL}
     assert run_reset(package, groups=["climate_slots"], events=True) == CLIMATE_SLOTS
     assert CLIMATE not in run_reset(package, page="photos", events=True)
 
@@ -2409,15 +2484,21 @@ def test_climate_rooms_sensor_and_script(demo):
     typed = [{"type": "temperature", "label": "K", "main": "sensor.k_t", "extra": "sensor.k_h", "temp_low": 19.5, "temp_high": 23,
               "hum_low": 35, "hum_high": 55},
              {"type": "air", "label": "B", "main": "sensor.b_co2", "extra": "sensor.b_pm"},
-             {"type": "custom", "label": "P", "main": "sensor.p", "extra": "", "color": 9},
+             {"type": "custom", "label": "P", "main": "sensor.p", "extra": "", "color": "light blue"},
              {"type": "temperature", "label": "", "main": "", "extra": ""},
              {"type": "custom", "label": "Q", "main": "sensor.q", "extra": ""}]
     expected = [{**typed[0], "temp_high": 23.0, "hum_low": 35.0, "hum_high": 55.0}, *typed[1:]]
     assert sent(rooms=typed) == expected
+    # A colour stored as a theme slot number (the build before the named colours) becomes its id:
+    # every slot the old dialog offered keeps its colour.
+    old = {4: "teal", 5: "purple", 6: "pink", 9: "green", 11: "magenta", 10: "grey"}
+    assert [r.get("color") for r in sent(rooms=[{"type": "custom", "label": "P", "main": "sensor.p", "extra": "", "color": n}
+                                                for n in old])] == list(old.values())
+    assert sent(rooms=[{"type": "custom", "label": "P", "main": "sensor.p", "extra": "", "color": 9.0}])[0]["color"] == "green"
     # Values that do not belong to the type, or are no number, go.
     assert sent(rooms=[{"type": "air", "label": "A", "main": "sensor.a", "extra": "", "temp_low": 18, "color": 9},
                        {"type": "temperature", "label": "T", "main": "sensor.t", "extra": "", "temp_low": "cold", "color": 9},
-                       {"type": "custom", "label": "C", "main": "sensor.c", "extra": "", "color": "red"},
+                       {"type": "custom", "label": "C", "main": "sensor.c", "extra": "", "color": "violet"},
                        {"type": "custom", "label": "D", "main": "sensor.d", "extra": "", "color": 2.5}]) == [
         {"type": "air", "label": "A", "main": "sensor.a", "extra": ""}, {"type": "temperature", "label": "T", "main": "sensor.t", "extra": ""},
         {"type": "custom", "label": "C", "main": "sensor.c", "extra": ""}, {"type": "custom", "label": "D", "main": "sensor.d", "extra": ""}]
@@ -2484,7 +2565,7 @@ def test_climate_thresholds_switch_and_air_limits(demo, tmp_path):
     assert package["input_number"]["ramka_climate_slots"]["name"].endswith("climate widgets")
     # Reset with the page and with the widgets' group; seeded with the widgets, while the sensor has none.
     assert run_reset(package, page="climate")[THRESHOLDS] == "off"
-    assert run_reset(package, groups=["climate"]) == CLIMATE_THRESHOLDS
+    assert run_reset(package, groups=["climate"]) == {**CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL}
     assert THRESHOLDS not in run_reset(package, groups=["climate_slots"])
     limits = {"co2": ["input_number.ramka_air_co2_raised", "input_number.ramka_air_co2_high"],
               "pm2_5": ["input_number.ramka_air_pm2_5_raised", "input_number.ramka_air_pm2_5_high"]}
@@ -2492,12 +2573,16 @@ def test_climate_thresholds_switch_and_air_limits(demo, tmp_path):
         t = translations(lang)
         climate = settings_views(demo[f"ramka-settings.{lang}.yaml"])["climate"]
         [(section, card)] = [(s, c) for s, c in view_cards(climate) if any(r.get("entity") == THRESHOLDS for r in rows(c))]
-        assert [r["entity"] for r in rows(card)] == [SLOTS, THRESHOLDS] and advanced(section, card)
-        assert [r["name"] for r in rows(card)] == [t["ui.settings.climate_slots"], t["ui.settings.climate_thresholds"]]
+        # The neutral colour next to the switch.
+        assert [r["entity"] for r in rows(card)] == [SLOTS, THRESHOLDS, NEUTRAL_COLOUR] and advanced(section, card)
+        assert [r["name"] for r in rows(card)] == [t["ui.settings.climate_slots"], t["ui.settings.climate_thresholds"],
+                                                   t["ui.settings.climate_color_neutral"]]
         [picker] = [c for _, c in view_cards(climate) if c.get("type") == "custom:climate-rooms-card"]
-        assert picker["air_limits"] == limits
+        assert picker["air_limits"] == limits and picker["neutral_color"] == NEUTRAL_COLOUR
         [rooms_card] = [n for n in walk(demo[f"dashboard.{lang}.yaml"]) if n.get("type") == "custom:rooms-card"]
         assert rooms_card["thresholds"] == THRESHOLDS and rooms_card["air_limits"] == limits
+        # An Air quality widget takes the Air page's colours, so both views agree.
+        assert rooms_card["neutral_color"] == NEUTRAL_COLOUR and rooms_card["air_colors"] == AIR_COLOUR_SELECTS
     assert (translations("en")["ui.settings.climate_slots"], translations("de")["ui.settings.climate_slots"],
             translations("pl")["ui.settings.climate_slots"]) == ("Number of widgets", "Zahl der Widgets", "Liczba widżetów")
     # A home whose air input has no PM2.5: only CO2's limits; without the air input none.
@@ -2509,6 +2594,8 @@ def test_climate_thresholds_switch_and_air_limits(demo, tmp_path):
     rendered = render(tmp_path / "noair", without_pages("air"))
     [rooms_card] = [n for n in walk(rendered["dashboard.en.yaml"]) if n.get("type") == "custom:rooms-card"]
     assert "air_limits" not in rooms_card and rooms_card["thresholds"] == THRESHOLDS
+    assert "air_colors" not in rooms_card and rooms_card["neutral_color"] == NEUTRAL_COLOUR
+    assert not set(AIR_COLOURS) & defined_entities(rendered["package.yaml"])
     climate = settings_views(rendered["ramka-settings.en.yaml"])["climate"]
     assert all("air_limits" not in c for _, c in view_cards(climate))
     assert THRESHOLDS not in defined_entities(render(tmp_path / "noclimate", without_pages("climate"))["package.yaml"])
