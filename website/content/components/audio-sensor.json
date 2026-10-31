@@ -18,11 +18,11 @@
         "audio-sensor"
       ],
       "availability": "opt-in",
-      "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 and mark one board music: true; without a reading the strip falls back to the classic wave.",
+      "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 or later and mark one board music: true; with Ramka 0.6.0 the board updates faster while the music view shows. Without a reading the strip falls back to the classic wave.",
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -30,11 +30,11 @@
     "Flash the M5Stack Atom EchoS3R over USB the first time with the device file the component writes; later updates go over Wi-Fi.",
     "Adopt the board in Home Assistant through ESPHome and map its entities in the component's inputs.",
     "Calibrate the sound level against a reference meter, or keep the offset marked as an estimate.",
-    "To see it on the tablet, set Ramka's music_visual and choose the look on the Ramka settings dashboard."
+    "To see it on the tablet, set Ramka's music_visual and choose the look on the Ramka settings dashboard. A board flashed before 0.2.0 needs the new firmware for the faster update rate."
   ],
   "id": "audio-sensor",
-  "version": "0.1.0",
-  "sourceCommit": "4a7bcf5f222f38dbb9f9e8790c95b56e68305b0c",
+  "version": "0.2.0",
+  "sourceCommit": "0f1f0a7d060ec4bcb5ed0f4389363f24f7439250",
   "evidencePaths": [
     "components/audio-sensor/component.yaml",
     "components/audio-sensor/README.md"
@@ -44,7 +44,7 @@
       {
         "label": "Music",
         "headline": "The strip follows the music",
-        "detail": "Fictional values: the third-octave spectrum from the board, about five updates a second.",
+        "detail": "Fictional values: the third-octave spectrum from the board, five updates a second by default and about twelve while Ramka's music view shows.",
         "values": [
           {
             "label": "Visual",
