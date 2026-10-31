@@ -242,3 +242,19 @@ test("a bass cut lowers the low end only", () => {
   for (let p = 21; p <= 52; p++) assert.ok(cut[p] < plain[p], `point ${p}`);
   for (let p = Math.ceil((22 / 30) * 159); p < WIDTH_POINTS; p++) assert.equal(cut[p], plain[p], `point ${p}`);
 });
+
+test("an EQ gain changed on the same options object takes effect at the next step", () => {
+  const o = opts({ eq: { bass: 0 } });
+  const e = new Engine("spectrum");
+  e.push(fill(80), 0);
+  e.step(0.1, 0, palette, o);
+  const before = [...e.frame.env];
+  o.eq.bass = -12;
+  e.step(0.1, 100, palette, o);
+  assert.ok(e.frame.env[30] < before[30]);
+  o.eq = { bass: -12 };  // a new object with the same gains: the same curve
+  e.step(0.1, 200, palette, o);
+  const same = [...e.frame.env];
+  e.step(0.1, 300, palette, o);
+  assert.deepEqual([...e.frame.env], same);
+});
