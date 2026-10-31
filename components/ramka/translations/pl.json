@@ -209,7 +209,9 @@
     },
     "preview": {
       "title": "Podgląd Ramki",
-      "settings_link": "Ustawienia tego ekranu"
+      "settings_link": "Ustawienia tego ekranu",
+      "switched_off": "Ten widok jest wyłączony: Ramka go pomija.",
+      "not_set_up": "Nieskonfigurowany w tym domu: wymaga wejścia `{input}`."
     },
     "settings": {
       "title": "Ustawienia Ramki",
@@ -221,6 +223,7 @@
         "photos": "Zdjęcia",
         "status": "Stan",
         "calendar": "Kalendarz",
+        "controls": "Kontrolki",
         "music": "Muzyka",
         "about": "Informacje"
       },
@@ -232,6 +235,19 @@
       "render_time_how": "Z `domosenso/ramka.inputs.yaml`: zmiana wymaga renderowania i wdrożenia.",
       "all_off": "Wszystkie strony rotacji są wyłączone: tablet pokazuje pierwszą z nich.",
       "page_off": "Wyłączone: tablet pomija ten widok.",
+      "header": {
+        "general": "Ramka to jedyny pulpit tabletu na ścianie: budzi się, gdy ktoś jest w pokoju, i pokazuje jeden ekran naraz: rotację ekranów, muzykę, gdy gra, kontrolki, gdy zbliża się dłoń, i wydarzenia z kalendarza po dotknięciu jego przycisku. Ta strona zawiera to, co dotyczy całego tabletu: motyw, opóźnienie wygaszenia i jasność.",
+        "climate": "Zegar, pogoda i prognoza, temperatura i wilgotność każdego pomieszczenia dużą czcionką oraz ich wykresy z 7 dni. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
+        "air": "Wskaźnik jakości powietrza i jego odczyty w kolorach: dobrze, podwyższone, wysokie, z CO₂ i PM2.5 z ostatnich 24 godzin. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
+        "plants": "Rośliny, najpierw te, które czegoś potrzebują, każda z wilgotnością gleby z ostatniego tygodnia. Na ekranie w rotacji, strona kafelków po stronie, gdy nie jest pokazywana muzyka.",
+        "photos": "Seria zdjęć z folderu zdjęć na cały ekran. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
+        "status": "Co dzieje się w domu, tylko do podglądu: markizy, drzwi, światła, moc i zamki. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
+        "calendar": "Dzisiejsze wydarzenia po lewej, obok kolejne sześć dni. Na ekranie po dotknięciu przycisku kalendarza w kontrolkach, dopóki ktoś jest przy tablecie.",
+        "controls": "Odtwarzacz, markizy i światła pomieszczeń do obsługi ręcznej. Na ekranie, gdy dłoń zbliża się do tabletu (z kontrolkami na podejście) lub po dotknięciu, i jeszcze chwilę po jej odejściu.",
+        "music": "Co teraz gra, dużą czcionką: okładka, tytuł, wykonawca, postęp i, z wizualizacją muzyki, muzyka w pokoju na pasku. Na ekranie tylko wtedy, gdy odtwarzacz gra i ten widok jest włączony, zamiast rotacji."
+      },
+      "preview_link": "Podgląd tego ekranu",
+      "preview_link_general": "Otwórz podgląd Ramki",
       "preview": "Podgląd",
       "preview_classic": "Klasyczna: karta odtwarzania rysuje własną falę.",
       "reset": "Przywróć domyślne",
@@ -412,7 +428,9 @@
         "status_columns": "Kolumny kafelków",
         "calendars": "Kalendarze",
         "music_visual": "Wizualizacja przy pierwszym starcie",
-        "media_player": "Odtwarzacz"
+        "media_player": "Odtwarzacz",
+        "radar": "Radar",
+        "lights": "Światła"
       },
       "readings": {
         "score": "Jakość powietrza",

@@ -209,7 +209,9 @@
     },
     "preview": {
       "title": "Ramka-Vorschau",
-      "settings_link": "Einstellungen für diese Ansicht"
+      "settings_link": "Einstellungen für diese Ansicht",
+      "switched_off": "Diese Ansicht ist ausgeschaltet: Die Ramka lässt sie weg.",
+      "not_set_up": "In diesem Zuhause nicht eingerichtet: braucht die Eingabe `{input}`."
     },
     "settings": {
       "title": "Ramka-Einstellungen",
@@ -221,6 +223,7 @@
         "photos": "Fotos",
         "status": "Status",
         "calendar": "Kalender",
+        "controls": "Bedienung",
         "music": "Musik",
         "about": "Info"
       },
@@ -232,6 +235,19 @@
       "render_time_how": "Aus `domosenso/ramka.inputs.yaml`: Eine Änderung braucht ein Rendern und ein Ausrollen.",
       "all_off": "Alle Seiten der Rotation sind ausgeschaltet: Das Tablet zeigt die erste.",
       "page_off": "Ausgeschaltet: Das Tablet lässt diese Ansicht weg.",
+      "header": {
+        "general": "Die Ramka ist das eine Dashboard des Wandtablets: Sie wacht auf, wenn jemand im Raum ist, und zeigt eine Ansicht nach der anderen, die Ambient-Rotation, die Musik, solange sie spielt, die Bedienung, wenn sich eine Hand nähert, und den Kalender über seine Schaltfläche. Diese Seite enthält, was für das ganze Tablet gilt: Farbschema, Ausschaltverzögerung und Helligkeit.",
+        "climate": "Uhr, Wetter und Vorhersage, Temperatur und Luftfeuchte jedes Raums in gut lesbarer Schrift und ihre Verläufe über 7 Tage. Auf dem Bildschirm in der Ambient-Rotation, wenn sie an der Reihe ist und keine Musik gezeigt wird.",
+        "air": "Der Luftqualitätswert und seine Messwerte, gefärbt nach gut, erhöht oder hoch, mit CO₂ und PM2.5 der letzten 24 Stunden. Auf dem Bildschirm in der Ambient-Rotation, wenn sie an der Reihe ist und keine Musik gezeigt wird.",
+        "plants": "Die Pflanzen, zuerst die, die etwas brauchen, jede mit ihrer Bodenfeuchte der letzten Woche. Auf dem Bildschirm in der Ambient-Rotation, eine Seite Kacheln nach der anderen, wenn keine Musik gezeigt wird.",
+        "photos": "Eine Serie von Fotos aus dem Fotoordner, bildschirmfüllend. Auf dem Bildschirm in der Ambient-Rotation, wenn sie an der Reihe ist und keine Musik gezeigt wird.",
+        "status": "Was das Zuhause gerade tut, nur zum Ansehen: Markisen, Türen, Lichter, Leistung und Schlösser. Auf dem Bildschirm in der Ambient-Rotation, wenn sie an der Reihe ist und keine Musik gezeigt wird.",
+        "calendar": "Die Termine von heute links, die nächsten sechs Tage daneben. Auf dem Bildschirm nach einem Tipp auf die Kalender-Schaltfläche der Bedienung, solange jemand am Tablet bleibt.",
+        "controls": "Der Player, die Markisen und die Raumlichter zum Bedienen von Hand. Auf dem Bildschirm, wenn sich eine Hand dem Tablet nähert (mit Bedienung beim Herantreten) oder nach einem Tipp, und noch eine Weile, nachdem sie sich entfernt hat.",
+        "music": "Was gerade läuft, gut lesbar: Cover, Titel, Interpret, Fortschritt und mit der Musikvisualisierung die Musik im Raum im Streifen. Auf dem Bildschirm nur, solange der Mediaplayer spielt und diese Ansicht eingeschaltet ist, anstelle der Rotation."
+      },
+      "preview_link": "Vorschau dieser Ansicht",
+      "preview_link_general": "Ramka-Vorschau öffnen",
       "preview": "Vorschau",
       "preview_classic": "Klassisch: Die Wiedergabekarte zeichnet ihre eigene Welle.",
       "reset": "Auf Standardwerte zurücksetzen",
@@ -412,7 +428,9 @@
         "status_columns": "Spalten der Kacheln",
         "calendars": "Kalender",
         "music_visual": "Visualisierung beim ersten Start",
-        "media_player": "Mediaplayer"
+        "media_player": "Mediaplayer",
+        "radar": "Radar",
+        "lights": "Lichter"
       },
       "readings": {
         "score": "Luftqualität",

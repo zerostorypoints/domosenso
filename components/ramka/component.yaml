@@ -149,6 +149,10 @@ inputs:
     type: "map[lang, string]"   # pages; a language not in it takes ramka-settings. Plain URL paths, as
     default: null               # registered in configuration.yaml. Read only with preview_dashboard.
     example: {en: ramka-settings, de: ramka-settings-de}
+  preview_paths:                # the preview dashboard of each language, for the settings pages' links to
+    type: "map[lang, string]"   # its tabs; a language not in it takes ramka-preview. Plain URL paths, as
+    default: null               # registered in configuration.yaml. Read only with preview_dashboard.
+    example: {en: ramka-preview, de: ramka-preview-de}
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
@@ -270,7 +274,8 @@ provides:                       # <prefix> from inputs
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
   dashboards:
-    - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard: one view per screen the render has, paths climate, air, plants, photos, status, calendar, music, each a custom:screen-frame-card with the Ramka dashboard's sections of that screen and a link to the settings page of the same path"}
+    - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, unreleased), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first)"}
+    - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard: one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
   automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.

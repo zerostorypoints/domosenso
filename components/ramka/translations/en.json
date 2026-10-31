@@ -209,7 +209,9 @@
     },
     "preview": {
       "title": "Ramka preview",
-      "settings_link": "Settings for this screen"
+      "settings_link": "Settings for this screen",
+      "switched_off": "This view is switched off: the Ramka leaves it out.",
+      "not_set_up": "Not set up in this home: needs the input `{input}`."
     },
     "settings": {
       "title": "Ramka settings",
@@ -221,6 +223,7 @@
         "photos": "Photos",
         "status": "Status",
         "calendar": "Calendar",
+        "controls": "Controls",
         "music": "Music",
         "about": "About"
       },
@@ -232,6 +235,19 @@
       "render_time_how": "From `domosenso/ramka.inputs.yaml`: a change needs a render and a deploy.",
       "all_off": "Every page of the rotation is switched off: the tablet shows the first one.",
       "page_off": "Switched off: the tablet leaves this view out.",
+      "header": {
+        "general": "The Ramka is the wall tablet's one dashboard: it wakes when someone is in the room and shows one screen at a time, the ambient rotation, the music while it plays, the controls when a hand comes near and the calendar from its button. This page holds what applies to the whole tablet: theme, screen-off delay and brightness.",
+        "climate": "Clock, weather and forecast, every room's temperature and humidity in large type and their 7-day charts. On the screen in the ambient rotation, at its turn, while no music is shown.",
+        "air": "The air-quality score and its readings, coloured good, raised or high, with the last 24 hours of CO₂ and PM2.5. On the screen in the ambient rotation, at its turn, while no music is shown.",
+        "plants": "The plants, the ones that need something first, each with its moisture over the last week. On the screen in the ambient rotation, a page of tiles at a time, while no music is shown.",
+        "photos": "A series of photos from the photo folder, edge to edge. On the screen in the ambient rotation, at its turn, while no music is shown.",
+        "status": "What the home is doing, to look at only: awnings, doors, lights, power and locks. On the screen in the ambient rotation, at its turn, while no music is shown.",
+        "calendar": "Today's events on the left, the next six days beside them. On the screen after a tap on the calendar button of the controls, while someone stays near the tablet.",
+        "controls": "The player, the awnings and the room lights, to use by hand. On the screen when a hand comes near the tablet (with controls on approach) or after a tap, and for a while after it leaves.",
+        "music": "What is playing, in large type: artwork, title, artist, progress and, with the music visual, the room's music in the strip. On the screen only while the media player plays and this view is switched on, instead of the rotation."
+      },
+      "preview_link": "Preview this screen",
+      "preview_link_general": "Open the Ramka preview",
       "preview": "Preview",
       "preview_classic": "Classic: the now-playing card draws its own wave.",
       "reset": "Reset to defaults",
@@ -412,7 +428,9 @@
         "status_columns": "Columns of tiles",
         "calendars": "Calendars",
         "music_visual": "Visualization at the first start",
-        "media_player": "Media player"
+        "media_player": "Media player",
+        "radar": "Radar",
+        "lights": "Lights"
       },
       "readings": {
         "score": "Air quality",

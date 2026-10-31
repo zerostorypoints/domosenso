@@ -14,7 +14,9 @@
 [%- set screen = inputs.screen | default({'width': 1100, 'height': 720}) -%]
 [#- The preview dashboard (templates/ramka-preview.lang.yaml.j2) extends this template and sets
     `preview`: it shows each screen's block below in a frame of the screen's size, so the heights
-    count from that frame instead of the browser's viewport, and no visibility switches them. -#]
+    count from that frame instead of the browser's viewport, and no section visibility switches
+    them; a card's own (the controls' player tiles, the unavailable twins) stays, and the frame
+    applies it. -#]
 [%- set preview = preview | default(false) -%]
 [%- set vh = screen.height ~ 'px' if preview else '100dvh - var(--kiosk-header-height, var(--header-height, 0px))' -%]
 [%- set fit = namespace(layout=none) -%]
@@ -643,16 +645,19 @@ views:
             height: calc([[ vh ]] - 16px)
             grid_options: {columns: full, rows: 1}
 [%- endblock %]
+[%- block controls %]
 
       # ---- Controls: a wave near the tablet, three columns under the hand --------------------
       # Music (the player while it plays or pauses, a single "turn on" tile when it is off), the
       # awnings, the room lights with one "all off" button. No scenes, no lock. Every light and
       # awning tile has an inert, greyed twin shown while the entity is unavailable.
       - type: grid
+        [%- if not preview %]
         visibility: &controls
           - condition: state
             entity: input_select.[[ p ]]_mode
             state: controls
+        [%- endif %]
         cards:
           - type: heading
             heading: [[ t('ui.media.heading') | yaml ]]
@@ -795,7 +800,9 @@ views:
               - {condition: state, entity: [[ mp ]], state: unavailable}
       [%- if covers %]
       - type: grid
+        [%- if not preview %]
         visibility: *controls
+        [%- endif %]
         cards:
           - type: heading
             heading: [[ t('ui.covers.heading') | yaml ]]
@@ -846,7 +853,9 @@ views:
       [%- endif %]
       [%- if lights %]
       - type: grid
+        [%- if not preview %]
         visibility: *controls
+        [%- endif %]
         cards:
           - type: heading
             heading: [[ t('ui.lights.heading') | yaml ]]
@@ -890,4 +899,5 @@ views:
             [%- endif %]
             grid_options: {columns: 12, rows: 2}
       [%- endif %]
+[%- endblock %]
 [%- endblock %]

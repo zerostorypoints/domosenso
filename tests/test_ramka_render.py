@@ -728,8 +728,12 @@ MUSIC_DEFAULTS = {
 }
 # Which page and group each setting belongs to (SPEC-021's table); ambient_music is state the swipes
 # flip, set only by the presence_display group and the global reset.
+# The near settings (when the controls come up) are the Controls page's.
+CONTROLS_SETTINGS = {"input_boolean.ramka_near_enabled": "basic", "input_number.ramka_near_cm": "advanced",
+                     "input_number.ramka_near_s": "advanced", "input_number.ramka_controls_hold_s": "advanced"}
 PAGE_OF = {
     **{e: "general" for e in DEFAULTS if not e.startswith("input_boolean.ramka_page_")},
+    **{e: "controls" for e in CONTROLS_SETTINGS},
     "input_boolean.ramka_ambient_music": None,
     **{e: "photos" for e in PHOTO_DEFAULTS}, **{e: "plants" for e in PLANT_SETTINGS}, **{e: "air" for e in AIR_DEFAULTS},
     **{e: "climate" for e in CLIMATE_SLOTS},
@@ -1013,7 +1017,7 @@ def test_reset_page_and_groups(demo):
     package = demo["package.yaml"]
     everything = {**DEFAULTS, **MUSIC_DEFAULTS}
     assert run_reset(package) == everything
-    for page in ["general"] + PAGE_VIEWS:
+    for page in ["general"] + PAGE_VIEWS + ["controls"]:
         assert set(run_reset(package, page=page)) == {e for e in everything if PAGE_OF[e] == page}, page
     for group in ("presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate",
                   "climate_slots"):
@@ -1033,7 +1037,7 @@ def test_reset_page_and_groups(demo):
         e: v for e, v in everything.items() if GROUP_OF[e] == "pages"}
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
-    assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS
+    assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS + ["controls"]
     assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual", "music_look", "music_profiles",
                                                                  "photos", "plants", "air", "climate", "climate_slots"]
 
@@ -1516,7 +1520,7 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
 
 # ---- 0.4.0: the "Ramka settings" dashboard (SPEC-021) --------------------------------------------
 
-SETTINGS_PAGES = ["general", *PAGE_VIEWS, "about"]
+SETTINGS_PAGES = ["general", *PAGE_VIEWS[:-1], "controls", "music", "about"]
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
 SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
@@ -1526,10 +1530,11 @@ MUSIC_WATCHING = "input_boolean.audio_sensor_music_watching"
 RATE_THERE = {"condition": "state", "entity": SPECTRUM_RATE, "state_not": "unavailable"}
 # Where each setting sits (SPEC-021's page table): Basic or Advanced.
 BASIC = {
-    "general": {"input_select.ramka_theme_mode", "input_boolean.ramka_near_enabled", "input_number.ramka_off_delay_s",
+    "general": {"input_select.ramka_theme_mode", "input_number.ramka_off_delay_s",
                 "input_number.ramka_brightness_min", "input_number.ramka_brightness_max",
                 "input_boolean.ramka_settings_advanced"},
     **{v: {f"input_boolean.ramka_page_{v}"} for v in PAGE_VIEWS},
+    "controls": {e for e, where in CONTROLS_SETTINGS.items() if where == "basic"} | {"input_boolean.ramka_settings_advanced"},
 }
 BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
                    "input_boolean.ramka_settings_advanced",
@@ -1540,10 +1545,10 @@ BASIC["climate"] |= {"input_number.ramka_climate_slots", "input_boolean.ramka_se
 BASIC["plants"] |= {"input_number.ramka_plants_per_page", "input_boolean.ramka_settings_advanced"}
 BASIC["air"] |= {f"input_boolean.ramka_air_{r}" for r in AIR_READINGS} | {"input_boolean.ramka_settings_advanced"}
 # The pages besides General that have Advanced parts, and so the Advanced switch too.
-ADVANCED_PAGES = {"music", "photos", "air", "climate", "plants"}
+ADVANCED_PAGES = {"music", "photos", "air", "climate", "plants", "controls"}
 ADVANCED = {
-    "general": {"input_number.ramka_near_cm", "input_number.ramka_near_s", "input_number.ramka_controls_hold_s",
-                "input_number.ramka_lux_max"},
+    "general": {"input_number.ramka_lux_max"},
+    "controls": {e for e, where in CONTROLS_SETTINGS.items() if where == "advanced"},
     "music": {"input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
               "input_number.ramka_music_line_width_px", SPECTRUM_RATE, MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
               "input_text.audio_sensor_calibration_note",
@@ -1870,6 +1875,71 @@ def test_settings_all_off_warning(demo):
     assert t["ui.settings.all_off"] in ha(card["content"], attrs=attrs(True))
     assert ha(card["content"], attrs=attrs(False)) == ""
     assert ha(card["content"]) == ""
+
+
+def header_text(view) -> str:
+    card = view["header"]["card"]
+    assert card["type"] == "markdown" and card["text_only"] is True
+    return card["content"]
+
+
+def test_settings_pages_start_with_a_header(demo, preview):
+    """Every page but About says what its view shows, what for and when it is on the screen (General:
+    the Ramka as a whole); with the preview dashboard also the link to the preview's tab."""
+    for lang in LANGS:
+        t = translations(lang)
+        for rendered, linked in ((demo, False), (preview, True)):
+            views = settings_views(rendered[f"ramka-settings.{lang}.yaml"])
+            for path, view in views.items():
+                if path == "about":
+                    continue
+                text = header_text(view)
+                assert text.startswith(t[f"ui.settings.header.{path}"]), (lang, path)
+                assert 2 <= t[f"ui.settings.header.{path}"].count(". ") + 1 <= 3, (lang, path)
+                link = f"[{t['ui.settings.preview_link_general' if path == 'general' else 'ui.settings.preview_link']}]"
+                target = f"(/ramka-preview/{'climate' if path == 'general' else path})"
+                assert (link + target in text) is linked, (lang, path, linked)
+                assert ("ramka-preview" in text) is linked, (lang, path)
+    # Every settings page but General and About is a preview tab, and every preview tab a settings page.
+    settings = settings_views(preview["ramka-settings.en.yaml"])
+    assert set(settings) - {"general", "about"} == set(settings_views(preview["ramka-preview.en.yaml"]))
+
+
+def test_settings_header_links_follow_preview_paths(tmp_path):
+    rendered = render(tmp_path, {**demo_inputs(), "preview_dashboard": True, "preview_paths": {"de": "ramka-vorschau"}})
+    assert "(/ramka-vorschau/air)" in header_text(settings_views(rendered["ramka-settings.de.yaml"])["air"])
+    assert "(/ramka-preview/air)" in header_text(settings_views(rendered["ramka-settings.en.yaml"])["air"])
+    # A view the render left out still has its header and its link: the preview's tab says what is missing.
+    rendered = render(tmp_path / "noair", {**without_pages("air"), "preview_dashboard": True})
+    assert "(/ramka-preview/air)" in header_text(settings_views(rendered["ramka-settings.en.yaml"])["air"])
+
+
+@pytest.mark.parametrize("value", [{"en": "/ramka-preview"}, {"de": "ramka preview"}, ["ramka-preview"]])
+def test_preview_paths_must_be_plain(tmp_path, value):
+    with pytest.raises(dr.RenderError, match="preview paths must be plain url paths"):
+        render(tmp_path, {**demo_inputs(), "preview_dashboard": True, "preview_paths": value})
+
+
+def test_controls_page_holds_the_near_settings(demo):
+    """The Controls page: the near settings, moved from General (Basic and Advanced as they were),
+    the render-time inputs of the controls and its own reset."""
+    package = demo["package.yaml"]
+    for lang in LANGS:
+        views = settings_views(demo[f"ramka-settings.{lang}.yaml"])
+        controls, general = views["controls"], views["general"]
+        assert controls["title"] == translations(lang)["ui.settings.pages.controls"]
+        assert shown_entities(controls) == set(CONTROLS_SETTINGS) | {"input_boolean.ramka_settings_advanced"}
+        assert not shown_entities(general) & set(CONTROLS_SETTINGS), lang
+        for section, card in view_cards(controls):
+            for row in rows(card):
+                if row["entity"] in CONTROLS_SETTINGS:
+                    assert advanced(section, card) == (CONTROLS_SETTINGS[row["entity"]] == "advanced"), row
+        [action] = list(reset_actions(controls))
+        assert action["data"] == {"page": "controls"}
+        text = markdown(controls)
+        assert translations(lang)["ui.settings.inputs.radar"] in text and translations(lang)["ui.settings.inputs.lights"] in text
+    assert set(run_reset(package, page="controls")) == set(CONTROLS_SETTINGS)
+    assert not set(run_reset(package, page="general")) & set(CONTROLS_SETTINGS)
 
 
 def test_settings_dashboard_is_documented():
@@ -3107,7 +3177,7 @@ def test_music_translations_complete():
 
 # ---- the preview dashboard: one view per screen, the Ramka's own cards in a frame --------------
 
-PREVIEW_VIEWS = ["climate", "air", "plants", "photos", "status", "calendar", "music"]
+PREVIEW_VIEWS = ["climate", "air", "plants", "photos", "status", "calendar", "controls", "music"]
 VIEWPORT = "100dvh - var(--kiosk-header-height, var(--header-height, 0px))"
 
 
@@ -3118,6 +3188,8 @@ def ramka_screens(dashboard) -> dict[str, list]:
         states = {c.get("entity", "").split(".", 1)[-1].removeprefix("ramka_"): c.get("state") for c in section.get("visibility", [])}
         if states.get("mode") == "calendar":
             screens.setdefault("calendar", []).append(section)
+        elif states.get("mode") == "controls" and len(section.get("visibility", [])) == 1:
+            screens.setdefault("controls", []).append(section)
         elif states.get("mode") == "ambient" and states.get("music_view") == "on":
             screens.setdefault("music", []).append(section)
         elif states.get("mode") == "ambient" and "ambient" in states:
@@ -3138,7 +3210,11 @@ def framed(section, height=720):
 
 
 def preview_frame(view):
-    [card] = view["cards"]
+    """The frame of a screen the render has: the last card of the view's stack, under the banner
+    for its page switch (none on the controls)."""
+    [stack] = view["cards"]
+    assert stack["type"] == "vertical-stack"
+    card = stack["cards"][-1]
     assert card["type"] == "custom:screen-frame-card"
     return card
 
@@ -3172,12 +3248,70 @@ def test_preview_has_one_view_per_screen_with_the_settings_title_and_icon(previe
         assert "kiosk_mode" not in preview[f"ramka-preview.{lang}.yaml"]
 
 
-def test_preview_views_follow_the_screens_the_home_has(tmp_path):
+def test_preview_has_every_tab_and_says_which_input_adds_a_missing_screen(tmp_path):
+    """One tab per view the component has, always, in the same order; a screen the render left out
+    says the input that adds it, with the link to its settings page and no frame."""
     inputs = {**demo_inputs(), "preview_dashboard": True, "status_page": False}
     for key in ("air", "plants", "photo_dir"):
         inputs.pop(key)
-    views = render(tmp_path, inputs)["ramka-preview.en.yaml"]["views"]
-    assert [v["path"] for v in views] == ["climate", "calendar", "music"]
+    rendered = render(tmp_path, inputs)
+    needs = {"air": "air", "plants": "plants", "photos": "photo_dir", "status": "status_page"}
+    for lang in LANGS:
+        t = translations(lang)
+        views = settings_views(rendered[f"ramka-preview.{lang}.yaml"])
+        assert list(views) == PREVIEW_VIEWS, lang
+        for path, view in views.items():
+            if path not in needs:
+                assert preview_frame(view)["link"]["path"] == f"/ramka-settings/{path}"
+                continue
+            [card] = view["cards"]
+            assert card["type"] == "markdown", (lang, path)
+            assert t["ui.preview.not_set_up"].replace("{input}", needs[path]) in card["content"], (lang, path)
+            assert f"[{t['ui.preview.settings_link']}](/ramka-settings/{path})" in card["content"], (lang, path)
+            assert not [n for n in walk(view) if n.get("type") == "custom:screen-frame-card"], (lang, path)
+    # The climate tab without climate says so too.
+    views = settings_views(render(tmp_path / "noclimate", {**without_pages("climate"), "preview_dashboard": True})["ramka-preview.en.yaml"])
+    assert "`climate`" in views["climate"]["cards"][0]["content"]
+    assert list(views) == PREVIEW_VIEWS
+
+
+def test_preview_banner_while_the_page_switch_is_off(preview):
+    for lang in LANGS:
+        t = translations(lang)
+        for path, view in settings_views(preview[f"ramka-preview.{lang}.yaml"]).items():
+            stack = view["cards"][0]["cards"]
+            if path == "controls":
+                assert len(stack) == 1, "the controls have no page switch"
+                continue
+            banner, frame = stack
+            assert banner["type"] == "conditional"
+            assert banner["conditions"] == [{"condition": "state", "entity": f"input_boolean.ramka_page_{path}", "state": "off"}]
+            assert banner["card"]["type"] == "markdown"
+            content = banner["card"]["content"]
+            assert t["ui.preview.switched_off"] in content and "ha-alert" in content, (lang, path)
+            assert f"[{t['ui.preview.settings_link']}]({frame['link']['path']})" in content, (lang, path)
+
+
+def test_preview_controls_are_the_ramka_controls_with_their_cards_visibility(preview):
+    """The controls tab: the three controls sections without the mode visibility; the cards keep
+    theirs (the player tiles, the unavailable twins), which the frame applies."""
+    ramka = ramka_screens(preview["dashboard.en.yaml"])["controls"]
+    assert len(ramka) == 3
+    frame = preview_frame(settings_views(preview["ramka-preview.en.yaml"])["controls"])
+    assert frame["sections"] == [{k: v for k, v in s.items() if k != "visibility"} for s in ramka]
+    assert any(c.get("visibility") for s in frame["sections"] for c in s["cards"])
+    assert frame["link"]["path"] == "/ramka-settings/controls"
+
+
+def test_preview_calendar_card_keeps_its_own_height(tmp_path):
+    """The calendar tab's empty strip: agenda-card is one row in grid_options and takes its height
+    from `height`; the frame sized it by its one row (56 px) over that height. The frame now keeps a
+    card's own height (cards/screen-frame-card.test.mjs); here: the card carries one, the frame's."""
+    rendered = render(tmp_path, {**demo_inputs(), "preview_dashboard": True, "screen": {"width": 1280, "height": 800}})
+    frame = preview_frame(settings_views(rendered["ramka-preview.en.yaml"])["calendar"])
+    [card] = [c for s in frame["sections"] for c in s["cards"]]
+    assert card["type"] == "custom:agenda-card"
+    assert card["height"] == "calc(800px - 16px)" and card["grid_options"]["rows"] == 1
 
 
 def test_preview_cards_are_the_ramka_dashboards(preview):
@@ -3226,7 +3360,7 @@ def test_preview_dashboard_is_documented_and_its_card_is_a_resource():
     manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
     assert "templates/ramka-preview.lang.yaml.j2" in manifest["artifacts"]["templates"]
     assert "cards/screen-frame-card.js" in manifest["artifacts"]["dashboard_cards"]
-    assert {"preview_dashboard", "settings_paths"} <= set(manifest["inputs"])
+    assert {"preview_dashboard", "settings_paths", "preview_paths"} <= set(manifest["inputs"])
     assert any(d["file"] == "ramka-preview.<lang>.yaml" for d in manifest["provides"]["dashboards"])
     readme = (COMP / "README.md").read_text(encoding="utf-8")
     block = readme.split("## Preview dashboard", 1)[1].split("```yaml", 1)[1].split("```", 1)[0]

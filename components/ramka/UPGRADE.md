@@ -3,6 +3,34 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: settings page headers, the Controls page, every screen in the preview
+
+- **Headers**: every settings page but About starts with a short text: what its view shows, what
+  it is for and when it is on the screen (General: the Ramka as a whole). With `preview_dashboard`
+  it links to the preview's tab of the same path; the new input `preview_paths` (the preview
+  dashboard's URL path per language, default `ramka-preview`) names it.
+- **Controls page** (`/<settings path>/controls`, between Calendar and Music): "Controls on
+  approach" (Basic), near distance, near time and how long the controls stay up (Advanced) move
+  here from General, the same helpers with the same values. The settings reset's `page` field takes
+  `controls`, which resets these four; `page: general` no longer does. The global reset and the
+  seed are unchanged.
+- **Preview**: always one tab per screen, climate, air, plants, photos, status, calendar,
+  **controls** (new) and music. A screen the render left out says which input adds it, without a
+  frame; a screen whose page switch is off has a banner over its frame. The frame lays sections in
+  the sections view's three columns, applies the cards' own visibility, and keeps a card's own
+  height: the calendar tab drew a 56 px strip, its one grid row, instead of the agenda.
+- **Translations**: new keys `ui.settings.pages.controls`, `ui.settings.header.*`,
+  `ui.settings.preview_link`, `ui.settings.preview_link_general`, `ui.settings.inputs.radar`,
+  `ui.settings.inputs.lights`, `ui.preview.switched_off`, `ui.preview.not_set_up` (en, de, pl).
+
+### What a home does
+
+- Render and deploy (`screen-frame-card.js` changes at its path, no new resource; reload the
+  preview without the browser's cache to get it). A script or
+  automation that calls `script.<prefix>_settings_reset` with `page: general` to reset the near
+  settings now passes `page: controls` for them. With the preview on another path than
+  `ramka-preview`, set `preview_paths`.
+
 ## Unreleased: preview dashboard
 
 **Preview dashboard** (optional): with `preview_dashboard: true` the render also writes

@@ -206,16 +206,27 @@ lovelace:
       require_admin: true
 ```
 
-- **Pages**, in this order: General, Climate, Air, Plants, Photos, Status, Calendar, Music. Every
-  page but General starts with its view's switch (with a note while it is off) and ends with "Reset
-  to defaults" for that page; General's resets every setting. Each asks for a confirmation. Each page
-  also lists its render-time inputs read-only with this render's values (General: the screen size).
-- **Basic and Advanced.** The Advanced cards (General: near distance and hold, controls hold, lux
-  for full brightness; Music: the music sensor (source and update rate), the flavours, line width,
+- **Pages**, in this order: General, Climate, Air, Plants, Photos, Status, Calendar, Controls,
+  Music, About. Every page but About starts with a short header: what its view shows, what it is for
+  and when it is on the screen (the ambient rotation for Climate to Status, the calendar button for
+  Calendar, a hand near the tablet for Controls, the playing media player for Music); General's
+  explains the Ramka as a whole. With `preview_dashboard` the header ends with a link to the preview
+  tab of the same path (General: the preview's first tab); `preview_paths` names the preview
+  dashboard per language when it is not at `ramka-preview`. Every view's page (Climate to Music,
+  Controls aside, which has none) has its view's switch at the top (with a note while it is off),
+  and every page but About ends with "Reset to defaults" for that page; General's resets every
+  setting. Each asks for a confirmation. Each page also lists its render-time inputs read-only with
+  this render's values (General: the screen size; Controls: the radar, the player, the awnings and
+  the lights).
+- **Controls** (unreleased): when the controls come up. In Basic "Controls on approach"
+  (`input_boolean.<prefix>_near_enabled`), in Advanced the near distance and time and how long the
+  controls stay up; these were General's. Its Reset sets these four.
+- **Basic and Advanced.** The Advanced cards (General: lux for full brightness; Controls: near
+  distance and hold, controls hold; Music: the music sensor (source and update rate), the flavours, line width,
   the profile settings, the colour range and the calibration; Photos: the albums;
   Air: the limits; Climate: the rooms) show while "Show advanced settings"
   (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on every page with
-  Advanced parts (Music, Photos, Air, Climate).
+  Advanced parts (Controls, Music, Photos, Air, Climate).
 - **Open the Ramka view** (General): the tablet's dashboard in this browser, header and sidebar
   shown (`/<path>/ramka?disable_km`), in the page's language when `dashboard_paths` maps it, else
   `dashboard_path`. A desktop browser lays out the view for its own window, not the tablet's
@@ -321,21 +332,33 @@ lovelace:
       require_admin: true
 ```
 
-- **Views**: the ambient pages the home renders, in the rotation's order (climate, air, plants,
-  photos, status), then the calendar and the now-playing screen (with the music visual when
-  `music_visual` is set). Each has the title, icon and path of its settings page.
+- **Views**: one per screen the component has, always, in this order: the ambient pages in the
+  rotation's order (climate, air, plants, photos, status), then the calendar, the controls and the
+  now-playing screen (with the music visual when `music_visual` is set). Each has the title, icon
+  and path of its settings page.
+- **A screen the home does not have** (`climate`, `air`, `plants` or `photo_dir` absent,
+  `status_page: false`) shows no frame, only "Not set up in this home: needs the input `<input>`"
+  and the link to its settings page.
+- **A screen switched off** by its page switch (`input_boolean.<prefix>_page_<view>` off) shows the
+  frame with a banner over it, "This view is switched off", and the link to its settings page, while
+  the switch is off (a conditional card). The controls have no switch.
 - **Same cards.** `templates/ramka-preview.lang.yaml.j2` extends the Ramka dashboard's template and
-  calls its screen blocks (`music`, `climate`, `air`, `plants`, `photos`, `status`, `calendar`), so
-  a screen cannot look different here. With `preview` set the blocks leave out their visibility,
-  count the card heights from `screen`'s height instead of the viewport, and the photo layer
-  (`contained: true`) stays in the frame. No kiosk mode, corner taps, presence or rotation, and no
-  controls screen: the cards read the live helpers, whatever the tablet shows.
+  calls its screen blocks (`music`, `climate`, `air`, `plants`, `photos`, `status`, `calendar`,
+  `controls`), so a screen cannot look different here. With `preview` set the blocks leave out
+  their section visibility, count the card heights from `screen`'s height instead of the viewport,
+  and the photo layer (`contained: true`) stays in the frame. No kiosk mode, corner taps, presence
+  or rotation: the cards read the live helpers, whatever the tablet shows.
 - **The frame**: `custom:screen-frame-card` lays the sections out as the sections view does on the
-  tablet (36 columns, 56 px rows, 8 px gaps and padding) in a box of `screen` (width x height CSS
-  px), scaled down as a whole in a narrower browser. Under it a link to the screen's settings page,
+  tablet (three view columns, a section spanning `column_span` of them; 12 grid columns per view
+  column, 56 px rows, 8 px gaps and padding) in a box of `screen` (width x height CSS px), scaled
+  down as a whole in a narrower browser. Under it a link to the screen's settings page,
   `/<settings path>/<view>`; `settings_paths` names the settings dashboard per language when it is
-  not at `ramka-settings`. A card's own `visibility` is not applied (the screens' cards have none),
-  and the photo caption still sizes itself from the browser's width (`vw`).
+  not at `ramka-settings`. A card's own `visibility` is applied for the conditions the Ramka uses
+  (`state` with `state` / `state_not`, `numeric_state`, `and`, `or`, `not`; any other counts as
+  met): the controls' player tiles and the unavailable twins follow the live states. A card with
+  its own `height` keeps it; grid rows only size the cards without one (the calendar's agenda-card,
+  one row in `grid_options`, is as tall as the screen). The photo caption still sizes itself from
+  the browser's width (`vw`).
 
 ## About page
 

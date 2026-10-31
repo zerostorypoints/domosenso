@@ -1,9 +1,13 @@
 // One Ramka screen in a box of the tablet's size, for the preview dashboard: its sections laid out
-// as Home Assistant's sections view lays them out on the tablet (a section spanning three columns is
-// a 36-column grid, rows 56 px, gaps and the view's padding 8 px), scaled down as a whole when the
-// browser is narrower than the screen, and a link under it. The box carries a transform, so a card
-// that draws a fixed layer (photo-frame-card) is held inside the box rather than over the page.
-// A card's own `visibility` is not applied: the screens' cards have none.
+// as Home Assistant's sections view lays them out on the tablet (three view columns, a section
+// spanning `column_span` of them; a section of three columns is a 36-column grid, rows 56 px, gaps
+// and the view's padding 8 px), scaled down as a whole when the browser is narrower than the screen,
+// and a link under it. The box carries a transform, so a card that draws a fixed layer
+// (photo-frame-card) is held inside the box rather than over the page.
+// A card's own `visibility` is applied as the sections view applies it, for the conditions the
+// Ramka's cards use (state with state / state_not, numeric_state, and, or, not); any other
+// condition counts as met. A card with its own `height` keeps it: grid rows only size the cards
+// without one (the calendar's agenda-card is one row in grid_options and as tall as the screen).
 //
 //   type: custom:screen-frame-card
 //   width: 1100                     # the screen in CSS px (the Ramka's inputs.screen)
@@ -17,6 +21,33 @@
 
 const ROW = 56;
 const GAP = 8;
+const COLUMNS = 3;
+
+const list = (value) => (Array.isArray(value) ? value : [value]).map(String);
+
+// Home Assistant's card visibility conditions, as far as the Ramka's cards use them.
+export function conditionMet(condition, hass) {
+  const kind = condition.condition || "state";
+  if (kind === "and") return (condition.conditions || []).every((c) => conditionMet(c, hass));
+  if (kind === "or") return (condition.conditions || []).some((c) => conditionMet(c, hass));
+  if (kind === "not") return !(condition.conditions || []).some((c) => conditionMet(c, hass));
+  const entity = hass && hass.states && hass.states[condition.entity];
+  // A missing entity reads as unavailable, as in Home Assistant.
+  const state = entity ? String(entity.state) : "unavailable";
+  if (kind === "state") {
+    if (condition.state !== undefined && !list(condition.state).includes(state)) return false;
+    if (condition.state_not !== undefined && list(condition.state_not).includes(state)) return false;
+    return true;
+  }
+  if (kind === "numeric_state") {
+    const value = Number(state);
+    if (Number.isNaN(value)) return false;
+    if (condition.above !== undefined && !(value > Number(condition.above))) return false;
+    if (condition.below !== undefined && !(value < Number(condition.below))) return false;
+    return true;
+  }
+  return true;
+}
 
 class ScreenFrameCard extends HTMLElement {
   setConfig(config) {
@@ -36,6 +67,16 @@ class ScreenFrameCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     for (const card of this._cards || []) card.hass = hass;
+    this._show();
+  }
+
+  // Each card shown while its own visibility holds; a hidden card takes no place in the grid.
+  _show() {
+    for (const card of this._cards || []) {
+      const conditions = card._frameVisibility;
+      if (!conditions) continue;
+      card.style.display = conditions.every((c) => conditionMet(c, this._hass)) ? "" : "none";
+    }
   }
 
   connectedCallback() {
@@ -58,7 +99,8 @@ class ScreenFrameCard extends HTMLElement {
         :host { display: block; }
         .outer { position: relative; overflow: hidden; margin: 0 auto; }
         .screen { position: absolute; top: 0; left: 0; transform-origin: 0 0; overflow: hidden;
-          box-sizing: border-box; padding: ${GAP}px; display: flex; flex-direction: column; gap: ${GAP}px;
+          box-sizing: border-box; padding: ${GAP}px; display: grid; gap: ${GAP}px;
+          grid-template-columns: repeat(${COLUMNS}, minmax(0, 1fr)); align-content: start; align-items: start;
           outline: 1px solid var(--divider-color, #444); }
         .section { display: grid; gap: ${GAP}px; grid-auto-rows: minmax(${ROW}px, auto); }
         .section > * { min-width: 0; }
@@ -109,9 +151,11 @@ class ScreenFrameCard extends HTMLElement {
     screen.replaceChildren();
     this._cards = [];
     for (const section of this._config.sections) {
-      const columns = 12 * (Number(section.column_span) || 1);
+      const span = Math.min(COLUMNS, Number(section.column_span) || 1);
+      const columns = 12 * span;
       const grid = document.createElement("div");
       grid.className = "section";
+      grid.style.gridColumn = `span ${span}`;
       grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
       for (const config of section.cards || []) {
         const card = helpers.createCardElement(config);
@@ -119,18 +163,22 @@ class ScreenFrameCard extends HTMLElement {
         card.addEventListener("ll-rebuild", (ev) => { ev.stopPropagation(); this._make(); }, { once: true });
         card.layout = "grid";
         const options = config.grid_options || (card.getGridOptions && card.getGridOptions()) || {};
-        const span = options.columns === "full" || options.columns === undefined ? columns : Math.min(columns, Number(options.columns));
-        card.style.gridColumn = `span ${span}`;
+        const width = options.columns === "full" || options.columns === undefined ? columns : Math.min(columns, Number(options.columns));
+        card.style.gridColumn = `span ${width}`;
         if (Number(options.rows) > 0) {
           card.style.gridRow = `span ${Number(options.rows)}`;
-          card.style.height = `${options.rows * ROW + (options.rows - 1) * GAP}px`;
+          // The rows' height only for a card without its own: an inline height would override the
+          // one the card sets on itself (the calendar showed a 56 px strip).
+          if (config.height === undefined) card.style.height = `${options.rows * ROW + (options.rows - 1) * GAP}px`;
         }
+        if (Array.isArray(config.visibility) && config.visibility.length) card._frameVisibility = config.visibility;
         if (this._hass) card.hass = this._hass;
         this._cards.push(card);
         grid.appendChild(card);
       }
       screen.appendChild(grid);
     }
+    this._show();
   }
 }
 
