@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 import yaml
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateError, Undefined
+from jinja2 import BytecodeCache, Environment, FileSystemLoader, StrictUndefined, TemplateError, Undefined
 
 from catalog_check import flatten
 
@@ -41,6 +41,26 @@ LANG_SUFFIX = ".lang.yaml.j2"
 
 class RenderError(Exception):
     pass
+
+
+class _MemoryBytecodeCache(BytecodeCache):
+    """Compiled templates kept for the process. Every environment is built with the same syntax and
+    a new one per render and language, so without it each render compiles every template again;
+    Jinja checks the source checksum, so an edited template is compiled afresh."""
+
+    def __init__(self) -> None:
+        self._code: dict[str, bytes] = {}
+
+    def load_bytecode(self, bucket) -> None:
+        code = self._code.get(bucket.key)
+        if code is not None:
+            bucket.bytecode_from_string(code)
+
+    def dump_bytecode(self, bucket) -> None:
+        self._code[bucket.key] = bucket.bytecode_to_string()
+
+
+_BYTECODE_CACHE = _MemoryBytecodeCache()
 
 
 def yaml_scalar(value) -> str:
@@ -87,6 +107,7 @@ def _make_env(
 
     env = Environment(
         loader=FileSystemLoader(str(component_dir / root)),
+        bytecode_cache=_BYTECODE_CACHE,
         undefined=StrictUndefined,
         keep_trailing_newline=True,
         variable_start_string="[[",

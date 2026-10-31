@@ -24,7 +24,7 @@ def render_text(tmp_path, inputs) -> str:
 
 
 def render(tmp_path, inputs) -> dict:
-    return yaml.safe_load(render_text(tmp_path, inputs))
+    return yaml.load(render_text(tmp_path, inputs), Loader=yaml.CSafeLoader)
 
 
 def templates(package) -> dict:
