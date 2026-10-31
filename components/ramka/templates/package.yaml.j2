@@ -62,6 +62,37 @@
     'level': ['still', 'tide', 'centre', 'timeline', 'clocks', 'ripples', 'tint', 'bars']} -%]
 [%- set palettes = ['zones', 'series', 'calm'] -%]
 [%- macro within(key, value, lo, hi) -%][%- if value is boolean or value is not number or value < lo or value > hi -%][[ fail('ramka: music_visual_options.' ~ key ~ ' must be within ' ~ lo ~ ' and ' ~ hi) ]][%- endif -%][%- endmacro -%]
+[#- The music EQ (the helpers, the look sensor and the dashboards below render from these two tables). Six
+    ranges in dB, each -18...+12 (the card's range, spec 3.1), and the presets are templates/music-tables.j2's,
+    shared with the settings dashboard. A home's music_eq_presets replaces any of behind_speakers,
+    half_match and fitted as a whole curve (a key it leaves out is 0). -#]
+[%- from 'music-tables.j2' import eq_keys, catalog_eq_presets, look_ids, eq_none -%]
+[%- set eq_presets = {} -%]
+[%- for id, gains in catalog_eq_presets.items() -%][%- set _ = eq_presets.update({id: dict(gains)}) -%][%- endfor -%]
+[%- set meq = inputs.music_eq_presets | default({}) -%]
+[%- if music_visual is not none and meq is not none -%]
+[%- if meq is not mapping -%][[ fail('ramka: music_eq_presets must be a mapping') ]][%- endif -%]
+[%- for id, own in meq.items() -%]
+[%- if id not in ['behind_speakers', 'half_match', 'fitted'] -%][[ fail("ramka: music_eq_presets: unknown preset '" ~ id ~ "'") ]][%- endif -%]
+[%- if own is not mapping -%][[ fail('ramka: music_eq_presets.' ~ id ~ ' must be a mapping') ]][%- endif -%]
+[%- for key in own if key not in eq_keys -%][[ fail('ramka: music_eq_presets.' ~ id ~ ": unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[%- set _ = eq_presets.update({id: dict(eq_presets.flat)}) -%]
+[%- for key, value in own.items() -%]
+[%- if value is boolean or value is not number or value < -18 or value > 12 -%][[ fail('ramka: music_eq_presets.' ~ id ~ '.' ~ key ~ ' must be within -18 and 12') ]][%- endif -%]
+[%- set _ = eq_presets[id].update({key: value}) -%]
+[%- endfor -%]
+[%- endfor -%]
+[%- endif -%]
+[#- The response profiles' templates (spec 4.1): their starting values, which the seed and the reset
+    write into each template's own helpers (Custom's are the music_visual options).
+    On `fast` a frame arrives every 85 ms, so a rise under that acts as a jump. No profile carries a
+    colour window: the neutral and hot levels are the user's helpers whichever profile is on. -#]
+[%- set looks = {
+    'behind_speakers': {'eq_id': 'fitted' if eq_presets.fitted.values() | select('!=', 0) | list else 'behind_speakers',
+        'tilt': true, 'rise': 100, 'fall': 2, 'hold': 1.5},
+    'lively': {'eq_id': 'wled_big_speakers_ics', 'tilt': false, 'rise': 50, 'fall': 0.3, 'hold': 0.5},
+    'calm': {'eq_id': 'wled_big_speakers', 'tilt': true, 'rise': 80, 'fall': 4.2, 'hold': 2.0},
+    'analyser': {'eq_id': 'flat', 'tilt': false, 'rise': 0, 'fall': 0.5, 'hold': 1.0}} -%]
 [%- set mv = {} -%]
 [%- if music_visual is not none -%]
 [%- set mvo = inputs.music_visual_options | default({}) -%]
@@ -97,19 +128,51 @@
 [#- Every setting: (domain, suffix, page, group, default). One page and one group each; the reset
     script sets them in this order. ambient_music is state the swipes flip, so it is on no page: the
     presence_display group (the first seed) and the global reset set it. -#]
-[%- set settings = [('input_boolean', 'near_enabled', 'general', 'presence_display', d.near_enabled)] -%]
+[%- set settings = [('input_boolean', 'near_enabled', 'controls', 'presence_display', d.near_enabled)] -%]
+[#- The near settings are the Controls page's (when the controls come up), the rest General's. -#]
 [%- for key in ['off_delay_s', 'brightness_min', 'brightness_max', 'near_cm', 'near_s', 'controls_hold_s', 'lux_max'] -%]
-[%- set _ = settings.append(('input_number', key, 'general', 'presence_display', d[key])) -%]
+[%- set _ = settings.append(('input_number', key, 'controls' if key in ['near_cm', 'near_s', 'controls_hold_s'] else 'general', 'presence_display', d[key])) -%]
 [%- endfor -%]
 [%- set _ = settings.append(('input_boolean', 'ambient_music', '', 'presence_display', true)) -%]
 [%- set _ = settings.append(('input_select', 'theme_mode', 'general', 'pages', d.theme_mode)) -%]
 [%- set _ = settings.append(('input_boolean', 'settings_advanced', 'general', 'pages', false)) -%]
 [%- set views = ['climate', 'air', 'plants', 'photos', 'status', 'calendar', 'music'] -%]
-[%- set reset_pages = ['general'] + views -%]
+[%- set reset_pages = ['general'] + views + ['controls'] -%]
 [%- for view in views -%][%- set _ = settings.append(('input_boolean', 'page_' ~ view, view, 'pages', true)) -%][%- endfor -%]
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
 [%- endfor -%]
+[#- The music look (spec 5): the entry on screen, and Custom's EQ and hold (its rise, fall, tilt and
+    windows are the music_visual helpers above). A group of its own, seeded by its own numbers: a home
+    that tuned its music window before the looks existed must still get a flat EQ and 1.5 s hold, not
+    the sliders' minimum (-18 dB, 0 s). -#]
+[%- if ['custom'] + (looks | list) != look_ids -%][[ fail('ramka: the looks table and look_ids of templates/music-tables.j2 differ') ]][%- endif -%]
+[%- if music_visual is not none -%]
+[%- set _ = settings.append(('input_select', 'music_template', 'music', 'music_look', 'custom')) -%]
+[%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', eq_none)) -%]
+[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_eq_' ~ key, 'music', 'music_look', 0)) -%][%- endfor -%]
+[%- set _ = settings.append(('input_number', 'music_hold_s', 'music', 'music_look', 1.5)) -%]
+[%- endif -%]
+[#- Every response profile keeps its own values: Custom in the helpers above (its ids from before the
+    templates were editable, so a home's tuning stays), each template in ten helpers of its own,
+    <prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_<key>,tilt}, whose defaults are the looks table's
+    row. profile_values: per profile, its defaults in the card's `look` shape; profile_prefix: the
+    helper suffix before rise_ms, eq_sub, tilt. One group, music_profiles, for the templates' helpers:
+    seeded while their numbers are untouched, as music_look is. -#]
+[%- set profile_values = {} -%]
+[%- set profile_prefix = {'custom': 'music_'} -%]
+[%- if music_visual is not none -%]
+[%- set _ = profile_values.update({'custom': {'rise': mv.music_rise_ms, 'fall': mv.music_fall_s, 'hold': 1.5, 'tilt': mv.music_tilt, 'eq': eq_presets.flat}}) -%]
+[%- for id, l in looks.items() -%]
+[%- set _ = profile_values.update({id: {'rise': l.rise, 'fall': l.fall, 'hold': l.hold, 'tilt': l.tilt, 'eq': eq_presets[l.eq_id]}}) -%]
+[%- set _ = profile_prefix.update({id: 'music_' ~ id ~ '_'}) -%]
+[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_rise_ms', 'music', 'music_profiles', l.rise)) -%]
+[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_fall_s', 'music', 'music_profiles', l.fall)) -%]
+[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_hold_s', 'music', 'music_profiles', l.hold)) -%]
+[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_eq_' ~ key, 'music', 'music_profiles', eq_presets[l.eq_id][key])) -%][%- endfor -%]
+[%- set _ = settings.append(('input_boolean', 'music_' ~ id ~ '_tilt', 'music', 'music_profiles', l.tilt)) -%]
+[%- endfor -%]
+[%- endif -%]
 [#- The Photos page (SPEC-021 amendment 1): the albums (top-level folders of photo_dir; none chosen
     is all), the photos per series and the time per photo; the defaults are 0.3.0's five photos of 10 s
     from all. The albums are not a helper (a list of any length): sensor.<prefix>_photo_albums keeps
@@ -126,10 +189,18 @@
 [%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', {'all': true})) -%]
 [%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
 [%- endif -%]
+[#- The Ramka's named colours (cards/lib/colours.js, COLOURS: the ids in the dropdowns' order, each a
+    series colour of the theme): the options of every colour select. colour_slots: the theme slot of
+    each, for a Custom widget's colour stored as a slot number by the build before them.
+    tests/test_ramka_render.py holds both to the cards' list. -#]
+[%- set colours = ['green', 'teal', 'blue', 'light blue', 'purple', 'pink', 'magenta', 'amber', 'orange', 'red', 'grey'] -%]
+[%- set colour_slots = {9: 'green', 4: 'teal', 1: 'blue', 8: 'light blue', 5: 'purple', 6: 'pink', 11: 'magenta', 2: 'amber', 7: 'orange', 3: 'red', 10: 'grey'} -%]
 [#- The Air page: a switch per configured reading, and the two limits of each, where its colour
-    changes (good → raised → high; the score: good → fair → poor, higher is better). Defaults are the
-    air-card's literal levels (templates/dashboard.lang.yaml.j2): (lower key, upper key, lower,
-    upper, min, max, step, unit). -#]
+    changes (good → fair → poor; the score: higher is better). Defaults are the air-card's literal
+    levels (templates/dashboard.lang.yaml.j2): (lower key, upper key, lower, upper, min, max, step,
+    unit). The readings' keys stay raised and high (input_number.<prefix>_air_<reading>_raised /
+    _high, a stable contract); their names say fair from and poor from. The three colours, good
+    (the neutral one), fair and poor, are colour selects of the same group (air_colours). -#]
 [%- set air_limits = {'score': ('fair', 'poor', 80, 60, 0, 100, 1, ''), 'co2': ('raised', 'high', 800, 1200, 400, 5000, 50, 'ppm'),
     'pm2_5': ('raised', 'high', 15, 35, 1, 250, 1, 'µg/m³'), 'voc': ('raised', 'high', 150, 250, 1, 500, 1, ''),
     'nox': ('raised', 'high', 20, 150, 1, 500, 1, '')} -%]
@@ -141,15 +212,26 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
-[#- The Climate page's rooms (SPEC-021 amendments 2, 3): up to ten, each a label, a main reading and a
-    supplementary one, picked on the settings page; the defaults are the first ten of inputs.climate,
-    temperature and humidity. A list again, so sensor.<prefix>_climate_rooms keeps it, as the albums. -#]
+[%- set air_colours = {'good': 'green', 'fair': 'amber', 'poor': 'red'} -%]
+[%- if inputs.air is defined -%]
+[%- for key, colour in air_colours.items() -%][%- set _ = settings.append(('input_select', 'air_color_' ~ key, 'air', 'air', colour)) -%][%- endfor -%]
+[%- endif -%]
+[#- The Climate page's widgets (SPEC-021 amendments 2, 3): a list, each a widget of a type (temperature,
+    air, custom: a label, a main reading, a second one and the type's own values) or an empty one
+    ({type: empty, spacer: true}, an empty tile), picked on the settings page; the defaults are the
+    first ten of inputs.climate, Temperature widgets of their temperature and humidity. A list again,
+    so sensor.<prefix>_climate_rooms keeps it, as the albums. How many widgets the Ramka shows is
+    input_number.<prefix>_climate_slots, a group of its own: the widgets (and the threshold-based
+    colours switch, off) are seeded while the sensor has none, the number once (its own seeded flag). -#]
 [%- set climate_rooms = [] -%]
 [%- for c in (inputs.climate | default([]))[:10] -%]
-[%- set _ = climate_rooms.append({'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
+[%- set _ = climate_rooms.append({'type': 'temperature', 'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
 [%- endfor -%]
 [%- if inputs.climate is defined -%]
 [%- set _ = settings.append(('event', 'climate_rooms', 'climate', 'climate', {'rooms': climate_rooms})) -%]
+[%- set _ = settings.append(('input_boolean', 'climate_thresholds', 'climate', 'climate', false)) -%]
+[%- set _ = settings.append(('input_select', 'climate_color_neutral', 'climate', 'climate', air_colours.good)) -%]
+[%- set _ = settings.append(('input_number', 'climate_slots', 'climate', 'climate_slots', 10)) -%]
 [%- endif -%]
 [#- A select's options: its default first, then the rest in the given order, so a fresh helper is
     right before the seed runs. -#]
@@ -220,6 +302,36 @@ input_select:
     name: [[ named(' music level flavour') ]]
     icon: mdi:waveform
     options:[[ options(mv.music_level_flavour, flavours.level) ]]
+  # The response profile (spec 4.1): Custom or a template; sensor.[[ p ]]_music_look reads the selected
+  # profile's own helpers, and the cards follow the sensor. Choosing a profile writes no helper.
+  [[ p ]]_music_template:
+    name: [[ named(' response profile') ]]
+    icon: mdi:palette-swatch
+    options:[[ options('custom', look_ids) ]]
+  # An EQ preset to load into the selected profile's EQ (automation [[ p ]]_music_eq_load); it rests on
+  # [[ eq_none ]], no preset, and returns to it after each load.
+  [[ p ]]_music_eq:
+    name: [[ named(' music EQ preset') ]]
+    icon: mdi:tune-vertical-variant
+    options:[[ options(eq_none, eq_presets | list) ]]
+  [%- endif %]
+  [%- if inputs.air is defined %]
+  # The Air page's colours (named colours, cards/lib/colours.js): good (the neutral one), fair and
+  # poor, read live by the air-card and by the Climate page's Air quality widgets.
+  [%- for key, colour in air_colours.items() %]
+  [[ p ]]_air_color_[[ key ]]:
+    name: [[ named(' air colour ' ~ key) ]]
+    icon: mdi:palette
+    options:[[ options(colour, colours) ]]
+  [%- endfor %]
+  [%- endif %]
+  [%- if inputs.climate is defined %]
+  # The Climate page's neutral colour: a Temperature widget within its range and a Custom widget
+  # without a colour of its own, while the threshold-based colours are on (rooms-card).
+  [[ p ]]_climate_color_neutral:
+    name: [[ named(' climate neutral colour') ]]
+    icon: mdi:palette
+    options:[[ options(air_colours.good, colours) ]]
   [%- endif %]
 
 # No `initial:` on any helper: HA would reset it to that value at every restart and throw away the
@@ -257,6 +369,12 @@ input_boolean:
   [[ p ]]_music_tilt:
     name: [[ named(' music tilt') ]]
     icon: mdi:slope-uphill
+  # Each template's own tilt (Custom's is the one above).
+  [%- for id in looks %]
+  [[ p ]]_music_[[ id ]]_tilt:
+    name: [[ named(' music ' ~ id | replace('_', ' ') ~ ' tilt') ]]
+    icon: mdi:slope-uphill
+  [%- endfor %]
   [%- endif %]
   # One per configured air reading: off leaves its tile out of the air page (air-card's `show:`).
   [%- for reading in air_readings %]
@@ -264,6 +382,18 @@ input_boolean:
     name: [[ named(' air ' ~ reading) ]]
     icon: mdi:eye
   [%- endfor %]
+  [%- if inputs.climate is defined %]
+  # Threshold-based colours on the Climate page: on, the widgets' values are coloured by their
+  # comfort ranges and the Air page's limits (rooms-card); off, each in its series colour.
+  [[ p ]]_climate_thresholds:
+    name: [[ named(' climate threshold colours') ]]
+    icon: mdi:thermometer-lines
+  # On once the seed has given input_number.[[ p ]]_climate_slots its starting value: a fresh slider
+  # restores to its min (1), which a home may also choose, so the number alone cannot say untouched.
+  [[ p ]]_climate_slots_seeded:
+    name: [[ named(' climate widgets seeded') ]]
+    icon: mdi:sprout
+  [%- endif %]
 
 input_number:
   [[ p ]]_near_cm:
@@ -343,6 +473,50 @@ input_number:
     unit_of_measurement: [[ unit ]]
     mode: slider
   [%- endfor %]
+  # Custom's EQ, one gain per range in the card's range order and limits (spec 3.1), and its hold.
+  [%- for key in eq_keys %]
+  [[ p ]]_music_eq_[[ key ]]:
+    name: [[ named(' music EQ ' ~ key | replace('_', ' ') ~ ' (dB)') ]]
+    icon: mdi:equalizer
+    min: -18
+    max: 12
+    step: 0.5
+    unit_of_measurement: dB
+    mode: slider
+  [%- endfor %]
+  [[ p ]]_music_hold_s:
+    name: [[ named(' music hold (s)') ]]
+    icon: mdi:timer-sand
+    min: 0
+    max: 10
+    step: 0.1
+    unit_of_measurement: s
+    mode: slider
+  # Each template's own rise, fall, hold and EQ, with Custom's ranges.
+  [%- for id in looks %]
+  [%- set label = ' music ' ~ id | replace('_', ' ') %]
+  [%- for key, what, icon, lo, hi, step, unit in [('rise_ms', ' rise (ms)', 'mdi:arrow-up-bold', 0, 2000, 10, 'ms'),
+      ('fall_s', ' fall (s)', 'mdi:arrow-down-bold', 0, 30, 0.1, 's'), ('hold_s', ' hold (s)', 'mdi:timer-sand', 0, 10, 0.1, 's')] %]
+  [[ p ]]_music_[[ id ]]_[[ key ]]:
+    name: [[ named(label ~ what) ]]
+    icon: [[ icon ]]
+    min: [[ lo ]]
+    max: [[ hi ]]
+    step: [[ step ]]
+    unit_of_measurement: [[ unit ]]
+    mode: slider
+  [%- endfor %]
+  [%- for key in eq_keys %]
+  [[ p ]]_music_[[ id ]]_eq_[[ key ]]:
+    name: [[ named(label ~ ' EQ ' ~ key | replace('_', ' ') ~ ' (dB)') ]]
+    icon: mdi:equalizer
+    min: -18
+    max: 12
+    step: 0.5
+    unit_of_measurement: dB
+    mode: slider
+  [%- endfor %]
+  [%- endfor %]
   [%- endif %]
   [%- if inputs.photo_dir is defined %]
   [[ p ]]_photo_count:
@@ -378,6 +552,16 @@ input_number:
     unit_of_measurement: s
     mode: slider
   [%- endif %]
+  [%- if inputs.climate is defined %]
+  # How many widgets the Climate page has: rows of the settings page's picker, tiles on the Ramka.
+  [[ p ]]_climate_slots:
+    name: [[ named(' climate widgets') ]]
+    icon: mdi:view-grid-outline
+    min: 1
+    max: 20
+    step: 1
+    mode: slider
+  [%- endif %]
   # The air-card's limits, read live; an unusable state keeps the card's literal default.
   [%- for reading in air_readings %]
   [%- set l = air_limits[reading] %]
@@ -411,12 +595,14 @@ input_button:
 
 [%- if inputs.photo_dir is defined %]
 
-# The photo on screen, "<folder>/<file>" under the photo folder.
 input_text:
+  # The photo on screen, "<folder>/<file>" under the photo folder.
   [[ p ]]_photo:
     name: [[ named(' photo') ]]
     icon: mdi:image
     max: 255
+[%- endif %]
+[%- if inputs.photo_dir is defined %]
 
 # The photo folder: folders at any depth, the photo's own folder name is the caption. The folder
 # platform names the entity after the last path component ([[ folder_sensor ]]); it only sees one
@@ -453,6 +639,10 @@ recorder:
   exclude:
     entities:
       - sensor.[[ p ]]_discovery
+[%- if music_visual %]
+      # The look follows input_select.[[ p ]]_music_template and the profiles' helpers, all recorded.
+      - sensor.[[ p ]]_music_look
+[%- endif %]
 
 template:
   - sensor:
@@ -487,6 +677,44 @@ template:
             [[ switched_on() ]]{{ ns.on if ns.on else [[ pages[:1] | tojson ]] }}
           all_off: >-
             [[ switched_on() ]]{{ ns.on | count == 0 }}
+[%- if music_visual %]
+[%- set select = "states('input_select." ~ p ~ "_music_template')" %]
+[%- macro number(entity, default) %]states('[[ entity ]]') | float([[ default ]])[% endmacro %]
+[#- One profile's value of one attribute, from its own helper; the profile's default while the helper
+    is unavailable. -#]
+[%- macro profile_value(id, key) %]
+[%- set v = profile_values[id] %]
+[%- set h = p ~ '_' ~ profile_prefix[id] %]
+[%- if key == 'tilt' %]
+[%- set out = ("not is_state('input_boolean." ~ h ~ "tilt', 'off')") if v.tilt else ("is_state('input_boolean." ~ h ~ "tilt', 'on')") %]
+[%- elif key == 'eq' %]
+[%- set gains = [] %]
+[%- for k in eq_keys %][% set _ = gains.append("'" ~ k ~ "': " ~ number('input_number.' ~ h ~ 'eq_' ~ k, v.eq[k])) %][% endfor %]
+[%- set out = '{' ~ gains | join(', ') ~ '}' %]
+[%- else %]
+[%- set out = number('input_number.' ~ h ~ {'rise': 'rise_ms', 'fall': 'fall_s', 'hold': 'hold_s'}[key], v[key]) %]
+[%- endif %][[ out ]]
+[%- endmacro %]
+      # The response profile the cards bind (`look:`): the state is the entry on screen, a select state
+      # that is no entry id is Custom (spec 8); the attributes are the card's `look` shape, read from the
+      # selected profile's own helpers, each falling back to that profile's default while its helper is
+      # unavailable. No colour window: the cards bind the neutral and hot helpers themselves.
+      - name: [[ named(' music look') ]]
+        unique_id: [[ p ]]_music_look
+        default_entity_id: sensor.[[ p ]]_music_look
+        icon: mdi:palette-swatch
+        state: >-
+          {% set id = [[ select ]] %}{{ id if id in [[ look_ids | tojson ]] else 'custom' }}
+        attributes:
+[%- for key in ['rise', 'fall', 'hold', 'tilt', 'eq'] %]
+          [[ key ]]: >-
+            {% set id = [[ select ]] %}
+[%- for id in looks %]
+            {%- [% if loop.first %]if[% else %]elif[% endif %] id == '[[ id ]]' %}{{ [[ profile_value(id, key) ]] }}
+[%- endfor %]
+            {%- else %}{{ [[ profile_value('custom', key) ]] }}{% endif %}
+[%- endfor %]
+[%- endif %]
   - binary_sensor:
       # The media player playing, with track changes bridged. Between two tracks a player can
       # report playing → buffering → playing (or paused for buffering), each gap 0.5-3 s, and
@@ -570,10 +798,15 @@ template:
             {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
 [%- endif %]
 [%- if inputs.climate is defined %]
-  # The Climate page's rooms (SPEC-021 amendments 2, 3): `rooms`, up to ten of {label, main, extra},
-  # entity ids, extra may be empty; the room tiles and the 7-day charts follow it, in its order
-  # (colour n is room n). Set by the settings page's climate card through event [[ p ]]_climate_rooms;
-  # the seed gives it inputs.climate's first ten. Before that the cards show inputs.climate.
+  # The Climate page's widgets (SPEC-021 amendments 2, 3): `rooms`, up to twenty in order, each a
+  # widget {type, label, main, extra, ...} (type temperature, air or custom; entity ids, main and
+  # extra may be empty; a temperature's temp_low, temp_high, hum_low, hum_high, a custom's color) or
+  # an empty one {type: empty, spacer: true}, an empty tile; never an empty one at the end. An entry
+  # without a type (before the types) reads as temperature or custom. The tiles and the 7-day charts
+  # follow it, the first input_number.[[ p ]]_climate_slots of it (colour n is the n-th widget with
+  # a reading). State: how many widgets have a reading. Set by the settings page's climate card through event
+  # [[ p ]]_climate_rooms; the seed gives it inputs.climate's first ten. Before that the cards show
+  # inputs.climate.
   - triggers:
       - trigger: event
         event_type: [[ p ]]_climate_rooms
@@ -582,7 +815,7 @@ template:
         unique_id: [[ p ]]_climate_rooms
         default_entity_id: sensor.[[ p ]]_climate_rooms
         icon: mdi:home-thermometer
-        state: "{{ trigger.event.data.rooms | default([]) | count }}"
+        state: "{{ trigger.event.data.rooms | default([]) | rejectattr('spacer', 'defined') | selectattr('main') | list | count }}"
         attributes:
           rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
@@ -1030,8 +1263,13 @@ script:
 [%- endif %]
 [%- if inputs.climate is defined %]
 
-  # The Climate page's rooms, up to ten {label, main, extra}; a room without its main reading is
-  # dropped. Called by the settings page's climate card.
+  # The Climate page's widgets, up to twenty: {type, label, main, extra} with the type's own values
+  # (a temperature's four comfort numbers, a custom's color: a named colour's id; a theme slot number,
+  # as the build before the named colours stored it, becomes its colour's id), or an empty one {type: empty, spacer:
+  # true}, which keeps its position (an empty tile); empty ones at the end are dropped. An entry
+  # without a type (before the types, or from an automation) is a temperature when its main sensor's
+  # device_class is temperature, else custom; without a sensor as its main reading, an empty one. A
+  # main reading that is no sensor is left empty. Called by the settings page's climate card.
   [[ p ]]_climate_rooms_set:
     alias: [[ named(' climate rooms set') ]]
     icon: mdi:home-thermometer
@@ -1039,19 +1277,35 @@ script:
     fields:
       rooms:
         name: Rooms
-        description: Up to ten of {label, main, extra}, entity ids; extra may be empty.
+        description: "Up to twenty widgets, each {type, label, main, extra} (type temperature, air or custom; entity ids, may be empty; temperature: temp_low, temp_high, hum_low, hum_high; custom: color, a colour id: [[ colours | join(', ') ]]) or {type: empty}."
         # No selector, as the albums' script: object: {} is refused.
-        example: '[{"label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
+        example: '[{"type": "temperature", "label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
     sequence:
       - event: [[ p ]]_climate_rooms
         event_data:
           rooms: >-
             {% set given = rooms if rooms is defined and rooms is not string and rooms is iterable else [] %}
+            {% set kinds = ['temperature', 'air', 'custom'] %}
             {% set kept = namespace(rooms=[]) %}
-            {% for r in given if r is mapping and (r.main | default('') | string).startswith('sensor.') %}
-            {% set kept.rooms = kept.rooms + [{'label': r.label | default('') | string, 'main': r.main, 'extra': r.extra | default('') | string}] %}
+            {% for r in given if r is mapping %}
+            {% set main = r.main | default('') | string %}
+            {% set main = main if main.startswith('sensor.') else '' %}
+            {% set kind = r.type | default('') | string %}
+            {% if r.spacer | default(false) or kind == 'empty' or (kind not in kinds and not main) %}
+            {% set kept.rooms = kept.rooms + [{'type': 'empty', 'spacer': true}] %}
+            {% else %}
+            {% if kind not in kinds %}{% set kind = 'temperature' if state_attr(main, 'device_class') == 'temperature' else 'custom' %}{% endif %}
+            {% set more = namespace(items=[('type', kind), ('label', r.label | default('') | string), ('main', main), ('extra', r.extra | default('') | string)]) %}
+            {% if kind == 'temperature' %}{% for k in ['temp_low', 'temp_high', 'hum_low', 'hum_high'] if r[k] is number and r[k] is not boolean %}{% set more.items = more.items + [(k, r[k] | float)] %}{% endfor %}{% endif %}
+            {% set color = r.color | default('') %}
+            {% if color is number and color is not boolean and color | int == color %}{% set color = [[ colour_slots | tojson ]].get(color | int | string, '') %}{% endif %}
+            {% if kind == 'custom' and color is string and color in [[ colours | tojson ]] %}{% set more.items = more.items + [('color', color)] %}{% endif %}
+            {% set kept.rooms = kept.rooms + [dict(more.items)] %}
+            {% endif %}
             {% endfor %}
-            {{ kept.rooms[:10] }}
+            {% set last = namespace(n=0) %}
+            {% for r in kept.rooms[:20] %}{% if r.type != 'empty' %}{% set last.n = loop.index %}{% endif %}{% endfor %}
+            {{ kept.rooms[:last.n] }}
 [%- endif %]
 
   # The About page's Refresh (SPEC-023): runs the discovery, publishes it to sensor.[[ p ]]_discovery
@@ -1086,6 +1340,55 @@ script:
             target:
               entity_id: "{{ updates }}"
 
+[%- if music_visual %]
+
+  # Loads an EQ preset's six gains into the selected profile's EQ (a select state that is no entry id
+  # is Custom, as the look sensor reads it); called by automation [[ p ]]_music_eq_load or, with the
+  # preset, by any script. The presets are rendered in
+  # (the catalog's, the home's music_eq_presets over its own three). An id that is no preset writes
+  # nothing and says so.
+  [[ p ]]_music_load_eq:
+    alias: [[ named(' music load EQ preset') ]]
+    icon: mdi:tune-vertical-variant
+    mode: restart
+    fields:
+      preset:
+        name: Preset
+        description: An EQ preset id, one of input_select.[[ p ]]_music_eq's options but [[ eq_none ]]; without it, the select's state.
+        required: false
+        selector:
+          select:
+            options: [[ eq_presets | list | tojson ]]
+    sequence:
+      - variables:
+          chosen: "{{ preset | default(states('input_select.[[ p ]]_music_eq')) }}"
+          profile: >-
+            {% set id = states('input_select.[[ p ]]_music_template') %}{{ id if id in [[ look_ids | tojson ]] else 'custom' }}
+          helper: >-
+            {{ [[ profile_prefix | tojson ]][profile] }}
+      - if:
+          - condition: template
+            value_template: >-
+              {{ chosen not in [[ eq_presets | list | tojson ]] }}
+        then:
+          - action: system_log.write
+            data:
+              level: warning
+              logger: [[ p ]].music_look
+              message: "no EQ preset '{{ chosen }}', so the {{ profile }} profile's EQ is unchanged"
+          - stop: No such EQ preset
+      - variables:
+          gains: >-
+            {{ [[ eq_presets | tojson ]][chosen] }}
+[%- for key in eq_keys %]
+      - action: input_number.set_value
+        target:
+          entity_id: "input_number.[[ p ]]_{{ helper }}eq_[[ key ]]"
+        data:
+          value: "{{ gains.[[ key ]] }}"
+[%- endfor %]
+[%- endif %]
+
   # Sets the settings to this home's defaults (settings_defaults and music_visual_options over the
   # catalog's). `page`: only that page's settings; `groups`: only those groups'; both: the settings
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
@@ -1110,7 +1413,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual", "photos", "plants", "air", "climate"]
+            options: ["presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate", "climate_slots"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -1133,13 +1436,16 @@ script:
           - event: [[ p ]]_[[ key ]]
             event_data: [[ value | tojson ]]
 [%- else %]
-[%- set verb = 'set_value' if domain == 'input_number' else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
+[%- set verb = 'set_value' if domain in ['input_number', 'input_text'] else 'select_option' if domain == 'input_select' else 'turn_on' if value else 'turn_off' %]
           - action: [[ domain ]].[[ verb ]]
             target:
               entity_id: [[ domain ]].[[ p ]]_[[ key ]]
 [%- if domain == 'input_number' %]
             data:
               value: [[ value ]]
+[%- elif domain == 'input_text' %]
+            data:
+              value: [[ value | yaml ]]
 [%- elif domain == 'input_select' %]
             data:
               option: [[ value | yaml ]]
@@ -1475,6 +1781,33 @@ automation:
           - action: input_boolean.turn_off
             target:
               entity_id: input_boolean.audio_sensor_music_watching
+  # An EQ preset chosen loads into the selected profile's EQ (spec 5), and the select returns to
+  # [[ eq_none ]]: one select serves every profile card, so it must not keep showing the preset loaded
+  # into another, and the same preset chosen again is a change. Not when the select appears at a start
+  # or a reload (no old state, or unavailable): that is the restored state, no choice, and would undo
+  # the profile's sliders; not for [[ eq_none ]] itself (the return, a reset).
+  - id: [[ p ]]_music_eq_load
+    alias: [[ named(' music EQ load') ]]
+    description: "An EQ preset chosen: write its six gains into the selected profile's EQ."
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_music_eq
+        to: ~
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable'] }}"
+      - condition: template
+        value_template: "{{ trigger.to_state.state != '[[ eq_none ]]' }}"
+    actions:
+      - action: script.[[ p ]]_music_load_eq
+        data:
+          preset: "{{ trigger.to_state.state }}"
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_music_eq
+        data:
+          option: "[[ eq_none ]]"
 [%- endif %]
   - id: [[ p ]]_ambient_stop
     alias: [[ named(' ambient stop') ]]
@@ -1509,8 +1842,16 @@ automation:
   #   whenever the flag is off, or an upgraded home would find every page switched off;
   # - music_visual: the four dB helpers untouched (0 dB); also after the flag is on, since a home
   #   can add music_visual later;
+  # - music_look: Custom's six EQ gains and its hold untouched (-18 dB, 0 s); also after the flag is
+  #   on, so a home that had music_visual before the looks gets a flat EQ;
+  # - music_profiles: the templates' own rise, fall, hold and EQ untouched; also after the flag is
+  #   on, so a home that had the profiles before they were editable gets their values;
   # - photos and air (SPEC-021 amendment 1): their numbers untouched; also after the flag is on, so
   #   a home that ran 0.4.0 before them gets them at its next start.
+  # - climate: the rooms while sensor.<prefix>_climate_rooms has none; climate_slots: the number
+  #   until input_boolean.<prefix>_climate_slots_seeded is on, and only while it is the slider's min
+  #   (a fresh helper's state; a home that had another number keeps it), or whenever it is unknown.
+  #   Its own flag, since 1 is also a home's choice: after the first seed a 1 stays.
   # Home Assistant's start trigger fires after the restored states are in place.
   - id: [[ p ]]_settings_seed
     alias: [[ named(' settings seed') ]]
@@ -1522,7 +1863,7 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, music=true, photos=true, plants=true, air=true) %}
+            {% set untouched = namespace(presence=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true, climate_slots=true) %}
 [%- if inputs.climate is defined %]
             {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
 [%- endif %]
@@ -1534,11 +1875,21 @@ automation:
 [%- for group, numbers in [('photos', photo_numbers), ('plants', plant_numbers), ('air', air_numbers)] if numbers %]
             {% for e in [[ numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.[[ group ]] = false %}{% endfor %}
 [%- endfor %]
+[%- if inputs.climate is defined %]
+            {% set slots = 'input_number.[[ p ]]_climate_slots' %}
+            {% set untouched.climate_slots = states(slots) in ['unknown', 'unavailable'] or (not is_state('input_boolean.[[ p ]]_climate_slots_seeded', 'on') and states(slots) | float(-1) == state_attr(slots, 'min') | float(-2)) %}
+[%- endif %]
 [%- if music_visual %]
             {% for e in ['input_number.[[ p ]]_music_spectrum_neutral_db', 'input_number.[[ p ]]_music_spectrum_hot_db', 'input_number.[[ p ]]_music_level_neutral_db', 'input_number.[[ p ]]_music_level_hot_db'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.music = false %}{% endfor %}
+[%- set look_numbers = [] %]
+[%- for s in settings if s[3] == 'music_look' and s[0] == 'input_number' %][% set _ = look_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
+            {% for e in [[ look_numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.look = false %}{% endfor %}
+[%- set profile_numbers = [] %]
+[%- for s in settings if s[3] == 'music_profiles' and s[0] == 'input_number' %][% set _ = profile_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
+            {% for e in [[ profile_numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.profiles = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else []) + (['climate_slots'] if untouched.climate_slots else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"
@@ -1549,6 +1900,11 @@ automation:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_settings_seeded
+[%- if inputs.climate is defined %]
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.[[ p ]]_climate_slots_seeded
+[%- endif %]
 
   # The server's default theme follows the theme mode, at start and on every change. Both of the
   # server's default-theme slots get it (frontend.set_theme without mode and with mode: dark), so a

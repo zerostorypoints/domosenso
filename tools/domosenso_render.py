@@ -4,6 +4,8 @@
 Every templates/**/*.j2 renders to <out>/<same path without .j2>.
 *.lang.yaml.j2 renders once per language to <name>.<lang>.yaml.
 Other (plain) templates render once, with lang = "en".
+A template whose output is only whitespace writes no file: an optional output (ramka's preview
+dashboard) renders empty when its input is off.
 
 Delimiters: the renderer uses [[ ... ]] for expressions, [% ... %] for blocks
 and [# ... #] for comments. The default {{ }} and {% %} are left alone because
@@ -161,7 +163,7 @@ def stamp_line(component_dir: Path) -> str:
     return f"# Rendered by Domosenso from {cid or component_dir.name}@{sha} — do not edit\n"
 
 
-def _render(env: Environment, name: str, dest: Path, stamp: str = "") -> Path:
+def _render(env: Environment, name: str, dest: Path, stamp: str = "") -> Path | None:
     try:
         _check_nested_list_literals(env, name)
         text = env.get_template(name).render()
@@ -170,6 +172,9 @@ def _render(env: Environment, name: str, dest: Path, stamp: str = "") -> Path:
     except (TypeError, ValueError) as exc:
         exc.add_note(name)  # the library raises it unchanged; the CLI names the file
         raise
+    if not text.strip():
+        dest.unlink(missing_ok=True)  # an earlier render's file must not outlive its input
+        return None
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(stamp + text, encoding="utf-8")
     return dest
@@ -207,7 +212,7 @@ def render_component(
                 written.append(_render(envs[lang], name, out_dir / f"{stem}.{lang}.yaml", first_line))
         else:
             written.append(_render(envs["en"], name, out_dir / name[: -len(".j2")], first_line))
-    return written
+    return [path for path in written if path is not None]
 
 
 _PLACEHOLDER = re.compile(r"<([a-z_]+)>")

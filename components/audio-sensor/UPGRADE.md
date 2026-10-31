@@ -2,6 +2,21 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
+## Unreleased: a six-range EQ and a look option for the music cards
+
+SPEC-024. The README's new "Placement" section is a field note: where to put the board, and
+why the firmware stays as it is.
+
+`ambient-wave-card` takes a six-range EQ (`dynamics.eq`: `sub`, `bass`, `low_mid`, `mid`,
+`presence`, `air`, dB each) and a `look` entity option, a sensor whose attributes carry a whole music
+look and override the card's dynamics, EQ and colour window. The Ramka's music looks need this card
+release (README, "Music looks" there).
+
+### What a home does
+
+- Nothing: a card without either option draws as before. With the Ramka's music looks, update both
+  components together.
+
 ## 0.2.0 (2026-10-30): a faster spectrum, an update rate, the board set by Home Assistant
 
 The music visual follows a bass hit in about 0.3 s instead of up to about 1 s (#99, #110; README,

@@ -31,6 +31,7 @@
         "tilt": "Add back music's spectral slope",
         "style": "Style",
         "line_width": "Line width (px)",
+        "look": "Look (sensor)",
         "active": "Active while on",
         "controls": "Show the console",
         "fallback": "Without data"

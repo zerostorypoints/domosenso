@@ -6,6 +6,7 @@ import en from "../../translations/en.json" with { type: "json" };
 import { createT } from "./i18n.js";
 import { nearestBand } from "./sources.js";
 import { DEFAULT_LINE_WIDTH } from "./geometry.js";
+import { EQ_KEYS } from "./eq.js";
 
 const t = createT({ en });
 // hass is not known at setConfig time, so config errors are always English.
@@ -30,7 +31,7 @@ export const DEFAULTS = {
   source: { offset: 0, axis: "third_octave", show: [31.5, 16000], history: 40, demo: false, scenario: "electronic" },
   // neutral and hot come from DEFAULT_COLOUR by kind.
   colour: { palette: "series", neutral_color: "var(--primary-color)" },
-  dynamics: { rise: 200, fall: 4, hold: 1.5, tilt: true },
+  dynamics: { rise: 200, fall: 4, hold: 1.5, tilt: true, eq: Object.fromEntries(EQ_KEYS.map((k) => [k, 0])) },
   style: { line_width: DEFAULT_LINE_WIDTH },
   controls: false,
   fallback: "none",
@@ -64,11 +65,15 @@ const ENTITY_OPTIONS = {
   "dynamics.fall": { type: "number" },
   "dynamics.hold": { type: "number" },
   "dynamics.tilt": { type: "boolean" },
+  ...Object.fromEntries(EQ_KEYS.map((k) => [`dynamics.eq.${k}`, { type: "number" }])),
   "style.line_width": { type: "number", valid: validLineWidth },
   controls: { type: "boolean" },
   fps: { type: "number", valid: (n) => n >= 1 && n <= 60 },
   flavour: { type: "choice" },
 };
+
+// A dynamics.eq that is not a mapping (an entity id, a number) is a mistake: the six zeros instead.
+const flatEq = () => Object.fromEntries(EQ_KEYS.map((k) => [k, 0]));
 
 const get = (obj, path) => path.split(".").reduce((o, k) => o?.[k], obj);
 function set(obj, path, value) {
@@ -95,6 +100,7 @@ export function normaliseConfig(raw, flavourKinds) {
   const defaults = { ...DEFAULTS, flavour: undefined, colour: { ...DEFAULTS.colour, ...DEFAULT_COLOUR[kind] } };
   const config = merge(defaults, raw);
   config.flavour ??= DEFAULT_FLAVOUR[kind];
+  if (!isObject(config.dynamics.eq)) config.dynamics.eq = flatEq();
 
   // The engine has the 31 third-octave slots only: another axis would fill some and leave the rest
   // neutral, so it is refused rather than drawn wrong.
@@ -124,6 +130,7 @@ export function entitiesOf(config) {
   const ids = new Set();
   if (config.source?.entity) ids.add(config.source.entity);
   if (config.active) ids.add(config.active);
+  if (config.look) ids.add(config.look);
   for (const path of Object.keys(ENTITY_OPTIONS)) {
     const v = get(config, path);
     if (isEntity(v)) ids.add(v);
@@ -159,11 +166,30 @@ export function resolveOptions(config, states, flavourKinds) {
     if (path === "flavour" && !kindsOf(flavourKinds, value).includes(kind)) value = fallback;
     set(out, path, value);
   }
+  applyLook(out, states?.[config.look]);
   // A literal flavour or number is the author's, except the line width: the console and the editor
   // bound it, and a hand-written value outside the range falls back like an entity state would.
   const lw = out.style?.line_width;
   if (!(typeof lw === "number" && validLineWidth(lw))) out.style = { ...out.style, line_width: DEFAULT_LINE_WIDTH };
   return orderColour(out);
+}
+
+// A look entity (a template sensor) carries a whole music look in its attributes. It overrides the
+// options it names, after the entity options; an attribute of the wrong type is skipped, so the
+// option stays as configured.
+const finite = (v) => typeof v === "number" && Number.isFinite(v);
+function applyLook(out, entity) {
+  const a = entity?.attributes;
+  if (!entity || ["unavailable", "unknown"].includes(entity.state) || !isObject(a)) return;
+  if (!isObject(out.dynamics.eq)) out.dynamics.eq = flatEq();
+  for (const k of ["rise", "fall", "hold"]) if (finite(a[k])) out.dynamics[k] = a[k];
+  if (typeof a.tilt === "boolean") out.dynamics.tilt = a.tilt;
+  if (isObject(a.eq)) for (const k of EQ_KEYS) if (finite(a.eq[k])) out.dynamics.eq[k] = a.eq[k];
+  const pair = a[out.source.kind === "spectrum" ? "spectrum" : "level"];
+  if (isObject(pair)) {
+    if (finite(pair.neutral)) out.colour.neutral = pair.neutral;
+    if (finite(pair.hot)) out.colour.hot = pair.hot;
+  }
 }
 
 // A hot at or below neutral would reverse the palette and turn bars upside down: the kind's defaults

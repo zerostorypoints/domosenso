@@ -149,9 +149,28 @@ def test_dev_render_card_gets_hash_query(tmp_path):
     dev = {"ramka": [CARD]}
     first = wanted(home, Lock(), dev)[0].url
     put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"two")
-    assert first == f"{CARD}?v={sha256(b'one')[:8]}"
-    assert wanted(home, Lock(), dev)[0].url == f"{CARD}?v={sha256(b'two')[:8]}"
+    tree = lambda *files: sha256("".join(f"{rel}\0{sha256(content)}\n" for rel, content in files).encode())[:8]
+    assert first == f"{CARD}?v={tree(('cards/agenda-card.js', b'one'))}"
+    assert wanted(home, Lock(), dev)[0].url == f"{CARD}?v={tree(('cards/agenda-card.js', b'two'))}"
     assert wanted(home, lock_with(CARD))[0].url == CARD
+
+
+def test_dev_render_hash_covers_the_version_directory(tmp_path):
+    """A card imports its lib/ modules and translations with its own ?v=: a change to one of them alone
+    changes the URL of every card of the version, and the cards share one hash."""
+    home = make_home(tmp_path)
+    other = CARD.replace("agenda-card", "air-card")
+    for rel, content in (("cards/agenda-card.js", b"a"), ("cards/air-card.js", b"b"), ("cards/lib/colours.js", b"1"),
+                         ("translations/en.json", b"{}")):
+        put(home, f"domosenso/ramka/0.1.1/{rel}", content)
+    dev = {"ramka": [CARD, other]}
+    first = [r.url for r in wanted(home, Lock(), dev)]
+    assert first[0].split("?")[1] == first[1].split("?")[1]
+    put(home, "domosenso/ramka/0.1.1/translations/en.json", b'{"k": 1}')
+    second = [r.url for r in wanted(home, Lock(), dev)]
+    put(home, "domosenso/ramka/0.1.1/cards/lib/colours.js", b"2")
+    third = [r.url for r in wanted(home, Lock(), dev)]
+    assert len({first[0], second[0], third[0]}) == 3 and second[0].split("?")[1] == second[1].split("?")[1]
     # A dev card that is not under /local/, or whose file is not rendered, passes through.
     assert wanted(home, Lock(), {"x": ["/hacsfiles/x/x.js", "/local/missing.js"]}) == [
         Resource("/hacsfiles/x/x.js"), Resource("/local/missing.js")]

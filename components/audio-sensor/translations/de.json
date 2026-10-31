@@ -31,6 +31,7 @@
         "tilt": "Spektrale Neigung der Musik ausgleichen",
         "style": "Stil",
         "line_width": "Linienstärke (px)",
+        "look": "Look (Sensor)",
         "active": "Aktiv, solange ein",
         "controls": "Bedienfeld anzeigen",
         "fallback": "Ohne Daten"
