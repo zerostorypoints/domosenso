@@ -168,13 +168,16 @@ read a home's secrets. With wrong Wi-Fi credentials the fix is a USB flash again
 
 ## The music source and calibration
 
-With a board marked `music: true`, `input_select.audio_sensor_music_source` lists the boards' areas,
-that board first and the others in input order. The music aliases (`sensor.music_spectrum`,
+`input_select.audio_sensor_music_source` lists the boards' areas, the `music: true` board first and
+the others in input order, then `—` (no sensor). Without a `music: true` board the list is `—`
+first, then the boards in input order. The select, the aliases, the calibration inputs and the
+script are always rendered. The music aliases (`sensor.music_spectrum`,
 `sensor.music_spl_offset`, `sensor.music_level`, `sensor.music_mic_gain`,
 `sensor.music_spl_calibration`, `binary_sensor.music_sensor_online`) read the board whose area the
-select holds, so another board can feed a music visual without a render. One board gives a
-one-option select. A select that is `unknown` (a first start) or unavailable reads the `music: true`
-board, so the aliases never depend on the helper being there. Two boards cannot share an area.
+select holds, so another board can feed a music visual without a render. With `—` every alias is
+`unavailable` (and `binary_sensor.music_sensor_online` is off): a home can choose to have no music
+source. A select that is `unknown` (a first start) or unavailable reads the `music: true` board, or
+nothing when no board is marked, so the aliases never depend on the helper being there. Two boards cannot share an area.
 There is no `initial:` on any helper: a restart keeps the choice.
 
 Every board has `input_boolean.<id_prefix>_spl_calibrated` (off = the offset is an estimate) and
@@ -184,8 +187,8 @@ reference minus the board's level without offset. Type it into
 `input_number.audio_sensor_measured_offset`, add a note to `input_text.audio_sensor_calibration_note`
 and run `script.audio_sensor_apply_calibration`: it writes the offset and the note into that
 board's helpers and turns its flag on. Typing the offset straight into
-`input_number.<id_prefix>_spl_offset` works as before. Without a `music: true` board there is no
-select, no alias, no measured-offset or note input and no script; the per-board flag and note stay.
+`input_number.<id_prefix>_spl_offset` works as before. With `—` selected the
+script does nothing, and the spectrum rate goes back to `normal` on the board the select left.
 
 ## The cards
 

@@ -12,6 +12,13 @@ why the firmware stays as it is.
 look and override the card's dynamics, EQ and colour window. The Ramka's music looks need this card
 release (README, "Music looks" there).
 
+### The music source select has a no-sensor option
+
+`—` is added at the end of `input_select.audio_sensor_music_source` (first, when no board is
+`music: true`). With `—` every music alias is `unavailable`. A home without a `music: true`
+board now gets the select, the aliases, the calibration inputs and script, and the spectrum rate
+automation (before: none of them); its aliases are unavailable until a board is chosen.
+
 ### What a home does
 
 - Nothing: a card without either option draws as before. With the Ramka's music looks, update both

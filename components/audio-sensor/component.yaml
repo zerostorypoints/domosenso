@@ -98,7 +98,7 @@ provides:                                 # contract surface; placeholders in <>
 
     # The music source and the calibration helpers (SPEC-021). With a `music: true` board the aliases
     # above follow the select; a select state that is no option reads that board.
-    - {id: "input_select.audio_sensor_music_source", stability: stable, note: "with a music board: the boards' areas, the music board first, then input order; no initial:; one board gives one option"}
+    - {id: "input_select.audio_sensor_music_source", stability: stable, note: "options: the boards' areas, the music board first then input order, then \u2014 (no sensor); without a music board \u2014 comes first; always rendered; no initial:"}
     - {id: "sensor.music_mic_gain", stability: stable, note: "the selected board's Mic gain text, unchanged"}
     - {id: "sensor.music_spl_calibration", stability: stable, note: "calibrated or estimate, from the selected board's flag; attribute note"}
     - {id: "input_boolean.<id_prefix>_spl_calibrated", stability: stable, note: "per board; off = the offset is an estimate; no initial:"}
