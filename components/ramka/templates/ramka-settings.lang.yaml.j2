@@ -271,9 +271,10 @@ views:
             entity: sensor.[[ p ]]_photo_albums
             script: script.[[ p ]]_photo_albums_set[[ render_time([('inputs.photo_dir', inputs.photo_dir)]) ]][[ reset(view) ]]
 [%- elif view == 'plants' %][[ switch_section('plants', [('input_number', 'plants_per_page'), ('input_boolean', 'settings_advanced')]) ]][[ advanced_section([('input_number', 'plants_page_s')]) ]][[ render_time([('inputs.plants', t('ui.settings.plants_discover') if inputs.plants is string else plant_labels(inputs.plants))]) ]][[ reset(view) ]]
-[%- elif view == 'climate' %][[ switch_section('climate', [('input_boolean', 'settings_advanced')]) ]]
-      # The rooms: ten rows of a name and two sensor dropdowns (climate-rooms-card), SPEC-021
-      # amendment 2. The tiles and the charts follow them.
+[%- elif view == 'climate' %][[ switch_section('climate', [('input_number', 'climate_slots'), ('input_boolean', 'settings_advanced')]) ]]
+      # The rooms: one row per place (climate_slots) of a name and two sensor pickers, in an order
+      # changed by dragging or the up and down buttons (climate-rooms-card), SPEC-021 amendment 2.
+      # The tiles and the charts follow them.
       - type: grid
         cards:[[ heading('climate_rooms', 'mdi:home-thermometer', advanced_on) ]]
           - type: markdown
@@ -282,6 +283,7 @@ views:
           - type: custom:climate-rooms-card
             visibility: [ [[ advanced_on ]] ]
             entity: sensor.[[ p ]]_climate_rooms
+            slots: input_number.[[ p ]]_climate_slots
             script: script.[[ p ]]_climate_rooms_set[[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]][[ reset(view) ]]
 [%- elif view == 'air' %]
 [%- set readings = [] -%][%- set switches = [] -%][%- set limits = [] -%]

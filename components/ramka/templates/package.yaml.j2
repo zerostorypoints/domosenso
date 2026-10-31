@@ -212,15 +212,19 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
-[#- The Climate page's rooms (SPEC-021 amendments 2, 3): up to ten, each a label, a main reading and a
-    supplementary one, picked on the settings page; the defaults are the first ten of inputs.climate,
-    temperature and humidity. A list again, so sensor.<prefix>_climate_rooms keeps it, as the albums. -#]
+[#- The Climate page's rooms (SPEC-021 amendments 2, 3): a list of places, each a room (a label, a main
+    reading and a supplementary one) or a spacer ({spacer: true}, an empty tile), picked on the settings
+    page; the defaults are the first ten of inputs.climate, temperature and humidity. A list again, so
+    sensor.<prefix>_climate_rooms keeps it, as the albums. How many places the Ramka shows is
+    input_number.<prefix>_climate_slots, a group of its own: the rooms are seeded while the sensor has
+    none, the number while it is untouched. -#]
 [%- set climate_rooms = [] -%]
 [%- for c in (inputs.climate | default([]))[:10] -%]
 [%- set _ = climate_rooms.append({'label': c.label, 'main': c.temperature, 'extra': c.humidity | default('', true)}) -%]
 [%- endfor -%]
 [%- if inputs.climate is defined -%]
 [%- set _ = settings.append(('event', 'climate_rooms', 'climate', 'climate', {'rooms': climate_rooms})) -%]
+[%- set _ = settings.append(('input_number', 'climate_slots', 'climate', 'climate_slots', 10)) -%]
 [%- endif -%]
 [#- A select's options: its default first, then the rest in the given order, so a fresh helper is
     right before the seed runs. -#]
@@ -510,6 +514,16 @@ input_number:
     unit_of_measurement: s
     mode: slider
   [%- endif %]
+  [%- if inputs.climate is defined %]
+  # How many places the Climate page has: rows of the settings page's picker, tiles on the Ramka.
+  [[ p ]]_climate_slots:
+    name: [[ named(' climate places') ]]
+    icon: mdi:view-grid-outline
+    min: 1
+    max: 20
+    step: 1
+    mode: slider
+  [%- endif %]
   # The air-card's limits, read live; an unusable state keeps the card's literal default.
   [%- for reading in air_readings %]
   [%- set l = air_limits[reading] %]
@@ -746,10 +760,13 @@ template:
             {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
 [%- endif %]
 [%- if inputs.climate is defined %]
-  # The Climate page's rooms (SPEC-021 amendments 2, 3): `rooms`, up to ten of {label, main, extra},
-  # entity ids, extra may be empty; the room tiles and the 7-day charts follow it, in its order
-  # (colour n is room n). Set by the settings page's climate card through event [[ p ]]_climate_rooms;
-  # the seed gives it inputs.climate's first ten. Before that the cards show inputs.climate.
+  # The Climate page's rooms (SPEC-021 amendments 2, 3): `rooms`, up to twenty places in order, each
+  # a room {label, main, extra} (entity ids, extra may be empty) or a spacer {spacer: true}, an empty
+  # tile; never a trailing spacer. The room tiles and the 7-day charts follow it, the first
+  # input_number.[[ p ]]_climate_slots places of it (colour n is the n-th room, spacers skipped).
+  # State: how many rooms. Set by the settings page's climate card through event
+  # [[ p ]]_climate_rooms; the seed gives it inputs.climate's first ten. Before that the cards show
+  # inputs.climate.
   - triggers:
       - trigger: event
         event_type: [[ p ]]_climate_rooms
@@ -758,7 +775,7 @@ template:
         unique_id: [[ p ]]_climate_rooms
         default_entity_id: sensor.[[ p ]]_climate_rooms
         icon: mdi:home-thermometer
-        state: "{{ trigger.event.data.rooms | default([]) | count }}"
+        state: "{{ trigger.event.data.rooms | default([]) | rejectattr('spacer', 'defined') | list | count }}"
         attributes:
           rooms: "{{ trigger.event.data.rooms | default([]) }}"
 [%- endif %]
@@ -1204,7 +1221,8 @@ script:
 [%- endif %]
 [%- if inputs.climate is defined %]
 
-  # The Climate page's rooms, up to ten {label, main, extra}; a room without its main reading is
+  # The Climate page's places, up to twenty: a room {label, main, extra}, or a spacer where a row has
+  # no sensor as its main reading (it keeps its position: an empty tile); trailing spacers are
   # dropped. Called by the settings page's climate card.
   [[ p ]]_climate_rooms_set:
     alias: [[ named(' climate rooms set') ]]
@@ -1213,7 +1231,7 @@ script:
     fields:
       rooms:
         name: Rooms
-        description: Up to ten of {label, main, extra}, entity ids; extra may be empty.
+        description: "Up to twenty places, each {label, main, extra} (entity ids; extra may be empty) or {spacer: true}."
         # No selector, as the albums' script: object: {} is refused.
         example: '[{"label": "Kitchen", "main": "sensor.kitchen_temperature", "extra": "sensor.kitchen_humidity"}]'
     sequence:
@@ -1222,10 +1240,16 @@ script:
           rooms: >-
             {% set given = rooms if rooms is defined and rooms is not string and rooms is iterable else [] %}
             {% set kept = namespace(rooms=[]) %}
-            {% for r in given if r is mapping and (r.main | default('') | string).startswith('sensor.') %}
+            {% for r in given if r is mapping %}
+            {% if (r.main | default('') | string).startswith('sensor.') %}
             {% set kept.rooms = kept.rooms + [{'label': r.label | default('') | string, 'main': r.main, 'extra': r.extra | default('') | string}] %}
+            {% else %}
+            {% set kept.rooms = kept.rooms + [{'spacer': true}] %}
+            {% endif %}
             {% endfor %}
-            {{ kept.rooms[:10] }}
+            {% set last = namespace(n=0) %}
+            {% for r in kept.rooms[:20] %}{% if r.spacer is not defined %}{% set last.n = loop.index %}{% endif %}{% endfor %}
+            {{ kept.rooms[:last.n] }}
 [%- endif %]
 
   # The About page's Refresh (SPEC-023): runs the discovery, publishes it to sensor.[[ p ]]_discovery
@@ -1334,7 +1358,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate"]
+            options: ["presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate", "climate_slots"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -1760,6 +1784,9 @@ automation:
   #   on, so a home that had the profiles before they were editable gets their values;
   # - photos and air (SPEC-021 amendment 1): their numbers untouched; also after the flag is on, so
   #   a home that ran 0.4.0 before them gets them at its next start.
+  # - climate: the rooms while sensor.<prefix>_climate_rooms has none; climate_slots: the number of
+  #   places untouched, also after the flag is on (one number: set to 1 on purpose, it reads as
+  #   untouched and is seeded again at the next start).
   # Home Assistant's start trigger fires after the restored states are in place.
   - id: [[ p ]]_settings_seed
     alias: [[ named(' settings seed') ]]
@@ -1771,7 +1798,7 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true) %}
+            {% set untouched = namespace(presence=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true, climate_slots=true) %}
 [%- if inputs.climate is defined %]
             {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
 [%- endif %]
@@ -1780,7 +1807,8 @@ automation:
 [%- set plant_numbers = [] if inputs.plants is not defined else ['input_number.' ~ p ~ '_plants_per_page', 'input_number.' ~ p ~ '_plants_page_s'] %]
 [%- set air_numbers = [] %]
 [%- for s in settings if s[3] == 'air' and s[0] == 'input_number' %][% set _ = air_numbers.append('input_number.' ~ p ~ '_' ~ s[1]) %][% endfor %]
-[%- for group, numbers in [('photos', photo_numbers), ('plants', plant_numbers), ('air', air_numbers)] if numbers %]
+[%- set climate_numbers = [] if inputs.climate is not defined else ['input_number.' ~ p ~ '_climate_slots'] %]
+[%- for group, numbers in [('photos', photo_numbers), ('plants', plant_numbers), ('air', air_numbers), ('climate_slots', climate_numbers)] if numbers %]
             {% for e in [[ numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.[[ group ]] = false %}{% endfor %}
 [%- endfor %]
 [%- if music_visual %]
@@ -1793,7 +1821,7 @@ automation:
             {% for e in [[ profile_numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.profiles = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else []) + (['climate_slots'] if untouched.climate_slots else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"

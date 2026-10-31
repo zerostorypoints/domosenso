@@ -120,7 +120,13 @@
       "main": "Hauptmesswert",
       "extra": "Zweiter Messwert",
       "none": "—",
-      "missing": "nicht gefunden"
+      "missing": "nicht gefunden",
+      "spacer": "Leerer Platz",
+      "handle": "Ziehen, um diese Zeile zu verschieben",
+      "up": "Nach oben",
+      "down": "Nach unten",
+      "beyond": "Räume über der Zahl der Plätze, nicht auf der Ramka: {n}. Mit einer höheren Zahl erscheinen sie wieder.",
+      "remove_beyond": "Entfernen"
     },
     "info_select_row": {
       "about": "Zu dieser Auswahl"
@@ -331,7 +337,8 @@
       "plants_page_s": "Zeit pro Pflanzenseite",
       "plants_discover": "von der Pflanzen-Komponente gefunden",
       "climate_rooms": "Räume",
-      "climate_rooms_how": "Bis zu zehn Räume, jeder mit einem Hauptmesswert und einem zweiten, standardmässig Temperatur und Luftfeuchtigkeit. Raum 1 ist die erste Kachel und die erste Linie der Diagramme, in der Farbe seines Punkts. Ein Raum ohne Hauptmesswert entfällt; ein leerer Name wird zum Bereich des Sensors.",
+      "climate_rooms_how": "Eine Zeile pro Platz (Zahl der Plätze, unter Grundlagen), jede mit einem Namen, einem Hauptmesswert und einem zweiten, standardmässig Temperatur und Luftfeuchtigkeit. Eine Zeile am Griff ziehen oder die Pfeile nutzen, um die Reihenfolge zu ändern. Der n-te Raum ist die n-te Raumkachel und die n-te Linie der Diagramme, in der Farbe seines Punkts. Eine Zeile ohne Hauptmesswert ist ein leerer Platz: eine leere Kachel auf der Ramka, so stehen die Räume, wo man sie haben will; leere Zeilen am Ende entfallen. Ein leerer Name wird zum Bereich des Sensors.",
+      "climate_slots": "Zahl der Plätze",
       "air_score": "Luftqualität anzeigen",
       "air_co2": "CO₂ anzeigen",
       "air_pm2_5": "PM2.5 anzeigen",

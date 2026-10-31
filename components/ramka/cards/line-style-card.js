@@ -12,8 +12,14 @@
 //                                                 # fills its rows only when it has them
 //   rooms:                                        # optional: the inner card's entities from
 //     entity: sensor.ramka_climate_rooms          # this entity's `rooms` ({label, main, extra}),
-//     key: main                                   # their `key` reading, then `after`; the card's
-//     after: [{entity: sensor.outside, name: Outside}]  # own entities while it holds none
+//     slots: input_number.ramka_climate_slots     # its first `slots` places (a number or an
+//     key: main                                   # entity; spacers, {spacer: true}, skipped),
+//     after: [{entity: sensor.outside, name: Outside}]  # their `key` reading, then `after`; the
+//                                                 # card's own entities while it holds none
+//
+// With rooms, each line has the colour of its room, the theme's series colour n for the n-th room
+// (as the room tiles), whether or not the rooms before it have a `key` reading; `after` follows
+// the last room's colour.
 //   card:
 //     type: statistics-graph
 //     entities: [...]
@@ -36,7 +42,7 @@ class LineStyleCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     const entities = this._roomEntities();
-    const key = JSON.stringify(entities);
+    const key = JSON.stringify([entities, this._colors]);
     if (key !== this._roomsKey) {
       const first = this._roomsKey === undefined;
       this._roomsKey = key;
@@ -47,14 +53,42 @@ class LineStyleCard extends HTMLElement {
     this._hook();
   }
 
-  // The rooms' readings, then `after`, as statistics-graph entities; null without rooms.
+  // The rooms' readings, then `after`, as statistics-graph entities; null without rooms. Sets
+  // this._colors: entity → series colour number, the n-th room's n.
   _roomEntities() {
+    this._colors = null;
     const rooms = this._config.rooms;
     const list = rooms && this._hass && this._hass.states[rooms.entity]?.attributes?.rooms;
     if (!Array.isArray(list)) return null;
-    const live = list.filter((r) => r && typeof r.main === "string" && r.main && r[rooms.key])
-      .map((r) => ({ entity: r[rooms.key], name: String(r.label || "") }));
-    return list.some((r) => r && r.main) ? [...live, ...(rooms.after || [])] : null;
+    const real = list.slice(0, this._slots(rooms.slots, list.length))
+      .filter((r) => r && typeof r === "object" && !r.spacer && typeof r.main === "string" && r.main);
+    if (!real.length) return null;
+    const colors = {};
+    const live = [];
+    real.forEach((r, i) => {
+      if (!r[rooms.key]) return;
+      live.push({ entity: r[rooms.key], name: String(r.label || "") });
+      if (!(r[rooms.key] in colors)) colors[r[rooms.key]] = i + 1;
+    });
+    (rooms.after || []).forEach((a, i) => {
+      if (a && a.entity && !(a.entity in colors)) colors[a.entity] = real.length + 1 + i;
+    });
+    this._colors = colors;
+    return [...live, ...(rooms.after || [])];
+  }
+
+  // How many places count: `slots` as a number or an entity's state, 1 to 20; all without one.
+  _slots(slots, all) {
+    const n = typeof slots === "number" ? slots : parseInt(slots && this._hass.states[slots]?.state, 10);
+    return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 20) : all;
+  }
+
+  // HA's own series colours when the theme has none (src/common/color/colors.ts), as rooms-card.
+  static PALETTE = ["#4269d0", "#f4bd4a", "#ff725c", "#6cc5b0", "#a463f2", "#ff8ab7", "#9c6b4e", "#97bbf5", "#01ab63", "#9498a0"];
+
+  _color(n) {
+    const v = getComputedStyle(this).getPropertyValue(`--graph-color-${n}`).trim();
+    return v || LineStyleCard.PALETTE[(n - 1) % LineStyleCard.PALETTE.length];
   }
 
   // hui-card sets these on the card it shows; the inner card needs them to lay out the same way.
@@ -115,8 +149,15 @@ class LineStyleCard extends HTMLElement {
   _restyle(series) {
     const styles = this._config.line_styles || {};
     const id = series && series.id;
-    const entity = typeof id === "string" && Object.keys(styles).find((e) => id === e || id.startsWith(`${e}-`));
-    return entity ? { ...series, lineStyle: { ...series.lineStyle, ...styles[entity] } } : series;
+    const of = (table) => typeof id === "string" && Object.keys(table).find((e) => id === e || id.startsWith(`${e}-`));
+    const entity = of(styles);
+    let out = entity ? { ...series, lineStyle: { ...series.lineStyle, ...styles[entity] } } : series;
+    const colored = this._colors && of(this._colors);
+    if (colored) {
+      const color = this._color(this._colors[colored]);
+      out = { ...out, color, itemStyle: { ...out.itemStyle, color }, lineStyle: { ...out.lineStyle, color } };
+    }
+    return out;
   }
 
   _find(root, tag) {

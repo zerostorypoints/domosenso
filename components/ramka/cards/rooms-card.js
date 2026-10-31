@@ -8,8 +8,13 @@
 //   height: calc(100vh - 304px)
 //   columns: 3
 //   entity: sensor.ramka_climate_rooms              # optional: its `rooms` attribute, a list of
-//                                                   # {label, main, extra}, replaces `rooms` while it
-//                                                   # holds one; room n gets colour n
+//                                                   # places, each {label, main, extra} or a spacer
+//                                                   # ({spacer: true}, or no main), replaces `rooms`
+//                                                   # while it holds a room; the n-th room gets
+//                                                   # colour n, a spacer is an empty tile
+//   slots: input_number.ramka_climate_slots         # optional, with entity: how many places of the
+//                                                   # list show (a number or an entity); the rest
+//                                                   # stay in the list, unseen
 //   rooms:
 //     - name: Living room
 //       temperature: sensor.living_room_temperature
@@ -48,13 +53,26 @@ class RoomsCard extends HTMLElement {
     this._update(rooms);
   }
 
-  // The settings page's rooms, as `rooms` entries; null while the entity has none.
+  // The settings page's places, as `rooms` entries ({spacer: true} for an empty tile): the first
+  // `slots` of them, no trailing spacer; null while the entity has no room among them.
   _live() {
     const list = this._config.entity && this._hass.states[this._config.entity]?.attributes?.rooms;
     if (!Array.isArray(list)) return null;
-    const rooms = list.filter((r) => r && typeof r.main === "string" && r.main)
-      .map((r, i) => ({ name: String(r.label || ""), temperature: r.main, humidity: r.extra || null, color: i + 1 }));
-    return rooms.length ? rooms : null;
+    const isRoom = (r) => r && typeof r === "object" && !r.spacer && typeof r.main === "string" && r.main;
+    const places = list.slice(0, this._slots(list.length));
+    while (places.length && !isRoom(places.at(-1))) places.pop();
+    let n = 0;
+    const rooms = places.map((r) => (isRoom(r)
+      ? { name: String(r.label || ""), temperature: r.main, humidity: r.extra || null, color: ++n }
+      : { spacer: true }));
+    return n ? rooms : null;
+  }
+
+  // How many places show: `slots` as a number or an entity's state, 1 to 20; all without one.
+  _slots(all) {
+    const slots = this._config.slots;
+    const n = typeof slots === "number" ? slots : parseInt(slots && this._hass.states[slots]?.state, 10);
+    return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 20) : all;
   }
 
   _build(count) {
@@ -69,6 +87,7 @@ class RoomsCard extends HTMLElement {
                   grid-template-rows: repeat(${rows}, 1fr); gap: 1.5cqh 1.5cqw; overflow: hidden; }
         .room { display: flex; flex-direction: column; justify-content: center; align-items: center;
                 border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); min-width: 0; }
+        .room.spacer { visibility: hidden; }
         .name { font-size: calc(${Math.min(7, 24 / rows)} * var(--u)); color: var(--secondary-text-color); white-space: nowrap;
                 overflow: hidden; text-overflow: ellipsis; max-width: 95%; }
         .temp { font-size: calc(${Math.min(16, 56 / rows)} * var(--u)); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -104,6 +123,11 @@ class RoomsCard extends HTMLElement {
   _update(rooms) {
     rooms.forEach((room, i) => {
       const el = this._rooms[i];
+      el.classList.toggle("spacer", !!room.spacer);
+      if (room.spacer) {
+        for (const part of el.children) part.textContent = "";
+        return;
+      }
       el.querySelector(".name").textContent = room.name;
       const temperature = this._value(room.temperature, 1);
       const temp = el.querySelector(".temp");

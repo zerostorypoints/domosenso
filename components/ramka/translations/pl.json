@@ -120,7 +120,13 @@
       "main": "Główny pomiar",
       "extra": "Drugi pomiar",
       "none": "—",
-      "missing": "nie znaleziono"
+      "missing": "nie znaleziono",
+      "spacer": "Puste miejsce",
+      "handle": "Przeciągnij, aby przesunąć ten wiersz",
+      "up": "W górę",
+      "down": "W dół",
+      "beyond": "Pokoje poza liczbą miejsc, niewidoczne na Ramce: {n}. Większa liczba pokaże je znowu.",
+      "remove_beyond": "Usuń je"
     },
     "info_select_row": {
       "about": "O tym wyborze"
@@ -331,7 +337,8 @@
       "plants_page_s": "Czas na stronę roślin",
       "plants_discover": "znalezione przez komponent roślin",
       "climate_rooms": "Pokoje",
-      "climate_rooms_how": "Do dziesięciu pokoi, każdy z głównym pomiarem i drugim, domyślnie temperaturą i wilgotnością. Pokój 1 to pierwszy kafelek i pierwsza linia wykresów, w kolorze jego kropki. Pokój bez głównego pomiaru jest pomijany; pusta nazwa staje się obszarem czujnika.",
+      "climate_rooms_how": "Jeden wiersz na miejsce (Liczba miejsc, w Podstawowych), każdy z nazwą, głównym pomiarem i drugim, domyślnie temperaturą i wilgotnością. Przeciągnij wiersz za uchwyt albo użyj strzałek, aby zmienić kolejność. N-ty pokój to n-ty kafelek pokoju i n-ta linia wykresów, w kolorze jego kropki. Wiersz bez głównego pomiaru to puste miejsce: pusty kafelek na Ramce, dzięki czemu pokoje stoją tam, gdzie chcesz; puste wiersze na końcu są pomijane. Pusta nazwa staje się obszarem czujnika.",
+      "climate_slots": "Liczba miejsc",
       "air_score": "Pokaż jakość powietrza",
       "air_co2": "Pokaż CO₂",
       "air_pm2_5": "Pokaż PM2.5",
