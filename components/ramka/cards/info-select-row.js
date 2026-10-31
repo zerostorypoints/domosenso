@@ -51,6 +51,12 @@ export function placeTip(anchor, size, viewport) {
   return { left: Math.round(left), top: Math.round(top), side };
 }
 
+// Home Assistant's card helpers, or null when the frontend has none or they fail to load.
+async function cardHelpers() {
+  if (typeof window.loadCardHelpers !== "function") return null;
+  try { return await window.loadCardHelpers(); } catch { return null; }
+}
+
 class RamkaInfoSelectRow extends HTMLElement {
   constructor() {
     super();
@@ -99,8 +105,14 @@ class RamkaInfoSelectRow extends HTMLElement {
 
   async _loadRow() {
     const config = this._config;
-    const helpers = await window.loadCardHelpers();
+    const helpers = await cardHelpers();
     if (config !== this._config) return;  // a newer setConfig won
+    if (!helpers) {
+      // No helpers (a frontend that renamed or defers them): the row's name, not a blank line.
+      console.warn("ramka-info-select-row: Home Assistant's card helpers are not available");
+      this._slot.textContent = config.name || config.entity;
+      return;
+    }
     const row = helpers.createRowElement({ entity: config.entity, ...(config.name ? { name: config.name } : {}) });
     if (this._hass) row.hass = this._hass;
     this._row = row;

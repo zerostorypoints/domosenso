@@ -172,3 +172,17 @@ test("an entity is required", () => {
   const row = document.createElement("ramka-info-select-row");
   assert.throws(() => row.setConfig({}), /entity is required/);
 });
+
+test("without Home Assistant's card helpers the row shows its name, without an unhandled rejection", async () => {
+  const saved = window.loadCardHelpers;
+  try {
+    for (const helpers of [undefined, async () => { throw new Error("gone"); }]) {
+      window.loadCardHelpers = helpers;
+      const row = await makeRow("calm");
+      assert.equal(row.shadowRoot.querySelector(".row").textContent, "Response profile");
+      row.remove();
+    }
+  } finally {
+    window.loadCardHelpers = saved;
+  }
+});

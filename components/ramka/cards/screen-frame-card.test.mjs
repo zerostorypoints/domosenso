@@ -139,3 +139,13 @@ test("conditions: state lists, state_not, numeric_state, and / or / not", () => 
   assert.equal(conditionMet({ condition: "not", conditions: [no] }, hass), true);
   assert.equal(conditionMet({ condition: "screen", media_query: "(min-width: 0px)" }, hass), true, "unknown: met");
 });
+
+test("without Home Assistant's card helpers the frame stays empty, without an unhandled rejection", async () => {
+  const card = document.createElement("screen-frame-card");
+  card.setConfig({ width: 1100, height: 720, sections: [] });
+  await flush();
+  window.loadCardHelpers = async () => { throw new Error("gone"); };
+  card.setConfig({ width: 1100, height: 720, sections: [] });
+  await flush();
+  assert.equal(card.shadowRoot.querySelector(".screen").children.length, 0);
+});

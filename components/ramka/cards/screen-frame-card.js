@@ -49,6 +49,12 @@ export function conditionMet(condition, hass) {
   return true;
 }
 
+// Home Assistant's card helpers, or null when the frontend has none or they fail to load.
+async function cardHelpers() {
+  if (typeof window.loadCardHelpers !== "function") return null;
+  try { return await window.loadCardHelpers(); } catch { return null; }
+}
+
 class ScreenFrameCard extends HTMLElement {
   setConfig(config) {
     for (const key of ["width", "height"]) {
@@ -145,8 +151,12 @@ class ScreenFrameCard extends HTMLElement {
 
   async _make() {
     const token = (this._token = {});
-    const helpers = await window.loadCardHelpers();
+    const helpers = await cardHelpers();
     if (token !== this._token) return;
+    if (!helpers) {
+      console.warn("screen-frame-card: Home Assistant's card helpers are not available");
+      return;
+    }
     const screen = this.shadowRoot.querySelector(".screen");
     screen.replaceChildren();
     this._cards = [];
