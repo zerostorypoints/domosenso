@@ -136,3 +136,14 @@ test("widestRow: the longest horizontal run inside the polygon, nearest the midd
   const l = widestRow([[0, 0], [4, 0], [4, 2], [2, 2], [2, 4], [0, 4]]);
   assert.ok(Math.abs(l.width - 4) < 1e-9 && l.y > 0 && l.y < 2 && Math.abs(l.x - 2) < 1e-9, JSON.stringify(l));
 });
+
+test("insideRooms: a point in a room stays; one outside every room goes to the nearest wall", async () => {
+  const { insideRooms } = await import("./geometry.js");
+  const rooms = [[[0, 0], [5, 0], [5, 4], [0, 4]], [[5.2, 0], [8, 0], [8, 4], [5.2, 4]]];
+  assert.deepEqual(insideRooms([2, 2], rooms), [2, 2]);
+  assert.deepEqual(insideRooms([-1, 2], rooms), [0, 2]);
+  assert.deepEqual(insideRooms([3, 6], rooms), [3, 4]);
+  assert.deepEqual(insideRooms([5.15, 1], rooms), [5.2, 1], "in the wall between two rooms: the nearer wall");
+  assert.deepEqual(insideRooms([9, -1], rooms), [8, 0], "past a corner: the corner");
+  assert.deepEqual(insideRooms([3, 6], []), [3, 6], "a floor without rooms holds nothing back");
+});

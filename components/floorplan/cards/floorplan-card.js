@@ -18,7 +18,7 @@
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
-import { zoomAt, snapToEdge, pointInPolygon, widestRow } from "./lib/geometry.js";
+import { zoomAt, snapToEdge, pointInPolygon, widestRow, insideRooms } from "./lib/geometry.js";
 import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
@@ -43,6 +43,12 @@ const LABEL_MIN_PX = 9;
 const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers this browser switched off
 
 // Browser storage may be missing or refuse (a private window, a preview): the layers then start on.
+// The devices a link reaches inside a cluster: two names, then how many more.
+function linkLabel(names) {
+  const sorted = [...names].sort();
+  return sorted.length > 2 ? `${sorted.slice(0, 2).join(", ")} +${sorted.length - 2}` : sorted.join(", ");
+}
+
 function readHidden() {
   try {
     return new Set(JSON.parse(window.localStorage.getItem(HIDDEN_KEY) || "[]"));
@@ -399,7 +405,7 @@ ${STYLE}
         el("line", { class: "link via", x1: from[0], y1: from[1], x2: to[0], y2: to[1] }, svg);
         if (cluster) {
           el("text", { class: "link-label", x: to[0], y: to[1] - 16 * px, "font-size": 11 * px }, svg)
-            .textContent = names.sort().join(", ");
+            .textContent = linkLabel(names);
         }
       }
     }
@@ -423,15 +429,16 @@ ${STYLE}
     }
   }
 
-  // Unplaced points shown on this floor, by the room they stand in: two or more make a cluster.
+  // Dots that would cover each other, as clusters of two or more: unplaced points by the room they
+  // stand in (key: the area id), and placed points on the very same spot (a stack, key "at:x,y").
   _clusters(floor) {
     const byRoom = new Map();
     for (const point of floor.points) {
-      if (point.placed || !this._visible(pointCategory(this._hass, point, this._cands).id)) continue;
-      const room = floor.rooms.find((r) => pointInPolygon([point.x, point.y], r.polygon));
-      const area = room?.area_id ?? "";
-      if (!byRoom.has(area)) byRoom.set(area, []);
-      byRoom.get(area).push(point);
+      if (!this._visible(pointCategory(this._hass, point, this._cands).id)) continue;
+      const room = !point.placed && floor.rooms.find((r) => pointInPolygon([point.x, point.y], r.polygon));
+      const key = point.placed ? `at:${point.x},${point.y}` : room?.area_id ?? "";
+      if (!byRoom.has(key)) byRoom.set(key, []);
+      byRoom.get(key).push(point);
     }
     const out = new Map();
     for (const [area, points] of byRoom) {
@@ -764,10 +771,17 @@ ${STYLE}
     tip.style.top = `${y + 12}px`;
   }
 
-  // The device point under a plan position, within a marker's reach on screen.
-  _pointAt([x, y]) {
+  // The point under a plan position, within a marker's reach on screen: a device point (a tray drop
+  // joins it), or any placed point but `except` (a dragged dot stacks onto it).
+  _pointAt([x, y], except = null, devices = true) {
     const reach = 10 * this._px();
-    return this._floor?.points.find((p) => p.device_id && Math.hypot(p.x - x, p.y - y) <= reach) ?? null;
+    return this._floor?.points.find((p) => keyOf(p) !== except && (devices ? p.device_id : p.placed)
+      && Math.hypot(p.x - x, p.y - y) <= reach) ?? null;
+  }
+
+  // Where a dot may stand: inside a room, else on the nearest wall.
+  _inRooms(pt) {
+    return insideRooms(pt, (this._floor?.rooms || []).map((r) => r.polygon));
   }
 
   _dragLabel(d) {
@@ -806,7 +820,7 @@ ${STYLE}
       if (!s) return;
       this._view = { ...d.view0, x: d.view0.x - (e.clientX - d.start[0]) / s, y: d.view0.y - (e.clientY - d.start[1]) / s };
     } else if (d.kind === "point") {
-      this._doc = movePoint(this._doc, this._floorId, d.key, this._at(e)) ?? this._doc;
+      this._doc = movePoint(this._doc, this._floorId, d.key, this._inRooms(this._at(e))) ?? this._doc;
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
     } else {      // a tray item or group is dropped on pointerup; until then a ghost shows where
@@ -841,9 +855,9 @@ ${STYLE}
         const c = d.kind === "tray" && tray(this._doc, this._hass).find((x) => x.key === d.key);
         // A device dropped on a marker is the same hardware as that point (an amplifier's Cast device).
         const onto = c && c.kind === "device" && this._pointAt(this._at(e));
-        if (g) this._edit(addPoints(this._doc, this._floorId, g.items, this._at(e)));
+        if (g) this._edit(addPoints(this._doc, this._floorId, g.items, this._inRooms(this._at(e))));
         else if (onto) this._edit(joinPoint(this._doc, this._floorId, keyOf(onto), c));
-        else if (c) this._edit(addPoint(this._doc, this._floorId, c, this._at(e)));
+        else if (c) this._edit(addPoint(this._doc, this._floorId, c, this._inRooms(this._at(e))));
       }
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit" && d.cluster !== null && d.cluster !== undefined) {
       this._openCluster = d.cluster;
@@ -852,6 +866,11 @@ ${STYLE}
       this._tap(this._at(e), d.area);
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.
+    } else if (d.kind === "point") {
+      // Dropped on another placed dot: onto it exactly, so the two stack into one dot with a list.
+      const at = this._inRooms(this._at(e));
+      const onto = this._pointAt(at, d.key, false);
+      this._doc = movePoint(this._doc, this._floorId, d.key, onto ? [onto.x, onto.y] : at) ?? this._doc;
     } else if (!d.moved) return;
     this._render();
   }

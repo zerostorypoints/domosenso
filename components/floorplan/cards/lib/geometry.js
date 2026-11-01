@@ -254,3 +254,23 @@ export function widestRow(polygon, rows = 24) {
   const [x, y] = centroid(polygon);
   return { x, y, width: 0 };
 }
+
+// Where a sensor may stand: inside a room. A point in some room stays; one outside every room (in a
+// wall, outside the flat) goes to the nearest point of a room's walls. A floor without rooms keeps it.
+export function insideRooms(pt, polygons) {
+  if (!polygons.length || polygons.some((poly) => pointInPolygon(pt, poly))) return pt;
+  let best = null;
+  let bestD = Infinity;
+  for (const poly of polygons) {
+    poly.forEach((a, i) => {
+      const b = poly[(i + 1) % poly.length];
+      const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+      const len2 = dx * dx + dy * dy;
+      const t = len2 ? Math.max(0, Math.min(1, ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / len2)) : 0;
+      const q = [a[0] + t * dx, a[1] + t * dy];
+      const d = Math.hypot(pt[0] - q[0], pt[1] - q[1]);
+      if (d < bestD) [best, bestD] = [q, d];
+    });
+  }
+  return best;
+}

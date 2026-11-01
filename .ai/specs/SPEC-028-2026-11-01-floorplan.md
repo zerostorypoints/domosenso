@@ -479,4 +479,11 @@ covering each other. The maintainer: break them down into a list of devices unde
   still has two or more devices.
 - A registry link to a device inside a cluster ends at the cluster's dot, one line per dot, with the
   names of the linked devices in it written there (a sensor's hub not placed yet reads as such).
+- **Stacks** (the maintainer: a dot dragged onto another should snap and make a combined list): a dot
+  dropped within 10 px of another placed dot takes its exact position; placed dots on the very same
+  spot are one dot with their count and list, like a room's cluster. Dragging one out of the list
+  unstacks it. (A device dropped from the tray onto a marker still joins it as the same hardware.)
+- **Dots stay inside rooms** (the maintainer: no leaving the room outlines, at most snapped to the
+  wall): a dot dragged, dropped from the tray or from a list outside every room stands on the
+  nearest point of a room's walls, while dragging and after. Moving into another room is fine.
 - No change to the stored document.

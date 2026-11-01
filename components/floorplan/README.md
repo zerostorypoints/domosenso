@@ -83,7 +83,11 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
   its tooltip. The tapped point's panel lists them; **Separate** puts one back in the tray.
 - **Clusters:** the devices edit mode puts down in one room, not dragged yet, show as one dot with
   their count. Tap it to open their list; drag each device from the list to where it stands (it
-  leaves the cluster), or tap one to set its category. A tap elsewhere closes the list.
+  leaves the cluster), or tap one to set its category. A tap elsewhere closes the list; it hides
+  while you drag. Dropping a dot on another placed dot snaps it there: devices standing at one spot
+  (a shelf, a rack) are one dot with their list in the same way.
+- **Dots stay inside rooms:** dragged or dropped outside every room, a dot stands on the nearest
+  wall instead.
 - **Links:** hovering a marker, or tapping it in edit mode, draws lines to the devices it reaches
   Home Assistant through and to those that reach it through this one (Home Assistant's
   `via_device_id`): a bulb to its bridge, a hub to its sensors, a mesh node to its satellites.

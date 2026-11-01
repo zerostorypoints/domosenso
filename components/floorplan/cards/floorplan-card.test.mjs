@@ -749,6 +749,21 @@ test("a link to a device inside a cluster ends at the cluster's dot, named", asy
   assert.ok(label && label.textContent.includes("Bulb 1") && label.textContent.includes("Bulb 2"), label?.textContent);
 });
 
+test("a link label names two devices of a cluster, then counts the rest", async () => {
+  const hass = stage2Hass();
+  for (const n of [3, 4, 5]) {
+    hass.devices[`d_bulb${n}`] = { id: `d_bulb${n}`, name: `Bulb ${n}`, area_id: "living_room", via_device_id: "d_mesh" };
+    hass.entities[`light.bulb${n}`] = { entity_id: `light.bulb${n}`, device_id: `d_bulb${n}`, platform: "hue" };
+    hass.states[`light.bulb${n}`] = { state: "on", attributes: {} };
+  }
+  const bulbs = [1, 2, 3, 4, 5].map((n, i) => ({ device_id: `d_bulb${n}`, x: 2 + i * 0.1, y: 2, placed: false }));
+  const card = await make({ plan: planOf([pt("d_mesh", 6, 1), ...bulbs]) }, hass);
+  await settle();
+  const [mx, my] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_mesh"), "pointermove", mx, my);
+  assert.equal($(card, "text.link-label").textContent, "Bulb 1, Bulb 2 +3");
+});
+
 test("a tap elsewhere closes the cluster list; hovering a cluster names its devices", async () => {
   const card = await make({ plan: planOf() }, stage2Hass());
   await settle();
@@ -765,6 +780,79 @@ test("a tap elsewhere closes the cluster list; hovering a cluster names its devi
   pointer($(card, "polygon.room"), "pointerdown", rx, ry);
   pointer($(card, "polygon.room"), "pointerup", rx, ry);
   assert.ok(!$(card, ".cluster-list [data-point]"), "closed");
+});
+
+// ---- dots stay in rooms; a dot dropped on a dot stacks --------------------------------------
+
+function dragMarker(card, key, from, to) {
+  const [sx, sy] = clientAt(card, ...from);
+  const [ex, ey] = clientAt(card, ...to);
+  pointer(markerOf(card, key), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+}
+const pointAt = (card, key) => card._doc.floors[0].points.find((p) => (p.device_id ?? p.entity_id) === key);
+
+test("a dot dragged out of every room stays on the nearest wall, during the drag and after", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const [sx, sy] = clientAt(card, 1, 1);
+  const [ox, oy] = clientAt(card, -1, 2);
+  pointer(markerOf(card, "d_climate"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ox, oy);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [0, 2], "held at the wall while dragged");
+  pointer($(card, "svg"), "pointerup", ox, oy);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [0, 2]);
+  dragMarker(card, "d_climate", [0, 2], [3, 6]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [3, 4]);
+  dragMarker(card, "d_climate", [3, 4], [6, 2]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [6, 2], "into another room is fine");
+});
+
+test("a device dropped from the tray outside every room lands on the nearest wall", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  const item = $(card, '.tray [data-key="d_office"]');
+  const [ex, ey] = clientAt(card, 9, 2);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", ex, ey);
+  pointer(item, "pointerup", ex, ey);
+  assert.deepEqual([pointAt(card, "d_office").x, pointAt(card, "d_office").y], [8, 2]);
+});
+
+test("a dot dropped on another dot snaps onto it and the two become one dot with their list", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), pt("d_lamp", 3, 2)]) }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  dragMarker(card, "d_climate", [1, 1], [3.05, 2.03]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [3, 2], "snapped onto the other dot");
+  assert.ok(pointAt(card, "d_climate").placed);
+  const stack = $(card, 'g.cluster[data-cluster^="at:"]');
+  assert.ok(stack, "one dot for both");
+  assert.equal(stack.querySelector("text").textContent, "2");
+  assert.ok(!markerOf(card, "d_climate") && !markerOf(card, "d_lamp"));
+  const [cx, cy] = clientAt(card, 3, 2);
+  pointer(stack, "pointerdown", cx, cy);
+  pointer(stack, "pointerup", cx, cy);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".cluster-list [data-point]")].map((n) => n.getAttribute("data-point")).sort(),
+    ["d_climate", "d_lamp"]);
+  const item = $(card, '.cluster-list [data-point="d_lamp"]');
+  const [ex, ey] = clientAt(card, 4, 3);
+  pointer(item, "pointerdown", 100, 100);
+  pointer(item, "pointermove", ex, ey);
+  pointer(item, "pointerup", ex, ey);
+  assert.ok(markerOf(card, "d_lamp") && markerOf(card, "d_climate"), "dragged out: two markers again");
+  assert.ok(!$(card, 'g.cluster[data-cluster^="at:"]'));
+});
+
+test("a dot dropped near, not on, another dot keeps its place", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), pt("d_lamp", 3, 2)]) }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  dragMarker(card, "d_climate", [1, 1], [3.6, 2]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [3.6, 2]);
+  assert.ok(!$(card, 'g.cluster[data-cluster^="at:"]'));
 });
 
 test("a sensor dragged from the tray lands on the plan, placed", async () => {
