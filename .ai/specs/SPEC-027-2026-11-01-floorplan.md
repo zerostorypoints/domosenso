@@ -177,3 +177,25 @@ differ.
   map spec, its first user.
 - **The dashboard is created with `allow_single_word: true`**: Home Assistant requires a hyphen in
   a dashboard url path otherwise (verified in HA 2026.9.2, `lovelace/dashboard.py`).
+
+## Amendment 2 (final review)
+
+Rulings from the final review of the implementation (2026-11-01); they replace the text above where
+they differ.
+
+- **No tray search in 0.1.0.** The tray lists only the candidates of the point entities above
+  (`device_class` temperature, humidity, illuminance, moisture, carbon_dioxide, pm25, and
+  `plant.*`). Adding other entities by a search in the tray is deferred to a later minor of the
+  component; the Decision under "Point entities" waits for it.
+- **`floorplan push --apply` replaces the whole `floorplan` dashboard config** with one view and
+  one card. Anything added to that dashboard by hand is gone after a push; it is in the backup
+  (`.domosenso/floorplan/<target>-<timestamp>.json`, written when the dashboard had a saved config).
+- **`push` reads the dashboard again after the confirm.** A save in the card while the plan was
+  shown or `production` was typed ends the command with `changed on target since pull`, and the
+  backup is taken from that second read.
+- **An area created from the card is written at once** (`config/area_registry/create`) and stays
+  after Cancel; Cancel only drops the plan's unsaved edits.
+- **Coordinates are kept to a millimetre** (3 decimals) by the card and compared at that precision
+  by the command.
+- **A plan with a duplicate `floor_id`, a duplicate `area_id` on one floor, or a point key used
+  twice is invalid**, beyond what the schema says.

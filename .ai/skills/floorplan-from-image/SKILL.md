@@ -17,8 +17,9 @@ alone when a home already has `floorplan` added (`domosenso add floorplan@<versi
   anything else that writes to their Home Assistant need their yes typed in this session, each time.
   `push production --apply` also asks for the word `production`, or takes `--confirm <hash>` of the
   plan you showed.
-- **The token never shows.** It stays in its file outside every repository; read it only as
-  `$(cat <token file>)` inside a command.
+- **The token never shows.** It stays in its file outside every repository. The registry script
+  below reads it through `connect`, which takes the target's `token_file`; never print it, never
+  copy it into a file, a command line or the chat.
 - **The drawing is private.** It stays in the home repository as `domosenso/floorplan/<floor>.<ext>`.
   Never upload it to Home Assistant (its image upload URLs are readable without a login), never
   copy it into the catalog checkout, a pull request or an issue.
@@ -34,13 +35,32 @@ alone when a home already has `floorplan` added (`domosenso add floorplan@<versi
 Ask for, one question at a time:
 
 1. **The drawing**: an image (PNG, JPG), a PDF (ask which page shows this floor; render that page to
-   a PNG), or an SVG. Copy it into the home repository as `domosenso/floorplan/<floor>.<ext>`. A
+   a PNG with `pdftoppm -png -r 150 -f <n> -l <n> <file.pdf> <out>` from poppler, or `sips -s
+   format png <file.pdf> --out <out>.png` on macOS for a one-page PDF; when neither is installed, ask
+   the owner to export that page as an image), or an SVG. Copy it into the home repository as `domosenso/floorplan/<floor>.<ext>`. A
    photo of a hand drawing works if its walls are readable; say if the photo is skewed, because a
    skew breaks the scale.
 2. **Which Home Assistant floor it shows.** Read the floors:
-   `config/floor_registry/list` over the websocket (a short script with
-   `domosenso_cli.cmd_deploy.connect(target)` and `ha.call(...)`, as `floorplan.py` does), and let
-   them pick one. A home without floors uses `floor_id: null`. One floor per run; for a second
+   `config/floor_registry/list` over the websocket, and let them pick one. A short script, run with
+   `uv run --project <catalog> python <script>`, does it the way `floorplan.py` does:
+
+   ```python
+   import asyncio
+   from pathlib import Path
+   from domosenso_cli import cmd_deploy
+   from domosenso_cli.home import HomeConfig
+   from domosenso_cli.snapshot import pick_target
+
+   async def main():
+       target = pick_target(HomeConfig.load(Path("<home>")), "<target>")
+       async with cmd_deploy.connect(target) as ha:
+           for floor in await ha.call("config/floor_registry/list"):
+               print(floor["floor_id"], floor["name"])
+
+   asyncio.run(main())
+   ```
+
+   The same script with `config/area_registry/list` reads the areas in step 4. A home without floors uses `floor_id: null`. One floor per run; for a second
    floor, run the skill again.
 3. **The target** to push to (`staging` first when the home has one).
 
@@ -76,8 +96,8 @@ write `rotation_deg: 0`.
 
 Read `config/area_registry/list` (and `floor_registry/list`). For each room:
 
-1. **Match by name**, ignoring case and diacritics (`Küche` and `kuche`, the area id is HA's slug).
-   Show the table room → `area_id` for them to confirm.
+1. **Match by name**, ignoring case and diacritics (`Küche` and `kuche`), against the areas'
+   names. Show the table room → `area_id` for them to confirm.
 2. **Unmatched rooms**: ask which existing area each is, or whether it is a new one.
 3. **New areas**: propose them with a name and the floor, as a list. Create them only after their
    typed yes, one `config/area_registry/create` per area (`name`, `floor_id`), then read the
@@ -108,8 +128,9 @@ exists with other floors, keep them and replace only this floor:
 }
 ```
 
-`points` stays empty: the owner places the sensors by dragging, and the tray lists every sensor
-with an area. `source` stays in the repository's file; `push` never sends it to Home Assistant.
+`points` stays empty: the owner places the sensors by dragging. The tray lists the plants and the
+sensors of the kinds the card shows (temperature, humidity, illuminance, moisture, carbon dioxide,
+PM2.5); other entities cannot be added in 0.1.0. `source` stays in the repository's file; `push` never sends it to Home Assistant.
 
 Then:
 
@@ -121,8 +142,11 @@ Read the lines to the owner: `dashboard create floorplan` (the dashboard does no
 `room add|change|remove <floor> <area_id>`, `area missing <area_id>` (then `FAIL area missing:
 <ids>`: a room points at an area Home Assistant does not have; go back to step 4),
 `nothing to push` (the plan equals what is there), `hash <hash>`. `FAIL changed on target since
-pull: <n> rooms, <m> points` means the plan in Home Assistant was edited since the last pull: run
-`domosenso floorplan pull <target>`, merge, and plan again.
+pull: <n> rooms, <m> points` means the plan in Home Assistant was edited since the last pull. A
+plain `floorplan pull <target>` would overwrite your uncommitted trace in `domosenso/floorplan.json`:
+either commit the trace first, or run `domosenso floorplan pull <target> --out
+.domosenso/floorplan/target.json` and merge from that file into `domosenso/floorplan.json`. Either
+pull also updates the pulled record, so the next push passes this check. Then plan again.
 
 Ask whether to apply. Only after they type yes in this session:
 
@@ -130,8 +154,11 @@ Ask whether to apply. Only after they type yes in this session:
 domosenso floorplan push <target> --apply --confirm <hash>
 ```
 
-It backs up an existing plan to `.domosenso/floorplan/<target>-<timestamp>.json`, creates the
-dashboard if missing, saves, and ends `pushed`, `ok`. On `production` the word `production` is
+It reads the dashboard again (a save in the browser meanwhile gives the same `FAIL changed on
+target since pull`), backs up the dashboard's saved config to
+`.domosenso/floorplan/<target>-<timestamp>.json`, creates the dashboard if missing, saves, and ends
+`pushed`, `ok`. The save replaces the whole `floorplan` dashboard config: other cards added to it by
+hand are gone (they are in the backup). On `production` the word `production` is
 asked when `--confirm` is left out.
 
 ## 6. After the push

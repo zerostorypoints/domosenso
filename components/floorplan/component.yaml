@@ -31,13 +31,13 @@ provides:                                 # contract surface (SPEC-027)
   surfaces:
     - {id: "schemas/floorplan.schema.json", stability: stable, note: "schema 1; a breaking change bumps `schema`; readers refuse an unknown major"}
     - {id: "dashboard url path floorplan", stability: stable, note: "storage mode; one view, one custom:floorplan-card"}
-    - {id: "custom:floorplan-card", stability: stable, note: "config plan (the document), floor (floor_id to show), edit (true: edit button shown to admins; default true), values (true: current readings on points; default true); edit false for embedding"}
-    - {id: "card behaviour", stability: additive-only, note: "zoom (wheel, pinch, + / - / fit), pan; edit mode: drag points (sets placed true), drag / add / remove room corners, split a room by a line, join two rooms, link a room to an area or create one; a tray of point entities without a position; save with lovelace/config/save; split and join change only shapes, never delete an area or move a device between areas"}
+    - {id: "custom:floorplan-card", stability: stable, note: "config plan (the document; optional: without it the card reads the floorplan dashboard), floor (floor_id to show), edit (true: edit button shown to admins; default true), values (true: current readings on points; default true); edit false for embedding"}
+    - {id: "card behaviour", stability: additive-only, note: "zoom (wheel, pinch, + / - / fit), pan; edit mode: drag points (sets placed true), drag / add / remove room corners, split a room by a line, join two rooms, link a room to an area or create one; a tray of point entities without a position (temperature, humidity, illuminance, moisture, carbon_dioxide, pm25 and plant.*; no search); save with lovelace/config/save; split and join change only shapes, never delete an area or move a device between areas"}
     - {id: "skill floorplan-from-image", stability: stable, note: "its name; traces rooms from an image or SVG, asks one known length for the scale, matches areas, writes domosenso/floorplan.json and domosenso/floorplan/<floor>.<ext>, then floorplan push"}
 
 consumes: []
 
 tested:
   ha: ["2026.9.2"]
-  homes: 1
+  homes: 0                                # staging trial pending: no home has run 0.1.0 yet
 local_only: true

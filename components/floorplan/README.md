@@ -37,7 +37,9 @@ administrator (`lovelace/config/save` requires one).
      home repository only), then runs `floorplan push`;
    - **by hand**: write `domosenso/floorplan.json` (`schemas/floorplan.schema.json`), then
      `domosenso floorplan push <target> --plan` to see what would change and `--apply` to write it.
-     `push` creates the `floorplan` dashboard if it is missing.
+     `push` creates the `floorplan` dashboard if it is missing. It replaces the whole config of
+     that dashboard with one view and the card: a card added there by hand is gone after a push
+     (it is in the backup, `.domosenso/floorplan/<target>-<timestamp>.json`).
 3. Open the *Floor plan* dashboard in Home Assistant and place the sensors (below).
 
 ## Editing in Home Assistant
@@ -53,13 +55,16 @@ sensor that has an area but no position at the centre of its area's room, drawn 
 | Join | tap two neighbouring rooms; the first keeps its area. Rooms join only along a shared wall |
 
 - The tray lists the sensors not on the plan yet (no area, or an area without a room on this floor);
-  drag one onto the plan.
+  drag one onto the plan. Only the kinds above and plants are listed; other entities cannot be
+  added in 0.1.0.
 - With more than one floor in the plan, a select switches the floor.
 - Split and join change only shapes: the editor never deletes an area and never moves a device to
   another area. An area left without a room after a join stays in Home Assistant.
 - **Save** reads the dashboard again first. If the plan there is not the one this page loaded (an
   edit in another tab, or a `floorplan push` since), it saves nothing and says so: reload the page
-  and edit again. **Cancel** drops the unsaved edits.
+  and edit again. **Cancel** drops the unsaved edits of the plan. An area created by name in the
+  editor is created in Home Assistant at once: Cancel does not remove it (delete it in Home
+  Assistant's area settings if it is not wanted).
 
 ## After editing in Home Assistant
 

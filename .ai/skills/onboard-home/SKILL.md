@@ -153,6 +153,10 @@ stand, drawn by the `floorplan` component's card in Home Assistant (SPEC-027). I
 architect's plan, a photo of a drawing or an SVG, and the rooms existing as areas (or their yes to
 create them). Skip it if they have no drawing or do not want it; it can be done later.
 
+This step writes to their Home Assistant before section 8 (the floorplan component's deploy, new
+areas, `floorplan push --apply`): an explicit exception to stopping at the plan, and only on their
+typed yes for each write. Without that yes, it ends at the `--plan` lines like the rest of the skill.
+
 1. Say what it costs: an hour of dragging sensors in Home Assistant. The drawing stays in their
    home repository and never goes to Home Assistant.
 2. The component and the repository exist only after sections 6 and 7, so do this step then: add
