@@ -3,6 +3,16 @@
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
 
+## Unreleased: sound maps on the Audio and media layer
+
+- **Sound maps** (SPEC-028 Amendment 8, draft): with Audio and media shown alone and an audio sensor
+  (audio-sensor) placed, the bar offers Sound level, Loudness, Room effect and Bass, live over the
+  sensor's room or open space. The speakers drive a room model; the sensor sets its level.
+- **What a home does:** add the speakers and the ceiling height to `domosenso/floorplan.json`
+  (`"speakers": [{"x": …, "y": …}], "ceiling": 2.5` on the floor), then `floorplan push`. Without
+  speakers the maps still show, from the sensor's position, and the legend says so. A `domosenso`
+  command older than this catalog refuses a plan with these keys.
+
 ## 0.4.0 (unreleased): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).

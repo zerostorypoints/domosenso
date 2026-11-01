@@ -42,6 +42,13 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   share their readings on the maps instead of stopping at the line between them; the walls between
   them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
   panel names what it is open to and has **Close off**.
+- **Sound maps** (SPEC-028 Amendment 8, draft): with Audio and media shown alone, a room (or open
+  space) with an audio sensor gets four live maps: **Sound level** (dB SPL), **Loudness** (dB(A)),
+  **Room effect** (each spot against the room's average) and **Bass** (the same up to 160 Hz). The
+  sensor only measures: the floor's `speakers` are the sources of a room model (modes of a box
+  around the room for the bass, forward-beaming direct sound plus reverberation above), and the
+  sensor's live spectrum sets each band's level. Set the speakers and `ceiling` in
+  `domosenso/floorplan.json` and push. One sensor shows the model's pattern, not a measured one.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
   else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
 
@@ -55,6 +62,7 @@ layers: [climate, plants]          # optional: only these categories, no chips
 layer_choice: one                  # with layers: a chip each, one layer at a time (the Ramka)
 maps: true                         # false: no maps
 fill: true                         # optional: as tall as the screen below the card's top
+sound_rt60: 0.45                   # optional: mid-band RT60 of the sound maps' room model, seconds
 ```
 
 Every user can read the `floorplan` dashboard, the Ramka's kiosk user included; saving needs an
@@ -170,5 +178,7 @@ domosenso floorplan preview production        # --port <n> (default 8130), --no-
   nothing (SPEC-028 non-goals).
 - A corner added on a wall shared with another room belongs to that room only: dragging it off the
   wall opens a gap the neighbour does not follow.
+- The sound maps' bass is a box model: an L-shaped room, furniture and doors move the real peaks and
+  nulls. RT60 is assumed (0.45 s mid-band, `sound_rt60` changes it).
 - Pinch zoom has no automated test (the test DOM has no multi-touch) and has not been tried on a
   device yet; the tests cover the wheel and the buttons.

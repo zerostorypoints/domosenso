@@ -330,3 +330,15 @@ def test_push_plan_open_spaces_line(home, capsys):
     assert cli(root, "push", "staging", "--plan") == 0
     lines = out(capsys)
     assert lines[0] == "open change ground" and lines[-1] == "ok", lines
+
+
+def test_push_plan_sound_line(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    floors = [{**f, "speakers": [{"x": 1.0, "y": 0.5}, {"x": 2.5, "y": 0.5}], "ceiling": 2.5} for f in PLAN["floors"]]
+    write_plan(root, {**PLAN, "floors": floors})
+    assert cli(root, "push", "staging", "--plan") == 0
+    lines = out(capsys)
+    assert lines[0] == "sound change ground" and lines[-1] == "ok", lines

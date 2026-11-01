@@ -153,7 +153,15 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
                           ("change", lambda p: (p.get("category"), p.get("also", []))))
         if _open(old_floor) != _open(new_floor):
             lines.append(("open", "change", label))
+        if _sound(old_floor) != _sound(new_floor):
+            lines.append(("sound", "change", label))
     return lines
+
+
+def _sound(floor: dict) -> tuple:
+    """A floor's speakers (rounded like points, order left out) and ceiling height: the sound maps' room."""
+    speakers = sorted((_round(s["x"]), _round(s["y"])) for s in floor.get("speakers", []))
+    return speakers, floor.get("ceiling")
 
 
 def _open(floor: dict) -> list:

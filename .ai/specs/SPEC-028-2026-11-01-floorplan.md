@@ -688,3 +688,79 @@ line between them and hatched those of them without a sensor of their own.
   floors (stairs to an upper floor), path distance round a corner of an L-shaped open space
   *(straight-line distance is my call; on the home that asked, a corner of the corridor is the only
   place it would differ)*.
+
+## Amendment 8 (sound maps on the Audio and media layer)
+
+- Status: draft 2026-11-02, for the maintainer's approval. Source: the maintainer, 2026-11-01:
+  "visualize the SPL on the floor plan … two modes: dominant frequencies and loudness", then, after
+  a first prototype that radiated from the sensor, "it looks like the sensor would be a source of
+  audio wave, while it only records the room response … I am still interested in how to visualize
+  the room response for the played music". Built as a prototype and run on a real home with one
+  audio sensor (audio-sensor 0.3.0) before this draft.
+- A feasibility study behind it (sparse microphones are below spatial Nyquist above ~63 Hz;
+  corners and ceilings over-read bass; sound radiates from the speakers) lives in that home's
+  repository, not here.
+
+### Maps
+
+- The `media` layer gets four maps, shown when it is the one layer shown, live (no Now / 24 h):
+  **Sound level** (dB SPL, 30–90), **Loudness** (A-weighted, 20–85 dB(A)), **Room effect** (each spot
+  against the space's mean level, ±6 dB) and **Bass** (the same for the bands up to 160 Hz, ±10 dB).
+  Level scales inferno and viridis; the relative ones a blue–white–red diverging scale.
+- **Where:** each space that holds a placed audio sensor: its room, or every room of its open space
+  (Amendment 7). Other rooms are hatched ("no audio sensor in the room").
+- **Audio sensor:** a placed point whose device (or a device in its `also`) has a `sensor.*_spectrum`
+  entity of 31 third-octave bands in dBFS (audio-sensor's spectrum). Its offset to dB SPL is the
+  audio-sensor package's offset sensor of the device's area (`attributes.component: audio-sensor`,
+  `attributes.area`); without one, or at 0, the README's estimate of 95 dB, and the legend says
+  "estimated SPL". Several sensors in a space are averaged by energy.
+- **Model** (`lib/sound.js`, pure): the speakers are the sources; the sensors only set each band's
+  level. Per band the spatial pattern is a blend of
+  - **modes** of a box fitted to the space (x along its longest wall, the extent of its rooms), all
+    speakers driving them in phase at 0.9 m, the field a slice at 1.1 m (seated ears), each mode
+    damped by the band's decay (δ = 6.91/T), the band's mean |p|² over five frequencies; and
+  - the **statistical** field: each speaker's direct sound, half the power each, beaming forward
+    (none at 200 Hz, 85 % of a cardioid from 4 kHz) towards the centre of the room it stands in,
+    plus the reverberant field 4/R (Hopkins–Stryker), R from Sabine with the space's area, the
+    ceiling and its box's walls;
+  modes alone up to 160 Hz, statistical alone from 400 Hz, log-blended between. RT60 0.45 s mid-band
+  (card option `sound_rt60`), 1.35× below 100 Hz down to 0.9× above 3 kHz. A cell's level is the
+  sensors' band energy times the model's value there over its value at the sensors (at 0.8 m; a
+  sensor in a null counts as no less than a tenth of the mean). Without speakers the sensors stand
+  in for them and the legend says so.
+- **Drawing:** one canvas per space, 0.15 m cells, painted at most 25 times a second into an SVG
+  `image` clipped to the space's rooms; band energies follow the spectrum with a 60 ms rise and a
+  350 ms fall. The plan's SVG is not rebuilt per frame; sound entities stay out of its value stamp.
+  The speakers are drawn as small squares; the legend gives the level at the sensor, live.
+- **Document** (`schema: 1`, new optional keys, ADDITIVE-ONLY): `floors[].speakers`, a list of
+  `{x, y}` in metres; `floors[].ceiling`, metres. **Command:** `push --plan` prints
+  `sound change <floor>` when a floor's speakers or ceiling differ from the target's.
+
+### Versions, compatibility
+
+- The next floorplan version, the maintainer's call (no version is bumped in this pull request).
+  COMPATIBILITY's schema row gains `speakers` and `ceiling`; the push line `sound change`; the card's
+  config `sound_rt60`.
+
+### Tests
+
+- `lib/sound.test.mjs`: spectrum parsing, sensors and their offsets, room constants, treble
+  loudest in front of the speakers and not at a sensor behind them, bass peaks and nulls around a
+  zero mean, A-weighting falling off faster than Z with bass-heavy music, sensors standing in
+  without speakers, open spaces as one field. `test_cli_floorplan.py`: the `sound change` line.
+- Ran on a real home (one sensor behind two speakers, the living room and kitchen one open space):
+  the bass map's peaks and nulls looked plausible against what is heard there.
+
+### Out of scope
+
+- Room modes of an irregular room beyond its box, furniture, doors to other rooms; phase between
+  sensors (they are not synchronised); impulse-response measurements (RT60, C50/C80) per position.
+- Placing speakers in the card's edit mode: for now they are set in `domosenso/floorplan.json` and
+  pushed.
+
+### Open questions
+
+- Speakers in edit mode (a draggable point kind), and a speaker's height and aim.
+- A spatial correction from several sensors (a residual fitted to them) once a home has more than
+  one.
+
