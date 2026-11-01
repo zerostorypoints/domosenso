@@ -79,7 +79,7 @@ home adds it with `domosenso add floorplan@0.1.0` and creates the plan with the 
 |---|---|---|
 | `schemas/floorplan.schema.json`, `schema: 1` | stable | a breaking change bumps `schema`; readers refuse an unknown major |
 | dashboard url path `floorplan` | stable | storage mode; one view, one `custom:floorplan-card` |
-| `custom:floorplan-card`, config `plan` (the document), `floor` (floor_id to show), `edit` (`true`: edit button shown to admins; default `true`), `values` (`true`: current readings on points; default `true`) | stable | `edit: false` for embedding (the Ramka) |
+| `custom:floorplan-card`, config `plan` (the document; optional, without it the card reads the `floorplan` dashboard, Amendment 1), `floor` (floor_id to show), `edit` (`true`: edit button shown to admins; default `true`), `values` (`true`: current readings on points; default `true`) | stable | `edit: false` for embedding (the Ramka) |
 | card behaviour: zoom (wheel, pinch, + / − / fit), pan; edit mode: drag points (sets `placed: true`), drag / add / remove room corners, split a room by a line, join two rooms, link a room to an area or create one; a tray of point entities without a position; save with `lovelace/config/save` | — | split and join change only shapes; never deletes an area or moves a device between areas |
 | skill `floorplan-from-image` (installed by `install_skills.py`), called by `onboard-home` | stable (its name) | traces rooms from an image or SVG, asks one known length for the scale, matches areas, writes `domosenso/floorplan.json` and `domosenso/floorplan/<floor>.<ext>`, then `floorplan push` |
 
@@ -97,8 +97,9 @@ home adds it with `domosenso add floorplan@0.1.0` and creates the plan with the 
   silent overwrite of a drag made in HA).
 - Production: `push production --apply` asks for the word `production`, or `--confirm <hash>`, as
   `deploy` does. `deploy` is unchanged.
-- `domosenso.yaml`: nothing new. **Decision:** `status` classifies `domosenso/floorplan.json` and
-  `domosenso/floorplan/*` as instance (home repository layout, COMPATIBILITY, ADDITIVE-ONLY).
+- `domosenso.yaml`: nothing new. `status` is unchanged: it walks only `config_dir` and `esphome_dir`,
+  and `domosenso/floorplan.json` and `domosenso/floorplan/*` sit beside `domosenso/<id>.inputs.yaml`
+  (home repository layout in COMPATIBILITY, ADDITIVE-ONLY; Amendment 1).
 
 **ramka (next minor after SPEC-026)**, only when `floorplan: true` and the dashboard exists
 
@@ -156,3 +157,23 @@ specified with the light and heat map, its first user, not here; the Ramka needs
 
 - Pinch zoom inside the Companion app's webview on the Ramka: the plan view is read-only, so zoom
   there is a nice-to-have *(inference)*.
+
+## Amendment 1 (planning)
+
+Rulings made while planning the implementation (2026-11-01); they replace the text above where they
+differ.
+
+- **SPEC-026 is merged and released (ramka 0.9.0).** The Ramka view is not blocked; it goes into
+  the next Ramka minor, released separately.
+- **`status` needs no change.** It walks only `config_dir` and `esphome_dir`; the floorplan files
+  sit beside `domosenso/<id>.inputs.yaml`, which it does not list either. The sentence "`status`
+  classifies ..." is withdrawn; COMPATIBILITY's home repository layout lists the files.
+- **`plan` is optional on `floorplan-card`.** Without it the card reads the `floorplan` dashboard
+  (`lovelace/config`, `url_path: floorplan`) and takes the plan from its card; the Ramka uses it
+  this way and needs no copy of the plan.
+- **`corner-taps-card` already takes `left` / `right`** in a swipe rule (SPEC-026), so the Ramka
+  change is in templates only.
+- **The overlay layer API** that other components will draw with is deferred to the light and heat
+  map spec, its first user.
+- **The dashboard is created with `allow_single_word: true`**: Home Assistant requires a hyphen in
+  a dashboard url path otherwise (verified in HA 2026.9.2, `lovelace/dashboard.py`).

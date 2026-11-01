@@ -87,6 +87,7 @@ Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
 | [check](.ai/skills/check/SKILL.md) | run `tools/check-all.sh` and report pass or fail per step |
 | [new-component](.ai/skills/new-component/SKILL.md) | scaffold `components/<id>/` and get the checker and tests passing |
 | [new-integration](.ai/skills/new-integration/SKILL.md) | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
+| [floorplan-from-image](.ai/skills/floorplan-from-image/SKILL.md) | trace a floor plan image into `domosenso/floorplan.json`, match rooms to areas, `floorplan push` |
 | [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
 | [write-issue](.ai/skills/write-issue/SKILL.md) | draft issues and user stories per docs/ISSUES.md, check them, file after a go-ahead |
 | [review-issue](.ai/skills/review-issue/SKILL.md) | check an issue against docs/ISSUES.md: ready, needs changes or split |

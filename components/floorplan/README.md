@@ -31,7 +31,7 @@ administrator (`lovelace/config/save` requires one).
 
 1. `domosenso add floorplan@0.1.0`, `render`, `deploy`: installs the card as a Lovelace resource.
 2. Make the plan:
-   - **from an architect's plan or a photo of one**: the agent's `floorplan-from-image` skill traces
+   - **from an architect's plan or a photo of one**: the agent's `floorplan-from-image` skill ([`.ai/skills/floorplan-from-image/SKILL.md`](../../.ai/skills/floorplan-from-image/SKILL.md)) traces
      the rooms, asks for one known length for the scale, matches the rooms to areas, writes
      `domosenso/floorplan.json` (and keeps the image as `domosenso/floorplan/<floor>.<ext>`, in the
      home repository only), then runs `floorplan push`;
