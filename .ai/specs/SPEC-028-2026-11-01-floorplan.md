@@ -538,3 +538,102 @@ to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line
   carry it in this mode. Any card may use it.
 - The Ramka's input `floorplan_layers` (default `[climate, plants]`) lists the chips; the
   maintainer's home lists all eight categories.
+
+## Amendment 7 (maps per layer, now or the last 24 hours; the Ramka's plan fills its screen)
+
+- Status: draft 2026-11-01. Source: the maintainer, 2026-11-01, after the plan view ran on the
+  Ramka: "the room view should be using the screen more effectively", "the fit and zoom buttons
+  don't work", "inside the plants view we can change the heatmaps; plants should give me three
+  parameters, like the sensors", then "light and climate should get similar modes; we should be
+  able to switch between aggregated and current values (check how we implement this for plants)".
+  Mockups with a real home's plan and readings, in that home's repository:
+  `docs/superpowers/specs/2026-11-01-floorplan-mockups/plan-views.html`.
+- This brings in part of the next project the design names (light and heat map); DLI, a
+  time-of-day slider and "where to place" stay out (below).
+
+### Maps
+
+- The layers `plants`, `climate` and `light` each get **maps**, one shown at a time:
+
+  | layer | maps (first is the default) | 24 h figure per map |
+  |---|---|---|
+  | `plants` | light, temperature, soil moisture | brightest, coldest, driest |
+  | `climate` | temperature, humidity, CO₂ | mean, mean, highest |
+  | `light` | light, lamps | brightest, none |
+
+  Why these figures: a plant suffers from its coldest hour and its driest soil and needs its
+  brightest hours (light is zero every night; the plants component keeps `illuminance max 24h` for
+  the same reason); a room is judged by its mean, its air by its worst CO₂.
+- A map of a reading (`device_class` temperature, illuminance, moisture, humidity,
+  carbon_dioxide) is **interpolated inside each room** from that room's placed points with the
+  reading, by inverse distance squared on a 0.15 m grid; walls stop it (no room borrows another's
+  readings). A room with no such point is hatched. Unplaced points never count (as the base spec
+  decides). The sources are every placed point with the reading, whatever its category: on the
+  plants' light map a room thermometer with a light sensor counts.
+- **Fixed scales**, so two days compare: temperature 17–24 °C, humidity 30–60 %, soil moisture
+  10–50 %, CO₂ 400–1400 ppm, light 0–20 000 lx on a log scale. A legend names the map, now or the
+  24 h figure, and the ends of the scale. *(The ranges are the mockup's, set by eye from one home;
+  a component's own bands, such as a plant's, are not used for the map.)*
+- **Labels** on a map: a plant shows its three readings (temperature, light, soil), any other point
+  the readings it has of temperature, humidity, CO₂ and light; the shown map's reading is first and
+  bold. The light layer shows light only. The label layout is the one of the readings addition.
+- **Lamps** (light layer): each placed device of category `light` with a `light` entity (a group,
+  one whose state has an `entity_id` list, left out) is a dot: on, with a glow sized by brightness;
+  off, grey. Its label: the brightness in %, or "off". No heat is drawn.
+- **Now / 24 h**: one switch beside the maps. "Now" shows the states. "24 h" shows, per point
+  entity, the map's figure over the last 24 hours from `recorder/statistics_during_period`
+  (`period: hour`, `types: [mean, min, max]`; the call the Ramka's plants card already makes as the
+  kiosk user), fetched when switched on and again every 30 minutes while on. An entity without
+  statistics (no `state_class`) has no 24 h value and is left out of that map. The lamps map has no
+  24 h figure: the switch is hidden there (hours on would need the history).
+- Where: the map and time switches show when exactly one of these three layers is shown (always
+  with `layer_choice: one`; with chips, when only that layer is on). Edit mode shows no map.
+  The browser remembers the map per layer and the switch (`localStorage`, like the layers).
+  They carry `data-own-tap` with `layer_choice: one`.
+- Card config `maps` (boolean, default `true`): `false` draws no maps and no switches (0.2 behaviour).
+
+### The Ramka's plan view
+
+- **Zoom and fit** *(cause by inference, to be confirmed on the tablet simulator first)*: the
+  + / − / fit buttons do not carry `data-own-tap`, so `corner-taps-card` takes their tap as a tap
+  on the page and goes back to the controls. With `layer_choice: one` the whole bar of the card
+  carries it.
+- **Filling the screen**: card config `fill: true` sizes the card to the rest of the viewport below
+  its top (`window.innerHeight` minus its top, minus 8 px), kept on resize; `fit` then uses the whole
+  card. The Ramka's template sets `fill: true` instead of
+  `grid_options: {rows: 8}`. The bar is one row of chips and, under it, one row of maps, time and
+  zoom.
+
+### Versions, compatibility
+
+- floorplan 0.2.1 → 0.3.0: card config `maps`, `fill` (ADDITIVE-ONLY); the bar's `data-own-tap`.
+  No change to the document or the command. The card's `card behaviour` row and COMPATIBILITY's
+  `floorplan-card` row gain maps and the switch.
+- ramka 0.10.0 → 0.11.0: the plan view sets `fill: true` and needs floorplan 0.3.0; `UPGRADE.md`
+  says so. Nothing for a home to change.
+- Translations (en, de, pl): the map names, "Now", "24 h" with each figure ("brightest", "coldest",
+  "driest", "mean", "highest"), "Lamps", "off", the legend's "no sensor in the room".
+
+### Tests
+
+- `node --test`: interpolation stays inside a room and hatches a room without a source; a
+  point's reading counts on another layer's map; the 24 h figure per map (min, max, mean) from a
+  fake `statistics_during_period` answer; an entity without statistics is left out; lamps: a group
+  left out, glow only when on; the switch hidden on lamps; map and switch remembered; the bar's
+  buttons carry `data-own-tap` with `layer_choice: one`; `fill` sets the height from the viewport;
+  `maps: false` draws none.
+- ramka: `ha-check ramka` with `floorplan: true`; on the tablet simulator, + / − / fit zoom without
+  leaving the plan, the plan fills the screen at 1100 × 720, a sideways swipe still returns.
+- Staging of the home that asked, then the Ramka.
+
+### Out of scope
+
+Daily light integral (DLI), a time-of-day slider, history beyond 24 hours, hours a lamp was on,
+"where to place a sensor"; the desktop side panel of the mockups (a list of plants and rooms);
+using a component's own bands as a map's scale.
+
+### Open questions
+
+- The scales' ranges *(set by eye from one home)*.
+- Whether "Now" at night should fall back to the 24 h light map on the plants layer, since every
+  light map is dark at night *(not proposed; the switch is one tap)*.
