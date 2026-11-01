@@ -16,6 +16,12 @@
 //   values: true                       # false: points without their readings
 //   layers: [climate, plants]          # optional: only these categories, no layer chips
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
+//   maps: true                         # false: no maps on the plants, climate and light layers
+//   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
+//
+// With one of the plants, climate or light layers shown (Amendment 7) the bar offers its maps: the
+// reading interpolated inside each room, or the lamps; and "now" or the map's figure over the last
+// 24 hours, from the recorder's hourly statistics.
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -24,13 +30,15 @@ import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
   candidates, pointCategory, setPointCategory, joinPoint, separatePoint, registryLinks, presenceEntities,
+  openSpaces, openRooms, closeRoom, facingWalls,
 } from "./lib/plan.js";
 import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
 import { esc, dotHtml } from "./lib/html.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
-import { layoutLabels, CHAR_EM } from "./lib/labels.js";
+import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
+import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, lampIndex, lampOf } from "./lib/maps.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -46,6 +54,11 @@ const LABEL_MIN_PX = 9;
 const STACK_PX = 14;      // placed dots closer than this on screen are one dot with a list
 const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers this browser switched off
 const CHOSEN_KEY = "domosenso.floorplan.chosen";   // localStorage: the one layer shown (layer_choice: one)
+const MAP_KEY = "domosenso.floorplan.map";         // localStorage: the map chosen per layer
+const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while the maps show the last 24 hours
+const HOUR_MS = 60 * 60 * 1000;
+const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
+const FILL_GAP_PX = 8;
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -93,7 +106,7 @@ const fmt = (v) => String(Math.round(v * 1e6) / 1e6);
 
 class FloorplanCard extends HTMLElement {
   setConfig(config) {
-    this._config = { edit: true, values: true, ...config };
+    this._config = { edit: true, values: true, maps: true, ...config };
     this._status = "loading";      // loading | none | unsupported | ready
     this._doc = null;              // the plan as edited
     this._loaded = null;           // the plan as read: the save guard compares against it
@@ -118,6 +131,12 @@ class FloorplanCard extends HTMLElement {
     this._entryDomains = {};       // config entry id -> integration domain, once config_entries/get answered
     this._hoverKey = null;         // the marker under the pointer: its registry links show
     this._openCluster = null;      // the room whose cluster list is open (edit mode)
+    this._maps = load(MAP_KEY, {}) || {};          // layer -> the device class (or "lamps") of its map
+    this._day = load(AGG_KEY, false) === true;     // the maps show the last 24 hours, not now
+    this._stats = null;            // statistic id -> hourly rows, the last 24 hours
+    this._statIds = "";
+    this._statsAt = 0;
+    this._heatCache = null;
     if (this._hass) this._load();
   }
 
@@ -126,7 +145,35 @@ class FloorplanCard extends HTMLElement {
   }
 
   getGridOptions() {
-    return { columns: 12, rows: 8, min_columns: 6, min_rows: 4 };
+    return { columns: 12, rows: this._config?.fill ? "auto" : 8, min_columns: 6, min_rows: 4 };
+  }
+
+  connectedCallback() {
+    this._onResize ??= () => this._fill();
+    window.addEventListener("resize", this._onResize);
+  }
+
+  // The plan's size changed (the card was shown, `fill` grew it, the window turned): readings and
+  // markers are sized in screen pixels, so lay them out again. A card drawn while hidden (the
+  // Ramka's plan view before its swipe) had no size and drew at a fallback scale.
+  _resized() {
+    const r = this._rect();
+    if (`${Math.round(r.width)}x${Math.round(r.height)}` === this._drawnSize) return;
+    this._drawSvg(this._status === "ready" && this._mode === "edit");
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener("resize", this._onResize);
+  }
+
+  // `fill`: as tall as the screen below the card's top; true when the height changed.
+  _fill() {
+    if (!this._config?.fill) return false;
+    const top = this.getBoundingClientRect().top;
+    const height = `${Math.max(280, Math.round(window.innerHeight - top - FILL_GAP_PX))}px`;
+    if (this.style.height === height) return false;
+    this.style.height = height;
+    return true;
   }
 
   set hass(hass) {
@@ -141,6 +188,7 @@ class FloorplanCard extends HTMLElement {
     }
     // hass is set for every state change in Home Assistant: redraw only what changed. A new reading
     // redraws the plan alone, so a half-typed area name or an open select survives it.
+    this._wantStats();
     const stamp = this._valueStamp();
     if (stamp === this._stamp) return;
     if (stamp.split("\n")[0] !== this._stamp?.split("\n")[0]) this._render();
@@ -174,6 +222,64 @@ class FloorplanCard extends HTMLElement {
     this._cands = new Map(list.map((c) => [c.key, c]));
     this._entities = entityMap(h, list);
     this._catCache = new WeakMap();
+    this._readCache = new WeakMap();
+    this._lamps = lampIndex(h);
+  }
+
+  // A point's reading entities by device class (a plant's through its named sensors).
+  _readings(point) {
+    let ids = this._readCache.get(point);
+    if (!ids) this._readCache.set(point, (ids = readingIds(this._hass, pointEntities(point, this._entities))));
+    return ids;
+  }
+
+  // The layer whose maps the bar offers: the one shown of plants, climate and light, outside edit mode.
+  _mapLayer() {
+    if (!this._config.maps || this._mode === "edit" || this._status !== "ready" || !this._floor) return null;
+    let ids;
+    if (this._one) ids = [this._chosen];
+    else if (this._config.layers) ids = this._config.layers;
+    else ids = [...new Set(this._floor.points.flatMap((p) => this._cat(p).roles))].filter((id) => this._visible(id));
+    return ids.length === 1 && MAPS[ids[0]] ? ids[0] : null;
+  }
+
+  // The map shown: {layer, cls, rule}; null without one.
+  _map() {
+    const layer = this._mapLayer();
+    if (!layer) return null;
+    const [cls, rule] = MAPS[layer].find(([c]) => c === this._maps[layer]) ?? MAPS[layer][0];
+    return { layer, cls, rule };
+  }
+
+  // A reading now, or its figure over the last 24 hours by the layer's rule.
+  _value(id, cls, layer) {
+    return this._day ? figure(this._stats?.[id], ruleOf(layer, cls)) : nowValue(this._hass, id);
+  }
+
+  // The last 24 hours' statistics of every reading on the floor, while a reading map shows them:
+  // fetched when the readings change and every STATS_MS.
+  _wantStats() {
+    const map = this._map();
+    if (!this._day || !map || map.cls === "lamps") return;
+    // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out.
+    const ids = [...new Set(this._floor.points.flatMap((p) => Object.values(this._readings(p))))].sort().join(",");
+    if (!ids || (ids === this._statIds && Date.now() - this._statsAt < STATS_MS)) return;
+    this._fetchStats(ids);
+  }
+
+  async _fetchStats(ids) {
+    this._statIds = ids;
+    this._statsAt = Date.now();
+    try {
+      this._stats = await this._hass.callWS({ type: "recorder/statistics_during_period", period: "hour",
+        types: ["mean", "min", "max"], statistic_ids: ids.split(","),
+        start_time: new Date(Date.now() - 24 * HOUR_MS).toISOString() });
+    } catch {
+      this._stats = {};
+      this._statsAt = Date.now() - STATS_MS + 5 * 60 * 1000;     // try again in five minutes
+    }
+    this._heatCache = null;
+    this._render();
   }
 
   // A point's category and roles, once per point object: an edit makes a new one.
@@ -237,10 +343,10 @@ class FloorplanCard extends HTMLElement {
 ${STYLE}
       </style>
       <ha-card>
-        <div class="bar"></div>
         <div class="layers"></div>
+        <div class="bar"></div>
         <div class="area-panel"></div>
-        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div></div>
+        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div><div class="legend" hidden></div></div>
         <div class="hint"></div>
         <div class="message"></div>
       </ha-card>`;
@@ -254,6 +360,7 @@ ${STYLE}
     card.addEventListener("pointercancel", (e) => this._onUp(e, true));
     card.addEventListener("lostpointercapture", (e) => this._onUp(e, true));
     card.addEventListener("pointerleave", () => this._showTip(null));
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => this._resized()).observe(this._svg);
     this._svg.addEventListener("wheel", (e) => this._onWheel(e), { passive: false });
     this._svg.addEventListener("dblclick", (e) => this._onDblClick(e));
   }
@@ -269,7 +376,14 @@ ${STYLE}
     const ready = this._status === "ready";
     const editing = ready && this._mode === "edit";
     $("ha-card").classList.toggle("editing", editing);
+    this._fill();
     $(".bar").innerHTML = ready ? this._barHtml(editing) : "";
+    // One layer at a time (a wall tablet): the bars keep their taps (data-own-tap), so a page that
+    // goes back on a tap anywhere does not go back on zoom, a map or a layer.
+    $(".bar").toggleAttribute("data-own-tap", this._one);
+    $(".layers").toggleAttribute("data-own-tap", this._one);
+    this._wantStats();
+    this._legend();
     this._registry();
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
@@ -293,20 +407,22 @@ ${STYLE}
     const h = this._hass;
     const btn = (action, text, title, extra = "") =>
       `<button data-action="${action}" ${title ? `title="${esc(title)}" aria-label="${esc(title)}"` : ""} ${extra}>${esc(text)}</button>`;
-    let html = btn("zoom_in", "+", t(h, "card.floorplan.zoom_in"))
+    const zoom = btn("zoom_in", "+", t(h, "card.floorplan.zoom_in"))
       + btn("zoom_out", "−", t(h, "card.floorplan.zoom_out"))
       + btn("fit", t(h, "card.floorplan.fit"));
-    html += '<span class="spacer"></span>';
+    // View mode: the maps on the left, zoom on the right; edit mode: zoom, then the tools.
     if (!editing) {
+      let html = `${this._mapsHtml()}<span class="spacer"></span>${zoom}`;
       if (this._config.edit && h?.user?.is_admin) html += btn("edit", t(h, "card.floorplan.edit"));
       return html;
     }
+    let html = `${zoom}<span class="spacer"></span>`;
     if (this._doc.floors.length > 1) {
       const name = (id) => h.floors?.[id]?.name || id;
       html += `<select class="floor" aria-label="${esc(t(h, "card.floorplan.floor"))}">${this._doc.floors.map((f) =>
         `<option value="${esc(f.floor_id)}" ${f.floor_id === this._floorId ? "selected" : ""}>${esc(name(f.floor_id))}</option>`).join("")}</select>`;
     }
-    for (const tool of ["move", "split", "join"]) {
+    for (const tool of ["move", "split", "join", "open"]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
@@ -314,6 +430,41 @@ ${STYLE}
     html += btn("save", t(h, this._saving ? "card.floorplan.saving" : "card.floorplan.save"), "",
       `class="primary" ${dirty && !this._saving ? "" : "disabled"}`);
     return html;
+  }
+
+  // The shown layer's maps, then now or the last 24 hours (not for the lamps).
+  _mapsHtml() {
+    const map = this._map();
+    if (!map) return "";
+    const h = this._hass;
+    const chip = (attrs, on, text) => `<button ${attrs} aria-pressed="${on}" class="chip">${esc(text)}</button>`;
+    let html = `<span class="maps">${MAPS[map.layer].map(([cls]) =>
+      chip(`data-action="map" data-map="${cls}"`, cls === map.cls, t(h, `card.floorplan.maps.${cls}`))).join("")}</span>`;
+    if (map.rule) {
+      html += `<span class="maps">${chip('data-action="day" data-day="0"', !this._day, t(h, "card.floorplan.maps.now"))}`
+        + chip('data-action="day" data-day="1"', this._day, t(h, "card.floorplan.maps.day",
+          { figure: t(h, `card.floorplan.maps.figure.${map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`}`) }))
+        + "</span>";
+    }
+    return html;
+  }
+
+  // What the map shows: its name, now or its 24-hour figure, the scale's ends.
+  _legend() {
+    const box = this.shadowRoot.querySelector(".legend");
+    const map = this._map();
+    box.hidden = !map;
+    if (!map) return void (box.innerHTML = "");
+    const h = this._hass;
+    if (map.cls === "lamps") return void (box.textContent = t(h, "card.floorplan.maps.lamps_legend"));
+    const s = SCALES[map.cls];
+    const figureKey = map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`;
+    const when = this._day ? t(h, "card.floorplan.maps.day_legend", { figure: t(h, `card.floorplan.maps.figure.${figureKey}`) })
+      : t(h, "card.floorplan.maps.now_legend");
+    box.innerHTML = `<div>${esc(t(h, `card.floorplan.maps.${map.cls}`))}, ${esc(when)}</div>`
+      + `<div class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})"></div>`
+      + `<div class="ends"><span>${esc(formatValue(map.cls, s.lo))}</span><span>${esc(formatValue(map.cls, s.hi))}</span></div>`
+      + `<div><span class="hatch"></span>${esc(t(h, "card.floorplan.maps.no_sensor"))}</div>`;
   }
 
   _areaPanelHtml() {
@@ -327,7 +478,12 @@ ${STYLE}
       const current = a.area_id === target;
       return `<option value="${esc(a.area_id)}" ${current ? "selected" : ""} ${used.has(a.area_id) && !current ? "disabled" : ""}>${esc(a.name)}</option>`;
     }).join("");
-    return `<label>${esc(label)}</label>
+    // A room of an open space names the rooms it is open to, and can be closed off.
+    const group = target && openSpaces(this._floor).find((g) => g.includes(target));
+    const open = group ? `<span class="open-to">${esc(t(h, "card.floorplan.area.open_to", {
+      rooms: group.filter((a) => a !== target).map((a) => h.areas?.[a]?.name || a).join(", ") }))}</span>`
+      + `<button data-action="close_room">${esc(t(h, "card.floorplan.area.close_off"))}</button>` : "";
+    return `${open}<label>${esc(label)}</label>
       <select class="area"><option value="" ${target && h.areas?.[target] ? "" : "selected"} disabled>${esc(t(h, "card.floorplan.area.choose"))}</option>${options}</select>
       <input type="text" placeholder="${esc(t(h, "card.floorplan.area.new"))}">
       <button data-action="create_area">${esc(t(h, "card.floorplan.area.create"))}</button>`;
@@ -394,6 +550,8 @@ ${STYLE}
   _drawSvg(editing) {
     const svg = this._svg;
     svg.replaceChildren();
+    const size = this._rect();
+    this._drawnSize = `${Math.round(size.width)}x${Math.round(size.height)}`;
     this._registry();
     const floor = this._floor;
     if (this._status !== "ready" || !floor) return;
@@ -402,23 +560,38 @@ ${STYLE}
     const px = this._px();
     const h = this._hass;
     const names = [];       // where each room's name is, for readings to keep clear of
+    const map = this._map();
+    this._mapNow = map;
     for (const room of floor.rooms) {
       const cls = ["room"];
       if (room.area_id === this._selected) cls.push("selected");
       if (this._picks.includes(room.area_id)) cls.push("picked");
       el("polygon", { class: cls.join(" "), "data-kind": "room", "data-area": room.area_id,
         points: room.polygon.map((p) => p.join(",")).join(" ") }, svg);
+    }
+    if (map) this._defs(svg, px);
+    if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
+    // Walls between rooms of one open space: dashed and lighter, over the solid outline.
+    for (const [a, b] of facingWalls(floor)) {
+      const at = { x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) };
+      el("line", { class: "open-wall-mask", ...at }, svg);
+      el("line", { class: "open-wall", ...at }, svg);
+    }
+    // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
+    // readings keep clear of them; in view mode the readings are laid out first and a name they
+    // would cover moves to a free corner of its room (placeNames, after the layout below).
+    const nameGroup = el("g", {}, svg);
+    const roomNames = floor.rooms.map((room) => {
       const label = roomLabel(room, h);
       const spot = widestRow(room.polygon);
       const size = labelSize(label.text, spot.width, px) * px;
       const w = String(label.text).length * CHAR_EM * size;
-      names.push({ x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6,
-        y1: spot.y + size * 0.6 + (editing ? 16 * px : 0) });     // in edit mode the floor area sits under it
-      const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: spot.x, y: spot.y,
-        "font-size": size }, svg);
-      text.textContent = label.text;
-      if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
-    }
+      if (editing) {
+        names.push({ x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6,
+          y1: spot.y + size * 0.6 + 16 * px });     // the floor area sits under it
+      }
+      return { label, size, poly: room.polygon, at: [spot.x, spot.y], w, h: size * 1.2 };
+    });
     if (editing) drawGrid(svg, el, v, px);
     if (editing && this._tool === "move") {
       for (const room of floor.rooms) {
@@ -463,12 +636,26 @@ ${STYLE}
       }
     }
     const clustered = new Set(inCluster.keys());
-    // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too.
-    const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && this._shown(this._cat(p)));
+    // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too. A
+    // reading map also shows every placed point that measures it, whatever its layer.
+    const measures = (p) => map && map.cls !== "lamps" && p.placed && this._readings(p)[map.cls]
+      && this._value(this._readings(p)[map.cls], map.cls, map.layer) !== undefined;
+    const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && (this._shown(this._cat(p)) || measures(p)));
     const labels = new Map(layoutLabels([
-      ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._values(p) })),
+      ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._lines(p).map((l) => l.text) })),
       ...[...clusters.values()].map((c) => ({ key: null, at: c.at, lines: [] })),
     ], { rooms: floor.rooms.map((r) => r.polygon), px, obstacles: names }).map((l) => [l.key, l]));
+    const r = 9 * px;
+    const taken = [...[...labels.values()].map((l) => l.box),
+      ...[...shown.map((p) => [p.x, p.y]), ...[...clusters.values()].map((c) => c.at)]
+        .map(([x, y]) => ({ x0: x - r, x1: x + r, y0: y - r, y1: y + r }))];
+    const spots = editing ? roomNames.map((n) => n.at) : placeNames(roomNames, taken, px);
+    roomNames.forEach(({ label, size }, i) => {
+      const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: fmt(spots[i][0]),
+        y: fmt(spots[i][1]), "font-size": size }, nameGroup);
+      text.textContent = label.text;
+      if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
+    });
     for (const point of shown) this._drawMarker(svg, point, px, editing, labels.get(keyOf(point)));
     for (const [area, c] of clusters) {
       const g = el("g", { class: "cluster", "data-kind": "cluster", "data-cluster": area,
@@ -574,6 +761,10 @@ ${STYLE}
     cat.roles.slice(1, 3).forEach((id, i) => el("circle", { class: "role-ring", r: (11 + 3 * i) * px,
       style: `stroke: ${colourOf(categoryById(id))}` }, g));
     // Its readings where the layout put them (relative to the dot), with a leader when moved away.
+    // The lamps map: a lamp that is on glows by its brightness, one that is off is grey.
+    const lamp = this._mapNow?.cls === "lamps" && point.device_id && lampOf(h, this._lamps, [point.device_id, ...(point.also || [])]);
+    if (lamp?.on) g.insertBefore(el("circle", { class: "glow", r: (18 + lamp.brightness * 0.4) * px }), g.firstChild);
+    else if (lamp) g.querySelector(".shape").setAttribute("style", "fill: var(--disabled-text-color, #888)");
     if (!label) return;
     const [x0, y0] = [label.cx - point.x, label.top - point.y];
     if (label.leader) {
@@ -581,8 +772,73 @@ ${STYLE}
         Math.max(label.box.y0, Math.min(point.y, label.box.y1)) - point.y];
       el("line", { class: "leader", x1: 0, y1: 0, x2: fmt(near[0]), y2: fmt(near[1]) }, g);
     }
-    this._values(point).forEach((text, i) => {
-      el("text", { class: "value", x: fmt(x0), y: fmt(y0 + (11 + 15 * i) * px), "font-size": 13 * px }, g).textContent = text;
+    this._lines(point).forEach(({ text, main }, i) => {
+      el("text", { class: main ? "value main" : "value", x: fmt(x0), y: fmt(y0 + (11 + 15 * i) * px),
+        "font-size": 13 * px }, g).textContent = text;
+    });
+  }
+
+  // The hatching of a room without a sensor and a lamp's glow, sized for this zoom.
+  _defs(svg, px) {
+    const defs = el("defs", {}, svg);
+    const w = 8 * px;
+    const hatch = el("pattern", { id: "fp-hatch", width: w, height: w, patternUnits: "userSpaceOnUse",
+      patternTransform: "rotate(45)" }, defs);
+    el("line", { class: "hatch-line", x1: 0, y1: 0, x2: 0, y2: w, "stroke-width": 2 * px }, hatch);
+    const glow = el("radialGradient", { id: "fp-glow" }, defs);
+    el("stop", { offset: 0, "stop-color": "#fff3b0", "stop-opacity": 0.8 }, glow);
+    el("stop", { offset: 1, "stop-color": "#fdd835", "stop-opacity": 0 }, glow);
+  }
+
+  // The heat of a reading map inside each room, hatched where a room has no such reading. Kept while
+  // its samples are the same: a hover redraws the plan, and a few thousand cells are not free.
+  _drawHeat(svg, floor, map) {
+    const samples = floor.points.filter((p) => p.placed).flatMap((p) => {
+      const id = this._readings(p)[map.cls];
+      const value = id && this._value(id, map.cls, map.layer);
+      return value === undefined ? [] : [{ at: [p.x, p.y], value }];
+    });
+    // Rooms of one open space share their readings.
+    const index = new Map(floor.rooms.map((r, i) => [r.area_id, i]));
+    const groups = openSpaces(floor).map((g) => g.map((area) => index.get(area)));
+    const key = JSON.stringify([map.cls, samples, groups]);
+    if (this._heatCache?.key !== key || this._heatCache.floor !== floor) {
+      const g = el("g", { class: "heat" });
+      const { cells, empty } = heat(floor.rooms.map((r) => r.polygon), samples, STEP_M, groups);
+      // Cells on a slanted or offset wall overhang it: each room's cells are clipped to the room.
+      const defs = el("defs", {}, g);
+      const byRoom = new Map();
+      floor.rooms.forEach((room, i) => {
+        const clip = el("clipPath", { id: `fp-room-${i}` }, defs);
+        el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+        byRoom.set(i, el("g", { "clip-path": `url(#fp-room-${i})` }, g));
+      });
+      for (const c of cells) {
+        el("rect", { x: fmt(c.x), y: fmt(c.y), width: STEP_M + 0.01, height: STEP_M + 0.01,
+          fill: colourAt(map.cls, c.value) }, byRoom.get(c.room));
+      }
+      for (const i of empty) el("polygon", { class: "no-sensor", points: floor.rooms[i].polygon.map((p) => p.join(",")).join(" ") }, g);
+      // The walls again, over the heat.
+      for (const room of floor.rooms) el("polygon", { class: "wall", points: room.polygon.map((p) => p.join(",")).join(" ") }, g);
+      this._heatCache = { key, floor, g };
+    }
+    svg.appendChild(this._heatCache.g);
+  }
+
+  // A marker's lines: its readings, or on a map the map's (the shown one first and marked main).
+  _lines(point) {
+    const map = this._mapNow;
+    if (!map || !this._config.values) return this._values(point).map((text) => ({ text, main: false }));
+    const h = this._hass;
+    if (map.cls === "lamps") {
+      const lamp = point.device_id && lampOf(h, this._lamps, [point.device_id, ...(point.also || [])]);
+      return lamp ? [{ text: lamp.on ? `${lamp.brightness} %` : t(h, "card.floorplan.maps.off"), main: false }] : [];
+    }
+    const ids = this._readings(point);
+    const plant = this._cat(point).id === "plants";
+    return labelClasses(map.layer, plant, map.cls).flatMap((cls) => {
+      const value = ids[cls] && this._value(ids[cls], cls, map.layer);
+      return value === undefined ? [] : [{ text: formatValue(cls, value), main: cls === map.cls }];
     });
   }
 
@@ -599,6 +855,13 @@ ${STYLE}
     const floor = this._floor;
     if (!floor || !this._hass) return "";
     const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._entities)) : [];
+    // A map also follows a plant's sensors and the lamps.
+    if (this._map()) {
+      for (const p of floor.points) {
+        ids.push(...Object.values(this._readings(p)));
+        if (p.device_id && this._lamps.has(p.device_id)) ids.push(this._lamps.get(p.device_id));
+      }
+    }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
     // name with a newline on that first line.
@@ -631,8 +894,16 @@ ${STYLE}
       this._tool = button.getAttribute("data-tool");
       this._resetPicks();
     } else if (action === "create_area") return void this._createArea();
+    else if (action === "close_room") this._edit(closeRoom(this._doc, this._floorId, this._selected));
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
+    } else if (action === "map") {
+      this._maps = { ...this._maps, [this._mapLayer()]: button.getAttribute("data-map") };
+      save(MAP_KEY, this._maps);
+    } else if (action === "day") {
+      this._day = button.getAttribute("data-day") === "1";
+      save(AGG_KEY, this._day);
+      this._heatCache = null;
     } else if (action === "layer" && this._one) {
       this._chosen = button.getAttribute("data-layer");
       save(CHOSEN_KEY, this._chosen);
@@ -1002,6 +1273,14 @@ ${STYLE}
         const [keep, drop] = this._picks;
         this._picks = [];
         if (keep !== drop) this._edit(joinRooms(this._doc, this._floorId, keep, drop));
+      }
+    } else if (this._tool === "open") {
+      if (!area) return;
+      this._picks = [...this._picks, area];
+      if (this._picks.length === 2) {
+        const [a, b] = this._picks;
+        this._picks = [];
+        if (a !== b) this._edit(openRooms(this._doc, this._floorId, a, b));
       }
     } else if (this._tool === "split") {
       const wall = nearestWall(this._floor, pt, PICK_PX * this._px());

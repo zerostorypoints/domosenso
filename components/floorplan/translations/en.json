@@ -20,20 +20,24 @@
       "tool": {
         "move": "Move",
         "split": "Split",
-        "join": "Join"
+        "join": "Join",
+        "open": "Open"
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
         "move": "Drag sensors and corners. Double-click a wall to add a corner, a corner to remove it. Tap a room to link it to an area. Drop a device on a marker when it is the same hardware.",
         "split": "Tap two points on the walls of one room.",
-        "join": "Tap two neighbouring rooms; the first keeps its area."
+        "join": "Tap two neighbouring rooms; the first keeps its area.",
+        "open": "Tap two rooms open to each other without a door: their heat maps share readings."
       },
       "area": {
         "label": "Area of this room",
         "for_split": "Area of the new room",
         "choose": "Choose an area",
         "new": "New area",
-        "create": "Create"
+        "create": "Create",
+        "open_to": "Open to: {rooms}",
+        "close_off": "Close off"
       },
       "tray": {
         "title": "Not on the plan",
@@ -61,6 +65,28 @@
       "roles": {
         "also": "Also senses:",
         "legend": "ring: what else a device senses"
+      },
+      "maps": {
+        "temperature": "Temperature",
+        "humidity": "Humidity",
+        "moisture": "Soil moisture",
+        "carbon_dioxide": "CO₂",
+        "illuminance": "Light",
+        "lamps": "Lamps",
+        "now": "Now",
+        "day": "24 h, {figure}",
+        "figure": {
+          "temperature_min": "coldest",
+          "moisture_min": "driest",
+          "illuminance_max": "brightest",
+          "carbon_dioxide_max": "highest",
+          "mean": "mean"
+        },
+        "now_legend": "now, interpolated per room",
+        "day_legend": "{figure} in the last 24 hours, interpolated per room",
+        "no_sensor": "no sensor in the room",
+        "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
+        "off": "off"
       }
     }
   }

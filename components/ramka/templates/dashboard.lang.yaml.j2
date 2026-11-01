@@ -973,7 +973,9 @@ views:
             # their taps (data-own-tap, corner-taps-card), a tap anywhere else goes back.
             layers: [[ inputs.floorplan_layers | default(['climate', 'plants']) | tojson ]]
             layer_choice: one
-            grid_options: {columns: full, rows: 8}
+            # As tall as the screen below it (floorplan 0.3.0); its zoom and maps keep their taps.
+            fill: true
+            grid_options: {columns: full}
       [%- endif %]
 [%- endblock %]
 [%- endblock %]
