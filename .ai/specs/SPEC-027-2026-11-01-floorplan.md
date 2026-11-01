@@ -199,3 +199,28 @@ they differ.
   by the command.
 - **A plan with a duplicate `floor_id`, a duplicate `area_id` on one floor, or a point key used
   twice is invalid**, beyond what the schema says.
+
+## Amendment 3 (staging feedback)
+
+Editor changes asked for by the maintainer after a trial on a staging Home Assistant (2026-11-01):
+the tray was too long to use (about 40 entries, most of them computed sensors) and room shapes
+were hard to draw to size. No new card config key; the stored document is unchanged.
+
+- **Computed entities are not candidates.** An entity whose registry entry has a `platform` in
+  `template`, `statistics`, `min_max`, `derivative`, `integration`, `utility_meter`, `filter`,
+  `trend`, `threshold`, `compensation` or `group` is left out of the tray and of a device's marker;
+  `plant.*` stays whatever its platform, and an entity without a registry entry stays.
+- **The tray is grouped by room**: the candidate's area, else for a plant the plants component's
+  `domosenso_room` (or its `domosenso_rooms` entry for the dashboard language), else a "No room"
+  group, last. Groups are collapsible and start collapsed when there is more than one; the card
+  remembers which are open. Dragging a group's summary onto the plan puts all its sensors round the
+  drop point on a 0.3 m circle with `placed: false`; a tap opens or closes it.
+- **Entering edit mode spreads** the sensors it puts in one room on a 0.3 m circle round the room's
+  centroid (by key) instead of stacking them; still `placed: false`.
+- **A dropped room corner snaps to a 5 cm grid** when it did not join another room's corner or wall
+  (shared walls win). An added corner and the ends of a split go to the grid along their wall, and
+  only where that keeps them inside it (a level or plumb wall). Sensor points do not snap.
+- **Edit mode draws a faint grid** (1 m; 0.5 m once that is 24 px on screen) and **dimensions**:
+  every room's floor area under its name (1 decimal, m²) and, for the selected room or the room
+  whose corner is dragged, each wall's length along the wall (2 decimals, m), live while dragging.
+  Numbers use the dashboard language's decimal separator. View mode shows neither.

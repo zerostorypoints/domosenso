@@ -45,18 +45,25 @@ administrator (`lovelace/config/save` requires one).
 ## Editing in Home Assistant
 
 An administrator sees **Edit** (unless the card has `edit: false`). Entering edit mode puts every
-sensor that has an area but no position at the centre of its area's room, drawn faded
-(`placed: false`) until it is dragged.
+sensor that has an area but no position at the centre of its area's room (several in one room on a
+small circle round it), drawn faded (`placed: false`) until it is dragged.
 
 | tool | what it does |
 |---|---|
-| Move | drag a marker (it becomes `placed: true`); drag a room corner (a corner shared with a neighbouring room moves with it, and a corner dropped within 5 cm of another room's corner or wall snaps onto it, so the walls stay shared); double-click a wall to add a corner, a corner to remove it; tap a room to link it to another area or to create a new area by name |
+| Move | drag a marker (it becomes `placed: true`); drag a room corner (a corner shared with a neighbouring room moves with it, and a corner dropped within 5 cm of another room's corner or wall snaps onto it, so the walls stay shared; otherwise it lands on a 5 cm grid); double-click a wall to add a corner (on the grid along a level or plumb wall), a corner to remove it; tap a room to link it to another area or to create a new area by name |
 | Split | tap two points on the walls of one room; then pick the area of the new half (or create one). The first half keeps the room's area |
 | Join | tap two neighbouring rooms; the first keeps its area. Rooms join only along a shared wall |
 
-- The tray lists the sensors not on the plan yet (no area, or an area without a room on this floor);
-  drag one onto the plan. Only the kinds above and plants are listed; other entities cannot be
-  added in 0.1.0.
+- The tray lists the sensors not on the plan yet (no area, or an area without a room on this floor),
+  grouped by room: the area, or for a plant without an area the room the plants component gives it,
+  else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
+  put all of its sensors round that spot (faded, to be dragged into place one by one). Only the
+  kinds above and plants are listed; computed sensors (from the `template`, `statistics`,
+  `min_max`, `derivative`, `integration`, `utility_meter`, `filter`, `trend`, `threshold`,
+  `compensation` and `group` integrations) are left out, and other entities cannot be added in 0.1.0.
+- Edit mode draws a faint 1 m grid (0.5 m when zoomed in) and shows every room's floor area under
+  its name; the selected room, or the one whose corner is being dragged, shows its wall lengths.
+  Split ends also go to the 5 cm grid along their wall.
 - With more than one floor in the plan, a select switches the floor.
 - Split and join change only shapes: the editor never deletes an area and never moves a device to
   another area. An area left without a room after a join stays in Home Assistant.
