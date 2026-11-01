@@ -252,7 +252,7 @@ key; the stored document is unchanged.
 
 ## Amendment 5 (every device on the plan: categories, colours, links)
 
-- Status: **draft, waiting for the maintainer's approval**. Source: the maintainer, 2026-11-01:
+- Status: approved 2026-11-01 by the maintainer. Source: the maintainer, 2026-11-01:
   categorise the sensors and devices (Bluetooth proxies, radios, audio, lights, switches), link
   those that belong together, colour the dots by category, so that everything can be placed.
 - For floorplan **0.2.0** (stages 1 and 2 below) and **0.3.0** (stage 3). Replaces "Point entities"
@@ -266,11 +266,14 @@ key; the stored document is unchanged.
 - **Never candidates:** devices whose entities are only `device_tracker`, `person` or diagnostics;
   `mobile_app` devices (phones move); Bluetooth tags known only by their address (no name, no
   model). They may show later as live presence, not as points.
-- **One point per physical device.** A device whose `via_device_id` parent shares a connection (a MAC
-  address) with it is the same hardware seen by two integrations (an ESPHome node and its Bluetooth
-  adapter): it joins the parent's point *(inference: to verify on a real home's registry)*.
-- **A plant's sensor joins the plant.** A sensor device whose entities a `plant.*` reads is not a
-  point of its own; the plant is *(open question: which attribute names those entities)*.
+- **One point per physical device.** A device without enabled entities is never a point. An ESPHome
+  Bluetooth proxy shows in the registry as the ESPHome node plus a device of the `bluetooth`
+  integration (the adapter, no entities, `via_device_id` the node, its own `bluetooth` connection;
+  the two MACs differ). Verified on a real home's registry, HA 2026.9.2, 2026-11-01: the adapter is
+  no point, and a node with such a child is `radio`.
+- **A plant's sensor joins the plant.** The core `plant` integration names its sensors in the
+  `sensors` attribute (`{"moisture": "sensor.…", "temperature": "sensor.…", …}`, verified on the
+  same home); a device whose entities are listed there is not a point of its own, the plant is.
 
 ### Categories and colours
 
@@ -281,9 +284,9 @@ domain, `device_class` and the registry; nothing is written per home.
 |---|---|---|---|
 | `plants` | `--floorplan-plants`, green | `plant.*`, or a device with `moisture` and `conductivity` sensors | circle |
 | `climate` | `--floorplan-climate`, blue | `climate.*`, or `device_class` temperature, humidity, carbon_dioxide, pm25, pm10, volatile_organic_compounds, pressure | circle |
-| `light` | `--floorplan-light`, yellow | `light.*` that is not a group (no `entity_id` list attribute); a device with only `event` / `button` / `remote` entities beside such lights (a switch or dimmer) | circle; a switch is a square |
+| `light` | `--floorplan-light`, yellow | `light.*` that is not a group (no `entity_id` list attribute; Hue rooms and zones also carry `is_hue_group`, verified); a device with only `event` / `button` / `remote` entities beside such lights (a switch or dimmer) | circle; a switch is a square |
 | `security` | `--floorplan-security`, red | `lock.*`, `camera.*`, `alarm_control_panel.*`, `binary_sensor` motion, occupancy, presence, door, window, opening | circle |
-| `radio` | `--floorplan-radio`, purple | a device other devices name as `via_device_id`; an ESPHome node with a Bluetooth proxy; a mesh access point | diamond |
+| `radio` | `--floorplan-radio`, purple | a device other devices name as `via_device_id` (a hub, a bridge, a mesh main node), except when its children are only light groups; an ESPHome node with a `bluetooth` adapter child; a `tplink_deco` or other mesh access point | diamond |
 | `media` | `--floorplan-media`, teal | `media_player.*` | circle |
 | `shading` | `--floorplan-shading`, brown | `cover.*` | circle |
 | `other` | `--floorplan-other`, grey | any other candidate with an area (appliances, vacuums, power meters, tablets) | circle |
@@ -330,7 +333,8 @@ domain, `device_class` and the registry; nothing is written per home.
 
 - `categories.test.mjs`: each rule with a fictional registry (the demo home); first match wins; a
   group light, a phone, a bare Bluetooth address are not candidates.
-- `plan.test.mjs`: a device and its same-MAC child give one point; a plant's sensor joins the plant;
+- `plan.test.mjs`: an ESPHome node and its entity-less `bluetooth` adapter give one `radio` point; a
+  plant's sensor device (named in its `sensors`) joins the plant;
   `links` survive a save and lose an end that left the plan.
 - `floorplan-card.test.mjs`: marker colour and shape per category; layers hide points; `layers`
   config; `via` line on hover; the Link tool (0.3.0).
