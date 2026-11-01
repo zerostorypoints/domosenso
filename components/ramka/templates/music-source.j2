@@ -1,0 +1,54 @@
+[#- The music source contract (SPEC-025) as the settings dashboard and the preview dashboard read it.
+    Imported, never rendered on its own. Ramka's render cannot see audio-sensor's inputs, so the
+    pages read the contract's fixed ids; in a home without audio-sensor they do not exist, and a
+    missing entity reads unknown (or unavailable) in a visibility condition. The source select's row
+    shows while it exists, the abilities line while a sensor is selected (not the no-sensor option, —). -#]
+[%- set p = inputs.prefix -%]
+[#- True-ish (non-empty) text when a dashboard path input value is not a plain url path. -#]
+[%- macro bad_path(path) -%][%- if path is not string or not path or (path | list | reject('in', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_') | list) -%]1[%- endif -%][%- endmacro -%]
+[%- set source_exists = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown]}" -%]
+[#- source_set: a select reading unknown counts as no sensor here, while audio-sensor's aliases read it
+    as the music board; an input_select holds unknown only during a reload. -#]
+[%- set source_set = '{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown, "—"]}' -%]
+[#- Each visual's alias, the one place their ids are written (the settings preview's cards read it). -#]
+[%- set aliases = {'spectrum': 'sensor.music_spectrum', 'level': 'sensor.music_level'} -%]
+[%- macro visual_is(kind) -%]{condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}[%- endmacro -%]
+[%- macro has_ability(ability) -%]{condition: state, entity: binary_sensor.music_source_[[ ability ]], state: "on"}[%- endmacro -%]
+[%- macro alias_is(kind, state) -%]{condition: state, entity: [[ aliases[kind] ]], state: [[ state ]]}[%- endmacro -%]
+[#- The live switch (SPEC-025 amendment 1): on, the select's visual; off (any other state), Classic. -#]
+[%- set live_on = "{condition: state, entity: input_boolean." ~ p ~ "_music_live, state: \"on\"}" -%]
+[%- set live_off = "{condition: state, entity: input_boolean." ~ p ~ "_music_live, state_not: \"on\"}" -%]
+[#- V: the visual needs a sensor, Live is on (the select holds spectrum or level only). A (active): V,
+    and the selected sensor has the visual's ability. The Music page's Live visualization sub-view,
+    its preview's notice and the sensor sub-view read these two. -#]
+[%- set needs_sensor = live_on -%]
+[%- set active = "{condition: and, conditions: [" ~ live_on ~ ", {condition: or, conditions: [{condition: and, conditions: [" ~ visual_is('spectrum') ~ ", " ~ has_ability('spectrum') ~ "]}, "
+    ~ "{condition: and, conditions: [" ~ visual_is('level') ~ ", " ~ has_ability('level') ~ "]}]}]}" -%]
+[#- Offline: A, and the visual's alias is unavailable (the board does not report). -#]
+[%- set offline = "{condition: and, conditions: [" ~ live_on ~ ", {condition: or, conditions: [{condition: and, conditions: [" ~ visual_is('spectrum') ~ ", " ~ has_ability('spectrum') ~ ", " ~ alias_is('spectrum', 'unavailable') ~ "]}, "
+    ~ "{condition: and, conditions: [" ~ visual_is('level') ~ ", " ~ has_ability('level') ~ ", " ~ alias_is('level', 'unavailable') ~ "]}]}]}" -%]
+[#- The preview's notice (SPEC-025's table): one markdown card per case, each with its visibility, so
+    at most one shows; none for A with data and for Classic (Live off). No sensor covers the no-sensor option
+    and a home without audio-sensor (its select missing or unavailable). The cards start at column 0
+    under a leading newline: the caller indents them to its card list. With `conditional`, each is a
+    conditional card (the preview dashboard's vertical-stack has no card visibility). -#]
+[%- macro music_notice(conditional=false) %]
+[%- for key, visibility in [
+    ('no_sensor', needs_sensor ~ ', {condition: state, entity: input_select.audio_sensor_music_source, state: [unavailable, unknown, "—"]}'),
+    ('no_spectrum', needs_sensor ~ ', ' ~ visual_is('spectrum') ~ ', ' ~ source_set ~ ', {condition: state, entity: binary_sensor.music_source_spectrum, state_not: "on"}'),
+    ('no_level', needs_sensor ~ ', ' ~ visual_is('level') ~ ', ' ~ source_set ~ ', {condition: state, entity: binary_sensor.music_source_level, state_not: "on"}'),
+    ('offline', offline)] %]
+[%- set text = '<ha-alert alert-type="info">' ~ t('ui.settings.music_notice_' ~ key) ~ '</ha-alert>' %]
+[%- if conditional %]
+- type: conditional
+  conditions: [ [[ visibility ]] ]
+  card:
+    type: markdown
+    content: [[ text | yaml ]]
+[%- else %]
+- type: markdown
+  visibility: [ [[ visibility ]] ]
+  content: [[ text | yaml ]]
+[%- endif %]
+[%- endfor %]
+[%- endmacro -%]

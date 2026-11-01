@@ -345,6 +345,23 @@ test("fallback classic: unavailable switches to classic", () => {
   assert.ok(isClassic(strokesSince(rec, from)));
 });
 
+// SPEC-025: the Ramka's strip falls back to Classic while its alias (sensor.music_spectrum or
+// sensor.music_level) is unavailable: no sensor selected, a sensor without that ability, offline.
+test("an unavailable source draws the fallback", () => {
+  for (const source of [{ kind: "spectrum", entity: "sensor.music_spectrum" }, { kind: "scalar", entity: "sensor.music_level" }]) {
+    const card = make({ source, fallback: "classic" });
+    card.hass = hassOf({ [source.entity]: entity("unavailable") });
+    document.body.appendChild(card);
+    raf.flush(100);
+    assert.ok(icon(card), source.kind);
+    const rec = recorder(card);
+    const from = mark(rec);
+    raf.flush(32);
+    assert.ok(isClassic(strokesSince(rec, from)), `${source.kind}: ${JSON.stringify(strokesSince(rec, from))}`);
+    card.remove();
+  }
+});
+
 test("fallback classic: spectrum stale 5 s switches to classic", () => {
   const realNow = Date.now;
   let clock = realNow();

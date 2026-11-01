@@ -60,11 +60,15 @@ With `music_visual: spectrum` or `level` (0.4.0) the now-playing view draws the 
 wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board marked
 `music: true` (`sensor.music_spectrum` with `sensor.music_spl_offset`, or `sensor.music_level`).
 
-- **Switching.** `input_select.<prefix>_music_visual` holds `spectrum`, `level` and `classic`, the
-  input's choice first, so a fresh helper starts there; it has no `initial:`, so the choice survives
-  a restart. It is set in Home Assistant (the settings dashboard's Music page), not on the tablet:
-  the Controls page has no visual tile. `classic`, or any other state, draws Ramka's own wave and
-  creates no visual card.
+- **Switching.** `input_boolean.<prefix>_music_live` (Live visualization, SPEC-025 amendment 1)
+  turns the visual on; off, the now-playing card draws Ramka's own classic wave and creates no
+  visual card (its `visual.live`). A fresh switch is off, and the seed and "Reset to defaults" turn
+  it off: a home starts on Classic. `input_select.<prefix>_music_visual` holds the input's visual
+  first, then the other (`spectrum`, `level`; no `classic`), and says which one Live shows; any
+  other state draws the own wave too. The input only turns the feature on. Neither helper has
+  `initial:`, so the choice survives a restart. Both are set in Home Assistant (the switch on the
+  settings dashboard's Music page, the visual on its Live visualization sub-view), not on the
+  tablet: the Controls page has no visual tile.
 - **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
   check that the aliases exist. Without them the card falls back to the classic wave with an info
   icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
@@ -168,13 +172,15 @@ approach toggle it has had since 0.1.0.
   Ramka keeps its tuning**: its numbers are not all at their minimum, so neither they nor the
   booleans of that group are touched; it gets every page switch on and the music defaults.
 - **Reset.** `script.<prefix>_settings_reset` writes the defaults again. Field `page` (`general`, a
-  view) limits it to that page's helpers, field `groups` (`presence_display`, `pages`,
+  view, `controls`, and with `music_visual` `music_sensor`, the music sensor's sub-view) limits it to that page's helpers, field `groups` (`presence_display`, `pages`,
   `music_visual`, `music_look`, `music_profiles`, …) to those groups; with both, the helpers in both; with neither, every helper and
   `input_boolean.<prefix>_ambient_music` too. It never touches audio-sensor's music source or
   calibration: a measurement is not a preference. The one audio-sensor helper it sets, while it is
-  there, is the sensor update rate (`input_select.audio_sensor_music_spectrum_rate`, to `normal`).
-- **Sensor update rate.** Music, Advanced also shows audio-sensor's update rate (`eco`, `normal`,
-  `fast`; hidden in a home without audio-sensor). `<prefix>_music_watching` keeps
+  there, is the sensor update rate (`input_select.audio_sensor_music_spectrum_rate`, to `normal`),
+  with page `music_sensor` or with neither field (Music's own Reset leaves it).
+- **Sensor update rate.** The music sensor's sub-view shows audio-sensor's update rate (`eco`,
+  `normal`, `fast`, an (i) telling what each does) while the selected board has one
+  (`binary_sensor.music_source_rate`). `<prefix>_music_watching` keeps
   `input_boolean.audio_sensor_music_watching` on while any Ramka's music view is on, and `fast`
   applies only then; audio-sensor's README ("Latency and update rate") has the profiles.
 - **Page switches.** `input_boolean.<prefix>_page_<view>` takes a view out live; the render is the
@@ -234,8 +240,8 @@ lovelace:
   (`input_boolean.<prefix>_near_enabled`), in Advanced the near distance and time and how long the
   controls stay up; these were General's. Its Reset sets these four.
 - **Basic and Advanced.** The Advanced cards (General: lux for full brightness; Controls: near
-  distance and hold, controls hold; Music: the music sensor (source and update rate), the flavours, line width,
-  the profile settings, the colour range and the calibration; Photos: the albums;
+  distance and hold, controls hold; Music: the flavours, line width, the profile settings and the
+  colour range; Photos: the albums;
   Air: the limits; Climate: the rooms) show while "Show advanced settings"
   (`input_boolean.<prefix>_settings_advanced`) is on; it sits on General and on every page with
   Advanced parts (Controls, Music, Photos, Air, Climate).
@@ -332,39 +338,60 @@ lovelace:
   or `status_page: false`) shows only a note naming its input and the way to add it: the inputs
   file, `domosenso render ramka` and a deploy. Without `music_visual` the Music page keeps the
   now-playing switch and says the same of the visual.
-- **Preview** (Music): the now-playing card's two visual configs, bound to the same helpers but
-  without `active`, so they draw while nothing plays; the one the visualization select names
-  shows, and `classic` shows a note, as does a home without audio-sensor (its music source select
-  unavailable), where the card's element does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
+- **Preview** (Live visualization): the now-playing card's two visual configs, bound to the same
+  helpers but without `active`, so they draw while nothing plays; while Live is on the one the
+  visualization select names shows; with Live off a note says the Ramka draws Classic, as it does
+  in a home without audio-sensor (its music source select unavailable), where the card's element
+  does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
   as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
   phone the strip is narrower at the same height.
-- **Music page layout** (unreleased): Basic (the page switch, visualization, palette, the response
-  profile and the Advanced switch), then Advanced, the whole section shown while the switch is on
-  (one "Music sensor" card with audio-sensor's music source and its sensor update rate, each row
-  hidden while unavailable and the card while both are; the two flavours and line width), the
-  Preview across both columns, then Profile settings and the Colour range, both shown only while
-  the Advanced switch is on, and the Calibration. The redraw rate has no row.
-- **Response profile** (Music, unreleased): the profile select has an (i) at its end
+- **Music page layout** (unreleased, SPEC-025 amendment 1): the page switch, the **Live
+  visualization** switch and "Live visualization ›", the way to its sub-view (shown with the switch
+  off too, so the visual can be set up first); while the switch is off a note says the Ramka shows
+  the Classic wave. Then the render-time inputs and the Reset (the two switches).
+- **Live visualization** (unreleased, SPEC-025 amendment 1): a sub-view of Music
+  (`/<settings path>/music-live`, `subview: true`: no tab; its back arrow returns to Music), every
+  setting of the visual. Two conditions drive it, V (Live is on: the visual needs a sensor) and A
+  (V, and the selected sensor has the visual's ability). In order: the Preview across both columns,
+  with the fallback notice (none while Live is off); the **Music sensor** widget, always: the source
+  select (audio-sensor's, hidden in a home without it), a line naming the sensor's abilities and
+  "Sensor settings ›" (to the sub-view below, while a sensor is selected that has an update rate or
+  a calibration); the **Visualization** widget, with V: the mode (spectrum or level, an (i) saying
+  what each draws), the spectrum's flavour (dune, halo, bars, and the home's own
+  `music_visual_options` flavour if it is another; the level has no flavour row) and the Advanced
+  switch; the **Colour range** (Advanced and A); **Advanced: response profile** (Advanced and A),
+  one card: the profile select with its (i), then the selected profile's rise, fall, hold, tilt,
+  the EQ preset select and the six EQ gains (the EQ with the spectrum only). The line width, the
+  palette and the redraw rate have no row. Its Reset (`page: music_live`) sets the visual's
+  settings, every profile and the colour range.
+- **Music sensor** (unreleased, SPEC-025): a sub-view of Live visualization
+  (`/<settings path>/music-sensor`, `subview: true`: no tab; its back arrow returns to Live
+  visualization), the selected board's own settings. A
+  header with the board's area and its abilities; the Live visualization preview; the update rate with
+  `rate`; the mic gain, read only, while a sensor is selected and its gain reads (it hides on
+  `unavailable` and `unknown`); the Calibration with `calibration`, below it; a Reset of the update rate only, with `rate`. The paths come from
+  `settings_paths` (default `ramka-settings`), as the preview's links. The rule for later features:
+  a setting of the sensor itself goes here, with its ability; a setting of a visual goes on Live
+  visualization, with V and A.
+- **Response profile** (Live visualization, unreleased): the profile select has an (i) at its end
   (`custom:ramka-info-select-row`, `cards/info-select-row.js`): hovering with a mouse shows the
   selected profile's purpose, best use and why / when (translated; the select shows the ids) in a
   floating tooltip beside the (i) (below it, above when there is no room, kept inside the window,
   over the cards without moving them), a tap pins it open on a tablet or phone, a tap elsewhere,
-  Escape or a scroll closes it. Profile settings holds one
-  card per profile, shown while that profile is selected: rise, fall, hold, tilt, the EQ preset
+  Escape or a scroll closes it. Under it, in the same card, the rows of the selected profile
+  (conditional rows on the select; Custom also for a state that is no template id): rise, fall, hold, tilt, the EQ preset
   select (with an (i) that tells what the selected preset does, its best use, why / when, and its
   curve, "Curve: sub −5 dB, bass −10 dB, …", built at render time from the preset table with the
   home's `music_eq_presets`; a flat one says so, and `fitted` that it is flat until set), and the six EQ ranges. The Colour range grid holds the
-  four neutral and hot dB values, which no profile changes. The page's "Reset to default" restores
-  everything on the Music page, every profile included.
-- **Music sensor and calibration** (Music, Advanced): audio-sensor's
-  `input_select.audio_sensor_music_source` (in the Advanced section's Music sensor card) and, in the Calibration
-  section, the offset in use with "calibrated" or "estimate", the
-  mic gain (read-only: changing it is a flash), the note, the procedure, the measured offset and
-  note inputs and "Apply the calibration" (`script.audio_sensor_apply_calibration`). Ramka's render
-  cannot see audio-sensor, so these cards hide while the select is unavailable; that a missing
-  entity counts as unavailable in a visibility condition is inference until staging shows it
-  (SPEC-021), and otherwise a home without audio-sensor sees "entity not available" rows there.
-  No reset touches the calibration: a measurement is not a preference.
+  four neutral and hot dB values, which no profile changes. The sub-view's "Reset to default"
+  restores everything on it, every profile included.
+- **Calibration** (the music sensor's sub-view, with `calibration`): the offset in use with
+  "calibrated" or "estimate", the note, the procedure, the measured offset and note inputs and
+  "Apply the calibration" (`script.audio_sensor_apply_calibration`); the mic gain (read only:
+  changing it is a flash) is its own row above. Ramka's render cannot see audio-sensor, so these
+  rows follow its ability sensors, which a home without audio-sensor does not have (a missing
+  entity reads unknown or unavailable in a visibility condition: hidden either way). No reset
+  touches the calibration: a measurement is not a preference.
 - **Option values** (`dune`, `series`, `dark`) read as they are: helper options are English, and a
   YAML `input_select` has no translated labels.
 - **The standing rule, for implementers:** every Ramka extension updates the settings dashboard in
@@ -416,7 +443,7 @@ lovelace:
   column, 56 px rows, 8 px gaps and padding) in a box of `screen` (width x height CSS px), scaled
   down as a whole in a narrower browser. Under it a link to the screen's settings page,
   `/<settings path>/<view>`; `settings_paths` names the settings dashboard per language when it is
-  not at `ramka-settings`. A card's own `visibility` is applied for the conditions the Ramka uses
+  not at `ramka-settings` (the settings dashboard's way to its music sensor sub-view reads it too). A card's own `visibility` is applied for the conditions the Ramka uses
   (`state` with `state` / `state_not`, `numeric_state`, `and`, `or`, `not`; any other counts as
   met): the controls' player tiles and the unavailable twins follow the live states. A card with
   its own `height` keeps it; grid rows only size the cards without one (the calendar's agenda-card,

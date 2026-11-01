@@ -240,6 +240,32 @@ test("without visual nothing changes", () => {
   assert.equal(frames, 0);
 });
 
+const LIVE = "input_boolean.music_live";
+test("with live: the visual only while the switch is on; off or missing keeps the own wave", () => {
+  const live = { visual: { ...VISUAL, live: LIVE } };
+  for (const state of ["off", "unavailable", "unknown", undefined]) {
+    frames = 0;
+    const extra = state === undefined ? {} : { [LIVE]: { state, attributes: {} } };
+    const card = makeCard({ states: { ...withSelect("spectrum"), ...extra }, config: { wave: true, ...live }, connect: true });
+    assert.equal(children(card).length, 0, String(state));
+    assert.ok(ownWave(card), String(state));
+  }
+  frames = 0;
+  const card = makeCard({ states: { ...withSelect("level"), [LIVE]: { state: "on", attributes: {} } }, config: { wave: true, ...live }, connect: true });
+  assert.equal(children(card).length, 1);
+  assert.deepEqual(children(card)[0].config, VISUAL.level);
+  // Switching live off removes the child and starts the wave; on again brings the visual back.
+  setSelect(card, "level", { [LIVE]: { state: "off", attributes: {} } });
+  assert.equal(children(card).length, 0);
+  assert.ok(ownWave(card));
+  setSelect(card, "level", { [LIVE]: { state: "on", attributes: {} } });
+  assert.equal(children(card).length, 1);
+});
+
+test("a live that is no entity id is refused", () => {
+  assert.throws(() => document.createElement("now-playing-card").setConfig({ entity: ENTITY, visual: { ...VISUAL, live: true } }), /visual\.live/);
+});
+
 test("a visual without a select is refused", () => {
   assert.throws(() => document.createElement("now-playing-card").setConfig({ entity: ENTITY, visual: { spectrum: VISUAL.spectrum } }), /visual\.select/);
 });

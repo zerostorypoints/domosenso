@@ -15,12 +15,12 @@
 #]
 [%- extends 'dashboard.lang.yaml.j2' -%]
 [%- set preview = true -%]
+[%- from 'music-source.j2' import music_notice, bad_path -%]
 [%- block dashboard -%]
 [%- if inputs.preview_dashboard | default(true) -%]
 [%- set settings_paths = inputs.settings_paths | default({}) -%]
-[%- set plain = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' -%]
 [%- if settings_paths is not mapping -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endif -%]
-[%- for path in settings_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
+[%- for path in settings_paths.values() if bad_path(path) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
 [%- set settings_url = '/' ~ settings_paths.get(lang, 'ramka-settings') ~ '/' -%]
 [#- Every screen: the ambient rotation's order, then the calendar, the controls and the now-playing
     screen; the settings page of each has the same path and the same title and icon
@@ -72,6 +72,10 @@ views:
               <ha-alert alert-type="warning">[[ t('ui.preview.switched_off') ]]</ha-alert>
 
               [[ settings_link ]]
+[%- endif %]
+[%- if view == 'music' and visuals %]
+        # The music visual's fallback notice (SPEC-025), as on the settings page: the now-playing
+        # card in the frame then draws Classic on its own.[[ music_notice(true) | indent(8) ]]
 [%- endif %]
         # The sections of the screen, laid out as the Ramka's sections view lays them out, in a box
         # of the screen's size, scaled down to fit a narrower browser; the link to the settings page

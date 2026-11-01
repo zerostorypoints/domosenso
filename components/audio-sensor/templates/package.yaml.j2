@@ -43,16 +43,36 @@
 [%- endfor -%]
 [%- if ns.music | length > 1 -%][[ fail('two music sensors: ' ~ (ns.music | map(attribute='room') | join(', '))) ]][%- endif -%]
 [%- set source = (ns.music | first) if ns.music else none -%]
-[#- The select's options: the music board first, then the others in input order. -#]
-[%- set ordered = ([source] + (ns.prepared | rejectattr('room', 'equalto', source.room) | list)) if source else [] -%]
+[#- The select's boards: the music board first, then the others in input order. The select adds `—` (no sensor): last after a music board, first without one. -#]
+[%- set none_option = '\u2014' -%]
+[%- set ordered = ([source] + (ns.prepared | rejectattr('room', 'equalto', source.room) | list)) if source else ns.prepared -%]
 [%- set seen = namespace(areas=[]) -%]
 [%- for b in ordered -%]
   [%- if b.area in seen.areas -%][[ fail('duplicate area: ' ~ b.area) ]][%- endif -%]
   [%- set seen.areas = seen.areas + [b.area] -%]
 [%- endfor -%]
 [#- A Home Assistant dict literal from the select's area to one field of that board, and the lookup with the select's state. A state that is not an option (`unknown` at a first start, `unavailable` while the helper is missing) reads the `music: true` board; keep that fallback in the lookup. -#]
-[%- macro board_map(field) -%]{[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b[field]) ]][% if not loop.last %], [% endif %][% endfor %]}[%- endmacro -%]
-[%- macro lookup(field) -%][[ board_map(field) ]].get(states("input_select.audio_sensor_music_source"), [[ jstr(source[field]) ]])[%- endmacro -%]
+[#- `—` maps to "" (no entity), so every alias reads nothing; a state that is no option reads the music board, or "" when there is none. -#]
+[%- macro board_map(field) -%]{[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b[field]) ]], [% endfor %][[ jstr(none_option) ]]: ""}[%- endmacro -%]
+[%- macro fallback(field) -%][[ jstr(source[field]) if source else '""' ]][%- endmacro -%]
+[%- macro lookup(field) -%][[ board_map(field) ]].get(states("input_select.audio_sensor_music_source"), [[ fallback(field) ]])[%- endmacro -%]
+[#- The aliases' availability: a board is selected and its entity has a value. -#]
+[%- macro available(field) -%]{% set entity = [[ lookup(field) ]] %}{{ entity != '' and has_value(entity) }}[%- endmacro -%]
+[#- The abilities' expressions (SPEC-025): an ability is what the board can do, not whether it sends data now. An existing entity that is unavailable or unknown keeps its ability; a missing one, or no sensor (""), has none. `ability(kind)` sets a Home Assistant variable named `kind`. -#]
+[%- set gone = "['unavailable', 'unknown']" -%]
+[%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain'} -%]
+[%- macro ability(kind) -%]
+{% set e = [[ lookup(ability_field[kind]) ]] %}{% set here = e != '' and expand(e) | count == 1 %}
+[%- if kind == 'spectrum' -%]
+{% set spectrum = here and (states(e) in [[ gone ]] or states(e).split(',') | count == 31) %}
+[%- elif kind in ['level', 'calibration'] -%]
+{% set [[ kind ]] = here and (states(e) in [[ gone ]] or states(e) | is_number) %}
+[%- elif kind == 'rate' -%]
+{% set options = state_attr(e, 'options') %}{% set rate = here and ((options is none and states(e) in [[ gone ]]) or (options is not none and ['eco', 'normal', 'fast'] | reject('in', options) | list | count == 0)) %}
+[%- else -%]
+{% set gain = here %}
+[%- endif -%]
+[%- endmacro -%]
 # Room sound figures, from the Domosenso catalog (component audio-sensor). Edit the inputs and render
 # again rather than editing this file.
 #
@@ -62,7 +82,7 @@
 # (`<prefix>_spl_calibrated`, off = the offset is an estimate) and a note.
 
 input_number:
-[%- if source %]
+[%- if boards %]
   # The measurement the apply script writes into the selected board's offset helper.
   audio_sensor_measured_offset:
     name: Audio sensor measured offset
@@ -91,7 +111,7 @@ input_boolean:
     name: [[ b.calibrated_label | yaml ]]
     icon: mdi:check-decagram
 [%- endfor %]
-[%- if source %]
+[%- if boards %]
   # On while some view shows the music visual (the Ramka sets it): the spectrum rate `fast` applies
   # only then. One flag per home; no `initial:`, a restart keeps what the views last said.
   audio_sensor_music_watching:
@@ -106,24 +126,31 @@ input_text:
     max: 255
     icon: mdi:note-text
 [%- endfor %]
-[%- if source %]
+[%- if boards %]
   audio_sensor_calibration_note:
     name: Audio sensor calibration note
     max: 255
     icon: mdi:note-edit
 [%- endif %]
-[%- if source %]
+[%- if boards %]
 
-# Which board feeds the music aliases. The helper has no `initial:`: a restart keeps the choice, and
-# a fresh one reads `unknown`, which the aliases treat as the `music: true` board.
+# Which board feeds the music aliases, or `—` for none. The helper has no `initial:`: a restart keeps
+# the choice, and a fresh one reads `unknown`, which the aliases treat as the `music: true` board (as
+# none when no board is marked).
 input_select:
   audio_sensor_music_source:
     name: Audio sensor music source
     icon: mdi:microphone-message
     options:
+[%- if not source %]
+      - [[ none_option | yaml ]]
+[%- endif %]
 [%- for b in ordered %]
       - [[ b.area | yaml ]]
 [%- endfor %]
+[%- if source %]
+      - [[ none_option | yaml ]]
+[%- endif %]
   # How often the music board publishes its spectrum: eco 500 ms, normal 200 ms, fast every 85 ms
   # (the newest frame). No `initial:`, which would undo the choice at every restart; normal comes
   # first because a fresh helper takes the first option (eco first started a new home on eco).
@@ -143,7 +170,7 @@ recorder:
 [%- for b in ns.prepared %]
       - [[ b.spectrum ]]
 [%- endfor %]
-[%- if source %]
+[%- if boards %]
       - sensor.music_spectrum
 [%- endif %]
 
@@ -162,16 +189,19 @@ template:
           # room-meter-card drops its "estimated" note while this is true.
           calibrated: "{{ is_state('input_boolean.[[ b.prefix ]]_spl_calibrated', 'on') }}"
 [%- endfor %]
-[%- if source %]
+[%- if boards %]
       # The music sensor, under names that do not depend on the room. Each alias looks up the board
       # whose area the select holds, in a map rendered here; the lookup is a dict get and one more
       # states() call, cheap enough for the spectrum, which changes five times a second. A select
       # that is unavailable, unknown or holds no board's area falls back to the `music: true` board,
-      # the last argument of every lookup, so the aliases never go dark because of the helper.
+      # the last argument of every lookup (to none when no board is marked). `—` (no sensor) and a
+      # missing entity make an alias unavailable, in `availability`, not in the cheap state.
       - name: Music spectrum
         unique_id: audio_sensor_music_spectrum
         default_entity_id: sensor.music_spectrum
         icon: mdi:equalizer
+        availability: >-
+          [[ available('spectrum') ]]
         state: >-
           {{ states([[ lookup('spectrum') ]]) }}
         attributes:
@@ -179,6 +209,8 @@ template:
       - name: Music SPL offset
         unique_id: audio_sensor_music_spl_offset
         default_entity_id: sensor.music_spl_offset
+        availability: >-
+          [[ available('offset') ]]
         unit_of_measurement: dB
         state_class: measurement
         state: >-
@@ -192,6 +224,8 @@ template:
       - name: Music level
         unique_id: audio_sensor_music_level
         default_entity_id: sensor.music_level
+        availability: >-
+          [[ available('level') ]]
         device_class: sound_pressure
         unit_of_measurement: dB
         state_class: measurement
@@ -205,6 +239,8 @@ template:
         unique_id: audio_sensor_music_mic_gain
         default_entity_id: sensor.music_mic_gain
         icon: mdi:microphone-settings
+        availability: >-
+          [[ available('mic_gain') ]]
         state: >-
           {{ states([[ lookup('mic_gain') ]]) }}
         attributes:
@@ -214,6 +250,8 @@ template:
         unique_id: audio_sensor_music_spl_calibration
         default_entity_id: sensor.music_spl_calibration
         icon: mdi:tune
+        availability: >-
+          [[ available('calibrated') ]]
         state: >-
           {{ 'calibrated' if is_state([[ lookup('calibrated') ]], 'on') else 'estimate' }}
         attributes:
@@ -221,7 +259,7 @@ template:
           note: >-
             {{ states([[ lookup('note') ]]) }}
 [%- endif %]
-[%- if source %]
+[%- if boards %]
 
   - binary_sensor:
       - name: Music sensor online
@@ -233,7 +271,61 @@ template:
         attributes:
           component: audio-sensor
 [%- endif %]
-[%- if source %]
+[%- if boards %]
+
+  # The music source contract (SPEC-025): the board the select holds, and what it can do. An ability
+  # is the board's capability, not whether data flows now, so these update on start, on a change of
+  # the select and once a minute, never on the spectrum.
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: input_select.audio_sensor_music_source
+      - trigger: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: Music source
+        unique_id: audio_sensor_music_source
+        default_entity_id: sensor.music_source
+        icon: mdi:microphone-message
+        state: >-
+          {{ [[ lookup('area') ]] or 'none' }}
+        attributes:
+          component: audio-sensor
+          interface: 1
+          capabilities: >-
+            [[ ability('spectrum') ]][[ ability('level') ]][[ ability('rate') ]][[ ability('calibration') ]][[ ability('gain') ]]{{ (['spectrum'] if spectrum else []) + (['level'] if level else []) + (['rate'] if rate else []) + (['calibration'] if calibration else []) + (['gain'] if gain else []) }}
+    binary_sensor:
+      - name: Music source spectrum
+        unique_id: audio_sensor_music_source_spectrum
+        default_entity_id: binary_sensor.music_source_spectrum
+        state: >-
+          [[ ability('spectrum') ]]{{ spectrum }}
+        attributes:
+          component: audio-sensor
+      - name: Music source level
+        unique_id: audio_sensor_music_source_level
+        default_entity_id: binary_sensor.music_source_level
+        state: >-
+          [[ ability('level') ]]{{ level }}
+        attributes:
+          component: audio-sensor
+      - name: Music source rate
+        unique_id: audio_sensor_music_source_rate
+        default_entity_id: binary_sensor.music_source_rate
+        state: >-
+          [[ ability('rate') ]]{{ rate }}
+        attributes:
+          component: audio-sensor
+      - name: Music source calibration
+        unique_id: audio_sensor_music_source_calibration
+        default_entity_id: binary_sensor.music_source_calibration
+        state: >-
+          [[ ability('calibration') ]]{{ calibration }}
+        attributes:
+          component: audio-sensor
+[%- endif %]
+[%- if boards %]
 
 # Applies the measurement to the board the select holds: the offset, the note, and the flag that says
 # the offset is no longer an estimate. The same map as the aliases, so both agree on the board.
@@ -252,7 +344,10 @@ script:
              and states('input_text.audio_sensor_calibration_note') not in ['unavailable', 'unknown'] }}
       - variables:
           board: >-
-            {{ {[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b.prefix) ]][% if not loop.last %], [% endif %][% endfor %]}.get(states("input_select.audio_sensor_music_source"), [[ jstr(source.prefix) ]]) }}
+            {{ {[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b.prefix) ]], [% endfor %][[ jstr(none_option) ]]: ""}.get(states("input_select.audio_sensor_music_source"), [[ jstr(source.prefix) if source else '""' ]]) }}
+      # No board selected (`—`, or no music board): nothing to apply the measurement to.
+      - condition: template
+        value_template: "{{ board != '' }}"
       - action: input_number.set_value
         target:
           entity_id: "{{ 'input_number.' ~ board ~ '_spl_offset' }}"
@@ -267,7 +362,7 @@ script:
         target:
           entity_id: "{{ 'input_boolean.' ~ board ~ '_spl_calibrated' }}"
 [%- endif %]
-[%- if source %]
+[%- if boards %]
 
 # Forwards the spectrum rate to the board the music source select holds, the same map as the aliases.
 # `fast` costs Wi-Fi airtime and the board's CPU, so it applies only while someone watches; 10 s after
@@ -315,7 +410,7 @@ automation:
           target: >-
             {{ [[ lookup('spectrum_rate') ]] }}
           previous: >-
-            {{ [[ board_map('spectrum_rate') ]].get(trigger.from_state.state, [[ jstr(source.spectrum_rate) ]])
+            {{ [[ board_map('spectrum_rate') ]].get(trigger.from_state.state, [[ fallback('spectrum_rate') ]])
                if trigger.id == 'source' and trigger.from_state is not none else '' }}
           option: >-
             {% set choice = states('input_select.audio_sensor_music_spectrum_rate') %}
@@ -333,7 +428,7 @@ automation:
               option: normal
       - condition: template
         value_template: >-
-          {{ states(target) not in ['unavailable', 'unknown'] }}
+          {{ target != '' and states(target) not in ['unavailable', 'unknown'] }}
       - action: select.select_option
         target:
           entity_id: "{{ target }}"

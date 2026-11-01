@@ -168,13 +168,17 @@ read a home's secrets. With wrong Wi-Fi credentials the fix is a USB flash again
 
 ## The music source and calibration
 
-With a board marked `music: true`, `input_select.audio_sensor_music_source` lists the boards' areas,
-that board first and the others in input order. The music aliases (`sensor.music_spectrum`,
+`input_select.audio_sensor_music_source` lists the boards' areas, the `music: true` board first and
+the others in input order, then `—` (no sensor). Without a `music: true` board the list is `—`
+first, then the boards in input order. The select, the aliases, the calibration inputs and the
+script are always rendered. The music aliases (`sensor.music_spectrum`,
 `sensor.music_spl_offset`, `sensor.music_level`, `sensor.music_mic_gain`,
 `sensor.music_spl_calibration`, `binary_sensor.music_sensor_online`) read the board whose area the
-select holds, so another board can feed a music visual without a render. One board gives a
-one-option select. A select that is `unknown` (a first start) or unavailable reads the `music: true`
-board, so the aliases never depend on the helper being there. Two boards cannot share an area.
+select holds, so another board can feed a music visual without a render. With `—` every alias is
+`unavailable` (and `binary_sensor.music_sensor_online` is off): a home can choose to have no music
+source. A select that is `unknown` (a first start) or unavailable reads the `music: true` board, or
+nothing when no board is marked, so the aliases never depend on the helper being there.
+Two boards cannot share an area.
 There is no `initial:` on any helper: a restart keeps the choice.
 
 Every board has `input_boolean.<id_prefix>_spl_calibrated` (off = the offset is an estimate) and
@@ -184,8 +188,38 @@ reference minus the board's level without offset. Type it into
 `input_number.audio_sensor_measured_offset`, add a note to `input_text.audio_sensor_calibration_note`
 and run `script.audio_sensor_apply_calibration`: it writes the offset and the note into that
 board's helpers and turns its flag on. Typing the offset straight into
-`input_number.<id_prefix>_spl_offset` works as before. Without a `music: true` board there is no
-select, no alias, no measured-offset or note input and no script; the per-board flag and note stay.
+`input_number.<id_prefix>_spl_offset` works as before. With `—` selected the
+script does nothing, and the spectrum rate goes back to `normal` on the board the select left.
+
+## The music source contract
+
+SPEC-025, unreleased. Consumers (the Ramka, any later component) read only the music aliases, never a
+board's own entities. The aliases are the interface, version 1:
+
+| alias | shape | ability |
+|---|---|---|
+| `sensor.music_spectrum` | 31 comma-separated dBFS values, third octaves 20 Hz to 20 kHz | `spectrum` |
+| `sensor.music_level` | one number, dBFS | `level` |
+| `sensor.music_spl_offset` | dB; attribute `calibrated` | `calibration` (with `level`) |
+| `input_select.audio_sensor_music_spectrum_rate`, forwarded to the board's select with options eco, normal, fast | | `rate` |
+| `sensor.music_mic_gain` | the board's gain, read only | `gain` |
+
+A board meets the contract when it gives `spectrum` or `level`; the other abilities are optional. A
+board that is not this catalog's firmware meets it by giving the same shapes, mapped by
+`sensors[].entities`.
+
+`sensor.music_source` holds the selected board's area (`none` for `—`) and the attributes
+`interface: 1` and `capabilities`, the abilities in the order spectrum, level, rate, calibration,
+gain. `binary_sensor.music_source_spectrum`, `_level`, `_rate` and `_calibration` are on while the
+selected board has the ability (one entity per ability, because a visibility condition tests a state,
+not an attribute). They are `on` or `off`, never `unavailable`.
+
+An ability is what the board can do, not whether it sends data now. An existing entity that is
+`unavailable` or `unknown` keeps its ability, so a board that is rebooting does not flicker the
+page; a missing entity has none. `spectrum` needs a spectrum entity whose state, while it has one,
+is 31 numbers; `level` one whose state is a number; `rate` a select whose options include eco,
+normal and fast; `calibration` follows `level`; `gain` is the mic-gain entity existing. They are
+re-read on start, on a change of the select and every minute, never on a spectrum frame.
 
 ## The cards
 
@@ -290,10 +324,10 @@ The board's **Spectrum rate** select sets the profile:
 
 The intervals are measured (below). Each publish is one CSV of 31 values over the API,
 one state change and one alias render in Home Assistant, and one websocket message per open
-dashboard; the recorder excludes the spectrum in every profile. With a `music: true` board the
+dashboard; the recorder excludes the spectrum in every profile. The
 package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a fresh one starts on
 `normal`, its first option; a state that is no option reads as `normal`) and the flag `input_boolean.audio_sensor_music_watching`. Its automation sets
-the music board's select to the choice, but `fast` only while the flag is on and back to `normal`
+the selected board's select to the choice, but `fast` only while the flag is on and back to `normal`
 10 s after it turns off, so a board is fast only while someone looks. The Ramka sets the flag
 while its music view shows. The automation re-applies the profile when Home Assistant starts, when
 the music source changes (the board it leaves goes back to `normal`), and on any change of a

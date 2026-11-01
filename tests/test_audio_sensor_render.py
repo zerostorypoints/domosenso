@@ -1,4 +1,5 @@
 """The audio-sensor component's Home Assistant package, rendered for the demo home (SPEC-018)."""
+import ast
 import copy
 from pathlib import Path
 
@@ -37,16 +38,31 @@ def templates(package) -> dict:
     return found
 
 
-def evaluate(template, states_by_id) -> str:
-    """A Home Assistant template run with stub states (an entity not listed is `unavailable`)."""
+def evaluate(template, states_by_id, attrs=None) -> str:
+    """A Home Assistant template run with stub states (an entity not listed is `unavailable` and does not exist: `expand` gives none)."""
     env = jinja2.Environment()
+    attrs = attrs or {}
 
     def states(entity_id):
         return states_by_id.get(entity_id, "unavailable")
 
-    return env.from_string(template).render(states=states, is_state=lambda e, v: states(e) == v).strip()
+    def is_number(value):
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return False
+        return True
+
+    env.tests["is_number"] = is_number
+    env.filters["is_number"] = is_number
+    return env.from_string(template).render(
+        states=states, is_state=lambda e, v: states(e) == v,
+        expand=lambda e: [e] if e in states_by_id else [],
+        state_attr=lambda e, a: attrs.get(e, {}).get(a),
+        has_value=lambda e: states(e) not in ("unknown", "unavailable")).strip()
 
 
+NONE = "\u2014"  # the select's no-sensor option
 LIVING = "sensor.living_room_audio_sensor_living_room_spectrum"
 KIDS = "sensor.kids_room_audio_sensor_kids_room_spectrum"
 LIVING_LEVEL = "sensor.living_room_audio_sensor_living_room_sound_level"
@@ -102,16 +118,6 @@ def test_two_music_sensors_fail(tmp_path):
     inputs["sensors"][1]["music"] = True
     with pytest.raises(dr.RenderError, match=r"two music sensors: living-room, kids-room"):
         render_text(tmp_path, inputs)
-
-
-def test_no_music_sensor_no_aliases(tmp_path):
-    inputs = demo_inputs()
-    inputs["sensors"][0]["music"] = False
-    package = render(tmp_path, inputs)
-    assert templates(package).keys() == {"audio_sensor_living_room_spl_offset", "audio_sensor_kids_room_spl_offset"}
-    assert "script" not in package
-    assert "sensor.music_spectrum" not in package["recorder"]["exclude"]["entities"]
-    assert "input_number" in package
 
 
 def test_offset_helper_has_no_initial(demo):
@@ -194,11 +200,16 @@ def test_alias_templates_stay_cheap(demo):
     state = templates(demo)["audio_sensor_music_spectrum"]["state"]
     assert state.count("states(") == 2
     assert "for " not in state and "split" not in state
+    # The availability re-renders with the spectrum too: only the lookups it needs.
+    for alias in ("audio_sensor_music_spectrum", "audio_sensor_music_level"):
+        availability = templates(demo)[alias]["availability"]
+        assert "for " not in availability and "split" not in availability, alias
+        assert availability.count("states(") + availability.count("has_value(") <= 2, (alias, availability)
 
 
 def test_entities_carry_the_component_and_boards_their_area(demo):
     found = templates(demo)
-    assert len(found) == 8
+    assert len(found) == 13
     for entity in found.values():
         assert entity["attributes"]["component"] == "audio-sensor"
     assert found["audio_sensor_kids_room_spl_offset"]["attributes"]["area"] == "Kids' room"
@@ -211,34 +222,72 @@ def test_entities_carry_the_component_and_boards_their_area(demo):
 
 def test_music_source_select_options(tmp_path, demo):
     select = demo["input_select"]["audio_sensor_music_source"]
-    assert select["options"] == ["Living room", "Kids' room"]
+    assert select["options"] == ["Living room", "Kids' room", NONE]
     assert "initial" not in select
     inputs = demo_inputs()
     inputs["sensors"][0]["music"] = False
     inputs["sensors"][1]["music"] = True
     inputs["sensors"].append({"room": "hall", "area": "Hall"})
     options = render(tmp_path, inputs)["input_select"]["audio_sensor_music_source"]["options"]
-    assert options == ["Kids' room", "Living room", "Hall"]
+    assert options == ["Kids' room", "Living room", "Hall", NONE]
 
 
-def test_no_music_board_no_select(tmp_path):
+def test_no_music_board_renders_the_select_with_none_first(tmp_path):
     inputs = demo_inputs()
     inputs["sensors"][0]["music"] = False
     package = render(tmp_path, inputs)
-    assert "input_select" not in package
-    assert "script" not in package
-    assert set(package["input_number"]) == {"living_room_spl_offset", "kids_room_spl_offset"}
-    assert "audio_sensor_calibration_note" not in package.get("input_text", {})
+    assert package["input_select"]["audio_sensor_music_source"]["options"] == [NONE, "Living room", "Kids' room"]
+    assert "script" in package
+    assert "audio_sensor_music_spectrum_rate" in {a["id"] for a in package["automation"]}
+    assert "sensor.music_spectrum" in package["recorder"]["exclude"]["entities"]
+    t = templates(package)["audio_sensor_music_level"]
+    assert evaluate(t.get("availability", "true"), {SELECT: "unknown", LIVING_LEVEL: "-40"}) == "False"
+    assert evaluate(t.get("availability", "true"), {SELECT: "Kids' room", KIDS_LEVEL: "-40"}) == "True"
+    assert set(package["input_number"]) == {
+        "audio_sensor_measured_offset", "living_room_spl_offset", "kids_room_spl_offset"}
     # The per-board flag and note exist for every board.
-    assert set(package["input_boolean"]) == {"living_room_spl_calibrated", "kids_room_spl_calibrated"}
-    assert set(package["input_text"]) == {"living_room_spl_note", "kids_room_spl_note"}
+    assert {"living_room_spl_calibrated", "kids_room_spl_calibrated"} <= set(package["input_boolean"])
+    assert {"living_room_spl_note", "kids_room_spl_note"} <= set(package["input_text"])
+
+
+def test_music_source_select_ends_with_none(demo):
+    assert demo["input_select"]["audio_sensor_music_source"]["options"] == ["Living room", "Kids' room", NONE]
+
+
+def test_none_makes_every_alias_unavailable(demo):
+    states = {SELECT: NONE, LIVING: "1", LIVING_LEVEL: "-40"}
+    for uid in ("audio_sensor_music_spectrum", "audio_sensor_music_level", "audio_sensor_music_spl_offset",
+                "audio_sensor_music_mic_gain", "audio_sensor_music_spl_calibration"):
+        t = templates(demo)[uid]
+        assert evaluate(t.get("availability", "true"), states) == "False", uid
+    assert evaluate(templates(demo)["audio_sensor_music_sensor_online"]["state"], states) == "False"
+    # A board in the select keeps the alias available.
+    ok = {**states, SELECT: "Living room"}
+    assert evaluate(templates(demo)["audio_sensor_music_spectrum"]["availability"], ok) == "True"
+
+
+def test_unknown_source_still_reads_the_music_board(demo):
+    t = templates(demo)["audio_sensor_music_spectrum"]
+    assert evaluate(t["state"], {SELECT: "unknown", LIVING: "-1,-2"}) == "-1,-2"
+
+
+def test_rate_goes_back_to_normal_and_sends_nothing_for_none(demo):
+    states = {RATE: "fast", WATCHING: "on", SELECT: NONE, LIVING_RATE: "fast", KIDS_RATE: "normal"}
+    trigger = {"id": "source", "from_state": {"state": "Living room"}}
+    # The board the select leaves goes back to normal; nothing is sent for the no-sensor option.
+    assert rate_calls(demo, states, trigger) == [(LIVING_RATE, "normal")]
+    # Any other trigger with `—` sends nothing, and never an empty or `—` target.
+    other = rate_calls(demo, states, {"id": "choice", "from_state": {"state": "eco"}})
+    assert other == []
+    for target, _ in rate_calls(demo, states, trigger) + other:
+        assert target not in ("", NONE)
 
 
 def test_one_board_one_option(tmp_path):
     inputs = demo_inputs()
     inputs["sensors"] = inputs["sensors"][:1]
     package = render(tmp_path, inputs)
-    assert package["input_select"]["audio_sensor_music_source"]["options"] == ["Living room"]
+    assert package["input_select"]["audio_sensor_music_source"]["options"] == ["Living room", NONE]
     assert "script" in package
     assert "sensor.music_spectrum" in package["recorder"]["exclude"]["entities"]
 
@@ -248,9 +297,10 @@ def test_duplicate_area_fails(tmp_path):
     inputs["sensors"][1]["area"] = "Living room"
     with pytest.raises(dr.RenderError, match=r"duplicate area: Living room"):
         render_text(tmp_path, inputs)
-    # Without a music board there is no select, so no collision to refuse.
+    # The select exists with or without a music board, so the collision is refused either way.
     inputs["sensors"][0]["music"] = False
-    render_text(tmp_path / "none", inputs)
+    with pytest.raises(dr.RenderError, match=r"duplicate area: Living room"):
+        render_text(tmp_path / "none", inputs)
 
 
 def test_calibration_helpers_per_board(demo):
@@ -351,7 +401,9 @@ def test_apply_calibration_targets_the_selected_board(demo):
         context = {"board": board}
         rendered = []
         assert evaluate_with(guard["value_template"], states, context) == "True"
-        for step in sequence[2:]:
+        # sequence[2] stops the script when no board is selected (`—`).
+        assert evaluate_with(sequence[2]["value_template"], states, context) == "True"
+        for step in sequence[3:]:
             target = evaluate_with(step["target"]["entity_id"], states, context)
             data = {k: evaluate_with(v, states, context) for k, v in step.get("data", {}).items()}
             rendered.append((step["action"], target, data))
@@ -360,6 +412,13 @@ def test_apply_calibration_targets_the_selected_board(demo):
             ("input_text.set_value", f"input_text.{prefix}_spl_note", {"value": "pink noise, 70 dB on the meter"}),
             ("input_boolean.turn_on", f"input_boolean.{prefix}_spl_calibrated", {}),
         ]
+
+
+def test_apply_calibration_stops_for_none(demo):
+    script = demo["script"]["audio_sensor_apply_calibration"]["sequence"]
+    board = evaluate(script[1]["variables"]["board"], {SELECT: NONE})
+    assert board == ""
+    assert evaluate_with(script[2]["value_template"], {}, {"board": board}) == "False"
 
 
 def test_apply_calibration_refuses_a_missing_measurement(demo):
@@ -452,7 +511,8 @@ def run_template(template, states_by_id, **context) -> str:
         return states_by_id.get(entity_id, "unavailable")
 
     return env.from_string(template).render(
-        states=states, is_state=lambda e, v: states(e) == v, **context).strip()
+        states=states, is_state=lambda e, v: states(e) == v,
+        has_value=lambda e: states(e) not in ("unknown", "unavailable"), **context).strip()
 
 
 def rate_calls(package, states_by_id, trigger) -> list:
@@ -484,15 +544,6 @@ def test_spectrum_rate_helpers_with_a_music_board(demo):
     assert "initial" not in rate
     watching = demo["input_boolean"]["audio_sensor_music_watching"]
     assert "initial" not in watching
-
-
-def test_no_music_board_no_spectrum_rate(tmp_path):
-    inputs = demo_inputs()
-    inputs["sensors"][0]["music"] = False
-    package = render(tmp_path, inputs)
-    assert "input_select" not in package
-    assert "audio_sensor_music_watching" not in package["input_boolean"]
-    assert all(a["id"] != "audio_sensor_music_spectrum_rate" for a in package.get("automation") or [])
 
 
 def test_spectrum_rate_automation_targets_the_selected_board(demo):
@@ -566,3 +617,65 @@ def test_entities_input_accepts_spectrum_rate(tmp_path):
     assert any(t.get("entity_id") == "select.lounge_mic_spectrum_rate"
                or "select.lounge_mic_spectrum_rate" in (t.get("entity_id") or [])
                for t in rate_automation(package)["triggers"])
+
+
+ABILITY = {a: f"audio_sensor_music_source_{a}" for a in ("spectrum", "level", "rate", "calibration")}
+GAIN = "sensor.living_room_audio_sensor_living_room_mic_gain"
+FULL = {SELECT: "Living room", LIVING: ",".join(["-50"] * 31), LIVING_LEVEL: "-40", LIVING_RATE: "normal"}
+RATE_ATTRS = {LIVING_RATE: {"options": ["eco", "normal", "fast"]}}
+ALL_ON = {"spectrum": "on", "level": "on", "rate": "on", "calibration": "on"}
+
+
+@pytest.mark.parametrize("states, attrs, expected", [
+    (FULL, RATE_ATTRS, ALL_ON),
+    ({**FULL, LIVING: ",".join(["-50"] * 30)}, RATE_ATTRS, {**ALL_ON, "spectrum": "off"}),
+    ({**FULL, LIVING: "unavailable", LIVING_LEVEL: "unavailable", LIVING_RATE: "unavailable"}, RATE_ATTRS, ALL_ON),
+    ({SELECT: "Living room", LIVING_LEVEL: "-40"}, {}, {**ALL_ON, "spectrum": "off", "rate": "off"}),
+    (FULL, {LIVING_RATE: {"options": ["eco", "normal"]}}, {**ALL_ON, "rate": "off"}),
+    ({**FULL, SELECT: NONE}, RATE_ATTRS, {a: "off" for a in ALL_ON}),
+    ({**FULL, LIVING_LEVEL: "abc"}, RATE_ATTRS, {**ALL_ON, "level": "off", "calibration": "off"}),
+    ({**FULL, LIVING: "unknown"}, RATE_ATTRS, ALL_ON),
+])
+def test_abilities(demo, states, attrs, expected):
+    found = templates(demo)
+    for ability, want in expected.items():
+        entity = found[ABILITY[ability]]
+        assert entity["default_entity_id"] == f"binary_sensor.music_source_{ability}"
+        got = evaluate(entity["state"], states, attrs)
+        assert {"True": "on", "False": "off"}[got] == want, ability
+
+
+def test_music_source_sensor_names_the_board_and_its_abilities(demo):
+    sensor = templates(demo)["audio_sensor_music_source"]
+    assert sensor["default_entity_id"] == "sensor.music_source"
+    assert sensor["attributes"]["interface"] == 1
+    full = {**FULL, GAIN: "30"}
+    assert evaluate(sensor["state"], full) == "Living room"
+    caps = ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], full, RATE_ATTRS))
+    assert caps == ["spectrum", "level", "rate", "calibration", "gain"]
+    assert evaluate(sensor["state"], {**full, SELECT: NONE}) == "none"
+    assert ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], {**full, SELECT: NONE}, RATE_ATTRS)) == []
+    # Without the gain entity, gain is not listed.
+    assert "gain" not in ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], FULL, RATE_ATTRS))
+
+
+def test_abilities_are_trigger_based_and_cheap(demo):
+    blocks = [b for b in demo["template"] if any(
+        e.get("unique_id") == "audio_sensor_music_source"
+        for e in b.get("sensor", []))]
+    assert len(blocks) == 1
+    block = blocks[0]
+    assert {e["unique_id"] for e in block["binary_sensor"]} == set(ABILITY.values())
+    triggers = block["triggers"]
+    assert {"trigger": "homeassistant", "event": "start"} in triggers
+    assert {"trigger": "state", "entity_id": SELECT} in triggers
+    assert {"trigger": "time_pattern", "minutes": "/1"} in triggers
+    assert len(triggers) == 3
+    assert "spectrum" not in str([t for t in triggers if t["trigger"] == "state"])
+
+
+def test_gain_stays_listed_while_the_mic_gain_entity_is_unavailable(demo):
+    sensor = templates(demo)["audio_sensor_music_source"]
+    states = {**FULL, GAIN: "unavailable"}
+    caps = ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], states, RATE_ATTRS))
+    assert "gain" in caps

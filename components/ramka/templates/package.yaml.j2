@@ -61,6 +61,10 @@
 [%- set flavours = {'spectrum': ['still', 'swell', 'dune', 'veil', 'voices', 'halo', 'afterglow', 'bars'],
     'level': ['still', 'tide', 'centre', 'timeline', 'clocks', 'ripples', 'tint', 'bars']} -%]
 [%- set palettes = ['zones', 'series', 'calm'] -%]
+[#- The flavours the Live visualization sub-view offers (SPEC-025 amendment 1): a few of the
+    registry's; a home's own music_visual_options flavour joins them when it is another (any of the
+    registry's), so it stays selectable and valid. -#]
+[%- set offered = {'spectrum': ['dune', 'halo', 'bars'], 'level': ['centre']} -%]
 [%- macro within(key, value, lo, hi) -%][%- if value is boolean or value is not number or value < lo or value > hi -%][[ fail('ramka: music_visual_options.' ~ key ~ ' must be within ' ~ lo ~ ' and ' ~ hi) ]][%- endif -%][%- endmacro -%]
 [#- The music EQ (the helpers, the look sensor and the dashboards below render from these two tables). Six
     ranges in dB, each -18...+12 (the card's range, spec 3.1), and the presets are templates/music-tables.j2's,
@@ -98,6 +102,7 @@
 [%- set mvo = inputs.music_visual_options | default({}) -%]
 [%- if mvo is not mapping -%][[ fail('ramka: music_visual_options must be a mapping') ]][%- endif -%]
 [%- for key in mvo if key not in ['spectrum', 'level', 'palette', 'rise', 'fall', 'line_width', 'tilt', 'fps'] -%][[ fail("ramka: music_visual_options: unknown key '" ~ key ~ "'") ]][%- endfor -%]
+[#- The visual Live shows: the input's first (Classic is the live switch off, SPEC-025 amendment 1). -#]
 [%- set _ = mv.update({'music_visual': music_visual}) -%]
 [%- set palette = mvo.palette | default('series') -%]
 [%- if palette is not string or palette not in palettes -%][[ fail('ramka: music_visual_options.palette must be zones, series or calm') ]][%- endif -%]
@@ -137,10 +142,14 @@
 [%- set _ = settings.append(('input_select', 'theme_mode', 'general', 'pages', d.theme_mode)) -%]
 [%- set _ = settings.append(('input_boolean', 'settings_advanced', 'general', 'pages', false)) -%]
 [%- set views = ['climate', 'air', 'plants', 'photos', 'status', 'calendar', 'music'] -%]
-[%- set reset_pages = ['general'] + views + ['controls'] -%]
+[#- A page of the settings dashboard each, and with the visual the Music page's two sub-views: the
+    live visualization's (its visual's settings, SPEC-025 amendment 1) and the music sensor's. -#]
+[%- set reset_pages = ['general'] + views + ['controls'] + (['music_live', 'music_sensor'] if music_visual is not none else []) -%]
 [%- for view in views -%][%- set _ = settings.append(('input_boolean', 'page_' ~ view, view, 'pages', true)) -%][%- endfor -%]
+[#- The live switch is the Music page's, off by default: Classic until the home turns it on. -#]
+[%- if music_visual is not none -%][%- set _ = settings.append(('input_boolean', 'music_live', 'music', 'music_visual', false)) -%][%- endif -%]
 [%- for key, value in mv.items() -%]
-[%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
+[%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music_live', 'music_visual', value)) -%]
 [%- endfor -%]
 [#- The music look (spec 5): the entry on screen, and Custom's EQ and hold (its rise, fall, tilt and
     windows are the music_visual helpers above). A group of its own, seeded by its own numbers: a home
@@ -148,10 +157,10 @@
     the sliders' minimum (-18 dB, 0 s). -#]
 [%- if ['custom'] + (looks | list) != look_ids -%][[ fail('ramka: the looks table and look_ids of templates/music-tables.j2 differ') ]][%- endif -%]
 [%- if music_visual is not none -%]
-[%- set _ = settings.append(('input_select', 'music_template', 'music', 'music_look', 'custom')) -%]
-[%- set _ = settings.append(('input_select', 'music_eq', 'music', 'music_look', eq_none)) -%]
-[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_eq_' ~ key, 'music', 'music_look', 0)) -%][%- endfor -%]
-[%- set _ = settings.append(('input_number', 'music_hold_s', 'music', 'music_look', 1.5)) -%]
+[%- set _ = settings.append(('input_select', 'music_template', 'music_live', 'music_look', 'custom')) -%]
+[%- set _ = settings.append(('input_select', 'music_eq', 'music_live', 'music_look', eq_none)) -%]
+[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_eq_' ~ key, 'music_live', 'music_look', 0)) -%][%- endfor -%]
+[%- set _ = settings.append(('input_number', 'music_hold_s', 'music_live', 'music_look', 1.5)) -%]
 [%- endif -%]
 [#- Every response profile keeps its own values: Custom in the helpers above (its ids from before the
     templates were editable, so a home's tuning stays), each template in ten helpers of its own,
@@ -166,11 +175,11 @@
 [%- for id, l in looks.items() -%]
 [%- set _ = profile_values.update({id: {'rise': l.rise, 'fall': l.fall, 'hold': l.hold, 'tilt': l.tilt, 'eq': eq_presets[l.eq_id]}}) -%]
 [%- set _ = profile_prefix.update({id: 'music_' ~ id ~ '_'}) -%]
-[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_rise_ms', 'music', 'music_profiles', l.rise)) -%]
-[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_fall_s', 'music', 'music_profiles', l.fall)) -%]
-[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_hold_s', 'music', 'music_profiles', l.hold)) -%]
-[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_eq_' ~ key, 'music', 'music_profiles', eq_presets[l.eq_id][key])) -%][%- endfor -%]
-[%- set _ = settings.append(('input_boolean', 'music_' ~ id ~ '_tilt', 'music', 'music_profiles', l.tilt)) -%]
+[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_rise_ms', 'music_live', 'music_profiles', l.rise)) -%]
+[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_fall_s', 'music_live', 'music_profiles', l.fall)) -%]
+[%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_hold_s', 'music_live', 'music_profiles', l.hold)) -%]
+[%- for key in eq_keys -%][%- set _ = settings.append(('input_number', 'music_' ~ id ~ '_eq_' ~ key, 'music_live', 'music_profiles', eq_presets[l.eq_id][key])) -%][%- endfor -%]
+[%- set _ = settings.append(('input_boolean', 'music_' ~ id ~ '_tilt', 'music_live', 'music_profiles', l.tilt)) -%]
 [%- endfor -%]
 [%- endif -%]
 [#- The Photos page (SPEC-021 amendment 1): the albums (top-level folders of photo_dir; none chosen
@@ -279,17 +288,18 @@ input_select:
     icon: mdi:theme-light-dark
     options:[[ options(d.theme_mode, ['dark', 'light']) ]]
   [%- if music_visual %]
-  # What the now-playing card draws in its wave strip (0.4.0): the room's music as audio-sensor's
-  # spectrum or level, or the card's own classic wave. The input's choice comes first, so a fresh
-  # helper starts there; no `initial:`, which would undo the choice at every restart. The settings
-  # dashboard's Music page sets it, with the look below; the card reads every one of them live.
+  # What the now-playing card draws in its wave strip while input_boolean.[[ p ]]_music_live is on
+  # (0.4.0, SPEC-025 amendment 1): the room's music as audio-sensor's spectrum or level; with the
+  # switch off, the card's own classic wave. The input's visual comes first, so a fresh helper
+  # starts there; a restored state that is no option (SPEC-025's classic) takes the first one too. No
+  # `initial:`, which would undo the choice at every restart. The settings dashboard's Live
+  # visualization sub-view sets it, with the look below; the card reads every one of them live.
   [[ p ]]_music_visual:
     name: [[ named(' music visual') ]]
     icon: mdi:waveform
     options:
       - [[ music_visual ]]
       - [[ other_visual ]]
-      - classic
   [[ p ]]_music_palette:
     name: [[ named(' music palette') ]]
     icon: mdi:palette
@@ -297,11 +307,11 @@ input_select:
   [[ p ]]_music_spectrum_flavour:
     name: [[ named(' music spectrum flavour') ]]
     icon: mdi:equalizer
-    options:[[ options(mv.music_spectrum_flavour, flavours.spectrum) ]]
+    options:[[ options(mv.music_spectrum_flavour, offered.spectrum) ]]
   [[ p ]]_music_level_flavour:
     name: [[ named(' music level flavour') ]]
     icon: mdi:waveform
-    options:[[ options(mv.music_level_flavour, flavours.level) ]]
+    options:[[ options(mv.music_level_flavour, offered.level) ]]
   # The response profile (spec 4.1): Custom or a template; sensor.[[ p ]]_music_look reads the selected
   # profile's own helpers, and the cards follow the sensor. Choosing a profile writes no helper.
   [[ p ]]_music_template:
@@ -366,6 +376,11 @@ input_boolean:
     icon: mdi:eye
   [%- endfor %]
   [%- if music_visual %]
+  # Live visualization (SPEC-025 amendment 1): on, the now-playing card draws the selected visual;
+  # off, its own classic wave. No `initial:`: a fresh helper is off, Classic until the home turns it on.
+  [[ p ]]_music_live:
+    name: [[ named(' music live visualization') ]]
+    icon: mdi:waveform
   [[ p ]]_music_tilt:
     name: [[ named(' music tilt') ]]
     icon: mdi:slope-uphill
@@ -1394,8 +1409,8 @@ script:
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
   # the settings dashboard's Reset buttons with a page or with nothing. It never touches
   # audio-sensor's music source or calibration: a measurement is not a preference. The one
-  # audio-sensor helper it sets is the sensor update rate on Music, Advanced, and only while it is
-  # there: a home without audio-sensor skips the step.
+  # audio-sensor helper it sets is the sensor update rate, the music sensor sub-view's (page
+  # music_sensor, SPEC-025), and only while it is there: a home without audio-sensor skips the step.
   [[ p ]]_settings_reset:
     alias: [[ named(' reset settings') ]]
     icon: mdi:restore
@@ -1457,7 +1472,7 @@ script:
       - if:
           - condition: template
             value_template: >-
-              {{ only_page in ['', 'music'] and (not only_groups or 'music_visual' in only_groups)
+              {{ only_page in ['', 'music_sensor'] and (not only_groups or 'music_visual' in only_groups)
                  and states('input_select.audio_sensor_music_spectrum_rate') not in ['unknown', 'unavailable'] }}
         then:
           - action: input_select.select_option

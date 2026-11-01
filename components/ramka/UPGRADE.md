@@ -3,6 +3,65 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: the music source contract (SPEC-025)
+
+- **Live visualization (amendment 1).** A new switch, `input_boolean.<prefix>_music_live`, turns
+  the music visual on; off, the Ramka draws the Classic wave. It is off by default (no `initial:`;
+  the seed and "Reset to defaults" turn it off), so every home starts on Classic.
+  `input_select.<prefix>_music_visual` holds `spectrum` and `level` only, the input's first:
+  `classic` is no option any more. A restored `classic` state is not an option, so Home Assistant
+  takes the first one, which is harmless while Live is off. The now-playing card reads the switch
+  (`visual.live`), as the previews do.
+- **The Music page is slim.** It has the page switch, the Live visualization switch and "Live
+  visualization ›", the way to a new sub-view (`/<settings path>/music-live`, no tab, its back
+  arrow returns to Music) that holds everything of the visual: the preview, the music sensor (its
+  select, its abilities and "Sensor settings ›"), the Visualization (the mode and the spectrum's
+  flavour, with Live on), the colour range and "Advanced: response profile", one card with the
+  profile select and the selected profile's rows (Advanced, with an active visual). The music
+  sensor's sub-view now returns to Live visualization. The palette and the line width have no row
+  any more (their helpers and bindings stay); the level has no flavour row.
+- **Flavours.** `input_select.<prefix>_music_spectrum_flavour` offers `dune`, `halo` and `bars`,
+  `_level_flavour` `centre`, each with the home's own `music_visual_options` flavour first when it
+  is another one. A flavour picked on the settings page that is no option now falls to the first
+  option (the home's default) at the next restart.
+- **Reset**: `script.<prefix>_settings_reset` takes `page: music_live`, the visual's settings (the
+  visual, the flavours, palette, line width, the profiles, the EQ and the colour range); Music's
+  own Reset sets the page switch and the Live switch.
+- **The music sensor's settings move to a sub-view, "Music sensor settings"**
+  (`/<settings path>/music-sensor`, a Home Assistant sub-view: no tab, its back arrow returns to
+  Live visualization), reached by "Sensor settings ›" in Live visualization's Music sensor widget
+  while the selected sensor has an update rate or a calibration. It holds the Calibration section
+  (from the Music page) and the sensor update rate (from Music, Advanced), each shown with the
+  board's ability, the mic gain while it reads, the Live visualization preview and a Reset of the
+  update rate. The Music page's Advanced "Music sensor" card is gone; the music source select is
+  in Live visualization's Music sensor widget.
+- **Reset**: `script.<prefix>_settings_reset` takes `page: music_sensor` (with `music_visual`), which
+  sets only `input_select.audio_sensor_music_spectrum_rate` to `normal`, while it exists. Music's
+  own Reset no longer touches the rate; the global Reset still does.
+- **`settings_paths`** (the preview dashboard's input) now also gives the settings dashboard's own
+  links: the way to the sub-view and its back arrow, `/ramka-settings/` by default.
+- The settings dashboard validates `settings_paths` only with `music_visual`; the preview dashboard
+  validates it whenever it is rendered.
+- The visual's mode row is an info row: its (i) says what Spectrum and Level draw and what data
+  each needs.
+- Translations: new keys `ui.settings.music_sensor_settings`, `ui.settings.music_sensor_page`,
+  `ui.settings.music_sensor_reset`, `ui.settings.music_sensor_none`,
+  `ui.settings.music_sensor_rate_{normal,eco,fast}`, `ui.settings.header.music_sensor`,
+  `ui.settings.music_sensor_abilities`, `ui.settings.music_sensor_no_data`,
+  `ui.settings.music_ability_{spectrum,level,rate,calibration}`,
+  `ui.settings.music_notice_{no_sensor,no_spectrum,no_level,offline}`,
+  `ui.settings.music_visual_{spectrum,level}`, `ui.settings.music_visual_mode`,
+  `ui.settings.music_live`, `ui.settings.music_live_link`, `ui.settings.music_live_page`,
+  `ui.settings.music_live_off`, `ui.settings.header.music_live` and
+  `ui.settings.music_profile_widget` (en, de, pl); `ui.settings.music_profile_settings` is gone.
+
+### What a home does
+
+- A home whose settings dashboard is not at `ramka-settings` sets `settings_paths` to it (per
+  language), then renders.
+- A home that showed spectrum or level turns Live visualization on once (Music page), and picks
+  the visual again on its sub-view if the select fell to the first option.
+
 ## Unreleased: a measured Behind speakers curve, the preview dashboard by default
 
 SPEC-024.

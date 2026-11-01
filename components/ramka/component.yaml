@@ -147,8 +147,8 @@ inputs:
     type: bool                  # view per screen, each in a frame of the screen's size (README, "Preview dashboard");
     default: true               # its lovelace: entry is the home's. False: the template renders empty, no file.
   settings_paths:               # the settings dashboard of each language, for the preview's links to its
-    type: "map[lang, string]"   # pages; a language not in it takes ramka-settings. Plain URL paths, as
-    default: null               # registered in configuration.yaml. Read only with preview_dashboard.
+    type: "map[lang, string]"   # pages and its own way to the music sensor sub-view and back; a language not in
+    default: null               # it takes ramka-settings. Plain URL paths, as registered in configuration.yaml.
     example: {en: ramka-settings, de: ramka-settings-de}
   preview_paths:                # the preview dashboard of each language, for the settings pages' links to
     type: "map[lang, string]"   # its tabs; a language not in it takes ramka-preview. Plain URL paths, as
@@ -157,8 +157,8 @@ inputs:
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
-    type: "spectrum | level"    # board with `music: true`) instead of the wave; the tablet switches
-    default: null               # between spectrum, level and classic. Absent: the wave as before (0.4.0)
+    type: "spectrum | level"    # board with `music: true`) instead of the wave; it is chosen in
+    default: null               # Home Assistant: spectrum or level while Live visualization is on; off (the start) is Classic (SPEC-025 amendment 1). Absent: the wave as before (0.4.0)
     example: spectrum
   music_visual_options:         # the visual's starting values (0.4.0): what the seed and "Reset to defaults" write into
     type: "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?, fps?}"
@@ -236,9 +236,11 @@ provides:                       # <prefix> from inputs
   entities:
     - {id: "input_select.<prefix>_mode", stability: frozen, options: ["off", ambient, controls, calendar]}
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
-    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level, classic], note: "with music_visual; its value first (0.4.0)"}
+    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level], note: "with music_visual; the input's visual first; classic is no option, it is input_boolean.<prefix>_music_live off (SPEC-025 amendment 1, unreleased)"}
+    - {id: "input_boolean.<prefix>_music_live", stability: stable, note: "with music_visual; Live visualization: on, the now-playing card draws the select's visual; off (the default), its classic wave (SPEC-025 amendment 1, unreleased)"}
     - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
-    - {id: "input_select.<prefix>_{music_palette,music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the card's palettes and flavours, the default first; options additive-only (0.4.0)"}
+    - {id: "input_select.<prefix>_music_palette", stability: stable, note: "with music_visual; the card's palettes, the default first; options additive-only (0.4.0)"}
+    - {id: "input_select.<prefix>_{music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the default first (the home's music_visual_options flavour, else dune / centre), then the offered ones: spectrum dune, halo, bars; level centre (SPEC-025 amendment 1, unreleased; 0.4.0 offered every flavour of the card)"}
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
     - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
     - {id: "input_boolean.<prefix>_{settings_advanced,settings_seeded}", stability: stable, note: "0.4.0"}
@@ -290,18 +292,26 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: sensor.music_level}
   - {component: audio-sensor, id: binary_sensor.music_sensor_online}
   - {component: audio-sensor, element: ambient-wave-card}
-  # The settings dashboard's Music page (SPEC-021): the music source and the calibration of the board
-  # it names. Hidden while the select is unavailable, as in a home without audio-sensor.
+  # The settings dashboard: the music source on the Music page (SPEC-021, SPEC-025), hidden while the
+  # select is unavailable, as in a home without audio-sensor; the mic gain and the calibration of the
+  # board it names on the music sensor sub-view, each with its ability.
   - {component: audio-sensor, id: input_select.audio_sensor_music_source}
   - {component: audio-sensor, id: sensor.music_mic_gain}
   - {component: audio-sensor, id: sensor.music_spl_calibration}
   - {component: audio-sensor, id: input_number.audio_sensor_measured_offset}
   - {component: audio-sensor, id: input_text.audio_sensor_calibration_note}
   - {component: audio-sensor, id: script.audio_sensor_apply_calibration}
-  # Music, Advanced: the sensor update rate, hidden while unavailable and reset only while there; the
-  # music view turns the watching flag on and off (#99, #110).
+  # The music sensor sub-view: the sensor update rate, shown with the board's ability and reset only
+  # while there; the music view turns the watching flag on and off (#99, #110).
   - {component: audio-sensor, id: input_select.audio_sensor_music_spectrum_rate}
   - {component: audio-sensor, id: input_boolean.audio_sensor_music_watching}
+  # The music source contract (SPEC-025): the selected board and its abilities, which decide what
+  # the Music page shows; missing (unknown) in a home without audio-sensor.
+  - {component: audio-sensor, id: sensor.music_source}
+  - {component: audio-sensor, id: binary_sensor.music_source_spectrum}
+  - {component: audio-sensor, id: binary_sensor.music_source_level}
+  - {component: audio-sensor, id: binary_sensor.music_source_rate}
+  - {component: audio-sensor, id: binary_sensor.music_source_calibration}
 # Not a component's: the settings dashboard's About page reads sensor.domosenso_components, which the
 # `domosenso` command writes from the home's lock (SPEC-023); without it the page lists the Ramka alone.
 

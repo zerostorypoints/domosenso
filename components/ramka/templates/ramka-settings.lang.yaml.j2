@@ -21,12 +21,18 @@
 [%- set icons = {'general': 'mdi:tablet-dashboard', 'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower',
     'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'controls': 'mdi:gesture-tap',
     'music': 'mdi:music', 'about': 'mdi:information-outline'} -%]
+[#- The music source contract (SPEC-025): the aliases, source_exists, source_set, V (needs_sensor), A
+    (active), the offline case and the preview's notice, shared with the preview dashboard
+    (templates/music-source.j2). -#]
+[%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, has_ability, live_on, live_off, active, music_notice, bad_path -%]
+[#- What each visual draws, for the mode row's (i); Classic is the live switch off (SPEC-025 amendment 1). -#]
+[%- set visual_descriptions = {} -%][%- for v in ['spectrum', 'level'] -%][%- set _ = visual_descriptions.update({v: t('ui.settings.music_visual_' ~ v)}) -%][%- endfor -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
 [%- set visuals = {} -%]
 [%- if music_visual is not none -%]
-[%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': 'sensor.music_spectrum', 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': 'sensor.music_level'})] -%]
+[%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': aliases.spectrum, 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': aliases.level})] -%]
 [%- set m = p ~ '_music_' -%]
 [%- set _ = visuals.update({kind: {
     'type': 'custom:ambient-wave-card', 'source': source, 'fallback': 'classic',
@@ -55,43 +61,91 @@
 [%- if inputs.preview_dashboard | default(true) -%]
 [%- set preview_paths = inputs.preview_paths | default({}) -%]
 [%- if preview_paths is not mapping -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endif -%]
-[%- for path in preview_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
+[%- for path in preview_paths.values() if bad_path(path) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
 [%- set preview_url = '/' ~ preview_paths.get(lang, 'ramka-preview') ~ '/' -%]
 [%- endif -%]
+[#- The way to this dashboard's own views (the music sensor's sub-view and its back arrow): its URL
+    path in this page's language from settings_paths, the preview dashboard's links' input, plain
+    URL paths as above. -#]
+[%- set settings_paths = (inputs.settings_paths | default({})) if music_visual is not none else {} -%]
+[%- if settings_paths is not mapping -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endif -%]
+[%- for path in settings_paths.values() if bad_path(path) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
+[%- set settings_url = '/' ~ settings_paths.get(lang, 'ramka-settings') ~ '/' -%]
+[%- set music_url = settings_url ~ 'music' -%]
+[%- set live_url = settings_url ~ 'music-live' -%]
+[%- set sensor_url = settings_url ~ 'music-sensor' -%]
 [#- The Air page's limits, two per reading, as the package names them (the readings' raised and high
     are their fair from and poor from). -#]
 [%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
-[%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
-[%- set rate_there = "{condition: state, entity: input_select.audio_sensor_music_spectrum_rate, state_not: unavailable}" -%]
+[#- The preview under the notice: with Live on and audio-sensor the visual's own card, whose fallback
+    draws Classic while its alias is unavailable or malformed (no sensor, a sensor without the
+    ability, offline); the classic note while Live is off (Classic), and for a visual without
+    audio-sensor (its select unknown or unavailable), where the card's element does not exist. The
+    cards start at column 0 under a leading newline, as music_notice's. -#]
+[%- macro music_preview() %]
+- type: markdown
+  visibility: [ {condition: or, conditions: [ [[ live_off ]], {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}, {condition: state, entity: input_select.audio_sensor_music_source, state: [unavailable, unknown]} ]} ]
+  content: [[ t('ui.settings.preview_classic') | yaml ]]
+[%- for kind, config in visuals.items() %]
+- type: custom:ambient-wave-card
+  visibility: [ [[ live_on ]], [[ visual_is(kind) ]], [[ source_exists ]] ]
+[%- for key, value in config.items() if key != 'type' %]
+  [[ key ]]: [[ value | yaml ]]
+[%- endfor %]
+  height: 63px
+  grid_options: {columns: full, rows: auto}
+[%- endfor %]
+[%- endmacro -%]
 [#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. A helper given as
     (domain, suffix, descriptions) is a select with an info tooltip (custom:ramka-info-select-row,
     cards/info-select-row.js): Home Assistant's own row and an (i) that tells what the selected option
     does; descriptions maps every option to its text in this page's language. One given as
     (domain, suffix, 'colour') is a colour select (custom:ramka-colour-select-row,
     cards/colour-select-row.js): the value and every choice with its colour's dot, the colours named
-    in this page's language. A fourth element names the label key when it is not the suffix. -#]
-[%- macro rows(helpers) -%]
+    in this page's language. A fourth element names the label key when it is not the suffix. With
+    `when`, each row is a conditional row on those conditions (a comma-separated list, all of them
+    holding). -#]
+[%- macro rows(helpers, when='') -%]
+[%- set lead = '                  ' if when else '              - ' -%]
+[%- set pad = '                  ' if when else '                ' -%]
 [%- for h in helpers %]
 [%- set label = h[3] if h | length > 3 else h[1] %]
+[%- if when %]
+              - type: conditional
+                conditions: [ [[ when ]] ]
+                row:
+[%- endif %]
 [%- if h | length > 2 and h[2] == 'colour' %]
-              - type: custom:ramka-colour-select-row
-                entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
-                name: [[ t('ui.settings.' ~ label) | yaml ]]
-                lang: [[ lang ]]
+[[ lead ]]type: custom:ramka-colour-select-row
+[[ pad ]]entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+[[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
+[[ pad ]]lang: [[ lang ]]
 [%- elif h | length > 2 and h[2] %]
-              - type: custom:ramka-info-select-row
-                entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
-                name: [[ t('ui.settings.' ~ label) | yaml ]]
-                descriptions:
+[[ lead ]]type: custom:ramka-info-select-row
+[[ pad ]]entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+[[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
+[[ pad ]]descriptions:
 [%- for option, text in h[2].items() %]
-                  [[ option ]]: [[ text | tojson ]]
+[[ pad ]]  [[ option ]]: [[ text | tojson ]]
 [%- endfor %]
 [%- else %]
-              - entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
-                name: [[ t('ui.settings.' ~ label) | yaml ]]
+[[ lead ]]entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+[[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
 [%- endif %]
 [%- endfor -%]
+[%- endmacro -%]
+[#- What the selected sensor can do, from audio-sensor's sensor.music_source (its capabilities in the
+    contract's order; gain is not named), or that it gives no data for a visual: a Home Assistant
+    template from column 0, for a markdown card's content; it keeps the text before it. -#]
+[%- macro abilities_line() -%]
+[%- set ability_names = [] -%][%- for ability in ['spectrum', 'level', 'rate', 'calibration'] -%][%- set _ = ability_names.append([ability, t('ui.settings.music_ability_' ~ ability)]) -%][%- endfor -%]
+{% set caps = state_attr('sensor.music_source', 'capabilities') or [] -%}
+{%- if 'spectrum' in caps or 'level' in caps -%}
+{{ [[ t('ui.settings.music_sensor_abilities') | yaml ]] }} {{ [[ ability_names | yaml ]] | selectattr(0, 'in', caps) | map(attribute=1) | join(', ') }}
+{%- else -%}
+{{ [[ t('ui.settings.music_sensor_no_data') | yaml ]] }}
+{%- endif -%}
 [%- endmacro -%]
 [%- macro heading(key, icon, visibility='') %]
           - type: heading
@@ -137,11 +191,17 @@
               | [[ t('ui.settings.' ~ key) ]] | [[ cell(value) ]] |
 [%- endfor %]
 [%- endmacro -%]
-[%- macro reset(page) %]
+[%- macro reset(page, name_key='', visibility='') %]
       - type: grid
+[%- if visibility %]
+        visibility: [ [[ visibility ]] ]
+[%- endif %]
         cards:
           - type: button
-            name: [[ t('ui.settings.reset' if page else 'ui.settings.reset_all') | yaml ]]
+[%- if visibility %]
+            visibility: [ [[ visibility ]] ]
+[%- endif %]
+            name: [[ t(name_key or ('ui.settings.reset' if page else 'ui.settings.reset_all')) | yaml ]]
             icon: mdi:restore
             show_state: false
             tap_action:
@@ -181,11 +241,11 @@
 [%- endmacro -%]
 [%- macro plant_labels(items) -%][% for x in items %][[ x.label if x.label is string else x.label[lang] | default(x.label.values() | first) ]][% if not loop.last %], [% endif %][% endfor %][%- endmacro -%]
 [%- macro labels(items, key='label') -%][[ items | map(attribute=key) | join(', ') if items else '—' ]][%- endmacro -%]
-[#- The response profiles (spec 7): the select sits in Basic with an info tooltip that tells what the
-    selected profile is for; every profile keeps its own values, edited in its own card under "Profile
-    settings", shown while that profile is selected. A select state that is no entry id is Custom, as
-    the look sensor reads it. The colour range is the user's whichever profile is on. The ids and the
-    presets are templates/music-tables.j2's, the package's too. -#]
+[#- The response profiles (spec 7): the select with an info tooltip that tells what the selected
+    profile is for; every profile keeps its own values, its rows shown while that profile is selected,
+    all in one Advanced card of the Live visualization sub-view (SPEC-025 amendment 1). A select state
+    that is no entry id is Custom, as the look sensor reads it. The colour range is the user's whichever
+    profile is on. The ids and the presets are templates/music-tables.j2's, the package's too. -#]
 [%- set template_select = 'input_select.' ~ p ~ '_music_template' -%]
 [%- from 'music-tables.j2' import eq_keys, catalog_eq_presets, look_ids -%]
 [#- The EQ presets' gains with the home's music_eq_presets in place of the catalog's three (the
@@ -223,41 +283,17 @@
     ~ t('ui.settings.music_eq_curve') ~ ': ' ~ curve}) -%]
 [%- endfor -%]
 [#- One profile's rows: rise, fall, hold, tilt, the EQ preset select (a choice loads into the selected
-    profile, which is this card's, and the select returns to no preset), the six EQ gains; labelled as
-    Custom's. -#]
+    profile, which is these rows', and the select returns to no preset), the six EQ gains; labelled as
+    Custom's. Each a conditional row on the profile select (Custom: a state that is no template id).
+    The EQ acts on the bands: its rows show with the spectrum only (SPEC-025). -#]
 [%- macro profile_rows(id) -%]
 [%- set h = 'music_' if id == 'custom' else 'music_' ~ id ~ '_' -%]
+[%- if id == 'custom' -%][%- set selected = '{condition: state, entity: ' ~ template_select ~ ', state_not: ' ~ (look_ids[1:] | tojson) ~ '}' -%]
+[%- else -%][%- set selected = '{condition: state, entity: ' ~ template_select ~ ', state: ' ~ id ~ '}' -%][%- endif -%]
 [[ rows([('input_number', h ~ 'rise_ms', none, 'music_rise_ms'), ('input_number', h ~ 'fall_s', none, 'music_fall_s'),
-         ('input_number', h ~ 'hold_s', none, 'music_hold_s'), ('input_boolean', h ~ 'tilt', none, 'music_tilt'),
-         ('input_select', 'music_eq', preset_texts)]) ]]
-[%- set eq_rows = [] -%][%- for key in eq_keys -%][%- set _ = eq_rows.append(('input_number', h ~ 'eq_' ~ key, none, 'music_eq_' ~ key)) -%][%- endfor -%]
-[[ rows(eq_rows) ]]
-[%- endmacro -%]
-[%- macro profile_sections() %]
-      # Each profile's own values, its card shown while it is selected (Custom also for a state that is
-      # no entry id). Advanced, as the colour range: the section and each card shown
-      # while the Advanced switch is on.
-      - type: grid
-        visibility: [ [[ advanced_on ]] ]
-        cards:[[ heading('music_profile_settings', 'mdi:tune', advanced_on) ]]
-[%- for id in look_ids %]
-          - type: entities
-[%- if id == 'custom' %]
-            visibility: [ [[ advanced_on ]], {condition: state, entity: [[ template_select ]], state_not: [[ look_ids[1:] | tojson ]]} ]
-[%- else %]
-            visibility: [ [[ advanced_on ]], {condition: state, entity: [[ template_select ]], state: [[ id ]]} ]
-[%- endif %]
-            title: [[ t('ui.settings.music_template_' ~ id) | yaml ]]
-            entities:[[ profile_rows(id) ]]
-[%- endfor %]
-      # The colour range: where the palette starts and where it is hot, the user's whichever profile is on.
-      - type: grid
-        visibility: [ [[ advanced_on ]] ]
-        cards:[[ heading('music_colour', 'mdi:palette', advanced_on) ]]
-          - type: entities
-            visibility: [ [[ advanced_on ]] ]
-            entities:[[ rows([('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db'),
-          ('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db')]) ]]
+         ('input_number', h ~ 'hold_s', none, 'music_hold_s'), ('input_boolean', h ~ 'tilt', none, 'music_tilt')], selected) ]]
+[%- set eq_rows = [('input_select', 'music_eq', preset_texts)] -%][%- for key in eq_keys -%][%- set _ = eq_rows.append(('input_number', h ~ 'eq_' ~ key, none, 'music_eq_' ~ key)) -%][%- endfor -%]
+[[ rows(eq_rows, selected ~ ', ' ~ visual_is('spectrum')) ]]
 [%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/ramka-settings.lang.yaml.j2),
 # language [[ lang ]]. Edit the inputs and render again rather than editing this file.
@@ -399,81 +435,213 @@ views:
 [%- set lights = inputs.lights | default([]) -%][[ render_time([('inputs.radar', [radar.presence, radar.distance] | select | join(', ') or '—'), ('inputs.media_player', inputs.media_player),
                  ('inputs.covers', labels(inputs.covers | default([]))), ('inputs.lights', labels(lights))]) ]][[ reset('controls') ]]
 
-  # ---- Music: the now-playing view and, with music_visual, its visual ---------------------------
+  # ---- Music: the now-playing view and, with music_visual, the way to its visual -------------
+  # SPEC-025 amendment 1: the page switch, the Live visualization switch (off: Classic) and the way
+  # to the Live visualization sub-view, which holds everything of the visual; no preview here.
   - title: [[ t('ui.settings.pages.music') | yaml ]]
     path: music
     icon: [[ icons.music ]]
     type: sections
     max_columns: 2[[ page_header('music') ]]
     sections:
-[%- if visuals %][[ switch_section('music', [('input_select', 'music_visual'), ('input_select', 'music_palette'), ('input_select', 'music_template', profile_texts), ('input_boolean', 'settings_advanced')]) ]]
-      # Advanced, right after Basic (the second column), the whole section shown while the Advanced
-      # switch is on; its cards carry the condition too (SPEC-021). The Music sensor card holds
-      # audio-sensor's music source and its sensor update rate (how often the board publishes), each
-      # row hidden while unavailable and the card while both are, as in a home without audio-sensor.
-      # The redraw rate (input_number.[[ p ]]_music_fps) is no row: it stays at its default.
+[%- if visuals %]
       - type: grid
-        visibility: [ [[ advanced_on ]] ]
-        cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
+        cards:[[ heading('basic', 'mdi:tune') ]]
+          # The way to the sub-view shows with the switch off too, so the visual can be set up first.
           - type: entities
-            title: [[ t('ui.settings.music_source') | yaml ]]
-            visibility: [ [[ advanced_on ]], {condition: or, conditions: [ [[ source_there ]], [[ rate_there ]] ]} ]
-            entities:
-              - type: conditional
-                conditions: [ [[ source_there ]] ]
-                row:
-                  entity: input_select.audio_sensor_music_source
-                  name: [[ t('ui.settings.music_source_row') | yaml ]]
-              - type: conditional
-                conditions: [ [[ rate_there ]] ]
-                row:
-                  entity: input_select.audio_sensor_music_spectrum_rate
-                  name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
-          - type: entities
-            visibility: [ [[ advanced_on ]] ]
-            entities:[[ rows([('input_select', 'music_spectrum_flavour'), ('input_select', 'music_level_flavour'),
-          ('input_number', 'music_line_width_px')]) ]]
-      # The visual as the tablet draws it, at the strip's height, the width of the page. Without
-      # audio-sensor (its select unavailable) the card's element does not exist: the classic note.
+            entities:[[ rows([('input_boolean', 'page_music'), ('input_boolean', 'music_live')]) ]]
+              - type: button
+                name: [[ t('ui.settings.music_live_link') | yaml ]]
+                icon: mdi:waveform
+                action_name: "›"
+                tap_action:
+                  action: navigate
+                  navigation_path: [[ live_url | yaml ]]
+          - type: markdown
+            visibility: [ [[ live_off ]] ]
+            content: [[ t('ui.settings.music_live_off') | yaml ]]
+          # The same page-off note as switch_section's, inline because this Basic has more rows.
+          - type: markdown
+            visibility: [ {condition: state, entity: input_boolean.[[ p ]]_page_music, state: "off"} ]
+            content: [[ t('ui.settings.page_off') | yaml ]][[ render_time([('inputs.music_visual', music_visual), ('inputs.media_player', inputs.media_player)]) ]]
+[%- else %][[ switch_section('music') ]]
+      - type: grid
+        cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
+[%- endif %][[ reset('music') ]]
+[%- if visuals %]
+
+  # ---- Live visualization: the music visual's settings (SPEC-025 amendment 1), a sub-view of Music
+  # No tab: Home Assistant shows a sub-view only by its path, with a back arrow to Music. The
+  # preview, the sensor (what makes Live possible), the visualization while Live is on, and with the
+  # Advanced switch and A the colour range and the response profile.
+  - title: [[ t('ui.settings.music_live_page') | yaml ]]
+    path: music-live
+    icon: mdi:waveform
+    subview: true
+    back_path: [[ music_url | yaml ]]
+    type: sections
+    max_columns: 2
+    header:
+      layout: start
+      card:
+        type: markdown
+        text_only: true
+        content: |-
+          ## [[ t('ui.settings.music_live_page') ]]
+
+[[ t('ui.settings.header.music_live') | indent(10, true) ]]
+[%- if preview_url %]
+[%- set link = '[' ~ t('ui.settings.preview_link') ~ '](' ~ preview_url ~ 'music)' %]
+
+          [[ link ]]
+[%- endif %]
+    sections:
+      # The visual as the tablet draws it, at the strip's height, the width of the page, under the
+      # fallback notice (music_notice, music_preview); with Live off the classic note, no notice.
       - type: grid
         column_span: 2
-        cards:[[ heading('preview', 'mdi:waveform') ]]
-[%- for kind, config in visuals.items() %]
-          - type: custom:ambient-wave-card
-            visibility: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}, [[ source_there ]] ]
-[%- for key, value in config.items() if key != 'type' %]
-            [[ key ]]: [[ value | yaml ]]
-[%- endfor %]
-            height: 63px
-            grid_options: {columns: full, rows: auto}
-[%- endfor %]
-          - type: markdown
-            visibility:
-              - condition: or
-                conditions:
-                  - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
-                  - {condition: state, entity: input_select.audio_sensor_music_source, state: unavailable}
-            content: [[ t('ui.settings.preview_classic') | yaml ]][[ profile_sections() ]]
-      # The calibration of the board audio-sensor's music source names. Ramka's render cannot see
-      # audio-sensor, so these cards hide while the select is unavailable (a home without it).
-      # Calibration is a measurement, not a preference: no Reset touches it.
+        cards:[[ heading('preview', 'mdi:waveform') ]][[ music_notice() | indent(10) ]][[ music_preview() | indent(10) ]]
+      # The sensor, always: its select while audio-sensor provides it, what it can do
+      # (abilities_line), and the way to its own settings while it has some (an update rate or a
+      # calibration).
       - type: grid
-        cards:[[ heading('calibration', 'mdi:tune-vertical', advanced_on ~ ', ' ~ source_there) ]]
+        cards:[[ heading('music_source', 'mdi:microphone') ]]
+          - type: entities
+            entities:
+              - type: conditional
+                conditions: [ [[ source_exists ]] ]
+                row:
+                  entity: input_select.audio_sensor_music_source
+                  name: [[ t('ui.settings.music_source') | yaml ]]
           - type: markdown
-            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            visibility: [ [[ source_set ]] ]
+            content: |-
+[[ abilities_line() | indent(14, true) ]]
+          - type: entities
+            visibility: [ [[ source_set ]], {condition: or, conditions: [ [[ has_ability('rate') ]], [[ has_ability('calibration') ]] ]} ]
+            entities:
+              - type: button
+                name: [[ t('ui.settings.music_sensor_settings') | yaml ]]
+                icon: mdi:microphone-settings
+                action_name: "›"
+                tap_action:
+                  action: navigate
+                  navigation_path: [[ sensor_url | yaml ]]
+      # The visualization while Live is on: the mode (what each draws in its (i)), the spectrum's
+      # flavour with the spectrum (the level offers one only: no row), and the Advanced switch for
+      # the parts below. The line width, the palette and the redraw rate are no rows: they stay at
+      # their defaults.
+      - type: grid
+        visibility: [ [[ live_on ]] ]
+        cards:[[ heading('music_visual', 'mdi:waveform', live_on) ]]
+          - type: entities
+            visibility: [ [[ live_on ]] ]
+            entities:[[ rows([('input_select', 'music_visual', visual_descriptions, 'music_visual_mode')]) ]][[
+              rows([('input_select', 'music_spectrum_flavour')], visual_is('spectrum')) ]][[
+              rows([('input_boolean', 'settings_advanced')]) ]]
+      # The colour range: where the palette starts and where it is hot, the user's whichever profile is
+      # on; the current visual's pair only. Advanced, and only while the visual is active (A).
+      - type: grid
+        visibility: [ [[ advanced_on ]], [[ active ]] ]
+        cards:[[ heading('music_colour', 'mdi:palette', advanced_on ~ ', ' ~ active) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ active ]] ]
+            entities:[[ rows([('input_number', 'music_spectrum_neutral_db'), ('input_number', 'music_spectrum_hot_db')], visual_is('spectrum')) ]][[
+              rows([('input_number', 'music_level_neutral_db'), ('input_number', 'music_level_hot_db')], visual_is('level')) ]]
+      # The response profile: the select, then the selected profile's own values (profile_rows), in
+      # one card; Advanced, with A.
+      - type: grid
+        visibility: [ [[ advanced_on ]], [[ active ]] ]
+        cards:[[ heading('music_profile_widget', 'mdi:tune-variant', advanced_on ~ ', ' ~ active) ]]
+          - type: entities
+            visibility: [ [[ advanced_on ]], [[ active ]] ]
+            entities:[[ rows([('input_select', 'music_template', profile_texts)]) ]]
+[%- for id in look_ids %][[ profile_rows(id) ]]
+[%- endfor %][[ reset('music_live') ]]
+[%- endif %]
+[%- if visuals %]
+[%- set rate_on = has_ability('rate') %]
+[%- set calibration_on = has_ability('calibration') %]
+[#- The mic gain has no ability of its own: shown while a sensor is selected and its gain reads. -#]
+[%- set gain_reads = '{condition: state, entity: sensor.music_mic_gain, state_not: [unavailable, unknown]}' %]
+[%- set sensor_rows_on = '{condition: or, conditions: [' ~ rate_on ~ ', {condition: and, conditions: [' ~ source_set ~ ', ' ~ gain_reads ~ ']}]}' %]
+
+  # ---- Music sensor: the selected board's own settings (SPEC-025), a sub-view of Music ----------
+  # No tab: Home Assistant shows a sub-view only by its path, with a back arrow to Live
+  # visualization, whose Sensor widget leads here while the sensor has an update rate or a
+  # calibration. A setting of the sensor itself comes here, with its ability; a setting of a
+  # visual stays on Live visualization.
+  - title: [[ t('ui.settings.music_sensor_page') | yaml ]]
+    path: music-sensor
+    icon: mdi:microphone-settings
+    subview: true
+    back_path: [[ live_url | yaml ]]
+    type: sections
+    max_columns: 2
+    # The header: the board's area and its abilities (abilities_line), or that no sensor is selected.
+    header:
+      layout: start
+      card:
+        type: markdown
+        text_only: true
+        content: |-
+          ## [[ t('ui.settings.music_sensor_page') ]]
+
+          {% set area = states('sensor.music_source') %}{% if area in ['none', 'unknown', 'unavailable'] %}[[ t('ui.settings.music_sensor_none') ]]{% else %}[[ t('ui.settings.header.music_sensor') | replace('{area}', '**{{ area }}**') ]]
+
+          [[ abilities_line() | indent(10) ]]{% endif %}
+[%- if preview_url %]
+[%- set link = '[' ~ t('ui.settings.preview_link') ~ '](' ~ preview_url ~ 'music)' %]
+
+          [[ link ]]
+[%- endif %]
+    sections:
+      # The Live visualization sub-view's preview, its notice and the visual, across both columns.
+      - type: grid
+        column_span: 2
+        cards:[[ heading('preview', 'mdi:waveform') ]][[ music_notice() | indent(10) ]][[ music_preview() | indent(10) ]]
+      # The board's update rate (how often it publishes, with what each choice does) with `rate`;
+      # its mic gain, read only, while it reads.
+      - type: grid
+        visibility: [ [[ sensor_rows_on ]] ]
+        cards:[[ heading('music_source', 'mdi:microphone-settings', sensor_rows_on) ]]
+          - type: entities
+            visibility: [ [[ sensor_rows_on ]] ]
+            entities:
+              - type: conditional
+                conditions: [ [[ rate_on ]] ]
+                row:
+                  type: custom:ramka-info-select-row
+                  entity: input_select.audio_sensor_music_spectrum_rate
+                  name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
+                  descriptions:
+[%- for option in ['normal', 'eco', 'fast'] %]
+                    [[ option ]]: [[ t('ui.settings.music_sensor_rate_' ~ option) | tojson ]]
+[%- endfor %]
+              - type: conditional
+                conditions: [ [[ source_set ]], [[ gain_reads ]] ]
+                row:
+                  entity: sensor.music_mic_gain
+                  name: [[ t('ui.settings.mic_gain') | yaml ]]
+      # The calibration of the selected board, with `calibration`. A measurement, not a preference:
+      # no Reset touches it.
+      - type: grid
+        visibility: [ [[ calibration_on ]] ]
+        cards:[[ heading('calibration', 'mdi:tune-vertical', calibration_on) ]]
+          - type: markdown
+            visibility: [ [[ calibration_on ]] ]
             content: |-
               {% set calibration = states('sensor.music_spl_calibration') %}
               | | |
               |---|---|
               | [[ t('ui.settings.offset_in_use') ]] | **{{ states('sensor.music_spl_offset') }} dB**, {{ [[ t('ui.settings.calibrated') | yaml ]] if calibration == 'calibrated' else [[ t('ui.settings.estimate') | yaml ]] if calibration == 'estimate' else calibration }} |
-              | [[ t('ui.settings.mic_gain') ]] | {{ states('sensor.music_mic_gain') }} |
               | [[ t('ui.settings.note') ]] | {{ state_attr('sensor.music_spl_calibration', 'note') or '—' }} |
 
 [[ block(t('ui.settings.calibration_procedure')) ]]
 
               <a href="https://github.com/zerostorypoints/domosenso/blob/audio-sensor/0.2.0/components/audio-sensor/README.md#the-music-source-and-calibration">[[ t('ui.settings.calibration_readme') ]]</a>
           - type: entities
-            visibility: [ [[ advanced_on ]], [[ source_there ]] ]
+            visibility: [ [[ calibration_on ]] ]
             entities:
               - entity: input_number.audio_sensor_measured_offset
                 name: [[ t('ui.settings.measured_offset') | yaml ]]
@@ -487,11 +655,9 @@ views:
                   action: perform-action
                   perform_action: script.audio_sensor_apply_calibration
                   confirmation:
-                    text: [[ t('ui.settings.calibration_apply_confirm') | yaml ]][[ render_time([('inputs.music_visual', music_visual), ('inputs.media_player', inputs.media_player)]) ]]
-[%- else %][[ switch_section('music') ]]
-      - type: grid
-        cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
-[%- endif %][[ reset('music') ]]
+                    text: [[ t('ui.settings.calibration_apply_confirm') | yaml ]]
+      # The Reset: the update rate only, with `rate`.[[ reset('music_sensor', 'ui.settings.music_sensor_reset', rate_on) ]]
+[%- endif %]
 
   # ---- About: Domosenso, every component the home runs, what they use (SPEC-023) ---------------
   # A sections view like the other pages: the header is plain text over the page; Components and
