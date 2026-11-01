@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
-import json
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,24 +45,6 @@ def _shown(home: Path, path: Path) -> str:
         return path.resolve().relative_to(home).as_posix()
     except ValueError:
         return str(path)
-
-
-def _write(path: Path, value: dict) -> None:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    except OSError as exc:
-        raise DomosensoError(f"cannot write {path}: {exc.strerror or exc}") from exc
-
-
-def _read_json(path: Path) -> dict | None:
-    if not path.is_file():
-        return None
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise DomosensoError(f"cannot read {path}: {exc}") from exc
-    return value if isinstance(value, dict) else None
 
 
 async def _dashboard(ha) -> tuple[bool, dict | None]:
@@ -101,9 +82,8 @@ async def _pull(args: argparse.Namespace, rep: Reporter) -> int:
         rep.line("read", "floor", "-" if floor["floor_id"] is None else floor["floor_id"],
                  "rooms", str(len(floor["rooms"])), "points", str(len(floor["points"])))
     out = args.out or args.home / PLAN_FILE
-    kept = (_read_json(out) or {}).get("source")  # the traced image lives only in the repository's file
-    _write(out, {**doc.without_source(plan), **({"source": kept} if kept else {})})
-    _write(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(plan))
+    doc.write_plan_file(out, plan)
+    doc.write_json(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(plan))
     rep.line("wrote", _shown(args.home, out))
     return rep.ok()
 
@@ -130,14 +110,14 @@ def _changed_since_pull(pulled: dict | None, current: dict | None) -> str | None
 async def _push(args: argparse.Namespace, rep: Reporter) -> int:
     home = HomeConfig.load(args.home)
     target = pick_target(home, args.target)
-    new = _read_json(args.home / PLAN_FILE)
+    new = doc.read_json(args.home / PLAN_FILE)
     if new is None:
         raise DomosensoError(f"no plan in {PLAN_FILE}; pull or write one first")
     doc.validate(new)
     async with cmd_deploy.connect(target) as ha:
         exists, config = await _dashboard(ha)
         current = _plan_on_target(config, args.target)
-        changed = _changed_since_pull(_read_json(args.home / STATE_DIR / f"{args.target}.pulled.json"), current)
+        changed = _changed_since_pull(doc.read_json(args.home / STATE_DIR / f"{args.target}.pulled.json"), current)
         if changed:
             raise DomosensoError(f"changed on target since pull: {changed}")
         known = {a["area_id"] for a in await ha.call("config/area_registry/list")}
@@ -167,14 +147,14 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
         if config is not None:
             stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             backup = args.home / STATE_DIR / f"{args.target}-{stamp}.json"
-            _write(backup, config)
+            doc.write_json(backup, config)
             rep.line("backup", _shown(args.home, backup))
         if not exists:
             await ha.call("lovelace/dashboards/create", url_path=doc.URL_PATH, title=TITLE, icon="mdi:floor-plan",
                           show_in_sidebar=True, require_admin=False,
                           allow_single_word=True)  # HA wants a hyphen in url_path otherwise
         await ha.call("lovelace/config/save", url_path=doc.URL_PATH, config=doc.dashboard_config(new))
-    _write(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(new))
+    doc.write_json(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(new))
     rep.line("pushed")
     return rep.ok()
 
@@ -182,7 +162,7 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
 async def _preview(args: argparse.Namespace, rep: Reporter) -> int:
     home = HomeConfig.load(args.home)
     target = pick_target(home, args.target)
-    plan = _read_json(args.home / PLAN_FILE)
+    plan = doc.read_json(args.home / PLAN_FILE)
     if plan is None:
         raise DomosensoError(f"no plan in {PLAN_FILE}; pull or write one first")
     doc.validate(plan)

@@ -120,7 +120,7 @@ test("autoPlace leaves candidates without a room in the tray and keeps placed po
   const out = autoPlace(d, hass, "ground");
   assert.deepEqual(out.floors[0].points.filter((x) => x.device_id === "d_temp"), [{ device_id: "d_temp", x: 1, y: 1, placed: true }]);
   assert.equal(out.floors[0].points.some((x) => x.entity_id === "plant.monstera"), false);
-  assert.deepEqual(tray(out, hass, "ground").map((x) => x.key).sort(), ["plant.monstera", "sensor.garage_co2"]);
+  assert.deepEqual(tray(out, hass).map((x) => x.key).sort(), ["plant.monstera", "sensor.garage_co2"]);
   assert.equal(d.floors[0].points.length, 1, "input untouched");
 });
 

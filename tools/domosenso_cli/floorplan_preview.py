@@ -83,23 +83,28 @@ class Preview:
         self.say, self.shown = say, shown
         self.key = secrets.token_urlsafe(24)
         self._lock = threading.Lock()
-        self._changes: list[dict] = []
+        self._seq = 0
+        self._changed: dict[str, int] = {}   # entity id -> the seq of its last change: one entry each, never more
 
     def add_state(self, state: dict) -> None:
         with self._lock:
-            self._changes.append(state)
+            self._seq += 1
+            self._changed[state["entity_id"]] = self._seq
             self.hass["states"][state["entity_id"]] = state
 
     def changes(self, since: int) -> dict:
         with self._lock:
-            return {"seq": len(self._changes), "states": self._changes[since:]}
+            states = [self.hass["states"][eid] for eid, seq in self._changed.items() if seq > since]
+            return {"seq": self._seq, "states": states}
 
     def data(self) -> dict:
         with self._lock:
-            return {"hass": self.hass, "entries": self.entries, "seq": len(self._changes)}
+            return {"hass": self.hass, "entries": self.entries, "seq": self._seq}
 
     def _file(self) -> dict:
-        value = json.loads(self.plan_file.read_text(encoding="utf-8"))
+        value = doc.read_json(self.plan_file)
+        if value is None:
+            raise DomosensoError(f"no plan in {self.shown}")
         doc.validate(value)
         return value
 
@@ -111,9 +116,7 @@ class Preview:
         if plan is None:
             raise DomosensoError("no plan in the saved config")
         doc.validate(plan)
-        kept = self._file().get("source")  # the traced image lives only in the repository's file
-        out = {**doc.without_source(plan), **({"source": kept} if kept else {})}
-        self.plan_file.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        doc.write_plan_file(self.plan_file, plan)
         self.say(("wrote", self.shown))
 
 
