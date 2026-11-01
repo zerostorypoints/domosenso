@@ -163,6 +163,46 @@ longer picks the starting visual. A home's own choice stays.
 - Each notice case; Classic in the seed and the reset; the card's fallback with an unavailable alias.
 - `tools/check-all.sh`; then the prototype on the test instance, looked at on the tablet.
 
+## Amendment 1 (2026-11-01): Live visualization
+
+- Source: the maintainer liked the sensor sub-view and asked to slim the Music page further:
+  everything of the sensor-driven visual on its own sub-view, a switch instead of "classic" in the
+  dropdown (`.superpowers/live-visualization-brief.md`).
+- **Decision:** a new `input_boolean.<prefix>_music_live` (Live visualization), no `initial:`, a
+  setting of page `music`, group `music_visual`, default off. Off is Classic on the Ramka and in
+  every preview; on, the select's visual. `input_select.<prefix>_music_visual` holds `spectrum`
+  and `level` only, the input's first (the default); `classic` is no option. This replaces "Classic
+  by default" above: the switch's default off is that default.
+- **Decision:** the now-playing card gets `visual.live` (an entity id): the visual only while it is
+  `on`, the own wave otherwise. The Ramka dashboard and the preview's frame bind it. The
+  ambient-wave-card's own fallback is unchanged.
+- **Decision:** V is Live on; A is Live on and the selected sensor has the visual's ability; the
+  notices carry V too (no notice while Live is off).
+- **The Music page:** the page switch, the Live switch, "Live visualization ›" (always, the switch
+  off too), a note while the switch is off ("the Ramka shows the Classic wave"), the render-time
+  inputs, the Reset (page `music`: the two switches). No Advanced switch: the page has no Advanced
+  part.
+- **The Live visualization sub-view** (`music-live`, `subview: true`, back to `/<settings path>/music`),
+  in order: the Preview (both columns: the notice and the preview; with Live off the Classic note);
+  the Music sensor widget, always (the source select, the abilities line, "Sensor settings ›" as
+  before); the Visualization widget with V (the mode select with its (i) for spectrum and level,
+  the spectrum flavour with spectrum, the Advanced switch); the Colour range (Advanced and A); the
+  "Advanced: response profile" widget (Advanced and A), one card: the profile select, then each
+  profile's rise, fall, hold, tilt, EQ preset and six gains as conditional rows on the select (the
+  EQ rows also on the spectrum); the Reset (page `music_live`).
+- **Decision:** the flavour selects offer spectrum `dune`, `halo`, `bars` and level `centre`, plus
+  the home's own `music_visual_options` flavour when it is another (first, as the default). The
+  level has no flavour row; the line width and the palette no row (helpers and bindings stay).
+- **Decision:** the settings of groups `music_visual` (but the Live switch), `music_look` and
+  `music_profiles` move from page `music` to page `music_live`.
+- The sensor sub-view's back arrow returns to Live visualization.
+- Migration: a home starts with Live off (Classic); one that used spectrum or level turns it on
+  once. A restored `classic` select state is no option; Home Assistant takes the first one.
+- Tests: the Music page's rows (Live on and off); the sub-view's rows over Live x visual x sensor x
+  Advanced, with a missing entity read as unknown and unavailable; the links and back paths per
+  language; the flavour options with a home's own; no classic option; the card's own wave with Live
+  off; the reset pages.
+
 ## Out of scope
 
 - A board publishing its own interface (above, later).

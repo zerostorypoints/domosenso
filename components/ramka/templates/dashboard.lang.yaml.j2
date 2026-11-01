@@ -45,7 +45,8 @@
 [%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
 [%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
 [#- The now-playing card's music visual (0.4.0): audio-sensor's ambient-wave-card in the wave strip,
-    reading the home's music aliases, one config per option of input_select.<prefix>_music_visual.
+    reading the home's music aliases, one config per option of input_select.<prefix>_music_visual,
+    shown while input_boolean.<prefix>_music_live is on (off: the card's own classic wave).
     Every option of the look names a helper (SPEC-021), so the settings dashboard changes the
     visual live; the card reads the states on every update. `look` binds the music look
     (sensor.<prefix>_music_look, spec 5): its attributes override rise, fall, hold, tilt and the EQ
@@ -205,11 +206,13 @@ views:
             [%- endif %]
             wave: true
             [%- if visuals %]
-            # The room's music in the strip instead of the wave (0.4.0), as the select picks it. On
-            # classic, or until the visual's card is loaded, the card draws its own wave; wave: true
-            # stays so the strip keeps its place while it switches.
+            # The room's music in the strip instead of the wave (0.4.0), as the select picks it,
+            # while the live switch is on (SPEC-025 amendment 1). With it off (Classic), or until the
+            # visual's card is loaded, the card draws its own wave; wave: true stays so the strip
+            # keeps its place while it switches.
             visual:
               select: input_select.[[ p ]]_music_visual
+              live: input_boolean.[[ p ]]_music_live
               [%- for kind, config in visuals.items() %]
               [[ kind ]]:
                 type: custom:ambient-wave-card
