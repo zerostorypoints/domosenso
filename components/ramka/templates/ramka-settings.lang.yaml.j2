@@ -21,12 +21,16 @@
 [%- set icons = {'general': 'mdi:tablet-dashboard', 'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower',
     'photos': 'mdi:image-multiple', 'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'controls': 'mdi:gesture-tap',
     'music': 'mdi:music', 'about': 'mdi:information-outline'} -%]
+[#- The music source contract (SPEC-025): the aliases, source_exists, source_set, V (needs_sensor), A
+    (active), the offline case and the preview's notice, shared with the preview dashboard
+    (templates/music-source.j2). -#]
+[%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, needs_sensor, active, music_notice -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
 [%- set visuals = {} -%]
 [%- if music_visual is not none -%]
-[%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': 'sensor.music_spectrum', 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': 'sensor.music_level'})] -%]
+[%- for kind, source in [('spectrum', {'kind': 'spectrum', 'entity': aliases.spectrum, 'offset': 'sensor.music_spl_offset'}), ('level', {'kind': 'scalar', 'entity': aliases.level})] -%]
 [%- set m = p ~ '_music_' -%]
 [%- set _ = visuals.update({kind: {
     'type': 'custom:ambient-wave-card', 'source': source, 'fallback': 'classic',
@@ -62,22 +66,18 @@
     are their fair from and poor from). -#]
 [%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
-[#- The music source contract (SPEC-025): source_exists, source_set, V (needs_sensor), A (active), the
-    offline case and the preview's notice, shared with the preview dashboard (templates/music-source.j2). -#]
-[%- from 'music-source.j2' import source_exists, source_set, visual_is, has_ability, alias_is, needs_sensor, active, music_notice -%]
-[#- The preview under the notice: the visual's own card only while it is active (A) and its alias has
-    data; else the classic note, as the tablet then draws Classic. Without audio-sensor the ability
-    is never on, so the card's element, which does not exist then, is never asked for. The cards
-    start at column 0 under a leading newline, as music_notice's. -#]
+[#- The preview under the notice: with audio-sensor the visual's own card, whose fallback draws Classic
+    while its alias is unavailable or malformed (no sensor, a sensor without the ability, offline);
+    the classic note for Classic, and for a visual without audio-sensor (its select unknown or
+    unavailable), where the card's element does not exist. The cards start at column 0 under a
+    leading newline, as music_notice's. -#]
 [%- macro music_preview() %]
-[%- set lacking = [] -%]
-[%- for kind in visuals -%][%- set _ = lacking.append("{condition: and, conditions: [" ~ visual_is(kind) ~ ", {condition: or, conditions: [{condition: state, entity: binary_sensor.music_source_" ~ kind ~ ", state_not: \"on\"}, " ~ alias_is(kind, 'unavailable') ~ "]}]}") -%][%- endfor %]
 - type: markdown
-  visibility: [ {condition: or, conditions: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}, [[ lacking | join(', ') ]] ]} ]
+  visibility: [ {condition: or, conditions: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}, {condition: state, entity: input_select.audio_sensor_music_source, state: [unavailable, unknown]} ]} ]
   content: [[ t('ui.settings.preview_classic') | yaml ]]
 [%- for kind, config in visuals.items() %]
 - type: custom:ambient-wave-card
-  visibility: [ [[ visual_is(kind) ]], [[ has_ability(kind) ]], {condition: state, entity: [[ config.source.entity ]], state_not: unavailable} ]
+  visibility: [ [[ visual_is(kind) ]], [[ source_exists ]] ]
 [%- for key, value in config.items() if key != 'type' %]
   [[ key ]]: [[ value | yaml ]]
 [%- endfor %]

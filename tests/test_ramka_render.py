@@ -1968,8 +1968,10 @@ NOTICE_CASES = [(v, s, a) for v in ("classic", "spectrum", "level") for s in ("n
 
 @pytest.mark.parametrize("visual,sensor,alias", NOTICE_CASES)
 def test_music_notice_cases(demo, visual, sensor, alias):
-    """The Music page's preview: exactly the case's notice (none for A with data and for Classic);
-    the classic preview whenever a notice shows or the visual is Classic, the visual's own otherwise."""
+    """The Music page's preview: exactly the case's notice (none for A with data and for Classic).
+    With audio-sensor the visual's own card, whose fallback draws Classic while a notice shows (the
+    card test "an unavailable source draws the fallback"); the classic note for Classic and for a
+    visual without audio-sensor, where the card's element does not exist."""
     states, want = notice_states(visual, sensor, alias), expected_notice(visual, sensor, alias)
     for lang in LANGS:
         t = translations(lang)
@@ -1981,7 +1983,7 @@ def test_music_notice_cases(demo, visual, sensor, alias):
             cards = [c for _, c in shown if visible(c.get("visibility"), states, missing)]
             classic = [c for c in cards if c.get("type") == "markdown" and c["content"] == t["ui.settings.preview_classic"]]
             visuals = [c["source"]["entity"] for c in cards if c.get("type") == "custom:ambient-wave-card"]
-            if want or visual == "classic":
+            if visual == "classic" or sensor == "no_audio_sensor":
                 assert (len(classic), visuals) == (1, []), (lang, missing, visuals)
             else:
                 assert (classic, visuals) == ([], [MUSIC_ALIASES[visual]]), (lang, missing, visuals)
@@ -2030,13 +2032,12 @@ def test_settings_preview_is_the_now_playing_visual(demo):
             assert {k: v for k, v in card.items() if k not in ("height", "visibility", "grid_options")} == expected
             # The strip's height on the 1100 x 720 tablet (SPEC-018): 14 % of 720 - 272 px.
             assert card["height"] == "63px"
-            # Only while the visual is active (A) and its alias has data (SPEC-025's notice table);
-            # without audio-sensor the ability is never on, so the element that does not exist is
-            # never asked for: the classic preview instead (test_music_notice_cases).
+            # While audio-sensor exists: the card's own fallback draws Classic while its alias is
+            # unavailable; without audio-sensor the element does not exist (test_music_notice_cases).
             assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind},
-                                          {"condition": "state", "entity": ABILITY_SENSORS[kind], "state": "on"},
-                                          {"condition": "state", "entity": MUSIC_ALIASES[kind], "state_not": "unavailable"}]
+                                          SOURCE_EXISTS]
             assert not advanced(section, card)
+        # One classic note; its visibility is test_music_notice_cases'.
         [_] = [c for _, c in view_cards(view) if c.get("type") == "markdown"
                and c.get("content") == translations(lang)["ui.settings.preview_classic"]]
 

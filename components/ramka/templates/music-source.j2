@@ -6,6 +6,7 @@
 [%- set p = inputs.prefix -%]
 [%- set source_exists = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown]}" -%]
 [%- set source_set = '{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown, "—"]}' -%]
+[#- Each visual's alias, the one place their ids are written (the settings preview's cards read it). -#]
 [%- set aliases = {'spectrum': 'sensor.music_spectrum', 'level': 'sensor.music_level'} -%]
 [%- macro visual_is(kind) -%]{condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}[%- endmacro -%]
 [%- macro has_ability(ability) -%]{condition: state, entity: binary_sensor.music_source_[[ ability ]], state: "on"}[%- endmacro -%]
