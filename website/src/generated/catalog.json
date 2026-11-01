@@ -746,9 +746,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.9.0",
-      "sourceTag": "ramka/0.9.0",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "version": "0.11.0",
+      "sourceTag": "ramka/0.11.0",
+      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -958,6 +958,16 @@
           "required": false
         },
         {
+          "name": "floorplan",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "floorplan_layers",
+          "type": "list[category]",
+          "required": false
+        },
+        {
           "name": "weather",
           "type": "entity_id",
           "required": true
@@ -1053,8 +1063,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",
