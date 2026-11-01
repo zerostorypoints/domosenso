@@ -87,8 +87,8 @@ async function make(config, hass) {
 }
 const $ = (card, sel) => card.shadowRoot.querySelector(sel);
 const click = (node) => node.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
-const pointer = (node, type, x, y, id = 1) => node.dispatchEvent(new window.PointerEvent(type, {
-  bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: id, button: 0,
+const pointer = (node, type, x, y, id = 1, isPrimary = false) => node.dispatchEvent(new window.PointerEvent(type, {
+  bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: id, button: 0, isPrimary,
 }));
 // The plan point under a client point, from the svg's viewBox and the rectangle it fills (meet).
 function planAt(card, cx, cy) {
@@ -394,4 +394,53 @@ test("a floor select appears in edit mode when the plan has more than one floor"
   select.value = "ground";
   select.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
+});
+
+test("a plan with no floors shows the hint and edits as one empty floor", async () => {
+  const card = await make({ plan: { schema: 1, floors: [] } }, hassOf());
+  assert.ok(shadowText(card).includes(EN("card.floorplan.hint.empty")), shadowText(card));
+  click($(card, "[data-action=edit]"));
+  assert.ok($(card, '.tray [data-key="d_climate"]'));
+  click($(card, '[data-action=tool][data-tool="split"]'));
+  tap(card, 1, 1);
+  tap(card, 2, 2);
+  assert.equal($(card, ".area-panel select"), null);
+  click($(card, "[data-action=cancel]"));
+  assert.ok(shadowText(card).includes(EN("card.floorplan.hint.empty")));
+});
+
+test("a pointerup that never came does not leave the card pinching", async () => {
+  const card = await make({ plan: planOf() }, hassOf({ admin: false }));
+  const svg = $(card, "svg");
+  pointer(svg, "pointerdown", 100, 100, 7, true);              // its pointerup is lost
+  const [x0, , w0] = svg.getAttribute("viewBox").split(" ").map(Number);
+  pointer(svg, "pointerdown", 400, 200, 8, true);
+  pointer(svg, "pointermove", 450, 200, 8);
+  pointer(svg, "pointerup", 450, 200, 8);
+  const [x1, , w1] = svg.getAttribute("viewBox").split(" ").map(Number);
+  assert.equal(w1, w0, "no zoom");
+  assert.ok(x1 < x0, `panned: ${x0} -> ${x1}`);
+});
+
+test("lostpointercapture ends a drag", async () => {
+  const card = await make({ plan: planOf() }, hassOf({ admin: false }));
+  const svg = $(card, "svg");
+  pointer(svg, "pointerdown", 100, 100, 3);
+  pointer(svg, "lostpointercapture", 100, 100, 3);
+  assert.equal(card._pointers.size, 0);
+  assert.equal(card._drag, null);
+});
+
+test("a new reading while editing keeps the typed area name and redraws the value", async () => {
+  const hass = hassOf();
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: true }]) }, hass);
+  click($(card, "[data-action=edit]"));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  const input = $(card, ".area-panel input");
+  input.value = "Pan";
+  card.hass = { ...hass, states: { ...hass.states,
+    "sensor.alex_temperature": { ...hass.states["sensor.alex_temperature"], state: "22.0" } } };
+  assert.equal($(card, ".area-panel input"), input);
+  assert.equal(input.value, "Pan");
+  assert.ok($(card, 'g.marker[data-key="d_climate"]').textContent.includes("22.0 °C"));
 });

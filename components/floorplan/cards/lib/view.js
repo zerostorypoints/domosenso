@@ -65,12 +65,18 @@ const order = (hass, id) => {
   return i < 0 ? POINT_CLASSES.length : i;
 };
 
-// The entities a point shows: the device's point entities, or the entity itself.
-export function pointEntities(point, hass) {
-  const key = point.device_id ?? point.entity_id;
-  const found = candidates(hass).find((c) => c.key === key);
-  const ids = found ? found.entities : point.entity_id ? [point.entity_id] : [];
-  return [...ids].sort((a, b) => order(hass, a) - order(hass, b) || a.localeCompare(b));
+// Every point key (device id or entity id) to the entities its marker shows, sorted plant first, then
+// by POINT_CLASSES. Built once per hass: candidates() walks every entity and state.
+export function entityMap(hass) {
+  const map = new Map();
+  for (const c of candidates(hass)) {
+    map.set(c.key, [...c.entities].sort((a, b) => order(hass, a) - order(hass, b) || a.localeCompare(b)));
+  }
+  return map;
+}
+
+export function pointEntities(point, map) {
+  return map.get(point.device_id ?? point.entity_id) ?? (point.entity_id ? [point.entity_id] : []);
 }
 
 export function valueText(hass, entityId) {

@@ -14,7 +14,7 @@ REPO = Path(__file__).resolve().parent.parent
 DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
-COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "lights", "media", "plants", "ramka", "remote-access", "weather"]
+COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "lights", "media", "plants", "ramka", "remote-access", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
          "network-audio-player", "plant-sensor", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
 DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]

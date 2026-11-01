@@ -15,12 +15,13 @@
 //   values: true                       # false: points without their readings
 
 import { createT } from "./lib/i18n.js";
+import { STYLE } from "./lib/style.js";
 import { zoomAt, snapToEdge, pointInPolygon, centroid } from "./lib/geometry.js";
 import {
-  supported, autoPlace, tray, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
+  supported, emptyPlan, autoPlace, tray, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint,
 } from "./lib/plan.js";
-import { fitView, frame, toPlan, snapCorner, pointEntities, valueText, candidateName } from "./lib/view.js";
+import { fitView, frame, toPlan, snapCorner, entityMap, pointEntities, valueText, candidateName } from "./lib/view.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -49,6 +50,7 @@ class FloorplanCard extends HTMLElement {
     this._status = "loading";      // loading | none | unsupported | ready
     this._doc = null;              // the plan as edited
     this._loaded = null;           // the plan as read: the save guard compares against it
+    this._base = null;             // the plan as read, with one empty floor if it had none: Cancel returns here
     this._mode = "view";
     this._tool = "move";
     this._picks = [];              // split: wall points; join: area ids
@@ -73,14 +75,21 @@ class FloorplanCard extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
+    this._entities = entityMap(hass);
     if (!this.shadowRoot) this._build();
     if (first) {
       this._load();
       return;
     }
-    // hass is set for every state change in Home Assistant: redraw only when what is shown changed.
+    // hass is set for every state change in Home Assistant: redraw only what changed. A new reading
+    // redraws the plan alone, so a half-typed area name or an open select survives it.
     const stamp = this._valueStamp();
-    if (stamp !== this._stamp) this._render();
+    if (stamp === this._stamp) return;
+    if (stamp.split("|")[0] !== this._stamp?.split("|")[0]) this._render();
+    else {
+      this._drawSvg(this._status === "ready" && this._mode === "edit");
+      this._stamp = stamp;
+    }
   }
 
   get _floor() {
@@ -107,8 +116,10 @@ class FloorplanCard extends HTMLElement {
     else if (!supported(plan)) this._status = "unsupported";
     else {
       this._status = "ready";
-      this._doc = plan;
+      // `floors: []` is a valid plan (what `floorplan push` writes first): edit it as one floor without an id.
+      this._doc = plan.floors.length ? plan : { ...plan, floors: emptyPlan([null]).floors };
       this._loaded = plan;
+      this._base = this._doc;
       const wanted = plan.floors.find((f) => f.floor_id === this._config.floor);
       this._floorId = (wanted ?? plan.floors[0])?.floor_id ?? null;
       this._view = fitView(this._floor);
@@ -122,43 +133,7 @@ class FloorplanCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; height: 100%; }
-        ha-card { height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
-                  overflow: hidden; font: 14px var(--ha-font-family-body, sans-serif); }
-        .bar, .area-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; }
-        .area-panel:empty { display: none; }
-        .bar .spacer { flex: 1; }
-        button { font: inherit; cursor: pointer; padding: 4px 10px; border-radius: 14px; background: none;
-                 color: var(--primary-text-color); border: 1px solid var(--divider-color); }
-        button.on, button.primary { color: var(--text-primary-color, #fff); background: var(--primary-color);
-                                    border-color: var(--primary-color); }
-        button:disabled { opacity: 0.4; cursor: default; }
-        select, input { font: inherit; }
-        .body { flex: 1; display: flex; min-height: 280px; position: relative; }
-        svg { flex: 1; min-width: 0; height: 100%; min-height: 280px; touch-action: none; user-select: none; }
-        .room { fill: var(--secondary-background-color, #f2f2f2); stroke: var(--primary-text-color);
-                stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-        .room.selected, .room.picked { fill: var(--primary-color); fill-opacity: 0.25; }
-        .label { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
-                 pointer-events: none; }
-        .label.missing { font-style: italic; opacity: 0.6; }
-        .edge { stroke: transparent; stroke-width: 12; vector-effect: non-scaling-stroke; }
-        .corner { fill: var(--card-background-color, #fff); stroke: var(--primary-color); stroke-width: 2;
-                  vector-effect: non-scaling-stroke; cursor: move; }
-        .pick { fill: var(--accent-color, #ff9800); pointer-events: none; }
-        .marker circle { fill: var(--primary-color); stroke: var(--card-background-color, #fff);
-                         stroke-width: 2; vector-effect: non-scaling-stroke; }
-        .editing .marker { cursor: move; }
-        .marker.unplaced circle { fill-opacity: 0.4; stroke-dasharray: 3 2; }
-        .marker text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; }
-        .tray { width: 180px; overflow-y: auto; border-left: 1px solid var(--divider-color); padding: 8px; }
-        .tray:empty { display: none; }
-        .tray h3 { margin: 0 0 6px; font-size: 13px; }
-        .tray .item { padding: 6px 8px; margin-bottom: 4px; border-radius: 8px; cursor: grab;
-                      border: 1px solid var(--divider-color); touch-action: none; }
-        .message, .hint { padding: 0 12px 8px; color: var(--secondary-text-color); }
-        .message:empty, .hint:empty { display: none; }
-        .notice { padding: 16px; color: var(--secondary-text-color); }
+${STYLE}
       </style>
       <ha-card>
         <div class="bar"></div>
@@ -175,6 +150,7 @@ class FloorplanCard extends HTMLElement {
     card.addEventListener("pointermove", (e) => this._onMove(e));
     card.addEventListener("pointerup", (e) => this._onUp(e));
     card.addEventListener("pointercancel", (e) => this._onUp(e, true));
+    card.addEventListener("lostpointercapture", (e) => this._onUp(e, true));
     this._svg.addEventListener("wheel", (e) => this._onWheel(e), { passive: false });
     this._svg.addEventListener("dblclick", (e) => this._onDblClick(e));
   }
@@ -227,7 +203,7 @@ class FloorplanCard extends HTMLElement {
     for (const tool of ["move", "split", "join"]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
-    const dirty = this._doc !== this._loaded;
+    const dirty = this._doc !== this._base;
     html += btn("cancel", t(h, "card.floorplan.cancel"));
     html += btn("save", t(h, this._saving ? "card.floorplan.saving" : "card.floorplan.save"), "",
       `class="primary" ${dirty && !this._saving ? "" : "disabled"}`);
@@ -313,7 +289,7 @@ class FloorplanCard extends HTMLElement {
     const g = el("g", { class: `marker${editing && !point.placed ? " unplaced" : ""}`, "data-kind": "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
     el("circle", { r: 7 * px }, g);
-    const ids = pointEntities(point, h);
+    const ids = pointEntities(point, this._entities);
     if (this._config.values) {
       ids.forEach((id, i) => {
         el("text", { y: (22 + 15 * i) * px, "font-size": 13 * px }, g).textContent = valueText(h, id);
@@ -324,7 +300,7 @@ class FloorplanCard extends HTMLElement {
   _valueStamp() {
     const floor = this._floor;
     if (!floor || !this._hass) return "";
-    const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._hass)) : [];
+    const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._entities)) : [];
     return [this._hass.language, ...ids.map((id) => this._hass.states?.[id]?.state)].join("|");
   }
 
@@ -339,7 +315,7 @@ class FloorplanCard extends HTMLElement {
     else if (action === "zoom_out") this._view = zoomAt(this._view, ZOOM_STEP, centre);
     else if (action === "fit") this._view = fitView(this._floor);
     else if (action === "edit") this._enterEdit();
-    else if (action === "cancel") this._leaveEdit(this._loaded);
+    else if (action === "cancel") this._leaveEdit(this._base);
     else if (action === "save") return void this._save();
     else if (action === "tool") {
       this._tool = button.getAttribute("data-tool");
@@ -423,6 +399,7 @@ class FloorplanCard extends HTMLElement {
       }
       await this._hass.callWS({ type: "lovelace/config/save", url_path: URL_PATH, config: withPlan(config, this._doc) });
       this._loaded = this._doc;
+      this._base = this._doc;
       this._leaveEdit(this._doc);
       this._say("card.floorplan.saved");
     } catch (err) {
@@ -451,9 +428,12 @@ class FloorplanCard extends HTMLElement {
     const item = e.target.closest?.(".tray [data-key]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
     if (!item && !inSvg) return;
+    // A primary pointer going down means no other is down: drop any whose pointerup never came.
+    if (e.isPrimary) this._pointers.clear();
     this._pointers.set(e.pointerId, [e.clientX, e.clientY]);
     try {
-      (item || this._svg).setPointerCapture?.(e.pointerId);
+      // On the svg even for a tray drag: the tray is redrawn while editing and would drop the capture.
+      this._svg.setPointerCapture?.(e.pointerId);
     } catch {
       // a synthetic or already released pointer cannot be captured; the events still bubble here
     }
