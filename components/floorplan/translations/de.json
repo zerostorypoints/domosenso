@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "description": "Zeichnet einen Grundriss des Zuhauses: die Räume als Flächen, mit Sensorwerten und Pflanzen an ihren Positionen, zoombar und bearbeitbar."
+  },
+  "card": {
+    "floorplan": {
+      "name": "Grundriss",
+      "description": "Die Räume eines Stockwerks mit Sensorwerten und Pflanzen an ihrem Platz; Administratoren platzieren sie und bearbeiten die Räume.",
+      "loading": "Grundriss wird geladen…",
+      "no_plan": "Noch kein Grundriss. Erstellen Sie einen mit dem Skill floorplan-from-image oder mit domosenso floorplan push.",
+      "unsupported": "Dieser Grundriss hat ein neueres Format, als diese Karte lesen kann. Aktualisieren Sie die Komponente floorplan.",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "saving": "Wird gespeichert…",
+      "zoom_in": "Vergrössern",
+      "zoom_out": "Verkleinern",
+      "fit": "Einpassen",
+      "floor": "Stockwerk",
+      "tool": {
+        "move": "Verschieben",
+        "split": "Teilen",
+        "join": "Verbinden"
+      },
+      "hint": {
+        "empty": "Dieses Stockwerk hat noch keine Räume und keine Sensoren.",
+        "move": "Ziehen Sie Sensoren und Ecken. Doppelklick auf eine Wand fügt eine Ecke hinzu, auf eine Ecke entfernt sie. Tippen Sie auf einen Raum, um ihn einem Bereich zuzuordnen.",
+        "split": "Tippen Sie auf zwei Punkte an den Wänden eines Raums.",
+        "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich."
+      },
+      "area": {
+        "label": "Bereich dieses Raums",
+        "for_split": "Bereich des neuen Raums",
+        "choose": "Bereich wählen",
+        "new": "Neuer Bereich",
+        "create": "Erstellen"
+      },
+      "tray": {
+        "title": "Nicht im Grundriss",
+        "empty": "Alle Sensoren sind im Grundriss.",
+        "drag": "In den Grundriss ziehen"
+      },
+      "missing_area": "Diesen Bereich gibt es nicht mehr",
+      "saved": "Gespeichert.",
+      "changed_elsewhere": "Der Grundriss wurde anderswo geändert, seit diese Seite ihn geladen hat. Nichts wurde gespeichert: Laden Sie die Seite neu und bearbeiten Sie ihn erneut.",
+      "save_failed": "Speichern fehlgeschlagen: {error}",
+      "create_failed": "Der Bereich konnte nicht erstellt werden: {error}",
+      "refused": "Diese Änderung ist hier nicht möglich."
+    }
+  }
+}

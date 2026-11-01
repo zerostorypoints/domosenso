@@ -73,3 +73,10 @@ Cards:
   button is a 40 px dimmed circle inside it, so it does not spoil a photo.
 - **Decision:** a vertical swipe onto the photos page while paused shows a photo of the current
   series, or a new series when it is over (the loop that would pick it is stopped).
+
+## Amendment (2026-11-01, SPEC-027)
+
+The non-goal "sideways swipes on the controls" is narrowed: with the optional input
+`floorplan: true`, a sideways swipe on the controls switches between the controls and the floor
+plan (SPEC-027). Sideways swipes on the calendar and the music view stay a non-goal, and without
+the input the controls ignore them as before.

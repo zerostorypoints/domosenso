@@ -146,6 +146,27 @@ show them in the conversation only.
    needs an adapter or ESPHome proxies; cloud-only integrations are never discovered.
 5. After they add some, run step 2 again so the new devices count.
 
+### 3.1 The floor plan (optional)
+
+Offer it once, after the integrations: a plan of the home with the sensors and plants where they
+stand, drawn by the `floorplan` component's card in Home Assistant (SPEC-027). It needs their
+architect's plan, a photo of a drawing or an SVG, and the rooms existing as areas (or their yes to
+create them). Skip it if they have no drawing or do not want it; it can be done later.
+
+This step writes to their Home Assistant before section 8 (the floorplan component's deploy, new
+areas, `floorplan push --apply`): an explicit exception to stopping at the plan, and only on their
+typed yes for each write. Without that yes, it ends at the `--plan` lines like the rest of the skill.
+
+1. Say what it costs: an hour of dragging sensors in Home Assistant. The drawing stays in their
+   home repository and never goes to Home Assistant.
+2. The component and the repository exist only after sections 6 and 7, so do this step then: add
+   `floorplan@<newest version>` like `backup` (`add`, `render`, `deploy --plan`, and `--apply` only
+   on their typed yes), then run the skill `floorplan-from-image` and follow it. It asks for the
+   image, traces the rooms, asks one known length for the scale, matches the rooms to areas, and
+   stops at `domosenso floorplan push <target> --plan` until they type yes.
+3. Their household (room names, the drawing, the areas) stays in their repository, as everywhere
+   in this skill.
+
 ## 4. Recommend components and hardware
 
 Run again with what they confirmed and what Home Assistant does not know yet (a tablet not set up,

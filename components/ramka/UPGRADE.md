@@ -3,6 +3,21 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased
+
+### The floor plan as a second view of the controls (SPEC-027)
+
+- **New, optional:** `floorplan: true` in the Ramka's inputs. On the controls, a sideways swipe
+  switches to the floor plan (the `floorplan` component's card, read-only) and back; a tap on the
+  plan, a swipe up or down, or the controls closing returns to the controls. Default `false`: the
+  render is byte-for-byte what it was.
+- **To use it:** add the `floorplan` component (`domosenso add floorplan@<version>`) and push the
+  plan (`domosenso floorplan push`); the card's Lovelace resource comes with that component, the
+  Ramka renders none. Without the dashboard the card shows its own no-plan message.
+- **Renders** `input_boolean.<prefix>_controls_plan` (starts off), `script.<prefix>_controls_plan_toggle`
+  and the automation `<prefix>_controls_plan_reset`; `script.<prefix>_show_controls` also turns the
+  helper off. Press the Ramka's reload after the deploy.
+
 ## 0.9.0 (2026-11-01): pause and the views of a page, the music source contract, live settings
 
 Everything merged since 0.8.0, in one release. Each part below says what changed and, where a home

@@ -421,6 +421,7 @@ the script after adding, renaming or removing a skill.
 | `preview-pr` | prepare an exact-revision local demo, leave it running and hand it to a human for acceptance |
 | `new-component` | scaffold `components/<id>/` and get the checker and tests passing |
 | `new-integration` | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
+| `floorplan-from-image` | trace a floor plan image into `domosenso/floorplan.json`, match rooms to areas, `floorplan push` |
 | `write-component-spec` | write a spec in `.ai/specs/` and stop for approval |
 | `write-issue` | draft issues and user stories per `docs/ISSUES.md`, check them with `tools/issue_check.py`, file after a go-ahead |
 | `review-issue` | check an issue against `docs/ISSUES.md` and give the verdict ready, needs changes or split |

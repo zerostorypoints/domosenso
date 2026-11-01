@@ -18,6 +18,9 @@
   "climate-air": {
    "page": true
   },
+  "floorplan": {
+   "page": false
+  },
   "lights": {
    "page": true
   },
