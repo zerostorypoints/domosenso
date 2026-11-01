@@ -5,7 +5,7 @@ import {
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
   extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName,
 } from "./plan.js";
-import { joinPolygons, centroid } from "./geometry.js";
+import { joinPolygons, centroid, pointInPolygon } from "./geometry.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 
@@ -349,4 +349,22 @@ test("trayGroups: a plant's room and an area of the same name (case and accents 
   assert.equal(g.name, "Living room");
   assert.ok(g.items.some((c) => c.key === "plant.monstera"), g.items.map((c) => c.key).join(" "));
   assert.ok(!trayGroups(doc(), h).some((x) => x.key.startsWith("label:")));
+});
+
+const oneRoom = (polygon) => ({ schema: 1, floors: [{ floor_id: "ground", rooms: [{ area_id: "living_room", polygon }], points: [] }] });
+
+test("autoPlace keeps sensors inside an L-shaped room whose centroid and shifted centre lie outside it", () => {
+  const hall = [[3, 0], [4, 0], [4, 5], [0, 5], [0, 4], [3, 4]];
+  assert.equal(pointInPolygon(centroid(hall), hall), false, "the premise: the centroid is outside");
+  const out = autoPlace(oneRoom(hall), hass, "ground");
+  const pts = out.floors[0].points;
+  assert.equal(pts.length, 2);                               // d_moved and d_temp
+  for (const p of pts) assert.ok(pointInPolygon([p.x, p.y], hall), JSON.stringify(p));
+  assert.ok(Math.abs(Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) - 0.6) < 1e-9, "still spread");
+});
+
+test("autoPlace puts a sensor whose spread point leaves the room on the centre instead", () => {
+  const narrow = [[0, 0], [0.4, 0], [0.4, 3], [0, 3]];
+  const pts = autoPlace(oneRoom(narrow), hass, "ground").floors[0].points;
+  assert.deepEqual(pts.map((p) => [p.x, p.y]), [[0.2, 2.1], [0.2, 2.1]]);
 });

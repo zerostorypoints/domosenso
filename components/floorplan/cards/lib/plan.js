@@ -2,7 +2,7 @@
 // frontend registries. No DOM. Every edit returns a new document, or null when it is refused, so the
 // card can ignore a refused gesture without checking state. Shapes mirror tools/domosenso_cli/floorplan_doc.py.
 
-import { pointInPolygon, centroid, splitPolygon, joinPolygons } from "./geometry.js";
+import { pointInPolygon, centroid, interiorPoint, splitPolygon, joinPolygons } from "./geometry.js";
 import { language } from "./i18n.js";
 
 export const POINT_CLASSES = ["temperature", "humidity", "illuminance", "moisture", "carbon_dioxide", "pm25"];
@@ -96,10 +96,14 @@ const pointOf = (c, [x, y], placed) => (c.kind === "device"
 const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
 // The room's name and floor area are drawn at its centroid; sensors put there would cover them.
+// In an L-shaped or other concave room the shifted point, or the centroid itself, can lie outside:
+// then the centroid, else a point surely inside.
 function underLabels(polygon) {
   const [x, y] = centroid(polygon);
   const ys = polygon.map((p) => p[1]);
-  return Math.max(...ys) - Math.min(...ys) >= TALL_M ? [x, y + BELOW_M] : [x, y];
+  const below = [x, y + BELOW_M];
+  if (Math.max(...ys) - Math.min(...ys) >= TALL_M && pointInPolygon(below, polygon)) return below;
+  return pointInPolygon([x, y], polygon) ? [x, y] : interiorPoint(polygon);
 }
 
 export function autoPlace(doc, hass, floorId) {
@@ -117,7 +121,8 @@ export function autoPlace(doc, hass, floorId) {
   const added = [];
   for (const [room, cs] of perRoom) {
     const sorted = [...cs].sort(byKey);
-    const at = spread(underLabels(room.polygon), sorted.length);
+    const centre = underLabels(room.polygon);
+    const at = spread(centre, sorted.length).map((p) => (pointInPolygon(p, room.polygon) ? p : mmPt(centre)));
     sorted.forEach((c, i) => added.push(pointOf(c, at[i], false)));
   }
   if (!added.length) return doc;

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  pointInPolygon, centroid, zoomAt, splitPolygon, joinPolygons, snapToEdge, polygonArea, wallLengths,
+  pointInPolygon, centroid, zoomAt, splitPolygon, joinPolygons, snapToEdge, polygonArea, wallLengths, interiorPoint,
 } from './geometry.js';
 
 const L = [[3, 0], [4, 0], [4, 5], [0, 5], [0, 4], [3, 4]];
@@ -119,4 +119,11 @@ test('wallLengths: one per wall, from each corner to the next', () => {
   assert.deepEqual(wallLengths(rect(0, 0, 4, 3)), [4, 3, 4, 3]);
   assert.deepEqual(wallLengths(L), [1, 5, 4, 1, 3, 4]);
   assert.equal(wallLengths([[0, 0], [3, 4], [0, 4]])[0], 5);
+});
+
+test('interiorPoint: inside the L-shaped room, whose centroid is outside it', () => {
+  assert.equal(pointInPolygon(centroid(L), L), false);
+  const p = interiorPoint(L);
+  assert.ok(pointInPolygon(p, L), String(p));
+  assert.deepEqual(p, [3.5, 3.25]);
 });

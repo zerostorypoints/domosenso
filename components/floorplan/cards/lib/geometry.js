@@ -29,6 +29,26 @@ export function wallLengths(poly) {
   return poly.map((p, i) => dist(p, poly[(i + 1) % poly.length]));
 }
 
+// A point inside any simple polygon, for when the centroid is not (an L-shaped room): the middle of
+// the widest stretch of the horizontal line through the centroid's height that lies inside.
+export function interiorPoint(poly) {
+  const ys = poly.map((p) => p[1]);
+  let y = centroid(poly)[1];
+  if (poly.some((p) => Math.abs(p[1] - y) <= EPS)) y = (Math.min(...ys) + Math.max(...ys)) / 2 + EPS * 10;
+  const xs = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    if ((a[1] > y) !== (b[1] > y)) xs.push(a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]));
+  }
+  xs.sort((p, q) => p - q);
+  let best = null;
+  for (let i = 0; i + 1 < xs.length; i += 2) {
+    if (!best || xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]];
+  }
+  return best ? [(best[0] + best[1]) / 2, y] : centroid(poly);
+}
+
 // Closest point on segment ab to p, with its parameter t in [0, 1].
 function project(p, a, b) {
   const dx = b[0] - a[0];

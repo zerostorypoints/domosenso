@@ -344,9 +344,9 @@ ${STYLE}
     this._render();
   }
 
-  _toggleGroup(key) {
+  _toggleGroup(key) {     // the tray alone: _render would rebuild the area panel and drop a half-typed name
     this._trayOpen.set(key, !this._groupOpen(key));
-    this._render();
+    this.shadowRoot.querySelector(".tray").innerHTML = this._trayHtml();
   }
 
   _onChange(e) {

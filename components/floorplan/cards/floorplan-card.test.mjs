@@ -604,3 +604,19 @@ test("while a corner is dragged its room's wall lengths follow it", async () => 
   pointer($(card, "svg"), "pointerup", ex, ey);
   assert.deepEqual(texts(card, "text.dim.wall"), [], "nothing selected once the drag is over");
 });
+
+test("a group tap keeps a half-typed area name", async () => {
+  const card = await make({ plan: planOf() }, officeHass());
+  click($(card, "[data-action=edit]"));
+  tap(card, 2, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  const input = $(card, ".area-panel input");
+  input.value = "Pantr";
+  const wasOpen = group(card, "office").hasAttribute("open");     // the lone group starts open
+  tapNode(summary(card, "office"));
+  assert.equal(group(card, "office").hasAttribute("open"), !wasOpen);
+  // ok, not equal: a failing equal on a DOM node renders the whole happy-dom graph and never ends.
+  assert.ok($(card, ".area-panel input") === input, "the panel was not rebuilt");
+  assert.equal(input.value, "Pantr");
+  tapNode(summary(card, "office"));
+  assert.equal($(card, ".area-panel input").value, "Pantr");
+});
