@@ -35,18 +35,21 @@ export function interiorPoint(poly) {
   const ys = poly.map((p) => p[1]);
   let y = centroid(poly)[1];
   if (poly.some((p) => Math.abs(p[1] - y) <= EPS)) y = (Math.min(...ys) + Math.max(...ys)) / 2 + EPS * 10;
+  const best = runsAt(poly, y).reduce((w, r) => (!w || r[1] - r[0] > w[1] - w[0] ? r : w), null);
+  return best ? [(best[0] + best[1]) / 2, y] : centroid(poly);
+}
+
+// The stretches [x0, x1] of the horizontal line at height y that lie inside the polygon.
+function runsAt(poly, y) {
   const xs = [];
-  for (let i = 0; i < poly.length; i++) {
-    const a = poly[i];
+  poly.forEach((a, i) => {
     const b = poly[(i + 1) % poly.length];
     if ((a[1] > y) !== (b[1] > y)) xs.push(a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]));
-  }
+  });
   xs.sort((p, q) => p - q);
-  let best = null;
-  for (let i = 0; i + 1 < xs.length; i += 2) {
-    if (!best || xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]];
-  }
-  return best ? [(best[0] + best[1]) / 2, y] : centroid(poly);
+  const runs = [];
+  for (let i = 0; i + 1 < xs.length; i += 2) runs.push([xs[i], xs[i + 1]]);
+  return runs;
 }
 
 // Closest point on segment ab to p, with its parameter t in [0, 1].
@@ -237,17 +240,11 @@ export function widestRow(polygon, rows = 24) {
   let best = null;
   for (let i = 0; i < rows; i++) {
     const y = y0 + ((i + 0.5) * (y1 - y0)) / rows;
-    const xs = [];
-    polygon.forEach((a, k) => {
-      const b = polygon[(k + 1) % polygon.length];
-      if ((a[1] <= y && y < b[1]) || (b[1] <= y && y < a[1])) xs.push(a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]));
-    });
-    xs.sort((p, q) => p - q);
-    for (let k = 0; k + 1 < xs.length; k += 2) {
-      const width = xs[k + 1] - xs[k];
+    for (const [a, b] of runsAt(polygon, y)) {
+      const width = b - a;
       const better = !best || width > best.width + 1e-9
         || (Math.abs(width - best.width) <= 1e-9 && Math.abs(y - mid) < Math.abs(best.y - mid));
-      if (better) best = { x: (xs[k] + xs[k + 1]) / 2, y, width };
+      if (better) best = { x: (a + b) / 2, y, width };
     }
   }
   if (best) return best;
@@ -259,18 +256,6 @@ export function widestRow(polygon, rows = 24) {
 // wall, outside the flat) goes to the nearest point of a room's walls. A floor without rooms keeps it.
 export function insideRooms(pt, polygons) {
   if (!polygons.length || polygons.some((poly) => pointInPolygon(pt, poly))) return pt;
-  let best = null;
-  let bestD = Infinity;
-  for (const poly of polygons) {
-    poly.forEach((a, i) => {
-      const b = poly[(i + 1) % poly.length];
-      const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
-      const len2 = dx * dx + dy * dy;
-      const t = len2 ? Math.max(0, Math.min(1, ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / len2)) : 0;
-      const q = [a[0] + t * dx, a[1] + t * dy];
-      const d = Math.hypot(pt[0] - q[0], pt[1] - q[1]);
-      if (d < bestD) [best, bestD] = [q, d];
-    });
-  }
-  return best;
+  const nearest = polygons.map((poly) => snapToEdge(poly, pt, Infinity).pt);
+  return nearest.reduce((a, b) => (dist(pt, b) < dist(pt, a) ? b : a));
 }

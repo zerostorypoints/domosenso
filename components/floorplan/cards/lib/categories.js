@@ -8,32 +8,41 @@ import index from "./categories.json" with { type: "json" };
 export const CATEGORIES = index.categories;
 export const PLACEABLE = CATEGORIES.filter((c) => c.placeable);
 const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
-const FALLBACK = CATEGORIES.find((c) => c.fallback);
+export const FALLBACK = CATEGORIES.find((c) => c.fallback);
 
 export const categoryById = (id) => BY_ID.get(id) ?? null;
 
 const list = (v) => (v === undefined || v === null ? [] : Array.isArray(v) ? v.map(String) : [String(v)]);
 
-// Python's fnmatchcase on lower-cased text: * any run, ? one character, [...] a set.
+// Python's fnmatchcase on lower-cased text: * any run, ? one character, [...] a set. A pattern is
+// compiled once; a draw tests every rule against every device.
+const compiled = new Map();
+function patternRe(p) {
+  if (!compiled.has(p)) {
+    const re = String(p).toLowerCase().replace(/[.+^${}()|\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".");
+    compiled.set(p, new RegExp(`^${re}$`, "s"));
+  }
+  return compiled.get(p);
+}
 function glob(value, patterns) {
   if (value === undefined || value === null) return false;
   const text = String(value).toLowerCase();
-  return list(patterns).some((p) => {
-    const re = String(p).toLowerCase().replace(/[.+^${}()|\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".");
-    return new RegExp(`^${re}$`, "s").test(text);
-  });
+  return list(patterns).some((p) => patternRe(p).test(text));
 }
 
+// The device's lists as sets, built once per device rather than once per rule.
+const prepared = (dev) => (dev._sets ? dev : { ...dev, _sets: {
+  domains: new Set(dev.entity_domains), classes: new Set(dev.device_classes), integrations: new Set(dev.integrations) } });
+
 // SPEC-010's rule test (hwscan.matches), plus only_entity_domain.
-export function ruleMatches(rule, dev) {
+export function ruleMatches(rule, device) {
+  const dev = prepared(device);
   const has = (set, items) => items.some((x) => set.has(x));
-  const domains = new Set(dev.entity_domains);
-  const classes = new Set(dev.device_classes);
+  const { domains, classes, integrations } = dev._sets;
   if ("only_entity_domain" in rule) {
     const allowed = new Set(list(rule.only_entity_domain));
     if (!domains.size || [...domains].some((d) => !allowed.has(d))) return false;
   }
-  const integrations = new Set(dev.integrations);
   if ("integration" in rule && !has(integrations, list(rule.integration))) return false;
   if (!list(rule.with_integration).every((x) => integrations.has(x))) return false;
   for (const key of ["manufacturer", "model", "model_id"]) {
@@ -54,7 +63,8 @@ function match(cat, dev, further = false) {
 
 // [{id, marker}]: its category (the first match by order, else the fallback), then every further
 // category marked extra_role that matches it: what else it senses (a radar on a Bluetooth proxy).
-export function rolesOf(dev) {
+export function rolesOf(device) {
+  const dev = prepared(device);
   const roles = [];
   for (const cat of CATEGORIES) {
     if (roles.length && !cat.extra_role) continue;

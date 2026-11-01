@@ -98,9 +98,9 @@ const order = (hass, id) => {
 
 // Every point key (device id or entity id) to the entities its marker shows, sorted plant first, then
 // by POINT_CLASSES. Built once per hass: candidates() walks every entity and state.
-export function entityMap(hass) {
+export function entityMap(hass, cands = candidates(hass)) {
   const map = new Map();
-  for (const c of candidates(hass)) {
+  for (const c of cands) {
     map.set(c.key, [...c.entities].sort((a, b) => order(hass, a) - order(hass, b) || a.localeCompare(b)));
   }
   return map;

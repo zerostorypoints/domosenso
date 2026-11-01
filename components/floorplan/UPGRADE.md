@@ -2,6 +2,15 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## 0.2.1 (2026-11-01): faster on a busy home
+
+No change in what the card shows or stores. It works out its devices once per registry change
+instead of on every state change in Home Assistant, redraws only the plan while a dot or the view is
+dragged, builds a tooltip only when the pointer reaches something new, and lays out readings with
+less work. `floorplan preview` keeps one change per entity instead of every change of the session.
+**After the update:** `domosenso update floorplan --to 0.2.1`, deploy, reload the browsers that
+show the plan (the card's files move to `www/domosenso/floorplan/0.2.1/`).
+
 ## 0.2.0 (2026-11-01): every device on the plan, by category; the preview against a real home
 
 Everything since 0.1.0 (SPEC-028 Amendments 4 to 6 and their additions).
