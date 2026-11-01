@@ -109,6 +109,26 @@ The repository copy is now behind. Run `domosenso floorplan pull <target>` and c
 `domosenso/floorplan.json`. `push` refuses to write over a plan edited in Home Assistant since the
 last `pull`, so an edit made in the browser is never lost silently.
 
+## Editing against a real home: `preview`
+
+A staging Home Assistant mirrors production's states but not its device registry, so categories,
+joined devices and links show only what staging itself has. To place a real home's devices:
+
+```bash
+domosenso floorplan preview production        # --port <n> (default 8130), --no-open
+```
+
+- It reads the target's areas, floors, devices, entities, config entries and states once (read
+  only, with the target's token file), follows its state changes, and opens a page on
+  `127.0.0.1` with the home's rendered card on that data. The token never reaches the page; the
+  page's URL carries a random key, without which it answers nothing.
+- **Save writes `domosenso/floorplan.json`** (validated as `push` validates, the file's `source`
+  kept), never Home Assistant. Review it with `git diff`, then `floorplan push <target>`.
+- Creating an area from the card is refused (`refused config/area_registry/create`): the preview
+  does not write to Home Assistant. Create it there, restart the preview.
+- Lines: `read <target>: areas <n> devices <n> entities <n> states <n>`, `preview <url>`, `wrote
+  domosenso/floorplan.json` per save, `refused <type>`, `stopped` (Ctrl-C).
+
 ## Limits
 
 - One floor at a time; no walls, doors, windows or furniture; tapping a room in view mode does

@@ -403,7 +403,7 @@ used in every place of the system." The categories are not the card's: they are 
 
 ## Amendment 6 (`domosenso floorplan preview`: edit against a real home, read-only)
 
-- Status: **draft, waiting for the maintainer's approval**. Source: the maintainer, 2026-11-01:
+- Status: approved 2026-11-01 by the maintainer ("Go"). Source: the maintainer, 2026-11-01:
   "an option to connect to prod HA, so I can check against real data"; staging as it is stays the
   mode for a home that starts without sensors.
 - Why not staging: staging mirrors production's states, not its device registry, and copying the
