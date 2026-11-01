@@ -3,6 +3,18 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.10.1 (2026-11-01): the screen follows the room after a restart
+
+- **Fixed (#52):** wake and sleep fired only on changes of the radar's presence, and a restart hides
+  the change (the state restores before the automations load). A frame restored `off` stayed dark
+  with someone in the room; one restored lit stayed lit all night in an empty room. The new
+  automation `<prefix>_reconcile_after_start` re-checks once Home Assistant has started and the
+  radar reports `on` or `off`: presence `on` and mode `off` wakes it to ambient; presence `off` that
+  holds for `off_delay_s` sleeps it, with the same conditions and actions as
+  `<prefix>_presence_on` / `<prefix>_presence_off`.
+- **Renders** `automation.<prefix>_reconcile_after_start` (additive); no input changes.
+- **To do:** nothing; render and deploy. The deploy's own restart is the first one it handles.
+
 ## 0.10.0 (2026-11-01): the floor plan as a second view of the controls
 
 Needs the `floorplan` component (0.2.0 or newer) for the plan; without `floorplan: true` the render
