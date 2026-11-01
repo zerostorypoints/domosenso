@@ -19,11 +19,11 @@
         "climate-air"
       ],
       "availability": "conditional",
-      "condition": "Provide climate inputs to Ramka; pick up to ten rooms and their readings on the Ramka settings dashboard.",
+      "condition": "Provide climate inputs to Ramka; on the Ramka settings dashboard pick up to twenty widgets (temperature, air quality, custom or empty), in any order.",
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -49,11 +49,11 @@
         "plants"
       ],
       "availability": "conditional",
-      "condition": "With plants 0.3.0, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first.",
+      "condition": "With plants 0.3.0 or later, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first, and with more than four plants a list page of every plant follows. Swipe left or right to turn the pages yourself.",
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -64,11 +64,11 @@
         "ramka"
       ],
       "availability": "conditional",
-      "condition": "Provide photo_dir and permit the directory in Home Assistant; albums, photos per series and time per photo are set on the Ramka settings dashboard.",
+      "condition": "Provide photo_dir and permit the directory in Home Assistant; albums, photos per series and time per photo are set on the Ramka settings dashboard. Swipe left or right for the next or previous photo of the series.",
       "preview": "/previews/photos.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -83,7 +83,7 @@
       "preview": "/previews/status.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -96,11 +96,11 @@
         "media"
       ],
       "availability": "conditional",
-      "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+      "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights and covers appear when configured.",
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -112,11 +112,11 @@
         "audio-sensor"
       ],
       "availability": "conditional",
-      "condition": "A configured media player is playing. With audio-sensor and music_visual set, the wave strip draws the room's spectrum or level instead of the classic wave.",
+      "condition": "A configured media player is playing. With audio-sensor, music_visual set and Live visualization switched on in the settings, the wave strip draws the room's spectrum or level instead of the classic wave.",
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -131,7 +131,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -146,7 +146,7 @@
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -154,11 +154,12 @@
     "Set up the tablet and Companion app using the tablet guide.",
     "Install the radar through Room presence and map its presence and distance entities.",
     "Choose the optional page inputs, render the dashboard and check each configured page before deployment.",
-    "Add the Ramka settings dashboard's lovelace entry; pages, presence, display, photos, air limits, climate rooms, plants per page and the music visual are tuned there live, without a render."
+    "Add the lovelace entries of the Ramka settings dashboard and the Ramka preview dashboard (one tab per screen); pages, presence, controls, display, photos, air limits and colours, climate widgets, plants per page and the music visual are tuned on the settings dashboard live, without a render.",
+    "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
   ],
   "id": "ramka",
-  "version": "0.7.0",
-  "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+  "version": "0.9.0",
+  "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
   "evidencePaths": [
     "components/ramka/component.yaml"
   ],
