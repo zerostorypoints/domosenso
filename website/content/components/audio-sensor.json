@@ -30,11 +30,11 @@
     "Flash the M5Stack Atom EchoS3R over USB the first time with the device file the component writes; later updates go over Wi-Fi.",
     "Adopt the board in Home Assistant through ESPHome and map its entities in the component's inputs.",
     "Calibrate the sound level against a reference meter, or keep the offset marked as an estimate.",
-    "To see it on the tablet, set Ramka's music_visual and choose the look on the Ramka settings dashboard. A board flashed before 0.2.0 needs the new firmware for the faster update rate."
+    "To see it on the tablet, set Ramka's music_visual, switch Live visualization on and choose the look on the Ramka settings dashboard; with audio-sensor 0.3.0 that page shows what the selected sensor can do, and its music source select offers no sensor (—). A board flashed before 0.2.0 needs the new firmware for the faster update rate; 0.3.0 needs no new flash."
   ],
   "id": "audio-sensor",
-  "version": "0.2.0",
-  "sourceCommit": "0f1f0a7d060ec4bcb5ed0f4389363f24f7439250",
+  "version": "0.3.0",
+  "sourceCommit": "934b653536616fc7b310cb430aae00a08d72b1e8",
   "evidencePaths": [
     "components/audio-sensor/component.yaml",
     "components/audio-sensor/README.md"
