@@ -1126,15 +1126,11 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
                 assert PAGE_OF[entity] == path or (entity == "input_boolean.ramka_settings_advanced"
                                                    and path in ADVANCED_PAGES), (entity, path)
                 assert entity in run_reset(package, page=PAGE_OF[entity]), entity
-        # audio-sensor's sensor update rate (amended 2026-10-30, #110): on Music, Advanced with the
-        # music visual, hidden while audio-sensor does not provide it.
+        # audio-sensor's sensor update rate (amended 2026-10-30, #110) is a setting of the sensor, not
+        # of a visual: not on the Music page (SPEC-025; the sensor sub-view's).
         music = "input_select.ramka_music_visual" in helpers(package)
-        if music:
-            assert on_pages.get(SPECTRUM_RATE) == "music", lang
-            [(section, card)] = [(s, c) for s, c in view_cards(views["music"])
-                                 if SPECTRUM_RATE in {r.get("entity") for r in rows(c)}]
-            assert advanced(section, card) and row_conditions(card, SPECTRUM_RATE) == [RATE_THERE], lang
-        else:
+        assert on_pages.get(SPECTRUM_RATE) != "music", lang
+        if not music:
             assert SPECTRUM_RATE not in on_pages and SPECTRUM_RATE not in json.dumps(views), lang
     # The Music reset and the global reset set it to normal while it is there; a home without
     # audio-sensor (unknown: no such entity; unavailable) skips it rather than fails.
@@ -1557,6 +1553,10 @@ SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unav
 SPECTRUM_RATE = "input_select.audio_sensor_music_spectrum_rate"
 MUSIC_WATCHING = "input_boolean.audio_sensor_music_watching"
 RATE_THERE = {"condition": "state", "entity": SPECTRUM_RATE, "state_not": "unavailable"}
+# The source select's row: shown while audio-sensor provides it (a missing entity reads unknown).
+SOURCE_EXISTS = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": ["unavailable", "unknown"]}
+# The music source contract's abilities (SPEC-025): what the selected board can do.
+MUSIC_CONTRACT_IDS = {"sensor.music_source", *(f"binary_sensor.music_source_{a}" for a in ("spectrum", "level", "rate", "calibration"))}
 # Where each setting sits (SPEC-021's page table): Basic or Advanced.
 BASIC = {
     "general": {"input_select.ramka_theme_mode", "input_number.ramka_off_delay_s",
@@ -1566,7 +1566,7 @@ BASIC = {
     "controls": {e for e, where in CONTROLS_SETTINGS.items() if where == "basic"} | {"input_boolean.ramka_settings_advanced"},
 }
 BASIC["music"] |= {"input_select.ramka_music_visual", "input_select.ramka_music_palette",
-                   "input_boolean.ramka_settings_advanced",
+                   "input_boolean.ramka_settings_advanced", MUSIC_SOURCE,
                    # The profile (spec 7): the select; its values are Advanced.
                    "input_select.ramka_music_template"}
 BASIC["photos"] |= {"input_number.ramka_photo_count", "input_number.ramka_photo_s", "input_boolean.ramka_settings_advanced"}
@@ -1579,8 +1579,7 @@ ADVANCED = {
     "general": {"input_number.ramka_lux_max"},
     "controls": {e for e, where in CONTROLS_SETTINGS.items() if where == "advanced"},
     "music": {"input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
-              "input_number.ramka_music_line_width_px", SPECTRUM_RATE, MUSIC_SOURCE, "input_number.audio_sensor_measured_offset",
-              "input_text.audio_sensor_calibration_note",
+              "input_number.ramka_music_line_width_px",
               # Profile settings (Custom's rows and each template's own, the EQ select) and the colour range.
               "input_select.ramka_music_eq", "input_number.ramka_music_hold_s",
               *(f"input_number.ramka_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")),
@@ -1595,7 +1594,7 @@ ADVANCED = {
 # What audio-sensor provides that the Music page reads (its manifest's provides, Ramka's consumes).
 AUDIO_SENSOR_IDS = {MUSIC_SOURCE, "sensor.music_spl_offset", "sensor.music_spl_calibration", "sensor.music_mic_gain",
                     "input_number.audio_sensor_measured_offset", "input_text.audio_sensor_calibration_note",
-                    "script.audio_sensor_apply_calibration"}
+                    "script.audio_sensor_apply_calibration", *MUSIC_CONTRACT_IDS}
 # The page each input adds, and how a render leaves it out.
 NOT_CONFIGURED = [("climate", "climate"), ("air", "air"), ("plants", "plants"), ("photos", "photo_dir"),
                   ("status", "status_page"), ("music", "music_visual")]
@@ -1682,8 +1681,8 @@ def test_settings_dashboard_pages_per_language(demo):
             continue
         shown = list(strings(dashboard))
         for key, value in t.items():
-            if value == en[key] or "`" in en[key] or "\n" in en[key] or en[key] in SETTINGS_PAGES:
-                continue  # (a page path, such as "air", is no English text)
+            if value == en[key] or "`" in en[key] or "\n" in en[key] or en[key] in SETTINGS_PAGES + list(ABILITY_SENSORS):
+                continue  # (a page path, such as "air", or an ability id the abilities line reads, is no English text)
             assert not any(word(en[key]).search(s) for s in shown), f"{lang}: English {en[key]!r} ({key})"
     assert "ß" not in json.dumps(demo["ramka-settings.de.yaml"], ensure_ascii=False)
 
@@ -1779,46 +1778,153 @@ def test_settings_reset_buttons(demo):
 
 
 def test_music_page_sensor_and_calibration(demo):
+    """The Music page reads the music source contract (SPEC-025): the source select in Basic, shown
+    while audio-sensor provides it, with its abilities line; the calibration and the update rate are
+    no longer on the page (the sensor sub-view's)."""
     manifest = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))
     consumed = {c["id"] for c in manifest["consumes"] if "id" in c and c["component"] == "audio-sensor"}
     audio = yaml.safe_load((REPO / "components/audio-sensor/component.yaml").read_text(encoding="utf-8"))
     provided = {e["id"] for e in audio["provides"]["entities"]}
     assert AUDIO_SENSOR_IDS <= consumed <= provided
+    assert MUSIC_CONTRACT_IDS <= AUDIO_SENSOR_IDS
     for lang in LANGS:
         t = translations(lang)
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        # The preview reads the music aliases too (the strip's own), and its classic note shows while
-        # the music source is unavailable; every other card that reads audio-sensor is the music
-        # source or its calibration.
-        reading = [(s, c) for s, c in view_cards(view) if c.get("type") != "custom:ambient-wave-card"
-                   and c.get("content") != t["ui.settings.preview_classic"]
-                   and any(e in json.dumps(c) for e in AUDIO_SENSOR_IDS)]
-        assert reading
-        for section, card in reading:
-            conditions = (section.get("visibility") or []) + (card.get("visibility") or [])
-            there = SOURCE_THERE in card.get("visibility", []) or row_conditions(card, MUSIC_SOURCE) == [SOURCE_THERE]
-            assert there and ADVANCED_ON in conditions, (lang, card.get("type"))
-        # The Music sensor card: the source row, hidden while unavailable, and the update rate's.
-        [select] = [c for _, c in reading if MUSIC_SOURCE in {r.get("entity") for r in rows(c)}]
-        assert select["title"] == t["ui.settings.music_source"]
-        assert [r["name"] for r in rows(select)] == [t["ui.settings.music_source_row"], t["ui.settings.music_spectrum_rate"]]
-        [table] = [c for _, c in reading if c.get("type") == "markdown"]
-        for entity in ("sensor.music_spl_offset", "sensor.music_spl_calibration", "sensor.music_mic_gain"):
-            assert entity in table["content"]
-        assert "state_attr('sensor.music_spl_calibration', 'note')" in table["content"]
-        assert t["ui.settings.calibration_procedure"] in table["content"]
-        assert "components/audio-sensor/README.md" in table["content"]
-        # The state calibrated / estimate reads translated.
-        for state, key in (("calibrated", "calibrated"), ("estimate", "estimate")):
-            out = ha(table["content"], states={"sensor.music_spl_calibration": state, "sensor.music_spl_offset": "82.5"},
-                     attrs={"sensor.music_spl_calibration": {"note": "pink noise, meter at 1 m"}})
-            assert t[f"ui.settings.{key}"] in out and "82.5" in out and "pink noise, meter at 1 m" in out
-        inputs = [c for _, c in reading if "input_number.audio_sensor_measured_offset" in {r.get("entity") for r in rows(c)}]
-        [entities] = inputs
-        assert [r.get("entity") for r in rows(entities)][:2] == ["input_number.audio_sensor_measured_offset",
-                                                                 "input_text.audio_sensor_calibration_note"]
-        [apply] = [n for n in walk(entities) if n.get("perform_action") == "script.audio_sensor_apply_calibration"]
-        assert apply["confirmation"]["text"] == t["ui.settings.calibration_apply_confirm"]
+        basic = view["sections"][0]
+        [select] = [c for c in basic["cards"] if MUSIC_SOURCE in {r.get("entity") for r in rows(c)}]
+        assert row_conditions(select, MUSIC_SOURCE) == [SOURCE_EXISTS], lang
+        [row] = [r for r in rows(select) if r.get("entity") == MUSIC_SOURCE]
+        assert row["name"] == t["ui.settings.music_source"], lang
+        assert not advanced(basic, select) and not select.get("visibility"), lang
+        text = json.dumps(view)
+        for gone in ("input_number.audio_sensor_measured_offset", "input_text.audio_sensor_calibration_note",
+                     "script.audio_sensor_apply_calibration", "sensor.music_spl_calibration", "sensor.music_mic_gain",
+                     SPECTRUM_RATE):
+            assert gone not in text, (lang, gone)
+        assert t["ui.settings.calibration"] not in {heading_of(s) for s in view["sections"]}, lang
+
+
+MUSIC_VISUAL = "input_select.ramka_music_visual"
+
+
+def visual_is(kind) -> dict:
+    return {"condition": "state", "entity": MUSIC_VISUAL, "state": kind}
+
+
+# A (SPEC-025): the visual is spectrum or level, and the selected sensor has that ability.
+ACTIVE = {"condition": "or", "conditions": [
+    {"condition": "and", "conditions": [visual_is(kind), {"condition": "state", "entity": f"binary_sensor.music_source_{kind}", "state": "on"}]}
+    for kind in ("spectrum", "level")]}
+ABILITY_SENSORS = {a: f"binary_sensor.music_source_{a}" for a in ("spectrum", "level", "rate", "calibration")}
+# The selected profile in the matrix below: a template's own helpers, not Custom's.
+MATRIX_PROFILE = "lively"
+SENSOR_CASES = {
+    # The source select on no sensor: every ability off.
+    "none": {MUSIC_SOURCE: "\u2014", **{e: "off" for e in ABILITY_SENSORS.values()}},
+    "level_only": {MUSIC_SOURCE: "kitchen", ABILITY_SENSORS["spectrum"]: "off", ABILITY_SENSORS["level"]: "on",
+                   ABILITY_SENSORS["rate"]: "off", ABILITY_SENSORS["calibration"]: "on"},
+    "full": {MUSIC_SOURCE: "kitchen", **{e: "on" for e in ABILITY_SENSORS.values()}},
+    # A home without audio-sensor: none of its entities (a missing entity reads unknown).
+    "no_audio_sensor": {},
+}
+
+
+def visible(conditions, states) -> bool:
+    """Home Assistant's visibility conditions (state, state_not, and, or; a list is and) on stub
+    states: an entity not in `states` is unknown, as Home Assistant reads a missing one."""
+    def holds(c) -> bool:
+        kind = c.get("condition", "state")
+        if kind == "and":
+            return all(holds(x) for x in c["conditions"])
+        if kind == "or":
+            return any(holds(x) for x in c["conditions"])
+        assert kind == "state" and ("state" in c) != ("state_not" in c), c
+        state = states.get(c["entity"], "unknown")
+        return state in as_list(c["state"]) if "state" in c else state not in as_list(c["state_not"])
+    return all(holds(c) for c in conditions or [])
+
+
+def shown_with(view, states) -> set[str]:
+    """The entities a sections view shows for `states`: sections, cards and conditional rows with
+    their visibility applied."""
+    out = set()
+    for section in view["sections"]:
+        if not visible(section.get("visibility"), states):
+            continue
+        for card in section["cards"]:
+            if not visible(card.get("visibility"), states):
+                continue
+            if card.get("entity"):
+                out.add(card["entity"])
+            for r in card.get("entities", []) if card.get("type") == "entities" else []:
+                r = r if isinstance(r, dict) else {"entity": r}
+                if r.get("type") == "conditional":
+                    if not visible(r["conditions"], states):
+                        continue
+                    r = r["row"]
+                if r.get("entity"):
+                    out.add(r["entity"])
+    return out
+
+
+@pytest.mark.parametrize("visual", ["classic", "spectrum", "level"])
+@pytest.mark.parametrize("sensor", ["none", "level_only", "full", "no_audio_sensor"])
+@pytest.mark.parametrize("advanced", ["on", "off"])
+def test_music_page_rows_follow_visual_and_sensor(demo, visual, sensor, advanced):
+    """SPEC-025's row table: V (a visual that needs a sensor) and A (the sensor has the visual's
+    ability) decide what the Music page shows."""
+    states = {"input_boolean.ramka_page_music": "on", MUSIC_VISUAL: visual, TEMPLATE_SELECT: MATRIX_PROFILE,
+              "input_boolean.ramka_settings_advanced": advanced, **SENSOR_CASES[sensor]}
+    active = visual in ("spectrum", "level") and states.get(ABILITY_SENSORS.get(visual), "unknown") == "on"
+    expected = {"input_boolean.ramka_page_music", MUSIC_VISUAL, "input_boolean.ramka_settings_advanced"}
+    if sensor != "no_audio_sensor":
+        expected.add(MUSIC_SOURCE)
+    if active:
+        expected |= {TEMPLATE_SELECT, "input_select.ramka_music_palette"}
+    if active and advanced == "on":
+        h = profile_helpers(MATRIX_PROFILE)
+        expected |= {f"input_select.ramka_music_{visual}_flavour", "input_number.ramka_music_line_width_px",
+                     h["rise"], h["fall"], h["hold"], h["tilt"],
+                     f"input_number.ramka_music_{visual}_neutral_db", f"input_number.ramka_music_{visual}_hot_db"}
+        if visual == "spectrum":
+            expected |= {EQ_SELECT, *(h[f"eq_{k}"] for k in EQ_KEYS)}
+    for lang in LANGS:
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        shown = shown_with(view, states)
+        assert shown == expected, (lang, sorted(shown - expected), sorted(expected - shown))
+        assert not shown & {SPECTRUM_RATE, "input_number.audio_sensor_measured_offset"}, lang
+
+
+def test_music_sensor_abilities_line(demo):
+    """Under the source select, while a sensor is selected: the abilities the selected board has, in
+    the page's language, or that it gives no data for a visual (neither spectrum nor level)."""
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        [line] = [c for c in view["sections"][0]["cards"]
+                  if c.get("type") == "markdown" and "sensor.music_source" in c["content"]]
+        assert visible(line.get("visibility"), {MUSIC_SOURCE: "kitchen"}), lang
+        for state in ("\u2014", "unavailable", "unknown"):
+            assert not visible(line.get("visibility"), {MUSIC_SOURCE: state}), (lang, state)
+        assert not visible(line.get("visibility"), {}), lang
+        lead, none_ = t["ui.settings.music_sensor_abilities"], t["ui.settings.music_sensor_no_data"]
+        named = lambda *abilities: lead + " " + ", ".join(t[f"ui.settings.music_ability_{a}"] for a in abilities)  # noqa: E731
+        for caps, out in (
+            (["spectrum", "level", "rate", "calibration", "gain"], named("spectrum", "level", "rate", "calibration")),
+            # The line keeps the contract's order, whatever the attribute's.
+            (["calibration", "level", "spectrum"], named("spectrum", "level", "calibration")),
+            (["level", "calibration", "gain"], named("level", "calibration")),
+            (["spectrum"], named("spectrum")),
+            (["rate", "gain"], none_), (["gain"], none_), ([], none_), (None, none_),
+        ):
+            attrs = {} if caps is None else {"sensor.music_source": {"capabilities": caps}}
+            assert ha(line["content"], states={"sensor.music_source": "kitchen"}, attrs=attrs) == out, (lang, caps)
+        # Translated, not copied.
+        if lang != "en":
+            en = translations("en")
+            for key in ("music_sensor_abilities", "music_sensor_no_data", "music_ability_spectrum", "music_ability_level",
+                        "music_ability_rate", "music_ability_calibration"):
+                assert t[f"ui.settings.{key}"] != en[f"ui.settings.{key}"], (lang, key)
 
 
 def preview_cards(view):
@@ -2074,10 +2180,9 @@ def test_spectrum_rate_row_translated(demo):
         t = translations(lang)
         assert t["ui.settings.music_spectrum_rate"] == name
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        [row] = [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == SPECTRUM_RATE]
-        assert row["name"] == name
-        # The select shows the option values, with no note on what each one does (the page's
-        # Advanced panel stays rows only).
+        # The row left the Music page (SPEC-025: a setting of the sensor, for its sub-view); no note
+        # on what each option does stays behind.
+        assert not [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == SPECTRUM_RATE], lang
         assert not [c for _, c in view_cards(view) if c.get("type") == "markdown" and RATE_THERE in c.get("visibility", [])], lang
 
 
@@ -3292,58 +3397,62 @@ def test_music_settings_page_layout(demo):
         cards = list(view_cards(view))
         sections = view["sections"]
         # Basic, Advanced right after it (the second column), Preview across both, Profile settings,
-        # Colour range, Calibration (unchanged), the render-time inputs, the Reset.
+        # Colour range, the render-time inputs, the Reset; no Calibration (SPEC-025: the sub-view's).
         assert [heading_of(s) for s in sections] == [t[f"ui.settings.{k}"] for k in (
-            "basic", "advanced", "preview", "music_profile_settings", "music_colour", "calibration", "render_time")] + [None], lang
-        basic, adv, preview, profiles, colour, calibration = sections[:6]
+            "basic", "advanced", "preview", "music_profile_settings", "music_colour", "render_time")] + [None], lang
+        basic, adv, preview, profiles, colour = sections[:5]
         assert preview.get("column_span") == 2 and not adv.get("column_span"), lang
-        # Basic: the page switch, visual, palette, the profile with its tooltip, the Advanced switch.
-        [entities] = [c for c in basic["cards"] if c["type"] == "entities"]
-        assert [r["entity"] for r in rows(entities)] == [
-            "input_boolean.ramka_page_music", "input_select.ramka_music_visual", "input_select.ramka_music_palette", TEMPLATE_SELECT,
-            "input_boolean.ramka_settings_advanced"], lang
-        [profile_row] = [r for r in rows(entities) if r.get("type") == INFO_ROW]
+        # Basic: the page switch, the visual and the music sensor; the abilities line; the profile with
+        # its tooltip and the palette in their own card, shown while the visual is active; the
+        # Advanced switch; the page-off note.
+        assert [c["type"] for c in basic["cards"]] == ["heading", "entities", "markdown", "entities", "entities", "markdown"], lang
+        first, line, needs_a, switch = basic["cards"][1:5]
+        assert [r["entity"] for r in rows(first)] == ["input_boolean.ramka_page_music", MUSIC_VISUAL, MUSIC_SOURCE], lang
+        assert not first.get("visibility") and not switch.get("visibility") and not basic.get("visibility"), lang
+        assert "sensor.music_source" in line["content"], lang
+        assert needs_a["visibility"] == [ACTIVE], lang
+        assert [r["entity"] for r in rows(needs_a)] == [TEMPLATE_SELECT, "input_select.ramka_music_palette"], lang
+        assert [r["entity"] for r in rows(switch)] == ["input_boolean.ramka_settings_advanced"], lang
+        [profile_row] = [r for r in rows(needs_a) if r.get("type") == INFO_ROW]
         assert profile_row["entity"] == TEMPLATE_SELECT and profile_row["name"] == t["ui.settings.music_template"], lang
         assert profile_row["descriptions"] == {p: profile_text(t, p) for p in LOOK_IDS}, lang
-        assert not basic.get("visibility") and not entities.get("visibility"), lang
-        # Advanced: the whole section and each card shown with the switch; one Music sensor card with
-        # the music source and the sensor update rate, each row hidden while unavailable (the card
-        # while both are); then the flavours and line width. No redraw rate, no explanation of
-        # eco / normal / fast.
-        assert adv["visibility"] == [ADVANCED_ON], lang
-        assert [c["type"] for c in adv["cards"]] == ["heading", "entities", "entities"], lang
-        assert [r["entity"] for c in adv["cards"] for r in rows(c)] == [
-            MUSIC_SOURCE, SPECTRUM_RATE, "input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
+        # Advanced: the section and its card shown with the switch and A; the visual's flavour (one
+        # state condition per row) and the line width. No redraw rate, no explanation of eco / normal / fast.
+        assert adv["visibility"] == [ADVANCED_ON, ACTIVE], lang
+        assert [c["type"] for c in adv["cards"]] == ["heading", "entities"], lang
+        look = adv["cards"][1]
+        assert look["visibility"] == [ADVANCED_ON, ACTIVE], lang
+        assert [r["entity"] for r in rows(look)] == [
+            "input_select.ramka_music_spectrum_flavour", "input_select.ramka_music_level_flavour",
             "input_number.ramka_music_line_width_px"], lang
-        sensor, look = adv["cards"][1:]
-        assert sensor["title"] == t["ui.settings.music_source"], lang
-        assert sensor["visibility"] == [ADVANCED_ON, {"condition": "or", "conditions": [SOURCE_THERE, RATE_THERE]}], lang
-        assert [r["type"] for r in sensor["entities"]] == ["conditional", "conditional"], lang
-        assert row_conditions(sensor, MUSIC_SOURCE) == [SOURCE_THERE] and row_conditions(sensor, SPECTRUM_RATE) == [RATE_THERE], lang
-        assert look["visibility"] == [ADVANCED_ON], lang
+        assert row_conditions(look, "input_select.ramka_music_spectrum_flavour") == [visual_is("spectrum")], lang
+        assert row_conditions(look, "input_select.ramka_music_level_flavour") == [visual_is("level")], lang
+        assert row_conditions(look, "input_number.ramka_music_line_width_px") == [], lang
         assert "ramka_music_fps" not in json.dumps(adv), lang
         assert "`eco`" not in json.dumps(view) and "`fast`" not in json.dumps(view), lang
-        # Calibration keeps its own section; the Music sensor heading is gone (its row moved).
-        assert MUSIC_SOURCE not in {r.get("entity") for c in calibration["cards"] for r in rows(c)}, lang
         # Profile settings: one card per profile, shown while it is selected (Custom also for a state
         # that is no entry id); Custom's rows labelled as before, each template's rows its own helpers.
-        # Profile settings and the colour range are Advanced: the section and each card shown with the
-        # switch, as the Advanced panel.
-        assert profiles["cards"][0]["icon"] == "mdi:tune" and profiles["visibility"] == [ADVANCED_ON], lang
-        assert colour["visibility"] == [ADVANCED_ON], lang
+        # Profile settings and the colour range are Advanced and need A: the section and each card.
+        assert profiles["cards"][0]["icon"] == "mdi:tune" and profiles["visibility"] == [ADVANCED_ON, ACTIVE], lang
+        assert colour["visibility"] == [ADVANCED_ON, ACTIVE], lang
         for card in profiles["cards"] + colour["cards"]:
-            assert card["visibility"][0] == ADVANCED_ON, (lang, card.get("type"))
+            assert card["visibility"][:2] == [ADVANCED_ON, ACTIVE], (lang, card.get("type"))
         profile_cards = profiles["cards"][1:]
         assert [c["type"] for c in profile_cards] == ["entities"] * len(LOOK_IDS), lang
         for profile, card in zip(LOOK_IDS, profile_cards):
             if profile == "custom":
-                assert card["visibility"] == [ADVANCED_ON, {"condition": "state", "entity": TEMPLATE_SELECT, "state_not": TEMPLATE_IDS}], lang
+                assert card["visibility"][2:] == [{"condition": "state", "entity": TEMPLATE_SELECT, "state_not": TEMPLATE_IDS}], lang
             else:
-                assert card["visibility"] == [ADVANCED_ON, {"condition": "state", "entity": TEMPLATE_SELECT, "state": profile}], (lang, profile)
+                assert card["visibility"][2:] == [{"condition": "state", "entity": TEMPLATE_SELECT, "state": profile}], (lang, profile)
             h = profile_helpers(profile)
             listed = rows(card)
             assert [r.get("entity") for r in listed] == [h["rise"], h["fall"], h["hold"], h["tilt"], EQ_SELECT,
                                                          *(h[f"eq_{k}"] for k in EQ_KEYS)], (lang, profile)
+            # The EQ acts on the bands: its select and gains show with the spectrum only.
+            for entity in (EQ_SELECT, *(h[f"eq_{k}"] for k in EQ_KEYS)):
+                assert row_conditions(card, entity) == [visual_is("spectrum")], (lang, profile, entity)
+            for entity in (h["rise"], h["fall"], h["hold"], h["tilt"]):
+                assert row_conditions(card, entity) == [], (lang, profile, entity)
             assert [r.get("name") for r in listed if r.get("entity") != EQ_SELECT and r.get("type") != "button"] == [
                 t[f"ui.settings.{k}"] for k in ("music_rise_ms", "music_fall_s", "music_hold_s", "music_tilt",
                                                 *(f"music_eq_{k}" for k in EQ_KEYS))], (lang, profile)
@@ -3351,10 +3460,13 @@ def test_music_settings_page_layout(demo):
             assert preset["type"] == INFO_ROW and preset["name"] == t["ui.settings.music_eq"], (lang, profile)
             assert preset["descriptions"] == {p: preset_text(t, p, CATALOG_EQ[p]) for p in EQ_PRESET_IDS}, (lang, profile)
             assert not [r for r in listed if r.get("type") == "button"], (lang, profile)
-        # The colour range: its own grid, the four neutral/hot rows and nothing else.
+        # The colour range: its own grid, the four neutral/hot rows, each pair with its visual only.
         assert [c["type"] for c in colour["cards"]] == ["heading", "entities"], lang
         assert colour["cards"][0]["icon"] == "mdi:palette", lang
         assert [r["entity"] for r in rows(colour["cards"][1])] == [f"input_number.ramka_{k}" for k in MUSIC_DB], lang
+        for k in MUSIC_DB:
+            kind = k.split("_")[1]
+            assert row_conditions(colour["cards"][1], f"input_number.ramka_{k}") == [visual_is(kind)], (lang, k)
         # Gone: the description markdown, the values in use, Copy to custom, the preset list.
         assert "copy_to_custom" not in json.dumps(view) and "`wled_pink`" not in json.dumps(view), lang
         for key in ("music_template_calm_purpose", "music_eq_wled_pink"):
