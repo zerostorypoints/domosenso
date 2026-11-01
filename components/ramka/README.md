@@ -536,6 +536,9 @@ The links come from `shell/domosenso_catalog.json`, which ships with the Ramka
 - After a Home Assistant restart an open tablet page gets its forecast back by itself: the clock
   card subscribes again when the page reconnects and when the weather entity is back, and retries
   (10 s, 30 s, 60 s, then every 5 min) until the weather integration answers with days (0.3.1). No reload automation is needed.
+- After a Home Assistant restart the screen follows the room again without anyone walking past
+  (0.10.1): once the radar reports presence, `<prefix>_reconcile_after_start` wakes a frame restored
+  `off` in a used room, or sleeps a lit frame in an empty one after `off_delay_s`.
 - A reload of the scripts stops the running ambient loop; the watchdog automation restarts it
   within five minutes. Template entities reload with `template.reload`.
 - After a change to the input_select options, restart Home Assistant rather than reloading them

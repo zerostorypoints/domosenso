@@ -5,14 +5,26 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.11.0 (2026-11-01): the plan view fills the screen
 
-Needs the `floorplan` component 0.3.0 or newer (`fill`, and its bar's `data-own-tap`); with an
-older one the plan keeps 8 rows and zoom returns to the controls.
+Includes 0.10.1. Needs the `floorplan` component 0.3.0 or newer (`fill`, and its bar's
+`data-own-tap`); with an older one the plan keeps 8 rows and zoom returns to the controls.
 
 - With `floorplan: true` the plan view is as tall as the screen below its top instead of 8 rows,
   and its zoom, fit and map buttons work without returning to the controls. The maps (plants:
   light, temperature, soil moisture; climate; light) come with floorplan 0.3.0.
 - **After the update:** `domosenso update ramka --to 0.11.0` and `update floorplan --to 0.3.0`,
   deploy, press the Ramka's reload.
+
+## 0.10.1 (2026-11-01): the screen follows the room after a restart
+
+- **Fixed (#52):** wake and sleep fired only on changes of the radar's presence, and a restart hides
+  the change (the state restores before the automations load). A frame restored `off` stayed dark
+  with someone in the room; one restored lit stayed lit all night in an empty room. The new
+  automation `<prefix>_reconcile_after_start` re-checks once Home Assistant has started and the
+  radar reports `on` or `off`: presence `on` and mode `off` wakes it to ambient; presence `off` that
+  holds for `off_delay_s` sleeps it, with the same conditions and actions as
+  `<prefix>_presence_on` / `<prefix>_presence_off`.
+- **Renders** `automation.<prefix>_reconcile_after_start` (additive); no input changes.
+- **To do:** nothing; render and deploy. The deploy's own restart is the first one it handles.
 
 ## 0.10.0 (2026-11-01): the floor plan as a second view of the controls
 
