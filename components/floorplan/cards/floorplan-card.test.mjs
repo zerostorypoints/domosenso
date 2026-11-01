@@ -846,6 +846,22 @@ test("a dot dropped on another dot snaps onto it and the two become one dot with
   assert.ok(!$(card, 'g.cluster[data-cluster^="at:"]'));
 });
 
+test("placed dots too close to tell apart on screen are one dot; zoomed in they part", async () => {
+  // Two lamps on one spot and a third 7 mm off: the third used to hide under the stack's dot.
+  const pts = [pt("d_lamp", 2.071, 3.528), pt("d_dimmer", 2.071, 3.528), pt("d_climate", 2.078, 3.527)];
+  const card = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  const stack = $(card, 'g.cluster[data-cluster^="at:"]');
+  assert.equal(stack?.querySelector("text").textContent, "3");
+  assert.ok(!markerOf(card, "d_climate"), "no marker hidden under the dot");
+  const far = await make({ plan: planOf([pt("d_lamp", 2, 2), pt("d_climate", 2.1, 2)]) }, categoryHass());
+  await settle();
+  assert.ok($(far, 'g.cluster[data-cluster^="at:"]'), "10 cm at the fitted zoom (about 10 px): one dot");
+  for (let i = 0; i < 12; i++) click($(far, "[data-action=zoom_in]"));
+  assert.ok(!$(far, 'g.cluster[data-cluster^="at:"]') && markerOf(far, "d_lamp") && markerOf(far, "d_climate"),
+    "zoomed in: two markers");
+});
+
 test("a dot dropped near, not on, another dot keeps its place", async () => {
   const card = await make({ plan: planOf([pt("d_climate", 1, 1), pt("d_lamp", 3, 2)]) }, categoryHass());
   await settle();

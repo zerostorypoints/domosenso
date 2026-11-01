@@ -40,6 +40,7 @@ const TAP_PX = 5;         // a pointer that moved less than this is a tap, not a
 const PICK_PX = 12;       // how far from a wall a split pick may land
 const LABEL_PX = 14;      // a room name's size on screen, shrunk down to LABEL_MIN_PX to fit its room
 const LABEL_MIN_PX = 9;
+const STACK_PX = 14;      // placed dots closer than this on screen are one dot with a list
 const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers this browser switched off
 
 // Browser storage may be missing or refuse (a private window, a preview): the layers then start on.
@@ -430,15 +431,37 @@ ${STYLE}
   }
 
   // Dots that would cover each other, as clusters of two or more: unplaced points by the room they
-  // stand in (key: the area id), and placed points on the very same spot (a stack, key "at:x,y").
+  // stand in (key: the area id), and placed points closer on screen than STACK_PX to one another
+  // (a stack, key "at:" and its first point's key): zooming in parts them.
   _clusters(floor) {
     const byRoom = new Map();
+    const placed = [];
     for (const point of floor.points) {
       if (!this._visible(pointCategory(this._hass, point, this._cands).id)) continue;
-      const room = !point.placed && floor.rooms.find((r) => pointInPolygon([point.x, point.y], r.polygon));
-      const key = point.placed ? `at:${point.x},${point.y}` : room?.area_id ?? "";
+      if (point.placed) {
+        placed.push(point);
+        continue;
+      }
+      const room = floor.rooms.find((r) => pointInPolygon([point.x, point.y], r.polygon));
+      const key = room?.area_id ?? "";
       if (!byRoom.has(key)) byRoom.set(key, []);
       byRoom.get(key).push(point);
+    }
+    // Single linkage: a dot within reach of any dot of a stack is in that stack.
+    const reach = STACK_PX * this._px();
+    const parent = placed.map((_, i) => i);
+    const root = (i) => (parent[i] === i ? i : (parent[i] = root(parent[i])));
+    placed.forEach((a, i) => placed.forEach((b, j) => {
+      if (j > i && Math.hypot(a.x - b.x, a.y - b.y) <= reach) parent[root(j)] = root(i);
+    }));
+    const stacks = new Map();
+    placed.forEach((p, i) => {
+      if (!stacks.has(root(i))) stacks.set(root(i), []);
+      stacks.get(root(i)).push(p);
+    });
+    for (const points of stacks.values()) {
+      const first = [...points].sort((a, b) => (keyOf(a) < keyOf(b) ? -1 : 1))[0];
+      byRoom.set(`at:${keyOf(first)}`, points);
     }
     const out = new Map();
     for (const [area, points] of byRoom) {

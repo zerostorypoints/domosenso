@@ -85,7 +85,8 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
   their count. Tap it to open their list; drag each device from the list to where it stands (it
   leaves the cluster), or tap one to set its category. A tap elsewhere closes the list; it hides
   while you drag. Dropping a dot on another placed dot snaps it there: devices standing at one spot
-  (a shelf, a rack) are one dot with their list in the same way.
+  (a shelf, a rack), or too close to tell apart at the current zoom, are one dot with their list in
+  the same way; zoom in to part them.
 - **Dots stay inside rooms:** dragged or dropped outside every room, a dot stands on the nearest
   wall instead.
 - **Links:** hovering a marker, or tapping it in edit mode, draws lines to the devices it reaches

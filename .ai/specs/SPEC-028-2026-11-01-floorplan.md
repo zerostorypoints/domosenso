@@ -480,9 +480,10 @@ covering each other. The maintainer: break them down into a list of devices unde
 - A registry link to a device inside a cluster ends at the cluster's dot, one line per dot, with the
   names of the linked devices in it written there (a sensor's hub not placed yet reads as such).
 - **Stacks** (the maintainer: a dot dragged onto another should snap and make a combined list): a dot
-  dropped within 10 px of another placed dot takes its exact position; placed dots on the very same
-  spot are one dot with their count and list, like a room's cluster. Dragging one out of the list
-  unstacks it. (A device dropped from the tray onto a marker still joins it as the same hardware.)
+  dropped within 10 px of another placed dot takes its exact position; placed dots closer than 14 px
+  on screen to one another (single linkage, at the current zoom) are one dot with their count and
+  list, like a room's cluster, so no dot hides under another; zooming in parts them, dragging one out
+  of the list unstacks it. (A real plan had a lamp 7 mm off two others, hidden under their dot.) (A device dropped from the tray onto a marker still joins it as the same hardware.)
 - **Dots stay inside rooms** (the maintainer: no leaving the room outlines, at most snapped to the
   wall): a dot dragged, dropped from the tray or from a list outside every room stands on the
   nearest point of a room's walls, while dragging and after. Moving into another room is fine.
