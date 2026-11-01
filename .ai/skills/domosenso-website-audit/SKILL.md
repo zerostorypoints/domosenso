@@ -41,6 +41,13 @@ A test-only internal refactor may need no website changes. A published version c
 defaults needs updated examples and view metadata, not just a new version label. Missing tags
 need a release follow-up; feature-branch work stays unpublished or explicitly labeled preview.
 
+## The Release workflow's pull request
+
+For a new tag the `Release` workflow (SPEC-027) opens `website: publish <id> <version>` (label
+`website-publish`) with the mechanical part done by `tools/publish_release.py`: the selection, the
+component's views and devices. Work on that branch: its body quotes the upgrade notes and lists what
+is left. Run the tool yourself (`uv run tools/publish_release.py <id>`) for a tag made by hand.
+
 ## Prepare and verify
 
 Prepare authorized edits on an owned named branch. Choose a journal article only when there is

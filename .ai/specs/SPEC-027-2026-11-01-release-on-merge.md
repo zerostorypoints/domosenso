@@ -1,6 +1,7 @@
 # SPEC-027: Tag on merge, and a website PR for every new tag
 
-- Status: draft 2026-11-01
+- Status: approved 2026-11-01 by the maintainer, as written; the open questions are settled below as
+  the spec's defaults
 - Source: the maintainer, 2026-11-01, after Ramka 0.8.0–0.9.0 and audio-sensor's SPEC-025 contract
   waited on main without a tag (ten "Unreleased" sections in Ramka's UPGRADE.md; audio-sensor's new
   entities in no tag while the released Ramka 0.9.0 consumed them). Every tag so far was made by
@@ -108,7 +109,12 @@ requested from `CODEOWNERS` if the repository has one; the workflow names nobody
   (the Search Console and Bing accounts are a maintainer's).
 - Releasing from a feature branch.
 
-## Open questions
+## Open questions, settled by the approval
+
+The maintainer approved the spec as written, so each question keeps the behaviour the sections above
+describe: (1) a feature PR may bump its own version; (2) one website PR per tag; (3) a release waits
+for the required checks only, not `demo`; (4) no reviewer is named by the workflow.
+
 
 1. **A feature PR that bumps its own version** (allowed above) can collide with another open PR on
    the same component; the second to merge then needs a rebase and a new number. Acceptable, or
@@ -120,3 +126,16 @@ requested from `CODEOWNERS` if the repository has one; the workflow names nobody
    it. Verified: required checks are `framework` and `website` (2026-11-01). Should a release wait
    for `demo` when the PR carried `run-demo`?
 4. **CODEOWNERS.** None exists; without it the website PR gets no reviewer requested.
+
+## Amendment 1 (2026-11-01, found while building)
+
+- **The full gate, not `--skip-checks`.** `release.py --skip-checks` reads main's required checks
+  (`GET /repos/{owner}/{repo}/branches/main/protection/required_status_checks`), which needs the
+  repository permission "Administration: read" (GitHub's table of fine-grained permissions); the
+  workflow's token cannot hold it, and the spec allows no other secret. The workflow therefore runs
+  `release.py <id>` with its full local gate (`check-all`), the evidence a local release uses.
+- **One trigger.** With the gate inside the job, the workflow waits only for "Framework website"
+  (the required check that `check-all` does not cover: lint, typecheck, build, e2e) to pass on the
+  merged commit; "Framework checks" is repeated by the gate. A run takes the gate's time
+  (about 20 minutes) per component it tags.
+
