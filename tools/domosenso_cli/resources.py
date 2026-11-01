@@ -7,9 +7,10 @@ so an existing resource is updated under its `resource_id`, never replaced by a 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
-from domosenso_cli.build import file_sha
+from domosenso_cli.build import file_sha, sha256
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
 from domosenso_cli.lock import Lock
@@ -33,6 +34,20 @@ class Action:
     type: str = "module"
 
 
+def _version_sha(card: Path, cid: str) -> str:
+    """A dev card's hash: of every file in its component's version directory
+    (`www/domosenso/<cid>/<version>/`) when the card is in one, else of the card alone. A card imports
+    its lib/ modules and translations with its own `?v=`, so a change to any of them must change the
+    card's URL too; one hash for the whole version also gives its cards one module instance of each."""
+    parts = card.parts
+    for i in range(len(parts) - 3):
+        if parts[i] == "domosenso" and parts[i + 1] == cid and i + 3 < len(parts):
+            root = Path(*parts[:i + 3])
+            files = sorted(f for f in root.rglob("*") if f.is_file())
+            return sha256("".join(f"{f.relative_to(root).as_posix()}\0{file_sha(f)}\n" for f in files).encode())
+    return file_sha(card)
+
+
 def _bare(url: str) -> str:
     return url.split("?", 1)[0].split("#", 1)[0]
 
@@ -49,7 +64,8 @@ def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None
     A home resource under `/local/` gets `?v=<sha8>` of its file in `config_dir/www`, so that a changed
     file is a new URL; any other URL (a third party's) passes through unchanged. So does a dev-rendered
     card: it keeps its version's path, so without the hash browsers would keep the old card for the 31
-    days /local/ is cached. A locked card's URL changes with its version directory."""
+    days /local/ is cached; its hash covers its version directory (`_version_sha`). A locked card's URL
+    changes with its version directory."""
     got: list[Resource] = []
     owners: dict[str, str] = {}  # file name -> where it was wanted from
     dev = dev or {}
@@ -61,7 +77,7 @@ def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None
             if cid in dev and _bare(url).startswith(LOCAL) and ".." not in _bare(url).split("/"):
                 path = home.config_dir / "www" / _bare(url)[len(LOCAL):]
                 if path.is_file():
-                    url = f"{_bare(url)}?v={file_sha(path)[:HASH_LENGTH]}"
+                    url = f"{_bare(url)}?v={_version_sha(path, cid)[:HASH_LENGTH]}"
             got.append(Resource(url))
     for raw in home.resources:
         url, kind = raw["url"], raw.get("type", "module")

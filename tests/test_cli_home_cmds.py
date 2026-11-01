@@ -584,9 +584,12 @@ CARD_100 = "/local/domosenso/panel/1.0.0/cards/panel-card.js"
 
 
 def dev_url(home, url):
-    """A dev-rendered card's resource URL: its path plus ?v= and its file's hash (resources.wanted)."""
-    path = home / "home-assistant/www" / url.removeprefix("/local/")
-    return f"{url}?v={hashlib.sha256(path.read_bytes()).hexdigest()[:8]}"
+    """A dev-rendered card's resource URL: its path plus ?v= and the hash of its version directory
+    (resources.wanted)."""
+    root = home / "home-assistant/www" / "/".join(url.removeprefix("/local/").split("/")[:3])
+    files = sorted(f for f in root.rglob("*") if f.is_file())
+    tree = "".join(f"{f.relative_to(root).as_posix()}\0{hashlib.sha256(f.read_bytes()).hexdigest()}\n" for f in files)
+    return f"{url}?v={hashlib.sha256(tree.encode()).hexdigest()[:8]}"
 CARD_110 = "/local/domosenso/panel/1.1.0/cards/panel-card.js"
 
 

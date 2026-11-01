@@ -19,6 +19,7 @@
 //                 (entity unavailable): targets are neutral
 
 import { THIRD_OCTAVE } from "./sources.js";
+import { EQ_KEYS, eqCurve } from "./eq.js";
 
 export const WIDTH_POINTS = 160;
 export const HISTORY_RATE = 4; // samples per s
@@ -77,6 +78,8 @@ export class Engine {
       clocks: [0, 0, 0], showFrom: 0, showTo: nb - 1, stale: true,
     };
     this._histReady = false;
+    this._eqGains = EQ_KEYS.map(() => undefined);
+    this._eqDb = eqCurve();
   }
 
   get frame() { return this._f; }
@@ -133,8 +136,17 @@ export class Engine {
       const from = opts.showFrom ?? 0;
       const to = opts.showTo ?? this._bands - 1;
       const e = this._exc;
+      // The curve again only when one of the six gains changed: compared in place, 30 times a second.
+      const g = this._eqGains;
+      let same = true;
+      for (let k = 0; k < EQ_KEYS.length; k++) {
+        const v = opts.eq?.[EQ_KEYS[k]];
+        if (!Object.is(v, g[k])) { g[k] = v; same = false; }
+      }
+      if (!same) this._eqDb = eqCurve(opts.eq);
+      const eqDb = this._eqDb;
       for (const [src, dst] of [[f.smooth, f.env], [f.peak, f.peakEnv]]) {
-        for (let i = 0; i < this._bands; i++) e[i] = palette.excess(src[i] + (opts.tilt ? TILT[i] : 0));
+        for (let i = 0; i < this._bands; i++) e[i] = palette.excess(src[i] + (opts.tilt ? TILT[i] : 0) + eqDb[i]);
         spread(e, dst, from, to);
       }
     }

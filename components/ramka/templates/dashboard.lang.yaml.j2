@@ -12,6 +12,13 @@
     1000 px the view drops to two columns and the controls scroll. -#]
 [%- set layouts = [{'name': '1100x720', 'min_width': 1024, 'max_width': 1280, 'min_height': 720, 'max_height': 800}] -%]
 [%- set screen = inputs.screen | default({'width': 1100, 'height': 720}) -%]
+[#- The preview dashboard (templates/ramka-preview.lang.yaml.j2) extends this template and sets
+    `preview`: it shows each screen's block below in a frame of the screen's size, so the heights
+    count from that frame instead of the browser's viewport, and no section visibility switches
+    them; a card's own (the controls' player tiles, the unavailable twins) stays, and the frame
+    applies it. -#]
+[%- set preview = preview | default(false) -%]
+[%- set vh = screen.height ~ 'px' if preview else '100dvh - var(--kiosk-header-height, var(--header-height, 0px))' -%]
 [%- set fit = namespace(layout=none) -%]
 [%- for layout in layouts if fit.layout is none and layout.min_width <= screen.width <= layout.max_width and layout.min_height <= screen.height <= layout.max_height -%]
 [%- set fit.layout = layout -%]
@@ -40,7 +47,10 @@
 [#- The now-playing card's music visual (0.4.0): audio-sensor's ambient-wave-card in the wave strip,
     reading the home's music aliases, one config per option of input_select.<prefix>_music_visual.
     Every option of the look names a helper (SPEC-021), so the settings dashboard changes the
-    visual live; the card reads the states on every update. Their starting values
+    visual live; the card reads the states on every update. `look` binds the music look
+    (sensor.<prefix>_music_look, spec 5): its attributes override rise, fall, hold, tilt and the EQ
+    (no profile carries a colour window: the neutral and hot levels stay the helpers'), and while it is
+    unavailable the card reads the helpers. Their starting values
     (music_visual_options) are the package's: its seed and reset write them, and it checks them.
     A render cannot see audio-sensor's inputs: a home without its music aliases gets the classic
     wave from the card's fallback, not a failed render. -#]
@@ -54,8 +64,9 @@
     'type': 'custom:ambient-wave-card', 'source': source, 'active': 'binary_sensor.' ~ p ~ '_media_playing', 'fallback': 'classic',
     'flavour': 'input_select.' ~ m ~ kind ~ '_flavour', 'fps': 'input_number.' ~ m ~ 'fps',
     'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
-    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt'},
-    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}}}) -%]
+    'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt',
+      'hold': 'input_number.' ~ m ~ 'hold_s', 'eq': {'sub': 'input_number.' ~ m ~ 'eq_sub', 'bass': 'input_number.' ~ m ~ 'eq_bass', 'low_mid': 'input_number.' ~ m ~ 'eq_low_mid', 'mid': 'input_number.' ~ m ~ 'eq_mid', 'presence': 'input_number.' ~ m ~ 'eq_presence', 'air': 'input_number.' ~ m ~ 'eq_air'}},
+    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look'}}) -%]
 [%- endfor -%]
 [%- endif -%]
 [%- macro twin(label) -%][%- set full = label ~ unreachable -%][[ full | yaml ]][%- endmacro -%]
@@ -69,6 +80,7 @@
 [%- else -%]
 [%- set chart = series | sort(attribute='color') -%]
 [%- endif -%]
+[%- block dashboard -%]
 # Rendered from the Domosenso catalog, component ramka (templates/dashboard.lang.yaml.j2),
 # language [[ lang ]]. Edit the inputs and render again rather than editing this file.
 #
@@ -160,12 +172,14 @@ views:
       # ---- Off: nothing at all. The tablet's screen should be asleep; while Android keeps it on
       # at the lowest brightness, a clock here would still glow through, so the view is black and
       # empty in this state (the view's background above).
+[%- block music %]
       # ---- Now playing: ambient while the media player plays ---------------------------------
       # Readable from across the room: now-playing-card draws artwork, title, artist, album, a
       # live progress bar and the volume in large type; below it the time, the weather and, with
       # a mains meter, the player's draw.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: &now_playing
           - condition: state
             entity: input_select.[[ p ]]_mode
@@ -173,6 +187,7 @@ views:
           - condition: state
             entity: binary_sensor.[[ p ]]_music_view
             state: "on"
+        [%- endif %]
         cards:
           - type: custom:now-playing-card
             entity: [[ mp ]]
@@ -209,13 +224,15 @@ views:
             # bars. The header is subtracted too when it is shown: kiosk-mode sets
             # --kiosk-header-height to 0px where it hides the header, and a browser without kiosk
             # mode shows Home Assistant's own, --header-height high.
-            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 272px)
+            height: calc([[ vh ]] - 272px)
             grid_options: {columns: full, rows: auto}
       # A section spanning three view columns has a 36-column grid (12 per column), so the widths
       # below add up to 36. Rows 6 + 4 fit a 720 CSS px tall screen without scrolling.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: *now_playing
+        [%- endif %]
         cards:
           # Time and the weather right now, large; the built-in clock card stops at "large" and the
           # forecast card spends its space on the coming days.
@@ -231,6 +248,8 @@ views:
             hours: 1
             grid_options: {columns: 16, rows: 4}
           [%- endif %]
+[%- endblock %]
+[%- block climate %]
 [%- if inputs.climate is defined %]
 
       # ---- Climate: ambient, music view off, page "climate" ----------------------------------
@@ -239,6 +258,7 @@ views:
       # the bottom. 8 + 184 + 8 + rooms + 8 + 248 + 8 = 100dvh less the header, if shown.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: &climate
           - condition: state
             entity: input_select.[[ p ]]_mode
@@ -249,6 +269,7 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_ambient
             state: climate
+        [%- endif %]
         cards:
           - type: custom:clock-weather-card
             weather: [[ inputs.weather ]]
@@ -259,14 +280,30 @@ views:
             grid_options: {columns: full, rows: 3}
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: *climate
+        [%- endif %]
         cards:
-          # The rooms picked on the settings page (sensor.[[ p ]]_climate_rooms); these until the
-          # seed has set it.
+          # The widgets picked on the settings page (sensor.[[ p ]]_climate_rooms), its first `slots`,
+          # an empty one an empty tile; these until the seed has set it. With the threshold-based
+          # colours on, the values take their comfort ranges' colours (within: the neutral colour) and
+          # an Air quality widget the Air page's limits and colours, so both views agree.
           - type: custom:rooms-card
-            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 464px)
+            height: calc([[ vh ]] - 464px)
             columns: [[ inputs.rooms_columns | default(5) ]]
             entity: sensor.[[ p ]]_climate_rooms
+            slots: input_number.[[ p ]]_climate_slots
+            thresholds: input_boolean.[[ p ]]_climate_thresholds
+            neutral_color: input_select.[[ p ]]_climate_color_neutral
+            [%- if air %]
+            air_colors: {good: input_select.[[ p ]]_air_color_good, fair: input_select.[[ p ]]_air_color_fair, poor: input_select.[[ p ]]_air_color_poor}
+            [%- endif %]
+            [%- if air and (air.co2 is defined or air.pm2_5 is defined) %]
+            air_limits:
+              [%- for reading in ['co2', 'pm2_5'] if air[reading] is defined %]
+              [[ reading ]]: [input_number.[[ p ]]_air_[[ reading ]]_raised, input_number.[[ p ]]_air_[[ reading ]]_high]
+              [%- endfor %]
+            [%- endif %]
             rooms:
             [%- for room in series %]
               - name: [[ room.label | yaml ]]
@@ -279,7 +316,9 @@ views:
             grid_options: {columns: full, rows: auto}
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: *climate
+        [%- endif %]
         cards:
           # Every room plus outside, overlaid as daily means over the last 7 days, in the order of
           # their colours (statistics-graph colours its series by position, the theme's series
@@ -293,10 +332,12 @@ views:
             [%- else %]
             line_styles: {}
             [%- endif %]
-            # The settings page's rooms, their extra readings, then outside; the entities
-            # below until the seed has set them.
+            # The settings page's rooms (its first `slots` places, spacers skipped), their extra
+            # readings in the rooms' colours, then outside; the entities below until the seed has
+            # set them.
             rooms:
               entity: sensor.[[ p ]]_climate_rooms
+              slots: input_number.[[ p ]]_climate_slots
               key: extra
             [%- if outside and outside.humidity is defined %]
               after: [{entity: [[ outside.humidity ]], name: [[ t('ui.climate.outside') | yaml ]]}]
@@ -321,10 +362,12 @@ views:
             [%- else %]
             line_styles: {}
             [%- endif %]
-            # The settings page's rooms, their main readings, then outside; the entities
-            # below until the seed has set them.
+            # The settings page's rooms (its first `slots` places, spacers skipped), their main
+            # readings in the rooms' colours, then outside; the entities below until the seed has
+            # set them.
             rooms:
               entity: sensor.[[ p ]]_climate_rooms
+              slots: input_number.[[ p ]]_climate_slots
               key: main
             [%- if outside %]
               after: [{entity: [[ outside.temperature ]], name: [[ t('ui.climate.outside') | yaml ]]}]
@@ -343,10 +386,13 @@ views:
               chart_type: line
               hide_legend: true
 [%- endif %]
+[%- endblock %]
+[%- block air %]
 [%- if air %]
 
       # ---- Air quality: ambient, music view off, page "air" ----------------------------------
-      # air-card: the score and four readings, coloured good / raised / high. Limits: CO₂ 800 /
+      # air-card: the score and four readings, coloured good / fair / poor in the Air page's colours
+      # (its three colour selects, read live). Limits: CO₂ 800 /
       # 1200 ppm (ventilation rules of thumb), PM2.5 15 / 35 µg/m³ (WHO 2021 24-hour guideline,
       # then the old US 24-hour limit), VOC and NOx on Sensirion's index scales (100 and 1 are the
       # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means. The settings
@@ -355,6 +401,7 @@ views:
       # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: &air
           - condition: state
             entity: input_select.[[ p ]]_mode
@@ -365,9 +412,11 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_ambient
             state: air
+        [%- endif %]
         cards:
           - type: custom:air-card
-            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 272px)
+            height: calc([[ vh ]] - 272px)
+            colors: {good: input_select.[[ p ]]_air_color_good, fair: input_select.[[ p ]]_air_color_fair, poor: input_select.[[ p ]]_air_color_poor}
             [%- if air.score is defined %]
             score:
               name: [[ t('ui.air.score') | yaml ]]
@@ -399,8 +448,8 @@ views:
                 show: input_boolean.[[ p ]]_air_pm2_5
                 levels:
                   - [{entity: input_number.[[ p ]]_air_pm2_5_raised, default: 15}, [[ t('ui.air.pm_good') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: 35}, [[ t('ui.air.pm_raised') | yaml ]] ]
-                  - [null, [[ t('ui.air.pm_high') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: 35}, [[ t('ui.air.pm_fair') | yaml ]] ]
+                  - [null, [[ t('ui.air.pm_poor') | yaml ]] ]
             [%- endif %]
             [%- if air.voc is defined %]
               - name: VOC
@@ -408,8 +457,8 @@ views:
                 show: input_boolean.[[ p ]]_air_voc
                 levels:
                   - [{entity: input_number.[[ p ]]_air_voc_raised, default: 150}, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_voc_high, default: 250}, [[ t('ui.air.index_raised') | yaml ]] ]
-                  - [null, [[ t('ui.air.index_high') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_voc_high, default: 250}, [[ t('ui.air.index_fair') | yaml ]] ]
+                  - [null, [[ t('ui.air.index_poor') | yaml ]] ]
             [%- endif %]
             [%- if air.nox is defined %]
               - name: NOx
@@ -417,14 +466,16 @@ views:
                 show: input_boolean.[[ p ]]_air_nox
                 levels:
                   - [{entity: input_number.[[ p ]]_air_nox_raised, default: 20}, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_nox_high, default: 150}, [[ t('ui.air.index_raised') | yaml ]] ]
-                  - [null, [[ t('ui.air.index_high') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_nox_high, default: 150}, [[ t('ui.air.index_fair') | yaml ]] ]
+                  - [null, [[ t('ui.air.index_poor') | yaml ]] ]
             [%- endif %]
             grid_options: {columns: full, rows: auto}
       [%- if air.co2 is defined or air.pm2_5 is defined %]
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility: *air
+        [%- endif %]
         cards:
           # Five-minute means from the long-term statistics, not the raw history: a sensor that
           # reports every second draws a saw.
@@ -442,6 +493,8 @@ views:
           [%- endfor %]
       [%- endif %]
 [%- endif %]
+[%- endblock %]
+[%- block plants %]
 [%- if inputs.plants is defined %]
 
       # ---- Plants: ambient, music view off, page "plants" ------------------------------------
@@ -451,6 +504,7 @@ views:
       # plus per-plant overrides (the plant entity does not expose them).
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility:
           - condition: state
             entity: input_select.[[ p ]]_mode
@@ -461,9 +515,10 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_ambient
             state: plants
+        [%- endif %]
         cards:
           - type: custom:plants-card
-            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
+            height: calc([[ vh ]] - 16px)
             per_page: input_number.[[ p ]]_plants_per_page
             page_s: input_number.[[ p ]]_plants_page_s
 [%- if inputs.plants is string %]
@@ -481,6 +536,8 @@ views:
 [%- endif %]
             grid_options: {columns: full, rows: auto}
 [%- endif %]
+[%- endblock %]
+[%- block photos %]
 [%- if inputs.photo_dir is defined %]
 
       # ---- Photos: ambient, music view off, page "photos" ------------------------------------
@@ -489,6 +546,7 @@ views:
       # visibility, because a hidden section keeps its cards connected.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility:
           - condition: state
             entity: input_select.[[ p ]]_mode
@@ -499,6 +557,7 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_ambient
             state: photos
+        [%- endif %]
         cards:
           - type: custom:photo-frame-card
             entity: image.[[ p ]]_photo
@@ -507,6 +566,10 @@ views:
             blur_background: false
             path_entity: input_text.[[ p ]]_photo
             index: [[ photo_index | yaml ]]
+            [%- if preview %]
+            # In the preview the layer stays inside the frame and shows whatever the Ramka shows.
+            contained: true
+            [%- else %]
             show_when:
               - entity: input_select.[[ p ]]_mode
                 state: ambient
@@ -514,8 +577,11 @@ views:
                 state: "off"
               - entity: input_select.[[ p ]]_ambient
                 state: photos
+            [%- endif %]
             grid_options: {columns: full, rows: 1}
 [%- endif %]
+[%- endblock %]
+[%- block status %]
 [%- if inputs.status_page | default(true) %]
 
       # ---- Status: ambient, music view off, page "status" ------------------------------------
@@ -523,6 +589,7 @@ views:
       # room, power meters and locks.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility:
           - condition: state
             entity: input_select.[[ p ]]_mode
@@ -533,9 +600,10 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_ambient
             state: status
+        [%- endif %]
         cards:
           - type: custom:status-card
-            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
+            height: calc([[ vh ]] - 16px)
             columns: [[ inputs.status_columns | default(4) ]]
             items:
             [%- for cover in covers %]
@@ -570,15 +638,19 @@ views:
             [%- endfor %]
             grid_options: {columns: full, rows: auto}
 [%- endif %]
+[%- endblock %]
+[%- block calendar %]
 
       # ---- Calendar: from the calendar button on the controls --------------------------------
       # agenda-card: today large on the left, the next six days beside it.
       - type: grid
         column_span: 3
+        [%- if not preview %]
         visibility:
           - condition: state
             entity: input_select.[[ p ]]_mode
             state: calendar
+        [%- endif %]
         cards:
           - type: custom:agenda-card
             entities:
@@ -586,18 +658,22 @@ views:
               - [[ calendar ]]
             [%- endfor %]
             days: 7
-            height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 0px)) - 16px)
+            height: calc([[ vh ]] - 16px)
             grid_options: {columns: full, rows: 1}
+[%- endblock %]
+[%- block controls %]
 
       # ---- Controls: a wave near the tablet, three columns under the hand --------------------
       # Music (the player while it plays or pauses, a single "turn on" tile when it is off), the
       # awnings, the room lights with one "all off" button. No scenes, no lock. Every light and
       # awning tile has an inert, greyed twin shown while the entity is unavailable.
       - type: grid
+        [%- if not preview %]
         visibility: &controls
           - condition: state
             entity: input_select.[[ p ]]_mode
             state: controls
+        [%- endif %]
         cards:
           - type: heading
             heading: [[ t('ui.media.heading') | yaml ]]
@@ -740,7 +816,9 @@ views:
               - {condition: state, entity: [[ mp ]], state: unavailable}
       [%- if covers %]
       - type: grid
+        [%- if not preview %]
         visibility: *controls
+        [%- endif %]
         cards:
           - type: heading
             heading: [[ t('ui.covers.heading') | yaml ]]
@@ -791,7 +869,9 @@ views:
       [%- endif %]
       [%- if lights %]
       - type: grid
+        [%- if not preview %]
         visibility: *controls
+        [%- endif %]
         cards:
           - type: heading
             heading: [[ t('ui.lights.heading') | yaml ]]
@@ -835,3 +915,5 @@ views:
             [%- endif %]
             grid_options: {columns: 12, rows: 2}
       [%- endif %]
+[%- endblock %]
+[%- endblock %]

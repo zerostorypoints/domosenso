@@ -1,6 +1,6 @@
 // Air quality for a wall tablet, readable from across the room: one large tile for the
-// overall score and a tile per reading, each coloured by where its value sits (good / raised /
-// high) with the word for it underneath. Sizes are shares of the card's own height (cqh), capped by
+// overall score and a tile per reading, each coloured by where its value sits (good / fair /
+// poor) with the word for it underneath. Sizes are shares of the card's own height (cqh), capped by
 // its width (--u) so that in a window squarer than the tablet the type still fits the tiles; and
 // with `height` the card takes its height from the screen rather than from grid rows.
 //
@@ -19,10 +19,16 @@
 //       unit: ppm
 //       levels: [[800, fine], [1200, ventilate soon], [null, ventilate]]   # [below, label]
 //
-// Levels run good → raised → high and take the colours --air-good, --air-raised, --air-high
-// (theme variables, with defaults below). A level written as just its limit, `[800]`, takes the
-// word for its position from card.air.level.good / .raised / .high in the Home Assistant
-// language (en, de, pl; anything else falls back to en); a label written out is shown as it is.
+// Levels run good → fair → poor. Their colours are named colours of the Ramka (lib/colours.js):
+// `colors:` names an input_select per level whose state is the colour's id (the Air page's good,
+// fair and poor colours); without one, or while its state is no colour id, green, amber and red.
+//
+//   colors: {good: input_select.ramka_air_color_good, fair: input_select.ramka_air_color_fair,
+//            poor: input_select.ramka_air_color_poor}
+//
+// A level written as just its limit, `[800]`, takes the word for its position from
+// card.air.level.good / .fair / .poor in the Home Assistant language (en, de, pl; anything else
+// falls back to en); a label written out is shown as it is.
 // A tile whose entity is missing or unavailable is left out, so a room's sensor can be listed
 // before it is installed.
 //
@@ -41,7 +47,13 @@ import pl from "../translations/pl.json" with { type: "json" };
 
 const t = createT({ en, de, pl });
 
-const LEVEL_KEYS = ["good", "raised", "high"];
+// The named colours carry this module's own ?v= (the deploy's hash of its version directory): /local/ is served
+// with a 31-day cache, so an import without it can stay the old file after a deploy.
+const { selectedColour } = await import(new URL("./lib/colours.js", import.meta.url).href + new URL(import.meta.url).search);
+
+const LEVEL_KEYS = ["good", "fair", "poor"];
+// The levels' colours without a select: the Air page's defaults (templates/package.yaml.j2).
+const DEFAULT_COLOURS = { good: "green", fair: "amber", poor: "red" };
 
 class AirCard extends HTMLElement {
   setConfig(config) {
@@ -97,8 +109,7 @@ class AirCard extends HTMLElement {
     const root = this.shadowRoot || this.attachShadow({ mode: "open" });
     root.innerHTML = `
       <style>
-        :host { display: block; height: 100%;
-                --good: var(--air-good, #5be37a); --raised: var(--air-raised, #f5c542); --high: var(--air-high, #ff6b5c); }
+        :host { display: block; height: 100%; }
         ha-card { height: 100%; --u: min(1cqh, 0.41cqw); box-sizing: border-box; padding: 2cqh 1.5cqw; container-type: size;
                   display: grid; gap: 2cqh 1.5cqw; overflow: hidden;
                   grid-template-columns: ${score ? "1.3fr " : ""}repeat(${cols}, 1fr);
@@ -125,10 +136,10 @@ class AirCard extends HTMLElement {
     this._score = score;
   }
 
-  // [limit, label] pairs; the colour is the pair's position: good, raised, high.
+  // [limit, label] pairs; the colour is the pair's position: good, fair, poor.
   _level(tile, v) {
     const levels = tile.levels || [];
-    const colors = ["var(--good)", "var(--raised)", "var(--high)"];
+    const colors = LEVEL_KEYS.map((key) => `var(--${key})`);
     for (let i = 0; i < levels.length; i++) {
       const [raw, label] = levels[i];
       const limit = this._limit(raw);
@@ -154,6 +165,10 @@ class AirCard extends HTMLElement {
 
   _update() {
     const root = this.shadowRoot;
+    // The three colours as variables on the host (above the shadow root's own rules), read live.
+    for (const key of LEVEL_KEYS) {
+      this.style.setProperty(`--${key}`, selectedColour(this._hass.states, this._config.colors?.[key], DEFAULT_COLOURS[key]));
+    }
     if (this._score) this._fill(root.querySelector('[data-i="score"]'), this._score);
     this._tiles.forEach((tile, i) => this._fill(root.querySelector(`[data-i="${i}"]`), tile));
   }

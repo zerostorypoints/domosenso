@@ -31,6 +31,7 @@
         "tilt": "Przywróć naturalny spadek widma muzyki",
         "style": "Styl",
         "line_width": "Grubość linii (px)",
+        "look": "Wygląd (sensor)",
         "active": "Aktywna, gdy włączone",
         "controls": "Pokaż panel sterowania",
         "fallback": "Bez danych"

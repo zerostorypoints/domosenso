@@ -214,3 +214,47 @@ test("a gap over 1 s is clamped", () => {
   const progress = (at1s - 60) / 40;
   assert.ok(progress >= 0.9 * 0.99, String(progress));
 });
+
+test("a flat eq draws exactly what no eq draws", () => {
+  const flat = { sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0 };
+  const a = new Engine("spectrum"), b = new Engine("spectrum");
+  const oa = opts(), ob = opts({ eq: flat });
+  let now = 0;
+  for (let i = 0; i < 10; i++) {
+    const v = fill(70 + (i % 3) * 5);
+    a.push(v, now); b.push(v, now);
+    a.step(0.1, now, palette, oa); b.step(0.1, now, palette, ob);
+    now += 100;
+  }
+  assert.deepEqual([...b.frame.env], [...a.frame.env]);
+  assert.deepEqual([...b.frame.peakEnv], [...a.frame.peakEnv]);
+});
+
+test("a bass cut lowers the low end only", () => {
+  const run = (o) => {
+    const e = new Engine("spectrum");
+    e.push(fill(80), 0);
+    e.step(0.1, 0, palette, opts(o));
+    return e.frame.env;
+  };
+  const plain = run(), cut = run({ eq: { bass: -12 } });
+  // Width points 21..52 sit over 50..160 Hz (bands 4..9 of 31 across 160 points).
+  for (let p = 21; p <= 52; p++) assert.ok(cut[p] < plain[p], `point ${p}`);
+  for (let p = Math.ceil((22 / 30) * 159); p < WIDTH_POINTS; p++) assert.equal(cut[p], plain[p], `point ${p}`);
+});
+
+test("an EQ gain changed on the same options object takes effect at the next step", () => {
+  const o = opts({ eq: { bass: 0 } });
+  const e = new Engine("spectrum");
+  e.push(fill(80), 0);
+  e.step(0.1, 0, palette, o);
+  const before = [...e.frame.env];
+  o.eq.bass = -12;
+  e.step(0.1, 100, palette, o);
+  assert.ok(e.frame.env[30] < before[30]);
+  o.eq = { bass: -12 };  // a new object with the same gains: the same curve
+  e.step(0.1, 200, palette, o);
+  const same = [...e.frame.env];
+  e.step(0.1, 300, palette, o);
+  assert.deepEqual([...e.frame.env], same);
+});
