@@ -2,7 +2,7 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
-## Unreleased: a six-range EQ and a look option for the music cards
+## 0.3.0 (2026-11-01): a six-range EQ, a look option, the music source contract
 
 SPEC-024. The README's new "Placement" section is a field note: where to put the board, and
 why the firmware stays as it is.
@@ -32,7 +32,12 @@ contract". Nothing existing changes.
 ### What a home does
 
 - Nothing: a card without either option draws as before. With the Ramka's music looks, update both
-  components together.
+  components together. Ramka 0.9.0 reads the music source contract: update audio-sensor to 0.3.0
+  with it, or its Live visualization page cannot tell what the sensor can do.
+- `domosenso update audio-sensor` and a deploy (the cards move to `www/domosenso/audio-sensor/0.3.0/`).
+  The firmware's code is unchanged; only its version string and package references name 0.3.0. A
+  board flashed with 0.2.0 needs no new flash, and its device file may keep `@audio-sensor/0.2.0`
+  until the next flash.
 
 ## 0.2.0 (2026-10-30): a faster spectrum, an update rate, the board set by Home Assistant
 
