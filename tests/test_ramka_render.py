@@ -4138,7 +4138,7 @@ def test_preview_dashboard_is_documented_and_its_card_is_a_resource():
     block = readme.split("## Preview dashboard", 1)[1].split("```yaml", 1)[1].split("```", 1)[0]
     entry = yaml.safe_load(block)["lovelace"]["dashboards"]["ramka-preview"]
     assert entry["filename"] == "dashboards/ramka-preview.en.yaml" and entry["require_admin"] is True
-    assert "Unreleased: preview dashboard" in (COMP / "UPGRADE.md").read_text(encoding="utf-8")
+    assert "### Preview dashboard" in (COMP / "UPGRADE.md").read_text(encoding="utf-8")
 
 
 # ---- Pause and the views of a page (SPEC-026) ------------------------------------------------------

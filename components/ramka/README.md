@@ -117,7 +117,7 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
 - Try flavours on the Ramka's settings, Music (Preview) before writing them down.
 - The visual moves while `binary_sensor.<prefix>_media_playing` is on, as the wave does.
 
-### Response profile (unreleased)
+### Response profile (0.9.0)
 
 The design and its reasons, with what was tried and dropped: SPEC-024
 (`.ai/specs/SPEC-024-2026-10-31-music-response-profiles.md`).
@@ -172,11 +172,11 @@ approach toggle it has had since 0.1.0.
 | General | `input_select.<prefix>_theme_mode`, `input_boolean.<prefix>_settings_advanced` | pages |
 | each view | `input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}` | pages |
 | Plants (with `plants`, 0.7.0) | `input_number.<prefix>_{plants_per_page,plants_page_s}` | plants |
-| Climate (with `climate`, unreleased) | `input_number.<prefix>_climate_slots`; the widgets, `sensor.<prefix>_climate_rooms`, `input_boolean.<prefix>_climate_thresholds` and `input_select.<prefix>_climate_color_neutral` are group climate | climate_slots |
-| Air (with `air`) | `input_boolean.<prefix>_air_<reading>`, `input_number.<prefix>_air_<reading>_{raised,high}` (the score's `_{fair,poor}`), `input_select.<prefix>_air_color_{good,fair,poor}` (unreleased) | air |
+| Climate (with `climate`, 0.9.0) | `input_number.<prefix>_climate_slots`; the widgets, `sensor.<prefix>_climate_rooms`, `input_boolean.<prefix>_climate_thresholds` and `input_select.<prefix>_climate_color_neutral` are group climate | climate_slots |
+| Air (with `air`) | `input_boolean.<prefix>_air_<reading>`, `input_number.<prefix>_air_<reading>_{raised,high}` (the score's `_{fair,poor}`), `input_select.<prefix>_air_color_{good,fair,poor}` (0.9.0) | air |
 | Music (with `music_visual`) | `input_select.<prefix>_music_{visual,palette,spectrum_flavour,level_flavour}`, `input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}`, `input_boolean.<prefix>_music_tilt` | music_visual |
-| Music look (with `music_visual`, unreleased) | `input_select.<prefix>_music_{template,eq}`, `input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}` | music_look |
-| Music profiles (with `music_visual`, unreleased) | per template (`behind_speakers`, `lively`, `calm`, `analyser`): `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`, `input_boolean.<prefix>_music_<id>_tilt` | music_profiles |
+| Music look (with `music_visual`, 0.9.0) | `input_select.<prefix>_music_{template,eq}`, `input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}` | music_look |
+| Music profiles (with `music_visual`, 0.9.0) | per template (`behind_speakers`, `lively`, `calm`, `analyser`): `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`, `input_boolean.<prefix>_music_<id>_tilt` | music_profiles |
 
 - **Defaults.** The catalog's: approach on, off delay 300 s, brightness 16 to 204, near 100 cm for
   1 s, controls hold 5 s, full brightness at 200 lx, theme `dark`, every page on, Advanced off; the
@@ -263,7 +263,7 @@ lovelace:
   setting. Each asks for a confirmation. Each page also lists its render-time inputs read-only with
   this render's values (General: the screen size; Controls: the radar, the player, the awnings and
   the lights).
-- **Controls** (unreleased, SPEC-024): when the controls come up. In Basic "Controls on approach"
+- **Controls** (0.9.0, SPEC-024): when the controls come up. In Basic "Controls on approach"
   (`input_boolean.<prefix>_near_enabled`), in Advanced the near distance and time and how long the
   controls stay up; these were General's. Its Reset sets these four.
 - **Basic and Advanced.** The Advanced cards (General: lux for full brightness; Controls: near
@@ -372,11 +372,11 @@ lovelace:
   does not exist. Each is 63 px high, the strip on the 1100 × 720 tablet, and
   as wide as the page: on a desktop browser or the tablet that is the strip's own proportion; on a
   phone the strip is narrower at the same height.
-- **Music page layout** (unreleased, SPEC-025 amendment 1): the page switch, the **Live
+- **Music page layout** (0.9.0, SPEC-025 amendment 1): the page switch, the **Live
   visualization** switch and "Live visualization ›", the way to its sub-view (shown with the switch
   off too, so the visual can be set up first); while the switch is off a note says the Ramka shows
   the Classic wave. Then the render-time inputs and the Reset (the two switches).
-- **Live visualization** (unreleased, SPEC-025 amendment 1): a sub-view of Music
+- **Live visualization** (0.9.0, SPEC-025 amendment 1): a sub-view of Music
   (`/<settings path>/music-live`, `subview: true`: no tab; its back arrow returns to Music), every
   setting of the visual. Two conditions drive it, V (Live is on: the visual needs a sensor) and A
   (V, and the selected sensor has the visual's ability). In order: the Preview across both columns,
@@ -391,7 +391,7 @@ lovelace:
   the EQ preset select and the six EQ gains (the EQ with the spectrum only). The line width, the
   palette and the redraw rate have no row. Its Reset (`page: music_live`) sets the visual's
   settings, every profile and the colour range.
-- **Music sensor** (unreleased, SPEC-025): a sub-view of Live visualization
+- **Music sensor** (0.9.0, SPEC-025): a sub-view of Live visualization
   (`/<settings path>/music-sensor`, `subview: true`: no tab; its back arrow returns to Live
   visualization), the selected board's own settings. A
   header with the board's area and its abilities; the Live visualization preview; the update rate with
@@ -400,7 +400,7 @@ lovelace:
   `settings_paths` (default `ramka-settings`), as the preview's links. The rule for later features:
   a setting of the sensor itself goes here, with its ability; a setting of a visual goes on Live
   visualization, with V and A.
-- **Response profile** (Live visualization, unreleased): the profile select has an (i) at its end
+- **Response profile** (Live visualization, 0.9.0): the profile select has an (i) at its end
   (`custom:ramka-info-select-row`, `cards/info-select-row.js`): hovering with a mouse shows the
   selected profile's purpose, best use and why / when (translated; the select shows the ids) in a
   floating tooltip beside the (i) (below it, above when there is no room, kept inside the window,
@@ -430,7 +430,7 @@ lovelace:
 ## Preview dashboard
 
 The render also writes the "Ramka preview" dashboard (`dashboards/ramka-preview.<lang>.yaml`, one
-per language; `preview_dashboard` defaults to true, unreleased), to look at every screen one by one
+per language; `preview_dashboard` defaults to true, 0.9.0), to look at every screen one by one
 and change its settings without waiting for the rotation; the live Ramka (or "Open the Ramka view"
 on the settings' General page) stays the live view. With `preview_dashboard: false` the template
 renders empty and no file is written. The `lovelace:` entry is the home's; until it is there,
