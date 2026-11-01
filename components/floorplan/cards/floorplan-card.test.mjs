@@ -168,8 +168,8 @@ test("entering edit mode puts unplaced points at their room's centre", async () 
   click($(card, "[data-action=edit]"));
   const points = card._doc.floors[0].points;
   assert.deepEqual(points.map((p) => [p.device_id ?? p.entity_id, p.x, p.y, p.placed]), [
-    ["plant.monstera", 6.5, 2, false],
-    ["d_climate", 2.5, 2, false],
+    ["plant.monstera", 6.5, 2.6, false],
+    ["d_climate", 2.5, 2.6, false],
   ]);
   assert.equal(card.shadowRoot.querySelectorAll("g.marker.unplaced").length, 2);
 });

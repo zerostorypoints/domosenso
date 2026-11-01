@@ -84,21 +84,29 @@ test("candidates: an entity's own area overrides its device's", () => {
   assert.equal(candidates(hass).find((x) => x.key === "d_moved").area_id, "living_room");
 });
 
-test("autoPlace puts a lone candidate at its room centroid, not placed", () => {
+test("autoPlace puts a lone candidate 0.6 m below its room centroid, under the labels, not placed", () => {
   const lone = autoPlace(doc(), { ...hass, entities: { "sensor.temp": hass.entities["sensor.temp"] } }, "ground");
   const p = lone.floors[0].points[0];
-  assert.deepEqual([p.device_id, p.x, p.y, p.placed], ["d_temp", ...centroid(sq(0, 0, 4, 4)), false]);
+  const [cx, cy] = centroid(sq(0, 0, 4, 4));
+  assert.deepEqual([p.device_id, p.x, p.y, p.placed], ["d_temp", cx, cy + 0.6, false]);
   assert.equal("entity_id" in p, false);
 });
 
-test("autoPlace spreads two sensors of one room 0.6 m apart on a circle round the centroid", () => {
+test("autoPlace: a room under 2 m tall keeps its sensors at the centroid", () => {
+  const d = doc();
+  d.floors[0].rooms[0].polygon = sq(0, 0, 4, 1.5);
+  const lone = autoPlace(d, { ...hass, entities: { "sensor.temp": hass.entities["sensor.temp"] } }, "ground");
+  assert.deepEqual([lone.floors[0].points[0].x, lone.floors[0].points[0].y], [2, 0.75]);
+});
+
+test("autoPlace spreads two sensors of one room 0.6 m apart on a circle below the labels", () => {
   // d_temp (its device's area) and d_moved (its entity's own area) are both in living_room.
   const out = autoPlace(doc(), hass, "ground");
   const pts = out.floors[0].points.filter((x) => x.device_id === "d_moved" || x.device_id === "d_temp");
   const [cx, cy] = centroid(sq(0, 0, 4, 4));
   assert.deepEqual(pts.map((p) => [p.device_id, p.x, p.y, p.placed]).sort(), [
-    ["d_moved", cx + 0.3, cy, false],     // by key: d_moved first, at angle 0
-    ["d_temp", cx - 0.3, cy, false],
+    ["d_moved", cx + 0.3, cy + 0.6, false],     // by key: d_moved first, at angle 0
+    ["d_temp", cx - 0.3, cy + 0.6, false],
   ]);
   assert.ok(Math.abs(Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) - 0.6) < 1e-9);
 });
@@ -330,4 +338,15 @@ test("addPoints puts candidates round a point, not placed, and refuses ones alre
   assert.deepEqual(one.floors[0].points, [{ device_id: "d_moved", x: 2, y: 2, placed: false }]);
   assert.equal(addPoints(out, "ground", cs, [1, 1]), null);
   assert.equal(addPoints(doc(), "ground", [], [1, 1]), null);
+});
+
+test("trayGroups: a plant's room and an area of the same name (case and accents aside) are one group", () => {
+  const h = {
+    ...plantHass({ friendly_name: "Monstera", domosenso_room: "LIVING ROÓM" }),
+    devices: { ...hass.devices, d_temp: { id: "d_temp", area_id: "living_room", name: "Thermometer" } },
+  };
+  const g = trayGroups(doc(), h).find((x) => x.key === "living_room");
+  assert.equal(g.name, "Living room");
+  assert.ok(g.items.some((c) => c.key === "plant.monstera"), g.items.map((c) => c.key).join(" "));
+  assert.ok(!trayGroups(doc(), h).some((x) => x.key.startsWith("label:")));
 });

@@ -12,6 +12,8 @@ export const DERIVED_PLATFORMS = ["template", "statistics", "min_max", "derivati
   "utility_meter", "filter", "trend", "threshold", "compensation", "group"];
 export const SCHEMA_VERSION = 1;
 const SPREAD_M = 0.3;   // m: the radius sensors put down together are spread on, so none hides another
+const BELOW_M = 0.6;    // m: auto-placed sensors sit this far under the centroid, clear of the labels
+const TALL_M = 2;       // m: ... in a room at least this tall; a lower one has no room for it
 const CARD_TYPE = "custom:floorplan-card";
 const SAME = 1e-9;   // joinPolygons compares corners with this absolute tolerance
 
@@ -93,6 +95,13 @@ const pointOf = (c, [x, y], placed) => (c.kind === "device"
   : { entity_id: c.key, x, y, placed });
 const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
+// The room's name and floor area are drawn at its centroid; sensors put there would cover them.
+function underLabels(polygon) {
+  const [x, y] = centroid(polygon);
+  const ys = polygon.map((p) => p[1]);
+  return Math.max(...ys) - Math.min(...ys) >= TALL_M ? [x, y + BELOW_M] : [x, y];
+}
+
 export function autoPlace(doc, hass, floorId) {
   const floor = doc.floors[floorIndex(doc, floorId)];
   if (!floor) return doc;
@@ -108,7 +117,7 @@ export function autoPlace(doc, hass, floorId) {
   const added = [];
   for (const [room, cs] of perRoom) {
     const sorted = [...cs].sort(byKey);
-    const at = spread(centroid(room.polygon), sorted.length);
+    const at = spread(underLabels(room.polygon), sorted.length);
     sorted.forEach((c, i) => added.push(pointOf(c, at[i], false)));
   }
   if (!added.length) return doc;
@@ -152,6 +161,15 @@ export function trayGroups(doc, hass) {
     groups.get(hint.key).items.push(c);
   }
   const names = (a, b) => a.localeCompare(b, language(hass));
+  // A plant's room label naming an area of the tray ("living room" for Living room) joins that area.
+  const areas = [...groups.values()].filter((g) => g.name !== null && !g.key.startsWith("label:"));
+  for (const [key, g] of groups) {
+    const area = key.startsWith("label:")
+      && areas.find((a) => a.name.localeCompare(g.name, language(hass), { sensitivity: "base" }) === 0);
+    if (!area) continue;
+    area.items.push(...g.items);
+    groups.delete(key);
+  }
   for (const g of groups.values()) {
     g.items.sort((a, b) => names(candidateName(hass, a), candidateName(hass, b)) || byKey(a, b));
   }

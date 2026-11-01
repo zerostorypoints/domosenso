@@ -45,8 +45,8 @@ administrator (`lovelace/config/save` requires one).
 ## Editing in Home Assistant
 
 An administrator sees **Edit** (unless the card has `edit: false`). Entering edit mode puts every
-sensor that has an area but no position at the centre of its area's room (several in one room on a
-small circle round it), drawn faded (`placed: false`) until it is dragged.
+sensor that has an area but no position just below the centre of its area's room (several in one
+room on a small circle there), drawn faded (`placed: false`) until it is dragged.
 
 | tool | what it does |
 |---|---|
@@ -55,8 +55,8 @@ small circle round it), drawn faded (`placed: false`) until it is dragged.
 | Join | tap two neighbouring rooms; the first keeps its area. Rooms join only along a shared wall |
 
 - The tray lists the sensors not on the plan yet (no area, or an area without a room on this floor),
-  grouped by room: the area, or for a plant without an area the room the plants component gives it,
-  else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
+  grouped by room: the area, or for a plant without an area the room the plants component gives it
+  (in the area's group when the names match), else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
   put all of its sensors round that spot (faded, to be dragged into place one by one). Only the
   kinds above and plants are listed; computed sensors (from the `template`, `statistics`,
   `min_max`, `derivative`, `integration`, `utility_meter`, `filter`, `trend`, `threshold`,
