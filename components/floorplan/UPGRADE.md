@@ -2,6 +2,13 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## 0.3.1 (2026-11-02): the map's legend in the bar
+
+The legend sat over the plan's bottom left corner and covered a room on the Ramka. It is now a
+compact scale in the bar beside Now / 24 h (its ends and "no sensor in the room"; the full
+sentence as its tooltip). **After the update:** `domosenso update floorplan --to 0.3.1`, deploy,
+reload the browsers that show the plan (the Ramka: its reload button).
+
 ## 0.3.0 (2026-11-01): maps per layer, now or the last 24 hours
 
 - **Maps** (SPEC-028 Amendment 7): with plants, climate or light shown alone, the bar offers their

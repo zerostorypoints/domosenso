@@ -576,7 +576,8 @@ readings). Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), 
   plants' light map a room thermometer with a light sensor counts.
 - **Fixed scales**, so two days compare: temperature 17–24 °C, humidity 30–60 %, soil moisture
   10–50 %, CO₂ 400–1400 ppm, light 0–20 000 lx on a log scale. A legend names the map, now or the
-  24 h figure, and the ends of the scale. *(The ranges are the mockup's, set by eye from one home;
+  24 h figure, and the ends of the scale. *(0.3.1: the legend is a compact scale in the bar, its
+  sentence a tooltip; on the plan it covered a room on the Ramka.)* *(The ranges are the mockup's, set by eye from one home;
   a component's own bands, such as a plant's, are not used for the map.)*
 - **Labels** on a map: a plant shows its three readings (temperature, light, soil), any other point
   the readings it has of temperature, humidity, CO₂ and light; the shown map's reading is first and
