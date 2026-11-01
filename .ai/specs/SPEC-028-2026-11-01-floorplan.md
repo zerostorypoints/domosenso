@@ -645,3 +645,44 @@ using a component's own bands as a map's scale.
 - The scales' ranges *(set by eye from one home)*.
 - Whether "Now" at night should fall back to the 24 h light map on the plants layer, since every
   light map is dark at night *(not proposed; the switch is one tap)*.
+
+### Addition: open spaces (the maintainer, 2026-11-01; draft)
+
+"These rooms are one open space without doors; we should be able to mark groups of rooms like
+that, because it affects the heat maps." On the maintainer's home six rooms of one floor (living,
+kitchen, dining, hall, stairs, corridor) are open to each other, and the maps stopped heat at every
+line between them and hatched those of them without a sensor of their own.
+
+- **Document** (`schema: 1`, a new optional key, ADDITIVE-ONLY): `floors[].open_spaces`, a list of
+  groups, each a list of two or more `area_id`s of rooms on that floor; an area is in one group at
+  most. A plan whose group names an area that is not a room of the floor, repeats an area, or has a
+  group of fewer than two is invalid (the card, `push`, `pull` and `preview` refuse it as they refuse
+  any invalid plan). As with 0.2.0's optional keys, a `domosenso` command older than this catalog
+  refuses a plan that uses it.
+- **Heat:** a room of a group is interpolated from the placed samples of every room of its group,
+  by inverse distance squared in a straight line (the openings between them are not modelled); so a
+  grouped room without a sensor of its own takes the group's heat instead of being hatched. A group
+  with no sample is hatched. Rooms in no group: as before (walls stop heat). Each room's cells stay
+  clipped to the room.
+- **Drawing:** where two rooms of one group face each other (parallel walls within 0.3 m that
+  overlap along their length), those walls are drawn dashed and lighter, in view and edit mode: the
+  plan shows what is open.
+- **Editing:** a fourth tool beside move, split and join, **Open**: tap two rooms and they are in one
+  open space (a room already in one brings its group along; two groups merge). The area panel of a
+  selected room in a group names the rooms it is open to and has **Close off**, which takes the room
+  out of its group (a group left with one room goes). Joining two rooms keeps the joined room in
+  either's group (both groups merge); splitting a grouped room keeps both halves in it; linking a
+  room to another area renames it in its group. All in en, de, pl.
+- **Command:** `push --plan` prints `open change <floor>` when a floor's groups differ from the
+  target's; `pull` keeps them; `FAIL` reasons gain `open space on floor <id or ->: <reason>`.
+- **Version:** part of floorplan 0.3.0 (not released yet); COMPATIBILITY's schema row gains
+  `open_spaces`; `UPGRADE.md` 0.3.0 says how to mark one.
+- **Tests:** schema and `floorplan_doc` validation (unknown area, repeat, a group of one);
+  `push --plan` line; the heat of a grouped room without a sensor comes from its group's samples,
+  an ungrouped neighbour's does not; facing walls of a group drawn dashed; the Open tool's taps,
+  Close off, and join / split / link keeping groups; staging of the home that asked, its six rooms
+  marked and the maps looked at.
+- **Out of scope:** doorways and partly open walls, heat through a door left open, openness between
+  floors (stairs to an upper floor), path distance round a corner of an L-shaped open space
+  *(straight-line distance is my call; on the home that asked, a corner of the corridor is the only
+  place it would differ)*.
