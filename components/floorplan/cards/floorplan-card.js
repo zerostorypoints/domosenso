@@ -5,8 +5,9 @@
 //
 // Administrators get an Edit button (unless `edit: false`): drag points and room corners, add a
 // corner (double-click a wall) or remove one (double-click it), split a room, join two, link a room
-// to an area or create one, and drag sensors without a position from the tray. Save writes the plan
-// back into the `floorplan` dashboard, but only if nobody changed it there since it was loaded.
+// to an area or create one, and drag sensors without a position from the tray, one or a room's group
+// at a time. Corners snap to a 5 cm grid; rooms show their floor area and wall lengths. Save writes
+// the plan back into the `floorplan` dashboard, but only if nobody changed it there since it was loaded.
 //
 //   type: custom:floorplan-card
 //   plan: {schema: 1, floors: [...]}   # optional: else read from the `floorplan` dashboard
@@ -18,10 +19,12 @@ import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
 import { zoomAt, snapToEdge, pointInPolygon, centroid } from "./lib/geometry.js";
 import {
-  supported, emptyPlan, autoPlace, tray, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
-  splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint,
+  supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
+  splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints,
 } from "./lib/plan.js";
-import { fitView, frame, toPlan, snapCorner, entityMap, pointEntities, valueText, candidateName } from "./lib/view.js";
+import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
+import { trayHtml } from "./lib/tray.js";
+import { drawGrid, drawDims } from "./lib/measure.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -61,6 +64,7 @@ class FloorplanCard extends HTMLElement {
     this._drag = null;
     this._pointers = new Map();
     this._stamp = null;
+    this._trayOpen = new Map();    // tray group key -> open, as the user left it
     if (this._hass) this._load();
   }
 
@@ -228,12 +232,13 @@ ${STYLE}
   }
 
   _trayHtml() {
-    const h = this._hass;
-    const items = tray(this._doc, h);
-    const list = items.length
-      ? items.map((c) => `<div class="item" data-key="${esc(c.key)}" title="${esc(t(h, "card.floorplan.tray.drag"))}">${esc(candidateName(h, c))}</div>`).join("")
-      : `<div>${esc(t(h, "card.floorplan.tray.empty"))}</div>`;
-    return `<h3>${esc(t(h, "card.floorplan.tray.title"))}</h3>${list}`;
+    const groups = trayGroups(this._doc, this._hass);
+    this._oneGroup = groups.length === 1;    // a lone group starts open, several start collapsed
+    return trayHtml(this._hass, t, groups, (key) => this._groupOpen(key));
+  }
+
+  _groupOpen(key) {
+    return this._trayOpen.get(key) ?? this._oneGroup;
   }
 
   _rect() {
@@ -267,6 +272,7 @@ ${STYLE}
       text.textContent = label.text;
       if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
     }
+    if (editing) drawGrid(svg, el, v, px);
     if (editing && this._tool === "move") {
       for (const room of floor.rooms) {
         room.polygon.forEach((a, i) => {
@@ -280,6 +286,8 @@ ${STYLE}
           "data-area": room.area_id, "data-index": i, cx: p[0], cy: p[1], r: 6 * px }, svg));
       }
     }
+    const active = this._drag?.kind === "corner" ? this._drag.area : this._selected;
+    if (editing) drawDims(svg, el, { hass: h, t, floor, px, active });
     for (const p of this._picks.filter(Array.isArray)) el("circle", { class: "pick", cx: p[0], cy: p[1], r: 5 * px }, svg);
     for (const point of floor.points) this._drawMarker(svg, point, px, editing);
   }
@@ -312,6 +320,13 @@ ${STYLE}
   // ---- buttons and selects -----------------------------------------------------------------
 
   _onClick(e) {
+    // A pointer tap on a group's summary toggles it in _onUp; a keyboard one (detail 0) here.
+    const group = e.target.closest?.(".tray summary[data-group]");
+    if (group) {
+      e.preventDefault();
+      if (e.detail === 0) this._toggleGroup(group.getAttribute("data-group"));
+      return;
+    }
     const button = e.target.closest?.("button[data-action]");
     if (!button || button.disabled) return;
     const action = button.getAttribute("data-action");
@@ -327,6 +342,11 @@ ${STYLE}
       this._resetPicks();
     } else if (action === "create_area") return void this._createArea();
     this._render();
+  }
+
+  _toggleGroup(key) {     // the tray alone: _render would rebuild the area panel and drop a half-typed name
+    this._trayOpen.set(key, !this._groupOpen(key));
+    this.shadowRoot.querySelector(".tray").innerHTML = this._trayHtml();
   }
 
   _onChange(e) {
@@ -430,7 +450,7 @@ ${STYLE}
 
   _onDown(e) {
     if (this._status !== "ready" || (e.button !== undefined && e.button !== 0)) return;
-    const item = e.target.closest?.(".tray [data-key]");
+    const item = e.target.closest?.(".tray [data-key], .tray summary[data-group]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
     if (!item && !inSvg) return;
     // A primary pointer going down means no other is down: drop any whose pointerup never came.
@@ -450,7 +470,8 @@ ${STYLE}
     const target = e.target.closest?.("[data-kind]");
     const kind = target?.getAttribute("data-kind");
     const base = { start: [e.clientX, e.clientY], view0: this._view, moved: false };
-    if (item) this._drag = { ...base, kind: "tray", key: item.getAttribute("data-key") };
+    if (item?.hasAttribute("data-group")) this._drag = { ...base, kind: "group", key: item.getAttribute("data-group") };
+    else if (item) this._drag = { ...base, kind: "tray", key: item.getAttribute("data-key") };
     else if (editing && this._tool === "move" && kind === "point") this._drag = { ...base, kind: "point", key: target.getAttribute("data-key") };
     else if (editing && this._tool === "move" && kind === "corner") {
       this._drag = { ...base, kind: "corner", area: target.getAttribute("data-area"), index: Number(target.getAttribute("data-index")) };
@@ -486,7 +507,7 @@ ${STYLE}
       this._doc = movePoint(this._doc, this._floorId, d.key, this._at(e)) ?? this._doc;
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
-    } else return;      // the tray item is dropped on pointerup
+    } else return;      // a tray item or group is dropped on pointerup
     this._render();
   }
 
@@ -500,14 +521,17 @@ ${STYLE}
     this._drag = null;
     if (!d || cancelled) return;
     if (d.kind === "corner" && d.moved) {
-      const pt = this._at(e);
-      const snapped = snapCorner(this._floor, d.area, pt);
-      this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, snapped) ?? this._doc;
-    } else if (d.kind === "tray" && d.moved) {
+      const pt = snapCorner(this._floor, d.area, this._at(e));
+      this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, pt) ?? this._doc;
+    } else if (d.kind === "group" && !d.moved) {
+      return void this._toggleGroup(d.key);
+    } else if ((d.kind === "tray" || d.kind === "group") && d.moved) {
       const r = this._rect();
       if (e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height) {
-        const c = tray(this._doc, this._hass).find((x) => x.key === d.key);
-        if (c) this._edit(addPoint(this._doc, this._floorId, c, this._at(e)));
+        const g = d.kind === "group" && trayGroups(this._doc, this._hass).find((x) => x.key === d.key);
+        const c = d.kind === "tray" && tray(this._doc, this._hass).find((x) => x.key === d.key);
+        if (g) this._edit(addPoints(this._doc, this._floorId, g.items, this._at(e)));
+        else if (c) this._edit(addPoint(this._doc, this._floorId, c, this._at(e)));
       }
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
       this._tap(this._at(e), d.area);
@@ -528,22 +552,11 @@ ${STYLE}
         if (keep !== drop) this._edit(joinRooms(this._doc, this._floorId, keep, drop));
       }
     } else if (this._tool === "split") {
-      const wall = this._nearestWall(pt);
+      const wall = nearestWall(this._floor, pt, PICK_PX * this._px());
       if (!wall) return;
       this._picks = [...this._picks, wall];
       if (this._picks.length === 2) this._startSplit();
     }
-  }
-
-  _nearestWall(pt) {
-    const tol = PICK_PX * this._px();
-    let best = null;
-    for (const room of this._floor.rooms) {
-      const hit = snapToEdge(room.polygon, pt, tol);
-      const d = hit && Math.hypot(hit.pt[0] - pt[0], hit.pt[1] - pt[1]);
-      if (hit && (!best || d < best.d)) best = { pt: hit.pt, d };
-    }
-    return best?.pt ?? null;
   }
 
   // Two wall points: the room is the one both lie on whose inside holds the line's middle (a shared
@@ -572,7 +585,7 @@ ${STYLE}
       const i = Number(target.getAttribute("data-edge"));
       const poly = this._floor.rooms.find((r) => r.area_id === area).polygon;
       const hit = snapToEdge([poly[i], poly[(i + 1) % poly.length]], this._at(e), Infinity);
-      this._edit(insertCorner(this._doc, this._floorId, area, i, hit.pt));
+      this._edit(insertCorner(this._doc, this._floorId, area, i, gridOnWall(poly, i, hit.pt)));
     } else return;
     this._render();
   }

@@ -8,6 +8,7 @@ import { candidates, POINT_CLASSES } from "./plan.js";
 const PAD = 0.5;                       // m around the plan when it is fitted
 const EMPTY = { x: 0, y: 0, w: 10, h: 8 };
 export const SNAP_CORNER = 0.05;       // m: a dropped corner this close to another room's corner or wall joins it
+export const GRID_M = 0.05;            // m: corners land on this grid unless they joined another room
 
 // The view that shows the whole floor; zooming out stops there (view.max.w).
 export function fitView(floor) {
@@ -56,7 +57,37 @@ export function snapCorner(floor, areaId, pt, tol = SNAP_CORNER) {
     const d = Math.hypot(hit.pt[0] - pt[0], hit.pt[1] - pt[1]);
     if (!best || d < best.d) best = { pt: hit.pt, d };
   }
-  return best ? best.pt : pt;
+  return best ? best.pt : snapGrid(pt);
+}
+
+// The wall point nearest to `pt` within `tol` on any room of the floor (a split's pick), moved to the
+// grid along that wall; null when no wall is that close.
+export function nearestWall(floor, pt, tol) {
+  let best = null;
+  for (const room of floor.rooms) {
+    const hit = snapToEdge(room.polygon, pt, tol);
+    const d = hit && Math.hypot(hit.pt[0] - pt[0], hit.pt[1] - pt[1]);
+    if (hit && (!best || d < best.d)) best = { pt: gridOnWall(room.polygon, hit.edge, hit.pt), d };
+  }
+  return best?.pt ?? null;
+}
+
+// Rounded twice: 1.25 / 0.05 * 0.05 is 1.2500000000000002, and the plan keeps millimetres.
+const onGrid = (v) => Math.round(Math.round(v / GRID_M) * GRID_M * 1000) / 1000 + 0;
+export const snapGrid = ([x, y]) => [onGrid(x), onGrid(y)];
+
+// A point on wall `edge` of `polygon` moved to the grid along that wall, so it stays on it: only a
+// level or plumb wall has grid points along it. A point that would leave the wall's inside (or
+// land on its end corner) stays where it is.
+export function gridOnWall(polygon, edge, pt) {
+  const a = polygon[edge];
+  const b = polygon[(edge + 1) % polygon.length];
+  const level = Math.abs(a[1] - b[1]) <= 1e-9;
+  if (!level && Math.abs(a[0] - b[0]) > 1e-9) return pt;
+  const q = level ? [onGrid(pt[0]), a[1]] : [a[0], onGrid(pt[1])];
+  const i = level ? 0 : 1;
+  const t = (q[i] - a[i]) / (b[i] - a[i]);
+  return t > 1e-9 && t < 1 - 1e-9 ? q : pt;
 }
 
 const order = (hass, id) => {
@@ -86,12 +117,4 @@ export function valueText(hass, entityId) {
   if (typeof hass.formatEntityState === "function") return hass.formatEntityState(st);
   const unit = st.attributes?.unit_of_measurement;
   return unit ? `${st.state} ${unit}` : st.state;
-}
-
-export function candidateName(hass, c) {
-  if (c.kind === "device") {
-    const dev = hass.devices?.[c.key];
-    return dev?.name_by_user || dev?.name || c.key;
-  }
-  return hass.states?.[c.key]?.attributes?.friendly_name || c.key;
 }

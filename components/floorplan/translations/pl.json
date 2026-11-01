@@ -38,7 +38,13 @@
       "tray": {
         "title": "Poza rzutem",
         "empty": "Wszystkie czujniki są na rzucie.",
-        "drag": "Przeciągnij na rzut"
+        "drag": "Przeciągnij na rzut",
+        "no_room": "Bez pomieszczenia",
+        "drag_group": "Przeciągnij na rzut, aby umieścić wszystkie; dotknij, aby rozwinąć"
+      },
+      "units": {
+        "m": "m",
+        "m2": "m²"
       },
       "missing_area": "Ten obszar już nie istnieje",
       "saved": "Zapisano.",
