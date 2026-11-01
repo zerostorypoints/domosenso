@@ -161,12 +161,13 @@ def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
         def do_POST(self) -> None:
             url = urlsplit(self.path)
             query = parse_qs(url.query)
+            # Read the body before any answer: closing on an unread body resets the connection.
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
             if not self._allowed(query):
                 return self._send(403, b"forbidden", "text/plain")
             if url.path == "/save":
-                length = int(self.headers.get("Content-Length") or 0)
                 try:
-                    preview.save(json.loads(self.rfile.read(length) or b"null"))
+                    preview.save(json.loads(body or b"null"))
                 except (DomosensoError, ValueError, TypeError) as exc:
                     return self._send(400, str(exc).encode(), "text/plain")
                 return self._json(None)
@@ -197,7 +198,8 @@ PAGE = """<!doctype html>
 <title>Floor plan preview</title>
 <style>
   :root { color-scheme: dark; --primary-color: #03a9f4; --accent-color: #ff9800; --primary-text-color: #e1e1e1;
-          --secondary-text-color: #9b9b9b; --card-background-color: #1c1c1c; --divider-color: rgba(225,225,225,.12); }
+          --secondary-text-color: #9b9b9b; --card-background-color: #1c1c1c; --divider-color: rgba(225,225,225,.12);
+          --secondary-background-color: #282828; --text-primary-color: #fff; --ha-font-family-body: system-ui, sans-serif; }
   body { margin: 0; background: #111; color: var(--primary-text-color); font-family: system-ui, sans-serif; }
   header { padding: 8px 16px; color: var(--secondary-text-color); font-size: 13px; }
   main { padding: 0 16px 16px; }
