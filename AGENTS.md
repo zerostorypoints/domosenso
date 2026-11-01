@@ -427,7 +427,7 @@ the script after adding, renaming or removing a skill.
 | `write-component-spec` | write a spec in `.ai/specs/` and stop for approval |
 | `write-issue` | draft issues and user stories per `docs/ISSUES.md`, check them with `tools/issue_check.py`, file after a go-ahead |
 | `review-issue` | check an issue against `docs/ISSUES.md` and give the verdict ready, needs changes or split |
-| `triage-issues` | rank the open issues, propose status and priority labels, pick the next one; claim and work it after a go-ahead |
+| `triage-issues`, `group-issues` | rank the open issues, pick the next one, or group them into the next scope; work it after a go-ahead |
 | `render-and-stage` | try a changed component in a home (`render --catalog-dev`, staging), release it, `update` the home |
 
 ## Cookie consent button style
