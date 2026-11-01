@@ -24,7 +24,7 @@
 [#- The music source contract (SPEC-025): the aliases, source_exists, source_set, V (needs_sensor), A
     (active), the offline case and the preview's notice, shared with the preview dashboard
     (templates/music-source.j2). -#]
-[%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, needs_sensor, active, music_notice -%]
+[%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, has_ability, needs_sensor, active, music_notice -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
@@ -62,6 +62,15 @@
 [%- for path in preview_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
 [%- set preview_url = '/' ~ preview_paths.get(lang, 'ramka-preview') ~ '/' -%]
 [%- endif -%]
+[#- The way to this dashboard's own views (the music sensor's sub-view and its back arrow): its URL
+    path in this page's language from settings_paths, the preview dashboard's links' input, plain
+    URL paths as above. -#]
+[%- set settings_paths = inputs.settings_paths | default({}) -%]
+[%- if settings_paths is not mapping -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endif -%]
+[%- for path in settings_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
+[%- set settings_url = '/' ~ settings_paths.get(lang, 'ramka-settings') ~ '/' -%]
+[%- set music_url = settings_url ~ 'music' -%]
+[%- set sensor_url = settings_url ~ 'music-sensor' -%]
 [#- The Air page's limits, two per reading, as the package names them (the readings' raised and high
     are their fair from and poor from). -#]
 [%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
@@ -123,6 +132,18 @@
 [%- endif %]
 [%- endfor -%]
 [%- endmacro -%]
+[#- What the selected sensor can do, from audio-sensor's sensor.music_source (its capabilities in the
+    contract's order; gain is not named), or that it gives no data for a visual: a Home Assistant
+    template from column 0, for a markdown card's content; it keeps the text before it. -#]
+[%- macro abilities_line() -%]
+[%- set ability_names = [] -%][%- for ability in ['spectrum', 'level', 'rate', 'calibration'] -%][%- set _ = ability_names.append([ability, t('ui.settings.music_ability_' ~ ability)]) -%][%- endfor -%]
+{% set caps = state_attr('sensor.music_source', 'capabilities') or [] -%}
+{%- if 'spectrum' in caps or 'level' in caps -%}
+{{ [[ t('ui.settings.music_sensor_abilities') | yaml ]] }} {{ [[ ability_names | yaml ]] | selectattr(0, 'in', caps) | map(attribute=1) | join(', ') }}
+{%- else -%}
+{{ [[ t('ui.settings.music_sensor_no_data') | yaml ]] }}
+{%- endif -%}
+[%- endmacro -%]
 [%- macro heading(key, icon, visibility='') %]
           - type: heading
             heading: [[ t('ui.settings.' ~ key) | yaml ]]
@@ -167,11 +188,17 @@
               | [[ t('ui.settings.' ~ key) ]] | [[ cell(value) ]] |
 [%- endfor %]
 [%- endmacro -%]
-[%- macro reset(page) %]
+[%- macro reset(page, name_key='', visibility='') %]
       - type: grid
+[%- if visibility %]
+        visibility: [ [[ visibility ]] ]
+[%- endif %]
         cards:
           - type: button
-            name: [[ t('ui.settings.reset' if page else 'ui.settings.reset_all') | yaml ]]
+[%- if visibility %]
+            visibility: [ [[ visibility ]] ]
+[%- endif %]
+            name: [[ t(name_key or ('ui.settings.reset' if page else 'ui.settings.reset_all')) | yaml ]]
             icon: mdi:restore
             show_state: false
             tap_action:
@@ -449,18 +476,23 @@ views:
                 row:
                   entity: input_select.audio_sensor_music_source
                   name: [[ t('ui.settings.music_source') | yaml ]]
-          # What the selected sensor can do, from audio-sensor's sensor.music_source (its capabilities
-          # in the contract's order; gain is not named), or that it gives no data for a visual.
-[%- set ability_names = [] -%][%- for ability in ['spectrum', 'level', 'rate', 'calibration'] -%][%- set _ = ability_names.append([ability, t('ui.settings.music_ability_' ~ ability)]) -%][%- endfor %]
+          # What the selected sensor can do (abilities_line).
           - type: markdown
             visibility: [ [[ source_set ]] ]
             content: |-
-              {%- set caps = state_attr('sensor.music_source', 'capabilities') or [] -%}
-              {%- if 'spectrum' in caps or 'level' in caps -%}
-              {{ [[ t('ui.settings.music_sensor_abilities') | yaml ]] }} {{ [[ ability_names | yaml ]] | selectattr(0, 'in', caps) | map(attribute=1) | join(', ') }}
-              {%- else -%}
-              {{ [[ t('ui.settings.music_sensor_no_data') | yaml ]] }}
-              {%- endif -%}
+[[ abilities_line() | indent(14, true) ]]
+          # The way to the sensor's own settings (the sub-view below), while a sensor is selected that
+          # has some: an update rate or a calibration.
+          - type: entities
+            visibility: [ [[ source_set ]], {condition: or, conditions: [ [[ has_ability('rate') ]], [[ has_ability('calibration') ]] ]} ]
+            entities:
+              - type: button
+                name: [[ t('ui.settings.music_sensor_settings') | yaml ]]
+                icon: mdi:microphone-settings
+                action_name: "›"
+                tap_action:
+                  action: navigate
+                  navigation_path: [[ sensor_url | yaml ]]
           - type: entities
             visibility: [ [[ active ]] ]
             entities:[[ rows([('input_select', 'music_template', profile_texts), ('input_select', 'music_palette')]) ]]
@@ -489,6 +521,104 @@ views:
       - type: grid
         cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
 [%- endif %][[ reset('music') ]]
+[%- if visuals %]
+[%- set rate_on = has_ability('rate') %]
+[%- set calibration_on = has_ability('calibration') %]
+[#- The mic gain has no ability of its own: shown while a sensor is selected and its gain reads. -#]
+[%- set gain_reads = '{condition: state, entity: sensor.music_mic_gain, state_not: [unavailable, unknown]}' %]
+[%- set sensor_rows_on = '{condition: or, conditions: [' ~ rate_on ~ ', {condition: and, conditions: [' ~ source_set ~ ', ' ~ gain_reads ~ ']}]}' %]
+
+  # ---- Music sensor: the selected board's own settings (SPEC-025), a sub-view of Music ----------
+  # No tab: Home Assistant shows a sub-view only by its path, with a back arrow to Music. Reached
+  # from Music's Basic while the sensor has an update rate or a calibration. A setting of the
+  # sensor itself comes here, with its ability; a setting of a visual stays on Music.
+  - title: [[ t('ui.settings.music_sensor_page') | yaml ]]
+    path: music-sensor
+    icon: mdi:microphone-settings
+    subview: true
+    back_path: [[ music_url | yaml ]]
+    type: sections
+    max_columns: 2
+    # The header: the board's area and its abilities (abilities_line), or that no sensor is selected.
+    header:
+      layout: start
+      card:
+        type: markdown
+        text_only: true
+        content: |-
+          ## [[ t('ui.settings.music_sensor_page') ]]
+
+          {% set area = states('sensor.music_source') %}{% if area in ['none', 'unknown', 'unavailable'] %}[[ t('ui.settings.music_sensor_none') ]]{% else %}[[ t('ui.settings.header.music_sensor') | replace('{area}', '**{{ area }}**') ]]
+
+          [[ abilities_line() | indent(10) ]]{% endif %}
+[%- if preview_url %]
+[%- set link = '[' ~ t('ui.settings.preview_link') ~ '](' ~ preview_url ~ 'music)' %]
+
+          [[ link ]]
+[%- endif %]
+    sections:
+      # The Music page's preview, its notice and the visual, across both columns.
+      - type: grid
+        column_span: 2
+        cards:[[ heading('preview', 'mdi:waveform') ]][[ music_notice() | indent(10) ]][[ music_preview() | indent(10) ]]
+      # The board's update rate (how often it publishes, with what each choice does) with `rate`;
+      # its mic gain, read only, while it reads.
+      - type: grid
+        visibility: [ [[ sensor_rows_on ]] ]
+        cards:[[ heading('music_source', 'mdi:microphone-settings', sensor_rows_on) ]]
+          - type: entities
+            visibility: [ [[ sensor_rows_on ]] ]
+            entities:
+              - type: conditional
+                conditions: [ [[ rate_on ]] ]
+                row:
+                  type: custom:ramka-info-select-row
+                  entity: input_select.audio_sensor_music_spectrum_rate
+                  name: [[ t('ui.settings.music_spectrum_rate') | yaml ]]
+                  descriptions:
+[%- for option in ['normal', 'eco', 'fast'] %]
+                    [[ option ]]: [[ t('ui.settings.music_sensor_rate_' ~ option) | tojson ]]
+[%- endfor %]
+              - type: conditional
+                conditions: [ [[ source_set ]], [[ gain_reads ]] ]
+                row:
+                  entity: sensor.music_mic_gain
+                  name: [[ t('ui.settings.mic_gain') | yaml ]]
+      # The calibration of the selected board, with `calibration`. A measurement, not a preference:
+      # no Reset touches it.
+      - type: grid
+        visibility: [ [[ calibration_on ]] ]
+        cards:[[ heading('calibration', 'mdi:tune-vertical', calibration_on) ]]
+          - type: markdown
+            visibility: [ [[ calibration_on ]] ]
+            content: |-
+              {% set calibration = states('sensor.music_spl_calibration') %}
+              | | |
+              |---|---|
+              | [[ t('ui.settings.offset_in_use') ]] | **{{ states('sensor.music_spl_offset') }} dB**, {{ [[ t('ui.settings.calibrated') | yaml ]] if calibration == 'calibrated' else [[ t('ui.settings.estimate') | yaml ]] if calibration == 'estimate' else calibration }} |
+              | [[ t('ui.settings.note') ]] | {{ state_attr('sensor.music_spl_calibration', 'note') or '—' }} |
+
+[[ block(t('ui.settings.calibration_procedure')) ]]
+
+              <a href="https://github.com/zerostorypoints/domosenso/blob/audio-sensor/0.2.0/components/audio-sensor/README.md#the-music-source-and-calibration">[[ t('ui.settings.calibration_readme') ]]</a>
+          - type: entities
+            visibility: [ [[ calibration_on ]] ]
+            entities:
+              - entity: input_number.audio_sensor_measured_offset
+                name: [[ t('ui.settings.measured_offset') | yaml ]]
+              - entity: input_text.audio_sensor_calibration_note
+                name: [[ t('ui.settings.calibration_note') | yaml ]]
+              - type: button
+                icon: mdi:check-circle-outline
+                name: [[ t('ui.settings.calibration_apply') | yaml ]]
+                action_name: [[ t('ui.settings.calibration_apply_action') | yaml ]]
+                tap_action:
+                  action: perform-action
+                  perform_action: script.audio_sensor_apply_calibration
+                  confirmation:
+                    text: [[ t('ui.settings.calibration_apply_confirm') | yaml ]]
+      # The Reset: the update rate only, with `rate`.[[ reset('music_sensor', 'ui.settings.music_sensor_reset', rate_on) ]]
+[%- endif %]
 
   # ---- About: Domosenso, every component the home runs, what they use (SPEC-023) ---------------
   # A sections view like the other pages: the header is plain text over the page; Components and

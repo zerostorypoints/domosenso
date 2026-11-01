@@ -288,7 +288,8 @@
         "status": "What the home is doing, to look at only: awnings, doors, lights, power and locks. On the screen in the ambient rotation, at its turn, while no music is shown.",
         "calendar": "Today's events on the left, the next six days beside them. On the screen after a tap on the calendar button of the controls, while someone stays near the tablet.",
         "controls": "The player, the awnings and the room lights, to use by hand. On the screen when a hand comes near the tablet (with controls on approach) or after a tap, and for a while after it leaves.",
-        "music": "What is playing, in large type: artwork, title, artist, progress and, with the music visual, the room's music in the strip. On the screen only while the media player plays and this view is switched on, instead of the rotation."
+        "music": "What is playing, in large type: artwork, title, artist, progress and, with the music visual, the room's music in the strip. On the screen only while the media player plays and this view is switched on, instead of the rotation.",
+        "music_sensor": "The settings of the board in {area} itself, for every visual that reads it. A calibration is a measurement: the Reset leaves it."
       },
       "preview_link": "Preview this screen",
       "preview_link_general": "Open the Ramka preview",
@@ -436,6 +437,13 @@
       "music_ability_level": "level",
       "music_ability_rate": "update rate",
       "music_ability_calibration": "calibration",
+      "music_sensor_settings": "Sensor settings",
+      "music_sensor_page": "Music sensor settings",
+      "music_sensor_none": "No music sensor is selected: choose one on the Music page.",
+      "music_sensor_reset": "Reset the update rate",
+      "music_sensor_rate_normal": "the default",
+      "music_sensor_rate_eco": "least often, the lightest load on the network",
+      "music_sensor_rate_fast": "every new measurement, only while the tablet shows now playing",
       "open_view": "Open the Ramka view",
       "language": "Language",
       "language_how": "Each language is its own Ramka dashboard: {paths}. The tablet shows the language of the dashboard it opens: the default dashboard in the tablet user's profile, or the Companion app's start page. A switch on this page follows once it has been tested on a tablet.",

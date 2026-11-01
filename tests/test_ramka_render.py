@@ -1057,7 +1057,7 @@ def test_reset_page_and_groups(demo):
     assert set(run_reset(package, groups=["presence_display", "music_visual"])) == {
         e for e in everything if GROUP_OF[e] in ("presence_display", "music_visual")}
     # Never audio-sensor's helpers: the music source and the calibration are not preferences. The
-    # one exception is the sensor update rate on Music, Advanced, set only while it is there.
+    # one exception is the sensor update rate on the sensor sub-view, set only while it is there.
     for step in walk(reset_script(package)):
         target = step.get("target", {}).get("entity_id", "") if isinstance(step.get("target"), dict) else ""
         assert target.startswith("input_") and ".ramka_" in target or target == SPECTRUM_RATE or not target, target
@@ -1066,7 +1066,7 @@ def test_reset_page_and_groups(demo):
         e: v for e, v in everything.items() if GROUP_OF[e] == "pages"}
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
-    assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS + ["controls"]
+    assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS + ["controls", "music_sensor"]
     assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_visual", "music_look", "music_profiles",
                                                                  "photos", "plants", "air", "climate", "climate_slots"]
 
@@ -1132,15 +1132,15 @@ def test_every_setting_is_on_a_page_and_reset(tmp_path, make_inputs, left_out):
         assert on_pages.get(SPECTRUM_RATE) != "music", lang
         if not music:
             assert SPECTRUM_RATE not in on_pages and SPECTRUM_RATE not in json.dumps(views), lang
-    # The Music reset and the global reset set it to normal while it is there; a home without
-    # audio-sensor (unknown: no such entity; unavailable) skips it rather than fails.
+    # The sensor sub-view's reset and the global reset set it to normal while it is there; a home
+    # without audio-sensor (unknown: no such entity; unavailable) skips it rather than fails.
     there = {SPECTRUM_RATE: "fast"}
     expected = {SPECTRUM_RATE: "normal"} if music else {}
-    for page in (None, "music"):
+    for page in (None, "music_sensor") if music else (None,):
         assert {e: v for e, v in run_reset(package, page=page, states=there).items() if e == SPECTRUM_RATE} == expected, page
         for state in ("unknown", "unavailable"):
             assert SPECTRUM_RATE not in run_reset(package, page=page, states={SPECTRUM_RATE: state}), (page, state)
-    for page in ["general"] + [v for v in PAGE_VIEWS if v != "music"]:
+    for page in ["general"] + PAGE_VIEWS + ["controls"]:
         assert SPECTRUM_RATE not in run_reset(package, page=page, states=there), page
 
 
@@ -1546,6 +1546,9 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
 # ---- 0.4.0: the "Ramka settings" dashboard (SPEC-021) --------------------------------------------
 
 SETTINGS_PAGES = ["general", *PAGE_VIEWS[:-1], "controls", "music", "about"]
+# The music sensor's own settings (SPEC-025): a sub-view after Music, reached from its Basic.
+SENSOR_VIEW = "music-sensor"
+MIC_GAIN = "sensor.music_mic_gain"
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
 # audio-sensor's sensor update rate and watching flag (SPEC-021, amended 2026-10-30, #99, #110).
@@ -1599,8 +1602,10 @@ NOT_CONFIGURED = [("climate", "climate"), ("air", "air"), ("plants", "plants"), 
                   ("status", "status_page"), ("music", "music_visual")]
 
 
-def settings_views(dashboard) -> dict[str, dict]:
-    return {view["path"]: view for view in dashboard["views"]}
+def settings_views(dashboard, subviews=False) -> dict[str, dict]:
+    """A dashboard's views by path; the settings pages only, unless `subviews`: a sub-view (the music
+    sensor's, SPEC-025) is no page of its own, no tab, no preview tab, no page Reset of the table."""
+    return {view["path"]: view for view in dashboard["views"] if subviews or not view.get("subview")}
 
 
 def view_cards(view):
@@ -1664,8 +1669,8 @@ def test_settings_dashboard_pages_per_language(demo):
         t = settings_texts(lang)
         assert dashboard["title"] == t["ui.settings.title"]
         assert "kiosk_mode" not in dashboard
-        assert [v["path"] for v in dashboard["views"]] == SETTINGS_PAGES, lang
-        for view in dashboard["views"]:
+        assert [v["path"] for v in dashboard["views"]] == SETTINGS_PAGES[:-1] + [SENSOR_VIEW, "about"], lang
+        for view in settings_views(dashboard).values():
             assert view["title"] == t[f"ui.settings.pages.{view['path']}"], (lang, view["path"])
             assert view["type"] == "sections" and "theme" not in view
             # Each row of a Ramka helper carries its translated name.
@@ -1894,6 +1899,133 @@ def test_music_page_rows_follow_visual_and_sensor(demo, visual, sensor, advanced
             shown = shown_with(view, states, missing)
             assert shown == expected, (lang, missing, sorted(shown - expected), sorted(expected - shown))
             assert not shown & {SPECTRUM_RATE, "input_number.audio_sensor_measured_offset"}, lang
+
+
+def sensor_subview(dashboard) -> dict:
+    return settings_views(dashboard, subviews=True)[SENSOR_VIEW]
+
+
+def sensor_link(view) -> tuple[dict, dict]:
+    """The Music page's way to the sensor sub-view: (its card, its button row)."""
+    [(card, row)] = [(c, r) for _, c in view_cards(view) for r in c.get("entities", []) if c.get("type") == "entities"
+                     and isinstance(r, dict) and r.get("tap_action", {}).get("action") == "navigate"]
+    return card, row
+
+
+CALIBRATION_ROWS = {"input_number.audio_sensor_measured_offset", "input_text.audio_sensor_calibration_note"}
+
+
+def test_sensor_subview(demo):
+    """SPEC-025's sub-view table: a Home Assistant sub-view after Music whose back arrow returns to
+    Music; the header names the board's area and its abilities; the Music page's preview; the update
+    rate with `rate`, the calibration with `calibration`, the mic gain while it reads, the Reset of
+    the update rate with `rate`."""
+    for lang in LANGS:
+        t = translations(lang)
+        dashboard = demo[f"ramka-settings.{lang}.yaml"]
+        paths = [v["path"] for v in dashboard["views"]]
+        assert paths.index(SENSOR_VIEW) == paths.index("music") + 1, lang
+        view = sensor_subview(dashboard)
+        assert view["subview"] is True and view["back_path"] == "/ramka-settings/music", lang
+        assert (view["type"], view["max_columns"]) == ("sections", 2), lang
+        assert view["title"] == t["ui.settings.music_sensor_page"], lang
+        # The header: the title, the board's area and its abilities, or that no sensor is selected;
+        # the link to the preview's Music tab.
+        header = header_text(view)
+        assert header.startswith(f"## {t['ui.settings.music_sensor_page']}\n\n"), lang
+        assert f"[{t['ui.settings.preview_link']}](/ramka-preview/music)" in header, lang
+        caps = {"sensor.music_source": {"capabilities": ["spectrum", "level", "rate", "calibration", "gain"]}}
+        text = ha(header, states={"sensor.music_source": "Kitchen"}, attrs=caps)
+        assert "Kitchen" in text and t["ui.settings.music_sensor_abilities"] in text, (lang, text)
+        assert ", ".join(t[f"ui.settings.music_ability_{a}"] for a in ("spectrum", "level", "rate", "calibration")) in text, lang
+        for state in ("none", "unknown", "unavailable"):
+            text = ha(header, states={"sensor.music_source": state})
+            assert t["ui.settings.music_sensor_none"] in text and t["ui.settings.music_sensor_abilities"] not in text, (lang, state)
+        # The preview: the Music page's, notice and cards, across both columns.
+        music = settings_views(dashboard)["music"]
+        preview = grid_with_heading(view, t["ui.settings.preview"])
+        assert preview["cards"] == grid_with_heading(music, t["ui.settings.preview"])["cards"], lang
+        assert preview.get("column_span") == 2 and view["sections"][0] is preview, lang
+        # The rows over the sensor cases, the gain reading or not.
+        for sensor, case in SENSOR_CASES.items():
+            for gain in ("12", "unavailable"):
+                states = {**case, MIC_GAIN: gain} if case else {}
+                expected = set()
+                if case.get(ABILITY_SENSORS["rate"]) == "on":
+                    expected.add(SPECTRUM_RATE)
+                if case.get(ABILITY_SENSORS["calibration"]) == "on":
+                    expected |= CALIBRATION_ROWS
+                if case and case[MUSIC_SOURCE] != "\u2014" and gain != "unavailable":
+                    expected.add(MIC_GAIN)
+                for missing in ("unknown", "unavailable") if not case else ("unknown",):
+                    shown = shown_with(view, states, missing)
+                    assert shown == expected, (lang, sensor, gain, missing, shown ^ expected)
+        # The source on no sensor while the gain still reads: no gain row.
+        assert MIC_GAIN not in shown_with(view, {**SENSOR_CASES["none"], MIC_GAIN: "12"}), lang
+        # The update rate with what each option does; the calibration rows and Apply.
+        [rate] = [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == SPECTRUM_RATE]
+        assert rate["type"] == INFO_ROW and rate["name"] == t["ui.settings.music_spectrum_rate"], lang
+        assert rate["descriptions"] == {o: t[f"ui.settings.music_sensor_rate_{o}"] for o in ("normal", "eco", "fast")}, lang
+        calibration = grid_with_heading(view, t["ui.settings.calibration"])
+        assert calibration["visibility"] == [{"condition": "state", "entity": ABILITY_SENSORS["calibration"], "state": "on"}], lang
+        [apply] = [n for n in walk(calibration) if n.get("perform_action") == "script.audio_sensor_apply_calibration"]
+        assert apply["confirmation"]["text"] == t["ui.settings.calibration_apply_confirm"], lang
+        assert "sensor.music_spl_offset" in json.dumps(calibration), lang
+        # The Reset: the last section, the update rate only, shown with `rate`.
+        last = view["sections"][-1]
+        [action] = list(reset_actions(view))
+        assert action in list(walk(last)) and action["data"] == {"page": "music_sensor"}, lang
+        [button] = [c for c in last["cards"] if c.get("type") == "button"]
+        assert button["name"] == t["ui.settings.music_sensor_reset"], lang
+        for sensor, case in SENSOR_CASES.items():
+            for missing in ("unknown", "unavailable"):
+                shown = visible(last.get("visibility"), case, missing) and visible(button.get("visibility"), case, missing)
+                assert shown is (case.get(ABILITY_SENSORS["rate"]) == "on"), (lang, sensor, missing)
+
+
+def test_reset_music_sensor_sets_only_the_rate(demo):
+    package = demo["package.yaml"]
+    assert run_reset(package, page="music_sensor", states={SPECTRUM_RATE: "eco"}) == {SPECTRUM_RATE: "normal"}
+    # A home without audio-sensor: nothing to set.
+    assert run_reset(package, page="music_sensor") == {}
+    # The rate is the sub-view's now: Music's Reset leaves it.
+    assert SPECTRUM_RATE not in run_reset(package, page="music", states={SPECTRUM_RATE: "eco"})
+
+
+def test_sensor_settings_link(demo):
+    """Basic on the Music page, right after the abilities line: the way to the sub-view, while a
+    sensor is selected that has an update rate or a calibration."""
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        card, row = sensor_link(view)
+        basic = view["sections"][0]["cards"]
+        assert basic.index(card) == 1 + next(i for i, c in enumerate(basic)
+                                             if c.get("type") == "markdown" and "sensor.music_source" in c["content"]), lang
+        assert row["type"] == "button" and row["name"] == t["ui.settings.music_sensor_settings"], lang
+        assert row["tap_action"] == {"action": "navigate", "navigation_path": "/ramka-settings/music-sensor"}, lang
+        for sensor, case in SENSOR_CASES.items():
+            for missing in ("unknown", "unavailable"):
+                assert visible(card["visibility"], case, missing) is (sensor in ("level_only", "full")), (lang, sensor, missing)
+        no_settings = {**SENSOR_CASES["full"], ABILITY_SENSORS["rate"]: "off", ABILITY_SENSORS["calibration"]: "off"}
+        assert not visible(card["visibility"], no_settings), lang
+        assert visible(card["visibility"], {**no_settings, ABILITY_SENSORS["rate"]: "on"}), lang
+
+
+def test_sensor_settings_link_per_language(tmp_path):
+    rendered = render(tmp_path, {**demo_inputs(), "settings_paths": {"en": "ramka-settings", "pl": "ramka-settings-pl"}})
+    for lang, path in (("en", "ramka-settings"), ("pl", "ramka-settings-pl"), ("de", "ramka-settings")):
+        dashboard = rendered[f"ramka-settings.{lang}.yaml"]
+        assert sensor_subview(dashboard)["back_path"] == f"/{path}/music", lang
+        _, row = sensor_link(settings_views(dashboard)["music"])
+        assert row["tap_action"]["navigation_path"] == f"/{path}/music-sensor", lang
+
+
+def test_no_sensor_subview_without_music_visual(plain):
+    for lang in LANGS:
+        dashboard = plain[f"ramka-settings.{lang}.yaml"]
+        assert SENSOR_VIEW not in settings_views(dashboard, subviews=True), lang
+    assert "music_sensor" not in reset_script(plain["package.yaml"])["fields"]["page"]["selector"]["select"]["options"]
 
 
 def test_music_sensor_abilities_line(demo):
@@ -3451,7 +3583,8 @@ def test_music_visuals_bind_look(demo):
     for lang in LANGS:
         for name in (f"dashboard.{lang}.yaml", f"ramka-settings.{lang}.yaml"):
             cards = [n for n in walk(demo[name]) if n.get("type") == "custom:ambient-wave-card"]
-            assert len(cards) == 2, name
+            # The settings preview twice: on Music and on the sensor sub-view.
+            assert len(cards) == (4 if name.startswith("ramka-settings") else 2), name
             for card in cards:
                 kind = "spectrum" if card["source"]["kind"] == "spectrum" else "level"
                 assert card["look"] == LOOK, name
@@ -3493,8 +3626,9 @@ def test_music_settings_page_layout(demo):
         # Basic: the page switch, the visual and the music sensor; the abilities line; the profile with
         # its tooltip and the palette in their own card, shown while the visual is active; the
         # Advanced switch; the page-off note.
-        assert [c["type"] for c in basic["cards"]] == ["heading", "entities", "markdown", "entities", "entities", "markdown"], lang
-        first, line, needs_a, switch = basic["cards"][1:5]
+        assert [c["type"] for c in basic["cards"]] == ["heading", "entities", "markdown", "entities", "entities", "entities", "markdown"], lang
+        first, line, link, needs_a, switch = basic["cards"][1:6]
+        assert link["entities"][0]["tap_action"]["action"] == "navigate", lang
         assert [r["entity"] for r in rows(first)] == ["input_boolean.ramka_page_music", MUSIC_VISUAL, MUSIC_SOURCE], lang
         assert not first.get("visibility") and not switch.get("visibility") and not basic.get("visibility"), lang
         assert "sensor.music_source" in line["content"], lang

@@ -288,7 +288,8 @@
         "status": "Was das Zuhause gerade tut, nur zum Ansehen: Markisen, Türen, Lichter, Leistung und Schlösser. Auf dem Bildschirm in der Ambient-Rotation, wenn sie an der Reihe ist und keine Musik gezeigt wird.",
         "calendar": "Die Termine von heute links, die nächsten sechs Tage daneben. Auf dem Bildschirm nach einem Tipp auf die Kalender-Schaltfläche der Bedienung, solange jemand am Tablet bleibt.",
         "controls": "Der Player, die Markisen und die Raumlichter zum Bedienen von Hand. Auf dem Bildschirm, wenn sich eine Hand dem Tablet nähert (mit Bedienung beim Herantreten) oder nach einem Tipp, und noch eine Weile, nachdem sie sich entfernt hat.",
-        "music": "Was gerade läuft, gut lesbar: Cover, Titel, Interpret, Fortschritt und mit der Musikvisualisierung die Musik im Raum im Streifen. Auf dem Bildschirm nur, solange der Mediaplayer spielt und diese Ansicht eingeschaltet ist, anstelle der Rotation."
+        "music": "Was gerade läuft, gut lesbar: Cover, Titel, Interpret, Fortschritt und mit der Musikvisualisierung die Musik im Raum im Streifen. Auf dem Bildschirm nur, solange der Mediaplayer spielt und diese Ansicht eingeschaltet ist, anstelle der Rotation.",
+        "music_sensor": "Die Einstellungen des Boards in {area} selbst, für jede Visualisierung, die es liest. Eine Kalibrierung ist eine Messung: Das Zurücksetzen lässt sie unverändert."
       },
       "preview_link": "Vorschau dieser Ansicht",
       "preview_link_general": "Ramka-Vorschau öffnen",
@@ -436,6 +437,13 @@
       "music_ability_level": "Pegel",
       "music_ability_rate": "Aktualisierungsrate",
       "music_ability_calibration": "Kalibrierung",
+      "music_sensor_settings": "Sensoreinstellungen",
+      "music_sensor_page": "Musiksensor-Einstellungen",
+      "music_sensor_none": "Kein Musiksensor ausgewählt: Wählen Sie einen auf der Seite Musik.",
+      "music_sensor_reset": "Aktualisierungsrate zurücksetzen",
+      "music_sensor_rate_normal": "die Voreinstellung",
+      "music_sensor_rate_eco": "am seltensten, die geringste Netzlast",
+      "music_sensor_rate_fast": "jede neue Messung, nur solange das Tablet die Wiedergabe zeigt",
       "open_view": "Ramka-Ansicht öffnen",
       "language": "Sprache",
       "language_how": "Jede Sprache ist ein eigenes Ramka-Dashboard: {paths}. Das Tablet zeigt die Sprache des Dashboards, das es öffnet: das Standard-Dashboard im Profil des Tablet-Benutzers oder die Startseite der Companion-App. Ein Schalter auf dieser Seite folgt, sobald er auf einem Tablet getestet ist.",

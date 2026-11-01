@@ -9,6 +9,26 @@ Newest first. Each entry says what changed and what a home that already runs the
   first, then the input's visual and the other, and the seed and "Reset to defaults" write
   `classic`. The input `music_visual` still turns the feature and its helpers on. A home's own
   choice stays: an existing helper keeps its state and a seeded home is not reseeded.
+- **The music sensor's settings move to a sub-view, "Music sensor settings"**
+  (`/<settings path>/music-sensor`, a Home Assistant sub-view: no tab, its back arrow returns to
+  Music), reached by "Sensor settings ›" in Music's Basic while the selected sensor has an update
+  rate or a calibration. It holds the Calibration section (from the Music page) and the sensor
+  update rate (from Music, Advanced), each shown with the board's ability, the mic gain while it
+  reads, the Music page's preview and a Reset of the update rate. The Music page's Advanced "Music
+  sensor" card is gone; the music source select is in Music's Basic.
+- **Reset**: `script.<prefix>_settings_reset` takes `page: music_sensor` (with `music_visual`), which
+  sets only `input_select.audio_sensor_music_spectrum_rate` to `normal`, while it exists. Music's
+  own Reset no longer touches the rate; the global Reset still does.
+- **`settings_paths`** (the preview dashboard's input) now also gives the settings dashboard's own
+  links: the way to the sub-view and its back arrow, `/ramka-settings/` by default.
+- Translations: new keys `ui.settings.music_sensor_settings`, `ui.settings.music_sensor_page`,
+  `ui.settings.music_sensor_reset`, `ui.settings.music_sensor_none`,
+  `ui.settings.music_sensor_rate_{normal,eco,fast}` and `ui.settings.header.music_sensor` (en, de, pl).
+
+### What a home does
+
+- A home whose settings dashboard is not at `ramka-settings` sets `settings_paths` to it (per
+  language), then renders; otherwise nothing.
 
 ## Unreleased: a measured Behind speakers curve, the preview dashboard by default
 

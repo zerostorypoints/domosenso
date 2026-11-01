@@ -137,7 +137,8 @@
 [%- set _ = settings.append(('input_select', 'theme_mode', 'general', 'pages', d.theme_mode)) -%]
 [%- set _ = settings.append(('input_boolean', 'settings_advanced', 'general', 'pages', false)) -%]
 [%- set views = ['climate', 'air', 'plants', 'photos', 'status', 'calendar', 'music'] -%]
-[%- set reset_pages = ['general'] + views + ['controls'] -%]
+[#- A page of the settings dashboard each, and the music sensor's sub-view (SPEC-025) with the visual. -#]
+[%- set reset_pages = ['general'] + views + ['controls'] + (['music_sensor'] if music_visual is not none else []) -%]
 [%- for view in views -%][%- set _ = settings.append(('input_boolean', 'page_' ~ view, view, 'pages', true)) -%][%- endfor -%]
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music', 'music_visual', value)) -%]
@@ -1394,8 +1395,8 @@ script:
   # in both; neither: every setting, ambient_music too. The seed automation calls it with groups,
   # the settings dashboard's Reset buttons with a page or with nothing. It never touches
   # audio-sensor's music source or calibration: a measurement is not a preference. The one
-  # audio-sensor helper it sets is the sensor update rate on Music, Advanced, and only while it is
-  # there: a home without audio-sensor skips the step.
+  # audio-sensor helper it sets is the sensor update rate, the music sensor sub-view's (page
+  # music_sensor, SPEC-025), and only while it is there: a home without audio-sensor skips the step.
   [[ p ]]_settings_reset:
     alias: [[ named(' reset settings') ]]
     icon: mdi:restore
@@ -1457,7 +1458,7 @@ script:
       - if:
           - condition: template
             value_template: >-
-              {{ only_page in ['', 'music'] and (not only_groups or 'music_visual' in only_groups)
+              {{ only_page in ['', 'music_sensor'] and (not only_groups or 'music_visual' in only_groups)
                  and states('input_select.audio_sensor_music_spectrum_rate') not in ['unknown', 'unavailable'] }}
         then:
           - action: input_select.select_option

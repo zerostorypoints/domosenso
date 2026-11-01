@@ -288,7 +288,8 @@
         "status": "Co dzieje się w domu, tylko do podglądu: markizy, drzwi, światła, moc i zamki. Na ekranie w rotacji, gdy przyjdzie jego kolej i nie jest pokazywana muzyka.",
         "calendar": "Dzisiejsze wydarzenia po lewej, obok kolejne sześć dni. Na ekranie po dotknięciu przycisku kalendarza w kontrolkach, dopóki ktoś jest przy tablecie.",
         "controls": "Odtwarzacz, markizy i światła pomieszczeń do obsługi ręcznej. Na ekranie, gdy dłoń zbliża się do tabletu (z kontrolkami na podejście) lub po dotknięciu, i jeszcze chwilę po jej odejściu.",
-        "music": "Co teraz gra, dużą czcionką: okładka, tytuł, wykonawca, postęp i, z wizualizacją muzyki, muzyka w pokoju na pasku. Na ekranie tylko wtedy, gdy odtwarzacz gra i ten widok jest włączony, zamiast rotacji."
+        "music": "Co teraz gra, dużą czcionką: okładka, tytuł, wykonawca, postęp i, z wizualizacją muzyki, muzyka w pokoju na pasku. Na ekranie tylko wtedy, gdy odtwarzacz gra i ten widok jest włączony, zamiast rotacji.",
+        "music_sensor": "Ustawienia samej płytki w {area}, dla każdej wizualizacji, która z niej czyta. Kalibracja to pomiar: przywracanie domyślnych jej nie zmienia."
       },
       "preview_link": "Podgląd tego ekranu",
       "preview_link_general": "Otwórz podgląd Ramki",
@@ -436,6 +437,13 @@
       "music_ability_level": "poziom",
       "music_ability_rate": "częstotliwość odczytu",
       "music_ability_calibration": "kalibracja",
+      "music_sensor_settings": "Ustawienia czujnika",
+      "music_sensor_page": "Ustawienia czujnika muzyki",
+      "music_sensor_none": "Nie wybrano czujnika muzyki: wybierz go na stronie Muzyka.",
+      "music_sensor_reset": "Przywróć częstotliwość odczytu",
+      "music_sensor_rate_normal": "ustawienie domyślne",
+      "music_sensor_rate_eco": "najrzadziej, najmniejsze obciążenie sieci",
+      "music_sensor_rate_fast": "każdy nowy pomiar, tylko gdy tablet pokazuje odtwarzanie",
       "open_view": "Otwórz widok Ramki",
       "language": "Język",
       "language_how": "Każdy język to osobny dashboard Ramki: {paths}. Tablet pokazuje język dashboardu, który otwiera: domyślny dashboard w profilu użytkownika tabletu albo stronę startową aplikacji Companion. Przełącznik na tej stronie pojawi się po teście na tablecie.",

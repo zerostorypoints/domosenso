@@ -147,8 +147,8 @@ inputs:
     type: bool                  # view per screen, each in a frame of the screen's size (README, "Preview dashboard");
     default: true               # its lovelace: entry is the home's. False: the template renders empty, no file.
   settings_paths:               # the settings dashboard of each language, for the preview's links to its
-    type: "map[lang, string]"   # pages; a language not in it takes ramka-settings. Plain URL paths, as
-    default: null               # registered in configuration.yaml. Read only with preview_dashboard.
+    type: "map[lang, string]"   # pages and its own way to the music sensor sub-view and back; a language not in
+    default: null               # it takes ramka-settings. Plain URL paths, as registered in configuration.yaml.
     example: {en: ramka-settings, de: ramka-settings-de}
   preview_paths:                # the preview dashboard of each language, for the settings pages' links to
     type: "map[lang, string]"   # its tabs; a language not in it takes ramka-preview. Plain URL paths, as
@@ -290,16 +290,17 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: sensor.music_level}
   - {component: audio-sensor, id: binary_sensor.music_sensor_online}
   - {component: audio-sensor, element: ambient-wave-card}
-  # The settings dashboard's Music page (SPEC-021): the music source and the calibration of the board
-  # it names. Hidden while the select is unavailable, as in a home without audio-sensor.
+  # The settings dashboard: the music source on the Music page (SPEC-021, SPEC-025), hidden while the
+  # select is unavailable, as in a home without audio-sensor; the mic gain and the calibration of the
+  # board it names on the music sensor sub-view, each with its ability.
   - {component: audio-sensor, id: input_select.audio_sensor_music_source}
   - {component: audio-sensor, id: sensor.music_mic_gain}
   - {component: audio-sensor, id: sensor.music_spl_calibration}
   - {component: audio-sensor, id: input_number.audio_sensor_measured_offset}
   - {component: audio-sensor, id: input_text.audio_sensor_calibration_note}
   - {component: audio-sensor, id: script.audio_sensor_apply_calibration}
-  # Music, Advanced: the sensor update rate, hidden while unavailable and reset only while there; the
-  # music view turns the watching flag on and off (#99, #110).
+  # The music sensor sub-view: the sensor update rate, shown with the board's ability and reset only
+  # while there; the music view turns the watching flag on and off (#99, #110).
   - {component: audio-sensor, id: input_select.audio_sensor_music_spectrum_rate}
   - {component: audio-sensor, id: input_boolean.audio_sensor_music_watching}
   # The music source contract (SPEC-025): the selected board and its abilities, which decide what
