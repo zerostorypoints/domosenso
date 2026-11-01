@@ -518,6 +518,41 @@
       "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air/UPGRADE.md"
     },
     {
+      "id": "floorplan",
+      "version": "0.3.0",
+      "sourceTag": "floorplan/0.3.0",
+      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+      "summary": "A floor plan of the home with rooms, sensor readings and plants at their positions",
+      "requirements": [],
+      "integrations": [
+        {
+          "name": "lovelace",
+          "source": "core"
+        }
+      ],
+      "optionalRequirements": [],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 0,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ],
+      "inputs": [],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/floorplan",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/floorplan/UPGRADE.md"
+    },
+    {
       "id": "lights",
       "version": "0.2.0",
       "sourceTag": "lights/0.2.0",
@@ -746,9 +781,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.9.0",
-      "sourceTag": "ramka/0.9.0",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "version": "0.11.0",
+      "sourceTag": "ramka/0.11.0",
+      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -958,6 +993,16 @@
           "required": false
         },
         {
+          "name": "floorplan",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "floorplan_layers",
+          "type": "list[category]",
+          "required": false
+        },
+        {
           "name": "weather",
           "type": "entity_id",
           "required": true
@@ -1053,8 +1098,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",

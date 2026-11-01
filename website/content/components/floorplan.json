@@ -1,0 +1,117 @@
+{
+  "outcome": "See every sensor, plant and device where it is in your rooms, and how warm, bright and humid each room is, as a map.",
+  "categories": [
+    "climate",
+    "utilities"
+  ],
+  "hardware": "none",
+  "ui": "own",
+  "deviceIds": [],
+  "views": [
+    {
+      "id": "floorplan",
+      "title": "Floor plan dashboard",
+      "owner": "floorplan",
+      "providers": [
+        "floorplan"
+      ],
+      "availability": "default",
+      "condition": "domosenso floorplan push creates the floorplan dashboard; every user can read it, an administrator edits rooms and positions on it.",
+      "preview": "/previews/floorplan.svg",
+      "previewType": "illustration",
+      "layout": "Native Home Assistant dashboard; zoom and pan by wheel, pinch or buttons; editing on a desktop or tablet.",
+      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+      "evidencePath": "components/floorplan/cards/floorplan-card.js"
+    },
+    {
+      "id": "plan",
+      "title": "Floor plan on the wall",
+      "owner": "ramka",
+      "providers": [
+        "floorplan"
+      ],
+      "availability": "opt-in",
+      "condition": "Set floorplan: true in Ramka 0.10.0 or later with the floorplan dashboard pushed; a sideways swipe on the controls shows the plan and back. floorplan_layers lists its layers, one shown at a time; with floorplan 0.3.0 and Ramka 0.11.0 the plants, climate and light layers have maps, now or the last 24 hours, and the plan fills the screen.",
+      "preview": "/previews/floorplan.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Add the component and trace your rooms from an architect's plan or a photo of one with the floorplan-from-image skill; the drawing stays in your home repository.",
+    "Push the plan with domosenso floorplan push, then drag sensors, plants and devices to where they stand in edit mode, or against your real home with floorplan preview.",
+    "Optionally show it on the Ramka with floorplan: true, and mark rooms open to each other without doors as one open space so their maps share readings."
+  ],
+  "id": "floorplan",
+  "version": "0.3.0",
+  "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+  "evidencePaths": [
+    "components/floorplan/component.yaml"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Temperature",
+        "headline": "A warm living room, a cool office",
+        "detail": "Fictional values: each room is coloured from its own placed sensors; a room without one is hatched.",
+        "values": [
+          {
+            "label": "Map",
+            "value": "Temperature"
+          },
+          {
+            "label": "Living room",
+            "value": "22.1 °C"
+          },
+          {
+            "label": "Office",
+            "value": "19.4 °C"
+          }
+        ],
+        "level": 60
+      },
+      {
+        "label": "Light",
+        "headline": "Where the plants get light",
+        "detail": "The light map, now or the brightest hour of the last 24 hours from Home Assistant's statistics; night is always dark, so the 24 h figure is the useful one.",
+        "values": [
+          {
+            "label": "Map",
+            "value": "Light, 24 h"
+          },
+          {
+            "label": "Living room",
+            "value": "2700 lx"
+          },
+          {
+            "label": "Office",
+            "value": "640 lx"
+          }
+        ],
+        "level": 45
+      },
+      {
+        "label": "Open space",
+        "headline": "One open space, one map",
+        "detail": "Living room and kitchen have no door between them: marked as one open space, they share their readings and the kitchen is no longer hatched.",
+        "values": [
+          {
+            "label": "Map",
+            "value": "Temperature"
+          },
+          {
+            "label": "Open space",
+            "value": "Living, kitchen"
+          },
+          {
+            "label": "Kitchen",
+            "value": "From the group"
+          }
+        ],
+        "level": 60
+      }
+    ]
+  }
+}

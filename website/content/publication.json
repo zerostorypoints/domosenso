@@ -56,6 +56,15 @@
       ]
     },
     {
+      "id": "floorplan",
+      "version": "0.3.0",
+      "tag": "floorplan/0.3.0",
+      "commit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+      ]
+    },
+    {
       "id": "lights",
       "version": "0.2.0",
       "tag": "lights/0.2.0",
@@ -84,9 +93,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.9.0",
-      "tag": "ramka/0.9.0",
-      "commit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "version": "0.11.0",
+      "tag": "ramka/0.11.0",
+      "commit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
