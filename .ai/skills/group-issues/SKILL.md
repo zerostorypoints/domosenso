@@ -40,9 +40,15 @@ Sort every issue into one of:
 |---|---|---|
 | claimed | assignee, or `in-progress` / `in-review` / `blocked`, and its PR not merged | `claimed:` |
 | delivered | its change is on `main` (a merged PR or a commit found above) | `close:` |
-| superseded | a later spec or decision replaced it | `close:` as the maintainer's call |
+| superseded | a later spec or decision replaced it | `close:` (not planned) |
+| parked | its own text says nothing is built until someone asks, and nobody has; or a parent with no child issues whose items were taken over or are idle notes | `close:` (not planned) |
 | partly delivered | part of it is on `main` | grouped, with a comment saying what is left |
 | open | none of the above | grouped |
+
+When the human asks for an aggressive pass, close the `close:` issues after their go-ahead, each
+with `gh issue close <n> --reason "completed"|"not planned" --comment "<reason>"`. The comment
+names the PR, commit or spec that delivered or replaced it, what was not done, and when to reopen.
+Low priority alone is never a reason to close: a wanted change stays open.
 
 ## 2. Group
 
@@ -86,6 +92,15 @@ findings only. Then lay out the scope:
   touches, and its sub-branch `<client>/<n>-<slug>`;
 - near neighbours left out, and why.
 
+A member with `priority-high`, `Spec needed: no`, that blocks nothing in the group but would wait
+behind its specs, ships **alone** as a pull request into `main` (a patch release); the others rebase
+on it. Do not hold an urgent fix on a feature branch for a spec approval.
+
+Scope the first member to the level of an implementation plan: answer each open finding from earlier
+reviews and comments, name the mechanism (prefer reusing what exists, such as triggering an existing
+automation with its conditions, over copying it), the tests that fail first, the version bump and
+what is out of scope.
+
 ## 5. Report and stop
 
 ```
@@ -119,6 +134,10 @@ Ask **one** question: which writes to make and whether to start the scope. Label
 closing, claims and pushing the feature branch each need a go-ahead typed in this session.
 
 ## 6. After the go-ahead
+
+**Claim** each member as it starts: the approving human as assignee, `+in-progress -needs-triage`,
+and a comment with the branch, the target (`main` or the feature branch), dependencies and the scope
+from step 4. The author owns the issue's text: the scope goes in that comment, not an edit.
 
 The session becomes the scope's coordinator (AGENTS.md, "Plans that span several pull requests"):
 it creates and pushes the feature branch, claims each member as `triage-issues` step 6 says, works
