@@ -46,7 +46,10 @@ def wait_state(demo, entity, expected, timeout=20):
     deadline = time.monotonic() + timeout
     state = None
     while time.monotonic() < deadline:
-        state = demo.api('/api/states/' + entity)['state']
+        try:
+            state = demo.api('/api/states/' + entity)['state']
+        except DemoError as exc:  # after a restart an entity can be missing for a few seconds
+            state = f'missing ({exc})'
         if state == expected:
             return
         time.sleep(.4)
@@ -161,7 +164,7 @@ def check(demo, runtime_only=False):
         peer.down(); peer.up()
         # #52: the radar restores `on` before the automations load, so no change wakes the frame;
         # ramka_reconcile_after_start has to.
-        require(peer.api('/api/states/binary_sensor.dining_ble_proxy_dining_presence')['state'] == 'on', 'demo radar not present after restart')
+        wait_state(peer, 'binary_sensor.dining_ble_proxy_dining_presence', 'on', timeout=60)
         wait_state(peer, 'input_select.ramka_mode', 'ambient', timeout=90)
         require(demo.metadata()['port'] != peer.metadata()['port'], 'instances share a port')
         demo.audit(demo.inspect()); peer.audit(peer.inspect())
