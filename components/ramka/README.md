@@ -54,6 +54,33 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - Day stepping in the agenda must use calendar dates, not 24-hour steps: on the day the clocks go
   back a 24-hour step shows one day twice (`agenda-card.test.mjs` covers it).
 
+## Gestures on the rotation (SPEC-026)
+
+| on the rotation | does |
+|---|---|
+| tap anywhere but the corners | the controls (as before) |
+| swipe up / down | the next / previous page; the cycle restarts there |
+| swipe left / right | the next / previous view of the page on screen: plant pages, the photos of the series, round; the page's time restarts. Climate, air and status have one view and ignore it |
+| bottom-right corner | pause: the page and its view stay; a play button shows there, and a tap on it resumes with the page's full time |
+
+- **The pause is Home Assistant state**, `input_boolean.<prefix>_paused`, not the browser's: the loop,
+  its watchdog and every return to ambient read it. While paused, swipes change the view and keep the
+  pause; the controls (a tap, the near zone) come and go and give back the paused page as it was.
+- **A pause ends** when the screen goes off (mode `off`, the radar's off delay; automation
+  `<prefix>_pause_end`, which also puts the rotation back on its first page) and with a swipe up on
+  the controls (the rotation from its first page). It survives a restart of Home Assistant.
+- **Plant pages turn in Home Assistant** since SPEC-026 (`input_number.<prefix>_plants_page`,
+  plants-card's `page:`), so a swipe and the pause reach them; the card's own timer remains for a
+  dashboard without `page:`.
+- **The photo series is kept** in `sensor.<prefix>_photo_series` (`photos`, `index`). The photos
+  stage continues a series that is not over, also one left by a vertical swipe, and picks a new one
+  when it is.
+- The bottom-right target is there only while the rotation shows (mode `ambient`, music view off),
+  so it covers nothing on the controls, the calendar or the music.
+- **With "Controls on approach" on** (`input_boolean.<prefix>_near_enabled`), a hand within
+  `near_cm` brings the controls up, and the corner goes with the rotation: the pause is then reached
+  only from beyond `near_cm`, or with approach off (Settings, Controls).
+
 ## Music visual
 
 With `music_visual: spectrum` or `level` (0.4.0) the now-playing view draws the room's music in its

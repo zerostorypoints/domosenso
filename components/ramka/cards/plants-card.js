@@ -24,14 +24,17 @@
 //   defaults: {min_moisture: 15, ...}  # the list's bands; discover reads them from the plant
 //   per_page: input_number.ramka_plants_per_page   # a number or an entity; default 6
 //   page_s: input_number.ramka_plants_page_s       # a number or an entity; default 10
+//   page: input_number.ramka_plants_page           # optional: the page on screen, turned by Home
+//                                      # Assistant (the Ramka's loop and sideways swipes, SPEC-026);
+//                                      # shown modulo the page count, and the card turns none itself
 //   days: 7                            # optional: the moisture line's span (hourly means from
 //                                      # the statistics of the plant's moisture sensor)
 //   list: true                         # optional: false drops the list pages
 //   list_rows: 7                       # optional: rows per list page
 //
 // "Watered" and "water in" come from sensor.<plant>_last_watered and sensor.<plant>_water_in_days
-// when they exist. The page index is kept in the browser, so the next pass of the ambient loop
-// continues where the last one stopped.
+// when they exist. Without `page` the card turns its pages every page_s and keeps the index in the
+// browser, so the next pass of the ambient loop continues where the last one stopped.
 
 import { createT, language } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -91,7 +94,7 @@ class PlantsCard extends HTMLElement {
   // with a radar; the card works only when one of its own entities changed (states are replaced,
   // never mutated, so identity says it).
   _watched(hass) {
-    const ids = [this._config.per_page, this._config.page_s].filter((v) => typeof v === "string");
+    const ids = [this._config.per_page, this._config.page_s, this._config.page].filter((v) => typeof v === "string");
     for (const id of Object.keys(hass.states)) {
       if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days)$/.test(id)) ids.push(id);
     }
@@ -121,6 +124,7 @@ class PlantsCard extends HTMLElement {
 
   _schedule() {
     clearTimeout(this._timer);
+    if (this._config.page) return;
     this._timer = setTimeout(() => {
       this._page = ((this._page ?? loadPage()) + 1) % (this._pages || 1);
       savePage(this._page);
@@ -486,6 +490,10 @@ class PlantsCard extends HTMLElement {
       ? Math.ceil(rows.length / Math.max(1, Math.round(this._config.list_rows || 7))) : 0;
     const pages = tilePages + listPages;
     this._pages = pages;
+    if (this._config.page) {
+      const n = parseInt(this._hass.states[this._config.page]?.state, 10);
+      this._page = Number.isFinite(n) && n >= 0 ? n % pages : 0;
+    }
     if (this._page == null) this._page = loadPage();
     if (this._page >= pages || this._page < 0) this._page = 0;
     const list = this._page >= tilePages;

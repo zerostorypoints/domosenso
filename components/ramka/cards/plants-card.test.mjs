@@ -186,6 +186,23 @@ test("pages advance every page_s and the index survives a new card element", () 
   delete globalThis.localStorage;
 });
 
+test("with `page` the card shows that entity's page, modulo the page count, and turns none itself", () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const plants = Array.from({ length: 15 }, (_, i) => plant(`P${String(i).padStart(2, "0")}`));
+  const PAGE = "input_number.r_plants_page";
+  const card = discoverCard({ plants, config: { page_s: 10, page: PAGE }, attach: true,
+    states: { [PAGE]: { state: "2.0", attributes: {} } } });
+  assert.match(stripText(card), /^3 \/ 6/);
+  mock.timers.tick(60000);
+  assert.match(stripText(card), /^3 \/ 6/);
+  card.hass = { ...card._hass, states: { ...card._hass.states, [PAGE]: { state: "7.0", attributes: {} } } };
+  assert.match(stripText(card), /^2 \/ 6/);
+  card.hass = { ...card._hass, states: { ...card._hass.states, [PAGE]: { state: "unknown", attributes: {} } } };
+  assert.match(stripText(card), /^1 \/ 6/);
+  card.remove();
+  mock.timers.reset();
+});
+
 test("per_page and page_s may be helper entities", () => {
   const plants = Array.from({ length: 8 }, (_, i) => plant(`P${i}`));
   const card = discoverCard({ plants, config: { per_page: "input_number.r_plants_per_page" },

@@ -103,6 +103,52 @@ test("a vertical swipe runs the rule's up or down script; short or horizontal on
   assert.deepEqual(calls, []);
 });
 
+test("a horizontal swipe runs the rule's left or right script; diagonal or rule-less ones nothing", () => {
+  const rule = { conditions: [{ entity: MODE, states: ["ambient"] }], up: "script.ramka_up", left: "script.ramka_next", right: "script.ramka_prev" };
+  const { calls } = makeCard({ swipe: rule });
+  swipe(10, -150);
+  assert.deepEqual(calls.pop(), ["script", "ramka_next", {}]);
+  mock.timers.enable({ apis: ["Date"], now: Date.now() + 5000 });
+  swipe(-20, 150);
+  assert.deepEqual(calls.pop(), ["script", "ramka_prev", {}]);
+  mock.timers.tick(5000);
+  swipe(-90, 100);   // neither 1.5 times more across than along
+  swipe(0, 60);      // too short
+  assert.deepEqual(calls, []);
+  const { calls: none } = makeCard({ swipe: { conditions: [{ entity: MODE, states: ["ambient"] }], up: "script.ramka_up" } });
+  mock.timers.tick(5000);
+  swipe(0, -150);
+  assert.deepEqual(none, []);
+});
+
+const PAUSED = "input_boolean.ramka_paused";
+const PAUSE = { entity: PAUSED, conditions: [{ entity: MODE, states: ["ambient"] }], pause: "script.ramka_pause", resume: "script.ramka_resume" };
+
+test("the pause corner sits bottom right while its conditions hold, and its play button only while paused", () => {
+  const { card, hass } = makeCard({ pause: PAUSE, size: 60 }, "ambient", { [PAUSED]: { state: "off" } });
+  const el = window.__cornerTapsPage.pause;
+  assert.equal(el.style.bottom, "0px");
+  assert.equal(el.style.right, "0px");
+  assert.equal(el.style.width, "60px");
+  assert.equal(el.style.display, "flex");
+  assert.equal(el.firstElementChild.style.visibility, "hidden");
+  card.hass = { ...hass, states: { ...hass.states, [PAUSED]: { state: "on" } } };
+  assert.equal(el.firstElementChild.style.visibility, "visible");
+  card.hass = { ...hass, states: { [MODE]: { state: "controls" }, [PAUSED]: { state: "on" } } };
+  assert.equal(el.style.display, "none");
+});
+
+test("a tap on the pause corner pauses, or resumes while paused, and never opens the controls", () => {
+  const { card, calls, hass } = makeCard({ pause: PAUSE, tap: TAP }, "ambient", { [PAUSED]: { state: "off" } });
+  const el = window.__cornerTapsPage.pause;
+  el.click();
+  assert.deepEqual(calls, [["script", "ramka_pause", {}]]);
+  card.hass = { ...hass, states: { ...hass.states, [PAUSED]: { state: "on" } } };
+  mock.timers.enable({ apis: ["Date"], now: Date.now() + 5000 });
+  el.firstElementChild.dispatchEvent(new window.Event("click", { bubbles: true }));
+  assert.deepEqual(calls, [["script", "ramka_pause", {}], ["script", "ramka_resume", {}]]);
+});
+
 test("the first swipe rule whose conditions hold wins", () => {
   const rules = [
     { conditions: [{ entity: MODE, states: ["controls"] }], up: "script.ramka_a" },

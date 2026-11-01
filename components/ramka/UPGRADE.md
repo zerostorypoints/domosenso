@@ -3,6 +3,21 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: pause and the views of a page (SPEC-026)
+
+- **New:** the bottom-right corner of the rotation pauses it (a play button resumes), and sideways
+  swipes step through the plant pages and the photos of the series. Nothing to do: the next render
+  and deploy bring the helpers, scripts, the sensor and the automation `<prefix>_pause_end`.
+  `input_boolean.<prefix>_paused` starts off.
+- **Plant pages** are now turned by the ambient loop through `input_number.<prefix>_plants_page`
+  (plants-card's new `page:` option) instead of the card's own timer; the page index the card kept
+  in the browser (`localStorage`) is no longer read on the Ramka. Each pass still shows at most two
+  pages of `plants_page_s` and the next pass continues.
+- **The photos stage** now keeps its series in `sensor.<prefix>_photo_series` and picks through
+  `script.<prefix>_photo_series_new`; a series left part-way (a swipe, a pause) is continued.
+- **After a deploy** press the reload button (`input_button.<prefix>_reload`) so the tablet loads the
+  new cards; without it the old corner-taps card has no pause corner and ignores sideways swipes.
+
 ## Unreleased: the music source contract (SPEC-025)
 
 - **Live visualization (amendment 1).** A new switch, `input_boolean.<prefix>_music_live`, turns
