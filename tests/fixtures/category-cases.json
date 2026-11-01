@@ -166,7 +166,10 @@
     "device_classes": [],
     "entity_names": [],
     "is_hub": true
-   }
+   },
+   "roles": [
+    "radio"
+   ]
   },
   {
    "name": "a Zigbee bridge",
@@ -229,7 +232,11 @@
     ],
     "entity_names": [],
     "is_hub": false
-   }
+   },
+   "roles": [
+    "security",
+    "climate"
+   ]
   },
   {
    "name": "a door lock",
@@ -337,7 +344,10 @@
     "device_classes": [],
     "entity_names": [],
     "is_hub": false
-   }
+   },
+   "roles": [
+    "light"
+   ]
   },
   {
    "name": "a dimmer switch",
@@ -419,7 +429,10 @@
     "device_classes": [],
     "entity_names": [],
     "is_hub": false
-   }
+   },
+   "roles": [
+    "other"
+   ]
   },
   {
    "name": "a power meter",
@@ -463,7 +476,10 @@
     ],
     "entity_names": [],
     "is_hub": false
-   }
+   },
+   "roles": [
+    "other"
+   ]
   },
   {
    "name": "a robot vacuum with a camera map and a lid",
@@ -488,7 +504,10 @@
     ],
     "entity_names": [],
     "is_hub": false
-   }
+   },
+   "roles": [
+    "other"
+   ]
   },
   {
    "name": "a motion sensor whose motion entity is disabled",
@@ -529,6 +548,69 @@
     "device_classes": [
      "door",
      "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   },
+   "roles": [
+    "security"
+   ]
+  },
+  {
+   "name": "a Bluetooth proxy with a presence radar and a status LED",
+   "category": "radio",
+   "marker": "diamond",
+   "roles": [
+    "radio",
+    "security"
+   ],
+   "device": {
+    "integrations": [
+     "esphome"
+    ],
+    "manufacturer": "Espressif",
+    "model": "m5stack-atom",
+    "model_id": null,
+    "entity_domains": [
+     "binary_sensor",
+     "sensor",
+     "light",
+     "number",
+     "switch",
+     "button"
+    ],
+    "device_classes": [
+     "occupancy",
+     "motion",
+     "distance"
+    ],
+    "entity_names": [],
+    "is_hub": true
+   }
+  },
+  {
+   "name": "an air monitor that also senses presence",
+   "category": "security",
+   "marker": "circle",
+   "roles": [
+    "security",
+    "climate"
+   ],
+   "device": {
+    "integrations": [
+     "acme"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "binary_sensor",
+     "sensor"
+    ],
+    "device_classes": [
+     "occupancy",
+     "temperature",
+     "carbon_dioxide"
     ],
     "entity_names": [],
     "is_hub": false

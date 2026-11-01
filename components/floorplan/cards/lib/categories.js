@@ -45,16 +45,27 @@ export function ruleMatches(rule, dev) {
   return list(rule.entity_names).every((p) => (dev.entity_names || []).some((n) => glob(n, p)));
 }
 
-// {id, marker}: the first category whose hub test or rules match, else the fallback.
-export function categoryOf(dev) {
-  for (const cat of CATEGORIES) {
-    if (cat.hub && dev.is_hub) return { id: cat.id, marker: cat.marker };
-    for (const rule of cat.rules) {
-      if (ruleMatches(rule, dev)) return { id: cat.id, marker: rule.marker ?? cat.marker };
-    }
-  }
-  return { id: FALLBACK.id, marker: FALLBACK.marker };
+// `further`: looking for a further role, where a rule with extra_role: false does not count.
+function match(cat, dev, further = false) {
+  if (cat.hub && dev.is_hub) return { id: cat.id, marker: cat.marker };
+  const rule = cat.rules.find((r) => !(further && r.extra_role === false) && ruleMatches(r, dev));
+  return rule ? { id: cat.id, marker: rule.marker ?? cat.marker } : null;
 }
+
+// [{id, marker}]: its category (the first match by order, else the fallback), then every further
+// category marked extra_role that matches it: what else it senses (a radar on a Bluetooth proxy).
+export function rolesOf(dev) {
+  const roles = [];
+  for (const cat of CATEGORIES) {
+    if (roles.length && !cat.extra_role) continue;
+    const found = match(cat, dev, roles.length > 0);
+    if (found) roles.push(found);
+  }
+  return roles.length ? roles : [{ id: FALLBACK.id, marker: FALLBACK.marker }];
+}
+
+// {id, marker}: the first category whose hub test or rules match, else the fallback.
+export const categoryOf = (dev) => rolesOf(dev)[0];
 
 // A category's name in the dashboard language, English when it has none.
 export function categoryName(cat, lang) {

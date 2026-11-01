@@ -19,6 +19,11 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   square), shading, other. A theme can change a colour with `--floorplan-<id>`. A chip per category
   on the plan switches its markers off and on; the browser remembers the choice. `layers:` fixes the
   categories shown and hides the chips (the Ramka shows `[climate, plants]`).
+- **Roles:** what else a device senses is a ring around its dot in that category's colour: a
+  Bluetooth proxy with a presence radar wired to it is a purple diamond with a red ring, a plant
+  sensor or a tablet that reads temperature has a blue one. Its dot shows while any of its roles'
+  layers is on, and its tooltip lists its presence and contact sensors ("Presence: Detected"). An
+  appliance's door or a vacuum's camera map is not a role.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
   else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
 

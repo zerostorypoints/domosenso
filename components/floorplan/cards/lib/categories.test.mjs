@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { categoryOf, CATEGORIES, PLACEABLE, categoryName } from "./categories.js";
+import { categoryOf, rolesOf, CATEGORIES, PLACEABLE, categoryName } from "./categories.js";
 
 const cases = JSON.parse(readFileSync(new URL("../../../../tests/fixtures/category-cases.json", import.meta.url), "utf8")).cases;
 
@@ -20,4 +20,12 @@ test("categories come by order, one fallback, names in the three languages", () 
   assert.ok(!PLACEABLE.some((c) => c.id === "mobile"));
   for (const c of CATEGORIES) for (const lang of ["en", "de", "pl"]) assert.ok(categoryName(c, lang));
   assert.equal(categoryName(CATEGORIES[0], "en-GB"), CATEGORIES[0].names.en);
+});
+
+test("roles: every matching category by order, the first being the category, as the Python engine gives", () => {
+  const wrong = cases.filter((c) => c.roles).map((c) => ({ c, got: rolesOf(c.device).map((r) => r.id) }))
+    .filter(({ c, got }) => got.join() !== c.roles.join())
+    .map(({ c, got }) => `${c.name}: ${got}, expected ${c.roles}`);
+  assert.deepEqual(wrong, []);
+  for (const c of cases) assert.deepEqual(rolesOf(c.device)[0], categoryOf(c.device), c.name);
 });

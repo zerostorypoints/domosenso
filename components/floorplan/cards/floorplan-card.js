@@ -23,6 +23,7 @@ import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
   candidates, pointCategory, setPointCategory, setEntryDomains, keysOf, joinPoint, separatePoint, registryLinks,
+  presenceEntities,
 } from "./lib/plan.js";
 import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
@@ -155,6 +156,11 @@ class FloorplanCard extends HTMLElement {
 
   _visible(categoryId) {
     return this._config.layers ? this._config.layers.includes(categoryId) : !this._hidden.has(categoryId);
+  }
+
+  // A point shows while any of its roles' layers is on (a radar on a proxy: radio or presence).
+  _shown(cat) {
+    return cat.roles.some((id) => this._visible(id));
   }
 
   get _floor() {
@@ -300,7 +306,7 @@ ${STYLE}
   _layersHtml() {
     if (this._config.layers || !this._floor) return "";
     const h = this._hass;
-    const ids = new Set(this._floor.points.map((p) => pointCategory(h, p, this._cands).id));
+    const ids = new Set(this._floor.points.flatMap((p) => pointCategory(h, p, this._cands).roles));
     const cats = PLACEABLE.filter((c) => ids.has(c.id));
     if (!cats.length) return "";
     return `<span class="layers-label">${esc(t(h, "card.floorplan.layers"))}</span>` + cats.map((c) =>
@@ -437,7 +443,7 @@ ${STYLE}
     const byRoom = new Map();
     const placed = [];
     for (const point of floor.points) {
-      if (!this._visible(pointCategory(this._hass, point, this._cands).id)) continue;
+      if (!this._shown(pointCategory(this._hass, point, this._cands))) continue;
       if (point.placed) {
         placed.push(point);
         continue;
@@ -507,7 +513,7 @@ ${STYLE}
     if (editing && !point.placed) cls.push("unplaced");
     if (editing && keyOf(point) === this._picked) cls.push("picked");
     const cat = pointCategory(h, point, this._cands);
-    if (!this._visible(cat.id)) return;
+    if (!this._shown(cat)) return;
     cls.push(`cat-${cat.id}`);
     const g = el("g", { class: cls.join(" "), "data-kind": "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
@@ -516,6 +522,9 @@ ${STYLE}
     else if (cat.marker === "diamond") {
       el("polygon", { points: [[0, -8], [8, 0], [0, 8], [-8, 0]].map(([x, y]) => `${fmt(x * px)},${fmt(y * px)}`).join(" "), style }, g);
     } else el("circle", { r: 7 * px, style }, g);
+    // Further roles (what else it senses) as rings in their colours, two at most.
+    cat.roles.slice(1, 3).forEach((id, i) => el("circle", { class: "role-ring", r: (11 + 3 * i) * px,
+      style: `stroke: ${colourOf(categoryById(id))}` }, g));
     // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
     // A plant's value is its name, so a plant is a dot.
     const name = pointName(h, point);
@@ -745,7 +754,10 @@ ${STYLE}
     }
     if (marker) {
       const point = this._floor?.points.find((p) => keyOf(p) === hoverKey);
-      if (point) content = { key: `m:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities) };
+      if (point) {
+        content = { key: `m:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
+          presence: presenceEntities(this._hass, point) };
+      }
     } else if (cluster) {
       const c = this._clusters(this._floor).get(cluster.getAttribute("data-cluster"));
       if (c) content = { key: `c:${cluster.getAttribute("data-cluster")}:${c.points.length}`, ids: [],
@@ -779,9 +791,13 @@ ${STYLE}
       const h = this._hass;
       const pic = content.ids.map((id) => h.states?.[id]?.attributes?.entity_picture).find(safePicture);
       const values = content.ids.map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== content.name);
+      // Presence and contact sensors by name: "Presence: Detected".
+      const named = (id) => h.entities?.[id]?.name || h.entities?.[id]?.original_name
+        || h.states?.[id]?.attributes?.friendly_name || id;
+      const presence = (content.presence || []).map((id) => `${named(id)}: ${valueText(h, id)}`);
       tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
         + `<div class="tip-name">${esc(content.name)}</div>`
-        + values.map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+        + [...values, ...presence].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
       this._tipKey = content.key;
     }
     tip.hidden = false;

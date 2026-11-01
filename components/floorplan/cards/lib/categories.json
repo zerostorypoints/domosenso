@@ -2,6 +2,7 @@
  "categories": [
   {
    "colour": "#43a047",
+   "extra_role": false,
    "fallback": false,
    "hub": false,
    "id": "plants",
@@ -27,6 +28,7 @@
   },
   {
    "colour": "#00897b",
+   "extra_role": false,
    "fallback": false,
    "hub": false,
    "id": "media",
@@ -53,6 +55,7 @@
   },
   {
    "colour": "#607d8b",
+   "extra_role": false,
    "fallback": false,
    "hub": false,
    "id": "mobile",
@@ -79,6 +82,7 @@
   },
   {
    "colour": "#8e24aa",
+   "extra_role": false,
    "fallback": false,
    "hub": true,
    "id": "radio",
@@ -105,6 +109,7 @@
   },
   {
    "colour": "#9e9e9e",
+   "extra_role": false,
    "fallback": true,
    "hub": false,
    "id": "other",
@@ -133,6 +138,7 @@
   },
   {
    "colour": "#e53935",
+   "extra_role": true,
    "fallback": false,
    "hub": false,
    "id": "security",
@@ -150,7 +156,8 @@
       "lock",
       "camera",
       "alarm_control_panel"
-     ]
+     ],
+     "extra_role": false
     },
     {
      "model": "*motion*"
@@ -165,18 +172,22 @@
      "device_classes": "presence"
     },
     {
-     "device_classes": "door"
+     "device_classes": "door",
+     "extra_role": false
     },
     {
-     "device_classes": "window"
+     "device_classes": "window",
+     "extra_role": false
     },
     {
-     "device_classes": "opening"
+     "device_classes": "opening",
+     "extra_role": false
     }
    ]
   },
   {
    "colour": "#1e88e5",
+   "extra_role": true,
    "fallback": false,
    "hub": false,
    "id": "climate",
@@ -243,6 +254,7 @@
   },
   {
    "colour": "#fdd835",
+   "extra_role": false,
    "fallback": false,
    "hub": false,
    "id": "light",
@@ -271,6 +283,7 @@
   },
   {
    "colour": "#8d6e63",
+   "extra_role": false,
    "fallback": false,
    "hub": false,
    "id": "shading",

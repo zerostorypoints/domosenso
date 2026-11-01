@@ -488,3 +488,27 @@ covering each other. The maintainer: break them down into a list of devices unde
   wall): a dot dragged, dropped from the tray or from a list outside every room stands on the
   nearest point of a room's walls, while dragging and after. Moving into another room is fine.
 - No change to the stored document.
+
+### Addition: a device has roles, not one category (the maintainer, 2026-11-01, "Yes, build roles")
+
+A radar wired to a Bluetooth proxy (an LD2410C on an ESPHome Atom) is entities of the proxy's
+device, so the proxy's one category, `radio`, hid it: no presence on the dot, none in its layer.
+
+- **Roles:** its category (the first that matches, as before), then every further category marked
+  `extra_role: true` whose rules match it, by `order`. Only what a device senses is a further role
+  (`security`, `climate`): every Bluetooth proxy also has a status LED as a `light` entity, which
+  must not read as a light. A rule marked `extra_role: false` gives its category only, never a
+  further role: on a real home a dryer's and a dishwasher's door and a robot vacuum's lid and camera
+  map read as presence (security's door, window, opening and lock/camera/alarm rules are so marked;
+  motion, occupancy and presence count). Checked on that home: the two proxies with radars and the
+  motion sensor get the presence role, the plant sensors and the wall tablet a climate role, the
+  appliances none. The first is its category as before (colour, shape, the point's `category`
+  override replaces it); the others are its further roles. `tools/domosenso_cli/categories.py`
+  `roles_of` and the card's `rolesOf` give the list; `category_of` / `categoryOf` stay its first.
+  Shared cases name the expected roles where a device has several.
+- **On the plan:** a further role is a ring around the dot in that role's colour (two at most). A
+  layer shows a dot when any of its roles is switched on; the chips list every role on the plan.
+- **Presence in the tooltip:** a device's `binary_sensor` entities of the classes the `security`
+  rules name (motion, occupancy, presence, door, window, opening) show in its tooltip with their
+  name and state; the marker itself still shows only the point readings.
+- COMPATIBILITY: the categories row gains roles (ADDITIVE-ONLY); the stored document is unchanged.

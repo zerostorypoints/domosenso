@@ -4,7 +4,7 @@
 
 import { pointInPolygon, centroid, interiorPoint, splitPolygon, joinPolygons } from "./geometry.js";
 import { language } from "./i18n.js";
-import { categoryOf, categoryById, CATEGORIES } from "./categories.js";
+import { rolesOf, categoryById, CATEGORIES } from "./categories.js";
 
 export const POINT_CLASSES = ["temperature", "humidity", "illuminance", "moisture", "carbon_dioxide", "pm25"];
 // Integrations whose entities are computed from other entities: they carry a point device_class
@@ -130,18 +130,20 @@ export function candidates(hass) {
     const device = devices[key];
     if (!device || device.disabled_by || device.entry_type === "service") continue;
     if (own.some((id) => plantSensors.has(id))) continue;
-    const cat = categoryOf(scanForm(hass, own, device, (children.get(key) || 0) > 0));
+    const roles = rolesOf(scanForm(hass, own, device, (children.get(key) || 0) > 0));
+    const cat = roles[0];
     if (!categoryById(cat.id)?.placeable) continue;
     // The entity's own area wins over its device's.
     const area = own.map((id) => hass.entities?.[id]?.area_id).find(Boolean) ?? device.area_id ?? null;
     out.push({ key, kind: "device", area_id: area, entities: own.filter((id) => isPointEntity(hass, id)),
-      category: cat.id, marker: cat.marker });
+      category: cat.id, marker: cat.marker, roles: roles.map((r) => r.id) });
   }
   for (const id of loose) {
-    const cat = categoryOf(scanForm(hass, [id], null, false));
+    const roles = rolesOf(scanForm(hass, [id], null, false));
+    const cat = roles[0];
     if (!categoryById(cat.id)?.placeable) continue;
     out.push({ key: id, kind: "entity", area_id: hass.entities?.[id]?.area_id ?? plantArea(hass, id), entities: [id],
-      category: cat.id, marker: cat.marker });
+      category: cat.id, marker: cat.marker, roles: roles.map((r) => r.id) });
   }
   return out.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 }
@@ -153,10 +155,26 @@ export function pointCategory(hass, point, byKey = null) {
   const override = point.category && categoryById(point.category);
   const key = keyOf(point);
   const c = byKey ? byKey.get(key) : candidates(hass).find((x) => x.key === key);
-  if (override) return { id: override.id, marker: c && c.category === override.id ? c.marker : override.marker };
-  if (c) return { id: c.category, marker: c.marker };
+  // An override replaces the category; the further roles (what the device also senses) stay.
+  const further = (c?.roles || []).slice(1);
+  if (override) {
+    return { id: override.id, marker: c && c.category === override.id ? c.marker : override.marker,
+      roles: [override.id, ...further.filter((r) => r !== override.id)] };
+  }
+  if (c) return { id: c.category, marker: c.marker, roles: c.roles };
   const fallback = CATEGORIES.find((x) => x.fallback);
-  return { id: fallback.id, marker: fallback.marker };
+  return { id: fallback.id, marker: fallback.marker, roles: [fallback.id] };
+}
+
+// The presence and contact sensors of a point's devices (the classes the security category's rules
+// name), for its tooltip: a radar on a proxy, a door contact.
+const PRESENCE_CLASSES = ["motion", "occupancy", "presence", "door", "window", "opening"];
+export function presenceEntities(hass, point) {
+  const keys = new Set(keysOf(point));
+  return Object.values(hass.entities || {})
+    .filter((e) => keys.has(e.device_id) && e.entity_id.startsWith("binary_sensor.") && !e.entity_category && !e.hidden
+      && PRESENCE_CLASSES.includes(hass.states?.[e.entity_id]?.attributes?.device_class))
+    .map((e) => e.entity_id);
 }
 
 // A comparable form of a room name: no case, no spaces, no diacritics ("Hobby Raum" = "Hobbyraum").

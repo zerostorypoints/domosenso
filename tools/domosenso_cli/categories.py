@@ -46,7 +46,8 @@ def build(root: Path) -> dict[str, Any]:
         index.append({
             "id": data["id"], "order": data["order"], "names": data["names"], "colour": data["colour"],
             "marker": data["marker"], "placeable": data.get("placeable", True),
-            "fallback": data.get("fallback", False), "hub": data.get("hub", False), "rules": rules,
+            "fallback": data.get("fallback", False), "hub": data.get("hub", False),
+            "extra_role": data.get("extra_role", False), "rules": rules,
         })
     return {"categories": index}
 
@@ -60,13 +61,33 @@ def rule_matches(rule: dict, dev: dict) -> bool:
     return matches(rule, dev)
 
 
+def _match(cat: dict, dev: dict, further: bool = False) -> dict[str, str] | None:
+    if cat["hub"] and dev.get("is_hub"):
+        return {"id": cat["id"], "marker": cat["marker"]}
+    for rule in cat["rules"]:
+        if further and rule.get("extra_role") is False:
+            continue  # gives the category only, never a further role
+        if rule_matches(rule, dev):
+            return {"id": cat["id"], "marker": rule.get("marker", cat["marker"])}
+    return None
+
+
+def roles_of(dev: dict, index: dict[str, Any]) -> list[dict[str, str]]:
+    """Its category (the first match by `order`, else the fallback), then every further category marked
+    `extra_role` that matches it, by `order`: what else it senses (a radar on a Bluetooth proxy)."""
+    roles: list[dict[str, str]] = []
+    for cat in index["categories"]:
+        if roles and not cat["extra_role"]:
+            continue
+        found = _match(cat, dev, further=bool(roles))
+        if found:
+            roles.append(found)
+    if not roles:
+        fallback = next(c for c in index["categories"] if c["fallback"])
+        roles.append({"id": fallback["id"], "marker": fallback["marker"]})
+    return roles
+
+
 def category_of(dev: dict, index: dict[str, Any]) -> dict[str, str]:
     """{"id", "marker"} of the first category whose rules or hub test match, else the fallback."""
-    for cat in index["categories"]:
-        if cat["hub"] and dev.get("is_hub"):
-            return {"id": cat["id"], "marker": cat["marker"]}
-        for rule in cat["rules"]:
-            if rule_matches(rule, dev):
-                return {"id": cat["id"], "marker": rule.get("marker", cat["marker"])}
-    fallback = next(c for c in index["categories"] if c["fallback"])
-    return {"id": fallback["id"], "marker": fallback["marker"]}
+    return roles_of(dev, index)[0]

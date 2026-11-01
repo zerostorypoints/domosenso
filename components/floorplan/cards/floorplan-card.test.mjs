@@ -782,6 +782,55 @@ test("a tap elsewhere closes the cluster list; hovering a cluster names its devi
   assert.ok(!$(card, ".cluster-list [data-point]"), "closed");
 });
 
+// ---- roles: a radar wired to a Bluetooth proxy ------------------------------------------------
+
+function radarHass() {
+  const hass = categoryHass();
+  hass.devices.d_proxy = { id: "d_proxy", name: "Office proxy", area_id: "kitchen" };
+  hass.devices.d_adapter = { id: "d_adapter", name: "Adapter", via_device_id: "d_proxy" };
+  Object.assign(hass.entities, {
+    "binary_sensor.proxy_presence": { entity_id: "binary_sensor.proxy_presence", device_id: "d_proxy", platform: "esphome", original_name: "Presence" },
+    "light.proxy_led": { entity_id: "light.proxy_led", device_id: "d_proxy", platform: "esphome" },
+  });
+  Object.assign(hass.states, {
+    "binary_sensor.proxy_presence": { state: "on", attributes: { device_class: "occupancy" } },
+    "light.proxy_led": { state: "off", attributes: {} },
+  });
+  return hass;
+}
+
+test("a further role is a ring in its colour around the dot", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1), pt("d_climate", 1, 1)]) }, radarHass());
+  await settle();
+  const proxy = markerOf(card, "d_proxy");
+  assert.equal(proxy.firstElementChild.tagName.toLowerCase(), "polygon", "still a radio's diamond");
+  const rings = [...proxy.querySelectorAll("circle.role-ring")];
+  assert.equal(rings.length, 1);
+  assert.match(rings[0].getAttribute("style"), /--floorplan-security/);
+  assert.equal(markerOf(card, "d_climate").querySelectorAll("circle.role-ring").length, 0);
+});
+
+test("a dot shows while any of its roles' layers is on; the chips list every role", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1)]) }, radarHass());
+  await settle();
+  const chip = (id) => $(card, `.layers [data-layer="${id}"]`);
+  assert.ok(chip("radio") && chip("security"), "both of its roles have a chip");
+  click(chip("radio"));
+  assert.ok(markerOf(card, "d_proxy"), "radio off, presence on: still shown");
+  click(chip("security"));
+  assert.ok(!markerOf(card, "d_proxy"), "both off: hidden");
+  window.localStorage.clear();
+});
+
+test("the tooltip lists a device's presence sensors with their state", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1)]) }, radarHass());
+  await settle();
+  const [x, y] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_proxy"), "pointermove", x, y);
+  assert.ok($(card, ".tip").textContent.includes("Presence: on"), $(card, ".tip").textContent);
+});
+
 // ---- dots stay in rooms; a dot dropped on a dot stacks --------------------------------------
 
 function dragMarker(card, key, from, to) {

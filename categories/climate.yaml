@@ -4,6 +4,7 @@ order: 60
 names: {en: Climate, de: Klima, pl: Klimat}
 colour: "#1e88e5"
 marker: circle
+extra_role: true   # a further role of a device in another category (a radar on a proxy)
 kinds: [temperature-humidity-sensor, air-quality-sensor]
 match:
   - entity_domain: climate

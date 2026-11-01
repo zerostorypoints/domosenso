@@ -17,6 +17,7 @@
     "placeable": {"type": "boolean", "description": "false: things that move (phones, tags); never a point on a plan."},
     "fallback": {"type": "boolean", "description": "The one category for a device that matched nothing."},
     "hub": {"type": "boolean", "description": "true: a device other enabled devices name as via_device_id is in this category."},
+    "extra_role": {"type": "boolean", "description": "true: a device in another category that also matches this one has it as a further role (what it senses: presence, climate)."},
     "kinds": {"type": "array", "items": {"type": "string"}, "description": "Ids under kinds/: a device their match rules recognise is in this category."},
     "devices": {"type": "array", "items": {"type": "string"}, "description": "Ids under devices/: likewise."},
     "match": {"type": "array", "items": {"$ref": "#/$defs/rule"}}
@@ -45,6 +46,7 @@
         "entity_names": {"$ref": "#/$defs/one_or_more"},
         "only_entity_domain": {"$ref": "#/$defs/one_or_more"},
         "marker": {"enum": ["circle", "square", "diamond"]},
+        "extra_role": {"const": false, "description": "This rule gives the category, never a further role (an appliance's door is no presence)."},
         "note": {"type": "string"}
       }
     }

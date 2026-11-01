@@ -4,7 +4,7 @@ import {
   POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
   extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName, keysOf, joinPoint,
-  separatePoint, registryLinks,
+  separatePoint, registryLinks, pointCategory, presenceEntities,
 } from "./plan.js";
 import { joinPolygons, centroid, pointInPolygon } from "./geometry.js";
 
@@ -68,18 +68,18 @@ test("emptyPlan has one empty floor per id, null included", () => {
 test("candidates: device with two point entities is one candidate", () => {
   const c = candidates(hass).find((x) => x.key === "d_temp");
   assert.deepEqual(c, { key: "d_temp", kind: "device", area_id: "living_room", entities: ["sensor.hum", "sensor.temp"],
-    category: "climate", marker: "circle" });
+    category: "climate", marker: "circle", roles: ["climate"] });
 });
 
 test("candidates: a light-only device is a light, with no readings to show (Amendment 5)", () => {
   assert.deepEqual(candidates(hass).find((x) => x.key === "d_light"),
-    { key: "d_light", kind: "device", area_id: "kitchen", entities: [], category: "light", marker: "circle" });
+    { key: "d_light", kind: "device", area_id: "kitchen", entities: [], category: "light", marker: "circle", roles: ["light"] });
 });
 
 test("candidates: plant without a device, and a device-less sensor", () => {
   const all = candidates(hass);
   assert.deepEqual(all.find((x) => x.key === "plant.monstera"),
-    { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"], category: "plants", marker: "circle" });
+    { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"], category: "plants", marker: "circle", roles: ["plants"] });
   assert.equal(all.find((x) => x.key === "sensor.garage_co2").area_id, "office");
 });
 
@@ -459,4 +459,34 @@ test("registryLinks: via_device_id between points on the plan, a joined device c
     { device_id: "d_bulb1", x: 1, y: 1, placed: true }, { device_id: "d_amp", x: 2, y: 2, placed: true, also: ["d_bulb2"] });
   assert.deepEqual(registryLinks(stage2Hass, d.floors[0].points).map((l) => [l.from, l.to]).sort(),
     [["d_amp", "d_bridge"], ["d_bulb1", "d_bridge"]]);
+});
+
+
+// ---- roles: a radar wired to a Bluetooth proxy -------------------------------------------------
+
+const radarHass = {
+  ...hass,
+  devices: { ...hass.devices, d_proxy: { id: "d_proxy", name: "Proxy", area_id: "living_room" },
+    d_child: { id: "d_child", name: "Adapter", via_device_id: "d_proxy" } },
+  entities: { ...hass.entities,
+    "binary_sensor.proxy_presence": { entity_id: "binary_sensor.proxy_presence", device_id: "d_proxy", platform: "esphome", original_name: "Presence" },
+    "binary_sensor.proxy_moving": { entity_id: "binary_sensor.proxy_moving", device_id: "d_proxy", platform: "esphome", original_name: "Moving target" },
+    "light.proxy_led": { entity_id: "light.proxy_led", device_id: "d_proxy", platform: "esphome" },
+    "sensor.proxy_distance": { entity_id: "sensor.proxy_distance", device_id: "d_proxy", platform: "esphome" } },
+  states: { ...hass.states,
+    "binary_sensor.proxy_presence": { state: "on", attributes: { device_class: "occupancy" } },
+    "binary_sensor.proxy_moving": { state: "off", attributes: { device_class: "motion" } },
+    "light.proxy_led": { state: "off", attributes: {} },
+    "sensor.proxy_distance": { state: "62", attributes: { device_class: "distance" } } },
+};
+
+test("a proxy with a radar is a radio with a presence role; its LED does not make it a light", () => {
+  const c = candidates(radarHass).find((x) => x.key === "d_proxy");
+  assert.equal(c.category, "radio");
+  assert.deepEqual(c.roles, ["radio", "security"]);
+  const point = { device_id: "d_proxy", x: 1, y: 1, placed: true };
+  assert.deepEqual(pointCategory(radarHass, point).roles, ["radio", "security"]);
+  assert.deepEqual(pointCategory(radarHass, { ...point, category: "climate" }).roles, ["climate", "security"],
+    "an override replaces the category and keeps the further roles");
+  assert.deepEqual(presenceEntities(radarHass, point).sort(), ["binary_sensor.proxy_moving", "binary_sensor.proxy_presence"]);
 });

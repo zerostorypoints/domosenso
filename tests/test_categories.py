@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import category_index
-from domosenso_cli.categories import build, category_of
+from domosenso_cli.categories import build, category_of, roles_of
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = json.loads((ROOT / "tests" / "fixtures" / "category-cases.json").read_text(encoding="utf-8"))["cases"]
@@ -57,3 +57,18 @@ def test_catalog_check_validates_categories(tmp_path):
     assert any("does not match file name" in e for e in errors) and any("names 'nope'" in e for e in errors), errors
     bad.write_text("id: wrong\norder: 1\nnames: {en: A}\ncolour: red\nmarker: star\n")
     assert catalog_check.check_category(bad, tmp_path), "schema errors"
+
+
+def test_roles_list_every_matching_category_by_order():
+    index = build(ROOT)
+    wrong = []
+    for case in CASES:
+        if "roles" not in case:
+            continue
+        dev = {**case["device"], "entity_domains": set(case["device"]["entity_domains"]),
+               "device_classes": set(case["device"]["device_classes"])}
+        got = [r["id"] for r in roles_of(dev, index)]
+        if got != case["roles"]:
+            wrong.append(f"{case['name']}: {got}, expected {case['roles']}")
+        assert roles_of(dev, index)[0] == category_of(dev, index), "the first role is the category"
+    assert wrong == []
