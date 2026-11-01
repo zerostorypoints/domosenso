@@ -4300,3 +4300,36 @@ def test_floorplan_layers_input_sets_the_plan_views_layers(tmp_path):
 def test_floorplan_not_in_the_preview(tmp_path):
     out = render(tmp_path, with_floorplan())
     assert not any(n.get("type") == "custom:floorplan-card" for n in walk(out["ramka-preview.en.yaml"]))
+
+
+def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
+    """#52: wake and sleep fire on changes of presence, which a restart hides (the state restores
+    before the automations load). One automation re-checks the room once Home Assistant has
+    started, with the same conditions and the same actions as presence_on and presence_off."""
+    package = demo["package.yaml"]
+    presence = demo_inputs()["radar"]["presence"]
+    reconcile = automation(package, "reconcile_after_start")
+    assert reconcile["triggers"] == [{"trigger": "homeassistant", "event": "start"}]
+    assert reconcile["mode"] == "restart"
+
+    wait, choose = reconcile["actions"]
+    assert presence in wait["wait_template"] and "'on', 'off'" in wait["wait_template"]
+    assert wait["continue_on_timeout"] is False
+
+    wake, sleep = choose["choose"]
+    on, off = automation(package, "presence_on"), automation(package, "presence_off")
+    assert {"condition": "state", "entity_id": presence, "state": "on"} in wake["conditions"]
+    assert all(c in wake["conditions"] for c in on["conditions"])
+    assert wake["sequence"] == on["actions"]
+
+    delay, held, *actions = sleep["sequence"]
+    assert sleep["conditions"] == [{"condition": "state", "entity_id": presence, "state": "off"}]
+    assert delay["delay"] == off["triggers"][0]["for"], "off_delay_s, counted from the start"
+    assert held == {"condition": "state", "entity_id": presence, "state": "off", "for": off["triggers"][0]["for"]}
+    assert actions[0] == off["conditions"][0]
+    assert actions[1:] == off["actions"]
+
+
+def test_reconcile_after_start_is_listed_as_provided():
+    provided = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["provides"]["automations"]
+    assert "reconcile_after_start" in provided

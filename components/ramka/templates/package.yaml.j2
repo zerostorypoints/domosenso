@@ -1882,6 +1882,64 @@ automation:
           option: "off"
       - action: script.[[ p ]]_screen_off
 
+  # 2b. After a start (#52). 1 and 2 fire on changes of presence, and a restart hides one: the radar
+  #    restores its state before the automations load, so a frame restored `off` stays dark in a
+  #    used room and one restored lit stays lit in an empty one. Once presence is known (a radar
+  #    integration may come up after the start), the same conditions and actions as 1 and 2 run;
+  #    the sleep waits off_delay_s from the start, as if presence had dropped then.
+  - id: [[ p ]]_reconcile_after_start
+    alias: [[ named(' reconcile after start') ]]
+    description: "After a Home Assistant start: wake or sleep the screen for the presence the radar restored."
+    mode: restart
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - wait_template: "{{ states('[[ radar.presence ]]') in ['on', 'off'] }}"
+        timeout: "00:02:00"
+        continue_on_timeout: false
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: [[ radar.presence ]]
+                state: "on"
+              - condition: state
+                entity_id: input_select.[[ p ]]_mode
+                state: "off"
+            sequence:
+              - action: input_select.select_option
+                target:
+                  entity_id: input_select.[[ p ]]_mode
+                data:
+                  option: ambient
+              - action: script.[[ p ]]_screen_on
+          - conditions:
+              - condition: state
+                entity_id: [[ radar.presence ]]
+                state: "off"
+            sequence:
+              - delay:
+                  seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
+              - condition: state
+                entity_id: [[ radar.presence ]]
+                state: "off"
+                for:
+                  seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: input_select.[[ p ]]_mode
+                    state: "off"
+              - action: timer.cancel
+                target:
+                  entity_id: timer.[[ p ]]_controls
+              - action: input_select.select_option
+                target:
+                  entity_id: input_select.[[ p ]]_mode
+                data:
+                  option: "off"
+              - action: script.[[ p ]]_screen_off
+
   # 3. Someone right at the tablet: binary_sensor.[[ p ]]_near (the radar's target within
   #    near_cm, gaps under 2 s bridged) on for near_s. 100 cm for 1 s puts a person at the screen
   #    (45-65 cm) inside and anyone at a table (180-260 cm) outside. The trigger fires again only
