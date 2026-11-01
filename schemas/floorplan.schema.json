@@ -18,7 +18,12 @@
       "properties": {
         "floor_id": {"type": ["string", "null"], "description": "HA floor id, null in a home without floors"},
         "rooms": {"type": "array", "items": {"$ref": "#/$defs/room"}},
-        "points": {"type": "array", "items": {"$ref": "#/$defs/point"}}
+        "points": {"type": "array", "items": {"$ref": "#/$defs/point"}},
+        "open_spaces": {
+          "type": "array",
+          "description": "Groups of rooms open to each other without doors (SPEC-028 Amendment 7): their heat maps share readings. Each area in one group at most; every area a room of the floor",
+          "items": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
+        }
       }
     },
     "number": {"type": "number"},

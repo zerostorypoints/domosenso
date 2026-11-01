@@ -2,6 +2,23 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## 0.3.0 (2026-11-01): maps per layer, now or the last 24 hours
+
+- **Maps** (SPEC-028 Amendment 7): with plants, climate or light shown alone, the bar offers their
+  maps (plants: light, temperature, soil moisture; climate: temperature, humidity, CO₂; light:
+  light, lamps), drawn as heat inside each room, and **Now / 24 h**: the map's figure over the last
+  24 hours from the recorder's hourly statistics. `maps: false` turns them off.
+- **Open spaces:** rooms open to each other without doors can be marked as one open space (edit
+  mode, the **Open** tool: tap two rooms; a selected room's **Close off** takes it out). Their heat
+  maps share readings, so a grouped room without a sensor is no longer hatched, and the walls
+  between them are drawn dashed. Stored as `open_spaces` on the floor (`schema: 1`, optional): an
+  older `domosenso` command refuses a plan that uses it, and `push` prints `open change <floor>`.
+- **`fill: true`**: the card as tall as the screen below its top (the Ramka's plan view).
+- With `layer_choice: one` the zoom, fit and map buttons keep their taps (`data-own-tap`): on the
+  Ramka they no longer return to the controls.
+- **After the update:** `domosenso update floorplan --to 0.3.0`, deploy, reload the browsers that
+  show the plan. Nothing in the plan changes.
+
 ## 0.2.1 (2026-11-01): faster on a busy home
 
 No change in what the card shows or stores. It works out its devices once per registry change

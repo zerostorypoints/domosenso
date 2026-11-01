@@ -521,10 +521,14 @@ device, so the proxy's one category, `radio`, hid it: no presence on the dot, no
 
 On a real home the readings under the dots ran over walls and over one another. Each marker's
 readings now take the spot round their dot with the lowest cost (`cards/lib/labels.js`): spots
-below, above, right, left and diagonal, in four rings from 12 px out; the cost counts crossing a
+below, above, right, left, diagonal, and below or above starting or ending at the dot, in eight rings from 12 px out (four until Amendment 7: a map's three-line labels in a crowded row ran over each other); the cost counts crossing a
 wall (1000), leaving the dot's room (500), covering a label placed before (200 each) or a dot or
 cluster (100 each) or a room's name (200), then the ring. Readings that had to leave the first ring get a thin leader line
-to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), not measured.
+to their dot. In view mode the readings are laid out first and a room's name they or a dot would
+cover moves to the first free corner of its room, inset (`placeNames`); with none free it stays in
+the middle. Edit mode keeps names in the middle, where the floor area sits under them, and readings
+keep clear of them (on a real home the names of two small bathrooms and a corridor sat under
+readings). Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), not measured.
 
 ### Addition: the Ramka's plan view, one layer at a time (the maintainer, 2026-11-01)
 
@@ -538,3 +542,148 @@ to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line
   carry it in this mode. Any card may use it.
 - The Ramka's input `floorplan_layers` (default `[climate, plants]`) lists the chips; the
   maintainer's home lists all eight categories.
+
+## Amendment 7 (maps per layer, now or the last 24 hours; the Ramka's plan fills its screen)
+
+- Status: approved 2026-11-01 by the maintainer ("Approve"). Source: the maintainer, 2026-11-01, after the plan view ran on the
+  Ramka: "the room view should be using the screen more effectively", "the fit and zoom buttons
+  don't work", "inside the plants view we can change the heatmaps; plants should give me three
+  parameters, like the sensors", then "light and climate should get similar modes; we should be
+  able to switch between aggregated and current values (check how we implement this for plants)".
+  Mockups with a real home's plan and readings, in that home's repository:
+  `docs/superpowers/specs/2026-11-01-floorplan-mockups/plan-views.html`.
+- This brings in part of the next project the design names (light and heat map); DLI, a
+  time-of-day slider and "where to place" stay out (below).
+
+### Maps
+
+- The layers `plants`, `climate` and `light` each get **maps**, one shown at a time:
+
+  | layer | maps (first is the default) | 24 h figure per map |
+  |---|---|---|
+  | `plants` | light, temperature, soil moisture | brightest, coldest, driest |
+  | `climate` | temperature, humidity, CO₂ | mean, mean, highest |
+  | `light` | light, lamps | brightest, none |
+
+  Why these figures: a plant suffers from its coldest hour and its driest soil and needs its
+  brightest hours (light is zero every night; the plants component keeps `illuminance max 24h` for
+  the same reason); a room is judged by its mean, its air by its worst CO₂.
+- A map of a reading (`device_class` temperature, illuminance, moisture, humidity,
+  carbon_dioxide) is **interpolated inside each room** from that room's placed points with the
+  reading, by inverse distance squared on a 0.15 m grid; walls stop it (no room borrows another's
+  readings). A room with no such point is hatched. Unplaced points never count (as the base spec
+  decides). The sources are every placed point with the reading, whatever its category: on the
+  plants' light map a room thermometer with a light sensor counts.
+- **Fixed scales**, so two days compare: temperature 17–24 °C, humidity 30–60 %, soil moisture
+  10–50 %, CO₂ 400–1400 ppm, light 0–20 000 lx on a log scale. A legend names the map, now or the
+  24 h figure, and the ends of the scale. *(The ranges are the mockup's, set by eye from one home;
+  a component's own bands, such as a plant's, are not used for the map.)*
+- **Labels** on a map: a plant shows its three readings (temperature, light, soil), any other point
+  the readings it has of temperature, humidity, CO₂ and light; the shown map's reading is first and
+  bold. The light layer shows light only. The label layout is the one of the readings addition.
+- **Lamps** (light layer): each placed device of category `light` with a `light` entity (a group,
+  one whose state has an `entity_id` list, left out) is a dot: on, with a glow sized by brightness;
+  off, grey. Its label: the brightness in %, or "off". No heat is drawn.
+- The light layer's two maps answer two questions (the maintainer, 2026-11-01: "what is on and how
+  much vs what is measured"): **Lamps** is what the home emits, **Light** what its sensors measure,
+  daylight and lamps together. No map separates daylight from lamp light (a sensor under a lamp
+  reads the lamp; filtering that needs the history).
+- **Now / 24 h**: one switch beside the maps. "Now" shows the states. "24 h" shows, per point
+  entity, the map's figure over the last 24 hours from `recorder/statistics_during_period`
+  (`period: hour`, `types: [mean, min, max]`; the call the Ramka's plants card already makes as the
+  kiosk user), fetched when switched on and again every 30 minutes while on. An entity without
+  statistics (no `state_class`) has no 24 h value and is left out of that map. The lamps map has no
+  24 h figure: the switch is hidden there (hours on would need the history).
+- Where: the map and time switches show when exactly one of these three layers is shown (always
+  with `layer_choice: one`; with chips, when only that layer is on). Edit mode shows no map.
+  The browser remembers the map per layer and the switch (`localStorage`, like the layers).
+  They carry `data-own-tap` with `layer_choice: one`.
+- Card config `maps` (boolean, default `true`): `false` draws no maps and no switches (0.2 behaviour).
+
+### The Ramka's plan view
+
+- **Zoom and fit** *(cause by inference, to be confirmed on the tablet simulator first)*: the
+  + / − / fit buttons do not carry `data-own-tap`, so `corner-taps-card` takes their tap as a tap
+  on the page and goes back to the controls. With `layer_choice: one` the whole bar of the card
+  carries it.
+- **Filling the screen**: card config `fill: true` sizes the card to the rest of the viewport below
+  its top (`window.innerHeight` minus its top, minus 8 px), kept on resize; `fit` then uses the whole
+  card. The Ramka's template sets `fill: true` instead of
+  `grid_options: {rows: 8}`. The bar is one row of chips and, under it, one row of maps, time and
+  zoom.
+
+### Versions, compatibility
+
+- floorplan 0.2.1 → 0.3.0: card config `maps`, `fill` (ADDITIVE-ONLY); the bar's `data-own-tap`.
+  No change to the document or the command. The card's `card behaviour` row and COMPATIBILITY's
+  `floorplan-card` row gain maps and the switch.
+- ramka 0.10.0 → 0.11.0: the plan view sets `fill: true` and needs floorplan 0.3.0; `UPGRADE.md`
+  says so. Nothing for a home to change.
+- Translations (en, de, pl): the map names, "Now", "24 h" with each figure ("brightest", "coldest",
+  "driest", "mean", "highest"), "Lamps", "off", the legend's "no sensor in the room".
+
+### Tests
+
+- `node --test`: interpolation stays inside a room and hatches a room without a source; a
+  point's reading counts on another layer's map; the 24 h figure per map (min, max, mean) from a
+  fake `statistics_during_period` answer; an entity without statistics is left out; lamps: a group
+  left out, glow only when on; the switch hidden on lamps; map and switch remembered; the bar's
+  buttons carry `data-own-tap` with `layer_choice: one`; `fill` sets the height from the viewport;
+  `maps: false` draws none.
+- ramka: `ha-check ramka` with `floorplan: true`; on the tablet simulator, + / − / fit zoom without
+  leaving the plan, the plan fills the screen at 1100 × 720, a sideways swipe still returns.
+- Staging of the home that asked, then the Ramka.
+
+### Out of scope
+
+Daily light integral (DLI), a time-of-day slider, history beyond 24 hours, hours a lamp was on,
+"where to place a sensor"; the desktop side panel of the mockups (a list of plants and rooms);
+using a component's own bands as a map's scale.
+
+### Open questions
+
+- The scales' ranges *(set by eye from one home)*.
+- Whether "Now" at night should fall back to the 24 h light map on the plants layer, since every
+  light map is dark at night *(not proposed; the switch is one tap)*.
+
+### Addition: open spaces (the maintainer, 2026-11-01; approved 2026-11-01, "Do 028")
+
+"These rooms are one open space without doors; we should be able to mark groups of rooms like
+that, because it affects the heat maps." On the maintainer's home six rooms of one floor (living,
+kitchen, dining, hall, stairs, corridor) are open to each other, and the maps stopped heat at every
+line between them and hatched those of them without a sensor of their own.
+
+- **Document** (`schema: 1`, a new optional key, ADDITIVE-ONLY): `floors[].open_spaces`, a list of
+  groups, each a list of two or more `area_id`s of rooms on that floor; an area is in one group at
+  most. A plan whose group names an area that is not a room of the floor, repeats an area, or has a
+  group of fewer than two is invalid: `push`, `pull` and `preview` refuse it as they refuse any
+  invalid plan; the card, which checks no more than the schema version, uses only the groups that
+  hold (`openSpaces`) *(as built: the card never refused an invalid plan)*. As with 0.2.0's optional keys, a `domosenso` command older than this catalog
+  refuses a plan that uses it.
+- **Heat:** a room of a group is interpolated from the placed samples of every room of its group,
+  by inverse distance squared in a straight line (the openings between them are not modelled); so a
+  grouped room without a sensor of its own takes the group's heat instead of being hatched. A group
+  with no sample is hatched. Rooms in no group: as before (walls stop heat). Each room's cells stay
+  clipped to the room.
+- **Drawing:** where two rooms of one group face each other (parallel walls within 0.3 m that
+  overlap along their length), those walls are drawn dashed and lighter, in view and edit mode: the
+  plan shows what is open.
+- **Editing:** a fourth tool beside move, split and join, **Open**: tap two rooms and they are in one
+  open space (a room already in one brings its group along; two groups merge). The area panel of a
+  selected room in a group names the rooms it is open to and has **Close off**, which takes the room
+  out of its group (a group left with one room goes). Joining two rooms keeps the joined room in
+  either's group (both groups merge); splitting a grouped room keeps both halves in it; linking a
+  room to another area renames it in its group. All in en, de, pl.
+- **Command:** `push --plan` prints `open change <floor>` when a floor's groups differ from the
+  target's; `pull` keeps them; `FAIL` reasons gain `open space on floor <id or ->: <reason>`.
+- **Version:** part of floorplan 0.3.0 (not released yet); COMPATIBILITY's schema row gains
+  `open_spaces`; `UPGRADE.md` 0.3.0 says how to mark one.
+- **Tests:** schema and `floorplan_doc` validation (unknown area, repeat, a group of one);
+  `push --plan` line; the heat of a grouped room without a sensor comes from its group's samples,
+  an ungrouped neighbour's does not; facing walls of a group drawn dashed; the Open tool's taps,
+  Close off, and join / split / link keeping groups; staging of the home that asked, its six rooms
+  marked and the maps looked at.
+- **Out of scope:** doorways and partly open walls, heat through a door left open, openness between
+  floors (stairs to an upper floor), path distance round a corner of an L-shaped open space
+  *(straight-line distance is my call; on the home that asked, a corner of the corridor is the only
+  place it would differ)*.

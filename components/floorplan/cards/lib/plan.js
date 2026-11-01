@@ -403,6 +403,99 @@ export function removeCorner(doc, floorId, areaId, index) {
 }
 
 // The first half keeps the area, the second becomes newAreaId (which must not have a room on this floor).
+// ---- open spaces (Amendment 7): rooms open to each other without doors -------------------------
+
+// A floor's open spaces that hold: areas that are rooms of the floor, each once, groups of two or more.
+export function openSpaces(floor) {
+  const rooms = new Set((floor?.rooms || []).map((r) => r.area_id));
+  const seen = new Set();
+  const out = [];
+  for (const group of floor?.open_spaces || []) {
+    const kept = [];
+    for (const area of Array.isArray(group) ? group : []) {
+      if (rooms.has(area) && !seen.has(area)) {
+        seen.add(area);
+        kept.push(area);
+      }
+    }
+    if (kept.length >= 2) out.push(kept);
+  }
+  return out;
+}
+
+// The floor with its open spaces set to `groups` (groups of one dropped; no key when none is left).
+function withGroups(floor, groups) {
+  const kept = groups.filter((g) => g.length >= 2);
+  const { open_spaces: _, ...rest } = floor;
+  return kept.length ? { ...rest, open_spaces: kept } : rest;
+}
+
+// Groups with `fn(area)` applied to every area: an area id, or null to take it out.
+const mapGroups = (floor, fn) => openSpaces(floor).map((g) => g.map(fn).filter(Boolean));
+
+// Two rooms in one open space: a room already in one brings its group; two groups merge.
+export function openRooms(doc, floorId, a, b) {
+  return editFloor(doc, floorId, (floor) => {
+    const rooms = new Set(floor.rooms.map((r) => r.area_id));
+    if (a === b || !rooms.has(a) || !rooms.has(b)) return null;
+    const groups = openSpaces(floor);
+    const ga = groups.find((g) => g.includes(a)) ?? [a];
+    const gb = groups.find((g) => g.includes(b)) ?? [b];
+    if (ga === gb) return null;
+    return withGroups(floor, [...groups.filter((g) => g !== ga && g !== gb), [...ga, ...gb]]);
+  });
+}
+
+// The room out of its open space; null when it is in none.
+export function closeRoom(doc, floorId, area) {
+  return editFloor(doc, floorId, (floor) => {
+    if (!openSpaces(floor).some((g) => g.includes(area))) return null;
+    return withGroups(floor, mapGroups(floor, (x) => (x === area ? null : x)));
+  });
+}
+
+// The walls two rooms of one open space show each other: parallel, within FACING_M, overlapping
+// along their length. Each such wall's overlapping part, as [[x, y], [x, y]], once per room.
+const FACING_M = 0.3;
+export function facingWalls(floor) {
+  const byArea = new Map((floor?.rooms || []).map((r) => [r.area_id, r.polygon]));
+  const out = [];
+  for (const group of openSpaces(floor)) {
+    for (const a of group) {
+      for (const b of group) {
+        if (a === b) continue;
+        const pa = byArea.get(a);
+        const pb = byArea.get(b);
+        pa.forEach((p, i) => {
+          const q = pa[(i + 1) % pa.length];
+          const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+          if (len < 1e-9) return;
+          const u = [(q[0] - p[0]) / len, (q[1] - p[1]) / len];
+          let lo = Infinity;
+          let hi = -Infinity;
+          pb.forEach((r, j) => {
+            const s = pb[(j + 1) % pb.length];
+            const v = [s[0] - r[0], s[1] - r[1]];
+            const vl = Math.hypot(...v);
+            if (vl < 1e-9 || Math.abs(u[0] * v[1] - u[1] * v[0]) / vl > 1e-6) return;   // not parallel
+            const off = (r[0] - p[0]) * -u[1] + (r[1] - p[1]) * u[0];
+            if (Math.abs(off) > FACING_M) return;
+            const t = [(r[0] - p[0]) * u[0] + (r[1] - p[1]) * u[1], (s[0] - p[0]) * u[0] + (s[1] - p[1]) * u[1]];
+            const t0 = Math.max(0, Math.min(...t));
+            const t1 = Math.min(len, Math.max(...t));
+            if (t1 - t0 > 0.05) {
+              lo = Math.min(lo, t0);
+              hi = Math.max(hi, t1);
+            }
+          });
+          if (hi > lo) out.push([[p[0] + u[0] * lo, p[1] + u[1] * lo], [p[0] + u[0] * hi, p[1] + u[1] * hi]]);
+        });
+      }
+    }
+  }
+  return out;
+}
+
 export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
   return editFloor(doc, floorId, (floor) => {
     const k = floor.rooms.findIndex((r) => r.area_id === areaId);
@@ -413,7 +506,9 @@ export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
     if (!halves) return null;
     const rooms = floor.rooms.map((r, j) => (j === k ? { ...r, polygon: halves[0] } : r));
     rooms.splice(k + 1, 0, { area_id: newAreaId, polygon: halves[1] });
-    return { ...floor, rooms };
+    // Both halves stay in the room's open space.
+    const groups = openSpaces(floor).map((g) => (g.includes(areaId) ? [...g, newAreaId] : g));
+    return withGroups({ ...floor, rooms }, groups);
   });
 }
 
@@ -424,7 +519,12 @@ export function joinRooms(doc, floorId, keepAreaId, dropAreaId) {
     if (!keep || !drop || keep === drop) return null;
     const polygon = joinPolygons(keep.polygon, drop.polygon);
     if (!polygon) return null;
-    return { ...floor, rooms: floor.rooms.filter((r) => r !== drop).map((r) => (r === keep ? { ...r, polygon } : r)) };
+    const rooms = floor.rooms.filter((r) => r !== drop).map((r) => (r === keep ? { ...r, polygon } : r));
+    // The joined room is in both rooms' open spaces: they merge, the dropped room's place taken.
+    const groups = openSpaces(floor);
+    const touched = groups.filter((g) => g.includes(keepAreaId) || g.includes(dropAreaId));
+    const merged = [...new Set(touched.flat().map((x) => (x === dropAreaId ? keepAreaId : x)))];
+    return withGroups({ ...floor, rooms }, [...groups.filter((g) => !touched.includes(g)), merged]);
   });
 }
 
@@ -432,7 +532,8 @@ export function linkRoom(doc, floorId, areaId, newAreaId) {
   return editFloor(doc, floorId, (floor) => {
     if (!newAreaId || floor.rooms.some((r) => r.area_id === newAreaId)) return null;
     if (!floor.rooms.some((r) => r.area_id === areaId)) return null;
-    return { ...floor, rooms: floor.rooms.map((r) => (r.area_id === areaId ? { ...r, area_id: newAreaId } : r)) };
+    const rooms = floor.rooms.map((r) => (r.area_id === areaId ? { ...r, area_id: newAreaId } : r));
+    return withGroups({ ...floor, rooms }, mapGroups(floor, (x) => (x === areaId ? newAreaId : x)));
   });
 }
 
