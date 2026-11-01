@@ -2087,9 +2087,13 @@ def notices_shown(cards, states, t, missing) -> list[str]:
     """The notices among `cards` (markdown cards carrying a notice text) that `states` shows."""
     out = []
     for card in cards:
+        # The preview dashboard's stack has no card visibility: a conditional card carries it.
+        conditions = card.get("visibility")
+        if card.get("type") == "conditional":
+            conditions, card = card["conditions"], card["card"]
         for key in NOTICE_KEYS:
             if card.get("type") == "markdown" and t[f"ui.settings.music_notice_{key}"] in card["content"] \
-                    and visible(card.get("visibility"), states, missing):
+                    and visible(conditions, states, missing):
                 out.append(key)
     return out
 
@@ -2134,6 +2138,32 @@ def test_preview_music_tab_has_the_notice(demo, visual, sensor, alias):
         for missing in ("unknown", "unavailable") if sensor == "no_audio_sensor" else ("unknown",):
             notices = notices_shown(stack["cards"], states, t, missing)
             assert notices == ([want] if want else []), (lang, missing, notices)
+
+
+def test_preview_music_notices_are_conditional_cards(demo):
+    """The preview dashboard's stack ignores card visibility: its notices are conditional cards."""
+    for lang in LANGS:
+        view = settings_views(demo[f"ramka-preview.{lang}.yaml"])["music"]
+        [stack] = view["cards"]
+        notices = [c for c in stack["cards"] if c.get("type") == "conditional"
+                   and c["card"].get("content", "").startswith("<ha-alert alert-type=\"info\"")]
+        assert len(notices) == 4, lang
+        assert not [c for c in stack["cards"] if "visibility" in c], lang
+
+
+def test_music_visual_row_describes_each_visual(demo):
+    """The Visualization row is the info row with what each visual draws and what it needs."""
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        [row] = [r for _, c in view_cards(view) for r in rows(c) if r.get("entity") == MUSIC_VISUAL]
+        assert row["type"] == INFO_ROW and row["name"] == t["ui.settings.music_visual"], lang
+        assert row["descriptions"] == {v: t[f"ui.settings.music_visual_{v}"] for v in ("classic", "spectrum", "level")}, lang
+        assert len(set(row["descriptions"].values())) == 3, lang
+    en = translations("en")
+    assert "no music sensor" in en["ui.settings.music_visual_classic"]
+    assert "spectrum data" in en["ui.settings.music_visual_spectrum"]
+    assert "level data" in en["ui.settings.music_visual_level"]
 
 
 def test_music_notice_texts():
@@ -3486,7 +3516,6 @@ LOOK_KEYS = ["music_template", *(f"music_template_{i}{part}" for i in LOOK_IDS f
              "music_eq", *(f"music_eq_{p}" for p in EQ_PRESET_IDS), *(f"music_eq_{k}" for k in EQ_KEYS),
              *(f"music_eq_{p}{part}" for p in EQ_PRESET_IDS for part in ("_purpose", "_best", "_why")),
              "music_eq_curve", "music_eq_curve_flat", "music_eq_curve_unset", *(f"music_eq_band_{k}" for k in EQ_KEYS),
-             "music_source_row",
              "music_hold_s", "music_rise_ms", "music_fall_s", "music_tilt",
              # The page's own labels around them.
              "music_look_best", "music_look_why", "music_profile_settings", "music_colour"]

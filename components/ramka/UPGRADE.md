@@ -22,13 +22,20 @@ Newest first. Each entry says what changed and what a home that already runs the
   own Reset no longer touches the rate; the global Reset still does.
 - **`settings_paths`** (the preview dashboard's input) now also gives the settings dashboard's own
   links: the way to the sub-view and its back arrow, `/ramka-settings/` by default.
+- The settings dashboard validates `settings_paths` only with `music_visual`; the preview dashboard
+  validates it whenever it is rendered.
+- The Visualization row is an info row: its (i) says what Classic, Spectrum and Level draw and which
+  need a music sensor.
 - Translations: new keys `ui.settings.music_sensor_settings`, `ui.settings.music_sensor_page`,
   `ui.settings.music_sensor_reset`, `ui.settings.music_sensor_none`,
-  `ui.settings.music_sensor_rate_{normal,eco,fast}` and `ui.settings.header.music_sensor` (en, de, pl).
+  `ui.settings.music_sensor_rate_{normal,eco,fast}`, `ui.settings.header.music_sensor`,
+  `ui.settings.music_sensor_abilities`, `ui.settings.music_sensor_no_data`,
+  `ui.settings.music_ability_{spectrum,level,rate,calibration}`,
+  `ui.settings.music_notice_{no_sensor,no_spectrum,no_level,offline}` and
+  `ui.settings.music_visual_{classic,spectrum,level}` (en, de, pl).
 
 ### What a home does
 
-- `settings_paths` is validated only with `music_visual`.
 - A home whose settings dashboard is not at `ramka-settings` sets `settings_paths` to it (per
   language), then renders; otherwise nothing.
 

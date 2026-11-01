@@ -200,6 +200,11 @@ def test_alias_templates_stay_cheap(demo):
     state = templates(demo)["audio_sensor_music_spectrum"]["state"]
     assert state.count("states(") == 2
     assert "for " not in state and "split" not in state
+    # The availability re-renders with the spectrum too: only the lookups it needs.
+    for alias in ("audio_sensor_music_spectrum", "audio_sensor_music_level"):
+        availability = templates(demo)[alias]["availability"]
+        assert "for " not in availability and "split" not in availability, alias
+        assert availability.count("states(") + availability.count("has_value(") <= 2, (alias, availability)
 
 
 def test_entities_carry_the_component_and_boards_their_area(demo):

@@ -25,6 +25,8 @@
     (active), the offline case and the preview's notice, shared with the preview dashboard
     (templates/music-source.j2). -#]
 [%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, has_ability, needs_sensor, active, music_notice, bad_path -%]
+[#- What each visual draws, for the Visualization row's (i). -#]
+[%- set visual_descriptions = {} -%][%- for v in ['classic', 'spectrum', 'level'] -%][%- set _ = visual_descriptions.update({v: t('ui.settings.music_visual_' ~ v)}) -%][%- endfor -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
@@ -470,7 +472,7 @@ views:
       - type: grid
         cards:[[ heading('basic', 'mdi:tune') ]]
           - type: entities
-            entities:[[ rows([('input_boolean', 'page_music'), ('input_select', 'music_visual')]) ]]
+            entities:[[ rows([('input_boolean', 'page_music'), ('input_select', 'music_visual', visual_descriptions)]) ]]
               - type: conditional
                 conditions: [ [[ source_exists ]] ]
                 row:
