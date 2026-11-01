@@ -57,7 +57,11 @@
         "separate": "Trennen",
         "joined": "Dieselbe Hardware:"
       },
-      "layers": "Ebenen"
+      "layers": "Ebenen",
+      "roles": {
+        "also": "Erfasst auch:",
+        "legend": "Ring: was ein Gerät ausserdem erfasst"
+      }
     }
   }
 }

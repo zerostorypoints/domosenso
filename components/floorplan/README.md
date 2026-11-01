@@ -23,7 +23,9 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   Bluetooth proxy with a presence radar wired to it is a purple diamond with a red ring, a plant
   sensor or a tablet that reads temperature has a blue one. Its dot shows while any of its roles'
   layers is on, and its tooltip lists its presence and contact sensors ("Presence: Detected"). An
-  appliance's door or a vacuum's camera map is not a role.
+  appliance's door or a vacuum's camera map is not a role. The tooltip names the dot's category
+  and each ring ("Also senses: Presence and security"); the layer bar explains rings once when the
+  plan has one.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
   else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
 

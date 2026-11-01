@@ -508,6 +508,9 @@ device, so the proxy's one category, `radio`, hid it: no presence on the dot, no
   Shared cases name the expected roles where a device has several.
 - **On the plan:** a further role is a ring around the dot in that role's colour (two at most). A
   layer shows a dot when any of its roles is switched on; the chips list every role on the plan.
+- **Explained** (the maintainer: "add explainers to what each ring means"): the tooltip names the
+  dot's category and, per ring, "Also senses: <role>" with a ring in its colour; the layer bar adds
+  "ring: what else a device senses" when any dot on the plan has one (en, de, pl).
 - **Presence in the tooltip:** a device's `binary_sensor` entities of the classes the `security`
   rules name (motion, occupancy, presence, door, window, opening) show in its tooltip with their
   name and state; the marker itself still shows only the point readings.

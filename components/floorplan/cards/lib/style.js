@@ -57,6 +57,10 @@ export const STYLE = `
   .chip[aria-pressed="false"] { opacity: 0.45; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;
          vertical-align: middle; }
+  .ring { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 2px solid
+          var(--secondary-text-color); margin-right: 4px; vertical-align: middle; }
+  .ring-legend { color: var(--secondary-text-color); font-size: 12px; margin-left: 8px; }
+  .tip-roles { color: var(--secondary-text-color); margin: 2px 0; }
   .point-panel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .joined-label { color: var(--secondary-text-color); }
   .joined button { margin-left: 4px; font-size: 12px; padding: 2px 8px; }

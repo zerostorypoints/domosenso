@@ -306,12 +306,17 @@ ${STYLE}
   _layersHtml() {
     if (this._config.layers || !this._floor) return "";
     const h = this._hass;
-    const ids = new Set(this._floor.points.flatMap((p) => pointCategory(h, p, this._cands).roles));
+    const roles = this._floor.points.map((p) => pointCategory(h, p, this._cands).roles);
+    const ids = new Set(roles.flat());
     const cats = PLACEABLE.filter((c) => ids.has(c.id));
     if (!cats.length) return "";
+    // A ring on the plan gets its explanation here once.
+    const legend = roles.some((r) => r.length > 1)
+      ? `<span class="ring-legend"><span class="ring"></span>${esc(t(h, "card.floorplan.roles.legend"))}</span>` : "";
     return `<span class="layers-label">${esc(t(h, "card.floorplan.layers"))}</span>` + cats.map((c) =>
       `<button data-action="layer" data-layer="${esc(c.id)}" aria-pressed="${!this._hidden.has(c.id)}" class="chip">`
-      + `<span class="dot" style="background: ${colourOf(c)}"></span>${esc(categoryName(c, h?.language))}</button>`).join("");
+      + `<span class="dot" style="background: ${colourOf(c)}"></span>${esc(categoryName(c, h?.language))}</button>`).join("")
+      + legend;
   }
 
   // The tapped point's category: what the catalog says it is, or an override.
@@ -756,7 +761,7 @@ ${STYLE}
       const point = this._floor?.points.find((p) => keyOf(p) === hoverKey);
       if (point) {
         content = { key: `m:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
-          presence: presenceEntities(this._hass, point) };
+          presence: presenceEntities(this._hass, point), roles: pointCategory(this._hass, point, this._cands).roles };
       }
     } else if (cluster) {
       const c = this._clusters(this._floor).get(cluster.getAttribute("data-cluster"));
@@ -795,8 +800,14 @@ ${STYLE}
       const named = (id) => h.entities?.[id]?.name || h.entities?.[id]?.original_name
         || h.states?.[id]?.attributes?.friendly_name || id;
       const presence = (content.presence || []).map((id) => `${named(id)}: ${valueText(h, id)}`);
+      // What the dot's colour and rings mean: its category, then "Also senses:" each further role.
+      const lang = h?.language;
+      const [main, ...further] = (content.roles || []).map(categoryById).filter(Boolean);
+      const roles = main ? `<div class="tip-roles"><span class="dot" style="background: ${colourOf(main)}"></span>`
+        + `${esc(categoryName(main, lang))}${further.map((c) => `<br><span class="ring" style="border-color: ${colourOf(c)}"></span>`
+          + `${esc(t(h, "card.floorplan.roles.also"))} ${esc(categoryName(c, lang))}`).join("")}</div>` : "";
       tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
-        + `<div class="tip-name">${esc(content.name)}</div>`
+        + `<div class="tip-name">${esc(content.name)}</div>` + roles
         + [...values, ...presence].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
       this._tipKey = content.key;
     }

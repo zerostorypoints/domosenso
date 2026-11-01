@@ -831,6 +831,29 @@ test("the tooltip lists a device's presence sensors with their state", async () 
   assert.ok($(card, ".tip").textContent.includes("Presence: on"), $(card, ".tip").textContent);
 });
 
+test("the tooltip names a dot's category and what its ring means", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1), pt("d_climate", 1, 1)]) }, radarHass());
+  await settle();
+  const [x, y] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_proxy"), "pointermove", x, y);
+  const tip = $(card, ".tip");
+  assert.ok(tip.textContent.includes("Radios and hubs"), tip.textContent);
+  assert.ok(tip.textContent.includes(`${EN("card.floorplan.roles.also")} Presence and security`), tip.textContent);
+  assert.match(tip.querySelector(".tip-roles .ring").getAttribute("style"), /--floorplan-security/);
+  const [cx, cy] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointermove", cx, cy);
+  assert.ok(tip.textContent.includes("Climate") && !tip.querySelector(".tip-roles .ring"), "no ring, no ring line");
+});
+
+test("the layer bar explains the rings when a dot has one", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1)]) }, radarHass());
+  await settle();
+  assert.ok($(card, ".layers .ring-legend")?.textContent.includes(EN("card.floorplan.roles.legend")));
+  const plain = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, radarHass());
+  await settle();
+  assert.ok(!$(plain, ".layers .ring-legend"), "no ring on the plan, no legend");
+});
+
 // ---- dots stay in rooms; a dot dropped on a dot stacks --------------------------------------
 
 function dragMarker(card, key, from, to) {

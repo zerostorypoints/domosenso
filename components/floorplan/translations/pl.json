@@ -57,7 +57,11 @@
         "separate": "Rozdziel",
         "joined": "To samo urządzenie:"
       },
-      "layers": "Warstwy"
+      "layers": "Warstwy",
+      "roles": {
+        "also": "Wykrywa też:",
+        "legend": "pierścień: co jeszcze wykrywa urządzenie"
+      }
     }
   }
 }
