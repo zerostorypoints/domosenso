@@ -82,9 +82,16 @@ test("a dot in a room's corner, its neighbour's label beside it, gets a spot of 
   const corner = [[0, 0.3], [5.4, 0.3], [5.4, 7], [0, 7]];
   const items = [
     { key: "near", at: [1.6, 0.53], lines: ["113 lx", "21.3 °C", "20 %"] },
+    { key: "next", at: [2.59, 0.55], lines: ["84 lx", "21.6 °C", "29 %"] },
+    { key: "last", at: [3.3, 0.56], lines: ["128 lx", "21.6 °C", "34 %"] },
     { key: "corner", at: [0.18, 0.45], lines: ["122 lx", "20.5 °C", "23 %"] },
   ];
-  const [a, b] = layoutLabels(items, { rooms: [corner], px: 0.0196 });
-  assert.ok(!overlap(a.box, b.box), `${JSON.stringify(a.box)} / ${JSON.stringify(b.box)}`);
-  assert.ok(!boxCrossesWalls(b.box, [corner]));
+  // At the zooms a wall tablet shows the plan at (metres per pixel).
+  for (const px of [0.0175, 0.0196, 0.0215, 0.0235]) {
+    const out = layoutLabels(items, { rooms: [corner], px });
+    for (const [i, a] of out.entries()) {
+      assert.ok(!boxCrossesWalls(a.box, [corner]), `${px}: ${a.key} crosses a wall`);
+      for (const b of out.slice(i + 1)) assert.ok(!overlap(a.box, b.box), `${px}: ${a.key} / ${b.key}`);
+    }
+  }
 });

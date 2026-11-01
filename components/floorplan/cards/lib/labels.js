@@ -58,7 +58,6 @@ const corners = (b) => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]];
 // The spots round a dot at `[x, y]` for a label `w` x `h`, ring by ring: [{cx, top, ring}].
 function spots([x, y], w, h, px) {
   const out = [];
-  const r = DOT_PX * px;
   for (let ring = 1; ring <= RINGS; ring++) {
     const g = GAP_PX * px * ring;
     out.push(
@@ -71,10 +70,10 @@ function spots([x, y], w, h, px) {
       { cx: x + g + w / 2, top: y - g * 0.5 - h, ring }, // above right
       { cx: x - g - w / 2, top: y - g * 0.5 - h, ring }, // above left
       // Below and above, starting or ending at the dot: a dot by a side wall has no centred spot.
-      { cx: x + w / 2 - r, top: y + g, ring },
-      { cx: x - w / 2 + r, top: y + g, ring },
-      { cx: x + w / 2 - r, top: y - g - h, ring },
-      { cx: x - w / 2 + r, top: y - g - h, ring },
+      { cx: x + w / 2, top: y + g, ring },
+      { cx: x - w / 2, top: y + g, ring },
+      { cx: x + w / 2, top: y - g - h, ring },
+      { cx: x - w / 2, top: y - g - h, ring },
     );
   }
   return out;
