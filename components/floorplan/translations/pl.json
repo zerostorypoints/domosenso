@@ -95,7 +95,17 @@
         "day_legend": "{figure} w ostatnich 24 godzinach, interpolowane w każdym pokoju",
         "no_sensor": "brak czujnika w pokoju",
         "lamps_legend": "Lampy: włączona świeci według jasności, wyłączona szara",
-        "off": "wył."
+        "off": "wył.",
+        "spl": "Poziom dźwięku",
+        "loudness": "Głośność",
+        "sound_legend": "na żywo: głośniki przez model pokoju, poziom mierzony przy czujniku",
+        "at_sensor": "{level} przy czujniku",
+        "at_sensor_estimate": "{level} przy czujniku (szacowany SPL)",
+        "no_audio": "brak czujnika audio w pomieszczeniu",
+        "effect": "Wpływ pokoju",
+        "bass": "Bas",
+        "average": "średnia pokoju",
+        "no_speakers": "głośniki nieumieszczone: zamiast nich czujnik"
       }
     }
   }

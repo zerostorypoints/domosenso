@@ -95,7 +95,17 @@
         "day_legend": "{figure} in the last 24 hours, interpolated per room",
         "no_sensor": "no sensor in the room",
         "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
-        "off": "off"
+        "off": "off",
+        "spl": "Sound level",
+        "loudness": "Loudness",
+        "sound_legend": "live: the speakers through a room model, its level measured at the sensor",
+        "at_sensor": "{level} at the sensor",
+        "at_sensor_estimate": "{level} at the sensor (estimated SPL)",
+        "no_audio": "no audio sensor in the room",
+        "effect": "Room effect",
+        "bass": "Bass",
+        "average": "room average",
+        "no_speakers": "speakers not placed: the sensor stands in"
       }
     }
   }

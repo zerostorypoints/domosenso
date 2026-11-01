@@ -16,12 +16,17 @@
 //   values: true                       # false: points without their readings
 //   layers: [climate, plants]          # optional: only these categories, no layer chips
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
-//   maps: true                         # false: no maps on the plants, climate and light layers
+//   maps: true                         # false: no maps on the plants, climate, light and media layers
+//   sound_rt60: 0.45                   # optional: the rooms' mid-band reverberation time, seconds
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
 //
 // With one of the plants, climate or light layers shown (Amendment 7) the bar offers its maps: the
 // reading interpolated inside each room, or the lamps; and "now" or the map's figure over the last
-// 24 hours, from the recorder's hourly statistics.
+// 24 hours, from the recorder's hourly statistics. With the Audio and media layer shown alone, the
+// bar offers its sound maps, live over each room with an audio sensor: the music's level, its
+// A-weighted loudness, the room's effect on it (each spot against the room's average) and the same
+// for the bass alone. The floor's speakers drive a room model; the sensor's spectrum sets its level
+// (lib/sound.js). The speakers and the ceiling height come from the plan (floor `speakers`, `ceiling`).
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -38,6 +43,8 @@ import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap,
 import { trayHtml } from "./lib/tray.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
+import { SOUND, soundSensors, readSensor, soundGrid, fieldLevels, sensorLevel, lut, paint, approach, meanEnergy,
+  soundSpaces } from "./lib/sound.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, lampIndex, lampOf } from "./lib/maps.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -59,6 +66,7 @@ const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while t
 const HOUR_MS = 60 * 60 * 1000;
 const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
 const FILL_GAP_PX = 8;
+const SOUND_FRAME_MS = 40;        // the sound field is painted at most 25 times a second
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -137,6 +145,7 @@ class FloorplanCard extends HTMLElement {
     this._statIds = "";
     this._statsAt = 0;
     this._heatCache = null;
+    this._sound = null;            // the sound map's rooms, grids and drawing (lib/sound.js)
     if (this._hass) this._load();
   }
 
@@ -164,6 +173,7 @@ class FloorplanCard extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("resize", this._onResize);
+    this._stopSound();
   }
 
   // `fill`: as tall as the screen below the card's top; true when the height changed.
@@ -189,6 +199,7 @@ class FloorplanCard extends HTMLElement {
     // hass is set for every state change in Home Assistant: redraw only what changed. A new reading
     // redraws the plan alone, so a half-typed area name or an open select survives it.
     this._wantStats();
+    this._soundReadings();
     const stamp = this._valueStamp();
     if (stamp === this._stamp) return;
     if (stamp.split("\n")[0] !== this._stamp?.split("\n")[0]) this._render();
@@ -260,7 +271,7 @@ class FloorplanCard extends HTMLElement {
   // fetched when the readings change and every STATS_MS.
   _wantStats() {
     const map = this._map();
-    if (!this._day || !map || map.cls === "lamps") return;
+    if (!this._day || !map || !map.rule) return;
     // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out.
     const ids = [...new Set(this._floor.points.flatMap((p) => Object.values(this._readings(p))))].sort().join(",");
     if (!ids || (ids === this._statIds && Date.now() - this._statsAt < STATS_MS)) return;
@@ -453,6 +464,19 @@ ${STYLE}
   _legendHtml(map) {
     const h = this._hass;
     if (map.cls === "lamps") return `<span class="legend">${esc(t(h, "card.floorplan.maps.lamps_legend"))}</span>`;
+    if (SOUND[map.cls]) {
+      // Sound maps: the scale, the level at the sensor (live, see _soundLive) and the hatch.
+      const s = SOUND[map.cls];
+      const end = (v) => `${s.relative && v > 0 ? "+" : ""}${s.relative && v < 0 ? "−" : ""}${Math.abs(v)} ${s.unit}`;
+      const title = `${t(h, `card.floorplan.maps.${map.cls}`)}, ${t(h, "card.floorplan.maps.sound_legend")}`
+        + (s.relative ? ` (0 = ${t(h, "card.floorplan.maps.average")})` : "");
+      return `<span class="legend" title="${esc(title)}">`
+        + `<span>${esc(end(s.lo))}</span>`
+        + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})"></span>`
+        + `<span>${esc(end(s.hi))}</span>`
+        + `<span class="live">${esc(this._soundLive ?? "")}</span>`
+        + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.maps.no_audio"))}</span></span>`;
+    }
     const s = SCALES[map.cls];
     const figureKey = map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`;
     const when = this._day ? t(h, "card.floorplan.maps.day_legend", { figure: t(h, `card.floorplan.maps.figure.${figureKey}`) })
@@ -567,7 +591,8 @@ ${STYLE}
         points: room.polygon.map((p) => p.join(",")).join(" ") }, svg);
     }
     if (map) this._defs(svg, px);
-    if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
+    if (map && SCALES[map.cls]) this._drawHeat(svg, floor, map);
+    if (map && SOUND[map.cls]) this._drawSound(svg, floor);
     // Walls between rooms of one open space: dashed and lighter, over the solid outline.
     for (const [a, b] of facingWalls(floor)) {
       const at = { x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) };
@@ -635,7 +660,7 @@ ${STYLE}
     const clustered = new Set(inCluster.keys());
     // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too. A
     // reading map also shows every placed point that measures it, whatever its layer.
-    const measures = (p) => map && map.cls !== "lamps" && p.placed && this._readings(p)[map.cls]
+    const measures = (p) => map && SCALES[map.cls] && p.placed && this._readings(p)[map.cls]
       && this._value(this._readings(p)[map.cls], map.cls, map.layer) !== undefined;
     const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && (this._shown(this._cat(p)) || measures(p)));
     const labels = new Map(layoutLabels([
@@ -822,11 +847,121 @@ ${STYLE}
     svg.appendChild(this._heatCache.g);
   }
 
+  // ---- sound maps ---------------------------------------------------------------------------
+
+  // The rooms with an audio sensor, each with its grid and a canvas painted into an SVG image; the
+  // drawing is kept while the floor, the sensors and the options are the same, and only its image
+  // changes between frames, so the plan is not rebuilt 25 times a second.
+  _soundRooms(floor) {
+    const c = this._config;
+    const sensors = soundSensors(this._hass, floor.points);
+    const speakers = (floor.speakers || []).map((s) => [s.x, s.y]);
+    const key = JSON.stringify([sensors, speakers, floor.ceiling ?? null, floor.open_spaces ?? null, c.sound_rt60 ?? null]);
+    if (this._sound?.key === key && this._sound.floor === floor) return this._sound;
+    const polys = floor.rooms.map((r) => r.polygon);
+    const opts = {};
+    if (Number.isFinite(c.sound_rt60) && c.sound_rt60 > 0) opts.rt60 = c.sound_rt60;
+    if (Number.isFinite(floor.ceiling) && floor.ceiling > 0) opts.height = floor.ceiling;
+    // Rooms of one open space are one acoustic room.
+    const index = new Map(floor.rooms.map((r, i) => [r.area_id, i]));
+    const groups = openSpaces(floor).map((grp) => grp.map((area) => index.get(area)));
+    const g = el("g", { class: "heat sound" });
+    const defs = el("defs", {}, g);
+    const rooms = [];
+    soundSpaces(polys, groups, sensors).forEach((space, n) => {
+      const shapes = space.rooms.map((i) => polys[i]);
+      const own = speakers.filter((s) => shapes.some((poly) => pointInPolygon(s, poly)));
+      const grid = soundGrid(shapes, own, space.sensors.map((s) => s.at), opts);
+      const clip = el("clipPath", { id: `fp-sound-${n}` }, defs);
+      for (const poly of shapes) el("polygon", { points: poly.map((p) => p.join(",")).join(" ") }, clip);
+      const img = el("image", { x: fmt(grid.x0), y: fmt(grid.y0), width: fmt(grid.cols * grid.step),
+        height: fmt(grid.rows * grid.step), preserveAspectRatio: "none", "clip-path": `url(#fp-sound-${n})` }, g);
+      const canvas = document.createElement("canvas");
+      canvas.width = grid.cols;
+      canvas.height = grid.rows;
+      rooms.push({ indices: space.rooms, sensors: space.sensors, speakers: own.length, grid, img, canvas,
+        energy: null, target: null, calibrated: false });
+    });
+    const lit = new Set(rooms.flatMap((r) => r.indices));
+    polys.forEach((poly, i) => {
+      if (!lit.has(i)) el("polygon", { class: "no-sensor", points: poly.map((p) => p.join(",")).join(" ") }, g);
+    });
+    for (const poly of polys) el("polygon", { class: "wall", points: poly.map((p) => p.join(",")).join(" ") }, g);
+    // The speakers: the field's sources. The sensors keep their own markers: they only measure.
+    for (const [x, y] of speakers) {
+      el("rect", { class: "speaker", x: fmt(x - 0.13), y: fmt(y - 0.13), width: 0.26, height: 0.26, rx: 0.04 }, g);
+    }
+    this._sound = { key, floor, g, rooms };
+    this._soundReadings();
+    return this._sound;
+  }
+
+  _drawSound(svg, floor) {
+    svg.appendChild(this._soundRooms(floor).g);
+    this._startSound();
+  }
+
+  // Each room's target band energies from its sensors' latest spectra (hass is set for every state
+  // change; a spectrum changes 2 to 12 times a second).
+  _soundReadings() {
+    if (!this._sound || !SOUND[this._map()?.cls]) return;
+    for (const room of this._sound.rooms) {
+      const readings = room.sensors.map((s) => readSensor(this._hass, s)).filter(Boolean);
+      if (!readings.length) continue;
+      room.target = meanEnergy(readings);
+      room.calibrated = readings.every((r) => r.calibrated);
+    }
+  }
+
+  _startSound() {
+    if (this._soundFrame) return;
+    this._soundLast = 0;
+    const step = (now) => {
+      const map = this._map();
+      if (!this.isConnected || !this._sound || !SOUND[map?.cls]) return void (this._soundFrame = null);
+      this._soundFrame = requestAnimationFrame(step);
+      if (document.hidden || now - this._soundLast < SOUND_FRAME_MS) return;
+      const dt = this._soundLast ? Math.min(500, now - this._soundLast) : SOUND_FRAME_MS;
+      this._soundLast = now;
+      this._paintSound(SOUND[map.cls], dt);
+    };
+    this._soundFrame = requestAnimationFrame(step);
+  }
+
+  _stopSound() {
+    if (this._soundFrame) cancelAnimationFrame(this._soundFrame);
+    this._soundFrame = null;
+  }
+
+  _paintSound(scale, dt) {
+    const table = (this._soundLut ??= new Map()).get(scale) ?? lut(scale.ramp);
+    this._soundLut.set(scale, table);
+    const live = [];
+    for (const room of this._sound.rooms) {
+      if (!room.target) continue;
+      room.energy = room.energy ? approach(room.energy, room.target, dt) : Float64Array.from(room.target);
+      const levels = fieldLevels(room.grid, room.energy, scale.weights, scale.relative);
+      const ctx = room.canvas.getContext("2d");
+      if (!ctx) continue;
+      ctx.putImageData(new ImageData(paint(room.grid, levels, scale, table), room.grid.cols, room.grid.rows), 0, 0);
+      room.img.setAttribute("href", room.canvas.toDataURL());
+      live.push({ level: sensorLevel(room.energy, SOUND.spl.weights), calibrated: room.calibrated, speakers: room.speakers });
+    }
+    const box = this.shadowRoot.querySelector(".legend .live");
+    if (!box || !live.length) return;
+    const h = this._hass;
+    const text = live.map((l) => t(h, l.calibrated ? "card.floorplan.maps.at_sensor" : "card.floorplan.maps.at_sensor_estimate",
+      { level: `${Math.round(l.level)} dB` }) + (l.speakers ? "" : ` · ${t(h, "card.floorplan.maps.no_speakers")}`)).join(" · ");
+    this._soundLive = text;     // a legend drawn again keeps it until the next frame
+    if (box.textContent !== text) box.textContent = text;
+  }
+
   // A marker's lines: its readings, or on a map the map's (the shown one first and marked main).
   _lines(point) {
     const map = this._mapNow;
     if (!map || !this._config.values) return this._values(point).map((text) => ({ text, main: false }));
     const h = this._hass;
+    if (SOUND[map.cls]) return [];       // the legend gives the level at the sensor, live
     if (map.cls === "lamps") {
       const lamp = point.device_id && lampOf(h, this._lamps, [point.device_id, ...(point.also || [])]);
       return lamp ? [{ text: lamp.on ? `${lamp.brightness} %` : t(h, "card.floorplan.maps.off"), main: false }] : [];

@@ -11,6 +11,8 @@ export const MAPS = {
   plants: [["illuminance", "max"], ["temperature", "min"], ["moisture", "min"]],
   climate: [["temperature", "mean"], ["humidity", "mean"], ["carbon_dioxide", "max"]],
   light: [["illuminance", "max"], ["lamps", null]],
+  // Live sound over the rooms with an audio sensor (lib/sound.js); no 24-hour figure.
+  media: [["spl", null], ["loudness", null], ["effect", null], ["bass", null]],
 };
 
 // Fixed, so two days compare. Ramps run low to high.

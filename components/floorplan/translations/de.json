@@ -95,7 +95,17 @@
         "day_legend": "{figure} in den letzten 24 Stunden, pro Raum interpoliert",
         "no_sensor": "kein Sensor im Raum",
         "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
-        "off": "aus"
+        "off": "aus",
+        "spl": "Schallpegel",
+        "loudness": "Lautheit",
+        "sound_legend": "live: die Lautsprecher durch ein Raummodell, der Pegel am Sensor gemessen",
+        "at_sensor": "{level} am Sensor",
+        "at_sensor_estimate": "{level} am Sensor (geschätzter Pegel)",
+        "no_audio": "kein Audiosensor im Raum",
+        "effect": "Raumeinfluss",
+        "bass": "Bass",
+        "average": "Raummittel",
+        "no_speakers": "Lautsprecher nicht platziert: der Sensor ersetzt sie"
       }
     }
   }

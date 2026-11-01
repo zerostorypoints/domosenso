@@ -89,6 +89,7 @@ export const STYLE = `
   .maps { display: inline-flex; gap: 4px; margin-right: 8px; }
   .heat { pointer-events: none; opacity: 0.8; }
   .heat .no-sensor { fill: url(#fp-hatch); }
+  .heat .speaker { fill: #263238; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .heat .wall { fill: none; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .hatch-line { stroke: var(--divider-color, #888); }
   .marker .glow { fill: url(#fp-glow); stroke: none; pointer-events: none; }

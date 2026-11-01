@@ -23,7 +23,13 @@
           "type": "array",
           "description": "Groups of rooms open to each other without doors (SPEC-028 Amendment 7): their heat maps share readings. Each area in one group at most; every area a room of the floor",
           "items": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
-        }
+        },
+        "speakers": {
+          "type": "array", "description": "Loudspeakers in metres: the sources of the sound maps (floorplan 0.3.0)",
+          "items": {"type": "object", "additionalProperties": false, "required": ["x", "y"],
+                    "properties": {"x": {"$ref": "#/$defs/number"}, "y": {"$ref": "#/$defs/number"}}}
+        },
+        "ceiling": {"type": "number", "exclusiveMinimum": 0, "description": "Ceiling height in metres, for the sound maps' room model"}
       }
     },
     "number": {"type": "number"},
