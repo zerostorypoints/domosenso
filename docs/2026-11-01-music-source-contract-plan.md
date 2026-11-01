@@ -221,6 +221,6 @@ Also: the abilities line is a markdown card shown with sensor ≠ `—` whose co
 **Files:** `.ai/specs/SPEC-025-…md` (Status: implemented on the branch), both `UPGRADE.md` (one Unreleased section each, listing SPEC-025's Compatibility), `components/ramka/README.md` (Settings, Music).
 
 - [ ] **Step 1:** `bash tools/check-all.sh` → `all checks passed`.
-- [ ] **Step 2:** In the home repository: `render ramka audio-sensor --catalog-dev /Users/docere/Dev/domosenso-music-source`, review the diff, commit there.
+- [ ] **Step 2:** In the home repository: `render ramka audio-sensor --catalog-dev <catalog worktree>`, review the diff, commit there.
 - [ ] **Step 3:** With the maintainer's go-ahead only: `snapshot production`, `deploy production --plan`, `--apply --allow-dirty --confirm <hash>`, `verify` now and after 10 minutes; then look at the Music page and the sub-view on the tablet with each visual and with the sensor set to `—`.
 - [ ] **Step 4:** Commit the docs `git commit -m "SPEC-025: implemented; upgrade notes"`.
