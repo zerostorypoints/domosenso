@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import posixpath
 import secrets
 import threading
+import urllib.error
+import urllib.request
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -74,8 +77,9 @@ class Preview:
     """What the page reads and writes; `say(line)` gets `("wrote", path)` and `("refused", type)`."""
 
     def __init__(self, hass: dict, entry_list: list, plan_file: Path, card: Path, say: Callable[[tuple], None],
-                 shown: str = "domosenso/floorplan.json"):
+                 shown: str = "domosenso/floorplan.json", target_url: str | None = None):
         self.hass, self.entries, self.plan_file, self.card = hass, entry_list, Path(plan_file), Path(card)
+        self.target_url = (target_url or "").rstrip("/")
         self.say, self.shown = say, shown
         self.key = secrets.token_urlsafe(24)
         self._lock = threading.Lock()
@@ -111,6 +115,16 @@ class Preview:
         out = {**doc.without_source(plan), **({"source": kept} if kept else {})}
         self.plan_file.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         self.say(("wrote", self.shown))
+
+
+def fetch_local(url: str) -> tuple[bytes, str] | None:
+    """A file of the target's `www` folder (`/local/...`, e.g. a plant's photo): Home Assistant serves
+    it without a login, so no token is sent. None when the target does not have it."""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=10) as resp:
+            return resp.read(), resp.headers.get("Content-Type") or "application/octet-stream"
+    except (urllib.error.URLError, OSError):
+        return None
 
 
 def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
@@ -151,6 +165,13 @@ def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
                 return self._json(preview.plan())
             if url.path == "/changes":
                 return self._json(preview.changes(int((query.get("since") or ["0"])[0])))
+            if url.path.startswith("/local/"):
+                # Photos the states name (`entity_picture: /local/...`) come from the target's www.
+                path = posixpath.normpath(url.path)
+                got = fetch_local(preview.target_url + path) if path.startswith("/local/") and preview.target_url else None
+                if got is None:
+                    return self._send(404, b"not found", "text/plain")
+                return self._send(200, got[0], got[1])
             # The card's own files, never outside its directory.
             target = (preview.card / url.path.lstrip("/")).resolve()
             if preview.card.resolve() not in target.parents or not target.is_file():

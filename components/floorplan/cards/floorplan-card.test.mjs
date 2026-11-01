@@ -723,12 +723,30 @@ test("tapping a cluster lists its devices; dragging one out places it and the co
   const [ex, ey] = clientAt(card, 4, 3);
   pointer(item, "pointerdown", 100, 100);
   pointer(item, "pointermove", ex, ey);
+  assert.ok($(card, ".cluster-list").hidden, "the list is out of the way while a device is dragged");
   pointer(item, "pointerup", ex, ey);
+  assert.ok(!$(card, ".cluster-list").hidden, "and back after the drop");
   const climate = card._doc.floors[0].points.find((p) => p.device_id === "d_climate");
   assert.ok(climate.placed && Math.abs(climate.x - 4) < 1e-6 && Math.abs(climate.y - 3) < 1e-6, JSON.stringify(climate));
   assert.ok(markerOf(card, "d_climate"), "placed: its own marker now");
   assert.equal(clusterOf(card, "living_room").querySelector("text").textContent, "3");
   assert.equal(card.shadowRoot.querySelectorAll(".cluster-list [data-point]").length, 3, "the list stays open, shorter");
+});
+
+test("a link to a device inside a cluster ends at the cluster's dot, named", async () => {
+  // The hub is placed; both bulbs wait unplaced in the living room's cluster with the climate sensor.
+  const plan = planOf([pt("d_mesh", 6, 1), { device_id: "d_bulb1", x: 2, y: 2, placed: false },
+    { device_id: "d_bulb2", x: 2.2, y: 2, placed: false }, { device_id: "d_climate", x: 2.4, y: 2, placed: false }]);
+  const card = await make({ plan }, stage2Hass());
+  await settle();
+  const [mx, my] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_mesh"), "pointermove", mx, my);
+  const lines = [...card.shadowRoot.querySelectorAll("line.link")];
+  assert.equal(lines.length, 1, "one line to the cluster, not one per hidden bulb");
+  const [cx, cy] = clusterOf(card, "living_room").getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+  assert.ok(Math.abs(Number(lines[0].getAttribute("x2")) - cx) < 1e-6 && Math.abs(Number(lines[0].getAttribute("y2")) - cy) < 1e-6);
+  const label = $(card, "text.link-label");
+  assert.ok(label && label.textContent.includes("Bulb 1") && label.textContent.includes("Bulb 2"), label?.textContent);
 });
 
 test("a tap elsewhere closes the cluster list; hovering a cluster names its devices", async () => {

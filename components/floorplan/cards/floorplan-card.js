@@ -377,19 +377,33 @@ ${STYLE}
     const active = this._drag?.kind === "corner" ? this._drag.area : this._selected;
     if (editing) drawDims(svg, el, { hass: h, t, floor, px, active });
     for (const p of this._picks.filter(Array.isArray)) el("circle", { class: "pick", cx: p[0], cy: p[1], r: 5 * px }, svg);
-    // The registry links of the point dragged, hovered or (in edit mode) tapped.
+    // A room's unplaced devices are one dot with their count; its list opens with a tap (edit mode).
+    const clusters = this._clusters(floor);
+    const inCluster = new Map([...clusters].flatMap(([area, c]) => c.points.map((p) => [keyOf(p), area])));
+    // The registry links of the point dragged, hovered or (in edit mode) tapped. A device inside a
+    // cluster has no marker of its own: its links end at the cluster's dot, which is named there.
     const linked = this._drag?.kind === "point" ? this._drag.key : this._hoverKey ?? (editing ? this._picked : null);
     if (linked) {
       const at = new Map(floor.points.map((p) => [keyOf(p), p]));
+      const spot = (key) => (inCluster.has(key) ? clusters.get(inCluster.get(key)).at : [at.get(key).x, at.get(key).y]);
+      const ends = new Map();     // far end -> {to, names}
       for (const link of registryLinks(h, floor.points)) {
         if (link.from !== linked && link.to !== linked) continue;
-        const [a, b] = [at.get(link.from), at.get(link.to)];
-        el("line", { class: `link ${link.kind}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y }, svg);
+        const far = link.from === linked ? link.to : link.from;
+        const end = inCluster.has(far) ? `cluster:${inCluster.get(far)}` : far;
+        if (!ends.has(end)) ends.set(end, { to: spot(far), names: [], cluster: inCluster.has(far) });
+        ends.get(end).names.push(this._pointNames(at.get(far))[0]);
+      }
+      const from = spot(linked);
+      for (const { to, names, cluster } of ends.values()) {
+        el("line", { class: "link via", x1: from[0], y1: from[1], x2: to[0], y2: to[1] }, svg);
+        if (cluster) {
+          el("text", { class: "link-label", x: to[0], y: to[1] - 16 * px, "font-size": 11 * px }, svg)
+            .textContent = names.sort().join(", ");
+        }
       }
     }
-    // A room's unplaced devices are one dot with their count; its list opens with a tap (edit mode).
-    const clusters = this._clusters(floor);
-    const clustered = new Set([...clusters.values()].flatMap((c) => c.points.map(keyOf)));
+    const clustered = new Set(inCluster.keys());
     for (const point of floor.points) if (!clustered.has(keyOf(point))) this._drawMarker(svg, point, px, editing);
     for (const [area, c] of clusters) {
       const g = el("g", { class: "cluster", "data-kind": "cluster", "data-cluster": area,
@@ -432,6 +446,11 @@ ${STYLE}
   _clusterList(clusters) {
     const list = this.shadowRoot.querySelector(".cluster-list");
     const open = this._openCluster !== null && this._openCluster !== undefined && clusters.get(this._openCluster);
+    // Out of the way while a device is being dragged (from the list or the plan); back after the drop.
+    if (open && this._drag?.kind === "point" && this._drag.moved) {
+      list.hidden = true;
+      return;
+    }
     if (!open || this._mode !== "edit") {
       list.hidden = true;
       list.innerHTML = "";

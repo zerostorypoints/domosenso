@@ -194,7 +194,7 @@ async def _preview(args: argparse.Namespace, rep: Reporter) -> int:
         rep.line(f"read {args.target}:", "areas", str(len(hass["areas"])), "devices", str(len(hass["devices"])),
                  "entities", str(len(hass["entities"])), "states", str(len(hass["states"])))
         page = preview.Preview(hass, preview.entries(raw), args.home / PLAN_FILE, card, lambda line: rep.line(*line),
-                               PLAN_FILE.as_posix())
+                               PLAN_FILE.as_posix(), target_url=target.url)
         try:
             server = preview.start_server(page, args.port)
         except OSError as exc:

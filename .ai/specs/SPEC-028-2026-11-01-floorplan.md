@@ -436,6 +436,9 @@ domosenso floorplan preview <target> [--port <n>] [--no-open]
   `lovelace/config/save` (writes the file), `config_entries/get` (from the read). Any other call
   (creating an area) is refused with the message that the preview does not write to Home
   Assistant; the card shows it as a refused edit.
+- **Photos:** a state's `entity_picture` under `/local/` (a plant's photo) is a file of the target's
+  `www` folder, which Home Assistant serves without a login; the page asks the preview for it and
+  the preview fetches it from the target, with no token. Any other path is not fetched.
 - **Local safety.** The page's URL carries a random key; the server answers nothing without it, so
   another page in the browser cannot read the home's data or write the file.
 - **Lines:** `read <target>: areas <n> devices <n> entities <n> states <n>`, `preview <url>`,
@@ -472,4 +475,8 @@ covering each other. The maintainer: break them down into a list of devices unde
   true` and leaves the cluster); a tap picks it (its panel and distances). The list stays open
   while the cluster has two or more devices; a tap elsewhere closes it. Dragging the dot pans.
 - View mode draws the same dots and does nothing on a tap (the design's "nothing to tap").
+- While a device is dragged the list is hidden; it comes back after the drop while the cluster
+  still has two or more devices.
+- A registry link to a device inside a cluster ends at the cluster's dot, one line per dot, with the
+  names of the linked devices in it written there (a sensor's hub not placed yet reads as such).
 - No change to the stored document.

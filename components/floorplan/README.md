@@ -124,7 +124,8 @@ domosenso floorplan preview production        # --port <n> (default 8130), --no-
 - It reads the target's areas, floors, devices, entities, config entries and states once (read
   only, with the target's token file), follows its state changes, and opens a page on
   `127.0.0.1` with the home's rendered card on that data. The token never reaches the page; the
-  page's URL carries a random key, without which it answers nothing.
+  page's URL carries a random key, without which it answers nothing. Photos under `/local/` (the
+  plants') are fetched from the target's `www` folder, which needs no login.
 - **Save writes `domosenso/floorplan.json`** (validated as `push` validates, the file's `source`
   kept), never Home Assistant. Review it with `git diff`, then `floorplan push <target>`.
 - Creating an area from the card is refused (`refused config/area_registry/create`): the preview

@@ -74,6 +74,7 @@ export const STYLE = `
   .cluster-list[hidden] { display: none; }
   .cluster-list .item { padding: 4px 6px; border-radius: 6px; cursor: grab; touch-action: none; white-space: nowrap; }
   .cluster-list .item:hover { background: var(--secondary-background-color); }
+  .link-label { fill: var(--primary-color); text-anchor: middle; pointer-events: none; }
   .tip { position: absolute; z-index: 2; pointer-events: none; max-width: 180px; padding: 6px;
          background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
          border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); font-size: 12px; }

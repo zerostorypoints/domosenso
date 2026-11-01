@@ -65,7 +65,8 @@ def served(tmp_path):
     (card / "cards" / "floorplan-card.js").write_text("export {};\n")
     (card / "translations" / "en.json").write_text("{}\n")
     lines = []
-    preview = fp.Preview(fp.build_hass(RAW), fp.entries(RAW), plan_file, card, lines.append)
+    preview = fp.Preview(fp.build_hass(RAW), fp.entries(RAW), plan_file, card, lines.append,
+                         target_url="http://ha.example:8123")
     server = fp.start_server(preview, 0)
     yield preview, server, plan_file, lines
     server.shutdown()
@@ -226,3 +227,47 @@ def test_card_dir_prefers_the_locked_version(tmp_path):
         fp.card_dir(tmp_path, None)   # two versions and no lock: which one is meant is not known
     (base / "0.2.0" / "cards" / "floorplan-card.js").unlink()
     assert fp.card_dir(tmp_path, None).name == "0.1.0", "one rendered version and no lock: that one"
+
+
+def test_local_files_come_from_the_target_without_a_token(served, monkeypatch):
+    preview, server, _, _ = served
+    asked = []
+
+    def fetch(url):
+        asked.append(url)
+        return (b"JPEG", "image/jpeg") if url.endswith("/a.jpg") else None
+
+    monkeypatch.setattr(fp, "fetch_local", fetch)
+    status, headers, body = request(server, "GET", f"/local/plants/a.jpg?key={preview.key}")
+    assert (status, headers["Content-Type"], body) == (200, "image/jpeg", b"JPEG")
+    assert asked == ["http://ha.example:8123/local/plants/a.jpg"]
+    assert request(server, "GET", f"/local/plants/missing.jpg?key={preview.key}")[0] == 404
+    assert request(server, "GET", f"/local/../api/states?key={preview.key}")[0] == 404
+    assert len(asked) == 2, "a path leaving /local/ is never fetched"
+    assert request(server, "GET", "/local/plants/a.jpg")[0] == 403
+
+
+def test_fetch_local_sends_no_authorization(monkeypatch):
+    seen = {}
+
+    class Response:
+        status = 200
+        headers = {"Content-Type": "image/png"}
+
+        def read(self):
+            return b"PNG"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, timeout):
+        seen["headers"] = dict(req.header_items())
+        seen["url"] = req.full_url
+        return Response()
+
+    monkeypatch.setattr(fp.urllib.request, "urlopen", urlopen)
+    assert fp.fetch_local("http://ha.example:8123/local/x.png") == (b"PNG", "image/png")
+    assert not any(k.lower() == "authorization" for k in seen["headers"])
