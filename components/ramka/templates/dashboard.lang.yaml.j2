@@ -969,7 +969,8 @@ views:
         cards:
           - type: custom:floorplan-card
             edit: false
-            layers: [climate, plants]   # SPEC-028 Amendment 5: the tablet shows what a room is like
+            # The categories it shows (SPEC-028 Amendment 5); fixed, since a tap here goes back.
+            layers: [[ inputs.floorplan_layers | default(['climate', 'plants']) | tojson ]]
             grid_options: {columns: full, rows: 8}
       [%- endif %]
 [%- endblock %]

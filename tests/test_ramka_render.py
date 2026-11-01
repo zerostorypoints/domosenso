@@ -4288,6 +4288,14 @@ def test_floorplan_helper_and_rules(tmp_path):
                             in s["visibility"] for s in controls)
 
 
+def test_floorplan_layers_input_sets_the_plan_views_layers(tmp_path):
+    inputs = with_floorplan()
+    inputs["floorplan_layers"] = ["climate", "plants", "light", "security"]
+    dash = render(tmp_path, inputs)["dashboard.en.yaml"]
+    [plan] = [n for n in walk(dash) if n.get("type") == "custom:floorplan-card"]
+    assert plan["layers"] == ["climate", "plants", "light", "security"]
+
+
 def test_floorplan_not_in_the_preview(tmp_path):
     out = render(tmp_path, with_floorplan())
     assert not any(n.get("type") == "custom:floorplan-card" for n in walk(out["ramka-preview.en.yaml"]))

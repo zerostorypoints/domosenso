@@ -317,8 +317,9 @@ domain, `device_class` and the registry; nothing is written per home.
   with `additionalProperties: false`) refuses a document that uses them; the command and the
   schema ship together, and floorplan 0.1.0's card ignores both keys. COMPATIBILITY: the schema row
   gains the two keys (ADDITIVE-ONLY).
-- `custom:floorplan-card` gains config `layers` (additive). The Ramka passes `layers: [climate,
-  plants]` in its next minor; without it the Ramka's plan shows every layer.
+- `custom:floorplan-card` gains config `layers` (additive). The Ramka passes its new input
+  `floorplan_layers` (default `[climate, plants]`; the maintainer's home lists every category, "this
+  view as a second in the controls") in its next minor.
 - `push` and `pull` lines gain `link add|remove <floor> <from> <to> <kind>`.
 
 ### Stages
