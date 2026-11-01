@@ -17,10 +17,12 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **Renders** `input_boolean.<prefix>_controls_plan` (starts off), `script.<prefix>_controls_plan_toggle`
   and the automation `<prefix>_controls_plan_reset`; `script.<prefix>_show_controls` also turns the
   helper off. Press the Ramka's reload after the deploy.
-- **Layers:** the plan shows the categories in the new input `floorplan_layers` (ids under the
-  catalog's `categories/`; default `[climate, plants]`, SPEC-028 Amendment 5), fixed, without layer
-  chips, since a tap on the plan goes back to the controls. List more to show more, e.g.
-  `[plants, media, radio, security, climate, light, shading, other]` for every device.
+- **Layers:** the plan offers the categories in the new input `floorplan_layers` (ids under the
+  catalog's `categories/`; default `[climate, plants]`, SPEC-028 Amendment 5) as chips, one shown at
+  a time, the first at the start; the tablet remembers the last one. A tap on a chip switches the
+  layer (`corner-taps-card` leaves elements marked `data-own-tap` alone); a tap anywhere else on the
+  plan still goes back to the controls. List more to offer more, e.g.
+  `[plants, media, radio, security, climate, light, shading, other]`.
 
 ## 0.9.0 (2026-11-01): pause and the views of a page, the music source contract, live settings
 

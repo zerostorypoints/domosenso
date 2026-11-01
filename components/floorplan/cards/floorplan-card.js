@@ -15,6 +15,7 @@
 //   edit: true                         # false: no Edit button, for embedding
 //   values: true                       # false: points without their readings
 //   layers: [climate, plants]          # optional: only these categories, no layer chips
+//   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -44,6 +45,7 @@ const LABEL_PX = 14;      // a room name's size on screen, shrunk down to LABEL_
 const LABEL_MIN_PX = 9;
 const STACK_PX = 14;      // placed dots closer than this on screen are one dot with a list
 const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers this browser switched off
+const CHOSEN_KEY = "domosenso.floorplan.chosen";   // localStorage: the one layer shown (layer_choice: one)
 
 // Browser storage may be missing or refuse (a private window, a preview): the layers then start on.
 // The devices a link reaches inside a cluster: two names, then how many more.
@@ -57,6 +59,20 @@ function readHidden() {
     return new Set(JSON.parse(window.localStorage.getItem(HIDDEN_KEY) || "[]"));
   } catch {
     return new Set();
+  }
+}
+function readChosen() {
+  try {
+    return window.localStorage.getItem(CHOSEN_KEY);
+  } catch {
+    return null;
+  }
+}
+function writeChosen(id) {
+  try {
+    window.localStorage.setItem(CHOSEN_KEY, id);
+  } catch {
+    // not kept: the choice lasts for this page only
   }
 }
 function writeHidden(hidden) {
@@ -108,6 +124,9 @@ class FloorplanCard extends HTMLElement {
     this._stamp = null;
     this._trayOpen = new Map();    // tray group key -> open, as the user left it
     this._hidden = readHidden();   // category ids switched off by this browser's layer chips
+    const listed = Array.isArray(this._config.layers) ? this._config.layers : [];
+    this._one = this._config.layer_choice === "one" && listed.length > 0;
+    this._chosen = listed.includes(readChosen()) ? readChosen() : listed[0] ?? null;   // with layer_choice: one
     this._hoverKey = null;         // the marker under the pointer: its registry links show
     this._openCluster = null;      // the room whose cluster list is open (edit mode)
     if (this._hass) this._load();
@@ -156,6 +175,7 @@ class FloorplanCard extends HTMLElement {
   }
 
   _visible(categoryId) {
+    if (this._one) return categoryId === this._chosen;
     return this._config.layers ? this._config.layers.includes(categoryId) : !this._hidden.has(categoryId);
   }
 
@@ -305,17 +325,21 @@ ${STYLE}
 
   // A chip per category with a point on this floor, unless the config fixes the layers.
   _layersHtml() {
-    if (this._config.layers || !this._floor) return "";
+    if ((this._config.layers && !this._one) || !this._floor) return "";
     const h = this._hass;
     const roles = this._floor.points.map((p) => pointCategory(h, p, this._cands).roles);
-    const ids = new Set(roles.flat());
+    const ids = new Set(this._one ? this._config.layers : roles.flat());
     const cats = PLACEABLE.filter((c) => ids.has(c.id));
+    // One layer at a time (a wall tablet): the chips keep their taps (data-own-tap), so a page that
+    // goes back on a tap anywhere does not go back on them.
+    const pressed = (c) => (this._one ? c.id === this._chosen : !this._hidden.has(c.id));
+    const own = this._one ? " data-own-tap" : "";
     if (!cats.length) return "";
     // A ring on the plan gets its explanation here once.
     const legend = roles.some((r) => r.length > 1)
       ? `<span class="ring-legend"><span class="ring"></span>${esc(t(h, "card.floorplan.roles.legend"))}</span>` : "";
     return `<span class="layers-label">${esc(t(h, "card.floorplan.layers"))}</span>` + cats.map((c) =>
-      `<button data-action="layer" data-layer="${esc(c.id)}" aria-pressed="${!this._hidden.has(c.id)}" class="chip">`
+      `<button data-action="layer" data-layer="${esc(c.id)}" aria-pressed="${pressed(c)}" class="chip"${own}>`
       + `<span class="dot" style="background: ${colourOf(c)}"></span>${esc(categoryName(c, h?.language))}</button>`).join("")
       + legend;
   }
@@ -611,6 +635,9 @@ ${STYLE}
     } else if (action === "create_area") return void this._createArea();
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
+    } else if (action === "layer" && this._one) {
+      this._chosen = button.getAttribute("data-layer");
+      writeChosen(this._chosen);
     } else if (action === "layer") {
       const id = button.getAttribute("data-layer");
       if (this._hidden.has(id)) this._hidden.delete(id);

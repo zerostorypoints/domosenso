@@ -278,6 +278,9 @@ class CornerTapsCard extends HTMLElement {
   _onTap(ev) {
     const tap = this._config.tap;
     if (!tap || !this._hass || cornerTapsPage().els.some((el) => el.contains(ev.target))) return;
+    // An element marked data-own-tap handles its own taps (the floor plan's layer chips): a tap on it
+    // is not a tap on the page. composedPath reaches into open shadow roots, where cards draw.
+    if ((ev.composedPath?.() || []).some((n) => n.hasAttribute?.("data-own-tap"))) return;
     const now = Date.now();
     if (now - (this._lastTap || 0) < 1000 || now - (this._swiped || 0) < 1000) return;  // once a second; never right after a swipe
     this._lastTap = now;

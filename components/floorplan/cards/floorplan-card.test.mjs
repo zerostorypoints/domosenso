@@ -564,6 +564,29 @@ test("config layers fixes the categories shown, without chips", async () => {
   assert.ok(!$(card, ".layers [data-layer]"));
 });
 
+test("layer_choice one: a chip per listed layer, exactly one on, the choice remembered", async () => {
+  window.localStorage.clear();
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1), pt("d_dimmer", 3, 1)];
+  const config = { plan: planOf(pts), layers: ["climate", "light"], layer_choice: "one" };
+  const card = await make(config, categoryHass());
+  await settle();
+  const chip = (id) => $(card, `.layers [data-layer="${id}"]`);
+  assert.ok(chip("climate") && chip("light") && !chip("plants"), "chips for the listed layers only");
+  assert.equal(chip("climate").getAttribute("aria-pressed"), "true", "the first one is on");
+  assert.equal(chip("light").getAttribute("aria-pressed"), "false");
+  assert.ok(markerOf(card, "d_climate") && !markerOf(card, "d_lamp"));
+  assert.ok(chip("light").hasAttribute("data-own-tap"), "the chips keep their taps to themselves");
+  click(chip("light"));
+  assert.ok(!markerOf(card, "d_climate") && markerOf(card, "d_lamp") && markerOf(card, "d_dimmer"));
+  assert.equal(chip("light").getAttribute("aria-pressed"), "true");
+  click(chip("light"));
+  assert.ok(markerOf(card, "d_lamp"), "tapping the chosen one keeps it: always one layer");
+  const again = await make(config, categoryHass());
+  await settle();
+  assert.ok(markerOf(again, "d_lamp") && !markerOf(again, "d_climate"), "remembered");
+  window.localStorage.clear();
+});
+
 test("tray items carry their category's coloured dot", async () => {
   const card = await make({ plan: planOf() }, categoryHass());
   await settle();

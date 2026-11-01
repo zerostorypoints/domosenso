@@ -129,8 +129,8 @@ inputs:
     type: bool                  # component's card, read-only) and back; a tap on the plan returns. Needs the
     default: false              # floorplan component added and its dashboard pushed (SPEC-028)
     example: true
-  floorplan_layers:             # with floorplan: the categories the plan shows (ids under the catalog's categories/);
-    type: "list[category]"      # fixed, no layer chips, since a tap on the plan goes back to the controls
+  floorplan_layers:             # with floorplan: the categories the plan offers (ids under the catalog's categories/),
+    type: "list[category]"      # a chip each, one shown at a time, the first at the start
     default: [climate, plants]
     example: [plants, climate, security, light]
   weather: {type: entity_id, required: true, example: weather.forecast_home}

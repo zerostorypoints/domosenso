@@ -63,6 +63,18 @@ test("a tap runs the script while the entity is in one of the listed states", ()
   assert.deepEqual(calls, [["script", "ramka_show_controls", {}]]);
 });
 
+test("a tap on an element that keeps its own taps (data-own-tap) runs nothing, even inside a shadow root", () => {
+  const { calls } = makeCard({ tap: TAP });
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML = '<div class="layers"><button data-own-tap><span>Light</span></button></div><p>plan</p>';
+  root.querySelector("span").dispatchEvent(new window.Event("click", { bubbles: true, composed: true, cancelable: true }));
+  assert.deepEqual(calls, [], "the chip's tap is the chip's");
+  root.querySelector("p").dispatchEvent(new window.Event("click", { bubbles: true, composed: true, cancelable: true }));
+  assert.deepEqual(calls, [["script", "ramka_show_controls", {}]], "anywhere else still goes back");
+});
+
 test("a tap does nothing while the entity is in another state", () => {
   const { calls } = makeCard({ tap: TAP }, "other");
   fire("click");

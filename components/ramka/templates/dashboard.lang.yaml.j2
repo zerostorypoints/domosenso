@@ -969,8 +969,10 @@ views:
         cards:
           - type: custom:floorplan-card
             edit: false
-            # The categories it shows (SPEC-028 Amendment 5); fixed, since a tap here goes back.
+            # The categories it offers (SPEC-028 Amendment 5), one shown at a time: its chips keep
+            # their taps (data-own-tap, corner-taps-card), a tap anywhere else goes back.
             layers: [[ inputs.floorplan_layers | default(['climate', 'plants']) | tojson ]]
+            layer_choice: one
             grid_options: {columns: full, rows: 8}
       [%- endif %]
 [%- endblock %]

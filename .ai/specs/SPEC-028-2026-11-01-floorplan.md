@@ -525,3 +525,16 @@ below, above, right, left and diagonal, in four rings from 12 px out; the cost c
 wall (1000), leaving the dot's room (500), covering a label placed before (200 each) or a dot or
 cluster (100 each) or a room's name (200), then the ring. Readings that had to leave the first ring get a thin leader line
 to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), not measured.
+
+### Addition: the Ramka's plan view, one layer at a time (the maintainer, 2026-11-01)
+
+"The read-only Ramka floor plan view should have layers that I can switch, only one at once."
+
+- `custom:floorplan-card` config `layer_choice: one` (with `layers`): a chip per listed category,
+  exactly one shown, the first at the start; the browser remembers the last choice
+  (`localStorage`, per browser). Tapping the chosen chip keeps it.
+- **`data-own-tap`**: an element so marked handles its own taps. `corner-taps-card` (the Ramka's
+  "a tap anywhere") ignores a tap whose composed path passes through one; the floor plan's chips
+  carry it in this mode. Any card may use it.
+- The Ramka's input `floorplan_layers` (default `[climate, plants]`) lists the chips; the
+  maintainer's home lists all eight categories.

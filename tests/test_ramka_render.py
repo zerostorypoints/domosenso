@@ -4294,6 +4294,7 @@ def test_floorplan_layers_input_sets_the_plan_views_layers(tmp_path):
     dash = render(tmp_path, inputs)["dashboard.en.yaml"]
     [plan] = [n for n in walk(dash) if n.get("type") == "custom:floorplan-card"]
     assert plan["layers"] == ["climate", "plants", "light", "security"]
+    assert plan["layer_choice"] == "one", "a chip per layer, one at a time: a tap anywhere else goes back"
 
 
 def test_floorplan_not_in_the_preview(tmp_path):
