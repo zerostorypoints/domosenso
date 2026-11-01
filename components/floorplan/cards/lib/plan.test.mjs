@@ -302,6 +302,21 @@ test("roomHint: a plant without an area by its domosenso_room, per language when
     "a language missing from the map falls back to domosenso_room");
 });
 
+test("candidates: a plant without an area gets the area its room names, in any language", () => {
+  const rooms = { domosenso_room: "Pokój dzienny", domosenso_rooms: { pl: "Pokój dzienny", en: "Living room", de: "Wohnzimmer" } };
+  const h = plantHass(rooms, "pl");
+  const find = (hs) => candidates(hs).find((c) => c.key === "plant.monstera");
+  assert.equal(find(h).area_id, "living_room", "the English name matches the area Living room");
+  assert.deepEqual(roomHint(h, find(h)), { key: "living_room", name: "Living room" }, "grouped under the area's own name");
+  // Case, spaces and diacritics do not matter: "Hobbyraum" names the area "Hobby Raum".
+  const hobby = { ...plantHass({ domosenso_rooms: { de: "Hobbyraum" } }, "pl"),
+    areas: { ...hass.areas, hobby_room: { area_id: "hobby_room", name: "Hobby Raum" } } };
+  assert.equal(find(hobby).area_id, "hobby_room");
+  // A room that names no area leaves the plant without one: it waits in the tray under its label.
+  const nowhere = plantHass({ domosenso_room: "Attic" }, "pl");
+  assert.equal(find(nowhere).area_id, null);
+});
+
 test("roomHint: null without an area or a plant room", () => {
   assert.equal(roomHint(plantHass({}), monstera), null);
   assert.equal(roomHint(hass, { key: "sensor.x", kind: "entity", area_id: null, entities: ["sensor.x"] }), null);

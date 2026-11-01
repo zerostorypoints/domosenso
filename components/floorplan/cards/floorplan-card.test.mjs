@@ -389,20 +389,38 @@ test("a tray drag shows a ghost marker under the pointer, gone after the drop", 
   assert.ok(!$(card, "g.ghost"));
 });
 
-test("a marker shows the sensor's name in edit mode, and in view mode when it has no reading", async () => {
-  const hass = hassOf();
+test("markers carry no names on the plan, only readings: the name is in the tooltip", async () => {
+  const hass = photoHass();
   hass.states["sensor.office_temperature"] = { state: "unavailable", attributes: { device_class: "temperature" } };
-  const pts = [{ device_id: "d_climate", x: 1, y: 1, placed: true }, { device_id: "d_office", x: 6, y: 1, placed: true }];
+  const pts = [{ device_id: "d_climate", x: 1, y: 1, placed: true }, { device_id: "d_office", x: 6, y: 1, placed: true },
+    { entity_id: "plant.monstera", x: 6, y: 3, placed: true }];
   const card = await make({ plan: planOf(pts) }, hass);
-  // The visible lines only: the marker's <title> names it in every mode.
-  const marker = (key) => ({ textContent: [...$(card, `g.marker[data-key="${key}"]`).querySelectorAll("text")]
-    .map((n) => n.textContent).join(" | ") });
-  assert.ok(!marker("d_climate").textContent.includes("Climate sensor"), "view mode: readings only");
-  assert.ok(marker("d_office").textContent.includes("Office sensor"), "no reading: the name instead of a dash");
-  assert.ok(!marker("d_office").textContent.includes("—"));
-  click($(card, "[data-action=edit]"));
-  assert.ok(marker("d_climate").textContent.includes("Climate sensor"), marker("d_climate").textContent);
-  assert.ok(marker("d_climate").textContent.includes("21.5"));
+  const lines = (key) => [...$(card, `g.marker[data-key="${key}"]`).querySelectorAll("text")].map((n) => n.textContent);
+  for (const editing of [false, true]) {
+    if (editing) click($(card, "[data-action=edit]"));
+    assert.deepEqual(lines("d_climate").map((l) => l.replace(/\s/g, "")), ["21.5°C", "48%"], `climate, editing ${editing}`);
+    assert.deepEqual(lines("d_office"), [], "no reading: no text, no dash");
+    assert.deepEqual(lines("plant.monstera"), [], "a plant's value is its name: no text");
+  }
+});
+
+test("a room's name sits at the widest spot inside it, shrunk to fit a narrow room", async () => {
+  // An L-shaped hall whose centroid falls outside it, and a narrow room with a long name.
+  const plan = { schema: 1, floors: [{ floor_id: "ground", points: [], rooms: [
+    { area_id: "living_room", polygon: [[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4]] },
+    { area_id: "kitchen", polygon: [[5, 0], [6, 0], [6, 4], [5, 4]] },
+  ] }] };
+  const hass = hassOf();
+  hass.areas.kitchen.name = "A very long kitchen name";
+  const card = await make({ plan }, hass);
+  const label = (area) => [...card.shadowRoot.querySelectorAll("text.label")]
+    .find((n) => n.textContent === hass.areas[area].name);
+  const hall = label("living_room");
+  const [hx, hy] = [Number(hall.getAttribute("x")), Number(hall.getAttribute("y"))];
+  assert.ok(hy > 0 && hy < 1 && hx > 0 && hx < 4, `in the hall's wide arm: ${hx}, ${hy}`);
+  const kitchen = label("kitchen");
+  const living = Number(hall.getAttribute("font-size"));
+  assert.ok(Number(kitchen.getAttribute("font-size")) < living, "the long name in the 1 m room is smaller");
 });
 
 test("a dragged or tapped point shows its distance to the room's walls", async () => {
@@ -420,6 +438,61 @@ test("a dragged or tapped point shows its distance to the room's walls", async (
   pointer(node, "pointerup", ex, ey);
   assert.deepEqual(texts(), ["1.00 m", "2.00 m", "3.00 m", "3.00 m"], "stays after the drop: the point is selected");
   assert.equal(card.shadowRoot.querySelectorAll("line.to-wall").length, 4);
+});
+
+// A plant with a photo, as the plants component gives it (entity_picture).
+function photoHass(opts) {
+  const hass = hassOf(opts);
+  hass.states["plant.monstera"] = { state: "ok", attributes: { friendly_name: "Monstera", entity_picture: "/local/plants/monstera.jpg" } };
+  return hass;
+}
+const tip = (card) => $(card, ".tip");
+const tipShown = (card) => tip(card) && !tip(card).hidden;
+
+test("hovering a plant on the plan shows a tooltip with its photo and name", async () => {
+  const card = await make({ plan: planOf([{ entity_id: "plant.monstera", x: 6, y: 2, placed: true }]) }, photoHass());
+  assert.ok(!tipShown(card), "no tooltip before hovering");
+  const [mx, my] = clientAt(card, 6, 2);
+  pointer($(card, 'g.marker[data-key="plant.monstera"]'), "pointermove", mx, my);
+  assert.ok(tipShown(card), "the tooltip shows over the marker");
+  assert.equal(tip(card).querySelector("img")?.getAttribute("src"), "/local/plants/monstera.jpg");
+  assert.ok(tip(card).textContent.includes("Monstera"), tip(card).textContent);
+  const [ex, ey] = clientAt(card, 2, 2);
+  pointer($(card, "polygon.room"), "pointermove", ex, ey);
+  assert.ok(!tipShown(card), "gone once the pointer leaves the marker");
+});
+
+test("a sensor without a photo gets a tooltip with its name and readings, no image", async () => {
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: true }]) }, photoHass());
+  const [mx, my] = clientAt(card, 1, 1);
+  pointer($(card, 'g.marker[data-key="d_climate"]'), "pointermove", mx, my);
+  assert.ok(tipShown(card));
+  assert.ok(!tip(card).querySelector("img"));
+  assert.ok(tip(card).textContent.includes("Climate sensor") && tip(card).textContent.includes("21.5"), tip(card).textContent);
+});
+
+test("hovering a plant in the tray shows its photo; a drag hides the tooltip", async () => {
+  const hass = photoHass();
+  hass.entities["plant.monstera"] = { entity_id: "plant.monstera", device_id: null, area_id: null };
+  const card = await make({ plan: planOf() }, hass);
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="plant.monstera"]');
+  assert.ok(item, "the plant is in the tray");
+  pointer(item, "pointermove", 790, 390);
+  assert.equal(tip(card)?.querySelector("img")?.getAttribute("src"), "/local/plants/monstera.jpg");
+  pointer(item, "pointerdown", 790, 390);
+  assert.ok(!tipShown(card), "a drag hides it");
+  pointer(item, "pointerup", 790, 390);
+});
+
+test("a photo URL that is not a path or http(s) is not used", async () => {
+  const hass = photoHass();
+  hass.states["plant.monstera"].attributes.entity_picture = "javascript:alert(1)";
+  const card = await make({ plan: planOf([{ entity_id: "plant.monstera", x: 6, y: 2, placed: true }]) }, hass);
+  const [mx, my] = clientAt(card, 6, 2);
+  pointer($(card, 'g.marker[data-key="plant.monstera"]'), "pointermove", mx, my);
+  assert.ok(tipShown(card));
+  assert.ok(!tip(card).querySelector("img"));
 });
 
 test("a sensor dragged from the tray lands on the plan, placed", async () => {

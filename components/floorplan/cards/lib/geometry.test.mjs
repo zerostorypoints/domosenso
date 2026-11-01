@@ -127,3 +127,12 @@ test('interiorPoint: inside the L-shaped room, whose centroid is outside it', ()
   assert.ok(pointInPolygon(p, L), String(p));
   assert.deepEqual(p, [3.5, 3.25]);
 });
+
+test("widestRow: the longest horizontal run inside the polygon, nearest the middle", async () => {
+  const { widestRow } = await import("./geometry.js");
+  const r = widestRow([[0, 0], [5, 0], [5, 4], [0, 4]]);
+  assert.ok(Math.abs(r.x - 2.5) < 1e-9 && Math.abs(r.width - 5) < 1e-9 && Math.abs(r.y - 2) < 0.2, JSON.stringify(r));
+  // An L: the wide arm (0..2 high, 4 wide) wins over the narrow one (2 wide).
+  const l = widestRow([[0, 0], [4, 0], [4, 2], [2, 2], [2, 4], [0, 4]]);
+  assert.ok(Math.abs(l.width - 4) < 1e-9 && l.y > 0 && l.y < 2 && Math.abs(l.x - 2) < 1e-9, JSON.stringify(l));
+});

@@ -55,8 +55,10 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
 | Join | tap two neighbouring rooms; the first keeps its area. Rooms join only along a shared wall |
 
 - The tray lists the sensors not on the plan yet (no area, or an area without a room on this floor),
-  grouped by room: the area, or for a plant without an area the room the plants component gives it
-  (in the area's group when the names match), else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
+  grouped by room: the area, or for a plant without an area the HA area named like the room the
+  plants component gives it, in any of its languages (case, spaces and diacritics aside: `Hobbyraum`
+  is the area `Hobby Raum`), so such a plant is also placed in that room on its own; a room naming
+  no area groups under its own name, else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
   put all of its sensors round that spot (faded, to be dragged into place one by one); while
   dragging, a faded marker with the name follows the pointer over the plan. Only the
   kinds above and plants are listed; computed sensors (from the `template`, `statistics`,
@@ -65,8 +67,12 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
 - Edit mode draws a faint 1 m grid (0.5 m when zoomed in) and shows every room's floor area under
   its name; the selected room, or the one whose corner is being dragged, shows its wall lengths.
   A sensor tapped or dragged shows its distance to its room's walls straight left, right, up and
-  down. Markers show the sensor's name in edit mode; in view mode only its readings, or the name
-  when it has none.
+  down. Markers show only readings, never names (a plan with many sensors would be unreadable); a
+  plant, whose value is its name, is a dot. A room's name sits at the widest spot inside the room
+  and shrinks (down to 9 px) to fit a narrow one.
+- Hovering a sensor on the plan or in the tray shows a tooltip: its photo when it has one (a plant's
+  `entity_picture` from the plants component; only a path on Home Assistant or an http(s) URL), its
+  name and its readings.
   Split ends also go to the 5 cm grid along their wall.
 - With more than one floor in the plan, a select switches the floor.
 - Split and join change only shapes: the editor never deletes an area and never moves a device to

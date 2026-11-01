@@ -78,9 +78,23 @@ export function candidates(hass) {
       byKey.set(key, c);
     }
     c.entities.push(id);
-    if (c.area_id === null) c.area_id = area;
+    if (c.area_id === null) c.area_id = area ?? plantArea(hass, id);
   }
   return [...byKey.values()];
+}
+
+// A comparable form of a room name: no case, no spaces, no diacritics ("Hobby Raum" = "Hobbyraum").
+const roomKey = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "").toLowerCase();
+
+// The area a plant without one stands in: the HA area named like its room in any language the plants
+// component gives (domosenso_room, domosenso_rooms), so the room is entered once, as the HA area.
+function plantArea(hass, entityId) {
+  if (!entityId.startsWith("plant.")) return null;
+  const attrs = hass.states?.[entityId]?.attributes || {};
+  const names = new Set([attrs.domosenso_room, ...Object.values(attrs.domosenso_rooms || {})]
+    .filter(Boolean).map(roomKey));
+  if (!names.size) return null;
+  return Object.values(hass.areas || {}).find((a) => names.has(roomKey(a.name)))?.area_id ?? null;
 }
 
 // n points round `pt` on a circle of SPREAD_M, the first to the right; one point is `pt` itself.

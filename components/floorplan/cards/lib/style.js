@@ -29,7 +29,6 @@ export const STYLE = `
   .editing .marker { cursor: move; }
   .marker.unplaced circle { fill-opacity: 0.4; stroke-dasharray: 3 2; }
   .marker text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; }
-  .marker text.name { fill: var(--secondary-text-color); }
   .marker.picked circle { stroke: var(--accent-color, #ff9800); }
   .ghost { opacity: 0.6; pointer-events: none; }
   .to-wall { stroke: var(--primary-color); stroke-width: 1; stroke-dasharray: 4 3;
@@ -50,6 +49,13 @@ export const STYLE = `
   .dim { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
          pointer-events: none; }
   .dim.wall, .dim.to-wall { fill: var(--primary-color); }
+  .tip { position: absolute; z-index: 2; pointer-events: none; max-width: 180px; padding: 6px;
+         background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
+         border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); font-size: 12px; }
+  .tip img { display: block; width: 168px; height: 126px; object-fit: cover; border-radius: 6px;
+             margin-bottom: 4px; }
+  .tip-name { font-weight: 500; }
+  .tip-value { color: var(--secondary-text-color); }
   .message, .hint { padding: 0 12px 8px; color: var(--secondary-text-color); }
   .message:empty, .hint:empty { display: none; }
   .notice { padding: 16px; color: var(--secondary-text-color); }

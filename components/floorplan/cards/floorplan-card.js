@@ -17,7 +17,7 @@
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
-import { zoomAt, snapToEdge, pointInPolygon, centroid } from "./lib/geometry.js";
+import { zoomAt, snapToEdge, pointInPolygon, widestRow } from "./lib/geometry.js";
 import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
@@ -35,6 +35,16 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const ZOOM_STEP = 1.25;
 const TAP_PX = 5;         // a pointer that moved less than this is a tap, not a drag
 const PICK_PX = 12;       // how far from a wall a split pick may land
+const LABEL_PX = 14;      // a room name's size on screen, shrunk down to LABEL_MIN_PX to fit its room
+const LABEL_MIN_PX = 9;
+
+// A room name's screen size: LABEL_PX unless its estimated width (0.55 em a character) would pass 90 %
+// of the room's widest run, `width` metres at `px` metres per screen pixel.
+function labelSize(text, width, px) {
+  const needed = String(text).length * 0.55 * LABEL_PX * px;
+  const room = width * 0.9;
+  return needed <= room ? LABEL_PX : Math.max(LABEL_MIN_PX, (LABEL_PX * room) / needed);
+}
 
 function el(name, attrs = {}, parent) {
   const node = document.createElementNS(SVG_NS, name);
@@ -45,6 +55,8 @@ function el(name, attrs = {}, parent) {
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const keyOf = (p) => p.device_id ?? p.entity_id;
+// Only a path on this Home Assistant or an http(s) URL is shown as a photo.
+const safePicture = (url) => typeof url === "string" && /^(\/(?!\/)|https?:\/\/)/.test(url);
 const fmt = (v) => String(Math.round(v * 1e6) / 1e6);
 
 class FloorplanCard extends HTMLElement {
@@ -143,7 +155,7 @@ ${STYLE}
       <ha-card>
         <div class="bar"></div>
         <div class="area-panel"></div>
-        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div></div>
+        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="tip" hidden></div></div>
         <div class="hint"></div>
         <div class="message"></div>
       </ha-card>`;
@@ -156,6 +168,7 @@ ${STYLE}
     card.addEventListener("pointerup", (e) => this._onUp(e));
     card.addEventListener("pointercancel", (e) => this._onUp(e, true));
     card.addEventListener("lostpointercapture", (e) => this._onUp(e, true));
+    card.addEventListener("pointerleave", () => this._showTip(null));
     this._svg.addEventListener("wheel", (e) => this._onWheel(e), { passive: false });
     this._svg.addEventListener("dblclick", (e) => this._onDblClick(e));
   }
@@ -268,8 +281,9 @@ ${STYLE}
       el("polygon", { class: cls.join(" "), "data-kind": "room", "data-area": room.area_id,
         points: room.polygon.map((p) => p.join(",")).join(" ") }, svg);
       const label = roomLabel(room, h);
-      const [cx, cy] = centroid(room.polygon);
-      const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: cx, y: cy, "font-size": 14 * px }, svg);
+      const spot = widestRow(room.polygon);
+      const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: spot.x, y: spot.y,
+        "font-size": labelSize(label.text, spot.width, px) * px }, svg);
       text.textContent = label.text;
       if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
     }
@@ -310,15 +324,13 @@ ${STYLE}
     const g = el("g", { class: cls.join(" "), "data-kind": "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
     el("circle", { r: 7 * px }, g);
+    // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
+    // A plant's value is its name, so a plant is a dot.
     const name = pointName(h, point);
-    el("title", {}, g).textContent = name;
     const values = this._config.values
-      ? pointEntities(point, this._entities).map((id) => valueText(h, id)).filter((v) => v !== "—") : [];
-    // The name in edit mode, where sensors are told apart; in view mode only when there is no reading.
-    const lines = (editing || !values.length) && !values.includes(name) ? [name, ...values] : values;
-    lines.forEach((text, i) => {
-      el("text", { class: text === name ? "name" : "value", y: (22 + 15 * i) * px, "font-size": 13 * px }, g)
-        .textContent = text;
+      ? pointEntities(point, this._entities).map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== name) : [];
+    values.forEach((text, i) => {
+      el("text", { class: "value", y: (22 + 15 * i) * px, "font-size": 13 * px }, g).textContent = text;
     });
   }
 
@@ -468,6 +480,7 @@ ${STYLE}
 
   _onDown(e) {
     if (this._status !== "ready" || (e.button !== undefined && e.button !== 0)) return;
+    this._showTip(null);
     const item = e.target.closest?.(".tray [data-key], .tray summary[data-group]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
     if (!item && !inSvg) return;
@@ -501,6 +514,49 @@ ${STYLE}
     } else this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null };
   }
 
+  // ---- tooltip: a sensor's photo (a plant's, from the plants component), name and readings ------
+
+  _hover(e) {
+    const marker = e.target.closest?.("g.marker[data-key]:not(.ghost)");
+    const item = !marker && e.target.closest?.(".tray [data-key]");
+    let content = null;
+    if (marker) {
+      const point = this._floor?.points.find((p) => keyOf(p) === marker.getAttribute("data-key"));
+      if (point) content = { key: `m:${keyOf(point)}`, name: pointName(this._hass, point), ids: pointEntities(point, this._entities) };
+    } else if (item) {
+      const c = tray(this._doc, this._hass).find((x) => x.key === item.getAttribute("data-key"));
+      if (c) content = { key: `t:${c.key}`, name: candidateName(this._hass, c), ids: c.entities };
+    }
+    this._showTip(content, e);
+  }
+
+  _showTip(content, e) {
+    const tip = this.shadowRoot?.querySelector(".tip");
+    if (!tip) return;
+    if (!content) {
+      tip.hidden = true;
+      this._tipKey = null;
+      return;
+    }
+    if (content.key !== this._tipKey) {
+      const h = this._hass;
+      const pic = content.ids.map((id) => h.states?.[id]?.attributes?.entity_picture).find(safePicture);
+      const values = content.ids.map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== content.name);
+      tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
+        + `<div class="tip-name">${esc(content.name)}</div>`
+        + values.map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+      this._tipKey = content.key;
+    }
+    tip.hidden = false;
+    // Below right of the pointer, flipped to its left near the card's right edge.
+    const body = this.shadowRoot.querySelector(".body").getBoundingClientRect();
+    const x = e.clientX - body.left;
+    const y = e.clientY - body.top;
+    const flip = x + 12 + (tip.offsetWidth || 0) > body.width;
+    tip.style.left = `${flip ? Math.max(0, x - 12 - tip.offsetWidth) : x + 12}px`;
+    tip.style.top = `${y + 12}px`;
+  }
+
   _dragLabel(d) {
     if (d.kind === "group") {
       const g = trayGroups(this._doc, this._hass).find((x) => x.key === d.key);
@@ -517,6 +573,7 @@ ${STYLE}
 
   _onMove(e) {
     const d = this._drag;
+    if (!d) this._hover(e);
     if (!d || !this._pointers.has(e.pointerId)) return;
     this._pointers.set(e.pointerId, [e.clientX, e.clientY]);
     if (d.kind === "pinch") {

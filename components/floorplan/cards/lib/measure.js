@@ -2,7 +2,7 @@
 // name, wall lengths of the room being worked on). Plan coordinates are metres, so the numbers are
 // read straight off the polygons.
 
-import { centroid, polygonArea, wallLengths, pointInPolygon } from "./geometry.js";
+import { widestRow, polygonArea, wallLengths, pointInPolygon } from "./geometry.js";
 import { language } from "./i18n.js";
 
 const MINOR_PX = 24;   // half-metre lines only once they are this far apart on screen
@@ -38,8 +38,8 @@ export function drawDims(svg, el, { hass, t, floor, px, active }) {
   const m = t(hass, "card.floorplan.units.m");
   const m2 = t(hass, "card.floorplan.units.m2");
   for (const room of floor.rooms) {
-    const [cx, cy] = centroid(room.polygon);
-    el("text", { class: "dim area", x: cx, y: cy + 16 * px, "font-size": 11 * px }, svg)
+    const spot = widestRow(room.polygon);     // under the room's name
+    el("text", { class: "dim area", x: spot.x, y: spot.y + 16 * px, "font-size": 11 * px }, svg)
       .textContent = `${numberText(hass, polygonArea(room.polygon), 1)} ${m2}`;
   }
   const room = floor.rooms.find((r) => r.area_id === active);

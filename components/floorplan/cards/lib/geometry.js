@@ -227,3 +227,30 @@ export function joinPolygons(p, q) {
   });
   return merged.length >= 3 ? merged : null;
 }
+
+// Where a room's name fits best: the longest horizontal run inside the polygon over `rows` sampled
+// heights, the one nearest the middle on a tie. {x, y} is the run's middle, `width` its length.
+export function widestRow(polygon, rows = 24) {
+  const ys = polygon.map((p) => p[1]);
+  const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+  const mid = (y0 + y1) / 2;
+  let best = null;
+  for (let i = 0; i < rows; i++) {
+    const y = y0 + ((i + 0.5) * (y1 - y0)) / rows;
+    const xs = [];
+    polygon.forEach((a, k) => {
+      const b = polygon[(k + 1) % polygon.length];
+      if ((a[1] <= y && y < b[1]) || (b[1] <= y && y < a[1])) xs.push(a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]));
+    });
+    xs.sort((p, q) => p - q);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const width = xs[k + 1] - xs[k];
+      const better = !best || width > best.width + 1e-9
+        || (Math.abs(width - best.width) <= 1e-9 && Math.abs(y - mid) < Math.abs(best.y - mid));
+      if (better) best = { x: (xs[k] + xs[k + 1]) / 2, y, width };
+    }
+  }
+  if (best) return best;
+  const [x, y] = centroid(polygon);
+  return { x, y, width: 0 };
+}
