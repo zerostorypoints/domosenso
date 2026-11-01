@@ -38,6 +38,10 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   plants the coldest, brightest and driest hour, rooms the mean, CO₂ the highest. A sensor without
   statistics (no `state_class`) has no 24 h value. Fixed scales: 17–24 °C, 30–60 %, soil 10–50 %,
   400–1400 ppm, 0–20 000 lx (log). The browser remembers the map per layer and the switch.
+- **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
+  share their readings on the maps instead of stopping at the line between them; the walls between
+  them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
+  panel names what it is open to and has **Close off**.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
   else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
 

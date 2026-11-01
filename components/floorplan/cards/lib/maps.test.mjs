@@ -78,3 +78,17 @@ test("lamps: a device's light that is not a group, on with its brightness", () =
   assert.deepEqual(lampOf(hass, index, ["d2"]), { on: false, brightness: 0 });
   assert.equal(lampOf(hass, index, ["d3"]), null);
 });
+
+test("an open space shares its readings: a grouped room without a sensor takes the group's heat", () => {
+  const three = [sq(0, 0, 3, 3), sq(3, 0, 3, 3), sq(6, 0, 3, 3)];
+  const samples = [{ at: [1, 1], value: 20 }];
+  const apart = heat(three, samples);
+  assert.deepEqual(apart.empty, [1, 2], "walls stop heat");
+  const open = heat(three, samples, undefined, [[0, 1]]);
+  assert.deepEqual(open.empty, [2], "the second room is open to the first; the third is not");
+  assert.ok(open.cells.some((c) => c.room === 1 && Math.abs(c.value - 20) < 1e-9));
+  // Two samples in a group: each grouped room blends both, by distance.
+  const two = heat(three, [{ at: [1, 1], value: 20 }, { at: [5, 1], value: 24 }], undefined, [[0, 1]]);
+  const near = two.cells.filter((c) => c.room === 0 && c.x < 1);
+  assert.ok(near.every((c) => c.value > 20 && c.value < 24), "the first room feels the second's reading");
+});

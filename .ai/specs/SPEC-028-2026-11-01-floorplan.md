@@ -646,7 +646,7 @@ using a component's own bands as a map's scale.
 - Whether "Now" at night should fall back to the 24 h light map on the plants layer, since every
   light map is dark at night *(not proposed; the switch is one tap)*.
 
-### Addition: open spaces (the maintainer, 2026-11-01; draft)
+### Addition: open spaces (the maintainer, 2026-11-01; approved 2026-11-01, "Do 028")
 
 "These rooms are one open space without doors; we should be able to mark groups of rooms like
 that, because it affects the heat maps." On the maintainer's home six rooms of one floor (living,
@@ -656,8 +656,9 @@ line between them and hatched those of them without a sensor of their own.
 - **Document** (`schema: 1`, a new optional key, ADDITIVE-ONLY): `floors[].open_spaces`, a list of
   groups, each a list of two or more `area_id`s of rooms on that floor; an area is in one group at
   most. A plan whose group names an area that is not a room of the floor, repeats an area, or has a
-  group of fewer than two is invalid (the card, `push`, `pull` and `preview` refuse it as they refuse
-  any invalid plan). As with 0.2.0's optional keys, a `domosenso` command older than this catalog
+  group of fewer than two is invalid: `push`, `pull` and `preview` refuse it as they refuse any
+  invalid plan; the card, which checks no more than the schema version, uses only the groups that
+  hold (`openSpaces`) *(as built: the card never refused an invalid plan)*. As with 0.2.0's optional keys, a `domosenso` command older than this catalog
   refuses a plan that uses it.
 - **Heat:** a room of a group is interpolated from the placed samples of every room of its group,
   by inverse distance squared in a straight line (the openings between them are not modelled); so a

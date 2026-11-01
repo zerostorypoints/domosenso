@@ -101,6 +101,11 @@ export const STYLE = `
   .legend .ends { display: flex; justify-content: space-between; }
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle;
                    background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
+  .open-wall-mask { stroke: var(--card-background-color, #fff); stroke-width: 3; vector-effect: non-scaling-stroke;
+                    pointer-events: none; }
+  .open-wall { stroke: var(--secondary-text-color); stroke-width: 1.5; stroke-dasharray: 5 4;
+               vector-effect: non-scaling-stroke; pointer-events: none; }
+  .open-to { color: var(--secondary-text-color); }
   .message, .hint { padding: 0 12px 8px; color: var(--secondary-text-color); }
   .message:empty, .hint:empty { display: none; }
   .notice { padding: 16px; color: var(--secondary-text-color); }

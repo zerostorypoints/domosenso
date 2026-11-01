@@ -1409,3 +1409,34 @@ test("the plan is laid out again when its size changes, not when it stays", asyn
   card._resized();
   assert.equal(draws, 1);
 });
+
+test("open spaces: the Open tool joins two rooms' heat; the walls between them are dashed; Close off parts them", async () => {
+  window.localStorage.clear();
+  const plan = planOf([pt("d_climate", 1, 1)]);
+  const card = await make({ plan }, mapsHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="open"]'));
+  tap(card, 2, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  assert.deepEqual(card._doc.floors[0].open_spaces, [["living_room", "kitchen"]]);
+  assert.equal(card.shadowRoot.querySelectorAll("line.open-wall").length, 2, "each room's side of the shared wall");
+  // The plan view of the climate layer: the kitchen has no sensor but shares the living room's.
+  click($(card, '[data-action=tool][data-tool="move"]'));
+  tap(card, 6, 3, $(card, 'polygon.room[data-area="kitchen"]'));
+  assert.ok(shadowText(card).includes("Open to: Living room"), shadowText(card));
+  click($(card, "[data-action=close_room]"));
+  assert.ok(!("open_spaces" in card._doc.floors[0]), "closed off: no open space left");
+  window.localStorage.clear();
+});
+
+test("open spaces: a grouped room without a sensor takes the group's heat on the map", async () => {
+  window.localStorage.clear();
+  const plan = planOf([pt("d_climate", 1, 1)]);
+  plan.floors[0].open_spaces = [["living_room", "kitchen"]];
+  const card = await make({ plan, layers: ["climate"] }, mapsHass());
+  await settle();
+  assert.equal(card.shadowRoot.querySelectorAll(".heat .no-sensor").length, 0, "the kitchen is not hatched");
+  assert.ok([...card.shadowRoot.querySelectorAll(".heat rect")].some((c) => Number(c.getAttribute("x")) > 5));
+  window.localStorage.clear();
+});

@@ -20,20 +20,24 @@
       "tool": {
         "move": "Przesuń",
         "split": "Podziel",
-        "join": "Połącz"
+        "join": "Połącz",
+        "open": "Otwarte"
       },
       "hint": {
         "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
         "move": "Przeciągaj czujniki i narożniki. Dwuklik na ścianie dodaje narożnik, na narożniku go usuwa. Stuknij pomieszczenie, aby przypisać je do obszaru. Upuść urządzenie na znacznik, jeśli to ten sam sprzęt.",
         "split": "Stuknij dwa punkty na ścianach jednego pomieszczenia.",
-        "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar."
+        "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar.",
+        "open": "Stuknij dwa pomieszczenia otwarte na siebie, bez drzwi: ich mapy dzielą odczyty."
       },
       "area": {
         "label": "Obszar tego pomieszczenia",
         "for_split": "Obszar nowego pomieszczenia",
         "choose": "Wybierz obszar",
         "new": "Nowy obszar",
-        "create": "Utwórz"
+        "create": "Utwórz",
+        "open_to": "Otwarte na: {rooms}",
+        "close_off": "Oddziel"
       },
       "tray": {
         "title": "Poza rzutem",

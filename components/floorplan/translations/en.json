@@ -20,20 +20,24 @@
       "tool": {
         "move": "Move",
         "split": "Split",
-        "join": "Join"
+        "join": "Join",
+        "open": "Open"
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
         "move": "Drag sensors and corners. Double-click a wall to add a corner, a corner to remove it. Tap a room to link it to an area. Drop a device on a marker when it is the same hardware.",
         "split": "Tap two points on the walls of one room.",
-        "join": "Tap two neighbouring rooms; the first keeps its area."
+        "join": "Tap two neighbouring rooms; the first keeps its area.",
+        "open": "Tap two rooms open to each other without a door: their heat maps share readings."
       },
       "area": {
         "label": "Area of this room",
         "for_split": "Area of the new room",
         "choose": "Choose an area",
         "new": "New area",
-        "create": "Create"
+        "create": "Create",
+        "open_to": "Open to: {rooms}",
+        "close_off": "Close off"
       },
       "tray": {
         "title": "Not on the plan",

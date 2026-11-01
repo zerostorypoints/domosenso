@@ -30,6 +30,7 @@ import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
   candidates, pointCategory, setPointCategory, joinPoint, separatePoint, registryLinks, presenceEntities,
+  openSpaces, openRooms, closeRoom, facingWalls,
 } from "./lib/plan.js";
 import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
 import { esc, dotHtml } from "./lib/html.js";
@@ -421,7 +422,7 @@ ${STYLE}
       html += `<select class="floor" aria-label="${esc(t(h, "card.floorplan.floor"))}">${this._doc.floors.map((f) =>
         `<option value="${esc(f.floor_id)}" ${f.floor_id === this._floorId ? "selected" : ""}>${esc(name(f.floor_id))}</option>`).join("")}</select>`;
     }
-    for (const tool of ["move", "split", "join"]) {
+    for (const tool of ["move", "split", "join", "open"]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
@@ -477,7 +478,12 @@ ${STYLE}
       const current = a.area_id === target;
       return `<option value="${esc(a.area_id)}" ${current ? "selected" : ""} ${used.has(a.area_id) && !current ? "disabled" : ""}>${esc(a.name)}</option>`;
     }).join("");
-    return `<label>${esc(label)}</label>
+    // A room of an open space names the rooms it is open to, and can be closed off.
+    const group = target && openSpaces(this._floor).find((g) => g.includes(target));
+    const open = group ? `<span class="open-to">${esc(t(h, "card.floorplan.area.open_to", {
+      rooms: group.filter((a) => a !== target).map((a) => h.areas?.[a]?.name || a).join(", ") }))}</span>`
+      + `<button data-action="close_room">${esc(t(h, "card.floorplan.area.close_off"))}</button>` : "";
+    return `${open}<label>${esc(label)}</label>
       <select class="area"><option value="" ${target && h.areas?.[target] ? "" : "selected"} disabled>${esc(t(h, "card.floorplan.area.choose"))}</option>${options}</select>
       <input type="text" placeholder="${esc(t(h, "card.floorplan.area.new"))}">
       <button data-action="create_area">${esc(t(h, "card.floorplan.area.create"))}</button>`;
@@ -565,6 +571,12 @@ ${STYLE}
     }
     if (map) this._defs(svg, px);
     if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
+    // Walls between rooms of one open space: dashed and lighter, over the solid outline.
+    for (const [a, b] of facingWalls(floor)) {
+      const at = { x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) };
+      el("line", { class: "open-wall-mask", ...at }, svg);
+      el("line", { class: "open-wall", ...at }, svg);
+    }
     // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
     // readings keep clear of them; in view mode the readings are laid out first and a name they
     // would cover moves to a free corner of its room (placeNames, after the layout below).
@@ -786,10 +798,13 @@ ${STYLE}
       const value = id && this._value(id, map.cls, map.layer);
       return value === undefined ? [] : [{ at: [p.x, p.y], value }];
     });
-    const key = JSON.stringify([map.cls, samples]);
+    // Rooms of one open space share their readings.
+    const index = new Map(floor.rooms.map((r, i) => [r.area_id, i]));
+    const groups = openSpaces(floor).map((g) => g.map((area) => index.get(area)));
+    const key = JSON.stringify([map.cls, samples, groups]);
     if (this._heatCache?.key !== key || this._heatCache.floor !== floor) {
       const g = el("g", { class: "heat" });
-      const { cells, empty } = heat(floor.rooms.map((r) => r.polygon), samples);
+      const { cells, empty } = heat(floor.rooms.map((r) => r.polygon), samples, STEP_M, groups);
       // Cells on a slanted or offset wall overhang it: each room's cells are clipped to the room.
       const defs = el("defs", {}, g);
       const byRoom = new Map();
@@ -879,6 +894,7 @@ ${STYLE}
       this._tool = button.getAttribute("data-tool");
       this._resetPicks();
     } else if (action === "create_area") return void this._createArea();
+    else if (action === "close_room") this._edit(closeRoom(this._doc, this._floorId, this._selected));
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
@@ -1257,6 +1273,14 @@ ${STYLE}
         const [keep, drop] = this._picks;
         this._picks = [];
         if (keep !== drop) this._edit(joinRooms(this._doc, this._floorId, keep, drop));
+      }
+    } else if (this._tool === "open") {
+      if (!area) return;
+      this._picks = [...this._picks, area];
+      if (this._picks.length === 2) {
+        const [a, b] = this._picks;
+        this._picks = [];
+        if (a !== b) this._edit(openRooms(this._doc, this._floorId, a, b));
       }
     } else if (this._tool === "split") {
       const wall = nearestWall(this._floor, pt, PICK_PX * this._px());

@@ -97,13 +97,16 @@ export function colourAt(cls, v) {
 }
 
 // The heat inside each room from that room's own samples ([{at: [x, y], value}]), by inverse
-// distance squared on a STEP_M grid: walls stop it, no room borrows another's readings.
+// distance squared on a STEP_M grid: walls stop it, no room borrows another's readings, except the
+// rooms of one open space (`groups`: lists of room indices), which share theirs in a straight line.
 // Returns {cells: [{x, y, value, room}], empty: [room index]} (a room without a sample is hatched).
-export function heat(rooms, samples, step = STEP_M) {
+export function heat(rooms, samples, step = STEP_M, groups = []) {
   const cells = [];
   const empty = [];
+  const groupOf = new Map(groups.flatMap((g) => g.map((i) => [i, g])));
+  const inRoom = rooms.map((poly) => samples.filter((s) => pointInPolygon(s.at, poly)));
   rooms.forEach((poly, i) => {
-    const own = samples.filter((s) => pointInPolygon(s.at, poly));
+    const own = (groupOf.get(i) ?? [i]).flatMap((j) => inRoom[j] ?? []);
     if (!own.length) {
       empty.push(i);
       return;
