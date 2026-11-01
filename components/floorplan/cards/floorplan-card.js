@@ -148,8 +148,17 @@ class FloorplanCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._onResize ??= () => this._fill() && this._drawSvg(this._status === "ready" && this._mode === "edit");
+    this._onResize ??= () => this._fill();
     window.addEventListener("resize", this._onResize);
+  }
+
+  // The plan's size changed (the card was shown, `fill` grew it, the window turned): readings and
+  // markers are sized in screen pixels, so lay them out again. A card drawn while hidden (the
+  // Ramka's plan view before its swipe) had no size and drew at a fallback scale.
+  _resized() {
+    const r = this._rect();
+    if (`${Math.round(r.width)}x${Math.round(r.height)}` === this._drawnSize) return;
+    this._drawSvg(this._status === "ready" && this._mode === "edit");
   }
 
   disconnectedCallback() {
@@ -350,6 +359,7 @@ ${STYLE}
     card.addEventListener("pointercancel", (e) => this._onUp(e, true));
     card.addEventListener("lostpointercapture", (e) => this._onUp(e, true));
     card.addEventListener("pointerleave", () => this._showTip(null));
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => this._resized()).observe(this._svg);
     this._svg.addEventListener("wheel", (e) => this._onWheel(e), { passive: false });
     this._svg.addEventListener("dblclick", (e) => this._onDblClick(e));
   }
@@ -534,6 +544,8 @@ ${STYLE}
   _drawSvg(editing) {
     const svg = this._svg;
     svg.replaceChildren();
+    const size = this._rect();
+    this._drawnSize = `${Math.round(size.width)}x${Math.round(size.height)}`;
     this._registry();
     const floor = this._floor;
     if (this._status !== "ready" || !floor) return;

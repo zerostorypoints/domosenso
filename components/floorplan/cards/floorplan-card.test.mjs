@@ -1391,3 +1391,20 @@ test("view mode: a room's name moves off a reading laid over it; edit mode keeps
   assert.ok(Math.abs(ex - 6.5) < 0.01, `edit mode: in the middle, ${ex}, ${ey}`);
   window.localStorage.clear();
 });
+
+test("the plan is laid out again when its size changes, not when it stays", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, mapsHass());
+  await settle();
+  let draws = 0;
+  const draw = card._drawSvg.bind(card);
+  card._drawSvg = (...a) => { draws += 1; return draw(...a); };
+  card._drawSvg(false);       // drawn at RECT
+  draws = 0;
+  card._resized();
+  assert.equal(draws, 0, "same size: no redraw");
+  $(card, "svg").getBoundingClientRect = () => ({ ...RECT, width: 1100, height: 600, right: 1100, bottom: 600 });
+  card._resized();
+  assert.equal(draws, 1, "a new size: laid out again");
+  card._resized();
+  assert.equal(draws, 1);
+});
