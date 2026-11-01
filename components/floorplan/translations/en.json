@@ -38,7 +38,13 @@
       "tray": {
         "title": "Not on the plan",
         "empty": "Every sensor is on the plan.",
-        "drag": "Drag onto the plan"
+        "drag": "Drag onto the plan",
+        "no_room": "No room",
+        "drag_group": "Drag onto the plan to place them all; tap to open"
+      },
+      "units": {
+        "m": "m",
+        "m2": "m²"
       },
       "missing_area": "This area no longer exists",
       "saved": "Saved.",

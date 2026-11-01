@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
-  extract, addPoint,
+  extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName,
 } from "./plan.js";
 import { joinPolygons, centroid } from "./geometry.js";
 
@@ -84,11 +84,23 @@ test("candidates: an entity's own area overrides its device's", () => {
   assert.equal(candidates(hass).find((x) => x.key === "d_moved").area_id, "living_room");
 });
 
-test("autoPlace puts a candidate at its room centroid, not placed", () => {
-  const out = autoPlace(doc(), hass, "ground");
-  const p = out.floors[0].points.find((x) => x.device_id === "d_temp");
-  assert.deepEqual([p.x, p.y, p.placed], [...centroid(sq(0, 0, 4, 4)), false]);
+test("autoPlace puts a lone candidate at its room centroid, not placed", () => {
+  const lone = autoPlace(doc(), { ...hass, entities: { "sensor.temp": hass.entities["sensor.temp"] } }, "ground");
+  const p = lone.floors[0].points[0];
+  assert.deepEqual([p.device_id, p.x, p.y, p.placed], ["d_temp", ...centroid(sq(0, 0, 4, 4)), false]);
   assert.equal("entity_id" in p, false);
+});
+
+test("autoPlace spreads two sensors of one room 0.6 m apart on a circle round the centroid", () => {
+  // d_temp (its device's area) and d_moved (its entity's own area) are both in living_room.
+  const out = autoPlace(doc(), hass, "ground");
+  const pts = out.floors[0].points.filter((x) => x.device_id === "d_moved" || x.device_id === "d_temp");
+  const [cx, cy] = centroid(sq(0, 0, 4, 4));
+  assert.deepEqual(pts.map((p) => [p.device_id, p.x, p.y, p.placed]).sort(), [
+    ["d_moved", cx + 0.3, cy, false],     // by key: d_moved first, at angle 0
+    ["d_temp", cx - 0.3, cy, false],
+  ]);
+  assert.ok(Math.abs(Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) - 0.6) < 1e-9);
 });
 
 test("autoPlace leaves candidates without a room in the tray and keeps placed points", () => {
@@ -223,4 +235,99 @@ test("edits round coordinates to a millimetre", () => {
   const placed = autoPlace({ ...d, floors: [{ ...d.floors[0], rooms: [{ area_id: "living_room", polygon: [[0, 0], [1, 0], [0, 1]] }] }] },
     hass, "ground");
   assert.ok(coords(placed).every((v) => decimals(v) <= 3), coords(placed).join(" "));
+});
+
+// ---- Task 9: a shorter, grouped tray ----------------------------------------------------------
+
+const derivedHass = {
+  ...hass,
+  entities: {
+    ...hass.entities,
+    "sensor.temp_min_3h": { entity_id: "sensor.temp_min_3h", device_id: null, area_id: "living_room", platform: "statistics" },
+    "sensor.feels_like": { entity_id: "sensor.feels_like", device_id: null, area_id: "living_room", platform: "template" },
+    "sensor.temp": { ...hass.entities["sensor.temp"], platform: "zha" },
+    "plant.monstera": { ...hass.entities["plant.monstera"], platform: "template" },
+  },
+  states: {
+    ...hass.states,
+    "sensor.temp_min_3h": { state: "20", attributes: { device_class: "temperature" } },
+    "sensor.feels_like": { state: "22", attributes: { device_class: "temperature" } },
+    "sensor.unregistered": { state: "30", attributes: { device_class: "humidity" } },
+  },
+};
+
+test("DERIVED_PLATFORMS", () => {
+  assert.deepEqual(DERIVED_PLATFORMS, ["template", "statistics", "min_max", "derivative", "integration",
+    "utility_meter", "filter", "trend", "threshold", "compensation", "group"]);
+});
+
+test("candidates skip derived platforms, keep plant.* and entities without a registry entry", () => {
+  const keys = candidates(derivedHass).map((c) => c.key);
+  assert.ok(!keys.includes("sensor.temp_min_3h"), keys.join(" "));
+  assert.ok(!keys.includes("sensor.feels_like"), keys.join(" "));
+  assert.ok(keys.includes("plant.monstera"));
+  assert.ok(keys.includes("sensor.unregistered"));
+  assert.ok(keys.includes("d_temp"));
+});
+
+const plantHass = (attributes, language = "en") => ({
+  ...hass,
+  language,
+  locale: { language },
+  states: { ...hass.states, "plant.monstera": { state: "ok", attributes } },
+});
+const monstera = { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"] };
+
+test("roomHint: the candidate's area first", () => {
+  assert.deepEqual(roomHint(hass, { key: "d_temp", kind: "device", area_id: "living_room", entities: ["sensor.temp"] }),
+    { key: "living_room", name: "Living room" });
+  assert.deepEqual(roomHint(hass, { key: "x", kind: "entity", area_id: "office", entities: ["x"] }),
+    { key: "office", name: "office" }, "an area Home Assistant no longer lists keeps its id");
+});
+
+test("roomHint: a plant without an area by its domosenso_room, per language when given", () => {
+  assert.deepEqual(roomHint(plantHass({ domosenso_room: "Living room" }), monstera),
+    { key: "label:Living room", name: "Living room" });
+  const rooms = { domosenso_room: "Living room", domosenso_rooms: { en: "Living room", de: "Wohnzimmer" } };
+  assert.deepEqual(roomHint(plantHass(rooms, "de"), monstera), { key: "label:Wohnzimmer", name: "Wohnzimmer" });
+  assert.deepEqual(roomHint(plantHass(rooms, "pl"), monstera), { key: "label:Living room", name: "Living room" },
+    "a language missing from the map falls back to domosenso_room");
+});
+
+test("roomHint: null without an area or a plant room", () => {
+  assert.equal(roomHint(plantHass({}), monstera), null);
+  assert.equal(roomHint(hass, { key: "sensor.x", kind: "entity", area_id: null, entities: ["sensor.x"] }), null);
+});
+
+test("trayGroups: the tray by room, groups and items by name, the group without a room last", () => {
+  const h = {
+    ...plantHass({ friendly_name: "Monstera" }),
+    areas: { ...hass.areas, office: { area_id: "office", name: "Office" } },
+    devices: { ...hass.devices, d_temp: { id: "d_temp", area_id: "living_room", name: "Thermometer" },
+      d_moved: { id: "d_moved", area_id: "kitchen", name: "Light sensor" } },
+    states: { ...plantHass({ friendly_name: "Monstera" }).states,
+      "sensor.garage_co2": { state: "500", attributes: { device_class: "carbon_dioxide", friendly_name: "Air" } } },
+  };
+  const groups = trayGroups(doc(), h);
+  assert.deepEqual(groups.map((g) => [g.key, g.name, g.items.map((c) => candidateName(h, c))]), [
+    ["living_room", "Living room", ["Light sensor", "Thermometer"]],
+    ["office", "Office", ["Air"]],
+    ["none", null, ["Monstera"]],
+  ]);
+  const placed = doc();
+  placed.floors[0].points.push({ device_id: "d_temp", x: 1, y: 1, placed: true });
+  assert.deepEqual(trayGroups(placed, h)[0].items.map((c) => c.key), ["d_moved"], "placed candidates are not in it");
+});
+
+test("addPoints puts candidates round a point, not placed, and refuses ones already on the plan", () => {
+  const cs = candidates(hass).filter((c) => c.area_id === "living_room");     // d_moved, d_temp
+  const out = addPoints(doc(), "ground", cs, [2, 2]);
+  assert.deepEqual(out.floors[0].points, [
+    { device_id: "d_moved", x: 2.3, y: 2, placed: false },
+    { device_id: "d_temp", x: 1.7, y: 2, placed: false },
+  ]);
+  const one = addPoints(doc(), "ground", cs.filter((c) => c.key === "d_moved"), [2, 2]);
+  assert.deepEqual(one.floors[0].points, [{ device_id: "d_moved", x: 2, y: 2, placed: false }]);
+  assert.equal(addPoints(out, "ground", cs, [1, 1]), null);
+  assert.equal(addPoints(doc(), "ground", [], [1, 1]), null);
 });

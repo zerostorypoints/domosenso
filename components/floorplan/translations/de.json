@@ -38,7 +38,13 @@
       "tray": {
         "title": "Nicht im Grundriss",
         "empty": "Alle Sensoren sind im Grundriss.",
-        "drag": "In den Grundriss ziehen"
+        "drag": "In den Grundriss ziehen",
+        "no_room": "Ohne Raum",
+        "drag_group": "In den Grundriss ziehen, um alle zu platzieren; tippen zum Öffnen"
+      },
+      "units": {
+        "m": "m",
+        "m2": "m²"
       },
       "missing_area": "Diesen Bereich gibt es nicht mehr",
       "saved": "Gespeichert.",

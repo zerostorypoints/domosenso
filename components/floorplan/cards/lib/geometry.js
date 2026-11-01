@@ -19,6 +19,16 @@ function signedArea(poly) {
   return s / 2;
 }
 
+// The floor area in m², whichever way the corners run.
+export function polygonArea(poly) {
+  return Math.abs(signedArea(poly));
+}
+
+// The length of each wall, from corner i to corner i + 1.
+export function wallLengths(poly) {
+  return poly.map((p, i) => dist(p, poly[(i + 1) % poly.length]));
+}
+
 // Closest point on segment ab to p, with its parameter t in [0, 1].
 function project(p, a, b) {
   const dx = b[0] - a[0];

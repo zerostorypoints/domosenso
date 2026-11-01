@@ -475,3 +475,132 @@ test("cancel is disabled while saving", async () => {
   release();
   await settle();
 });
+
+// ---- Task 9: grouped tray, grid, dimensions --------------------------------------------------
+
+const EMPTY_PLAN = () => ({ schema: 1, floors: [{ floor_id: "ground", rooms: [], points: [] }] });
+// A second sensor in the office, so its tray group holds two.
+function officeHass(opts) {
+  const hass = hassOf(opts);
+  hass.devices.d_office2 = { id: "d_office2", name: "Desk sensor", area_id: "office" };
+  hass.entities["sensor.desk_co2"] = { entity_id: "sensor.desk_co2", device_id: "d_office2" };
+  hass.states["sensor.desk_co2"] = { state: "600", attributes: { device_class: "carbon_dioxide", unit_of_measurement: "ppm" } };
+  return hass;
+}
+const group = (card, key) => $(card, `.tray details[data-group="${key}"]`);
+const summary = (card, key) => $(card, `.tray summary[data-group="${key}"]`);
+const tapNode = (node) => {
+  pointer(node, "pointerdown", 790, 390);
+  pointer(node, "pointerup", 790, 390);
+};
+
+test("the tray groups sensors by room, collapsed, with counts", async () => {
+  const card = await make({ plan: EMPTY_PLAN() }, officeHass());
+  click($(card, "[data-action=edit]"));
+  const groups = [...card.shadowRoot.querySelectorAll(".tray details[data-group]")];
+  assert.deepEqual(groups.map((g) => g.getAttribute("data-group")), ["kitchen", "living_room", "office"]);
+  assert.ok(groups.every((g) => !g.hasAttribute("open")), "all collapsed when there are several");
+  assert.ok(summary(card, "office").textContent.includes("Office"));
+  assert.ok(summary(card, "office").textContent.includes("2"), summary(card, "office").textContent);
+  assert.deepEqual([...group(card, "office").querySelectorAll("[data-key]")].map((n) => n.getAttribute("data-key")),
+    ["d_office2", "d_office"], "items by name: Desk sensor, Office sensor");
+});
+
+test("one group starts open; sensors without a room are grouped last under the no-room name", async () => {
+  const hass = hassOf();
+  hass.entities["sensor.alex_temperature"].device_id = null;
+  hass.entities["sensor.alex_humidity"].device_id = null;
+  delete hass.entities["sensor.office_temperature"];
+  delete hass.states["sensor.office_temperature"];
+  const card = await make({ plan: planOf() }, hass);
+  click($(card, "[data-action=edit]"));
+  const groups = [...card.shadowRoot.querySelectorAll(".tray details[data-group]")];
+  assert.deepEqual(groups.map((g) => g.getAttribute("data-group")), ["none"]);
+  assert.ok(groups[0].hasAttribute("open"));
+  assert.ok(groups[0].textContent.includes(EN("card.floorplan.tray.no_room")), groups[0].textContent);
+});
+
+test("a tap on a group's summary opens it, and it stays open through a hass update", async () => {
+  const hass = officeHass();
+  const card = await make({ plan: EMPTY_PLAN() }, hass);
+  click($(card, "[data-action=edit]"));
+  tapNode(summary(card, "office"));
+  assert.ok(group(card, "office").hasAttribute("open"));
+  assert.ok(!group(card, "kitchen").hasAttribute("open"));
+  // A renamed area changes the stamp's first line: a full render.
+  card.hass = { ...hass, areas: { ...hass.areas, kitchen: { area_id: "kitchen", name: "Galley" } } };
+  assert.ok(summary(card, "kitchen").textContent.includes("Galley"), "re-rendered");
+  assert.ok(group(card, "office").hasAttribute("open"));
+  tapNode(summary(card, "office"));
+  assert.ok(!group(card, "office").hasAttribute("open"));
+  const press = new window.MouseEvent("click", { bubbles: true, composed: true, cancelable: true, detail: 0 });
+  summary(card, "office").dispatchEvent(press);
+  assert.ok(group(card, "office").hasAttribute("open"), "a keyboard click (detail 0) toggles it too");
+  assert.ok(press.defaultPrevented, "the details element does not toggle itself as well");
+});
+
+test("a group dragged onto the plan places all its sensors round the drop point, not placed", async () => {
+  const card = await make({ plan: EMPTY_PLAN() }, officeHass());
+  click($(card, "[data-action=edit]"));
+  const node = summary(card, "office");
+  const [ex, ey] = clientAt(card, 3, 2);
+  pointer(node, "pointerdown", 790, 390);
+  pointer(node, "pointermove", ex, ey);
+  pointer(node, "pointerup", ex, ey);
+  const points = card._doc.floors[0].points;
+  assert.deepEqual(points.map((p) => p.device_id).sort(), ["d_office", "d_office2"]);
+  assert.ok(points.every((p) => p.placed === false));
+  for (const p of points) assert.ok(Math.abs(Math.hypot(p.x - 3, p.y - 2) - 0.3) < 0.002, JSON.stringify(p));
+  assert.equal(group(card, "office"), null, "the group left the tray");
+  assert.ok(group(card, "kitchen"));
+});
+
+test("a corner dropped with nothing near snaps to the 5 cm grid", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  drag(card, [0, 4], [0.12, 4.33], corner(card, "living_room", 3));
+  assert.deepEqual(card._doc.floors[0].rooms[0].polygon[3], [0.1, 4.35]);
+});
+
+test("an inserted corner and the ends of a split go to the grid along their wall", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const edge = $(card, 'line.edge[data-area="kitchen"][data-edge="0"]');   // (5,0)–(8,0)
+  const [cx, cy] = clientAt(card, 6.03, 0);
+  edge.dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true, composed: true, clientX: cx, clientY: cy }));
+  assert.deepEqual(card._doc.floors[0].rooms[1].polygon[1], [6.05, 0]);
+  click($(card, '[data-action=tool][data-tool="split"]'));
+  tap(card, 2.52, 0.01);
+  tap(card, 2.52, 3.99);
+  assert.deepEqual(card._pendingSplit.a.map((v) => Math.round(v * 1e6) / 1e6), [2.5, 0]);
+  assert.deepEqual(card._pendingSplit.b.map((v) => Math.round(v * 1e6) / 1e6), [2.5, 4]);
+});
+
+const texts = (card, sel) => [...card.shadowRoot.querySelectorAll(sel)].map((n) => n.textContent);
+
+test("edit mode: a grid, every room's floor area, and the selected room's wall lengths (pl: comma)", async () => {
+  const card = await make({ plan: planOf() }, hassOf({ language: "pl" }));
+  assert.equal(card.shadowRoot.querySelectorAll("line.grid").length, 0, "no grid in view mode");
+  assert.deepEqual(texts(card, "text.dim"), [], "no dimensions in view mode");
+  click($(card, "[data-action=edit]"));
+  assert.ok(card.shadowRoot.querySelectorAll("line.grid").length > 0);
+  const m2 = at(LANGS.pl, "card.floorplan.units.m2");
+  assert.deepEqual(texts(card, "text.dim.area"), [`20,0 ${m2}`, `12,0 ${m2}`]);
+  assert.deepEqual(texts(card, "text.dim.wall"), [], "no room selected yet");
+  tap(card, 2, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  const m = at(LANGS.pl, "card.floorplan.units.m");
+  assert.deepEqual(texts(card, "text.dim.wall"), [`5,00 ${m}`, `4,00 ${m}`, `5,00 ${m}`, `4,00 ${m}`]);
+});
+
+test("while a corner is dragged its room's wall lengths follow it", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const [sx, sy] = clientAt(card, 5, 0);
+  const [ex, ey] = clientAt(card, 5.5, 0);
+  pointer(corner(card, "living_room", 1), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  assert.deepEqual(texts(card, "text.dim.wall"), ["5.50 m", "4.03 m", "5.00 m", "4.00 m"]);
+  assert.ok(texts(card, "text.dim.area").includes("21.0 m²"), texts(card, "text.dim.area").join(" "));
+  pointer($(card, "svg"), "pointerup", ex, ey);
+  assert.deepEqual(texts(card, "text.dim.wall"), [], "nothing selected once the drag is over");
+});

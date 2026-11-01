@@ -34,6 +34,16 @@ export const STYLE = `
   .tray h3 { margin: 0 0 6px; font-size: 13px; }
   .tray .item { padding: 6px 8px; margin-bottom: 4px; border-radius: 8px; cursor: grab;
                 border: 1px solid var(--divider-color); touch-action: none; }
+  .tray details { margin-bottom: 6px; }
+  .tray summary { padding: 4px 2px; cursor: grab; touch-action: none; font-weight: 500; }
+  .tray summary .count { color: var(--secondary-text-color); font-weight: normal; }
+  .tray details .item { margin-left: 12px; }
+  .grid { stroke: var(--primary-text-color); stroke-opacity: 0.08; stroke-width: 1;
+          vector-effect: non-scaling-stroke; pointer-events: none; }
+  .grid.minor { stroke-opacity: 0.04; }
+  .dim { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
+         pointer-events: none; }
+  .dim.wall { fill: var(--primary-color); }
   .message, .hint { padding: 0 12px 8px; color: var(--secondary-text-color); }
   .message:empty, .hint:empty { display: none; }
   .notice { padding: 16px; color: var(--secondary-text-color); }

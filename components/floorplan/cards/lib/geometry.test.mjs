@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  pointInPolygon, centroid, zoomAt, splitPolygon, joinPolygons, snapToEdge,
+  pointInPolygon, centroid, zoomAt, splitPolygon, joinPolygons, snapToEdge, polygonArea, wallLengths,
 } from './geometry.js';
 
 const L = [[3, 0], [4, 0], [4, 5], [0, 5], [0, 4], [3, 4]];
@@ -107,4 +107,16 @@ test('snapToEdge: nearest edge within tolerance', () => {
   assert.equal(r.edge, 0);
   assert.ok(Math.abs(r.pt[0] - 1) < 1e-9 && Math.abs(r.pt[1]) < 1e-9);
   assert.equal(snapToEdge(rect(0, 0, 4, 2), [1, 1], 0.05), null);
+});
+
+test('polygonArea: a rectangle and the L-shaped room, either winding', () => {
+  assert.equal(polygonArea(rect(0, 0, 4, 3)), 12);
+  assert.equal(polygonArea(L), 8);
+  assert.equal(polygonArea([...L].reverse()), 8);
+});
+
+test('wallLengths: one per wall, from each corner to the next', () => {
+  assert.deepEqual(wallLengths(rect(0, 0, 4, 3)), [4, 3, 4, 3]);
+  assert.deepEqual(wallLengths(L), [1, 5, 4, 1, 3, 4]);
+  assert.equal(wallLengths([[0, 0], [3, 4], [0, 4]])[0], 5);
 });

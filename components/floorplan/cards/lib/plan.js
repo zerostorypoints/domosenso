@@ -3,9 +3,15 @@
 // card can ignore a refused gesture without checking state. Shapes mirror tools/domosenso_cli/floorplan_doc.py.
 
 import { pointInPolygon, centroid, splitPolygon, joinPolygons } from "./geometry.js";
+import { language } from "./i18n.js";
 
 export const POINT_CLASSES = ["temperature", "humidity", "illuminance", "moisture", "carbon_dioxide", "pm25"];
+// Integrations whose entities are computed from other entities: they carry a point device_class
+// but are not a sensor in a room, and listed they made the tray too long to use.
+export const DERIVED_PLATFORMS = ["template", "statistics", "min_max", "derivative", "integration",
+  "utility_meter", "filter", "trend", "threshold", "compensation", "group"];
 export const SCHEMA_VERSION = 1;
+const SPREAD_M = 0.3;   // m: the radius sensors put down together are spread on, so none hides another
 const CARD_TYPE = "custom:floorplan-card";
 const SAME = 1e-9;   // joinPolygons compares corners with this absolute tolerance
 
@@ -49,6 +55,8 @@ function editRoom(doc, floorId, areaId, fn) {
 
 function isPointEntity(hass, entityId) {
   if (entityId.startsWith("plant.")) return true;
+  // Without a registry entry the platform is unknown: such an entity stays a candidate.
+  if (DERIVED_PLATFORMS.includes(hass.entities?.[entityId]?.platform)) return false;
   const cls = hass.states?.[entityId]?.attributes?.device_class;
   return POINT_CLASSES.includes(cls);
 }
@@ -73,19 +81,35 @@ export function candidates(hass) {
   return [...byKey.values()];
 }
 
+// n points round `pt` on a circle of SPREAD_M, the first to the right; one point is `pt` itself.
+function spread([x, y], n) {
+  if (n === 1) return [mmPt([x, y])];
+  return Array.from({ length: n }, (_, i) => mmPt([x + SPREAD_M * Math.cos((2 * Math.PI * i) / n),
+    y + SPREAD_M * Math.sin((2 * Math.PI * i) / n)]));
+}
+
+const pointOf = (c, [x, y], placed) => (c.kind === "device"
+  ? { device_id: c.key, x, y, placed }
+  : { entity_id: c.key, x, y, placed });
+const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+
 export function autoPlace(doc, hass, floorId) {
   const floor = doc.floors[floorIndex(doc, floorId)];
   if (!floor) return doc;
   const placed = new Set(doc.floors.flatMap((f) => f.points.map(keyOf)));
-  const added = [];
+  const perRoom = new Map();
   for (const c of candidates(hass)) {
     if (placed.has(c.key)) continue;
     const room = floor.rooms.find((r) => r.area_id === c.area_id);
     if (!room) continue;
-    const [x, y] = mmPt(centroid(room.polygon));
-    added.push(c.kind === "device"
-      ? { device_id: c.key, x, y, placed: false }
-      : { entity_id: c.key, x, y, placed: false });
+    if (!perRoom.has(room)) perRoom.set(room, []);
+    perRoom.get(room).push(c);
+  }
+  const added = [];
+  for (const [room, cs] of perRoom) {
+    const sorted = [...cs].sort(byKey);
+    const at = spread(centroid(room.polygon), sorted.length);
+    sorted.forEach((c, i) => added.push(pointOf(c, at[i], false)));
   }
   if (!added.length) return doc;
   return editFloor(doc, floorId, (f) => ({ ...f, points: [...f.points, ...added] }));
@@ -94,6 +118,45 @@ export function autoPlace(doc, hass, floorId) {
 export function tray(doc, hass) {
   const placed = new Set(doc.floors.flatMap((f) => f.points.map(keyOf)));
   return candidates(hass).filter((c) => !placed.has(c.key));
+}
+
+export function candidateName(hass, c) {
+  if (c.kind === "device") {
+    const dev = hass.devices?.[c.key];
+    return dev?.name_by_user || dev?.name || c.key;
+  }
+  return hass.states?.[c.key]?.attributes?.friendly_name || c.key;
+}
+
+// Which room a candidate belongs in, for grouping the tray: its area, else for a plant the room the
+// plants component gives it (domosenso_room, or per language domosenso_rooms), else null.
+export function roomHint(hass, candidate) {
+  if (candidate.area_id) {
+    return { key: candidate.area_id, name: hass.areas?.[candidate.area_id]?.name || candidate.area_id };
+  }
+  for (const id of candidate.entities) {
+    if (!id.startsWith("plant.")) continue;
+    const attrs = hass.states?.[id]?.attributes || {};
+    const text = attrs.domosenso_rooms?.[language(hass)] || attrs.domosenso_room;
+    if (text) return { key: `label:${text}`, name: String(text) };
+  }
+  return null;
+}
+
+// The tray as groups by room hint, by name; the group without a room ("none", name null) last.
+export function trayGroups(doc, hass) {
+  const groups = new Map();
+  for (const c of tray(doc, hass)) {
+    const hint = roomHint(hass, c) ?? { key: "none", name: null };
+    if (!groups.has(hint.key)) groups.set(hint.key, { ...hint, items: [] });
+    groups.get(hint.key).items.push(c);
+  }
+  const names = (a, b) => a.localeCompare(b, language(hass));
+  for (const g of groups.values()) {
+    g.items.sort((a, b) => names(candidateName(hass, a), candidateName(hass, b)) || byKey(a, b));
+  }
+  return [...groups.values()].sort((a, b) => (a.name === null) - (b.name === null)
+    || (a.name !== null && names(a.name, b.name)));
 }
 
 export function roomOf(doc, floorId, pt) {
@@ -112,10 +175,18 @@ export function roomLabel(room, hass) {
 export function addPoint(doc, floorId, candidate, pt) {
   const [x, y] = mmPt(pt);
   if (doc.floors.some((f) => f.points.some((p) => keyOf(p) === candidate.key))) return null;
-  const point = candidate.kind === "device"
-    ? { device_id: candidate.key, x, y, placed: true }
-    : { entity_id: candidate.key, x, y, placed: true };
+  const point = pointOf(candidate, [x, y], true);
   return editFloor(doc, floorId, (floor) => ({ ...floor, points: [...floor.points, point] }));
+}
+
+// A tray group dropped on the plan: rough positions round the drop point, fine-tuned one by one.
+export function addPoints(doc, floorId, cands, pt) {
+  const onPlan = new Set(doc.floors.flatMap((f) => f.points.map(keyOf)));
+  if (!cands.length || cands.some((c) => onPlan.has(c.key))) return null;
+  const sorted = [...cands].sort(byKey);
+  const at = spread(pt, sorted.length);
+  const points = sorted.map((c, i) => pointOf(c, at[i], false));
+  return editFloor(doc, floorId, (floor) => ({ ...floor, points: [...floor.points, ...points] }));
 }
 
 export function movePoint(doc, floorId, key, pt) {
