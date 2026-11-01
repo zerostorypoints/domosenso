@@ -260,8 +260,8 @@ class FloorplanCard extends HTMLElement {
   _wantStats() {
     const map = this._map();
     if (!this._day || !map || map.cls === "lamps") return;
-    const ids = [...new Set(this._floor.points.filter((p) => p.placed)
-      .flatMap((p) => Object.values(this._readings(p))))].sort().join(",");
+    // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out.
+    const ids = [...new Set(this._floor.points.flatMap((p) => Object.values(this._readings(p))))].sort().join(",");
     if (!ids || (ids === this._statIds && Date.now() - this._statsAt < STATS_MS)) return;
     this._fetchStats(ids);
   }

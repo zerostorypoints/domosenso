@@ -1312,14 +1312,15 @@ test("maps: 24 h shows each reading's figure from the hourly statistics", async 
     "sensor.alex_temperature": rows([[20, 18, 22], [22, 21, 24]]),
     "sensor.alex_co2": rows([[700, 500, 1200]]),
   } } });
-  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate"] }, hass);
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), { ...pt("d_office", 6, 1), placed: false }]), layers: ["climate"] }, hass);
   await settle();
   click($(card, '.bar [data-action=day][data-day="1"]'));
   await settle();
   const call = hass.calls.find((c) => c.type === "recorder/statistics_during_period");
   assert.deepEqual(call.types, ["mean", "min", "max"]);
   assert.equal(call.period, "hour");
-  assert.deepEqual(call.statistic_ids, ["sensor.alex_co2", "sensor.alex_humidity", "sensor.alex_temperature"]);
+  assert.deepEqual(call.statistic_ids, ["sensor.alex_co2", "sensor.alex_humidity", "sensor.alex_temperature",
+    "sensor.office_temperature"], "an unplaced point's too: its label shows the figure");
   assert.ok(Math.abs(Date.parse(call.start_time) - (Date.now() - 24 * 3600e3)) < 60e3);
   assert.deepEqual(lines(card, "d_climate"), [["21.0 °C", true], ["1200 ppm", false]],
     "temperature: the mean; CO2: the highest; humidity without statistics left out");
