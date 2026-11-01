@@ -178,5 +178,4 @@ threshold of 2 mol). Plant sensors always stay with their plants (no free probe)
 
 ## Open questions
 
-- Is `lovelace/config/save` admin-only in 2026.9 (verify in HA source)?
 - Name of the instance file and of the command that writes it.

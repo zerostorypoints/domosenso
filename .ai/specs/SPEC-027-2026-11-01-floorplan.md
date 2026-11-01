@@ -1,0 +1,158 @@
+# SPEC-027: Floor plan: rooms and sensor positions (floorplan 0.1.0, a `domosenso floorplan` command, ramka)
+
+- Status: draft 2026-11-01
+- Source: the maintainer's design, approved 2026-11-01:
+  [docs/superpowers/specs/2026-11-01-floorplan-design.md](../../docs/superpowers/specs/2026-11-01-floorplan-design.md).
+  This spec states the contract; the why and the next project (light and heat map) are there.
+- Decisions this spec adds to the design are marked **Decision**; inference is marked as such.
+
+## Goal
+
+A home gets:
+
+1. its rooms as polygons in metres, each linked to a Home Assistant area, one plan per floor;
+2. a position for each sensor that measures a place (temperature, humidity, light, soil, air,
+   plants), placed by dragging on a zoomable plan in Home Assistant;
+3. the plan made from an architect's plan or a photo of one, traced by the agent during onboarding
+   (or later), the image kept only in the home repository;
+4. the plan in the home repository, written from and back to Home Assistant by one command;
+5. optionally, the plan on the Ramka as a second view of the controls, reached with a sideways swipe.
+
+Non-goals (from the design): the light and heat map, DLI, "where to place" (next spec); automations
+or templates by position; tapping a room; walls, doors, windows, furniture; several floors at once.
+
+## Devices
+
+None required. Points come from devices the home already has. Verified on one home: Mi Flora plant
+sensors, room thermometers, an air monitor *(the shape is verified; the editor is not built yet)*.
+
+## Integrations
+
+Core only: `frontend`/`lovelace` (a storage-mode dashboard), the area and floor registries. No
+custom integration, no HACS.
+
+**Decision:** the plan is the config of a storage-mode Lovelace dashboard with url path
+`floorplan`, created by `domosenso floorplan push` (the CLI already creates storage dashboards:
+`probe`). Writing needs an administrator (`lovelace/config/save` carries `@websocket_api.require_admin`,
+verified in HA 2026.9.2's `components/lovelace/websocket.py` on 2026-11-01). Every user can read it (`lovelace/config`), the Ramka's kiosk user included.
+
+## The plan document (`schemas/floorplan.schema.json`)
+
+```json
+{
+  "schema": 1,
+  "floors": [{
+    "floor_id": "ground",                         // HA floor id, or null in a home without floors
+    "rooms":  [{"area_id": "living_room", "polygon": [[0,0],[5.4,0],[5.4,7.6],[0,7.6]]}],
+    "points": [
+      {"device_id": "a1b2…", "x": 0.6, "y": 0.8, "placed": true},
+      {"entity_id": "plant.monstera", "x": 2.7, "y": 3.8, "placed": false}
+    ]
+  }],
+  "source": {"image": "domosenso/floorplan/ground.jpg", "metres_per_px": 0.0123, "rotation_deg": 0,
+             "offset_px": [40, 30]}                // only in the home repository's file; optional
+}
+```
+
+- Coordinates in metres, origin top left, y down. A room's name is its area's name (never stored).
+- A point is a `device_id` (all of the device's point entities show on it) or an `entity_id` (an
+  entity without a device, e.g. a `plant.*`). Its room is the polygon it stands in, computed, not
+  stored.
+- `placed: false`: put at its area's room centre by the editor, not yet dragged. **Decision:** any
+  consumer that interpolates readings ignores unplaced points.
+- Point entities: `device_class` temperature, humidity, illuminance, moisture, carbon_dioxide, pm25,
+  and `plant.*`. **Decision:** a home adds others by dragging them from the tray's search.
+- Stored in the dashboard config as the `plan` key of the one `custom:floorplan-card` in its one
+  view. The repository file is the same document with `source`.
+
+## Inputs (floorplan 0.1.0)
+
+None required. **Decision:** the component has no inputs in 0.1.0; it ships cards and a skill. A
+home adds it with `domosenso add floorplan@0.1.0` and creates the plan with the skill or
+`domosenso floorplan push`.
+
+## Provides
+
+**floorplan 0.1.0**
+
+| surface | level | note |
+|---|---|---|
+| `schemas/floorplan.schema.json`, `schema: 1` | stable | a breaking change bumps `schema`; readers refuse an unknown major |
+| dashboard url path `floorplan` | stable | storage mode; one view, one `custom:floorplan-card` |
+| `custom:floorplan-card`, config `plan` (the document), `floor` (floor_id to show), `edit` (`true`: edit button shown to admins; default `true`), `values` (`true`: current readings on points; default `true`) | stable | `edit: false` for embedding (the Ramka) |
+| card behaviour: zoom (wheel, pinch, + / − / fit), pan; edit mode: drag points (sets `placed: true`), drag / add / remove room corners, split a room by a line, join two rooms, link a room to an area or create one; a tray of point entities without a position; save with `lovelace/config/save` | — | split and join change only shapes; never deletes an area or moves a device between areas |
+| skill `floorplan-from-image` (installed by `install_skills.py`), called by `onboard-home` | stable (its name) | traces rooms from an image or SVG, asks one known length for the scale, matches areas, writes `domosenso/floorplan.json` and `domosenso/floorplan/<floor>.<ext>`, then `floorplan push` |
+
+**The `domosenso floorplan` command** (COMPATIBILITY, the `domosenso` command)
+
+| command | lines |
+|---|---|
+| `floorplan pull <target> [--out <file>]` | `read floor <id> rooms <n> points <m>` per floor, `wrote <file>` (default `domosenso/floorplan.json`; keeps the file's `source`) |
+| `floorplan push <target> (--plan \| --apply [--confirm <hash>])` | `dashboard create floorplan` (when missing), `room add\|change\|remove <floor> <area_id>`, `point add\|move\|remove <floor> <device or entity id>`, `area missing <area_id>`, `hash <hash>`; apply: `backup <file>` (`.domosenso/floorplan/<target>-<timestamp>.json`), `pushed`; `nothing to push` |
+
+- `FAIL` reasons: `schema <n> not supported`, `area missing: <ids>` (a room's area is not in HA;
+  push refuses), `the plan changed: its hash is now <hash>, not <given>`, `not confirmed`, and
+  **Decision:** `changed on target since pull: <n> rooms, <m> points` when the target's plan differs
+  from the last `pull` recorded in `.domosenso/floorplan/<target>.pulled.json` (pull first; no
+  silent overwrite of a drag made in HA).
+- Production: `push production --apply` asks for the word `production`, or `--confirm <hash>`, as
+  `deploy` does. `deploy` is unchanged.
+- `domosenso.yaml`: nothing new. **Decision:** `status` classifies `domosenso/floorplan.json` and
+  `domosenso/floorplan/*` as instance (home repository layout, COMPATIBILITY, ADDITIVE-ONLY).
+
+**ramka (next minor after SPEC-026)**, only when `floorplan: true` and the dashboard exists
+
+| id | level | note |
+|---|---|---|
+| input `floorplan` (boolean, default `false`) | stable | |
+| `input_boolean.<prefix>_controls_plan` | stable | on while the controls show the plan; turned off whenever the mode leaves `controls` |
+| `corner-taps-card` swipe rule `left` / `right` on the controls page | stable | SPEC-026's thresholds; toggles the helper. **Reverses SPEC-026's non-goal** "sideways swipes on the controls", for this case only |
+| controls dashboard: the plan view embeds `custom:floorplan-card` with `edit: false`, reading the plan from `lovelace/config` `floorplan` | — | a tap anywhere returns to the controls |
+
+Consumes (ramka): the `floorplan` dashboard and the schema above.
+
+## Artifacts and ownership
+
+| artifact | layer |
+|---|---|
+| `www/domosenso/floorplan/<version>/cards/*.js`, translations | managed |
+| the `floorplan` storage dashboard in HA (`.storage/lovelace.floorplan`) | not a file the deploy carries; written by `floorplan push` and the editor |
+| `domosenso/floorplan.json`, `domosenso/floorplan/<floor>.<ext>` | instance (home repository) |
+| `.domosenso/floorplan/` (backups, the last pull) | not committed |
+
+The architect's plan never goes to Home Assistant (the maintainer: keep it for later changes, it
+need not be visible). Verified 2026-11-01: HA 2026.9.2's `ImageServeView` (`/api/image/serve/`)
+has `requires_auth = False`, so an uploaded plan would be readable without a login.
+
+## Compatibility
+
+- New component and command: additive. COMPATIBILITY gains the `floorplan` command's lines, the
+  schema, the card, the instance files.
+- ramka: additive (`floorplan` defaults to `false`); the SPEC-026 non-goal is narrowed, recorded as
+  an amendment there. Needs SPEC-026 merged first.
+- `UPGRADE.md` for ramka; `README.md` for floorplan (setup with the skill, editing, pull and push).
+
+## Tests
+
+- pytest: `tests/test_floorplan_schema.py` (valid and invalid documents, unknown `schema`),
+  `tests/test_cli_floorplan.py` with `tests/fakes.py` (pull writes the file and keeps `source`;
+  push plan lines for add / change / remove / move; missing area fails; the changed-on-target guard;
+  dashboard created when missing; backup written; production confirm).
+- `node --test`: `floorplan-card.test.mjs` (point-in-polygon room, zoom keeps the point under the
+  cursor, drag sets `placed: true`, split and join, unplaced points at room centres, edit hidden
+  for non-admins and with `edit: false`, save payload equals the document), `no-literals.test.mjs`.
+- ramka: `corner-taps-card` left / right on controls; the helper reset on leaving controls;
+  `ha-check ramka` with `floorplan: true`.
+- `catalog_check --strict`, `ha-check floorplan`.
+- Staging of the home that asked: its hand-drawn plan converted by the skill, pushed, dragged on a
+  phone, pulled back equal; the Ramka swipe on the tablet simulator.
+
+## Out of scope
+
+The design's non-goals; the overlay layer API other components will draw with (**Decision:**
+specified with the light and heat map, its first user, not here; the Ramka needs only the card).
+
+## Open questions
+
+- Pinch zoom inside the Companion app's webview on the Ramka: the plan view is read-only, so zoom
+  there is a nice-to-have *(inference)*.
