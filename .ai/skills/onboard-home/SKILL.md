@@ -149,7 +149,7 @@ show them in the conversation only.
 ### 3.1 The floor plan (optional)
 
 Offer it once, after the integrations: a plan of the home with the sensors and plants where they
-stand, drawn by the `floorplan` component's card in Home Assistant (SPEC-027). It needs their
+stand, drawn by the `floorplan` component's card in Home Assistant (SPEC-028). It needs their
 architect's plan, a photo of a drawing or an SVG, and the rooms existing as areas (or their yes to
 create them). Skip it if they have no drawing or do not want it; it can be done later.
 

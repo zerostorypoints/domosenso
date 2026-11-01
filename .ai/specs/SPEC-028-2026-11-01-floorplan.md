@@ -1,4 +1,4 @@
-# SPEC-027: Floor plan: rooms and sensor positions (floorplan 0.1.0, a `domosenso floorplan` command, ramka)
+# SPEC-028: Floor plan: rooms and sensor positions (floorplan 0.1.0, a `domosenso floorplan` command, ramka)
 
 - Status: approved 2026-11-01 by the maintainer
 - Source: the maintainer's design, approved 2026-11-01:

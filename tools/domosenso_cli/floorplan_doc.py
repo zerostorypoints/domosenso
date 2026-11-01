@@ -1,4 +1,4 @@
-"""The floor plan document (SPEC-027): validation, its place in a dashboard config, a canonical
+"""The floor plan document (SPEC-028): validation, its place in a dashboard config, a canonical
 form for comparing and the diff `floorplan push` prints."""
 from __future__ import annotations
 

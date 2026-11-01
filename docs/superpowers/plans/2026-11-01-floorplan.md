@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3 (`tools/domosenso_cli`, pytest, jsonschema), plain ES-module cards without a build step (`node --test`, happy-dom), Jinja-style Ramka templates (`[[ ]]`), Home Assistant 2026.9.
 
-**Spec:** `.ai/specs/SPEC-027-2026-11-01-floorplan.md` (approved 2026-11-01); design `docs/superpowers/specs/2026-11-01-floorplan-design.md`.
+**Spec:** `.ai/specs/SPEC-028-2026-11-01-floorplan.md` (approved 2026-11-01); design `docs/superpowers/specs/2026-11-01-floorplan-design.md`.
 
 ## Global Constraints
 
@@ -64,7 +64,7 @@
 - [ ] **Step 2: Run** `uv run pytest tests/test_floorplan_schema.py -q`. Expected: FAIL (module missing).
 - [ ] **Step 3: Write the schema** (draft 2020-12, `additionalProperties: false` throughout, a point `oneOf` `device_id` / `entity_id`, `floor_id` string or null, `source` optional with `image`, `metres_per_px`, `rotation_deg`, `offset_px`), **then implement `floorplan_doc.py`** with the signatures above.
 - [ ] **Step 4: Run** the same tests. Expected: PASS.
-- [ ] **Step 5: Commit** `floorplan: the plan document's schema and model (SPEC-027)`.
+- [ ] **Step 5: Commit** `floorplan: the plan document's schema and model (SPEC-028)`.
 
 ### Task 2: `domosenso floorplan pull | push`
 
@@ -76,7 +76,7 @@
 
 **Interfaces:**
 - Consumes: Task 1's `validate`, `extract`, `dashboard_config`, `without_source`, `canonical`, `diff`, `URL_PATH`; `cmd_deploy.connect(t)`; `snapshot.pick_target`; `HomeConfig.load`.
-- Produces: the command lines in SPEC-027 (`read floor <id> rooms <n> points <m>`, `wrote <file>`, `dashboard create floorplan`, `room …`, `point …`, `area missing <area_id>`, `hash <hash>`, `backup <file>`, `pushed`, `nothing to push`) and the files `domosenso/floorplan.json`, `.domosenso/floorplan/<target>.pulled.json`, `.domosenso/floorplan/<target>-<YYYYmmddTHHMMSSZ>.json`.
+- Produces: the command lines in SPEC-028 (`read floor <id> rooms <n> points <m>`, `wrote <file>`, `dashboard create floorplan`, `room …`, `point …`, `area missing <area_id>`, `hash <hash>`, `backup <file>`, `pushed`, `nothing to push`) and the files `domosenso/floorplan.json`, `.domosenso/floorplan/<target>.pulled.json`, `.domosenso/floorplan/<target>-<YYYYmmddTHHMMSSZ>.json`.
 - Arguments: `floorplan (pull|push) <target> [--out <file>] [--plan | --apply] [--confirm <hash>]`. `--plan` / `--apply` are required with `push` and refused with `pull`.
 - Hash: `sha256(canonical(target_doc or {}) + b"\0" + canonical(new))[:12]`.
 
@@ -94,12 +94,12 @@
 - [ ] **Step 2: Run** `uv run pytest tests/test_cli_floorplan.py -q`. Expected: FAIL.
 - [ ] **Step 3: Implement** `add_arguments(parser)` and `run(args, rep) -> int` in `floorplan.py`, plus the `confirm_production` refactor. Read the areas with `config/area_registry/list`, and the dashboards with `lovelace/dashboards/list` and `lovelace/config` (`url_path=floorplan`).
 - [ ] **Step 4: Run** `uv run pytest tests/test_cli_floorplan.py tests/test_cli_deploy.py -q`. Expected: PASS.
-- [ ] **Step 5: Commit** `domosenso floorplan pull and push (SPEC-027)`.
+- [ ] **Step 5: Commit** `domosenso floorplan pull and push (SPEC-028)`.
 
 ### Task 3: The component and its geometry library
 
 **Files:**
-- Create: `components/floorplan/component.yaml` (id `floorplan`, version `0.1.0`, no `inputs`, `integrations: [{name: lovelace, source: core}]`, `host: {installs: [container, haos], ha_min: "2026.9"}`, `install_path: www/domosenso/floorplan/<version>/`, `dashboard_cards: [cards/floorplan-card.js]`, `provides` as SPEC-027's floorplan table with stability, `consumes: []`, `local_only: true`)
+- Create: `components/floorplan/component.yaml` (id `floorplan`, version `0.1.0`, no `inputs`, `integrations: [{name: lovelace, source: core}]`, `host: {installs: [container, haos], ha_min: "2026.9"}`, `install_path: www/domosenso/floorplan/<version>/`, `dashboard_cards: [cards/floorplan-card.js]`, `provides` as SPEC-028's floorplan table with stability, `consumes: []`, `local_only: true`)
 - Create: `components/floorplan/translations/{en,de,pl}.json` (`meta.description`, `card.*`)
 - Create: `components/floorplan/cards/lib/geometry.js`, `components/floorplan/cards/testing/dom-env.mjs` (copied from ramka's)
 - Test: `components/floorplan/cards/lib/geometry.test.mjs`
@@ -122,7 +122,7 @@
 - [ ] **Step 2: Run** `node --test components/floorplan/cards/lib/geometry.test.mjs`. Expected: FAIL.
 - [ ] **Step 3: Implement** `geometry.js`.
 - [ ] **Step 4: Run** the same tests, then `uv run tools/catalog_check.py --strict`. Expected: PASS, and `fresh: 0 errors` from the checker.
-- [ ] **Step 5: Commit** `floorplan 0.1.0: the component and its geometry (SPEC-027)`.
+- [ ] **Step 5: Commit** `floorplan 0.1.0: the component and its geometry (SPEC-028)`.
 
 ### Task 4: The plan model in the card
 
@@ -154,7 +154,7 @@
 - [ ] **Step 2: Run** `node --test components/floorplan/cards/lib/plan.test.mjs`. Expected: FAIL.
 - [ ] **Step 3: Implement** `plan.js` and `i18n.js`.
 - [ ] **Step 4: Run** the same tests. Expected: PASS.
-- [ ] **Step 5: Commit** `floorplan: the plan model of the card (SPEC-027)`.
+- [ ] **Step 5: Commit** `floorplan: the plan model of the card (SPEC-028)`.
 
 ### Task 5: `floorplan-card`
 
@@ -195,7 +195,7 @@
 - [ ] **Step 2: Run** `node --test components/floorplan/cards/`. Expected: FAIL.
 - [ ] **Step 3: Implement** `floorplan-card.js`; every visible word comes from `translations/*.json` `card.floorplan.*` (en, de, pl).
 - [ ] **Step 4: Run** `node --test components/floorplan/cards/` and `uv run tools/catalog_check.py --strict`. Expected: PASS, `fresh: 0 errors`.
-- [ ] **Step 5: Commit** `floorplan: the card, view and edit (SPEC-027)`.
+- [ ] **Step 5: Commit** `floorplan: the card, view and edit (SPEC-028)`.
 
 ### Task 6: The skill, onboarding and the contract docs
 
@@ -207,7 +207,7 @@
   - the `domosenso` command lines: `floorplan pull|push`, with its lines and FAIL reasons;
   - home repository layout: `domosenso/floorplan.json`, `domosenso/floorplan/<floor>.<ext>`;
   - a new row: `schemas/floorplan.schema.json`, `schema: 1`, STABLE.
-- Modify: `.ai/specs/SPEC-027-2026-11-01-floorplan.md`: the rulings above, as `Amendment 1 (planning)`
+- Modify: `.ai/specs/SPEC-028-2026-11-01-floorplan.md`: the rulings above, as `Amendment 1 (planning)`
 - Test: `uv run tools/agents_check.py` and `uv run tools/install_skills.py --check` (the skill is listed)
 
 **The skill's steps** (write them as the SKILL.md body, English, with the onboard-home skill's rules on writes and privacy):
@@ -220,7 +220,7 @@
 
 - [ ] **Step 1: Write the skill and the docs.**
 - [ ] **Step 2: Run** `uv run tools/agents_check.py && uv run tools/install_skills.py --check`. Expected: `ok` from both.
-- [ ] **Step 3: Commit** `floorplan: the floorplan-from-image skill, onboarding step, contract docs (SPEC-027)`.
+- [ ] **Step 3: Commit** `floorplan: the floorplan-from-image skill, onboarding step, contract docs (SPEC-028)`.
 
 ### Task 7: The Ramka's plan view
 
@@ -239,7 +239,7 @@
   - a new section, visible when the mode is `controls` and the helper is on, holds `custom:floorplan-card` with `edit: false`. A tap there already runs `script.<prefix>_show_controls` (the existing tap rule); with the input on, that script also turns the helper off.
   - the floorplan card's resource is in the home's resources once the component is added. The Ramka renders nothing for it.
 - Modify: `components/ramka/UPGRADE.md`: an `Unreleased` entry ("New, optional: `floorplan: true` …; needs `floorplan` added and its dashboard pushed").
-- Modify: `.ai/specs/SPEC-026-2026-11-01-ramka-pause-and-views.md`: amendment narrowing the non-goal "sideways swipes on the controls", pointing at SPEC-027.
+- Modify: `.ai/specs/SPEC-026-2026-11-01-ramka-pause-and-views.md`: amendment narrowing the non-goal "sideways swipes on the controls", pointing at SPEC-028.
 - Create: `tests/fixtures/ramka-floorplan.yaml` (the demo inputs plus `floorplan: true`)
 - Test: `tests/test_ramka_render.py`:
   - `test_floorplan_off_renders_as_before`: rendered output byte-equal to the output without the key;
@@ -249,7 +249,7 @@
 - [ ] **Step 2: Run** `uv run pytest tests/test_ramka_render.py -q -k floorplan`. Expected: FAIL.
 - [ ] **Step 3: Implement** the template and manifest changes.
 - [ ] **Step 4: Run** `uv run pytest tests/test_ramka_render.py -q`, `INPUTS=tests/fixtures/ramka-floorplan.yaml tools/ha-check.sh ramka` and `tools/ha-check.sh ramka`. Expected: PASS; `config ok` twice.
-- [ ] **Step 5: Commit** `ramka: the floor plan as a second view of the controls (SPEC-027)`.
+- [ ] **Step 5: Commit** `ramka: the floor plan as a second view of the controls (SPEC-028)`.
 
 ### Task 8: Whole check, then staging on the home that asked
 

@@ -5,7 +5,7 @@ description: Trace the rooms of a home from the owner's floor-plan image (an arc
 
 # floorplan-from-image
 
-Makes the plan that the `floorplan` component's card draws (SPEC-027). The person running it owns
+Makes the plan that the `floorplan` component's card draws (SPEC-028). The person running it owns
 the home and its Home Assistant; talk to them in their language, files stay English. It runs inside
 the **home repository**, not in the catalog checkout. Called from `onboard-home` step 3.1, or
 alone when a home already has `floorplan` added (`domosenso add floorplan@<version>`).
@@ -179,5 +179,5 @@ Tell the owner, in their language:
 ## Not ready
 
 - The trace is by eye, to a few percent; walls are straight lines, curved walls become corners.
-- One floor per run; no doors, windows or furniture (SPEC-027 non-goals).
+- One floor per run; no doors, windows or furniture (SPEC-028 non-goals).
 - Not tried on a PDF with several plans on one page: ask them to crop it.

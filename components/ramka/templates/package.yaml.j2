@@ -380,7 +380,7 @@ input_boolean:
     name: [[ named(' paused') ]]
     icon: mdi:pause
   [%- if inputs.floorplan | default(false) %]
-  # The controls' second view (SPEC-027): on, the floor plan shows instead of the controls. Not
+  # The controls' second view (SPEC-028): on, the floor plan shows instead of the controls. Not
   # restored: a restart opens on the controls.
   [[ p ]]_controls_plan:
     name: [[ named(' controls plan') ]]
@@ -995,7 +995,7 @@ script:
         data:
           option: controls
       [%- if inputs.floorplan | default(false) %]
-      # A tap on the plan comes here: back to the controls (SPEC-027).
+      # A tap on the plan comes here: back to the controls (SPEC-028).
       - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.[[ p ]]_controls_plan
@@ -1288,7 +1288,7 @@ script:
               duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
 [%- if inputs.floorplan | default(false) %]
 
-  # A sideways swipe on the controls: the plan instead of the controls, and back (SPEC-027).
+  # A sideways swipe on the controls: the plan instead of the controls, and back (SPEC-028).
   [[ p ]]_controls_plan_toggle:
     alias: [[ named(' controls plan toggle') ]]
     icon: mdi:swap-horizontal
@@ -2008,7 +2008,7 @@ automation:
 
   - id: [[ p ]]_controls_plan_reset
     alias: [[ named(' controls plan reset') ]]
-    description: "The mode left controls: the plan is off, so the next controls open on the controls (SPEC-027)."
+    description: "The mode left controls: the plan is off, so the next controls open on the controls (SPEC-028)."
     mode: single
     triggers:
       - trigger: state

@@ -1,4 +1,4 @@
-// A floor plan of the home (SPEC-027): the rooms of one floor as polygons in metres, each labelled
+// A floor plan of the home (SPEC-028): the rooms of one floor as polygons in metres, each labelled
 // with its area's name, and the sensors and plants at their positions with their current readings.
 // Wheel, pinch and the + / − / fit buttons zoom; dragging the background pans. In view mode nothing
 // reacts to a tap, so the card can sit on a wall tablet.

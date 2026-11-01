@@ -1,4 +1,4 @@
-"""`domosenso floorplan pull | push` (SPEC-027): the floor plan between the `floorplan` storage
+"""`domosenso floorplan pull | push` (SPEC-028): the floor plan between the `floorplan` storage
 dashboard in Home Assistant and `domosenso/floorplan.json` in the home repository.
 
 The editor in Home Assistant saves into the dashboard, so the repository file is a copy that `pull`

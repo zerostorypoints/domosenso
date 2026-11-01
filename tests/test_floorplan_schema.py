@@ -1,4 +1,4 @@
-"""The floor plan document: schema, dashboard embedding, canonical form and diff (SPEC-027)."""
+"""The floor plan document: schema, dashboard embedding, canonical form and diff (SPEC-028)."""
 import copy
 
 import pytest
