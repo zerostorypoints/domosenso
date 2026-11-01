@@ -1,6 +1,6 @@
 # SPEC-027: Floor plan: rooms and sensor positions (floorplan 0.1.0, a `domosenso floorplan` command, ramka)
 
-- Status: draft 2026-11-01
+- Status: approved 2026-11-01 by the maintainer
 - Source: the maintainer's design, approved 2026-11-01:
   [docs/superpowers/specs/2026-11-01-floorplan-design.md](../../docs/superpowers/specs/2026-11-01-floorplan-design.md).
   This spec states the contract; the why and the next project (light and heat map) are there.
