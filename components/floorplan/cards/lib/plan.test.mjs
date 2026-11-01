@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
+  extract, addPoint,
 } from "./plan.js";
 import { joinPolygons, centroid } from "./geometry.js";
 
@@ -182,4 +183,22 @@ test("withPlan replaces only the card's plan", () => {
   assert.equal(out.extra, 1);
   assert.deepEqual(out.views[0], cfg.views[0]);
   assert.deepEqual(cfg.views[1].cards[0].plan, { schema: 1, floors: [] }, "input untouched");
+});
+
+test("extract returns the card's plan from a dashboard config, or null", () => {
+  const plan = doc();
+  const config = { views: [{ cards: [{ type: "markdown" }, { type: "custom:floorplan-card", plan }] }] };
+  assert.equal(extract(config), plan);
+  assert.equal(extract({ views: [{ cards: [{ type: "custom:floorplan-card" }] }] }), null);
+  assert.equal(extract({ views: [] }), null);
+  assert.equal(extract(null), null);
+});
+
+test("addPoint puts a tray candidate on the floor as placed; refuses one already there", () => {
+  const d = addPoint(doc(), "ground", { key: "d_temp", kind: "device" }, [1, 2]);
+  assert.deepEqual(d.floors[0].points, [{ device_id: "d_temp", x: 1, y: 2, placed: true }]);
+  const e = addPoint(d, "ground", { key: "plant.monstera", kind: "entity" }, [3, 1]);
+  assert.deepEqual(e.floors[0].points[1], { entity_id: "plant.monstera", x: 3, y: 1, placed: true });
+  assert.equal(addPoint(e, "ground", { key: "d_temp", kind: "device" }, [2, 2]), null);
+  assert.equal(addPoint(e, "upstairs", { key: "d_light", kind: "device" }, [2, 2]), null);
 });

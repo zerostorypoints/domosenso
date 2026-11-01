@@ -1,0 +1,397 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { shadowText } from "./testing/dom-env.mjs";
+import { withPlan } from "./lib/plan.js";
+
+await import("./floorplan-card.js");
+const load = (lang) => JSON.parse(readFileSync(new URL(`../translations/${lang}.json`, import.meta.url), "utf8"));
+const LANGS = { en: load("en"), de: load("de"), pl: load("pl") };
+const at = (dict, key) => key.split(".").reduce((node, part) => node?.[part], dict);
+const EN = (key) => at(LANGS.en, key);
+
+const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+
+// The demo home: a living room and a kitchen side by side, an office upstairs.
+const planOf = (points = []) => ({
+  schema: 1,
+  floors: [{
+    floor_id: "ground",
+    rooms: [
+      { area_id: "living_room", polygon: sq(0, 0, 5, 4) },
+      { area_id: "kitchen", polygon: sq(5, 0, 3, 4) },
+    ],
+    points,
+  }],
+});
+const dashboardOf = (plan) => ({
+  title: "Floor plan",
+  views: [{ path: "plan", type: "panel", cards: [{ type: "custom:floorplan-card", ...(plan ? { plan } : {}) }] }],
+});
+
+// A fake hass whose callWS records every call and answers from `answers` (a function or a value per type).
+function hassOf({ admin = true, language = "en", dashboard, answers = {} } = {}) {
+  const calls = [];
+  return {
+    calls,
+    language,
+    locale: { language },
+    user: { is_admin: admin },
+    areas: {
+      living_room: { area_id: "living_room", name: "Living room" },
+      kitchen: { area_id: "kitchen", name: "Kitchen" },
+      office: { area_id: "office", name: "Office" },
+    },
+    floors: {},
+    devices: {
+      d_climate: { id: "d_climate", name: "Climate sensor", area_id: "living_room" },
+      d_office: { id: "d_office", name: "Office sensor", area_id: "office" },
+    },
+    entities: {
+      "sensor.alex_temperature": { entity_id: "sensor.alex_temperature", device_id: "d_climate" },
+      "sensor.alex_humidity": { entity_id: "sensor.alex_humidity", device_id: "d_climate" },
+      "sensor.office_temperature": { entity_id: "sensor.office_temperature", device_id: "d_office" },
+      "plant.monstera": { entity_id: "plant.monstera", device_id: null, area_id: "kitchen" },
+    },
+    states: {
+      "sensor.alex_temperature": { state: "21.5", attributes: { device_class: "temperature", unit_of_measurement: "°C" } },
+      "sensor.alex_humidity": { state: "48", attributes: { device_class: "humidity", unit_of_measurement: "%" } },
+      "sensor.office_temperature": { state: "19", attributes: { device_class: "temperature", unit_of_measurement: "°C" } },
+      "plant.monstera": { state: "ok", attributes: { friendly_name: "Monstera" } },
+    },
+    async callWS(msg) {
+      calls.push(msg);
+      const answer = answers[msg.type];
+      if (typeof answer === "function") return answer(msg);
+      if (answer !== undefined) return answer;
+      if (msg.type === "lovelace/config") {
+        if (!dashboard) throw { code: "config_not_found", message: "not found" };
+        return structuredClone(dashboard);
+      }
+      return null;
+    },
+  };
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+const RECT = { left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400, x: 0, y: 0 };
+
+async function make(config, hass) {
+  const card = document.createElement("floorplan-card");
+  document.body.appendChild(card);
+  card.setConfig(config);
+  card.hass = hass;
+  await settle();
+  card.shadowRoot.querySelector("svg").getBoundingClientRect = () => RECT;
+  return card;
+}
+const $ = (card, sel) => card.shadowRoot.querySelector(sel);
+const click = (node) => node.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
+const pointer = (node, type, x, y, id = 1) => node.dispatchEvent(new window.PointerEvent(type, {
+  bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: id, button: 0,
+}));
+// The plan point under a client point, from the svg's viewBox and the rectangle it fills (meet).
+function planAt(card, cx, cy) {
+  const [x, y, w, h] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  const s = Math.min(RECT.width / w, RECT.height / h);
+  return [x + (cx - (RECT.width - w * s) / 2) / s, y + (cy - (RECT.height - h * s) / 2) / s];
+}
+function clientAt(card, px, py) {
+  const [x, y, w, h] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  const s = Math.min(RECT.width / w, RECT.height / h);
+  return [(px - x) * s + (RECT.width - w * s) / 2, (py - y) * s + (RECT.height - h * s) / 2];
+}
+
+test("registers once and offers itself in the picker from translations", () => {
+  assert.ok(customElements.get("floorplan-card"));
+  const entries = window.customCards.filter((c) => c.type === "floorplan-card");
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].name, EN("card.floorplan.name"));
+});
+
+test("loads the plan from the dashboard when config has none", async () => {
+  const hass = hassOf({ dashboard: dashboardOf(planOf()) });
+  const card = await make({}, hass);
+  assert.deepEqual(hass.calls[0], { type: "lovelace/config", url_path: "floorplan" });
+  assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
+  const text = shadowText(card);
+  assert.ok(text.includes("Living room") && text.includes("Kitchen"), text);
+});
+
+test("a plan in the config is drawn without asking the dashboard", async () => {
+  const hass = hassOf();
+  const card = await make({ plan: planOf() }, hass);
+  assert.equal(hass.calls.length, 0);
+  assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
+});
+
+for (const [lang, dict] of Object.entries(LANGS)) {
+  test(`no plan message in ${lang}`, async () => {
+    const noDashboard = await make({}, hassOf({ language: lang }));
+    assert.ok(shadowText(noDashboard).includes(at(dict, "card.floorplan.no_plan")), shadowText(noDashboard));
+    const noPlan = await make({}, hassOf({ language: lang, dashboard: dashboardOf(null) }));
+    assert.ok(shadowText(noPlan).includes(at(dict, "card.floorplan.no_plan")));
+    assert.equal(noPlan.shadowRoot.querySelector("[data-action=edit]"), null);
+  });
+}
+
+test("an unknown schema is refused with a message", async () => {
+  const card = await make({ plan: { schema: 2, floors: [] } }, hassOf());
+  assert.ok(shadowText(card).includes(EN("card.floorplan.unsupported")), shadowText(card));
+  assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 0);
+});
+
+test("non-admin has no edit button", async () => {
+  const card = await make({ plan: planOf() }, hassOf({ admin: false }));
+  assert.equal($(card, "[data-action=edit]"), null);
+  assert.ok($(card, "[data-action=zoom_in]"));
+});
+
+test("edit: false hides it for an admin", async () => {
+  const admin = await make({ plan: planOf() }, hassOf());
+  assert.ok($(admin, "[data-action=edit]"));
+  const embedded = await make({ plan: planOf(), edit: false }, hassOf());
+  assert.equal($(embedded, "[data-action=edit]"), null);
+});
+
+test("view mode: a tap on a room selects nothing and changes nothing", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  const room = $(card, "polygon.room");
+  pointer(room, "pointerdown", 100, 100);
+  pointer(room, "pointerup", 100, 100);
+  assert.equal(card.shadowRoot.querySelector(".selected"), null);
+  assert.equal($(card, ".area-panel select"), null);
+});
+
+test("entering edit mode puts unplaced points at their room's centre", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const points = card._doc.floors[0].points;
+  assert.deepEqual(points.map((p) => [p.device_id ?? p.entity_id, p.x, p.y, p.placed]), [
+    ["plant.monstera", 6.5, 2, false],
+    ["d_climate", 2.5, 2, false],
+  ]);
+  assert.equal(card.shadowRoot.querySelectorAll("g.marker.unplaced").length, 2);
+});
+
+test("drag sets placed and moves the marker", async () => {
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: false }]) }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const marker = $(card, 'g.marker[data-key="d_climate"]');
+  const [sx, sy] = clientAt(card, 1, 1);
+  const [ex, ey] = clientAt(card, 3, 2.5);
+  pointer(marker, "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+  const point = card._doc.floors[0].points.find((p) => p.device_id === "d_climate");
+  assert.ok(Math.abs(point.x - 3) < 1e-9 && Math.abs(point.y - 2.5) < 1e-9, JSON.stringify(point));
+  assert.equal(point.placed, true);
+  assert.equal($(card, 'g.marker[data-key="d_climate"]').getAttribute("transform"), "translate(3 2.5)");
+});
+
+// `via`: a detour first, for a drop closer to the start than a tap's few pixels.
+const drag = (card, from, to, node, via) => {
+  const [sx, sy] = clientAt(card, ...from);
+  const [ex, ey] = clientAt(card, ...to);
+  pointer(node, "pointerdown", sx, sy);
+  if (via) pointer($(card, "svg"), "pointermove", ...clientAt(card, ...via));
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+};
+const corner = (card, area, index) => $(card, `circle.corner[data-area="${area}"][data-index="${index}"]`);
+const round = (pt) => pt.map((v) => Math.round(v * 1e6) / 1e6);
+
+test("dragging a corner moves the neighbour's shared corner with it", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  // living_room corner 1 is (5, 0), shared with the kitchen's corner 0.
+  drag(card, [5, 0], [5.5, 0], corner(card, "living_room", 1));
+  const [living, kitchen] = card._doc.floors[0].rooms;
+  assert.deepEqual(round(living.polygon[1]), [5.5, 0]);
+  assert.deepEqual(kitchen.polygon[0], living.polygon[1]);
+});
+
+test("a corner dropped within 0.05 m of another room's corner or wall snaps onto it", async () => {
+  const plan = planOf();
+  plan.floors[0].rooms[1].polygon = sq(5.02, 0, 3, 4);           // a 2 cm gap between the rooms
+  const card = await make({ plan }, hassOf());
+  click($(card, "[data-action=edit]"));
+  drag(card, [5, 0], [5.01, 0.01], corner(card, "living_room", 1), [5.5, 1]);
+  assert.deepEqual(card._doc.floors[0].rooms[0].polygon[1], [5.02, 0]);
+  drag(card, [5, 4], [5.01, 3.9], corner(card, "living_room", 2), [5.5, 3]);
+  assert.deepEqual(round(card._doc.floors[0].rooms[0].polygon[2]), [5.02, 3.9]);
+});
+
+test("double-click inserts a corner on an edge and removes a corner", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const edge = $(card, 'line.edge[data-area="kitchen"][data-edge="0"]');   // (5,0)–(8,0)
+  const [cx, cy] = clientAt(card, 6, 0);
+  edge.dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true, composed: true, clientX: cx, clientY: cy }));
+  const kitchen = () => card._doc.floors[0].rooms[1].polygon;
+  assert.equal(kitchen().length, 5);
+  assert.ok(Math.abs(kitchen()[1][0] - 6) < 1e-9 && Math.abs(kitchen()[1][1]) < 1e-9, JSON.stringify(kitchen()));
+  $(card, 'circle.corner[data-area="kitchen"][data-index="1"]')
+    .dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true, composed: true }));
+  assert.deepEqual(kitchen(), sq(5, 0, 3, 4));
+});
+
+const tap = (card, px, py, target) => {
+  const [x, y] = clientAt(card, px, py);
+  const node = target || $(card, "svg");
+  pointer(node, "pointerdown", x, y);
+  pointer($(card, "svg"), "pointerup", x, y);
+};
+
+test("join: two rooms become one, keeping the first one's area", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="join"]'));
+  tap(card, 2, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  const rooms = card._doc.floors[0].rooms;
+  assert.equal(rooms.length, 1);
+  assert.equal(rooms[0].area_id, "living_room");
+});
+
+test("split: two wall points and an area for the new half", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="split"]'));
+  tap(card, 2, 0.01);
+  tap(card, 2, 3.99);
+  const select = $(card, ".area-panel select");
+  assert.ok(select, "an area select for the new room");
+  assert.ok(shadowText(card).includes(EN("card.floorplan.area.for_split")));
+  select.value = "office";
+  select.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  const rooms = card._doc.floors[0].rooms;
+  assert.deepEqual(rooms.map((r) => r.area_id), ["living_room", "office", "kitchen"]);
+});
+
+test("link: a tapped room gets another area, or a new one created by name", async () => {
+  const hass = hassOf({ answers: { "config/area_registry/create": (msg) => ({ area_id: "pantry", name: msg.name }) } });
+  const card = await make({ plan: planOf() }, hass);
+  click($(card, "[data-action=edit]"));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  const select = $(card, ".area-panel select");
+  assert.ok(select);
+  const living = [...select.options].find((o) => o.value === "living_room");
+  assert.ok(living.disabled, "an area with a room on this floor is not offered");
+  $(card, ".area-panel input").value = "Pantry";
+  click($(card, "[data-action=create_area]"));
+  await settle();
+  assert.deepEqual(hass.calls.at(-1), { type: "config/area_registry/create", name: "Pantry" });
+  assert.equal(card._doc.floors[0].rooms[1].area_id, "pantry");
+  assert.ok(!hass.calls.some((c) => /delete|device_registry/.test(c.type)));
+});
+
+test("wheel zoom keeps the point under the cursor", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  const before = planAt(card, 300, 120);
+  const wheel = new window.WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true });
+  Object.defineProperties(wheel, { clientX: { value: 300 }, clientY: { value: 120 } });
+  $(card, "svg").dispatchEvent(wheel);
+  const w0 = Number($(card, "svg").getAttribute("viewBox").split(" ")[2]);
+  const after = planAt(card, 300, 120);
+  assert.ok(Math.abs(before[0] - after[0]) < 1e-9 && Math.abs(before[1] - after[1]) < 1e-9, `${before} ${after}`);
+  assert.ok(wheel.defaultPrevented);
+  click($(card, "[data-action=zoom_out]"));
+  assert.ok(Number($(card, "svg").getAttribute("viewBox").split(" ")[2]) > w0);
+  click($(card, "[data-action=fit]"));
+  click($(card, "[data-action=zoom_in]"));
+  assert.ok(Number($(card, "svg").getAttribute("viewBox").split(" ")[2]) < 9);
+});
+
+test("dragging the background pans", async () => {
+  const card = await make({ plan: planOf() }, hassOf({ admin: false }));
+  const [x0, y0] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  const room = $(card, "polygon.room");
+  pointer(room, "pointerdown", 400, 200);
+  pointer($(card, "svg"), "pointermove", 450, 200);
+  pointer($(card, "svg"), "pointerup", 450, 200);
+  const [x1, y1] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  assert.ok(x1 < x0, `${x0} -> ${x1}`);
+  assert.equal(y1, y0);
+});
+
+test("save sends withPlan", async () => {
+  const plan = planOf([{ device_id: "d_climate", x: 1, y: 1, placed: true }, { entity_id: "plant.monstera", x: 6, y: 1, placed: true }]);
+  const dashboard = dashboardOf(plan);
+  const hass = hassOf({ dashboard });
+  const card = await make({}, hass);
+  click($(card, "[data-action=edit]"));
+  const marker = $(card, 'g.marker[data-key="d_climate"]');
+  const [sx, sy] = clientAt(card, 1, 1);
+  const [ex, ey] = clientAt(card, 2, 3);
+  pointer(marker, "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+  click($(card, "[data-action=save]"));
+  await settle();
+  const types = hass.calls.map((c) => c.type);
+  assert.deepEqual(types, ["lovelace/config", "lovelace/config", "lovelace/config/save"]);
+  const save = hass.calls.at(-1);
+  assert.equal(save.url_path, "floorplan");
+  assert.deepEqual(save.config, withPlan(dashboard, card._doc));
+  assert.equal(save.config.views[0].cards[0].plan.floors[0].points[0].placed, true);
+  assert.ok(shadowText(card).includes(EN("card.floorplan.saved")), shadowText(card));
+});
+
+test("save refuses a changed dashboard", async () => {
+  let current = dashboardOf(planOf());
+  const hass = hassOf({ answers: { "lovelace/config": () => structuredClone(current) } });
+  const card = await make({}, hass);
+  click($(card, "[data-action=edit]"));
+  current = dashboardOf(planOf([{ entity_id: "plant.monstera", x: 7, y: 3, placed: true }]));
+  click($(card, "[data-action=save]"));
+  await settle();
+  assert.ok(!hass.calls.some((c) => c.type === "lovelace/config/save"));
+  assert.ok(shadowText(card).includes(EN("card.floorplan.changed_elsewhere")), shadowText(card));
+});
+
+test("empty plan shows the tray and the hint", async () => {
+  const card = await make({ plan: { schema: 1, floors: [{ floor_id: null, rooms: [], points: [] }] } }, hassOf());
+  assert.ok(shadowText(card).includes(EN("card.floorplan.hint.empty")), shadowText(card));
+  click($(card, "[data-action=edit]"));
+  const items = [...card.shadowRoot.querySelectorAll(".tray [data-key]")].map((n) => n.getAttribute("data-key"));
+  assert.deepEqual(items.sort(), ["d_climate", "d_office", "plant.monstera"]);
+  assert.ok(shadowText(card).includes(EN("card.floorplan.tray.title")));
+  assert.ok(shadowText(card).includes(EN("card.floorplan.hint.empty")));
+});
+
+test("a sensor dragged from the tray lands on the plan, placed", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="d_office"]');
+  const [ex, ey] = clientAt(card, 6, 3);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", ex, ey);
+  pointer(item, "pointerup", ex, ey);
+  const point = card._doc.floors[0].points.find((p) => p.device_id === "d_office");
+  assert.ok(point && point.placed && Math.abs(point.x - 6) < 1e-9 && Math.abs(point.y - 3) < 1e-9, JSON.stringify(point));
+  assert.equal($(card, '.tray [data-key="d_office"]'), null);
+});
+
+test("values show the temperature and humidity of one device on one marker", async () => {
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: true }]) }, hassOf({ admin: false }));
+  const markers = card.shadowRoot.querySelectorAll("g.marker");
+  assert.equal(markers.length, 1);
+  const text = markers[0].textContent;
+  assert.ok(text.includes("21.5 °C") && text.includes("48 %"), text);
+  const quiet = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: true }]), values: false }, hassOf());
+  assert.ok(!quiet.shadowRoot.querySelector("g.marker").textContent.includes("21.5"));
+});
+
+test("a floor select appears in edit mode when the plan has more than one floor", async () => {
+  const plan = planOf();
+  plan.floors.push({ floor_id: "upstairs", rooms: [{ area_id: "office", polygon: sq(0, 0, 4, 3) }], points: [] });
+  const card = await make({ plan, floor: "upstairs" }, hassOf());
+  assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 1);
+  click($(card, "[data-action=edit]"));
+  const select = $(card, "select.floor");
+  assert.ok(select);
+  select.value = "ground";
+  select.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
+});

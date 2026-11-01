@@ -2,5 +2,50 @@
   "meta": {
     "description": "Rysuje rzut domu: pomieszczenia jako kształty, z odczytami czujników i roślinami w ich miejscach, z powiększaniem i edycją."
   },
-  "card": {}
+  "card": {
+    "floorplan": {
+      "name": "Rzut",
+      "description": "Pomieszczenia piętra z odczytami czujników i roślinami tam, gdzie stoją; administratorzy je rozmieszczają i edytują pomieszczenia.",
+      "loading": "Wczytywanie rzutu…",
+      "no_plan": "Nie ma jeszcze rzutu. Utwórz go umiejętnością floorplan-from-image albo poleceniem domosenso floorplan push.",
+      "unsupported": "Ten rzut zapisano w nowszym formacie, niż odczytuje ta karta. Zaktualizuj komponent floorplan.",
+      "edit": "Edytuj",
+      "save": "Zapisz",
+      "cancel": "Anuluj",
+      "saving": "Zapisywanie…",
+      "zoom_in": "Powiększ",
+      "zoom_out": "Pomniejsz",
+      "fit": "Dopasuj",
+      "floor": "Piętro",
+      "tool": {
+        "move": "Przesuń",
+        "split": "Podziel",
+        "join": "Połącz"
+      },
+      "hint": {
+        "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
+        "move": "Przeciągaj czujniki i narożniki. Dwuklik na ścianie dodaje narożnik, na narożniku go usuwa. Stuknij pomieszczenie, aby przypisać je do obszaru.",
+        "split": "Stuknij dwa punkty na ścianach jednego pomieszczenia.",
+        "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar."
+      },
+      "area": {
+        "label": "Obszar tego pomieszczenia",
+        "for_split": "Obszar nowego pomieszczenia",
+        "choose": "Wybierz obszar",
+        "new": "Nowy obszar",
+        "create": "Utwórz"
+      },
+      "tray": {
+        "title": "Poza rzutem",
+        "empty": "Wszystkie czujniki są na rzucie.",
+        "drag": "Przeciągnij na rzut"
+      },
+      "missing_area": "Ten obszar już nie istnieje",
+      "saved": "Zapisano.",
+      "changed_elsewhere": "Rzut zmieniono gdzie indziej, odkąd ta strona go wczytała. Niczego nie zapisano: odśwież stronę i edytuj ponownie.",
+      "save_failed": "Zapis się nie udał: {error}",
+      "create_failed": "Nie udało się utworzyć obszaru: {error}",
+      "refused": "Ta zmiana nie jest tu możliwa."
+    }
+  }
 }

@@ -2,5 +2,50 @@
   "meta": {
     "description": "Draws a floor plan of the home: the rooms as shapes, with sensor readings and plants at their positions, zoomable and editable."
   },
-  "card": {}
+  "card": {
+    "floorplan": {
+      "name": "Floor plan",
+      "description": "The rooms of a floor with sensor readings and plants where they stand; administrators place them and edit the rooms.",
+      "loading": "Loading the floor plan…",
+      "no_plan": "No floor plan yet. Make one with the floorplan-from-image skill or domosenso floorplan push.",
+      "unsupported": "This floor plan was written in a newer format than this card reads. Update the floorplan component.",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "zoom_in": "Zoom in",
+      "zoom_out": "Zoom out",
+      "fit": "Fit",
+      "floor": "Floor",
+      "tool": {
+        "move": "Move",
+        "split": "Split",
+        "join": "Join"
+      },
+      "hint": {
+        "empty": "This floor has no rooms or sensors yet.",
+        "move": "Drag sensors and corners. Double-click a wall to add a corner, a corner to remove it. Tap a room to link it to an area.",
+        "split": "Tap two points on the walls of one room.",
+        "join": "Tap two neighbouring rooms; the first keeps its area."
+      },
+      "area": {
+        "label": "Area of this room",
+        "for_split": "Area of the new room",
+        "choose": "Choose an area",
+        "new": "New area",
+        "create": "Create"
+      },
+      "tray": {
+        "title": "Not on the plan",
+        "empty": "Every sensor is on the plan.",
+        "drag": "Drag onto the plan"
+      },
+      "missing_area": "This area no longer exists",
+      "saved": "Saved.",
+      "changed_elsewhere": "The plan was changed elsewhere since this page loaded it. Nothing was saved: reload the page and edit again.",
+      "save_failed": "Saving failed: {error}",
+      "create_failed": "The area could not be created: {error}",
+      "refused": "That change is not possible here."
+    }
+  }
 }

@@ -103,6 +103,15 @@ export function roomLabel(room, hass) {
 
 // ---- edits -----------------------------------------------------------------------------------
 
+// A tray candidate dropped on the plan: placed, since the user chose the spot.
+export function addPoint(doc, floorId, candidate, [x, y]) {
+  if (doc.floors.some((f) => f.points.some((p) => keyOf(p) === candidate.key))) return null;
+  const point = candidate.kind === "device"
+    ? { device_id: candidate.key, x, y, placed: true }
+    : { entity_id: candidate.key, x, y, placed: true };
+  return editFloor(doc, floorId, (floor) => ({ ...floor, points: [...floor.points, point] }));
+}
+
 export function movePoint(doc, floorId, key, [x, y]) {
   return editFloor(doc, floorId, (floor) => {
     if (!floor.points.some((p) => keyOf(p) === key)) return null;
@@ -181,4 +190,14 @@ export function withPlan(config, doc) {
     ...config,
     views: config.views.map((view) => (Array.isArray(view?.cards) ? { ...view, cards: view.cards.map(swap) } : view)),
   };
+}
+
+// The plan of the dashboard's floor plan card, or null (floorplan_doc.extract).
+export function extract(config) {
+  for (const view of config?.views || []) {
+    for (const card of view?.cards || []) {
+      if (card?.type === CARD_TYPE) return card.plan && typeof card.plan === "object" ? card.plan : null;
+    }
+  }
+  return null;
 }
