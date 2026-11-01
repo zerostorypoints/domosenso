@@ -16,8 +16,13 @@ releases:
   version: 0.9.0
   tag: ramka/0.9.0
   commit: c3eca96f268a7ca0d1d7a143f55180e5ee088bc1
+- id: audio-sensor
+  version: 0.3.0
+  tag: audio-sensor/0.3.0
+  commit: 934b653536616fc7b310cb430aae00a08d72b1e8
 sources:
 - https://github.com/zerostorypoints/domosenso/tree/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1
+- https://github.com/zerostorypoints/domosenso/tree/934b653536616fc7b310cb430aae00a08d72b1e8
 ---
 
 Ramka 0.8.0 was tagged on 31 October 2026 and 0.9.0 on 1 November. This article covers both.
@@ -40,7 +45,7 @@ Every settings page opens with what its screen shows and when. Controls on appro
 
 ## The music visual
 
-The visual now has its own switch, Live visualization, off by default: every home starts on the classic wave and switches it on in the settings. Response profiles set how the visual moves, and the Behind speakers EQ preset is a measured curve rather than flat. The Live visualization page reads the music sensor's abilities from audio-sensor's music source, which is on the framework's main branch but not yet in an audio-sensor release: with audio-sensor 0.2.0 that page cannot tell what the sensor can do.
+The visual now has its own switch, Live visualization, off by default: every home starts on the classic wave and switches it on in the settings. Response profiles set how the visual moves, and the Behind speakers EQ preset is a measured curve rather than flat. The Live visualization page reads the music sensor's abilities from audio-sensor's music source, released the same day in audio-sensor 0.3.0, which also brings a six-range EQ to the music cards and needs no new flash. Update the two together: with audio-sensor 0.2.0 that page cannot tell what the sensor can do.
 
 ## Upgrade deliberately
 
