@@ -3,6 +3,7 @@ form for comparing and the diff `floorplan push` prints."""
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
@@ -51,6 +52,31 @@ def _refuse_duplicates(doc: dict) -> None:
                 if key in points:
                     raise DomosensoError(f"duplicate point: {key}")
                 points.add(key)
+
+
+def read_json(path: Path) -> dict | None:
+    """A JSON object from `path`; None when the file is missing or holds no object."""
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise DomosensoError(f"cannot read {path}: {exc}") from exc
+    return value if isinstance(value, dict) else None
+
+
+def write_json(path: Path, value: dict) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    except OSError as exc:
+        raise DomosensoError(f"cannot write {path}: {exc.strerror or exc}") from exc
+
+
+def write_plan_file(path: Path, plan: dict) -> None:
+    """The plan into the repository's file, keeping the file's `source`: the traced image lives only there."""
+    kept = (read_json(path) or {}).get("source")
+    write_json(path, {**without_source(plan), **({"source": kept} if kept else {})})
 
 
 def without_source(doc: dict) -> dict:

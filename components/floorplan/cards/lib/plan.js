@@ -4,7 +4,7 @@
 
 import { pointInPolygon, centroid, interiorPoint, splitPolygon, joinPolygons } from "./geometry.js";
 import { language } from "./i18n.js";
-import { rolesOf, categoryById, CATEGORIES } from "./categories.js";
+import { rolesOf, categoryById, FALLBACK } from "./categories.js";
 
 export const POINT_CLASSES = ["temperature", "humidity", "illuminance", "moisture", "carbon_dioxide", "pm25"];
 // Integrations whose entities are computed from other entities: they carry a point device_class
@@ -68,15 +68,6 @@ function isPointEntity(hass, entityId) {
   return POINT_CLASSES.includes(cls);
 }
 
-// Config entry id -> integration domain (`config_entries/get`, which needs no admin): a device's
-// integrations are the domains of its config entries, as SPEC-010's scan reads them. One Home
-// Assistant per page, so the card sets it once for all its instances; until then the platforms of a
-// device's entities stand in.
-let entryDomains = {};
-export function setEntryDomains(map) {
-  entryDomains = map || {};
-}
-
 // An entity that may count for a device's category: not computed from others (Amendment 3), not a
 // diagnostic or configuration entity, not a group (an entity_id list, e.g. a Hue room or zone).
 function usable(hass, id, reg) {
@@ -86,8 +77,10 @@ function usable(hass, id, reg) {
   return !Array.isArray(hass.states?.[id]?.attributes?.entity_id);
 }
 
-// SPEC-010's scan form of a device or of an entity without one (categories.js).
-function scanForm(hass, ids, device, isHub) {
+// SPEC-010's scan form of a device or of an entity without one (categories.js). `entryDomains`:
+// config entry id -> integration domain (`config_entries/get`, no admin needed); without it the
+// platforms of a device's entities stand in.
+function scanForm(hass, ids, device, isHub, entryDomains) {
   const platforms = ids.map((id) => (id.startsWith("plant.") ? "plant" : hass.entities?.[id]?.platform)).filter(Boolean);
   const fromEntries = (device?.config_entries || []).map((e) => entryDomains[e]).filter(Boolean);
   return {
@@ -104,7 +97,7 @@ function scanForm(hass, ids, device, isHub) {
 // entity whose category is placeable, and an entity without a device when it is a plant or a point
 // class. `entities` are the readings a marker shows (point classes and plants); a device whose
 // entities a plant names as its `sensors` joins that plant instead of being a point of its own.
-export function candidates(hass) {
+export function candidates(hass, entryDomains = {}) {
   const devices = hass.devices || {};
   const plantSensors = new Set(Object.keys(hass.states || {}).filter((id) => id.startsWith("plant."))
     .flatMap((id) => Object.values(hass.states[id].attributes?.sensors || {})));
@@ -130,7 +123,7 @@ export function candidates(hass) {
     const device = devices[key];
     if (!device || device.disabled_by || device.entry_type === "service") continue;
     if (own.some((id) => plantSensors.has(id))) continue;
-    const roles = rolesOf(scanForm(hass, own, device, (children.get(key) || 0) > 0));
+    const roles = rolesOf(scanForm(hass, own, device, (children.get(key) || 0) > 0, entryDomains));
     const cat = roles[0];
     if (!categoryById(cat.id)?.placeable) continue;
     // The entity's own area wins over its device's.
@@ -139,7 +132,7 @@ export function candidates(hass) {
       category: cat.id, marker: cat.marker, roles: roles.map((r) => r.id) });
   }
   for (const id of loose) {
-    const roles = rolesOf(scanForm(hass, [id], null, false));
+    const roles = rolesOf(scanForm(hass, [id], null, false, entryDomains));
     const cat = roles[0];
     if (!categoryById(cat.id)?.placeable) continue;
     out.push({ key: id, kind: "entity", area_id: hass.entities?.[id]?.area_id ?? plantArea(hass, id), entities: [id],
@@ -162,8 +155,7 @@ export function pointCategory(hass, point, byKey = null) {
       roles: [override.id, ...further.filter((r) => r !== override.id)] };
   }
   if (c) return { id: c.category, marker: c.marker, roles: c.roles };
-  const fallback = CATEGORIES.find((x) => x.fallback);
-  return { id: fallback.id, marker: fallback.marker, roles: [fallback.id] };
+  return { id: FALLBACK.id, marker: FALLBACK.marker, roles: [FALLBACK.id] };
 }
 
 // The presence and contact sensors of a point's devices (the classes the security category's rules
@@ -214,12 +206,13 @@ function underLabels(polygon) {
   return pointInPolygon([x, y], polygon) ? [x, y] : interiorPoint(polygon);
 }
 
-export function autoPlace(doc, hass, floorId) {
+// `cands`: candidates(hass), when the caller has them (the card keeps them per registry).
+export function autoPlace(doc, hass, floorId, cands = candidates(hass)) {
   const floor = doc.floors[floorIndex(doc, floorId)];
   if (!floor) return doc;
   const placed = onPlan(doc);
   const perRoom = new Map();
-  for (const c of candidates(hass)) {
+  for (const c of cands) {
     if (placed.has(c.key)) continue;
     const room = floor.rooms.find((r) => r.area_id === c.area_id);
     if (!room) continue;
@@ -237,9 +230,9 @@ export function autoPlace(doc, hass, floorId) {
   return editFloor(doc, floorId, (f) => ({ ...f, points: [...f.points, ...added] }));
 }
 
-export function tray(doc, hass) {
+export function tray(doc, hass, cands = candidates(hass)) {
   const placed = onPlan(doc);
-  return candidates(hass).filter((c) => !placed.has(c.key));
+  return cands.filter((c) => !placed.has(c.key));
 }
 
 export function candidateName(hass, c) {
@@ -271,23 +264,14 @@ export function roomHint(hass, candidate) {
 }
 
 // The tray as groups by room hint, by name; the group without a room ("none", name null) last.
-export function trayGroups(doc, hass) {
+export function trayGroups(doc, hass, cands = candidates(hass)) {
   const groups = new Map();
-  for (const c of tray(doc, hass)) {
+  for (const c of tray(doc, hass, cands)) {
     const hint = roomHint(hass, c) ?? { key: "none", name: null };
     if (!groups.has(hint.key)) groups.set(hint.key, { ...hint, items: [] });
     groups.get(hint.key).items.push(c);
   }
   const names = (a, b) => a.localeCompare(b, language(hass));
-  // A plant's room label naming an area of the tray ("living room" for Living room) joins that area.
-  const areas = [...groups.values()].filter((g) => g.name !== null && !g.key.startsWith("label:"));
-  for (const [key, g] of groups) {
-    const area = key.startsWith("label:")
-      && areas.find((a) => a.name.localeCompare(g.name, language(hass), { sensitivity: "base" }) === 0);
-    if (!area) continue;
-    area.items.push(...g.items);
-    groups.delete(key);
-  }
   // Inside a room, by category (their order), then by name.
   const rank = (c) => categoryById(c.category)?.order ?? Infinity;
   for (const g of groups.values()) {
@@ -362,7 +346,7 @@ export function registryLinks(hass, points) {
     const pair = `${from}\n${to}`;
     if (!to || to === from || seen.has(pair)) continue;
     seen.add(pair);
-    links.push({ from, to, kind: "via" });
+    links.push({ from, to });
   }
   return links;
 }

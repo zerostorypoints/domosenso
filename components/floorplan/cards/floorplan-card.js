@@ -23,14 +23,14 @@ import { zoomAt, snapToEdge, pointInPolygon, widestRow, insideRooms } from "./li
 import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
-  candidates, pointCategory, setPointCategory, setEntryDomains, keysOf, joinPoint, separatePoint, registryLinks,
-  presenceEntities,
+  candidates, pointCategory, setPointCategory, joinPoint, separatePoint, registryLinks, presenceEntities,
 } from "./lib/plan.js";
 import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
+import { esc, dotHtml } from "./lib/html.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
-import { layoutLabels } from "./lib/labels.js";
+import { layoutLabels, CHAR_EM } from "./lib/labels.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -47,46 +47,34 @@ const STACK_PX = 14;      // placed dots closer than this on screen are one dot 
 const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers this browser switched off
 const CHOSEN_KEY = "domosenso.floorplan.chosen";   // localStorage: the one layer shown (layer_choice: one)
 
-// Browser storage may be missing or refuse (a private window, a preview): the layers then start on.
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
   const sorted = [...names].sort();
   return sorted.length > 2 ? `${sorted.slice(0, 2).join(", ")} +${sorted.length - 2}` : sorted.join(", ");
 }
 
-function readHidden() {
+// Browser storage may be missing or refuse (a private window, a preview): then the layers start as
+// configured and a choice lasts for this page only.
+function load(key, fallback) {
   try {
-    return new Set(JSON.parse(window.localStorage.getItem(HIDDEN_KEY) || "[]"));
+    const raw = window.localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
   } catch {
-    return new Set();
+    return fallback;
   }
 }
-function readChosen() {
+function save(key, value) {
   try {
-    return window.localStorage.getItem(CHOSEN_KEY);
+    window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    return null;
-  }
-}
-function writeChosen(id) {
-  try {
-    window.localStorage.setItem(CHOSEN_KEY, id);
-  } catch {
-    // not kept: the choice lasts for this page only
-  }
-}
-function writeHidden(hidden) {
-  try {
-    window.localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden]));
-  } catch {
-    // not kept: the choice lasts for this page only
+    // not kept
   }
 }
 
-// A room name's screen size: LABEL_PX unless its estimated width (0.55 em a character) would pass 90 %
+// A room name's screen size: LABEL_PX unless its estimated width (CHAR_EM a character) would pass 90 %
 // of the room's widest run, `width` metres at `px` metres per screen pixel.
 function labelSize(text, width, px) {
-  const needed = String(text).length * 0.55 * LABEL_PX * px;
+  const needed = String(text).length * CHAR_EM * LABEL_PX * px;
   const room = width * 0.9;
   return needed <= room ? LABEL_PX : Math.max(LABEL_MIN_PX, (LABEL_PX * room) / needed);
 }
@@ -98,7 +86,6 @@ function el(name, attrs = {}, parent) {
   return node;
 }
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const keyOf = (p) => p.device_id ?? p.entity_id;
 // Only a path on this Home Assistant or an http(s) URL is shown as a photo.
 const safePicture = (url) => typeof url === "string" && /^(\/(?!\/)|https?:\/\/)/.test(url);
@@ -123,10 +110,12 @@ class FloorplanCard extends HTMLElement {
     this._pointers = new Map();
     this._stamp = null;
     this._trayOpen = new Map();    // tray group key -> open, as the user left it
-    this._hidden = readHidden();   // category ids switched off by this browser's layer chips
+    this._hidden = new Set(load(HIDDEN_KEY, []));   // category ids switched off by this browser's layer chips
     const listed = Array.isArray(this._config.layers) ? this._config.layers : [];
     this._one = this._config.layer_choice === "one" && listed.length > 0;
-    this._chosen = listed.includes(readChosen()) ? readChosen() : listed[0] ?? null;   // with layer_choice: one
+    const chosen = load(CHOSEN_KEY, null);
+    this._chosen = listed.includes(chosen) ? chosen : listed[0] ?? null;   // with layer_choice: one
+    this._entryDomains = {};       // config entry id -> integration domain, once config_entries/get answered
     this._hoverKey = null;         // the marker under the pointer: its registry links show
     this._openCluster = null;      // the room whose cluster list is open (edit mode)
     if (this._hass) this._load();
@@ -143,7 +132,7 @@ class FloorplanCard extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    this._entities = entityMap(hass);
+    this._registry();
     if (!this.shadowRoot) this._build();
     if (first) {
       this._loadEntries();
@@ -166,12 +155,32 @@ class FloorplanCard extends HTMLElement {
   async _loadEntries() {
     try {
       const entries = await this._hass.callWS({ type: "config_entries/get" });
-      setEntryDomains(Object.fromEntries((Array.isArray(entries) ? entries : []).map((e) => [e.entry_id, e.domain])));
+      this._entryDomains = Object.fromEntries((Array.isArray(entries) ? entries : []).map((e) => [e.entry_id, e.domain]));
     } catch {
       return;
     }
-    this._entities = entityMap(this._hass);
     this._render();
+  }
+
+  // The candidates and each point's readings, worked out again only when the registries or the
+  // entry domains change: hass is set for every state change in Home Assistant. A device class or a
+  // plant's sensors (states) changing alone shows with the next registry change or page load.
+  _registry() {
+    const h = this._hass || {};
+    const key = [h.entities, h.devices, h.areas, this._entryDomains];
+    if (this._regKey && key.every((v, i) => v === this._regKey[i])) return;
+    this._regKey = key;
+    const list = candidates(h, this._entryDomains);
+    this._cands = new Map(list.map((c) => [c.key, c]));
+    this._entities = entityMap(h, list);
+    this._catCache = new WeakMap();
+  }
+
+  // A point's category and roles, once per point object: an edit makes a new one.
+  _cat(point) {
+    let cat = this._catCache.get(point);
+    if (!cat) this._catCache.set(point, (cat = pointCategory(this._hass, point, this._cands)));
+    return cat;
   }
 
   _visible(categoryId) {
@@ -261,7 +270,8 @@ ${STYLE}
     const editing = ready && this._mode === "edit";
     $("ha-card").classList.toggle("editing", editing);
     $(".bar").innerHTML = ready ? this._barHtml(editing) : "";
-    this._cands = new Map(candidates(h || {}).map((c) => [c.key, c]));
+    this._registry();
+    this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
     $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
@@ -327,7 +337,7 @@ ${STYLE}
   _layersHtml() {
     if ((this._config.layers && !this._one) || !this._floor) return "";
     const h = this._hass;
-    const roles = this._floor.points.map((p) => pointCategory(h, p, this._cands).roles);
+    const roles = this._floor.points.map((p) => this._cat(p).roles);
     const ids = new Set(this._one ? this._config.layers : roles.flat());
     const cats = PLACEABLE.filter((c) => ids.has(c.id));
     // One layer at a time (a wall tablet): the chips keep their taps (data-own-tap), so a page that
@@ -340,7 +350,7 @@ ${STYLE}
       ? `<span class="ring-legend"><span class="ring"></span>${esc(t(h, "card.floorplan.roles.legend"))}</span>` : "";
     return `<span class="layers-label">${esc(t(h, "card.floorplan.layers"))}</span>` + cats.map((c) =>
       `<button data-action="layer" data-layer="${esc(c.id)}" aria-pressed="${pressed(c)}" class="chip"${own}>`
-      + `<span class="dot" style="background: ${colourOf(c)}"></span>${esc(categoryName(c, h?.language))}</button>`).join("")
+      + `${dotHtml(c)}${esc(categoryName(c, h?.language))}</button>`).join("")
       + legend;
   }
 
@@ -349,10 +359,11 @@ ${STYLE}
     const point = this._picked && this._floor?.points.find((p) => keyOf(p) === this._picked);
     if (!point) return "";
     const h = this._hass;
-    const current = pointCategory(h, point, this._cands).id;
+    const current = this._cat(point).id;
     const options = PLACEABLE.map((c) =>
       `<option value="${esc(c.id)}" ${c.id === current ? "selected" : ""}>${esc(categoryName(c, h?.language))}</option>`).join("");
-    const joined = (point.also || []).map((id, i) => `<span class="joined">${esc(this._pointNames(point)[i + 1])}`
+    const [, ...names] = this._pointNames(point);
+    const joined = (point.also || []).map((id, i) => `<span class="joined">${esc(names[i])}`
       + `<button data-action="separate" data-device="${esc(id)}">${esc(t(h, "card.floorplan.point.separate"))}</button></span>`).join("");
     return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
       + `<select class="category">${options}</select>`
@@ -361,7 +372,7 @@ ${STYLE}
   }
 
   _trayHtml() {
-    const groups = trayGroups(this._doc, this._hass);
+    const groups = trayGroups(this._doc, this._hass, [...this._cands.values()]);
     this._oneGroup = groups.length === 1;    // a lone group starts open, several start collapsed
     return trayHtml(this._hass, t, groups, (key) => this._groupOpen(key));
   }
@@ -383,13 +394,14 @@ ${STYLE}
   _drawSvg(editing) {
     const svg = this._svg;
     svg.replaceChildren();
-    if (!this._cands) this._cands = new Map(candidates(this._hass || {}).map((c) => [c.key, c]));
+    this._registry();
     const floor = this._floor;
     if (this._status !== "ready" || !floor) return;
     const v = this._view;
     svg.setAttribute("viewBox", `${fmt(v.x)} ${fmt(v.y)} ${fmt(v.w)} ${fmt(v.h)}`);
     const px = this._px();
     const h = this._hass;
+    const names = [];       // where each room's name is, for readings to keep clear of
     for (const room of floor.rooms) {
       const cls = ["room"];
       if (room.area_id === this._selected) cls.push("selected");
@@ -398,8 +410,12 @@ ${STYLE}
         points: room.polygon.map((p) => p.join(",")).join(" ") }, svg);
       const label = roomLabel(room, h);
       const spot = widestRow(room.polygon);
+      const size = labelSize(label.text, spot.width, px) * px;
+      const w = String(label.text).length * CHAR_EM * size;
+      names.push({ x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6,
+        y1: spot.y + size * 0.6 + (editing ? 16 * px : 0) });     // in edit mode the floor area sits under it
       const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: spot.x, y: spot.y,
-        "font-size": labelSize(label.text, spot.width, px) * px }, svg);
+        "font-size": size }, svg);
       text.textContent = label.text;
       if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
     }
@@ -435,11 +451,11 @@ ${STYLE}
         const far = link.from === linked ? link.to : link.from;
         const end = inCluster.has(far) ? `cluster:${inCluster.get(far)}` : far;
         if (!ends.has(end)) ends.set(end, { to: spot(far), names: [], cluster: inCluster.has(far) });
-        ends.get(end).names.push(this._pointNames(at.get(far))[0]);
+        ends.get(end).names.push(pointName(h, at.get(far)));
       }
       const from = spot(linked);
       for (const { to, names, cluster } of ends.values()) {
-        el("line", { class: "link via", x1: from[0], y1: from[1], x2: to[0], y2: to[1] }, svg);
+        el("line", { class: "link", x1: from[0], y1: from[1], x2: to[0], y2: to[1] }, svg);
         if (cluster) {
           el("text", { class: "link-label", x: to[0], y: to[1] - 16 * px, "font-size": 11 * px }, svg)
             .textContent = linkLabel(names);
@@ -448,15 +464,12 @@ ${STYLE}
     }
     const clustered = new Set(inCluster.keys());
     // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too.
-    const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && this._shown(pointCategory(h, p, this._cands)));
+    const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && this._shown(this._cat(p)));
     const labels = new Map(layoutLabels([
       ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._values(p) })),
       ...[...clusters.values()].map((c) => ({ key: null, at: c.at, lines: [] })),
-    ], { rooms: floor.rooms.map((r) => r.polygon), px, obstacles: this._roomNameBoxes(floor, px, editing) })
-      .map((l) => [l.key, l]));
-    for (const point of floor.points) {
-      if (!clustered.has(keyOf(point))) this._drawMarker(svg, point, px, editing, labels.get(keyOf(point)));
-    }
+    ], { rooms: floor.rooms.map((r) => r.polygon), px, obstacles: names }).map((l) => [l.key, l]));
+    for (const point of shown) this._drawMarker(svg, point, px, editing, labels.get(keyOf(point)));
     for (const [area, c] of clusters) {
       const g = el("g", { class: "cluster", "data-kind": "cluster", "data-cluster": area,
         transform: `translate(${fmt(c.at[0])} ${fmt(c.at[1])})` }, svg);
@@ -470,8 +483,8 @@ ${STYLE}
     const ghost = this._drag?.ghost;
     if (ghost) {
       const g = el("g", { class: "marker ghost", transform: `translate(${fmt(ghost.at[0])} ${fmt(ghost.at[1])})` }, svg);
-      el("circle", { r: 7 * px }, g);
-      el("text", { class: "name", y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
+      el("circle", { class: "shape", r: 7 * px }, g);
+      el("text", { y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
     }
   }
 
@@ -482,7 +495,7 @@ ${STYLE}
     const byRoom = new Map();
     const placed = [];
     for (const point of floor.points) {
-      if (!this._shown(pointCategory(this._hass, point, this._cands))) continue;
+      if (!this._shown(this._cat(point))) continue;
       if (point.placed) {
         placed.push(point);
         continue;
@@ -520,7 +533,7 @@ ${STYLE}
   // The open cluster's devices beside its dot: drag one out to where it stands, tap one to pick it.
   _clusterList(clusters) {
     const list = this.shadowRoot.querySelector(".cluster-list");
-    const open = this._openCluster !== null && this._openCluster !== undefined && clusters.get(this._openCluster);
+    const open = this._openCluster != null && clusters.get(this._openCluster);
     // Out of the way while a device is being dragged (from the list or the plan); back after the drop.
     if (open && this._drag?.kind === "point" && this._drag.moved) {
       list.hidden = true;
@@ -533,12 +546,9 @@ ${STYLE}
       return;
     }
     const h = this._hass;
-    const items = [...open.points].sort((a, b) => this._pointNames(a)[0].localeCompare(this._pointNames(b)[0]));
-    list.innerHTML = items.map((p) => {
-      const cat = categoryById(pointCategory(h, p, this._cands).id);
-      return `<div class="item" data-point="${esc(keyOf(p))}" title="${esc(t(h, "card.floorplan.tray.drag"))}">`
-        + `<span class="dot" style="background: ${colourOf(cat)}"></span>${esc(this._pointNames(p).join(" + "))}</div>`;
-    }).join("");
+    const items = [...open.points].sort((a, b) => pointName(h, a).localeCompare(pointName(h, b)));
+    list.innerHTML = items.map((p) => `<div class="item" data-point="${esc(keyOf(p))}" title="${esc(t(h, "card.floorplan.tray.drag"))}">`
+      + `${dotHtml(categoryById(this._cat(p).id))}${esc(this._pointNames(p).join(" + "))}</div>`).join("");
     list.hidden = false;
     const { s, ox, oy } = frame(this._view, this._rect());
     const svgLeft = this._rect().left - this.shadowRoot.querySelector(".body").getBoundingClientRect().left;
@@ -551,16 +561,15 @@ ${STYLE}
     const cls = ["marker"];
     if (editing && !point.placed) cls.push("unplaced");
     if (editing && keyOf(point) === this._picked) cls.push("picked");
-    const cat = pointCategory(h, point, this._cands);
-    if (!this._shown(cat)) return;
+    const cat = this._cat(point);
     cls.push(`cat-${cat.id}`);
     const g = el("g", { class: cls.join(" "), "data-kind": "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
-    const style = `fill: ${colourOf(categoryById(cat.id))}`;
-    if (cat.marker === "square") el("rect", { x: -6 * px, y: -6 * px, width: 12 * px, height: 12 * px, style }, g);
+    const shape = { class: "shape", style: `fill: ${colourOf(categoryById(cat.id))}` };
+    if (cat.marker === "square") el("rect", { ...shape, x: -6 * px, y: -6 * px, width: 12 * px, height: 12 * px }, g);
     else if (cat.marker === "diamond") {
-      el("polygon", { points: [[0, -8], [8, 0], [0, 8], [-8, 0]].map(([x, y]) => `${fmt(x * px)},${fmt(y * px)}`).join(" "), style }, g);
-    } else el("circle", { r: 7 * px, style }, g);
+      el("polygon", { ...shape, points: [[0, -8], [8, 0], [0, 8], [-8, 0]].map(([x, y]) => `${fmt(x * px)},${fmt(y * px)}`).join(" ") }, g);
+    } else el("circle", { ...shape, r: 7 * px }, g);
     // Further roles (what else it senses) as rings in their colours, two at most.
     cat.roles.slice(1, 3).forEach((id, i) => el("circle", { class: "role-ring", r: (11 + 3 * i) * px,
       style: `stroke: ${colourOf(categoryById(id))}` }, g));
@@ -574,17 +583,6 @@ ${STYLE}
     }
     this._values(point).forEach((text, i) => {
       el("text", { class: "value", x: fmt(x0), y: fmt(y0 + (11 + 15 * i) * px), "font-size": 13 * px }, g).textContent = text;
-    });
-  }
-
-  // Where the rooms' names (and, in edit mode, their floor areas) are drawn, for readings to avoid.
-  _roomNameBoxes(floor, px, editing) {
-    return floor.rooms.map((room) => {
-      const text = roomLabel(room, this._hass).text;
-      const spot = widestRow(room.polygon);
-      const size = labelSize(text, spot.width, px) * px;
-      const w = String(text).length * 0.55 * size;
-      return { x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6, y1: spot.y + size * 0.6 + (editing ? 16 * px : 0) };
     });
   }
 
@@ -637,12 +635,12 @@ ${STYLE}
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "layer" && this._one) {
       this._chosen = button.getAttribute("data-layer");
-      writeChosen(this._chosen);
+      save(CHOSEN_KEY, this._chosen);
     } else if (action === "layer") {
       const id = button.getAttribute("data-layer");
       if (this._hidden.has(id)) this._hidden.delete(id);
       else this._hidden.add(id);
-      writeHidden(this._hidden);
+      save(HIDDEN_KEY, [...this._hidden]);
     }
     this._render();
   }
@@ -655,7 +653,7 @@ ${STYLE}
   _onChange(e) {
     if (e.target.matches?.("select.floor")) {
       this._floorId = this._doc.floors.find((f) => String(f.floor_id) === e.target.value)?.floor_id ?? this._floorId;
-      this._doc = autoPlace(this._doc, this._hass, this._floorId);
+      this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
       this._view = fitView(this._floor);
       this._resetPicks();
       this._render();
@@ -672,7 +670,7 @@ ${STYLE}
     this._mode = "edit";
     this._tool = "move";
     this._say(null);
-    this._doc = autoPlace(this._doc, this._hass, this._floorId);
+    this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
   }
 
   _leaveEdit(doc) {
@@ -785,18 +783,18 @@ ${STYLE}
     const target = e.target.closest?.("[data-kind]");
     const kind = target?.getAttribute("data-kind");
     const base = { start: [e.clientX, e.clientY], view0: this._view, moved: false };
-    if (listed) {
-      this._drag = { ...base, kind: "point", key: listed.getAttribute("data-point") };
-      this._picked = this._drag.key;
+    // A dot from a cluster's list or from the plan: drawn picked on the first move or the pointerup.
+    const pointKey = listed?.getAttribute("data-point")
+      ?? (editing && this._tool === "move" && kind === "point" ? target.getAttribute("data-key") : null);
+    if (pointKey) {
+      this._drag = { ...base, kind: "point", key: pointKey };
+      this._picked = pointKey;
       this._selected = null;
-    } else if (item?.hasAttribute("data-group")) this._drag = { ...base, kind: "group", key: item.getAttribute("data-group") };
-    else if (item) this._drag = { ...base, kind: "tray", key: item.getAttribute("data-key") };
-    else if (editing && this._tool === "move" && kind === "point") {
-      this._drag = { ...base, kind: "point", key: target.getAttribute("data-key") };
-      this._picked = this._drag.key;
-      this._selected = null;    // drawn on the first move or the pointerup: not under the pointer now
-    }
-    else if (editing && this._tool === "move" && kind === "corner") {
+    } else if (item) {
+      const group = item.getAttribute("data-group");
+      this._drag = group ? { ...base, kind: "group", key: group } : { ...base, kind: "tray", key: item.getAttribute("data-key") };
+      this._drag.label = this._dragLabel(this._drag);     // the ghost's, fixed for the drag
+    } else if (editing && this._tool === "move" && kind === "corner") {
       this._drag = { ...base, kind: "corner", area: target.getAttribute("data-area"), index: Number(target.getAttribute("data-index")) };
     } else {
       // A cluster drags like the background (a pan); a tap on it opens its list.
@@ -811,28 +809,32 @@ ${STYLE}
     const marker = e.target.closest?.("g.marker[data-key]:not(.ghost)");
     const cluster = !marker && e.target.closest?.("g.cluster");
     const item = !marker && !cluster && e.target.closest?.(".tray [data-key], .cluster-list [data-point]");
-    let content = null;
     const hoverKey = marker ? marker.getAttribute("data-key") : null;
     if (hoverKey !== this._hoverKey) {
       this._hoverKey = hoverKey;     // its registry links show while it is hovered
       this._drawSvg(this._status === "ready" && this._mode === "edit");
     }
+    // The tooltip's content is worked out only when the pointer reaches something new.
+    const key = marker ? `m:${hoverKey}` : cluster ? `c:${cluster.getAttribute("data-cluster")}`
+      : item?.hasAttribute("data-point") ? `l:${item.getAttribute("data-point")}` : item ? `t:${item.getAttribute("data-key")}` : null;
+    if (key && key === this._tipKey) return void this._showTip({ key }, e);
+    let content = null;
     if (marker) {
       const point = this._floor?.points.find((p) => keyOf(p) === hoverKey);
       if (point) {
-        content = { key: `m:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
-          presence: presenceEntities(this._hass, point), roles: pointCategory(this._hass, point, this._cands).roles };
+        content = { key, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
+          presence: presenceEntities(this._hass, point), roles: this._cat(point).roles };
       }
     } else if (cluster) {
       const c = this._clusters(this._floor).get(cluster.getAttribute("data-cluster"));
-      if (c) content = { key: `c:${cluster.getAttribute("data-cluster")}:${c.points.length}`, ids: [],
+      if (c) content = { key, ids: [],
         name: c.points.map((p) => this._pointNames(p).join(" + ")).join(", ") };
     } else if (item?.hasAttribute("data-point")) {
       const point = this._floor?.points.find((p) => keyOf(p) === item.getAttribute("data-point"));
-      if (point) content = { key: `l:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities) };
+      if (point) content = { key, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities) };
     } else if (item) {
-      const c = tray(this._doc, this._hass).find((x) => x.key === item.getAttribute("data-key"));
-      if (c) content = { key: `t:${c.key}`, name: candidateName(this._hass, c), ids: c.entities };
+      const c = this._cands.get(item.getAttribute("data-key"));
+      if (c) content = { key, name: candidateName(this._hass, c), ids: c.entities };
     }
     this._showTip(content, e);
   }
@@ -896,11 +898,17 @@ ${STYLE}
 
   _dragLabel(d) {
     if (d.kind === "group") {
-      const g = trayGroups(this._doc, this._hass).find((x) => x.key === d.key);
+      const g = trayGroups(this._doc, this._hass, [...this._cands.values()]).find((x) => x.key === d.key);
       return g ? `${g.name ?? t(this._hass, "card.floorplan.tray.no_room")} (${g.items.length})` : "";
     }
-    const c = tray(this._doc, this._hass).find((x) => x.key === d.key);
+    const c = this._cands.get(d.key);
     return c ? candidateName(this._hass, c) : "";
+  }
+
+  // Whether the pointer is over the plan (a tray drop lands only there).
+  _overSvg(e) {
+    const r = this._rect();
+    return e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
   }
 
   _pinchDist() {
@@ -920,7 +928,7 @@ ${STYLE}
       const mid = toPlan(this._view, this._rect(), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
       this._view = zoomAt(this._view, d.dist / dist, mid);
       d.dist = dist;
-      this._render();
+      this._drawSvg(this._mode === "edit");
       return;
     }
     if (!d.moved && Math.hypot(e.clientX - d.start[0], e.clientY - d.start[1]) < TAP_PX) return;
@@ -934,13 +942,10 @@ ${STYLE}
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
     } else {      // a tray item or group is dropped on pointerup; until then a ghost shows where
-      const r = this._rect();
-      const inside = e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
-      d.ghost = inside ? { at: this._at(e), label: this._dragLabel(d) } : null;
-      this._drawSvg(true);    // the plan alone: a re-render would rebuild the tray under the pointer
-      return;
+      d.ghost = this._overSvg(e) ? { at: this._at(e), label: d.label } : null;
     }
-    this._render();
+    // The plan alone while dragging: the bar, panels and tray follow on the pointerup.
+    this._drawSvg(this._mode === "edit");
   }
 
   _onUp(e, cancelled = false) {
@@ -959,17 +964,17 @@ ${STYLE}
     } else if (d.kind === "group" && !d.moved) {
       return void this._toggleGroup(d.key);
     } else if ((d.kind === "tray" || d.kind === "group") && d.moved) {
-      const r = this._rect();
-      if (e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height) {
-        const g = d.kind === "group" && trayGroups(this._doc, this._hass).find((x) => x.key === d.key);
-        const c = d.kind === "tray" && tray(this._doc, this._hass).find((x) => x.key === d.key);
+      if (this._overSvg(e)) {
+        const cands = [...this._cands.values()];
+        const g = d.kind === "group" && trayGroups(this._doc, this._hass, cands).find((x) => x.key === d.key);
+        const c = d.kind === "tray" && tray(this._doc, this._hass, cands).find((x) => x.key === d.key);
         // A device dropped on a marker is the same hardware as that point (an amplifier's Cast device).
         const onto = c && c.kind === "device" && this._pointAt(this._at(e));
         if (g) this._edit(addPoints(this._doc, this._floorId, g.items, this._inRooms(this._at(e))));
         else if (onto) this._edit(joinPoint(this._doc, this._floorId, keyOf(onto), c));
         else if (c) this._edit(addPoint(this._doc, this._floorId, c, this._inRooms(this._at(e))));
       }
-    } else if (d.kind === "pan" && !d.moved && this._mode === "edit" && d.cluster !== null && d.cluster !== undefined) {
+    } else if (d.kind === "pan" && !d.moved && this._mode === "edit" && d.cluster != null) {
       this._openCluster = d.cluster;
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
       this._openCluster = null;

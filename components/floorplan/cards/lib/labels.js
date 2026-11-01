@@ -11,7 +11,7 @@ import { pointInPolygon } from "./geometry.js";
 
 const FONT_PX = 13;
 const LINE_PX = 15;
-const CHAR_EM = 0.55;     // an average character's width, in em
+export const CHAR_EM = 0.55;   // an average character's width, in em
 const PAD_PX = 4;
 const GAP_PX = 12;        // from the dot's centre to the label's near edge, in the first ring
 const DOT_PX = 8;         // a dot's radius, as an obstacle
@@ -87,15 +87,19 @@ export function layoutLabels(items, { rooms = [], px, obstacles = [] }) {
     const probe = labelBox([0, 0], it.lines, px);
     const [w, h] = [probe.x1 - probe.x0, probe.y1 - probe.y0];
     let best = null;
-    spots(it.at, w, h, px).forEach((s, order) => {
-      const box = labelBox([s.cx, s.top], it.lines, px);
-      let cost = (s.ring - 1) * COST.ring + order * 0.01;
+    // Spots come nearest first and cost no less than the one before them, so the first spot with
+    // nothing against it is the best: stop there.
+    for (const [order, s] of spots(it.at, w, h, px).entries()) {
+      const box = { x0: s.cx - w / 2, x1: s.cx + w / 2, y0: s.top, y1: s.top + h };
+      const base = (s.ring - 1) * COST.ring + order * 0.01;
+      let cost = base;
       if (boxCrossesWalls(box, rooms)) cost += COST.wall;
       if (own && !corners(box).every((c) => pointInPolygon(c, own))) cost += COST.room;
       cost += placed.filter((b) => overlaps(b, box)).length * COST.label;
       cost += dots.filter((d) => overlaps(d, box)).length * COST.dot;
       if (!best || cost < best.cost) best = { cost, box, cx: s.cx, top: s.top, ring: s.ring };
-    });
+      if (cost === base) break;
+    }
     placed.push(best.box);
     out.push({ key: it.key, box: best.box, cx: best.cx, top: best.top, leader: best.ring > 1 });
   }

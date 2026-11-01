@@ -3,14 +3,9 @@
 // which groups are open, so a re-render keeps them.
 
 import { candidateName } from "./plan.js";
-import { categoryById, colourOf } from "./categories.js";
+import { categoryById } from "./categories.js";
+import { esc, dotHtml } from "./html.js";
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-// The category's colour before the name (catalog colours only, so safe in a style attribute).
-const dot = (c) => {
-  const cat = categoryById(c.category);
-  return cat ? `<span class="dot" style="background: ${colourOf(cat)}"></span>` : "";
-};
 
 export function trayHtml(hass, t, groups, isOpen) {
   const title = `<h3>${esc(t(hass, "card.floorplan.tray.title"))}</h3>`;
@@ -21,7 +16,7 @@ export function trayHtml(hass, t, groups, isOpen) {
     const key = esc(g.key);
     const name = esc(g.name ?? t(hass, "card.floorplan.tray.no_room"));
     const items = g.items.map((c) =>
-      `<div class="item" data-key="${esc(c.key)}" title="${drag}">${dot(c)}${esc(candidateName(hass, c))}</div>`).join("");
+      `<div class="item" data-key="${esc(c.key)}" title="${drag}">${dotHtml(categoryById(c.category))}${esc(candidateName(hass, c))}</div>`).join("");
     return `<details data-group="${key}"${isOpen(g.key) ? " open" : ""}><summary data-group="${key}" title="${dragGroup}">`
       + `${name} <span class="count">${g.items.length}</span></summary>${items}</details>`;
   }).join("");

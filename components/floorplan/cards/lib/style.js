@@ -24,15 +24,15 @@ export const STYLE = `
   .corner { fill: var(--card-background-color, #fff); stroke: var(--primary-color); stroke-width: 2;
             vector-effect: non-scaling-stroke; cursor: move; }
   .pick { fill: var(--accent-color, #ff9800); pointer-events: none; }
-  .marker circle { fill: var(--primary-color); stroke: var(--card-background-color, #fff);
-                   stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .marker .shape { fill: var(--primary-color); stroke: var(--card-background-color, #fff); stroke-width: 2;
+                  vector-effect: non-scaling-stroke; }
   .editing .marker { cursor: move; }
-  .marker.unplaced circle { fill-opacity: 0.4; stroke-dasharray: 3 2; }
+  .marker.unplaced .shape { fill-opacity: 0.4; stroke-dasharray: 3 2; }
   .marker line.leader { stroke: var(--secondary-text-color); stroke-width: 1; vector-effect: non-scaling-stroke;
                         pointer-events: none; }
   .marker circle.role-ring { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
   .marker text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; }
-  .marker.picked circle { stroke: var(--accent-color, #ff9800); }
+  .marker.picked .shape { stroke: var(--accent-color, #ff9800); }
   .ghost { opacity: 0.6; pointer-events: none; }
   .to-wall { stroke: var(--primary-color); stroke-width: 1; stroke-dasharray: 4 3;
              vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -68,9 +68,6 @@ export const STYLE = `
   .joined button { margin-left: 4px; font-size: 12px; padding: 2px 8px; }
   .link { stroke: var(--primary-color); stroke-width: 1.5; stroke-opacity: 0.7; vector-effect: non-scaling-stroke;
           pointer-events: none; }
-  .marker rect, .marker polygon { stroke: var(--card-background-color, #fff); stroke-width: 2;
-                                  vector-effect: non-scaling-stroke; }
-  .marker.unplaced rect, .marker.unplaced polygon { fill-opacity: 0.4; stroke-dasharray: 3 2; }
   .cluster circle { fill: var(--card-background-color, #fff); stroke: var(--primary-color); stroke-width: 2;
                     vector-effect: non-scaling-stroke; cursor: pointer; }
   .cluster text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; font-weight: 500; }
