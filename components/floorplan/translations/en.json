@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "description": "Draws a floor plan of the home: the rooms as shapes, with sensor readings and plants at their positions, zoomable and editable."
+  },
+  "card": {}
+}
