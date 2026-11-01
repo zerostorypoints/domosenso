@@ -764,9 +764,17 @@ ${STYLE}
     if (this._heatCache?.key !== key || this._heatCache.floor !== floor) {
       const g = el("g", { class: "heat" });
       const { cells, empty } = heat(floor.rooms.map((r) => r.polygon), samples);
+      // Cells on a slanted or offset wall overhang it: each room's cells are clipped to the room.
+      const defs = el("defs", {}, g);
+      const byRoom = new Map();
+      floor.rooms.forEach((room, i) => {
+        const clip = el("clipPath", { id: `fp-room-${i}` }, defs);
+        el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+        byRoom.set(i, el("g", { "clip-path": `url(#fp-room-${i})` }, g));
+      });
       for (const c of cells) {
         el("rect", { x: fmt(c.x), y: fmt(c.y), width: STEP_M + 0.01, height: STEP_M + 0.01,
-          fill: colourAt(map.cls, c.value) }, g);
+          fill: colourAt(map.cls, c.value) }, byRoom.get(c.room));
       }
       for (const i of empty) el("polygon", { class: "no-sensor", points: floor.rooms[i].polygon.map((p) => p.join(",")).join(" ") }, g);
       // The walls again, over the heat.

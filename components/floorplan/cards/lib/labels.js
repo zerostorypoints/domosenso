@@ -2,8 +2,9 @@
 // the dot when there is no room beside it). Pure: plan coordinates in metres, `px` metres per
 // screen pixel, so sizes are those the card draws (13 px text, 15 px a line).
 //
-// Each label tries spots round its dot, nearest first (below, above, right, left, the diagonals),
-// then the same farther out; it takes the spot with the lowest cost: crossing a wall, leaving the
+// Each label tries spots round its dot, nearest first (below, above, right, left, the diagonals,
+// below and above starting or ending at the dot),
+// then the same farther out (eight rings); it takes the spot with the lowest cost: crossing a wall, leaving the
 // dot's room, covering a label placed before it or any dot, then distance. A label that had to
 // move out of the first ring gets a leader line to its dot.
 
@@ -15,7 +16,7 @@ export const CHAR_EM = 0.55;   // an average character's width, in em
 const PAD_PX = 4;
 const GAP_PX = 12;        // from the dot's centre to the label's near edge, in the first ring
 const DOT_PX = 8;         // a dot's radius, as an obstacle
-const RINGS = 4;
+const RINGS = 8;      // a map's three-line labels need room farther out in a crowded row
 const COST = { wall: 1000, room: 500, label: 200, dot: 100, ring: 10 };
 
 // The box of a label whose top edge is centred on `[cx, top]`.
@@ -57,6 +58,7 @@ const corners = (b) => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]];
 // The spots round a dot at `[x, y]` for a label `w` x `h`, ring by ring: [{cx, top, ring}].
 function spots([x, y], w, h, px) {
   const out = [];
+  const r = DOT_PX * px;
   for (let ring = 1; ring <= RINGS; ring++) {
     const g = GAP_PX * px * ring;
     out.push(
@@ -68,6 +70,11 @@ function spots([x, y], w, h, px) {
       { cx: x - g - w / 2, top: y + g * 0.5, ring },   // below left
       { cx: x + g + w / 2, top: y - g * 0.5 - h, ring }, // above right
       { cx: x - g - w / 2, top: y - g * 0.5 - h, ring }, // above left
+      // Below and above, starting or ending at the dot: a dot by a side wall has no centred spot.
+      { cx: x + w / 2 - r, top: y + g, ring },
+      { cx: x - w / 2 + r, top: y + g, ring },
+      { cx: x + w / 2 - r, top: y - g - h, ring },
+      { cx: x - w / 2 + r, top: y - g - h, ring },
     );
   }
   return out;

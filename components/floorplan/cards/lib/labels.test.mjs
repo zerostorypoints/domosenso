@@ -65,3 +65,26 @@ test("labels keep clear of other boxes given, such as room names", () => {
   const [l] = layoutLabels([{ key: "a", at: [2, 1.8], lines: ["20.2 °C", "41 %"] }], { rooms, px: PX, obstacles: [name] });
   assert.ok(!overlap(l.box, name), JSON.stringify(l.box));
 });
+
+test("a crowded row of three-line labels along a wall finds room without covering each other", () => {
+  // Four plants 25 cm apart, 5 cm under the room's top wall (a map's labels: light, temperature, soil).
+  const items = [0.5, 0.75, 1.0, 1.25].map((x, i) => ({ key: `p${i}`, at: [x, 0.05], lines: ["122 lx", "20.5 °C", "23 %"] }));
+  const out = layoutLabels(items, { rooms, px: PX });
+  for (let i = 0; i < out.length; i++) {
+    assert.ok(!crosses(out[i].box), `${out[i].key} crosses a wall`);
+    for (let j = i + 1; j < out.length; j++) assert.ok(!overlap(out[i].box, out[j].box), `${out[i].key} / ${out[j].key}`);
+  }
+});
+
+test("a dot in a room's corner, its neighbour's label beside it, gets a spot of its own", () => {
+  // Measured on a real plan: the corner dot's centred spots cross the side wall and the spots to
+  // its right sit on the neighbour's label.
+  const corner = [[0, 0.3], [5.4, 0.3], [5.4, 7], [0, 7]];
+  const items = [
+    { key: "near", at: [1.6, 0.53], lines: ["113 lx", "21.3 °C", "20 %"] },
+    { key: "corner", at: [0.18, 0.45], lines: ["122 lx", "20.5 °C", "23 %"] },
+  ];
+  const [a, b] = layoutLabels(items, { rooms: [corner], px: 0.0196 });
+  assert.ok(!overlap(a.box, b.box), `${JSON.stringify(a.box)} / ${JSON.stringify(b.box)}`);
+  assert.ok(!boxCrossesWalls(b.box, [corner]));
+});

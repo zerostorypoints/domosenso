@@ -98,7 +98,7 @@ export function colourAt(cls, v) {
 
 // The heat inside each room from that room's own samples ([{at: [x, y], value}]), by inverse
 // distance squared on a STEP_M grid: walls stop it, no room borrows another's readings.
-// Returns {cells: [{x, y, value}], empty: [room index]} (a room without a sample is hatched).
+// Returns {cells: [{x, y, value, room}], empty: [room index]} (a room without a sample is hatched).
 export function heat(rooms, samples, step = STEP_M) {
   const cells = [];
   const empty = [];
@@ -121,7 +121,7 @@ export function heat(rooms, samples, step = STEP_M) {
           num += s.value * w;
           den += w;
         }
-        cells.push({ x, y, value: num / den });
+        cells.push({ x, y, value: num / den, room: i });
       }
     }
   });
