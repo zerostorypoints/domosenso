@@ -1,0 +1,3 @@
+# Components on main that are not to be released yet (development work), one id a line.
+# Read by the Release reminder and Release workflows (SPEC-027); a held component gets no tag.
+remote-access
