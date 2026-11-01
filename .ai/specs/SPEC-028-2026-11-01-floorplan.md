@@ -226,3 +226,119 @@ were hard to draw to size. No new card config key; the stored document is unchan
   every room's floor area under its name (1 decimal, m²) and, for the selected room or the room
   whose corner is dragged, each wall's length along the wall (2 decimals, m), live while dragging.
   Numbers use the dashboard language's decimal separator. View mode shows neither.
+
+## Amendment 4 (staging feedback, second round)
+
+Card changes asked for by the maintainer during the staging trial (2026-11-01). No new card config
+key; the stored document is unchanged.
+
+- **A tray drag shows where it goes.** While a sensor or a group is dragged from the tray, a faded
+  marker with its name follows the pointer over the plan. The tray is not selectable, so a text
+  selection or a native drag cannot take the pointer away.
+- **Markers show readings only, never names.** A plan with many sensors would be unreadable; a
+  plant, whose value is its name, is a dot. The name is in the tooltip.
+- **A tooltip on hover** over a marker or a tray item: the photo (the first `entity_picture` among
+  the point's entities, shown only when it is a path on Home Assistant or an http(s) URL), the name
+  and the readings.
+- **A tapped or dragged sensor shows its distance to its room's walls**, straight left, right, up and
+  down, each with a dashed line and its length (2 decimals, m). No absolute coordinates: a distance
+  to a wall can be checked with a tape.
+- **A room's name sits at the widest horizontal run inside the room** (inside an L-shaped room too)
+  and shrinks from 14 px down to 9 px to fit a narrow room; the floor area sits under it.
+- **A plant without an HA area gets the area named like its room** in any language the plants
+  component gives (`domosenso_room`, `domosenso_rooms`), ignoring case, spaces and diacritics. The
+  tray groups it under the area's own name and entering edit mode places it in that room, so a
+  plant's room is entered once, as the HA area. A room naming no area keeps Amendment 3's label group.
+
+## Amendment 5 (every device on the plan: categories, colours, links)
+
+- Status: **draft, waiting for the maintainer's approval**. Source: the maintainer, 2026-11-01:
+  categorise the sensors and devices (Bluetooth proxies, radios, audio, lights, switches), link
+  those that belong together, colour the dots by category, so that everything can be placed.
+- For floorplan **0.2.0** (stages 1 and 2 below) and **0.3.0** (stage 3). Replaces "Point entities"
+  and Amendment 2's first ruling where they differ.
+
+### Candidates: every device that has a place
+
+- A **device** is a candidate when it is enabled, not a service, and has at least one enabled entity
+  in a category below. An entity without a device is a candidate when it is a `plant.*` or matches a
+  category. Amendment 3's computed platforms stay out.
+- **Never candidates:** devices whose entities are only `device_tracker`, `person` or diagnostics;
+  `mobile_app` devices (phones move); Bluetooth tags known only by their address (no name, no
+  model). They may show later as live presence, not as points.
+- **One point per physical device.** A device whose `via_device_id` parent shares a connection (a MAC
+  address) with it is the same hardware seen by two integrations (an ESPHome node and its Bluetooth
+  adapter): it joins the parent's point *(inference: to verify on a real home's registry)*.
+- **A plant's sensor joins the plant.** A sensor device whose entities a `plant.*` reads is not a
+  point of its own; the plant is *(open question: which attribute names those entities)*.
+
+### Categories and colours
+
+First match wins. The rules live in the component (`cards/lib/categories.js`), read off the entity
+domain, `device_class` and the registry; nothing is written per home.
+
+| id | colour (CSS variable, default) | rule | marker |
+|---|---|---|---|
+| `plants` | `--floorplan-plants`, green | `plant.*`, or a device with `moisture` and `conductivity` sensors | circle |
+| `climate` | `--floorplan-climate`, blue | `climate.*`, or `device_class` temperature, humidity, carbon_dioxide, pm25, pm10, volatile_organic_compounds, pressure | circle |
+| `light` | `--floorplan-light`, yellow | `light.*` that is not a group (no `entity_id` list attribute); a device with only `event` / `button` / `remote` entities beside such lights (a switch or dimmer) | circle; a switch is a square |
+| `security` | `--floorplan-security`, red | `lock.*`, `camera.*`, `alarm_control_panel.*`, `binary_sensor` motion, occupancy, presence, door, window, opening | circle |
+| `radio` | `--floorplan-radio`, purple | a device other devices name as `via_device_id`; an ESPHome node with a Bluetooth proxy; a mesh access point | diamond |
+| `media` | `--floorplan-media`, teal | `media_player.*` | circle |
+| `shading` | `--floorplan-shading`, brown | `cover.*` | circle |
+| `other` | `--floorplan-other`, grey | any other candidate with an area (appliances, vacuums, power meters, tablets) | circle |
+
+- A point may override its category: optional `category` (one of the ids) on a point in the stored
+  document. The editor sets it from the tooltip.
+- **Layers:** a chip per category above the plan switches its points on and off, with the colour as
+  legend; the choice is kept per browser. New card config `layers` (list of ids, default all) fixes
+  the layers for an embedding: the Ramka's plan view uses `[climate, plants]`.
+- The tray groups by room as before; inside a group, items are ordered by category with a coloured
+  dot.
+
+### Links
+
+| kind | from | stored | drawn |
+|---|---|---|---|
+| `via` | the registry (`via_device_id`): a sensor and its hub, a light and its bridge, a mesh satellite and its main node | no | a thin line when either end is hovered or selected |
+| `controls`, `powers` | the maintainer, in the editor: a radio and the covers it drives, a power meter and what it feeds, a relay and its heating zone | yes: `links` on a floor, `[{"from": <point key>, "to": <point key>, "kind": "controls"}]` | the same, dashed |
+| `heard_by` (0.3.0) | live: a Bluetooth sensor and the proxy that hears it best | no | dotted, on a `radio` point's hover; *(inference: the advertisement source is readable over the websocket; to verify)* |
+
+- Edit mode gains a **Link** tool: tap one point, then another, pick the kind; tap a line to remove
+  it. A link whose end is no longer on the plan is dropped on save.
+
+### Compatibility
+
+- `schemas/floorplan.schema.json` stays `schema: 1`: `category` on a point and `links` on a floor are
+  optional additions. The schema lists them, so a 0.1.0 `domosenso floorplan push` (which validates
+  with `additionalProperties: false`) refuses a document that uses them; the command and the
+  schema ship together, and floorplan 0.1.0's card ignores both keys. COMPATIBILITY: the schema row
+  gains the two keys (ADDITIVE-ONLY).
+- `custom:floorplan-card` gains config `layers` (additive). The Ramka passes `layers: [climate,
+  plants]` in its next minor; without it the Ramka's plan shows every layer.
+- `push` and `pull` lines gain `link add|remove <floor> <from> <to> <kind>`.
+
+### Stages
+
+1. **0.2.0, part 1:** the candidates and categories above, colours, layer chips, the tray by category,
+   the `category` override.
+2. **0.2.0, part 2:** one point per physical device, a plant's sensor joined to its plant, `via`
+   links drawn.
+3. **0.3.0:** the Link tool and stored `links`, `heard_by`.
+
+### Tests
+
+- `categories.test.mjs`: each rule with a fictional registry (the demo home); first match wins; a
+  group light, a phone, a bare Bluetooth address are not candidates.
+- `plan.test.mjs`: a device and its same-MAC child give one point; a plant's sensor joins the plant;
+  `links` survive a save and lose an end that left the plan.
+- `floorplan-card.test.mjs`: marker colour and shape per category; layers hide points; `layers`
+  config; `via` line on hover; the Link tool (0.3.0).
+- pytest: the schema accepts `category` and `links`, refuses an unknown category or kind; `push`
+  lines for links.
+- Staging of the home that asked: every device placeable, the categories read right, the links
+  match the hardware.
+
+### Out of scope
+
+People's live positions; a radio coverage map; automations by position; walls, doors, windows.
