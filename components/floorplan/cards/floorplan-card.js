@@ -428,7 +428,8 @@ ${STYLE}
     const labels = new Map(layoutLabels([
       ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._values(p) })),
       ...[...clusters.values()].map((c) => ({ key: null, at: c.at, lines: [] })),
-    ], { rooms: floor.rooms.map((r) => r.polygon), px }).map((l) => [l.key, l]));
+    ], { rooms: floor.rooms.map((r) => r.polygon), px, obstacles: this._roomNameBoxes(floor, px, editing) })
+      .map((l) => [l.key, l]));
     for (const point of floor.points) {
       if (!clustered.has(keyOf(point))) this._drawMarker(svg, point, px, editing, labels.get(keyOf(point)));
     }
@@ -549,6 +550,17 @@ ${STYLE}
     }
     this._values(point).forEach((text, i) => {
       el("text", { class: "value", x: fmt(x0), y: fmt(y0 + (11 + 15 * i) * px), "font-size": 13 * px }, g).textContent = text;
+    });
+  }
+
+  // Where the rooms' names (and, in edit mode, their floor areas) are drawn, for readings to avoid.
+  _roomNameBoxes(floor, px, editing) {
+    return floor.rooms.map((room) => {
+      const text = roomLabel(room, this._hass).text;
+      const spot = widestRow(room.polygon);
+      const size = labelSize(text, spot.width, px) * px;
+      const w = String(text).length * 0.55 * size;
+      return { x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6, y1: spot.y + size * 0.6 + (editing ? 16 * px : 0) };
     });
   }
 

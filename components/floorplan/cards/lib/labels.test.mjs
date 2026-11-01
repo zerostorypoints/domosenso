@@ -59,3 +59,9 @@ test("labelBox sizes a label from its longest line and line count", () => {
   assert.ok(box.x1 - box.x0 > 0.6 && box.x1 - box.x0 < 0.8, `width ${box.x1 - box.x0}`);
   assert.ok(Math.abs(box.y1 - box.y0 - 0.3) < 1e-9, "15 px a line");
 });
+
+test("labels keep clear of other boxes given, such as room names", () => {
+  const name = { x0: 1.5, x1: 2.5, y0: 1.95, y1: 2.35 };   // a room's name just under the dot
+  const [l] = layoutLabels([{ key: "a", at: [2, 1.8], lines: ["20.2 °C", "41 %"] }], { rooms, px: PX, obstacles: [name] });
+  assert.ok(!overlap(l.box, name), JSON.stringify(l.box));
+});

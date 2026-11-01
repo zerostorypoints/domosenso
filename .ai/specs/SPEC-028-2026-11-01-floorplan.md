@@ -522,5 +522,5 @@ On a real home the readings under the dots ran over walls and over one another. 
 readings now take the spot round their dot with the lowest cost (`cards/lib/labels.js`): spots
 below, above, right, left and diagonal, in four rings from 12 px out; the cost counts crossing a
 wall (1000), leaving the dot's room (500), covering a label placed before (200 each) or a dot or
-cluster (100 each), then the ring. Readings that had to leave the first ring get a thin leader line
+cluster (100 each) or a room's name (200), then the ring. Readings that had to leave the first ring get a thin leader line
 to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), not measured.

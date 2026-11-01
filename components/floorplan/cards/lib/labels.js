@@ -73,12 +73,13 @@ function spots([x, y], w, h, px) {
   return out;
 }
 
-// items: [{key, at: [x, y], lines: [string]}] (an item without lines is a dot to keep clear of).
+// items: [{key, at: [x, y], lines: [string]}] (an item without lines is a dot to keep clear of);
+// obstacles: other boxes to keep clear of, costed like a label (the rooms' names).
 // Returns [{key, box, cx, top, leader}] for the items with lines, in their order.
-export function layoutLabels(items, { rooms = [], px }) {
+export function layoutLabels(items, { rooms = [], px, obstacles = [] }) {
   const r = DOT_PX * px;
   const dots = items.map((it) => ({ x0: it.at[0] - r, y0: it.at[1] - r, x1: it.at[0] + r, y1: it.at[1] + r }));
-  const placed = [];
+  const placed = [...obstacles];
   const out = [];
   for (const it of items) {
     if (!it.lines?.length) continue;
