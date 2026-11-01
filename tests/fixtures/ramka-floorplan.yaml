@@ -1,4 +1,5 @@
-# The values the demo home supplies to the ramka component (its `inputs:` in component.yaml).
+# The demo home's Ramka inputs plus `floorplan: true` (SPEC-027). For `INPUTS=tests/fixtures/ramka-floorplan.yaml
+# tools/ha-check.sh ramka` and tests/test_ramka_render.py.
 # `uv run tools/domosenso_render.py components/ramka --inputs examples/demo-home/inputs/ramka.yaml
 # --out <dir>` writes package.yaml and dashboard.{en,de,pl}.yaml from them. The tablet hangs in the
 # Dining room, next to the BLE proxy with the radar. `room:` on the list items is the room slug

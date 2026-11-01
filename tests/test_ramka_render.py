@@ -4246,7 +4246,7 @@ def with_floorplan() -> dict:
     return inputs
 
 
-def test_floorplan_off_renders_as_before(tmp_path):
+def test_floorplan_false_equals_absent(tmp_path):
     plain = texts(tmp_path / "a", demo_inputs())
     off = demo_inputs()
     off["floorplan"] = False
@@ -4265,7 +4265,8 @@ def test_floorplan_helper_and_rules(tmp_path):
     assert any(s.get("action") == "input_boolean.turn_off"
                and s["target"]["entity_id"] == "input_boolean.ramka_controls_plan" for s in shows)
     [reset] = [a for a in package["automation"] if a["id"] == "ramka_controls_plan_reset"]
-    assert reset["triggers"][0]["entity_id"] == "input_select.ramka_mode"
+    assert reset["triggers"] == [{"trigger": "state", "entity_id": "input_select.ramka_mode", "not_to": "controls"}]
+    assert "conditions" not in reset
     assert reset["actions"][0]["action"] == "input_boolean.turn_off"
 
     [corner] = [n for n in walk(dash) if n.get("type") == "custom:corner-taps-card"]

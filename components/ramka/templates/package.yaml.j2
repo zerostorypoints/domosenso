@@ -1286,8 +1286,8 @@ script:
               entity_id: timer.[[ p ]]_controls
             data:
               duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
+[%- if inputs.floorplan | default(false) %]
 
-  [%- if inputs.floorplan | default(false) %]
   # A sideways swipe on the controls: the plan instead of the controls, and back (SPEC-027).
   [[ p ]]_controls_plan_toggle:
     alias: [[ named(' controls plan toggle') ]]
@@ -1312,7 +1312,8 @@ script:
               entity_id: timer.[[ p ]]_controls
             data:
               duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
-  [%- endif %]
+[%- endif %]
+
   # Swipes on the controls (corner-taps card, swipe option), both leave to ambient at once:
   # up = the home-info rotation from the climate page, down = the music (the rotation anyway while
   # the player is silent). Standing there changes nothing more; the next approach or tap brings
@@ -2003,8 +2004,8 @@ automation:
           entity_id: timer.[[ p ]]_controls
         data:
           duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
+[%- if inputs.floorplan | default(false) %]
 
-  [%- if inputs.floorplan | default(false) %]
   - id: [[ p ]]_controls_plan_reset
     alias: [[ named(' controls plan reset') ]]
     description: "The mode left controls: the plan is off, so the next controls open on the controls (SPEC-027)."
@@ -2012,14 +2013,12 @@ automation:
     triggers:
       - trigger: state
         entity_id: input_select.[[ p ]]_mode
-    conditions:
-      - condition: template
-        value_template: "{{ trigger.to_state.state != 'controls' }}"
+        not_to: controls
     actions:
       - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.[[ p ]]_controls_plan
-  [%- endif %]
+[%- endif %]
 
   - id: [[ p ]]_controls_timeout
     alias: [[ named(' controls timeout') ]]
