@@ -400,3 +400,61 @@ used in every place of the system." The categories are not the card's: they are 
 - **`via` links:** the registry's `via_device_id` between devices on the plan (a device joined to a
   point counts for it) is drawn as a line from the point that is hovered, dragged or (in edit mode)
   tapped to its hub, or from a hub to every device behind it. Not stored.
+
+## Amendment 6 (`domosenso floorplan preview`: edit against a real home, read-only)
+
+- Status: **draft, waiting for the maintainer's approval**. Source: the maintainer, 2026-11-01:
+  "an option to connect to prod HA, so I can check against real data"; staging as it is stays the
+  mode for a home that starts without sensors.
+- Why not staging: staging mirrors production's states, not its device registry, and copying the
+  registry cannot work, since Home Assistant drops devices whose integration is not set up there
+  *(inference from the registry's orphan cleanup; not tried)*. Categories, joining and links
+  (Amendment 5) need the registry.
+
+### The command
+
+```
+domosenso floorplan preview <target> [--port <n>] [--no-open]
+```
+
+- Starts a page on `127.0.0.1` (default port 8130; never another interface) and opens it unless
+  `--no-open`. The page runs the home's rendered card
+  (`<config_dir>/www/domosenso/floorplan/<locked version>/`, what a deploy carries; a
+  `--catalog-dev` render is fine) with the target's real data, and stops on Ctrl-C.
+- **Read-only towards Home Assistant.** At start it reads, over the target's websocket with its
+  `token_file`: `get_config` (language), `config/area_registry/list`, `config/floor_registry/list`,
+  `config/device_registry/list`, `config/entity_registry/list`, `config_entries/get`, `get_states`;
+  then it subscribes to `state_changed` and passes new states to the page. Nothing is written to
+  Home Assistant. The token stays in the command: the page never sees it.
+- **The plan is the repository's** `domosenso/floorplan.json`. The page's save writes it there
+  (validated as `push` validates; the file's `source` is kept); the person reviews the diff in git
+  and pushes with `floorplan push`. Without the file the command fails as `push` does.
+- **The page's `hass`** is built from those reads in the frontend's shapes the card uses (`states`,
+  `entities` with `device_id`, `platform`, `area_id`, `entity_category`, `hidden`, `original_name`;
+  `devices`, `areas`, `floors`, `language`, `user.is_admin: true`), and its `callWS` answers
+  `lovelace/config` (url path `floorplan`: the file's plan in a one-card dashboard),
+  `lovelace/config/save` (writes the file), `config_entries/get` (from the read). Any other call
+  (creating an area) is refused with the message that the preview does not write to Home
+  Assistant; the card shows it as a refused edit.
+- **Local safety.** The page's URL carries a random key; the server answers nothing without it, so
+  another page in the browser cannot read the home's data or write the file.
+- **Lines:** `read <target>: areas <n> devices <n> entities <n> states <n>`, `preview <url>`,
+  `wrote domosenso/floorplan.json` per save, `refused <type>` per refused call, `stopped`; `FAIL`
+  reasons: those of `push` for the file, `no floorplan card rendered: <path>` (render first),
+  `port <n> in use`, and the target's connection failures as `snapshot` prints them.
+
+### Compatibility, tests
+
+- Additive: a new action of `floorplan`; COMPATIBILITY's `floorplan` row gains it. No card change:
+  the page feeds the card the config and `hass` it already takes.
+- pytest with `tests/fakes.py`: the reads build the expected `hass` shapes (disabled entities and
+  devices left out, `hidden_by` as `hidden`); a save writes the file, keeps `source`, refuses an
+  invalid plan and a request without the key; a refused call returns an error and writes nothing;
+  the server binds 127.0.0.1 only; nothing but reads reaches the fake Home Assistant.
+- By hand: `floorplan preview production` on the home that asked, every device placeable, a save
+  shown by `git diff`, then `floorplan push staging --plan`.
+
+### Out of scope
+
+Writing to Home Assistant from the preview (areas, the dashboard); the Ramka's view; more than one
+browser editing at once (the last save wins, as two tabs on the dashboard would).
