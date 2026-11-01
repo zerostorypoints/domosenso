@@ -441,7 +441,8 @@ the script after adding, renaming or removing a skill.
 - Python: 3.11.4+ (`pyproject.toml`: tarfile extraction filters), run through `uv run`, tested with pytest under `tests/`; tools import each other
   from `tools/` (see `tests/conftest.py`).
 - JavaScript: ES modules, node's built-in test runner with happy-dom, tests next to the code as
-  `*.test.mjs`.
+  `*.test.mjs`, the DOM from `testing/dom-env.mjs`. Never kill `node --test` by `timeout`: its
+  worker lives on.
 - Shell: `bash`, `set -uo pipefail` or stricter, run from the repository root.
 - Comments say why; the code says what. Match the surrounding density.
 - A new component or device id also goes into `COMPONENTS` / `DEVICES` in
