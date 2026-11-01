@@ -126,6 +126,14 @@
     "scope": "fictional"
   },
   {
+    "path": "/previews/floorplan.svg",
+    "alt": "Illustration of a floor plan with fictional readings",
+    "kind": "illustration",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "fictional"
+  },
+  {
     "path": "/hardware/cc1101.webp",
     "alt": "Ebyte E07-M1101D-SMA CC1101 radio module with SMA antenna connector",
     "kind": "photograph",

@@ -23,7 +23,7 @@
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -53,7 +53,7 @@
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -68,7 +68,7 @@
       "preview": "/previews/photos.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -83,7 +83,7 @@
       "preview": "/previews/status.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -100,7 +100,22 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    },
+    {
+      "id": "plan",
+      "title": "Floor plan on the wall",
+      "owner": "ramka",
+      "providers": [
+        "floorplan"
+      ],
+      "availability": "opt-in",
+      "condition": "Set floorplan: true in Ramka 0.10.0 or later with the floorplan dashboard pushed; a sideways swipe on the controls shows the plan and back. floorplan_layers lists its layers, one shown at a time; with floorplan 0.3.0 and Ramka 0.11.0 the plants, climate and light layers have maps, now or the last 24 hours, and the plan fills the screen.",
+      "preview": "/previews/floorplan.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -116,7 +131,7 @@
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -131,7 +146,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -146,7 +161,7 @@
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -158,8 +173,8 @@
     "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
   ],
   "id": "ramka",
-  "version": "0.9.0",
-  "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+  "version": "0.10.1",
+  "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
   "evidencePaths": [
     "components/ramka/component.yaml"
   ],

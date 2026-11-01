@@ -23,7 +23,7 @@
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
+      "sourceCommit": "942b456739c1f72b19af44862dd86d3855ffb6ba",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

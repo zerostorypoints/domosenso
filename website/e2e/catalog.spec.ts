@@ -7,7 +7,7 @@ test('catalog search, shared filters and history',async({page})=>{
  await page.getByLabel('Hardware').selectOption('none');
  await expect(page.getByText('No components match these filters.')).toBeVisible();
  await page.getByRole('button',{name:'Clear filters'}).click();
- await expect(page.locator('.browser-card')).toHaveCount(11);
+ await expect(page.locator('.browser-card')).toHaveCount(12);
  await page.getByLabel('Purpose').selectOption('climate');
  await expect(page).toHaveURL(/purpose=climate/);
  await page.goBack();
@@ -62,7 +62,7 @@ test('hardware and journal routes render on narrow screens',async({page},info)=>
 
 test('no JavaScript retains catalog, views and journal content',async({browser})=>{
  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();
- await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(11);
+ await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(12);
  await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(11);
  await page.goto('http://127.0.0.1:4336/components/ramka/');await expect(page.locator('#views')).toContainText('Home status');
  await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(8);
@@ -97,7 +97,7 @@ test('catalog sections lead from components to hardware and back from a guide',a
  await page.getByRole('link',{name:'All hardware',exact:true}).first().click();
  await expect(page).toHaveURL(/\/devices\/$/);
  await sections.getByRole('link',{name:/DomoSenso components/}).click();
- await expect(page.locator('.browser-card')).toHaveCount(11);
+ await expect(page.locator('.browser-card')).toHaveCount(12);
 });
 
 test('how-to guides: index, branch table, agent prompt, structured data and drafts kept off production',async({page})=>{
