@@ -41,10 +41,13 @@ class Dashboards:
     def _read(self, f):
         assert f == {"url_path": "floorplan"}
         if self.config is None:
-            raise DomosensoError("lovelace/config: config not found")
+            raise DomosensoError("lovelace/config: config_not_found Config not found.")
         return self.config
 
     def _create(self, f):
+        # HA 2026.9.2 (lovelace/dashboard.py): a single-word url_path needs allow_single_word.
+        if "-" not in f["url_path"] and not f.get("allow_single_word"):
+            raise DomosensoError("lovelace/dashboards/create: invalid_format Url path needs to contain a hyphen (-)")
         self.exists = True
 
     def _save(self, f):
@@ -158,7 +161,7 @@ def test_push_creates_dashboard(home, capsys):
     assert not any(line.startswith("backup") for line in lines)
     created = next(f for k, f in dash.ha.calls if k == "lovelace/dashboards/create")
     assert created["url_path"] == "floorplan" and created["require_admin"] is False
-    assert created["show_in_sidebar"] is True
+    assert created["show_in_sidebar"] is True and created["allow_single_word"] is True
     assert dash.writes == ["lovelace/dashboards/create", "lovelace/config/save"]
     assert fd.extract(dash.config) == PLAN
 
@@ -245,3 +248,16 @@ def test_push_production_needs_confirm(home, capsys, monkeypatch):
     monkeypatch.setattr("sys.stdin", Terminal("production\n"))
     assert cli(root, "push", "production", "--apply") == 0
     assert dash.writes == ["lovelace/config/save"]
+
+
+def test_a_failed_read_is_not_no_plan(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    dash.ha.responses["lovelace/config"] = lambda f: (_ for _ in ()).throw(DomosensoError("lovelace/config: timed out after 30 s"))
+    box["ha"] = dash.ha
+    write_plan(root, moved(PLAN))
+    assert cli(root, "push", "staging", "--apply") == 1
+    assert out(capsys) == ["FAIL lovelace/config: timed out after 30 s"]
+    assert dash.writes == []
+    assert cli(root, "pull", "staging") == 1
+    assert out(capsys) == ["FAIL lovelace/config: timed out after 30 s"]

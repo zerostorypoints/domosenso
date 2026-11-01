@@ -18,7 +18,7 @@ from domosenso_cli import cmd_deploy, floorplan_doc as doc
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
 from domosenso_cli.report import Reporter
-from domosenso_cli.snapshot import pick_target
+from domosenso_cli.snapshot import NO_CONFIG, pick_target
 
 PLAN_FILE = Path("domosenso") / "floorplan.json"
 STATE_DIR = Path(".domosenso") / "floorplan"
@@ -68,8 +68,12 @@ async def _dashboard(ha) -> tuple[bool, dict | None]:
         return False, None
     try:
         return True, await ha.call("lovelace/config", url_path=doc.URL_PATH)
-    except DomosensoError:
-        # Home Assistant answers "config not found" for a dashboard that was created and never saved.
+    except DomosensoError as exc:
+        # Home Assistant answers config_not_found for a dashboard that was created and never saved;
+        # any other failure (a timeout, a dropped socket) must not read as "no plan", or push would
+        # overwrite a plan it could not read.
+        if not NO_CONFIG.match(str(exc)):
+            raise
         return True, None
 
 
@@ -146,7 +150,8 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
             rep.line("backup", _shown(args.home, backup))
         if not exists:
             await ha.call("lovelace/dashboards/create", url_path=doc.URL_PATH, title=TITLE, icon="mdi:floor-plan",
-                          show_in_sidebar=True, require_admin=False)
+                          show_in_sidebar=True, require_admin=False,
+                          allow_single_word=True)  # HA wants a hyphen in url_path otherwise
         await ha.call("lovelace/config/save", url_path=doc.URL_PATH, config=doc.dashboard_config(new))
     _write(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(new))
     rep.line("pushed")
