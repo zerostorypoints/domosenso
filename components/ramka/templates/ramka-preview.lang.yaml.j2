@@ -15,6 +15,7 @@
 #]
 [%- extends 'dashboard.lang.yaml.j2' -%]
 [%- set preview = true -%]
+[%- from 'music-source.j2' import music_notice -%]
 [%- block dashboard -%]
 [%- if inputs.preview_dashboard | default(true) -%]
 [%- set settings_paths = inputs.settings_paths | default({}) -%]
@@ -72,6 +73,10 @@ views:
               <ha-alert alert-type="warning">[[ t('ui.preview.switched_off') ]]</ha-alert>
 
               [[ settings_link ]]
+[%- endif %]
+[%- if view == 'music' and visuals %]
+        # The music visual's fallback notice (SPEC-025), as on the settings page: the now-playing
+        # card in the frame then draws Classic on its own.[[ music_notice() | indent(8) ]]
 [%- endif %]
         # The sections of the screen, laid out as the Ramka's sections view lays them out, in a box
         # of the screen's size, scaled down to fit a narrower browser; the link to the settings page

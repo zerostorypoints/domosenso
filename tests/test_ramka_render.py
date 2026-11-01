@@ -1548,7 +1548,6 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
 SETTINGS_PAGES = ["general", *PAGE_VIEWS[:-1], "controls", "music", "about"]
 ADVANCED_ON = {"condition": "state", "entity": "input_boolean.ramka_settings_advanced", "state": "on"}
 MUSIC_SOURCE = "input_select.audio_sensor_music_source"
-SOURCE_THERE = {"condition": "state", "entity": MUSIC_SOURCE, "state_not": "unavailable"}
 # audio-sensor's sensor update rate and watching flag (SPEC-021, amended 2026-10-30, #99, #110).
 SPECTRUM_RATE = "input_select.audio_sensor_music_spectrum_rate"
 MUSIC_WATCHING = "input_boolean.audio_sensor_music_watching"
@@ -1829,9 +1828,10 @@ SENSOR_CASES = {
 }
 
 
-def visible(conditions, states) -> bool:
+def visible(conditions, states, missing="unknown") -> bool:
     """Home Assistant's visibility conditions (state, state_not, and, or; a list is and) on stub
-    states: an entity not in `states` is unknown, as Home Assistant reads a missing one."""
+    states: an entity not in `states` reads `missing`, unknown by default; the frontend may read a
+    missing one as unavailable, so the no-audio-sensor cases run under both."""
     def holds(c) -> bool:
         kind = c.get("condition", "state")
         if kind == "and":
@@ -1839,27 +1839,27 @@ def visible(conditions, states) -> bool:
         if kind == "or":
             return any(holds(x) for x in c["conditions"])
         assert kind == "state" and ("state" in c) != ("state_not" in c), c
-        state = states.get(c["entity"], "unknown")
+        state = states.get(c["entity"], missing)
         return state in as_list(c["state"]) if "state" in c else state not in as_list(c["state_not"])
     return all(holds(c) for c in conditions or [])
 
 
-def shown_with(view, states) -> set[str]:
+def shown_with(view, states, missing="unknown") -> set[str]:
     """The entities a sections view shows for `states`: sections, cards and conditional rows with
     their visibility applied."""
     out = set()
     for section in view["sections"]:
-        if not visible(section.get("visibility"), states):
+        if not visible(section.get("visibility"), states, missing):
             continue
         for card in section["cards"]:
-            if not visible(card.get("visibility"), states):
+            if not visible(card.get("visibility"), states, missing):
                 continue
             if card.get("entity"):
                 out.add(card["entity"])
             for r in card.get("entities", []) if card.get("type") == "entities" else []:
                 r = r if isinstance(r, dict) else {"entity": r}
                 if r.get("type") == "conditional":
-                    if not visible(r["conditions"], states):
+                    if not visible(r["conditions"], states, missing):
                         continue
                     r = r["row"]
                 if r.get("entity"):
@@ -1890,9 +1890,10 @@ def test_music_page_rows_follow_visual_and_sensor(demo, visual, sensor, advanced
             expected |= {EQ_SELECT, *(h[f"eq_{k}"] for k in EQ_KEYS)}
     for lang in LANGS:
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        shown = shown_with(view, states)
-        assert shown == expected, (lang, sorted(shown - expected), sorted(expected - shown))
-        assert not shown & {SPECTRUM_RATE, "input_number.audio_sensor_measured_offset"}, lang
+        for missing in ("unknown", "unavailable") if sensor == "no_audio_sensor" else ("unknown",):
+            shown = shown_with(view, states, missing)
+            assert shown == expected, (lang, missing, sorted(shown - expected), sorted(expected - shown))
+            assert not shown & {SPECTRUM_RATE, "input_number.audio_sensor_measured_offset"}, lang
 
 
 def test_music_sensor_abilities_line(demo):
@@ -1927,6 +1928,93 @@ def test_music_sensor_abilities_line(demo):
                 assert t[f"ui.settings.{key}"] != en[f"ui.settings.{key}"], (lang, key)
 
 
+MUSIC_ALIASES = {"spectrum": "sensor.music_spectrum", "level": "sensor.music_level"}
+NOTICE_KEYS = ("no_sensor", "no_spectrum", "no_level", "offline")
+
+
+def expected_notice(visual, sensor, alias) -> str | None:
+    """SPEC-025's notice table: V with no sensor, V with a sensor lacking the visual's ability, A
+    with the alias unavailable; none for A with data and for Classic."""
+    if visual == "classic":
+        return None
+    if sensor in ("none", "no_audio_sensor"):
+        return "no_sensor"
+    if SENSOR_CASES[sensor][ABILITY_SENSORS[visual]] != "on":
+        return f"no_{visual}"
+    return "offline" if alias == "unavailable" else None
+
+
+def notice_states(visual, sensor, alias) -> dict:
+    states = {"input_boolean.ramka_page_music": "on", MUSIC_VISUAL: visual, **SENSOR_CASES[sensor]}
+    if sensor != "no_audio_sensor":
+        states |= {e: "unavailable" if alias == "unavailable" else "42" for e in MUSIC_ALIASES.values()}
+    return states
+
+
+def notices_shown(cards, states, t, missing) -> list[str]:
+    """The notices among `cards` (markdown cards carrying a notice text) that `states` shows."""
+    out = []
+    for card in cards:
+        for key in NOTICE_KEYS:
+            if card.get("type") == "markdown" and t[f"ui.settings.music_notice_{key}"] in card["content"] \
+                    and visible(card.get("visibility"), states, missing):
+                out.append(key)
+    return out
+
+
+NOTICE_CASES = [(v, s, a) for v in ("classic", "spectrum", "level") for s in ("none", "level_only", "full", "no_audio_sensor")
+                for a in ("unavailable", "data") if not (s == "no_audio_sensor" and a == "data")]
+
+
+@pytest.mark.parametrize("visual,sensor,alias", NOTICE_CASES)
+def test_music_notice_cases(demo, visual, sensor, alias):
+    """The Music page's preview: exactly the case's notice (none for A with data and for Classic);
+    the classic preview whenever a notice shows or the visual is Classic, the visual's own otherwise."""
+    states, want = notice_states(visual, sensor, alias), expected_notice(visual, sensor, alias)
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
+        for missing in ("unknown", "unavailable") if sensor == "no_audio_sensor" else ("unknown",):
+            shown = [(s, c) for s, c in view_cards(view) if visible(s.get("visibility"), states, missing)]
+            notices = notices_shown([c for _, c in shown], states, t, missing)
+            assert notices == ([want] if want else []), (lang, missing, notices)
+            cards = [c for _, c in shown if visible(c.get("visibility"), states, missing)]
+            classic = [c for c in cards if c.get("type") == "markdown" and c["content"] == t["ui.settings.preview_classic"]]
+            visuals = [c["source"]["entity"] for c in cards if c.get("type") == "custom:ambient-wave-card"]
+            if want or visual == "classic":
+                assert (len(classic), visuals) == (1, []), (lang, missing, visuals)
+            else:
+                assert (classic, visuals) == ([], [MUSIC_ALIASES[visual]]), (lang, missing, visuals)
+
+
+@pytest.mark.parametrize("visual,sensor,alias", NOTICE_CASES)
+def test_preview_music_tab_has_the_notice(demo, visual, sensor, alias):
+    """The preview dashboard's Music tab: the same notice, in the stack over the frame (the frame
+    stays last; its now-playing card falls back to Classic on its own)."""
+    states, want = notice_states(visual, sensor, alias), expected_notice(visual, sensor, alias)
+    for lang in LANGS:
+        t = translations(lang)
+        view = settings_views(demo[f"ramka-preview.{lang}.yaml"])["music"]
+        preview_frame(view)
+        [stack] = view["cards"]
+        for missing in ("unknown", "unavailable") if sensor == "no_audio_sensor" else ("unknown",):
+            notices = notices_shown(stack["cards"], states, t, missing)
+            assert notices == ([want] if want else []), (lang, missing, notices)
+
+
+def test_music_notice_texts():
+    """The spec's texts in English; German and Polish translated, not copied."""
+    en = translations("en")
+    assert en["ui.settings.music_notice_no_sensor"] == "No sensor is selected: this visual cannot work. The Ramka shows Classic."
+    assert en["ui.settings.music_notice_no_spectrum"] == "This sensor gives no spectrum data. The Ramka shows Classic."
+    assert en["ui.settings.music_notice_no_level"] == "This sensor gives no level data. The Ramka shows Classic."
+    assert en["ui.settings.music_notice_offline"] == "The sensor is offline: the Ramka shows Classic until data arrives."
+    for lang in ("de", "pl"):
+        t = translations(lang)
+        for key in NOTICE_KEYS:
+            assert t[f"ui.settings.music_notice_{key}"] != en[f"ui.settings.music_notice_{key}"], (lang, key)
+
+
 def preview_cards(view):
     return [(s, c) for s, c in view_cards(view) if c.get("type") == "custom:ambient-wave-card"]
 
@@ -1942,16 +2030,15 @@ def test_settings_preview_is_the_now_playing_visual(demo):
             assert {k: v for k, v in card.items() if k not in ("height", "visibility", "grid_options")} == expected
             # The strip's height on the 1100 x 720 tablet (SPEC-018): 14 % of 720 - 272 px.
             assert card["height"] == "63px"
-            # Without audio-sensor the element does not exist: no preview card, the classic note.
+            # Only while the visual is active (A) and its alias has data (SPEC-025's notice table);
+            # without audio-sensor the ability is never on, so the element that does not exist is
+            # never asked for: the classic preview instead (test_music_notice_cases).
             assert card["visibility"] == [{"condition": "state", "entity": "input_select.ramka_music_visual", "state": kind},
-                                          SOURCE_THERE]
+                                          {"condition": "state", "entity": ABILITY_SENSORS[kind], "state": "on"},
+                                          {"condition": "state", "entity": MUSIC_ALIASES[kind], "state_not": "unavailable"}]
             assert not advanced(section, card)
-        [classic] = [c for _, c in view_cards(view) if c.get("type") == "markdown"
-                     and c.get("content") == translations(lang)["ui.settings.preview_classic"]]
-        assert classic["visibility"] == [{"condition": "or", "conditions": [
-            {"condition": "state", "entity": "input_select.ramka_music_visual", "state_not": ["spectrum", "level"]},
-            {"condition": "state", "entity": "input_select.audio_sensor_music_source", "state": "unavailable"},
-        ]}]
+        [_] = [c for _, c in view_cards(view) if c.get("type") == "markdown"
+               and c.get("content") == translations(lang)["ui.settings.preview_classic"]]
 
 
 def test_settings_preview_passes_the_card_normaliser(tmp_path, demo):
@@ -3651,7 +3738,9 @@ def test_preview_banner_while_the_page_switch_is_off(preview):
             if path == "controls":
                 assert len(stack) == 1, "the controls have no page switch"
                 continue
-            banner, frame = stack
+            # The Music tab has the fallback notice's four cards between them (test_preview_music_tab_has_the_notice).
+            banner, *notices, frame = stack
+            assert len(notices) == (4 if path == "music" else 0), path
             assert banner["type"] == "conditional"
             assert banner["conditions"] == [{"condition": "state", "entity": f"input_boolean.ramka_page_{path}", "state": "off"}]
             assert banner["card"]["type"] == "markdown"

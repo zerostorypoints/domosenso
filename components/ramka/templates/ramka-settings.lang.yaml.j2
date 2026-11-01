@@ -62,20 +62,29 @@
     are their fair from and poor from). -#]
 [%- set air_limits = {'score': ['fair', 'poor'], 'co2': ['raised', 'high'], 'pm2_5': ['raised', 'high'], 'voc': ['raised', 'high'], 'nox': ['raised', 'high']} -%]
 [%- set advanced_on = "{condition: state, entity: input_boolean." ~ p ~ "_settings_advanced, state: \"on\"}" -%]
-[%- set source_there = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: unavailable}" -%]
-[#- The music source contract (SPEC-025). Ramka's render cannot see audio-sensor's inputs, so the
-    page reads the contract's fixed ids; in a home without audio-sensor they do not exist, and a
-    missing entity reads unknown in a visibility condition. The source select's row shows while it
-    exists, the abilities line while a sensor is selected (not the no-sensor option, —). -#]
-[%- set source_exists = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown]}" -%]
-[%- set source_set = '{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown, "—"]}' -%]
-[%- macro visual_is(kind) -%]{condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}[%- endmacro -%]
-[%- macro has_ability(ability) -%]{condition: state, entity: binary_sensor.music_source_[[ ability ]], state: "on"}[%- endmacro -%]
-[#- V: the visual needs a sensor. A (active): V, and the selected sensor has the visual's ability.
-    The Music page, its preview's notice and the sensor sub-view read these two. -#]
-[%- set needs_sensor = "{condition: state, entity: input_select." ~ p ~ "_music_visual, state: [spectrum, level]}" -%]
-[%- set active = "{condition: or, conditions: [{condition: and, conditions: [" ~ visual_is('spectrum') ~ ", " ~ has_ability('spectrum') ~ "]}, "
-    ~ "{condition: and, conditions: [" ~ visual_is('level') ~ ", " ~ has_ability('level') ~ "]}]}" -%]
+[#- The music source contract (SPEC-025): source_exists, source_set, V (needs_sensor), A (active), the
+    offline case and the preview's notice, shared with the preview dashboard (templates/music-source.j2). -#]
+[%- from 'music-source.j2' import source_exists, source_set, visual_is, has_ability, alias_is, needs_sensor, active, music_notice -%]
+[#- The preview under the notice: the visual's own card only while it is active (A) and its alias has
+    data; else the classic note, as the tablet then draws Classic. Without audio-sensor the ability
+    is never on, so the card's element, which does not exist then, is never asked for. The cards
+    start at column 0 under a leading newline, as music_notice's. -#]
+[%- macro music_preview() %]
+[%- set lacking = [] -%]
+[%- for kind in visuals -%][%- set _ = lacking.append("{condition: and, conditions: [" ~ visual_is(kind) ~ ", {condition: or, conditions: [{condition: state, entity: binary_sensor.music_source_" ~ kind ~ ", state_not: \"on\"}, " ~ alias_is(kind, 'unavailable') ~ "]}]}") -%][%- endfor %]
+- type: markdown
+  visibility: [ {condition: or, conditions: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}, [[ lacking | join(', ') ]] ]} ]
+  content: [[ t('ui.settings.preview_classic') | yaml ]]
+[%- for kind, config in visuals.items() %]
+- type: custom:ambient-wave-card
+  visibility: [ [[ visual_is(kind) ]], [[ has_ability(kind) ]], {condition: state, entity: [[ config.source.entity ]], state_not: unavailable} ]
+[%- for key, value in config.items() if key != 'type' %]
+  [[ key ]]: [[ value | yaml ]]
+[%- endfor %]
+  height: 63px
+  grid_options: {columns: full, rows: auto}
+[%- endfor %]
+[%- endmacro -%]
 [#- One row per helper: its id and its translated name, ui.settings.<helper suffix>. A helper given as
     (domain, suffix, descriptions) is a select with an info tooltip (custom:ramka-info-select-row,
     cards/info-select-row.js): Home Assistant's own row and an (i) that tells what the selected option
@@ -471,27 +480,11 @@ views:
             visibility: [ [[ advanced_on ]], [[ active ]] ]
             entities:[[ rows([('input_select', 'music_spectrum_flavour')], visual_is('spectrum')) ]][[ rows([('input_select', 'music_level_flavour')], visual_is('level')) ]][[
               rows([('input_number', 'music_line_width_px')]) ]]
-      # The visual as the tablet draws it, at the strip's height, the width of the page. Without
-      # audio-sensor (its select unavailable) the card's element does not exist: the classic note.
+      # The visual as the tablet draws it, at the strip's height, the width of the page, under the
+      # fallback notice (music_notice, music_preview).
       - type: grid
         column_span: 2
-        cards:[[ heading('preview', 'mdi:waveform') ]]
-[%- for kind, config in visuals.items() %]
-          - type: custom:ambient-wave-card
-            visibility: [ {condition: state, entity: input_select.[[ p ]]_music_visual, state: [[ kind ]]}, [[ source_there ]] ]
-[%- for key, value in config.items() if key != 'type' %]
-            [[ key ]]: [[ value | yaml ]]
-[%- endfor %]
-            height: 63px
-            grid_options: {columns: full, rows: auto}
-[%- endfor %]
-          - type: markdown
-            visibility:
-              - condition: or
-                conditions:
-                  - {condition: state, entity: input_select.[[ p ]]_music_visual, state_not: [spectrum, level]}
-                  - {condition: state, entity: input_select.audio_sensor_music_source, state: unavailable}
-            content: [[ t('ui.settings.preview_classic') | yaml ]][[ profile_sections() ]][[ render_time([('inputs.music_visual', music_visual), ('inputs.media_player', inputs.media_player)]) ]]
+        cards:[[ heading('preview', 'mdi:waveform') ]][[ music_notice() | indent(10) ]][[ music_preview() | indent(10) ]][[ profile_sections() ]][[ render_time([('inputs.music_visual', music_visual), ('inputs.media_player', inputs.media_player)]) ]]
 [%- else %][[ switch_section('music') ]]
       - type: grid
         cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
