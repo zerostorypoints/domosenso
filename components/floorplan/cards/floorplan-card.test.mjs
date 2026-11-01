@@ -854,6 +854,29 @@ test("the layer bar explains the rings when a dot has one", async () => {
   assert.ok(!$(plain, ".layers .ring-legend"), "no ring on the plan, no legend");
 });
 
+// ---- reading labels laid out clear of walls and each other ------------------------------------
+
+test("a dot's readings go above it when below would cross a wall", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 2, 3.95)]) }, hassOf());
+  const texts = [...markerOf(card, "d_climate").querySelectorAll("text.value")];
+  assert.equal(texts.length, 2);
+  assert.ok(texts.every((t) => Number(t.getAttribute("y")) < 0), texts.map((t) => t.getAttribute("y")).join());
+});
+
+test("readings that cannot stay beside their dot get a leader line to it", async () => {
+  // The climate sensor's two readings in a ring of eight unrelated dots, apart enough not to stack.
+  const ring = [[2, 1.75], [2, 2.25], [1.75, 2], [2.25, 2], [1.82, 1.82], [2.18, 2.18], [1.82, 2.18], [2.18, 1.82]];
+  const hass = hassOf();
+  ring.forEach((_, i) => {
+    hass.devices[`d_r${i}`] = { id: `d_r${i}`, name: `Dot ${i}`, area_id: "living_room" };
+    hass.entities[`light.r${i}`] = { entity_id: `light.r${i}`, device_id: `d_r${i}`, platform: "hue" };
+    hass.states[`light.r${i}`] = { state: "on", attributes: {} };
+  });
+  const card = await make({ plan: planOf([pt("d_climate", 2, 2), ...ring.map((at, i) => pt(`d_r${i}`, ...at))]) }, hass);
+  await settle();
+  assert.ok(markerOf(card, "d_climate").querySelector("line.leader"), "a leader to the dot");
+});
+
 // ---- dots stay in rooms; a dot dropped on a dot stacks --------------------------------------
 
 function dragMarker(card, key, from, to) {

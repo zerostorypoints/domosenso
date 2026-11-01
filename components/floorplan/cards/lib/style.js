@@ -28,6 +28,8 @@ export const STYLE = `
                    stroke-width: 2; vector-effect: non-scaling-stroke; }
   .editing .marker { cursor: move; }
   .marker.unplaced circle { fill-opacity: 0.4; stroke-dasharray: 3 2; }
+  .marker line.leader { stroke: var(--secondary-text-color); stroke-width: 1; vector-effect: non-scaling-stroke;
+                        pointer-events: none; }
   .marker circle.role-ring { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
   .marker text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; }
   .marker.picked circle { stroke: var(--accent-color, #ff9800); }

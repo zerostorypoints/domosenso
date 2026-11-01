@@ -29,6 +29,7 @@ import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categorie
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
+import { layoutLabels } from "./lib/labels.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -422,7 +423,15 @@ ${STYLE}
       }
     }
     const clustered = new Set(inCluster.keys());
-    for (const point of floor.points) if (!clustered.has(keyOf(point))) this._drawMarker(svg, point, px, editing);
+    // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too.
+    const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && this._shown(pointCategory(h, p, this._cands)));
+    const labels = new Map(layoutLabels([
+      ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._values(p) })),
+      ...[...clusters.values()].map((c) => ({ key: null, at: c.at, lines: [] })),
+    ], { rooms: floor.rooms.map((r) => r.polygon), px }).map((l) => [l.key, l]));
+    for (const point of floor.points) {
+      if (!clustered.has(keyOf(point))) this._drawMarker(svg, point, px, editing, labels.get(keyOf(point)));
+    }
     for (const [area, c] of clusters) {
       const g = el("g", { class: "cluster", "data-kind": "cluster", "data-cluster": area,
         transform: `translate(${fmt(c.at[0])} ${fmt(c.at[1])})` }, svg);
@@ -512,7 +521,7 @@ ${STYLE}
     list.style.top = `${oy + (open.at[1] - this._view.y) * s - 12}px`;
   }
 
-  _drawMarker(svg, point, px, editing) {
+  _drawMarker(svg, point, px, editing, label = null) {
     const h = this._hass;
     const cls = ["marker"];
     if (editing && !point.placed) cls.push("unplaced");
@@ -530,14 +539,26 @@ ${STYLE}
     // Further roles (what else it senses) as rings in their colours, two at most.
     cat.roles.slice(1, 3).forEach((id, i) => el("circle", { class: "role-ring", r: (11 + 3 * i) * px,
       style: `stroke: ${colourOf(categoryById(id))}` }, g));
-    // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
-    // A plant's value is its name, so a plant is a dot.
-    const name = pointName(h, point);
-    const values = this._config.values
-      ? pointEntities(point, this._entities).map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== name) : [];
-    values.forEach((text, i) => {
-      el("text", { class: "value", y: (22 + 15 * i) * px, "font-size": 13 * px }, g).textContent = text;
+    // Its readings where the layout put them (relative to the dot), with a leader when moved away.
+    if (!label) return;
+    const [x0, y0] = [label.cx - point.x, label.top - point.y];
+    if (label.leader) {
+      const near = [Math.max(label.box.x0, Math.min(point.x, label.box.x1)) - point.x,
+        Math.max(label.box.y0, Math.min(point.y, label.box.y1)) - point.y];
+      el("line", { class: "leader", x1: 0, y1: 0, x2: fmt(near[0]), y2: fmt(near[1]) }, g);
+    }
+    this._values(point).forEach((text, i) => {
+      el("text", { class: "value", x: fmt(x0), y: fmt(y0 + (11 + 15 * i) * px), "font-size": 13 * px }, g).textContent = text;
     });
+  }
+
+  // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
+  // A plant's value is its name, so a plant is a dot.
+  _values(point) {
+    if (!this._config.values) return [];
+    const h = this._hass;
+    const name = pointName(h, point);
+    return pointEntities(point, this._entities).map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== name);
   }
 
   _valueStamp() {
