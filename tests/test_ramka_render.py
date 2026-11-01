@@ -306,6 +306,12 @@ def without_pages(*pages) -> dict:
     return inputs
 
 
+def hand_on(stage) -> dict:
+    """A loop stage's last step to another page (the plants stage turns its page after it)."""
+    return [a for a in stage["then"] if a.get("action") == "input_select.select_option"
+            and a["target"]["entity_id"] == "input_select.ramka_ambient"][-1]
+
+
 def rotation(package) -> dict[str, str]:
     """page -> the page the ambient loop goes to after it with every page switch on, evaluated from
     the rendered loop (since 0.4.0 each stage reads the live list, SPEC-021)."""
@@ -315,7 +321,7 @@ def rotation(package) -> dict[str, str]:
         condition = stage["if"][0]
         if condition.get("condition") != "state":
             continue
-        last = stage["then"][-1]
+        last = hand_on(stage)
         steps[condition["state"]] = next_page(last["data"]["option"], condition["state"], None)
     return steps
 
@@ -339,13 +345,13 @@ def test_a_page_without_its_input_is_left_out(tmp_path, dropped):
     assert next_page(guard["then"][0]["data"]["option"], "nowhere", None) == pages[0]
     # The swipes step through the same pages, never select_next onto a missing one.
     for script in ("ramka_ambient_next", "ramka_ambient_prev"):
-        [step] = [s for s in package["script"][script]["sequence"] if "input_select" in s["action"]]
+        [step] = [s for s in package["script"][script]["sequence"] if "input_select" in s.get("action", "")]
         assert step["action"] == "input_select.select_option"
         assert json.dumps(pages) in step["data"]["option"]
     for script, automation in (("ramka_swipe_up", None), (None, "ramka_ambient_stop")):
         actions = (package["script"][script]["sequence"] if script else
                    next(a for a in package["automation"] if a["id"] == automation)["actions"])
-        starts = [next_page(a["data"]["option"], "nowhere", None) for a in actions
+        starts = [next_page(a["data"]["option"], "nowhere", None) for a in walk(actions)
                   if a.get("action") == "input_select.select_option" and a["target"]["entity_id"] == "input_select.ramka_ambient"]
         assert starts == [pages[0]]
 
@@ -461,7 +467,7 @@ def test_status_page_false_leaves_the_status_page_out(tmp_path, dropped):
     package = rendered["package.yaml"]
     assert rotation(package) == {page: pages[(i + 1) % len(pages)] for i, page in enumerate(pages)}
     for script in ("ramka_ambient_next", "ramka_ambient_prev"):
-        [step] = [s for s in package["script"][script]["sequence"] if "input_select" in s["action"]]
+        [step] = [s for s in package["script"][script]["sequence"] if "input_select" in s.get("action", "")]
         assert step["action"] == "input_select.select_option"
         assert json.dumps(pages) in step["data"]["option"]
     # The helper keeps all five options (FROZEN): a home's history and scenes still name status.
@@ -599,6 +605,7 @@ PHOTO_DEFAULTS = {"input_number.ramka_photo_count": 5, "input_number.ramka_photo
 PLANT_SETTINGS = {"input_number.ramka_plants_per_page": 6, "input_number.ramka_plants_page_s": 10}
 # The albums are no helper: the reset sends event ramka_photo_albums with all albums, the ticks kept.
 ALBUMS = "sensor.ramka_photo_albums"
+SERIES = "sensor.ramka_photo_series"
 # Nor are the Climate page's rooms (amendment 2): the reset sends event ramka_climate_rooms.
 CLIMATE = "sensor.ramka_climate_rooms"
 # The number of places on the Climate page: a helper of its own group, seeded while untouched.
@@ -802,7 +809,9 @@ GROUP_OF = {
 # Helpers that are state, not settings: no settings page shows them (SPEC-021, the standing rule).
 # A new one is added here by name, in review.
 STATE_HELPERS = {"input_select.ramka_mode", "input_select.ramka_ambient", "input_boolean.ramka_ambient_music",
-                 "input_boolean.ramka_settings_seeded", "input_boolean.ramka_climate_slots_seeded"}
+                 "input_boolean.ramka_settings_seeded", "input_boolean.ramka_climate_slots_seeded",
+                 # The pause and the plant page on screen (SPEC-026); the plant page with plants.
+                 "input_boolean.ramka_paused", "input_number.ramka_plants_page"}
 # State with music_visual: none (the blind audition is gone).
 MUSIC_STATE_HELPERS: set[str] = set()
 # State a settings page drives: shown, never reset. None at present.
@@ -1186,8 +1195,10 @@ def test_fallbacks_equal_the_defaults(tmp_path, demo):
     for text, defaults in cases:
         found = FALLBACK.findall(text)
         assert {e for e, _ in found} >= {f"input_number.ramka_{k}" for k in PRESENCE_NUMBERS}
+        # State helpers (the plant page on screen) are no settings and have no default.
         for entity, fallback in found:
-            assert float(fallback) == float(defaults[entity]), entity
+            if entity not in STATE_HELPERS:
+                assert float(fallback) == float(defaults[entity]), entity
 
 
 @pytest.mark.parametrize("defaults, message", [
@@ -1326,7 +1337,7 @@ def run_rotation(package, start, live, steps=6) -> list[str]:
                 continue
             if condition["state"] == here:
                 seen.append(here)
-                here = next_page(stage["then"][-1]["data"]["option"], here, live)
+                here = next_page(hand_on(stage)["data"]["option"], here, live)
     return seen
 
 
@@ -1336,7 +1347,7 @@ def test_loop_and_swipes_read_the_live_list(tmp_path, dropped):
     pages = [p for p in RAMKA_PAGES if p not in dropped]
     # Every stage, the guard, both swipes and swipe up read the live list.
     for stage in loop_stages(package):
-        option = (stage["then"][0] if stage["if"][0]["condition"] == "template" else stage["then"][-1])["data"]["option"]
+        option = (stage["then"][0] if stage["if"][0]["condition"] == "template" else hand_on(stage))["data"]["option"]
         assert "sensor.ramka_ambient_pages" in option
     assert loop_stages(package)[0]["if"][0]["condition"] == "template"
     for script in ("ramka_ambient_next", "ramka_ambient_prev", "ramka_swipe_up"):
@@ -1366,7 +1377,7 @@ def test_swipes_step_through_the_live_list(demo):
     assert next_page(up, "status", live) == "climate"
     assert next_page(up, "status", ["air", "photos"]) == "air"
     [stop] = [a for a in package["automation"] if a["id"] == "ramka_ambient_stop"]
-    rest = next(a for a in stop["actions"] if a.get("target", {}).get("entity_id") == "input_select.ramka_ambient")
+    rest = next(a for a in walk(stop["actions"]) if a.get("target", {}).get("entity_id") == "input_select.ramka_ambient")
     assert next_page(rest["data"]["option"], "status", ["air", "photos"]) == "air"
 
 
@@ -1570,8 +1581,10 @@ def test_an_empty_photo_pick_still_takes_a_slot(demo):
     pauses = [step for step in stage["then"] if "if" in step and any("delay" in t for t in step["then"])]
     assert len(pauses) == 1
     [condition] = pauses[0]["if"]
-    assert ha(condition["value_template"], picks=[]) == "True"
-    assert ha(condition["value_template"], picks=["a/1.jpg"]) == "False"
+    # The series the pick left in sensor.ramka_photo_series (SPEC-026).
+    assert ha(condition["value_template"], attrs={SERIES: {"photos": []}}) == "True"
+    assert ha(condition["value_template"]) == "True"
+    assert ha(condition["value_template"], attrs={SERIES: {"photos": ["a/1.jpg"], "index": 1}}) == "False"
     [pause] = [t["delay"]["seconds"] for t in pauses[0]["then"] if "delay" in t]
     assert ha(pause) == "10" and ha(pause, states={"input_number.ramka_photo_s": "25"}) == "25"
     # The pause sits after the photos and before the hand-on to the next page.
@@ -2614,7 +2627,9 @@ def test_photo_settings_drive_the_loop(demo):
     count, seconds = package["input_number"]["ramka_photo_count"], package["input_number"]["ramka_photo_s"]
     assert (count["min"], count["max"], seconds["min"], seconds["max"]) == (1, 20, 3, 120)
     stage = photo_stage(package)
-    [pick] = [s for s in stage if s.get("action") == "shell_command.ramka_pick"]
+    # The stage starts with the series' photo, a new series when it is over (SPEC-026).
+    assert stage[0] == {"action": "script.ramka_photo_show"}
+    [pick] = [s for s in package["script"]["ramka_photo_series_new"]["sequence"] if s.get("action") == "shell_command.ramka_pick"]
     assert ha(pick["data"]["count"], states={"input_number.ramka_photo_count": "3"}) == "3"
     attrs = {ALBUMS: {"chosen": ["2024 Kreta", "2026 Bern"], "all": False}}
     assert ha_value(pick["data"]["albums"], attrs=attrs) == ["2024 Kreta", "2026 Bern"]
@@ -3224,19 +3239,51 @@ def test_plants_helpers_and_their_ranges(demo):
     assert (secs["min"], secs["max"], secs["unit_of_measurement"]) == (5, 30, "s")
 
 
+def plants_pages(stage, states=None, plants=()) -> int:
+    [variables] = [a["variables"] for a in stage if "variables" in a]
+    return int(stage_seconds(variables["pages"], states, plants))
+
+
 def test_plants_stage_length_follows_pages(demo, tmp_path):
-    [delay] = [n["delay"]["seconds"] for n in walk(plants_stage(demo["package.yaml"])) if isinstance(n.get("delay"), dict)]
-    # The demo lists three plants: one page of 10 s, with the defaults or the helpers' values.
-    assert stage_seconds(delay) == "10"
-    assert stage_seconds(delay, {"input_number.ramka_plants_per_page": "2", "input_number.ramka_plants_page_s": "7"}) == "14"
+    """Since SPEC-026 the stage turns the pages itself: the page on screen for plants_page_s, the
+    next, at most two a pass (with the count of plants-card's pages); no plants: 1 s."""
+    stage = plants_stage(demo["package.yaml"])
+    # The demo lists three plants: one page, with the defaults or the helpers' values.
+    assert plants_pages(stage) == 1
+    assert plants_pages(stage, {"input_number.ramka_plants_per_page": "2"}) == 2
+    [split] = [a for a in stage if "if" in a and "else" in a]
+    assert ha(split["if"][0]["value_template"], pages=0) == "True"
+    assert [n["delay"]["seconds"] for n in walk(split["then"]) if "delay" in n] == [1]
+    [repeat] = [a["repeat"] for a in split["else"] if "repeat" in a]
+    assert [ha(repeat["count"], pages=n) for n in (1, 2, 5)] == ["1", "2", "2"]
+    [delay] = [n["delay"]["seconds"] for n in walk(repeat["sequence"]) if isinstance(n.get("delay"), dict)]
+    assert ha(delay) == "10" and ha(delay, states={"input_number.ramka_plants_page_s": "7"}) == "7"
     out = render(tmp_path, yaml.safe_load(DISCOVER_INPUTS.read_text(encoding="utf-8")))
-    [delay] = [n["delay"]["seconds"] for n in walk(plants_stage(out["package.yaml"])) if isinstance(n.get("delay"), dict)]
+    stage = plants_stage(out["package.yaml"])
     marked = [{"domosenso_plant": True}] * 15 + [{}]
-    assert stage_seconds(delay, plants=marked) == "20"            # three pages of six: two per pass
-    assert stage_seconds(delay, plants=marked[:6]) == "20"        # the tiles, then the list (0.8.0)
-    assert stage_seconds(delay, plants=marked[:5]) == "20"
-    assert stage_seconds(delay, plants=marked[:4]) == "10"        # up to four: no list page
-    assert stage_seconds(delay, plants=[]) == "1"                 # no plants found: on, but never a 0 s spin
+    assert plants_pages(stage, plants=marked) == 6           # three pages of six, three list pages
+    assert plants_pages(stage, plants=marked[:6]) == 2       # the tiles, then the list (0.8.0)
+    assert plants_pages(stage, plants=marked[:4]) == 1       # up to four: no list page
+    assert plants_pages(stage, plants=[]) == 0
+
+
+def test_plants_stage_turns_the_page_and_continues_next_pass(demo):
+    """Between the two slots and once more after handing on, so the next pass continues; round
+    the page count (SPEC-026)."""
+    stage = plants_stage(demo["package.yaml"])
+    turns = [a for a in walk(stage) if a.get("action") == "input_number.set_value"]
+    assert len(turns) == 2 and stage[-1] is turns[-1]
+    assert stage.index(hand_on({"then": stage})) == len(stage) - 2
+    page = {"input_number.ramka_plants_page": "5.0"}
+    assert [ha(turns[0]["data"]["value"], states=page, pages=n) for n in (6, 4, 0)] == ["0", "2", "0"]
+    [inner] = [a for a in walk(stage) if "repeat" in a]
+    [cond] = [a for a in inner["repeat"]["sequence"] if "if" in a]
+    assert [ha(cond["if"][0]["value_template"], pages=3, repeat={"index": i}) for i in (1, 2)] == ["True", "False"]
+
+
+def test_plants_card_reads_the_page_on_screen(demo):
+    for lang in LANGS:
+        assert plants_card(demo[f"dashboard.{lang}.yaml"])["page"] == "input_number.ramka_plants_page"
 
 
 def test_plants_helpers_reset_and_seeded(demo):
@@ -4092,3 +4139,100 @@ def test_preview_dashboard_is_documented_and_its_card_is_a_resource():
     entry = yaml.safe_load(block)["lovelace"]["dashboards"]["ramka-preview"]
     assert entry["filename"] == "dashboards/ramka-preview.en.yaml" and entry["require_admin"] is True
     assert "Unreleased: preview dashboard" in (COMP / "UPGRADE.md").read_text(encoding="utf-8")
+
+
+# ---- Pause and the views of a page (SPEC-026) ------------------------------------------------------
+
+PAUSED_OFF = {"condition": "state", "entity_id": "input_boolean.ramka_paused", "state": "off"}
+
+
+def test_a_pause_holds_the_loop_and_its_page(demo):
+    package = demo["package.yaml"]
+    loop = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]
+    assert PAUSED_OFF in loop["while"]
+    assert PAUSED_OFF in automation(package, "ambient_watchdog")["conditions"]
+    start = automation(package, "ambient_start")
+    assert PAUSED_OFF in start["conditions"]
+    assert {"trigger": "state", "entity_id": "input_boolean.ramka_paused", "to": "off"} in start["triggers"]
+    stop = automation(package, "ambient_stop")
+    assert {"trigger": "state", "entity_id": "input_boolean.ramka_paused", "to": "on"} in stop["triggers"]
+    assert stop["actions"][0] == {"action": "script.turn_off", "target": {"entity_id": "script.ramka_ambient_loop"}}
+    # The page goes back to the first only while not paused: the controls give back the page as it was.
+    [rest] = [a for a in stop["actions"] if "if" in a]
+    assert rest["if"] == [PAUSED_OFF] and rest["then"][0]["target"]["entity_id"] == "input_select.ramka_ambient"
+
+
+def test_the_screen_off_and_swipe_up_end_a_pause(demo):
+    package = demo["package.yaml"]
+    end = automation(package, "pause_end")
+    assert end["triggers"] == [{"trigger": "state", "entity_id": "input_select.ramka_mode", "to": "off"}]
+    assert end["actions"][0] == {"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.ramka_paused"}}
+    assert next_page(end["actions"][1]["data"]["option"], "plants", ["air", "plants"]) == "air"
+    up = package["script"]["ramka_swipe_up"]["sequence"]
+    assert {"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.ramka_paused"}} in up
+    # Pause only while the rotation shows; resume always.
+    pause = package["script"]["ramka_pause"]["sequence"]
+    assert [c["entity_id"] for c in pause if c.get("condition")] == ["input_select.ramka_mode", "binary_sensor.ramka_music_view"]
+    assert package["script"]["ramka_resume"]["sequence"] == [
+        {"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.ramka_paused"}}]
+
+
+def test_page_swipes_keep_a_pause(demo, tmp_path):
+    package = demo["package.yaml"]
+    for script in ("ramka_ambient_next", "ramka_ambient_prev"):
+        [after] = [s for s in package["script"][script]["sequence"] if "if" in s]
+        assert after["if"] == [PAUSED_OFF]
+        assert after["then"] == [{"action": "script.turn_on", "target": {"entity_id": "script.ramka_ambient_loop"}}]
+        # Paused onto the photos: the series' photo, since no loop shows one.
+        assert after["else"][0]["then"] == [{"action": "script.ramka_photo_show"}]
+    without = render(tmp_path, without_pages("photos"))["package.yaml"]
+    [after] = [s for s in without["script"]["ramka_ambient_next"]["sequence"] if "if" in s]
+    assert "else" not in after
+
+
+def test_view_step_turns_plant_pages_and_photos_round(demo):
+    package = demo["package.yaml"]
+    assert package["script"]["ramka_view_next"]["sequence"] == [{"action": "script.ramka_view_step", "data": {"step": 1}}]
+    assert package["script"]["ramka_view_prev"]["sequence"] == [{"action": "script.ramka_view_step", "data": {"step": -1}}]
+    step = package["script"]["ramka_view_step"]["sequence"]
+    [choose] = [s["choose"] for s in step if "choose" in s]
+    by_page = {c["conditions"][0]["state"]: c["sequence"] for c in choose}
+    assert set(by_page) == {"plants", "photos"}   # climate, air and status have one view
+    for seq in by_page.values():
+        assert seq[-1]["if"] == [PAUSED_OFF]       # running: the page starts again; paused: stays
+    value = by_page["plants"][0]["data"]["value"]
+    page = lambda n: {"input_number.ramka_plants_page": n}
+    # Three plants, one page by default; two a page: two pages.
+    assert ha(value, states=page("0.0"), step=1) == "0"
+    two = {**page("1.0"), "input_number.ramka_plants_per_page": "2"}
+    assert [ha(value, states=two, step=s) for s in (1, -1)] == ["0", "0"]
+    one = {**page("0.0"), "input_number.ramka_plants_per_page": "1"}
+    assert [ha(value, states=one, step=s) for s in (1, -1)] == ["1", "2"]
+    [event] = [a for a in walk(by_page["photos"]) if a.get("event") == "ramka_photo_series"]
+    assert [ha(event["event_data"]["index"], index=i, step=s, photos=["a", "b", "c"]) for i, s in ((2, 1), (0, -1), (1, 1))] == ["0", "2", "2"]
+    assert by_page["photos"][-2] == {"action": "script.ramka_photo_show"}
+
+
+def test_photo_show_picks_a_new_series_when_one_is_over(demo):
+    package = demo["package.yaml"]
+    show = package["script"]["ramka_photo_show"]["sequence"]
+    over = show[0]["if"][0]["value_template"]
+    assert ha(over, attrs={SERIES: {"photos": ["a", "b"], "index": 2}}) == "True"
+    assert ha(over, attrs={SERIES: {"photos": ["a", "b"], "index": 1}}) == "False"
+    assert ha(over) == "True"
+    assert show[0]["then"] == [{"action": "script.ramka_photo_series_new"}]
+    new = package["script"]["ramka_photo_series_new"]["sequence"]
+    [event] = [a for a in new if "event" in a]
+    assert event["event_data"]["index"] == 0
+    assert "sensor.ramka_photo_series" in package["recorder"]["exclude"]["entities"]
+
+
+def test_the_rotation_takes_sideways_swipes_and_the_pause_corner(demo):
+    for lang in LANGS:
+        [card] = [n for n in walk(demo[f"dashboard.{lang}.yaml"]) if n.get("type") == "custom:corner-taps-card"]
+        [rotation_rule] = [r for r in card["swipe"] if r.get("left")]
+        assert (rotation_rule["left"], rotation_rule["right"]) == ("script.ramka_view_next", "script.ramka_view_prev")
+        assert rotation_rule["up"] == "script.ramka_ambient_next"
+        assert card["pause"]["conditions"] == rotation_rule["conditions"]
+        assert (card["pause"]["entity"], card["pause"]["pause"], card["pause"]["resume"]) == (
+            "input_boolean.ramka_paused", "script.ramka_pause", "script.ramka_resume")

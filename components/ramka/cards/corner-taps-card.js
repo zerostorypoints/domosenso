@@ -1,6 +1,7 @@
 // Two invisible tap targets in the top corners of the screen, the way out of the kiosk
 // dashboard once the Companion app is pinned: the kiosk user has no sidebar there, and app
-// pinning takes the Android buttons away.
+// pinning takes the Android buttons away. Optionally a third in the bottom-right corner that
+// pauses and resumes the rotation (SPEC-026), and the tap and swipe gestures of the whole screen.
 //
 //   type: custom:corner-taps-card
 //   left: /lovelace/0                       # tap the top-left corner: the Overview, with the sidebar
@@ -19,14 +20,22 @@
 //                                           # land on a card the new page draws under the finger;
 //     shield_ms: 700                        # it lifts this long after the entity reaches `shows`
 //                                           # (or after 3 s at the most)
-//   swipe:                                  # optional: a vertical swipe (80 px or more, under
-//     - conditions:                         # 1.5 s, more vertical than horizontal) anywhere; a list
-//         - entity: input_select.ramka_mode   # of rules, the first whose conditions
-//           states: [controls]              # all hold wins (one rule may also be given on its own)
+//   swipe:                                  # optional: a swipe (80 px or more, under 1.5 s,
+//     - conditions:                         # 1.5 times more along its direction than across)
+//         - entity: input_select.ramka_mode   # anywhere; a list of rules, the first whose
+//           states: [controls]              # conditions all hold wins (one rule may also be
+//                                           # given on its own)
 //       up: script.ramka_swipe_up   # ... finger moved up: this script
-//       down: script.ramka_swipe_down   # ... finger moved down: this one (either is optional)
+//       down: script.ramka_swipe_down   # ... finger moved down: this one (each is optional)
 //     - conditions: [{entity: input_select.ramka_mode, states: [ambient]}]
 //       up: script.ramka_ambient_next
+//       left: script.ramka_view_next    # ... finger moved to the left
+//       right: script.ramka_view_prev   # ... finger moved to the right
+//   pause:                                  # optional: a target in the bottom-right corner,
+//     entity: input_boolean.ramka_paused    # there while the conditions hold; a tap runs `resume`
+//     conditions: [{entity: input_select.ramka_mode, states: [ambient]}]   # while the entity is
+//     pause: script.ramka_pause             # on (a play button shows then), else `pause`. Never
+//     resume: script.ramka_resume           # a tap anywhere. Size: `size`.
 //   reload: input_button.ramka_reload   # optional: a press reloads this page in place
 //                                           # (after a deploy). The Companion app's
 //                                           # command_webview would open a new hidden copy of
@@ -47,8 +56,12 @@
 // Home Assistant still feeds with hass; an orphan gets no hass and drops out by itself.
 
 function cornerTapsPage() {
-  return (window.__cornerTapsPage ??= { card: null, installed: false, base: null, els: [] });
+  return (window.__cornerTapsPage ??= { card: null, installed: false, base: null, els: [], pause: null });
 }
+
+// The play button: a dimmed circle with a triangle, small enough not to spoil a photo.
+const PLAY = `<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
+  <circle cx="20" cy="20" r="20" fill="rgba(0,0,0,0.45)"/><path d="M16 12v16l13-8z" fill="rgba(255,255,255,0.85)"/></svg>`;
 
 class CornerTapsCard extends HTMLElement {
   setConfig(config) {
@@ -94,6 +107,7 @@ class CornerTapsCard extends HTMLElement {
     this._hass = hass;
     cornerTapsPage().card = this;
     this._install();
+    this._syncPause();
     this._maybeLiftShield();
     this._maybeReload();
   }
@@ -133,8 +147,26 @@ class CornerTapsCard extends HTMLElement {
       document.body.appendChild(el);
       page.els.push(el);
     }
+    if (c.pause) {
+      const el = document.createElement("div");
+      el.setAttribute("aria-hidden", "true");
+      Object.assign(el.style, {
+        position: "fixed", bottom: "0", right: "0", width: `${c.size}px`, height: `${c.size}px`,
+        zIndex: "9999", background: "transparent", touchAction: "manipulation", display: "none",
+        alignItems: "center", justifyContent: "center",
+      });
+      el.innerHTML = PLAY;
+      el.firstElementChild.style.visibility = "hidden";
+      el.addEventListener("click", () => { if (page.card && onBoard()) page.card._onPause(); });
+      document.body.appendChild(el);
+      page.els.push(el);
+      page.pause = el;
+    }
     // Off this dashboard (navigation inside the app) the corners must not cover anything.
-    const sync = () => { for (const el of page.els) el.style.display = onBoard() ? "block" : "none"; };
+    const sync = () => {
+      for (const el of page.els) el.style.display = onBoard() ? "block" : "none";
+      if (page.card) page.card._syncPause();
+    };
     window.addEventListener("location-changed", sync);
     window.addEventListener("popstate", sync);
   }
@@ -166,6 +198,32 @@ class CornerTapsCard extends HTMLElement {
     });
   }
 
+  // The pause target is there only while its conditions hold (the rotation shows), so it covers
+  // nothing on the controls; the play button shows while paused.
+  _syncPause() {
+    const page = cornerTapsPage();
+    const el = page.pause;
+    const pause = this._config.pause;
+    if (!el || !pause || !this._hass) return;
+    const here = window.location.pathname.startsWith(page.base) && this._holds({ conditions: pause.conditions || [] });
+    el.style.display = here ? "flex" : "none";
+    el.firstElementChild.style.visibility = this._paused() ? "visible" : "hidden";
+  }
+
+  _paused() {
+    const s = this._hass && this._hass.states[this._config.pause.entity];
+    return !!s && s.state === "on";
+  }
+
+  _onPause() {
+    const pause = this._config.pause;
+    if (!pause || !this._hass) return;
+    const script = this._paused() ? pause.resume : pause.pause;
+    if (!script) return;
+    const [domain, name] = script.split(".");
+    this._hass.callService(domain, name, {});
+  }
+
   _runWhen(rule, script) {
     if (!script || !this._holds(rule)) return false;
     const [domain, name] = script.split(".");
@@ -173,8 +231,8 @@ class CornerTapsCard extends HTMLElement {
     return true;
   }
 
-  // A vertical swipe: down and up within 1.5 s, 80 px or more apart, more vertical than
-  // horizontal. Touch events, not pointer events: in the Companion app's WebView a vertical drag
+  // A swipe: down and up within 1.5 s, 80 px or more apart along one axis and 1.5 times more
+  // along it than across; vertical runs up / down, horizontal left / right. Touch events, not pointer events: in the Companion app's WebView a vertical drag
   // becomes a scroll gesture and ends in pointercancel, never pointerup (2026-10-15), while
   // touchend still arrives. Pointer events stay for a mouse; a touch that already counted
   // makes the pointer pair that follows it ignored.
@@ -187,10 +245,13 @@ class CornerTapsCard extends HTMLElement {
     this._swipeStart = null;
     if (!s || Date.now() - s.t > 1500 || Date.now() - (this._swiped || 0) < 1000) return;
     const dx = x - s.x, dy = y - s.y;
-    if (Math.abs(dy) < 80 || Math.abs(dy) < 1.5 * Math.abs(dx)) return;
+    let dir;
+    if (Math.abs(dy) >= 80 && Math.abs(dy) >= 1.5 * Math.abs(dx)) dir = dy < 0 ? "up" : "down";
+    else if (Math.abs(dx) >= 80 && Math.abs(dx) >= 1.5 * Math.abs(dy)) dir = dx < 0 ? "left" : "right";
+    else return;
     const rules = Array.isArray(this._config.swipe) ? this._config.swipe : [this._config.swipe];
     const rule = rules.find((r) => this._holds(r));
-    if (rule && this._runWhen(rule, dy < 0 ? rule.up : rule.down)) this._swiped = Date.now();
+    if (rule && this._runWhen(rule, rule[dir])) this._swiped = Date.now();
   }
 
   _onTouchStart(ev) {
@@ -212,10 +273,11 @@ class CornerTapsCard extends HTMLElement {
   }
 
   // A tap (or click) anywhere on the page. Listened to on the document in the capture phase,
-  // so taps inside other cards' shadow roots count too; the corner targets are left alone.
+  // so taps inside other cards' shadow roots count too; the corner targets (and the play button
+  // inside one) are left alone.
   _onTap(ev) {
     const tap = this._config.tap;
-    if (!tap || !this._hass || cornerTapsPage().els.includes(ev.target)) return;
+    if (!tap || !this._hass || cornerTapsPage().els.some((el) => el.contains(ev.target))) return;
     const now = Date.now();
     if (now - (this._lastTap || 0) < 1000 || now - (this._swiped || 0) < 1000) return;  // once a second; never right after a swipe
     this._lastTap = now;

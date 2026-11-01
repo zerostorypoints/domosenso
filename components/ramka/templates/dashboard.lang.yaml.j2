@@ -132,7 +132,9 @@ views:
               shield_ms: 700
             # Swipes, first matching rule wins. On the controls and the calendar they leave to
             # ambient at once: up = the home-info rotation, down = the music (while the player
-            # plays). On the rotation itself they turn its pages and restart the cycle there.
+            # plays). On the rotation itself up and down turn its pages and restart the cycle there;
+            # left and right step through the views of the page on screen, the plant pages or the
+            # photos of the series (SPEC-026). While paused, both keep the pause.
             swipe:
               - conditions:
                   - entity: input_select.[[ p ]]_mode
@@ -146,6 +148,19 @@ views:
                     states: ["off"]
                 up: script.[[ p ]]_ambient_next
                 down: script.[[ p ]]_ambient_prev
+                left: script.[[ p ]]_view_next
+                right: script.[[ p ]]_view_prev
+            # The bottom-right corner of the rotation pauses it, and resumes it while paused (a
+            # play button shows there then); the screen going off ends a pause (SPEC-026).
+            pause:
+              entity: input_boolean.[[ p ]]_paused
+              conditions:
+                - entity: input_select.[[ p ]]_mode
+                  states: [ambient]
+                - entity: binary_sensor.[[ p ]]_music_view
+                  states: ["off"]
+              pause: script.[[ p ]]_pause
+              resume: script.[[ p ]]_resume
             # Pressing this button reloads the page in place, the way to pick up a deploy.
             reload: input_button.[[ p ]]_reload
             grid_options: {columns: full, rows: 1}
@@ -524,6 +539,8 @@ views:
             height: calc([[ vh ]] - 16px)
             per_page: input_number.[[ p ]]_plants_per_page
             page_s: input_number.[[ p ]]_plants_page_s
+            # The page on screen, turned by the ambient loop and the sideways swipes (SPEC-026).
+            page: input_number.[[ p ]]_plants_page
 [%- if inputs.plants is string %]
             discover: true
 [%- else %]

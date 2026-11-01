@@ -260,6 +260,19 @@
 [#- The page after `page` in the live list: the first live page later in the rendered order, else
     round to the first. A page switched off while it shows hands on to the next one that is on. -#]
 [%- macro after(page) -%]{% set live = [[ live ]] %}{{ ((live | select('in', [[ pages[pages.index(page) + 1:] | tojson ]]) | list) or live) | first }}[%- endmacro -%]
+[#- How many pages plants-card makes, as a Home Assistant statement setting `pages`: the tile pages of
+    plants_per_page and, with more than four plants, the list pages of seven rows (0.8.0); 0 with no
+    plants. Read by the loop's plants stage and the sideways swipes (SPEC-026). -#]
+[%- macro plant_pages() -%]
+[%- if inputs.plants is string -%]
+{% set n = states.plant | selectattr('attributes.domosenso_plant', 'defined') | list | count %}
+[%- else -%]
+{% set n = [[ inputs.plants | length ]] %}
+[%- endif -%]
+{% set per = states('input_number.[[ p ]]_plants_per_page') | int(6) %}{% set per = per if per > 0 else 6 %}{% set pages = (n + per - 1) // per + ((n + 6) // 7 if n > 4 else 0) %}
+[%- endmacro -%]
+[#- The plant page after the one on screen, round (SPEC-026). -#]
+[%- macro plant_page_turn(step) -%]{{ ((states('input_number.[[ p ]]_plants_page') | int(0)) + [[ step ]]) % ([pages, 1] | max) }}[%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
 # inputs and render again rather than editing this file.
@@ -360,6 +373,12 @@ input_boolean:
   [[ p ]]_near_enabled:
     name: [[ named(' controls on approach') ]]
     icon: mdi:hand-wave
+  # The rotation paused (SPEC-026): the bottom-right corner of the rotation pauses and resumes it
+  # (corner-taps card, pause option). The page on screen and the view inside it stay; the screen
+  # going off ends the pause (automation [[ p ]]_pause_end).
+  [[ p ]]_paused:
+    name: [[ named(' paused') ]]
+    icon: mdi:pause
   # The settings dashboard's Advanced parts show while this is on.
   [[ p ]]_settings_advanced:
     name: [[ named(' advanced settings') ]]
@@ -566,6 +585,15 @@ input_number:
     step: 1
     unit_of_measurement: s
     mode: slider
+  # The plant page on screen, 0-based (SPEC-026): turned by the loop's plants stage and by the
+  # sideways swipes; plants-card shows it modulo its page count. State, not a setting.
+  [[ p ]]_plants_page:
+    name: [[ named(' plants page') ]]
+    icon: mdi:book-open-page-variant-outline
+    min: 0
+    max: 999
+    step: 1
+    mode: box
   [%- endif %]
   [%- if inputs.climate is defined %]
   # How many widgets the Climate page has: rows of the settings page's picker, tiles on the Ramka.
@@ -654,6 +682,14 @@ recorder:
   exclude:
     entities:
       - sensor.[[ p ]]_discovery
+[%- if inputs.plants is defined %]
+      # Turns every plants_page_s while the plants show; nothing reads its history.
+      - input_number.[[ p ]]_plants_page
+[%- endif %]
+[%- if inputs.photo_dir is defined %]
+      # A new series with every visit of the photos page, a new index with every photo.
+      - sensor.[[ p ]]_photo_series
+[%- endif %]
 [%- if music_visual %]
       # The look follows input_select.[[ p ]]_music_template and the profiles' helpers, all recorded.
       - sensor.[[ p ]]_music_look
@@ -811,6 +847,25 @@ template:
           all: >-
             {% set chosen = trigger.event.data.chosen if trigger.event.data.chosen is defined else this.attributes.chosen | default([]) %}
             {{ trigger.event.data.all if trigger.event.data.all is defined else this.attributes.all if this.attributes.all is defined else chosen | count == 0 }}
+  # The photo series (SPEC-026): `photos`, the series the loop shows, and `index`, the one on screen
+  # (equal to the count once the series is over). Kept so a sideways swipe can step back and a
+  # resumed pause continues the same series. Event [[ p ]]_photo_series sets either key and keeps
+  # the other; script.[[ p ]]_photo_series_new sets both.
+  - triggers:
+      - trigger: event
+        event_type: [[ p ]]_photo_series
+    sensor:
+      - name: [[ named(' photo series') ]]
+        unique_id: [[ p ]]_photo_series
+        default_entity_id: sensor.[[ p ]]_photo_series
+        icon: mdi:image-multiple
+        state: >-
+          {{ trigger.event.data.index if trigger.event.data.index is defined else this.attributes.index | default(0) }}
+        attributes:
+          photos: >-
+            {{ trigger.event.data.photos if trigger.event.data.photos is defined else this.attributes.photos | default([]) }}
+          index: >-
+            {{ trigger.event.data.index if trigger.event.data.index is defined else this.attributes.index | default(0) }}
 [%- endif %]
 [%- if inputs.climate is defined %]
   # The Climate page's widgets (SPEC-021 amendments 2, 3): `rooms`, up to twenty in order, each a
@@ -961,9 +1016,26 @@ script:
           option: >-
             {% set live = [[ live ]] %}{% set order = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
             {% if here in order %}{{ ((live | select('in', order[order.index(here) + 1:]) | list) or live) | first }}{% else %}{{ live | first }}{% endif %}
-      - action: script.turn_on
-        target:
-          entity_id: script.[[ p ]]_ambient_loop
+      # Running: the loop restarts on the new page with its full time. Paused: it stays paused on
+      # the new page, which shows its view as it is (photos: the series' photo, a new series when
+      # it is over, since no loop picks one).
+      - if:
+          - condition: state
+            entity_id: input_boolean.[[ p ]]_paused
+            state: "off"
+        then:
+          - action: script.turn_on
+            target:
+              entity_id: script.[[ p ]]_ambient_loop
+[%- if 'photos' in pages %]
+        else:
+          - if:
+              - condition: state
+                entity_id: input_select.[[ p ]]_ambient
+                state: photos
+            then:
+              - action: script.[[ p ]]_photo_show
+[%- endif %]
   [[ p ]]_ambient_prev:
     alias: [[ named(' ambient previous page') ]]
     icon: mdi:chevron-down
@@ -976,9 +1048,200 @@ script:
           option: >-
             {% set live = [[ live ]] %}{% set order = [[ pages | tojson ]] %}{% set here = states('input_select.[[ p ]]_ambient') %}
             {% if here in order %}{{ ((live | select('in', order[:order.index(here)]) | list) or live) | last }}{% else %}{{ live | first }}{% endif %}
-      - action: script.turn_on
+      # As ambient_next.
+      - if:
+          - condition: state
+            entity_id: input_boolean.[[ p ]]_paused
+            state: "off"
+        then:
+          - action: script.turn_on
+            target:
+              entity_id: script.[[ p ]]_ambient_loop
+[%- if 'photos' in pages %]
+        else:
+          - if:
+              - condition: state
+                entity_id: input_select.[[ p ]]_ambient
+                state: photos
+            then:
+              - action: script.[[ p ]]_photo_show
+[%- endif %]
+  # Pause and resume (SPEC-026), from the bottom-right corner of the rotation (corner-taps card,
+  # pause option). Pausing stops the loop (automation [[ p ]]_ambient_stop) and keeps the page and
+  # its view; resuming starts it again (automation [[ p ]]_ambient_start), the page on screen with
+  # its full time.
+  [[ p ]]_pause:
+    alias: [[ named(' pause') ]]
+    icon: mdi:pause
+    mode: single
+    sequence:
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state: ambient
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        state: "off"
+      - action: input_boolean.turn_on
         target:
-          entity_id: script.[[ p ]]_ambient_loop
+          entity_id: input_boolean.[[ p ]]_paused
+  [[ p ]]_resume:
+    alias: [[ named(' resume') ]]
+    icon: mdi:play
+    mode: single
+    sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_paused
+  # Sideways swipes on the rotation (SPEC-026): finger to the left = the next view of the page on
+  # screen, to the right = the previous one, round. Plants: the plant pages; photos: the photos of
+  # the series. Climate, air and status have one view and ignore them. Running, the loop restarts on
+  # the page with its full time; paused, it stays paused.
+  [[ p ]]_view_next:
+    alias: [[ named(' next view') ]]
+    icon: mdi:chevron-left
+    mode: single
+    sequence:
+      - action: script.[[ p ]]_view_step
+        data:
+          step: 1
+  [[ p ]]_view_prev:
+    alias: [[ named(' previous view') ]]
+    icon: mdi:chevron-right
+    mode: single
+    sequence:
+      - action: script.[[ p ]]_view_step
+        data:
+          step: -1
+  [[ p ]]_view_step:
+    alias: [[ named(' view step') ]]
+    icon: mdi:swap-horizontal
+    mode: queued
+    max: 3
+    fields:
+      step:
+        description: 1 for the next view, -1 for the previous one.
+        example: 1
+    sequence:
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state: ambient
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        state: "off"
+[%- if 'plants' in pages or 'photos' in pages %]
+      - choose:
+[%- if 'plants' in pages %]
+          - conditions:
+              - condition: state
+                entity_id: input_select.[[ p ]]_ambient
+                state: plants
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.[[ p ]]_plants_page
+                data:
+                  value: >-
+                    [[ plant_pages() ]]{% set step = step | int(1) %}[[ plant_page_turn('step') ]]
+              # Running: the page starts again with its full time; paused, it stays.
+              - if:
+                  - condition: state
+                    entity_id: input_boolean.[[ p ]]_paused
+                    state: "off"
+                then:
+                  - action: script.turn_on
+                    target:
+                      entity_id: script.[[ p ]]_ambient_loop
+[%- endif %]
+[%- if 'photos' in pages %]
+          - conditions:
+              - condition: state
+                entity_id: input_select.[[ p ]]_ambient
+                state: photos
+            sequence:
+              - variables:
+                  photos: "{{ state_attr('sensor.[[ p ]]_photo_series', 'photos') or [] }}"
+                  index: "{{ state_attr('sensor.[[ p ]]_photo_series', 'index') | int(0) }}"
+              # A series that is over (or none yet) gets a new one in photo_show instead.
+              - if:
+                  - condition: template
+                    value_template: "{{ index < photos | count }}"
+                then:
+                  - event: [[ p ]]_photo_series
+                    event_data:
+                      index: "{{ (index + (step | int(1))) % (photos | count) }}"
+                  - wait_template: >-
+                      {{ state_attr('sensor.[[ p ]]_photo_series', 'index') | int(-1) == (index + (step | int(1))) % (photos | count) }}
+                    timeout: 5
+                    continue_on_timeout: true
+              - action: script.[[ p ]]_photo_show
+              # Running: the page starts again with its full time; paused, it stays.
+              - if:
+                  - condition: state
+                    entity_id: input_boolean.[[ p ]]_paused
+                    state: "off"
+                then:
+                  - action: script.turn_on
+                    target:
+                      entity_id: script.[[ p ]]_ambient_loop
+[%- endif %]
+[%- endif %]
+[%- if 'photos' in pages %]
+  # The series' photo on screen (SPEC-026), a new series first when it is over or empty: the photos
+  # stage starts here, and so do a sideways swipe on the photos and a vertical swipe onto them
+  # while paused.
+  [[ p ]]_photo_show:
+    alias: [[ named(' photo show') ]]
+    icon: mdi:image
+    mode: queued
+    max: 3
+    sequence:
+      - if:
+          - condition: template
+            value_template: >-
+              {% set s = 'sensor.[[ p ]]_photo_series' %}
+              {{ state_attr(s, 'index') | int(0) >= (state_attr(s, 'photos') or []) | count }}
+        then:
+          - action: script.[[ p ]]_photo_series_new
+      - variables:
+          photos: "{{ state_attr('sensor.[[ p ]]_photo_series', 'photos') or [] }}"
+          index: "{{ state_attr('sensor.[[ p ]]_photo_series', 'index') | int(0) }}"
+      - condition: template
+        value_template: "{{ index < photos | count }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.[[ p ]]_photo
+        data:
+          value: "{{ photos[index] }}"
+  # A new series (SPEC-026): shell/ramka_pick.py draws one folder that holds photos, at any depth
+  # (inside the chosen albums), with equal chances, then up to `count` different photos from it. An
+  # empty folder tree gives an empty series. Returns once sensor.[[ p ]]_photo_series holds it.
+  [[ p ]]_photo_series_new:
+    alias: [[ named(' photo series new') ]]
+    icon: mdi:image-refresh
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - action: shell_command.[[ p ]]_pick
+        data:
+          count: "{{ states('input_number.[[ p ]]_photo_count') | int([[ photo_defaults.photo_count ]]) }}"
+          # All albums ticked, none chosen, or the sensor not there yet: every album.
+          albums: >-
+            {{ [] if state_attr('sensor.[[ p ]]_photo_albums', 'all') else state_attr('sensor.[[ p ]]_photo_albums', 'chosen') or [] }}
+        response_variable: pick
+      - variables:
+          # The JSON is the last line of stdout; anything the script printed before it is ignored.
+          picks: >-
+            {% set lines = (pick.stdout | default('')).strip().splitlines() %}
+            {{ (lines | last | from_json).photos if lines else [] }}
+      - event: [[ p ]]_photo_series
+        event_data:
+          photos: "{{ picks }}"
+          index: 0
+      - wait_template: >-
+          {{ state_attr('sensor.[[ p ]]_photo_series', 'photos') == picks and state_attr('sensor.[[ p ]]_photo_series', 'index') | int(-1) == 0 }}
+        timeout: 5
+        continue_on_timeout: true
+[%- endif %]
   # The calendar screen, from the calendar button on the controls. Same hold rules as the
   # controls: no timer while someone is within near_cm, controls_hold_s after leaving. Not while the
   # calendar view is switched off (its buttons hide then too).
@@ -1022,6 +1285,10 @@ script:
       - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.[[ p ]]_ambient_music
+      # The rotation from its first page, so not paused (SPEC-026).
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_paused
       - action: input_select.select_option
         target:
           entity_id: input_select.[[ p ]]_ambient
@@ -1097,6 +1364,10 @@ script:
             - condition: state
               entity_id: binary_sensor.[[ p ]]_music_view
               state: "off"
+            # Not paused (SPEC-026); pausing stops the loop anyway (automation ambient_stop).
+            - condition: state
+              entity_id: input_boolean.[[ p ]]_paused
+              state: "off"
           # Five stages, each guarded by the page the frame is on, so a pass picks up wherever
           # the page already is: a swipe (scripts ambient_next/prev) sets the page and restarts
           # this script, and the cycle begins there with that page's full time. Left alone it runs
@@ -1151,64 +1422,78 @@ script:
                       [[ after('air') ]]
 [%- endif %]
 [%- if 'plants' in pages %]
-            # 3. Plants: the ones that need something first, at most two pages of plants_page_s
-            #    (plants-card turns them and continues on the next pass); with more than four plants
-            #    the list pages of seven rows follow the tiles (0.8.0); no plants found: 1 s, so a
-            #    rotation of plants alone never runs without a pause.
+            # 3. Plants: the ones that need something first. The page on screen for plants_page_s,
+            #    the next, at most two pages a pass, then one turn more after leaving, so the next pass
+            #    continues (input_number.[[ p ]]_plants_page, SPEC-026; plants-card shows it). With
+            #    more than four plants the list pages of seven rows follow the tiles (0.8.0); no plants
+            #    found: 1 s, so a rotation of plants alone never runs without a pause.
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
                   state: plants
               then:
-                - delay:
-                    seconds: >-
-[%- if inputs.plants is string %]
-                      {% set n = states.plant | selectattr('attributes.domosenso_plant', 'defined') | list | count %}
-[%- else %]
-                      {% set n = [[ inputs.plants | length ]] %}
-[%- endif %]
-                      {% set per = states('input_number.[[ p ]]_plants_per_page') | int(6) %}
-                      {% set per = per if per > 0 else 6 %}
-                      {% set pages = (n + per - 1) // per + ((n + 6) // 7 if n > 4 else 0) %}
-                      {{ [([pages, 2] | min) * (states('input_number.[[ p ]]_plants_page_s') | int(10)), 1] | max }}
+                - variables:
+                    pages: >-
+                      [[ plant_pages() ]]{{ pages }}
+                - if:
+                    - condition: template
+                      value_template: "{{ pages == 0 }}"
+                  then:
+                    - delay:
+                        seconds: 1
+                  else:
+                    - repeat:
+                        count: "{{ [pages, 2] | min }}"
+                        sequence:
+                          - delay:
+                              seconds: "{{ states('input_number.[[ p ]]_plants_page_s') | int([[ plant_defaults_live.plants_page_s ]]) }}"
+                          - if:
+                              - condition: template
+                                value_template: "{{ repeat.index < [pages, 2] | min }}"
+                            then:
+                              - action: input_number.set_value
+                                target:
+                                  entity_id: input_number.[[ p ]]_plants_page
+                                data:
+                                  value: "[[ plant_page_turn(1) ]]"
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient
                   data:
                     option: >-
                       [[ after('plants') ]]
+                - action: input_number.set_value
+                  target:
+                    entity_id: input_number.[[ p ]]_plants_page
+                  data:
+                    value: "[[ plant_page_turn(1) ]]"
 [%- endif %]
 [%- if 'photos' in pages %]
-            # 4. Photos: from the plants page, or straight in when the page already is photos.
-            #    shell/ramka_pick.py: one folder that holds photos, at any depth (inside the chosen
-            #    album), drawn with equal chances, then up to `count` different photos from it. An
-            #    empty folder tree gives an empty list: the photos are skipped after one slot.
+            # 4. Photos: from the plants page, or straight in when the page already is photos. The
+            #    series in sensor.[[ p ]]_photo_series from the photo on screen to its end, photo_s
+            #    each (SPEC-026: a pause or a swipe left it there); a new series when it is over
+            #    (script photo_show, which shows its first photo). An empty folder tree gives an empty
+            #    series: the photos are skipped after one slot.
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
                   state: photos
               then:
-                - action: shell_command.[[ p ]]_pick
-                  data:
-                    count: "{{ states('input_number.[[ p ]]_photo_count') | int([[ photo_defaults.photo_count ]]) }}"
-                    # All albums ticked, none chosen, or the sensor not there yet: every album.
-                    albums: >-
-                      {{ [] if state_attr('sensor.[[ p ]]_photo_albums', 'all') else state_attr('sensor.[[ p ]]_photo_albums', 'chosen') or [] }}
-                  response_variable: pick
-                - variables:
-                    # The JSON is the last line of stdout; anything the script printed before it
-                    # is ignored.
-                    picks: >-
-                      {% set lines = (pick.stdout | default('')).strip().splitlines() %}
-                      {{ (lines | last | from_json).photos if lines else [] }}
+                - action: script.[[ p ]]_photo_show
                 - repeat:
-                    for_each: "{{ picks }}"
+                    while:
+                      - condition: template
+                        value_template: >-
+                          {% set s = 'sensor.[[ p ]]_photo_series' %}
+                          {{ state_attr(s, 'index') | int(0) < (state_attr(s, 'photos') or []) | count }}
                     sequence:
+                      - variables:
+                          index: "{{ state_attr('sensor.[[ p ]]_photo_series', 'index') | int(0) }}"
                       - action: input_text.set_value
                         target:
                           entity_id: input_text.[[ p ]]_photo
                         data:
-                          value: "{{ repeat.item }}"
+                          value: "{{ state_attr('sensor.[[ p ]]_photo_series', 'photos')[index] }}"
                       - action: input_select.select_option
                         target:
                           entity_id: input_select.[[ p ]]_ambient
@@ -1216,12 +1501,18 @@ script:
                           option: photos
                       - delay:
                           seconds: "{{ states('input_number.[[ p ]]_photo_s') | int([[ photo_defaults.photo_s ]]) }}"
-                # An empty pick (no photos, or the folder not mounted) still takes one slot: with
+                      - event: [[ p ]]_photo_series
+                        event_data:
+                          index: "{{ index + 1 }}"
+                      - wait_template: "{{ state_attr('sensor.[[ p ]]_photo_series', 'index') | int(0) == index + 1 }}"
+                        timeout: 5
+                        continue_on_timeout: true
+                # An empty series (no photos, or the folder not mounted) still takes one slot: with
                 # photos the only page switched on, the next page is photos again, and the loop
                 # would otherwise call the pick without a pause.
                 - if:
                     - condition: template
-                      value_template: "{{ picks | count == 0 }}"
+                      value_template: "{{ (state_attr('sensor.[[ p ]]_photo_series', 'photos') or []) | count == 0 }}"
                   then:
                     - delay:
                         seconds: "{{ states('input_number.[[ p ]]_photo_s') | int([[ photo_defaults.photo_s ]]) }}"
@@ -1605,6 +1896,10 @@ automation:
       - condition: state
         entity_id: binary_sensor.[[ p ]]_music_view
         state: "off"
+      # Paused on purpose (SPEC-026).
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_paused
+        state: "off"
     actions:
       - action: logbook.log
         data:
@@ -1726,7 +2021,7 @@ automation:
   #    must not change underneath it).
   - id: [[ p ]]_ambient_start
     alias: [[ named(' ambient start') ]]
-    description: "Ambient entered, or the music view gone: run the climate/photos loop."
+    description: "Ambient entered, the music view gone, or resumed: run the climate/photos loop, unless paused."
     mode: single
     triggers:
       - trigger: state
@@ -1734,6 +2029,10 @@ automation:
         to: ambient
       - trigger: state
         entity_id: binary_sensor.[[ p ]]_music_view
+        to: "off"
+      # Resumed (SPEC-026): the page on screen starts with its full time.
+      - trigger: state
+        entity_id: input_boolean.[[ p ]]_paused
         to: "off"
       - trigger: homeassistant
         event: start
@@ -1743,6 +2042,9 @@ automation:
         state: ambient
       - condition: state
         entity_id: binary_sensor.[[ p ]]_music_view
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_paused
         state: "off"
     actions:
       - action: script.turn_on
@@ -1824,9 +2126,33 @@ automation:
         data:
           option: "[[ eq_none ]]"
 [%- endif %]
+  # The screen off ends a pause (SPEC-026): whoever comes next gets the rotation.
+  - id: [[ p ]]_pause_end
+    alias: [[ named(' pause end') ]]
+    description: "The screen went off: the rotation is not paused any more and starts from its first page."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_mode
+        to: "off"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_paused
+        state: "on"
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_paused
+      # What ambient_stop left standing while paused.
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.[[ p ]]_ambient
+        data:
+          option: >-
+            {{ [[ live ]] | first }}
   - id: [[ p ]]_ambient_stop
     alias: [[ named(' ambient stop') ]]
-    description: "Ambient left, or the music view on: stop the loop and rest on the climate page."
+    description: "Ambient left, the music view on, or paused: stop the loop; unless paused, rest on the first page."
     mode: single
     triggers:
       - trigger: state
@@ -1835,16 +2161,26 @@ automation:
       - trigger: state
         entity_id: binary_sensor.[[ p ]]_music_view
         to: "on"
+      # Paused (SPEC-026): the loop stops, the page stays.
+      - trigger: state
+        entity_id: input_boolean.[[ p ]]_paused
+        to: "on"
     actions:
       - action: script.turn_off
         target:
           entity_id: script.[[ p ]]_ambient_loop
-      - action: input_select.select_option
-        target:
-          entity_id: input_select.[[ p ]]_ambient
-        data:
-          option: >-
-            {{ [[ live ]] | first }}
+      # While paused the page stays too, so the controls (or the music) give back the page as it was.
+      - if:
+          - condition: state
+            entity_id: input_boolean.[[ p ]]_paused
+            state: "off"
+        then:
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.[[ p ]]_ambient
+            data:
+              option: >-
+                {{ [[ live ]] | first }}
   # ---- Live settings (0.4.0) -----------------------------------------------------------------
   # The settings' starting values, once. The flag is new in 0.4.0, so it is off on the first start
   # of every home, also one that has run the Ramka for months: a group is seeded only while it is
