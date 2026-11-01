@@ -97,10 +97,20 @@ async def _pull(args: argparse.Namespace, rep: Reporter) -> int:
                  "rooms", str(len(floor["rooms"])), "points", str(len(floor["points"])))
     out = args.out or args.home / PLAN_FILE
     kept = (_read_json(out) or {}).get("source")  # the traced image lives only in the repository's file
-    _write(out, {**plan, **({"source": kept} if kept else {})})
+    _write(out, {**doc.without_source(plan), **({"source": kept} if kept else {})})
     _write(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(plan))
     rep.line("wrote", _shown(args.home, out))
     return rep.ok()
+
+
+def _plan_on_target(config: dict | None, target: str) -> dict | None:
+    plan = doc.extract(config)
+    if plan is not None:
+        try:
+            doc.validate(plan)
+        except DomosensoError as exc:
+            raise DomosensoError(f"plan on {target}: {exc}") from exc
+    return plan
 
 
 def _changed_since_pull(pulled: dict | None, current: dict | None) -> str | None:
@@ -121,7 +131,7 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
     doc.validate(new)
     async with cmd_deploy.connect(target) as ha:
         exists, config = await _dashboard(ha)
-        current = doc.extract(config)
+        current = _plan_on_target(config, args.target)
         changed = _changed_since_pull(_read_json(args.home / STATE_DIR / f"{args.target}.pulled.json"), current)
         if changed:
             raise DomosensoError(f"changed on target since pull: {changed}")
@@ -143,6 +153,12 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
         if args.plan:
             return rep.ok()
         await cmd_deploy.confirm_production(digest, args.confirm, args.target, rep.json_mode, "floorplan")
+        # The card may have saved while the human read the plan or typed `production`; read again so
+        # that save is neither overwritten nor missing from the backup.
+        exists, config = await _dashboard(ha)
+        changed = _changed_since_pull(current, _plan_on_target(config, args.target))
+        if changed:
+            raise DomosensoError(f"changed on target since pull: {changed}")
         if config is not None:
             stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             backup = args.home / STATE_DIR / f"{args.target}-{stamp}.json"

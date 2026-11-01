@@ -153,3 +153,42 @@ def test_canonical_int_equals_integral_float():
     b["floors"][0]["rooms"][0]["polygon"] = [[0.0, 0.0], [5.0, 0.0], [5.0, 7.0], [0.0, 7.0]]
     assert canonical(a) == canonical(b)
     assert diff(a, b) == []
+
+
+def test_duplicate_floor_refused():
+    doc = demo()
+    doc["floors"].append(copy.deepcopy(doc["floors"][0]))
+    doc["floors"][1]["rooms"] = []
+    doc["floors"][1]["points"] = []
+    with pytest.raises(DomosensoError, match="duplicate floor_id: ground"):
+        validate(doc)
+
+
+def test_duplicate_area_on_a_floor_refused():
+    doc = demo()
+    doc["floors"][0]["rooms"][1]["area_id"] = "living_room"
+    with pytest.raises(DomosensoError, match="duplicate area_id on floor ground: living_room"):
+        validate(doc)
+
+
+def test_same_area_on_two_floors_valid():
+    doc = demo()
+    doc["floors"].append({"floor_id": "upstairs", "rooms": [{"area_id": "living_room", "polygon": SQUARE}],
+                          "points": []})
+    validate(doc)
+
+
+def test_duplicate_point_refused_across_floors():
+    doc = demo()
+    doc["floors"].append({"floor_id": "upstairs", "rooms": [],
+                          "points": [{"entity_id": "plant.monstera", "x": 1, "y": 1, "placed": True}]})
+    with pytest.raises(DomosensoError, match="duplicate point: plant.monstera"):
+        validate(doc)
+
+
+def test_null_floor_duplicate_named():
+    doc = demo()
+    doc["floors"][0]["floor_id"] = None
+    doc["floors"].append({"floor_id": None, "rooms": [], "points": []})
+    with pytest.raises(DomosensoError, match="duplicate floor_id: -"):
+        validate(doc)

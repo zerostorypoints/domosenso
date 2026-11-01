@@ -29,6 +29,27 @@ def validate(doc: dict) -> None:
     )
     if errors:
         raise DomosensoError(describe(errors[0]))
+    _refuse_duplicates(doc)
+
+
+def _refuse_duplicates(doc: dict) -> None:
+    # The schema cannot say these; a duplicate would make `diff` and the card silently pick one.
+    floors, points = set(), set()
+    for floor in doc["floors"]:
+        label = "-" if floor["floor_id"] is None else floor["floor_id"]
+        if floor["floor_id"] in floors:
+            raise DomosensoError(f"duplicate floor_id: {label}")
+        floors.add(floor["floor_id"])
+        areas = set()
+        for room in floor["rooms"]:
+            if room["area_id"] in areas:
+                raise DomosensoError(f"duplicate area_id on floor {label}: {room['area_id']}")
+            areas.add(room["area_id"])
+        for point in floor["points"]:
+            key = point_key(point)
+            if key in points:
+                raise DomosensoError(f"duplicate point: {key}")
+            points.add(key)
 
 
 def without_source(doc: dict) -> dict:

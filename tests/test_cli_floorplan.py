@@ -261,3 +261,60 @@ def test_a_failed_read_is_not_no_plan(home, capsys):
     assert dash.writes == []
     assert cli(root, "pull", "staging") == 1
     assert out(capsys) == ["FAIL lovelace/config: timed out after 30 s"]
+
+
+def test_push_a_save_during_the_prompt_is_not_overwritten(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    reads = []
+
+    def read(f):
+        # the card saves while the human reads the plan: the second read sees the edit
+        reads.append(f)
+        return fd.dashboard_config(PLAN if len(reads) == 1 else moved(PLAN))
+
+    dash.ha.responses["lovelace/config"] = read
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    write_plan(root, {**PLAN, "floors": [{**PLAN["floors"][0], "points": PLAN["floors"][0]["points"][:2]}]})
+    assert cli(root, "push", "staging", "--apply") == 1
+    assert out(capsys)[-1] == "FAIL changed on target since pull: 1 rooms, 2 points"
+    assert len(reads) == 2 and dash.writes == []
+    assert not list((root / ".domosenso" / "floorplan").glob("staging-*.json"))
+
+
+def test_push_backs_up_the_second_read(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    configs = [fd.dashboard_config(PLAN), {**fd.dashboard_config(PLAN), "title": "renamed"}]
+    dash.ha.responses["lovelace/config"] = lambda f: configs.pop(0) if len(configs) > 1 else configs[0]
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    write_plan(root, moved(PLAN))
+    assert cli(root, "push", "staging", "--apply") == 0
+    backup = next(line for line in out(capsys) if line.startswith("backup "))
+    assert json.loads((root / backup.removeprefix("backup ")).read_text())["title"] == "renamed"
+
+
+def test_pull_never_takes_a_source_from_the_target(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    dash.config["views"][0]["cards"][0]["plan"] = {**PLAN, "source": {"image": "from-ha.png"}}
+    box["ha"] = dash.ha
+    assert cli(root, "pull", "staging") == 0
+    assert json.loads((root / "domosenso/floorplan.json").read_text()) == PLAN
+    write_plan(root, {**PLAN, "source": SOURCE})
+    assert cli(root, "pull", "staging") == 0
+    assert json.loads((root / "domosenso/floorplan.json").read_text()) == {**PLAN, "source": SOURCE}
+
+
+def test_push_refuses_a_mangled_plan_on_the_target(home, capsys):
+    root, box = home
+    dash = Dashboards(json.loads(json.dumps(PLAN)))
+    del dash.config["views"][0]["cards"][0]["plan"]["floors"][0]["rooms"][0]["area_id"]
+    box["ha"] = dash.ha
+    write_plan(root, PLAN)
+    assert cli(root, "push", "staging", "--plan") == 1
+    line = out(capsys)[-1]
+    assert line.startswith("FAIL ") and "area_id" in line and "unexpected" not in line
+    assert dash.writes == []
