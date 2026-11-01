@@ -3,7 +3,10 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## Unreleased
+## 0.10.0 (2026-11-01): the floor plan as a second view of the controls
+
+Needs the `floorplan` component (0.2.0 or newer) for the plan; without `floorplan: true` the render
+is what 0.9.0 rendered, apart from `corner-taps-card` leaving `data-own-tap` elements' taps alone.
 
 ### The floor plan as a second view of the controls (SPEC-028)
 
