@@ -33,6 +33,7 @@ COMMANDS: dict[str, str | None] = {
     "discover": "domosenso_cli.discover",
     "probe": "domosenso_cli.probe",
     "http": "domosenso_cli.http_config",
+    "floorplan": "domosenso_cli.floorplan",
 }
 
 SUMMARIES = {
@@ -51,6 +52,7 @@ SUMMARIES = {
     "discover": "list what Home Assistant discovered and has set up",
     "probe": "measure a wall tablet's screen through a temporary page",
     "http": "set Home Assistant's HTTP settings for a reverse proxy",
+    "floorplan": "move the floor plan between Home Assistant and the home repository",
 }
 
 
