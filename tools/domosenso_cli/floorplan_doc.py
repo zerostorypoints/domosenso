@@ -56,8 +56,10 @@ def extract(dashboard_config: dict | None) -> dict | None:
 
 
 def _round(value):
-    if isinstance(value, float):
-        return round(value, _DECIMALS) + 0.0  # + 0.0 turns -0.0 into 0.0
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        # JS writes 5.0 as 5, so an integral value must serialise the same either way.
+        rounded = round(float(value), _DECIMALS) + 0.0  # + 0.0 turns -0.0 into 0.0
+        return int(rounded) if rounded.is_integer() else rounded
     if isinstance(value, list):
         return [_round(item) for item in value]
     if isinstance(value, dict):

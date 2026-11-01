@@ -142,3 +142,14 @@ def test_canonical_ignores_source_and_float_noise():
     assert canonical(a) == canonical(b)
     b["floors"][0]["points"][0]["x"] = 0.7
     assert canonical(a) != canonical(b)
+
+
+def test_canonical_int_equals_integral_float():
+    a = demo()
+    b = demo()
+    a["floors"][0]["points"][0]["x"] = 5
+    b["floors"][0]["points"][0]["x"] = 5.0
+    a["floors"][0]["rooms"][0]["polygon"] = [[0, 0], [5, 0], [5, 7], [0, 7]]
+    b["floors"][0]["rooms"][0]["polygon"] = [[0.0, 0.0], [5.0, 0.0], [5.0, 7.0], [0.0, 7.0]]
+    assert canonical(a) == canonical(b)
+    assert diff(a, b) == []
