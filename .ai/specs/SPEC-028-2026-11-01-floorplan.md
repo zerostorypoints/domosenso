@@ -541,7 +541,7 @@ to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line
 
 ## Amendment 7 (maps per layer, now or the last 24 hours; the Ramka's plan fills its screen)
 
-- Status: draft 2026-11-01. Source: the maintainer, 2026-11-01, after the plan view ran on the
+- Status: approved 2026-11-01 by the maintainer ("Approve"). Source: the maintainer, 2026-11-01, after the plan view ran on the
   Ramka: "the room view should be using the screen more effectively", "the fit and zoom buttons
   don't work", "inside the plants view we can change the heatmaps; plants should give me three
   parameters, like the sensors", then "light and climate should get similar modes; we should be
@@ -580,6 +580,10 @@ to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line
 - **Lamps** (light layer): each placed device of category `light` with a `light` entity (a group,
   one whose state has an `entity_id` list, left out) is a dot: on, with a glow sized by brightness;
   off, grey. Its label: the brightness in %, or "off". No heat is drawn.
+- The light layer's two maps answer two questions (the maintainer, 2026-11-01: "what is on and how
+  much vs what is measured"): **Lamps** is what the home emits, **Light** what its sensors measure,
+  daylight and lamps together. No map separates daylight from lamp light (a sensor under a lamp
+  reads the lamp; filtering that needs the history).
 - **Now / 24 h**: one switch beside the maps. "Now" shows the states. "24 h" shows, per point
   entity, the map's figure over the last 24 hours from `recorder/statistics_during_period`
   (`period: hour`, `types: [mean, min, max]`; the call the Ramka's plants card already makes as the

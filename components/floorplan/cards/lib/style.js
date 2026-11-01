@@ -86,6 +86,21 @@ export const STYLE = `
              margin-bottom: 4px; }
   .tip-name { font-weight: 500; }
   .tip-value { color: var(--secondary-text-color); }
+  .maps { display: inline-flex; gap: 4px; margin-right: 8px; }
+  .heat { pointer-events: none; opacity: 0.8; }
+  .heat .no-sensor { fill: url(#fp-hatch); }
+  .heat .wall { fill: none; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  .hatch-line { stroke: var(--divider-color, #888); }
+  .marker .glow { fill: url(#fp-glow); stroke: none; pointer-events: none; }
+  .marker text.value.main { font-weight: 600; }
+  .legend { position: absolute; left: 12px; bottom: 12px; z-index: 1; pointer-events: none; padding: 6px 10px;
+            background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
+            border-radius: 8px; font-size: 12px; color: var(--secondary-text-color); }
+  .legend[hidden] { display: none; }
+  .legend .scale { width: 180px; height: 8px; border-radius: 4px; margin: 4px 0 2px; }
+  .legend .ends { display: flex; justify-content: space-between; }
+  .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle;
+                   background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
   .message, .hint { padding: 0 12px 8px; color: var(--secondary-text-color); }
   .message:empty, .hint:empty { display: none; }
   .notice { padding: 16px; color: var(--secondary-text-color); }

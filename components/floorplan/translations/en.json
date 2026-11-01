@@ -61,6 +61,28 @@
       "roles": {
         "also": "Also senses:",
         "legend": "ring: what else a device senses"
+      },
+      "maps": {
+        "temperature": "Temperature",
+        "humidity": "Humidity",
+        "moisture": "Soil moisture",
+        "carbon_dioxide": "CO₂",
+        "illuminance": "Light",
+        "lamps": "Lamps",
+        "now": "Now",
+        "day": "24 h, {figure}",
+        "figure": {
+          "temperature_min": "coldest",
+          "moisture_min": "driest",
+          "illuminance_max": "brightest",
+          "carbon_dioxide_max": "highest",
+          "mean": "mean"
+        },
+        "now_legend": "now, interpolated per room",
+        "day_legend": "{figure} in the last 24 hours, interpolated per room",
+        "no_sensor": "no sensor in the room",
+        "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
+        "off": "off"
       }
     }
   }

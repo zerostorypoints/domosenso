@@ -61,6 +61,28 @@
       "roles": {
         "also": "Erfasst auch:",
         "legend": "Ring: was ein Gerät ausserdem erfasst"
+      },
+      "maps": {
+        "temperature": "Temperatur",
+        "humidity": "Luftfeuchte",
+        "moisture": "Bodenfeuchte",
+        "carbon_dioxide": "CO₂",
+        "illuminance": "Licht",
+        "lamps": "Lampen",
+        "now": "Jetzt",
+        "day": "24 h, {figure}",
+        "figure": {
+          "temperature_min": "am kältesten",
+          "moisture_min": "am trockensten",
+          "illuminance_max": "am hellsten",
+          "carbon_dioxide_max": "am höchsten",
+          "mean": "Mittel"
+        },
+        "now_legend": "jetzt, pro Raum interpoliert",
+        "day_legend": "{figure} in den letzten 24 Stunden, pro Raum interpoliert",
+        "no_sensor": "kein Sensor im Raum",
+        "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
+        "off": "aus"
       }
     }
   }

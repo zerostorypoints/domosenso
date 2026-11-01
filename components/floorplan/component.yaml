@@ -4,7 +4,7 @@
 # No inputs, no Home Assistant package: the plan lives in the `floorplan` storage dashboard, written by
 # `domosenso floorplan push` or the card's editor. How a home uses it: README.md.
 id: floorplan
-version: 0.2.1
+version: 0.3.0
 summary: A floor plan of the home with rooms, sensor readings and plants at their positions
 description_key: meta.description
 photo: null
@@ -31,8 +31,8 @@ provides:                                 # contract surface (SPEC-028)
   surfaces:
     - {id: "schemas/floorplan.schema.json", stability: stable, note: "schema 1; a breaking change bumps `schema`; readers refuse an unknown major"}
     - {id: "dashboard url path floorplan", stability: stable, note: "storage mode; one view, one custom:floorplan-card"}
-    - {id: "custom:floorplan-card", stability: stable, note: "config plan (the document; optional: without it the card reads the floorplan dashboard), floor (floor_id to show), edit (true: edit button shown to admins; default true), values (true: current readings on points; default true); edit false for embedding"}
-    - {id: "card behaviour", stability: additive-only, note: "zoom (wheel, pinch, + / - / fit), pan; edit mode: drag points (sets placed true), drag / add / remove room corners, split a room by a line, join two rooms, link a room to an area or create one; a tray of point entities without a position (temperature, humidity, illuminance, moisture, carbon_dioxide, pm25 and plant.*; computed platforms such as template and statistics left out; no search), grouped by room, a group draggable as a whole (placed false); corners snap to a 0.05 m grid unless they join another room; edit mode shows a grid, room areas and the selected room's wall lengths; save with lovelace/config/save; split and join change only shapes, never delete an area or move a device between areas"}
+    - {id: "custom:floorplan-card", stability: stable, note: "config plan (the document; optional: without it the card reads the floorplan dashboard), floor (floor_id to show), edit (true: edit button shown to admins; default true), values (true: current readings on points; default true), layers, layer_choice (one), maps (true: maps on the plants, climate and light layers; default true), fill (true: as tall as the screen below the card's top); edit false for embedding"}
+    - {id: "card behaviour", stability: additive-only, note: "zoom (wheel, pinch, + / - / fit), pan; edit mode: drag points (sets placed true), drag / add / remove room corners, split a room by a line, join two rooms, link a room to an area or create one; a tray of point entities without a position (temperature, humidity, illuminance, moisture, carbon_dioxide, pm25 and plant.*; computed platforms such as template and statistics left out; no search), grouped by room, a group draggable as a whole (placed false); corners snap to a 0.05 m grid unless they join another room; edit mode shows a grid, room areas and the selected room's wall lengths; save with lovelace/config/save; split and join change only shapes, never delete an area or move a device between areas; view mode with plants, climate or light shown alone: their maps (Amendment 7), interpolated inside each room, now or the 24-hour figure from recorder/statistics_during_period; with layer_choice one the bar and the chips carry data-own-tap"}
     - {id: "skill floorplan-from-image", stability: stable, note: "its name; traces rooms from an image or SVG, asks one known length for the scale, matches areas, writes domosenso/floorplan.json and domosenso/floorplan/<floor>.<ext>, then floorplan push"}
 
 consumes: []

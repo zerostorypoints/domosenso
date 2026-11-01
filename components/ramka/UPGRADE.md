@@ -3,6 +3,17 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.11.0 (2026-11-01): the plan view fills the screen
+
+Needs the `floorplan` component 0.3.0 or newer (`fill`, and its bar's `data-own-tap`); with an
+older one the plan keeps 8 rows and zoom returns to the controls.
+
+- With `floorplan: true` the plan view is as tall as the screen below its top instead of 8 rows,
+  and its zoom, fit and map buttons work without returning to the controls. The maps (plants:
+  light, temperature, soil moisture; climate; light) come with floorplan 0.3.0.
+- **After the update:** `domosenso update ramka --to 0.11.0` and `update floorplan --to 0.3.0`,
+  deploy, press the Ramka's reload.
+
 ## 0.10.0 (2026-11-01): the floor plan as a second view of the controls
 
 Needs the `floorplan` component (0.2.0 or newer) for the plan; without `floorplan: true` the render

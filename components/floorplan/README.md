@@ -29,6 +29,15 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   appliance's door or a vacuum's camera map is not a role. The tooltip names the dot's category
   and each ring ("Also senses: Presence and security"); the layer bar explains rings once when the
   plan has one.
+- **Maps** (SPEC-028 Amendment 7): with one of plants, climate or light shown alone, the bar offers
+  its maps. Plants: light, temperature, soil moisture; climate: temperature, humidity, CO₂; light:
+  light (what the sensors measure, lamps included) and lamps (on with a glow by brightness, off
+  grey). A reading's map is interpolated inside each room from that room's placed sensors, whatever
+  their category; a room without one is hatched. **Now / 24 h** switches between the current
+  readings and each map's figure over the last 24 hours from the recorder's hourly statistics:
+  plants the coldest, brightest and driest hour, rooms the mean, CO₂ the highest. A sensor without
+  statistics (no `state_class`) has no 24 h value. Fixed scales: 17–24 °C, 30–60 %, soil 10–50 %,
+  400–1400 ppm, 0–20 000 lx (log). The browser remembers the map per layer and the switch.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
   else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
 
@@ -39,6 +48,9 @@ floor: ground                      # optional: the floor_id to show; default the
 edit: true                         # false: no Edit button
 values: true                       # false: markers without readings
 layers: [climate, plants]          # optional: only these categories, no chips
+layer_choice: one                  # with layers: a chip each, one layer at a time (the Ramka)
+maps: true                         # false: no maps
+fill: true                         # optional: as tall as the screen below the card's top
 ```
 
 Every user can read the `floorplan` dashboard, the Ramka's kiosk user included; saving needs an

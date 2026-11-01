@@ -1249,3 +1249,126 @@ test("a group tap keeps a half-typed area name", async () => {
   tapNode(summary(card, "office"));
   assert.equal($(card, ".area-panel input").value, "Pantr");
 });
+
+// ---- maps (Amendment 7) ------------------------------------------------------------------------
+
+function mapsHass(opts) {
+  const hass = categoryHass(opts);
+  Object.assign(hass.entities, {
+    "sensor.alex_co2": { entity_id: "sensor.alex_co2", device_id: "d_climate" },
+    "light.dimmer_lamp": { entity_id: "light.dimmer_lamp", device_id: "d_dimmer", platform: "hue" },
+  });
+  Object.assign(hass.states, {
+    "sensor.alex_co2": { state: "900", attributes: { device_class: "carbon_dioxide", unit_of_measurement: "ppm", state_class: "measurement" } },
+    "light.lamp": { state: "on", attributes: { brightness: 255 } },
+    "light.dimmer_lamp": { state: "off", attributes: {} },
+    "plant.monstera": { state: "ok", attributes: { friendly_name: "Monstera",
+      sensors: { temperature: "sensor.m_t", brightness: "sensor.m_lx", moisture: "sensor.m_m" } } },
+    "sensor.m_t": { state: "19.2", attributes: { device_class: "temperature" } },
+    "sensor.m_lx": { state: "640", attributes: { device_class: "illuminance" } },
+    "sensor.m_m": { state: "31", attributes: { device_class: "moisture" } },
+  });
+  return hass;
+}
+const plantPt = (x, y) => ({ entity_id: "plant.monstera", x, y, placed: true });
+const lines = (card, key) => [...markerOf(card, key).querySelectorAll("text.value")].map((n) => [n.textContent, n.classList.contains("main")]);
+
+test("maps: a reading map is heat inside each room, hatched where a room has no sensor", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate"] }, mapsHass());
+  await settle();
+  const chips = [...card.shadowRoot.querySelectorAll(".bar [data-action=map]")].map((b) => b.getAttribute("data-map"));
+  assert.deepEqual(chips, ["temperature", "humidity", "carbon_dioxide"]);
+  const cells = card.shadowRoot.querySelectorAll(".heat rect");
+  assert.ok(cells.length > 0);
+  for (const c of cells) assert.ok(Number(c.getAttribute("x")) < 5, "heat stays in the living room");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat .no-sensor").length, 1, "the kitchen is hatched");
+  assert.ok(!$(card, ".legend").hidden);
+  assert.ok(shadowText(card).includes(EN("card.floorplan.maps.no_sensor")));
+  assert.deepEqual(lines(card, "d_climate")[0], ["21.5 °C", true], "the map's reading first, marked");
+  click($(card, '.bar [data-map="carbon_dioxide"]'));
+  assert.deepEqual(lines(card, "d_climate")[0], ["900 ppm", true]);
+  const again = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate"] }, mapsHass());
+  await settle();
+  assert.equal($(again, '.bar [data-map="carbon_dioxide"]').getAttribute("aria-pressed"), "true", "remembered");
+  window.localStorage.clear();
+});
+
+test("maps: a plant shows its three readings, and a point of another layer counts on the map", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: planOf([plantPt(6, 1), pt("d_climate", 1, 1)]), layers: ["plants"] }, mapsHass());
+  await settle();
+  assert.deepEqual(lines(card, "plant.monstera"), [["640 lx", true], ["19.2 °C", false], ["31 %", false]]);
+  click($(card, '.bar [data-map="temperature"]'));
+  assert.ok(markerOf(card, "d_climate"), "a room thermometer counts on the plants' temperature map");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat .no-sensor").length, 0, "both rooms have a temperature");
+  window.localStorage.clear();
+});
+
+test("maps: 24 h shows each reading's figure from the hourly statistics", async () => {
+  window.localStorage.clear();
+  const rows = (vals) => vals.map(([mean, min, max]) => ({ start: 0, mean, min, max }));
+  const hass = mapsHass({ answers: { "recorder/statistics_during_period": {
+    "sensor.alex_temperature": rows([[20, 18, 22], [22, 21, 24]]),
+    "sensor.alex_co2": rows([[700, 500, 1200]]),
+  } } });
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate"] }, hass);
+  await settle();
+  click($(card, '.bar [data-action=day][data-day="1"]'));
+  await settle();
+  const call = hass.calls.find((c) => c.type === "recorder/statistics_during_period");
+  assert.deepEqual(call.types, ["mean", "min", "max"]);
+  assert.equal(call.period, "hour");
+  assert.deepEqual(call.statistic_ids, ["sensor.alex_co2", "sensor.alex_humidity", "sensor.alex_temperature"]);
+  assert.ok(Math.abs(Date.parse(call.start_time) - (Date.now() - 24 * 3600e3)) < 60e3);
+  assert.deepEqual(lines(card, "d_climate"), [["21.0 °C", true], ["1200 ppm", false]],
+    "temperature: the mean; CO2: the highest; humidity without statistics left out");
+  click($(card, '.bar [data-map="carbon_dioxide"]'));
+  assert.ok(shadowText(card).includes("24 h, highest"));
+  window.localStorage.clear();
+});
+
+test("maps: lamps glow when on and are grey when off, with no 24 h switch", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: planOf([pt("d_lamp", 2, 1), pt("d_dimmer", 3, 1)]), layers: ["light"] }, mapsHass());
+  await settle();
+  click($(card, '.bar [data-map="lamps"]'));
+  assert.ok(markerOf(card, "d_lamp").querySelector("circle.glow"));
+  assert.ok(!markerOf(card, "d_dimmer").querySelector("circle.glow"));
+  assert.match(markerOf(card, "d_dimmer").querySelector(".shape").getAttribute("style"), /disabled-text-color/);
+  assert.deepEqual(lines(card, "d_lamp"), [["100 %", false]]);
+  assert.deepEqual(lines(card, "d_dimmer"), [["off", false]]);
+  assert.ok(!$(card, ".bar [data-action=day]"), "no 24-hour figure for lamps");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat").length, 0);
+  window.localStorage.clear();
+});
+
+test("maps: none in edit mode, with maps: false, or with several layers shown", async () => {
+  window.localStorage.clear();
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1)];
+  const off = await make({ plan: planOf(pts), layers: ["climate"], maps: false }, mapsHass());
+  await settle();
+  assert.ok(!$(off, ".bar [data-action=map]") && !$(off, ".heat"));
+  const several = await make({ plan: planOf(pts) }, mapsHass());
+  await settle();
+  assert.ok(!$(several, ".bar [data-action=map]"), "climate and light both on: no map");
+  click($(several, '.layers [data-layer="light"]'));
+  assert.ok($(several, ".bar [data-action=map]"), "climate alone: its maps");
+  click($(several, "[data-action=edit]"));
+  assert.ok(!$(several, ".heat") && !$(several, ".bar [data-action=map]"));
+  window.localStorage.clear();
+});
+
+test("layer_choice one: the bars keep their taps; fill sizes the card to the screen", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate", "light"], layer_choice: "one", fill: true }, mapsHass());
+  await settle();
+  assert.ok($(card, ".bar").hasAttribute("data-own-tap"), "zoom, fit and the maps");
+  assert.ok($(card, ".layers").hasAttribute("data-own-tap"));
+  assert.equal(card.style.height, `${Math.max(280, window.innerHeight - 8)}px`);
+  assert.equal(card.getGridOptions().rows, "auto");
+  const plain = await make({ plan: planOf() }, mapsHass());
+  assert.ok(!$(plain, ".bar").hasAttribute("data-own-tap"));
+  assert.equal(plain.style.height, "");
+  window.localStorage.clear();
+});
