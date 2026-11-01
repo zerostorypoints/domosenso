@@ -4,6 +4,8 @@
     missing entity reads unknown (or unavailable) in a visibility condition. The source select's row
     shows while it exists, the abilities line while a sensor is selected (not the no-sensor option, —). -#]
 [%- set p = inputs.prefix -%]
+[#- True-ish (non-empty) text when a dashboard path input value is not a plain url path. -#]
+[%- macro bad_path(path) -%][%- if path is not string or not path or (path | list | reject('in', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_') | list) -%]1[%- endif -%][%- endmacro -%]
 [%- set source_exists = "{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown]}" -%]
 [%- set source_set = '{condition: state, entity: input_select.audio_sensor_music_source, state_not: [unavailable, unknown, "—"]}' -%]
 [#- Each visual's alias, the one place their ids are written (the settings preview's cards read it). -#]

@@ -8,7 +8,8 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **Classic is the default music visual.** `input_select.<prefix>_music_visual` lists `classic`
   first, then the input's visual and the other, and the seed and "Reset to defaults" write
   `classic`. The input `music_visual` still turns the feature and its helpers on. A home's own
-  choice stays: an existing helper keeps its state and a seeded home is not reseeded.
+  choice stays: an existing helper keeps its state and a seeded home is not reseeded; a Music
+  group still untouched (never set by hand) is seeded to `classic`.
 - **The music sensor's settings move to a sub-view, "Music sensor settings"**
   (`/<settings path>/music-sensor`, a Home Assistant sub-view: no tab, its back arrow returns to
   Music), reached by "Sensor settings ›" in Music's Basic while the selected sensor has an update
@@ -27,6 +28,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ### What a home does
 
+- `settings_paths` is validated only with `music_visual`.
 - A home whose settings dashboard is not at `ramka-settings` sets `settings_paths` to it (per
   language), then renders; otherwise nothing.
 

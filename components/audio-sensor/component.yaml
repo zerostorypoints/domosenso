@@ -96,15 +96,15 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "sensor.music_level", stability: stable, note: "its 1 s Sound level plus the offset, dB SPL; none while the source has no number"}
     - {id: "binary_sensor.music_sensor_online", stability: stable, note: "on while the selected board's Spectrum sensor is neither unavailable nor unknown"}
 
-    # The music source and the calibration helpers (SPEC-021). With a `music: true` board the aliases
-    # above follow the select; a select state that is no option reads that board.
-    - {id: "input_select.audio_sensor_music_source", stability: stable, note: "options: the boards' areas, the music board first then input order, then \u2014 (no sensor); without a music board \u2014 comes first; always rendered; no initial:"}
+    # The music source and the calibration helpers (SPEC-021). The aliases above follow the select; a
+    # select state that is no option reads the `music: true` board, or nothing when none is marked.
+    - {id: "input_select.audio_sensor_music_source", stability: stable, note: "options: the boards' areas, the music board first then input order, then \u2014 (no sensor); without a `music: true` board \u2014 comes first; always rendered; no initial:"}
     - {id: "sensor.music_mic_gain", stability: stable, note: "the selected board's Mic gain text, unchanged"}
     - {id: "sensor.music_spl_calibration", stability: stable, note: "calibrated or estimate, from the selected board's flag; attribute note"}
     - {id: "input_boolean.<id_prefix>_spl_calibrated", stability: stable, note: "per board; off = the offset is an estimate; no initial:"}
     - {id: "input_text.<id_prefix>_spl_note", stability: stable, note: "per board, up to 255 characters; no initial:"}
-    - {id: "input_number.audio_sensor_measured_offset", stability: stable, note: "with a music board; 0-140 dB, step 0.1, the measurement to apply; no initial:"}
-    - {id: "input_text.audio_sensor_calibration_note", stability: stable, note: "with a music board; the note to apply, up to 255 characters; no initial:"}
+    - {id: "input_number.audio_sensor_measured_offset", stability: stable, note: "always rendered; 0-140 dB, step 0.1, the measurement to apply; no initial:"}
+    - {id: "input_text.audio_sensor_calibration_note", stability: stable, note: "always rendered; the note to apply, up to 255 characters; no initial:"}
     - {id: "script.audio_sensor_apply_calibration", stability: stable, note: "writes the measured offset and the note into the selected board's helpers and turns its calibrated flag on"}
 
     # The music source contract (SPEC-025, unreleased): which board feeds the aliases and what it can
@@ -116,9 +116,9 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "binary_sensor.music_source_calibration", stability: additive-only, note: "SPEC-025, unreleased; on with level (the offset applies to the level)"}
 
     # The spectrum rate (#99, #110): the choice, the watching flag and the automation that forwards
-    # them to the selected board's Spectrum rate select. Only with a `music: true` board.
-    - {id: "input_select.audio_sensor_music_spectrum_rate", stability: stable, note: "with a music board; options eco, normal, fast (additive-only); no initial:; a state that is no option reads as normal"}
-    - {id: "input_boolean.audio_sensor_music_watching", stability: stable, note: "with a music board; on while a view shows the music visual (the Ramka sets it); no initial:"}
+    # them to the selected board's Spectrum rate select.
+    - {id: "input_select.audio_sensor_music_spectrum_rate", stability: stable, note: "always rendered; options eco, normal, fast (additive-only); no initial:; a state that is no option reads as normal"}
+    - {id: "input_boolean.audio_sensor_music_watching", stability: stable, note: "always rendered; on while a view shows the music visual (the Ramka sets it); no initial:"}
     - {id: "automation.audio_sensor_music_spectrum_rate", unique_id: audio_sensor_music_spectrum_rate, stability: additive-only, note: "sets the selected board's Spectrum rate to the choice, fast only while watching is on (else normal, 10 s after watching turns off); re-applies on HA start, a source change and any change of the board's select, its 60 min timeout included; the board a source change leaves goes back to normal"}
 
   # The board's ESPHome entities. Home Assistant builds their ids from the device's area and names

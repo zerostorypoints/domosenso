@@ -1,8 +1,7 @@
 # SPEC-025: The music source contract and a Music page that follows it (audio-sensor, ramka, unreleased)
 
-- Status: draft 2026-11-01, designed with the maintainer in conversation section by section; to be
-  reviewed as a whole before an implementation plan, then prototyped on the maintainer's test
-  instance and looked at on the wall tablet before the pull request.
+- Status: implemented on the branch claude/music-source-contract, 2026-11-01; to be prototyped on
+  the maintainer's test instance (designed with the maintainer in conversation section by section).
 - Source: the maintainer's feedback on SPEC-024's Music page: the music sensor cannot be changed or
   removed from the settings; settings that need a sensor's data (or one ability of it) show
   whatever is selected; the preview does not say that a visual without data falls back to Classic.
@@ -118,8 +117,8 @@ returns to Music), reached by the navigate row; native, no dialog of our own.
 | Header: the board's area and its abilities | always |
 | Preview, the Music page's | always |
 | Update rate: eco, normal, fast, with its description | `rate` |
+| Mic gain, read only; above Calibration; hides on `unavailable` and `unknown` | `gain` |
 | Calibration: measured offset, note, Apply (today's rows) | `calibration` |
-| Mic gain, read only | `gain` |
 | Reset: the update rate only (a calibration is a measurement, not a preference) | `rate` |
 
 Rule for later features: a setting of the sensor itself goes to the sub-view, with its ability; a

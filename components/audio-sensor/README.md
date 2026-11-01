@@ -177,7 +177,8 @@ script are always rendered. The music aliases (`sensor.music_spectrum`,
 select holds, so another board can feed a music visual without a render. With `—` every alias is
 `unavailable` (and `binary_sensor.music_sensor_online` is off): a home can choose to have no music
 source. A select that is `unknown` (a first start) or unavailable reads the `music: true` board, or
-nothing when no board is marked, so the aliases never depend on the helper being there. Two boards cannot share an area.
+nothing when no board is marked, so the aliases never depend on the helper being there.
+Two boards cannot share an area.
 There is no `initial:` on any helper: a restart keeps the choice.
 
 Every board has `input_boolean.<id_prefix>_spl_calibrated` (off = the offset is an estimate) and
@@ -323,10 +324,10 @@ The board's **Spectrum rate** select sets the profile:
 
 The intervals are measured (below). Each publish is one CSV of 31 values over the API,
 one state change and one alias render in Home Assistant, and one websocket message per open
-dashboard; the recorder excludes the spectrum in every profile. With a `music: true` board the
+dashboard; the recorder excludes the spectrum in every profile. The
 package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a fresh one starts on
 `normal`, its first option; a state that is no option reads as `normal`) and the flag `input_boolean.audio_sensor_music_watching`. Its automation sets
-the music board's select to the choice, but `fast` only while the flag is on and back to `normal`
+the selected board's select to the choice, but `fast` only while the flag is on and back to `normal`
 10 s after it turns off, so a board is fast only while someone looks. The Ramka sets the flag
 while its music view shows. The automation re-applies the profile when Home Assistant starts, when
 the music source changes (the board it leaves goes back to `normal`), and on any change of a

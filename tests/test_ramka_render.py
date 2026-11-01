@@ -1781,7 +1781,7 @@ def test_settings_reset_buttons(demo):
             assert any(n.get("perform_action") == "script.ramka_settings_reset" for n in walk(last)), path
 
 
-def test_music_page_sensor_and_calibration(demo):
+def test_music_page_reads_the_source_contract(demo):
     """The Music page reads the music source contract (SPEC-025): the source select in Basic, shown
     while audio-sensor provides it, with its abilities line; the calibration and the update rate are
     no longer on the page (the sensor sub-view's)."""

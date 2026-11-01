@@ -24,7 +24,7 @@
 [#- The music source contract (SPEC-025): the aliases, source_exists, source_set, V (needs_sensor), A
     (active), the offline case and the preview's notice, shared with the preview dashboard
     (templates/music-source.j2). -#]
-[%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, has_ability, needs_sensor, active, music_notice -%]
+[%- from 'music-source.j2' import aliases, source_exists, source_set, visual_is, has_ability, needs_sensor, active, music_notice, bad_path -%]
 [#- The preview: the now-playing card's two visual configs (templates/dashboard.lang.yaml.j2) minus
     `active`, so it draws while the player is off too. The same helpers, so a change shows here and on
     the tablet at once. 63 px: the strip on the 1100 x 720 tablet, 14 % of the card's 720 - 272 px. -#]
@@ -59,15 +59,15 @@
 [%- if inputs.preview_dashboard | default(true) -%]
 [%- set preview_paths = inputs.preview_paths | default({}) -%]
 [%- if preview_paths is not mapping -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endif -%]
-[%- for path in preview_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
+[%- for path in preview_paths.values() if bad_path(path) -%][[ fail('ramka: preview paths must be plain url paths') ]][%- endfor -%]
 [%- set preview_url = '/' ~ preview_paths.get(lang, 'ramka-preview') ~ '/' -%]
 [%- endif -%]
 [#- The way to this dashboard's own views (the music sensor's sub-view and its back arrow): its URL
     path in this page's language from settings_paths, the preview dashboard's links' input, plain
     URL paths as above. -#]
-[%- set settings_paths = inputs.settings_paths | default({}) -%]
+[%- set settings_paths = (inputs.settings_paths | default({})) if music_visual is not none else {} -%]
 [%- if settings_paths is not mapping -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endif -%]
-[%- for path in settings_paths.values() if path is not string or not path or (path | list | reject('in', plain) | list) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
+[%- for path in settings_paths.values() if bad_path(path) -%][[ fail('ramka: settings paths must be plain url paths') ]][%- endfor -%]
 [%- set settings_url = '/' ~ settings_paths.get(lang, 'ramka-settings') ~ '/' -%]
 [%- set music_url = settings_url ~ 'music' -%]
 [%- set sensor_url = settings_url ~ 'music-sensor' -%]
@@ -498,6 +498,7 @@ views:
             entities:[[ rows([('input_select', 'music_template', profile_texts), ('input_select', 'music_palette')]) ]]
           - type: entities
             entities:[[ rows([('input_boolean', 'settings_advanced')]) ]]
+          # The same page-off note as switch_section's, inline because this Basic has more rows.
           - type: markdown
             visibility: [ {condition: state, entity: input_boolean.[[ p ]]_page_music, state: "off"} ]
             content: [[ t('ui.settings.page_off') | yaml ]]

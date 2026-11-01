@@ -61,9 +61,9 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
 `music: true` (`sensor.music_spectrum` with `sensor.music_spl_offset`, or `sensor.music_level`).
 
 - **Switching.** `input_select.<prefix>_music_visual` holds `classic` first, then the input's
-  visual and the other (SPEC-025), so a fresh helper starts on Classic and the seed and "Reset to
-  defaults" write `classic`; the input only turns the feature on; it has no `initial:`, so the choice survives
-  a restart. It is set in Home Assistant (the settings dashboard's Music page), not on the tablet:
+  visual and the other (SPEC-025). A fresh helper starts on Classic, and the seed and "Reset to
+  defaults" write `classic`. The input only turns the feature on. The helper has no `initial:`, so
+  the choice survives a restart. It is set in Home Assistant (the settings dashboard's Music page), not on the tablet:
   the Controls page has no visual tile. `classic`, or any other state, draws Ramka's own wave and
   creates no visual card.
 - **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
@@ -353,8 +353,8 @@ lovelace:
 - **Music sensor** (unreleased, SPEC-025): a sub-view of Music (`/<settings path>/music-sensor`,
   `subview: true`: no tab; its back arrow returns to Music), the selected board's own settings. A
   header with the board's area and its abilities; the Music page's preview; the update rate with
-  `rate`; the Calibration with `calibration`; the mic gain, read only, while a sensor is selected
-  and its gain reads; a Reset of the update rate only, with `rate`. The paths come from
+  `rate`; the mic gain, read only, while a sensor is selected and its gain reads (it hides on
+  `unavailable` and `unknown`); the Calibration with `calibration`, below it; a Reset of the update rate only, with `rate`. The paths come from
   `settings_paths` (default `ramka-settings`), as the preview's links. The rule for later features:
   a setting of the sensor itself goes here, with its ability; a setting of a visual stays on Music,
   with V and A.

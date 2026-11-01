@@ -17,7 +17,9 @@ release (README, "Music looks" there).
 `—` is added at the end of `input_select.audio_sensor_music_source` (first, when no board is
 `music: true`). With `—` every music alias is `unavailable`. A home without a `music: true`
 board now gets the select, the aliases, the calibration inputs and script, and the spectrum rate
-automation (before: none of them); its aliases are unavailable until a board is chosen.
+automation (before: none of them); its aliases are unavailable until a board is chosen. The
+duplicate-area check now applies in every home, music board or not. The aliases read unavailable
+(not a stale value) while the board entity they name is unknown.
 
 ### The music source contract: abilities
 
