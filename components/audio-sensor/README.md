@@ -193,7 +193,7 @@ script does nothing, and the spectrum rate goes back to `normal` on the board th
 
 ## The music source contract
 
-SPEC-025, unreleased. Consumers (the Ramka, any later component) read only the music aliases, never a
+SPEC-025, 0.3.0. Consumers (the Ramka, any later component) read only the music aliases, never a
 board's own entities. The aliases are the interface, version 1:
 
 | alias | shape | ability |
