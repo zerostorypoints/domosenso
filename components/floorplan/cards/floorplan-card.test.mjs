@@ -444,3 +444,34 @@ test("a new reading while editing keeps the typed area name and redraws the valu
   assert.equal(input.value, "Pan");
   assert.ok($(card, 'g.marker[data-key="d_climate"]').textContent.includes("22.0 °C"));
 });
+
+test("an area created from the card shows by name once Home Assistant lists it", async () => {
+  const hass = hassOf({ answers: { "config/area_registry/create": (msg) => ({ area_id: "pantry", name: msg.name }) } });
+  const card = await make({ plan: planOf() }, hass);
+  click($(card, "[data-action=edit]"));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  $(card, ".area-panel input").value = "Pantry";
+  click($(card, "[data-action=create_area]"));
+  await settle();
+  card.hass = { ...hass, areas: { ...hass.areas, pantry: { area_id: "pantry", name: "Pantry" } } };
+  assert.ok($(card, "svg").textContent.includes("Pantry"), $(card, "svg").textContent);
+});
+
+test("cancel is disabled while saving", async () => {
+  let release;
+  const dashboard = dashboardOf(planOf());
+  const hass = hassOf({ answers: { "lovelace/config": () => structuredClone(dashboard),
+    "lovelace/config/save": () => new Promise((resolve) => { release = resolve; }) } });
+  const card = await make({}, hass);
+  click($(card, "[data-action=edit]"));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  click($(card, '[data-action=tool][data-tool="join"]'));
+  tap(card, 2, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
+  assert.ok(!$(card, "[data-action=save]").disabled, "the join made the plan dirty");
+  click($(card, "[data-action=save]"));
+  await settle();
+  assert.ok($(card, "[data-action=cancel]").disabled);
+  release();
+  await settle();
+});

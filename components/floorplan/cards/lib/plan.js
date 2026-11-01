@@ -9,6 +9,11 @@ export const SCHEMA_VERSION = 1;
 const CARD_TYPE = "custom:floorplan-card";
 const SAME = 1e-9;   // joinPolygons compares corners with this absolute tolerance
 
+// A millimetre, as floorplan_doc.py compares: finer values are drag noise, and a saved plan with
+// them would read as changed on every `floorplan push`. The + 0 turns -0 into 0.
+const mm = (v) => Math.round(v * 1000) / 1000 + 0;
+const mmPt = ([x, y]) => [mm(x), mm(y)];
+
 export function supported(doc) {
   return !!doc && typeof doc === "object" && doc.schema === SCHEMA_VERSION && Array.isArray(doc.floors);
 }
@@ -77,7 +82,7 @@ export function autoPlace(doc, hass, floorId) {
     if (placed.has(c.key)) continue;
     const room = floor.rooms.find((r) => r.area_id === c.area_id);
     if (!room) continue;
-    const [x, y] = centroid(room.polygon);
+    const [x, y] = mmPt(centroid(room.polygon));
     added.push(c.kind === "device"
       ? { device_id: c.key, x, y, placed: false }
       : { entity_id: c.key, x, y, placed: false });
@@ -104,7 +109,8 @@ export function roomLabel(room, hass) {
 // ---- edits -----------------------------------------------------------------------------------
 
 // A tray candidate dropped on the plan: placed, since the user chose the spot.
-export function addPoint(doc, floorId, candidate, [x, y]) {
+export function addPoint(doc, floorId, candidate, pt) {
+  const [x, y] = mmPt(pt);
   if (doc.floors.some((f) => f.points.some((p) => keyOf(p) === candidate.key))) return null;
   const point = candidate.kind === "device"
     ? { device_id: candidate.key, x, y, placed: true }
@@ -112,7 +118,8 @@ export function addPoint(doc, floorId, candidate, [x, y]) {
   return editFloor(doc, floorId, (floor) => ({ ...floor, points: [...floor.points, point] }));
 }
 
-export function movePoint(doc, floorId, key, [x, y]) {
+export function movePoint(doc, floorId, key, pt) {
+  const [x, y] = mmPt(pt);
   return editFloor(doc, floorId, (floor) => {
     if (!floor.points.some((p) => keyOf(p) === key)) return null;
     return { ...floor, points: floor.points.map((p) => (keyOf(p) === key ? { ...p, x, y, placed: true } : p)) };
@@ -120,7 +127,8 @@ export function movePoint(doc, floorId, key, [x, y]) {
 }
 
 // A corner shared with another room moves with it: joinPolygons only joins rooms whose corners are identical.
-export function moveCorner(doc, floorId, areaId, index, pt) {
+export function moveCorner(doc, floorId, areaId, index, to) {
+  const pt = mmPt(to);
   return editFloor(doc, floorId, (floor) => {
     const room = floor.rooms.find((r) => r.area_id === areaId);
     const from = room?.polygon[index];
@@ -139,7 +147,7 @@ export function moveCorner(doc, floorId, areaId, index, pt) {
 export function insertCorner(doc, floorId, areaId, edge, pt) {
   return editRoom(doc, floorId, areaId, (poly) => {
     if (!(edge >= 0 && edge < poly.length)) return null;
-    return [...poly.slice(0, edge + 1), [pt[0], pt[1]], ...poly.slice(edge + 1)];
+    return [...poly.slice(0, edge + 1), mmPt(pt), ...poly.slice(edge + 1)];
   });
 }
 
@@ -155,7 +163,9 @@ export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
   return editFloor(doc, floorId, (floor) => {
     const k = floor.rooms.findIndex((r) => r.area_id === areaId);
     if (k < 0 || !newAreaId || floor.rooms.some((r) => r.area_id === newAreaId)) return null;
-    const halves = splitPolygon(floor.rooms[k].polygon, a, b);
+    // The chord's ends are snapped onto the walls, so they are rounded after the split; both halves
+    // get the same rounded corner, which keeps them joinable.
+    const halves = splitPolygon(floor.rooms[k].polygon, a, b)?.map((half) => half.map(mmPt));
     if (!halves) return null;
     const rooms = floor.rooms.map((r, j) => (j === k ? { ...r, polygon: halves[0] } : r));
     rooms.splice(k + 1, 0, { area_id: newAreaId, polygon: halves[1] });

@@ -85,7 +85,7 @@ class FloorplanCard extends HTMLElement {
     // redraws the plan alone, so a half-typed area name or an open select survives it.
     const stamp = this._valueStamp();
     if (stamp === this._stamp) return;
-    if (stamp.split("|")[0] !== this._stamp?.split("|")[0]) this._render();
+    if (stamp.split("\n")[0] !== this._stamp?.split("\n")[0]) this._render();
     else {
       this._drawSvg(this._status === "ready" && this._mode === "edit");
       this._stamp = stamp;
@@ -204,7 +204,7 @@ ${STYLE}
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
-    html += btn("cancel", t(h, "card.floorplan.cancel"));
+    html += btn("cancel", t(h, "card.floorplan.cancel"), "", this._saving ? "disabled" : "");
     html += btn("save", t(h, this._saving ? "card.floorplan.saving" : "card.floorplan.save"), "",
       `class="primary" ${dirty && !this._saving ? "" : "disabled"}`);
     return html;
@@ -301,7 +301,12 @@ ${STYLE}
     const floor = this._floor;
     if (!floor || !this._hass) return "";
     const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._entities)) : [];
-    return [this._hass.language, ...ids.map((id) => this._hass.states?.[id]?.state)].join("|");
+    // The first line (the language and the areas' names) changes labels and selects: a full render.
+    // An area created from the card arrives in a later hass and must show by name. JSON keeps a
+    // name with a newline on that first line.
+    const areas = Object.values(this._hass.areas || {}).map((a) => [a.area_id, a.name]).sort();
+    return [JSON.stringify([this._hass.language, areas]),
+      ids.map((id) => this._hass.states?.[id]?.state).join("|")].join("\n");
   }
 
   // ---- buttons and selects -----------------------------------------------------------------

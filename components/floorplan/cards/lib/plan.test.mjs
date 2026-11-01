@@ -202,3 +202,25 @@ test("addPoint puts a tray candidate on the floor as placed; refuses one already
   assert.equal(addPoint(e, "ground", { key: "d_temp", kind: "device" }, [2, 2]), null);
   assert.equal(addPoint(e, "upstairs", { key: "d_light", kind: "device" }, [2, 2]), null);
 });
+
+test("edits round coordinates to a millimetre", () => {
+  const d = doc();
+  const decimals = (v) => (String(v).split(".")[1] || "").length;
+  const coords = (out) => out.floors[0].rooms.flatMap((r) => r.polygon.flat())
+    .concat(out.floors[0].points.flatMap((p) => [p.x, p.y]));
+  const moved = movePoint(addPoint(d, "ground", { key: "d_temp", kind: "device" }, [1.23456, 2.00049]),
+    "ground", "d_temp", [1.98765, 0.1234567]);
+  assert.deepEqual([moved.floors[0].points[0].x, moved.floors[0].points[0].y], [1.988, 0.123]);
+  const added = addPoint(d, "ground", { key: "d_temp", kind: "device" }, [1.23456, 2.00049]);
+  assert.deepEqual([added.floors[0].points[0].x, added.floors[0].points[0].y], [1.235, 2]);
+  const corner = moveCorner(d, "ground", "living_room", 2, [4.0001234, 4.3333333]);
+  assert.deepEqual(corner.floors[0].rooms[0].polygon[2], [4, 4.333]);
+  assert.deepEqual(corner.floors[0].rooms[1].polygon[3], [4, 4.333], "the shared corner moves to the same rounded spot");
+  const inserted = insertCorner(d, "ground", "living_room", 0, [1.11111, 0.0000004]);
+  assert.deepEqual(inserted.floors[0].rooms[0].polygon[1], [1.111, 0]);
+  const split = splitRoom(d, "ground", "living_room", [1.33333, -0.01], [1.66666, 4.01], "office");
+  assert.ok(coords(split).every((v) => decimals(v) <= 3), coords(split).join(" "));
+  const placed = autoPlace({ ...d, floors: [{ ...d.floors[0], rooms: [{ area_id: "living_room", polygon: [[0, 0], [1, 0], [0, 1]] }] }] },
+    hass, "ground");
+  assert.ok(coords(placed).every((v) => decimals(v) <= 3), coords(placed).join(" "));
+});
