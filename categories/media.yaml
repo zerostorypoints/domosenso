@@ -1,0 +1,9 @@
+# SPEC-028 Amendment 5. Before mobile: a wall tablet is a mobile_app device too (kind android-tablet).
+id: media
+order: 20
+names: {en: Audio and media, de: Audio und Medien, pl: Audio i multimedia}
+colour: "#00897b"
+marker: circle
+kinds: [android-tablet, network-audio-player]
+match:
+  - entity_domain: media_player

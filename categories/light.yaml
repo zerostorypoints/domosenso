@@ -1,0 +1,12 @@
+# SPEC-028 Amendment 5. Lights, and the switches and dimmers beside them (a square). Light groups
+# (an entity_id list attribute, e.g. Hue rooms and zones) are never points: the components drop them.
+id: light
+order: 70
+names: {en: Light, de: Licht, pl: Światło}
+colour: "#fdd835"
+marker: circle
+match:
+  - entity_domain: light
+  - entity_domain: event
+    only_entity_domain: [event, sensor, button]
+    marker: square

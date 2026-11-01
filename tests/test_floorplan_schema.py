@@ -128,6 +128,24 @@ def test_diff_placed_flag_is_a_move():
     assert diff(old, new) == [("point", "move", "ground", "plant.monstera")]
 
 
+def test_diff_category_override_is_a_change_and_a_move_wins():
+    old = demo()
+    new = copy.deepcopy(old)
+    new["floors"][0]["points"][1]["category"] = "other"
+    assert diff(old, new) == [("point", "change", "ground", "plant.monstera")]
+    new["floors"][0]["points"][1]["x"] += 1
+    assert diff(old, new) == [("point", "move", "ground", "plant.monstera")]
+
+
+def test_schema_refuses_an_unknown_category():
+    doc = demo()
+    doc["floors"][0]["points"][0]["category"] = "spaceship"
+    with pytest.raises(Exception):
+        validate(doc)
+    doc["floors"][0]["points"][0]["category"] = "radio"
+    validate(doc)
+
+
 def test_diff_removed_floor():
     old = demo()
     new = {"schema": 1, "floors": []}

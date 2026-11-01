@@ -74,6 +74,8 @@ function hassOf({ admin = true, language = "en", dashboard, answers = {} } = {})
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+// The dashboard's calls: the card also reads config_entries/get once, for device categories.
+const dashboardCalls = (hass) => hass.calls.filter((c) => c.type !== "config_entries/get");
 const RECT = { left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400, x: 0, y: 0 };
 
 async function make(config, hass) {
@@ -112,7 +114,7 @@ test("registers once and offers itself in the picker from translations", () => {
 test("loads the plan from the dashboard when config has none", async () => {
   const hass = hassOf({ dashboard: dashboardOf(planOf()) });
   const card = await make({}, hass);
-  assert.deepEqual(hass.calls[0], { type: "lovelace/config", url_path: "floorplan" });
+  assert.deepEqual(dashboardCalls(hass)[0], { type: "lovelace/config", url_path: "floorplan" });
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
   const text = shadowText(card);
   assert.ok(text.includes("Living room") && text.includes("Kitchen"), text);
@@ -121,7 +123,7 @@ test("loads the plan from the dashboard when config has none", async () => {
 test("a plan in the config is drawn without asking the dashboard", async () => {
   const hass = hassOf();
   const card = await make({ plan: planOf() }, hass);
-  assert.equal(hass.calls.length, 0);
+  assert.equal(dashboardCalls(hass).length, 0);
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
 });
 
@@ -168,8 +170,8 @@ test("entering edit mode puts unplaced points at their room's centre", async () 
   click($(card, "[data-action=edit]"));
   const points = card._doc.floors[0].points;
   assert.deepEqual(points.map((p) => [p.device_id ?? p.entity_id, p.x, p.y, p.placed]), [
-    ["plant.monstera", 6.5, 2.6, false],
     ["d_climate", 2.5, 2.6, false],
+    ["plant.monstera", 6.5, 2.6, false],
   ]);
   assert.equal(card.shadowRoot.querySelectorAll("g.marker.unplaced").length, 2);
 });
@@ -329,7 +331,7 @@ test("save sends withPlan", async () => {
   pointer($(card, "svg"), "pointerup", ex, ey);
   click($(card, "[data-action=save]"));
   await settle();
-  const types = hass.calls.map((c) => c.type);
+  const types = dashboardCalls(hass).map((c) => c.type);
   assert.deepEqual(types, ["lovelace/config", "lovelace/config", "lovelace/config/save"]);
   const save = hass.calls.at(-1);
   assert.equal(save.url_path, "floorplan");
@@ -493,6 +495,110 @@ test("a photo URL that is not a path or http(s) is not used", async () => {
   pointer($(card, 'g.marker[data-key="plant.monstera"]'), "pointermove", mx, my);
   assert.ok(tipShown(card));
   assert.ok(!tip(card).querySelector("img"));
+});
+
+// ---- Amendment 5: categories, colours, layers ------------------------------------------------
+
+// The demo home plus a lamp, a dimmer, a mesh access point (its integration from its config entry).
+function categoryHass(opts) {
+  const hass = hassOf({ ...opts, answers: { "config_entries/get": [{ entry_id: "e_mesh", domain: "tplink_deco" }], ...(opts?.answers || {}) } });
+  Object.assign(hass.devices, {
+    d_lamp: { id: "d_lamp", name: "Lamp", area_id: "office" },     // no room on the plan: stays in the tray
+    d_dimmer: { id: "d_dimmer", name: "Dimmer", area_id: "living_room" },
+    d_mesh: { id: "d_mesh", name: "Mesh node", area_id: "kitchen", config_entries: ["e_mesh"] },
+  });
+  Object.assign(hass.entities, {
+    "light.lamp": { entity_id: "light.lamp", device_id: "d_lamp", platform: "hue" },
+    "event.dimmer": { entity_id: "event.dimmer", device_id: "d_dimmer", platform: "hue" },
+    "switch.mesh_led": { entity_id: "switch.mesh_led", device_id: "d_mesh", platform: "tplink_deco" },
+  });
+  Object.assign(hass.states, {
+    "light.lamp": { state: "on", attributes: {} },
+    "event.dimmer": { state: "unknown", attributes: {} },
+    "switch.mesh_led": { state: "on", attributes: {} },
+  });
+  return hass;
+}
+const pt = (key, x, y) => ({ device_id: key, x, y, placed: true });
+const markerOf = (card, key) => $(card, `g.marker[data-key="${key}"]`);
+
+test("a marker's colour and shape come from its category", async () => {
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1), pt("d_dimmer", 3, 1), pt("d_mesh", 6, 1)];
+  const card = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  const shape = (key) => markerOf(card, key).firstElementChild;
+  assert.ok(markerOf(card, "d_climate").classList.contains("cat-climate"));
+  assert.match(shape("d_climate").getAttribute("style"), /var\(--floorplan-climate, #[0-9a-f]{6}\)/);
+  assert.equal(shape("d_lamp").tagName.toLowerCase(), "circle");
+  assert.equal(shape("d_dimmer").tagName.toLowerCase(), "rect", "a switch is a square");
+  assert.ok(markerOf(card, "d_mesh").classList.contains("cat-radio"), "its integration read from config_entries/get");
+  assert.equal(shape("d_mesh").tagName.toLowerCase(), "polygon", "a radio is a diamond");
+});
+
+test("layer chips hide and show a category's markers; the choice is remembered", async () => {
+  window.localStorage.clear();
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1)];
+  const card = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  const chip = (id) => $(card, `.layers [data-layer="${id}"]`);
+  assert.ok(chip("climate") && chip("light"), "a chip per category on the plan");
+  assert.ok(!chip("shading"), "none for a category with no point");
+  click(chip("light"));
+  assert.ok(!markerOf(card, "d_lamp"), "light hidden");
+  assert.ok(markerOf(card, "d_climate"));
+  assert.equal(chip("light").getAttribute("aria-pressed"), "false");
+  const again = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  assert.ok(!markerOf(again, "d_lamp"), "remembered per browser");
+  click($(again, '.layers [data-layer="light"]'));
+  assert.ok(markerOf(again, "d_lamp"));
+  window.localStorage.clear();
+});
+
+test("config layers fixes the categories shown, without chips", async () => {
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1)];
+  const card = await make({ plan: planOf(pts), layers: ["climate"] }, categoryHass());
+  await settle();
+  assert.ok(markerOf(card, "d_climate"));
+  assert.ok(!markerOf(card, "d_lamp"));
+  assert.ok(!$(card, ".layers [data-layer]"));
+});
+
+test("tray items carry their category's coloured dot", async () => {
+  const card = await make({ plan: planOf() }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  const dot = $(card, '.tray [data-key="d_lamp"] .dot');
+  assert.ok(dot, card.shadowRoot.querySelector(".tray").innerHTML);
+  assert.match(dot.getAttribute("style"), /--floorplan-light/);
+});
+
+test("a tapped point's category can be overridden, and set back to what it is", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointerdown", x, y);
+  pointer(markerOf(card, "d_climate"), "pointerup", x, y);
+  const select = $(card, ".point-panel select.category");
+  assert.ok(select, "a category select for the tapped point");
+  // The selected option (happy-dom misreads select.value after innerHTML).
+  assert.equal(select.querySelector("option[selected]")?.value, "climate");
+  select.value = "security";
+  select.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.equal(card._doc.floors[0].points[0].category, "security");
+  assert.ok(markerOf(card, "d_climate").classList.contains("cat-security"));
+  const again = $(card, ".point-panel select.category");
+  again.value = "climate";
+  again.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.ok(!("category" in card._doc.floors[0].points[0]), "its own category: no override stored");
+});
+
+test("a point whose device is gone keeps a fallback marker", async () => {
+  const card = await make({ plan: planOf([pt("d_gone", 1, 1)]) }, categoryHass());
+  await settle();
+  assert.ok(markerOf(card, "d_gone").classList.contains("cat-other"));
 });
 
 test("a sensor dragged from the tray lands on the plan, placed", async () => {

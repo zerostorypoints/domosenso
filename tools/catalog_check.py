@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the Domosenso catalog: manifests, artifact paths, translations, scenes, devices, kinds.
+"""Validate the Domosenso catalog: manifests, artifact paths, translations, scenes, devices, kinds, categories.
 
 Usage: uv run tools/catalog_check.py [--catalog DIR] [--strict]
 
@@ -384,6 +384,24 @@ def check_kind(path: Path, catalog: Path) -> list[str]:
     return errors
 
 
+def check_category(path: Path, catalog: Path) -> list[str]:
+    """Schema, file name, and the kinds and devices it names (SPEC-028 Amendment 5: `categories/<id>.yaml`)."""
+    path = Path(path)
+    data, err = _load_yaml(path)
+    if err:
+        return [err]
+    errors = _schema_errors("category", data, str(path))
+    if errors:
+        return errors
+    if data["id"] != path.stem:
+        errors.append(f"{path}: id '{data['id']}' does not match file name '{path.stem}'")
+    for key, directory in (("kinds", "kinds"), ("devices", "devices")):
+        for ref in data.get(key, []):
+            if not (Path(catalog) / directory / f"{ref}.yaml").is_file():
+                errors.append(f"{path}: {key} names '{ref}', which is not in {directory}/")
+    return errors
+
+
 def scenes_for(catalog: Path) -> dict[str, list[str]]:
     """Component or device id -> ids of the scenes that reference it, derived from the scene files."""
     index: dict[str, list[str]] = {}
@@ -418,7 +436,8 @@ def check_catalog(catalog: Path) -> tuple[list[str], list[str]]:
         errors += t_err
         warnings += t_warn
     for sub, check in (("scenes", lambda p: check_scene(p, catalog)), ("devices", lambda p: check_device(p, catalog)),
-                       ("kinds", lambda p: check_kind(p, catalog))):
+                       ("kinds", lambda p: check_kind(p, catalog)),
+                       ("categories", lambda p: check_category(p, catalog))):
         directory = catalog / sub
         if directory.is_dir():
             for file in sorted(directory.glob("*.yaml")):

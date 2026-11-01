@@ -1,0 +1,11 @@
+# SPEC-028 Amendment 5. Hubs, bridges, mesh nodes and proxies: a device other devices reach Home
+# Assistant through (via_device_id; an ESPHome Bluetooth proxy has its bluetooth adapter as a child).
+id: radio
+order: 40
+names: {en: Radios and hubs, de: Funk und Hubs, pl: Radia i huby}
+colour: "#8e24aa"
+marker: diamond
+hub: true
+devices: [cc1101]
+match:
+  - integration: tplink_deco

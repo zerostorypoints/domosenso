@@ -51,7 +51,11 @@
       "changed_elsewhere": "The plan was changed elsewhere since this page loaded it. Nothing was saved: reload the page and edit again.",
       "save_failed": "Saving failed: {error}",
       "create_failed": "The area could not be created: {error}",
-      "refused": "That change is not possible here."
+      "refused": "That change is not possible here.",
+      "point": {
+        "category": "Category"
+      },
+      "layers": "Layers"
     }
   }
 }

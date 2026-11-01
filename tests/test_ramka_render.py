@@ -4280,6 +4280,7 @@ def test_floorplan_helper_and_rules(tmp_path):
 
     [plan] = [s for s in sections(dash) if any(c.get("type") == "custom:floorplan-card" for c in s["cards"])]
     assert plan["cards"][0]["edit"] is False and "plan" not in plan["cards"][0]
+    assert plan["cards"][0]["layers"] == ["climate", "plants"], "SPEC-028 Amendment 5: what a room is like"
     assert {(c["entity"], c["state"]) for c in plan["visibility"]} == {
         ("input_select.ramka_mode", "controls"), ("input_boolean.ramka_controls_plan", "on")}
     controls = [s for s in sections(dash) if any(c.get("type") == "media-control" for c in s["cards"])]

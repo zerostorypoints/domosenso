@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/category.schema.json",
+  "title": "Domosenso catalog category: what a device is for, for every component that sorts, colours or filters devices (SPEC-028 Amendment 5)",
+  "type": "object",
+  "required": ["id", "order", "names", "colour", "marker"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "order": {"type": "integer", "minimum": 0, "description": "Lower is tried first; the first category that matches a device wins."},
+    "names": {
+      "type": "object", "required": ["en", "de", "pl"], "additionalProperties": false,
+      "properties": {"en": {"type": "string", "minLength": 1}, "de": {"type": "string", "minLength": 1}, "pl": {"type": "string", "minLength": 1}}
+    },
+    "colour": {"type": "string", "pattern": "^#[0-9a-f]{6}$", "description": "Default of the CSS variable --floorplan-<id>."},
+    "marker": {"enum": ["circle", "square", "diamond"]},
+    "placeable": {"type": "boolean", "description": "false: things that move (phones, tags); never a point on a plan."},
+    "fallback": {"type": "boolean", "description": "The one category for a device that matched nothing."},
+    "hub": {"type": "boolean", "description": "true: a device other enabled devices name as via_device_id is in this category."},
+    "kinds": {"type": "array", "items": {"type": "string"}, "description": "Ids under kinds/: a device their match rules recognise is in this category."},
+    "devices": {"type": "array", "items": {"type": "string"}, "description": "Ids under devices/: likewise."},
+    "match": {"type": "array", "items": {"$ref": "#/$defs/rule"}}
+  },
+  "$defs": {
+    "one_or_more": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      ]
+    },
+    "rule": {
+      "description": "SPEC-010's device rule (every field given must match; globs are case-insensitive) without `entry`, plus only_entity_domain and marker.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "integration": {"$ref": "#/$defs/one_or_more"},
+        "with_integration": {"$ref": "#/$defs/one_or_more"},
+        "manufacturer": {"$ref": "#/$defs/one_or_more"},
+        "model": {"$ref": "#/$defs/one_or_more"},
+        "model_id": {"$ref": "#/$defs/one_or_more"},
+        "unless_manufacturer": {"$ref": "#/$defs/one_or_more"},
+        "entity_domain": {"$ref": "#/$defs/one_or_more"},
+        "device_classes": {"$ref": "#/$defs/one_or_more"},
+        "entity_names": {"$ref": "#/$defs/one_or_more"},
+        "only_entity_domain": {"$ref": "#/$defs/one_or_more"},
+        "marker": {"enum": ["circle", "square", "diamond"]},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}

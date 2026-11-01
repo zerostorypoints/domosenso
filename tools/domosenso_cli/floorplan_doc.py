@@ -111,12 +111,14 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
         new_floor = new_floors.get(floor_id, {"rooms": [], "points": []})
         lines += _compare("room", "area_id", "change", old_floor["rooms"], new_floor["rooms"],
                           label, lambda r: _round(r["polygon"]))
+        # A point moved (or was placed); else, with only its category override changed, "change".
         lines += _compare("point", None, "move", old_floor["points"], new_floor["points"], label,
-                          lambda p: (_round(p["x"]), _round(p["y"]), p["placed"]))
+                          lambda p: (_round(p["x"]), _round(p["y"]), p["placed"]),
+                          ("change", lambda p: p.get("category")))
     return lines
 
 
-def _compare(kind, id_field, changed, old_items, new_items, floor, signature):
+def _compare(kind, id_field, changed, old_items, new_items, floor, signature, second=None):
     key = (lambda item: item[id_field]) if id_field else point_key
     old_by, new_by = {key(i): i for i in old_items}, {key(i): i for i in new_items}
     lines = []
@@ -125,5 +127,7 @@ def _compare(kind, id_field, changed, old_items, new_items, floor, signature):
             lines.append((kind, "remove", floor, name))
         elif signature(item) != signature(new_by[name]):
             lines.append((kind, changed, floor, name))
+        elif second and second[1](item) != second[1](new_by[name]):
+            lines.append((kind, second[0], floor, name))
     lines += [(kind, "add", floor, name) for name in new_by if name not in old_by]
     return lines

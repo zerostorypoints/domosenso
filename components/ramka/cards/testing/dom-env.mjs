@@ -36,8 +36,9 @@ for (const mod of [assertLoose, assertStrict]) {
     const original = mod[name];
     // Identity asserts swap only a node itself: a rebuilt array would never be the same array.
     const swap = /deep/i.test(name) ? tokens : (v) => (isDom(v) ? token(v) : v);
-    mod[name] = function guarded(actual, expected, message) {
-      return original.call(this, swap(actual), swap(expected), message);
+    // The message only when given: node's assert refuses an explicit undefined one.
+    mod[name] = function guarded(actual, expected, ...message) {
+      return original.call(this, swap(actual), swap(expected), ...message);
     };
   }
 }

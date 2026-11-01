@@ -66,17 +66,19 @@ test("emptyPlan has one empty floor per id, null included", () => {
 
 test("candidates: device with two point entities is one candidate", () => {
   const c = candidates(hass).find((x) => x.key === "d_temp");
-  assert.deepEqual(c, { key: "d_temp", kind: "device", area_id: "living_room", entities: ["sensor.hum", "sensor.temp"] });
+  assert.deepEqual(c, { key: "d_temp", kind: "device", area_id: "living_room", entities: ["sensor.hum", "sensor.temp"],
+    category: "climate", marker: "circle" });
 });
 
-test("candidates: a light-only device gives none", () => {
-  assert.equal(candidates(hass).some((x) => x.key === "d_light"), false);
+test("candidates: a light-only device is a light, with no readings to show (Amendment 5)", () => {
+  assert.deepEqual(candidates(hass).find((x) => x.key === "d_light"),
+    { key: "d_light", kind: "device", area_id: "kitchen", entities: [], category: "light", marker: "circle" });
 });
 
 test("candidates: plant without a device, and a device-less sensor", () => {
   const all = candidates(hass);
   assert.deepEqual(all.find((x) => x.key === "plant.monstera"),
-    { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"] });
+    { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"], category: "plants", marker: "circle" });
   assert.equal(all.find((x) => x.key === "sensor.garage_co2").area_id, "office");
 });
 
@@ -333,13 +335,14 @@ test("trayGroups: the tray by room, groups and items by name, the group without 
   };
   const groups = trayGroups(doc(), h);
   assert.deepEqual(groups.map((g) => [g.key, g.name, g.items.map((c) => candidateName(h, c))]), [
+    ["kitchen", "Kitchen", ["d_light"]],
     ["living_room", "Living room", ["Light sensor", "Thermometer"]],
     ["office", "Office", ["Air"]],
     ["none", null, ["Monstera"]],
   ]);
   const placed = doc();
   placed.floors[0].points.push({ device_id: "d_temp", x: 1, y: 1, placed: true });
-  assert.deepEqual(trayGroups(placed, h)[0].items.map((c) => c.key), ["d_moved"], "placed candidates are not in it");
+  assert.deepEqual(trayGroups(placed, h)[1].items.map((c) => c.key), ["d_moved"], "placed candidates are not in it");
 });
 
 test("addPoints puts candidates round a point, not placed, and refuses ones already on the plan", () => {

@@ -51,7 +51,11 @@
       "changed_elsewhere": "Der Grundriss wurde anderswo geändert, seit diese Seite ihn geladen hat. Nichts wurde gespeichert: Laden Sie die Seite neu und bearbeiten Sie ihn erneut.",
       "save_failed": "Speichern fehlgeschlagen: {error}",
       "create_failed": "Der Bereich konnte nicht erstellt werden: {error}",
-      "refused": "Diese Änderung ist hier nicht möglich."
+      "refused": "Diese Änderung ist hier nicht möglich.",
+      "point": {
+        "category": "Kategorie"
+      },
+      "layers": "Ebenen"
     }
   }
 }

@@ -51,7 +51,11 @@
       "changed_elsewhere": "Rzut zmieniono gdzie indziej, odkąd ta strona go wczytała. Niczego nie zapisano: odśwież stronę i edytuj ponownie.",
       "save_failed": "Zapis się nie udał: {error}",
       "create_failed": "Nie udało się utworzyć obszaru: {error}",
-      "refused": "Ta zmiana nie jest tu możliwa."
+      "refused": "Ta zmiana nie jest tu możliwa.",
+      "point": {
+        "category": "Kategoria"
+      },
+      "layers": "Warstwy"
     }
   }
 }

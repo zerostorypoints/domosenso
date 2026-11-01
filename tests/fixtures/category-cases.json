@@ -1,0 +1,447 @@
+{
+ "_note": "SPEC-028 Amendment 5: devices and their category, run by tests/test_categories.py and components/floorplan/cards/lib/categories.test.mjs; fictional, no home's data.",
+ "cases": [
+  {
+   "name": "a plant entity",
+   "category": "plants",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "plant"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "plant"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a soil sensor",
+   "category": "plants",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "xiaomi_ble"
+    ],
+    "manufacturer": "Xiaomi",
+    "model": "HHCCJCY01",
+    "model_id": null,
+    "entity_domains": [
+     "sensor"
+    ],
+    "device_classes": [
+     "moisture",
+     "conductivity",
+     "temperature",
+     "illuminance"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a wall tablet",
+   "category": "media",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "mobile_app"
+    ],
+    "manufacturer": "Lenovo",
+    "model": "Tab M10",
+    "model_id": null,
+    "entity_domains": [
+     "sensor",
+     "device_tracker",
+     "notify"
+    ],
+    "device_classes": [
+     "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a phone",
+   "category": "mobile",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "mobile_app"
+    ],
+    "manufacturer": "Apple",
+    "model": "iPhone15,2",
+    "model_id": null,
+    "entity_domains": [
+     "sensor",
+     "device_tracker",
+     "notify"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a Bluetooth tag",
+   "category": "mobile",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "bermuda"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "device_tracker",
+     "sensor"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a network client",
+   "category": "mobile",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "tplink_deco"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "device_tracker"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a mesh access point",
+   "category": "radio",
+   "marker": "diamond",
+   "device": {
+    "integrations": [
+     "tplink_deco"
+    ],
+    "manufacturer": "TP-Link",
+    "model": "BE65",
+    "model_id": null,
+    "entity_domains": [
+     "switch",
+     "sensor"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "an ESPHome Bluetooth proxy (its adapter is a child)",
+   "category": "radio",
+   "marker": "diamond",
+   "device": {
+    "integrations": [
+     "esphome"
+    ],
+    "manufacturer": "Espressif",
+    "model": "m5stack-atom",
+    "model_id": null,
+    "entity_domains": [
+     "sensor",
+     "button",
+     "switch"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": true
+   }
+  },
+  {
+   "name": "a Zigbee bridge",
+   "category": "radio",
+   "marker": "diamond",
+   "device": {
+    "integrations": [
+     "hue"
+    ],
+    "manufacturer": "Signify Netherlands B.V.",
+    "model": "Hue Bridge",
+    "model_id": null,
+    "entity_domains": [
+     "switch"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": true
+   }
+  },
+  {
+   "name": "a 433 MHz radio driving awnings",
+   "category": "radio",
+   "marker": "diamond",
+   "device": {
+    "integrations": [
+     "mqtt"
+    ],
+    "manufacturer": "rstrouse",
+    "model": "ESPSomfy-RTS on M5Stack Atom Lite + CC1101",
+    "model_id": null,
+    "entity_domains": [
+     "cover",
+     "binary_sensor"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a motion sensor that also reads temperature",
+   "category": "security",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "hue"
+    ],
+    "manufacturer": null,
+    "model": "Hue motion sensor",
+    "model_id": null,
+    "entity_domains": [
+     "binary_sensor",
+     "sensor"
+    ],
+    "device_classes": [
+     "motion",
+     "temperature",
+     "illuminance"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a door lock",
+   "category": "security",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "nuki"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "lock",
+     "sensor"
+    ],
+    "device_classes": [
+     "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a room thermometer",
+   "category": "climate",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "tplink"
+    ],
+    "manufacturer": "TP-Link",
+    "model": "T315",
+    "model_id": null,
+    "entity_domains": [
+     "sensor"
+    ],
+    "device_classes": [
+     "temperature",
+     "humidity",
+     "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "an air conditioner",
+   "category": "climate",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "midea_ac_lan"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "climate",
+     "sensor"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "an air monitor",
+   "category": "climate",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "ruuvitag_ble"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "sensor"
+    ],
+    "device_classes": [
+     "temperature",
+     "humidity",
+     "carbon_dioxide",
+     "pm25"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a bulb",
+   "category": "light",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "hue"
+    ],
+    "manufacturer": null,
+    "model": "Hue color spot",
+    "model_id": null,
+    "entity_domains": [
+     "light"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a dimmer switch",
+   "category": "light",
+   "marker": "square",
+   "device": {
+    "integrations": [
+     "hue"
+    ],
+    "manufacturer": null,
+    "model": "Hue dimmer switch",
+    "model_id": null,
+    "entity_domains": [
+     "event",
+     "sensor"
+    ],
+    "device_classes": [
+     "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "an awning",
+   "category": "shading",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "somfy"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "cover"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a speaker",
+   "category": "media",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "sonos"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "media_player",
+     "switch",
+     "number"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a dishwasher",
+   "category": "other",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "miele"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "sensor",
+     "switch"
+    ],
+    "device_classes": [],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a power meter",
+   "category": "other",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "shelly"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "sensor"
+    ],
+    "device_classes": [
+     "power",
+     "energy"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  }
+ ]
+}

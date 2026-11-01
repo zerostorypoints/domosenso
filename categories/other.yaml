@@ -1,0 +1,7 @@
+# SPEC-028 Amendment 5. Whatever matched nothing above: appliances, vacuums, power meters, printers.
+id: other
+order: 90
+names: {en: Other, de: Sonstiges, pl: Inne}
+colour: "#9e9e9e"
+marker: circle
+fallback: true

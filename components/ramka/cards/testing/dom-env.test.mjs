@@ -16,4 +16,7 @@ test("asserts compare happy-dom nodes by identity and name them briefly", () => 
   assert.throws(() => assert.equal(div, null), (e) => e.message.length < 500);
   assert.throws(() => assert.deepStrictEqual([div], [document.createElement("div")]), (e) => e.message.length < 500);
   assert.deepStrictEqual({ a: [div] }, { a: [div] });
+  // Without a message a failing assert is still an AssertionError, not a complaint about the message.
+  assert.throws(() => assert.equal(1, 2), { name: "AssertionError" });
+  assert.throws(() => assert.deepStrictEqual([1], [2]), { name: "AssertionError" });
 });

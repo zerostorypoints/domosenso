@@ -42,7 +42,9 @@
         "entity_id": {"type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"},
         "x": {"$ref": "#/$defs/number"},
         "y": {"$ref": "#/$defs/number"},
-        "placed": {"type": "boolean", "description": "false: at its area's room centre, not yet dragged"}
+        "placed": {"type": "boolean", "description": "false: at its area's room centre, not yet dragged"},
+        "category": {"enum": ["climate", "light", "media", "other", "plants", "radio", "security", "shading"],
+                     "description": "Overrides the category categories/*.yaml give the point (SPEC-028 Amendment 5); the placeable ids"}
       },
       "oneOf": [
         {"required": ["device_id"], "not": {"required": ["entity_id"]}},

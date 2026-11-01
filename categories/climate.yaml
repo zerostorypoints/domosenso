@@ -1,0 +1,17 @@
+# SPEC-028 Amendment 5. What reads or sets the air of a room, and its light level.
+id: climate
+order: 60
+names: {en: Climate, de: Klima, pl: Klimat}
+colour: "#1e88e5"
+marker: circle
+kinds: [temperature-humidity-sensor, air-quality-sensor]
+match:
+  - entity_domain: climate
+  - device_classes: temperature
+  - device_classes: humidity
+  - device_classes: illuminance
+  - device_classes: carbon_dioxide
+  - device_classes: pm25
+  - device_classes: pm10
+  - device_classes: volatile_organic_compounds
+  - device_classes: pressure

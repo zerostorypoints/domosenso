@@ -49,6 +49,17 @@ export const STYLE = `
   .dim { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
          pointer-events: none; }
   .dim.wall, .dim.to-wall { fill: var(--primary-color); }
+  .layers { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 0 12px 6px; }
+  .layers:empty { display: none; }
+  .layers-label { color: var(--secondary-text-color); font-size: 12px; margin-right: 4px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 8px; }
+  .chip[aria-pressed="false"] { opacity: 0.45; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;
+         vertical-align: middle; }
+  .point-panel { display: flex; gap: 8px; align-items: center; }
+  .marker rect, .marker polygon { stroke: var(--card-background-color, #fff); stroke-width: 2;
+                                  vector-effect: non-scaling-stroke; }
+  .marker.unplaced rect, .marker.unplaced polygon { fill-opacity: 0.4; stroke-dasharray: 3 2; }
   .tip { position: absolute; z-index: 2; pointer-events: none; max-width: 180px; padding: 6px;
          background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
          border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); font-size: 12px; }

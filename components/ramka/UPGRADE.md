@@ -17,6 +17,8 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **Renders** `input_boolean.<prefix>_controls_plan` (starts off), `script.<prefix>_controls_plan_toggle`
   and the automation `<prefix>_controls_plan_reset`; `script.<prefix>_show_controls` also turns the
   helper off. Press the Ramka's reload after the deploy.
+- **Layers:** the plan shows only the `climate` and `plants` categories (`layers: [climate,
+  plants]`, SPEC-028 Amendment 5); the other devices on the plan stay in Home Assistant's editor.
 
 ## 0.9.0 (2026-11-01): pause and the views of a page, the music source contract, live settings
 

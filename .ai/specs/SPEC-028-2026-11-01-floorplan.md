@@ -346,3 +346,35 @@ domain, `device_class` and the registry; nothing is written per home.
 ### Out of scope
 
 People's live positions; a radio coverage map; automations by position; walls, doors, windows.
+
+### Addition: categories are catalog-wide (the maintainer, 2026-11-01)
+
+"If we invent an ontology or a metadata connection here, model it at the system level so it can be
+used in every place of the system." The categories are not the card's: they are catalog data beside
+`kinds/` (SPEC-010), and the card, the CLI and later components read the same definitions.
+
+- **`categories/<id>.yaml`**, validated by `schemas/category.schema.json` and by `catalog_check`:
+  `id`, `order` (lower is tried first), `names` (en, de, pl), `colour` (the default of the CSS
+  variable `--floorplan-<id>`; other cards may use the same variable), `marker` (`circle`, `square`,
+  `diamond`), `placeable` (default `true`; `false` for things that move: phones, tags), `fallback`
+  (the one category for whatever matched nothing), `hub` (`true`: a device other enabled devices
+  name as `via_device_id`), `kinds` and `devices` (ids under `kinds/` and `devices/`: a device their
+  `match:` rules recognise is in this category), `match` (SPEC-010 rules, the same fields, plus
+  `only_entity_domain`: every entity of the device is in these domains, and `marker`: this rule's
+  marker instead of the category's).
+- **A device's category:** the point's `category` override; else the first category by `order` whose
+  `kinds` or `devices` rules, own `match` rules, or `hub` test match the device; else the fallback.
+  An entity without a device is tested alone (its integration is its platform).
+- **One rule engine, two languages:** `tools/domosenso_cli/categories.py` (with SPEC-010's
+  `hwscan.matches`) and the card's `lib/categories.js` implement it; `tests/fixtures/category-cases.json`
+  holds devices and their expected category, run by pytest and by `node --test`, so both agree.
+- **The card ships a generated copy:** `tools/category_index.py` writes
+  `components/floorplan/cards/lib/categories.json` (the categories with their kinds' and devices'
+  rules resolved); `--check` fails when it is stale (pytest runs it), like the Ramka's catalog index.
+- **The card reads device integrations as SPEC-010 does:** `config_entries/get` (no admin needed,
+  verified in HA 2026.9.2's `components/config/config_entries.py`) gives each config entry's
+  domain; a device's integrations are the domains of its `config_entries`.
+- COMPATIBILITY: the category ids and the file's fields are a contract (ADDITIVE-ONLY: a new
+  category or field is additive; renaming or removing an id is breaking, since plans store ids).
+- Not in stage 1: awnings driven by one radio device are its entities, so they share its point; a
+  point per entity of a device is for a later stage.

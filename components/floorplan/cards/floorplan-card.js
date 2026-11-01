@@ -14,6 +14,7 @@
 //   floor: ground                      # optional: floor_id to show; default the first
 //   edit: true                         # false: no Edit button, for embedding
 //   values: true                       # false: points without their readings
+//   layers: [climate, plants]          # optional: only these categories, no layer chips
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -21,7 +22,9 @@ import { zoomAt, snapToEdge, pointInPolygon, widestRow } from "./lib/geometry.js
 import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
+  candidates, pointCategory, setPointCategory, setEntryDomains,
 } from "./lib/plan.js";
+import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
@@ -37,6 +40,23 @@ const TAP_PX = 5;         // a pointer that moved less than this is a tap, not a
 const PICK_PX = 12;       // how far from a wall a split pick may land
 const LABEL_PX = 14;      // a room name's size on screen, shrunk down to LABEL_MIN_PX to fit its room
 const LABEL_MIN_PX = 9;
+const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers this browser switched off
+
+// Browser storage may be missing or refuse (a private window, a preview): the layers then start on.
+function readHidden() {
+  try {
+    return new Set(JSON.parse(window.localStorage.getItem(HIDDEN_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+function writeHidden(hidden) {
+  try {
+    window.localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden]));
+  } catch {
+    // not kept: the choice lasts for this page only
+  }
+}
 
 // A room name's screen size: LABEL_PX unless its estimated width (0.55 em a character) would pass 90 %
 // of the room's widest run, `width` metres at `px` metres per screen pixel.
@@ -78,6 +98,7 @@ class FloorplanCard extends HTMLElement {
     this._pointers = new Map();
     this._stamp = null;
     this._trayOpen = new Map();    // tray group key -> open, as the user left it
+    this._hidden = readHidden();   // category ids switched off by this browser's layer chips
     if (this._hass) this._load();
   }
 
@@ -95,6 +116,7 @@ class FloorplanCard extends HTMLElement {
     this._entities = entityMap(hass);
     if (!this.shadowRoot) this._build();
     if (first) {
+      this._loadEntries();
       this._load();
       return;
     }
@@ -107,6 +129,23 @@ class FloorplanCard extends HTMLElement {
       this._drawSvg(this._status === "ready" && this._mode === "edit");
       this._stamp = stamp;
     }
+  }
+
+  // Config entry domains, so a device's integrations read as SPEC-010's scan reads them (Amendment 5).
+  // `config_entries/get` needs no admin; a refusal leaves the entity platforms standing in.
+  async _loadEntries() {
+    try {
+      const entries = await this._hass.callWS({ type: "config_entries/get" });
+      setEntryDomains(Object.fromEntries((Array.isArray(entries) ? entries : []).map((e) => [e.entry_id, e.domain])));
+    } catch {
+      return;
+    }
+    this._entities = entityMap(this._hass);
+    this._render();
+  }
+
+  _visible(categoryId) {
+    return this._config.layers ? this._config.layers.includes(categoryId) : !this._hidden.has(categoryId);
   }
 
   get _floor() {
@@ -154,6 +193,7 @@ ${STYLE}
       </style>
       <ha-card>
         <div class="bar"></div>
+        <div class="layers"></div>
         <div class="area-panel"></div>
         <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="tip" hidden></div></div>
         <div class="hint"></div>
@@ -185,7 +225,9 @@ ${STYLE}
     const editing = ready && this._mode === "edit";
     $("ha-card").classList.toggle("editing", editing);
     $(".bar").innerHTML = ready ? this._barHtml(editing) : "";
-    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() : "";
+    this._cands = new Map(candidates(h || {}).map((c) => [c.key, c]));
+    $(".layers").innerHTML = ready ? this._layersHtml() : "";
+    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
     const floor = this._floor;
     const empty = ready && floor && !floor.rooms.length && !floor.points.length;
@@ -245,6 +287,30 @@ ${STYLE}
       <button data-action="create_area">${esc(t(h, "card.floorplan.area.create"))}</button>`;
   }
 
+  // A chip per category with a point on this floor, unless the config fixes the layers.
+  _layersHtml() {
+    if (this._config.layers || !this._floor) return "";
+    const h = this._hass;
+    const ids = new Set(this._floor.points.map((p) => pointCategory(h, p, this._cands).id));
+    const cats = PLACEABLE.filter((c) => ids.has(c.id));
+    if (!cats.length) return "";
+    return `<span class="layers-label">${esc(t(h, "card.floorplan.layers"))}</span>` + cats.map((c) =>
+      `<button data-action="layer" data-layer="${esc(c.id)}" aria-pressed="${!this._hidden.has(c.id)}" class="chip">`
+      + `<span class="dot" style="background: ${colourOf(c)}"></span>${esc(categoryName(c, h?.language))}</button>`).join("");
+  }
+
+  // The tapped point's category: what the catalog says it is, or an override.
+  _pointPanelHtml() {
+    const point = this._picked && this._floor?.points.find((p) => keyOf(p) === this._picked);
+    if (!point) return "";
+    const h = this._hass;
+    const current = pointCategory(h, point, this._cands).id;
+    const options = PLACEABLE.map((c) =>
+      `<option value="${esc(c.id)}" ${c.id === current ? "selected" : ""}>${esc(categoryName(c, h?.language))}</option>`).join("");
+    return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
+      + `<select class="category">${options}</select></div>`;
+  }
+
   _trayHtml() {
     const groups = trayGroups(this._doc, this._hass);
     this._oneGroup = groups.length === 1;    // a lone group starts open, several start collapsed
@@ -268,6 +334,7 @@ ${STYLE}
   _drawSvg(editing) {
     const svg = this._svg;
     svg.replaceChildren();
+    if (!this._cands) this._cands = new Map(candidates(this._hass || {}).map((c) => [c.key, c]));
     const floor = this._floor;
     if (this._status !== "ready" || !floor) return;
     const v = this._view;
@@ -321,9 +388,16 @@ ${STYLE}
     const cls = ["marker"];
     if (editing && !point.placed) cls.push("unplaced");
     if (editing && keyOf(point) === this._picked) cls.push("picked");
+    const cat = pointCategory(h, point, this._cands);
+    if (!this._visible(cat.id)) return;
+    cls.push(`cat-${cat.id}`);
     const g = el("g", { class: cls.join(" "), "data-kind": "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
-    el("circle", { r: 7 * px }, g);
+    const style = `fill: ${colourOf(categoryById(cat.id))}`;
+    if (cat.marker === "square") el("rect", { x: -6 * px, y: -6 * px, width: 12 * px, height: 12 * px, style }, g);
+    else if (cat.marker === "diamond") {
+      el("polygon", { points: [[0, -8], [8, 0], [0, 8], [-8, 0]].map(([x, y]) => `${fmt(x * px)},${fmt(y * px)}`).join(" "), style }, g);
+    } else el("circle", { r: 7 * px, style }, g);
     // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
     // A plant's value is its name, so a plant is a dot.
     const name = pointName(h, point);
@@ -370,6 +444,12 @@ ${STYLE}
       this._tool = button.getAttribute("data-tool");
       this._resetPicks();
     } else if (action === "create_area") return void this._createArea();
+    else if (action === "layer") {
+      const id = button.getAttribute("data-layer");
+      if (this._hidden.has(id)) this._hidden.delete(id);
+      else this._hidden.add(id);
+      writeHidden(this._hidden);
+    }
     this._render();
   }
 
@@ -387,6 +467,10 @@ ${STYLE}
       this._render();
     } else if (e.target.matches?.("select.area") && e.target.value) {
       this._applyArea(e.target.value);
+    } else if (e.target.matches?.("select.category") && this._picked) {
+      const own = this._cands?.get(this._picked)?.category ?? null;
+      this._edit(setPointCategory(this._doc, this._floorId, this._picked, e.target.value, own));
+      this._render();
     }
   }
 
@@ -507,7 +591,8 @@ ${STYLE}
     else if (item) this._drag = { ...base, kind: "tray", key: item.getAttribute("data-key") };
     else if (editing && this._tool === "move" && kind === "point") {
       this._drag = { ...base, kind: "point", key: target.getAttribute("data-key") };
-      this._picked = this._drag.key;    // drawn on the first move or the pointerup: not under the pointer now
+      this._picked = this._drag.key;
+      this._selected = null;    // drawn on the first move or the pointerup: not under the pointer now
     }
     else if (editing && this._tool === "move" && kind === "corner") {
       this._drag = { ...base, kind: "corner", area: target.getAttribute("data-area"), index: Number(target.getAttribute("data-index")) };
@@ -632,7 +717,7 @@ ${STYLE}
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
       this._tap(this._at(e), d.area);
     } else if (d.kind === "point" && !d.moved) {
-      return void this._drawSvg(true);    // a tap picks the point: its distances to the walls show
+      // A tap picks the point: its distances to the walls and its category show.
     } else if (!d.moved) return;
     this._render();
   }
