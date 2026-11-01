@@ -29,7 +29,7 @@ class Results:
             return False
 
     def finish(self):
-        report = {'scope': 'runtime-only (browser not run)' if self.runtime_only else 'runtime and browser', 'cases': self.cases, 'known_component_issues': ['#51 first-install tuning', '#52 startup reconciliation']}
+        report = {'scope': 'runtime-only (browser not run)' if self.runtime_only else 'runtime and browser', 'cases': self.cases, 'known_component_issues': ['#51 first-install tuning']}
         (self.path / 'check.json').write_text(json.dumps(report, indent=2))
         failed = [case['case'] for case in self.cases if case['status'] == 'fail']
         if failed:
@@ -159,14 +159,10 @@ def check(demo, runtime_only=False):
                               'detail': {'result': 'observed failure' if observed != expected else 'not reproduced', 'expected': expected, 'observed': observed}})
         peer.api('/api/services/input_select/select_option', {'entity_id': 'input_select.ramka_mode', 'option': 'off'})
         peer.down(); peer.up()
-        print('observing startup reconciliation (#52) for 60 seconds', flush=True)
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            time.sleep(min(1, deadline - time.monotonic()))
-        mode = peer.api('/api/states/input_select.ramka_mode')['state']
-        presence = peer.api('/api/states/binary_sensor.dining_ble_proxy_dining_presence')['state']
-        results.cases.append({'case': 'restored off mode with present radar (#52)', 'status': 'observation',
-                              'detail': {'result': 'observed failure' if presence == 'on' and mode == 'off' else 'not reproduced', 'presence': presence, 'modeAfter60Seconds': mode}})
+        # #52: the radar restores `on` before the automations load, so no change wakes the frame;
+        # ramka_reconcile_after_start has to.
+        require(peer.api('/api/states/binary_sensor.dining_ble_proxy_dining_presence')['state'] == 'on', 'demo radar not present after restart')
+        wait_state(peer, 'input_select.ramka_mode', 'ambient', timeout=90)
         require(demo.metadata()['port'] != peer.metadata()['port'], 'instances share a port')
         demo.audit(demo.inspect()); peer.audit(peer.inspect())
         demo.api('/api/services/input_number/set_value', {'entity_id': 'input_number.ramka_near_cm', 'value': 130})
@@ -199,5 +195,5 @@ def check(demo, runtime_only=False):
         results.case('real HA frontend, en/de/pl, desktop/tablet, open-page restart', browser)
     # Component defects are explicit observations, separate from launcher infrastructure gates.
     results.cases.append({'case': 'component reliability coverage', 'status': 'observation',
-                          'detail': 'Fresh and restored component observations are above. ' + ('Browser/#53 not run in runtime-only scope.' if runtime_only else 'The #53 forecast reconnect is a required browser case.') + ' The #51 and #52 fixes are not included.'})
+                          'detail': 'Fresh and restored component observations are above. ' + ('Browser/#53 not run in runtime-only scope.' if runtime_only else 'The #53 forecast reconnect is a required browser case.') + ' The #51 fix is not included; #52 is the required restart case above.'})
     return results.finish()
