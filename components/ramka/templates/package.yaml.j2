@@ -379,6 +379,14 @@ input_boolean:
   [[ p ]]_paused:
     name: [[ named(' paused') ]]
     icon: mdi:pause
+  [%- if inputs.floorplan | default(false) %]
+  # The controls' second view (SPEC-027): on, the floor plan shows instead of the controls. Not
+  # restored: a restart opens on the controls.
+  [[ p ]]_controls_plan:
+    name: [[ named(' controls plan') ]]
+    icon: mdi:floor-plan
+    initial: false
+  [%- endif %]
   # The settings dashboard's Advanced parts show while this is on.
   [[ p ]]_settings_advanced:
     name: [[ named(' advanced settings') ]]
@@ -986,6 +994,12 @@ script:
           entity_id: input_select.[[ p ]]_mode
         data:
           option: controls
+      [%- if inputs.floorplan | default(false) %]
+      # A tap on the plan comes here: back to the controls (SPEC-027).
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_controls_plan
+      [%- endif %]
       - if:
           - condition: state
             entity_id: binary_sensor.[[ p ]]_near
@@ -1273,6 +1287,32 @@ script:
             data:
               duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
 
+  [%- if inputs.floorplan | default(false) %]
+  # A sideways swipe on the controls: the plan instead of the controls, and back (SPEC-027).
+  [[ p ]]_controls_plan_toggle:
+    alias: [[ named(' controls plan toggle') ]]
+    icon: mdi:swap-horizontal
+    mode: single
+    sequence:
+      - action: input_boolean.toggle
+        target:
+          entity_id: input_boolean.[[ p ]]_controls_plan
+      # The plan counts as the controls for the hold: restart it like show_controls does.
+      - if:
+          - condition: state
+            entity_id: binary_sensor.[[ p ]]_near
+            state: "on"
+        then:
+          - action: timer.cancel
+            target:
+              entity_id: timer.[[ p ]]_controls
+        else:
+          - action: timer.start
+            target:
+              entity_id: timer.[[ p ]]_controls
+            data:
+              duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
+  [%- endif %]
   # Swipes on the controls (corner-taps card, swipe option), both leave to ambient at once:
   # up = the home-info rotation from the climate page, down = the music (the rotation anyway while
   # the player is silent). Standing there changes nothing more; the next approach or tap brings
@@ -1963,6 +2003,23 @@ automation:
           entity_id: timer.[[ p ]]_controls
         data:
           duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
+
+  [%- if inputs.floorplan | default(false) %]
+  - id: [[ p ]]_controls_plan_reset
+    alias: [[ named(' controls plan reset') ]]
+    description: "The mode left controls: the plan is off, so the next controls open on the controls (SPEC-027)."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_mode
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.to_state.state != 'controls' }}"
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_controls_plan
+  [%- endif %]
 
   - id: [[ p ]]_controls_timeout
     alias: [[ named(' controls timeout') ]]

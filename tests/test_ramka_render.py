@@ -4236,3 +4236,56 @@ def test_the_rotation_takes_sideways_swipes_and_the_pause_corner(demo):
         assert card["pause"]["conditions"] == rotation_rule["conditions"]
         assert (card["pause"]["entity"], card["pause"]["pause"], card["pause"]["resume"]) == (
             "input_boolean.ramka_paused", "script.ramka_pause", "script.ramka_resume")
+
+
+# ---- 0.10.0: floorplan (SPEC-027) -----------------------------------------------------------------
+
+def with_floorplan() -> dict:
+    inputs = demo_inputs()
+    inputs["floorplan"] = True
+    return inputs
+
+
+def test_floorplan_off_renders_as_before(tmp_path):
+    plain = texts(tmp_path / "a", demo_inputs())
+    off = demo_inputs()
+    off["floorplan"] = False
+    assert texts(tmp_path / "b", off) == plain
+    assert "controls_plan" not in "".join(plain.values())
+    assert "floorplan-card" not in "".join(plain.values())
+
+
+def test_floorplan_helper_and_rules(tmp_path):
+    out = render(tmp_path, with_floorplan())
+    package, dash = out["package.yaml"], out["dashboard.en.yaml"]
+    assert package["input_boolean"]["ramka_controls_plan"]["initial"] is False
+    toggle = package["script"]["ramka_controls_plan_toggle"]
+    assert toggle["sequence"][0]["action"] == "input_boolean.toggle"
+    shows = package["script"]["ramka_show_controls"]["sequence"]
+    assert any(s.get("action") == "input_boolean.turn_off"
+               and s["target"]["entity_id"] == "input_boolean.ramka_controls_plan" for s in shows)
+    [reset] = [a for a in package["automation"] if a["id"] == "ramka_controls_plan_reset"]
+    assert reset["triggers"][0]["entity_id"] == "input_select.ramka_mode"
+    assert reset["actions"][0]["action"] == "input_boolean.turn_off"
+
+    [corner] = [n for n in walk(dash) if n.get("type") == "custom:corner-taps-card"]
+    first, second = corner["swipe"][0], corner["swipe"][1]
+    assert first["conditions"][0]["states"] == ["controls"]
+    for side in ("left", "right"):
+        assert first[side] == "script.ramka_controls_plan_toggle"
+    for key in ("up", "down"):
+        assert first[key] == second[key]
+    assert "left" not in second and second["conditions"][0]["states"] == ["controls", "calendar"]
+
+    [plan] = [s for s in sections(dash) if any(c.get("type") == "custom:floorplan-card" for c in s["cards"])]
+    assert plan["cards"][0]["edit"] is False and "plan" not in plan["cards"][0]
+    assert {(c["entity"], c["state"]) for c in plan["visibility"]} == {
+        ("input_select.ramka_mode", "controls"), ("input_boolean.ramka_controls_plan", "on")}
+    controls = [s for s in sections(dash) if any(c.get("type") == "media-control" for c in s["cards"])]
+    assert controls and all({"entity": "input_boolean.ramka_controls_plan", "state": "off", "condition": "state"}
+                            in s["visibility"] for s in controls)
+
+
+def test_floorplan_not_in_the_preview(tmp_path):
+    out = render(tmp_path, with_floorplan())
+    assert not any(n.get("type") == "custom:floorplan-card" for n in walk(out["ramka-preview.en.yaml"]))

@@ -125,6 +125,10 @@ inputs:
   status_page:                  # false: no status page; the rotation and the swipes step over it (0.3.0)
     type: bool
     default: true
+  floorplan:                    # true: on the controls a sideways swipe switches to the floor plan (the floorplan
+    type: bool                  # component's card, read-only) and back; a tap on the plan returns. Needs the
+    default: false              # floorplan component added and its dashboard pushed (SPEC-027)
+    example: true
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
   photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
@@ -244,6 +248,7 @@ provides:                       # <prefix> from inputs
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
     - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
     - {id: "input_boolean.<prefix>_paused", stability: stable, note: "on while the rotation is paused; the screen going off (mode off) ends it (SPEC-026, 0.9.0)"}
+    - {id: "input_boolean.<prefix>_controls_plan", stability: stable, note: "with floorplan: on while the controls show the floor plan instead of themselves; off at every start and whenever the mode leaves controls (SPEC-027)"}
     - {id: "input_boolean.<prefix>_{settings_advanced,settings_seeded}", stability: stable, note: "0.4.0"}
     - {id: "input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}", stability: stable, note: "in every home; off takes the view out, inside what the render configured (0.4.0)"}
     - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0); Custom's tilt"}
@@ -284,12 +289,13 @@ provides:                       # <prefix> from inputs
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
+    - {id: "script.<prefix>_controls_plan_toggle", stability: stable, note: "with floorplan: toggles input_boolean.<prefix>_controls_plan; the sideways swipes on the controls (SPEC-027)"}
     - {id: "script.<prefix>_{pause,resume,view_next,view_prev,view_step}", stability: stable, note: "pause only while the rotation shows; view_step's field step (1, -1) steps through the plant pages or the series' photos (SPEC-026, 0.9.0)"}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
   dashboards:
     - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, 0.9.0), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first); the colour selects (air_color_{good,fair,poor}, climate_color_neutral) are custom:ramka-colour-select-row rows, each choice with its colour's dot (0.9.0); the Photos page's albums are its second section, the right column next to Basic (0.9.0)"}
     - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard (default true): one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
-  automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without
@@ -317,6 +323,9 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: binary_sensor.music_source_level}
   - {component: audio-sensor, id: binary_sensor.music_source_rate}
   - {component: audio-sensor, id: binary_sensor.music_source_calibration}
+  # With floorplan: the plan on the controls (SPEC-027). The card's resource comes with the component.
+  - {component: floorplan, id: "dashboard url path floorplan"}
+  - {component: floorplan, element: floorplan-card}
 # Not a component's: the settings dashboard's About page reads sensor.domosenso_components, which the
 # `domosenso` command writes from the home's lock (SPEC-023); without it the page lists the Ramka alone.
 

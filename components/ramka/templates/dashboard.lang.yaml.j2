@@ -136,6 +136,17 @@ views:
             # left and right step through the views of the page on screen, the plant pages or the
             # photos of the series (SPEC-026). While paused, both keep the pause.
             swipe:
+              [%- if inputs.floorplan | default(false) %]
+              # floorplan (SPEC-027): on the controls, left and right switch between the controls
+              # and the plan; the calendar keeps the plain rule below.
+              - conditions:
+                  - entity: input_select.[[ p ]]_mode
+                    states: [controls]
+                up: script.[[ p ]]_swipe_up
+                down: script.[[ p ]]_swipe_down
+                left: script.[[ p ]]_controls_plan_toggle
+                right: script.[[ p ]]_controls_plan_toggle
+              [%- endif %]
               - conditions:
                   - entity: input_select.[[ p ]]_mode
                     states: [controls, calendar]
@@ -693,6 +704,11 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_mode
             state: controls
+          [%- if inputs.floorplan | default(false) %]
+          - condition: state
+            entity: input_boolean.[[ p ]]_controls_plan
+            state: "off"
+          [%- endif %]
         [%- endif %]
         cards:
           - type: heading
@@ -934,6 +950,26 @@ views:
                 entity_id: [[ lights | map(attribute='entity') | list | yaml ]]
             [%- endif %]
             grid_options: {columns: 12, rows: 2}
+      [%- endif %]
+[%- if inputs.floorplan | default(false) and not preview %]
+
+      # ---- Plan: the second view of the controls (SPEC-027). A sideways swipe on the controls
+      # turns input_boolean.[[ p ]]_controls_plan on; a tap here is a tap on the page, which runs
+      # script.[[ p ]]_show_controls and so turns it off again. Read-only; the card reads the
+      # `floorplan` dashboard itself.
+      - type: grid
+        column_span: 3
+        visibility:
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: controls
+          - condition: state
+            entity: input_boolean.[[ p ]]_controls_plan
+            state: "on"
+        cards:
+          - type: custom:floorplan-card
+            edit: false
+            grid_options: {columns: full, rows: 8}
       [%- endif %]
 [%- endblock %]
 [%- endblock %]
