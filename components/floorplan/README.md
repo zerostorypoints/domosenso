@@ -57,12 +57,16 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
 - The tray lists the sensors not on the plan yet (no area, or an area without a room on this floor),
   grouped by room: the area, or for a plant without an area the room the plants component gives it
   (in the area's group when the names match), else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
-  put all of its sensors round that spot (faded, to be dragged into place one by one). Only the
+  put all of its sensors round that spot (faded, to be dragged into place one by one); while
+  dragging, a faded marker with the name follows the pointer over the plan. Only the
   kinds above and plants are listed; computed sensors (from the `template`, `statistics`,
   `min_max`, `derivative`, `integration`, `utility_meter`, `filter`, `trend`, `threshold`,
   `compensation` and `group` integrations) are left out, and other entities cannot be added in 0.1.0.
 - Edit mode draws a faint 1 m grid (0.5 m when zoomed in) and shows every room's floor area under
   its name; the selected room, or the one whose corner is being dragged, shows its wall lengths.
+  A sensor tapped or dragged shows its distance to its room's walls straight left, right, up and
+  down. Markers show the sensor's name in edit mode; in view mode only its readings, or the name
+  when it has none.
   Split ends also go to the 5 cm grid along their wall.
 - With more than one floor in the plan, a select switches the floor.
 - Split and join change only shapes: the editor never deletes an area and never moves a device to

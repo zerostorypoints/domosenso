@@ -20,11 +20,11 @@ import { STYLE } from "./lib/style.js";
 import { zoomAt, snapToEdge, pointInPolygon, centroid } from "./lib/geometry.js";
 import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
-  splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints,
+  splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
 } from "./lib/plan.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
-import { drawGrid, drawDims } from "./lib/measure.js";
+import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -58,6 +58,7 @@ class FloorplanCard extends HTMLElement {
     this._tool = "move";
     this._picks = [];              // split: wall points; join: area ids
     this._selected = null;         // move tool: the room whose area panel is open
+    this._picked = null;           // move tool: the point whose distances to the walls show
     this._pendingSplit = null;
     this._message = null;          // {key, vars}
     this._view = null;
@@ -290,19 +291,35 @@ ${STYLE}
     if (editing) drawDims(svg, el, { hass: h, t, floor, px, active });
     for (const p of this._picks.filter(Array.isArray)) el("circle", { class: "pick", cx: p[0], cy: p[1], r: 5 * px }, svg);
     for (const point of floor.points) this._drawMarker(svg, point, px, editing);
+    const picked = editing && floor.points.find((p) => keyOf(p) === this._picked);
+    const room = picked && floor.rooms.find((r) => pointInPolygon([picked.x, picked.y], r.polygon));
+    if (room) drawWallDistances(svg, el, { hass: h, t, poly: room.polygon, pt: [picked.x, picked.y], px });
+    const ghost = this._drag?.ghost;
+    if (ghost) {
+      const g = el("g", { class: "marker ghost", transform: `translate(${fmt(ghost.at[0])} ${fmt(ghost.at[1])})` }, svg);
+      el("circle", { r: 7 * px }, g);
+      el("text", { class: "name", y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
+    }
   }
 
   _drawMarker(svg, point, px, editing) {
     const h = this._hass;
-    const g = el("g", { class: `marker${editing && !point.placed ? " unplaced" : ""}`, "data-kind": "point",
+    const cls = ["marker"];
+    if (editing && !point.placed) cls.push("unplaced");
+    if (editing && keyOf(point) === this._picked) cls.push("picked");
+    const g = el("g", { class: cls.join(" "), "data-kind": "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
     el("circle", { r: 7 * px }, g);
-    const ids = pointEntities(point, this._entities);
-    if (this._config.values) {
-      ids.forEach((id, i) => {
-        el("text", { y: (22 + 15 * i) * px, "font-size": 13 * px }, g).textContent = valueText(h, id);
-      });
-    }
+    const name = pointName(h, point);
+    el("title", {}, g).textContent = name;
+    const values = this._config.values
+      ? pointEntities(point, this._entities).map((id) => valueText(h, id)).filter((v) => v !== "—") : [];
+    // The name in edit mode, where sensors are told apart; in view mode only when there is no reading.
+    const lines = (editing || !values.length) && !values.includes(name) ? [name, ...values] : values;
+    lines.forEach((text, i) => {
+      el("text", { class: text === name ? "name" : "value", y: (22 + 15 * i) * px, "font-size": 13 * px }, g)
+        .textContent = text;
+    });
   }
 
   _valueStamp() {
@@ -377,6 +394,7 @@ ${STYLE}
   _resetPicks() {
     this._picks = [];
     this._selected = null;
+    this._picked = null;
     this._pendingSplit = null;
   }
 
@@ -453,6 +471,8 @@ ${STYLE}
     const item = e.target.closest?.(".tray [data-key], .tray summary[data-group]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
     if (!item && !inSvg) return;
+    // No text selection or native drag from the tray: either would take the pointer away (pointercancel).
+    if (item) e.preventDefault();
     // A primary pointer going down means no other is down: drop any whose pointerup never came.
     if (e.isPrimary) this._pointers.clear();
     this._pointers.set(e.pointerId, [e.clientX, e.clientY]);
@@ -472,10 +492,22 @@ ${STYLE}
     const base = { start: [e.clientX, e.clientY], view0: this._view, moved: false };
     if (item?.hasAttribute("data-group")) this._drag = { ...base, kind: "group", key: item.getAttribute("data-group") };
     else if (item) this._drag = { ...base, kind: "tray", key: item.getAttribute("data-key") };
-    else if (editing && this._tool === "move" && kind === "point") this._drag = { ...base, kind: "point", key: target.getAttribute("data-key") };
+    else if (editing && this._tool === "move" && kind === "point") {
+      this._drag = { ...base, kind: "point", key: target.getAttribute("data-key") };
+      this._picked = this._drag.key;    // drawn on the first move or the pointerup: not under the pointer now
+    }
     else if (editing && this._tool === "move" && kind === "corner") {
       this._drag = { ...base, kind: "corner", area: target.getAttribute("data-area"), index: Number(target.getAttribute("data-index")) };
     } else this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null };
+  }
+
+  _dragLabel(d) {
+    if (d.kind === "group") {
+      const g = trayGroups(this._doc, this._hass).find((x) => x.key === d.key);
+      return g ? `${g.name ?? t(this._hass, "card.floorplan.tray.no_room")} (${g.items.length})` : "";
+    }
+    const c = tray(this._doc, this._hass).find((x) => x.key === d.key);
+    return c ? candidateName(this._hass, c) : "";
   }
 
   _pinchDist() {
@@ -507,7 +539,13 @@ ${STYLE}
       this._doc = movePoint(this._doc, this._floorId, d.key, this._at(e)) ?? this._doc;
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
-    } else return;      // a tray item or group is dropped on pointerup
+    } else {      // a tray item or group is dropped on pointerup; until then a ghost shows where
+      const r = this._rect();
+      const inside = e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
+      d.ghost = inside ? { at: this._at(e), label: this._dragLabel(d) } : null;
+      this._drawSvg(true);    // the plan alone: a re-render would rebuild the tray under the pointer
+      return;
+    }
     this._render();
   }
 
@@ -519,6 +557,7 @@ ${STYLE}
       return;
     }
     this._drag = null;
+    if (d?.ghost) this._drawSvg(this._mode === "edit");
     if (!d || cancelled) return;
     if (d.kind === "corner" && d.moved) {
       const pt = snapCorner(this._floor, d.area, this._at(e));
@@ -535,6 +574,8 @@ ${STYLE}
       }
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
       this._tap(this._at(e), d.area);
+    } else if (d.kind === "point" && !d.moved) {
+      return void this._drawSvg(true);    // a tap picks the point: its distances to the walls show
     } else if (!d.moved) return;
     this._render();
   }
@@ -543,6 +584,7 @@ ${STYLE}
   _tap(pt, area) {
     if (this._tool === "move") {
       this._selected = area && area !== this._selected ? area : null;
+      this._picked = null;
     } else if (this._tool === "join") {
       if (!area) return;
       this._picks = [...this._picks, area];

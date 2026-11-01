@@ -142,6 +142,11 @@ export function candidateName(hass, c) {
   return hass.states?.[c.key]?.attributes?.friendly_name || c.key;
 }
 
+// A point's name, as the tray named it before it was placed.
+export function pointName(hass, point) {
+  return candidateName(hass, point.device_id ? { kind: "device", key: point.device_id } : { kind: "entity", key: point.entity_id });
+}
+
 // Which room a candidate belongs in, for grouping the tray: its area, else for a plant the room the
 // plants component gives it (domosenso_room, or per language domosenso_rooms), else null.
 export function roomHint(hass, candidate) {

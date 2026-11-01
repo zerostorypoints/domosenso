@@ -360,6 +360,68 @@ test("empty plan shows the tray and the hint", async () => {
   assert.ok(shadowText(card).includes(EN("card.floorplan.hint.empty")));
 });
 
+// ---- staging feedback: drag feedback, marker names, distances to the walls ------------------
+
+test("a tray drag starts no text selection or native drag", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="d_office"]');
+  assert.equal(pointer(item, "pointerdown", 790, 390), false, "pointerdown on a tray item is default-prevented");
+  pointer(item, "pointerup", 790, 390);
+  assert.match(card.shadowRoot.querySelector("style").textContent, /\.tray \{[^}]*user-select: none/);
+});
+
+test("a tray drag shows a ghost marker under the pointer, gone after the drop", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="d_office"]');
+  const [ex, ey] = clientAt(card, 6, 3);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", 900, 395);     // right of the plan's 800 px
+  assert.ok(!$(card, "g.ghost"), "no ghost while the pointer is outside the plan");
+  pointer(item, "pointermove", ex, ey);
+  const ghost = $(card, "g.ghost");
+  assert.ok(ghost, "a ghost follows the pointer over the plan");
+  const [, gx, gy] = ghost.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).map(Number);
+  assert.ok(Math.abs(gx - 6) < 1e-6 && Math.abs(gy - 3) < 1e-6, ghost.getAttribute("transform"));
+  assert.ok(ghost.textContent.includes("Office sensor"), ghost.textContent);
+  pointer(item, "pointerup", ex, ey);
+  assert.ok(!$(card, "g.ghost"));
+});
+
+test("a marker shows the sensor's name in edit mode, and in view mode when it has no reading", async () => {
+  const hass = hassOf();
+  hass.states["sensor.office_temperature"] = { state: "unavailable", attributes: { device_class: "temperature" } };
+  const pts = [{ device_id: "d_climate", x: 1, y: 1, placed: true }, { device_id: "d_office", x: 6, y: 1, placed: true }];
+  const card = await make({ plan: planOf(pts) }, hass);
+  // The visible lines only: the marker's <title> names it in every mode.
+  const marker = (key) => ({ textContent: [...$(card, `g.marker[data-key="${key}"]`).querySelectorAll("text")]
+    .map((n) => n.textContent).join(" | ") });
+  assert.ok(!marker("d_climate").textContent.includes("Climate sensor"), "view mode: readings only");
+  assert.ok(marker("d_office").textContent.includes("Office sensor"), "no reading: the name instead of a dash");
+  assert.ok(!marker("d_office").textContent.includes("—"));
+  click($(card, "[data-action=edit]"));
+  assert.ok(marker("d_climate").textContent.includes("Climate sensor"), marker("d_climate").textContent);
+  assert.ok(marker("d_climate").textContent.includes("21.5"));
+});
+
+test("a dragged or tapped point shows its distance to the room's walls", async () => {
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1.5, placed: true }]) }, hassOf());
+  click($(card, "[data-action=edit]"));
+  assert.equal(card.shadowRoot.querySelectorAll(".dim.to-wall").length, 0, "nothing before a point is picked");
+  const node = $(card, 'g.marker[data-key="d_climate"]');
+  const [sx, sy] = clientAt(card, 1, 1.5);
+  const [ex, ey] = clientAt(card, 2, 1);
+  pointer(node, "pointerdown", sx, sy);
+  pointer(node, "pointermove", ex, ey);
+  // Living room is 5 × 4 m from (0, 0): at (2, 1) the walls are 2, 3, 1 and 3 m away.
+  const texts = () => [...card.shadowRoot.querySelectorAll("text.dim.to-wall")].map((n) => n.textContent).sort();
+  assert.deepEqual(texts(), ["1.00 m", "2.00 m", "3.00 m", "3.00 m"]);
+  pointer(node, "pointerup", ex, ey);
+  assert.deepEqual(texts(), ["1.00 m", "2.00 m", "3.00 m", "3.00 m"], "stays after the drop: the point is selected");
+  assert.equal(card.shadowRoot.querySelectorAll("line.to-wall").length, 4);
+});
+
 test("a sensor dragged from the tray lands on the plan, placed", async () => {
   const card = await make({ plan: planOf() }, hassOf());
   click($(card, "[data-action=edit]"));

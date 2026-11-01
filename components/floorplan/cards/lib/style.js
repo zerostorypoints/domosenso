@@ -29,7 +29,13 @@ export const STYLE = `
   .editing .marker { cursor: move; }
   .marker.unplaced circle { fill-opacity: 0.4; stroke-dasharray: 3 2; }
   .marker text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; }
-  .tray { width: 180px; overflow-y: auto; border-left: 1px solid var(--divider-color); padding: 8px; }
+  .marker text.name { fill: var(--secondary-text-color); }
+  .marker.picked circle { stroke: var(--accent-color, #ff9800); }
+  .ghost { opacity: 0.6; pointer-events: none; }
+  .to-wall { stroke: var(--primary-color); stroke-width: 1; stroke-dasharray: 4 3;
+             vector-effect: non-scaling-stroke; pointer-events: none; }
+  .tray { width: 180px; overflow-y: auto; border-left: 1px solid var(--divider-color); padding: 8px;
+          user-select: none; -webkit-user-select: none; }
   .tray:empty { display: none; }
   .tray h3 { margin: 0 0 6px; font-size: 13px; }
   .tray .item { padding: 6px 8px; margin-bottom: 4px; border-radius: 8px; cursor: grab;
@@ -43,7 +49,7 @@ export const STYLE = `
   .grid.minor { stroke-opacity: 0.04; }
   .dim { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
          pointer-events: none; }
-  .dim.wall { fill: var(--primary-color); }
+  .dim.wall, .dim.to-wall { fill: var(--primary-color); }
   .message, .hint { padding: 0 12px 8px; color: var(--secondary-text-color); }
   .message:empty, .hint:empty { display: none; }
   .notice { padding: 16px; color: var(--secondary-text-color); }
