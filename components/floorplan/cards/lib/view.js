@@ -106,8 +106,10 @@ export function entityMap(hass) {
   return map;
 }
 
+// The readings a point shows: its own device's or entity's, then those of the devices joined to it.
 export function pointEntities(point, map) {
-  return map.get(point.device_id ?? point.entity_id) ?? (point.entity_id ? [point.entity_id] : []);
+  const own = map.get(point.device_id ?? point.entity_id) ?? (point.entity_id ? [point.entity_id] : []);
+  return [...own, ...(point.also || []).flatMap((id) => map.get(id) ?? [])];
 }
 
 export function valueText(hass, entityId) {

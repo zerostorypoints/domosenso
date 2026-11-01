@@ -56,7 +56,11 @@ export const STYLE = `
   .chip[aria-pressed="false"] { opacity: 0.45; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;
          vertical-align: middle; }
-  .point-panel { display: flex; gap: 8px; align-items: center; }
+  .point-panel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .joined-label { color: var(--secondary-text-color); }
+  .joined button { margin-left: 4px; font-size: 12px; padding: 2px 8px; }
+  .link { stroke: var(--primary-color); stroke-width: 1.5; stroke-opacity: 0.7; vector-effect: non-scaling-stroke;
+          pointer-events: none; }
   .marker rect, .marker polygon { stroke: var(--card-background-color, #fff); stroke-width: 2;
                                   vector-effect: non-scaling-stroke; }
   .marker.unplaced rect, .marker.unplaced polygon { fill-opacity: 0.4; stroke-dasharray: 3 2; }

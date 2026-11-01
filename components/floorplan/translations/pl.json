@@ -24,7 +24,7 @@
       },
       "hint": {
         "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
-        "move": "Przeciągaj czujniki i narożniki. Dwuklik na ścianie dodaje narożnik, na narożniku go usuwa. Stuknij pomieszczenie, aby przypisać je do obszaru.",
+        "move": "Przeciągaj czujniki i narożniki. Dwuklik na ścianie dodaje narożnik, na narożniku go usuwa. Stuknij pomieszczenie, aby przypisać je do obszaru. Upuść urządzenie na znacznik, jeśli to ten sam sprzęt.",
         "split": "Stuknij dwa punkty na ścianach jednego pomieszczenia.",
         "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar."
       },
@@ -53,7 +53,9 @@
       "create_failed": "Nie udało się utworzyć obszaru: {error}",
       "refused": "Ta zmiana nie jest tu możliwa.",
       "point": {
-        "category": "Kategoria"
+        "category": "Kategoria",
+        "separate": "Rozdziel",
+        "joined": "To samo urządzenie:"
       },
       "layers": "Warstwy"
     }

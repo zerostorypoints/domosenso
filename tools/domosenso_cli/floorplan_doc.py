@@ -46,10 +46,11 @@ def _refuse_duplicates(doc: dict) -> None:
                 raise DomosensoError(f"duplicate area_id on floor {label}: {room['area_id']}")
             areas.add(room["area_id"])
         for point in floor["points"]:
-            key = point_key(point)
-            if key in points:
-                raise DomosensoError(f"duplicate point: {key}")
-            points.add(key)
+            # A device joined to a point (`also`) is that point's as much as its own device is.
+            for key in [point_key(point), *point.get("also", [])]:
+                if key in points:
+                    raise DomosensoError(f"duplicate point: {key}")
+                points.add(key)
 
 
 def without_source(doc: dict) -> dict:
@@ -111,10 +112,11 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
         new_floor = new_floors.get(floor_id, {"rooms": [], "points": []})
         lines += _compare("room", "area_id", "change", old_floor["rooms"], new_floor["rooms"],
                           label, lambda r: _round(r["polygon"]))
-        # A point moved (or was placed); else, with only its category override changed, "change".
+        # A point moved (or was placed); else, with only its category override or its joined
+        # devices (`also`) changed, "change".
         lines += _compare("point", None, "move", old_floor["points"], new_floor["points"], label,
                           lambda p: (_round(p["x"]), _round(p["y"]), p["placed"]),
-                          ("change", lambda p: p.get("category")))
+                          ("change", lambda p: (p.get("category"), p.get("also", []))))
     return lines
 
 

@@ -24,7 +24,7 @@
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
-        "move": "Drag sensors and corners. Double-click a wall to add a corner, a corner to remove it. Tap a room to link it to an area.",
+        "move": "Drag sensors and corners. Double-click a wall to add a corner, a corner to remove it. Tap a room to link it to an area. Drop a device on a marker when it is the same hardware.",
         "split": "Tap two points on the walls of one room.",
         "join": "Tap two neighbouring rooms; the first keeps its area."
       },
@@ -53,7 +53,9 @@
       "create_failed": "The area could not be created: {error}",
       "refused": "That change is not possible here.",
       "point": {
-        "category": "Category"
+        "category": "Category",
+        "separate": "Separate",
+        "joined": "Same hardware:"
       },
       "layers": "Layers"
     }

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
-  extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName,
+  extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName, keysOf, joinPoint,
+  separatePoint, registryLinks,
 } from "./plan.js";
 import { joinPolygons, centroid, pointInPolygon } from "./geometry.js";
 
@@ -385,4 +386,77 @@ test("autoPlace puts a sensor whose spread point leaves the room on the centre i
   const narrow = [[0, 0], [0.4, 0], [0.4, 3], [0, 3]];
   const pts = autoPlace(oneRoom(narrow), hass, "ground").floors[0].points;
   assert.deepEqual(pts.map((p) => [p.x, p.y]), [[0.2, 2.1], [0.2, 2.1]]);
+});
+
+
+// ---- Amendment 5, stage 2: one point per physical device, registry links --------------------
+
+// An amplifier seen by three integrations, a bridge with two bulbs, all in the living room.
+const stage2Hass = {
+  ...hass,
+  devices: {
+    ...hass.devices,
+    d_amp: { id: "d_amp", name: "Amplifier", area_id: "living_room" },
+    d_amp_cast: { id: "d_amp_cast", name: "Amplifier (Cast)", area_id: "living_room" },
+    d_bridge: { id: "d_bridge", name: "Bridge", area_id: "kitchen" },
+    d_bulb1: { id: "d_bulb1", name: "Bulb 1", area_id: "living_room", via_device_id: "d_bridge" },
+    d_bulb2: { id: "d_bulb2", name: "Bulb 2", area_id: "kitchen", via_device_id: "d_bridge" },
+  },
+  entities: {
+    ...hass.entities,
+    "media_player.amp": { entity_id: "media_player.amp", device_id: "d_amp" },
+    "media_player.amp_cast": { entity_id: "media_player.amp_cast", device_id: "d_amp_cast" },
+    "switch.bridge": { entity_id: "switch.bridge", device_id: "d_bridge" },
+    "light.bulb1": { entity_id: "light.bulb1", device_id: "d_bulb1" },
+    "light.bulb2": { entity_id: "light.bulb2", device_id: "d_bulb2" },
+  },
+  states: {
+    ...hass.states,
+    "media_player.amp": { state: "on", attributes: {} }, "media_player.amp_cast": { state: "off", attributes: {} },
+    "switch.bridge": { state: "on", attributes: {} },
+    "light.bulb1": { state: "on", attributes: {} }, "light.bulb2": { state: "off", attributes: {} },
+  },
+};
+const withAmp = () => {
+  const d = doc();
+  d.floors[0].points.push({ device_id: "d_amp", x: 1, y: 1, placed: true });
+  return d;
+};
+
+test("joinPoint makes another device the same point; it leaves the tray", () => {
+  const cast = candidates(stage2Hass).find((c) => c.key === "d_amp_cast");
+  const joined = joinPoint(withAmp(), "ground", "d_amp", cast);
+  const amp = joined.floors[0].points.find((p) => p.device_id === "d_amp");
+  assert.deepEqual(amp.also, ["d_amp_cast"]);
+  assert.deepEqual(keysOf(amp), ["d_amp", "d_amp_cast"]);
+  assert.ok(!tray(joined, stage2Hass).some((c) => c.key === "d_amp_cast"));
+  assert.ok(!autoPlace(joined, stage2Hass, "ground").floors[0].points.some((p) => p.device_id === "d_amp_cast"),
+    "a joined device is not placed again");
+});
+
+test("joinPoint refuses an entity, the point itself, and a device already on the plan", () => {
+  const all = candidates(stage2Hass);
+  const plant = all.find((c) => c.key === "plant.monstera");
+  assert.equal(joinPoint(withAmp(), "ground", "d_amp", plant), null);
+  assert.equal(joinPoint(withAmp(), "ground", "d_amp", all.find((c) => c.key === "d_amp")), null);
+  const placed = withAmp();
+  placed.floors[0].points.push({ device_id: "d_bridge", x: 2, y: 2, placed: true });
+  assert.equal(joinPoint(placed, "ground", "d_amp", all.find((c) => c.key === "d_bridge")), null);
+});
+
+test("separatePoint takes a joined device out again; the last one drops `also`", () => {
+  const cast = candidates(stage2Hass).find((c) => c.key === "d_amp_cast");
+  const joined = joinPoint(withAmp(), "ground", "d_amp", cast);
+  const back = separatePoint(joined, "ground", "d_amp", "d_amp_cast");
+  assert.ok(!("also" in back.floors[0].points.find((p) => p.device_id === "d_amp")));
+  assert.ok(tray(back, stage2Hass).some((c) => c.key === "d_amp_cast"));
+  assert.equal(separatePoint(back, "ground", "d_amp", "d_amp_cast"), null);
+});
+
+test("registryLinks: via_device_id between points on the plan, a joined device counting for its point", () => {
+  const d = doc();
+  d.floors[0].points.push({ device_id: "d_bridge", x: 6, y: 1, placed: true },
+    { device_id: "d_bulb1", x: 1, y: 1, placed: true }, { device_id: "d_amp", x: 2, y: 2, placed: true, also: ["d_bulb2"] });
+  assert.deepEqual(registryLinks(stage2Hass, d.floors[0].points).map((l) => [l.from, l.to]).sort(),
+    [["d_amp", "d_bridge"], ["d_bulb1", "d_bridge"]]);
 });

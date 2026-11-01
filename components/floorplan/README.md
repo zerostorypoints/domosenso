@@ -77,6 +77,13 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
   `compensation` and `group` integrations.
 - Tap a marker to choose its category when the catalog's guess is wrong; choosing what it is anyway
   removes the override (`category` on the point in the stored plan).
+- **One piece of hardware, several Home Assistant devices** (an amplifier seen by its own
+  integration, by Cast and by DLNA): drop the extra devices from the tray onto the marker. They
+  become part of that point (`also` in the stored plan): their readings show on it, their names in
+  its tooltip. The tapped point's panel lists them; **Separate** puts one back in the tray.
+- **Links:** hovering a marker, or tapping it in edit mode, draws lines to the devices it reaches
+  Home Assistant through and to those that reach it through this one (Home Assistant's
+  `via_device_id`): a bulb to its bridge, a hub to its sensors, a mesh node to its satellites.
 - Edit mode draws a faint 1 m grid (0.5 m when zoomed in) and shows every room's floor area under
   its name; the selected room, or the one whose corner is being dragged, shows its wall lengths.
   A sensor tapped or dragged shows its distance to its room's walls straight left, right, up and

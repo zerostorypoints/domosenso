@@ -382,3 +382,21 @@ used in every place of the system." The categories are not the card's: they are 
   points; merging them is stage 2's "one point per physical device".
 - Checked on a real home's registry (112 devices, 2026-11-01): the rules sort it as the table says;
   12 phones and tags and 8 plant sensors (joined to their plants) are not points.
+
+### Stage 2 as built (2026-11-01)
+
+- **No automatic merging beyond entity-less devices.** On a real home's registry no two placeable
+  devices share a MAC address or a serial number: every shared MAC pairs a device with its own
+  network-client entry (a tracker only, never a point), and the three registry devices of one
+  amplifier (its own integration, Cast, DLNA) share no identifier. Which devices are one piece of
+  hardware is the home's knowledge, so the plan stores it.
+- **`also` on a device point** (`schemas/floorplan.schema.json`, optional, only with `device_id`):
+  the ids of other devices that are the same hardware. They are keys of that point (the duplicate
+  check counts them; `push` prints `point change` when they change), their readings show on its
+  marker and their names in its tooltip, and they are neither in the tray nor placed again.
+- **Joining:** a device dropped from the tray onto a marker (within 10 px) joins that point; the
+  tapped point's panel lists its joined devices, each with **Separate**, which puts it back in the
+  tray. A plant (an entity) cannot be joined or carry joined devices.
+- **`via` links:** the registry's `via_device_id` between devices on the plan (a device joined to a
+  point counts for it) is drawn as a line from the point that is hovered, dragged or (in edit mode)
+  tapped to its hub, or from a hub to every device behind it. Not stored.

@@ -32,6 +32,10 @@ export function emptyPlan(floorIds) {
 }
 
 const keyOf = (point) => point.device_id ?? point.entity_id;
+// Every device or entity a point stands for: its own, and the devices joined to it as the same
+// hardware (`also`, Amendment 5 stage 2).
+export const keysOf = (point) => [keyOf(point), ...(point.also || [])];
+const onPlan = (doc) => new Set(doc.floors.flatMap((f) => f.points.flatMap(keysOf)));
 const floorIndex = (doc, floorId) => doc.floors.findIndex((f) => f.floor_id === floorId);
 const sameXY = (p, q) => Math.abs(p[0] - q[0]) <= SAME && Math.abs(p[1] - q[1]) <= SAME;
 
@@ -195,7 +199,7 @@ function underLabels(polygon) {
 export function autoPlace(doc, hass, floorId) {
   const floor = doc.floors[floorIndex(doc, floorId)];
   if (!floor) return doc;
-  const placed = new Set(doc.floors.flatMap((f) => f.points.map(keyOf)));
+  const placed = onPlan(doc);
   const perRoom = new Map();
   for (const c of candidates(hass)) {
     if (placed.has(c.key)) continue;
@@ -216,7 +220,7 @@ export function autoPlace(doc, hass, floorId) {
 }
 
 export function tray(doc, hass) {
-  const placed = new Set(doc.floors.flatMap((f) => f.points.map(keyOf)));
+  const placed = onPlan(doc);
   return candidates(hass).filter((c) => !placed.has(c.key));
 }
 
@@ -290,19 +294,59 @@ export function roomLabel(room, hass) {
 // A tray candidate dropped on the plan: placed, since the user chose the spot.
 export function addPoint(doc, floorId, candidate, pt) {
   const [x, y] = mmPt(pt);
-  if (doc.floors.some((f) => f.points.some((p) => keyOf(p) === candidate.key))) return null;
+  if (onPlan(doc).has(candidate.key)) return null;
   const point = pointOf(candidate, [x, y], true);
   return editFloor(doc, floorId, (floor) => ({ ...floor, points: [...floor.points, point] }));
 }
 
 // A tray group dropped on the plan: rough positions round the drop point, fine-tuned one by one.
 export function addPoints(doc, floorId, cands, pt) {
-  const onPlan = new Set(doc.floors.flatMap((f) => f.points.map(keyOf)));
-  if (!cands.length || cands.some((c) => onPlan.has(c.key))) return null;
+  const placed = onPlan(doc);
+  if (!cands.length || cands.some((c) => placed.has(c.key))) return null;
   const sorted = [...cands].sort(byKey);
   const at = spread(pt, sorted.length);
   const points = sorted.map((c, i) => pointOf(c, at[i], false));
   return editFloor(doc, floorId, (floor) => ({ ...floor, points: [...floor.points, ...points] }));
+}
+
+// Join a device to a point as the same hardware (an amplifier its own integration, Cast and DLNA
+// each list). Only a device, onto a device point, and only one not on the plan yet.
+export function joinPoint(doc, floorId, key, candidate) {
+  if (candidate.kind !== "device" || onPlan(doc).has(candidate.key)) return null;
+  return editFloor(doc, floorId, (floor) => {
+    const k = floor.points.findIndex((p) => keyOf(p) === key);
+    if (k < 0 || !floor.points[k].device_id) return null;
+    const point = { ...floor.points[k], also: [...(floor.points[k].also || []), candidate.key] };
+    return { ...floor, points: floor.points.map((p, j) => (j === k ? point : p)) };
+  });
+}
+
+// Take a joined device off a point again: it goes back to the tray.
+export function separatePoint(doc, floorId, key, deviceId) {
+  return editFloor(doc, floorId, (floor) => {
+    const k = floor.points.findIndex((p) => keyOf(p) === key);
+    if (k < 0 || !(floor.points[k].also || []).includes(deviceId)) return null;
+    const { also, ...rest } = floor.points[k];
+    const left = also.filter((id) => id !== deviceId);
+    const point = left.length ? { ...rest, also: left } : rest;
+    return { ...floor, points: floor.points.map((p, j) => (j === k ? point : p)) };
+  });
+}
+
+// The registry's links between points on the plan: a device and the one it reaches Home Assistant
+// through (via_device_id: a bulb and its bridge, a sensor and its hub), each point once per pair.
+export function registryLinks(hass, points) {
+  const pointOfKey = new Map(points.flatMap((p) => keysOf(p).map((k) => [k, keyOf(p)])));
+  const seen = new Set();
+  const links = [];
+  for (const [key, from] of pointOfKey) {
+    const to = pointOfKey.get(hass.devices?.[key]?.via_device_id);
+    const pair = `${from}\n${to}`;
+    if (!to || to === from || seen.has(pair)) continue;
+    seen.add(pair);
+    links.push({ from, to, kind: "via" });
+  }
+  return links;
 }
 
 // Override a point's category, or drop the override when `id` is what the point is anyway (`own`).

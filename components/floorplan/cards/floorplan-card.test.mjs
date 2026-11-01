@@ -601,6 +601,92 @@ test("a point whose device is gone keeps a fallback marker", async () => {
   assert.ok(markerOf(card, "d_gone").classList.contains("cat-other"));
 });
 
+// ---- Amendment 5, stage 2: one point per physical device, registry links --------------------
+
+// categoryHass plus an amplifier's Cast device (no room on the plan: it waits in the tray) and two
+// bulbs behind the mesh node standing in as a bridge.
+function stage2Hass() {
+  const hass = categoryHass();
+  Object.assign(hass.devices, {
+    d_amp_cast: { id: "d_amp_cast", name: "Speaker (Cast)", area_id: "office" },
+    d_bulb1: { id: "d_bulb1", name: "Bulb 1", area_id: "living_room", via_device_id: "d_mesh" },
+    d_bulb2: { id: "d_bulb2", name: "Bulb 2", area_id: "living_room", via_device_id: "d_mesh" },
+  });
+  Object.assign(hass.entities, {
+    "media_player.amp_cast": { entity_id: "media_player.amp_cast", device_id: "d_amp_cast", platform: "cast" },
+    "light.bulb1": { entity_id: "light.bulb1", device_id: "d_bulb1", platform: "hue" },
+    "light.bulb2": { entity_id: "light.bulb2", device_id: "d_bulb2", platform: "hue" },
+  });
+  Object.assign(hass.states, {
+    "media_player.amp_cast": { state: "idle", attributes: {} },
+    "light.bulb1": { state: "on", attributes: {} }, "light.bulb2": { state: "on", attributes: {} },
+  });
+  return hass;
+}
+
+test("a device dropped from the tray onto a marker joins that point as the same hardware", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  const item = $(card, '.tray [data-key="d_amp_cast"]');
+  assert.ok(item, "the Cast device waits in the tray");
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", x + 2, y + 1);
+  pointer(item, "pointerup", x + 2, y + 1);
+  const point = card._doc.floors[0].points.find((p) => p.device_id === "d_climate");
+  assert.deepEqual(point.also, ["d_amp_cast"]);
+  assert.ok(!card._doc.floors[0].points.some((p) => p.device_id === "d_amp_cast"), "not a point of its own");
+  assert.ok(!$(card, '.tray [data-key="d_amp_cast"]'));
+});
+
+test("the point panel lists joined devices; separating one puts it back in the tray", async () => {
+  const card = await make({ plan: planOf([{ ...pt("d_climate", 1, 1), also: ["d_amp_cast"] }]) }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointerdown", x, y);
+  pointer(markerOf(card, "d_climate"), "pointerup", x, y);
+  const button = $(card, '.point-panel [data-action="separate"][data-device="d_amp_cast"]');
+  assert.ok(button, $(card, ".point-panel")?.innerHTML);
+  assert.ok($(card, ".point-panel").textContent.includes("Speaker (Cast)"));
+  click(button);
+  assert.ok(!("also" in card._doc.floors[0].points[0]));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  assert.ok($(card, '.tray [data-key="d_amp_cast"]'), "back in the tray");
+});
+
+test("hovering or tapping a point draws its registry links; nothing else does", async () => {
+  const pts = [pt("d_mesh", 6, 1), pt("d_bulb1", 1, 1), pt("d_bulb2", 3, 1), pt("d_climate", 2, 3)];
+  const card = await make({ plan: planOf(pts) }, stage2Hass());
+  await settle();
+  const links = () => card.shadowRoot.querySelectorAll("line.link").length;
+  assert.equal(links(), 0, "no links until a point is hovered");
+  const [mx, my] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_mesh"), "pointermove", mx, my);
+  assert.equal(links(), 2, "the hub to both bulbs");
+  const [bx, by] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_bulb1"), "pointermove", bx, by);
+  assert.equal(links(), 1, "a bulb to its hub");
+  const [cx, cy] = clientAt(card, 2, 3);
+  pointer(markerOf(card, "d_climate"), "pointermove", cx, cy);
+  assert.equal(links(), 0, "a point with no registry link");
+  click($(card, "[data-action=edit]"));
+  pointer(markerOf(card, "d_mesh"), "pointerdown", mx, my);
+  pointer(markerOf(card, "d_mesh"), "pointerup", mx, my);
+  assert.equal(links(), 2, "a tapped point keeps its links while picked");
+});
+
+test("a joined point's tooltip names every device it stands for", async () => {
+  const card = await make({ plan: planOf([{ ...pt("d_climate", 1, 1), also: ["d_amp_cast"] }]) }, stage2Hass());
+  await settle();
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointermove", x, y);
+  const text = $(card, ".tip").textContent;
+  assert.ok(text.includes("Climate sensor") && text.includes("Speaker (Cast)"), text);
+});
+
 test("a sensor dragged from the tray lands on the plan, placed", async () => {
   const card = await make({ plan: planOf() }, hassOf());
   click($(card, "[data-action=edit]"));

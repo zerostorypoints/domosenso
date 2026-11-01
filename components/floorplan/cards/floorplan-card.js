@@ -22,7 +22,7 @@ import { zoomAt, snapToEdge, pointInPolygon, widestRow } from "./lib/geometry.js
 import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
-  candidates, pointCategory, setPointCategory, setEntryDomains,
+  candidates, pointCategory, setPointCategory, setEntryDomains, keysOf, joinPoint, separatePoint, registryLinks,
 } from "./lib/plan.js";
 import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
@@ -307,8 +307,12 @@ ${STYLE}
     const current = pointCategory(h, point, this._cands).id;
     const options = PLACEABLE.map((c) =>
       `<option value="${esc(c.id)}" ${c.id === current ? "selected" : ""}>${esc(categoryName(c, h?.language))}</option>`).join("");
+    const joined = (point.also || []).map((id, i) => `<span class="joined">${esc(this._pointNames(point)[i + 1])}`
+      + `<button data-action="separate" data-device="${esc(id)}">${esc(t(h, "card.floorplan.point.separate"))}</button></span>`).join("");
     return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
-      + `<select class="category">${options}</select></div>`;
+      + `<select class="category">${options}</select>`
+      + (joined ? `<span class="joined-label">${esc(t(h, "card.floorplan.point.joined"))}</span>${joined}` : "")
+      + "</div>";
   }
 
   _trayHtml() {
@@ -371,6 +375,16 @@ ${STYLE}
     const active = this._drag?.kind === "corner" ? this._drag.area : this._selected;
     if (editing) drawDims(svg, el, { hass: h, t, floor, px, active });
     for (const p of this._picks.filter(Array.isArray)) el("circle", { class: "pick", cx: p[0], cy: p[1], r: 5 * px }, svg);
+    // The registry links of the point dragged, hovered or (in edit mode) tapped.
+    const linked = this._drag?.kind === "point" ? this._drag.key : this._hoverKey ?? (editing ? this._picked : null);
+    if (linked) {
+      const at = new Map(floor.points.map((p) => [keyOf(p), p]));
+      for (const link of registryLinks(h, floor.points)) {
+        if (link.from !== linked && link.to !== linked) continue;
+        const [a, b] = [at.get(link.from), at.get(link.to)];
+        el("line", { class: `link ${link.kind}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y }, svg);
+      }
+    }
     for (const point of floor.points) this._drawMarker(svg, point, px, editing);
     const picked = editing && floor.points.find((p) => keyOf(p) === this._picked);
     const room = picked && floor.rooms.find((r) => pointInPolygon([picked.x, picked.y], r.polygon));
@@ -444,7 +458,9 @@ ${STYLE}
       this._tool = button.getAttribute("data-tool");
       this._resetPicks();
     } else if (action === "create_area") return void this._createArea();
-    else if (action === "layer") {
+    else if (action === "separate") {
+      this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
+    } else if (action === "layer") {
       const id = button.getAttribute("data-layer");
       if (this._hidden.has(id)) this._hidden.delete(id);
       else this._hidden.add(id);
@@ -565,6 +581,7 @@ ${STYLE}
   _onDown(e) {
     if (this._status !== "ready" || (e.button !== undefined && e.button !== 0)) return;
     this._showTip(null);
+    this._hoverKey = null;
     const item = e.target.closest?.(".tray [data-key], .tray summary[data-group]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
     if (!item && !inSvg) return;
@@ -605,14 +622,26 @@ ${STYLE}
     const marker = e.target.closest?.("g.marker[data-key]:not(.ghost)");
     const item = !marker && e.target.closest?.(".tray [data-key]");
     let content = null;
+    const hoverKey = marker ? marker.getAttribute("data-key") : null;
+    if (hoverKey !== this._hoverKey) {
+      this._hoverKey = hoverKey;     // its registry links show while it is hovered
+      this._drawSvg(this._status === "ready" && this._mode === "edit");
+    }
     if (marker) {
-      const point = this._floor?.points.find((p) => keyOf(p) === marker.getAttribute("data-key"));
-      if (point) content = { key: `m:${keyOf(point)}`, name: pointName(this._hass, point), ids: pointEntities(point, this._entities) };
+      const point = this._floor?.points.find((p) => keyOf(p) === hoverKey);
+      if (point) content = { key: `m:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities) };
     } else if (item) {
       const c = tray(this._doc, this._hass).find((x) => x.key === item.getAttribute("data-key"));
       if (c) content = { key: `t:${c.key}`, name: candidateName(this._hass, c), ids: c.entities };
     }
     this._showTip(content, e);
+  }
+
+  // A point's device name, then those of the devices joined to it as the same hardware.
+  _pointNames(point) {
+    const h = this._hass;
+    const joined = (point.also || []).map((id) => h.devices?.[id]?.name_by_user || h.devices?.[id]?.name || id);
+    return [pointName(h, point), ...joined];
   }
 
   _showTip(content, e) {
@@ -640,6 +669,12 @@ ${STYLE}
     const flip = x + 12 + (tip.offsetWidth || 0) > body.width;
     tip.style.left = `${flip ? Math.max(0, x - 12 - tip.offsetWidth) : x + 12}px`;
     tip.style.top = `${y + 12}px`;
+  }
+
+  // The device point under a plan position, within a marker's reach on screen.
+  _pointAt([x, y]) {
+    const reach = 10 * this._px();
+    return this._floor?.points.find((p) => p.device_id && Math.hypot(p.x - x, p.y - y) <= reach) ?? null;
   }
 
   _dragLabel(d) {
@@ -711,7 +746,10 @@ ${STYLE}
       if (e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height) {
         const g = d.kind === "group" && trayGroups(this._doc, this._hass).find((x) => x.key === d.key);
         const c = d.kind === "tray" && tray(this._doc, this._hass).find((x) => x.key === d.key);
+        // A device dropped on a marker is the same hardware as that point (an amplifier's Cast device).
+        const onto = c && c.kind === "device" && this._pointAt(this._at(e));
         if (g) this._edit(addPoints(this._doc, this._floorId, g.items, this._at(e)));
+        else if (onto) this._edit(joinPoint(this._doc, this._floorId, keyOf(onto), c));
         else if (c) this._edit(addPoint(this._doc, this._floorId, c, this._at(e)));
       }
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
