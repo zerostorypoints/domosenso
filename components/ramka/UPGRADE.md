@@ -3,7 +3,13 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## Unreleased: pause and the views of a page (SPEC-026)
+## 0.9.0 (2026-11-01): pause and the views of a page, the music source contract, live settings
+
+Everything merged since 0.8.0, in one release. Each part below says what changed and, where a home
+has something to do, what. All of them come with `domosenso update ramka` and a deploy (the cards
+move to `www/domosenso/ramka/0.9.0/`); press the Ramka's reload afterwards.
+
+### Pause and the views of a page (SPEC-026)
 
 - **New:** the bottom-right corner of the rotation pauses it (a play button resumes), and sideways
   swipes step through the plant pages and the photos of the series. Nothing to do: the next render
@@ -18,7 +24,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **After a deploy** press the reload button (`input_button.<prefix>_reload`) so the tablet loads the
   new cards; without it the old corner-taps card has no pause corner and ignores sideways swipes.
 
-## Unreleased: the music source contract (SPEC-025)
+### The music source contract (SPEC-025)
 
 - **Live visualization (amendment 1).** A new switch, `input_boolean.<prefix>_music_live`, turns
   the music visual on; off, the Ramka draws the Classic wave. It is off by default (no `initial:`;
@@ -70,14 +76,14 @@ Newest first. Each entry says what changed and what a home that already runs the
   `ui.settings.music_live_off`, `ui.settings.header.music_live` and
   `ui.settings.music_profile_widget` (en, de, pl); `ui.settings.music_profile_settings` is gone.
 
-### What a home does
+#### What a home does
 
 - A home whose settings dashboard is not at `ramka-settings` sets `settings_paths` to it (per
   language), then renders.
 - A home that showed spectrum or level turns Live visualization on once (Music page), and picks
   the visual again on its sub-view if the select fell to the first option.
 
-## Unreleased: a measured Behind speakers curve, the preview dashboard by default
+### A measured Behind speakers curve, the preview dashboard by default
 
 SPEC-024.
 
@@ -96,7 +102,7 @@ SPEC-024.
   `ui.settings.music_eq_behind_speakers_why` and `ui.settings.music_eq_half_match_why` change (en,
   de, pl); no new keys.
 
-### What a home does
+#### What a home does
 
 - A home that relied on the flat default and wants it keeps it with
   `music_eq_presets: {behind_speakers: {sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0}}`
@@ -118,7 +124,7 @@ SPEC-024.
   them (`stale dashboards/ramka-preview.<lang>.yaml`) and leaves them, unlocked. Delete them by hand
   then: a home that lists `dashboards/*.yaml` under `local:` would otherwise deploy them as its own.
 
-## Unreleased: colour dots in the colour choices, readings without a unit, the albums' column
+### Colour dots in the colour choices, readings without a unit, the albums' column
 
 SPEC-024.
 
@@ -140,12 +146,12 @@ SPEC-024.
   render-time inputs and Reset below.
 - No new texts (the colours' names are the `card.colours.*` of the release before).
 
-### What a home does
+#### What a home does
 
 - Render and deploy: the deploy adds the resource `cards/colour-select-row.js` (`deploy --plan`
   prints `resource create`). Nothing else changes in a home's state.
 
-## Unreleased: named colours for Air and Climate, fair / poor, page titles
+### Named colours for Air and Climate, fair / poor, page titles
 
 SPEC-024.
 
@@ -180,13 +186,13 @@ SPEC-024.
   `ui.air.{pm,index}_{raised,high}` become `_fair`, `_poor`; `card.climate_rooms.colour` is gone
   (en, de, pl).
 
-### What a home does
+#### What a home does
 
 - Render and deploy (new module `cards/lib/colours.js`, no new resource). The four selects start at
   their defaults. A theme or dashboard that set `--air-good`, `--air-raised` or `--air-high` picks
   the colours on the Air page instead.
 
-## Unreleased: settings page headers, the Controls page, every screen in the preview
+### Settings page headers, the Controls page, every screen in the preview
 
 SPEC-024.
 
@@ -208,7 +214,7 @@ SPEC-024.
   `ui.settings.preview_link`, `ui.settings.preview_link_general`, `ui.settings.inputs.radar`,
   `ui.settings.inputs.lights`, `ui.preview.switched_off`, `ui.preview.not_set_up` (en, de, pl).
 
-### What a home does
+#### What a home does
 
 - Render and deploy (`screen-frame-card.js` changes at its path, no new resource; reload the
   preview without the browser's cache to get it). A script or
@@ -216,7 +222,7 @@ SPEC-024.
   settings now passes `page: controls` for them. With the preview on another path than
   `ramka-preview`, set `preview_paths`.
 
-## Unreleased: climate widgets
+### Climate widgets
 
 SPEC-024.
 
@@ -253,7 +259,7 @@ The Climate page's rows (with `climate`) become **widgets** of a type, each with
   for a home with the Air page's CO₂ or PM2.5, `air_limits`; the settings card `air_limits`. Nothing
   else to do.
 
-## Unreleased: preview dashboard
+### Preview dashboard
 
 SPEC-024.
 
@@ -270,7 +276,7 @@ Ramka dashboard renders as before, byte for byte: its screens are now blocks the
 - **Renderer**: a template whose output is only whitespace writes no file; that is how the preview
   stays out of a home without the input.
 
-### What a home does
+#### What a home does
 
 - (Superseded: the input now defaults to true, see the newest entry.) Nothing, without the input.
   To use it: set `preview_dashboard: true` (and `settings_paths` when
@@ -278,7 +284,7 @@ Ramka dashboard renders as before, byte for byte: its screens are now blocks the
   `require_admin: true` (README) and deploy (a restart for the entry, and a new resource).
   Setting the input back to false leaves the rendered files in place: remove them and the entry.
 
-## Unreleased: climate places, order and spacers
+### Climate places, order and spacers
 
 The Climate page (with `climate`) gets a number of places, a reorderable picker and spacers.
 
@@ -304,7 +310,7 @@ The Climate page (with `climate`) gets a number of places, a reorderable picker 
   (`input_number.<prefix>_climate_slots`); render and deploy, and the deploy updates the card
   resources. Nothing else to do.
 
-## Unreleased: music looks
+### Music looks
 
 SPEC-024.
 
@@ -343,7 +349,7 @@ profile's own helpers). There is no blind audition.
 The looks need the audio-sensor release that carries the `look` option and `dynamics.eq`; an older
 audio-sensor card ignores both and draws without them, so update the two components together.
 
-### What a home does
+#### What a home does
 
 - With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers,
   a template sensor and a new Lovelace resource). The seed gives Custom a flat EQ and a 1.5 s hold
