@@ -1372,3 +1372,22 @@ test("layer_choice one: the bars keep their taps; fill sizes the card to the scr
   assert.equal(plain.style.height, "");
   window.localStorage.clear();
 });
+
+test("view mode: a room's name moves off a reading laid over it; edit mode keeps it in the middle", async () => {
+  window.localStorage.clear();
+  const nameAt = (card, text) => {
+    const n = [...card.shadowRoot.querySelectorAll("text.label")].find((x) => x.textContent === text);
+    return [Number(n.getAttribute("x")), Number(n.getAttribute("y"))];
+  };
+  // The kitchen (5..8 x 0..4): its name sits mid-room; a thermometer just above that spot.
+  const plan = planOf([pt("d_climate", 6.5, 1.7)]);
+  plan.floors[0].points[0].device_id = "d_climate";
+  const card = await make({ plan, layers: ["climate"] }, mapsHass());
+  await settle();
+  const [x, y] = nameAt(card, "Kitchen");
+  assert.ok(Math.abs(x - 6.5) > 0.3 || Math.abs(y - 2) > 0.5, `moved off the middle: ${x}, ${y}`);
+  click($(card, "[data-action=edit]"));
+  const [ex, ey] = nameAt(card, "Kitchen");
+  assert.ok(Math.abs(ex - 6.5) < 0.01, `edit mode: in the middle, ${ex}, ${ey}`);
+  window.localStorage.clear();
+});

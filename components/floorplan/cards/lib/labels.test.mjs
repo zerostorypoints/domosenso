@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { layoutLabels, labelBox, boxCrossesWalls } from "./labels.js";
+import { layoutLabels, labelBox, boxCrossesWalls, placeNames } from "./labels.js";
 
 const PX = 0.01; // 100 screen pixels per metre
 const room = [[0, 0], [5, 0], [5, 4], [0, 4]];
@@ -94,4 +94,21 @@ test("a dot in a room's corner, its neighbour's label beside it, gets a spot of 
       for (const b of out.slice(i + 1)) assert.ok(!overlap(a.box, b.box), `${px}: ${a.key} / ${b.key}`);
     }
   }
+});
+
+test("a room's name keeps its spot when nothing is there, and moves to a free corner when a reading is", () => {
+  const bath = [[0, 0], [3, 0], [3, 1.8], [0, 1.8]];
+  const name = { poly: bath, at: [1.5, 0.9], w: 1.2, h: 0.3 };
+  assert.deepEqual(placeNames([name], []), [[1.5, 0.9]], "free: where it was");
+  const reading = { x0: 1.2, x1: 1.9, y0: 0.7, y1: 1.3 };     // a dot's label over the middle
+  const [at] = placeNames([name], [reading]);
+  const box = { x0: at[0] - 0.6, x1: at[0] + 0.6, y0: at[1] - 0.15, y1: at[1] + 0.15 };
+  assert.ok(!overlap(box, reading), JSON.stringify(at));
+  assert.ok(box.x0 >= 0 && box.x1 <= 3 && box.y0 >= 0 && box.y1 <= 1.8, "inside the room");
+});
+
+test("a name with no free spot stays in the middle", () => {
+  const tiny = [[0, 0], [1.3, 0], [1.3, 0.4], [0, 0.4]];
+  const all = { x0: -1, x1: 5, y0: -1, y1: 5 };
+  assert.deepEqual(placeNames([{ poly: tiny, at: [0.65, 0.2], w: 1.2, h: 0.3 }], [all]), [[0.65, 0.2]]);
 });

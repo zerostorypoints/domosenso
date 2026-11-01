@@ -111,3 +111,25 @@ export function layoutLabels(items, { rooms = [], px, obstacles = [] }) {
   }
   return out;
 }
+
+const NAME_PAD_PX = 6;
+
+// Where each room's name goes once the readings are laid out (view mode): its own spot (`at`, the
+// middle of the room's widest row) when no reading or dot covers it, else the first free one of the
+// room's corners, inset; with none free, its own spot. names: [{poly, at: [x, y], w, h}] (the
+// name's box, centred on `at`); taken: the readings' and dots' boxes. Returns [[x, y]] in order.
+export function placeNames(names, taken, px = 0) {
+  const pad = NAME_PAD_PX * px + 0.1;
+  return names.map(({ poly, at, w, h }) => {
+    const xs = poly.map((p) => p[0]);
+    const ys = poly.map((p) => p[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs) + pad + w / 2, Math.max(...xs) - pad - w / 2,
+      Math.min(...ys) + pad + h / 2, Math.max(...ys) - pad - h / 2];
+    for (const [cx, cy] of [at, [x0, y0], [x1, y0], [x0, y1], [x1, y1]]) {
+      const box = { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 };
+      if (!corners(box).every((c) => pointInPolygon(c, poly))) continue;
+      if (!taken.some((b) => overlaps(b, box))) return [cx, cy];
+    }
+    return at;
+  });
+}

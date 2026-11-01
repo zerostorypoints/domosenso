@@ -36,7 +36,7 @@ import { esc, dotHtml } from "./lib/html.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
-import { layoutLabels, CHAR_EM } from "./lib/labels.js";
+import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, lampIndex, lampOf } from "./lib/maps.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -553,18 +553,21 @@ ${STYLE}
     }
     if (map) this._defs(svg, px);
     if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
-    for (const room of floor.rooms) {
+    // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
+    // readings keep clear of them; in view mode the readings are laid out first and a name they
+    // would cover moves to a free corner of its room (placeNames, after the layout below).
+    const nameGroup = el("g", {}, svg);
+    const roomNames = floor.rooms.map((room) => {
       const label = roomLabel(room, h);
       const spot = widestRow(room.polygon);
       const size = labelSize(label.text, spot.width, px) * px;
       const w = String(label.text).length * CHAR_EM * size;
-      names.push({ x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6,
-        y1: spot.y + size * 0.6 + (editing ? 16 * px : 0) });     // in edit mode the floor area sits under it
-      const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: spot.x, y: spot.y,
-        "font-size": size }, svg);
-      text.textContent = label.text;
-      if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
-    }
+      if (editing) {
+        names.push({ x0: spot.x - w / 2, x1: spot.x + w / 2, y0: spot.y - size * 0.6,
+          y1: spot.y + size * 0.6 + 16 * px });     // the floor area sits under it
+      }
+      return { label, size, poly: room.polygon, at: [spot.x, spot.y], w, h: size * 1.2 };
+    });
     if (editing) drawGrid(svg, el, v, px);
     if (editing && this._tool === "move") {
       for (const room of floor.rooms) {
@@ -618,6 +621,17 @@ ${STYLE}
       ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._lines(p).map((l) => l.text) })),
       ...[...clusters.values()].map((c) => ({ key: null, at: c.at, lines: [] })),
     ], { rooms: floor.rooms.map((r) => r.polygon), px, obstacles: names }).map((l) => [l.key, l]));
+    const r = 9 * px;
+    const taken = [...[...labels.values()].map((l) => l.box),
+      ...[...shown.map((p) => [p.x, p.y]), ...[...clusters.values()].map((c) => c.at)]
+        .map(([x, y]) => ({ x0: x - r, x1: x + r, y0: y - r, y1: y + r }))];
+    const spots = editing ? roomNames.map((n) => n.at) : placeNames(roomNames, taken, px);
+    roomNames.forEach(({ label, size }, i) => {
+      const text = el("text", { class: `label${label.missing ? " missing" : ""}`, x: fmt(spots[i][0]),
+        y: fmt(spots[i][1]), "font-size": size }, nameGroup);
+      text.textContent = label.text;
+      if (label.missing) el("title", {}, text).textContent = t(h, "card.floorplan.missing_area");
+    });
     for (const point of shown) this._drawMarker(svg, point, px, editing, labels.get(keyOf(point)));
     for (const [area, c] of clusters) {
       const g = el("g", { class: "cluster", "data-kind": "cluster", "data-cluster": area,

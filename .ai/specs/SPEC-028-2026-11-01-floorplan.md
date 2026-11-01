@@ -524,7 +524,11 @@ readings now take the spot round their dot with the lowest cost (`cards/lib/labe
 below, above, right, left, diagonal, and below or above starting or ending at the dot, in eight rings from 12 px out (four until Amendment 7: a map's three-line labels in a crowded row ran over each other); the cost counts crossing a
 wall (1000), leaving the dot's room (500), covering a label placed before (200 each) or a dot or
 cluster (100 each) or a room's name (200), then the ring. Readings that had to leave the first ring get a thin leader line
-to their dot. Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), not measured.
+to their dot. In view mode the readings are laid out first and a room's name they or a dot would
+cover moves to the first free corner of its room, inset (`placeNames`); with none free it stays in
+the middle. Edit mode keeps names in the middle, where the floor area sits under them, and readings
+keep clear of them (on a real home the names of two small bathrooms and a corridor sat under
+readings). Sizes are estimated (13 px text, 0.55 em a character, 15 px a line), not measured.
 
 ### Addition: the Ramka's plan view, one layer at a time (the maintainer, 2026-11-01)
 
