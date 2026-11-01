@@ -1,7 +1,12 @@
-# SPEC-028 Amendment 5. Whatever matched nothing above: appliances, vacuums, power meters, printers.
+# SPEC-028 Amendment 5. Appliances, vacuums, power meters, printers: whatever is no other category.
+# Tried before security and climate: appliances report a door, a lid, a camera map or a water
+# temperature, which would read as a contact sensor or a thermometer. Also the fallback.
 id: other
-order: 90
+order: 45
 names: {en: Other, de: Sonstiges, pl: Inne}
 colour: "#9e9e9e"
 marker: circle
 fallback: true
+match:
+  - entity_domain: [vacuum, lawn_mower]
+  - integration: [miele, home_connect]

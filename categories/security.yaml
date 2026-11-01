@@ -6,6 +6,7 @@ colour: "#e53935"
 marker: circle
 match:
   - entity_domain: [lock, camera, alarm_control_panel]
+  - model: "*motion*"   # a motion sensor whose motion entity is disabled still is one
   - device_classes: motion
   - device_classes: occupancy
   - device_classes: presence

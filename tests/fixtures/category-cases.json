@@ -442,6 +442,97 @@
     "entity_names": [],
     "is_hub": false
    }
+  },
+  {
+   "name": "a washing machine that reports its door",
+   "category": "other",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "miele"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "binary_sensor",
+     "sensor"
+    ],
+    "device_classes": [
+     "door"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a robot vacuum with a camera map and a lid",
+   "category": "other",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "dreame_vacuum"
+    ],
+    "manufacturer": null,
+    "model": null,
+    "model_id": null,
+    "entity_domains": [
+     "vacuum",
+     "camera",
+     "binary_sensor",
+     "sensor"
+    ],
+    "device_classes": [
+     "opening",
+     "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a motion sensor whose motion entity is disabled",
+   "category": "security",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "hue"
+    ],
+    "manufacturer": null,
+    "model": "Hue motion sensor",
+    "model_id": null,
+    "entity_domains": [
+     "sensor"
+    ],
+    "device_classes": [
+     "temperature"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
+  },
+  {
+   "name": "a door contact",
+   "category": "security",
+   "marker": "circle",
+   "device": {
+    "integrations": [
+     "tplink"
+    ],
+    "manufacturer": null,
+    "model": "T110",
+    "model_id": null,
+    "entity_domains": [
+     "binary_sensor",
+     "sensor"
+    ],
+    "device_classes": [
+     "door",
+     "battery"
+    ],
+    "entity_names": [],
+    "is_hub": false
+   }
   }
  ]
 }

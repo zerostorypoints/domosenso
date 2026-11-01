@@ -283,13 +283,13 @@ domain, `device_class` and the registry; nothing is written per home.
 | id | colour (CSS variable, default) | rule | marker |
 |---|---|---|---|
 | `plants` | `--floorplan-plants`, green | `plant.*`, or a device with `moisture` and `conductivity` sensors | circle |
-| `climate` | `--floorplan-climate`, blue | `climate.*`, or `device_class` temperature, humidity, carbon_dioxide, pm25, pm10, volatile_organic_compounds, pressure | circle |
+| `climate` | `--floorplan-climate`, blue | `climate.*`, or `device_class` temperature, humidity, illuminance, carbon_dioxide, pm25, pm10, volatile_organic_compounds, pressure | circle |
 | `light` | `--floorplan-light`, yellow | `light.*` that is not a group (no `entity_id` list attribute; Hue rooms and zones also carry `is_hue_group`, verified); a device with only `event` / `button` / `remote` entities beside such lights (a switch or dimmer) | circle; a switch is a square |
-| `security` | `--floorplan-security`, red | `lock.*`, `camera.*`, `alarm_control_panel.*`, `binary_sensor` motion, occupancy, presence, door, window, opening | circle |
+| `security` | `--floorplan-security`, red | `lock.*`, `camera.*`, `alarm_control_panel.*`, a model named `*motion*` (its motion entity may be disabled), `binary_sensor` motion, occupancy, presence, door, window, opening | circle |
 | `radio` | `--floorplan-radio`, purple | a device other devices name as `via_device_id` (a hub, a bridge, a mesh main node), except when its children are only light groups; an ESPHome node with a `bluetooth` adapter child; a `tplink_deco` or other mesh access point | diamond |
 | `media` | `--floorplan-media`, teal | `media_player.*` | circle |
 | `shading` | `--floorplan-shading`, brown | `cover.*` | circle |
-| `other` | `--floorplan-other`, grey | any other candidate with an area (appliances, vacuums, power meters, tablets) | circle |
+| `other` | `--floorplan-other`, grey | appliances (`vacuum`, `lawn_mower`, the `miele` and `home_connect` integrations), tried before `security` (order 45) because appliances report a door, a lid or a camera map; and the fallback for any other candidate (power meters, printers) | circle |
 
 - A point may override its category: optional `category` (one of the ids) on a point in the stored
   document. The editor sets it from the tooltip.
@@ -377,4 +377,8 @@ used in every place of the system." The categories are not the card's: they are 
 - COMPATIBILITY: the category ids and the file's fields are a contract (ADDITIVE-ONLY: a new
   category or field is additive; renaming or removing an id is breaking, since plans store ids).
 - Not in stage 1: awnings driven by one radio device are its entities, so they share its point; a
-  point per entity of a device is for a later stage.
+  point per entity of a device is for a later stage. One appliance seen by several integrations (an
+  amplifier as itself, a Cast and a DLNA renderer) is several devices in the registry, so several
+  points; merging them is stage 2's "one point per physical device".
+- Checked on a real home's registry (112 devices, 2026-11-01): the rules sort it as the table says;
+  12 phones and tags and 8 plant sensors (joined to their plants) are not points.

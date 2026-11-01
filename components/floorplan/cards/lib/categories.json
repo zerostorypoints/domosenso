@@ -104,6 +104,34 @@
    ]
   },
   {
+   "colour": "#9e9e9e",
+   "fallback": true,
+   "hub": false,
+   "id": "other",
+   "marker": "circle",
+   "names": {
+    "de": "Sonstiges",
+    "en": "Other",
+    "pl": "Inne"
+   },
+   "order": 45,
+   "placeable": true,
+   "rules": [
+    {
+     "entity_domain": [
+      "vacuum",
+      "lawn_mower"
+     ]
+    },
+    {
+     "integration": [
+      "miele",
+      "home_connect"
+     ]
+    }
+   ]
+  },
+  {
    "colour": "#e53935",
    "fallback": false,
    "hub": false,
@@ -123,6 +151,9 @@
       "camera",
       "alarm_control_panel"
      ]
+    },
+    {
+     "model": "*motion*"
     },
     {
      "device_classes": "motion"
@@ -256,21 +287,6 @@
      "entity_domain": "cover"
     }
    ]
-  },
-  {
-   "colour": "#9e9e9e",
-   "fallback": true,
-   "hub": false,
-   "id": "other",
-   "marker": "circle",
-   "names": {
-    "de": "Sonstiges",
-    "en": "Other",
-    "pl": "Inne"
-   },
-   "order": 90,
-   "placeable": true,
-   "rules": []
   }
  ]
 }
