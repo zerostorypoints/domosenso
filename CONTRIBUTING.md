@@ -49,6 +49,8 @@ components/<id>/        the catalog: manifest (component.yaml), esphome/, ha/, c
 devices/<id>.yaml       the hardware the components name: names, description and what it does (en, de, pl),
                         and how Home Assistant shows it (match rules)
 kinds/<kind>.yaml       how Home Assistant shows a kind of hardware (match rules for `recommend --from-ha`)
+categories/<id>.yaml    what a device is for (plants, climate, light, radio...): colour, marker and the rules
+                        that sort devices into it; read by every component (SPEC-028 Amendment 5)
 scenes/<id>.yaml        the demo's eight scenes: time, entity states and attributes, what the tablet shows,
                         who takes part (format and rules: scenes/README.md)
 examples/demo-home/     a fictional home (Alex and Sam) as an instance of the catalog: inputs, states, generated media

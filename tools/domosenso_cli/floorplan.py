@@ -1,5 +1,6 @@
-"""`domosenso floorplan pull | push` (SPEC-028): the floor plan between the `floorplan` storage
-dashboard in Home Assistant and `domosenso/floorplan.json` in the home repository.
+"""`domosenso floorplan pull | push | preview` (SPEC-028): the floor plan between the `floorplan`
+storage dashboard in Home Assistant and `domosenso/floorplan.json` in the home repository, and the
+editor against a home's real data (`preview`, Amendment 6: floorplan_preview.py).
 
 The editor in Home Assistant saves into the dashboard, so the repository file is a copy that `pull`
 refreshes. `push` writes it back, but never over a plan edited in Home Assistant since the last
@@ -11,12 +12,14 @@ import argparse
 import asyncio
 import hashlib
 import json
+import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 
-from domosenso_cli import cmd_deploy, floorplan_doc as doc
+from domosenso_cli import cmd_deploy, floorplan_doc as doc, floorplan_preview as preview
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
+from domosenso_cli.lock import Lock
 from domosenso_cli.report import Reporter
 from domosenso_cli.snapshot import NO_CONFIG, pick_target
 
@@ -27,13 +30,15 @@ EMPTY = {"schema": doc.SCHEMA_VERSION, "floors": []}
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("action", choices=("pull", "push"))
+    parser.add_argument("action", choices=("pull", "push", "preview"))
     parser.add_argument("target", help="a target named in domosenso.yaml")
     parser.add_argument("--out", type=Path, metavar="<file>", help=f"pull: where to write (default {PLAN_FILE})")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--plan", action="store_true", help="push: show what would change; write nothing")
     mode.add_argument("--apply", action="store_true", help="push: back up and write the plan to Home Assistant")
     parser.add_argument("--confirm", metavar="HASH", help="push --apply: the hash of the plan, instead of typing 'production'")
+    parser.add_argument("--port", type=int, default=8130, help="preview: the port on 127.0.0.1 (default 8130)")
+    parser.add_argument("--no-open", action="store_true", help="preview: do not open the page in a browser")
 
 
 def _shown(home: Path, path: Path) -> str:
@@ -174,7 +179,48 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
     return rep.ok()
 
 
+async def _preview(args: argparse.Namespace, rep: Reporter) -> int:
+    home = HomeConfig.load(args.home)
+    target = pick_target(home, args.target)
+    plan = _read_json(args.home / PLAN_FILE)
+    if plan is None:
+        raise DomosensoError(f"no plan in {PLAN_FILE}; pull or write one first")
+    doc.validate(plan)
+    locked = Lock.load(args.home).components.get("floorplan")
+    card = preview.card_dir(home.config_dir, locked.version if locked else None)
+    async with cmd_deploy.connect(target) as ha:
+        raw = await preview.read_home(ha)
+        hass = preview.build_hass(raw)
+        rep.line(f"read {args.target}:", "areas", str(len(hass["areas"])), "devices", str(len(hass["devices"])),
+                 "entities", str(len(hass["entities"])), "states", str(len(hass["states"])))
+        page = preview.Preview(hass, preview.entries(raw), args.home / PLAN_FILE, card, lambda line: rep.line(*line),
+                               PLAN_FILE.as_posix(), target_url=target.url)
+        try:
+            server = preview.start_server(page, args.port)
+        except OSError as exc:
+            raise DomosensoError(f"port {args.port} in use") from exc
+        url = f"http://127.0.0.1:{server.server_address[1]}/?key={page.key}"
+        rep.line("preview", url)
+        if not args.no_open:
+            webbrowser.open(url)
+        try:
+            await preview.follow(ha, page)
+        finally:
+            server.shutdown()
+    return rep.ok()
+
+
 def run(args: argparse.Namespace, rep: Reporter) -> int:
+    if args.action == "preview":
+        if args.plan or args.apply or args.confirm:
+            raise DomosensoError("--plan, --apply and --confirm go with push")
+        if args.out:
+            raise DomosensoError("--out goes with pull")
+        try:
+            return asyncio.run(_preview(args, rep))
+        except KeyboardInterrupt:
+            rep.line("stopped")
+            return rep.ok()
     if args.action == "pull":
         if args.plan or args.apply or args.confirm:
             raise DomosensoError("--plan, --apply and --confirm go with push")

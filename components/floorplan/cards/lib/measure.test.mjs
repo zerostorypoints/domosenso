@@ -18,3 +18,14 @@ test("numberText uses the dashboard language's decimal separator", () => {
   assert.equal(numberText({ language: "pl" }, 3.456, 2), "3,46");
   assert.equal(numberText({ language: "de" }, 12.34, 1), "12,3");
 });
+
+test("wallDistances: straight to the nearest wall each way, inside an L-shaped room too", async () => {
+  const { wallDistances } = await import("./measure.js");
+  const sq = [[0, 0], [5, 0], [5, 4], [0, 4]];
+  assert.deepEqual(wallDistances(sq, [2, 1]).map((d) => d.distance), [2, 3, 1, 3]);
+  // An L: the notch's wall is nearer than the outer one.
+  const l = [[0, 0], [4, 0], [4, 2], [2, 2], [2, 4], [0, 4]];
+  assert.deepEqual(wallDistances(l, [1, 1]).map((d) => d.distance), [1, 3, 1, 3]);
+  assert.deepEqual(wallDistances(l, [3, 1]).map((d) => d.distance), [3, 1, 1, 1]);
+  assert.deepEqual(wallDistances(l, [3, 1])[3].to, [3, 2]);
+});

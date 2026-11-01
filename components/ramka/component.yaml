@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.9.0
+version: 0.10.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -129,6 +129,10 @@ inputs:
     type: bool                  # component's card, read-only) and back; a tap on the plan returns. Needs the
     default: false              # floorplan component added and its dashboard pushed (SPEC-028)
     example: true
+  floorplan_layers:             # with floorplan: the categories the plan offers (ids under the catalog's categories/),
+    type: "list[category]"      # a chip each, one shown at a time, the first at the start
+    default: [climate, plants]
+    example: [plants, climate, security, light]
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
   photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo

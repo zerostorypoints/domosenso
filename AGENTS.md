@@ -78,8 +78,9 @@ components/<id>/              the catalog: component.yaml, translations/, README
 devices/<id>.yaml             hardware the components name: names, description, what it does (en, de, pl), match rules
 devices/<id>.md, wiring/      a module wired to a board: diagram (SVG), pin table, first start, faults
 kinds/<kind>.yaml             how a running Home Assistant shows a kind of hardware (match rules, SPEC-010)
+categories/<id>.yaml          what a device is for, read by all components (SPEC-028)
 scenes/<id>.yaml              the demo's eight scenes (format: scenes/README.md)
-schemas/                      JSON Schemas: component, device, kind, scene, home, lock, snapshot, equivalence, silent
+schemas/                      JSON Schemas: component, device, kind, category, scene, home, lock, snapshot, equivalence, silent
 examples/demo-home/           a fictional home (Alex and Sam) as an instance: inputs, states, media
 examples/home-template/       AGENTS.md + CLAUDE.md a home repository starts from (placeholders)
 tools/                        the `domosenso` command (tools/domosenso_cli/), checker, renderer, installer,
@@ -199,6 +200,7 @@ uv run tools/issue_check.py <draft.md | --issue n>  # an issue against docs/ISSU
 uv run tools/release_status.py [--hold <id>]    # components on main waiting for a tag or the website
 uv run tools/publish_release.py <id>            # the website's mechanical update for the newest tag
 uv run tools/catalog_index.py [--check]         # the Ramka's catalog index (shell/domosenso_catalog.json)
+uv run tools/category_index.py [--check]        # the floor plan's lib/categories.json
 uv run tools/make_demo_media.py                 # regenerates examples/demo-home/media/
 tools/check-all.sh                              # everything
 ```
@@ -287,7 +289,7 @@ field removed (`tests/test_docs.py` checks it). The installation journal also us
 copies of `ramka-now-playing.jpg` and `ramka-air.jpg` under `website/public/journal/`; the same test
 guards these copies. Nothing else from a real home.
 
-`tests/test_catalog_content.py::test_privacy` scans `components/`, `devices/`, `kinds/`, `scenes/`,
+`tests/test_catalog_content.py::test_privacy` scans `components/`, `devices/`, `kinds/`, `categories/`, `scenes/`,
 `examples/`, `tools/`, `tests/`, `schemas/`, `docs/`, `.ai/`, `.github/`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md` and
 `CLAUDE.md` for a list of the author's household words (assembled from fragments, so the list
 itself does not trip it). Framework documents under `docs/`, `README.md` and `CONTRIBUTING.md` may name the author and
@@ -441,7 +443,8 @@ the script after adding, renaming or removing a skill.
 - Python: 3.11.4+ (`pyproject.toml`: tarfile extraction filters), run through `uv run`, tested with pytest under `tests/`; tools import each other
   from `tools/` (see `tests/conftest.py`).
 - JavaScript: ES modules, node's built-in test runner with happy-dom, tests next to the code as
-  `*.test.mjs`.
+  `*.test.mjs`, the DOM from `testing/dom-env.mjs`. Never kill `node --test` by `timeout`: its
+  worker lives on.
 - Shell: `bash`, `set -uo pipefail` or stricter, run from the repository root.
 - Comments say why; the code says what. Match the surrounding density.
 - A new component or device id also goes into `COMPONENTS` / `DEVICES` in

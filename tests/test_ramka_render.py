@@ -4280,11 +4280,21 @@ def test_floorplan_helper_and_rules(tmp_path):
 
     [plan] = [s for s in sections(dash) if any(c.get("type") == "custom:floorplan-card" for c in s["cards"])]
     assert plan["cards"][0]["edit"] is False and "plan" not in plan["cards"][0]
+    assert plan["cards"][0]["layers"] == ["climate", "plants"], "SPEC-028 Amendment 5: what a room is like"
     assert {(c["entity"], c["state"]) for c in plan["visibility"]} == {
         ("input_select.ramka_mode", "controls"), ("input_boolean.ramka_controls_plan", "on")}
     controls = [s for s in sections(dash) if any(c.get("type") == "media-control" for c in s["cards"])]
     assert controls and all({"entity": "input_boolean.ramka_controls_plan", "state": "off", "condition": "state"}
                             in s["visibility"] for s in controls)
+
+
+def test_floorplan_layers_input_sets_the_plan_views_layers(tmp_path):
+    inputs = with_floorplan()
+    inputs["floorplan_layers"] = ["climate", "plants", "light", "security"]
+    dash = render(tmp_path, inputs)["dashboard.en.yaml"]
+    [plan] = [n for n in walk(dash) if n.get("type") == "custom:floorplan-card"]
+    assert plan["layers"] == ["climate", "plants", "light", "security"]
+    assert plan["layer_choice"] == "one", "a chip per layer, one at a time: a tap anywhere else goes back"
 
 
 def test_floorplan_not_in_the_preview(tmp_path):

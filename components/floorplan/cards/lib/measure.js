@@ -2,7 +2,7 @@
 // name, wall lengths of the room being worked on). Plan coordinates are metres, so the numbers are
 // read straight off the polygons.
 
-import { centroid, polygonArea, wallLengths, pointInPolygon } from "./geometry.js";
+import { widestRow, polygonArea, wallLengths, pointInPolygon } from "./geometry.js";
 import { language } from "./i18n.js";
 
 const MINOR_PX = 24;   // half-metre lines only once they are this far apart on screen
@@ -38,8 +38,8 @@ export function drawDims(svg, el, { hass, t, floor, px, active }) {
   const m = t(hass, "card.floorplan.units.m");
   const m2 = t(hass, "card.floorplan.units.m2");
   for (const room of floor.rooms) {
-    const [cx, cy] = centroid(room.polygon);
-    el("text", { class: "dim area", x: cx, y: cy + 16 * px, "font-size": 11 * px }, svg)
+    const spot = widestRow(room.polygon);     // under the room's name
+    el("text", { class: "dim area", x: spot.x, y: spot.y + 16 * px, "font-size": 11 * px }, svg)
       .textContent = `${numberText(hass, polygonArea(room.polygon), 1)} ${m2}`;
   }
   const room = floor.rooms.find((r) => r.area_id === active);
@@ -61,4 +61,40 @@ export function drawDims(svg, el, { hass, t, floor, px, active }) {
     el("text", { class: "dim wall", x, y, "font-size": 11 * px, transform: `rotate(${Math.round(angle * 10) / 10} ${x} ${y})` }, svg)
       .textContent = `${numberText(hass, len, 2)} ${m}`;
   });
+}
+
+const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+// How far a point is from its room's walls straight left, right, up and down: each the nearest wall
+// the ray meets, with where it meets it; a direction with no wall is left out.
+export function wallDistances(poly, [x, y]) {
+  const out = [];
+  for (const [dx, dy] of DIRECTIONS) {
+    let best = Infinity;
+    poly.forEach((a, i) => {
+      const b = poly[(i + 1) % poly.length];
+      const [u0, u1, v0, v1, along, across] = dx
+        ? [a[1], b[1], a[0], b[0], x, y]      // horizontal ray: crosses walls that span y
+        : [a[0], b[0], a[1], b[1], y, x];     // vertical ray: crosses walls that span x
+      if (u0 === u1 || across < Math.min(u0, u1) || across > Math.max(u0, u1)) return;
+      const hit = v0 + ((across - u0) * (v1 - v0)) / (u1 - u0);
+      const s = (hit - along) * (dx || dy);
+      if (s > 1e-9 && s < best) best = s;
+    });
+    if (best < Infinity) out.push({ distance: best, to: [x + dx * best, y + dy * best] });
+  }
+  return out;
+}
+
+// The picked point's distances to its room's walls: a dashed line to each wall and its length.
+export function drawWallDistances(svg, el, { hass, t, poly, pt, px }) {
+  const m = t(hass, "card.floorplan.units.m");
+  for (const { distance, to } of wallDistances(poly, pt)) {
+    el("line", { class: "to-wall", x1: pt[0], y1: pt[1], x2: to[0], y2: to[1] }, svg);
+    const horizontal = to[1] === pt[1];
+    const x = (pt[0] + to[0]) / 2 + (horizontal ? 0 : 8 * px);
+    const y = (pt[1] + to[1]) / 2 + (horizontal ? -8 * px : 0);
+    el("text", { class: "dim to-wall", x, y, "font-size": 11 * px }, svg)
+      .textContent = `${numberText(hass, distance, 2)} ${m}`;
+  }
 }

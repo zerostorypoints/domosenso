@@ -74,6 +74,8 @@ function hassOf({ admin = true, language = "en", dashboard, answers = {} } = {})
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+// The dashboard's calls: the card also reads config_entries/get once, for device categories.
+const dashboardCalls = (hass) => hass.calls.filter((c) => c.type !== "config_entries/get");
 const RECT = { left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400, x: 0, y: 0 };
 
 async function make(config, hass) {
@@ -112,7 +114,7 @@ test("registers once and offers itself in the picker from translations", () => {
 test("loads the plan from the dashboard when config has none", async () => {
   const hass = hassOf({ dashboard: dashboardOf(planOf()) });
   const card = await make({}, hass);
-  assert.deepEqual(hass.calls[0], { type: "lovelace/config", url_path: "floorplan" });
+  assert.deepEqual(dashboardCalls(hass)[0], { type: "lovelace/config", url_path: "floorplan" });
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
   const text = shadowText(card);
   assert.ok(text.includes("Living room") && text.includes("Kitchen"), text);
@@ -121,7 +123,7 @@ test("loads the plan from the dashboard when config has none", async () => {
 test("a plan in the config is drawn without asking the dashboard", async () => {
   const hass = hassOf();
   const card = await make({ plan: planOf() }, hass);
-  assert.equal(hass.calls.length, 0);
+  assert.equal(dashboardCalls(hass).length, 0);
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
 });
 
@@ -168,8 +170,8 @@ test("entering edit mode puts unplaced points at their room's centre", async () 
   click($(card, "[data-action=edit]"));
   const points = card._doc.floors[0].points;
   assert.deepEqual(points.map((p) => [p.device_id ?? p.entity_id, p.x, p.y, p.placed]), [
-    ["plant.monstera", 6.5, 2.6, false],
     ["d_climate", 2.5, 2.6, false],
+    ["plant.monstera", 6.5, 2.6, false],
   ]);
   assert.equal(card.shadowRoot.querySelectorAll("g.marker.unplaced").length, 2);
 });
@@ -329,7 +331,7 @@ test("save sends withPlan", async () => {
   pointer($(card, "svg"), "pointerup", ex, ey);
   click($(card, "[data-action=save]"));
   await settle();
-  const types = hass.calls.map((c) => c.type);
+  const types = dashboardCalls(hass).map((c) => c.type);
   assert.deepEqual(types, ["lovelace/config", "lovelace/config", "lovelace/config/save"]);
   const save = hass.calls.at(-1);
   assert.equal(save.url_path, "floorplan");
@@ -358,6 +360,633 @@ test("empty plan shows the tray and the hint", async () => {
   assert.deepEqual(items.sort(), ["d_climate", "d_office", "plant.monstera"]);
   assert.ok(shadowText(card).includes(EN("card.floorplan.tray.title")));
   assert.ok(shadowText(card).includes(EN("card.floorplan.hint.empty")));
+});
+
+// ---- staging feedback: drag feedback, marker names, distances to the walls ------------------
+
+test("a tray drag starts no text selection or native drag", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="d_office"]');
+  assert.equal(pointer(item, "pointerdown", 790, 390), false, "pointerdown on a tray item is default-prevented");
+  pointer(item, "pointerup", 790, 390);
+  assert.match(card.shadowRoot.querySelector("style").textContent, /\.tray \{[^}]*user-select: none/);
+});
+
+test("a tray drag shows a ghost marker under the pointer, gone after the drop", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="d_office"]');
+  const [ex, ey] = clientAt(card, 6, 3);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", 900, 395);     // right of the plan's 800 px
+  assert.ok(!$(card, "g.ghost"), "no ghost while the pointer is outside the plan");
+  pointer(item, "pointermove", ex, ey);
+  const ghost = $(card, "g.ghost");
+  assert.ok(ghost, "a ghost follows the pointer over the plan");
+  const [, gx, gy] = ghost.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).map(Number);
+  assert.ok(Math.abs(gx - 6) < 1e-6 && Math.abs(gy - 3) < 1e-6, ghost.getAttribute("transform"));
+  assert.ok(ghost.textContent.includes("Office sensor"), ghost.textContent);
+  pointer(item, "pointerup", ex, ey);
+  assert.ok(!$(card, "g.ghost"));
+});
+
+test("markers carry no names on the plan, only readings: the name is in the tooltip", async () => {
+  const hass = photoHass();
+  hass.states["sensor.office_temperature"] = { state: "unavailable", attributes: { device_class: "temperature" } };
+  const pts = [{ device_id: "d_climate", x: 1, y: 1, placed: true }, { device_id: "d_office", x: 6, y: 1, placed: true },
+    { entity_id: "plant.monstera", x: 6, y: 3, placed: true }];
+  const card = await make({ plan: planOf(pts) }, hass);
+  const lines = (key) => [...$(card, `g.marker[data-key="${key}"]`).querySelectorAll("text")].map((n) => n.textContent);
+  for (const editing of [false, true]) {
+    if (editing) click($(card, "[data-action=edit]"));
+    assert.deepEqual(lines("d_climate").map((l) => l.replace(/\s/g, "")), ["21.5°C", "48%"], `climate, editing ${editing}`);
+    assert.deepEqual(lines("d_office"), [], "no reading: no text, no dash");
+    assert.deepEqual(lines("plant.monstera"), [], "a plant's value is its name: no text");
+  }
+});
+
+test("a room's name sits at the widest spot inside it, shrunk to fit a narrow room", async () => {
+  // An L-shaped hall whose centroid falls outside it, and a narrow room with a long name.
+  const plan = { schema: 1, floors: [{ floor_id: "ground", points: [], rooms: [
+    { area_id: "living_room", polygon: [[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4]] },
+    { area_id: "kitchen", polygon: [[5, 0], [6, 0], [6, 4], [5, 4]] },
+  ] }] };
+  const hass = hassOf();
+  hass.areas.kitchen.name = "A very long kitchen name";
+  const card = await make({ plan }, hass);
+  const label = (area) => [...card.shadowRoot.querySelectorAll("text.label")]
+    .find((n) => n.textContent === hass.areas[area].name);
+  const hall = label("living_room");
+  const [hx, hy] = [Number(hall.getAttribute("x")), Number(hall.getAttribute("y"))];
+  assert.ok(hy > 0 && hy < 1 && hx > 0 && hx < 4, `in the hall's wide arm: ${hx}, ${hy}`);
+  const kitchen = label("kitchen");
+  const living = Number(hall.getAttribute("font-size"));
+  assert.ok(Number(kitchen.getAttribute("font-size")) < living, "the long name in the 1 m room is smaller");
+});
+
+test("a dragged or tapped point shows its distance to the room's walls", async () => {
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1.5, placed: true }]) }, hassOf());
+  click($(card, "[data-action=edit]"));
+  assert.equal(card.shadowRoot.querySelectorAll(".dim.to-wall").length, 0, "nothing before a point is picked");
+  const node = $(card, 'g.marker[data-key="d_climate"]');
+  const [sx, sy] = clientAt(card, 1, 1.5);
+  const [ex, ey] = clientAt(card, 2, 1);
+  pointer(node, "pointerdown", sx, sy);
+  pointer(node, "pointermove", ex, ey);
+  // Living room is 5 × 4 m from (0, 0): at (2, 1) the walls are 2, 3, 1 and 3 m away.
+  const texts = () => [...card.shadowRoot.querySelectorAll("text.dim.to-wall")].map((n) => n.textContent).sort();
+  assert.deepEqual(texts(), ["1.00 m", "2.00 m", "3.00 m", "3.00 m"]);
+  pointer(node, "pointerup", ex, ey);
+  assert.deepEqual(texts(), ["1.00 m", "2.00 m", "3.00 m", "3.00 m"], "stays after the drop: the point is selected");
+  assert.equal(card.shadowRoot.querySelectorAll("line.to-wall").length, 4);
+});
+
+// A plant with a photo, as the plants component gives it (entity_picture).
+function photoHass(opts) {
+  const hass = hassOf(opts);
+  hass.states["plant.monstera"] = { state: "ok", attributes: { friendly_name: "Monstera", entity_picture: "/local/plants/monstera.jpg" } };
+  return hass;
+}
+const tip = (card) => $(card, ".tip");
+const tipShown = (card) => tip(card) && !tip(card).hidden;
+
+test("hovering a plant on the plan shows a tooltip with its photo and name", async () => {
+  const card = await make({ plan: planOf([{ entity_id: "plant.monstera", x: 6, y: 2, placed: true }]) }, photoHass());
+  assert.ok(!tipShown(card), "no tooltip before hovering");
+  const [mx, my] = clientAt(card, 6, 2);
+  pointer($(card, 'g.marker[data-key="plant.monstera"]'), "pointermove", mx, my);
+  assert.ok(tipShown(card), "the tooltip shows over the marker");
+  assert.equal(tip(card).querySelector("img")?.getAttribute("src"), "/local/plants/monstera.jpg");
+  assert.ok(tip(card).textContent.includes("Monstera"), tip(card).textContent);
+  const [ex, ey] = clientAt(card, 2, 2);
+  pointer($(card, "polygon.room"), "pointermove", ex, ey);
+  assert.ok(!tipShown(card), "gone once the pointer leaves the marker");
+});
+
+test("a sensor without a photo gets a tooltip with its name and readings, no image", async () => {
+  const card = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: true }]) }, photoHass());
+  const [mx, my] = clientAt(card, 1, 1);
+  pointer($(card, 'g.marker[data-key="d_climate"]'), "pointermove", mx, my);
+  assert.ok(tipShown(card));
+  assert.ok(!tip(card).querySelector("img"));
+  assert.ok(tip(card).textContent.includes("Climate sensor") && tip(card).textContent.includes("21.5"), tip(card).textContent);
+});
+
+test("hovering a plant in the tray shows its photo; a drag hides the tooltip", async () => {
+  const hass = photoHass();
+  hass.entities["plant.monstera"] = { entity_id: "plant.monstera", device_id: null, area_id: null };
+  const card = await make({ plan: planOf() }, hass);
+  click($(card, "[data-action=edit]"));
+  const item = $(card, '.tray [data-key="plant.monstera"]');
+  assert.ok(item, "the plant is in the tray");
+  pointer(item, "pointermove", 790, 390);
+  assert.equal(tip(card)?.querySelector("img")?.getAttribute("src"), "/local/plants/monstera.jpg");
+  pointer(item, "pointerdown", 790, 390);
+  assert.ok(!tipShown(card), "a drag hides it");
+  pointer(item, "pointerup", 790, 390);
+});
+
+test("a photo URL that is not a path or http(s) is not used", async () => {
+  const hass = photoHass();
+  hass.states["plant.monstera"].attributes.entity_picture = "javascript:alert(1)";
+  const card = await make({ plan: planOf([{ entity_id: "plant.monstera", x: 6, y: 2, placed: true }]) }, hass);
+  const [mx, my] = clientAt(card, 6, 2);
+  pointer($(card, 'g.marker[data-key="plant.monstera"]'), "pointermove", mx, my);
+  assert.ok(tipShown(card));
+  assert.ok(!tip(card).querySelector("img"));
+});
+
+// ---- Amendment 5: categories, colours, layers ------------------------------------------------
+
+// The demo home plus a lamp, a dimmer, a mesh access point (its integration from its config entry).
+function categoryHass(opts) {
+  const hass = hassOf({ ...opts, answers: { "config_entries/get": [{ entry_id: "e_mesh", domain: "tplink_deco" }], ...(opts?.answers || {}) } });
+  Object.assign(hass.devices, {
+    d_lamp: { id: "d_lamp", name: "Lamp", area_id: "office" },     // no room on the plan: stays in the tray
+    d_dimmer: { id: "d_dimmer", name: "Dimmer", area_id: "living_room" },
+    d_mesh: { id: "d_mesh", name: "Mesh node", area_id: "kitchen", config_entries: ["e_mesh"] },
+  });
+  Object.assign(hass.entities, {
+    "light.lamp": { entity_id: "light.lamp", device_id: "d_lamp", platform: "hue" },
+    "event.dimmer": { entity_id: "event.dimmer", device_id: "d_dimmer", platform: "hue" },
+    "switch.mesh_led": { entity_id: "switch.mesh_led", device_id: "d_mesh", platform: "tplink_deco" },
+  });
+  Object.assign(hass.states, {
+    "light.lamp": { state: "on", attributes: {} },
+    "event.dimmer": { state: "unknown", attributes: {} },
+    "switch.mesh_led": { state: "on", attributes: {} },
+  });
+  return hass;
+}
+const pt = (key, x, y) => ({ device_id: key, x, y, placed: true });
+const markerOf = (card, key) => $(card, `g.marker[data-key="${key}"]`);
+
+test("a marker's colour and shape come from its category", async () => {
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1), pt("d_dimmer", 3, 1), pt("d_mesh", 6, 1)];
+  const card = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  const shape = (key) => markerOf(card, key).firstElementChild;
+  assert.ok(markerOf(card, "d_climate").classList.contains("cat-climate"));
+  assert.match(shape("d_climate").getAttribute("style"), /var\(--floorplan-climate, #[0-9a-f]{6}\)/);
+  assert.equal(shape("d_lamp").tagName.toLowerCase(), "circle");
+  assert.equal(shape("d_dimmer").tagName.toLowerCase(), "rect", "a switch is a square");
+  assert.ok(markerOf(card, "d_mesh").classList.contains("cat-radio"), "its integration read from config_entries/get");
+  assert.equal(shape("d_mesh").tagName.toLowerCase(), "polygon", "a radio is a diamond");
+});
+
+test("layer chips hide and show a category's markers; the choice is remembered", async () => {
+  window.localStorage.clear();
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1)];
+  const card = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  const chip = (id) => $(card, `.layers [data-layer="${id}"]`);
+  assert.ok(chip("climate") && chip("light"), "a chip per category on the plan");
+  assert.ok(!chip("shading"), "none for a category with no point");
+  click(chip("light"));
+  assert.ok(!markerOf(card, "d_lamp"), "light hidden");
+  assert.ok(markerOf(card, "d_climate"));
+  assert.equal(chip("light").getAttribute("aria-pressed"), "false");
+  const again = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  assert.ok(!markerOf(again, "d_lamp"), "remembered per browser");
+  click($(again, '.layers [data-layer="light"]'));
+  assert.ok(markerOf(again, "d_lamp"));
+  window.localStorage.clear();
+});
+
+test("config layers fixes the categories shown, without chips", async () => {
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1)];
+  const card = await make({ plan: planOf(pts), layers: ["climate"] }, categoryHass());
+  await settle();
+  assert.ok(markerOf(card, "d_climate"));
+  assert.ok(!markerOf(card, "d_lamp"));
+  assert.ok(!$(card, ".layers [data-layer]"));
+});
+
+test("layer_choice one: a chip per listed layer, exactly one on, the choice remembered", async () => {
+  window.localStorage.clear();
+  const pts = [pt("d_climate", 1, 1), pt("d_lamp", 2, 1), pt("d_dimmer", 3, 1)];
+  const config = { plan: planOf(pts), layers: ["climate", "light"], layer_choice: "one" };
+  const card = await make(config, categoryHass());
+  await settle();
+  const chip = (id) => $(card, `.layers [data-layer="${id}"]`);
+  assert.ok(chip("climate") && chip("light") && !chip("plants"), "chips for the listed layers only");
+  assert.equal(chip("climate").getAttribute("aria-pressed"), "true", "the first one is on");
+  assert.equal(chip("light").getAttribute("aria-pressed"), "false");
+  assert.ok(markerOf(card, "d_climate") && !markerOf(card, "d_lamp"));
+  assert.ok(chip("light").hasAttribute("data-own-tap"), "the chips keep their taps to themselves");
+  click(chip("light"));
+  assert.ok(!markerOf(card, "d_climate") && markerOf(card, "d_lamp") && markerOf(card, "d_dimmer"));
+  assert.equal(chip("light").getAttribute("aria-pressed"), "true");
+  click(chip("light"));
+  assert.ok(markerOf(card, "d_lamp"), "tapping the chosen one keeps it: always one layer");
+  const again = await make(config, categoryHass());
+  await settle();
+  assert.ok(markerOf(again, "d_lamp") && !markerOf(again, "d_climate"), "remembered");
+  window.localStorage.clear();
+});
+
+test("tray items carry their category's coloured dot", async () => {
+  const card = await make({ plan: planOf() }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  const dot = $(card, '.tray [data-key="d_lamp"] .dot');
+  assert.ok(dot, card.shadowRoot.querySelector(".tray").innerHTML);
+  assert.match(dot.getAttribute("style"), /--floorplan-light/);
+});
+
+test("a tapped point's category can be overridden, and set back to what it is", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointerdown", x, y);
+  pointer(markerOf(card, "d_climate"), "pointerup", x, y);
+  const select = $(card, ".point-panel select.category");
+  assert.ok(select, "a category select for the tapped point");
+  // The selected option (happy-dom misreads select.value after innerHTML).
+  assert.equal(select.querySelector("option[selected]")?.value, "climate");
+  select.value = "security";
+  select.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.equal(card._doc.floors[0].points[0].category, "security");
+  assert.ok(markerOf(card, "d_climate").classList.contains("cat-security"));
+  const again = $(card, ".point-panel select.category");
+  again.value = "climate";
+  again.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.ok(!("category" in card._doc.floors[0].points[0]), "its own category: no override stored");
+});
+
+test("a point whose device is gone keeps a fallback marker", async () => {
+  const card = await make({ plan: planOf([pt("d_gone", 1, 1)]) }, categoryHass());
+  await settle();
+  assert.ok(markerOf(card, "d_gone").classList.contains("cat-other"));
+});
+
+// ---- Amendment 5, stage 2: one point per physical device, registry links --------------------
+
+// categoryHass plus an amplifier's Cast device (no room on the plan: it waits in the tray) and two
+// bulbs behind the mesh node standing in as a bridge.
+function stage2Hass() {
+  const hass = categoryHass();
+  Object.assign(hass.devices, {
+    d_amp_cast: { id: "d_amp_cast", name: "Speaker (Cast)", area_id: "office" },
+    d_bulb1: { id: "d_bulb1", name: "Bulb 1", area_id: "living_room", via_device_id: "d_mesh" },
+    d_bulb2: { id: "d_bulb2", name: "Bulb 2", area_id: "living_room", via_device_id: "d_mesh" },
+  });
+  Object.assign(hass.entities, {
+    "media_player.amp_cast": { entity_id: "media_player.amp_cast", device_id: "d_amp_cast", platform: "cast" },
+    "light.bulb1": { entity_id: "light.bulb1", device_id: "d_bulb1", platform: "hue" },
+    "light.bulb2": { entity_id: "light.bulb2", device_id: "d_bulb2", platform: "hue" },
+  });
+  Object.assign(hass.states, {
+    "media_player.amp_cast": { state: "idle", attributes: {} },
+    "light.bulb1": { state: "on", attributes: {} }, "light.bulb2": { state: "on", attributes: {} },
+  });
+  return hass;
+}
+
+test("a device dropped from the tray onto a marker joins that point as the same hardware", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  const item = $(card, '.tray [data-key="d_amp_cast"]');
+  assert.ok(item, "the Cast device waits in the tray");
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", x + 2, y + 1);
+  pointer(item, "pointerup", x + 2, y + 1);
+  const point = card._doc.floors[0].points.find((p) => p.device_id === "d_climate");
+  assert.deepEqual(point.also, ["d_amp_cast"]);
+  assert.ok(!card._doc.floors[0].points.some((p) => p.device_id === "d_amp_cast"), "not a point of its own");
+  assert.ok(!$(card, '.tray [data-key="d_amp_cast"]'));
+});
+
+test("the point panel lists joined devices; separating one puts it back in the tray", async () => {
+  const card = await make({ plan: planOf([{ ...pt("d_climate", 1, 1), also: ["d_amp_cast"] }]) }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointerdown", x, y);
+  pointer(markerOf(card, "d_climate"), "pointerup", x, y);
+  const button = $(card, '.point-panel [data-action="separate"][data-device="d_amp_cast"]');
+  assert.ok(button, $(card, ".point-panel")?.innerHTML);
+  assert.ok($(card, ".point-panel").textContent.includes("Speaker (Cast)"));
+  click(button);
+  assert.ok(!("also" in card._doc.floors[0].points[0]));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  assert.ok($(card, '.tray [data-key="d_amp_cast"]'), "back in the tray");
+});
+
+test("hovering or tapping a point draws its registry links; nothing else does", async () => {
+  const pts = [pt("d_mesh", 6, 1), pt("d_bulb1", 1, 1), pt("d_bulb2", 3, 1), pt("d_climate", 2, 3)];
+  const card = await make({ plan: planOf(pts) }, stage2Hass());
+  await settle();
+  const links = () => card.shadowRoot.querySelectorAll("line.link").length;
+  assert.equal(links(), 0, "no links until a point is hovered");
+  const [mx, my] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_mesh"), "pointermove", mx, my);
+  assert.equal(links(), 2, "the hub to both bulbs");
+  const [bx, by] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_bulb1"), "pointermove", bx, by);
+  assert.equal(links(), 1, "a bulb to its hub");
+  const [cx, cy] = clientAt(card, 2, 3);
+  pointer(markerOf(card, "d_climate"), "pointermove", cx, cy);
+  assert.equal(links(), 0, "a point with no registry link");
+  click($(card, "[data-action=edit]"));
+  pointer(markerOf(card, "d_mesh"), "pointerdown", mx, my);
+  pointer(markerOf(card, "d_mesh"), "pointerup", mx, my);
+  assert.equal(links(), 2, "a tapped point keeps its links while picked");
+});
+
+test("a joined point's tooltip names every device it stands for", async () => {
+  const card = await make({ plan: planOf([{ ...pt("d_climate", 1, 1), also: ["d_amp_cast"] }]) }, stage2Hass());
+  await settle();
+  const [x, y] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointermove", x, y);
+  const text = $(card, ".tip").textContent;
+  assert.ok(text.includes("Climate sensor") && text.includes("Speaker (Cast)"), text);
+});
+
+// ---- clusters: a room's unplaced devices as one dot that opens into their list ----------------
+
+const clusterOf = (card, area) => $(card, `g.cluster[data-cluster="${area}"]`);
+
+test("a room's unplaced devices are one dot with their count; placed ones and a lone one are not", async () => {
+  const card = await make({ plan: planOf([pt("d_bulb2", 1, 3)]) }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  // Living room: climate, dimmer, bulb 1 put down by edit mode (bulb 2 is placed); kitchen: the mesh node and the plant.
+  const living = clusterOf(card, "living_room");
+  assert.ok(living, card.shadowRoot.querySelector("svg").innerHTML.slice(0, 300));
+  assert.equal(living.querySelector("text").textContent, "3");
+  for (const key of ["d_climate", "d_dimmer", "d_bulb1"]) assert.ok(!markerOf(card, key), `${key} is in the cluster`);
+  assert.ok(markerOf(card, "d_bulb2"), "a placed device keeps its own marker");
+  assert.equal(clusterOf(card, "kitchen").querySelector("text").textContent, "2");
+  const lone = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: false }]) }, hassOf());
+  assert.ok(markerOf(lone, "d_climate") && !$(lone, "g.cluster"), "one unplaced device is its own marker");
+});
+
+test("tapping a cluster lists its devices; dragging one out places it and the count drops", async () => {
+  const card = await make({ plan: planOf() }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const living = clusterOf(card, "living_room");
+  const [cx, cy] = living.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+  const [sx, sy] = clientAt(card, cx, cy);
+  pointer(living, "pointerdown", sx, sy);
+  pointer(living, "pointerup", sx, sy);
+  const items = [...card.shadowRoot.querySelectorAll(".cluster-list [data-point]")];
+  assert.deepEqual(items.map((n) => n.getAttribute("data-point")).sort(), ["d_bulb1", "d_bulb2", "d_climate", "d_dimmer"]);
+  assert.ok(items.every((n) => n.querySelector(".dot")), "each with its category's dot");
+  assert.ok($(card, ".cluster-list").textContent.includes("Climate sensor"));
+  const item = $(card, '.cluster-list [data-point="d_climate"]');
+  const [ex, ey] = clientAt(card, 4, 3);
+  pointer(item, "pointerdown", 100, 100);
+  pointer(item, "pointermove", ex, ey);
+  assert.ok($(card, ".cluster-list").hidden, "the list is out of the way while a device is dragged");
+  pointer(item, "pointerup", ex, ey);
+  assert.ok(!$(card, ".cluster-list").hidden, "and back after the drop");
+  const climate = card._doc.floors[0].points.find((p) => p.device_id === "d_climate");
+  assert.ok(climate.placed && Math.abs(climate.x - 4) < 1e-6 && Math.abs(climate.y - 3) < 1e-6, JSON.stringify(climate));
+  assert.ok(markerOf(card, "d_climate"), "placed: its own marker now");
+  assert.equal(clusterOf(card, "living_room").querySelector("text").textContent, "3");
+  assert.equal(card.shadowRoot.querySelectorAll(".cluster-list [data-point]").length, 3, "the list stays open, shorter");
+});
+
+test("a link to a device inside a cluster ends at the cluster's dot, named", async () => {
+  // The hub is placed; both bulbs wait unplaced in the living room's cluster with the climate sensor.
+  const plan = planOf([pt("d_mesh", 6, 1), { device_id: "d_bulb1", x: 2, y: 2, placed: false },
+    { device_id: "d_bulb2", x: 2.2, y: 2, placed: false }, { device_id: "d_climate", x: 2.4, y: 2, placed: false }]);
+  const card = await make({ plan }, stage2Hass());
+  await settle();
+  const [mx, my] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_mesh"), "pointermove", mx, my);
+  const lines = [...card.shadowRoot.querySelectorAll("line.link")];
+  assert.equal(lines.length, 1, "one line to the cluster, not one per hidden bulb");
+  const [cx, cy] = clusterOf(card, "living_room").getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+  assert.ok(Math.abs(Number(lines[0].getAttribute("x2")) - cx) < 1e-6 && Math.abs(Number(lines[0].getAttribute("y2")) - cy) < 1e-6);
+  const label = $(card, "text.link-label");
+  assert.ok(label && label.textContent.includes("Bulb 1") && label.textContent.includes("Bulb 2"), label?.textContent);
+});
+
+test("a link label names two devices of a cluster, then counts the rest", async () => {
+  const hass = stage2Hass();
+  for (const n of [3, 4, 5]) {
+    hass.devices[`d_bulb${n}`] = { id: `d_bulb${n}`, name: `Bulb ${n}`, area_id: "living_room", via_device_id: "d_mesh" };
+    hass.entities[`light.bulb${n}`] = { entity_id: `light.bulb${n}`, device_id: `d_bulb${n}`, platform: "hue" };
+    hass.states[`light.bulb${n}`] = { state: "on", attributes: {} };
+  }
+  const bulbs = [1, 2, 3, 4, 5].map((n, i) => ({ device_id: `d_bulb${n}`, x: 2 + i * 0.1, y: 2, placed: false }));
+  const card = await make({ plan: planOf([pt("d_mesh", 6, 1), ...bulbs]) }, hass);
+  await settle();
+  const [mx, my] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_mesh"), "pointermove", mx, my);
+  assert.equal($(card, "text.link-label").textContent, "Bulb 1, Bulb 2 +3");
+});
+
+test("a tap elsewhere closes the cluster list; hovering a cluster names its devices", async () => {
+  const card = await make({ plan: planOf() }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const living = clusterOf(card, "living_room");
+  const [cx, cy] = living.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+  const [sx, sy] = clientAt(card, cx, cy);
+  pointer(living, "pointermove", sx, sy);
+  assert.ok($(card, ".tip").textContent.includes("Bulb 1"), $(card, ".tip").textContent);
+  pointer(clusterOf(card, "living_room"), "pointerdown", sx, sy);
+  pointer(clusterOf(card, "living_room"), "pointerup", sx, sy);
+  assert.ok($(card, ".cluster-list [data-point]"));
+  const [rx, ry] = clientAt(card, 6.5, 3.5);
+  pointer($(card, "polygon.room"), "pointerdown", rx, ry);
+  pointer($(card, "polygon.room"), "pointerup", rx, ry);
+  assert.ok(!$(card, ".cluster-list [data-point]"), "closed");
+});
+
+// ---- roles: a radar wired to a Bluetooth proxy ------------------------------------------------
+
+function radarHass() {
+  const hass = categoryHass();
+  hass.devices.d_proxy = { id: "d_proxy", name: "Office proxy", area_id: "kitchen" };
+  hass.devices.d_adapter = { id: "d_adapter", name: "Adapter", via_device_id: "d_proxy" };
+  Object.assign(hass.entities, {
+    "binary_sensor.proxy_presence": { entity_id: "binary_sensor.proxy_presence", device_id: "d_proxy", platform: "esphome", original_name: "Presence" },
+    "light.proxy_led": { entity_id: "light.proxy_led", device_id: "d_proxy", platform: "esphome" },
+  });
+  Object.assign(hass.states, {
+    "binary_sensor.proxy_presence": { state: "on", attributes: { device_class: "occupancy" } },
+    "light.proxy_led": { state: "off", attributes: {} },
+  });
+  return hass;
+}
+
+test("a further role is a ring in its colour around the dot", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1), pt("d_climate", 1, 1)]) }, radarHass());
+  await settle();
+  const proxy = markerOf(card, "d_proxy");
+  assert.equal(proxy.firstElementChild.tagName.toLowerCase(), "polygon", "still a radio's diamond");
+  const rings = [...proxy.querySelectorAll("circle.role-ring")];
+  assert.equal(rings.length, 1);
+  assert.match(rings[0].getAttribute("style"), /--floorplan-security/);
+  assert.equal(markerOf(card, "d_climate").querySelectorAll("circle.role-ring").length, 0);
+});
+
+test("a dot shows while any of its roles' layers is on; the chips list every role", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1)]) }, radarHass());
+  await settle();
+  const chip = (id) => $(card, `.layers [data-layer="${id}"]`);
+  assert.ok(chip("radio") && chip("security"), "both of its roles have a chip");
+  click(chip("radio"));
+  assert.ok(markerOf(card, "d_proxy"), "radio off, presence on: still shown");
+  click(chip("security"));
+  assert.ok(!markerOf(card, "d_proxy"), "both off: hidden");
+  window.localStorage.clear();
+});
+
+test("the tooltip lists a device's presence sensors with their state", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1)]) }, radarHass());
+  await settle();
+  const [x, y] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_proxy"), "pointermove", x, y);
+  assert.ok($(card, ".tip").textContent.includes("Presence: on"), $(card, ".tip").textContent);
+});
+
+test("the tooltip names a dot's category and what its ring means", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1), pt("d_climate", 1, 1)]) }, radarHass());
+  await settle();
+  const [x, y] = clientAt(card, 6, 1);
+  pointer(markerOf(card, "d_proxy"), "pointermove", x, y);
+  const tip = $(card, ".tip");
+  assert.ok(tip.textContent.includes("Radios and hubs"), tip.textContent);
+  assert.ok(tip.textContent.includes(`${EN("card.floorplan.roles.also")} Presence and security`), tip.textContent);
+  assert.match(tip.querySelector(".tip-roles .ring").getAttribute("style"), /--floorplan-security/);
+  const [cx, cy] = clientAt(card, 1, 1);
+  pointer(markerOf(card, "d_climate"), "pointermove", cx, cy);
+  assert.ok(tip.textContent.includes("Climate") && !tip.querySelector(".tip-roles .ring"), "no ring, no ring line");
+});
+
+test("the layer bar explains the rings when a dot has one", async () => {
+  const card = await make({ plan: planOf([pt("d_proxy", 6, 1)]) }, radarHass());
+  await settle();
+  assert.ok($(card, ".layers .ring-legend")?.textContent.includes(EN("card.floorplan.roles.legend")));
+  const plain = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, radarHass());
+  await settle();
+  assert.ok(!$(plain, ".layers .ring-legend"), "no ring on the plan, no legend");
+});
+
+// ---- reading labels laid out clear of walls and each other ------------------------------------
+
+test("a dot's readings go above it when below would cross a wall", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 2, 3.95)]) }, hassOf());
+  const texts = [...markerOf(card, "d_climate").querySelectorAll("text.value")];
+  assert.equal(texts.length, 2);
+  assert.ok(texts.every((t) => Number(t.getAttribute("y")) < 0), texts.map((t) => t.getAttribute("y")).join());
+});
+
+test("readings that cannot stay beside their dot get a leader line to it", async () => {
+  // The climate sensor's two readings in a ring of eight unrelated dots, apart enough not to stack.
+  const ring = [[2, 1.75], [2, 2.25], [1.75, 2], [2.25, 2], [1.82, 1.82], [2.18, 2.18], [1.82, 2.18], [2.18, 1.82]];
+  const hass = hassOf();
+  ring.forEach((_, i) => {
+    hass.devices[`d_r${i}`] = { id: `d_r${i}`, name: `Dot ${i}`, area_id: "living_room" };
+    hass.entities[`light.r${i}`] = { entity_id: `light.r${i}`, device_id: `d_r${i}`, platform: "hue" };
+    hass.states[`light.r${i}`] = { state: "on", attributes: {} };
+  });
+  const card = await make({ plan: planOf([pt("d_climate", 2, 2), ...ring.map((at, i) => pt(`d_r${i}`, ...at))]) }, hass);
+  await settle();
+  assert.ok(markerOf(card, "d_climate").querySelector("line.leader"), "a leader to the dot");
+});
+
+// ---- dots stay in rooms; a dot dropped on a dot stacks --------------------------------------
+
+function dragMarker(card, key, from, to) {
+  const [sx, sy] = clientAt(card, ...from);
+  const [ex, ey] = clientAt(card, ...to);
+  pointer(markerOf(card, key), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+}
+const pointAt = (card, key) => card._doc.floors[0].points.find((p) => (p.device_id ?? p.entity_id) === key);
+
+test("a dot dragged out of every room stays on the nearest wall, during the drag and after", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1)]) }, hassOf());
+  click($(card, "[data-action=edit]"));
+  const [sx, sy] = clientAt(card, 1, 1);
+  const [ox, oy] = clientAt(card, -1, 2);
+  pointer(markerOf(card, "d_climate"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ox, oy);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [0, 2], "held at the wall while dragged");
+  pointer($(card, "svg"), "pointerup", ox, oy);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [0, 2]);
+  dragMarker(card, "d_climate", [0, 2], [3, 6]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [3, 4]);
+  dragMarker(card, "d_climate", [3, 4], [6, 2]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [6, 2], "into another room is fine");
+});
+
+test("a device dropped from the tray outside every room lands on the nearest wall", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  for (const d of card.shadowRoot.querySelectorAll(".tray details")) d.open = true;
+  const item = $(card, '.tray [data-key="d_office"]');
+  const [ex, ey] = clientAt(card, 9, 2);
+  pointer(item, "pointerdown", 790, 390);
+  pointer(item, "pointermove", ex, ey);
+  pointer(item, "pointerup", ex, ey);
+  assert.deepEqual([pointAt(card, "d_office").x, pointAt(card, "d_office").y], [8, 2]);
+});
+
+test("a dot dropped on another dot snaps onto it and the two become one dot with their list", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), pt("d_lamp", 3, 2)]) }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  dragMarker(card, "d_climate", [1, 1], [3.05, 2.03]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [3, 2], "snapped onto the other dot");
+  assert.ok(pointAt(card, "d_climate").placed);
+  const stack = $(card, 'g.cluster[data-cluster^="at:"]');
+  assert.ok(stack, "one dot for both");
+  assert.equal(stack.querySelector("text").textContent, "2");
+  assert.ok(!markerOf(card, "d_climate") && !markerOf(card, "d_lamp"));
+  const [cx, cy] = clientAt(card, 3, 2);
+  pointer(stack, "pointerdown", cx, cy);
+  pointer(stack, "pointerup", cx, cy);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".cluster-list [data-point]")].map((n) => n.getAttribute("data-point")).sort(),
+    ["d_climate", "d_lamp"]);
+  const item = $(card, '.cluster-list [data-point="d_lamp"]');
+  const [ex, ey] = clientAt(card, 4, 3);
+  pointer(item, "pointerdown", 100, 100);
+  pointer(item, "pointermove", ex, ey);
+  pointer(item, "pointerup", ex, ey);
+  assert.ok(markerOf(card, "d_lamp") && markerOf(card, "d_climate"), "dragged out: two markers again");
+  assert.ok(!$(card, 'g.cluster[data-cluster^="at:"]'));
+});
+
+test("placed dots too close to tell apart on screen are one dot; zoomed in they part", async () => {
+  // Two lamps on one spot and a third 7 mm off: the third used to hide under the stack's dot.
+  const pts = [pt("d_lamp", 2.071, 3.528), pt("d_dimmer", 2.071, 3.528), pt("d_climate", 2.078, 3.527)];
+  const card = await make({ plan: planOf(pts) }, categoryHass());
+  await settle();
+  const stack = $(card, 'g.cluster[data-cluster^="at:"]');
+  assert.equal(stack?.querySelector("text").textContent, "3");
+  assert.ok(!markerOf(card, "d_climate"), "no marker hidden under the dot");
+  const far = await make({ plan: planOf([pt("d_lamp", 2, 2), pt("d_climate", 2.1, 2)]) }, categoryHass());
+  await settle();
+  assert.ok($(far, 'g.cluster[data-cluster^="at:"]'), "10 cm at the fitted zoom (about 10 px): one dot");
+  for (let i = 0; i < 12; i++) click($(far, "[data-action=zoom_in]"));
+  assert.ok(!$(far, 'g.cluster[data-cluster^="at:"]') && markerOf(far, "d_lamp") && markerOf(far, "d_climate"),
+    "zoomed in: two markers");
+});
+
+test("a dot dropped near, not on, another dot keeps its place", async () => {
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), pt("d_lamp", 3, 2)]) }, categoryHass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  dragMarker(card, "d_climate", [1, 1], [3.6, 2]);
+  assert.deepEqual([pointAt(card, "d_climate").x, pointAt(card, "d_climate").y], [3.6, 2]);
+  assert.ok(!$(card, 'g.cluster[data-cluster^="at:"]'));
 });
 
 test("a sensor dragged from the tray lands on the plan, placed", async () => {

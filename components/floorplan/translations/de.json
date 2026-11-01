@@ -24,7 +24,7 @@
       },
       "hint": {
         "empty": "Dieses Stockwerk hat noch keine Räume und keine Sensoren.",
-        "move": "Ziehen Sie Sensoren und Ecken. Doppelklick auf eine Wand fügt eine Ecke hinzu, auf eine Ecke entfernt sie. Tippen Sie auf einen Raum, um ihn einem Bereich zuzuordnen.",
+        "move": "Ziehen Sie Sensoren und Ecken. Doppelklick auf eine Wand fügt eine Ecke hinzu, auf eine Ecke entfernt sie. Tippen Sie auf einen Raum, um ihn einem Bereich zuzuordnen. Ein Gerät auf eine Markierung ziehen, wenn es dieselbe Hardware ist.",
         "split": "Tippen Sie auf zwei Punkte an den Wänden eines Raums.",
         "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich."
       },
@@ -51,7 +51,17 @@
       "changed_elsewhere": "Der Grundriss wurde anderswo geändert, seit diese Seite ihn geladen hat. Nichts wurde gespeichert: Laden Sie die Seite neu und bearbeiten Sie ihn erneut.",
       "save_failed": "Speichern fehlgeschlagen: {error}",
       "create_failed": "Der Bereich konnte nicht erstellt werden: {error}",
-      "refused": "Diese Änderung ist hier nicht möglich."
+      "refused": "Diese Änderung ist hier nicht möglich.",
+      "point": {
+        "category": "Kategorie",
+        "separate": "Trennen",
+        "joined": "Dieselbe Hardware:"
+      },
+      "layers": "Ebenen",
+      "roles": {
+        "also": "Erfasst auch:",
+        "legend": "Ring: was ein Gerät ausserdem erfasst"
+      }
     }
   }
 }

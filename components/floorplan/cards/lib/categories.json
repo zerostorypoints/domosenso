@@ -1,0 +1,305 @@
+{
+ "categories": [
+  {
+   "colour": "#43a047",
+   "extra_role": false,
+   "fallback": false,
+   "hub": false,
+   "id": "plants",
+   "marker": "circle",
+   "names": {
+    "de": "Pflanzen",
+    "en": "Plants",
+    "pl": "Rośliny"
+   },
+   "order": 10,
+   "placeable": true,
+   "rules": [
+    {
+     "device_classes": [
+      "moisture",
+      "conductivity"
+     ]
+    },
+    {
+     "entity_domain": "plant"
+    }
+   ]
+  },
+  {
+   "colour": "#00897b",
+   "extra_role": false,
+   "fallback": false,
+   "hub": false,
+   "id": "media",
+   "marker": "circle",
+   "names": {
+    "de": "Audio und Medien",
+    "en": "Audio and media",
+    "pl": "Audio i multimedia"
+   },
+   "order": 20,
+   "placeable": true,
+   "rules": [
+    {
+     "integration": "mobile_app",
+     "unless_manufacturer": "apple*"
+    },
+    {
+     "entity_domain": "media_player"
+    },
+    {
+     "entity_domain": "media_player"
+    }
+   ]
+  },
+  {
+   "colour": "#607d8b",
+   "extra_role": false,
+   "fallback": false,
+   "hub": false,
+   "id": "mobile",
+   "marker": "circle",
+   "names": {
+    "de": "Telefone und Tags",
+    "en": "Phones and tags",
+    "pl": "Telefony i znaczniki"
+   },
+   "order": 30,
+   "placeable": false,
+   "rules": [
+    {
+     "integration": [
+      "mobile_app",
+      "bermuda",
+      "private_ble_device"
+     ]
+    },
+    {
+     "only_entity_domain": "device_tracker"
+    }
+   ]
+  },
+  {
+   "colour": "#8e24aa",
+   "extra_role": false,
+   "fallback": false,
+   "hub": true,
+   "id": "radio",
+   "marker": "diamond",
+   "names": {
+    "de": "Funk und Hubs",
+    "en": "Radios and hubs",
+    "pl": "Radia i huby"
+   },
+   "order": 40,
+   "placeable": true,
+   "rules": [
+    {
+     "integration": [
+      "mqtt",
+      "espsomfy_rts"
+     ],
+     "manufacturer": "rstrouse*"
+    },
+    {
+     "integration": "tplink_deco"
+    }
+   ]
+  },
+  {
+   "colour": "#9e9e9e",
+   "extra_role": false,
+   "fallback": true,
+   "hub": false,
+   "id": "other",
+   "marker": "circle",
+   "names": {
+    "de": "Sonstiges",
+    "en": "Other",
+    "pl": "Inne"
+   },
+   "order": 45,
+   "placeable": true,
+   "rules": [
+    {
+     "entity_domain": [
+      "vacuum",
+      "lawn_mower"
+     ]
+    },
+    {
+     "integration": [
+      "miele",
+      "home_connect"
+     ]
+    }
+   ]
+  },
+  {
+   "colour": "#e53935",
+   "extra_role": true,
+   "fallback": false,
+   "hub": false,
+   "id": "security",
+   "marker": "circle",
+   "names": {
+    "de": "Anwesenheit und Sicherheit",
+    "en": "Presence and security",
+    "pl": "Obecność i bezpieczeństwo"
+   },
+   "order": 50,
+   "placeable": true,
+   "rules": [
+    {
+     "entity_domain": [
+      "lock",
+      "camera",
+      "alarm_control_panel"
+     ],
+     "extra_role": false
+    },
+    {
+     "model": "*motion*"
+    },
+    {
+     "device_classes": "motion"
+    },
+    {
+     "device_classes": "occupancy"
+    },
+    {
+     "device_classes": "presence"
+    },
+    {
+     "device_classes": "door",
+     "extra_role": false
+    },
+    {
+     "device_classes": "window",
+     "extra_role": false
+    },
+    {
+     "device_classes": "opening",
+     "extra_role": false
+    }
+   ]
+  },
+  {
+   "colour": "#1e88e5",
+   "extra_role": true,
+   "fallback": false,
+   "hub": false,
+   "id": "climate",
+   "marker": "circle",
+   "names": {
+    "de": "Klima",
+    "en": "Climate",
+    "pl": "Klimat"
+   },
+   "order": 60,
+   "placeable": true,
+   "rules": [
+    {
+     "integration": [
+      "tplink",
+      "tapo"
+     ],
+     "model": "T31*"
+    },
+    {
+     "device_classes": [
+      "temperature",
+      "humidity"
+     ]
+    },
+    {
+     "device_classes": [
+      "carbon_dioxide"
+     ]
+    },
+    {
+     "device_classes": [
+      "pm25"
+     ]
+    },
+    {
+     "entity_domain": "climate"
+    },
+    {
+     "device_classes": "temperature"
+    },
+    {
+     "device_classes": "humidity"
+    },
+    {
+     "device_classes": "illuminance"
+    },
+    {
+     "device_classes": "carbon_dioxide"
+    },
+    {
+     "device_classes": "pm25"
+    },
+    {
+     "device_classes": "pm10"
+    },
+    {
+     "device_classes": "volatile_organic_compounds"
+    },
+    {
+     "device_classes": "pressure"
+    }
+   ]
+  },
+  {
+   "colour": "#fdd835",
+   "extra_role": false,
+   "fallback": false,
+   "hub": false,
+   "id": "light",
+   "marker": "circle",
+   "names": {
+    "de": "Licht",
+    "en": "Light",
+    "pl": "Światło"
+   },
+   "order": 70,
+   "placeable": true,
+   "rules": [
+    {
+     "entity_domain": "light"
+    },
+    {
+     "entity_domain": "event",
+     "marker": "square",
+     "only_entity_domain": [
+      "event",
+      "sensor",
+      "button"
+     ]
+    }
+   ]
+  },
+  {
+   "colour": "#8d6e63",
+   "extra_role": false,
+   "fallback": false,
+   "hub": false,
+   "id": "shading",
+   "marker": "circle",
+   "names": {
+    "de": "Beschattung",
+    "en": "Shading",
+    "pl": "Zacienianie"
+   },
+   "order": 80,
+   "placeable": true,
+   "rules": [
+    {
+     "entity_domain": "cover"
+    }
+   ]
+  }
+ ]
+}

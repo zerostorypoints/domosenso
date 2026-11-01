@@ -1,0 +1,21 @@
+# SPEC-028 Amendment 5. Before climate: a motion sensor often reports temperature too.
+id: security
+order: 50
+names: {en: Presence and security, de: Anwesenheit und Sicherheit, pl: Obecność i bezpieczeństwo}
+colour: "#e53935"
+marker: circle
+extra_role: true   # a further role of a device in another category (a radar on a proxy)
+match:
+  - entity_domain: [lock, camera, alarm_control_panel]
+    extra_role: false   # a robot vacuum's map is a camera entity: not a security role
+  - model: "*motion*"   # a motion sensor whose motion entity is disabled still is one
+  - device_classes: motion
+  - device_classes: occupancy
+  - device_classes: presence
+  # A door, window or lid makes a contact sensor, never a further role: an appliance reports its door.
+  - device_classes: door
+    extra_role: false
+  - device_classes: window
+    extra_role: false
+  - device_classes: opening
+    extra_role: false

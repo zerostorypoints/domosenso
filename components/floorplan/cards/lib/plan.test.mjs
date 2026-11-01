@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
-  extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName,
+  extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName, keysOf, joinPoint,
+  separatePoint, registryLinks, pointCategory, presenceEntities,
 } from "./plan.js";
 import { joinPolygons, centroid, pointInPolygon } from "./geometry.js";
 
@@ -66,17 +67,19 @@ test("emptyPlan has one empty floor per id, null included", () => {
 
 test("candidates: device with two point entities is one candidate", () => {
   const c = candidates(hass).find((x) => x.key === "d_temp");
-  assert.deepEqual(c, { key: "d_temp", kind: "device", area_id: "living_room", entities: ["sensor.hum", "sensor.temp"] });
+  assert.deepEqual(c, { key: "d_temp", kind: "device", area_id: "living_room", entities: ["sensor.hum", "sensor.temp"],
+    category: "climate", marker: "circle", roles: ["climate"] });
 });
 
-test("candidates: a light-only device gives none", () => {
-  assert.equal(candidates(hass).some((x) => x.key === "d_light"), false);
+test("candidates: a light-only device is a light, with no readings to show (Amendment 5)", () => {
+  assert.deepEqual(candidates(hass).find((x) => x.key === "d_light"),
+    { key: "d_light", kind: "device", area_id: "kitchen", entities: [], category: "light", marker: "circle", roles: ["light"] });
 });
 
 test("candidates: plant without a device, and a device-less sensor", () => {
   const all = candidates(hass);
   assert.deepEqual(all.find((x) => x.key === "plant.monstera"),
-    { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"] });
+    { key: "plant.monstera", kind: "entity", area_id: null, entities: ["plant.monstera"], category: "plants", marker: "circle", roles: ["plants"] });
   assert.equal(all.find((x) => x.key === "sensor.garage_co2").area_id, "office");
 });
 
@@ -302,6 +305,21 @@ test("roomHint: a plant without an area by its domosenso_room, per language when
     "a language missing from the map falls back to domosenso_room");
 });
 
+test("candidates: a plant without an area gets the area its room names, in any language", () => {
+  const rooms = { domosenso_room: "Pokój dzienny", domosenso_rooms: { pl: "Pokój dzienny", en: "Living room", de: "Wohnzimmer" } };
+  const h = plantHass(rooms, "pl");
+  const find = (hs) => candidates(hs).find((c) => c.key === "plant.monstera");
+  assert.equal(find(h).area_id, "living_room", "the English name matches the area Living room");
+  assert.deepEqual(roomHint(h, find(h)), { key: "living_room", name: "Living room" }, "grouped under the area's own name");
+  // Case, spaces and diacritics do not matter: "Hobbyraum" names the area "Hobby Raum".
+  const hobby = { ...plantHass({ domosenso_rooms: { de: "Hobbyraum" } }, "pl"),
+    areas: { ...hass.areas, hobby_room: { area_id: "hobby_room", name: "Hobby Raum" } } };
+  assert.equal(find(hobby).area_id, "hobby_room");
+  // A room that names no area leaves the plant without one: it waits in the tray under its label.
+  const nowhere = plantHass({ domosenso_room: "Attic" }, "pl");
+  assert.equal(find(nowhere).area_id, null);
+});
+
 test("roomHint: null without an area or a plant room", () => {
   assert.equal(roomHint(plantHass({}), monstera), null);
   assert.equal(roomHint(hass, { key: "sensor.x", kind: "entity", area_id: null, entities: ["sensor.x"] }), null);
@@ -318,13 +336,14 @@ test("trayGroups: the tray by room, groups and items by name, the group without 
   };
   const groups = trayGroups(doc(), h);
   assert.deepEqual(groups.map((g) => [g.key, g.name, g.items.map((c) => candidateName(h, c))]), [
+    ["kitchen", "Kitchen", ["d_light"]],
     ["living_room", "Living room", ["Light sensor", "Thermometer"]],
     ["office", "Office", ["Air"]],
     ["none", null, ["Monstera"]],
   ]);
   const placed = doc();
   placed.floors[0].points.push({ device_id: "d_temp", x: 1, y: 1, placed: true });
-  assert.deepEqual(trayGroups(placed, h)[0].items.map((c) => c.key), ["d_moved"], "placed candidates are not in it");
+  assert.deepEqual(trayGroups(placed, h)[1].items.map((c) => c.key), ["d_moved"], "placed candidates are not in it");
 });
 
 test("addPoints puts candidates round a point, not placed, and refuses ones already on the plan", () => {
@@ -367,4 +386,107 @@ test("autoPlace puts a sensor whose spread point leaves the room on the centre i
   const narrow = [[0, 0], [0.4, 0], [0.4, 3], [0, 3]];
   const pts = autoPlace(oneRoom(narrow), hass, "ground").floors[0].points;
   assert.deepEqual(pts.map((p) => [p.x, p.y]), [[0.2, 2.1], [0.2, 2.1]]);
+});
+
+
+// ---- Amendment 5, stage 2: one point per physical device, registry links --------------------
+
+// An amplifier seen by three integrations, a bridge with two bulbs, all in the living room.
+const stage2Hass = {
+  ...hass,
+  devices: {
+    ...hass.devices,
+    d_amp: { id: "d_amp", name: "Amplifier", area_id: "living_room" },
+    d_amp_cast: { id: "d_amp_cast", name: "Amplifier (Cast)", area_id: "living_room" },
+    d_bridge: { id: "d_bridge", name: "Bridge", area_id: "kitchen" },
+    d_bulb1: { id: "d_bulb1", name: "Bulb 1", area_id: "living_room", via_device_id: "d_bridge" },
+    d_bulb2: { id: "d_bulb2", name: "Bulb 2", area_id: "kitchen", via_device_id: "d_bridge" },
+  },
+  entities: {
+    ...hass.entities,
+    "media_player.amp": { entity_id: "media_player.amp", device_id: "d_amp" },
+    "media_player.amp_cast": { entity_id: "media_player.amp_cast", device_id: "d_amp_cast" },
+    "switch.bridge": { entity_id: "switch.bridge", device_id: "d_bridge" },
+    "light.bulb1": { entity_id: "light.bulb1", device_id: "d_bulb1" },
+    "light.bulb2": { entity_id: "light.bulb2", device_id: "d_bulb2" },
+  },
+  states: {
+    ...hass.states,
+    "media_player.amp": { state: "on", attributes: {} }, "media_player.amp_cast": { state: "off", attributes: {} },
+    "switch.bridge": { state: "on", attributes: {} },
+    "light.bulb1": { state: "on", attributes: {} }, "light.bulb2": { state: "off", attributes: {} },
+  },
+};
+const withAmp = () => {
+  const d = doc();
+  d.floors[0].points.push({ device_id: "d_amp", x: 1, y: 1, placed: true });
+  return d;
+};
+
+test("joinPoint makes another device the same point; it leaves the tray", () => {
+  const cast = candidates(stage2Hass).find((c) => c.key === "d_amp_cast");
+  const joined = joinPoint(withAmp(), "ground", "d_amp", cast);
+  const amp = joined.floors[0].points.find((p) => p.device_id === "d_amp");
+  assert.deepEqual(amp.also, ["d_amp_cast"]);
+  assert.deepEqual(keysOf(amp), ["d_amp", "d_amp_cast"]);
+  assert.ok(!tray(joined, stage2Hass).some((c) => c.key === "d_amp_cast"));
+  assert.ok(!autoPlace(joined, stage2Hass, "ground").floors[0].points.some((p) => p.device_id === "d_amp_cast"),
+    "a joined device is not placed again");
+});
+
+test("joinPoint refuses an entity, the point itself, and a device already on the plan", () => {
+  const all = candidates(stage2Hass);
+  const plant = all.find((c) => c.key === "plant.monstera");
+  assert.equal(joinPoint(withAmp(), "ground", "d_amp", plant), null);
+  assert.equal(joinPoint(withAmp(), "ground", "d_amp", all.find((c) => c.key === "d_amp")), null);
+  const placed = withAmp();
+  placed.floors[0].points.push({ device_id: "d_bridge", x: 2, y: 2, placed: true });
+  assert.equal(joinPoint(placed, "ground", "d_amp", all.find((c) => c.key === "d_bridge")), null);
+});
+
+test("separatePoint takes a joined device out again; the last one drops `also`", () => {
+  const cast = candidates(stage2Hass).find((c) => c.key === "d_amp_cast");
+  const joined = joinPoint(withAmp(), "ground", "d_amp", cast);
+  const back = separatePoint(joined, "ground", "d_amp", "d_amp_cast");
+  assert.ok(!("also" in back.floors[0].points.find((p) => p.device_id === "d_amp")));
+  assert.ok(tray(back, stage2Hass).some((c) => c.key === "d_amp_cast"));
+  assert.equal(separatePoint(back, "ground", "d_amp", "d_amp_cast"), null);
+});
+
+test("registryLinks: via_device_id between points on the plan, a joined device counting for its point", () => {
+  const d = doc();
+  d.floors[0].points.push({ device_id: "d_bridge", x: 6, y: 1, placed: true },
+    { device_id: "d_bulb1", x: 1, y: 1, placed: true }, { device_id: "d_amp", x: 2, y: 2, placed: true, also: ["d_bulb2"] });
+  assert.deepEqual(registryLinks(stage2Hass, d.floors[0].points).map((l) => [l.from, l.to]).sort(),
+    [["d_amp", "d_bridge"], ["d_bulb1", "d_bridge"]]);
+});
+
+
+// ---- roles: a radar wired to a Bluetooth proxy -------------------------------------------------
+
+const radarHass = {
+  ...hass,
+  devices: { ...hass.devices, d_proxy: { id: "d_proxy", name: "Proxy", area_id: "living_room" },
+    d_child: { id: "d_child", name: "Adapter", via_device_id: "d_proxy" } },
+  entities: { ...hass.entities,
+    "binary_sensor.proxy_presence": { entity_id: "binary_sensor.proxy_presence", device_id: "d_proxy", platform: "esphome", original_name: "Presence" },
+    "binary_sensor.proxy_moving": { entity_id: "binary_sensor.proxy_moving", device_id: "d_proxy", platform: "esphome", original_name: "Moving target" },
+    "light.proxy_led": { entity_id: "light.proxy_led", device_id: "d_proxy", platform: "esphome" },
+    "sensor.proxy_distance": { entity_id: "sensor.proxy_distance", device_id: "d_proxy", platform: "esphome" } },
+  states: { ...hass.states,
+    "binary_sensor.proxy_presence": { state: "on", attributes: { device_class: "occupancy" } },
+    "binary_sensor.proxy_moving": { state: "off", attributes: { device_class: "motion" } },
+    "light.proxy_led": { state: "off", attributes: {} },
+    "sensor.proxy_distance": { state: "62", attributes: { device_class: "distance" } } },
+};
+
+test("a proxy with a radar is a radio with a presence role; its LED does not make it a light", () => {
+  const c = candidates(radarHass).find((x) => x.key === "d_proxy");
+  assert.equal(c.category, "radio");
+  assert.deepEqual(c.roles, ["radio", "security"]);
+  const point = { device_id: "d_proxy", x: 1, y: 1, placed: true };
+  assert.deepEqual(pointCategory(radarHass, point).roles, ["radio", "security"]);
+  assert.deepEqual(pointCategory(radarHass, { ...point, category: "climate" }).roles, ["climate", "security"],
+    "an override replaces the category and keeps the further roles");
+  assert.deepEqual(presenceEntities(radarHass, point).sort(), ["binary_sensor.proxy_moving", "binary_sensor.proxy_presence"]);
 });

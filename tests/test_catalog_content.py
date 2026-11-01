@@ -428,7 +428,7 @@ FORBIDDEN = [
         ("koryt", "arz"), ("pral", "nia"), ("zoll", "weg"), ("tablet_", "jadal"), (r"192\.", r"168"),
     )
 ]
-SCANNED = ["components", "devices", "kinds", "scenes", "examples", "tools", "tests", "schemas", "docs", ".ai",
+SCANNED = ["components", "devices", "kinds", "categories", "scenes", "examples", "tools", "tests", "schemas", "docs", ".ai",
            "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", ".github", "website", "SECURITY.md"]
 SKIPPED = {"node_modules", "__pycache__", ".venv", ".esphome", ".next", "out", "test-results", "playwright-report"}
 # The framework's documents may name its author and the first outside user (Ruling 32), as whole
