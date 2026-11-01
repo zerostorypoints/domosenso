@@ -1,6 +1,6 @@
 # floorplan: field notes
 
-A floor plan of the home (SPEC-027): each floor's rooms as polygons in metres, each linked to a
+A floor plan of the home (SPEC-028): each floor's rooms as polygons in metres, each linked to a
 Home Assistant area, and the sensors and plants at the places they stand. One card,
 `floorplan-card`, draws it and edits it. The plan is the config of a storage-mode dashboard with url
 path `floorplan`; the home repository keeps a copy in `domosenso/floorplan.json`, written from and
@@ -82,7 +82,7 @@ last `pull`, so an edit made in the browser is never lost silently.
 ## Limits
 
 - One floor at a time; no walls, doors, windows or furniture; tapping a room in view mode does
-  nothing (SPEC-027 non-goals).
+  nothing (SPEC-028 non-goals).
 - A corner added on a wall shared with another room belongs to that room only: dragging it off the
   wall opens a gap the neighbour does not follow.
 - Pinch zoom has no automated test (the test DOM has no multi-touch) and has not been tried on a

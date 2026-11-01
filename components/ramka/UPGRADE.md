@@ -5,7 +5,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## Unreleased
 
-### The floor plan as a second view of the controls (SPEC-027)
+### The floor plan as a second view of the controls (SPEC-028)
 
 - **New, optional:** `floorplan: true` in the Ramka's inputs. On the controls, a sideways swipe
   switches to the floor plan (the `floorplan` component's card, read-only) and back; a tap on the

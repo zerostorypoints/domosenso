@@ -4238,7 +4238,7 @@ def test_the_rotation_takes_sideways_swipes_and_the_pause_corner(demo):
             "input_boolean.ramka_paused", "script.ramka_pause", "script.ramka_resume")
 
 
-# ---- 0.10.0: floorplan (SPEC-027) -----------------------------------------------------------------
+# ---- 0.10.0: floorplan (SPEC-028) -----------------------------------------------------------------
 
 def with_floorplan() -> dict:
     inputs = demo_inputs()

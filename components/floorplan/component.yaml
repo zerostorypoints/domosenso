@@ -1,4 +1,4 @@
-# Domosenso component manifest (SPEC-027): a floor plan of the home. One card, `floorplan-card`, draws
+# Domosenso component manifest (SPEC-028): a floor plan of the home. One card, `floorplan-card`, draws
 # the rooms as polygons from the plan document (schemas/floorplan.schema.json, schema 1) and puts
 # sensor readings and plants at their positions; in edit mode it moves points and reshapes rooms.
 # No inputs, no Home Assistant package: the plan lives in the `floorplan` storage dashboard, written by
@@ -27,7 +27,7 @@ artifacts:
   dashboard_cards:
     - cards/floorplan-card.js             # rooms, points, zoom and pan; edit mode for admins
 
-provides:                                 # contract surface (SPEC-027)
+provides:                                 # contract surface (SPEC-028)
   surfaces:
     - {id: "schemas/floorplan.schema.json", stability: stable, note: "schema 1; a breaking change bumps `schema`; readers refuse an unknown major"}
     - {id: "dashboard url path floorplan", stability: stable, note: "storage mode; one view, one custom:floorplan-card"}

@@ -1,4 +1,4 @@
-"""`domosenso floorplan pull | push` against `FakeHA` (SPEC-027)."""
+"""`domosenso floorplan pull | push` against `FakeHA` (SPEC-028)."""
 import io
 import json
 import re

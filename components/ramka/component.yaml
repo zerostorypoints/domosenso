@@ -127,7 +127,7 @@ inputs:
     default: true
   floorplan:                    # true: on the controls a sideways swipe switches to the floor plan (the floorplan
     type: bool                  # component's card, read-only) and back; a tap on the plan returns. Needs the
-    default: false              # floorplan component added and its dashboard pushed (SPEC-027)
+    default: false              # floorplan component added and its dashboard pushed (SPEC-028)
     example: true
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
@@ -248,7 +248,7 @@ provides:                       # <prefix> from inputs
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
     - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
     - {id: "input_boolean.<prefix>_paused", stability: stable, note: "on while the rotation is paused; the screen going off (mode off) ends it (SPEC-026, 0.9.0)"}
-    - {id: "input_boolean.<prefix>_controls_plan", stability: stable, note: "with floorplan: on while the controls show the floor plan instead of themselves; off at every start and whenever the mode leaves controls (SPEC-027)"}
+    - {id: "input_boolean.<prefix>_controls_plan", stability: stable, note: "with floorplan: on while the controls show the floor plan instead of themselves; off at every start and whenever the mode leaves controls (SPEC-028)"}
     - {id: "input_boolean.<prefix>_{settings_advanced,settings_seeded}", stability: stable, note: "0.4.0"}
     - {id: "input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}", stability: stable, note: "in every home; off takes the view out, inside what the render configured (0.4.0)"}
     - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0); Custom's tilt"}
@@ -289,7 +289,7 @@ provides:                       # <prefix> from inputs
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
-    - {id: "script.<prefix>_controls_plan_toggle", stability: stable, note: "with floorplan: toggles input_boolean.<prefix>_controls_plan; the sideways swipes on the controls (SPEC-027)"}
+    - {id: "script.<prefix>_controls_plan_toggle", stability: stable, note: "with floorplan: toggles input_boolean.<prefix>_controls_plan; the sideways swipes on the controls (SPEC-028)"}
     - {id: "script.<prefix>_{pause,resume,view_next,view_prev,view_step}", stability: stable, note: "pause only while the rotation shows; view_step's field step (1, -1) steps through the plant pages or the series' photos (SPEC-026, 0.9.0)"}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
   dashboards:
@@ -323,7 +323,7 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: binary_sensor.music_source_level}
   - {component: audio-sensor, id: binary_sensor.music_source_rate}
   - {component: audio-sensor, id: binary_sensor.music_source_calibration}
-  # With floorplan: the plan on the controls (SPEC-027). The card's resource comes with the component.
+  # With floorplan: the plan on the controls (SPEC-028). The card's resource comes with the component.
   - {component: floorplan, id: "dashboard url path floorplan"}
   - {component: floorplan, element: floorplan-card}
 # Not a component's: the settings dashboard's About page reads sensor.domosenso_components, which the

@@ -1,4 +1,4 @@
-# The demo home's Ramka inputs plus `floorplan: true` (SPEC-027). For `INPUTS=tests/fixtures/ramka-floorplan.yaml
+# The demo home's Ramka inputs plus `floorplan: true` (SPEC-028). For `INPUTS=tests/fixtures/ramka-floorplan.yaml
 # tools/ha-check.sh ramka` and tests/test_ramka_render.py.
 # `uv run tools/domosenso_render.py components/ramka --inputs examples/demo-home/inputs/ramka.yaml
 # --out <dir>` writes package.yaml and dashboard.{en,de,pl}.yaml from them. The tablet hangs in the
@@ -78,5 +78,5 @@ tablet_device:
   sensors: dining_tablet
 alert_notify: notify.mobile_app_alex_phone
 
-# The plan view (SPEC-027): a sideways swipe on the controls. Used by tests/test_ramka_render.py and ha-check.
+# The plan view (SPEC-028): a sideways swipe on the controls. Used by tests/test_ramka_render.py and ha-check.
 floorplan: true

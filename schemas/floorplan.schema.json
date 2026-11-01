@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://domosenso.example/schemas/floorplan.schema.json",
-  "title": "The floor plan document: rooms and sensor positions in metres (SPEC-027)",
+  "title": "The floor plan document: rooms and sensor positions in metres (SPEC-028)",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "floors"],
