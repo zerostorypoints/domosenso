@@ -746,9 +746,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.7.0",
-      "sourceTag": "ramka/0.7.0",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "version": "0.9.0",
+      "sourceTag": "ramka/0.9.0",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1003,6 +1003,21 @@
           "required": false
         },
         {
+          "name": "preview_dashboard",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "settings_paths",
+          "type": "map[lang, string]",
+          "required": false
+        },
+        {
+          "name": "preview_paths",
+          "type": "map[lang, string]",
+          "required": false
+        },
+        {
           "name": "exit_left",
           "type": "string",
           "required": false
@@ -1023,6 +1038,11 @@
           "required": false
         },
         {
+          "name": "music_eq_presets",
+          "type": "{behind_speakers?, half_match?, fitted?: {sub?, bass?, low_mid?, mid?, presence?, air?}}",
+          "required": false
+        },
+        {
           "name": "settings_defaults",
           "type": "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}",
           "required": false
@@ -1033,8 +1053,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/c3eca96f268a7ca0d1d7a143f55180e5ee088bc1/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",

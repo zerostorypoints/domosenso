@@ -20,11 +20,11 @@
         "media"
       ],
       "availability": "conditional",
-      "condition": "Approach or tap the tablet; lights and covers appear when configured.",
+      "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights and covers appear when configured.",
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

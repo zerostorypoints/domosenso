@@ -18,11 +18,11 @@
         "audio-sensor"
       ],
       "availability": "opt-in",
-      "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 or later and mark one board music: true; with Ramka 0.6.0 the board updates faster while the music view shows. Without a reading the strip falls back to the classic wave.",
+      "condition": "Set music_visual: spectrum or level in Ramka 0.4.0 or later, mark one board music: true and, from Ramka 0.9.0, switch Live visualization on; with Ramka 0.6.0 or later the board updates faster while the music view shows. Without a reading the strip falls back to the classic wave.",
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
