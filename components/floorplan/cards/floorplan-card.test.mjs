@@ -687,6 +687,68 @@ test("a joined point's tooltip names every device it stands for", async () => {
   assert.ok(text.includes("Climate sensor") && text.includes("Speaker (Cast)"), text);
 });
 
+// ---- clusters: a room's unplaced devices as one dot that opens into their list ----------------
+
+const clusterOf = (card, area) => $(card, `g.cluster[data-cluster="${area}"]`);
+
+test("a room's unplaced devices are one dot with their count; placed ones and a lone one are not", async () => {
+  const card = await make({ plan: planOf([pt("d_bulb2", 1, 3)]) }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  // Living room: climate, dimmer, bulb 1 put down by edit mode (bulb 2 is placed); kitchen: the mesh node and the plant.
+  const living = clusterOf(card, "living_room");
+  assert.ok(living, card.shadowRoot.querySelector("svg").innerHTML.slice(0, 300));
+  assert.equal(living.querySelector("text").textContent, "3");
+  for (const key of ["d_climate", "d_dimmer", "d_bulb1"]) assert.ok(!markerOf(card, key), `${key} is in the cluster`);
+  assert.ok(markerOf(card, "d_bulb2"), "a placed device keeps its own marker");
+  assert.equal(clusterOf(card, "kitchen").querySelector("text").textContent, "2");
+  const lone = await make({ plan: planOf([{ device_id: "d_climate", x: 1, y: 1, placed: false }]) }, hassOf());
+  assert.ok(markerOf(lone, "d_climate") && !$(lone, "g.cluster"), "one unplaced device is its own marker");
+});
+
+test("tapping a cluster lists its devices; dragging one out places it and the count drops", async () => {
+  const card = await make({ plan: planOf() }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const living = clusterOf(card, "living_room");
+  const [cx, cy] = living.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+  const [sx, sy] = clientAt(card, cx, cy);
+  pointer(living, "pointerdown", sx, sy);
+  pointer(living, "pointerup", sx, sy);
+  const items = [...card.shadowRoot.querySelectorAll(".cluster-list [data-point]")];
+  assert.deepEqual(items.map((n) => n.getAttribute("data-point")).sort(), ["d_bulb1", "d_bulb2", "d_climate", "d_dimmer"]);
+  assert.ok(items.every((n) => n.querySelector(".dot")), "each with its category's dot");
+  assert.ok($(card, ".cluster-list").textContent.includes("Climate sensor"));
+  const item = $(card, '.cluster-list [data-point="d_climate"]');
+  const [ex, ey] = clientAt(card, 4, 3);
+  pointer(item, "pointerdown", 100, 100);
+  pointer(item, "pointermove", ex, ey);
+  pointer(item, "pointerup", ex, ey);
+  const climate = card._doc.floors[0].points.find((p) => p.device_id === "d_climate");
+  assert.ok(climate.placed && Math.abs(climate.x - 4) < 1e-6 && Math.abs(climate.y - 3) < 1e-6, JSON.stringify(climate));
+  assert.ok(markerOf(card, "d_climate"), "placed: its own marker now");
+  assert.equal(clusterOf(card, "living_room").querySelector("text").textContent, "3");
+  assert.equal(card.shadowRoot.querySelectorAll(".cluster-list [data-point]").length, 3, "the list stays open, shorter");
+});
+
+test("a tap elsewhere closes the cluster list; hovering a cluster names its devices", async () => {
+  const card = await make({ plan: planOf() }, stage2Hass());
+  await settle();
+  click($(card, "[data-action=edit]"));
+  const living = clusterOf(card, "living_room");
+  const [cx, cy] = living.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+  const [sx, sy] = clientAt(card, cx, cy);
+  pointer(living, "pointermove", sx, sy);
+  assert.ok($(card, ".tip").textContent.includes("Bulb 1"), $(card, ".tip").textContent);
+  pointer(clusterOf(card, "living_room"), "pointerdown", sx, sy);
+  pointer(clusterOf(card, "living_room"), "pointerup", sx, sy);
+  assert.ok($(card, ".cluster-list [data-point]"));
+  const [rx, ry] = clientAt(card, 6.5, 3.5);
+  pointer($(card, "polygon.room"), "pointerdown", rx, ry);
+  pointer($(card, "polygon.room"), "pointerup", rx, ry);
+  assert.ok(!$(card, ".cluster-list [data-point]"), "closed");
+});
+
 test("a sensor dragged from the tray lands on the plan, placed", async () => {
   const card = await make({ plan: planOf() }, hassOf());
   click($(card, "[data-action=edit]"));

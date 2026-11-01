@@ -458,3 +458,18 @@ domosenso floorplan preview <target> [--port <n>] [--no-open]
 
 Writing to Home Assistant from the preview (areas, the dashboard); the Ramka's view; more than one
 browser editing at once (the last save wins, as two tabs on the dashboard would).
+
+### Addition: clusters of unplaced devices (the maintainer, 2026-11-01)
+
+With a real home in the preview, edit mode put about 20 devices of one room on a 0.3 m circle,
+covering each other. The maintainer: break them down into a list of devices under one dot.
+
+- Two or more **unplaced** points (`placed: false`) in one room, of the layers shown, are drawn as
+  one dot with their count at their mean position; placed points and a room's lone unplaced point
+  keep their own markers. Hovering the dot names its devices.
+- In edit mode a tap on the dot opens the list of its devices beside it (each with its category's
+  dot, by name). Dragging a device out of the list moves it like a marker (it becomes `placed:
+  true` and leaves the cluster); a tap picks it (its panel and distances). The list stays open
+  while the cluster has two or more devices; a tap elsewhere closes it. Dragging the dot pans.
+- View mode draws the same dots and does nothing on a tap (the design's "nothing to tap").
+- No change to the stored document.

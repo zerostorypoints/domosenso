@@ -99,6 +99,8 @@ class FloorplanCard extends HTMLElement {
     this._stamp = null;
     this._trayOpen = new Map();    // tray group key -> open, as the user left it
     this._hidden = readHidden();   // category ids switched off by this browser's layer chips
+    this._hoverKey = null;         // the marker under the pointer: its registry links show
+    this._openCluster = null;      // the room whose cluster list is open (edit mode)
     if (this._hass) this._load();
   }
 
@@ -195,7 +197,7 @@ ${STYLE}
         <div class="bar"></div>
         <div class="layers"></div>
         <div class="area-panel"></div>
-        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="tip" hidden></div></div>
+        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div></div>
         <div class="hint"></div>
         <div class="message"></div>
       </ha-card>`;
@@ -385,7 +387,17 @@ ${STYLE}
         el("line", { class: `link ${link.kind}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y }, svg);
       }
     }
-    for (const point of floor.points) this._drawMarker(svg, point, px, editing);
+    // A room's unplaced devices are one dot with their count; its list opens with a tap (edit mode).
+    const clusters = this._clusters(floor);
+    const clustered = new Set([...clusters.values()].flatMap((c) => c.points.map(keyOf)));
+    for (const point of floor.points) if (!clustered.has(keyOf(point))) this._drawMarker(svg, point, px, editing);
+    for (const [area, c] of clusters) {
+      const g = el("g", { class: "cluster", "data-kind": "cluster", "data-cluster": area,
+        transform: `translate(${fmt(c.at[0])} ${fmt(c.at[1])})` }, svg);
+      el("circle", { r: 11 * px }, g);
+      el("text", { "font-size": 12 * px, "dominant-baseline": "central" }, g).textContent = String(c.points.length);
+    }
+    this._clusterList(clusters);
     const picked = editing && floor.points.find((p) => keyOf(p) === this._picked);
     const room = picked && floor.rooms.find((r) => pointInPolygon([picked.x, picked.y], r.polygon));
     if (room) drawWallDistances(svg, el, { hass: h, t, poly: room.polygon, pt: [picked.x, picked.y], px });
@@ -395,6 +407,49 @@ ${STYLE}
       el("circle", { r: 7 * px }, g);
       el("text", { class: "name", y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
     }
+  }
+
+  // Unplaced points shown on this floor, by the room they stand in: two or more make a cluster.
+  _clusters(floor) {
+    const byRoom = new Map();
+    for (const point of floor.points) {
+      if (point.placed || !this._visible(pointCategory(this._hass, point, this._cands).id)) continue;
+      const room = floor.rooms.find((r) => pointInPolygon([point.x, point.y], r.polygon));
+      const area = room?.area_id ?? "";
+      if (!byRoom.has(area)) byRoom.set(area, []);
+      byRoom.get(area).push(point);
+    }
+    const out = new Map();
+    for (const [area, points] of byRoom) {
+      if (points.length < 2) continue;
+      const at = [0, 1].map((i) => points.reduce((sum, p) => sum + (i ? p.y : p.x), 0) / points.length);
+      out.set(area, { points, at });
+    }
+    return out;
+  }
+
+  // The open cluster's devices beside its dot: drag one out to where it stands, tap one to pick it.
+  _clusterList(clusters) {
+    const list = this.shadowRoot.querySelector(".cluster-list");
+    const open = this._openCluster !== null && this._openCluster !== undefined && clusters.get(this._openCluster);
+    if (!open || this._mode !== "edit") {
+      list.hidden = true;
+      list.innerHTML = "";
+      if (!open) this._openCluster = null;
+      return;
+    }
+    const h = this._hass;
+    const items = [...open.points].sort((a, b) => this._pointNames(a)[0].localeCompare(this._pointNames(b)[0]));
+    list.innerHTML = items.map((p) => {
+      const cat = categoryById(pointCategory(h, p, this._cands).id);
+      return `<div class="item" data-point="${esc(keyOf(p))}" title="${esc(t(h, "card.floorplan.tray.drag"))}">`
+        + `<span class="dot" style="background: ${colourOf(cat)}"></span>${esc(this._pointNames(p).join(" + "))}</div>`;
+    }).join("");
+    list.hidden = false;
+    const { s, ox, oy } = frame(this._view, this._rect());
+    const svgLeft = this._rect().left - this.shadowRoot.querySelector(".body").getBoundingClientRect().left;
+    list.style.left = `${svgLeft + ox + (open.at[0] - this._view.x) * s + 16}px`;
+    list.style.top = `${oy + (open.at[1] - this._view.y) * s - 12}px`;
   }
 
   _drawMarker(svg, point, px, editing) {
@@ -507,6 +562,7 @@ ${STYLE}
     this._picks = [];
     this._selected = null;
     this._picked = null;
+    this._openCluster = null;
     this._pendingSplit = null;
   }
 
@@ -583,8 +639,10 @@ ${STYLE}
     this._showTip(null);
     this._hoverKey = null;
     const item = e.target.closest?.(".tray [data-key], .tray summary[data-group]");
+    const listed = e.target.closest?.(".cluster-list [data-point]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
-    if (!item && !inSvg) return;
+    if (!item && !listed && !inSvg) return;
+    if (listed) e.preventDefault();
     // No text selection or native drag from the tray: either would take the pointer away (pointercancel).
     if (item) e.preventDefault();
     // A primary pointer going down means no other is down: drop any whose pointerup never came.
@@ -604,7 +662,11 @@ ${STYLE}
     const target = e.target.closest?.("[data-kind]");
     const kind = target?.getAttribute("data-kind");
     const base = { start: [e.clientX, e.clientY], view0: this._view, moved: false };
-    if (item?.hasAttribute("data-group")) this._drag = { ...base, kind: "group", key: item.getAttribute("data-group") };
+    if (listed) {
+      this._drag = { ...base, kind: "point", key: listed.getAttribute("data-point") };
+      this._picked = this._drag.key;
+      this._selected = null;
+    } else if (item?.hasAttribute("data-group")) this._drag = { ...base, kind: "group", key: item.getAttribute("data-group") };
     else if (item) this._drag = { ...base, kind: "tray", key: item.getAttribute("data-key") };
     else if (editing && this._tool === "move" && kind === "point") {
       this._drag = { ...base, kind: "point", key: target.getAttribute("data-key") };
@@ -613,14 +675,19 @@ ${STYLE}
     }
     else if (editing && this._tool === "move" && kind === "corner") {
       this._drag = { ...base, kind: "corner", area: target.getAttribute("data-area"), index: Number(target.getAttribute("data-index")) };
-    } else this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null };
+    } else {
+      // A cluster drags like the background (a pan); a tap on it opens its list.
+      const cluster = kind === "cluster" ? target.getAttribute("data-cluster") : null;
+      this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null, cluster };
+    }
   }
 
   // ---- tooltip: a sensor's photo (a plant's, from the plants component), name and readings ------
 
   _hover(e) {
     const marker = e.target.closest?.("g.marker[data-key]:not(.ghost)");
-    const item = !marker && e.target.closest?.(".tray [data-key]");
+    const cluster = !marker && e.target.closest?.("g.cluster");
+    const item = !marker && !cluster && e.target.closest?.(".tray [data-key], .cluster-list [data-point]");
     let content = null;
     const hoverKey = marker ? marker.getAttribute("data-key") : null;
     if (hoverKey !== this._hoverKey) {
@@ -630,6 +697,13 @@ ${STYLE}
     if (marker) {
       const point = this._floor?.points.find((p) => keyOf(p) === hoverKey);
       if (point) content = { key: `m:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities) };
+    } else if (cluster) {
+      const c = this._clusters(this._floor).get(cluster.getAttribute("data-cluster"));
+      if (c) content = { key: `c:${cluster.getAttribute("data-cluster")}:${c.points.length}`, ids: [],
+        name: c.points.map((p) => this._pointNames(p).join(" + ")).join(", ") };
+    } else if (item?.hasAttribute("data-point")) {
+      const point = this._floor?.points.find((p) => keyOf(p) === item.getAttribute("data-point"));
+      if (point) content = { key: `l:${keyOf(point)}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities) };
     } else if (item) {
       const c = tray(this._doc, this._hass).find((x) => x.key === item.getAttribute("data-key"));
       if (c) content = { key: `t:${c.key}`, name: candidateName(this._hass, c), ids: c.entities };
@@ -752,7 +826,10 @@ ${STYLE}
         else if (onto) this._edit(joinPoint(this._doc, this._floorId, keyOf(onto), c));
         else if (c) this._edit(addPoint(this._doc, this._floorId, c, this._at(e)));
       }
+    } else if (d.kind === "pan" && !d.moved && this._mode === "edit" && d.cluster !== null && d.cluster !== undefined) {
+      this._openCluster = d.cluster;
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
+      this._openCluster = null;
       this._tap(this._at(e), d.area);
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.

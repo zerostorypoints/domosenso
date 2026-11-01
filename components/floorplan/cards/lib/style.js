@@ -64,6 +64,16 @@ export const STYLE = `
   .marker rect, .marker polygon { stroke: var(--card-background-color, #fff); stroke-width: 2;
                                   vector-effect: non-scaling-stroke; }
   .marker.unplaced rect, .marker.unplaced polygon { fill-opacity: 0.4; stroke-dasharray: 3 2; }
+  .cluster circle { fill: var(--card-background-color, #fff); stroke: var(--primary-color); stroke-width: 2;
+                    vector-effect: non-scaling-stroke; cursor: pointer; }
+  .cluster text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; font-weight: 500; }
+  .cluster-list { position: absolute; z-index: 2; max-height: 50%; overflow-y: auto; min-width: 160px;
+                  padding: 6px; background: var(--card-background-color, #fff); user-select: none;
+                  -webkit-user-select: none; border: 1px solid var(--divider-color); border-radius: 8px;
+                  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); font-size: 13px; }
+  .cluster-list[hidden] { display: none; }
+  .cluster-list .item { padding: 4px 6px; border-radius: 6px; cursor: grab; touch-action: none; white-space: nowrap; }
+  .cluster-list .item:hover { background: var(--secondary-background-color); }
   .tip { position: absolute; z-index: 2; pointer-events: none; max-width: 180px; padding: 6px;
          background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
          border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); font-size: 12px; }

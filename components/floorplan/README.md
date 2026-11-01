@@ -81,6 +81,9 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
   integration, by Cast and by DLNA): drop the extra devices from the tray onto the marker. They
   become part of that point (`also` in the stored plan): their readings show on it, their names in
   its tooltip. The tapped point's panel lists them; **Separate** puts one back in the tray.
+- **Clusters:** the devices edit mode puts down in one room, not dragged yet, show as one dot with
+  their count. Tap it to open their list; drag each device from the list to where it stands (it
+  leaves the cluster), or tap one to set its category. A tap elsewhere closes the list.
 - **Links:** hovering a marker, or tapping it in edit mode, draws lines to the devices it reaches
   Home Assistant through and to those that reach it through this one (Home Assistant's
   `via_device_id`): a bulb to its bridge, a hub to its sensors, a mesh node to its satellites.
