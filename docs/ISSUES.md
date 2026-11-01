@@ -9,8 +9,8 @@ implementer can hold a pull request to it.
 - **Checker:** `uv run tools/issue_check.py <file.md>` (a draft) or `--issue <n>` (a filed issue)
   checks everything that can be checked mechanically. It prints `ok` or `FAIL <n> error(s)`.
 - **Skills:** `write-issue` drafts issues and user stories from a session, notes or a request;
-  `review-issue` checks one and gives a verdict; `triage-issues` ranks the open backlog, proposes
-  labels and picks the next issue to work on. All three follow this page.
+  `review-issue` checks one and gives a verdict; `triage-issues` closes what landed, groups and ranks the
+  open backlog, proposes labels and lays out the next scope (one issue or a group). All three follow this page.
 
 The `release-reminder` issue is written by the Release reminder workflow, not by a person: it
 lists components waiting for a tag or the website, is not triaged and closes itself when nothing
