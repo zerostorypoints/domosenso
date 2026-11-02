@@ -301,7 +301,7 @@
           "preview": "/previews/presence.svg",
           "previewType": "illustration",
           "layout": "Native Home Assistant cards; no dedicated tablet layout declared.",
-          "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+          "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
           "evidencePath": "components/bermuda-presence/cards/presence-rooms.yaml"
         }
       ],
@@ -311,8 +311,8 @@
         "Optionally wire the radar using its guide; verify radar presence separately from BLE room estimates."
       ],
       "id": "bermuda-presence",
-      "version": "0.2.1",
-      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "version": "0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "evidencePaths": [
         "components/bermuda-presence/component.yaml"
       ],
@@ -1263,7 +1263,7 @@
         },
         {
           "id": "bermuda-presence",
-          "version": "0.2.1"
+          "version": "0.3.0"
         }
       ],
       "body": "# HLK-LD2410C radar: wiring and setup\n\nA Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already runs as a\n`bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a\nradar like this to wake its screen. Device file: [hlk-ld2410c.yaml](https://github.com/zerostorypoints/domosenso/blob/1578932c0a7013b73016b110ca10acc5eda2dc00/devices/hlk-ld2410c.yaml).\n\n## Wiring\n\n![HLK-LD2410C on an M5Stack Atom Lite: 5V to VCC, G to GND, G22 to TX, G19 to RX, OUT not connected](/wiring/hlk-ld2410c-atom-lite.svg)\n\n| Atom Lite (bottom header) | HLK-LD2410C | wire | why |\n|---|---|---|---|\n| 5V | VCC | red | the module needs 5 V; **never 3V3** |\n| G | GND | black | |\n| G22 | TX | purple | the Atom receives on G22 (`rx_pin: GPIO22`) |\n| G19 | RX | green | the Atom sends on G19 (`tx_pin: GPIO19`) |\n| — | OUT | — | not connected: presence comes over the UART |\n\nSource: `components/bermuda-presence/esphome/ld2410.yaml`, the wiring of the first home's boards.\nThe labels are the ones printed on the Atom and on the module; the diagram shows which socket goes to\nwhich pin, not where they sit on the boards. Colours are a convention: any colour works if both ends\nmatch. The Grove port stays free.\n\n## Firmware\n\nThe board's thin device file pulls the radar package next to the proxy package; with\n`radar: true` on that proxy in the component's inputs, `domosenso add` writes it so (SPEC-015):\n\n```yaml\npackages:\n  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/<version>\n  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/<version>\n```\n\nThen `esphome config`, `compile` and a flash, as for any proxy (`components/bermuda-presence/README.md`).\nThe UART runs at 256000 baud, the module's factory setting.\n\n## After the first start\n\n- The module keeps its settings (gates, thresholds, timeout, its own Bluetooth) in its own flash:\n  set them once from Home Assistant; they survive a reflash of the Atom.\n- Engineering mode is the one setting it forgets on a restart, and the light reading only comes in\n  engineering frames, so the package switches it back on 10 s after every boot.\n- New entities on the proxy's device: presence, moving and still target, detection distance and\n  the others listed under `features.radar` in `components/bermuda-presence/component.yaml`.\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| no radar entities at all | the device file lacks the `radar:` package line |\n| radar entities `unavailable` or never changing | TX and RX swapped (TX must go to G22), or VCC on 3V3 |\n| the Atom resets or drops off Wi-Fi when the radar is plugged in | a weak USB supply: the radar draws its power through the Atom; use a plain 5 V USB supply (the `power` note on `ble-proxy` in `components/bermuda-presence/component.yaml`) |\n| presence that never clears with nobody there | sensitivity and gates, set from Home Assistant; the module keeps them |\n\nThe last two rows are inference from how the module and the board are powered and set up, not\ncases seen in the first home.",
@@ -1324,7 +1324,7 @@
       "compatibility": [
         {
           "id": "bermuda-presence",
-          "version": "0.2.1"
+          "version": "0.3.0"
         },
         {
           "id": "awnings",

@@ -276,9 +276,9 @@
     },
     {
       "id": "bermuda-presence",
-      "version": "0.2.1",
-      "sourceTag": "bermuda-presence/0.2.1",
-      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "version": "0.3.0",
+      "sourceTag": "bermuda-presence/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda",
       "requirements": [
         {
@@ -352,6 +352,11 @@
           "required": false
         },
         {
+          "name": "radar_sources",
+          "type": "list[{entity: entity_id, label: string, distance?: entity_id, room?: slug}]",
+          "required": false
+        },
+        {
           "name": "proxies",
           "type": "list[{room: slug, area: area_name, radar: bool}]",
           "required": true
@@ -372,8 +377,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/67a289d6e61bc7325f389f068c38610262a09c1f/components/bermuda-presence",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/67a289d6e61bc7325f389f068c38610262a09c1f/components/bermuda-presence/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/bermuda-presence",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/bermuda-presence/UPGRADE.md"
     },
     {
       "id": "calendar",
