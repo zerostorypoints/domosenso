@@ -1,6 +1,6 @@
 # Domosenso component manifest: a calendar from a CalDAV server.
 id: calendar
-version: 0.1.0
+version: 0.2.0
 summary: Calendar events from a CalDAV server, for example iCloud, or an ICS link
 description_key: meta.description
 photo: null

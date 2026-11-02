@@ -1,7 +1,7 @@
 # Domosenso component manifest: room temperature and humidity from Tapo sensors, air quality from
 # a Ruuvi Air; from 0.2.0 a package with whole-home figures (SPEC-004).
 id: climate-air
-version: 0.2.0
+version: 0.3.0
 summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
 description_key: meta.description
 photo: null

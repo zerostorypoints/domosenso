@@ -3,7 +3,7 @@
 # connection; Home Assistant's own login (with two-factor) is the gate and Cloudflare blocks every
 # country the household is not in. SPEC-012. The proxy settings are not files: `domosenso http`.
 id: remote-access
-version: 0.1.0
+version: 0.2.0
 summary: Home Assistant from anywhere through a Cloudflare Tunnel, no open port, a country allow-list
 description_key: meta.description
 photo: null

@@ -123,3 +123,24 @@ After explicit component-source selection is enabled for a frame, an empty selec
 an explicit opt-out. Legacy entity-level artifact enrichment must not reactivate a removed or
 reassigned role. Direct/manual adapters stay separate. A shared ambient sensor does not make two
 plants the same subject; plant identity and assessment-source identities must remain distinct.
+
+## Pending component releases
+
+These versions are prepared on the feature branch, not published tags. Release only from the
+reviewed commit after it reaches `main`; existing tags must never be moved.
+
+| Component | Previous version | Prepared version |
+|---|---|---|
+| audio-sensor | 0.3.0 | 0.4.0 |
+| awnings | 0.2.1 | 0.3.0 |
+| backup | 0.1.0 | 0.2.0 |
+| bermuda-presence | 0.2.1 | 0.3.0 |
+| calendar | 0.1.0 | 0.2.0 |
+| climate-air | 0.2.0 | 0.3.0 |
+| floorplan | 0.3.1 | 0.4.0 |
+| lights | 0.2.0 | 0.3.0 |
+| media | 0.1.0 | 0.2.0 |
+| plants | 0.3.1 | 0.4.0 |
+| ramka | 0.11.0 | 0.12.0 |
+| remote-access | 0.1.0 | 0.2.0 |
+| weather | 0.1.0 | 0.2.0 |

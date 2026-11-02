@@ -2,7 +2,7 @@
 # 0.2.0 a package with room lights that follow the bulbs, a lights-on count and the lowest battery
 # (SPEC-008).
 id: lights
-version: 0.2.0
+version: 0.3.0
 summary: Philips Hue lights per room, from the bridge's room groups
 description_key: meta.description
 photo: null

@@ -1,7 +1,7 @@
 # Domosenso component manifest: nightly Home Assistant backups with a rolling retention, sensors
 # that show whether backups happen, and a push when they stop. SPEC-003.
 id: backup
-version: 0.1.0
+version: 0.2.0
 summary: Nightly full backup, catch-up after a start, rolling retention, backup sensors and a stale alert
 description_key: meta.description
 photo: null

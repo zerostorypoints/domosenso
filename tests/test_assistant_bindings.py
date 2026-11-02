@@ -341,3 +341,21 @@ def test_plant_defaults_live_in_pinned_component(tmp_path):
     assert binding['subjects'][0]['limits']['min_moisture'] == 18
     assert package['plant']['fern']['min_moisture'] == 18
     assert not (tmp_path / 'out/_plant-rows.jinja').exists()
+
+
+def test_lights_room_and_explicit_source_compile_as_one_subject():
+    from assistant_contract import compile_profile
+    root = ROOT / 'components' / 'lights'
+    inputs = {
+        'rooms': [{'id': 'office', 'name': 'Office', 'group': 'light.office_group'}],
+        'lights': [{'entity': 'light.room_office', 'label': 'Office alias'},
+                   {'entity': 'light.desk', 'label': 'Desk'},
+                   {'entity': 'light.desk', 'label': 'Desk alias'}],
+    }
+    env = _make_env(root, inputs, 'en', {}, {})
+    bindings = yaml.safe_load(env.get_template('assistant-bindings.yaml.j2').render())
+    manifest = yaml.safe_load((root / 'component.yaml').read_text())
+    profile = compile_profile(root, manifest, bindings, manifest['version'], 'a' * 40, True)
+    subjects = profile['bindings']['subjects']
+    assert [s['key'] for s in subjects] == ['light.room_office', 'light.desk']
+    assert subjects[0]['label'] == 'Office'

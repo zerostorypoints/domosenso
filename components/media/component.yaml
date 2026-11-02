@@ -1,7 +1,7 @@
 # Domosenso component manifest: a network audio player as a Home Assistant media player. The
 # Ramka's music view and the now-playing card read it (media_player_contract in components/ramka).
 id: media
-version: 0.1.0
+version: 0.2.0
 summary: A network audio player as a media_player; tested with the Hegel H400 through hegel_streaming
 description_key: meta.description
 photo: null

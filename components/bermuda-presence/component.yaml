@@ -2,7 +2,7 @@
 # first filled from a real home on 2026-10-20. Fields marked "pilot:" are additions the format
 # needed; see docs/pilot-bermuda-presence.md.
 id: bermuda-presence
-version: 0.2.1
+version: 0.3.0
 summary: Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda
 description_key: meta.description
 photo: null

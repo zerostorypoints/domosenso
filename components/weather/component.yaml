@@ -1,6 +1,6 @@
 # Domosenso component manifest: weather from Met.no.
 id: weather
-version: 0.1.0
+version: 0.2.0
 summary: Current weather and forecast from the Norwegian Meteorological Institute (Met.no)
 description_key: meta.description
 photo: null
