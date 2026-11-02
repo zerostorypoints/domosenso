@@ -25,6 +25,9 @@ def generate(config: Path) -> None:
         'climate-air': {'climate': [{'label': {'en': 'Office', 'pl': 'Pokój'},
                                    'temperature': 'sensor.demo_temperature'}]},
         'floorplan': {},
+        'plants': {'plants':[{'entity':'plant.demo_fern','name':{'en':'Fern','pl':'Paproć','de':'Farn'},
+                              'label':{'en':'Office','pl':'Gabinet','de':'Büro'},
+                              'min_moisture':30,'max_moisture':65}]},
     }
     for component_id, inputs in examples.items():
         component = ROOT / 'components' / component_id
@@ -33,7 +36,7 @@ def generate(config: Path) -> None:
         bindings = yaml.safe_load(env.get_template('assistant-bindings.yaml.j2').render())
         artifact = compile_profile(component, manifest, bindings, manifest['version'], revision, True)
         (destination / f'{component_id}.yaml').write_text(yaml.safe_dump(artifact, allow_unicode=True, sort_keys=False))
-    print('ok fictional assistant profiles: climate-air, floorplan')
+    print('ok fictional assistant profiles: '+', '.join(examples))
 
 
 if __name__ == '__main__':

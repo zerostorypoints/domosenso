@@ -4,11 +4,39 @@ Implementation of [SPEC-029](../.ai/specs/SPEC-029-2026-10-31-assistant-componen
 This contract is unreleased. Component metadata, a compatible Frame HA bridge and a compatible
 Frame app are required together; a file in the catalog alone does not enable voice answers.
 
+## Shared metadata with the floorplan
+
+SPEC-028 Amendment 5 made `categories/` catalog-wide. Its definitions, `kinds/` and `devices/`
+classify hardware and additional roles; the CLI and floorplan share category fixtures and generated
+rules. Reuse these definitions for discovery and grouping. A category is not a capability, an
+entity binding, an assessment policy or a permission grant. For example, a climate role does not
+establish that a measurement is indoor temperature or authorize reading it.
+
+The HA entity/device/area registry owns installed identities and explicit location relationships.
+Floorplan geometry, manually joined hardware and inferred room-name matches serve presentation;
+they must not silently become assistant authorization or authoritative room identities. Component
+metadata owns domain semantics: plants already publishes `sensors`, `domosenso_names`,
+`domosenso_rooms` and `domosenso_bands` used by cards. The assistant bindings template reuses the
+same `_plant-rows.jinja` normalization as the plant package, rather than defining another set of
+names, sources or thresholds in Android.
+
+The runtime path is therefore: shared catalog discovery, installed component definitions and
+private bindings, endpoint exposure and HA permissions, typed query/evidence, then localized
+screen and speech presentation. `assistant.yaml` adds supported questions, required facts,
+freshness and interpretation to the shared metadata. Existing query/answer types remain bounded
+implementations in the bridge and app; metadata alone cannot introduce an arbitrary new operation.
+
+A working floorplan or plant card does not prove that the assistant is connected. Diagnose these
+separately: the compiled private bundle exists; its provenance matches the installed inventory;
+the endpoint exposes the required source roles; the HA user can read them; and the reported values
+have sufficient evidence. Do not work around a missing bundle by accepting category membership,
+entity-name guesses or a fresh timestamp on an aggregate as proof of a current measurement.
+
 ## Installation and update
 
 Use a current source checkout of the catalog tooling (`uv sync`; Python 3.11.4 or newer). A home
 keeps its normal input files and component lock. No helper values or dashboard settings need to
-change. Upgrade the tooling before adopting component releases that declare `assistant`.
+change. Explicit endpoint exposure is still required and is stored by the Frame integration. Upgrade the tooling before adopting component releases that declare `assistant`.
 
 1. Install a compatible Frame HA integration through HACS and pair the Frame app using its wizard.
 2. Update the selected components using their released tags and the normal `domosenso update`
@@ -18,7 +46,8 @@ change. Upgrade the tooling before adopting component releases that declare `ass
    `domosenso/assistant/<component-id>.yaml` in the HA config directory. Deployment uses the normal
    hash check, backup and restart. The files must never be served under `www` or included as YAML
    packages. They contain private entity mappings and labels.
-4. In the Frame endpoint's mapping editor, share the intended sources. Calendar and presence are
+4. In the integration's **Assistant sources** view, select the frame, review verified component
+   bindings and save the intended sources. Component explanations are separately opt-in. Calendar and presence are
    sensitive and require explicit exposure. Automatic component discovery is a suggestion, not a
    permission grant. HA user permissions still apply to each source.
 5. Ask what the assistant can do, then a question in the HA user's Polish or English language.
@@ -83,4 +112,14 @@ cancellation. Unit tests are not physical tablet, voice-quality or live-provider
 Use only the fictional demo home in shared fixtures. Household labels, addresses, calendars,
 tokens and real entity ids belong in the private home repository, never this catalog.
 
-For a cross-repository bootstrap test, `uv run python tests/generate_assistant_profiles.py <fresh-test-config>` emits two fictional compiler bundles. Use that directory as the Frame bridge smoke test config, following its `docs/assistant.md`. The test must load the real bundles, supply matching fictional inventory, pair a test device and reject queries after revocation. This is HA bootstrap and handler evidence, not an HTTP/WebSocket transport or physical-device test.
+The Frame integration stores selected component source identities as references, not copies of
+labels or thresholds. A compatible component update can update its descriptions and policy; a
+reassigned source or new role requires renewed selection. Removed/mismatched metadata disables
+component-backed queries. Vanilla manual mappings remain a separate, explicit path.
+
+For a cross-repository bootstrap test, `uv run python tests/generate_assistant_profiles.py <fresh-test-config>` emits three fictional compiler bundles (climate-air, plants and floorplan). Use that directory as the Frame bridge smoke test config, following its `docs/assistant.md`. The test must load the real bundles, supply matching fictional inventory, pair a test device and reject queries after revocation. This is HA bootstrap and handler evidence, not an HTTP/WebSocket transport or physical-device test.
+
+After explicit component-source selection is enabled for a frame, an empty selection remains
+an explicit opt-out. Legacy entity-level artifact enrichment must not reactivate a removed or
+reassigned role. Direct/manual adapters stay separate. A shared ambient sensor does not make two
+plants the same subject; plant identity and assessment-source identities must remain distinct.
