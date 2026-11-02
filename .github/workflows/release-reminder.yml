@@ -49,7 +49,7 @@ jobs:
             echo "Automatic reminder from the Release reminder workflow at main $(git rev-parse --short HEAD). Not a work item to triage (docs/ISSUES.md)."
             echo
             echo "- \`untagged\`: a version bump merged but not tagged yet: the Release workflow tags it once main's required checks pass; if it failed, read its run (or tag by hand with \`uv run tools/release.py <id>\`)."
-            echo "- \`unpublished\`: finish and merge the Release workflow's \`website: publish <id> <version>\` pull request (the \`domosenso-website-audit\` skill)."
+            echo "- \`unpublished\`: finish and merge the Release workflow's \`website: publish …\` pull request (the \`domosenso-website-audit\` skill)."
             echo
             cat status.md
           } > body.md

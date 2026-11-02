@@ -139,3 +139,22 @@ for the required checks only, not `demo`; (4) no reviewer is named by the workfl
   merged commit; "Framework checks" is repeated by the gate. A run takes the gate's time
   (about 20 minutes) per component it tags.
 
+## Amendment 2 (2026-11-02, the maintainer): one website PR per run
+
+Settles open question 2 the other way. #175 raised thirteen versions in one merge for one shared
+change (assistant metadata); the workflow opened eleven website PRs (#176–#184, #186, #187) that
+each changed `publication.json` and the generated content, so each conflicted with the next after
+the first merge, and each asked for the same texts and its own audit note. The maintainer chose one
+combined PR (2026-11-02) and asked for the workflow to do that from now on.
+
+- The tag loop is unchanged: `release.py <id>` and one push per untagged component.
+- Then, for the tags pushed in the run, one branch from the merged commit: one tag keeps
+  `release/website-<id>-<version>` and the title `website: publish <id> <version>`; several get
+  `release/website-<short sha>` and `website: publish <n> releases from <short sha>`.
+- `publish_release.py <id> --no-export` for each tag on that branch, then one
+  `export_website.py --verify-remote`, one commit, one push, one PR. A component the website does not
+  list yet fails as before (`::error::`) and is left out of the PR; the others still go in.
+- The body lists the tags, the checklist once (one audit note for the PR), and each component's
+  `## <version>` entry of UPGRADE.md in its own collapsed section.
+- Tests: `tests/test_release_workflow.py::test_one_website_pull_request_per_run`.
+
