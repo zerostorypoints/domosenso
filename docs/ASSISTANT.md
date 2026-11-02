@@ -82,3 +82,5 @@ cancellation. Unit tests are not physical tablet, voice-quality or live-provider
 
 Use only the fictional demo home in shared fixtures. Household labels, addresses, calendars,
 tokens and real entity ids belong in the private home repository, never this catalog.
+
+For a cross-repository bootstrap test, `uv run python tests/generate_assistant_profiles.py <fresh-test-config>` emits two fictional compiler bundles. Use that directory as the Frame bridge smoke test config, following its `docs/assistant.md`. The test must load the real bundles, supply matching fictional inventory, pair a test device and reject queries after revocation. This is HA bootstrap and handler evidence, not an HTTP/WebSocket transport or physical-device test.

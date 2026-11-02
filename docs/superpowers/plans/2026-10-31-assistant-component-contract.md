@@ -57,10 +57,10 @@ Files in separate Frame HA repo: new assistant_contract.py, assistant_data.py, a
 __init__.py profile/setup; studio_sources.py/mapping UI; tests/ and docs/assistant.md.
 Interfaces: profile endpoint assistantVersion=1; assistant_capabilities and assistant_query as SPEC-029.
 Consume Task 1 envelope and manual endpoint mappings; return spec typed response/evidence.
-- [ ] Write failing pure adapter, schema, permissions, unknown-source, live-policy and date tests.
-- [ ] Observe RED; implement definitions loader, identity matching, allowlisted source adapters and routes.
-- [ ] Implement all 12 scopes, explanation-only remote-access, explicit sensitive exposure/mapping.
-- [ ] Observe GREEN; fresh fake-HA Domosenso and vanilla instances return equivalent normalized answers.
+- [x] Write failing pure adapter, schema, permissions, unknown-source, live-policy and date tests.
+- [x] Observe RED; implement definitions loader, identity matching, allowlisted source adapters and routes.
+- [x] Implement all 13 scopes, explanation-only remote-access, explicit sensitive exposure/mapping.
+- [x] Observe GREEN; fresh fake-HA Domosenso and vanilla instances return equivalent normalized answers.
 
 ## Task 3: Android negotiation and PL/EN conversation
 
@@ -68,23 +68,23 @@ Files in app repo: src/assistant/{protocol,intent,format}.ts, src/ha/protocol.ts
 App.tsx, src/voice/VoicePanel.tsx, tests/assistant*.test.mjs and lifecycle fixtures.
 Interfaces: negotiate typed capabilities after pairing; route help and matching PL/EN intents;
 retain old getData fallback for old bridges; cancellation/epoch checks around all async stages.
-- [ ] Write failing protocol, natural-question, qualified-speech and legacy/lifecycle tests.
-- [ ] Observe RED; implement bounded validators, intent routing and deterministic responses.
-- [ ] Wire actual app panel/QVAC speech to new request path without changing model C/native screen behavior.
-- [ ] Observe GREEN in both languages, all domains, old bridge and source permission failure.
+- [x] Write failing protocol, natural-question, qualified-speech and legacy/lifecycle tests.
+- [x] Observe RED; implement bounded validators, intent routing and deterministic responses.
+- [x] Wire actual app panel/QVAC speech to new request path without changing model C/native screen behavior.
+- [x] Observe GREEN in both languages, all domains, old bridge and source permission failure.
 
 ## Task 4: Cross-repository acceptance and documentation
 
 Files: shared fictional protocol fixtures in framework tests/fixtures/assistant and pinned copies in consumers;
 repository docs/assistant and installation/update instructions.
-- [ ] Run the same fixtures through compiler, bridge and client, detecting schema mismatch.
-- [ ] Verify actual HA startup/reload/read routes in isolated fictional staging if available; no production.
+- [x] Run the same fixtures through compiler, bridge and client, detecting schema mismatch.
+- [x] Verify actual HA startup/reload/read routes in isolated fictional staging if available; no production.
 - [ ] Framework check-all, bridge suite, app suite/typecheck/lint; build Android if native packaging changes.
 - [ ] Record exact results, source revisions, remaining runtime limits and reusable install/update steps.
 
 ## Task 5: Independent final review
 
-- [ ] Fresh review in owned worktrees: spec coverage, access filtering and source provenance.
+- [x] Fresh review in owned worktrees: spec coverage, access filtering and source provenance.
 - [ ] Fix material findings with regression tests; verify changed areas.
 - [ ] Prepare reviewable branch changes; no push/publish/deploy without task authorization.
 
@@ -130,3 +130,5 @@ reviewed component tags and bridge/app releases exist. Existing public site beha
 ## Resume on 2026-11-02
 
 Main integration: d997beb, preserving new Ramka previews/music settings and floorplan 0.3.1. Assistant specification renumbered SPEC-029 to avoid main SPEC-024 collision. Reviewer fixes move all binding normalization into pinned component templates, correct upstream source ownership, preserve translated plant roomLabel, and classify awning wind as reported state. Focused compiler/binding tests: 41 passed. Full checks pending after integration. No production changes.
+
+Verification on 2026-11-02: framework at 45c90ba passed full check-all (1495 Python tests, 699 card tests, fresh staging lifecycle, all HA/ESPHome configuration checks). Real HA 2026.9.2 bootstrap and registered-handler smoke loaded compiler-generated climate-air/floorplan artifacts, verified signed pairing and approval, returned qualified unknown-source readings and an installed floorplan explanation, and denied the query after device revocation. No HTTP WebSocket transport, browser or physical-device acceptance is implied. Bridge initially passed 76 tests; app passed 275 after floorplan/fixture integration. Independent whole-change review found source adapter, partial-provider coverage, localized labels, forecast condition and spoken truncation issues; the bridge/app follow-up fixes and final cross-fixture verification remain in progress.
