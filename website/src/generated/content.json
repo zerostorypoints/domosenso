@@ -720,8 +720,8 @@
         "Check playback, metadata and standby; an optional mains meter needs separately verified model-specific installation."
       ],
       "id": "media",
-      "version": "0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "evidencePaths": [
         "components/media/component.yaml"
       ],
@@ -1239,7 +1239,7 @@
       "compatibility": [
         {
           "id": "media",
-          "version": "0.1.0"
+          "version": "0.2.0"
         }
       ],
       "body": "## Configure the amplifier\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. The indexed meter is the [Shelly PM Mini Gen3](/devices/shelly-pm-mini-gen3/); other meters need their own verification. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
@@ -1397,7 +1397,7 @@
       "compatibility": [
         {
           "id": "media",
-          "version": "0.1.0"
+          "version": "0.2.0"
         }
       ],
       "body": "# Shelly PM Mini Gen3: wiring behind a socket\n\nA small power meter for the wall box (model S3PM-001PCEU16). It sits in series with a socket's phase\nand only measures: power, voltage, current and energy of what is plugged in. It does not switch.\nHome Assistant reads it locally through the core `shelly` integration, without a cloud account.\nIn DomoSenso it is the `mains-meter` behind the music player: map its power and voltage sensors to\nRamka's `mains` input and the now-playing view shows the player's draw and voltage.\nDevice file: [shelly-pm-mini-gen3.yaml](https://github.com/zerostorypoints/domosenso/blob/1578932c0a7013b73016b110ca10acc5eda2dc00/devices/shelly-pm-mini-gen3.yaml).\n\n## Wiring\n\n![Shelly PM Mini Gen3 in a socket's wall box: the supply and onward phase meet in connector L, lead A goes to Shelly L, lead B from Shelly O to the socket's L; connector N feeds the socket's N (lead C) and Shelly N (lead D); the onward N and both PE stay in the socket](/wiring/shelly-pm-mini-gen3-socket.svg)\n\n| lead | from | to |\n|---|---|---|\n| A | connector L (supply phase, onward phase) | Shelly L |\n| B | Shelly O | socket L |\n| C | connector N (supply neutral) | socket N |\n| D | connector N | Shelly N |\n\n- The onward phase, to the next socket on the circuit, joins in connector L, before the meter. Only\n  what is plugged into this socket is measured; the next sockets are not.\n- The onward neutral and both protective earths stay in the socket insert, as before.\n- The two O terminals on the case are bridged inside; one is enough.\n- Leads: short pieces of the supply's cross-section. The Shelly's screw terminals take 0.5 to 4 mm²,\n  stripped 6 to 7 mm, at 0.4 Nm; the circuit breaker must be type B or C, 16 A at most (Shelly's\n  specification). The connectors take the strip length printed on them.\n- This is the wiring of the first home's meter, behind a multiple socket with a three-way lever\n  connector for each of L and N. A socket with a switched outlet or a different terminal layout\n  needs its own plan.\n\n## Safety\n\nMains work. Switch off the circuit breaker and prove 0 V on L and N at the socket before touching a\nwire. Have it done by a qualified electrician, or only as far as your local rules allow you to do it\nyourself; some countries require an inspection afterwards. The drawing explains the connection, it\nis not an installation approval.\n\n## In Home Assistant\n\nThe `shelly` integration discovers the meter on the network. Check that the power and voltage\nsensors update while the player is playing and in standby. The catalog recognises the meter by the\nintegration and a model name containing PM Mini (`domosenso recommend --from-ha`).\n\n## Limits\n\nOne meter has been tested, in one home, behind one amplifier. Other metering Shelly models are\nreported as likely mains meters, not as indexed devices.\n\n## References\n\n- [Shelly PM Mini Gen3 — Shelly knowledge base](https://kb.shelly.cloud/knowledge-base/shelly-pm-mini-gen3)\n- [Shelly — Home Assistant](https://www.home-assistant.io/integrations/shelly/)",

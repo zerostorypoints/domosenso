@@ -588,9 +588,9 @@
     },
     {
       "id": "media",
-      "version": "0.1.0",
-      "sourceTag": "media/0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "sourceTag": "media/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "A network audio player as a media_player; tested with the Hegel H400 through hegel_streaming",
       "requirements": [
         {
@@ -617,7 +617,7 @@
           "feature": "mains"
         }
       ],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -639,10 +639,25 @@
           "name": "media_player",
           "type": "entity_id",
           "required": true
+        },
+        {
+          "name": "quality",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "service",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "mains",
+          "type": "{power?: entity_id, voltage?: entity_id}",
+          "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/media",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/media",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/media/UPGRADE.md"
     },
     {
       "id": "plants",

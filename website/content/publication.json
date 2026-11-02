@@ -66,9 +66,9 @@
     },
     {
       "id": "media",
-      "version": "0.1.0",
-      "tag": "media/0.1.0",
-      "commit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "tag": "media/0.2.0",
+      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
