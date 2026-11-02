@@ -3,9 +3,9 @@
   "components": [
     {
       "id": "audio-sensor",
-      "version": "0.3.0",
-      "sourceTag": "audio-sensor/0.3.0",
-      "sourceCommit": "934b653536616fc7b310cb430aae00a08d72b1e8",
+      "version": "0.4.0",
+      "sourceTag": "audio-sensor/0.4.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum",
       "requirements": [
         {
@@ -57,18 +57,18 @@
       "inputs": [
         {
           "name": "sensors",
-          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]",
+          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map, online?: entity_id}]",
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/934b653536616fc7b310cb430aae00a08d72b1e8/components/audio-sensor",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/934b653536616fc7b310cb430aae00a08d72b1e8/components/audio-sensor/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/audio-sensor",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/audio-sensor/UPGRADE.md"
     },
     {
       "id": "awnings",
-      "version": "0.2.1",
-      "sourceTag": "awnings/0.2.1",
-      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "version": "0.3.0",
+      "sourceTag": "awnings/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor",
       "requirements": [
         {
@@ -138,7 +138,7 @@
       "inputs": [
         {
           "name": "covers",
-          "type": "list[{name, shade_id, entity_id?}]",
+          "type": "list[{name, shade_id, entity_id?, room?}]",
           "required": true
         },
         {
@@ -197,14 +197,14 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/67a289d6e61bc7325f389f068c38610262a09c1f/components/awnings",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/67a289d6e61bc7325f389f068c38610262a09c1f/components/awnings/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/awnings",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/awnings/UPGRADE.md"
     },
     {
       "id": "backup",
-      "version": "0.1.0",
-      "sourceTag": "backup/0.1.0",
-      "sourceCommit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+      "version": "0.2.0",
+      "sourceTag": "backup/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Nightly full backup, catch-up after a start, rolling retention, backup sensors and a stale alert",
       "requirements": [],
       "integrations": [
@@ -271,14 +271,14 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/04d337cbd812e62abd9f6bb4f16b8db61179c2be/components/backup",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/backup",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/backup/UPGRADE.md"
     },
     {
       "id": "bermuda-presence",
-      "version": "0.2.1",
-      "sourceTag": "bermuda-presence/0.2.1",
-      "sourceCommit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "version": "0.3.0",
+      "sourceTag": "bermuda-presence/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda",
       "requirements": [
         {
@@ -352,6 +352,11 @@
           "required": false
         },
         {
+          "name": "radar_sources",
+          "type": "list[{entity: entity_id, label: string, distance?: entity_id, room?: slug}]",
+          "required": false
+        },
+        {
           "name": "proxies",
           "type": "list[{room: slug, area: area_name, radar: bool}]",
           "required": true
@@ -372,25 +377,31 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/67a289d6e61bc7325f389f068c38610262a09c1f/components/bermuda-presence",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/67a289d6e61bc7325f389f068c38610262a09c1f/components/bermuda-presence/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/bermuda-presence",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/bermuda-presence/UPGRADE.md"
     },
     {
       "id": "calendar",
-      "version": "0.1.0",
-      "sourceTag": "calendar/0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
-      "summary": "Calendar events from a CalDAV server, for example iCloud",
+      "version": "0.2.0",
+      "sourceTag": "calendar/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "summary": "Calendar events from a CalDAV server, for example iCloud, or an ICS link",
       "requirements": [],
       "integrations": [
         {
           "name": "caldav",
           "source": "core",
           "setup": "the server's URL, a user name and an app-specific password (iCloud: created in the Apple account's security settings)"
+        },
+        {
+          "name": "remote_calendar",
+          "source": "core",
+          "optional": true,
+          "setup": "instead of CalDAV: a calendar's ICS URL; read-only, refreshed once a day"
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -414,14 +425,14 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/calendar",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/calendar",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/calendar/UPGRADE.md"
     },
     {
       "id": "climate-air",
-      "version": "0.2.0",
-      "sourceTag": "climate-air/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.3.0",
+      "sourceTag": "climate-air/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air",
       "requirements": [
         {
@@ -490,7 +501,7 @@
       "inputs": [
         {
           "name": "climate",
-          "type": "list[{label, temperature, humidity?, indoor?, bathroom?, battery?}]",
+          "type": "list[{label, temperature, humidity?, room?, indoor?, bathroom?, battery?}]",
           "required": true
         },
         {
@@ -514,8 +525,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air/UPGRADE.md"
     },
     {
       "id": "floorplan",
@@ -554,9 +565,9 @@
     },
     {
       "id": "lights",
-      "version": "0.2.0",
-      "sourceTag": "lights/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.3.0",
+      "sourceTag": "lights/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Philips Hue lights per room, from the bridge's room groups",
       "requirements": [
         {
@@ -599,7 +610,7 @@
       "inputs": [
         {
           "name": "lights",
-          "type": "list[{entity, label}]",
+          "type": "list[{entity, label, room?}]",
           "required": true
         },
         {
@@ -618,14 +629,14 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/lights",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/lights/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/lights",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/lights/UPGRADE.md"
     },
     {
       "id": "media",
-      "version": "0.1.0",
-      "sourceTag": "media/0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "sourceTag": "media/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "A network audio player as a media_player; tested with the Hegel H400 through hegel_streaming",
       "requirements": [
         {
@@ -652,7 +663,7 @@
           "feature": "mains"
         }
       ],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -674,16 +685,31 @@
           "name": "media_player",
           "type": "entity_id",
           "required": true
+        },
+        {
+          "name": "quality",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "service",
+          "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "mains",
+          "type": "{power?: entity_id, voltage?: entity_id}",
+          "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/media",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/media",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/media/UPGRADE.md"
     },
     {
       "id": "plants",
-      "version": "0.3.1",
-      "sourceTag": "plants/0.3.1",
-      "sourceCommit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47",
+      "version": "0.4.0",
+      "sourceTag": "plants/0.4.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
       "requirements": [
         {
@@ -742,7 +768,7 @@
       "inputs": [
         {
           "name": "plants",
-          "type": "list[{entity: plant.*, label, name?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
+          "type": "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
           "required": true
         },
         {
@@ -776,8 +802,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/7be07cb1707ea10aa9e6277dd0cd860eee33bc47/components/plants",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/7be07cb1707ea10aa9e6277dd0cd860eee33bc47/components/plants/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/plants/UPGRADE.md"
     },
     {
       "id": "ramka",
@@ -1103,9 +1129,9 @@
     },
     {
       "id": "weather",
-      "version": "0.1.0",
-      "sourceTag": "weather/0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "sourceTag": "weather/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Current weather and forecast from the Norwegian Meteorological Institute (Met.no)",
       "requirements": [],
       "integrations": [
@@ -1116,7 +1142,7 @@
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -1140,8 +1166,8 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/weather",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/weather",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/weather/UPGRADE.md"
     }
   ]
 }
