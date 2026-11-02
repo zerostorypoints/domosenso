@@ -43,10 +43,11 @@ need a release follow-up; feature-branch work stays unpublished or explicitly la
 
 ## The Release workflow's pull request
 
-For a new tag the `Release` workflow (SPEC-027) opens `website: publish <id> <version>` (label
-`website-publish`) with the mechanical part done by `tools/publish_release.py`: the selection, the
-component's views and devices. Work on that branch: its body quotes the upgrade notes and lists what
-is left. Run the tool yourself (`uv run tools/publish_release.py <id>`) for a tag made by hand.
+For the tags of one run the `Release` workflow (SPEC-027) opens one pull request, `website: publish
+<id> <version>` for a single tag or `website: publish <n> releases from <commit>` for several (label
+`website-publish`), with the mechanical part done by `tools/publish_release.py`: the selection, the
+components' views and devices. Work on that branch: its body quotes each upgrade note and lists what
+is left; one audit note covers the whole pull request. Run the tool yourself (`uv run tools/publish_release.py <id>`) for a tag made by hand.
 
 ## Prepare and verify
 

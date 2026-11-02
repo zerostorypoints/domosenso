@@ -39,7 +39,7 @@ def test_release_tags_with_the_full_gate_and_never_forces():
     text = "\n".join(scripts(workflow("release.yml")))
     assert 'uv run tools/release.py "$id"' in text and "--skip-checks" not in text.replace("not --skip-checks", "")
     assert 'git push origin "refs/tags/$tag"' in text
-    assert 'uv run tools/publish_release.py "$id"' in text
+    assert 'uv run tools/publish_release.py "$id" --no-export' in text
     assert "gh workflow run release-reminder.yml" in text
     pushes = re.findall(r"git push[^\n;]*", text)
     assert len(pushes) == 2   # the tag, the website branch
@@ -48,10 +48,22 @@ def test_release_tags_with_the_full_gate_and_never_forces():
             assert not re.search(forbidden, push), (push, forbidden)
 
 
+def test_one_website_pull_request_per_run():
+    """Amendment 2: the tags of one run share a branch, one export and one pull request."""
+    text = "\n".join(scripts(workflow("release.yml")))
+    tag_loop, website = text.split('done < "$RUNNER_TEMP/untagged.txt"', 1)
+    assert "publish_release.py" not in tag_loop and "gh pr create" not in tag_loop
+    assert text.count("gh pr create") == 1 and text.count("git switch -q -c") == 1
+    assert text.count("uv run tools/export_website.py --verify-remote") == 1
+    assert 'branch="release/website-$id-$version"' in website   # one tag: the name it always had
+    assert 'title="website: publish $id $version"' in website
+    assert 'branch="release/website-$(git rev-parse --short "$SHA")"' in website
+
+
 def test_scratch_files_stay_out_of_the_checkout():
     """release.py refuses a checkout with untracked files."""
     text = "\n".join(scripts(workflow("release.yml")))
-    for name in ("status.txt", "untagged.txt", "body.md"):
+    for name in ("status.txt", "untagged.txt", "pushed.txt", "published.txt", "notes.md", "body.md"):
         assert re.findall(rf'\S*{re.escape(name)}', text) and all(
             "$RUNNER_TEMP" in m for m in re.findall(rf'"?\S*{re.escape(name)}"?', text)), name
 
