@@ -101,6 +101,7 @@ export const STYLE = `
   .marker text.value.main { font-weight: 600; }
   .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--secondary-text-color); }
   .legend .scale { width: 90px; height: 8px; border-radius: 4px; }
+  .legend .live { min-width: 9ch; font-variant-numeric: tabular-nums; }   /* no jitter as it changes */
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-left: 6px;
                    background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
   .open-wall-mask { stroke: var(--card-background-color, #fff); stroke-width: 3; vector-effect: non-scaling-stroke;

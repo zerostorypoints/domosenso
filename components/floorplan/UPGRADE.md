@@ -2,7 +2,6 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
-
 ## Unreleased: sound maps on the Audio and media layer
 
 - **Sound maps** (SPEC-028 Amendment 8, draft): with Audio and media shown alone and an audio sensor
