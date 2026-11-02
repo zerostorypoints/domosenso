@@ -12,9 +12,9 @@
     },
     {
       "id": "awnings",
-      "version": "0.2.1",
-      "tag": "awnings/0.2.1",
-      "commit": "67a289d6e61bc7325f389f068c38610262a09c1f",
+      "version": "0.3.0",
+      "tag": "awnings/0.3.0",
+      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
