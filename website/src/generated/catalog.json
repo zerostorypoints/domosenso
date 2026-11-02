@@ -519,9 +519,9 @@
     },
     {
       "id": "floorplan",
-      "version": "0.3.0",
-      "sourceTag": "floorplan/0.3.0",
-      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+      "version": "0.4.0",
+      "sourceTag": "floorplan/0.4.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "A floor plan of the home with rooms, sensor readings and plants at their positions",
       "requirements": [],
       "integrations": [
@@ -549,8 +549,8 @@
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ],
       "inputs": [],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/floorplan",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/floorplan/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/floorplan",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/floorplan/UPGRADE.md"
     },
     {
       "id": "lights",
@@ -781,9 +781,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.11.0",
-      "sourceTag": "ramka/0.11.0",
-      "sourceCommit": "4dbff5071f0d673e50ffa4bf188405a39b292fdc",
+      "version": "0.12.0",
+      "sourceTag": "ramka/0.12.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1098,8 +1098,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4dbff5071f0d673e50ffa4bf188405a39b292fdc/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",
