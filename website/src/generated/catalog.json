@@ -519,9 +519,9 @@
     },
     {
       "id": "lights",
-      "version": "0.2.0",
-      "sourceTag": "lights/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.3.0",
+      "sourceTag": "lights/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Philips Hue lights per room, from the bridge's room groups",
       "requirements": [
         {
@@ -564,7 +564,7 @@
       "inputs": [
         {
           "name": "lights",
-          "type": "list[{entity, label}]",
+          "type": "list[{entity, label, room?}]",
           "required": true
         },
         {
@@ -583,8 +583,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/lights",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/lights/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/lights",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/lights/UPGRADE.md"
     },
     {
       "id": "media",
