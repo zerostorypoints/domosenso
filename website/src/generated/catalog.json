@@ -1058,9 +1058,9 @@
     },
     {
       "id": "weather",
-      "version": "0.1.0",
-      "sourceTag": "weather/0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "sourceTag": "weather/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Current weather and forecast from the Norwegian Meteorological Institute (Met.no)",
       "requirements": [],
       "integrations": [
@@ -1071,7 +1071,7 @@
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -1095,8 +1095,8 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/weather",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/weather",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/weather/UPGRADE.md"
     }
   ]
 }
