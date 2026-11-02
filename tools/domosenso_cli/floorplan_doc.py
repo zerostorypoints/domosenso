@@ -46,6 +46,14 @@ def _refuse_duplicates(doc: dict) -> None:
             if room["area_id"] in areas:
                 raise DomosensoError(f"duplicate area_id on floor {label}: {room['area_id']}")
             areas.add(room["area_id"])
+        grouped = set()
+        for group in floor.get("open_spaces", []):
+            for area in group:
+                if area not in areas:
+                    raise DomosensoError(f"open space on floor {label}: {area} is not a room of the floor")
+                if area in grouped:
+                    raise DomosensoError(f"open space on floor {label}: {area} twice")
+                grouped.add(area)
         for point in floor["points"]:
             # A device joined to a point (`also`) is that point's as much as its own device is.
             for key in [point_key(point), *point.get("also", [])]:
@@ -143,7 +151,14 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
         lines += _compare("point", None, "move", old_floor["points"], new_floor["points"], label,
                           lambda p: (_round(p["x"]), _round(p["y"]), p["placed"]),
                           ("change", lambda p: (p.get("category"), p.get("also", []))))
+        if _open(old_floor) != _open(new_floor):
+            lines.append(("open", "change", label))
     return lines
+
+
+def _open(floor: dict) -> list:
+    """A floor's open spaces, the order inside and between groups left out."""
+    return sorted(sorted(group) for group in floor.get("open_spaces", []))
 
 
 def _compare(kind, id_field, changed, old_items, new_items, floor, signature, second=None):

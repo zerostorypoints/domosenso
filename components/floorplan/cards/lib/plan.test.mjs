@@ -4,7 +4,7 @@ import {
   POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
   extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName, keysOf, joinPoint,
-  separatePoint, registryLinks, pointCategory, presenceEntities,
+  separatePoint, registryLinks, pointCategory, presenceEntities, openSpaces, openRooms, closeRoom, facingWalls,
 } from "./plan.js";
 import { joinPolygons, centroid, pointInPolygon } from "./geometry.js";
 
@@ -489,4 +489,56 @@ test("a proxy with a radar is a radio with a presence role; its LED does not mak
   assert.deepEqual(pointCategory(radarHass, { ...point, category: "climate" }).roles, ["climate", "security"],
     "an override replaces the category and keeps the further roles");
   assert.deepEqual(presenceEntities(radarHass, point).sort(), ["binary_sensor.proxy_moving", "binary_sensor.proxy_presence"]);
+});
+
+// ---- open spaces (Amendment 7) ----------------------------------------------------------------
+
+const threeRooms = () => {
+  const d = doc();
+  d.floors[0].rooms.push({ area_id: "hall", polygon: sq(0, 4.1, 5, 2) });
+  return d;
+};
+const groupsOf = (d) => (d.floors[0].open_spaces || []).map((g) => [...g].sort()).sort();
+
+test("openSpaces: only valid groups, unknown and repeated areas dropped", () => {
+  const d = threeRooms();
+  d.floors[0].open_spaces = [["living_room", "ghost"], ["kitchen", "hall", "kitchen"]];
+  assert.deepEqual(openSpaces(d.floors[0]), [["kitchen", "hall"]]);
+  assert.deepEqual(openSpaces(doc().floors[0]), []);
+});
+
+test("openRooms puts two rooms in one open space and merges groups; closeRoom takes one out", () => {
+  let d = openRooms(threeRooms(), "ground", "living_room", "kitchen");
+  assert.deepEqual(groupsOf(d), [["kitchen", "living_room"]]);
+  d = openRooms(d, "ground", "hall", "kitchen");
+  assert.deepEqual(groupsOf(d), [["hall", "kitchen", "living_room"]], "the hall joins their group");
+  assert.equal(openRooms(d, "ground", "hall", "hall"), null);
+  assert.equal(openRooms(d, "ground", "hall", "ghost"), null);
+  d = closeRoom(d, "ground", "kitchen");
+  assert.deepEqual(groupsOf(d), [["hall", "living_room"]]);
+  d = closeRoom(d, "ground", "hall");
+  assert.ok(!("open_spaces" in d.floors[0]), "a group of one goes, and with no group the key goes");
+  assert.equal(closeRoom(d, "ground", "hall"), null, "not in an open space");
+});
+
+test("join, split and relink keep a room's open space", () => {
+  let d = openRooms(threeRooms(), "ground", "living_room", "hall");
+  const split = splitRoom(d, "ground", "living_room", [2, -0.01], [2, 4.01], "office");
+  assert.deepEqual(groupsOf(split), [["hall", "living_room", "office"]]);
+  const joined = joinRooms(d, "ground", "kitchen", "living_room");
+  assert.deepEqual(groupsOf(joined), [["hall", "kitchen"]], "the joined room takes the dropped one's place");
+  const linked = linkRoom(d, "ground", "living_room", "lounge");
+  assert.deepEqual(groupsOf(linked), [["hall", "lounge"]]);
+});
+
+test("facingWalls: the walls two rooms of a group show each other, within 0.3 m", () => {
+  const d = openRooms(threeRooms(), "ground", "living_room", "hall");
+  const walls = facingWalls(d.floors[0]);
+  // The living room's bottom wall (y 4) and the hall's top wall (y 4.1), where they overlap: 0..4.
+  assert.equal(walls.length, 2);
+  for (const [a, b] of walls) {
+    assert.ok(Math.abs(a[1] - b[1]) < 1e-9 && [4, 4.1].some((y) => Math.abs(a[1] - y) < 1e-9), JSON.stringify([a, b]));
+    assert.ok(Math.abs(Math.abs(a[0] - b[0]) - 4) < 1e-9, "along the living room's 4 m");
+  }
+  assert.deepEqual(facingWalls(threeRooms().floors[0]), [], "no open space: none");
 });

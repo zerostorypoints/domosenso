@@ -2,8 +2,9 @@
 // the dot when there is no room beside it). Pure: plan coordinates in metres, `px` metres per
 // screen pixel, so sizes are those the card draws (13 px text, 15 px a line).
 //
-// Each label tries spots round its dot, nearest first (below, above, right, left, the diagonals),
-// then the same farther out; it takes the spot with the lowest cost: crossing a wall, leaving the
+// Each label tries spots round its dot, nearest first (below, above, right, left, the diagonals,
+// below and above starting or ending at the dot),
+// then the same farther out (eight rings); it takes the spot with the lowest cost: crossing a wall, leaving the
 // dot's room, covering a label placed before it or any dot, then distance. A label that had to
 // move out of the first ring gets a leader line to its dot.
 
@@ -15,7 +16,7 @@ export const CHAR_EM = 0.55;   // an average character's width, in em
 const PAD_PX = 4;
 const GAP_PX = 12;        // from the dot's centre to the label's near edge, in the first ring
 const DOT_PX = 8;         // a dot's radius, as an obstacle
-const RINGS = 4;
+const RINGS = 8;      // a map's three-line labels need room farther out in a crowded row
 const COST = { wall: 1000, room: 500, label: 200, dot: 100, ring: 10 };
 
 // The box of a label whose top edge is centred on `[cx, top]`.
@@ -68,6 +69,11 @@ function spots([x, y], w, h, px) {
       { cx: x - g - w / 2, top: y + g * 0.5, ring },   // below left
       { cx: x + g + w / 2, top: y - g * 0.5 - h, ring }, // above right
       { cx: x - g - w / 2, top: y - g * 0.5 - h, ring }, // above left
+      // Below and above, starting or ending at the dot: a dot by a side wall has no centred spot.
+      { cx: x + w / 2, top: y + g, ring },
+      { cx: x - w / 2, top: y + g, ring },
+      { cx: x + w / 2, top: y - g - h, ring },
+      { cx: x - w / 2, top: y - g - h, ring },
     );
   }
   return out;
@@ -104,4 +110,26 @@ export function layoutLabels(items, { rooms = [], px, obstacles = [] }) {
     out.push({ key: it.key, box: best.box, cx: best.cx, top: best.top, leader: best.ring > 1 });
   }
   return out;
+}
+
+const NAME_PAD_PX = 6;
+
+// Where each room's name goes once the readings are laid out (view mode): its own spot (`at`, the
+// middle of the room's widest row) when no reading or dot covers it, else the first free one of the
+// room's corners, inset; with none free, its own spot. names: [{poly, at: [x, y], w, h}] (the
+// name's box, centred on `at`); taken: the readings' and dots' boxes. Returns [[x, y]] in order.
+export function placeNames(names, taken, px = 0) {
+  const pad = NAME_PAD_PX * px + 0.1;
+  return names.map(({ poly, at, w, h }) => {
+    const xs = poly.map((p) => p[0]);
+    const ys = poly.map((p) => p[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs) + pad + w / 2, Math.max(...xs) - pad - w / 2,
+      Math.min(...ys) + pad + h / 2, Math.max(...ys) - pad - h / 2];
+    for (const [cx, cy] of [at, [x0, y0], [x1, y0], [x0, y1], [x1, y1]]) {
+      const box = { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 };
+      if (!corners(box).every((c) => pointInPolygon(c, poly))) continue;
+      if (!taken.some((b) => overlaps(b, box))) return [cx, cy];
+    }
+    return at;
+  });
 }

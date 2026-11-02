@@ -20,20 +20,24 @@
       "tool": {
         "move": "Verschieben",
         "split": "Teilen",
-        "join": "Verbinden"
+        "join": "Verbinden",
+        "open": "Offen"
       },
       "hint": {
         "empty": "Dieses Stockwerk hat noch keine Räume und keine Sensoren.",
         "move": "Ziehen Sie Sensoren und Ecken. Doppelklick auf eine Wand fügt eine Ecke hinzu, auf eine Ecke entfernt sie. Tippen Sie auf einen Raum, um ihn einem Bereich zuzuordnen. Ein Gerät auf eine Markierung ziehen, wenn es dieselbe Hardware ist.",
         "split": "Tippen Sie auf zwei Punkte an den Wänden eines Raums.",
-        "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich."
+        "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich.",
+        "open": "Tippen Sie auf zwei Räume, die ohne Tür ineinander übergehen: ihre Wärmekarten teilen die Messwerte."
       },
       "area": {
         "label": "Bereich dieses Raums",
         "for_split": "Bereich des neuen Raums",
         "choose": "Bereich wählen",
         "new": "Neuer Bereich",
-        "create": "Erstellen"
+        "create": "Erstellen",
+        "open_to": "Offen zu: {rooms}",
+        "close_off": "Abtrennen"
       },
       "tray": {
         "title": "Nicht im Grundriss",
@@ -61,6 +65,28 @@
       "roles": {
         "also": "Erfasst auch:",
         "legend": "Ring: was ein Gerät ausserdem erfasst"
+      },
+      "maps": {
+        "temperature": "Temperatur",
+        "humidity": "Luftfeuchte",
+        "moisture": "Bodenfeuchte",
+        "carbon_dioxide": "CO₂",
+        "illuminance": "Licht",
+        "lamps": "Lampen",
+        "now": "Jetzt",
+        "day": "24 h, {figure}",
+        "figure": {
+          "temperature_min": "am kältesten",
+          "moisture_min": "am trockensten",
+          "illuminance_max": "am hellsten",
+          "carbon_dioxide_max": "am höchsten",
+          "mean": "Mittel"
+        },
+        "now_legend": "jetzt, pro Raum interpoliert",
+        "day_legend": "{figure} in den letzten 24 Stunden, pro Raum interpoliert",
+        "no_sensor": "kein Sensor im Raum",
+        "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
+        "off": "aus"
       }
     }
   }

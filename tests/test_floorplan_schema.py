@@ -234,3 +234,32 @@ def test_null_floor_duplicate_named():
     doc["floors"].append({"floor_id": None, "rooms": [], "points": []})
     with pytest.raises(DomosensoError, match="duplicate floor_id: -"):
         validate(doc)
+
+
+def test_open_spaces_valid_and_their_errors():
+    plan = demo()
+    plan["floors"][0]["open_spaces"] = [["living_room", "kitchen"]]
+    validate(plan)
+    for groups, message in (
+        ([["living_room", "office"]], "open space on floor ground: office is not a room of the floor"),
+        ([["living_room", "living_room"]], "open space on floor ground: living_room twice"),
+        ([["living_room", "kitchen"], ["kitchen", "living_room"]], "open space on floor ground: kitchen twice"),
+    ):
+        bad = demo()
+        bad["floors"][0]["open_spaces"] = groups
+        with pytest.raises(DomosensoError, match=message):
+            validate(bad)
+    one = demo()
+    one["floors"][0]["open_spaces"] = [["living_room"]]
+    with pytest.raises(DomosensoError):
+        validate(one)    # the schema: two rooms at least
+
+
+def test_diff_open_spaces_is_one_line_per_floor():
+    old = demo()
+    new = copy.deepcopy(old)
+    new["floors"][0]["open_spaces"] = [["living_room", "kitchen"]]
+    assert diff(old, new) == [("open", "change", "ground")]
+    same = copy.deepcopy(new)
+    same["floors"][0]["open_spaces"] = [["kitchen", "living_room"]]
+    assert diff(new, same) == [], "the order inside and between groups does not matter"

@@ -331,7 +331,12 @@ test("a row's lines: the room always, under it the action, else watered / water 
   globalThis.localStorage = window.localStorage;
   window.localStorage.setItem("domosenso.ramka.plants.page", "1");
   const plants = [plant("Dry", { moisture: 5 }), plant("Watered"), plant("C"), plant("D"), plant("E")];
-  const days = new Date(Date.now() - 5 * 86400000 - 3600000).toISOString();
+  // Noon five calendar days ago: the card counts calendar days, and "5 days and an hour ago" is
+  // six of them between midnight and one in the morning.
+  const at = new Date();
+  at.setDate(at.getDate() - 5);
+  at.setHours(12, 0, 0, 0);
+  const days = at.toISOString();
   const card = discoverCard({ lang: "en", plants, states: { "sensor.d1_last_watered": { state: days, attributes: {} } } });
   const row = (name) => listRows(card).find((r) => r.querySelector(".name").textContent === name);
   const lines = (name) => [row(name).querySelector(".rm").textContent, row(name).querySelector(".what").textContent];

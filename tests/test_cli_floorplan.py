@@ -318,3 +318,15 @@ def test_push_refuses_a_mangled_plan_on_the_target(home, capsys):
     line = out(capsys)[-1]
     assert line.startswith("FAIL ") and "area_id" in line and "unexpected" not in line
     assert dash.writes == []
+
+
+def test_push_plan_open_spaces_line(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    floors = [{**f, "open_spaces": [[r["area_id"] for r in f["rooms"]]]} for f in PLAN["floors"]]
+    write_plan(root, {**PLAN, "floors": floors})
+    assert cli(root, "push", "staging", "--plan") == 0
+    lines = out(capsys)
+    assert lines[0] == "open change ground" and lines[-1] == "ok", lines
