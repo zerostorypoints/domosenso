@@ -1,6 +1,6 @@
 # Domosenso component manifest: a calendar from a CalDAV server.
 id: calendar
-version: 0.1.0
+version: 0.2.0
 summary: Calendar events from a CalDAV server, for example iCloud, or an ICS link
 description_key: meta.description
 photo: null
@@ -21,13 +21,24 @@ inputs:
     type: "entity_id | list[entity_id]"
     example: calendar.family
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
   ha_packages: []
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "calendar.<calendar>", stability: stable, note: "state on while an event runs; events through the calendar.get_events action"}
+
+  upstream:
+    - {id: "calendar.<calendar>", owner: integration}
 
 consumes: []
 

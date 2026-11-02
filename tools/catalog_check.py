@@ -221,6 +221,12 @@ def check_component(path: Path) -> list[str]:
         errors.append(f"{path}: description_key '{data['description_key']}' cannot be resolved: {en_err}")
     elif data["description_key"] not in en:
         errors.append(f"{path}: description_key '{data['description_key']}' is not in translations/en.json")
+    if "assistant" in data:
+        from assistant_contract import load_definition
+        try:
+            load_definition(comp_dir, data, strict_translations=True)
+        except ValueError as exc:
+            errors.append(f"{path}: {exc}")
     return errors
 
 
@@ -248,6 +254,16 @@ def install_files(component_dir: Path, manifest: dict) -> list[str]:
     return sorted(files)
 
 
+def _translation_values(key, value):
+    if key.startswith("meta.assistant.") and key.endswith(".examples"):
+        if isinstance(value, list) and 1 <= len(value) <= 3 and all(
+            isinstance(item, str) and 1 <= len(item) <= 300 for item in value
+        ):
+            return value
+        return None
+    return [value] if isinstance(value, str) else None
+
+
 def check_translations(component_dir: Path) -> tuple[list[str], list[str]]:
     """Errors: invalid JSON, a key in de/pl that en lacks, ß in de. Warnings: a key en has that de/pl lack."""
     component_dir = Path(component_dir)
@@ -258,8 +274,8 @@ def check_translations(component_dir: Path) -> tuple[list[str], list[str]]:
     if en is None:
         return [en_err], []
     for key, value in en.items():
-        if not isinstance(value, str):
-            errors.append(f"{tdir / 'en.json'}: {key}: value must be a string")
+        if _translation_values(key, value) is None:
+            errors.append(f"{tdir / 'en.json'}: {key}: value must be a string (assistant examples: 1–3 bounded strings)")
     for lang in LANGUAGES:
         if lang == SOURCE_LANGUAGE:
             continue
@@ -274,9 +290,10 @@ def check_translations(component_dir: Path) -> tuple[list[str], list[str]]:
         for key, value in flat.items():
             if key not in en:
                 errors.append(f"{file}: key '{key}' is not in en.json")
-            if not isinstance(value, str):
-                errors.append(f"{file}: {key}: value must be a string")
-            elif lang == "de" and "ß" in value:
+            strings = _translation_values(key, value)
+            if strings is None:
+                errors.append(f"{file}: {key}: value must be a string (assistant examples: 1–3 bounded strings)")
+            elif lang == "de" and any("ß" in text for text in strings):
                 errors.append(f"{file}: {key}: Swiss Standard German writes 'ss', never 'ß'")
         for key in en:
             if key not in flat:

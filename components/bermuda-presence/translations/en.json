@@ -10,6 +10,22 @@
         "description": "A 24 GHz millimetre-wave radar module that senses people, moving or still, and measures their distance.",
         "does": "Wired to a proxy board, it reports presence and detection distance to Home Assistant. The Ramka uses it to wake the screen when someone comes into the room."
       }
+    },
+    "assistant": {
+      "observations": {
+        "title": "Presence observations",
+        "description": "Report authorized device observations; detection does not prove a person is present.",
+        "examples": [
+          "What devices are detected?"
+        ]
+      },
+      "explain": {
+        "title": "About presence observations",
+        "description": "Presence observations use Bluetooth and optional radar; they do not identify occupants reliably.",
+        "examples": [
+          "What does presence observations do?"
+        ]
+      }
     }
   }
 }

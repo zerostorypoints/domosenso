@@ -1,0 +1,19 @@
+[%- from '_air-policy.jinja' import air_limits -%]
+[%- set p = inputs.prefix -%]
+[%- set fields = {} -%]
+[%- for role, entity in {'mode':'input_select.' ~ p ~ '_mode', 'page':'input_select.' ~ p ~ '_ambient',
+ 'theme':'input_select.' ~ p ~ '_theme_mode', 'radar_wake':'input_boolean.' ~ p ~ '_near_enabled'}.items() -%]
+[%- set _ = fields.update({role:{'entity':entity}}) -%][%- endfor -%]
+[%- set _ = fields.update({'rotation': {'entity':'sensor.' ~ p ~ '_ambient_pages','attribute':'pages'}}) -%]
+[%- set policies = [] -%]
+[%- for metric, entity in inputs.get('air',{}).items() if metric in air_limits and entity -%]
+[%- set first, second, lower, upper, minimum, maximum, step, unit = air_limits[metric] -%]
+[%- set _ = policies.append({'owner':'ramka','metric':metric,'entity':entity,
+ 'unit':unit or ('/100' if metric == 'score' else 'index'), 'levels':[lower,upper],
+ 'higher_is_better':metric == 'score', 'helpers':{first:'input_number.' ~ p ~ '_air_' ~ metric ~ '_' ~ first,
+ second:'input_number.' ~ p ~ '_air_' ~ metric ~ '_' ~ second}}) -%]
+[%- endfor -%]
+[%- set label = inputs.get('name',p) -%]
+[%- if label is mapping -%][%- set normalized = {'en':label.values() | first} -%][%- for k,v in label.items() if k in ('en','de','pl') -%][%- set _ = normalized.update({k:v}) -%][%- endfor -%][%- set label = normalized -%][%- endif -%]
+[%- set binding = {'subjects':[{'key':p,'kind':'frame','label':label,'fields':fields}],'policies':policies} -%]
+[[ binding | yaml ]]

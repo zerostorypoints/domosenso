@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.11.0
+version: 0.12.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -196,8 +196,14 @@ media_player_contract:
   required: [state, turn_on, turn_off, media_play, media_pause, volume_level, volume_set]
   optional: [volume_step, previous_track, next_track, media_title, media_artist, media_album_name, entity_picture, media_position]
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:                    # rendered per home by tools/domosenso_render.py
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2          # -> package.yaml, the home's packages/
     - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
     - templates/ramka-settings.lang.yaml.j2   # -> dashboards/ramka-settings.<lang>.yaml, the admins' live settings (0.4.0)

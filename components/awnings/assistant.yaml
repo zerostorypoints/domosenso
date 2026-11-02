@@ -1,0 +1,82 @@
+capabilities:
+- id: awnings.status
+  revision: 1
+  operation: read
+  query_type: awning-query.v1
+  answer_type: awnings.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: cover
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: cover.<awning>
+  optional_facts:
+  - role: wind
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: binary_sensor.<wind>
+  - role: last_heard
+    type: event
+    units: []
+    source:
+      relation: provides
+      id: input_datetime.<wind_last_heard.id>
+  policy:
+    evaluator: awnings.status
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+- id: awnings.wind
+  revision: 1
+  operation: read
+  query_type: awning-query.v1
+  answer_type: awnings.v1
+  title_key: meta.assistant.wind.title
+  description_key: meta.assistant.wind.description
+  examples_key: meta.assistant.wind.examples
+  required_facts:
+  - role: wind
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: binary_sensor.<wind>
+  optional_facts:
+  - role: last_heard
+    type: event
+    units: []
+    source:
+      relation: provides
+      id: input_datetime.<wind_last_heard.id>
+  policy:
+    evaluator: awnings.wind
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+  - unknown_freshness
+- id: awnings.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: awnings.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

@@ -1,0 +1,120 @@
+capabilities:
+- id: media.now_playing
+  revision: 1
+  operation: read
+  query_type: media-query.v1
+  answer_type: media.v1
+  title_key: meta.assistant.now_playing.title
+  description_key: meta.assistant.now_playing.description
+  examples_key: meta.assistant.now_playing.examples
+  required_facts:
+  - role: player
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: media_player.<player>
+  optional_facts:
+  - role: quality
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: sensor.<quality>
+  - role: service
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: sensor.<service>
+  policy:
+    evaluator: media.now_playing
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+- id: media.status
+  revision: 1
+  operation: read
+  query_type: media-query.v1
+  answer_type: media.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: player
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: media_player.<player>
+  optional_facts:
+  - role: quality
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: sensor.<quality>
+  - role: service
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: sensor.<service>
+  policy:
+    evaluator: media.status
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+- id: media.mains
+  revision: 1
+  operation: read
+  query_type: reading-query.v1
+  answer_type: reading.v1
+  title_key: meta.assistant.mains.title
+  description_key: meta.assistant.mains.description
+  examples_key: meta.assistant.mains.examples
+  required_facts: []
+  optional_facts:
+  - role: power
+    type: number
+    units:
+    - W
+    source:
+      relation: upstream
+      id: sensor.<meter>_power
+  - role: voltage
+    type: number
+    units:
+    - V
+    source:
+      relation: upstream
+      id: sensor.<meter>_voltage
+  policy:
+    evaluator: media.mains
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - invalid_unit
+  - unknown_freshness
+- id: media.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: media.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

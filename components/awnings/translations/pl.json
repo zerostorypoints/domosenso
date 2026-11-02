@@ -6,6 +6,29 @@
         "description": "Moduł transceivera radiowego na pasma poniżej gigaherca, połączony z płytką ESP32 przez SPI.",
         "does": "Nadaje i odbiera ramki Somfy RTS na 433 MHz, dzięki czemu węzeł steruje markizami, słyszy pilot ręczny i odbiera sygnał czujnika wiatru."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Stan markiz",
+        "description": "Podaje stan skonfigurowanych markiz i szacowane położenie.",
+        "examples": [
+          "Czy markizy są rozwinięte?"
+        ]
+      },
+      "wind": {
+        "title": "Odczyt wiatru",
+        "description": "Podaje alarm wiatru i czas ostatniego sygnału z czujnika.",
+        "examples": [
+          "Co zgłasza czujnik wiatru?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: markizy",
+        "description": "Markizy zgłaszają szacowane położenie i alarm wiatru; brak alarmu nie oznacza ciszy.",
+        "examples": [
+          "Do czego służy markizy?"
+        ]
+      }
     }
   }
 }

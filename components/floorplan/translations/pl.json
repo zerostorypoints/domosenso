@@ -1,6 +1,15 @@
 {
   "meta": {
-    "description": "Rysuje rzut domu: pomieszczenia jako kształty, z odczytami czujników i roślinami w ich miejscach, z powiększaniem i edycją."
+    "description": "Rysuje rzut domu: pomieszczenia jako kształty, z odczytami czujników i roślinami w ich miejscach, z powiększaniem i edycją.",
+    "assistant": {
+      "explain": {
+        "title": "O planie domu",
+        "description": "Plan domu pokazuje pomieszczenia, pomiary i położenie roślin. Asystent opisuje działanie tego komponentu; nie edytuje planu ani nie wnioskuje z niego o obecności osób.",
+        "examples": [
+          "Co pokazuje plan domu?"
+        ]
+      }
+    }
   },
   "card": {
     "floorplan": {

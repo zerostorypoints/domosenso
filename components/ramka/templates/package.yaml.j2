@@ -210,9 +210,7 @@
     unit). The readings' keys stay raised and high (input_number.<prefix>_air_<reading>_raised /
     _high, a stable contract); their names say fair from and poor from. The three colours, good
     (the neutral one), fair and poor, are colour selects of the same group (air_colours). -#]
-[%- set air_limits = {'score': ('fair', 'poor', 80, 60, 0, 100, 1, ''), 'co2': ('raised', 'high', 800, 1200, 400, 5000, 50, 'ppm'),
-    'pm2_5': ('raised', 'high', 15, 35, 1, 250, 1, 'µg/m³'), 'voc': ('raised', 'high', 150, 250, 1, 500, 1, ''),
-    'nox': ('raised', 'high', 20, 150, 1, 500, 1, '')} -%]
+[%- from '_air-policy.jinja' import air_limits -%]
 [%- set air_readings = [] -%]
 [%- for reading in air_limits if inputs.air is defined and inputs.air[reading] is defined -%][%- set _ = air_readings.append(reading) -%][%- endfor -%]
 [%- for reading in air_readings -%][%- set _ = settings.append(('input_boolean', 'air_' ~ reading, 'air', 'air', true)) -%][%- endfor -%]

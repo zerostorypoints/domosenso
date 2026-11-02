@@ -1,5 +1,28 @@
 {
   "meta": {
-    "description": "Aktuelles Wetter und Vorhersage des Norwegischen Meteorologischen Instituts (Met.no) für den Standort des Zuhauses. Kein Konto, kein Schlüssel und keine Hardware nötig. Speist die Uhr- und Wetterzeile der Ramka."
+    "description": "Aktuelles Wetter und Vorhersage des Norwegischen Meteorologischen Instituts (Met.no) für den Standort des Zuhauses. Kein Konto, kein Schlüssel und keine Hardware nötig. Speist die Uhr- und Wetterzeile der Ramka.",
+    "assistant": {
+      "current": {
+        "title": "Aktuelles Wetter",
+        "description": "Aktuelle Bedingungen der Wetterquelle anzeigen.",
+        "examples": [
+          "Wie ist das Wetter?"
+        ]
+      },
+      "forecast": {
+        "title": "Vorhersage",
+        "description": "Verfügbare Vorhersage für heute, morgen oder sieben lokale Tage anzeigen.",
+        "examples": [
+          "Wie ist die Vorhersage für morgen?"
+        ]
+      },
+      "explain": {
+        "title": "Über Wetter",
+        "description": "Wetter liefert aktuelle Bedingungen und Vorhersagen, keine Gewissheit.",
+        "examples": [
+          "Was bietet Wetter?"
+        ]
+      }
+    }
   }
 }

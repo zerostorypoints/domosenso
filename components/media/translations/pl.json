@@ -10,6 +10,36 @@
         "description": "Mały miernik mocy montowany w puszce za gniazdkiem, szeregowo na fazie. Niczego nie przełącza.",
         "does": "Mierzy moc, napięcie, prąd i energię podłączonych urządzeń lokalnie, przez wbudowaną integrację Shelly, bez konta w chmurze. Widok odtwarzania pokazuje z niego pobór i napięcie odtwarzacza."
       }
+    },
+    "assistant": {
+      "now_playing": {
+        "title": "Odtwarzanie",
+        "description": "Podaje stan odtwarzacza oraz dostępne informacje o utworze i usłudze.",
+        "examples": [
+          "Co teraz gra?"
+        ]
+      },
+      "status": {
+        "title": "Stan odtwarzacza",
+        "description": "Podaje stan, źródło, głośność i wyciszenie odtwarzacza, jeśli są dostępne.",
+        "examples": [
+          "Jaki jest stan odtwarzacza?"
+        ]
+      },
+      "mains": {
+        "title": "Pomiar zasilania",
+        "description": "Odczytuje moc lub napięcie tylko ze wskazanego miernika.",
+        "examples": [
+          "Jaki jest pobór mocy odtwarzacza?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: media",
+        "description": "Media pokazują odtwarzanie i opcjonalne pomiary, bez sterowania odtwarzaczem.",
+        "examples": [
+          "Do czego służy media?"
+        ]
+      }
     }
   }
 }

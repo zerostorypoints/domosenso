@@ -6,6 +6,22 @@
         "description": "The hub that connects Hue bulbs and accessories over Zigbee and puts them on the home network.",
         "does": "Groups the bulbs into rooms. Home Assistant pairs with it by a press on the bridge's button and then controls the rooms and bulbs over the home network."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Light status",
+        "description": "Report available light or group state and brightness, with coverage limits.",
+        "examples": [
+          "Which lights are on?"
+        ]
+      },
+      "explain": {
+        "title": "About lights",
+        "description": "Lights report states and brightness; unavailable bulbs are not confirmed off.",
+        "examples": [
+          "What does lights do?"
+        ]
+      }
     }
   }
 }

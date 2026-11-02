@@ -6,6 +6,29 @@
         "description": "Ein Funk-Transceiver-Modul für die Sub-Gigahertz-Bänder, per SPI mit dem ESP32-Board verbunden.",
         "does": "Sendet und empfängt die 433-MHz-Telegramme von Somfy RTS. So kann der Knoten die Markisen steuern, den Handsender mithören und den Windsensor empfangen."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Markisenstatus",
+        "description": "Status und geschätzte Position der konfigurierten Markisen lesen.",
+        "examples": [
+          "Sind die Markisen ausgefahren?"
+        ]
+      },
+      "wind": {
+        "title": "Windmeldung",
+        "description": "Windalarm und letzten Empfang des Sensors melden.",
+        "examples": [
+          "Was meldet der Windsensor?"
+        ]
+      },
+      "explain": {
+        "title": "Über Markisen",
+        "description": "Markisen melden geschätzte Positionen und Windalarme; ein gelöschter Alarm beweist keine Windstille.",
+        "examples": [
+          "Was bietet Markisen?"
+        ]
+      }
     }
   }
 }

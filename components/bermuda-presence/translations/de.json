@@ -10,6 +10,22 @@
         "description": "Ein 24-GHz-Millimeterwellen-Radarmodul, das Personen erkennt, ob sie sich bewegen oder still sitzen, und ihre Entfernung misst.",
         "does": "An ein Proxy-Board angeschlossen, meldet es Anwesenheit und Erkennungsdistanz an Home Assistant. Die Ramka weckt damit den Bildschirm, wenn jemand den Raum betritt."
       }
+    },
+    "assistant": {
+      "observations": {
+        "title": "Anwesenheitsmeldungen",
+        "description": "Freigegebene Geräte melden; ihre Erkennung beweist keine Anwesenheit einer Person.",
+        "examples": [
+          "Welche Geräte werden erkannt?"
+        ]
+      },
+      "explain": {
+        "title": "Über Anwesenheitsmeldungen",
+        "description": "Anwesenheitsmeldungen nutzen Bluetooth und optional Radar, ohne Personen sicher zu identifizieren.",
+        "examples": [
+          "Was bietet Anwesenheitsmeldungen?"
+        ]
+      }
     }
   }
 }

@@ -1,0 +1,54 @@
+capabilities:
+- id: bermuda-presence.observations
+  revision: 1
+  operation: read
+  query_type: presence-query.v1
+  answer_type: presence.v1
+  title_key: meta.assistant.observations.title
+  description_key: meta.assistant.observations.description
+  examples_key: meta.assistant.observations.examples
+  required_facts:
+  - role: presence
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: sensor.<device>_area
+  optional_facts:
+  - role: presence
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: binary_sensor.<area slug>_ble_proxy_<room>_presence
+  - role: distance
+    type: number
+    units:
+    - cm
+    source:
+      relation: provides
+      id: sensor.<area slug>_ble_proxy_<room>_detection_distance
+  policy:
+    evaluator: bermuda-presence.observations
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+  - unknown_freshness
+- id: bermuda-presence.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: bermuda-presence.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []
