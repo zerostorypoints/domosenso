@@ -178,7 +178,12 @@
     "timers": {
       "paused": "Wstrzymany",
       "unavailable": "Niedostępny",
-      "offline": "Brak połączenia"
+      "offline": "Brak połączenia",
+      "completed": "Minutnik zakończony",
+      "inferred_completed": "Czas upłynął, gdy Home Assistant był niedostępny",
+      "dismiss": "Wycisz alarm",
+      "sound_enable": "Włącz dźwięk tutaj · tylko na widocznym ekranie, bez alarmu w tle",
+      "sound_enabled": "Dźwięk włączony tutaj · tylko na widocznym ekranie, bez alarmu w tle"
     }
   },
   "ui": {

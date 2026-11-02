@@ -178,7 +178,12 @@
     "timers": {
       "paused": "Pausiert",
       "unavailable": "Nicht verfügbar",
-      "offline": "Offline"
+      "offline": "Offline",
+      "completed": "Timer abgelaufen",
+      "inferred_completed": "Während Home Assistant offline war abgelaufen",
+      "dismiss": "Alarm quittieren",
+      "sound_enable": "Ton hier aktivieren · nur im Vordergrund, kein Hintergrundalarm",
+      "sound_enabled": "Ton hier aktiviert · nur im Vordergrund, kein Hintergrundalarm"
     }
   },
   "ui": {

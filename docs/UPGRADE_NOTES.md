@@ -124,8 +124,10 @@ it follows the steps.
 
 ## Shared timers (SPEC-031, development)
 
-Install a compatible Frame bridge before enabling timers or the new Ramka clock metadata. New
-command files are stored separately from read files and are never packages or public assets.
+A compatible Frame bridge enables timer commands and the new Ramka clock metadata. Runtime-clock
+metadata is stored in `domosenso/assistant-runtime/`, which old bridges ignore; legacy Ramka read
+metadata stays compatible. New command files are stored separately from read files and are never
+packages or public assets.
 Mappings/grants are opt-in; installing the free timer component does not authorize writes. The
 native application update is independent. No existing HA profile, alarm, setting or helper is
 silently migrated. See components/timers/README.md for Domosenso and vanilla setup.

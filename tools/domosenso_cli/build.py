@@ -17,7 +17,7 @@ from pathlib import Path
 
 import yaml
 
-from assistant_contract import compile_profile, load_definition
+from assistant_contract import compile_profile, load_definition, split_runtime_profile
 from assistant_actions import compile_actions, load_actions
 from catalog_check import install_dir, install_files, service_files
 from domosenso_cli import dev_render, stamps
@@ -208,9 +208,13 @@ def plan_outputs(
                             profile = compile_profile(component_dir, manifest, yaml.safe_load(content), version, sha, dirty)
                         except ValueError as exc:
                             raise DomosensoError(f"{cid}: {exc}") from exc
-                        encoded = (stamps.stamp(cid, version, sha[:SHORT_SHA], dirty) + "\n" +
-                                   yaml.safe_dump(profile, allow_unicode=True, sort_keys=False)).encode("utf-8")
-                        add(f"domosenso/assistant/{cid}.yaml", encoded, manifest["assistant"]["definition"])
+                        legacy, runtime = split_runtime_profile(profile)
+                        for directory, artifact in (("assistant", legacy), ("assistant-runtime", runtime)):
+                            if artifact is None:
+                                continue
+                            encoded = (stamps.stamp(cid, version, sha[:SHORT_SHA], dirty) + "\n" +
+                                       yaml.safe_dump(artifact, allow_unicode=True, sort_keys=False)).encode("utf-8")
+                            add(f"domosenso/{directory}/{cid}.yaml", encoded, manifest["assistant"]["definition"])
                     elif f"templates/{name}" == (manifest.get("assistant_actions") or {}).get("bindings"):
                         try:
                             profile = compile_actions(component_dir, manifest, yaml.safe_load(content), version, sha, dirty)

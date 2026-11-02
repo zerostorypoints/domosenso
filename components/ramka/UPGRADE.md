@@ -2,9 +2,10 @@
 
 New `timers` input defaults to empty. Selected helpers add standard HA timer tiles to Controls and
 an unobtrusive cross-view countdown badge. Existing controls, settings and radar behavior remain.
-`ramka.current_time` metadata uses the closed `ha_clock` runtime source. An older bridge may reject
-this newer Ramka assistant artifact; deploy a compatible bridge first. Other components' read files
-are unchanged. SPEC-030 wake-app selection is an independent pending change and is not included here.
+`ramka.current_time` uses the closed `ha_clock` runtime source in a separate private
+`domosenso/assistant-runtime/ramka.yaml` artifact. Older bridges ignore this directory; the legacy
+Ramka read artifact retains its previous definitions and text. Upgrade the bridge to enable time
+answers and timer commands. SPEC-030 wake-app selection is an independent pending change and is not included here.
 
 # ramka: upgrade notes
 

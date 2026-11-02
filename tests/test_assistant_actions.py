@@ -100,3 +100,41 @@ def test_ha_clock_cannot_be_declared_on_other_capabilities(tmp_path):
     p=root/'assistant.yaml';definition=yaml.safe_load(p.read_text())
     definition['capabilities'][0]['runtime_source']='ha_clock';p.write_text(yaml.safe_dump(definition))
     with pytest.raises(ValueError):load_definition(root,yaml.safe_load((root/'component.yaml').read_text()))
+
+
+def test_runtime_extension_does_not_change_legacy_read_artifact(tmp_path):
+    from assistant_contract import compile_profile, split_runtime_profile
+    root=ROOT/'components/ramka'; manifest=yaml.safe_load((root/'component.yaml').read_text())
+    render_component(root, yaml.safe_load((ROOT/'examples/demo-home/inputs/ramka.yaml').read_text()), tmp_path, ['en'])
+    bindings=yaml.safe_load((tmp_path/'assistant-bindings.yaml').read_text())
+    full=compile_profile(root, manifest, bindings, manifest['version'], 'a'*40, False)
+    legacy,runtime=split_runtime_profile(full)
+    assert [c['id'] for c in legacy['definitions']['capabilities']]==['ramka.status','ramka.explain']
+    assert [c['id'] for c in runtime['definitions']['capabilities']]==['ramka.current_time']
+    assert 'current_time' not in json.dumps(legacy)
+    assert runtime['definitions']['capabilities'][0]['runtime_source']=='ha_clock'
+    # The original strict schema rejects unknown fields; use an independent baseline schema.
+    from jsonschema import Draft202012Validator
+    schema=json.loads((ROOT/'tests/fixtures/assistant-v1-profile.schema.json').read_text())
+    Draft202012Validator(schema).validate(legacy)
+    assert full['definitions']['capabilities'][-1]['id']=='ramka.current_time'
+
+
+def test_runtime_read_artifact_has_separate_managed_destination(tmp_path):
+    from domosenso_cli.build import plan_outputs
+    from domosenso_cli.home import HomeConfig, ComponentEntry
+    path=ROOT/'examples/demo-home/inputs/ramka.yaml'
+    entry=ComponentEntry('ramka',path,['en'],{})
+    home=HomeConfig(tmp_path,str(ROOT),tmp_path/'ha',tmp_path/'esphome',{}, {'ramka':entry})
+    manifest=yaml.safe_load((ROOT/'components/ramka/component.yaml').read_text())
+    outputs=plan_outputs(home,entry,ROOT/'components/ramka',manifest['version'],'a'*40)
+    dests={x.dest:x for x in outputs}
+    assert 'ha/domosenso/assistant-runtime/ramka.yaml' in dests
+    old=yaml.safe_load(dests['ha/domosenso/assistant/ramka.yaml'].content)
+    assert 'runtime_source' not in json.dumps(old)
+
+
+def test_all_cli_compiler_dependencies_are_packaged():
+    import tomllib
+    config=tomllib.loads((ROOT/'pyproject.toml').read_text())
+    assert 'assistant_actions' in config['tool']['setuptools']['py-modules']

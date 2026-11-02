@@ -178,7 +178,12 @@
     "timers": {
       "paused": "Paused",
       "unavailable": "Unavailable",
-      "offline": "Offline"
+      "offline": "Offline",
+      "completed": "Timer finished",
+      "inferred_completed": "Elapsed while Home Assistant was offline",
+      "dismiss": "Dismiss alarm",
+      "sound_enable": "Enable sound here · foreground only, no background alarm",
+      "sound_enabled": "Sound enabled here · foreground only, no background alarm"
     }
   },
   "ui": {
