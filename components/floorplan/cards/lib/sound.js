@@ -319,11 +319,10 @@ export function soundGrid(polys, speakers, sensorsAt, opts = {}, step = SOUND_ST
 }
 
 // The level (dB) of every cell from the sensors' mean band energies and a map's weights; with
-// `relative`, against the room's mean energy.
-export function fieldLevels(grid, energy, weights, relative = false) {
+// `relative`, against the room's mean energy. Into `out` when given (a frame allocates nothing).
+export function fieldLevels(grid, energy, weights, relative = false, out = new Float32Array(grid.cols * grid.rows)) {
   const nb = THIRD_OCTAVE.length;
   const w = weights.map((dB, b) => 10 ** (dB / 10) * energy[b]);
-  const out = new Float32Array(grid.cols * grid.rows);
   let sum = 0;
   let n = 0;
   for (let k = 0; k < out.length; k++) {
@@ -360,26 +359,37 @@ export function lut(ramp) {
   return out;
 }
 
-// RGBA pixels of the field, transparent outside the room.
-export function paint(grid, levels, scale, table, alpha = 220) {
-  const px = new Uint8ClampedArray(grid.cols * grid.rows * 4);
+// RGBA pixels of the field into `out` (a new buffer without one), transparent outside the room.
+export function paint(grid, levels, scale, table, out = new Uint8ClampedArray(grid.cols * grid.rows * 4)) {
+  const span = scale.hi - scale.lo;
   for (let k = 0; k < levels.length; k++) {
-    if (!grid.inside[k]) continue;
-    const t = Math.max(0, Math.min(1, (levels[k] - scale.lo) / (scale.hi - scale.lo)));
-    const i = Math.round(t * 255) * 3;
-    px.set([table[i], table[i + 1], table[i + 2], alpha], k * 4);
+    const o = k * 4;
+    if (!grid.inside[k]) {
+      out[o + 3] = 0;
+      continue;
+    }
+    const t = (levels[k] - scale.lo) / span;
+    const i = Math.round((t < 0 ? 0 : t > 1 ? 1 : t) * 255) * 3;
+    out[o] = table[i];
+    out[o + 1] = table[i + 1];
+    out[o + 2] = table[i + 2];
+    out[o + 3] = 255;
   }
-  return px;
+  return out;
 }
 
 // Ballistics on band energies: a fast rise, a slower fall, so the field breathes with the music
 // between the sensor's frames rather than stepping.
+// Returns the largest step relative to its band's energy: near zero once the field has settled.
 export function approach(current, target, dtMs, riseMs = 60, fallMs = 350) {
+  let most = 0;
   for (let b = 0; b < target.length; b++) {
     const tau = target[b] > current[b] ? riseMs : fallMs;
-    current[b] += (target[b] - current[b]) * (1 - Math.exp(-dtMs / tau));
+    const step = (target[b] - current[b]) * (1 - Math.exp(-dtMs / tau));
+    current[b] += step;
+    if (current[b] > 0) most = Math.max(most, Math.abs(step) / current[b]);
   }
-  return current;
+  return most;
 }
 
 // Mean band energies over the sensors' readings.

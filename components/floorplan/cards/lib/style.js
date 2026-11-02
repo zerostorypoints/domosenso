@@ -13,7 +13,10 @@ export const STYLE = `
   button:disabled { opacity: 0.4; cursor: default; }
   select, input { font: inherit; }
   .body { flex: 1; display: flex; min-height: 280px; position: relative; }
-  svg { flex: 1; min-width: 0; height: 100%; min-height: 280px; touch-action: none; user-select: none; }
+  svg { flex: 1; min-width: 0; height: 100%; min-height: 280px; touch-action: none; user-select: none;
+        position: relative; z-index: 1; }
+  .sound-layer { position: absolute; pointer-events: none; z-index: 0; }
+  .sound-layer[hidden] { display: none; }
   .room { fill: var(--secondary-background-color, #f2f2f2); stroke: var(--primary-text-color);
           stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .room.selected, .room.picked { fill: var(--primary-color); fill-opacity: 0.25; }
@@ -90,6 +93,7 @@ export const STYLE = `
   .map-hint { color: var(--secondary-text-color); font-size: 12px; }
   .heat { pointer-events: none; opacity: 0.8; }
   .heat .no-sensor { fill: url(#fp-hatch); }
+  .room.sounding { fill: transparent; }
   .heat .speaker { fill: #263238; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .heat .wall { fill: none; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .hatch-line { stroke: var(--divider-color, #888); }

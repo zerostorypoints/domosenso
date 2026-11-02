@@ -1457,3 +1457,24 @@ test("maps: with several layers shown the bar says to show one alone; one alone 
   assert.ok(fixed.shadowRoot.querySelectorAll(".bar [data-action=map]").length > 0);
   window.localStorage.clear();
 });
+
+test("sound maps: a space with an audio sensor shows through to the field's canvas; other rooms are hatched", async () => {
+  window.localStorage.clear();
+  const hass = mapsHass();
+  hass.entities["sensor.board_spectrum"] = { entity_id: "sensor.board_spectrum", device_id: "d_audio" };
+  hass.states["sensor.board_spectrum"] = { state: Array(31).fill("-50").join(","), attributes: {} };
+  hass.devices.d_audio = { id: "d_audio", name: "Audio sensor" };
+  const point = { ...pt("d_audio", 2, 1), category: "media" };
+  const plan = planOf([point]);
+  plan.floors[0].speakers = [{ x: 1.5, y: 0.5 }, { x: 3.5, y: 0.5 }];
+  const card = await make({ plan, layers: ["media"] }, hass);
+  await settle();
+  const chips = [...card.shadowRoot.querySelectorAll(".bar [data-action=map]")].map((b) => b.getAttribute("data-map"));
+  assert.deepEqual(chips, ["spl", "loudness", "effect", "bass"]);
+  assert.ok($(card, 'polygon.room.sounding[data-area="living_room"]'), "the living room lets the field through");
+  assert.equal($(card, 'polygon.room.sounding[data-area="kitchen"]'), null);
+  assert.equal(card.shadowRoot.querySelectorAll(".heat.sound .no-sensor").length, 1, "the kitchen is hatched");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat.sound .speaker").length, 2);
+  assert.equal(card.shadowRoot.querySelectorAll(".heat image").length, 0, "no SVG image per frame");
+  window.localStorage.clear();
+});
