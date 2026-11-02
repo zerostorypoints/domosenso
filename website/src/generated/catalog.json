@@ -3,9 +3,9 @@
   "components": [
     {
       "id": "audio-sensor",
-      "version": "0.3.0",
-      "sourceTag": "audio-sensor/0.3.0",
-      "sourceCommit": "934b653536616fc7b310cb430aae00a08d72b1e8",
+      "version": "0.4.0",
+      "sourceTag": "audio-sensor/0.4.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum",
       "requirements": [
         {
@@ -57,12 +57,12 @@
       "inputs": [
         {
           "name": "sensors",
-          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]",
+          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map, online?: entity_id}]",
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/934b653536616fc7b310cb430aae00a08d72b1e8/components/audio-sensor",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/934b653536616fc7b310cb430aae00a08d72b1e8/components/audio-sensor/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/audio-sensor",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/audio-sensor/UPGRADE.md"
     },
     {
       "id": "awnings",
