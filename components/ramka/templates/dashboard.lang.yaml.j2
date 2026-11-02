@@ -111,14 +111,13 @@ views:
     max_columns: 3
     dense_section_placement: true
     sections:
-      # ---- Way out of the kiosk: invisible tap targets in the top corners (always present) ----
-      # Top-left → the Overview with the sidebar; top-right → this dashboard with kiosk-mode off.
+      # ---- The page's gestures: taps, swipes, the pause corner, the reload button ----------------
+      # The way out of the kiosk is the Exit button on the controls (0.13.0), not the top corners:
+      # those sat over the floor plan's bar and nobody found them without being told.
       - type: grid
         column_span: 3
         cards:
           - type: custom:corner-taps-card
-            left: [[ inputs.exit_left | default('/lovelace/0') | yaml ]]
-            right: [[ exit_right | yaml ]]
             # One 8 px margin everywhere instead of HA's 32/24 px; the card heights below assume it.
             padding: 8
             # A tap anywhere shows the controls (and keeps them up while they are shown).
@@ -813,7 +812,17 @@ views:
             icon: mdi:hand-wave
             tap_action: {action: toggle}
             icon_tap_action: {action: toggle}
-            grid_options: {columns: 12, rows: 1}
+            grid_options: {columns: 8, rows: 1}
+          # The way out of the kiosk, in the radar toggle's row: a tap opens exit_left (the
+          # Overview, with the sidebar), a long press this dashboard with kiosk-mode off.
+          - type: custom:tap-button-card
+            name: [[ t('ui.exit.button') | yaml ]]
+            icon: mdi:exit-to-app
+            taps: 1
+            navigate: [[ inputs.exit_left | default('/lovelace/0') | yaml ]]
+            hold_navigate: [[ exit_right | yaml ]]
+            columns: 4
+            rows: 1
           - type: tile
             entity: [[ calendars[0] ]]
             name: [[ t('ui.calendar.button') | yaml ]]

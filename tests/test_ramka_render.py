@@ -4334,3 +4334,29 @@ def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
 def test_reconcile_after_start_is_listed_as_provided():
     provided = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["provides"]["automations"]
     assert "reconcile_after_start" in provided
+
+
+# ---- 0.13.0: the way out is a button on the controls, not the top corners --------------------------
+
+def test_the_way_out_is_an_exit_button_on_the_controls(demo):
+    exits = {"en": "Exit", "de": "Verlassen", "pl": "Wyjdź"}
+    for lang in LANGS:
+        dash = demo[f"dashboard.{lang}.yaml"]
+        [corner] = [n for n in walk(dash) if n.get("type") == "custom:corner-taps-card"]
+        assert "left" not in corner and "right" not in corner, lang
+        [button] = [n for n in walk(dash) if n.get("type") == "custom:tap-button-card" and n.get("navigate")]
+        assert button["navigate"] == "/lovelace/0"
+        assert button["hold_navigate"].endswith("/ramka?disable_km")
+        assert (button["name"], button["taps"], button["icon"]) == (exits[lang], 1, "mdi:exit-to-app")
+        # It shares the radar toggle's row: the controls get no taller.
+        [near] = [n for n in walk(dash) if n.get("entity") == "input_boolean.ramka_near_enabled"]
+        assert near["grid_options"]["columns"] + button["columns"] == 12
+        assert button["rows"] == near["grid_options"]["rows"] == 1
+
+
+def test_exit_left_still_names_the_exit_buttons_page(tmp_path):
+    inputs = demo_inputs()
+    inputs["exit_left"] = "/lovelace/home"
+    dash = render(tmp_path, inputs)["dashboard.en.yaml"]
+    [button] = [n for n in walk(dash) if n.get("type") == "custom:tap-button-card" and n.get("navigate")]
+    assert button["navigate"] == "/lovelace/home"
