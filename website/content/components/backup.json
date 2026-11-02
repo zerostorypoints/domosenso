@@ -13,8 +13,8 @@
     "Test the stale alert and plan a separate restore exercise. A successful file is not proof of recoverability."
   ],
   "id": "backup",
-  "version": "0.1.0",
-  "sourceCommit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+  "version": "0.2.0",
+  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
   "evidencePaths": [
     "components/backup/component.yaml"
   ],

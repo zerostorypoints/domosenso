@@ -48,8 +48,8 @@
     "Map the sensor entities; configure Ramka climate or air inputs if you want these pages."
   ],
   "id": "climate-air",
-  "version": "0.2.0",
-  "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+  "version": "0.3.0",
+  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
   "evidencePaths": [
     "components/climate-air/component.yaml"
   ],

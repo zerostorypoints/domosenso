@@ -38,18 +38,22 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--token-file", metavar="<file>", help="the long-lived access token for a --from-ha URL")
 
 
-def _installs(value) -> bool:
+def _installs(value, skip: set) -> bool:
     if isinstance(value, dict):
-        return any(_installs(v) for v in value.values())
+        return any(_installs(v, skip) for v in value.values())
     if isinstance(value, list):
-        return bool(value)
-    return bool(value)
+        return any(not (isinstance(item, str) and item in skip) for item in value)
+    return bool(value) and not (isinstance(value, str) and value in skip)
 
 
 def describes_only(manifest: dict) -> bool:
-    """True for a component whose artifacts install nothing (it describes what another one reads)."""
+    """True for a component whose artifacts install nothing (it describes what another one reads).
+
+    The assistant bindings template (SPEC-029) is optional metadata, not an install: a component
+    that renders only that still describes."""
     artifacts = manifest.get("artifacts") or {}
-    return not any(_installs(v) for k, v in artifacts.items() if k not in NOT_AN_INSTALL)
+    skip = {(manifest.get("assistant") or {}).get("bindings")} - {None}
+    return not any(_installs(v, skip) for k, v in artifacts.items() if k not in NOT_AN_INSTALL)
 
 
 def _met(requirement: dict, have: set[str]) -> bool:
