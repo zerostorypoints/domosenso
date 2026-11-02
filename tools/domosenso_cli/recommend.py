@@ -52,7 +52,7 @@ def describes_only(manifest: dict) -> bool:
     The assistant bindings template (SPEC-029) is optional metadata, not an install: a component
     that renders only that still describes."""
     artifacts = manifest.get("artifacts") or {}
-    skip = {(manifest.get("assistant") or {}).get("bindings")} - {None}
+    skip = {(manifest.get(key) or {}).get("bindings") for key in ("assistant", "assistant_actions")} - {None}
     return not any(_installs(v, skip) for k, v in artifacts.items() if k not in NOT_AN_INSTALL)
 
 

@@ -1,0 +1,3 @@
+prefix: demo
+timers:
+  - {id: cooking, label: Cooking, duration_seconds: 300}

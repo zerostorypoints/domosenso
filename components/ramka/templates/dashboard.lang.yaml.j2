@@ -41,6 +41,7 @@
 [%- set media_label = inputs.media_label | default(t('ui.media.player')) -%]
 [%- set covers = inputs.covers | default([]) -%]
 [%- set lights = inputs.lights | default([]) -%]
+[%- set timers = inputs.timers | default([]) -%]
 [%- set status = inputs.status | default({}) -%]
 [%- set air = inputs.air | default(none) -%]
 [%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
@@ -117,6 +118,10 @@ views:
       - type: grid
         column_span: 3
         cards:
+          [%- if timers and not preview %]
+          - type: custom:timer-status-card
+            timers: [[ timers | yaml ]]
+          [%- endif %]
           - type: custom:corner-taps-card
             # One 8 px margin everywhere instead of HA's 32/24 px; the card heights below assume it.
             padding: 8
@@ -860,6 +865,24 @@ views:
             grid_options: {columns: 12, rows: 3}
             visibility:
               - {condition: state, entity: [[ mp ]], state: unavailable}
+      [%- if timers %]
+      - type: grid
+        [%- if not preview %]
+        visibility: *controls
+        [%- endif %]
+        cards:
+          - type: heading
+            heading: [[ t('ui.timers.heading') | yaml ]]
+          [%- for timer in timers %]
+          - type: tile
+            entity: [[ timer.entity | yaml ]]
+            name: [[ timer.label | yaml ]]
+            tap_action: {action: more-info}
+            icon: mdi:timer-outline
+          # HA 2026.9.2's bundled frontend has no timer-actions feature. Keep the supported
+          # core more-info dialog (duration/start/pause/cancel), not a feature from newer HA.
+          [%- endfor %]
+      [%- endif %]
       [%- if covers %]
       - type: grid
         [%- if not preview %]

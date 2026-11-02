@@ -170,3 +170,20 @@ For a breaking change to a STABLE surface:
 A FROZEN surface does not change inside a major version. Until a component's first release to a
 home other than its author's, a breaking change may skip the bridge if the upgrade note says so;
 the stage 1 renames were made this way.
+
+## SPEC-031 — optional shared timer commands (development)
+
+Existing assistant v1 `operation: read` remains read-only. New `assistant_actions` manifest metadata
+compiles to private managed `domosenso/assistant-actions/<component>.yaml` with schema1, identity,
+translations, typed definitions and bindings. Only fixed timers.start/pause/resume/cancel commands,
+revision1, timer-action.v1/timer-result.v1 are supported. Installation is not a write grant.
+The bridge additionally requires selected mappings, explicit enablement, valid device proof and
+current HA READ+CONTROL permissions. Old clients/bridges never get a generic service fallback.
+
+Read metadata adds `timers.status` (timer-query.v1/timer-status.v1) and `ramka.current_time`
+(time-query.v1/time.v1). Only the latter can declare `runtime_source: ha_clock`; no executable
+source/template is allowed. Existing files without new declarations retain their shape and routes.
+Update the bridge before installing new Ramka metadata; old bridges may reject this artifact while
+other installed read profiles continue. Stable timer entities are timer.<prefix>_<id>, with standard
+HA states/attributes. Idle does not imply completion. See SPEC-031 for write replay/conflict and
+alarm semantics; no global CAS guarantee against direct HA actions is made.

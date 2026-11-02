@@ -1,0 +1,51 @@
+actions:
+- id: timers.start
+  revision: 1
+  operation: timer
+  action_type: timer-action.v1
+  result_type: timer-result.v1
+  title_key: meta.assistant.start.title
+  description_key: meta.assistant.start.description
+  examples_key: meta.assistant.start.examples
+  parameters:
+    durationSeconds:
+      type: integer
+      minimum: 1
+      maximum: 86400
+    confirmReplace:
+      type: boolean
+  confirmation: replace_active
+  effect: start
+- id: timers.pause
+  revision: 1
+  operation: timer
+  action_type: timer-action.v1
+  result_type: timer-result.v1
+  title_key: meta.assistant.pause.title
+  description_key: meta.assistant.pause.description
+  examples_key: meta.assistant.pause.examples
+  parameters: {}
+  confirmation: none
+  effect: pause
+- id: timers.resume
+  revision: 1
+  operation: timer
+  action_type: timer-action.v1
+  result_type: timer-result.v1
+  title_key: meta.assistant.resume.title
+  description_key: meta.assistant.resume.description
+  examples_key: meta.assistant.resume.examples
+  parameters: {}
+  confirmation: none
+  effect: resume
+- id: timers.cancel
+  revision: 1
+  operation: timer
+  action_type: timer-action.v1
+  result_type: timer-result.v1
+  title_key: meta.assistant.cancel.title
+  description_key: meta.assistant.cancel.description
+  examples_key: meta.assistant.cancel.examples
+  parameters: {}
+  confirmation: none
+  effect: cancel

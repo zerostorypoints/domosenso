@@ -38,6 +38,8 @@ ROUTES = {
     'awnings.wind': ('awning-query.v1', 'awnings.v1'),
     'audio-sensor.level': ('audio-query.v1', 'audio-level.v1'),
     'backup.status': ('status-query.v1', 'backup.v1'),
+    'ramka.current_time': ('time-query.v1', 'time.v1'),
+    'timers.status': ('timer-query.v1', 'timer-status.v1'),
     'ramka.status': ('status-query.v1', 'frame.v1'),
 }
 

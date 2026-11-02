@@ -227,6 +227,12 @@ def check_component(path: Path) -> list[str]:
             load_definition(comp_dir, data, strict_translations=True)
         except ValueError as exc:
             errors.append(f"{path}: {exc}")
+    if "assistant_actions" in data:
+        from assistant_actions import load_actions
+        try:
+            load_actions(comp_dir, data, strict_translations=True)
+        except ValueError as exc:
+            errors.append(f"{path}: {exc}")
     return errors
 
 

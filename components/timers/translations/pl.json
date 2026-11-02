@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "description": "Wspólne minutniki odtwarzane przez Home Assistant.",
+    "assistant": {
+      "status": {
+        "title": "Stan minutnika",
+        "description": "Wspólne minutniki odtwarzane przez Home Assistant.",
+        "examples": [
+          "Ile zostało czasu?"
+        ]
+      },
+      "start": {
+        "title": "Uruchom minutnik",
+        "description": "Uruchom minutnik.",
+        "examples": [
+          "Ustaw minutnik na pięć minut."
+        ]
+      },
+      "pause": {
+        "title": "Wstrzymaj minutnik",
+        "description": "Wstrzymaj minutnik.",
+        "examples": [
+          "Wstrzymaj minutnik."
+        ]
+      },
+      "resume": {
+        "title": "Wznów minutnik",
+        "description": "Wznów minutnik.",
+        "examples": [
+          "Wznów minutnik."
+        ]
+      },
+      "cancel": {
+        "title": "Anuluj minutnik",
+        "description": "Anuluj minutnik.",
+        "examples": [
+          "Anuluj minutnik."
+        ]
+      },
+      "explain": {
+        "title": "O minutnikach",
+        "description": "Wspólne odliczanie z uruchamianiem, wstrzymywaniem, wznawianiem i anulowaniem.",
+        "examples": [
+          "Co potrafią minutniki?"
+        ]
+      }
+    }
+  }
+}

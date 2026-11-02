@@ -38,7 +38,8 @@ HA_INSTANCE=$(sed -n 's/^  ha_instance: *\([^ #]*\).*/\1/p' "$SRC/component.yaml
 ASSISTANT_BINDINGS=$(uv run --project "$ROOT" python -c '
 import sys, yaml
 data = yaml.safe_load(open(sys.argv[1]))
-print((data.get("assistant") or {}).get("bindings", "").removeprefix("templates/").removesuffix(".j2"))
+for key in ("assistant", "assistant_actions"):
+ print((data.get(key) or {}).get("bindings", "").removeprefix("templates/").removesuffix(".j2"))
 ' "$SRC/component.yaml")
 
 render_component() {  # renders templates/ into $WORK/rendered
@@ -57,7 +58,7 @@ install_component() {  # $1 = config dir
   [ -d "$WORK/rendered" ] || return 0
   local f name
   for f in "$WORK"/rendered/*.yaml; do
-    [ "${f#"$WORK/rendered/"}" = "$ASSISTANT_BINDINGS" ] && continue
+    [[ $'\n'"$ASSISTANT_BINDINGS"$'\n' == *$'\n'"${f#"$WORK/rendered/"}"$'\n'* ]] && continue
     name=$(basename "$f" .yaml)
     case "$name" in
       dashboard.*)

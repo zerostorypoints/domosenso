@@ -76,6 +76,7 @@ calendars or floor plans. A real home lives in its own repository.
 | [media](components/media/component.yaml) | A network audio player as a media player (tested: Hegel H400) |
 | [plants](components/plants/component.yaml) | Houseplant sensors (Xiaomi Mi Flora) |
 | [ramka](components/ramka/component.yaml) | Wall tablet: radar wake-up, ambient pages, music, awnings, lights, calendar ([upgrade notes](components/ramka/UPGRADE.md)) |
+| [timers](components/timers/component.yaml) | Shared core HA countdowns and explicit Frame commands |
 | [weather](components/weather/component.yaml) | Weather and forecast from Met.no |
 
 ## Agent skills
