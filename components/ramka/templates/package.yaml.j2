@@ -8,6 +8,21 @@
 [%- set name = inputs.name | default(p | replace('_', ' ') | title) -%]
 [%- set notify = inputs.tablet_device.notify -%]
 [%- set ts = inputs.tablet_device.sensors -%]
+[%- set wake_package = inputs.tablet_wake_package | default('io.homeassistant.companion.android') -%]
+[%- set letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' -%]
+[%- if wake_package is not string or '.' not in wake_package -%]
+[[ fail('ramka: tablet_wake_package must be an Android package identifier') ]]
+[%- endif -%]
+[%- for segment in wake_package.split('.') -%]
+[%- if not segment or segment[0] not in letters -%]
+[[ fail('ramka: tablet_wake_package must be an Android package identifier') ]]
+[%- endif -%]
+[%- for char in segment -%]
+[%- if char not in letters ~ '0123456789_' -%]
+[[ fail('ramka: tablet_wake_package must be an Android package identifier') ]]
+[%- endif -%]
+[%- endfor -%]
+[%- endfor -%]
 [%- set radar = inputs.radar -%]
 [#- The photos (photo_dir, the folder sensor, input_text/image photo, shell/ramka_pick.py and
     ramka_index.py, the loop's photo stage) hang together and on nothing else of the Ramka, so they
@@ -956,6 +971,7 @@ script:
           message: command_screen_brightness_level
           data:
             command: "{{ states('sensor.[[ p ]]_brightness_target') | int(120) }}"
+[% if wake_package == 'io.homeassistant.companion.android' %]
       # Back on top, but only when the app is not on top any more. "foreground" is the app on a
       # lit screen, "top_sleeping" the same app behind a sleeping screen; in both the screen simply
       # lights up on whatever was shown. Anything else (cached, background, gone) means Android
@@ -977,6 +993,15 @@ script:
               message: command_launch_app
               data:
                 package_name: io.homeassistant.companion.android
+[% else %]
+      # Companion's importance describes Companion, not the selected dashboard app. Bring the
+      # selected task forward at this wake point; no polling or second foreground watchdog.
+      - action: [[ notify ]]
+        data:
+          message: command_launch_app
+          data:
+            package_name: [[ wake_package | yaml ]]
+[% endif %]
   # Show the controls, or keep them up: the near automation and a tap on the screen (the
   # corner-taps card's tap option) both land here. The hold timer counts from leaving the near
   # zone, not from the last trigger, so while someone is within near_cm there is no timer at all;

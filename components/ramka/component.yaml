@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.13.0
+version: 0.14.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -144,6 +144,10 @@ inputs:
     example: {notify: notify.mobile_app_dining_tablet, sensors: dining_tablet}   # _app_importance, _charger_type,
                                                           # _battery_temperature, binary_sensor.<slug>_is_charging
   alert_notify: {type: action, default: null}             # battery and charger alerts; absent: none
+  tablet_wake_package:
+    type: string
+    default: io.homeassistant.companion.android
+    example: com.domosenso.frame
   alert_title: {type: string, default: "<name>"}
   kiosk_user: {type: string, default: null}               # HA user that gets kiosk-mode
   dashboard_path: {type: string, default: dashboard-ramka}  # the Exit button's long press: this, kiosk-mode off
