@@ -60,3 +60,50 @@ test("the 2× badge shows on double-tap buttons only", () => {
   assert.ok(makeCard().card.shadowRoot.querySelector(".badge"));
   assert.equal(makeCard({ config: { taps: 1 } }).card.shadowRoot.querySelector(".badge"), null);
 });
+
+// The Ramka's way out (0.13.0): a tap goes to one page, a long press to another, each a full load
+// inside the WebView (pushState, then reload).
+function navCard(config) {
+  const { card, calls } = makeCard({ lang: "en", config: { action: undefined, navigate: "/lovelace/0", hold_navigate: "/dashboard-ramka/ramka?disable_km", taps: 1, ...config } });
+  const went = [];
+  window.history.pushState = (_s, _t, url) => went.push(url);
+  window.location.reload = () => went.push("reload");
+  return { card, calls, went };
+}
+const press = (card, type) => card.shadowRoot.querySelector("ha-card").dispatchEvent(new window.Event(type));
+
+test("navigate: a tap loads that page and calls no service", () => {
+  const { card, calls, went } = navCard({});
+  tap(card);
+  assert.deepEqual(went, ["/lovelace/0", "reload"]);
+  assert.equal(calls.length, 0);
+});
+
+test("hold_navigate: a press held 600 ms loads the other page; the click that ends it does nothing more", () => {
+  const { card, went } = navCard({});
+  press(card, "pointerdown");
+  mock.timers.tick(650);
+  assert.deepEqual(went, ["/dashboard-ramka/ramka?disable_km", "reload"]);
+  press(card, "pointerup");
+  tap(card);
+  assert.equal(went.length, 2, "the tap after a long press is swallowed");
+});
+
+test("a press let go early is a tap; a cancelled press does nothing", () => {
+  const early = navCard({});
+  press(early.card, "pointerdown");
+  mock.timers.tick(200);
+  press(early.card, "pointerup");
+  tap(early.card);
+  assert.deepEqual(early.went, ["/lovelace/0", "reload"]);
+  const cancelled = navCard({});
+  press(cancelled.card, "pointerdown");
+  press(cancelled.card, "pointercancel");
+  mock.timers.tick(700);
+  assert.deepEqual(cancelled.went, []);
+});
+
+test("a button needs an action or a page to go to", () => {
+  const card = document.createElement("tap-button-card");
+  assert.throws(() => card.setConfig({ name: "x" }), /action or navigate/);
+});

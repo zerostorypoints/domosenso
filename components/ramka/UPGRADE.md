@@ -4,7 +4,23 @@ Newest first. Each entry says what changed and what a home that already runs the
 `<prefix>` is the home's `prefix` input.
 
 
-## 0.12.0 (unreleased): component-backed assistant answers
+## 0.13.0 (unreleased): an Exit button instead of the top corners
+
+The two invisible targets in the top corners are gone: they sat over the floor plan's bar (its
+layer chips and zoom) and nobody found them without being told. The way out is an **Exit**
+button on the controls, in the radar toggle's row (the toggle is now 8 columns of 12, the
+controls no taller): a tap opens `exit_left` (default `/lovelace/0`, the Overview with the
+sidebar), a long press (600 ms) opens the Ramka dashboard with kiosk-mode off
+(`dashboard_path?disable_km`). The pause corner (bottom right), the gestures and the reload
+button are unchanged. `tap-button-card` gains `navigate` and `hold_navigate`.
+
+### What a home does
+
+Nothing in its inputs: `exit_left` and `dashboard_path` keep their meaning. `domosenso update
+ramka --to 0.13.0`, deploy, press the reload button. Anyone who used the corners now opens the
+controls (a tap anywhere) and taps Exit.
+
+## 0.12.0 (2026-11-02): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.

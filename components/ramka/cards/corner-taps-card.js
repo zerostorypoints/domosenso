@@ -1,11 +1,12 @@
-// Two invisible tap targets in the top corners of the screen, the way out of the kiosk
-// dashboard once the Companion app is pinned: the kiosk user has no sidebar there, and app
-// pinning takes the Android buttons away. Optionally a third in the bottom-right corner that
-// pauses and resumes the rotation (SPEC-026), and the tap and swipe gestures of the whole screen.
+// The tap and swipe gestures of the whole screen, optionally a target in the bottom-right corner
+// that pauses and resumes the rotation (SPEC-026), and optionally invisible targets in the top
+// corners as a way out of the kiosk dashboard. The Ramka's own dashboard passes no `left` or
+// `right` since 0.13.0: its way out is the Exit button on the controls (tap-button-card's
+// `navigate`), because the corners covered the floor plan's bar.
 //
 //   type: custom:corner-taps-card
-//   left: /lovelace/0                       # tap the top-left corner: the Overview, with the sidebar
-//   right: /dashboard-ramka/ramka?disable_km   # top-right: this dashboard with kiosk-mode off
+//   left: /lovelace/0                       # optional: tap the top-left corner: the Overview
+//   right: /dashboard-ramka/ramka?disable_km   # optional, top-right: this dashboard, kiosk-mode off
 //   size: 72                                # px, square, default 72
 //   padding: 8                              # px, optional: the sections view's outer padding
 //                                           # and its gaps, all set to this (HA's own are 32 px

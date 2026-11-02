@@ -13,6 +13,14 @@
 //   rows: 1                                # 1: icon and name side by side; 2: icon above the name
 //   columns: 4                             # grid columns, as any card's grid_options
 //
+// Or a way to another page instead of a service (the Ramka's Exit button, 0.13.0):
+//
+//   navigate: /lovelace/0                  # a tap loads this path
+//   hold_navigate: /dashboard-ramka/ramka?disable_km   # optional: a press held 600 ms loads this
+//
+// A page is a full load inside the WebView: pushState, then reload. location.assign would make
+// the Companion app open the system browser, and kiosk-mode reads ?disable_km only on a load.
+//
 // A double-tap button carries a "2×" badge so it reads as one before anybody touches it. A lone
 // tap shakes the button and swaps the name for the hint; the call goes out only when a second
 // tap lands within 400 ms of the first. The action fires on the second tap itself, with no wait.
@@ -28,10 +36,11 @@ const t = createT({ en, de, pl });
 
 const DOUBLE_MS = 400;
 const HINT_MS = 1500;
+const HOLD_MS = 600;
 
 class TapButtonCard extends HTMLElement {
   setConfig(config) {
-    if (!config.action) throw new Error("tap-button-card: action is required");
+    if (!config.action && !config.navigate) throw new Error("tap-button-card: action or navigate is required");
     this._config = { taps: 2, rows: 1, columns: 4, ...config };
     this._render();
   }
@@ -81,9 +90,25 @@ class TapButtonCard extends HTMLElement {
     this._card = this.shadowRoot.querySelector("ha-card");
     this._name = this.shadowRoot.querySelector(".name");
     this._card.addEventListener("click", (ev) => this._onTap(ev));
+    if (c.hold_navigate) {
+      this._card.addEventListener("pointerdown", () => this._holdStart());
+      for (const type of ["pointerup", "pointercancel", "pointerleave"]) this._card.addEventListener(type, () => clearTimeout(this._holdTimer));
+    }
+  }
+
+  _holdStart() {
+    clearTimeout(this._holdTimer);
+    this._held = false;
+    this._holdTimer = setTimeout(() => { this._held = true; this._go(this._config.hold_navigate); }, HOLD_MS);
+  }
+
+  _go(path) {
+    window.history.pushState(null, "", path);
+    window.location.reload();
   }
 
   _fire() {
+    if (this._config.navigate) return this._go(this._config.navigate);
     const [domain, service] = this._config.action.split(".");
     this._hass.callService(domain, service, this._config.data || {}, this._config.target);
     this._card.classList.add("pressed");
@@ -108,6 +133,8 @@ class TapButtonCard extends HTMLElement {
   }
 
   _onTap() {
+    // The click that ends a long press: the hold has already gone to its page.
+    if (this._held) { this._held = false; return; }
     if (!this._hass) return;
     if (this._config.taps === 1) return this._fire();
     const now = Date.now();

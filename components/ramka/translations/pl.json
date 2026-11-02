@@ -547,6 +547,9 @@
       "about_nav_website": "Strona",
       "about_nav_get_started": "Pierwsze kroki",
       "about_discovery_how": "Listy poniżej pochodzą z niego; Odśwież znajduje nowe komponenty, urządzenia i wersje."
+    },
+    "exit": {
+      "button": "Wyjdź"
     }
   },
   "meta": {
