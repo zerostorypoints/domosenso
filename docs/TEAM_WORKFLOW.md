@@ -6,7 +6,7 @@ checks through forks. A home adopts a released version separately, through its o
 
 ## From issue to review
 
-1. **Triage.** Skill `triage-issues` ranks the open backlog and proposes the next issue. Reproduce
+1. **Triage.** Skill `triage-issues` ranks the open backlog and proposes the next issue or group. Reproduce
    against current `main`. Run `review-issue` and the issue checker. Agree
    acceptance criteria, tests, compatibility, dependencies and whether a spec is required. A new
    component or public contract change needs an approved spec; an ordinary fix needs a regression test.
