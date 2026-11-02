@@ -6,9 +6,9 @@
 #
 # Instance: `uv run tools/domosenso_render.py components/ramka --inputs <inputs.yaml> --out <dir>`
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
-# from templates/. Upgrade notes for an existing home: UPGRADE.md.
+# from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.8.0
+version: 0.11.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -125,6 +125,14 @@ inputs:
   status_page:                  # false: no status page; the rotation and the swipes step over it (0.3.0)
     type: bool
     default: true
+  floorplan:                    # true: on the controls a sideways swipe switches to the floor plan (the floorplan
+    type: bool                  # component's card, read-only) and back; a tap on the plan returns. Needs the
+    default: false              # floorplan component added and its dashboard pushed (SPEC-028)
+    example: true
+  floorplan_layers:             # with floorplan: the categories the plan offers (ids under the catalog's categories/),
+    type: "list[category]"      # a chip each, one shown at a time, the first at the start
+    default: [climate, plants]
+    example: [plants, climate, security, light]
   weather: {type: entity_id, required: true, example: weather.forecast_home}
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
   photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
@@ -143,17 +151,32 @@ inputs:
     type: "map[lang, string]"   # Ramka view" (0.4.0); a language not in it takes dashboard_path. Plain
     default: null               # URL paths, as registered in configuration.yaml.
     example: {en: dashboard-ramka, de: dashboard-ramka-de}
+  preview_dashboard:            # true (the default): also ramka-preview.<lang>.yaml, the admins' preview with one
+    type: bool                  # view per screen, each in a frame of the screen's size (README, "Preview dashboard");
+    default: true               # its lovelace: entry is the home's. False: the template renders empty, no file.
+  settings_paths:               # the settings dashboard of each language, for the preview's links to its
+    type: "map[lang, string]"   # pages and its own way to the music sensor sub-view and back; a language not in
+    default: null               # it takes ramka-settings. Plain URL paths, as registered in configuration.yaml.
+    example: {en: ramka-settings, de: ramka-settings-de}
+  preview_paths:                # the preview dashboard of each language, for the settings pages' links to
+    type: "map[lang, string]"   # its tabs; a language not in it takes ramka-preview. Plain URL paths, as
+    default: null               # registered in configuration.yaml. Read only with preview_dashboard.
+    example: {en: ramka-preview, de: ramka-preview-de}
   exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
-    type: "spectrum | level"    # board with `music: true`) instead of the wave; the tablet switches
-    default: null               # between spectrum, level and classic. Absent: the wave as before (0.4.0)
+    type: "spectrum | level"    # board with `music: true`) instead of the wave; it is chosen in
+    default: null               # Home Assistant: spectrum or level while Live visualization is on; off (the start) is Classic (SPEC-025 amendment 1). Absent: the wave as before (0.4.0)
     example: spectrum
   music_visual_options:         # the visual's starting values (0.4.0): what the seed and "Reset to defaults" write into
     type: "{spectrum?: {flavour?, neutral?, hot?}, level?: {flavour?, neutral?, hot?}, palette?, rise?, fall?, line_width?, tilt?, fps?}"
     default: null               # its helpers, which the card reads live; absent keys take the card's defaults,
     example: {level: {flavour: tide}}   # line_width Ramka's 2.8 px. Checked at render (flavour of its kind,
                                 # palette zones | series | calm, ranges, hot above neutral).
+  music_eq_presets:             # the home's own curves for `behind_speakers`, `half_match` (the catalog's: one measurement on an
+    type: "{behind_speakers?, half_match?, fitted?: {sub?, bass?, low_mid?, mid?, presence?, air?}}"
+    default: null               # amplifier, a starting point) and `fitted` (flat until set), dB per range, each -18...+12; a curve
+    example: {fitted: {bass: -6, air: 2}}   # replaces the catalog's whole, absent keys 0. Read only with `music_visual`. Checked at render.
   settings_defaults:            # the General settings' starting values (0.4.0), what the seed and "Reset to defaults"
     type: "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}"
     default: null               # write; absent keys keep the catalog's (true, 100 cm, 1 s, 5 s, 300 s, 16, 204,
@@ -184,6 +207,8 @@ artifacts:
     - templates/package.yaml.j2          # -> package.yaml, the home's packages/
     - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
     - templates/ramka-settings.lang.yaml.j2   # -> dashboards/ramka-settings.<lang>.yaml, the admins' live settings (0.4.0)
+    - templates/ramka-preview.lang.yaml.j2    # -> dashboards/ramka-preview.<lang>.yaml, unless preview_dashboard is false;
+                                              #    extends dashboard.lang.yaml.j2 and calls its screen blocks
   ha_packages: []
   # Where the cards go in the home's config: www/domosenso/<id>/<version>/, served as
   # /local/domosenso/ramka/<version>/. The cards (cards/*.js), what they import (cards/lib/) and
@@ -199,7 +224,9 @@ artifacts:
     - cards/air-card.js
     - cards/climate-rooms-card.js
     - cards/clock-weather-card.js
+    - cards/colour-select-row.js  # custom:ramka-colour-select-row, an entities-card row for a colour select, each choice with its dot (settings page)
     - cards/corner-taps-card.js
+    - cards/info-select-row.js    # custom:ramka-info-select-row, an entities-card row with an info tooltip (settings page)
     - cards/line-style-card.js
     - cards/mains-card.js
     - cards/now-playing-card.js
@@ -207,6 +234,7 @@ artifacts:
     - cards/photo-frame-card.js
     - cards/plants-card.js
     - cards/rooms-card.js
+    - cards/screen-frame-card.js  # custom:screen-frame-card, one screen at the tablet's size (preview dashboard)
     - cards/status-card.js
     - cards/tap-button-card.js
   services: []
@@ -222,16 +250,27 @@ provides:                       # <prefix> from inputs
   entities:
     - {id: "input_select.<prefix>_mode", stability: frozen, options: ["off", ambient, controls, calendar]}
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
-    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level, classic], note: "with music_visual; its value first (0.4.0)"}
+    - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level], note: "with music_visual; the input's visual first; classic is no option, it is input_boolean.<prefix>_music_live off (SPEC-025 amendment 1, 0.9.0)"}
+    - {id: "input_boolean.<prefix>_music_live", stability: stable, note: "with music_visual; Live visualization: on, the now-playing card draws the select's visual; off (the default), its classic wave (SPEC-025 amendment 1, 0.9.0)"}
     - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
-    - {id: "input_select.<prefix>_{music_palette,music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the card's palettes and flavours, the default first; options additive-only (0.4.0)"}
+    - {id: "input_select.<prefix>_music_palette", stability: stable, note: "with music_visual; the card's palettes, the default first; options additive-only (0.4.0)"}
+    - {id: "input_select.<prefix>_{music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the default first (the home's music_visual_options flavour, else dune / centre), then the offered ones: spectrum dune, halo, bars; level centre (SPEC-025 amendment 1, 0.9.0; 0.4.0 offered every flavour of the card)"}
     - {id: "input_boolean.<prefix>_ambient_music", stability: stable}
     - {id: "input_boolean.<prefix>_near_enabled", stability: stable}
+    - {id: "input_boolean.<prefix>_paused", stability: stable, note: "on while the rotation is paused; the screen going off (mode off) ends it (SPEC-026, 0.9.0)"}
+    - {id: "input_boolean.<prefix>_controls_plan", stability: stable, note: "with floorplan: on while the controls show the floor plan instead of themselves; off at every start and whenever the mode leaves controls (SPEC-028)"}
     - {id: "input_boolean.<prefix>_{settings_advanced,settings_seeded}", stability: stable, note: "0.4.0"}
     - {id: "input_boolean.<prefix>_page_{climate,air,plants,photos,status,calendar,music}", stability: stable, note: "in every home; off takes the view out, inside what the render configured (0.4.0)"}
-    - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0)"}
+    - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0); Custom's tilt"}
+    - {id: "input_boolean.<prefix>_music_{behind_speakers,lively,calm,analyser}_tilt", stability: stable, note: "with music_visual; each template's own tilt"}
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
-    - {id: "input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}", stability: stable, note: "with music_visual (0.4.0)"}
+    - {id: "input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}", stability: stable, note: "with music_visual (0.4.0); fps (the redraw rate, 30) is on no settings page"}
+    - {id: "input_select.<prefix>_music_template", stability: stable, options: [custom, behind_speakers, lively, calm, analyser], note: "with music_visual; the music look, custom first; options additive-only"}
+    - {id: "input_select.<prefix>_music_eq", stability: stable, options: ["—", flat, behind_speakers, half_match, wled_big_speakers, wled_big_speakers_ics, wled_pink, bass_light, voices, sparkle, fitted], note: "with music_visual; an EQ preset to load into the selected profile's EQ, its tooltip naming the curve it loads; rests on — (no preset) and returns to it after each load (0.9.0); options additive-only"}
+    - {id: "input_number.<prefix>_music_{eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air,hold_s}", stability: stable, note: "with music_visual; Custom's EQ (-18...12 dB) and hold (0...10 s)"}
+    - {id: "input_number.<prefix>_music_{behind_speakers,lively,calm,analyser}_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}", stability: stable, note: "with music_visual; each template's own values, Custom's ranges, the looks table's defaults (group music_profiles)"}
+    - {id: "sensor.<prefix>_music_look", stability: stable, note: "with music_visual; state the entry id, attributes rise, fall, hold, tilt, eq read from the selected profile's own helpers (ambient-wave-card's `look`; no colour window)"}
+    - {id: "script.<prefix>_music_load_eq", stability: stable, note: "with music_visual; field preset; loads into the selected profile's EQ"}
     - {id: "sensor.<prefix>_ambient_pages", stability: stable, note: "the ambient pages in the rotation now (state: how many; attributes pages, all_off, component: ramka; 0.4.0)"}
     - {id: "script.<prefix>_settings_reset", stability: stable, note: "fields page and groups, both optional (0.4.0)"}
     - {id: "sensor.<prefix>_discovery", stability: stable, note: "the About page's discovery: state the last refresh (timestamp); attributes component: ramka, ha_version, found, uses, integrations, declared_links, set by event <prefix>_discovery (SPEC-023)"}
@@ -242,18 +281,31 @@ provides:                       # <prefix> from inputs
     - {id: "input_text.<prefix>_photo", stability: stable, note: "with photo_dir"}
     - {id: "sensor.<prefix>_photo_albums", stability: stable, note: "with photo_dir; attributes available and chosen (lists) and all (every album, the ticks kept; absent: none chosen is all), set by event <prefix>_photo_albums; state: how many chosen (SPEC-021 amendments 1, 2)"}
     - {id: "script.<prefix>_photo_albums_set", stability: stable, note: "with photo_dir; fields chosen and all_albums (SPEC-021 amendments 1, 2)"}
-    - {id: "sensor.<prefix>_climate_rooms", stability: stable, note: "with climate; attribute rooms, up to ten {label, main, extra} (entity ids), set by event <prefix>_climate_rooms; the tiles and the 7-day charts follow it; state: how many (SPEC-021 amendment 2)"}
-    - {id: "script.<prefix>_climate_rooms_set", stability: stable, note: "with climate; field rooms (SPEC-021 amendment 2)"}
+    - {id: "sensor.<prefix>_climate_rooms", stability: stable, note: "with climate; attribute rooms, up to twenty widgets in order, each {type, label, main, extra, ...} (type temperature, air or custom; entity ids; a temperature's temp_low, temp_high, hum_low, hum_high, a custom's color, a named colour's id of cards/lib/colours.js; a theme slot number from the build before reads as its colour) or an empty one {type: empty, spacer: true} (an empty tile), never an empty one at the end; an entry without a type reads as temperature (main device_class temperature) or custom; set by event <prefix>_climate_rooms; the tiles and the 7-day charts follow its first climate_slots widgets, the n-th with a reading in series colour n; state: how many have a reading (SPEC-021 amendment 2; spacers and types 0.9.0)"}
+    - {id: "script.<prefix>_climate_rooms_set", stability: stable, note: "with climate; field rooms; keeps each widget's type and its own values, gives an untyped entry its type, makes a row without a type or a sensor an empty one, drops empty ones at the end (SPEC-021 amendment 2)"}
+    - {id: "input_number.<prefix>_climate_slots", stability: stable, note: "with climate (0.9.0): the number of widgets, 1-20 default 10, Climate, Advanced; rows of the settings picker, tiles on the Ramka; widgets beyond it are kept, unseen"}
+    - {id: "input_boolean.<prefix>_climate_thresholds", stability: stable, note: "with climate (0.9.0): threshold-based colours, default off, Climate, Advanced; on, the tiles colour their values by the widgets' comfort ranges and the Air page's limits and colours"}
+    - {id: "input_boolean.<prefix>_climate_slots_seeded", stability: stable, note: "with climate (0.9.0): on once the seed has given climate_slots its starting value; until then a climate_slots at its min (a fresh helper) is seeded to 10, after it a 1 is the home's"}
+    - {id: "input_select.<prefix>_climate_color_neutral", stability: stable, note: "with climate (0.9.0): the neutral colour, a named colour (green, teal, blue, light blue, purple, pink, magenta, amber, orange, red, grey), default green, Climate, Advanced; a Temperature widget within its range and a Custom widget without its own colour, while threshold-based colours are on; on the settings page a custom:ramka-colour-select-row"}
     - {id: "input_number.<prefix>_{photo_count,photo_s}", stability: stable, note: "with photo_dir (SPEC-021 amendment 1)"}
     - {id: "input_number.<prefix>_{plants_per_page,plants_page_s}", stability: stable, note: "with plants (SPEC-022): 1-12 default 6, 5-30 s default 10"}
+    - {id: "input_number.<prefix>_plants_page", stability: stable, note: "with plants: the plant page on screen, 0-based, shown modulo the page count; turned by the loop and the sideways swipes, state not a setting (SPEC-026, 0.9.0)"}
     - {id: "input_boolean.<prefix>_air_{score,co2,pm2_5,voc,nox}", stability: stable, note: "one per reading the air input names (SPEC-021 amendment 1)"}
-    - {id: "input_number.<prefix>_air_{score_fair,score_poor,co2_raised,co2_high,pm2_5_raised,pm2_5_high,voc_raised,voc_high,nox_raised,nox_high}", stability: stable, note: "the limits of the readings the air input names (SPEC-021 amendment 1)"}
+    - {id: "input_number.<prefix>_air_{score_fair,score_poor,co2_raised,co2_high,pm2_5_raised,pm2_5_high,voc_raised,voc_high,nox_raised,nox_high}", stability: stable, note: "the limits of the readings the air input names (SPEC-021 amendment 1); a reading's raised and high are named fair from and poor from (0.9.0), the ids unchanged"}
+    - {id: "input_select.<prefix>_air_color_{good,fair,poor}", stability: stable, note: "with air (0.9.0): the Air page's good (the neutral one), fair and poor colours, named colours as the climate neutral colour, defaults green, amber, red, Air, Advanced, group air; the air-card's levels and the Climate page's Air quality widgets; on the settings page a custom:ramka-colour-select-row each"}
     - {id: "image.<prefix>_photo", stability: stable, note: "with photo_dir"}
+    - {id: "sensor.<prefix>_photo_series", stability: stable, note: "with photo_dir: attributes photos (the series, as input_text.<prefix>_photo holds them) and index (the photo on screen; the count once the series is over), state the index, set by event <prefix>_photo_series (SPEC-026, 0.9.0)"}
+    - {id: "script.<prefix>_{photo_show,photo_series_new}", stability: stable, note: "with photo_dir: the series' photo on screen (a new series when it is over), a new series (SPEC-026, 0.9.0)"}
     - {id: "sensor.<prefix>_brightness_target", stability: stable}
     - {id: "binary_sensor.<prefix>_{media_playing,music_view,near}", stability: stable}
     - {id: "script.<prefix>_{screen_on,screen_off,show_controls,show_calendar,ambient_next,ambient_prev,swipe_up,swipe_down,ambient_loop}", stability: stable}
+    - {id: "script.<prefix>_controls_plan_toggle", stability: stable, note: "with floorplan: toggles input_boolean.<prefix>_controls_plan; the sideways swipes on the controls (SPEC-028)"}
+    - {id: "script.<prefix>_{pause,resume,view_next,view_prev,view_step}", stability: stable, note: "pause only while the rotation shows; view_step's field step (1, -1) steps through the plant pages or the series' photos (SPEC-026, 0.9.0)"}
     - {id: "shell_command.<prefix>_{index,pick,albums}", stability: stable, note: "with photo_dir; pick takes count and album (SPEC-021 amendment 1)"}
-  automations: "<prefix>_{about_discover,presence_on,presence_off,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,music_back,settings_seed,theme_mode}, with music_visual also <prefix>_music_watching, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  dashboards:
+    - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, 0.9.0), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first); the colour selects (air_color_{good,fair,poor}, climate_color_neutral) are custom:ramka-colour-select-row rows, each choice with its colour's dot (0.9.0); the Photos page's albums are its second section, the right column next to Basic (0.9.0)"}
+    - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard (default true): one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
+  automations: "<prefix>_{about_discover,presence_on,presence_off,reconcile_after_start,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without
@@ -261,18 +313,29 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: sensor.music_level}
   - {component: audio-sensor, id: binary_sensor.music_sensor_online}
   - {component: audio-sensor, element: ambient-wave-card}
-  # The settings dashboard's Music page (SPEC-021): the music source and the calibration of the board
-  # it names. Hidden while the select is unavailable, as in a home without audio-sensor.
+  # The settings dashboard: the music source on the Music page (SPEC-021, SPEC-025), hidden while the
+  # select is unavailable, as in a home without audio-sensor; the mic gain and the calibration of the
+  # board it names on the music sensor sub-view, each with its ability.
   - {component: audio-sensor, id: input_select.audio_sensor_music_source}
   - {component: audio-sensor, id: sensor.music_mic_gain}
   - {component: audio-sensor, id: sensor.music_spl_calibration}
   - {component: audio-sensor, id: input_number.audio_sensor_measured_offset}
   - {component: audio-sensor, id: input_text.audio_sensor_calibration_note}
   - {component: audio-sensor, id: script.audio_sensor_apply_calibration}
-  # Music, Advanced: the sensor update rate, hidden while unavailable and reset only while there; the
-  # music view turns the watching flag on and off (#99, #110).
+  # The music sensor sub-view: the sensor update rate, shown with the board's ability and reset only
+  # while there; the music view turns the watching flag on and off (#99, #110).
   - {component: audio-sensor, id: input_select.audio_sensor_music_spectrum_rate}
   - {component: audio-sensor, id: input_boolean.audio_sensor_music_watching}
+  # The music source contract (SPEC-025): the selected board and its abilities, which decide what
+  # the Music page shows; missing (unknown) in a home without audio-sensor.
+  - {component: audio-sensor, id: sensor.music_source}
+  - {component: audio-sensor, id: binary_sensor.music_source_spectrum}
+  - {component: audio-sensor, id: binary_sensor.music_source_level}
+  - {component: audio-sensor, id: binary_sensor.music_source_rate}
+  - {component: audio-sensor, id: binary_sensor.music_source_calibration}
+  # With floorplan: the plan on the controls (SPEC-028). The card's resource comes with the component.
+  - {component: floorplan, id: "dashboard url path floorplan"}
+  - {component: floorplan, element: floorplan-card}
 # Not a component's: the settings dashboard's About page reads sensor.domosenso_components, which the
 # `domosenso` command writes from the home's lock (SPEC-023); without it the page lists the Ramka alone.
 

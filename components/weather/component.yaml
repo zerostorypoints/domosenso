@@ -32,8 +32,12 @@ artifacts:
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "weather.<home>", stability: stable, note: "condition as state; temperature, humidity, pressure, wind_speed as attributes; the forecast through the weather.get_forecasts action"}
+
+  upstream:
+    - {id: "weather.<home>", owner: integration}
 
 consumes: []
 

@@ -2,16 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Track completed tasks and verification here.
 
-**Goal:** Implement SPEC-024 across the framework, HA bridge and Android client, with all catalog topics grounded in authorized HA data.
+**Goal:** Implement SPEC-029 across the framework, HA bridge and Android client, with all catalog topics grounded in authorized HA data.
 **Architecture:** Components publish validated definitions and private rendered bindings. The bridge normalizes Domosenso or manual mappings, authorizes and evaluates read queries. The app negotiates types, recognizes PL/EN questions, formats and speaks facts; old bridges retain legacy behavior.
 **Tech Stack:** Python/Jinja/YAML/JSON Schema; HA Python/WebSocket; Expo/React Native/TypeScript/QVAC.
-**Spec:** ../../../.ai/specs/SPEC-024-2026-10-31-assistant-component-contract.md
+**Spec:** ../../../.ai/specs/SPEC-029-2026-10-31-assistant-component-contract.md
 
 ## Global constraints
 
 - Read-only operations; no live HA/tablet changes, store publication, pushes or merges are included in this implementation run.
 - Existing protocol 1, three legacy topics, pairing, model C and PL/EN lifecycle stay compatible.
-- Fixed component identities from baseline 6affed4; all 12 require explicit coverage.
+- Refreshed main d997beb includes floorplan; all 13 components require explicit coverage.
 - Permission checks precede reads, filtering, counts and help. Metadata does not widen grants.
 - No private household data or credentials in any shared repository or test fixture.
 - New optional manifest schema; version 1 definitions and runtime negotiation; unknown types fail closed.
@@ -55,7 +55,7 @@ Policies join by exact metric/entity/unit and include owner, levels, direction a
 
 Files in separate Frame HA repo: new assistant_contract.py, assistant_data.py, assistant_api.py;
 __init__.py profile/setup; studio_sources.py/mapping UI; tests/ and docs/assistant.md.
-Interfaces: profile endpoint assistantVersion=1; assistant_capabilities and assistant_query as SPEC-024.
+Interfaces: profile endpoint assistantVersion=1; assistant_capabilities and assistant_query as SPEC-029.
 Consume Task 1 envelope and manual endpoint mappings; return spec typed response/evidence.
 - [ ] Write failing pure adapter, schema, permissions, unknown-source, live-policy and date tests.
 - [ ] Observe RED; implement definitions loader, identity matching, allowlisted source adapters and routes.
@@ -126,3 +126,7 @@ reviewed component tags and bridge/app releases exist. Existing public site beha
 - Task 2 split for completion: original bridge session owns metadata activation/permissions/identity
   and existing-domain interoperability; a disjoint adapter module in its own worktree owns plant,
   environment, mains, wind and forecast routes. Parent will integrate and verify them together.
+
+## Resume on 2026-11-02
+
+Main integration: d997beb, preserving new Ramka previews/music settings and floorplan 0.3.1. Assistant specification renumbered SPEC-029 to avoid main SPEC-024 collision. Reviewer fixes move all binding normalization into pinned component templates, correct upstream source ownership, preserve translated plant roomLabel, and classify awning wind as reported state. Focused compiler/binding tests: 41 passed. Full checks pending after integration. No production changes.

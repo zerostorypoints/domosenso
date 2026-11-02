@@ -62,6 +62,7 @@ artifacts:
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "sensor.<room>_temperature", stability: stable, note: "°C"}
     - {id: "sensor.<room>_humidity", stability: stable, note: "%"}
@@ -79,6 +80,11 @@ provides:
     - {id: sensor.most_humid_room, unique_id: climate_most_humid_room, stability: additive-only, note: "the room's label, '—' when no room has a value"}
     - {id: sensor.lowest_sensor_battery, unique_id: climate_lowest_sensor_battery, stability: stable, note: "%, with a battery on any room"}
     - {id: binary_sensor.bathroom_humidity_high, unique_id: climate_bathroom_humidity_high, stability: stable, note: "with a bathroom room"}
+
+  upstream:
+    - {id: "sensor.<room>_temperature", owner: integration}
+    - {id: "sensor.<room>_humidity", owner: integration}
+    - {id: "sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}", owner: integration}
 
 consumes:
   - {component: weather, id: "weather.<home>", via: outside_weather}

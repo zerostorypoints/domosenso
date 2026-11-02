@@ -13,7 +13,7 @@ capabilities:
     units:
     - °C
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<room>_temperature
   optional_facts: []
   policy:
@@ -40,7 +40,7 @@ capabilities:
     units:
     - '%'
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<room>_humidity
   optional_facts: []
   policy:
@@ -67,7 +67,7 @@ capabilities:
     units:
     - '%'
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<room>_humidity
   optional_facts:
   - role: temperature
@@ -75,7 +75,7 @@ capabilities:
     units:
     - °C
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<room>_temperature
   - role: humidity_alert
     type: state
@@ -113,35 +113,35 @@ capabilities:
     units:
     - /100
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: co2
     type: number
     units:
     - ppm
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: pm2_5
     type: number
     units:
     - µg/m³
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: voc
     type: number
     units:
     - index
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: nox
     type: number
     units:
     - index
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   policy:
     evaluator: climate-air.air_readings
@@ -167,35 +167,35 @@ capabilities:
     units:
     - /100
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: co2
     type: number
     units:
     - ppm
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: pm2_5
     type: number
     units:
     - µg/m³
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: voc
     type: number
     units:
     - index
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   - role: nox
     type: number
     units:
     - index
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
   policy:
     evaluator: climate-air.air_assessment

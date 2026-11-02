@@ -60,7 +60,7 @@ capabilities:
     evaluator: awnings.wind
   freshness:
     max_age_seconds: null
-    basis: historical_event
+    basis: reported_state
   limitations:
   - missing_source
   - unknown_freshness

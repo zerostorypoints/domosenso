@@ -1,4 +1,4 @@
-# SPEC-024: Component contracts for grounded assistant answers
+# SPEC-029: Component contracts for grounded assistant answers
 
 - Status: approved 2026-10-31 by the maintainer: "ok, implementuj", including whole-catalog scope.
 - Source: the maintainer requested an assistant that explains its actual capabilities and answers
@@ -673,3 +673,9 @@ Remaining engineering validation: fixture-test HA permission behavior, source re
 through each supported adapter, effective live air policy extraction, and model/device latency.
 Unsupported provenance or policy shapes must yield explicit limitations, not guessed compatibility.
 The proposed freshness defaults need sampling evidence before release and remain overrideable.
+
+## Main integration clarification (2026-11-02)
+
+This specification was renumbered from SPEC-024 to SPEC-029 because main assigned SPEC-024 to music response profiles. The approved assistant scope is unchanged. The refreshed catalog also contains `floorplan`; it receives an explanation-only capability `floorplan.explain` using installed metadata, with no plan document, coordinates, live occupancy inference or control operations exposed. This extends the coverage matrix to all 13 current components.
+
+Environment v1 includes `temperature_difference` (numeric °C or °F, reported provider state unless physical evidence is established) and `humidity_alert` (null value, unit %, `alertCode` of `humidity_high`, `no_reported_alert` or `unknown`). Alert-only summaries are `reported`, never measured humidity. Plant answers retain `wateringAssessment` (`needs_water`, `within_band`, `too_wet`) and the configured `checkDays` light window. Optional subject `roomLabel` is translated display text, independent of `roomKey` identity.

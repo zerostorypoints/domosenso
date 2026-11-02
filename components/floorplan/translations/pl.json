@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "description": "Rysuje rzut domu: pomieszczenia jako kształty, z odczytami czujników i roślinami w ich miejscach, z powiększaniem i edycją.",
+    "assistant": {
+      "explain": {
+        "title": "O planie domu",
+        "description": "Plan domu pokazuje pomieszczenia, pomiary i położenie roślin. Asystent opisuje działanie tego komponentu; nie edytuje planu ani nie wnioskuje z niego o obecności osób.",
+        "examples": [
+          "Co pokazuje plan domu?"
+        ]
+      }
+    }
+  },
+  "card": {
+    "floorplan": {
+      "name": "Rzut",
+      "description": "Pomieszczenia piętra z odczytami czujników i roślinami tam, gdzie stoją; administratorzy je rozmieszczają i edytują pomieszczenia.",
+      "loading": "Wczytywanie rzutu…",
+      "no_plan": "Nie ma jeszcze rzutu. Utwórz go umiejętnością floorplan-from-image albo poleceniem domosenso floorplan push.",
+      "unsupported": "Ten rzut zapisano w nowszym formacie, niż odczytuje ta karta. Zaktualizuj komponent floorplan.",
+      "edit": "Edytuj",
+      "save": "Zapisz",
+      "cancel": "Anuluj",
+      "saving": "Zapisywanie…",
+      "zoom_in": "Powiększ",
+      "zoom_out": "Pomniejsz",
+      "fit": "Dopasuj",
+      "floor": "Piętro",
+      "tool": {
+        "move": "Przesuń",
+        "split": "Podziel",
+        "join": "Połącz",
+        "open": "Otwarte"
+      },
+      "hint": {
+        "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
+        "move": "Przeciągaj czujniki i narożniki. Dwuklik na ścianie dodaje narożnik, na narożniku go usuwa. Stuknij pomieszczenie, aby przypisać je do obszaru. Upuść urządzenie na znacznik, jeśli to ten sam sprzęt.",
+        "split": "Stuknij dwa punkty na ścianach jednego pomieszczenia.",
+        "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar.",
+        "open": "Stuknij dwa pomieszczenia otwarte na siebie, bez drzwi: ich mapy dzielą odczyty."
+      },
+      "area": {
+        "label": "Obszar tego pomieszczenia",
+        "for_split": "Obszar nowego pomieszczenia",
+        "choose": "Wybierz obszar",
+        "new": "Nowy obszar",
+        "create": "Utwórz",
+        "open_to": "Otwarte na: {rooms}",
+        "close_off": "Oddziel"
+      },
+      "tray": {
+        "title": "Poza rzutem",
+        "empty": "Wszystkie czujniki są na rzucie.",
+        "drag": "Przeciągnij na rzut",
+        "no_room": "Bez pomieszczenia",
+        "drag_group": "Przeciągnij na rzut, aby umieścić wszystkie; dotknij, aby rozwinąć"
+      },
+      "units": {
+        "m": "m",
+        "m2": "m²"
+      },
+      "missing_area": "Ten obszar już nie istnieje",
+      "saved": "Zapisano.",
+      "changed_elsewhere": "Rzut zmieniono gdzie indziej, odkąd ta strona go wczytała. Niczego nie zapisano: odśwież stronę i edytuj ponownie.",
+      "save_failed": "Zapis się nie udał: {error}",
+      "create_failed": "Nie udało się utworzyć obszaru: {error}",
+      "refused": "Ta zmiana nie jest tu możliwa.",
+      "point": {
+        "category": "Kategoria",
+        "separate": "Rozdziel",
+        "joined": "To samo urządzenie:"
+      },
+      "layers": "Warstwy",
+      "roles": {
+        "also": "Wykrywa też:",
+        "legend": "pierścień: co jeszcze wykrywa urządzenie"
+      },
+      "maps": {
+        "temperature": "Temperatura",
+        "humidity": "Wilgotność",
+        "moisture": "Wilgotność gleby",
+        "carbon_dioxide": "CO₂",
+        "illuminance": "Światło",
+        "lamps": "Lampy",
+        "now": "Teraz",
+        "day": "24 h, {figure}",
+        "figure": {
+          "temperature_min": "najzimniej",
+          "moisture_min": "najsuchiej",
+          "illuminance_max": "najwięcej światła",
+          "carbon_dioxide_max": "najwyżej",
+          "mean": "średnia"
+        },
+        "now_legend": "teraz, interpolowane w każdym pokoju",
+        "day_legend": "{figure} w ostatnich 24 godzinach, interpolowane w każdym pokoju",
+        "no_sensor": "brak czujnika w pokoju",
+        "lamps_legend": "Lampy: włączona świeci według jasności, wyłączona szara",
+        "off": "wył."
+      }
+    }
+  }
+}

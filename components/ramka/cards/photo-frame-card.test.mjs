@@ -106,3 +106,16 @@ test("the entity is required; the card hides itself from the grid", () => {
   card.connectedCallback();
   assert.equal(card.hidden, true);
 });
+
+test("contained (the preview's frame): the layer fills the card's box, not the page, and takes no page ownership", () => {
+  const card = makeCard({ config: { contained: true } });
+  card.connectedCallback();
+  assert.equal(card.hidden, false, "it stays in the grid");
+  assert.equal(card._layer.parentNode, card, "the layer is the card's own child");
+  assert.equal(card._layer.style.position, "absolute");
+  assert.equal(card._layer.style.display, "block", "no show_when: always shown");
+  assert.equal(window.__photoFrameOwner, undefined);
+  const page = makeCard();
+  assert.equal(page._layer.parentNode, document.body, "the Ramka's own card still takes the page");
+  assert.equal(page._layer.style.position, "fixed");
+});

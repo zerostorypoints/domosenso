@@ -49,6 +49,8 @@ components/<id>/        the catalog: manifest (component.yaml), esphome/, ha/, c
 devices/<id>.yaml       the hardware the components name: names, description and what it does (en, de, pl),
                         and how Home Assistant shows it (match rules)
 kinds/<kind>.yaml       how Home Assistant shows a kind of hardware (match rules for `recommend --from-ha`)
+categories/<id>.yaml    what a device is for (plants, climate, light, radio...): colour, marker and the rules
+                        that sort devices into it; read by every component (SPEC-028 Amendment 5)
 scenes/<id>.yaml        the demo's eight scenes: time, entity states and attributes, what the tablet shows,
                         who takes part (format and rules: scenes/README.md)
 examples/demo-home/     a fictional home (Alex and Sam) as an instance of the catalog: inputs, states, generated media
@@ -87,6 +89,7 @@ Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
 | [check](.ai/skills/check/SKILL.md) | run `tools/check-all.sh` and report pass or fail per step |
 | [new-component](.ai/skills/new-component/SKILL.md) | scaffold `components/<id>/` and get the checker and tests passing |
 | [new-integration](.ai/skills/new-integration/SKILL.md) | bring a device the catalog lacks: find or write its integration, add it to the catalog in a PR |
+| [floorplan-from-image](.ai/skills/floorplan-from-image/SKILL.md) | trace a floor plan image into `domosenso/floorplan.json`, match rooms to areas, `floorplan push` |
 | [write-component-spec](.ai/skills/write-component-spec/SKILL.md) | write a spec in `.ai/specs/` and stop for approval |
 | [write-issue](.ai/skills/write-issue/SKILL.md) | draft issues and user stories per docs/ISSUES.md, check them, file after a go-ahead |
 | [review-issue](.ai/skills/review-issue/SKILL.md) | check an issue against docs/ISSUES.md: ready, needs changes or split |

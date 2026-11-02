@@ -1,4 +1,3 @@
-from assistant_bindings import air_policies, plant_bindings, plant_rows, ramka_bindings
 from pathlib import Path
 import json
 import shutil
@@ -6,6 +5,28 @@ import yaml
 from domosenso_render import _make_env, render_component
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def component_bindings(component, inputs, _defaults=None):
+    env = _make_env(ROOT / 'components' / component, inputs, 'en', {}, {})
+    return yaml.safe_load(env.get_template('assistant-bindings.yaml.j2').render())
+
+
+def plant_bindings(inputs):
+    return component_bindings('plants', inputs)
+
+
+def plant_rows(inputs):
+    env = _make_env(ROOT / 'components/plants', inputs, 'en', {}, {})
+    return env.get_template('_plant-rows.jinja').module.rows
+
+
+def ramka_bindings(inputs, _limits):
+    return component_bindings('ramka', inputs)
+
+
+def air_policies(inputs, _limits):
+    return component_bindings('ramka', inputs)['policies']
 
 
 def air_limits():
@@ -19,7 +40,7 @@ CAPABILITIES = {
     'media': {'now_playing', 'status', 'mains'}, 'lights': {'status'}, 'calendar': {'agenda'},
     'weather': {'current', 'forecast'}, 'bermuda-presence': {'observations'},
     'awnings': {'status', 'wind'}, 'audio-sensor': {'level'}, 'backup': {'status'}, 'ramka': {'status'},
-    'remote-access': set(),
+    'remote-access': set(), 'floorplan': set(),
 }
 
 
@@ -51,7 +72,6 @@ def test_ramka_air_defaults_are_pinned_to_component_revision(tmp_path):
 
 
 def test_audio_and_somfy_bind_only_guaranteed_ids():
-    from assistant_bindings import component_bindings
     audio = component_bindings('audio-sensor', {'sensors': [{'room': 'living-room', 'area': 'Living room',
         'entities': {'level': 'sensor.explicit'}, 'id_prefix': 'custom_room'}]},
         {'audio_prefixes': {'living-room': 'custom_room'}})['subjects'][0]
@@ -100,7 +120,8 @@ def test_audio_and_wind_defaults_follow_component_templates(tmp_path):
 def test_all_components_declare_translated_capabilities_and_render_bindings(tmp_path):
     examples = {'calendar': {'calendar': 'calendar.family'}, 'weather': {'weather': 'weather.forecast_home'},
                 'media': {'media_player': 'media_player.living_room_speaker'},
-                'remote-access': {'hostname': 'ha.example.org', 'token_file': '/secret/token'}}
+                'floorplan': {}, 'remote-access': {'hostname': 'ha.example.org', 'token_file': '/secret/token'}}
+    assert set(CAPABILITIES) == {p.parent.name for p in (ROOT / 'components').glob('*/component.yaml')}
     for cid, suffixes in CAPABILITIES.items():
         root = ROOT / 'components' / cid
         manifest = yaml.safe_load((root / 'component.yaml').read_text())
@@ -140,13 +161,12 @@ def test_all_components_declare_translated_capabilities_and_render_bindings(tmp_
         assert set(bindings) == {'subjects', 'policies'}
         roles = {f['role'] for c in definitions for f in c['required_facts'] + c['optional_facts']}
         assert all(set(subject['fields']) <= roles for subject in bindings['subjects'])
-        assert bindings['subjects'] or cid in {'audio-sensor', 'remote-access'}
+        assert bindings['subjects'] or cid in {'audio-sensor', 'remote-access', 'floorplan'}
         if cid == 'remote-access':
             assert bindings == {'subjects': [], 'policies': []}
 
 
 def test_media_and_audio_do_not_guess_optional_sources():
-    from assistant_bindings import component_bindings
     media = component_bindings('media', {'media_player': 'media_player.player'})['subjects'][0]
     assert set(media['fields']) == {'player'}
     audio = component_bindings('audio-sensor', {'sensors': [{'room': 'office', 'area': 'Office'}]})
@@ -162,6 +182,7 @@ def test_media_and_audio_do_not_guess_optional_sources():
 
 
 def test_capability_descriptions_explain_the_actual_information():
+    assert set(CAPABILITIES) == {p.parent.name for p in (ROOT / 'components').glob('*/component.yaml')}
     for cid, suffixes in CAPABILITIES.items():
         for lang in ('en', 'de', 'pl'):
             data = json.loads((ROOT / 'components' / cid / 'translations' / f'{lang}.json').read_text())
@@ -184,7 +205,6 @@ def test_plant_brightness_keeps_current_and_historical_evidence():
 
 
 def test_presence_radar_requires_explicit_entities():
-    from assistant_bindings import component_bindings
     inputs = {'proxies': [{'room': 'office', 'area': 'Office', 'radar': True}],
               'radar_sources': [{'entity': 'binary_sensor.office_radar', 'label': 'Office radar',
                                  'distance': 'sensor.office_distance', 'room': 'office'}]}
@@ -197,7 +217,6 @@ def test_presence_radar_requires_explicit_entities():
 
 
 def test_awning_and_room_bindings_use_only_explicit_identity():
-    from assistant_bindings import component_bindings
     awnings = component_bindings('awnings', {'covers': [
         {'name': 'Unmapped', 'shade_id': 1},
         {'name': 'Mapped', 'shade_id': 2, 'entity_id': 'cover.mapped', 'room': 'office'}]})
@@ -219,7 +238,6 @@ def test_air_policy_units_and_bounds_match_rendered_dashboard():
 
 
 def test_climate_status_exposes_only_provided_derived_entities():
-    from assistant_bindings import component_bindings
     source = {'climate': [{'label': 'Office', 'temperature': 'sensor.office', 'humidity': 'sensor.humidity',
                            'bathroom': True}], 'outside': {'temperature': 'sensor.outside'}}
     bindings = component_bindings('climate-air', source)
@@ -281,3 +299,45 @@ def test_ramka_bindings_expose_helpers_and_air_policy_only():
 def test_single_language_names_keep_existing_friendly_name_fallback():
     bindings = plant_bindings({'plants': [{'entity': 'plant.fern', 'label': 'Office', 'name': {'pl': 'Paproć'}}]})
     assert bindings['subjects'][0]['label'] == {'en': 'Paproć', 'pl': 'Paproć'}
+
+
+def test_integration_sources_are_upstream_and_wind_is_reported_state():
+    expected = {
+        'climate-air': {'sensor.<room>_temperature', 'sensor.<room>_humidity', 'sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}'},
+        'plants': {'sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}'},
+        'weather': {'weather.<home>'}, 'calendar': {'calendar.<calendar>'},
+        'media': {'media_player.<player>'}, 'lights': {'light.<room>', 'light.<bulb>'},
+    }
+    for cid, ids in expected.items():
+        root = ROOT / 'components' / cid
+        manifest = yaml.safe_load((root / 'component.yaml').read_text())
+        assert ids <= {s['id'] for s in manifest['provides']['upstream']}
+        caps = yaml.safe_load((root / 'assistant.yaml').read_text())['capabilities']
+        facts = [f for c in caps for f in c['required_facts'] + c['optional_facts']]
+        assert all(f['source']['relation'] == 'upstream' for f in facts if f['source']['id'] in ids)
+    wind = next(c for c in yaml.safe_load((ROOT / 'components/awnings/assistant.yaml').read_text())['capabilities'] if c['id'] == 'awnings.wind')
+    assert wind['freshness'] == {'max_age_seconds': None, 'basis': 'reported_state'}
+    assert any(f['role'] == 'last_heard' and f['type'] == 'event' for f in wind['optional_facts'])
+
+
+def test_plant_room_label_is_preserved_separately_from_identity():
+    room = {'en': 'Kitchen', 'de': 'Küche', 'pl': 'Kuchnia'}
+    subject = plant_bindings({'plants': [{'entity': 'plant.fern', 'name': 'Fern', 'label': room}]})['subjects'][0]
+    assert subject['label'] == 'Fern'
+    assert subject['roomLabel'] == room
+    assert 'roomKey' not in subject
+
+
+def test_plant_defaults_live_in_pinned_component(tmp_path):
+    source = ROOT / 'components/plants'
+    component = tmp_path / 'plants'
+    shutil.copytree(source, component)
+    partial = component / 'templates/_plant-rows.jinja'
+    assert partial.is_file()
+    partial.write_text(partial.read_text().replace("'min_moisture': 15", "'min_moisture': 18"))
+    render_component(component, {'notify': 'notify.example', 'plants': [{'entity': 'plant.fern', 'label': 'Office'}]}, tmp_path / 'out')
+    binding = yaml.safe_load((tmp_path / 'out/assistant-bindings.yaml').read_text())
+    package = yaml.safe_load((tmp_path / 'out/package.yaml').read_text())
+    assert binding['subjects'][0]['limits']['min_moisture'] == 18
+    assert package['plant']['fern']['min_moisture'] == 18
+    assert not (tmp_path / 'out/_plant-rows.jinja').exists()

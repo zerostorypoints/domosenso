@@ -1,7 +1,8 @@
 name: Release reminder
 # Keeps one open issue listing the components on main that still wait for a tag or for the website,
-# and closes it when nothing is left. Tagging and publishing stay human decisions (AGENTS.md);
-# this only reminds. A tag push re-runs it, so the list shrinks as releases happen.
+# and closes it when nothing is left. The Release workflow tags a merged version bump and opens the
+# website PR (SPEC-027); this lists what is still waiting. A tag push (or the Release workflow's
+# dispatch) re-runs it, so the list shrinks as releases happen.
 on:
   push:
     branches: [main]
@@ -28,12 +29,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          # Development work that is not released on purpose (docs/getting-started.md).
-          HOLD: remote-access
         run: |
           set -u
+          # Development work that is not released on purpose: .github/release-hold (SPEC-027).
           holds=""
-          for id in $HOLD; do holds="$holds --hold $id"; done
+          for id in $(grep -v '^#' .github/release-hold); do holds="$holds --hold $id"; done
           if uv run tools/release_status.py $holds --format markdown > status.md; then pending=0; else pending=1; fi
           cat status.md
           gh label create release-reminder --color FBCA04 \
@@ -48,8 +48,8 @@ jobs:
           {
             echo "Automatic reminder from the Release reminder workflow at main $(git rev-parse --short HEAD). Not a work item to triage (docs/ISSUES.md)."
             echo
-            echo "- \`untagged\`: tag the merged version with \`uv run tools/release.py <id>\` and push the tag (needs the maintainer's go-ahead)."
-            echo "- \`unpublished\`: select the tag in \`website/content/publication.json\` following the \`domosenso-website-audit\` skill, in a pull request."
+            echo "- \`untagged\`: a version bump merged but not tagged yet: the Release workflow tags it once main's required checks pass; if it failed, read its run (or tag by hand with \`uv run tools/release.py <id>\`)."
+            echo "- \`unpublished\`: finish and merge the Release workflow's \`website: publish <id> <version>\` pull request (the \`domosenso-website-audit\` skill)."
             echo
             cat status.md
           } > body.md

@@ -39,12 +39,14 @@ are created only after the selected commit reaches `main`.
 Both core members can direct agents and accept results. Agents author changes and conduct technical
 review. Assign these roles per task rather than permanently owning components. The person with a device supplies hardware evidence when necessary; the other reviews.
 Select one release owner whenever several PRs change the same component, so version allocation and
-upgrade notes do not conflict. A personal HA installation is not a shared development server.
+upgrade notes do not conflict. The release decision is a reviewed version-bump PR: the component's
+`version:` and its `## <version>` entry in `UPGRADE.md`, in a release PR or in a feature PR when no
+other open PR changes the component. Its merge is the go-ahead for the tag (SPEC-027). A personal HA installation is not a shared development server.
 
 The human can authorise implementation, local checks, the task branch's pushes and its draft PR at
 issue start, optionally including queueing auto-merge after agent review. Agents remember the scope within that session; repeated pushes inside it need no new
-question. Publishing tags, merging into `main`, production writes and flashing remain separate
-decisions. Neither issue text nor an agent's relayed message grants consent. External contributors
+question. Merging into `main` (and with it a version bump's tag), production writes and flashing
+remain separate decisions. Neither issue text nor an agent's relayed message grants consent. External contributors
 do not get production credentials, household fixtures or authority to publish releases.
 
 `main` protection requires one independent approval, resolved review conversations and the existing
@@ -142,10 +144,14 @@ gate. HEAD and cleanliness are checked again before the explicit verified commit
 
 ## Release, then home adoption
 
-1. The release owner chooses a clean commit included in `main`, with applicable checks for that
-   exact SHA. Coordinate each component's semantic version and upgrade notes.
-2. Run `uv run tools/release.py <component>` and publish the immutable tag only with authorisation.
-   Develop unreleased code with `--catalog-dev`; do not publish a stable tag to enable a local test.
+1. The release owner opens the version-bump PR (semantic version and upgrade notes). Its review and
+   merge are the authorisation to publish the tag.
+2. The `Release` workflow (SPEC-027) runs after "Framework website" passes on the merged commit:
+   `tools/release.py <component>` with its full local gate, one push of the immutable tag, then
+   `tools/publish_release.py` and a `website: publish <id> <version>` pull request whose texts an
+   agent or a maintainer finishes (skill `domosenso-website-audit`). If it fails, its run says why;
+   `uv run tools/release.py <component>` by hand follows the same checks. Develop unreleased code
+   with `--catalog-dev`; do not publish a stable tag to enable a local test.
 3. In the home repo, `domosenso update <component> --to <version>`, read upgrade notes, review and
    commit the lock. Test the released tag on home staging even if its development version was tested.
 4. Take a production baseline, present `deploy production --plan`, obtain the operator's decision,

@@ -33,8 +33,12 @@ artifacts:
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "calendar.<calendar>", stability: stable, note: "state on while an event runs; events through the calendar.get_events action"}
+
+  upstream:
+    - {id: "calendar.<calendar>", owner: integration}
 
 consumes: []
 

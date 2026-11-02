@@ -195,3 +195,66 @@ test("defaults are the screenshot values", () => {
   }
   assert.equal(spectrum.dynamics.tilt, true);
 });
+
+test("config: dynamics.eq defaults to six flat ranges", () => {
+  assert.deepEqual(DEFAULTS.dynamics.eq, { sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0 });
+});
+
+test("resolveOptions reads an eq range from an entity", () => {
+  const c = entityCfg({ dynamics: { eq: { bass: "input_number.x_eq_bass" } } });
+  assert.ok(entitiesOf(c).includes("input_number.x_eq_bass"));
+  assert.equal(resolveOptions(c, { "input_number.x_eq_bass": { state: "-6" } }, KINDS).dynamics.eq.bass, -6);
+  assert.equal(resolveOptions(c, { "input_number.x_eq_bass": { state: "unavailable" } }, KINDS).dynamics.eq.bass, 0);
+});
+
+const LOOK = { rise: 50, fall: 0.3, hold: 0.5, tilt: false, eq: { bass: -4 },
+  spectrum: { neutral: 35, hot: 78 }, level: { neutral: 20, hot: 60 } };
+const lookState = (attributes, state = "on") => ({ "sensor.x_look": { state, attributes } });
+
+test("look: lists the entity and overrides dynamics and colour", () => {
+  const spec = entityCfg({ look: "sensor.x_look", dynamics: { rise: 200, fall: "input_number.f" } });
+  assert.ok(entitiesOf(spec).includes("sensor.x_look"));
+  const r = resolveOptions(spec, { ...lookState(LOOK), "input_number.f": { state: "9" } }, KINDS);
+  assert.deepEqual(r.dynamics, { rise: 50, fall: 0.3, hold: 0.5, tilt: false,
+    eq: { sub: 0, bass: -4, low_mid: 0, mid: 0, presence: 0, air: 0 } });
+  assert.deepEqual([r.colour.neutral, r.colour.hot], [35, 78]);
+  const scalar = normaliseConfig({ source: { kind: "scalar", entity: "sensor.x" }, look: "sensor.x_look" }, KINDS);
+  const s = resolveOptions(scalar, lookState(LOOK), KINDS);
+  assert.deepEqual([s.colour.neutral, s.colour.hot], [20, 60]);
+});
+
+test("look: unavailable or missing leaves the options as without it", () => {
+  const plain = resolveOptions(entityCfg({}), {}, KINDS);
+  const c = entityCfg({ look: "sensor.x_look" });
+  assert.deepEqual(resolveOptions(c, lookState(LOOK, "unavailable"), KINDS), { ...plain, look: "sensor.x_look" });
+  assert.deepEqual(resolveOptions(c, lookState(LOOK, "unknown"), KINDS), { ...plain, look: "sensor.x_look" });
+  assert.deepEqual(resolveOptions(c, {}, KINDS), { ...plain, look: "sensor.x_look" });
+});
+
+test("look: an attribute of the wrong type leaves the option as configured", () => {
+  const c = entityCfg({ look: "sensor.x_look", dynamics: { rise: 200 } });
+  const r = resolveOptions(c, lookState({ rise: "fast", tilt: "yes", fall: NaN, hold: 2, eq: { bass: "loud" } }), KINDS);
+  assert.equal(r.dynamics.rise, 200);
+  assert.equal(r.dynamics.tilt, true);
+  assert.equal(r.dynamics.fall, 4);
+  assert.equal(r.dynamics.hold, 2);
+  assert.equal(r.dynamics.eq.bass, 0);
+});
+
+test("look: a hot at or below neutral puts the kind's defaults back", () => {
+  const c = entityCfg({ look: "sensor.x_look" });
+  const r = resolveOptions(c, lookState({ spectrum: { neutral: 80, hot: 30 } }), KINDS);
+  assert.deepEqual([r.colour.neutral, r.colour.hot], [30, 70]);
+});
+
+test("eq: a dynamics.eq that is not a mapping resolves to the six defaults, with and without a look", () => {
+  const zeros = { sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0 };
+  for (const eq of ["input_number.x", 3]) {
+    const plain = resolveOptions(normaliseConfig(base({ dynamics: { eq } }), KINDS), {}, KINDS);
+    assert.deepEqual(plain.dynamics.eq, zeros);
+    const spec = normaliseConfig(base({ dynamics: { eq }, look: "sensor.x_look" }), KINDS);
+    const r = resolveOptions(spec, lookState({ eq: { bass: -4, air: 1.5 } }), KINDS);
+    assert.deepEqual(r.dynamics.eq, { ...zeros, bass: -4, air: 1.5 });
+    assert.ok(Object.values(r.dynamics.eq).every((v) => Number.isFinite(v)));
+  }
+});

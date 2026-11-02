@@ -12,7 +12,7 @@ capabilities:
     type: event
     units: []
     source:
-      relation: provides
+      relation: upstream
       id: calendar.<calendar>
   optional_facts: []
   policy:

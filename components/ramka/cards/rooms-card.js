@@ -7,9 +7,26 @@
 //   type: custom:rooms-card
 //   height: calc(100vh - 304px)
 //   columns: 3
-//   entity: sensor.ramka_climate_rooms              # optional: its `rooms` attribute, a list of
-//                                                   # {label, main, extra}, replaces `rooms` while it
-//                                                   # holds one; room n gets colour n
+//   entity: sensor.ramka_climate_rooms              # optional: its `rooms` attribute, the settings
+//                                                   # page's widgets ({type, label, main, extra, ...}
+//                                                   # or an empty one, lib/climate-widgets.js),
+//                                                   # replaces `rooms` while it holds a reading; the
+//                                                   # n-th widget with one gets series colour n, an
+//                                                   # empty widget is an empty tile
+//   slots: input_number.ramka_climate_slots         # optional, with entity: how many widgets of the
+//                                                   # list show (a number or an entity); the rest
+//                                                   # stay in the list, unseen
+//   thresholds: input_boolean.ramka_climate_thresholds  # optional, with entity: while on, the values
+//                                                   # are coloured by their thresholds (below)
+//   air_limits:                                     # optional: the Air page's limits, fair from and
+//     co2: [input_number.ramka_air_co2_raised, input_number.ramka_air_co2_high]     # poor from, for
+//     pm2_5: [input_number.ramka_air_pm2_5_raised, input_number.ramka_air_pm2_5_high]  # Air quality
+//   air_colors:                                     # optional: the Air page's colours (ids of
+//     good: input_select.ramka_air_color_good       # lib/colours.js), for Air quality; without
+//     fair: input_select.ramka_air_color_fair       # them neutral, amber and red
+//     poor: input_select.ramka_air_color_poor
+//   neutral_color: input_select.ramka_climate_color_neutral  # optional: the neutral colour (an id);
+//                                                   # without it the primary text colour
 //   rooms:
 //     - name: Living room
 //       temperature: sensor.living_room_temperature
@@ -18,14 +35,32 @@
 //                                                   # --graph-color-1, the colour HA's charts
 //                                                   # give series 1; without it, plain text
 //
-// A reading shows its entity's unit; without one, °C for the temperature and % for the humidity.
+// A reading shows its entity's unit. Without one, a configured room's and a Temperature widget's
+// readings show °C for the temperature and % for the humidity; an Air quality or Custom widget's show
+// none (a score without a unit, an air quality index, is a plain number).
+//
+// Threshold-based colours (`thresholds` on): a Temperature widget's temperature is blue below its
+// comfort range, the neutral colour (`neutral_color`) within it, red above; its humidity the same
+// with its own range. An Air quality widget's CO2 and PM2.5 in the Air page's colours (`air_colors`),
+// good, fair or poor by the Air page's limits (their defaults while a helper has no number; the good
+// colour without them), so the Ramka and the Air page agree. A Custom widget's main value: the colour
+// chosen in its settings, else the neutral colour. Off: each widget's main value in its series
+// colour, as before the types. The layout is the same either way.
 
 import { createT } from "./lib/i18n.js";
-import en from "../translations/en.json" with { type: "json" };
-import de from "../translations/de.json" with { type: "json" };
-import pl from "../translations/pl.json" with { type: "json" };
 
-const t = createT({ en, de, pl });
+// The translations and the shared widget module carry this module's own ?v= (the deploy's hash of
+// its version directory): /local/ is served with a 31-day cache, so an import without it can stay the old file
+// after a deploy in the same version.
+const version = new URL(import.meta.url).search;
+const load = (path, json) => import(new URL(path, import.meta.url).href + version, json ? { with: { type: "json" } } : undefined);
+const [widgets, en, de, pl] = await Promise.all([
+  load("./lib/climate-widgets.js"), load("../translations/en.json", true), load("../translations/de.json", true),
+  load("../translations/pl.json", true)]);
+const { COMFORT, AIR_READINGS, THRESHOLD, NEUTRAL, AIR_COLOURS, colourCss, selectedColour, seriesSlot, slotColor, readWidget,
+  hasReading, band, level } = widgets;
+
+const t = createT({ en: en.default, de: de.default, pl: pl.default });
 
 class RoomsCard extends HTMLElement {
   setConfig(config) {
@@ -48,13 +83,26 @@ class RoomsCard extends HTMLElement {
     this._update(rooms);
   }
 
-  // The settings page's rooms, as `rooms` entries; null while the entity has none.
+  // The settings page's widgets, as `rooms` entries ({spacer: true} for an empty tile): the first
+  // `slots` of them, no trailing empty one; null while the entity has no reading among them. `color`
+  // is the theme slot of the n-th widget with a reading, `widget` the widget itself.
   _live() {
     const list = this._config.entity && this._hass.states[this._config.entity]?.attributes?.rooms;
     if (!Array.isArray(list)) return null;
-    const rooms = list.filter((r) => r && typeof r.main === "string" && r.main)
-      .map((r, i) => ({ name: String(r.label || ""), temperature: r.main, humidity: r.extra || null, color: i + 1 }));
-    return rooms.length ? rooms : null;
+    const places = list.slice(0, this._slots(list.length)).map((r) => readWidget(r, this._hass.states));
+    while (places.length && !hasReading(places.at(-1))) places.pop();
+    let n = 0;
+    const rooms = places.map((w) => (hasReading(w)
+      ? { name: w.label, temperature: w.main, humidity: w.extra || null, color: seriesSlot(++n), widget: w }
+      : { spacer: true }));
+    return n ? rooms : null;
+  }
+
+  // How many places show: `slots` as a number or an entity's state, 1 to 20; all without one.
+  _slots(all) {
+    const slots = this._config.slots;
+    const n = typeof slots === "number" ? slots : parseInt(slots && this._hass.states[slots]?.state, 10);
+    return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 20) : all;
   }
 
   _build(count) {
@@ -69,6 +117,7 @@ class RoomsCard extends HTMLElement {
                   grid-template-rows: repeat(${rows}, 1fr); gap: 1.5cqh 1.5cqw; overflow: hidden; }
         .room { display: flex; flex-direction: column; justify-content: center; align-items: center;
                 border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); min-width: 0; }
+        .room.spacer { visibility: hidden; }
         .name { font-size: calc(${Math.min(7, 24 / rows)} * var(--u)); color: var(--secondary-text-color); white-space: nowrap;
                 overflow: hidden; text-overflow: ellipsis; max-width: 95%; }
         .temp { font-size: calc(${Math.min(16, 56 / rows)} * var(--u)); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -88,12 +137,42 @@ class RoomsCard extends HTMLElement {
     return Number.isFinite(n) ? n.toFixed(digits) : s.state;
   }
 
-  // HA's own series colours when the theme has none (src/common/color/colors.ts).
-  static PALETTE = ["#4269d0", "#f4bd4a", "#ff725c", "#6cc5b0", "#a463f2", "#ff8ab7", "#9c6b4e", "#97bbf5", "#01ab63", "#9498a0"];
+  _number(id) {
+    const n = parseFloat(id && this._hass.states[id]?.state);
+    return Number.isFinite(n) ? n : null;
+  }
 
-  _color(n) {
-    const v = getComputedStyle(this).getPropertyValue(`--graph-color-${n}`).trim();
-    return v || RoomsCard.PALETTE[(n - 1) % RoomsCard.PALETTE.length];
+  // An Air page limit: the helper's number, else the package's default.
+  _airLimit(reading, i) {
+    return this._number(this._config.air_limits?.[reading]?.[i]) ?? AIR_READINGS[reading][i];
+  }
+
+  // The two values' colours: [main, second]; "" keeps the card's own (plain text, the second grey).
+  _colors(room) {
+    const off = [room.color ? slotColor(this, room.color) : "", ""];
+    if (!this._config.thresholds || this._hass.states[this._config.thresholds]?.state !== "on") return off;
+    // The configured rooms (before the seed) are temperatures and humidities.
+    const w = room.widget || { type: "temperature" };
+    const { low, high } = THRESHOLD;
+    const states = this._hass.states;
+    const own = this._config.neutral_color;
+    const neutral = own ? selectedColour(states, own, NEUTRAL) : THRESHOLD.neutral;
+    if (w.type === "temperature") {
+      const range = (value, lowKey, highKey) =>
+        ({ low, within: neutral, high, null: "" })[band(value, w[lowKey] ?? COMFORT[lowKey], w[highKey] ?? COMFORT[highKey])];
+      return [range(this._number(room.temperature), "temp_low", "temp_high"), range(this._number(room.humidity), "hum_low", "hum_high")];
+    }
+    if (w.type === "air") {
+      const picked = this._config.air_colors;
+      const colours = picked
+        ? Object.fromEntries(Object.entries(AIR_COLOURS).map(([key, id]) => [key, selectedColour(states, picked[key], id)]))
+        : { good: THRESHOLD.neutral, fair: THRESHOLD.raised, poor: THRESHOLD.high };
+      const air = (value, reading) => (this._config.air_limits?.[reading]
+        ? ({ ...colours, null: "" })[level(value, this._airLimit(reading, 0), this._airLimit(reading, 1))]
+        : (value === null ? "" : colours.good));
+      return [air(this._number(room.temperature), "co2"), air(this._number(room.humidity), "pm2_5")];
+    }
+    return [colourCss(w.color) || neutral, ""];
   }
 
   _unit(id, fallback) {
@@ -104,13 +183,23 @@ class RoomsCard extends HTMLElement {
   _update(rooms) {
     rooms.forEach((room, i) => {
       const el = this._rooms[i];
+      el.classList.toggle("spacer", !!room.spacer);
+      if (room.spacer) {
+        for (const part of el.children) part.textContent = "";
+        return;
+      }
       el.querySelector(".name").textContent = room.name;
       const temperature = this._value(room.temperature, 1);
       const temp = el.querySelector(".temp");
-      temp.textContent = temperature == null ? t(this._hass, "card.common.noValue") : `${temperature} ${this._unit(room.temperature, "°C")}`.trim();
-      temp.style.color = room.color ? this._color(room.color) : "";
+      const fallback = !room.widget || room.widget.type === "temperature";
+      temp.textContent = temperature == null ? t(this._hass, "card.common.noValue")
+        : `${temperature} ${this._unit(room.temperature, fallback ? "°C" : "")}`.trim();
+      const [mainColor, secondColor] = this._colors(room);
+      temp.style.color = mainColor;
       const h = this._value(room.humidity, 0);
-      el.querySelector(".hum").textContent = h == null ? "" : `${h} ${this._unit(room.humidity, "%")}`.trim();
+      const hum = el.querySelector(".hum");
+      hum.textContent = h == null ? "" : `${h} ${this._unit(room.humidity, fallback ? "%" : "")}`.trim();
+      hum.style.color = secondColor;
     });
   }
 }

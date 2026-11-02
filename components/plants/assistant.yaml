@@ -13,7 +13,7 @@ capabilities:
     units:
     - '%'
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
   optional_facts:
   - role: plant
@@ -53,28 +53,28 @@ capabilities:
     units:
     - '%'
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
   - role: conductivity
     type: number
     units:
     - µS/cm
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
   - role: brightness
     type: number
     units:
     - lx
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
   - role: temperature
     type: number
     units:
     - °C
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
   - role: brightness_peak
     type: number
@@ -136,7 +136,7 @@ capabilities:
     units:
     - '%'
     source:
-      relation: provides
+      relation: upstream
       id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
   - role: water_in_days
     type: estimate

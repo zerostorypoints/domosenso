@@ -17,6 +17,8 @@
 //     select: input_select.music_visual          # in place of the wave; the select's state picks
 //     spectrum: {type: custom:ambient-wave-card, ...}  # the card config shown (spectrum or level);
 //     level: {type: custom:ambient-wave-card, ...}     # classic or anything else keeps the wave
+//     live: input_boolean.music_live             # optional: the visual only while this is on;
+//                                                # off (or any other state) keeps the wave
 //   debug: true                                  # optional: viewport and card size in a corner,
 //                                                # to read the tablet's real CSS size once
 //   height: calc(100vh - 304px)                  # optional, with grid_options rows: auto: the
@@ -82,6 +84,9 @@ class NowPlayingCard extends HTMLElement {
     if (!config.entity) throw new Error("now-playing-card: entity is required");
     if (config.visual !== undefined && typeof config.visual?.select !== "string") {
       throw new Error("now-playing-card: visual.select is required");
+    }
+    if (config.visual?.live !== undefined && typeof config.visual.live !== "string") {
+      throw new Error("now-playing-card: visual.live must be an entity id");
     }
     this._config = config;
   }
@@ -171,6 +176,8 @@ class NowPlayingCard extends HTMLElement {
   _visualWanted() {
     const visual = this._config.visual;
     if (!visual) return null;
+    // The live switch (SPEC-025 amendment 1): off is the own wave, whatever the select says.
+    if (visual.live !== undefined && this._hass?.states[visual.live]?.state !== "on") return null;
     const option = this._hass?.states[visual.select]?.state;
     const config = VISUAL_OPTIONS.includes(option) ? visual[option] : null;
     if (typeof config?.type !== "string") return null;

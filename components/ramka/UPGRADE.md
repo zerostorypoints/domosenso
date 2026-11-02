@@ -3,6 +3,410 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.11.0 (2026-11-01): the plan view fills the screen
+
+Includes 0.10.1. Needs the `floorplan` component 0.3.0 or newer (`fill`, and its bar's
+`data-own-tap`); with an older one the plan keeps 8 rows and zoom returns to the controls.
+
+- With `floorplan: true` the plan view is as tall as the screen below its top instead of 8 rows,
+  and its zoom, fit and map buttons work without returning to the controls. The maps (plants:
+  light, temperature, soil moisture; climate; light) come with floorplan 0.3.0.
+- **After the update:** `domosenso update ramka --to 0.11.0` and `update floorplan --to 0.3.0`,
+  deploy, press the Ramka's reload.
+
+## 0.10.1 (2026-11-01): the screen follows the room after a restart
+
+- **Fixed (#52):** wake and sleep fired only on changes of the radar's presence, and a restart hides
+  the change (the state restores before the automations load). A frame restored `off` stayed dark
+  with someone in the room; one restored lit stayed lit all night in an empty room. The new
+  automation `<prefix>_reconcile_after_start` re-checks once Home Assistant has started and the
+  radar reports `on` or `off`: presence `on` and mode `off` wakes it to ambient; presence `off` that
+  holds for `off_delay_s` sleeps it, with the same conditions and actions as
+  `<prefix>_presence_on` / `<prefix>_presence_off`.
+- **Renders** `automation.<prefix>_reconcile_after_start` (additive); no input changes.
+- **To do:** nothing; render and deploy. The deploy's own restart is the first one it handles.
+
+## 0.10.0 (2026-11-01): the floor plan as a second view of the controls
+
+Needs the `floorplan` component (0.2.0 or newer) for the plan; without `floorplan: true` the render
+is what 0.9.0 rendered, apart from `corner-taps-card` leaving `data-own-tap` elements' taps alone.
+
+### The floor plan as a second view of the controls (SPEC-028)
+
+- **New, optional:** `floorplan: true` in the Ramka's inputs. On the controls, a sideways swipe
+  switches to the floor plan (the `floorplan` component's card, read-only) and back; a tap on the
+  plan, a swipe up or down, or the controls closing returns to the controls. Default `false`: the
+  render is byte-for-byte what it was.
+- **To use it:** add the `floorplan` component (`domosenso add floorplan@<version>`) and push the
+  plan (`domosenso floorplan push`); the card's Lovelace resource comes with that component, the
+  Ramka renders none. Without the dashboard the card shows its own no-plan message.
+- **Renders** `input_boolean.<prefix>_controls_plan` (starts off), `script.<prefix>_controls_plan_toggle`
+  and the automation `<prefix>_controls_plan_reset`; `script.<prefix>_show_controls` also turns the
+  helper off. Press the Ramka's reload after the deploy.
+- **Layers:** the plan offers the categories in the new input `floorplan_layers` (ids under the
+  catalog's `categories/`; default `[climate, plants]`, SPEC-028 Amendment 5) as chips, one shown at
+  a time, the first at the start; the tablet remembers the last one. A tap on a chip switches the
+  layer (`corner-taps-card` leaves elements marked `data-own-tap` alone); a tap anywhere else on the
+  plan still goes back to the controls. List more to offer more, e.g.
+  `[plants, media, radio, security, climate, light, shading, other]`.
+
+## 0.9.0 (2026-11-01): pause and the views of a page, the music source contract, live settings
+
+Everything merged since 0.8.0, in one release. Each part below says what changed and, where a home
+has something to do, what. All of them come with `domosenso update ramka` and a deploy (the cards
+move to `www/domosenso/ramka/0.9.0/`); press the Ramka's reload afterwards.
+
+### Pause and the views of a page (SPEC-026)
+
+- **New:** the bottom-right corner of the rotation pauses it (a play button resumes), and sideways
+  swipes step through the plant pages and the photos of the series. Nothing to do: the next render
+  and deploy bring the helpers, scripts, the sensor and the automation `<prefix>_pause_end`.
+  `input_boolean.<prefix>_paused` starts off.
+- **Plant pages** are now turned by the ambient loop through `input_number.<prefix>_plants_page`
+  (plants-card's new `page:` option) instead of the card's own timer; the page index the card kept
+  in the browser (`localStorage`) is no longer read on the Ramka. Each pass still shows at most two
+  pages of `plants_page_s` and the next pass continues.
+- **The photos stage** now keeps its series in `sensor.<prefix>_photo_series` and picks through
+  `script.<prefix>_photo_series_new`; a series left part-way (a swipe, a pause) is continued.
+- **After a deploy** press the reload button (`input_button.<prefix>_reload`) so the tablet loads the
+  new cards; without it the old corner-taps card has no pause corner and ignores sideways swipes.
+
+### The music source contract (SPEC-025)
+
+- **Live visualization (amendment 1).** A new switch, `input_boolean.<prefix>_music_live`, turns
+  the music visual on; off, the Ramka draws the Classic wave. It is off by default (no `initial:`;
+  the seed and "Reset to defaults" turn it off), so every home starts on Classic.
+  `input_select.<prefix>_music_visual` holds `spectrum` and `level` only, the input's first:
+  `classic` is no option any more. A restored `classic` state is not an option, so Home Assistant
+  takes the first one, which is harmless while Live is off. The now-playing card reads the switch
+  (`visual.live`), as the previews do.
+- **The Music page is slim.** It has the page switch, the Live visualization switch and "Live
+  visualization ›", the way to a new sub-view (`/<settings path>/music-live`, no tab, its back
+  arrow returns to Music) that holds everything of the visual: the preview, the music sensor (its
+  select, its abilities and "Sensor settings ›"), the Visualization (the mode and the spectrum's
+  flavour, with Live on), the colour range and "Advanced: response profile", one card with the
+  profile select and the selected profile's rows (Advanced, with an active visual). The music
+  sensor's sub-view now returns to Live visualization. The palette and the line width have no row
+  any more (their helpers and bindings stay); the level has no flavour row.
+- **Flavours.** `input_select.<prefix>_music_spectrum_flavour` offers `dune`, `halo` and `bars`,
+  `_level_flavour` `centre`, each with the home's own `music_visual_options` flavour first when it
+  is another one. A flavour picked on the settings page that is no option now falls to the first
+  option (the home's default) at the next restart.
+- **Reset**: `script.<prefix>_settings_reset` takes `page: music_live`, the visual's settings (the
+  visual, the flavours, palette, line width, the profiles, the EQ and the colour range); Music's
+  own Reset sets the page switch and the Live switch.
+- **The music sensor's settings move to a sub-view, "Music sensor settings"**
+  (`/<settings path>/music-sensor`, a Home Assistant sub-view: no tab, its back arrow returns to
+  Live visualization), reached by "Sensor settings ›" in Live visualization's Music sensor widget
+  while the selected sensor has an update rate or a calibration. It holds the Calibration section
+  (from the Music page) and the sensor update rate (from Music, Advanced), each shown with the
+  board's ability, the mic gain while it reads, the Live visualization preview and a Reset of the
+  update rate. The Music page's Advanced "Music sensor" card is gone; the music source select is
+  in Live visualization's Music sensor widget.
+- **Reset**: `script.<prefix>_settings_reset` takes `page: music_sensor` (with `music_visual`), which
+  sets only `input_select.audio_sensor_music_spectrum_rate` to `normal`, while it exists. Music's
+  own Reset no longer touches the rate; the global Reset still does.
+- **`settings_paths`** (the preview dashboard's input) now also gives the settings dashboard's own
+  links: the way to the sub-view and its back arrow, `/ramka-settings/` by default.
+- The settings dashboard validates `settings_paths` only with `music_visual`; the preview dashboard
+  validates it whenever it is rendered.
+- The visual's mode row is an info row: its (i) says what Spectrum and Level draw and what data
+  each needs.
+- Translations: new keys `ui.settings.music_sensor_settings`, `ui.settings.music_sensor_page`,
+  `ui.settings.music_sensor_reset`, `ui.settings.music_sensor_none`,
+  `ui.settings.music_sensor_rate_{normal,eco,fast}`, `ui.settings.header.music_sensor`,
+  `ui.settings.music_sensor_abilities`, `ui.settings.music_sensor_no_data`,
+  `ui.settings.music_ability_{spectrum,level,rate,calibration}`,
+  `ui.settings.music_notice_{no_sensor,no_spectrum,no_level,offline}`,
+  `ui.settings.music_visual_{spectrum,level}`, `ui.settings.music_visual_mode`,
+  `ui.settings.music_live`, `ui.settings.music_live_link`, `ui.settings.music_live_page`,
+  `ui.settings.music_live_off`, `ui.settings.header.music_live` and
+  `ui.settings.music_profile_widget` (en, de, pl); `ui.settings.music_profile_settings` is gone.
+
+#### What a home does
+
+- A home whose settings dashboard is not at `ramka-settings` sets `settings_paths` to it (per
+  language), then renders.
+- A home that showed spectrum or level turns Live visualization on once (Music page), and picks
+  the visual again on its sub-view if the select fell to the first option.
+
+### A measured Behind speakers curve, the preview dashboard by default
+
+SPEC-024.
+
+- **Behind speakers and Half match are no longer flat.** The catalog's EQ presets `behind_speakers`
+  (sub −5, bass −10, low mids −3, mids 0, presence +3, air +2 dB) and `half_match` (−2, −5, −1, 0,
+  +2, +1) are one measurement: a sensor on an amplifier between the speakers against the listening
+  position, and half of it. A starting point; `fitted` stays flat until set. The Behind speakers
+  profile starts from that curve (or from `fitted` once it is not flat); the preset's name no longer
+  says "flat until set", and its tooltip names the curve.
+- **`music_eq_presets` replaces a curve as a whole**: a key left out is 0, as the input always said;
+  with the catalog's curves no longer flat, a home's `{behind_speakers: {bass: -6}}` is that one cut
+  and nothing else.
+- **`preview_dashboard` defaults to true**: a home without the input now gets
+  `dashboards/ramka-preview.<lang>.yaml` rendered, and the settings pages' headers link to it.
+- Translations: `ui.settings.music_template_behind_speakers_why`, `ui.settings.music_eq_behind_speakers`,
+  `ui.settings.music_eq_behind_speakers_why` and `ui.settings.music_eq_half_match_why` change (en,
+  de, pl); no new keys.
+
+#### What a home does
+
+- A home that relied on the flat default and wants it keeps it with
+  `music_eq_presets: {behind_speakers: {sub: 0, bass: 0, low_mid: 0, mid: 0, presence: 0, air: 0}}`
+  (or `{behind_speakers: {}}`), then a render. The new curve reaches the Behind speakers profile's
+  own helpers only through the seed of a fresh helper or the Music page's Reset; a home whose
+  helpers were seeded flat picks the preset in that profile's EQ preset select or resets the Music
+  page to get it.
+- **The EQ preset select rests on `—`** (no preset): a choice loads into the selected profile and
+  the select returns to `—`, so a profile's card never shows another profile's preset and the same
+  preset can be chosen again. The "Apply the selected preset" button is gone, and with it
+  `ui.settings.music_eq_load` and `ui.settings.music_eq_load_action`. A script that read the select's
+  state as the profile's preset reads `—` now; one that calls `script.<prefix>_music_load_eq` passes
+  `preset`.
+- The preview: add its `lovelace:` entry with `require_admin: true` (README, "Preview dashboard")
+  and deploy (a restart for the entry; the preview's resource `cards/screen-frame-card.js`). Until
+  the entry is there, `domosenso status` prints `missing-dashboard-entry dashboards/ramka-preview.<lang>.yaml`
+  for each language. A home that does not want it sets `preview_dashboard: false` and renders.
+  `domosenso update` removes the preview files it no longer renders; a plain `render` only reports
+  them (`stale dashboards/ramka-preview.<lang>.yaml`) and leaves them, unlocked. Delete them by hand
+  then: a home that lists `dashboards/*.yaml` under `local:` would otherwise deploy them as its own.
+
+### Colour dots in the colour choices, readings without a unit, the albums' column
+
+SPEC-024.
+
+- **Colour dots**: every colour choice shows the colour: the value and each choice of the list have
+  the colour's dot in front, the climate picker's swatch, the names in the page's language. The
+  settings page's four colour selects (`input_select.<prefix>_air_color_{good,fair,poor}`,
+  `input_select.<prefix>_climate_color_neutral`) become the new row
+  `custom:ramka-colour-select-row` (`cards/colour-select-row.js`, a new Lovelace resource; entity,
+  name, `lang`), which selects with `input_select.select_option`; the Custom widget's dialog has the
+  same list (new module `cards/lib/colour-list.js`), Neutral with the neutral colour's dot. The list
+  is an overlay (a tap, or an arrow, Enter or Space on the keyboard); Escape closes only the list.
+- **Readings without a unit**: the climate picker (Home Assistant's entity picker and the plain
+  dropdown) offers a sensor with a unit, a state class (`measurement`, `total`,
+  `total_increasing`) or a number for its state, so a score without a unit (an indoor air quality
+  score) can be a Custom widget's reading; Temperature and Air quality keep their device classes.
+  The widgets' own sensor is never offered. On the Ramka an Air quality or Custom widget's reading
+  without a unit shows none (it showed °C or %); a Temperature widget keeps °C and %.
+- **Photos page**: the albums are their own section, in the right column next to Basic; the
+  render-time inputs and Reset below.
+- No new texts (the colours' names are the `card.colours.*` of the release before).
+
+#### What a home does
+
+- Render and deploy: the deploy adds the resource `cards/colour-select-row.js` (`deploy --plan`
+  prints `resource create`). Nothing else changes in a home's state.
+
+### Named colours for Air and Climate, fair / poor, page titles
+
+SPEC-024.
+
+- **One colour list**: the Ramka's named colours (`cards/lib/colours.js`: green, teal, blue, light
+  blue, purple, pink, magenta, amber, orange, red, grey), each a series colour of the Ramka's theme,
+  so it follows the theme mode. Every colour setting below picks from it and stores the colour's id.
+- **Air page colours** (with `air`): `input_select.<prefix>_air_color_good` (the neutral one),
+  `_air_color_fair` and `_air_color_poor`, in the Air page's Advanced card after the limits,
+  defaults green, amber, red; group `air` (reset with the Air page, seeded while the air numbers are
+  untouched; a fresh select starts at its default). The air-card colours its levels from them; its
+  theme variables `--air-good`, `--air-raised`, `--air-high` are no longer read. Red is now the
+  theme's red (`--graph-color-3`, `#ff7a5c` dark) rather than the air-card's own `#ff6b5c`.
+- **Fair and poor**: the Air page's limits read "CO₂ fair from / poor from" (PM2.5, VOC and NOx the
+  same; the score keeps "fair below / poor below"), the air-card's own level words are good, fair,
+  poor, and PM2.5's and the indexes' labels on the Ramka "fair" and "poor". The helper ids stay
+  `input_number.<prefix>_air_<reading>_raised` / `_high`.
+- **Climate**: an Air quality widget's colours, with threshold-based colours on, are the Air page's
+  three, so both views agree. New `input_select.<prefix>_climate_color_neutral` ("Neutral colour",
+  Climate, Advanced, next to "Threshold-based colours", default green, group `climate`): a
+  Temperature widget within its range and a Custom widget without a colour of its own (it was the
+  theme's text colour). Below (blue) and above (red) are unchanged.
+- **Custom widget colour**: the dialog's radio buttons become a dropdown of the named colours
+  (names in the page's language) plus Neutral; the widget stores the id (`color: teal`). A colour
+  stored as a theme slot number by the build before reads as its colour (4 teal, 5 purple, 6 pink,
+  9 green, 11 magenta, 10 grey), in the cards and in `script.<prefix>_climate_rooms_set`, and the
+  next save stores the id: no choice is lost.
+- **Page titles**: every settings page's header starts with the page's title (the tab's name,
+  as its tooltip shows it), then the description and the preview link.
+- **Translations**: new `card.colours.*`, `ui.settings.air_color_{good,fair,poor}`,
+  `ui.settings.climate_color_neutral`; `card.air.level.{raised,high}` become `.fair`, `.poor`,
+  `card.climate_rooms.{raised,high_from}` become `.fair_from`, `.poor_from`,
+  `ui.air.{pm,index}_{raised,high}` become `_fair`, `_poor`; `card.climate_rooms.colour` is gone
+  (en, de, pl).
+
+#### What a home does
+
+- Render and deploy (new module `cards/lib/colours.js`, no new resource). The four selects start at
+  their defaults. A theme or dashboard that set `--air-good`, `--air-raised` or `--air-high` picks
+  the colours on the Air page instead.
+
+### Settings page headers, the Controls page, every screen in the preview
+
+SPEC-024.
+
+- **Headers**: every settings page but About starts with a short text: what its view shows, what
+  it is for and when it is on the screen (General: the Ramka as a whole). With `preview_dashboard`
+  it links to the preview's tab of the same path; the new input `preview_paths` (the preview
+  dashboard's URL path per language, default `ramka-preview`) names it.
+- **Controls page** (`/<settings path>/controls`, between Calendar and Music): "Controls on
+  approach" (Basic), near distance, near time and how long the controls stay up (Advanced) move
+  here from General, the same helpers with the same values. The settings reset's `page` field takes
+  `controls`, which resets these four; `page: general` no longer does. The global reset and the
+  seed are unchanged.
+- **Preview**: always one tab per screen, climate, air, plants, photos, status, calendar,
+  **controls** (new) and music. A screen the render left out says which input adds it, without a
+  frame; a screen whose page switch is off has a banner over its frame. The frame lays sections in
+  the sections view's three columns, applies the cards' own visibility, and keeps a card's own
+  height: the calendar tab drew a 56 px strip, its one grid row, instead of the agenda.
+- **Translations**: new keys `ui.settings.pages.controls`, `ui.settings.header.*`,
+  `ui.settings.preview_link`, `ui.settings.preview_link_general`, `ui.settings.inputs.radar`,
+  `ui.settings.inputs.lights`, `ui.preview.switched_off`, `ui.preview.not_set_up` (en, de, pl).
+
+#### What a home does
+
+- Render and deploy (`screen-frame-card.js` changes at its path, no new resource; reload the
+  preview without the browser's cache to get it). A script or
+  automation that calls `script.<prefix>_settings_reset` with `page: general` to reset the near
+  settings now passes `page: controls` for them. With the preview on another path than
+  `ramka-preview`, set `preview_paths`.
+
+### Climate widgets
+
+SPEC-024.
+
+The Climate page's rows (with `climate`) become **widgets** of a type, each with its own settings.
+
+- **Types**: Temperature (a temperature and a humidity sensor), Air quality (CO₂ and PM2.5), Custom
+  (any two sensors with a unit) and Empty (an empty tile), chosen in each row's dropdown; the pickers
+  offer the type's device classes. Every row is editable: a row without a widget is Empty, and takes
+  a type. `sensor.<prefix>_climate_rooms` stores `type` per entry and the type's own values
+  (`temp_low`, `temp_high`, `hum_low`, `hum_high`; `color`), an empty one as
+  `{type: empty, spacer: true}`. **Existing lists keep every room**: an entry without a type reads
+  as Temperature when its main sensor's `device_class` is `temperature`, else Custom (cards and
+  `script.<prefix>_climate_rooms_set`), and is stored with its type at the next save. A widget of a
+  type whose sensor is not picked yet keeps its row (an empty tile on the Ramka until it has one);
+  the sensor's state counts widgets with a reading.
+- **Settings dialog** per widget: Temperature, comfort ranges (default 20 to 24 °C, 40 to 60 %);
+  Air quality, the Air page's own limits (`input_number.<prefix>_air_{co2,pm2_5}_{raised,high}`, the
+  same helpers); Custom, a colour.
+- **Threshold-based colours**: `input_boolean.<prefix>_climate_thresholds` (default off; Climate,
+  Advanced; group `climate`, reset with the page and seeded with the widgets). Off, the tiles look as
+  before, in the series colours; on, the values are blue / neutral / red by their comfort ranges,
+  neutral / amber / red by the Air page's limits, a Custom widget's neutral or its colour.
+- **Series colours change**: the widgets, the picker's dots and the 7-day chart lines leave out the
+  theme's blue, amber, red, orange and light blue (slots 1, 2, 3, 7, 8), so they are never read as a
+  threshold: the n-th widget takes slot 4, 5, 6, 9, 11, 10 in turn. Every room's colour changes
+  once; with more than six widgets the colours repeat.
+- **Number of widgets**: the slider `input_number.<prefix>_climate_slots`, renamed "Number of
+  widgets", moves from Climate, Basic to Climate, Advanced; its value and its seed stay.
+- **Translations after a deploy**: `climate-rooms-card` and `rooms-card` load their translations and
+  the new `cards/lib/climate-widgets.js` with their own `?v=`, so a browser's 31-day cache of
+  `/local/` no longer serves an old translation after a deploy in the same version (the picker showed
+  the raw key `card.climate_rooms.spacer`).
+- Render and deploy; the deploy updates the card resources. The rooms-card gets `thresholds` and,
+  for a home with the Air page's CO₂ or PM2.5, `air_limits`; the settings card `air_limits`. Nothing
+  else to do.
+
+### Preview dashboard
+
+SPEC-024.
+
+**Preview dashboard** (optional): with `preview_dashboard: true` the render also writes
+`dashboards/ramka-preview.<lang>.yaml`, one view per screen the home has (climate, air, plants,
+photos, status, calendar, music), each screen with the Ramka dashboard's own cards in a frame of
+`screen`'s size and a link to that screen's settings page (README, "Preview dashboard"). The
+Ramka dashboard renders as before, byte for byte: its screens are now blocks the preview calls.
+
+- **New card resource**: `cards/screen-frame-card.js` (`custom:screen-frame-card`); the deploy
+  creates its Lovelace resource. `photo-frame-card` takes `contained: true` (the preview's).
+- **New inputs**: `preview_dashboard` (default false; true since the newest entry) and `settings_paths` (the settings
+  dashboard's URL path per language, default `ramka-settings`).
+- **Renderer**: a template whose output is only whitespace writes no file; that is how the preview
+  stays out of a home without the input.
+
+#### What a home does
+
+- (Superseded: the input now defaults to true, see the newest entry.) Nothing, without the input.
+  To use it: set `preview_dashboard: true` (and `settings_paths` when
+  the settings dashboard is not at `/ramka-settings`), render, add the `lovelace:` entry with
+  `require_admin: true` (README) and deploy (a restart for the entry, and a new resource).
+  Setting the input back to false leaves the rendered files in place: remove them and the entry.
+
+### Climate places, order and spacers
+
+The Climate page (with `climate`) gets a number of places, a reorderable picker and spacers.
+
+- **Number of places**: `input_number.<prefix>_climate_slots` (1 to 20, default 10) on the settings
+  page's Climate, Basic, in the new settings group `climate_slots`. The seed gives it 10 at the next
+  start while it is untouched (also after the seeded flag is on); the Climate page's Reset and the
+  global reset restore it. A number set to 1 on purpose reads as untouched and is set to 10 again at
+  the next start (one number, as the seed rule goes).
+- **Order**: rows are dragged by a handle (mouse and touch) or moved with up and down buttons; no
+  values to enter again.
+- **Spacers**: a row without a main reading now keeps its place, an empty tile on the Ramka, instead
+  of the rooms below moving up. `sensor.<prefix>_climate_rooms` stores it as `{spacer: true}`; its
+  state counts rooms only. A home whose list has no gaps sees no change. `script.<prefix>_climate_rooms_set`
+  turns a row without a sensor as its main reading into a spacer (it used to drop it), drops spacers at
+  the end and keeps up to twenty places (it used to keep ten). An automation that calls the script
+  with gaps on purpose gets them as empty tiles now.
+- **Colours**: the n-th room (spacers skipped) has series colour n in its tile, the picker's dot and
+  both 7-day charts; the charts set it per line, so a room without a second reading no longer shifts
+  the humidity lines' colours.
+- **Fewer places than rooms**: the rooms beyond are kept in the list but not shown on the Ramka; the
+  picker counts them and offers to remove them.
+- The rooms-card and both line-style-cards on the Climate view read `slots`
+  (`input_number.<prefix>_climate_slots`); render and deploy, and the deploy updates the card
+  resources. Nothing else to do.
+
+### Music looks
+
+SPEC-024.
+
+**Response profiles** (with `music_visual`): a profile select (`custom`, `behind_speakers`, `lively`,
+`calm`, `analyser`), each profile editable with its own values, and EQ presets (README, "Response
+profile"). A profile sets rise, fall, hold, tilt and the EQ; it does not change the colour range, so
+the four neutral and hot dB values stay the user's whichever profile is on. The visual cards bind
+`sensor.<prefix>_music_look` (attributes rise, fall, hold, tilt, eq, read from the selected
+profile's own helpers). There is no blind audition.
+
+- **Per-profile values.** Custom keeps its helpers and ids (`input_number.<prefix>_music_{rise_ms,fall_s,hold_s}`,
+  `input_number.<prefix>_music_eq_<range>`, `input_boolean.<prefix>_music_tilt`), so its tuning stays.
+  New: ten helpers per template, `input_number.<prefix>_music_<id>_{rise_ms,fall_s,hold_s,eq_sub,eq_bass,eq_low_mid,eq_mid,eq_presence,eq_air}`
+  and `input_boolean.<prefix>_music_<id>_tilt`, in the new settings group `music_profiles`; the seed
+  gives them the catalog's values at the next start (also after the seeded flag is on), and the Music
+  page's Reset and the global reset restore them.
+- **EQ presets** load into the selected profile's EQ (`script.<prefix>_music_load_eq`, field `preset`),
+  no longer always into Custom's.
+- **Copy to custom is gone**: `script.<prefix>_music_copy_to_custom` and its button. A template is now
+  tuned in place; a home that called the script from its own automations removes the call.
+- **Settings, Music**: Basic (with the profile select), Advanced right after it (the whole section
+  with the switch: music source, flavours, line width, redraw rate, sensor update rate; no longer an
+  explanation of `eco` / `normal` / `fast`), Preview, Profile settings (one card per profile, shown
+  while it is selected), Colour range, Calibration. The description card, "Values in use" and the
+  preset list are gone: the profile and EQ preset selects carry an (i) tooltip instead.
+- **New card resource**: `cards/info-select-row.js` (`custom:ramka-info-select-row`), an entities-card
+  row; the deploy creates its Lovelace resource. Its description is a floating tooltip next to the
+  (i) (hover shows it, a tap pins it, a tap elsewhere, Escape or a scroll closes it); no layout moves.
+- **Settings polish**: on Music, Profile settings and the Colour range show only while "Show advanced
+  settings" is on; the music source and the sensor update rate share one "Music sensor" card in
+  Advanced; the redraw rate (`input_number.<prefix>_music_fps`) has no row any more (the helper, its
+  default 30 and the cards' binding stay; a home that changed it keeps its value). Each EQ preset's
+  tooltip explains it and names its curve from the preset table, the home's `music_eq_presets`
+  included. On Photos, the time per photo moved from Advanced to Basic. Nothing to do.
+
+The looks need the audio-sensor release that carries the `look` option and `dynamics.eq`; an older
+audio-sensor card ignores both and draws without them, so update the two components together.
+
+#### What a home does
+
+- With the release that carries it: `domosenso update ramka` and a deploy (a restart: new helpers,
+  a template sensor and a new Lovelace resource). The seed gives Custom a flat EQ and a 1.5 s hold
+  and selects `custom`, and gives each template its starting values, so the visual looks as before.
+- Optional: the home's measured curves in `music_eq_presets` (`behind_speakers`, `half_match`, `fitted`),
+  then a render. A home that set `music_eq_presets.mlp_match` while the feature was unreleased renames
+  that key to `behind_speakers` (an unknown key fails the render). `behind_speakers`' own EQ starts
+  from that curve; a home that changes the curve later and wants it in the profile loads the preset
+  into it, or resets the Music page.
+
 ## 0.8.0 (2026-10-31): a list of every plant, a leaf instead of the initial, the About page
 
 SPEC-022 amendment 2, SPEC-023.

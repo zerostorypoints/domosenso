@@ -86,9 +86,54 @@ test("with rooms, the inner card charts the rooms' readings, then `after`; witho
   card.hass = { states: { "sensor.rooms": { attributes: { rooms } } } };
   await flush();
   assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.k_h", name: "K" }, { entity: "sensor.out", name: "Outside" }]);
+  // An Air quality widget stays off the charts: its PM2.5 is no humidity.
+  const withAir = [...rooms, { type: "air", label: "A", main: "sensor.co2", extra: "sensor.pm25" }];
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms: withAir } } } };
+  await flush();
+  assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.k_h", name: "K" }, { entity: "sensor.out", name: "Outside" }]);
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms: [withAir[2]] } } } };
+  await flush();
+  assert.deepEqual(made.at(-1).entities, own);
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } } } };
+  await flush();
   // The same rooms again build nothing new.
   const count = made.length;
   card.hass = { states: { "sensor.rooms": { attributes: { rooms } } } };
   await flush();
   assert.equal(made.length, count);
+});
+
+test("with rooms, spacers are skipped, only the first `slots` places count, and each line has its room's colour", async () => {
+  const { card, made, chart } = await makeCard({
+    card: { type: "statistics-graph", entities: [{ entity: "sensor.a" }] },
+    line_styles: { "sensor.out": { width: 3 } },
+    rooms: { entity: "sensor.rooms", slots: "input_number.slots", key: "extra", after: [{ entity: "sensor.out", name: "Outside" }] },
+  });
+  const rooms = [{ spacer: true }, { label: "K", main: "sensor.k_t", extra: "sensor.k_h" }, { label: "H", main: "sensor.h_t", extra: "" },
+                 { label: "B", main: "sensor.b_t", extra: "sensor.b_h" }, { label: "Z", main: "sensor.z_t", extra: "sensor.z_h" }];
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } }, "input_number.slots": { state: "4.0" } } };
+  await flush();
+  // Z is beyond the four places; H has no humidity, so B is the second line but the third room.
+  assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.k_h", name: "K" }, { entity: "sensor.b_h", name: "B" },
+                                          { entity: "sensor.out", name: "Outside" }]);
+  card._hook();
+  chart.data = [series("sensor.k_h-mean"), series("sensor.b_h-mean"), series("sensor.out-mean"), series("sensor.x-mean")];
+  // Series colours 1, 3 and 4: the theme's slots 4, 6 and 9 (blue, amber and red left out), here
+  // HA's fallbacks for them.
+  const [first, third, fourth] = ["#6cc5b0", "#ff8ab7", "#01ab63"];
+  assert.deepEqual(chart.data.map((s) => s.color), [first, third, fourth, undefined]);
+  assert.deepEqual(chart.data.map((s) => s.lineStyle.color), [first, third, fourth, undefined]);
+  assert.equal(chart.data[0].itemStyle.color, first);
+  // The line style and the colour together.
+  assert.deepEqual(chart.data[2].lineStyle, { width: 3, color: fourth });
+  // The theme's series colour wins over the fallback.
+  document.body.append(card);  // computed styles need a connected element
+  card.style.setProperty("--graph-color-6", "#123456");
+  chart.data = [series("sensor.b_h-mean")];
+  assert.equal(chart.data[0].color, "#123456");
+  card.remove();
+  // Only spacers within the places: the card's own entities.
+  card.hass = { states: { "sensor.rooms": { attributes: { rooms } }, "input_number.slots": { state: "1" } } };
+  await flush();
+  assert.deepEqual(made.at(-1).entities, [{ entity: "sensor.a" }]);
 });

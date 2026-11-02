@@ -810,3 +810,10 @@ default and the reset are the first ten of `climate`. Nothing else changes: the 
 theme's series colour n (the Ramka theme has eleven: ten rooms and outside), and the tiles wrap into
 rows of `rooms_columns`. Tests: `cards/climate-rooms-card.test.mjs` (ten rows),
 `tests/test_ramka_render.py` (the default, the reset and the script's cap at ten).
+
+Since then (ramka, unreleased): the ten rows are one row per **widget**, as many as
+`input_number.<prefix>_climate_slots` (1 to 20, default 10; Climate → Advanced, "Number of widgets"),
+and the script keeps at most twenty widgets, each of a type (Temperature, Air quality, Custom or
+Empty); the default and the reset are still the first ten of `climate`, as Temperature widgets. The
+series colours leave out the theme's threshold colours (1 blue, 2 amber, 3 red, 7 orange, 8 light
+blue): the n-th widget with a reading takes slot 4, 5, 6, 9, 11, 10 in turn.

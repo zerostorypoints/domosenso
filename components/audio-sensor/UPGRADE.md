@@ -2,6 +2,43 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
+## 0.3.0 (2026-11-01): a six-range EQ, a look option, the music source contract
+
+SPEC-024. The README's new "Placement" section is a field note: where to put the board, and
+why the firmware stays as it is.
+
+`ambient-wave-card` takes a six-range EQ (`dynamics.eq`: `sub`, `bass`, `low_mid`, `mid`,
+`presence`, `air`, dB each) and a `look` entity option, a sensor whose attributes carry a whole music
+look and override the card's dynamics, EQ and colour window. The Ramka's music looks need this card
+release (README, "Music looks" there).
+
+### The music source select has a no-sensor option
+
+`—` is added at the end of `input_select.audio_sensor_music_source` (first, when no board is
+`music: true`). With `—` every music alias is `unavailable`. A home without a `music: true`
+board now gets the select, the aliases, the calibration inputs and script, and the spectrum rate
+automation (before: none of them); its aliases are unavailable until a board is chosen. The
+duplicate-area check now applies in every home, music board or not. The aliases read unavailable
+(not a stale value) while the board entity they name is unknown.
+
+### The music source contract: abilities
+
+SPEC-025. New entities, for every home with a board: `sensor.music_source` (the selected board's
+area or `none`; attributes `interface: 1` and `capabilities`) and `binary_sensor.music_source_spectrum`,
+`_level`, `_rate`, `_calibration` (on while the selected board has the ability; never unavailable).
+They update on start, on a change of the select and every minute. README, "The music source
+contract". Nothing existing changes.
+
+### What a home does
+
+- Nothing: a card without either option draws as before. With the Ramka's music looks, update both
+  components together. Ramka 0.9.0 reads the music source contract: update audio-sensor to 0.3.0
+  with it, or its Live visualization page cannot tell what the sensor can do.
+- `domosenso update audio-sensor` and a deploy (the cards move to `www/domosenso/audio-sensor/0.3.0/`).
+  The firmware's code is unchanged; only its version string and package references name 0.3.0. A
+  board flashed with 0.2.0 needs no new flash, and its device file may keep `@audio-sensor/0.2.0`
+  until the next flash.
+
 ## 0.2.0 (2026-10-30): a faster spectrum, an update rate, the board set by Home Assistant
 
 The music visual follows a bass hit in about 0.3 s instead of up to about 1 s (#99, #110; README,

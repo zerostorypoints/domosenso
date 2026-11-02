@@ -248,6 +248,8 @@ lovelace:
             config += f'    dashboard-ramka-{lang}:\n      mode: yaml\n      title: Ramka {lang}\n      filename: dashboards/dashboard.{lang}.yaml\n'
             config += (f'    ramka-settings-{lang}:\n      mode: yaml\n      title: Ramka settings {lang}\n'
                        f'      filename: dashboards/ramka-settings.{lang}.yaml\n      require_admin: true\n')
+            config += (f'    ramka-preview-{lang}:\n      mode: yaml\n      title: Ramka preview {lang}\n'
+                       f'      filename: dashboards/ramka-preview.{lang}.yaml\n      require_admin: true\n')
         (self.config / 'configuration.yaml').write_text(config)
 
     def api(self, path, data=None, authenticated=True, method=None):

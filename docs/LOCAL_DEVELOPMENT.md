@@ -158,10 +158,10 @@ fixed, silently seeded or counted as component passes here:
   their minimum instead of the documented starting values. Acceptance records all seven values
   before any tuning. Browser test setup then explicitly lengthens controls/off timers and disables
   approach/music switching so UI cases can be inspected predictably; it does not change templates.
-- [#52](https://github.com/zerostorypoints/domosenso/issues/52): a restored `off` mode can stay off
-  with radar presence already `on`. Acceptance records the state 60 seconds after restart. It does
-  not add a reconciliation automation. This initial fixture exercises the wake case; it does not
-  claim coverage of every night/sleep timing case.
+- [#52](https://github.com/zerostorypoints/domosenso/issues/52), fixed in ramka 0.10.1: a restored
+  `off` mode with radar presence already `on` must reach `ambient` within 90 seconds of a restart
+  (`<prefix>_reconcile_after_start`). This is a required case. The fixture exercises the wake case;
+  the sleep case waits `off_delay_s` (300 s by default) and is covered by the render tests.
 - [#53](https://github.com/zerostorypoints/domosenso/issues/53), fixed in ramka 0.3.1: under the
   delayed-weather restart, the open page must reconnect without a reload, control lights and show
   its four forecast days again; a newly opened page must show them too. These are required browser

@@ -98,6 +98,9 @@ def test_render_uses_real_components_and_only_demo_inputs(tmp_path):
     assert sorted(p.name for p in (d.config / 'packages').glob('*.yaml')) == ['ramka.yaml']
     assert (d.config / 'dashboards/ramka-settings.pl.yaml').read_text().startswith('# Rendered by Domosenso')
     assert 'filename: dashboards/ramka-settings.pl.yaml' in config
+    # preview_dashboard defaults to true, so the demo renders the preview and registers it.
+    assert (d.config / 'dashboards/ramka-preview.pl.yaml').read_text().startswith('# Rendered by Domosenso')
+    assert 'filename: dashboards/ramka-preview.pl.yaml' in config
 
 
 def test_docker_plan_has_isolation(tmp_path):

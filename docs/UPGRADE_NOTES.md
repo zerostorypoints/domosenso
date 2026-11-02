@@ -3,7 +3,7 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
-## Unreleased: component assistant contracts (SPEC-024)
+## Unreleased: component assistant contracts (SPEC-029)
 
 No existing HA helper, dashboard setting or endpoint grant changes. New component definitions
 compile into private managed assistant bundles. Upgrade the catalog tooling before rendering a

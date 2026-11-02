@@ -19,11 +19,11 @@
         "climate-air"
       ],
       "availability": "conditional",
-      "condition": "Provide climate inputs to Ramka; pick up to ten rooms and their readings on the Ramka settings dashboard.",
+      "condition": "Provide climate inputs to Ramka; on the Ramka settings dashboard pick up to twenty widgets (temperature, air quality, custom or empty), in any order.",
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

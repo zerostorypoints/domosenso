@@ -18,18 +18,18 @@
         "plants"
       ],
       "availability": "conditional",
-      "condition": "With plants 0.3.0, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first.",
+      "condition": "With plants 0.3.0 or later, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first, and with more than four plants a list page of every plant follows. Swipe left or right to turn the pages yourself.",
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "c54b8243303fd3b6b39c7d1d7eedfe1e78348a3b",
+      "sourceCommit": "c3eca96f268a7ca0d1d7a143f55180e5ee088bc1",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
   "setup": [
     "Place the Mi Flora probe in the soil following the device instructions.",
     "Provide Bluetooth coverage and verify fresh readings in Home Assistant.",
-    "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 finds the plants itself with plants: discover."
+    "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover."
   ],
   "id": "plants",
   "version": "0.3.1",

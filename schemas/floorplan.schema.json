@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domosenso.example/schemas/floorplan.schema.json",
+  "title": "The floor plan document: rooms and sensor positions in metres (SPEC-028)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "floors"],
+  "properties": {
+    "schema": {"type": "integer", "minimum": 1},
+    "floors": {"type": "array", "items": {"$ref": "#/$defs/floor"}},
+    "source": {"$ref": "#/$defs/source"}
+  },
+  "$defs": {
+    "floor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["floor_id", "rooms", "points"],
+      "properties": {
+        "floor_id": {"type": ["string", "null"], "description": "HA floor id, null in a home without floors"},
+        "rooms": {"type": "array", "items": {"$ref": "#/$defs/room"}},
+        "points": {"type": "array", "items": {"$ref": "#/$defs/point"}},
+        "open_spaces": {
+          "type": "array",
+          "description": "Groups of rooms open to each other without doors (SPEC-028 Amendment 7): their heat maps share readings. Each area in one group at most; every area a room of the floor",
+          "items": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "number": {"type": "number"},
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["area_id", "polygon"],
+      "properties": {
+        "area_id": {"type": "string", "minLength": 1},
+        "polygon": {
+          "type": "array", "minItems": 3,
+          "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}}
+        }
+      }
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y", "placed"],
+      "properties": {
+        "device_id": {"type": "string", "minLength": 1},
+        "entity_id": {"type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"},
+        "x": {"$ref": "#/$defs/number"},
+        "y": {"$ref": "#/$defs/number"},
+        "placed": {"type": "boolean", "description": "false: at its area's room centre, not yet dragged"},
+        "category": {"enum": ["climate", "light", "media", "other", "plants", "radio", "security", "shading"],
+                     "description": "Overrides the category categories/*.yaml give the point (SPEC-028 Amendment 5); the placeable ids"},
+        "also": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+                 "description": "Other Home Assistant devices that are the same hardware as this point's device (an amplifier seen by its own, a Cast and a DLNA integration); only on a device point (SPEC-028 Amendment 5, stage 2)"}
+      },
+      "dependentRequired": {"also": ["device_id"]},
+      "oneOf": [
+        {"required": ["device_id"], "not": {"required": ["entity_id"]}},
+        {"required": ["entity_id"], "not": {"required": ["device_id"]}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "source": {
+      "description": "Only in the home repository's file: the traced image and its scale",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image"],
+      "properties": {
+        "image": {"type": "string"},
+        "metres_per_px": {"type": "number", "exclusiveMinimum": 0},
+        "rotation_deg": {"type": "number"},
+        "offset_px": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}
+      }
+    }
+  }
+}

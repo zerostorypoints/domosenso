@@ -12,7 +12,7 @@ capabilities:
     type: state
     units: []
     source:
-      relation: provides
+      relation: upstream
       id: media_player.<player>
   optional_facts:
   - role: quality
@@ -47,7 +47,7 @@ capabilities:
     type: state
     units: []
     source:
-      relation: provides
+      relation: upstream
       id: media_player.<player>
   optional_facts:
   - role: quality

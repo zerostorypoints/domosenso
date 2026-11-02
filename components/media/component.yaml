@@ -47,12 +47,14 @@ artifacts:
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "media_player.<player>", stability: stable, note: "power, volume, play and pause, input, now playing"}
     - {id: "sensor.<player>_audio_quality", stability: additive-only, note: "hegel_streaming only: hi_res, cd, lossless, lossy, dsd"}
     - {id: "sensor.<player>_streaming_service", stability: additive-only, note: "hegel_streaming only; the Ramka hides previous and next while it reads a service that cannot skip"}
 
   upstream:
+    - {id: "media_player.<player>", owner: integration}
     - {id: "sensor.<quality>", owner: media-integration}
     - {id: "sensor.<service>", owner: media-integration}
     - {id: "sensor.<meter>_power", owner: mains-meter}

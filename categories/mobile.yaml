@@ -1,0 +1,10 @@
+# SPEC-028 Amendment 5. Things that move are never a point: phones, Bluetooth tags, network clients.
+id: mobile
+order: 30
+names: {en: Phones and tags, de: Telefone und Tags, pl: Telefony i znaczniki}
+colour: "#607d8b"
+marker: circle
+placeable: false
+match:
+  - integration: [mobile_app, bermuda, private_ble_device]
+  - only_entity_domain: device_tracker

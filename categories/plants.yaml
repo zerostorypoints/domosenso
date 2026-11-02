@@ -1,0 +1,9 @@
+# SPEC-028 Amendment 5. A plant (plant.*) and the soil sensors plants report through.
+id: plants
+order: 10
+names: {en: Plants, de: Pflanzen, pl: Rośliny}
+colour: "#43a047"
+marker: circle
+kinds: [plant-sensor]
+match:
+  - entity_domain: plant

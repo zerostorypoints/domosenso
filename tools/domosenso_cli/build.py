@@ -194,6 +194,8 @@ def plan_outputs(
                     plain = name[: -len(".j2")]
                     produced = [(plain, None, plain)]
                 for key, lang, rendered in produced:
+                    if not (out / rendered).is_file():
+                        continue  # rendered empty: an optional output its inputs leave out
                     content = (out / rendered).read_bytes()
                     if f"templates/{name}" == (manifest.get("assistant") or {}).get("bindings"):
                         try:

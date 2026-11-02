@@ -12,11 +12,22 @@
 //                                                 # fills its rows only when it has them
 //   rooms:                                        # optional: the inner card's entities from
 //     entity: sensor.ramka_climate_rooms          # this entity's `rooms` ({label, main, extra}),
-//     key: main                                   # their `key` reading, then `after`; the card's
-//     after: [{entity: sensor.outside, name: Outside}]  # own entities while it holds none
+//     slots: input_number.ramka_climate_slots     # its first `slots` places (a number or an
+//     key: main                                   # entity; spacers, {spacer: true}, skipped),
+//     after: [{entity: sensor.outside, name: Outside}]  # their `key` reading, then `after`; the
+//                                                 # card's own entities while it holds none
+//
+// With rooms, each line has the colour of its widget, series colour n for the n-th widget with a
+// reading (as the room tiles; lib/climate-widgets.js, the threshold colours left out), whether or
+// not the widgets before it have a `key` reading; `after` follows the last one's colour.
 //   card:
 //     type: statistics-graph
 //     entities: [...]
+
+// The shared widget module carries this module's own ?v= (the deploy's hash of its version directory): /local/
+// is served with a 31-day cache, so an import without it can stay the old file after a deploy.
+const { seriesSlot, slotColor, readWidget, hasReading } =
+  await import(new URL("./lib/climate-widgets.js", import.meta.url).href + new URL(import.meta.url).search);
 
 class LineStyleCard extends HTMLElement {
   setConfig(config) {
@@ -36,7 +47,7 @@ class LineStyleCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     const entities = this._roomEntities();
-    const key = JSON.stringify(entities);
+    const key = JSON.stringify([entities, this._colors]);
     if (key !== this._roomsKey) {
       const first = this._roomsKey === undefined;
       this._roomsKey = key;
@@ -47,14 +58,36 @@ class LineStyleCard extends HTMLElement {
     this._hook();
   }
 
-  // The rooms' readings, then `after`, as statistics-graph entities; null without rooms.
+  // The widgets' readings, then `after`, as statistics-graph entities; null without a widget with a
+  // reading. Air quality widgets stay off the charts: CO2 or PM2.5 on the temperature and humidity
+  // axes would only squash the lines (a Custom widget is the user's choice, so it stays). A widget keeps its series colour by its place among all widgets,
+  // as on its tile. Sets this._colors: entity → the theme slot of its widget's series colour.
   _roomEntities() {
+    this._colors = null;
     const rooms = this._config.rooms;
     const list = rooms && this._hass && this._hass.states[rooms.entity]?.attributes?.rooms;
     if (!Array.isArray(list)) return null;
-    const live = list.filter((r) => r && typeof r.main === "string" && r.main && r[rooms.key])
-      .map((r) => ({ entity: r[rooms.key], name: String(r.label || "") }));
-    return list.some((r) => r && r.main) ? [...live, ...(rooms.after || [])] : null;
+    const real = list.slice(0, this._slots(rooms.slots, list.length)).map((r) => readWidget(r, this._hass.states))
+      .filter(hasReading);
+    if (!real.some((r) => r.type !== "air")) return null;
+    const colors = {};
+    const live = [];
+    real.forEach((r, i) => {
+      if (r.type === "air" || !r[rooms.key]) return;
+      live.push({ entity: r[rooms.key], name: String(r.label || "") });
+      if (!(r[rooms.key] in colors)) colors[r[rooms.key]] = seriesSlot(i + 1);
+    });
+    (rooms.after || []).forEach((a, i) => {
+      if (a && a.entity && !(a.entity in colors)) colors[a.entity] = seriesSlot(real.length + 1 + i);
+    });
+    this._colors = colors;
+    return [...live, ...(rooms.after || [])];
+  }
+
+  // How many places count: `slots` as a number or an entity's state, 1 to 20; all without one.
+  _slots(slots, all) {
+    const n = typeof slots === "number" ? slots : parseInt(slots && this._hass.states[slots]?.state, 10);
+    return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 20) : all;
   }
 
   // hui-card sets these on the card it shows; the inner card needs them to lay out the same way.
@@ -115,8 +148,15 @@ class LineStyleCard extends HTMLElement {
   _restyle(series) {
     const styles = this._config.line_styles || {};
     const id = series && series.id;
-    const entity = typeof id === "string" && Object.keys(styles).find((e) => id === e || id.startsWith(`${e}-`));
-    return entity ? { ...series, lineStyle: { ...series.lineStyle, ...styles[entity] } } : series;
+    const of = (table) => typeof id === "string" && Object.keys(table).find((e) => id === e || id.startsWith(`${e}-`));
+    const entity = of(styles);
+    let out = entity ? { ...series, lineStyle: { ...series.lineStyle, ...styles[entity] } } : series;
+    const colored = this._colors && of(this._colors);
+    if (colored) {
+      const color = slotColor(this, this._colors[colored]);
+      out = { ...out, color, itemStyle: { ...out.itemStyle, color }, lineStyle: { ...out.lineStyle, color } };
+    }
+    return out;
   }
 
   _find(root, tag) {

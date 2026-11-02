@@ -6,13 +6,13 @@ Usage: uv run tools/release_status.py [--hold <id>]... [--format lines|markdown]
 For every `components/<id>/component.yaml` it compares the manifest's version with the component's
 tags `<id>/<version>` and with the version `website/content/publication.json` selects:
 
-- `untagged <id> <version>`: no tag `<id>/<version>`; make it with tools/release.py once merged;
+- `untagged <id> <version>`: no tag `<id>/<version>`; the Release workflow (or tools/release.py) makes it;
 - `unpublished <id> <tag version> (site <version|none>)`: the newest tag is not what the site shows;
 - `hold <id> <version>`: named with --hold (development work, not to be released yet); not counted;
 - `released <id> <version>`: tagged and published.
 
-Ends with `ok` or `FAIL <n> pending` (exit 1). Reads the local tags: fetch them first. Merging,
-tagging and publishing stay human decisions (AGENTS.md); this only says what is left.
+Ends with `ok` or `FAIL <n> pending` (exit 1). Reads the local tags: fetch them first. The Release
+workflow tags an `untagged` version once its bump merged (SPEC-027); this only says what is left.
 """
 from __future__ import annotations
 

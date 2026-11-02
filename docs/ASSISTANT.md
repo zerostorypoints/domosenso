@@ -1,6 +1,6 @@
 # Component-backed assistant answers
 
-Implementation of [SPEC-024](../.ai/specs/SPEC-024-2026-10-31-assistant-component-contract.md).
+Implementation of [SPEC-029](../.ai/specs/SPEC-029-2026-10-31-assistant-component-contract.md).
 This contract is unreleased. Component metadata, a compatible Frame HA bridge and a compatible
 Frame app are required together; a file in the catalog alone does not enable voice answers.
 
@@ -45,6 +45,7 @@ updates. Removing a component never automatically converts its contract into a m
 | audio-sensor | Typed sound level and calibration status, without a hearing-safety verdict |
 | backup | Archive age, count and size; existence is not a successful restore test |
 | ramka | Reported mode, page, theme, rotation and radar-wake configuration |
+| floorplan | Purpose and installed metadata; no plan editing or occupancy inference |
 | remote-access | Purpose and authorized installed metadata only; no tunnel-health claim |
 
 Every component also defines a short explanation. Read scope never implies control: this contract

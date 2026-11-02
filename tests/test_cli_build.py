@@ -414,6 +414,22 @@ def test_plan_outputs_instance_layer(home, catalog, tmp_path):
     assert [(o.dest, o.layer, o.content) for o in extra] == [(f"{HA}/local.yaml", "instance", b"owned_by_home: 1\n")]
 
 
+def test_plan_outputs_leave_out_a_template_that_renders_empty(home, catalog, tmp_path):
+    import shutil
+
+    from domosenso_cli.build import open_catalog, plan_outputs
+    from domosenso_cli.home import HomeConfig
+
+    config = HomeConfig.load(home)
+    directory = tmp_path / "panel"
+    shutil.copytree(open_catalog(config).checkout("panel", "1.0.0", None), directory)
+    (directory / "templates/extra.lang.yaml.j2").write_text("[% if inputs.extra is defined %]x: 1\n[% endif %]\n")
+    dests = lambda: {o.dest for o in plan_outputs(config, config.components["panel"], directory, "1.0.0", "a" * 40)}
+    assert not {d for d in dests() if "extra" in d}
+    (home / "domosenso/panel.inputs.yaml").write_text("prefix: demo\nextra: true\n")
+    assert {d for d in dests() if "extra" in d} == {f"{HA}/dashboards/extra.en.yaml", f"{HA}/dashboards/extra.de.yaml"}
+
+
 # --- --catalog-dev on an unlocked component, and write failures (Task 7 findings) ----------------
 
 

@@ -11,9 +11,12 @@ implemented. A fix that keeps the contract goes straight to a commit.
 
 1. **Number and name.** Next free `NNN` in `.ai/specs/` (three digits), today's date from `date`,
    a short kebab-case title: `.ai/specs/SPEC-007-2026-11-02-naim-player.md`.
-2. **Read first:** `AGENTS.md`, `docs/COMPATIBILITY.md`, the manifests of the components it touches
-   or resembles, and their `README.md` notes. For hardware, find what the catalog already has in
-   `devices/`.
+2. **Read first:** `AGENTS.md`, `docs/PRINCIPLES.md`, `docs/COMPATIBILITY.md`, the manifests of
+   the components it touches or resembles, and their `README.md` notes. For hardware, find what the
+   catalog already has in `devices/`. Then answer the placement test (`docs/PRINCIPLES.md`) in
+   order: does Home Assistant already offer it for this surface (use Home Assistant); would a
+   second home need it (a component); only this home (its local layer). The spec's Goal states the
+   answer; a change that fails all three is not built.
 3. **Sections**, short, facts over prose:
    - Status (draft, the date), source (who asked, which notes);
    - Goal: what a home gets;

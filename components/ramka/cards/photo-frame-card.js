@@ -20,13 +20,16 @@
 //       state_not: playing
 //     - entity: input_select.ramka_ambient
 //       state: photos
+//   contained: false                # true (the preview's screen-frame-card): the layer fills the
+//                                   # nearest positioned box instead of the page, the card stays
+//                                   # in the grid, and it does not take the page's one layer
 
 import { formatDate } from "./lib/i18n.js";
 
 class PhotoFrameCard extends HTMLElement {
   setConfig(config) {
     if (!config.entity) throw new Error("photo-frame-card: entity is required");
-    this._config = { fade: 1200, fit: "contain", blur_background: true, show_when: [], index: "/local/ramka/index.json", ...config };
+    this._config = { fade: 1200, fit: "contain", blur_background: true, show_when: [], index: "/local/ramka/index.json", contained: false, ...config };
   }
 
   getCardSize() {
@@ -48,6 +51,10 @@ class PhotoFrameCard extends HTMLElement {
   // Hidden like a false conditional card; the sections grid then takes this element out of the
   // page, so the layer's lifetime is not tied to connected/disconnected callbacks.
   connectedCallback() {
+    if (this._config && this._config.contained) {
+      this.style.display = "block";
+      return;
+    }
     this.hidden = true;
     this.dispatchEvent(new Event("card-visibility-changed", { bubbles: true, composed: true }));
   }
@@ -58,6 +65,14 @@ class PhotoFrameCard extends HTMLElement {
   // hass, so it never takes the page back. An owner that still had hass in the last 10 s is
   // left alone, so two live instances could not pass the layer back and forth.
   _claim() {
+    if (this._config.contained) {
+      if (this._layer.parentNode !== this) this.appendChild(this._layer);
+      if (!this._indexTimer) {
+        this._loadIndex();
+        this._indexTimer = setInterval(() => this._loadIndex(), 300000);
+      }
+      return;
+    }
     const prev = window.__photoFrameOwner;
     if (prev === this && this._layer.isConnected) return;
     if (prev && prev !== this && prev._layer && prev._layer.isConnected && Date.now() - prev._hassAt < 10000) return;
@@ -84,7 +99,7 @@ class PhotoFrameCard extends HTMLElement {
   _buildLayer() {
     const layer = document.createElement("div");
     Object.assign(layer.style, {
-      position: "fixed", inset: "0", zIndex: "9000", background: "#000", display: "none",
+      position: this._config.contained ? "absolute" : "fixed", inset: "0", zIndex: "9000", background: "#000", display: "none",
     });
     // Two slots that cross-fade; each slot is a blurred, enlarged copy behind the photo itself.
     for (let i = 0; i < 2; i++) {

@@ -56,7 +56,7 @@ test('hardware and journal routes render on narrow screens',async({page},info)=>
  await expect(page.getByRole('link',{name:/Open full-size diagram/})).toHaveAttribute('href',/\/wiring\/hlk-ld2410c-atom-lite.svg/);
  await expect(page.locator('article img')).toHaveAttribute('src',/\/wiring\/hlk-ld2410c-atom-lite.svg/);
  await page.goto('/journal/');await page.getByRole('button',{name:'Releases',exact:true}).click();
- await expect(page.locator('.journal-card')).toHaveCount(4);
+ await expect(page.locator('.journal-card')).toHaveCount(5);
  const rss=await page.request.get('/journal/feed.xml');expect(rss.status()).toBe(200);expect(await rss.text()).toContain('<rss');
 });
 
@@ -65,7 +65,7 @@ test('no JavaScript retains catalog, views and journal content',async({browser})
  await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(11);
  await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(11);
  await page.goto('http://127.0.0.1:4336/components/ramka/');await expect(page.locator('#views')).toContainText('Home status');
- await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(7);
+ await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(8);
  await context.close();
 });
 

@@ -19,13 +19,13 @@ capabilities:
     type: state
     units: []
     source:
-      relation: provides
+      relation: upstream
       id: light.<room>
   - role: light
     type: state
     units: []
     source:
-      relation: provides
+      relation: upstream
       id: light.<bulb>
   policy:
     evaluator: lights.status

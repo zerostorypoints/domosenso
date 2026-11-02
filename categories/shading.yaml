@@ -1,0 +1,8 @@
+# SPEC-028 Amendment 5. Awnings, blinds, shutters.
+id: shading
+order: 80
+names: {en: Shading, de: Beschattung, pl: Zacienianie}
+colour: "#8d6e63"
+marker: circle
+match:
+  - entity_domain: cover

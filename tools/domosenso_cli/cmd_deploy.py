@@ -46,16 +46,18 @@ def _deploy_arguments(parser: argparse.ArgumentParser) -> None:
                              "dev-render lines were read")
 
 
-async def _confirm(plan: Plan, given: str | None, target: str, json_mode: bool) -> None:
+async def confirm_production(digest: str, given: str | None, target: str, json_mode: bool, command: str) -> None:
+    """The second lock of a write to a target (shared with `floorplan push`): `given` must be the
+    plan's hash; on production without one, the word `production` typed on a terminal."""
     if given is not None:
-        if given != plan.hash:
-            raise DomosensoError(f"the plan changed: its hash is now {plan.hash}, not {given}")
+        if given != digest:
+            raise DomosensoError(f"the plan changed: its hash is now {digest}, not {given}")
         return
     if target != PRODUCTION:
         return
     if json_mode or not sys.stdin.isatty():  # in JSON mode the plan is printed only at the end
-        raise DomosensoError(f"deploy production needs --confirm {plan.hash} when it does not run on a terminal")
-    print("Type 'production' to deploy this plan: ", end="", file=sys.stderr, flush=True)
+        raise DomosensoError(f"{command} production needs --confirm {digest} when it does not run on a terminal")
+    print(f"Type 'production' to {command} this plan: ", end="", file=sys.stderr, flush=True)
     answer = await asyncio.to_thread(sys.stdin.readline)
     if answer.strip() != PRODUCTION:
         raise DomosensoError("not confirmed")
@@ -82,7 +84,7 @@ async def _deploy(args: argparse.Namespace, rep: Reporter) -> int:
         if args.target == PRODUCTION and plan.dirty and args.allow_dirty and args.confirm is None:
             # the hash binds the exact files the human read; typing `production` is not enough
             raise DomosensoError(f"dev render needs --confirm {plan.hash}")
-        await _confirm(plan, args.confirm, args.target, rep.json_mode)
+        await confirm_production(plan.hash, args.confirm, args.target, rep.json_mode, "deploy")
         deploy_id = await apply(home, lock, plan, io, ha, args.remove_orphans, args.prune_resources,
                                 target=args.target, rep=rep, allow_dirty=args.allow_dirty)
     if deploy_id is None:

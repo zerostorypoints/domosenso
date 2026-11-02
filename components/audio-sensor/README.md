@@ -48,6 +48,111 @@ matches Sound level within about 1 dB.
 moves every reading by the same step, so the SPL offset has to be measured again. If loud music
 brings Sound peak to 0 dBFS, the microphone clips; step down to `18DB` and calibrate again.
 
+## Placement
+
+Where the board stands changes what the music visual shows, not how the firmware works: the 31
+bands are correct anywhere, and the shape of the picture is corrected in the card (the Ramka's
+response profiles and EQ presets, SPEC-024), not on the board. The figures below come from
+loudspeaker and room-acoustics practice; the per-position level gains are computed from them for a
+furnished living room (inference), not measured in every room.
+
+| where | level against the listening position | spectrum | headroom at `24DB` |
+|---|---|---|---|
+| **At the listening position** (the default) | 0 dB; the board hears the room's reverberant field, as the listener does | what you hear there, room modes included | loud music can already reach 0 dBFS |
+| **Between the speakers**, about 1 m from each | about +3 to +5 dB (up to +8.6 dB in free field) | mild bass gain near a wall or cabinet; the treble a little lower, as the speakers aim at the listener (inference) | less; a loud test decides |
+| **Behind a speaker, near the wall** | the bass 6 to 12 dB up against the treble | pressure-zone bass, the treble shadowed by the cabinet, a dip at c/(4d) for a wall d away (286 Hz at 0.3 m, 172 Hz at 0.5 m) | the least, more so near a rear port |
+| **On the amplifier**, between the speakers | about +10 to +13 dB at 0.3 m, most of it below 250 Hz | bass-heavy, the mids flat, the highs a few dB down (cabinet shadow) | less; also hum, vibration and heat (below) |
+
+- **Why the level grows less than the distance says.** In free field the direct sound gains 6 dB
+  per halving of the distance; in furnished rooms the level falls only about 3 dB per doubling,
+  because the listening position sits beyond the critical distance, in the reverberant field
+  ([NRC study, OSTI](https://www.osti.gov/biblio/653237);
+  [QSC](https://blogs.qsc.com/live-sound/?p=2960);
+  [Arup](https://strutt.arup.com/help/Electroacoustics/DCritical.htm)). Near a boundary the bass
+  rises by about 6 dB, more in a corner
+  ([Sonarworks](https://www.sonarworks.com/blog/glossary/acoustic-space-loading);
+  [audioXpress](https://audioxpress.com/article/VC-Spotlight-Boundary-Effects-on-Sources-at-Low-Frequencies)),
+  and the wall's reflection cuts a dip whose frequency depends on the distance to it
+  ([Stereophile on Roy Allison](https://stereophile.com/content/glorious-time-ars-edgar-villchur-and-roy-allison-allison-part-2)).
+- **Dynamics.** Close to the speakers the direct sound dominates the room's reverberant tail: the
+  quiet-to-loud swing widens and decays fall away faster, so the picture looks punchier. A kick
+  several dB louder also crosses the card's neutral-to-hot window earlier in its attack
+  (inference; no source tests this for a near-field sensor).
+- **Not lower latency.** Sound travels about 3 ms per metre: moving the board 2 to 3 m closer saves
+  under 10 ms, well under one 85 ms frame on `fast` and a few percent of the measured sound-to-screen
+  time ("Latency and update rate", below). A near board feels faster because of the louder, more
+  direct bass, not because it is earlier.
+- **One microphone cannot leave voices out.** The MSM381A3729H9BPC is omnidirectional
+  ([MEMSensing datasheet, M5Stack mirror](https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/atom/Atomic%20Echo%20Base/MEMS.pdf)):
+  it hears people talking in the room as it hears the music, and the spectrum cannot tell them
+  apart. Near the speakers the music is louder against the room, so voices weigh less; that is the
+  only lever (inference). The EQ shapes the picture's colour, not what the board hears.
+- **On the amplifier.** Vibration of the top plate is small: miniature MEMS microphones respond to
+  acceleration at about 60 to 66 dB SPL equivalent per g ([Walsh & Miles, engrXiv](https://engrxiv.org/preprint/view/2074);
+  measured on other MEMS parts, an order of magnitude here), and the music causes it, so it adds
+  correlated bass rather than false beats (inference). Mains hum is the larger risk: a transformer
+  hums at twice the mains frequency (100 Hz on 50 Hz mains) with harmonics
+  ([IET Engx](https://engx.theiet.org/f/discussions/32305/have-you-ever-walked-past-a-transformer-and-noticed-that-steady-humming-sound/158489)),
+  and an analog microphone line can pick up a magnetic field (the board's differential microphone
+  input rejects most of it, inference from the
+  [schematic](https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/1182/Sch_M5_AtomEchoS3R_Audio_v1.0_20250716.pdf)).
+  Check the 31.5 to 125 Hz bands with the amplifier on and nothing playing; a foam pad helps. The
+  board is rated 0 to 40 °C ([M5Stack](https://docs.m5stack.com/en/core/Atom_EchoS3R)): read how
+  warm the amplifier's top gets during a long film before leaving the board there.
+
+### The microphone and the codec
+
+The MSM381A3729H9BPC is an analog MEMS microphone (−38 dBV/Pa, 65 dB(A) SNR, 0.15 % THD at
+94 dB SPL, acoustic overload 123 dB SPL at 10 % THD; datasheet above), not an I2S part such as the
+INMP441 or ICS-43434. It goes through the ES8311 codec: ESPHome's driver sets the analog
+amplifier to its maximum, and `mic_gain` is the ADC's digital gain in 6 dB steps
+([ESPHome ES8311](https://esphome.io/components/audio_dac/es8311/)). The clip point is that digital
+full scale, far below the capsule's overload (inference from the datasheet and the driver): loud
+music at the listening position can already bring Sound peak to 0 dBFS at `24DB`, and a near
+placement adds the gains of the table. There is no AGC, no squelch and no clip flag other than
+Sound peak at 0 dBFS. Lowering `mic_gain` scales signal and noise together after the ADC, so a step
+to `18DB` or `12DB` raises the clip point by 6 or 12 dB at no usable cost to the signal-to-noise
+ratio (inference from the driver); then calibrate again.
+
+**The firmware stays as it is for any placement.** Spectral shape, ballistics and the colour
+window live in Home Assistant and the card. A loud test at the new spot (the loudest scene at the
+loudest volume used) decides the gain: Sound peak at or below −6 dBFS with no clipped seconds
+passes; otherwise `18DB`. Only a home that wants to switch the gain with its placement would need
+a runtime gain select (writing the codec's gain register, as `Spectrum rate` switches its
+profile); ESPHome's driver sets the gain only at boot, and no such select exists.
+
+### What the community does, and the Ramka's profiles
+
+No surveyed visualizer ships a placement mode as one switch; each part of one exists:
+
+- **WLED Sound Reactive** ([audio_reactive.cpp](https://raw.githubusercontent.com/wled/WLED/main/usermods/audioreactive/audio_reactive.cpp);
+  [kno.wled.ge](https://kno.wled.ge/advanced/audio-reactive/)): a 512-point FFT into 16 channels
+  with pink-noise multipliers, a squelch gate, manual gain or an AGC with **Normal, Vivid and Lazy**
+  presets, a limiter and a microphone high-pass near 90 Hz. Its docs give no placement guidance for
+  a room microphone.
+- **MoonModules WLED-MM** ([WLED-AudioReactive-Usermod](https://github.com/MoonModules/WLED-AudioReactive-Usermod);
+  [sound settings](https://mm.kno.wled.ge/soundreactive/Sound-Settings/)): a frequency-profile
+  dropdown per microphone and placement, among them "Generic Line-In", "INMP441 – big speakers,
+  strong bass" and "ICS-43434 – big speakers", which cut bass weight and lift the highs, the same
+  direction as a near-speaker correction. Its calibration: the microphone in line of sight 1 to
+  2 m from the speaker, pink noise, the bars at 50 to 75 % of their range.
+- **MSGEQ7 analysers** (the AliExpress spectrum analysers and VU clocks): seven fixed bands
+  peak-detected in hardware, so an instant attack and a release set by the read rate, a microphone
+  and an AUX input, at most one sensitivity knob ([MSGEQ7 datasheet](https://proto-pic.co.uk/content/MSGEQ7_datasheet.pdf)).
+- **Peak programme meters**: an integration of 5 to 10 ms and a return of 20 to 24 dB in 1.7 to
+  2.8 s ([Wikipedia](https://en.wikipedia.org/wiki/Peak_programme_meter)).
+- **Govee** "Dynamic" and "Calm" music modes ([Govee](https://uk.govee.com/blogs/product-review-blog/govee-rgbic-striplights-taking-rgb-home-illumination-to-the-next-level));
+  host tools avoid the microphone and take a digital stream ([LedFx](https://docs.ledfx.app/en/latest/settings/directing_audio.html);
+  [HyperHDR](https://github.com/awawa-dev/hyperhdr/wiki/Audio-reactive)).
+
+The Ramka's profiles map onto them: **Lively** is WLED's Vivid and Govee's Dynamic (a 50 / 300 ms
+limiter, the ICS-43434 big-speakers curve), **Calm** WLED's Lazy and Govee's Calm (a 4.2 s decay,
+the INMP441 big-speakers curve), **Analyser** an MSGEQ7 analyser or a PPM (instant attack, short
+release, flat), **Behind speakers** the near-speaker correction (EQ preset `behind_speakers`: one
+measurement on an amplifier as a starting point, or the home's own). The WLED-MM curves were tuned
+for I2S microphones: on this analog one they carry the community's placement intent, not a
+calibration. The derivation and the reasons: SPEC-024.
+
 ## First flash
 
 The package is a remote ESPHome package; a home's device file is thin (its header is in
@@ -63,13 +168,17 @@ read a home's secrets. With wrong Wi-Fi credentials the fix is a USB flash again
 
 ## The music source and calibration
 
-With a board marked `music: true`, `input_select.audio_sensor_music_source` lists the boards' areas,
-that board first and the others in input order. The music aliases (`sensor.music_spectrum`,
+`input_select.audio_sensor_music_source` lists the boards' areas, the `music: true` board first and
+the others in input order, then `—` (no sensor). Without a `music: true` board the list is `—`
+first, then the boards in input order. The select, the aliases, the calibration inputs and the
+script are always rendered. The music aliases (`sensor.music_spectrum`,
 `sensor.music_spl_offset`, `sensor.music_level`, `sensor.music_mic_gain`,
 `sensor.music_spl_calibration`, `binary_sensor.music_sensor_online`) read the board whose area the
-select holds, so another board can feed a music visual without a render. One board gives a
-one-option select. A select that is `unknown` (a first start) or unavailable reads the `music: true`
-board, so the aliases never depend on the helper being there. Two boards cannot share an area.
+select holds, so another board can feed a music visual without a render. With `—` every alias is
+`unavailable` (and `binary_sensor.music_sensor_online` is off): a home can choose to have no music
+source. A select that is `unknown` (a first start) or unavailable reads the `music: true` board, or
+nothing when no board is marked, so the aliases never depend on the helper being there.
+Two boards cannot share an area.
 There is no `initial:` on any helper: a restart keeps the choice.
 
 Every board has `input_boolean.<id_prefix>_spl_calibrated` (off = the offset is an estimate) and
@@ -79,8 +188,38 @@ reference minus the board's level without offset. Type it into
 `input_number.audio_sensor_measured_offset`, add a note to `input_text.audio_sensor_calibration_note`
 and run `script.audio_sensor_apply_calibration`: it writes the offset and the note into that
 board's helpers and turns its flag on. Typing the offset straight into
-`input_number.<id_prefix>_spl_offset` works as before. Without a `music: true` board there is no
-select, no alias, no measured-offset or note input and no script; the per-board flag and note stay.
+`input_number.<id_prefix>_spl_offset` works as before. With `—` selected the
+script does nothing, and the spectrum rate goes back to `normal` on the board the select left.
+
+## The music source contract
+
+SPEC-025, 0.3.0. Consumers (the Ramka, any later component) read only the music aliases, never a
+board's own entities. The aliases are the interface, version 1:
+
+| alias | shape | ability |
+|---|---|---|
+| `sensor.music_spectrum` | 31 comma-separated dBFS values, third octaves 20 Hz to 20 kHz | `spectrum` |
+| `sensor.music_level` | one number, dBFS | `level` |
+| `sensor.music_spl_offset` | dB; attribute `calibrated` | `calibration` (with `level`) |
+| `input_select.audio_sensor_music_spectrum_rate`, forwarded to the board's select with options eco, normal, fast | | `rate` |
+| `sensor.music_mic_gain` | the board's gain, read only | `gain` |
+
+A board meets the contract when it gives `spectrum` or `level`; the other abilities are optional. A
+board that is not this catalog's firmware meets it by giving the same shapes, mapped by
+`sensors[].entities`.
+
+`sensor.music_source` holds the selected board's area (`none` for `—`) and the attributes
+`interface: 1` and `capabilities`, the abilities in the order spectrum, level, rate, calibration,
+gain. `binary_sensor.music_source_spectrum`, `_level`, `_rate` and `_calibration` are on while the
+selected board has the ability (one entity per ability, because a visibility condition tests a state,
+not an attribute). They are `on` or `off`, never `unavailable`.
+
+An ability is what the board can do, not whether it sends data now. An existing entity that is
+`unavailable` or `unknown` keeps its ability, so a board that is rebooting does not flicker the
+page; a missing entity has none. `spectrum` needs a spectrum entity whose state, while it has one,
+is 31 numbers; `level` one whose state is a number; `rate` a select whose options include eco,
+normal and fast; `calibration` follows `level`; `gain` is the mic-gain entity existing. They are
+re-read on start, on a change of the select and every minute, never on a spectrum frame.
 
 ## The cards
 
@@ -112,6 +251,8 @@ The live wave: a spectrum or one value drawn as calm waves that swell and warm w
 | `dynamics.rise` / `fall` | `200` ms / `4` s | how fast the wave follows a louder and a quieter level |
 | `dynamics.hold` | `1.5` s | how long a band's peak holds before it sinks (afterglow) |
 | `dynamics.tilt` | `true` | spectrum only: weight the lowest and highest bands up when colouring, so the mids do not dominate |
+| `dynamics.eq.<range>` | `0` | a gain in dB, -18 to +12, for each of six ranges: `sub`, `bass`, `low_mid`, `mid`, `presence`, `air`; a number or an entity |
+| `look` | none | a `sensor.` entity whose attributes set a whole look (`rise` ms, `fall` s, `hold` s, `tilt`, `eq`, `spectrum` and `level` as `{neutral, hot}`); it overrides the options it names, and is ignored while unavailable |
 | `style.line_width` | `4` | CSS px, 0.5 to 12 |
 | `fps` | `30` | frames a second, 1 to 60 |
 | `height` | the card's | CSS height of the drawing area |
@@ -183,10 +324,10 @@ The board's **Spectrum rate** select sets the profile:
 
 The intervals are measured (below). Each publish is one CSV of 31 values over the API,
 one state change and one alias render in Home Assistant, and one websocket message per open
-dashboard; the recorder excludes the spectrum in every profile. With a `music: true` board the
+dashboard; the recorder excludes the spectrum in every profile. The
 package adds the choice `input_select.audio_sensor_music_spectrum_rate` (a fresh one starts on
 `normal`, its first option; a state that is no option reads as `normal`) and the flag `input_boolean.audio_sensor_music_watching`. Its automation sets
-the music board's select to the choice, but `fast` only while the flag is on and back to `normal`
+the selected board's select to the choice, but `fast` only while the flag is on and back to `normal`
 10 s after it turns off, so a board is fast only while someone looks. The Ramka sets the flag
 while its music view shows. The automation re-applies the profile when Home Assistant starts, when
 the music source changes (the board it leaves goes back to `normal`), and on any change of a
@@ -219,7 +360,9 @@ live: the Ramka's settings dashboard, Music page, sets the visual, the flavours,
 line width and redraw rate through the Ramka's helpers, and its Advanced part holds this
 component's sensor update rate (above), its music source select and the calibration (`input_number.audio_sensor_measured_offset`,
 `input_text.audio_sensor_calibration_note`, `script.audio_sensor_apply_calibration`). The Ramka's
-README ("Music visual", "Live settings", "Settings page") has the details.
+README ("Music visual", "Live settings", "Settings page") has the details. Its response profiles
+bind the card's `look` and `dynamics.eq` options (SPEC-024); where to put the board for them:
+"Placement", above.
 
 ## Moving from a local copy
 

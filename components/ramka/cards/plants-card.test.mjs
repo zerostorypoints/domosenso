@@ -186,6 +186,23 @@ test("pages advance every page_s and the index survives a new card element", () 
   delete globalThis.localStorage;
 });
 
+test("with `page` the card shows that entity's page, modulo the page count, and turns none itself", () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const plants = Array.from({ length: 15 }, (_, i) => plant(`P${String(i).padStart(2, "0")}`));
+  const PAGE = "input_number.r_plants_page";
+  const card = discoverCard({ plants, config: { page_s: 10, page: PAGE }, attach: true,
+    states: { [PAGE]: { state: "2.0", attributes: {} } } });
+  assert.match(stripText(card), /^3 \/ 6/);
+  mock.timers.tick(60000);
+  assert.match(stripText(card), /^3 \/ 6/);
+  card.hass = { ...card._hass, states: { ...card._hass.states, [PAGE]: { state: "7.0", attributes: {} } } };
+  assert.match(stripText(card), /^2 \/ 6/);
+  card.hass = { ...card._hass, states: { ...card._hass.states, [PAGE]: { state: "unknown", attributes: {} } } };
+  assert.match(stripText(card), /^1 \/ 6/);
+  card.remove();
+  mock.timers.reset();
+});
+
 test("per_page and page_s may be helper entities", () => {
   const plants = Array.from({ length: 8 }, (_, i) => plant(`P${i}`));
   const card = discoverCard({ plants, config: { per_page: "input_number.r_plants_per_page" },
@@ -314,7 +331,12 @@ test("a row's lines: the room always, under it the action, else watered / water 
   globalThis.localStorage = window.localStorage;
   window.localStorage.setItem("domosenso.ramka.plants.page", "1");
   const plants = [plant("Dry", { moisture: 5 }), plant("Watered"), plant("C"), plant("D"), plant("E")];
-  const days = new Date(Date.now() - 5 * 86400000 - 3600000).toISOString();
+  // Noon five calendar days ago: the card counts calendar days, and "5 days and an hour ago" is
+  // six of them between midnight and one in the morning.
+  const at = new Date();
+  at.setDate(at.getDate() - 5);
+  at.setHours(12, 0, 0, 0);
+  const days = at.toISOString();
   const card = discoverCard({ lang: "en", plants, states: { "sensor.d1_last_watered": { state: days, attributes: {} } } });
   const row = (name) => listRows(card).find((r) => r.querySelector(".name").textContent === name);
   const lines = (name) => [row(name).querySelector(".rm").textContent, row(name).querySelector(".what").textContent];
