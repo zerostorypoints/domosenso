@@ -419,9 +419,9 @@
     },
     {
       "id": "climate-air",
-      "version": "0.2.0",
-      "sourceTag": "climate-air/0.2.0",
-      "sourceCommit": "9b88257faec4b9b94187afa26d41a4f625506b25",
+      "version": "0.3.0",
+      "sourceTag": "climate-air/0.3.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air",
       "requirements": [
         {
@@ -490,7 +490,7 @@
       "inputs": [
         {
           "name": "climate",
-          "type": "list[{label, temperature, humidity?, indoor?, bathroom?, battery?}]",
+          "type": "list[{label, temperature, humidity?, room?, indoor?, bathroom?, battery?}]",
           "required": true
         },
         {
@@ -514,8 +514,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9b88257faec4b9b94187afa26d41a4f625506b25/components/climate-air/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air/UPGRADE.md"
     },
     {
       "id": "lights",
