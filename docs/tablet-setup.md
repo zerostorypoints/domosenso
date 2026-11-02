@@ -70,8 +70,8 @@ hidden: set these first, or open the profile with `?disable_km`.
 
 **App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside
 the app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`
-to Android's Settings and back, field notes). The Ramka's two top corners are its way out
-instead: top-left opens `exit_left`, top-right reloads the Ramka with kiosk-mode off.
+to Android's Settings and back, field notes). The Ramka's Exit button on the controls is its way out
+instead: a tap opens `exit_left`, a long press reloads the Ramka with kiosk-mode off.
 
 ## 4. Measure, render, check
 

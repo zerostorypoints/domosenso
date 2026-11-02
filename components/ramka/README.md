@@ -61,6 +61,7 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 | tap anywhere but the corners | the controls (as before) |
 | swipe up / down | the next / previous page; the cycle restarts there |
 | swipe left / right | the next / previous view of the page on screen: plant pages, the photos of the series, round; the page's time restarts. Climate, air and status have one view and ignore it |
+| Exit on the controls (radar toggle's row) | tap: `exit_left`, the Overview with the sidebar; long press: the Ramka with kiosk-mode off (0.13.0; the top corners before) |
 | bottom-right corner | pause: the page and its view stay; a play button shows there, and a tap on it resumes with the page's full time |
 
 - **The pause is Home Assistant state**, `input_boolean.<prefix>_paused`, not the browser's: the loop,

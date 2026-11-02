@@ -1,8 +1,9 @@
 name: Release
 # Tags a merged version bump and opens the website pull request for it (SPEC-027). Merging a PR
 # that raises a component's `version:` is the go-ahead to publish its tag (AGENTS.md); this does the
-# rest: `tools/release.py <id>` on the merged commit and one push of `<id>/<version>`, then
-# `tools/publish_release.py <id>` on a branch and a pull request for the website's texts.
+# rest: `tools/release.py <id>` on the merged commit and one push of `<id>/<version>` per component,
+# then `tools/publish_release.py` for every tag pushed on one branch, and one pull request for the
+# website's texts.
 #
 # release.py runs its full local gate here (check-all), not --skip-checks: reading main's required
 # checks needs the Administration permission, which the workflow's token cannot have. It waits for
@@ -76,36 +77,66 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           status=0
+          : > "$RUNNER_TEMP/pushed.txt"
           while read -r id version; do
             tag="$id/$version"
             git checkout -q --detach "$SHA"
             # The full gate (check-all), the UPGRADE.md entry and an unused tag; never moves a tag.
             if ! uv run tools/release.py "$id"; then echo "::error::release.py refused $tag"; status=1; continue; fi
             if ! git push origin "refs/tags/$tag"; then echo "::error::push of $tag failed (on the remote already?)"; status=1; continue; fi
-            branch="release/website-$id-$version"
-            git switch -q -c "$branch"
-            if ! uv run tools/publish_release.py "$id"; then echo "::error::publish_release.py failed for $tag"; status=1; continue; fi
-            git add website
-            git commit -q -m "website: publish $id $version" -m "Mechanical part (tools/publish_release.py, SPEC-027); the texts follow in this pull request."
-            git push origin "$branch"
-            notes=$(awk -v v="## $version" 'index($0, v) == 1 {on=1; print; next} on && /^## / {exit} on {print}' "components/$id/UPGRADE.md")
-            {
-              echo "\`$tag\` was tagged at \`$(git rev-parse "$tag^{commit}")\` after its version bump merged. This pull request selects it on the website (\`tools/publish_release.py\`, SPEC-027); the texts are still to do, following the \`domosenso-website-audit\` skill:"
-              echo
-              echo "- [ ] view conditions and setup steps against the upgrade notes below"
-              echo "- [ ] a journal article, if the release is worth one, and the e2e counts"
-              echo "- [ ] the audit note in \`docs/website-audits/\`"
-              echo "- [ ] after merge: the live routes, IndexNow, and the sitemap in Search Console and Bing"
-              echo
-              echo "<details><summary>components/$id/UPGRADE.md, $version</summary>"
-              echo
-              echo "$notes"
-              echo
-              echo "</details>"
-            } > "$RUNNER_TEMP/body.md"
-            gh label create website-publish --color 0E8A16 --description "A new tag to publish on the website" --force
-            gh pr create --base main --head "$branch" --title "website: publish $id $version" --label website-publish --body-file "$RUNNER_TEMP/body.md"
+            echo "$id $version" >> "$RUNNER_TEMP/pushed.txt"
           done < "$RUNNER_TEMP/untagged.txt"
+          # One website pull request per run (SPEC-027 amendment 2): a version bump that releases
+          # several components shares one set of texts and one audit note.
+          if [ -s "$RUNNER_TEMP/pushed.txt" ]; then
+            git checkout -q --detach "$SHA"
+            count=$(wc -l < "$RUNNER_TEMP/pushed.txt" | tr -d ' ')
+            if [ "$count" = 1 ]; then
+              read -r id version < "$RUNNER_TEMP/pushed.txt"
+              branch="release/website-$id-$version"
+              title="website: publish $id $version"
+            else
+              branch="release/website-$(git rev-parse --short "$SHA")"
+              title="website: publish $count releases from $(git rev-parse --short "$SHA")"
+            fi
+            git switch -q -c "$branch"
+            : > "$RUNNER_TEMP/published.txt"
+            : > "$RUNNER_TEMP/notes.md"
+            while read -r id version; do
+              if ! uv run tools/publish_release.py "$id" --no-export; then echo "::error::publish_release.py failed for $id/$version"; status=1; continue; fi
+              echo "$id $version" >> "$RUNNER_TEMP/published.txt"
+              {
+                echo "<details><summary>components/$id/UPGRADE.md, $version</summary>"
+                echo
+                awk -v v="## $version" 'index($0, v) == 1 {on=1; print; next} on && /^## / {exit} on {print}' "components/$id/UPGRADE.md"
+                echo
+                echo "</details>"
+                echo
+              } >> "$RUNNER_TEMP/notes.md"
+            done < "$RUNNER_TEMP/pushed.txt"
+            if [ -s "$RUNNER_TEMP/published.txt" ]; then
+              uv run tools/export_website.py --verify-remote
+              git add website
+              git commit -q -m "$title" -m "Mechanical part (tools/publish_release.py, SPEC-027); the texts follow in this pull request."
+              git push origin "$branch"
+              {
+                echo "Tagged at \`$SHA\` after the version bump merged, and selected on the website by this pull request (\`tools/publish_release.py\`, SPEC-027):"
+                echo
+                while read -r id version; do echo "- \`$id/$version\`"; done < "$RUNNER_TEMP/published.txt"
+                echo
+                echo "The texts are still to do, following the \`domosenso-website-audit\` skill:"
+                echo
+                echo "- [ ] view conditions and setup steps against the upgrade notes below"
+                echo "- [ ] a journal article, if the release is worth one, and the e2e counts"
+                echo "- [ ] one audit note in \`docs/website-audits/\` for the whole pull request"
+                echo "- [ ] after merge: the live routes, IndexNow, and the sitemap in Search Console and Bing"
+                echo
+                cat "$RUNNER_TEMP/notes.md"
+              } > "$RUNNER_TEMP/body.md"
+              gh label create website-publish --color 0E8A16 --description "A new tag to publish on the website" --force
+              gh pr create --base main --head "$branch" --title "$title" --label website-publish --body-file "$RUNNER_TEMP/body.md"
+            fi
+          fi
           # A push with this token starts no workflow; a dispatch does.
           gh workflow run release-reminder.yml --ref main
           exit $status

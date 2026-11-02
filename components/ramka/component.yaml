@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.12.0
+version: 0.13.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -146,7 +146,7 @@ inputs:
   alert_notify: {type: action, default: null}             # battery and charger alerts; absent: none
   alert_title: {type: string, default: "<name>"}
   kiosk_user: {type: string, default: null}               # HA user that gets kiosk-mode
-  dashboard_path: {type: string, default: dashboard-ramka}  # the top-right corner's way out
+  dashboard_path: {type: string, default: dashboard-ramka}  # the Exit button's long press: this, kiosk-mode off
   dashboard_paths:              # the Ramka dashboard of each language, for the settings page's "Open the
     type: "map[lang, string]"   # Ramka view" (0.4.0); a language not in it takes dashboard_path. Plain
     default: null               # URL paths, as registered in configuration.yaml.
@@ -162,7 +162,7 @@ inputs:
     type: "map[lang, string]"   # its tabs; a language not in it takes ramka-preview. Plain URL paths, as
     default: null               # registered in configuration.yaml. Read only with preview_dashboard.
     example: {en: ramka-preview, de: ramka-preview-de}
-  exit_left: {type: string, default: /lovelace/0}          # the top-left corner's way out
+  exit_left: {type: string, default: /lovelace/0}          # the Exit button's tap (the controls)
   ha_url: {type: url, default: "http://127.0.0.1:8123"}    # how HA fetches the photo from itself
   music_visual:                 # the now-playing strip draws the room's music from audio-sensor (its
     type: "spectrum | level"    # board with `music: true`) instead of the wave; it is chosen in
