@@ -79,14 +79,14 @@ Files: shared fictional protocol fixtures in framework tests/fixtures/assistant 
 repository docs/assistant and installation/update instructions.
 - [x] Run the same fixtures through compiler, bridge and client, detecting schema mismatch.
 - [x] Verify actual HA startup/reload/read routes in isolated fictional staging if available; no production.
-- [ ] Framework check-all, bridge suite, app suite/typecheck/lint; build Android if native packaging changes.
-- [ ] Record exact results, source revisions, remaining runtime limits and reusable install/update steps.
+- [x] Framework check-all, bridge suite, app suite/typecheck/lint; build Android if native packaging changes.
+- [x] Record exact results, source revisions, remaining runtime limits and reusable install/update steps.
 
 ## Task 5: Independent final review
 
 - [x] Fresh review in owned worktrees: spec coverage, access filtering and source provenance.
-- [ ] Fix material findings with regression tests; verify changed areas.
-- [ ] Prepare reviewable branch changes; no push/publish/deploy without task authorization.
+- [x] Fix material findings with regression tests; verify changed areas.
+- [x] Prepare reviewable branch changes; no push/publish/deploy without task authorization.
 
 ## Website impact
 
@@ -132,3 +132,9 @@ reviewed component tags and bridge/app releases exist. Existing public site beha
 Main integration: d997beb, preserving new Ramka previews/music settings and floorplan 0.3.1. Assistant specification renumbered SPEC-029 to avoid main SPEC-024 collision. Reviewer fixes move all binding normalization into pinned component templates, correct upstream source ownership, preserve translated plant roomLabel, and classify awning wind as reported state. Focused compiler/binding tests: 41 passed. Full checks pending after integration. No production changes.
 
 Verification on 2026-11-02: framework at 45c90ba passed full check-all (1495 Python tests, 699 card tests, fresh staging lifecycle, all HA/ESPHome configuration checks). Real HA 2026.9.2 bootstrap and registered-handler smoke loaded compiler-generated climate-air/floorplan artifacts, verified signed pairing and approval, returned qualified unknown-source readings and an installed floorplan explanation, and denied the query after device revocation. No HTTP WebSocket transport, browser or physical-device acceptance is implied. Bridge initially passed 76 tests; app passed 275 after floorplan/fixture integration. Independent whole-change review found source adapter, partial-provider coverage, localized labels, forecast condition and spoken truncation issues; the bridge/app follow-up fixes and final cross-fixture verification remain in progress.
+
+## Completed local implementation (2026-11-02)
+
+All review findings are addressed. Forecast periods without any usable condition or measurement are excluded from coverage; five actual bridge edge outputs now pass the app validator. Final evidence: framework full check-all 1495 Python/699 card tests plus all HA/ESPHome checks; bridge 94 tests; app 290 tests, typecheck and lint. Four pinned fixture packages match byte-for-byte and cover 55 actual bridge outputs. Reusable HA 2026.9.2 smoke tests passed independently with fresh manual mapping and compiler-generated DomoSenso bundles, including signed pairing, registered handlers and revocation. The framework branch includes main d997beb.
+
+No native code was changed by this contract work, so no new APK build was needed for these TypeScript/Python checks. Device speech, wake/background behavior, HTTP WebSocket transport, interactive mapping UI and real provider synchronization still need release/staging acceptance. Unknown measurement integrations remain fail-closed; supported source-report adapters are ESPHome and direct Xiaomi BLE. Legacy plants with no explicit room key require administrator association for room-specific queries. No remote push, release, production HA change or tablet installation was performed.
