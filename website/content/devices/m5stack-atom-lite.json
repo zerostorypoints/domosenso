@@ -14,19 +14,19 @@
   "compatibility": [
     {
       "id": "bermuda-presence",
-      "version": "0.2.1"
+      "version": "0.3.0"
     },
     {
       "id": "awnings",
-      "version": "0.2.1"
+      "version": "0.3.0"
     },
     {
       "id": "climate-air",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "id": "plants",
-      "version": "0.3.1"
+      "version": "0.4.0"
     },
     {
       "id": "ramka",

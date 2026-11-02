@@ -467,3 +467,14 @@ def test_a_maybe_confirmed_with_have_is_not_printed_again(catalog, tmp_path, cap
     # The tablet is accounted for; the phone, which no rule matched, is still unmatched.
     names = [d["name"] for d in doc["scan"]["devices"]]
     assert doc["scan"]["unmatched"]["mobile_app"] == [names.index("Alex's phone")]
+
+
+def test_assistant_bindings_alone_install_nothing():
+    """SPEC-029's bindings template is optional metadata; it does not turn a guide into an install."""
+    from domosenso_cli.recommend import describes_only
+    bindings = "templates/assistant-bindings.yaml.j2"
+    manifest = {"assistant": {"bindings": bindings}, "artifacts": {"templates": [bindings], "ha_packages": []}}
+    assert describes_only(manifest)
+    manifest["artifacts"]["dashboard_cards"] = [{"path": "cards/x.js"}]
+    assert not describes_only(manifest)
+    assert not describes_only({"artifacts": {"templates": [bindings]}})   # no assistant: a template like any
