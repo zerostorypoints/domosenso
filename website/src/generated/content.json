@@ -413,8 +413,8 @@
         "Map them in Ramka to use its agenda view."
       ],
       "id": "calendar",
-      "version": "0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
+      "version": "0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "evidencePaths": [
         "components/calendar/component.yaml"
       ],

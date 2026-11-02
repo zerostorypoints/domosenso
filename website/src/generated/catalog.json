@@ -377,20 +377,26 @@
     },
     {
       "id": "calendar",
-      "version": "0.1.0",
-      "sourceTag": "calendar/0.1.0",
-      "sourceCommit": "199ac6b088c753e4c0ba13b65e63157e6d36cda8",
-      "summary": "Calendar events from a CalDAV server, for example iCloud",
+      "version": "0.2.0",
+      "sourceTag": "calendar/0.2.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "summary": "Calendar events from a CalDAV server, for example iCloud, or an ICS link",
       "requirements": [],
       "integrations": [
         {
           "name": "caldav",
           "source": "core",
           "setup": "the server's URL, a user name and an app-specific password (iCloud: created in the Apple account's security settings)"
+        },
+        {
+          "name": "remote_calendar",
+          "source": "core",
+          "optional": true,
+          "setup": "instead of CalDAV: a calendar's ICS URL; read-only, refreshed once a day"
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -414,8 +420,8 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/199ac6b088c753e4c0ba13b65e63157e6d36cda8/components/calendar",
-      "upgradeUrl": null
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/calendar",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/calendar/UPGRADE.md"
     },
     {
       "id": "climate-air",
