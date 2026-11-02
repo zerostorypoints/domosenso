@@ -10,6 +10,22 @@
         "description": "Moduł radaru milimetrowego 24 GHz, który wykrywa osoby, ruszające się lub nieruchome, i mierzy ich odległość.",
         "does": "Podłączony do płytki proxy, przekazuje do Home Assistanta obecność i odległość wykrycia. Ramka używa go do wybudzania ekranu, gdy ktoś wchodzi do pokoju."
       }
+    },
+    "assistant": {
+      "observations": {
+        "title": "Wykryte urządzenia",
+        "description": "Pokazuje dozwolone wykrycia urządzeń; wykrycie nie dowodzi obecności osoby.",
+        "examples": [
+          "Jakie urządzenia wykryto?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: wykrywanie obecności",
+        "description": "Wykrywanie korzysta z Bluetooth i opcjonalnie radaru; nie identyfikuje pewnie domowników.",
+        "examples": [
+          "Do czego służy wykrywanie obecności?"
+        ]
+      }
     }
   }
 }

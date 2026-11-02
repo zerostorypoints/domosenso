@@ -10,6 +10,36 @@
         "description": "A small power meter that sits in the wall box behind a socket, in series with its phase. It does not switch.",
         "does": "Measures the power, voltage, current and energy of what is plugged in, locally through the core shelly integration, without a cloud account. The now-playing view shows the player's draw and voltage from it."
       }
+    },
+    "assistant": {
+      "now_playing": {
+        "title": "Now playing",
+        "description": "Report player state and available track and service details.",
+        "examples": [
+          "What is playing?"
+        ]
+      },
+      "status": {
+        "title": "Player status",
+        "description": "Report player state, source, volume and mute when provided.",
+        "examples": [
+          "What is the player status?"
+        ]
+      },
+      "mains": {
+        "title": "Mains readings",
+        "description": "Read power or voltage only from an explicitly mapped meter.",
+        "examples": [
+          "What is the player power draw?"
+        ]
+      },
+      "explain": {
+        "title": "About media",
+        "description": "Media reports playback and optional meter readings; it does not control playback here.",
+        "examples": [
+          "What does media do?"
+        ]
+      }
     }
   }
 }

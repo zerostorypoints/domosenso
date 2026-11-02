@@ -83,10 +83,11 @@ def as_list(value):
 # ---- the brief's five ----------------------------------------------------------------------
 
 
-def test_demo_renders_three_dashboards_and_package(demo):
+def test_demo_renders_three_dashboards_package_and_private_assistant_bindings(demo):
     # The preview is on by default (preview_dashboard: true).
-    assert set(demo) == {"package.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings", "ramka-preview")
+    assert set(demo) == {"package.yaml", "assistant-bindings.yaml", *(f"{name}.{lang}.yaml" for name in ("dashboard", "ramka-settings", "ramka-preview")
                                            for lang in LANGS)}
+    assert set(demo["assistant-bindings.yaml"]) == {"subjects", "policies"}
     package = demo["package.yaml"]
     for domain in ("input_select", "input_boolean", "input_number", "timer", "input_button", "script", "automation", "template"):
         assert package[domain], domain

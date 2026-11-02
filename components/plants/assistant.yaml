@@ -1,0 +1,191 @@
+capabilities:
+- id: plants.watering_need
+  revision: 1
+  operation: read
+  query_type: plant-query.v1
+  answer_type: plant-watering.v1
+  title_key: meta.assistant.watering_need.title
+  description_key: meta.assistant.watering_need.description
+  examples_key: meta.assistant.watering_need.examples
+  required_facts:
+  - role: moisture
+    type: number
+    units:
+    - '%'
+    source:
+      relation: upstream
+      id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
+  optional_facts:
+  - role: plant
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: plant.<plant>
+  policy:
+    evaluator: plants.watering_need
+  freshness:
+    max_age_seconds: 21600
+    basis: measurement
+  limitations:
+  - missing_source
+  - stale
+  - unknown_freshness
+  - missing_policy
+- id: plants.status
+  revision: 1
+  operation: read
+  query_type: plant-query.v1
+  answer_type: plant-status.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: plant
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: plant.<plant>
+  optional_facts:
+  - role: moisture
+    type: number
+    units:
+    - '%'
+    source:
+      relation: upstream
+      id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
+  - role: conductivity
+    type: number
+    units:
+    - µS/cm
+    source:
+      relation: upstream
+      id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
+  - role: brightness
+    type: number
+    units:
+    - lx
+    source:
+      relation: upstream
+      id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
+  - role: temperature
+    type: number
+    units:
+    - °C
+    source:
+      relation: upstream
+      id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
+  - role: brightness_peak
+    type: number
+    units:
+    - lx
+    source:
+      relation: provides
+      id: sensor.<plant>_illuminance_max_24h
+  policy:
+    evaluator: plants.status
+  freshness:
+    max_age_seconds: 21600
+    basis: measurement
+  limitations:
+  - missing_source
+  - stale
+  - unknown_freshness
+  - history_coverage_unknown
+- id: plants.last_watered
+  revision: 1
+  operation: read
+  query_type: plant-query.v1
+  answer_type: plant-event.v1
+  title_key: meta.assistant.last_watered.title
+  description_key: meta.assistant.last_watered.description
+  examples_key: meta.assistant.last_watered.examples
+  required_facts:
+  - role: last_watered
+    type: event
+    units: []
+    source:
+      relation: provides
+      id: sensor.<plant>_last_watered
+  optional_facts:
+  - role: plant
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: plant.<plant>
+  policy:
+    evaluator: plants.last_watered
+  freshness:
+    max_age_seconds: null
+    basis: historical_event
+  limitations:
+  - watering_history_unknown
+- id: plants.water_in
+  revision: 1
+  operation: read
+  query_type: plant-query.v1
+  answer_type: plant-estimate.v1
+  title_key: meta.assistant.water_in.title
+  description_key: meta.assistant.water_in.description
+  examples_key: meta.assistant.water_in.examples
+  required_facts:
+  - role: moisture
+    type: number
+    units:
+    - '%'
+    source:
+      relation: upstream
+      id: sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}
+  - role: water_in_days
+    type: estimate
+    units:
+    - d
+    source:
+      relation: provides
+      id: sensor.<plant>_water_in_days
+  optional_facts:
+  - role: plant
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: plant.<plant>
+  - role: last_watered
+    type: event
+    units: []
+    source:
+      relation: provides
+      id: sensor.<plant>_last_watered
+  - role: drying_rate
+    type: number
+    units:
+    - '%'
+    source:
+      relation: provides
+      id: sensor.<plant>_moisture_change_48h
+  policy:
+    evaluator: plants.water_in
+  freshness:
+    max_age_seconds: 21600
+    basis: measurement
+  limitations:
+  - insufficient_history
+  - unknown_freshness
+- id: plants.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: plants.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

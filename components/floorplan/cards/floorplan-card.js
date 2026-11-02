@@ -346,7 +346,7 @@ ${STYLE}
         <div class="layers"></div>
         <div class="bar"></div>
         <div class="area-panel"></div>
-        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div><div class="legend" hidden></div></div>
+        <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div></div>
         <div class="hint"></div>
         <div class="message"></div>
       </ha-card>`;
@@ -383,7 +383,6 @@ ${STYLE}
     $(".bar").toggleAttribute("data-own-tap", this._one);
     $(".layers").toggleAttribute("data-own-tap", this._one);
     this._wantStats();
-    this._legend();
     this._registry();
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
@@ -446,25 +445,23 @@ ${STYLE}
           { figure: t(h, `card.floorplan.maps.figure.${map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`}`) }))
         + "</span>";
     }
-    return html;
+    return html + this._legendHtml(map);
   }
 
-  // What the map shows: its name, now or its 24-hour figure, the scale's ends.
-  _legend() {
-    const box = this.shadowRoot.querySelector(".legend");
-    const map = this._map();
-    box.hidden = !map;
-    if (!map) return void (box.innerHTML = "");
+  // The map's scale, compact, in the bar: never over the plan (on the Ramka a legend on the plan
+  // covered a room). The chips name the map and now or 24 h; the full sentence is its tooltip.
+  _legendHtml(map) {
     const h = this._hass;
-    if (map.cls === "lamps") return void (box.textContent = t(h, "card.floorplan.maps.lamps_legend"));
+    if (map.cls === "lamps") return `<span class="legend">${esc(t(h, "card.floorplan.maps.lamps_legend"))}</span>`;
     const s = SCALES[map.cls];
     const figureKey = map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`;
     const when = this._day ? t(h, "card.floorplan.maps.day_legend", { figure: t(h, `card.floorplan.maps.figure.${figureKey}`) })
       : t(h, "card.floorplan.maps.now_legend");
-    box.innerHTML = `<div>${esc(t(h, `card.floorplan.maps.${map.cls}`))}, ${esc(when)}</div>`
-      + `<div class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})"></div>`
-      + `<div class="ends"><span>${esc(formatValue(map.cls, s.lo))}</span><span>${esc(formatValue(map.cls, s.hi))}</span></div>`
-      + `<div><span class="hatch"></span>${esc(t(h, "card.floorplan.maps.no_sensor"))}</div>`;
+    return `<span class="legend" title="${esc(`${t(h, `card.floorplan.maps.${map.cls}`)}, ${when}`)}">`
+      + `<span>${esc(formatValue(map.cls, s.lo))}</span>`
+      + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})"></span>`
+      + `<span>${esc(formatValue(map.cls, s.hi))}</span>`
+      + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.maps.no_sensor"))}</span></span>`;
   }
 
   _areaPanelHtml() {

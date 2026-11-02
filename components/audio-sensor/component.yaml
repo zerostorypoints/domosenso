@@ -4,7 +4,7 @@
 # two cards, `ambient-wave-card` and `room-meter-card`. No dashboard of its own: Ramka 0.4.0 shows the
 # music visual and its settings. Upgrade notes: UPGRADE.md; how a home uses it: README.md.
 id: audio-sensor
-version: 0.3.0
+version: 0.4.0
 summary: A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum
 description_key: meta.description
 photo: null
@@ -28,7 +28,7 @@ integrations:
 # Values the home supplies; `domosenso add` writes the inputs skeleton, the add-component skill fills it.
 inputs:
   sensors:                                # one item per board; one device file each
-    type: "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map}]"
+    type: "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map, online?: entity_id}]"
     example:
       - {room: living-room, area: Living room, music: true}
       - {room: kids-room, area: "Kids' room"}
@@ -40,6 +40,7 @@ inputs:
       name: {type: str, default: "audio-sensor-<room>", note: "ESPHome substitution"}
       friendly_name: {type: str, default: "Audio sensor <area>", note: "ESPHome substitution"}
       mic_gain: {type: str, default: 24DB, note: "ES8311 gain, 0DB to 42DB; changing it means calibrating again"}
+      online: {type: entity_id, default: null, note: "Explicit optional availability sensor for assistant answers."}
       entities:
         type: "map[key, entity_id]"
         # Home Assistant builds an ESPHome entity's id from the device's names and area when the board
@@ -62,6 +63,11 @@ inputs:
           load: sensor.<..>_spectrum_load
           spectrum_rate: select.<..>_spectrum_rate
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   esphome:
     packages:                             # remote package, github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/<version>
@@ -74,6 +80,7 @@ artifacts:
   # The spectrum component the package loads with external_components; it is not an artifact a home
   # receives, ESPHome pulls it from the tag (a fixed `ref`, checked against `version`).
   templates:                            # rendered per home by tools/domosenso_render.py
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2         # -> package.yaml, the home's packages/: offsets, recorder exclusions, music aliases
   ha_packages: []
   # Where the cards go in the home's config, served as /local/domosenso/audio-sensor/<version>/:
@@ -126,9 +133,10 @@ provides:                                 # contract surface; placeholders in <>
   # promised (docs/COMPATIBILITY.md): the home's `entities` input maps each `entity_key` to its id.
   # `stability` is about the entity and its state, which the firmware owns, not about its id.
   upstream:
+    - {id: "binary_sensor.<audio>_online", owner: esphome, stability: additive-only, note: "Optional explicitly mapped availability sensor."}
     - {entity_key: spectrum, owner: esphome, stability: stable,
        state: "31 comma-separated third-octave levels in dBFS, 20 Hz to 20 kHz"}
-    - {entity_key: level, owner: esphome, stability: stable, note: "1 s RMS in dBFS, unweighted"}
+    - {id: "sensor.<audio>_sound_level", entity_key: level, owner: esphome, stability: stable, note: "1 s RMS in dBFS, unweighted"}
     - {entity_key: peak, owner: esphome, stability: stable, note: "loudest sample in that second, dBFS"}
     - {entity_key: fast_level, owner: esphome, stability: additive-only, note: "100 ms, only while Live tracking is on"}
     - {entity_key: fast_peak, owner: esphome, stability: additive-only, note: same}

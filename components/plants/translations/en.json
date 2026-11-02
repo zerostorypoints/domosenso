@@ -6,6 +6,43 @@
         "description": "A Bluetooth plant sensor (HHCC Flower Care, model HHCCJCY01) that is pushed into the soil.",
         "does": "Measures soil moisture, conductivity, light and temperature and reports them over Bluetooth Low Energy; Home Assistant receives them through Bluetooth proxies and the core Xiaomi BLE integration."
       }
+    },
+    "assistant": {
+      "watering_need": {
+        "title": "Plant watering",
+        "description": "Compare soil moisture with each plant’s configured range.",
+        "examples": [
+          "Which plants need water?"
+        ]
+      },
+      "status": {
+        "title": "Plant condition",
+        "description": "Report plant problems using available sensor and light-history evidence.",
+        "examples": [
+          "How are the plants?"
+        ]
+      },
+      "last_watered": {
+        "title": "Detected watering",
+        "description": "Report the last watering detected from moisture, when known.",
+        "examples": [
+          "When was this plant watered?"
+        ]
+      },
+      "water_in": {
+        "title": "Watering estimate",
+        "description": "Report the qualified watering estimate when source history supports it.",
+        "examples": [
+          "When might this plant need water?"
+        ]
+      },
+      "explain": {
+        "title": "About plants",
+        "description": "Plant sensors monitor soil and light; watering estimates depend on valid history.",
+        "examples": [
+          "What does plants do?"
+        ]
+      }
     }
   }
 }

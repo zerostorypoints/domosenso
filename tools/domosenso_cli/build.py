@@ -17,6 +17,7 @@ from pathlib import Path
 
 import yaml
 
+from assistant_contract import compile_profile, load_definition
 from catalog_check import install_dir, install_files, service_files
 from domosenso_cli import dev_render, stamps
 from domosenso_cli.catalog import Catalog
@@ -156,6 +157,11 @@ def plan_outputs(
     manifest = load_manifest(component_dir)
     if manifest.get("version") != version:
         raise DomosensoError(f"{cid}/{version}: component.yaml says version {manifest.get('version')}")
+    if "assistant" in manifest:
+        try:
+            load_definition(component_dir, manifest)
+        except ValueError as exc:
+            raise DomosensoError(f"{cid}: {exc}") from exc
     artifacts = manifest.get("artifacts") or {}
     prefix = _config_prefix(home)
     outputs: list[Output] = []
@@ -191,7 +197,15 @@ def plan_outputs(
                     if not (out / rendered).is_file():
                         continue  # rendered empty: an optional output its inputs leave out
                     content = (out / rendered).read_bytes()
-                    if name.startswith(INSTANCE_DIR):  # the home's own once written: no stamp, it is not "do not edit"
+                    if f"templates/{name}" == (manifest.get("assistant") or {}).get("bindings"):
+                        try:
+                            profile = compile_profile(component_dir, manifest, yaml.safe_load(content), version, sha, dirty)
+                        except ValueError as exc:
+                            raise DomosensoError(f"{cid}: {exc}") from exc
+                        encoded = (stamps.stamp(cid, version, sha[:SHORT_SHA], dirty) + "\n" +
+                                   yaml.safe_dump(profile, allow_unicode=True, sort_keys=False)).encode("utf-8")
+                        add(f"domosenso/assistant/{cid}.yaml", encoded, manifest["assistant"]["definition"])
+                    elif name.startswith(INSTANCE_DIR):  # the home's own once written: no stamp, it is not "do not edit"
                         text = stamps.body(content.decode("utf-8")).encode("utf-8")
                         add(_instance_destination(rendered), text, f"templates/{name}", "instance")
                     else:

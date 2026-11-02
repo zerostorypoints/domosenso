@@ -1,6 +1,15 @@
 {
   "meta": {
-    "description": "Draws a floor plan of the home: the rooms as shapes, with sensor readings and plants at their positions, zoomable and editable."
+    "description": "Draws a floor plan of the home: the rooms as shapes, with sensor readings and plants at their positions, zoomable and editable.",
+    "assistant": {
+      "explain": {
+        "title": "About the floor plan",
+        "description": "The floor plan shows rooms, sensor readings and plants in their positions. The assistant can explain this component; it does not edit the plan or infer occupancy from it.",
+        "examples": [
+          "What does the floor plan show?"
+        ]
+      }
+    }
   },
   "card": {
     "floorplan": {

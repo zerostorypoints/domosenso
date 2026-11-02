@@ -2,7 +2,7 @@
 # 0.2.0 a package with room lights that follow the bulbs, a lights-on count and the lowest battery
 # (SPEC-008).
 id: lights
-version: 0.2.0
+version: 0.3.0
 summary: Philips Hue lights per room, from the bridge's room groups
 description_key: meta.description
 photo: null
@@ -24,7 +24,7 @@ integrations:
 
 inputs:
   lights:                       # the Ramka's room tiles read these
-    type: "list[{entity, label}]"
+    type: "list[{entity, label, room?}]"
     example: [{entity: light.living_room, label: Living room}]
   lights_all_off:
     type: entity_id
@@ -39,13 +39,20 @@ inputs:
     default: []
     example: [sensor.hall_motion_sensor_battery]
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/lights.yaml
   ha_packages: []
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "light.<room>", stability: stable, note: "one per Hue room group; on, off, brightness"}
     - {id: "light.<bulb>", stability: stable, note: "one per bulb. A room group stays on while its bulbs have lost power (a wall switch cut them), so read the bulbs where that can happen"}
@@ -53,6 +60,10 @@ provides:
     - {id: "light.room_<id>", unique_id: "room_<id>", stability: stable, note: "on only while a reachable bulb of the group is on; commands go to the group"}
     - {id: sensor.lights_on, unique_id: lights_on_count, stability: stable, note: "Hue bulbs that are on, groups excluded"}
     - {id: sensor.hue_lowest_battery, unique_id: hue_lowest_battery, stability: stable, note: "%, unavailable while no battery sensor has a value; with battery_sensors"}
+
+  upstream:
+    - {id: "light.<room>", owner: integration}
+    - {id: "light.<bulb>", owner: integration}
 
 consumes: []
 

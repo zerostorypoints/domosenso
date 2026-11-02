@@ -1283,8 +1283,11 @@ test("maps: a reading map is heat inside each room, hatched where a room has no 
   assert.ok(cells.length > 0);
   for (const c of cells) assert.ok(Number(c.getAttribute("x")) < 5, "heat stays in the living room");
   assert.equal(card.shadowRoot.querySelectorAll(".heat .no-sensor").length, 1, "the kitchen is hatched");
-  assert.ok(!$(card, ".legend").hidden);
-  assert.ok(shadowText(card).includes(EN("card.floorplan.maps.no_sensor")));
+  const legend = $(card, ".bar .legend");
+  assert.ok(legend, "the legend sits in the bar, never over the plan");
+  assert.ok(!$(card, ".body .legend"));
+  assert.ok(legend.textContent.includes("17.0 °C") && legend.textContent.includes("24.0 °C"), legend.textContent);
+  assert.ok(legend.textContent.includes(EN("card.floorplan.maps.no_sensor")));
   assert.deepEqual(lines(card, "d_climate")[0], ["21.5 °C", true], "the map's reading first, marked");
   click($(card, '.bar [data-map="carbon_dioxide"]'));
   assert.deepEqual(lines(card, "d_climate")[0], ["900 ppm", true]);

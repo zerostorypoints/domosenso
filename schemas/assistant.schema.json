@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Read-only component assistant definitions",
+  "type": "object",
+  "properties": {
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9_]*$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "operation": {
+            "const": "read"
+          },
+          "query_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "answer_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "title_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+          },
+          "description_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+          },
+          "examples_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+          },
+          "required_facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80,
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "type": {
+                  "enum": [
+                    "number",
+                    "state",
+                    "event",
+                    "estimate",
+                    "metadata"
+                  ]
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "minItems": 0,
+                  "maxItems": 16
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "relation": {
+                      "enum": [
+                        "provides",
+                        "upstream",
+                        "consumes"
+                      ]
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 240
+                    },
+                    "component": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-z0-9_-]*$"
+                    }
+                  },
+                  "required": [
+                    "relation",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "role",
+                "type",
+                "units",
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 0,
+            "maxItems": 32
+          },
+          "optional_facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80,
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "type": {
+                  "enum": [
+                    "number",
+                    "state",
+                    "event",
+                    "estimate",
+                    "metadata"
+                  ]
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "minItems": 0,
+                  "maxItems": 16
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "relation": {
+                      "enum": [
+                        "provides",
+                        "upstream",
+                        "consumes"
+                      ]
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 240
+                    },
+                    "component": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-z0-9_-]*$"
+                    }
+                  },
+                  "required": [
+                    "relation",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "role",
+                "type",
+                "units",
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 0,
+            "maxItems": 32
+          },
+          "policy": {
+            "type": "object",
+            "properties": {
+              "evaluator": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "evaluator"
+            ],
+            "additionalProperties": false
+          },
+          "freshness": {
+            "type": "object",
+            "properties": {
+              "basis": {
+                "enum": [
+                  "measurement",
+                  "reported_state",
+                  "provider_response",
+                  "historical_event",
+                  "installed_metadata"
+                ]
+              },
+              "max_age_seconds": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 60,
+                "maximum": 86400
+              }
+            },
+            "required": [
+              "basis",
+              "max_age_seconds"
+            ],
+            "additionalProperties": false
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[a-z][a-z0-9_-]*$"
+            },
+            "minItems": 0,
+            "maxItems": 32
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "operation",
+          "query_type",
+          "answer_type",
+          "title_key",
+          "description_key",
+          "examples_key",
+          "required_facts",
+          "optional_facts",
+          "policy",
+          "freshness",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 64
+    }
+  },
+  "required": [
+    "capabilities"
+  ],
+  "additionalProperties": false
+}

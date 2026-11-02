@@ -6,6 +6,22 @@
         "description": "Die Zentrale, die Hue-Lampen und -Zubehör per Zigbee verbindet und im Heimnetz verfügbar macht.",
         "does": "Fasst die Lampen zu Räumen zusammen. Home Assistant koppelt sich mit einem Druck auf die Taste der Bridge und steuert danach Räume und Lampen über das Heimnetz."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Lichtstatus",
+        "description": "Status und Helligkeit verfügbarer Lichter oder Gruppen mit Abdeckungsgrenzen melden.",
+        "examples": [
+          "Welche Lichter sind an?"
+        ]
+      },
+      "explain": {
+        "title": "Über Licht",
+        "description": "Lichter melden Status und Helligkeit; nicht erreichbare Lampen gelten nicht als aus.",
+        "examples": [
+          "Was bietet Licht?"
+        ]
+      }
     }
   }
 }

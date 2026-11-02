@@ -556,6 +556,22 @@
         "description": "An 11.5-inch Android tablet (TCL, model 9469X) with a 2200 × 1440 screen.",
         "does": "Hangs on the wall as the Ramka: the Home Assistant Companion app shows the dashboard full screen, wakes and dims the screen on Home Assistant's commands and reports its light sensor and battery. It stops charging at 80 % by itself, so it can stay on the charger."
       }
+    },
+    "assistant": {
+      "status": {
+        "title": "Frame status",
+        "description": "Read the frame’s configured mode, page, theme, rotation and wake setting.",
+        "examples": [
+          "What mode is the frame in?"
+        ]
+      },
+      "explain": {
+        "title": "About the wall frame",
+        "description": "The wall frame displays home information; configured mode does not prove display power.",
+        "examples": [
+          "What does the wall frame do?"
+        ]
+      }
     }
   }
 }

@@ -638,3 +638,38 @@ def test_inventory_lists_a_borrowed_esphome_package(home, catalog, capsys):
     assert listed["other"] == {"id": "other", "version": "0.2.1", "tag": "other/0.2.1", "commit": "", "released": "",
                                "dev": False, "package": "proxy.yaml"}
     assert listed["panel"]["package"] == ""  # locked: listed from the lock, not as a package
+
+
+def test_assistant_artifact_is_managed_private_and_hashed(home, catalog, capsys):
+    """New metadata follows existing ownership; the bindings never become an HA package."""
+    # A fictional existing panel advertises only its explanation, with no live sources.
+    panel = catalog / 'components/panel'
+    manifest = yaml.safe_load((panel / 'component.yaml').read_text())
+    manifest['assistant'] = {'version': 1, 'definition': 'assistant.yaml', 'bindings': 'templates/assistant-bindings.yaml.j2'}
+    manifest['artifacts']['templates'].append('templates/assistant-bindings.yaml.j2')
+    (panel / 'component.yaml').write_text(yaml.safe_dump(manifest))
+    cap = dict(id='panel.explain', revision=1, operation='read', query_type='component-query.v1',
+               answer_type='component-description.v1', title_key='meta.assistant.explain.title',
+               description_key='meta.assistant.explain.description', examples_key='meta.assistant.explain.examples',
+               required_facts=[], optional_facts=[], policy={'evaluator': 'panel.explain'},
+               freshness={'basis': 'installed_metadata', 'max_age_seconds': None}, limitations=[])
+    (panel / 'assistant.yaml').write_text(yaml.safe_dump({'capabilities': [cap]}))
+    (panel / 'templates/assistant-bindings.yaml.j2').write_text('subjects: []\npolicies: []\n')
+    for language in ('en', 'de', 'pl'):
+        p = panel / f'translations/{language}.json'
+        contents = json.loads(p.read_text())
+        contents['meta'] = {'assistant': {'explain': {'title':'Panel', 'description':'Shows data.', 'examples':['What does the panel do?']}}}
+        p.write_text(json.dumps(contents))
+    lock_in(home, catalog, 'panel')
+    code, out = run(home, 'render', '--catalog-dev', str(catalog), capsys=capsys)
+    assert code == 0, out
+    dest = home / HA / 'domosenso/assistant/panel.yaml'
+    assert dest.is_file(), 'compiled artifact must be installed privately'
+    bundle = yaml.safe_load(dest.read_text())
+    assert bundle['component']['id'] == 'panel'
+    assert bundle['component']['dev'] is True
+    assert not list((home / HA / 'packages').glob('*assistant*'))
+    # A manual edit is protected by the exact same managed-file conflict check as packages.
+    dest.write_text(dest.read_text() + '# locally edited\n')
+    code, out = run(home, 'render', '--catalog-dev', str(catalog), capsys=capsys)
+    assert code == 1 and ('modified' in out or 'edited' in out or 'changed' in out), out

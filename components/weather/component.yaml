@@ -1,6 +1,6 @@
 # Domosenso component manifest: weather from Met.no.
 id: weather
-version: 0.1.0
+version: 0.2.0
 summary: Current weather and forecast from the Norwegian Meteorological Institute (Met.no)
 description_key: meta.description
 photo: null
@@ -20,13 +20,24 @@ inputs:
     type: entity_id
     example: weather.forecast_home
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
   ha_packages: []
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "weather.<home>", stability: stable, note: "condition as state; temperature, humidity, pressure, wind_speed as attributes; the forecast through the weather.get_forecasts action"}
+
+  upstream:
+    - {id: "weather.<home>", owner: integration}
 
 consumes: []
 

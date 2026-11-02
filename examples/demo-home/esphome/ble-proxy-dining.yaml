@@ -1,5 +1,5 @@
 # ble-proxy-dining: a Bermuda BLE proxy in Dining. Written once by `domosenso add`
-# from bermuda-presence 0.2.1, this home's file from now on; the packages are the catalog's at that tag.
+# from bermuda-presence 0.3.0, this home's file from now on; the packages are the catalog's at that tag.
 substitutions:
   room: "dining"
   area: "Dining"
@@ -8,8 +8,8 @@ esphome:
   area: ${area}
 
 packages:
-  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.2.1
-  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.2.1
+  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/0.3.0
+  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/0.3.0
 
 wifi:
   ssid: !secret wifi_ssid

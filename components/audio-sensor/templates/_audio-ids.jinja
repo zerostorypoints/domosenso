@@ -1,0 +1,2 @@
+[# Prefixes used by the package's helpers; registry-owned device IDs are not implied. #]
+[%- macro to_slug(text) -%][[ text | lower | replace("'", "") | replace("-", "_") | replace(" ", "_") ]][%- endmacro -%]

@@ -2,6 +2,34 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+
+## 0.4.0 (unreleased): component-backed assistant answers
+
+Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
+Existing entities, helper values, dashboard preferences and automation actions are preserved.
+The component's metadata alone does not grant the Frame app access to its data.
+
+### What a home does
+
+Upgrade DomoSenso tooling to a revision supporting assistant metadata **before** updating this
+component; old tooling cannot install its bindings template correctly. After this version is
+released, run `domosenso update floorplan --to 0.4.0` and review the normal staging/deployment plan.
+Deploy the generated `domosenso/assistant/floorplan.yaml` alongside the matching inventory.
+With a compatible Frame bridge, reload metadata, choose the frame in **Assistant sources**,
+review the proposed sources and save the selection. Existing supported answers do not require
+another APK just to change labels or thresholds. New answer types require a compatible app.
+
+No automatic exposure or control is added. Missing metadata, permissions, fresh observations or
+assessment rules produce qualified/unavailable answers. Keep old tooling and component versions
+together when reverting. See [shared setup and limitations](../../docs/ASSISTANT.md).
+
+## 0.3.1 (2026-11-02): the map's legend in the bar
+
+The legend sat over the plan's bottom left corner and covered a room on the Ramka. It is now a
+compact scale in the bar beside Now / 24 h (its ends and "no sensor in the room"; the full
+sentence as its tooltip). **After the update:** `domosenso update floorplan --to 0.3.1`, deploy,
+reload the browsers that show the plan (the Ramka: its reload button).
+
 ## 0.3.0 (2026-11-01): maps per layer, now or the last 24 hours
 
 - **Maps** (SPEC-028 Amendment 7): with plants, climate or light shown alone, the bar offers their

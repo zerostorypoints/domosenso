@@ -2,7 +2,7 @@
 # first filled from a real home on 2026-10-20. Fields marked "pilot:" are additions the format
 # needed; see docs/pilot-bermuda-presence.md.
 id: bermuda-presence
-version: 0.2.1
+version: 0.3.0
 summary: Room-level presence of phones, tablets and watches from BLE, through ESPHome proxies and Bermuda
 description_key: meta.description
 photo: null
@@ -40,6 +40,10 @@ inputs:
     type: "map[entity_id, name]"
     default: {}
     example: {sensor.family_tablet_area: Sam}
+  radar_sources:
+    type: "list[{entity: entity_id, label: string, distance?: entity_id, room?: slug}]"
+    default: []
+    note: "Explicit radar entities for assistant observations; no entity IDs are inferred."
   proxies:                                # one device file each; `room` is the hostname slug
     type: "list[{room: slug, area: area_name, radar: bool}]"
     example: [{room: living-room, area: Living room, radar: false}, {room: dining, area: Dining, radar: true}]
@@ -53,6 +57,11 @@ inputs:
     type: "map[area_name, slug]"
     default: {}
     example: {"Kids' room": kids}
+
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
 
 artifacts:
   esphome:
@@ -69,6 +78,7 @@ artifacts:
     - ha/blueprints/automation/domosenso/ble_proxy_offline.yaml
   ha_packages: []                         # nothing generic is left once the repetition lives in blueprints
   templates:                              # 0.2.0: templates/instance/<path> -> <path> in the home, written once by `domosenso add`
+    - templates/assistant-bindings.yaml.j2
     - templates/instance/packages/bermuda_presence.yaml.j2
   # The demo home's copy of what the instance template renders from its inputs; ha-check loads it and
   # tests/test_instance_templates.py keeps the two equal.

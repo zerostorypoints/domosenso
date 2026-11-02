@@ -1,5 +1,28 @@
 {
   "meta": {
-    "description": "Aktualna pogoda i prognoza z Norweskiego Instytutu Meteorologicznego (Met.no) dla lokalizacji domu. Nie potrzeba konta, klucza ani sprzętu. Zasila zegar i wiersz pogody na Ramce."
+    "description": "Aktualna pogoda i prognoza z Norweskiego Instytutu Meteorologicznego (Met.no) dla lokalizacji domu. Nie potrzeba konta, klucza ani sprzętu. Zasila zegar i wiersz pogody na Ramce.",
+    "assistant": {
+      "current": {
+        "title": "Aktualna pogoda",
+        "description": "Podaje bieżące warunki zgłoszone przez źródło pogody.",
+        "examples": [
+          "Jaka jest pogoda?"
+        ]
+      },
+      "forecast": {
+        "title": "Prognoza",
+        "description": "Podaje dostępną prognozę na dziś, jutro lub siedem najbliższych dni lokalnych.",
+        "examples": [
+          "Jaka jest prognoza na jutro?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: pogoda",
+        "description": "Pogoda pokazuje warunki i prognozy dostawcy, które nie są pewnikiem.",
+        "examples": [
+          "Do czego służy pogoda?"
+        ]
+      }
+    }
   }
 }

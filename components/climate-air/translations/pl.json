@@ -10,6 +10,50 @@
         "description": "Czujnik jakości powietrza na Bluetooth (Sensirion SEN66), który mierzy CO2, pył zawieszony, VOC, NOx, temperaturę, wilgotność i ciśnienie oraz ocenia powietrze liczbą punktów.",
         "does": "Home Assistant odbiera jego transmisje przez proxy Bluetooth i wbudowaną integrację ruuvitag_ble. Proxy na klasycznym ESP32 odbiera tylko format danych 6, który nie zawiera PM1, PM4 ani PM10."
       }
+    },
+    "assistant": {
+      "temperature": {
+        "title": "Temperatura",
+        "description": "Podaje temperatury w pomieszczeniach i na zewnątrz.",
+        "examples": [
+          "Jaka jest temperatura?"
+        ]
+      },
+      "humidity": {
+        "title": "Wilgotność",
+        "description": "Podaje wilgotność z czujników przypisanych do pomieszczeń.",
+        "examples": [
+          "Jaka jest wilgotność?"
+        ]
+      },
+      "status": {
+        "title": "Stan klimatu",
+        "description": "Pokazuje dostępne pomiary klimatu i alarm wilgotności uwzględniający czas.",
+        "examples": [
+          "Jaki jest stan klimatu?"
+        ]
+      },
+      "air_readings": {
+        "title": "Pomiary powietrza",
+        "description": "Podaje skonfigurowane pomiary jakości powietrza wraz z jednostkami.",
+        "examples": [
+          "Jakie są pomiary powietrza?"
+        ]
+      },
+      "air_assessment": {
+        "title": "Ocena powietrza",
+        "description": "Ocenia pomiary wyłącznie według pasujących skonfigurowanych progów.",
+        "examples": [
+          "Jaka jest jakość powietrza?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: klimat i powietrze",
+        "description": "Czujniki klimatu i powietrza podają pomiary; ocena wymaga pasujących progów.",
+        "examples": [
+          "Do czego służy klimat i powietrze?"
+        ]
+      }
     }
   }
 }
