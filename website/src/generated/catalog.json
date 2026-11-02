@@ -646,9 +646,9 @@
     },
     {
       "id": "plants",
-      "version": "0.3.1",
-      "sourceTag": "plants/0.3.1",
-      "sourceCommit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47",
+      "version": "0.4.0",
+      "sourceTag": "plants/0.4.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
       "requirements": [
         {
@@ -707,7 +707,7 @@
       "inputs": [
         {
           "name": "plants",
-          "type": "list[{entity: plant.*, label, name?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
+          "type": "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
           "required": true
         },
         {
@@ -741,8 +741,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/7be07cb1707ea10aa9e6277dd0cd860eee33bc47/components/plants",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/7be07cb1707ea10aa9e6277dd0cd860eee33bc47/components/plants/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/plants/UPGRADE.md"
     },
     {
       "id": "ramka",

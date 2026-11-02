@@ -824,8 +824,8 @@
         "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover."
       ],
       "id": "plants",
-      "version": "0.3.1",
-      "sourceCommit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47",
+      "version": "0.4.0",
+      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "evidencePaths": [
         "components/plants/component.yaml"
       ],
@@ -1336,7 +1336,7 @@
         },
         {
           "id": "plants",
-          "version": "0.3.1"
+          "version": "0.4.0"
         },
         {
           "id": "ramka",
@@ -1359,7 +1359,7 @@
       "compatibility": [
         {
           "id": "plants",
-          "version": "0.3.1"
+          "version": "0.4.0"
         }
       ],
       "body": "## Place and discover\n\nInstall the sensor as instructed by its manufacturer and provide Bluetooth coverage with a proxy. Set up the Xiaomi BLE integration (xiaomi_ble) in Home Assistant.\n\n## Check each plant\n\nConfirm soil moisture, conductivity, light and temperature update before assigning the plant. Choose suitable thresholds for the plant and substrate. Ramka can display a plant page when configured; this sensor does not provide automatic watering.\n\n## Setup references\n\n- [Xiaomi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/xiaomi_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",

@@ -75,9 +75,9 @@
     },
     {
       "id": "plants",
-      "version": "0.3.1",
-      "tag": "plants/0.3.1",
-      "commit": "7be07cb1707ea10aa9e6277dd0cd860eee33bc47",
+      "version": "0.4.0",
+      "tag": "plants/0.4.0",
+      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
