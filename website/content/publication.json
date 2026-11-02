@@ -21,9 +21,9 @@
     },
     {
       "id": "backup",
-      "version": "0.1.0",
-      "tag": "backup/0.1.0",
-      "commit": "04d337cbd812e62abd9f6bb4f16b8db61179c2be",
+      "version": "0.2.0",
+      "tag": "backup/0.2.0",
+      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
