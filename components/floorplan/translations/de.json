@@ -105,7 +105,8 @@
         "effect": "Raumeinfluss",
         "bass": "Bass",
         "average": "Raummittel",
-        "no_speakers": "Lautsprecher nicht platziert: der Sensor ersetzt sie"
+        "no_speakers": "Lautsprecher nicht platziert: der Sensor ersetzt sie",
+        "one_layer": "Karten: eine Ebene allein zeigen"
       }
     }
   }

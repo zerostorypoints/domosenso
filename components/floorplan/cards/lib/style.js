@@ -87,6 +87,7 @@ export const STYLE = `
   .tip-name { font-weight: 500; }
   .tip-value { color: var(--secondary-text-color); }
   .maps { display: inline-flex; gap: 4px; margin-right: 8px; }
+  .map-hint { color: var(--secondary-text-color); font-size: 12px; }
   .heat { pointer-events: none; opacity: 0.8; }
   .heat .no-sensor { fill: url(#fp-hatch); }
   .heat .speaker { fill: #263238; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }

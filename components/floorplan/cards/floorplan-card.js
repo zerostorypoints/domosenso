@@ -254,6 +254,15 @@ class FloorplanCard extends HTMLElement {
     return ids.length === 1 && MAPS[ids[0]] ? ids[0] : null;
   }
 
+  // Maps show with one layer alone: while the chips show several and one of them has maps, the bar
+  // says so instead of offering none.
+  _mapHint() {
+    if (!this._config.maps || this._mode === "edit" || this._status !== "ready" || !this._floor) return false;
+    if (this._one || this._config.layers) return false;
+    const shown = [...new Set(this._floor.points.flatMap((p) => this._cat(p).roles))].filter((id) => this._visible(id));
+    return shown.length > 1 && shown.some((id) => MAPS[id]);
+  }
+
   // The map shown: {layer, cls, rule}; null without one.
   _map() {
     const layer = this._mapLayer();
@@ -445,8 +454,8 @@ ${STYLE}
   // The shown layer's maps, then now or the last 24 hours (not for the lamps).
   _mapsHtml() {
     const map = this._map();
-    if (!map) return "";
     const h = this._hass;
+    if (!map) return this._mapHint() ? `<span class="map-hint">${esc(t(h, "card.floorplan.maps.one_layer"))}</span>` : "";
     const chip = (attrs, on, text) => `<button ${attrs} aria-pressed="${on}" class="chip">${esc(text)}</button>`;
     let html = `<span class="maps">${MAPS[map.layer].map(([cls]) =>
       chip(`data-action="map" data-map="${cls}"`, cls === map.cls, t(h, `card.floorplan.maps.${cls}`))).join("")}</span>`;

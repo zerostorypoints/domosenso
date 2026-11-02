@@ -105,7 +105,8 @@
         "effect": "Room effect",
         "bass": "Bass",
         "average": "room average",
-        "no_speakers": "speakers not placed: the sensor stands in"
+        "no_speakers": "speakers not placed: the sensor stands in",
+        "one_layer": "Maps: show one layer alone"
       }
     }
   }

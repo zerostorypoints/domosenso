@@ -105,7 +105,8 @@
         "effect": "Wpływ pokoju",
         "bass": "Bas",
         "average": "średnia pokoju",
-        "no_speakers": "głośniki nieumieszczone: zamiast nich czujnik"
+        "no_speakers": "głośniki nieumieszczone: zamiast nich czujnik",
+        "one_layer": "Mapy: pokaż jedną warstwę"
       }
     }
   }

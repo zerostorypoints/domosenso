@@ -1443,3 +1443,17 @@ test("open spaces: a grouped room without a sensor takes the group's heat on the
   assert.ok([...card.shadowRoot.querySelectorAll(".heat rect")].some((c) => Number(c.getAttribute("x")) > 5));
   window.localStorage.clear();
 });
+
+test("maps: with several layers shown the bar says to show one alone; one alone offers its maps", async () => {
+  window.localStorage.clear();
+  const plan = planOf([pt("d_climate", 1, 1), pt("d_dimmer", 2, 1)]);
+  const card = await make({ plan }, mapsHass());
+  await settle();
+  assert.equal(card.shadowRoot.querySelectorAll(".bar [data-action=map]").length, 0);
+  assert.equal($(card, ".bar .map-hint").textContent, EN("card.floorplan.maps.one_layer"));
+  const fixed = await make({ plan, layers: ["climate"] }, mapsHass());
+  await settle();
+  assert.equal($(fixed, ".bar .map-hint"), null);
+  assert.ok(fixed.shadowRoot.querySelectorAll(".bar [data-action=map]").length > 0);
+  window.localStorage.clear();
+});
