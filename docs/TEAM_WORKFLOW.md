@@ -147,9 +147,9 @@ gate. HEAD and cleanliness are checked again before the explicit verified commit
 1. The release owner opens the version-bump PR (semantic version and upgrade notes). Its review and
    merge are the authorisation to publish the tag.
 2. The `Release` workflow (SPEC-027) runs after "Framework website" passes on the merged commit:
-   `tools/release.py <component>` with its full local gate, one push of the immutable tag, then
-   `tools/publish_release.py` and a `website: publish <id> <version>` pull request whose texts an
-   agent or a maintainer finishes (skill `domosenso-website-audit`). If it fails, its run says why;
+   `tools/release.py <component>` with its full local gate, one push of the immutable tag per
+   component, then `tools/publish_release.py` for every tag of the run and one `website: publish …`
+   pull request whose texts an agent or a maintainer finishes (skill `domosenso-website-audit`). If it fails, its run says why;
    `uv run tools/release.py <component>` by hand follows the same checks. Develop unreleased code
    with `--catalog-dev`; do not publish a stable tag to enable a local test.
 3. In the home repo, `domosenso update <component> --to <version>`, read upgrade notes, review and
