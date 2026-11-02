@@ -4,6 +4,7 @@
   (dashboard.<lang>.yaml) by tools/domosenso_render.py: every label is t('ui.…') or an input's
   `label`. Double square brackets are the renderer's; {{ }} would be Home Assistant's.
 #]
+[%- from '_air-policy.jinja' import air_limits -%]
 [%- set p = inputs.prefix -%]
 [#- Tested layouts (SPEC-011 section 7.4): the CSS px range of screens each one fits. A screen no
     layout fits fails the render. 1100x720: the tablet in the maintainer's home (1100 x 720, DPR 2);
@@ -454,8 +455,8 @@ views:
               higher_is_better: true
               show: input_boolean.[[ p ]]_air_score
               levels:
-                - [{entity: input_number.[[ p ]]_air_score_fair, default: 80}, [[ t('ui.air.score_good') | yaml ]] ]
-                - [{entity: input_number.[[ p ]]_air_score_poor, default: 60}, [[ t('ui.air.score_fair') | yaml ]] ]
+                - [{entity: input_number.[[ p ]]_air_score_fair, default: [[ air_limits.score[2] ]]}, [[ t('ui.air.score_good') | yaml ]] ]
+                - [{entity: input_number.[[ p ]]_air_score_poor, default: [[ air_limits.score[3] ]]}, [[ t('ui.air.score_fair') | yaml ]] ]
                 - [0, [[ t('ui.air.score_poor') | yaml ]] ]
             [%- endif %]
             tiles:
@@ -465,8 +466,8 @@ views:
                 unit: ppm
                 show: input_boolean.[[ p ]]_air_co2
                 levels:
-                  - [{entity: input_number.[[ p ]]_air_co2_raised, default: 800}, [[ t('ui.air.co2_good') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_co2_high, default: 1200}, [[ t('ui.air.co2_soon') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_co2_raised, default: [[ air_limits.co2[2] ]]}, [[ t('ui.air.co2_good') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_co2_high, default: [[ air_limits.co2[3] ]]}, [[ t('ui.air.co2_soon') | yaml ]] ]
                   - [null, [[ t('ui.air.co2_ventilate') | yaml ]] ]
             [%- endif %]
             [%- if air.pm2_5 is defined %]
@@ -476,8 +477,8 @@ views:
                 digits: 1
                 show: input_boolean.[[ p ]]_air_pm2_5
                 levels:
-                  - [{entity: input_number.[[ p ]]_air_pm2_5_raised, default: 15}, [[ t('ui.air.pm_good') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: 35}, [[ t('ui.air.pm_fair') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_pm2_5_raised, default: [[ air_limits.pm2_5[2] ]]}, [[ t('ui.air.pm_good') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_pm2_5_high, default: [[ air_limits.pm2_5[3] ]]}, [[ t('ui.air.pm_fair') | yaml ]] ]
                   - [null, [[ t('ui.air.pm_poor') | yaml ]] ]
             [%- endif %]
             [%- if air.voc is defined %]
@@ -485,8 +486,8 @@ views:
                 entity: [[ air.voc ]]
                 show: input_boolean.[[ p ]]_air_voc
                 levels:
-                  - [{entity: input_number.[[ p ]]_air_voc_raised, default: 150}, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_voc_high, default: 250}, [[ t('ui.air.index_fair') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_voc_raised, default: [[ air_limits.voc[2] ]]}, [[ t('ui.air.index_normal') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_voc_high, default: [[ air_limits.voc[3] ]]}, [[ t('ui.air.index_fair') | yaml ]] ]
                   - [null, [[ t('ui.air.index_poor') | yaml ]] ]
             [%- endif %]
             [%- if air.nox is defined %]
@@ -494,8 +495,8 @@ views:
                 entity: [[ air.nox ]]
                 show: input_boolean.[[ p ]]_air_nox
                 levels:
-                  - [{entity: input_number.[[ p ]]_air_nox_raised, default: 20}, [[ t('ui.air.index_normal') | yaml ]] ]
-                  - [{entity: input_number.[[ p ]]_air_nox_high, default: 150}, [[ t('ui.air.index_fair') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_nox_raised, default: [[ air_limits.nox[2] ]]}, [[ t('ui.air.index_normal') | yaml ]] ]
+                  - [{entity: input_number.[[ p ]]_air_nox_high, default: [[ air_limits.nox[3] ]]}, [[ t('ui.air.index_fair') | yaml ]] ]
                   - [null, [[ t('ui.air.index_poor') | yaml ]] ]
             [%- endif %]
             grid_options: {columns: full, rows: auto}

@@ -4,7 +4,7 @@
 # No inputs, no Home Assistant package: the plan lives in the `floorplan` storage dashboard, written by
 # `domosenso floorplan push` or the card's editor. How a home uses it: README.md.
 id: floorplan
-version: 0.3.1
+version: 0.4.0
 summary: A floor plan of the home with rooms, sensor readings and plants at their positions
 description_key: meta.description
 photo: null
@@ -19,7 +19,13 @@ host:
 integrations:
   - {name: lovelace, source: core}
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
+  templates: [templates/assistant-bindings.yaml.j2]
   ha_packages: []
   # Served as /local/domosenso/floorplan/<version>/: cards/*.js, cards/lib/** and translations/ keep
   # their paths from this directory (tests and cards/testing/ stay behind).

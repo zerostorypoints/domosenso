@@ -1,0 +1,225 @@
+capabilities:
+- id: climate-air.temperature
+  revision: 1
+  operation: read
+  query_type: temperature-query.v1
+  answer_type: temperature.v1
+  title_key: meta.assistant.temperature.title
+  description_key: meta.assistant.temperature.description
+  examples_key: meta.assistant.temperature.examples
+  required_facts:
+  - role: temperature
+    type: number
+    units:
+    - °C
+    source:
+      relation: upstream
+      id: sensor.<room>_temperature
+  optional_facts: []
+  policy:
+    evaluator: climate-air.temperature
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - stale
+  - invalid_unit
+  - unknown_freshness
+- id: climate-air.humidity
+  revision: 1
+  operation: read
+  query_type: environment-query.v1
+  answer_type: environment.v1
+  title_key: meta.assistant.humidity.title
+  description_key: meta.assistant.humidity.description
+  examples_key: meta.assistant.humidity.examples
+  required_facts:
+  - role: humidity
+    type: number
+    units:
+    - '%'
+    source:
+      relation: upstream
+      id: sensor.<room>_humidity
+  optional_facts: []
+  policy:
+    evaluator: climate-air.humidity
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - stale
+  - invalid_unit
+  - unknown_freshness
+- id: climate-air.status
+  revision: 1
+  operation: read
+  query_type: environment-query.v1
+  answer_type: environment.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: humidity
+    type: number
+    units:
+    - '%'
+    source:
+      relation: upstream
+      id: sensor.<room>_humidity
+  optional_facts:
+  - role: temperature
+    type: number
+    units:
+    - °C
+    source:
+      relation: upstream
+      id: sensor.<room>_temperature
+  - role: humidity_alert
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: binary_sensor.bathroom_humidity_high
+  - role: difference
+    type: number
+    units:
+    - °C
+    source:
+      relation: provides
+      id: sensor.indoor_outdoor_difference
+  policy:
+    evaluator: climate-air.status
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - unknown_freshness
+- id: climate-air.air_readings
+  revision: 1
+  operation: read
+  query_type: air-query.v1
+  answer_type: air.v1
+  title_key: meta.assistant.air_readings.title
+  description_key: meta.assistant.air_readings.description
+  examples_key: meta.assistant.air_readings.examples
+  required_facts: []
+  optional_facts:
+  - role: score
+    type: number
+    units:
+    - /100
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: co2
+    type: number
+    units:
+    - ppm
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: pm2_5
+    type: number
+    units:
+    - µg/m³
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: voc
+    type: number
+    units:
+    - index
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: nox
+    type: number
+    units:
+    - index
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  policy:
+    evaluator: climate-air.air_readings
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - invalid_unit
+  - unknown_freshness
+- id: climate-air.air_assessment
+  revision: 1
+  operation: read
+  query_type: air-query.v1
+  answer_type: air.v1
+  title_key: meta.assistant.air_assessment.title
+  description_key: meta.assistant.air_assessment.description
+  examples_key: meta.assistant.air_assessment.examples
+  required_facts: []
+  optional_facts:
+  - role: score
+    type: number
+    units:
+    - /100
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: co2
+    type: number
+    units:
+    - ppm
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: pm2_5
+    type: number
+    units:
+    - µg/m³
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: voc
+    type: number
+    units:
+    - index
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  - role: nox
+    type: number
+    units:
+    - index
+    source:
+      relation: upstream
+      id: sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}
+  policy:
+    evaluator: climate-air.air_assessment
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - missing_policy
+  - conflicting_policy
+  - unknown_freshness
+- id: climate-air.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: climate-air.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

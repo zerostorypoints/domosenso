@@ -1,7 +1,7 @@
 # Domosenso component manifest: room temperature and humidity from Tapo sensors, air quality from
 # a Ruuvi Air; from 0.2.0 a package with whole-home figures (SPEC-004).
 id: climate-air
-version: 0.2.0
+version: 0.3.0
 summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
 description_key: meta.description
 photo: null
@@ -33,7 +33,7 @@ integrations:
 
 inputs:
   climate:                      # 0.2.0: indoor (default true), bathroom (default false), battery read by the package
-    type: "list[{label, temperature, humidity?, indoor?, bathroom?, battery?}]"
+    type: "list[{label, temperature, humidity?, room?, indoor?, bathroom?, battery?}]"
     example: [{label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity}]
   air:
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
@@ -49,13 +49,20 @@ inputs:
     type: int
     default: 65
 
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/climate_air.yaml
   ha_packages: []
   services: []
 
 provides:
+  # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "sensor.<room>_temperature", stability: stable, note: "°C"}
     - {id: "sensor.<room>_humidity", stability: stable, note: "%"}
@@ -73,6 +80,11 @@ provides:
     - {id: sensor.most_humid_room, unique_id: climate_most_humid_room, stability: additive-only, note: "the room's label, '—' when no room has a value"}
     - {id: sensor.lowest_sensor_battery, unique_id: climate_lowest_sensor_battery, stability: stable, note: "%, with a battery on any room"}
     - {id: binary_sensor.bathroom_humidity_high, unique_id: climate_bathroom_humidity_high, stability: stable, note: "with a bathroom room"}
+
+  upstream:
+    - {id: "sensor.<room>_temperature", owner: integration}
+    - {id: "sensor.<room>_humidity", owner: integration}
+    - {id: "sensor.<air>_{carbon_dioxide,pm2_5,voc_index,nox_index,pressure,indoor_air_quality_score}", owner: integration}
 
 consumes:
   - {component: weather, id: "weather.<home>", via: outside_weather}

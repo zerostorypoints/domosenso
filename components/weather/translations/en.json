@@ -1,5 +1,28 @@
 {
   "meta": {
-    "description": "Current weather and forecast from the Norwegian Meteorological Institute (Met.no) for the home's location. No account, key or hardware needed. Feeds the Ramka's clock and weather line."
+    "description": "Current weather and forecast from the Norwegian Meteorological Institute (Met.no) for the home's location. No account, key or hardware needed. Feeds the Ramka's clock and weather line.",
+    "assistant": {
+      "current": {
+        "title": "Current weather",
+        "description": "Read current conditions reported by the weather source.",
+        "examples": [
+          "What is the weather?"
+        ]
+      },
+      "forecast": {
+        "title": "Forecast",
+        "description": "Read the available forecast for today, tomorrow or the next seven local dates.",
+        "examples": [
+          "What is the forecast for tomorrow?"
+        ]
+      },
+      "explain": {
+        "title": "About weather",
+        "description": "Weather provides current conditions and provider forecasts, not certainty.",
+        "examples": [
+          "What does weather do?"
+        ]
+      }
+    }
   }
 }

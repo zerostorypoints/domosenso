@@ -1,5 +1,21 @@
 {
   "meta": {
-    "description": "Wydarzenia z serwera CalDAV, na przykład iCloud z hasłem aplikacji. Ramka pokazuje wydarzenia na dziś i jutro jako agendę."
+    "description": "Wydarzenia z serwera CalDAV, na przykład iCloud z hasłem aplikacji. Ramka pokazuje wydarzenia na dziś i jutro jako agendę.",
+    "assistant": {
+      "agenda": {
+        "title": "Kalendarz",
+        "description": "Odczytuje udostępnione wydarzenia na dziś, jutro lub siedem najbliższych dni lokalnych.",
+        "examples": [
+          "Co jest jutro w kalendarzu?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: kalendarz",
+        "description": "Kalendarz udostępnia dozwolone wydarzenia; aktualizacja dostawcy może się opóźniać.",
+        "examples": [
+          "Do czego służy kalendarz?"
+        ]
+      }
+    }
   }
 }

@@ -6,6 +6,43 @@
         "description": "Czujnik roślin na Bluetooth (HHCC Flower Care, model HHCCJCY01), który wbija się w ziemię.",
         "does": "Mierzy wilgotność gleby, przewodność, światło i temperaturę i przekazuje je przez Bluetooth Low Energy; Home Assistant odbiera je przez proxy Bluetooth i wbudowaną integrację Xiaomi BLE."
       }
+    },
+    "assistant": {
+      "watering_need": {
+        "title": "Podlewanie roślin",
+        "description": "Porównuje wilgotność gleby z zakresem dla każdej rośliny.",
+        "examples": [
+          "Które rośliny trzeba podlać?"
+        ]
+      },
+      "status": {
+        "title": "Stan roślin",
+        "description": "Pokazuje problemy roślin na podstawie czujników i historii światła.",
+        "examples": [
+          "Jaki jest stan roślin?"
+        ]
+      },
+      "last_watered": {
+        "title": "Wykryte podlewanie",
+        "description": "Podaje ostatnie podlewanie wykryte na podstawie wilgotności.",
+        "examples": [
+          "Kiedy wykryto podlewanie tej rośliny?"
+        ]
+      },
+      "water_in": {
+        "title": "Szacowane podlewanie",
+        "description": "Podaje szacowany termin podlewania, gdy pozwala na to historia pomiarów.",
+        "examples": [
+          "Kiedy ta roślina może wymagać podlania?"
+        ]
+      },
+      "explain": {
+        "title": "Informacje: rośliny",
+        "description": "Czujniki roślin mierzą glebę i światło; szacunki podlewania wymagają historii.",
+        "examples": [
+          "Do czego służy rośliny?"
+        ]
+      }
     }
   }
 }

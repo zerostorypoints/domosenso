@@ -1,6 +1,15 @@
 {
   "meta": {
-    "description": "Zeichnet einen Grundriss des Zuhauses: die Räume als Flächen, mit Sensorwerten und Pflanzen an ihren Positionen, zoombar und bearbeitbar."
+    "description": "Zeichnet einen Grundriss des Zuhauses: die Räume als Flächen, mit Sensorwerten und Pflanzen an ihren Positionen, zoombar und bearbeitbar.",
+    "assistant": {
+      "explain": {
+        "title": "Über den Grundriss",
+        "description": "Der Grundriss zeigt Räume, Sensorwerte und Pflanzen an ihren Positionen. Der Assistent erklärt die Komponente; er bearbeitet den Plan nicht und leitet keine Anwesenheit daraus ab.",
+        "examples": [
+          "Was zeigt der Grundriss?"
+        ]
+      }
+    }
   },
   "card": {
     "floorplan": {

@@ -1,0 +1,64 @@
+capabilities:
+- id: ramka.status
+  revision: 1
+  operation: read
+  query_type: status-query.v1
+  answer_type: frame.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: mode
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: input_select.<prefix>_mode
+  optional_facts:
+  - role: page
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: input_select.<prefix>_ambient
+  - role: theme
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: input_select.<prefix>_theme_mode
+  - role: rotation
+    type: metadata
+    units: []
+    source:
+      relation: provides
+      id: sensor.<prefix>_ambient_pages
+  - role: radar_wake
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: input_boolean.<prefix>_near_enabled
+  policy:
+    evaluator: ramka.status
+  freshness:
+    max_age_seconds: null
+    basis: reported_state
+  limitations:
+  - missing_source
+- id: ramka.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: ramka.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []

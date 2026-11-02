@@ -1,0 +1,62 @@
+capabilities:
+- id: audio-sensor.level
+  revision: 1
+  operation: read
+  query_type: audio-query.v1
+  answer_type: audio-level.v1
+  title_key: meta.assistant.level.title
+  description_key: meta.assistant.level.description
+  examples_key: meta.assistant.level.examples
+  required_facts:
+  - role: level
+    type: number
+    units:
+    - dBFS
+    source:
+      relation: upstream
+      id: sensor.<audio>_sound_level
+  optional_facts:
+  - role: offset
+    type: number
+    units:
+    - dB
+    source:
+      relation: provides
+      id: sensor.<id_prefix>_spl_offset
+  - role: calibrated
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: input_boolean.<id_prefix>_spl_calibrated
+  - role: online
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: binary_sensor.<audio>_online
+  policy:
+    evaluator: audio-sensor.level
+  freshness:
+    max_age_seconds: 900
+    basis: measurement
+  limitations:
+  - missing_source
+  - stale
+  - unknown_freshness
+- id: audio-sensor.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: audio-sensor.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []
