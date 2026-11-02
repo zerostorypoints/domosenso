@@ -29,7 +29,20 @@
           "items": {"type": "object", "additionalProperties": false, "required": ["x", "y"],
                     "properties": {"x": {"$ref": "#/$defs/number"}, "y": {"$ref": "#/$defs/number"}}}
         },
-        "ceiling": {"type": "number", "exclusiveMinimum": 0, "description": "Ceiling height in metres, for the sound maps' room model"}
+        "ceiling": {"type": "number", "exclusiveMinimum": 0, "description": "Ceiling height in metres, for the sound maps' room model"},
+        "doors": {
+          "type": "array", "description": "Doors and openings between rooms, for the sound maps: a door joins two rooms of the floor (or one and the outside, null)",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["rooms", "at"],
+            "properties": {
+              "rooms": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": ["string", "null"], "minLength": 1}},
+              "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}, "description": "The door's centre in metres, on the rooms' shared wall"},
+              "width": {"type": "number", "exclusiveMinimum": 0, "description": "Metres, default 0.8"},
+              "state": {"enum": ["open", "closed"], "description": "Default open (an outside door: closed)"},
+              "kind": {"enum": ["opening", "hollow", "solid", "sealed", "glass"], "description": "Sets how much sound a closed door lets through; default hollow"}
+            }
+          }
+        }
       }
     },
     "number": {"type": "number"},
@@ -42,7 +55,10 @@
         "polygon": {
           "type": "array", "minItems": 3,
           "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}}
-        }
+        },
+        "outdoor": {"type": "boolean", "description": "Outside the home (a balcony): the sound maps leave it out"},
+        "finish": {"enum": ["furnished", "soft", "sparse", "tiled", "storage"],
+                   "description": "How the room absorbs sound, for the sound maps' model (default furnished)"}
       }
     },
     "point": {

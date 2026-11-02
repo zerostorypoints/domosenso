@@ -342,3 +342,19 @@ def test_push_plan_sound_line(home, capsys):
     assert cli(root, "push", "staging", "--plan") == 0
     lines = out(capsys)
     assert lines[0] == "sound change ground" and lines[-1] == "ok", lines
+
+
+def test_push_plan_doors_are_a_sound_change_and_name_rooms_of_the_floor(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    floor = PLAN["floors"][0]
+    a, b = floor["rooms"][0]["area_id"], floor["rooms"][1]["area_id"]
+    door = {"rooms": [a, b], "at": [1.0, 1.0], "width": 0.8}
+    write_plan(root, {**PLAN, "floors": [{**floor, "doors": [door]}, *PLAN["floors"][1:]]})
+    assert cli(root, "push", "staging", "--plan") == 0
+    assert out(capsys)[0] == "sound change ground"
+    write_plan(root, {**PLAN, "floors": [{**floor, "doors": [{**door, "rooms": [a, "nowhere"]}]}, *PLAN["floors"][1:]]})
+    assert cli(root, "push", "staging", "--plan") == 1
+    assert out(capsys)[-1] == "FAIL door on floor ground: nowhere is not a room of the floor"
