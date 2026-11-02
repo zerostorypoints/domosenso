@@ -19,7 +19,7 @@
    "page": true
   },
   "floorplan": {
-   "page": false
+   "page": true
   },
   "lights": {
    "page": true
