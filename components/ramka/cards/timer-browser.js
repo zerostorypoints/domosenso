@@ -43,6 +43,8 @@ export class TimerBrowser {
     this.acks = [];
     this.epoch = 0;
     this.audioEpoch = 0;
+    this.coreGeneration = 0;
+    this.pendingClaim = null;
     this.attached = false;
     this.online = false;
     this.available = false;
@@ -104,8 +106,10 @@ export class TimerBrowser {
     const revision = JSON.stringify(this.entities.map(entity => hass?.states?.[entity] ?? null));
     if (this.coreRevision !== revision) {
       this.coreRevision = revision;
-      // Any in-flight claim was based on older core state. Reconcile before making sound.
-      this._invalidate(false, {keepAcks: true});
+      // Core changes require fresh reconciliation, but another helper must not silence this run.
+      this.coreGeneration++;
+      const playingEntity = [...this.samples].find(([, sample]) => this._key(sample.timer) === this.playing?.key)?.[0];
+      if (['active', 'paused', 'cancelled'].includes(hass?.states?.[playingEntity]?.state)) this._stop();
       this.dirty = true;
     }
     const online = hass?.connection?.connected !== false;
@@ -129,11 +133,11 @@ export class TimerBrowser {
     if (online) this.refresh();
     this.onChange();
   }
-  _invalidate(clear, {keepAcks = false} = {}) {
+  _invalidate(clear) {
     this.epoch++;
     this.audioEpoch++;
-    // A core replacement must still acknowledge the clicked old run, never its successor.
-    if (!keepAcks) this.acks = [];
+    this.acks = [];
+    this.pendingClaim = null;
     this._stop();
     if (clear) {
       this.samples.clear();
@@ -198,16 +202,23 @@ export class TimerBrowser {
           continue;
         }
         this.dirty = false;
+        const coreGeneration = this.coreGeneration;
         try {
           const reply = await this.hass.callWS({type: PREFIX + 'snapshot', version: 1, entities: [...this.entities]});
           if (!this._valid(epoch)) continue;
+          if (coreGeneration !== this.coreGeneration) { this.dirty = true; continue; }
           this._accept(reply);
           this.onChange();
+          if (!this._valid(epoch) || coreGeneration !== this.coreGeneration || this.acks.length) {
+            this.dirty = true;
+            continue;
+          }
           await this._claim(epoch);
         } catch {
           if (this._valid(epoch)) {
             this.samples.clear();
             this.available = false;
+            this.pendingClaim = null;
             this._stop();
             this.onChange();
           }
@@ -227,7 +238,7 @@ export class TimerBrowser {
         remaining: item.timer.state === 'active' && instant(item.timer.deadline) ?
           Math.max(0, (Date.parse(item.timer.deadline) - Date.parse(reply.asOf)) / 1000) : item.timer.remainingSeconds, at, asOf: reply.asOf});
     }
-    if (this.installationId && this.installationId !== reply.installationId) this._stop();
+    if (this.installationId && this.installationId !== reply.installationId) this._invalidate(false);
     this.installationId = reply.installationId;
     this.samples = samples;
     this.available = true;
@@ -240,23 +251,40 @@ export class TimerBrowser {
   }
   _key(timer) { return JSON.stringify([this.installationId, timer.subjectId, timer.runId]); }
   async _claim(epoch) {
-    if (!this._canSound() || this.playing || this.dirty) return;
+    if (!this._valid(epoch) || !this._canSound() || this.playing) return;
+    if (this.pendingClaim) {
+      // A durable claim cannot be retried. Consume it only after a fresh, core-current snapshot.
+      const pending = this.pendingClaim;
+      this.pendingClaim = null;
+      const current = [...this.samples.values()].find(value => this._key(value.timer) === pending.key);
+      if (pending.audioEpoch !== this.audioEpoch || !current || !recent(current.timer, current.asOf) ||
+          current.timer.outcome !== pending.timer.outcome) return;
+      try {
+        if (this.sound.play(30) !== true) return;
+        this.playing = {subjectId: pending.subjectId, runId: pending.runId, key: pending.key};
+        this.stopTimer = this.env.setTimeout(() => { this._stop(); this.onChange(); }, 30000);
+        this.onChange();
+      } catch { this._stop(); }
+      return;
+    }
     const sample = [...this.samples.values()].find(value => recent(value.timer, value.asOf) && !this.attempted.has(this._key(value.timer)));
     if (!sample) return;
     const {subjectId, runId} = sample.timer, key = this._key(sample.timer), audioEpoch = this.audioEpoch;
     this.attempted.add(key);
+    const pending = {subjectId, runId, key, audioEpoch};
+    this.pendingClaim = pending;
     let result;
     try { result = await this.hass.callWS({type: PREFIX + 'claim', version: 1, subjectId, runId}); }
-    catch { return; }
-    if (!this._valid(epoch) || audioEpoch !== this.audioEpoch || !this._canSound() || this.dirty ||
+    catch { if (this.pendingClaim === pending) this.pendingClaim = null; return; }
+    if (this.pendingClaim !== pending) return;
+    if (!this._valid(epoch) || audioEpoch !== this.audioEpoch || !this._canSound() ||
         result?.version !== 1 || result.claimed !== true || !validFact(result.timer) ||
-        result.timer.subjectId !== subjectId || result.timer.runId !== runId || !recent(result.timer, result.asOf)) return;
-    try {
-      if (this.sound.play(30) !== true) return;
-      this.playing = {subjectId, runId, key};
-      this.stopTimer = this.env.setTimeout(() => { this._stop(); this.onChange(); }, 30000);
-      this.onChange();
-    } catch { this._stop(); }
+        result.timer.subjectId !== subjectId || result.timer.runId !== runId || !recent(result.timer, result.asOf)) {
+      this.pendingClaim = null;
+      return;
+    }
+    pending.timer = result.timer;
+    this.dirty = true;
   }
   dismiss(subjectId, runId) {
     if (!this.attached) return;
@@ -264,7 +292,7 @@ export class TimerBrowser {
     const sample = [...this.samples.values()].find(value => value.timer.subjectId === subjectId && value.timer.runId === runId);
     if (!sample) return;
     this.attempted.add(this._key(sample.timer));
-    this.audioEpoch++;
+    if (this.pendingClaim?.subjectId === subjectId && this.pendingClaim.runId === runId) this.pendingClaim = null;
     if (this.playing?.subjectId === subjectId && this.playing.runId === runId) this._stop();
     if (this._checkHost()) {
       this.env.window.dispatchEvent(new this.env.window.CustomEvent('domosenso-frame-timer-dismiss', {detail: {subjectId, runId}}));

@@ -74,8 +74,8 @@ Interfaces: consumes Task2 wire decisions; validates all data, monotonic countdo
 
 - [x] Consume bridge-generated fixture in native validator and compare metadata/compiler output with bridge loader. Fix mismatches before claiming integration.
 - [x] Fresh isolated HA core2026.9.2: Domosenso helper install plus vanilla UI helper, normal user mappings/grants; bidirectional start/pause/resume/cancel/time and restart/replay.
-- [ ] Independent technical review in separate exact-revision worktrees. Resolve important findings with regression tests.
-- [ ] Prepare reviewable PRs (ask publication approval if not covered). Website impact: draft timer/setup page until release; no tag/production update implied.
+- [x] Independent technical review in separate exact-revision worktrees. Important findings resolved with regression tests; native fixes independently rechecked.
+- [x] Prepare reviewable PR descriptions locally (publication approval remains separate). Website impact: draft timer/setup page until release; no tag/production update implied.
 - [ ] Physical tablet acceptance requires explicit feature-deployment authorization after reviewable build. Report Doze/reboot/permission tests actually performed, never infer from unit tests.
 
 ## Progress and rulings
@@ -106,18 +106,33 @@ plus the full HA/ESPHome/catalog checks passed. Installed-wheel CLI help was ver
 source tree. The runtime split passes the original strict profile schema. Browser countdown uses
 exact HA deadline minus server asOf, then monotonic elapsed time, including fractional seconds.
 
-Bridge implementation commit `2b120ef` passed 204 Python and 12 JS tests. A fresh HA2026.9.2
+Bridge implementation and review fixes through `a7f6123` passed 212 Python unit tests,
+two additional real-HA lifecycle/mapping scenarios and 13 JS tests. A fresh HA2026.9.2
 container passed the core-helper and UI-helper scenario, including real authenticated WebSocket
 transport, ordinary native pairing/actions and two unpaired read-only browser tabs racing for one
 durable sound claim. Independent review found two P2 issues (restoration run identity and alarm
-target reachability); fixes are in progress before release acceptance.
+target reachability). Both were fixed with regressions and coordinator review; the final bridge
+revision passed the fresh Docker/WebSocket scenario again. The restored entity, repeated state
+reports, rename, pause/resume, same-second restart and mapping persistence were tested against
+actual HA core classes in separate temporary processes. This is not a whole-process HA restart.
 
-Native implementation commit `d572856` passed 355 JS tests, TypeScript, ESLint, native policy tests,
+Native implementation and fixes through `d00f5ff` passed 355 JS tests, TypeScript, ESLint, native policy tests,
 Frame UI pin checks and full Android release APK assembly. Real bridge-generated fixtures cover
 every read/result state including unavailable values. PL time uses inflected hours and timer
-durations; no HA language/profile writes. Independent native review is pending. These are source
+durations; no HA language/profile writes. Independent review identified a long-helper reconciliation
+failure and a completion/service-start race. Both have real-Kotlin JVM regression coverage, including
+eight invalidations, and the final APK was rebuilt with the unchanged model C. A focused independent
+review of `d00f5ff` found no remaining issue in those two fixes and added temporary
+checks for a 36-hour helper, both completion outcomes, inherited deadlines, invalidation,
+boot mismatch and the 60-second grace boundary. These are source
 and isolated-runtime checks, not physical timer/Doze/reboot acceptance. The APK retains development
 version metadata and has not been published or installed.
 
 Website impact: no public capability claim before tags; setup and limits are in component docs.
 Publishing the three branches, production deployment and the new Play build remain separate steps.
+
+Browser review found that a poll could discard a durable sound claim and another helper could
+stop an unrelated alarm. The follow-up preserves claims through a fresh snapshot and invalidates
+only the affected run; 19 added regressions cover delayed claims, slow polling, unrelated state
+changes and cancellation/replacement/acknowledgement. Coordinator inspection and focused tests
+passed. The final full catalog check is recorded in the handoff after completion.

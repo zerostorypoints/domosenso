@@ -13,7 +13,7 @@ function setup(t,{timer=fact(),host=false,handler}={}){
  const win=new EventTarget(),doc=new EventTarget();doc.visibilityState='visible';
  if(host)win.__domosensoFrameTimerHost={version:1,managed:true};
  const connection=new EventTarget();connection.connected=true;
- const hass={connection,user:{id:'user'},states:{'timer.demo':{state:'active'}},callWS:async request=>{
+ const hass={connection,user:{id:'user'},states:{'timer.demo':{state:timer.state}},callWS:async request=>{
    calls.push(request);
    if(handler)return handler(request);
    if(request.type.endsWith('_snapshot'))return snapshot(timer);
@@ -183,4 +183,102 @@ test('active anchor preserves server subsecond precision instead of rounded seco
  const reply={...snapshot(),asOf:'2026-11-02T12:00:00.900+00:00'};
  const x=setup(t,{handler:async()=>reply});await flush();await x.advance(400);
  assert.equal(remainingAt(x.controller.samples.get('timer.demo'),1400),64);
+});
+
+test('successful delayed claim survives a five-second poll and reconciles before playing once',async t=>{
+ const claim=defer(),fresh=defer();let reconcile=false;
+ const x=setup(t,{timer:finished(),handler:r=>r.type.endsWith('_snapshot')?(reconcile?fresh.promise:snapshot(finished())):claim.promise});
+ await flush();await x.controller.enableSound();await flush();await x.advance(5000);
+ reconcile=true;claim.resolve({version:1,asOf:'2026-11-02T12:00:05Z',claimed:true,timer:finished()});await flush();
+ assert.deepEqual(x.sound.plays,[]);
+ fresh.resolve(snapshot(finished()));await flush();
+ assert.deepEqual(x.sound.plays,[30]);await x.advance(35000);
+ assert.deepEqual(x.sound.plays,[30]);assert.equal(x.controller.playing,null);
+ assert.equal(x.calls.filter(r=>r.type.endsWith('_claim')).length,1);
+});
+
+for(const phase of ['playing','pending'])test(`unrelated mapped helper change preserves A while ${phase}`,async t=>{
+ const claim=defer();let b=fact({subjectId:'second',runId:'second-run'});
+ const reply=()=>({...snapshot(finished()),timers:[...snapshot(finished()).timers,{entity:'timer.second',label:'Second',timer:b}]});
+ const x=setup(t,{timer:finished(),handler:r=>r.type.endsWith('_snapshot')?reply():claim.promise});
+ x.hass.states['timer.second']={state:'active'};x.controller.configure(['timer.demo','timer.second']);await flush();
+ await x.controller.enableSound();await flush();
+ const result={version:1,asOf:'2026-11-02T12:00:00Z',claimed:true,timer:finished()};
+ if(phase==='playing'){claim.resolve(result);await flush();assert.ok(x.controller.playing);}
+ await x.advance(5000);const stops=x.sound.stops;
+ b={...b,state:'paused',stateRevision:'second-paused'};x.hass.states['timer.second']={state:'paused'};x.controller.updateHass(x.hass);
+ if(phase==='playing'){assert.ok(x.controller.playing);assert.equal(x.sound.stops,stops);}
+ else claim.resolve(result);
+ await flush();assert.deepEqual(x.sound.plays,[30]);assert.ok(x.controller.playing);
+ await x.advance(phase==='playing'?25000:30000);
+ assert.equal(x.controller.playing,null);assert.deepEqual(x.sound.plays,[30]);
+ assert.equal(x.calls.filter(r=>r.type.endsWith('_claim')).length,1);
+});
+
+for(const [change,next] of [
+ ['replacement',fact({runId:'replacement'})],['cancel',finished({outcome:'cancelled'})],
+ ['pause',fact({state:'paused'})],['ack',finished({acknowledged:true})],
+ ['target',finished({alarmDeviceId:'native'})],
+])test(`same timer ${change} during pending claim stays silent after reconciliation`,async t=>{
+ const claim=defer(),fresh=defer();let response=snapshot(finished());
+ const x=setup(t,{timer:finished(),handler:r=>r.type.endsWith('_snapshot')?response:claim.promise});
+ await flush();await x.controller.enableSound();await flush();
+ response=fresh.promise;x.hass.states['timer.demo']={state:next.state,last_changed:change};x.controller.updateHass(x.hass);
+ claim.resolve({version:1,asOf:'2026-11-02T12:00:00Z',claimed:true,timer:finished()});await flush();assert.deepEqual(x.sound.plays,[]);
+ fresh.resolve(snapshot(next));await flush();await x.advance(10000);
+ assert.deepEqual(x.sound.plays,[]);assert.equal(x.calls.filter(r=>r.type.endsWith('_claim')).length,1);
+});
+
+test('recurring polls during slow serialized snapshots and claims cannot starve sound',async t=>{
+ const x=setup(t,{timer:finished()});await flush();
+ let pending=null,inFlight=0,maxInFlight=0;
+ x.hass.callWS=async r=>{x.calls.push(r);inFlight++;maxInFlight=Math.max(maxInFlight,inFlight);
+   pending={request:r,...defer()};const reply=await pending.promise;inFlight--;return reply;};
+ await x.controller.enableSound();await flush();
+ for(let n=0;n<4;n++){
+   const request=pending;await x.advance(6000);
+   request.resolve(request.request.type.endsWith('_snapshot')?snapshot(finished()):
+     {version:1,asOf:'2026-11-02T12:00:00Z',claimed:true,timer:finished()});await flush();
+ }
+ assert.deepEqual(x.sound.plays,[30]);assert.equal(maxInFlight,1);
+ assert.equal(x.calls.filter(r=>r.type.endsWith('_claim')).length,1);
+ x.controller.disconnect();pending.resolve(snapshot(finished()));await flush();
+});
+
+test('core change during claim reconciliation discards the stale snapshot but retains the claim',async t=>{
+ const stale=defer(),fresh=defer();let count=0;
+ const x=setup(t,{timer:finished(),handler:r=>{
+   if(!r.type.endsWith('_snapshot'))return {version:1,asOf:'2026-11-02T12:00:00Z',claimed:true,timer:finished()};
+   return ++count<=2?snapshot(finished()):count===3?stale.promise:fresh.promise;
+ }});
+ await flush();await x.controller.enableSound();await flush();
+ x.hass.states['timer.demo']={state:'idle',last_updated:'fresh'};x.controller.updateHass(x.hass);
+ stale.resolve(snapshot(finished()));await flush();assert.deepEqual(x.sound.plays,[]);
+ fresh.resolve(snapshot(finished()));await flush();assert.deepEqual(x.sound.plays,[30]);
+ assert.equal(x.calls.filter(r=>r.type.endsWith('_claim')).length,1);
+});
+
+for(const situation of ['host','hidden','disconnect','mapping','identity','disabled','dismiss'])test(`${situation} during successful claim reconciliation prevents playback`,async t=>{
+ const fresh=defer();let count=0;
+ const x=setup(t,{timer:finished(),handler:r=>{
+   if(r.type.endsWith('_snapshot'))return ++count<=2?snapshot(finished()):fresh.promise;
+   return {version:1,asOf:'2026-11-02T12:00:00Z',claimed:true,timer:finished()};
+ }});
+ await flush();await x.controller.enableSound();await flush();
+ assert.equal(count,3);assert.deepEqual(x.sound.plays,[]);
+ if(situation==='host')x.host();if(situation==='hidden')x.hide();if(situation==='disconnect')x.offline();
+ if(situation==='mapping')x.controller.configure([]);
+ if(situation==='identity')x.controller.updateHass({...x.hass,user:{id:'another-user'}});
+ if(situation==='disabled')x.controller.disableSound();
+ if(situation==='dismiss')x.controller.dismiss('subject','run');
+ fresh.resolve(snapshot(finished()));await flush();await x.advance(5000);assert.deepEqual(x.sound.plays,[]);
+ assert.equal(x.calls.filter(r=>r.type.endsWith('_claim')).length,1);
+ if(situation==='dismiss')assert.equal(x.calls.filter(r=>r.type.endsWith('_acknowledge')).length,1);
+});
+
+for(const state of ['active','paused'])test(`same playing helper becoming ${state} stops immediately without restarting sound`,async t=>{
+ const x=setup(t,{timer:finished()});await flush();await x.controller.enableSound();await flush();
+ const pending=defer();x.hass.callWS=()=>pending.promise;
+ x.hass.states['timer.demo']={state};x.controller.updateHass(x.hass);assert.equal(x.controller.playing,null);
+ pending.resolve(snapshot(fact({state})));await flush();await x.advance(35000);assert.deepEqual(x.sound.plays,[30]);
 });
