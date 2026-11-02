@@ -21,6 +21,13 @@ chooses sources in a compatible Frame app (`docs/ASSISTANT.md`).
 | Journal/homepage | Deferred — the assistant answers need a compatible Frame app that is not public; an article belongs with that app |
 | Release ledger | Update: `publication.json` selects the ten tags with their commit |
 
+**Integration guides kept.** From #175 every manifest lists `templates/assistant-bindings.yaml.j2`
+under `artifacts`, so the exporter (`any(artifacts.values())`) and `domosenso recommend`
+(`describes_only`) counted calendar, media and weather as installable components; the e2e test that
+expects weather to be an integration guide failed in CI. `describes_only` now leaves out the
+template named by `assistant.bindings`, and the exporter uses it: calendar, media and weather stay
+integration guides, as on the live site before this release.
+
 `release_status.py` after the change: every component released but remote-access 0.2.0 (on hold).
 The e2e counts do not change (12 components).
 

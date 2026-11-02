@@ -55,6 +55,20 @@ def test_zero_evidence_and_installed_artifacts(catalog):
     assert entry['testedHomes']==0 and entry['installationRole']=='installs'
 
 
+def test_assistant_bindings_alone_keep_an_integration_guide(catalog):
+    """The optional assistant bindings template (SPEC-029) is metadata, not what a home installs."""
+    root,pub,git=catalog
+    p=root/'components/sample/component.yaml'; m=yaml.safe_load(p.read_text())
+    m['assistant']={'version':1,'definition':'assistant.yaml','bindings':'templates/assistant-bindings.yaml.j2'}
+    m['artifacts']={'templates':['templates/assistant-bindings.yaml.j2'],'ha_packages':[],'services':[]}
+    p.write_text(yaml.safe_dump(m))
+    git('add','.');git('commit','-qm','assistant');sha=git('rev-parse','HEAD');git('tag','-f','sample/0.1.0'); pub['components'][0]['commit']=sha
+    assert exporter().build(root,pub)[0]['components'][0]['installationRole']=='describes'
+    m['artifacts']['templates'].append('templates/main.j2'); p.write_text(yaml.safe_dump(m))
+    git('add','.');git('commit','-qm','main');sha=git('rev-parse','HEAD');git('tag','-f','sample/0.1.0'); pub['components'][0]['commit']=sha
+    assert exporter().build(root,pub)[0]['components'][0]['installationRole']=='installs'
+
+
 def test_moved_or_missing_tag_fails(catalog):
     root,pub,git=catalog
     pub['components'][0]['commit']='0'*40

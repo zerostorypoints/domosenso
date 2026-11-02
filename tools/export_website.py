@@ -10,6 +10,8 @@ from urllib.parse import quote
 
 import yaml
 
+from domosenso_cli.recommend import describes_only
+
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = 'https://github.com/zerostorypoints/domosenso'
 IDENTIFIER = re.compile(r'[a-z0-9]+(?:-[a-z0-9]+)*')
@@ -102,14 +104,13 @@ def build(root, publication):
         homes = tested.get('homes')
         if homes is not None and (type(homes) is not int or homes < 0):
             raise ValueError(f'invalid field evidence for {cid}')
-        artifacts = manifest.get('artifacts') or {}
         tree = git(root, 'ls-tree', '-r', '--name-only', sha, '--', folder).splitlines()
         entries.append({
             'id': cid, 'version': version, 'sourceTag': tag, 'sourceCommit': sha,
             'summary': manifest['summary'], 'requirements': manifest.get('devices', {}).get('requires', []),
             'integrations': manifest.get('integrations', []),
             'optionalRequirements': manifest.get('devices', {}).get('optional', []),
-            'installationRole': 'installs' if any(artifacts.values()) else 'describes',
+            'installationRole': 'describes' if describes_only(manifest) else 'installs',
             'testedHa': tested.get('ha', []), 'testedEspHome': tested.get('esphome', []),
             'testedHomes': homes, 'host': manifest.get('host', {}),
             'localOnly': manifest.get('local_only'),

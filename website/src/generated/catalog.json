@@ -401,7 +401,7 @@
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "installs",
+      "installationRole": "describes",
       "testedHa": [
         "2026.9.2"
       ],
@@ -663,7 +663,7 @@
           "feature": "mains"
         }
       ],
-      "installationRole": "installs",
+      "installationRole": "describes",
       "testedHa": [
         "2026.9.2"
       ],
@@ -1142,7 +1142,7 @@
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "installs",
+      "installationRole": "describes",
       "testedHa": [
         "2026.9.2"
       ],
