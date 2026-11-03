@@ -4181,6 +4181,27 @@ def test_the_screen_off_and_swipe_up_end_a_pause(demo):
         {"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.ramka_paused"}}]
 
 
+def test_leaving_the_ramka_gives_the_music_back(demo):
+    # A swipe up chooses the rotation for whoever is at the Ramka; once nobody is within near_cm
+    # for the controls' hold (or the screen sleeps), ambient is back to its default and shows the
+    # music whenever it plays. The radar keeps the screen awake while anyone is in the room.
+    package = demo["package.yaml"]
+    reset = automation(package, "music_default")
+    near, screen_off, start = reset["triggers"]
+    assert (near["entity_id"], near["to"]) == ("binary_sensor.ramka_near", "off")
+    assert "input_number.ramka_controls_hold_s" in near["for"]["seconds"]
+    assert screen_off == {"trigger": "state", "entity_id": "input_select.ramka_mode", "to": "off"}
+    # A restart: the near sensor comes back off before the triggers listen; the start checks
+    # once the radar is back.
+    assert (start["trigger"], start["event"]) == ("homeassistant", "start")
+    wait, near_off, music_off, turn_on = reset["actions"]
+    assert wait["if"] == [{"condition": "trigger", "id": "start"}]
+    assert "binary_sensor.dining_ble_proxy_dining_presence" in wait["then"][0]["wait_template"]  # the demo's radar
+    assert near_off == {"condition": "state", "entity_id": "binary_sensor.ramka_near", "state": "off"}
+    assert music_off == {"condition": "state", "entity_id": "input_boolean.ramka_ambient_music", "state": "off"}
+    assert turn_on == {"action": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.ramka_ambient_music"}}
+
+
 def test_page_swipes_keep_a_pause(demo, tmp_path):
     package = demo["package.yaml"]
     for script in ("ramka_ambient_next", "ramka_ambient_prev"):
