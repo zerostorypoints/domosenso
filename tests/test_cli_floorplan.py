@@ -330,3 +330,43 @@ def test_push_plan_open_spaces_line(home, capsys):
     assert cli(root, "push", "staging", "--plan") == 0
     lines = out(capsys)
     assert lines[0] == "open change ground" and lines[-1] == "ok", lines
+
+def test_push_plan_openings_have_their_own_line_and_name_rooms_of_the_floor(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    floor = PLAN["floors"][0]
+    a, b = floor["rooms"][0]["area_id"], floor["rooms"][1]["area_id"]
+    door = {"rooms": [a, b], "at": [1.0, 1.0], "width": 0.8, "entity": "binary_sensor.door"}
+
+    def plan_with(*openings):
+        write_plan(root, {**PLAN, "floors": [{**floor, "openings": list(openings)}, *PLAN["floors"][1:]]})
+        return cli(root, "push", "staging", "--plan"), out(capsys)
+
+    code, lines = plan_with(door, {"kind": "window", "rooms": [a, None], "at": [0.0, 0.5]})
+    assert code == 0 and lines[0] == "openings change ground", lines
+    assert plan_with({**door, "rooms": [a, "nowhere"]})[1][-1] \
+        == "FAIL opening on floor ground: nowhere is not a room of the floor"
+    assert plan_with({**door, "rooms": [None, None]})[1][-1] \
+        == "FAIL opening on floor ground: needs two rooms, or one and null"
+    assert plan_with({"kind": "opening", "rooms": [a, b], "at": [1.0, 1.0], "state": "closed"})[1][-1] \
+        == "FAIL opening on floor ground: a doorway cannot be closed"
+    assert plan_with({"kind": "opening", "rooms": [a, b], "at": [1.0, 1.0], "entity": "binary_sensor.x"})[1][-1] \
+        == "FAIL opening on floor ground: a doorway has no entity"
+    assert plan_with(door, {**door, "at": [2.0, 1.0]})[1][-1] \
+        == "FAIL opening on floor ground: binary_sensor.door on two openings"
+    code, lines = plan_with({**door, "entity": "light.door"})
+    assert code == 1 and "entity" in lines[-1], lines   # the schema refuses another domain
+    code, lines = plan_with({**door, "material": "solid"})
+    assert code == 1 and "material" in lines[-1], lines   # not a key of an opening
+    code, lines = plan_with({**door, "sliding": True, "hinge": "right", "opens": b},
+                            {"kind": "fixed", "rooms": [a, None], "at": [0.0, 0.5], "width": 3.0},
+                            {"rooms": [a, None], "at": [0.0, 1.5], "opens": "outside"})
+    assert code == 0 and lines[0] == "openings change ground", lines
+    assert plan_with({"kind": "fixed", "rooms": [a, None], "at": [0.0, 0.5], "state": "open"})[1][-1] \
+        == "FAIL opening on floor ground: fixed glass has no state"
+    assert plan_with({"kind": "window", "rooms": [a, None], "at": [0.0, 0.5], "hinge": "left"})[1][-1] \
+        == "FAIL opening on floor ground: only a door has hinge"
+    assert plan_with({**door, "opens": "outside"})[1][-1] \
+        == "FAIL opening on floor ground: opens into outside, not one of its sides"

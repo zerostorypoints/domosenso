@@ -30,14 +30,16 @@
         "move": "Move",
         "split": "Split",
         "join": "Join",
-        "open": "Open"
+        "open": "Open",
+        "openings": "Doors & windows"
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
         "move": "Drag sensors and corners. Double-click a wall to add a corner, a corner to remove it. Tap a room to link it to an area. Drop a device on a marker when it is the same hardware.",
         "split": "Tap two points on the walls of one room.",
         "join": "Tap two neighbouring rooms; the first keeps its area.",
-        "open": "Tap two rooms open to each other without a door: their heat maps share readings."
+        "open": "Tap two rooms open to each other without a door: their heat maps share readings.",
+        "openings": "Tap a wall to add a door; tap a door or window to change it, drag it along the walls."
       },
       "area": {
         "label": "Area of this room",
@@ -96,6 +98,31 @@
         "no_sensor": "no sensor in the room",
         "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
         "off": "off"
+      },
+      "opening": {
+        "kind": "Kind",
+        "kinds": {
+          "door": "Door",
+          "window": "Window",
+          "opening": "Doorway",
+          "fixed": "Fixed glass"
+        },
+        "width": "Width (m)",
+        "default": "Without a sensor",
+        "open": "Open",
+        "closed": "Closed",
+        "unknown": "Unknown",
+        "sensor": "Sensor",
+        "no_sensor": "None",
+        "remove": "Remove",
+        "style": "Type",
+        "styles": {
+          "hinged": "Hinged",
+          "sliding": "Sliding"
+        },
+        "swap_hinge": "⇄ Left/right",
+        "swap_side": "⇅ Other side",
+        "fill_wall": "Whole wall"
       }
     }
   }
