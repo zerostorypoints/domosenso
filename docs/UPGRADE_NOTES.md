@@ -3,6 +3,16 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: versioned card imports
+
+`render` and `tools/domosenso_install.py` now write every installed card module with `?v=<hash>` on
+its relative static imports, the hash of the whole version directory, and every card's resource
+URL carries the same `?v=` (it was bare for a locked card and the card file's own hash for a dev
+render). Before, a browser kept an imported `lib/` module or translation for the 31 days Home
+Assistant caches `/local/` whenever a dev render, or a tag rendered after one, put new contents at
+the same path: a new card ran with old imports. Home action: none beyond the next `render`; its
+deploy shows one `resource update` per card. A page already open still needs one reload.
+
 ## Unreleased: component assistant contracts (SPEC-029)
 
 No existing HA helper, dashboard setting or endpoint grant changes. New component definitions

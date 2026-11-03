@@ -146,7 +146,10 @@ def test_render_writes_files_and_lock(home, catalog, capsys):
     assert lock.files[f"{HA}/packages/panel.yaml"].from_ == "templates/package.yaml.j2"
     assert lock.files[f"{HA}/dashboards/panel.de.yaml"].from_ == "templates/dashboard.lang.yaml.j2"
     assert lock.files[f"{HA}/shell/pick.py"].from_ == "shell/pick.py"
-    assert lock.resources == ["/local/domosenso/panel/1.0.0/cards/panel-card.js"]
+    version_query = lock.resources[0].rsplit("?v=", 1)[1]
+    assert lock.resources == [f"/local/domosenso/panel/1.0.0/cards/panel-card.js?v={version_query}"]
+    card = (home / f"{HA}/www/domosenso/panel/1.0.0/cards/panel-card.js").read_text()
+    assert card == f"import {{ t }} from './lib/i18n.js?v={version_query}';\n"
 
     stamp_line = stamps.stamp("panel", "1.0.0", commit_of(catalog, "panel")[:12])
     package = (home / f"{HA}/packages/panel.yaml").read_text()
