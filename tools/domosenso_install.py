@@ -21,36 +21,41 @@ from pathlib import Path
 
 import yaml
 
-from catalog_check import install_dir, install_files
+from catalog_check import install_dir, install_files, install_version, versioned
 
 
-def plan(component_dir: Path) -> tuple[list[tuple[Path, str]], list[str]]:
-    """([(source, destination relative to the config dir)], [resource URL])."""
+def plan(component_dir: Path) -> tuple[list[tuple[Path, str, str | None]], list[str]]:
+    """([(source, destination relative to the config dir, the version its imports get or None)],
+    [resource URL])."""
     component_dir = Path(component_dir)
     manifest = yaml.safe_load((component_dir / "component.yaml").read_text(encoding="utf-8"))
     artifacts = manifest.get("artifacts") or {}
-    copies: list[tuple[Path, str]] = []
+    copies: list[tuple[Path, str, str | None]] = []
     resources: list[str] = []
     target = install_dir(manifest)
     if target:
+        version = install_version(component_dir, manifest)
         for rel in install_files(component_dir, manifest):
-            copies.append((component_dir / rel, f"{target}{rel}"))
+            copies.append((component_dir / rel, f"{target}{rel}", version))
         www = target.removeprefix("www/")
-        resources = [f"/local/{www}{c}" for c in artifacts.get("dashboard_cards") or [] if c.endswith(".js")]
+        resources = [f"/local/{www}{c}?v={version}" for c in artifacts.get("dashboard_cards") or [] if c.endswith(".js")]
     for key in ("shell", "themes"):
         for rel in artifacts.get(key) or []:
-            copies.append((component_dir / rel, f"{key}/{Path(rel).name}"))
+            copies.append((component_dir / rel, f"{key}/{Path(rel).name}", None))
     return copies, resources
 
 
 def install(component_dir: Path, config: Path, dry_run: bool = False) -> tuple[list[Path], list[str]]:
     copies, resources = plan(component_dir)
     written = []
-    for source, rel in copies:
+    for source, rel, version in copies:
         dest = Path(config) / rel
         if not dry_run:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, dest)
+            if version is None:
+                shutil.copyfile(source, dest)
+            else:
+                dest.write_bytes(versioned(rel, source.read_bytes(), version))
         written.append(dest)
     return written, resources
 

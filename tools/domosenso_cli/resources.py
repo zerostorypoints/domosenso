@@ -7,8 +7,9 @@ so an existing resource is updated under its `resource_id`, never replaced by a 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
+
+from pathlib import Path
 
 from domosenso_cli.build import file_sha, sha256
 from domosenso_cli.errors import DomosensoError
@@ -35,10 +36,9 @@ class Action:
 
 
 def _version_sha(card: Path, cid: str) -> str:
-    """A dev card's hash: of every file in its component's version directory
-    (`www/domosenso/<cid>/<version>/`) when the card is in one, else of the card alone. A card imports
-    its lib/ modules and translations with its own `?v=`, so a change to any of them must change the
-    card's URL too; one hash for the whole version also gives its cards one module instance of each."""
+    """The hash a dev render recorded by an older tool gets (its URL has no `?v=`): of every file in
+    its component's version directory (`www/domosenso/<cid>/<version>/`) when the card is in one, else
+    of the card alone; one hash for the whole version gives its cards one module instance of each."""
     parts = card.parts
     for i in range(len(parts) - 3):
         if parts[i] == "domosenso" and parts[i + 1] == cid and i + 3 < len(parts):
@@ -62,10 +62,10 @@ def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None
     `.domosenso/dev-render.json`) replaces a locked component's URLs, or adds a component not locked.
 
     A home resource under `/local/` gets `?v=<sha8>` of its file in `config_dir/www`, so that a changed
-    file is a new URL; any other URL (a third party's) passes through unchanged. So does a dev-rendered
-    card: it keeps its version's path, so without the hash browsers would keep the old card for the 31
-    days /local/ is cached; its hash covers its version directory (`_version_sha`). A locked card's URL
-    changes with its version directory."""
+    file is a new URL; any other URL (a third party's) passes through unchanged. A component card passes
+    through as its render recorded it: with the `?v=` of its version directory, which its imports carry
+    too (catalog_check.install_version), so a dev render at the same path is still a new URL. A dev
+    render recorded by an older tool has no `?v=` and still gets `_version_sha`."""
     got: list[Resource] = []
     owners: dict[str, str] = {}  # file name -> where it was wanted from
     dev = dev or {}
@@ -74,10 +74,10 @@ def wanted(home: HomeConfig, lock: Lock, dev: dict[str, list[str]] | None = None
     for cid, urls in by_component.items():
         for url in urls:
             _claim(owners, url, f"component {cid}")
-            if cid in dev and _bare(url).startswith(LOCAL) and ".." not in _bare(url).split("/"):
+            if cid in dev and "?" not in url and url.startswith(LOCAL) and ".." not in url.split("/"):
                 path = home.config_dir / "www" / _bare(url)[len(LOCAL):]
                 if path.is_file():
-                    url = f"{_bare(url)}?v={_version_sha(path, cid)[:HASH_LENGTH]}"
+                    url = f"{url}?v={_version_sha(path, cid)[:HASH_LENGTH]}"
             got.append(Resource(url))
     for raw in home.resources:
         url, kind = raw["url"], raw.get("type", "module")

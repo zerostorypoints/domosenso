@@ -65,7 +65,10 @@ input, render and review the normal deployment plan; never hand-edit the generat
   dashboard rebuild then adds one more. `corner-taps-card` and `photo-frame-card` keep one set of
   listeners per page for that reason.
 - `/local/` files are cached for 31 days. A new version of the cards goes to a new
-  `www/domosenso/ramka/<version>/` directory and the resources' URLs change in place.
+  `www/domosenso/ramka/<version>/` directory and the resources' URLs change in place. Every render
+  also gives the resources and the cards' static imports a `?v=` of the whole version directory,
+  so a dev render at the same path reaches the browser too; a dynamic `import()` appends the
+  importer's own query.
 - Day stepping in the agenda must use calendar dates, not 24-hour steps: on the day the clocks go
   back a 24-hour step shows one day twice (`agenda-card.test.mjs` covers it).
 
