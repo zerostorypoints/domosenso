@@ -46,7 +46,10 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   optionally linked to its door or window sensor (a `binary_sensor` door, window, opening or garage
   door, or a cover): an open one is drawn open in the security colour, live, and the sensor's dot
   stands on it. Edit mode's **Doors & windows** tool adds one with a tap on a wall, slides it along
-  the walls, and sets its kind, width, material and sensor. Stored as `openings` on the floor.
+  the walls (measuring the free wall either side), and sets its kind, width, material and sensor;
+  a door is hinged or sliding, and two buttons swap its hinge (left/right) and the side it opens
+  into. **Fixed glass** is a window or glass wall that never opens; **Whole wall** stretches an
+  opening across its wall. Stored as `openings` on the floor.
 - **Sound maps** (SPEC-028 Amendment 8, draft): with Audio and media shown alone, a room (or open
   space) with an audio sensor gets four live maps: **Sound level** (dB SPL), **Loudness** (dB(A)),
   **Room effect** (each spot against the room's average) and **Bass** (the same up to 160 Hz). The
@@ -180,7 +183,7 @@ domosenso floorplan preview production        # --port <n> (default 8130), --no-
 ## Limits
 
 - One floor at a time; no furniture; tapping a room in view mode does nothing (SPEC-028
-  non-goals). A door's swing side is not stored: its leaf opens into its first room from one end.
+  non-goals).
 - A corner added on a wall shared with another room belongs to that room only: dragging it off the
   wall opens a gap the neighbour does not follow.
 - The sound maps' bass is a box model: an L-shaped room, furniture and doors move the real peaks and

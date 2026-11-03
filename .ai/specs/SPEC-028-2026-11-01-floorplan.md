@@ -795,19 +795,24 @@ the drawing, and later the climate and security layers (a window open, the open 
 
 | key | | meaning |
 |---|---|---|
-| `kind` | `door`, `window`, `opening` | default `door`; an `opening` is a doorway without a leaf (an arch, a passage), always open |
+| `kind` | `door`, `window`, `opening`, `fixed` | default `door`; an `opening` is a doorway without a leaf (an arch, a passage), always open; `fixed` is glass that never opens (a fixed window, a glass wall), always closed, `glass` |
 | `rooms` | `[a, b]` or `[a, null]` | the two rooms it joins (area ids of the floor), or a room and the outside |
 | `at` | `[x, y]` | its centre in metres, on the rooms' shared wall (or the room's outer wall) |
 | `width` | metres | default 0.8 for a door, 1.0 for a window, the wall's free width for an opening |
 | `state` | `open`, `closed` | when nothing is linked or the entity is unavailable; default `open` between two rooms, `closed` to the outside |
 | `material` | `hollow`, `solid`, `sealed`, `glass` | how much sound gets through when closed; default `hollow` for a door, `glass` for a window |
 | `entity` | `binary_sensor.*` or `cover.*` | optional; the opening's live state |
+| `sliding` | `true` | a door only: it slides along the wall instead of swinging |
+| `hinge` | `left`, `right` | a door only: its hinge, seen from the side it opens into, facing it (DIN 107); a sliding door slides towards it; default `left` |
+| `opens` | an area id of `rooms`, or `outside` | a door only: the side it opens into; default its first room |
 
 - **Live state:** a `binary_sensor` `on` is open, `off` closed; a `cover` `open`, `opening` or a
   position above 0 is open, `closed` closed; anything else (`unavailable`, `unknown`, no such
   entity) falls back to `state`, and the opening is drawn as unknown.
 - **Validation** (`push`, `preview`): `rooms` are rooms of the floor, two different ones or one and
-  `null`; an `opening` has no `state: closed`, no `material` and no `entity`; an entity's domain is
+  `null`; an `opening` has no `state: closed`, no `material` and no `entity`; `fixed` has no
+  `state`, `material` or `entity`; only a door has `sliding`, `hinge` and `opens`, and `opens` is
+  one of its rooms (or `outside` when it has one); an entity's domain is
   `binary_sensor` or `cover`; one entity on one opening at most. Whether the entity exists and has
   a fitting device class is the card's to show, not the command's to refuse (it reads no registry).
 - **Rooms** gain two optional keys read by the sound maps: `outdoor` (a balcony: outside the
@@ -820,9 +825,11 @@ the drawing, and later the climate and security layers (a window open, the open 
 ### Card
 
 - **Drawing** (`lib/openings.js`, pure; drawn over the walls in view and edit mode): a gap in the
-  wall the opening's width wide; an open door's leaf from its hinge into its first room with a
-  dashed quarter arc of its swing, a closed door's leaf in the gap; a window's two panes along the
-  wall; a doorway the gap alone. A linked one that is open is drawn in `security`'s colour,
+  wall the opening's width wide, with a jamb at both ends; an open door's leaf from its hinge into
+  the side it opens into with a dashed quarter arc of its swing, a closed door's leaf in the gap; a
+  sliding door's leaf beside its dotted track (closed: across the gap; open: past its hinge end,
+  over the wall); a window's two panes and its sash along the wall; fixed glass two fainter panes;
+  a doorway the gap alone. A linked one that is open is drawn in `security`'s colour,
   otherwise in the walls' colour; a linked one whose sensor does not answer is dashed. Its
   tooltip: the kind, the sensor's name, the state. A linked sensor's point is drawn on its opening
   (matched by the entity, or the entity's device), and in edit mode it is not dragged off it; the
@@ -831,12 +838,17 @@ the drawing, and later the climate and security layers (a window open, the open 
   the grid along the wall; the rooms are the wall's room and a room sharing the wall within
   0.05 m, else the outside); a tap on an opening selects it, a drag slides it along the walls (its
   rooms follow the wall it lands on). The panel sets the kind, the width (metres), the state
-  without a sensor, the material and the **Sensor**: the `binary_sensor` door, window, opening and
+  without a sensor, the material and the **Sensor**; a door's **Type** (hinged or sliding) and
+  two buttons, **⇄ Left/right** (its hinge, or where it slides) and **⇅ Other side** (the side it
+  opens into); **Whole wall** stretches it across the free wall it stands on. While an opening is
+  selected or dragged, two dashed lines along its wall measure the free wall from each of its ends
+  to the nearest corner or junction (a corner of any room on that wall), in metres. The rest of the
+  panel: the `binary_sensor` door, window, opening and
   garage-door entities and the door, window, garage and gate covers, those of its rooms' areas
-  first; a sensor already on another opening moves to this one. A doorway's panel has the kind and
-  the width only. **Remove** deletes it.
+  first; a sensor already on another opening moves to this one. A doorway's and fixed glass's
+  panels have the kind and the width only. **Remove** deletes it.
 - **Sound maps:** the whole-home model treats an open door or opening as a gap the energy flows
-  through and a closed one or a window by its `material`; an open opening to the outside is an
+  through and a closed one, a window or fixed glass by its `material`; an open opening to the outside is an
   energy sink. Without openings the maps stay per room or open space (Amendment 8).
 
 ### Versions, compatibility

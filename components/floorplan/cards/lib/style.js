@@ -107,12 +107,16 @@ export const STYLE = `
   .opening line, .opening path { vector-effect: non-scaling-stroke; fill: none; }
   .opening .gap { stroke: var(--card-background-color, #fff); stroke-width: 4; }
   .opening .leaf, .opening .pane { stroke: var(--primary-text-color); stroke-width: 1.5; }
+  .opening .sash { stroke: var(--primary-text-color); stroke-width: 1; }
+  .opening.fixed .pane { stroke: var(--secondary-text-color); stroke-width: 1; }
+  .opening .track { stroke: var(--secondary-text-color); stroke-width: 1; stroke-dasharray: 2 3; }
+  .opening.sliding .leaf { stroke-width: 2.5; }
   .opening .jamb { stroke: var(--primary-text-color); stroke-width: 1.5; }
   .opening.closed .leaf { stroke: var(--secondary-text-color); stroke-width: 2.5; }
   .opening .swing { stroke: var(--secondary-text-color); stroke-width: 1; stroke-dasharray: 3 3; }
   .opening.linked.open .leaf, .opening.linked.open .pane, .opening.linked.open .swing { stroke: var(--floorplan-security, #e53935); }
   .opening.unknown .leaf, .opening.unknown .pane { stroke-dasharray: 4 3; }
-  .opening.selected .leaf, .opening.selected .pane, .opening.selected .swing { stroke: var(--accent-color, #ff9800); }
+  .opening.selected .leaf, .opening.selected .pane, .opening.selected .swing, .opening.selected .sash, .opening.selected .track { stroke: var(--accent-color, #ff9800); }
   .opening.selected .gap { stroke: var(--accent-color, #ff9800); stroke-opacity: 0.35; stroke-width: 8; }
   .opening .hit { stroke: transparent; stroke-width: 16; cursor: move; }
   .opening-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

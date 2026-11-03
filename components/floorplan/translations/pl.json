@@ -112,9 +112,12 @@
       },
       "opening": {
         "kind": "Rodzaj",
-        "door": "Drzwi",
-        "window": "Okno",
-        "opening": "Przejście",
+        "kinds": {
+          "door": "Drzwi",
+          "window": "Okno",
+          "opening": "Przejście",
+          "fixed": "Szyba stała"
+        },
         "width": "Szerokość (m)",
         "default": "Bez czujnika",
         "open": "Otwarte",
@@ -129,7 +132,15 @@
           "solid": "Drzwi pełne",
           "sealed": "Drzwi szczelne",
           "glass": "Szkło"
-        }
+        },
+        "style": "Typ",
+        "styles": {
+          "hinged": "Skrzydłowe",
+          "sliding": "Przesuwne"
+        },
+        "swap_hinge": "⇄ Lewe/prawe",
+        "swap_side": "⇅ Druga strona",
+        "fill_wall": "Cała ściana"
       }
     }
   }

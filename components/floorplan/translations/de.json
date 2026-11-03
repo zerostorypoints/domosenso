@@ -112,9 +112,12 @@
       },
       "opening": {
         "kind": "Art",
-        "door": "Tür",
-        "window": "Fenster",
-        "opening": "Durchgang",
+        "kinds": {
+          "door": "Tür",
+          "window": "Fenster",
+          "opening": "Durchgang",
+          "fixed": "Festverglasung"
+        },
         "width": "Breite (m)",
         "default": "Ohne Sensor",
         "open": "Offen",
@@ -129,7 +132,15 @@
           "solid": "Massive Tür",
           "sealed": "Dichte Tür",
           "glass": "Glas"
-        }
+        },
+        "style": "Art",
+        "styles": {
+          "hinged": "Drehtür",
+          "sliding": "Schiebetür"
+        },
+        "swap_hinge": "⇄ Links/rechts",
+        "swap_side": "⇅ Andere Seite",
+        "fill_wall": "Ganze Wand"
       }
     }
   }

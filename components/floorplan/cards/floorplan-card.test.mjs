@@ -1564,3 +1564,32 @@ test("the Doors & windows tool: a wall tap adds a door; its panel sets kind, wid
   click($(card, "[data-action=remove_opening]"));
   assert.ok(!("openings" in card._doc.floors[0]));
 });
+
+test("a door's panel swaps its hinge and side and makes it sliding; a selected opening measures its wall", async () => {
+  const card = await make({ plan: withOpenings([{ rooms: ["living_room", "kitchen"], at: [5, 2] }]) }, doorHass());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  const opening = () => card._doc.floors[0].openings[0];
+  const [sx, sy] = clientAt(card, 5, 2);
+  pointer($(card, "g.opening line.hit"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointerup", sx, sy);
+  assert.ok($(card, "g.opening.selected"));
+  assert.equal(card.shadowRoot.querySelectorAll("text.dim.to-wall").length, 2, "the free wall either side");
+  click($(card, "[data-action=swap_hinge]"));
+  assert.equal(opening().hinge, "right");
+  click($(card, "[data-action=swap_side]"));
+  assert.equal(opening().opens, "kitchen");
+  const style = $(card, '.opening-panel [data-field="sliding"]');
+  style.value = "true";
+  style.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.equal(opening().sliding, true);
+  assert.ok($(card, "g.opening.sliding line.track"));
+  click($(card, "[data-action=fill_wall]"));
+  assert.ok(opening().width > 0.8, "across the free wall");
+  const kind = $(card, '.opening-panel [data-field="kind"]');
+  kind.value = "fixed";
+  kind.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.deepEqual(Object.keys(opening()).sort(), ["at", "kind", "rooms", "width"]);
+  assert.equal($(card, '.opening-panel [data-field="entity"]'), null, "fixed glass has no sensor");
+  assert.equal($(card, "[data-action=swap_hinge]"), null);
+});

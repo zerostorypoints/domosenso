@@ -41,9 +41,9 @@ import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categorie
 import { esc, dotHtml } from "./lib/html.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
-import { KINDS, MATERIALS, kindOf, widthOf, materialOf, openingState, openingShape, addOpening, moveOpening, setOpening,
-  removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
-import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
+import { KINDS, MATERIALS, STYLES, kindOf, widthOf, materialOf, styleOf, openingState, openingShape, wallSpan, addOpening,
+  moveOpening, setOpening, swapHinge, swapSide, fillWall, removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
+import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { SOUND, soundSensors, readSensor, soundGrid, fieldLevels, sensorLevel, lut, paint, approach, meanEnergy,
   soundSpaces } from "./lib/sound.js";
@@ -563,7 +563,8 @@ ${STYLE}
       + "</div>";
   }
 
-  // The selected opening: its kind, width, state without a sensor, material and sensor; remove.
+  // The selected opening: its kind, width, state without a sensor, material and sensor; a door's
+  // style and the buttons that swap its hinge and its side; the whole wall; remove.
   _openingPanelHtml() {
     const o = this._tool === "openings" && this._floor?.openings?.[this._opening];
     if (!o) return "";
@@ -572,17 +573,23 @@ ${STYLE}
     const opt = (value, text, on) => `<option value="${esc(value)}" ${on ? "selected" : ""}>${esc(text)}</option>`;
     const sel = (name, label, options) => `<label>${esc(t(h, `card.floorplan.opening.${label}`))}</label>`
       + `<select class="opening-field" data-field="${name}">${options}</select>`;
-    let html = sel("kind", "kind", KINDS.map((k) => opt(k, t(h, `card.floorplan.opening.${k}`), k === kind)).join(""))
-      + `<label>${esc(t(h, "card.floorplan.opening.width"))}</label>`
-      + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`;
-    if (kind !== "opening") {
+    const button = (action, label) => `<button data-action="${action}">${esc(t(h, `card.floorplan.opening.${label}`))}</button>`;
+    let html = sel("kind", "kind", KINDS.map((k) => opt(k, t(h, `card.floorplan.opening.kinds.${k}`), k === kind)).join(""));
+    if (kind === "door") {
+      html += sel("sliding", "style", STYLES.map((v) => opt(v === "sliding" ? "true" : "", t(h, `card.floorplan.opening.styles.${v}`), v === styleOf(o))).join(""))
+        + button("swap_hinge", "swap_hinge") + button("swap_side", "swap_side");
+    }
+    html += `<label>${esc(t(h, "card.floorplan.opening.width"))}</label>`
+      + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`
+      + button("fill_wall", "fill_wall");
+    if (kind === "door" || kind === "window") {
       const state = o.state ?? (o.rooms.includes(null) ? "closed" : "open");
       html += sel("state", "default", ["open", "closed"].map((s) => opt(s, t(h, `card.floorplan.opening.${s}`), s === state)).join(""))
         + sel("material", "material", MATERIALS.map((m) => opt(m, t(h, `card.floorplan.opening.materials.${m}`), m === materialOf(o))).join(""))
         + sel("entity", "sensor", opt("", t(h, "card.floorplan.opening.no_sensor"), !o.entity)
           + openingSensors(h, o).map((c) => opt(c.id, c.name, c.id === o.entity)).join(""));
     }
-    return `<div class="opening-panel">${html}<button data-action="remove_opening">${esc(t(h, "card.floorplan.opening.remove"))}</button></div>`;
+    return `<div class="opening-panel">${html}${button("remove_opening", "remove")}</div>`;
   }
 
   _trayHtml() {
@@ -752,8 +759,10 @@ ${STYLE}
     return { ...floor, points };
   }
 
-  // Doors, windows and doorways: a gap in the wall, a door's leaf (open: across its swing, closed:
-  // in the gap), a window's two panes. A linked one shows its sensor's state; unknown is dashed.
+  // Doors, windows, doorways and fixed glass: a gap in the wall; a hinged door's leaf (open: across
+  // its swing, closed: in the gap), a sliding door's leaf beside its track (open: over the wall), a
+  // window's two panes and sash, fixed glass's two panes. A linked one shows its sensor's state;
+  // unknown is dashed. The selected or dragged one measures the free wall either side.
   _drawOpenings(svg, floor, px, editing) {
     const h = this._hass;
     const tool = editing && this._tool === "openings";
@@ -763,6 +772,7 @@ ${STYLE}
       const kind = kindOf(o);
       const state = openingState(o, h);
       const cls = ["opening", kind, state.open ? "open" : "closed"];
+      if (styleOf(o) === "sliding") cls.push("sliding");
       if (state.linked) cls.push("linked");
       if (!state.known) cls.push("unknown");
       if (tool && this._opening === i) cls.push("selected");
@@ -774,21 +784,59 @@ ${STYLE}
       line(p, q, "gap");
       // Jambs across the wall at both ends: a closed door or window still reads as one.
       if (kind !== "opening") for (const end of [p, q]) line(off(end, -4 * px), off(end, 4 * px), "jamb");
-      if (kind === "window") {
+      if (kind === "window" || kind === "fixed") {
         line(off(p, 2 * px), off(q, 2 * px), "pane");
         line(off(p, -2 * px), off(q, -2 * px), "pane");
+        if (kind === "window") line(p, q, "sash");
+      } else if (kind === "door" && styleOf(o) === "sliding") {
+        // Its track runs the gap and as far again past the hinge end, where it slides to.
+        const { hinge, free } = shape;
+        const past = [2 * hinge[0] - free[0], 2 * hinge[1] - free[1]];
+        line(off(free, 3 * px), off(past, 3 * px), "track");
+        if (state.open) line(off(hinge, 3 * px), off(past, 3 * px), "leaf");
+        else line(off(p, 3 * px), off(q, 3 * px), "leaf");
       } else if (kind === "door" && state.open) {
-        const tip = off(p, shape.width);
-        line(p, tip, "leaf");
-        // A quarter circle about the hinge from the gap's far end to the leaf's tip.
-        const sweep = shape.dir[0] * n[1] - shape.dir[1] * n[0] > 0 ? 1 : 0;
-        el("path", { class: "swing", d: `M ${fmt(q[0])} ${fmt(q[1])} A ${fmt(shape.width)} ${fmt(shape.width)} 0 0 ${sweep} ${fmt(tip[0])} ${fmt(tip[1])}` }, g);
+        const { hinge, free } = shape;
+        const tip = off(hinge, shape.width);
+        line(hinge, tip, "leaf");
+        // A quarter circle about the hinge from the gap's free end to the leaf's tip.
+        const d = [free[0] - hinge[0], free[1] - hinge[1]];
+        const sweep = d[0] * n[1] - d[1] * n[0] > 0 ? 1 : 0;
+        el("path", { class: "swing", d: `M ${fmt(free[0])} ${fmt(free[1])} A ${fmt(shape.width)} ${fmt(shape.width)} 0 0 ${sweep} ${fmt(tip[0])} ${fmt(tip[1])}` }, g);
       } else if (kind === "door") line(p, q, "leaf");
       if (tool) line(p, q, "hit");
       const name = o.entity ? h?.states?.[o.entity]?.attributes?.friendly_name || o.entity : null;
-      el("title", {}, g).textContent = [t(h, `card.floorplan.opening.${kind}`), name,
-        t(h, `card.floorplan.opening.${!state.known ? "unknown" : state.open ? "open" : "closed"}`)].filter(Boolean).join(" · ");
+      el("title", {}, g).textContent = [t(h, `card.floorplan.opening.kinds.${kind}`), name, kind === "fixed" ? null
+        : t(h, `card.floorplan.opening.${!state.known ? "unknown" : state.open ? "open" : "closed"}`)].filter(Boolean).join(" · ");
+      const dragged = this._drag?.kind === "opening" && this._drag.index === i;
+      if (tool && (this._opening === i || dragged)) this._drawSpan(svg, floor, shape, px);
     });
+  }
+
+  // Along the wall, 12 px off it on the side the opening opens into: the free wall from each end of
+  // the opening to the nearest corner or junction, and its length.
+  _drawSpan(svg, floor, shape, px) {
+    const h = this._hass;
+    const m = t(h, "card.floorplan.units.m");
+    const n = shape.normal;
+    const off = (pt) => [pt[0] + n[0] * 12 * px, pt[1] + n[1] * 12 * px];
+    let angle = (Math.atan2(shape.dir[1], shape.dir[0]) * 180) / Math.PI;
+    if (angle > 90) angle -= 180;
+    else if (angle <= -90) angle += 180;
+    for (const part of Object.values(wallSpan(floor, shape))) {
+      if (part.length < 0.005) continue;
+      const [a, b] = [off(part.from), off(part.to)];
+      el("line", { class: "to-wall", x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) }, svg);
+      for (const end of [part.from, part.to]) {
+        el("line", { class: "to-wall tick", x1: fmt(end[0] + n[0] * 8 * px), y1: fmt(end[1] + n[1] * 8 * px),
+          x2: fmt(end[0] + n[0] * 16 * px), y2: fmt(end[1] + n[1] * 16 * px) }, svg);
+      }
+      const x = (a[0] + b[0]) / 2 + n[0] * 9 * px;
+      const y = (a[1] + b[1]) / 2 + n[1] * 9 * px;
+      el("text", { class: "dim to-wall", x: fmt(x), y: fmt(y), "font-size": 11 * px, "dominant-baseline": "central",
+        transform: `rotate(${Math.round(angle * 10) / 10} ${fmt(x)} ${fmt(y)})` }, svg)
+        .textContent = `${numberText(h, part.length, 2)} ${m}`;
+    }
   }
 
   // Dots that would cover each other, as clusters of two or more: unplaced points by the room they
@@ -1191,7 +1239,9 @@ ${STYLE}
     else if (action === "close_room") this._edit(closeRoom(this._doc, this._floorId, this._selected));
     else if (action === "remove_opening") {
       if (this._edit(removeOpening(this._doc, this._floorId, this._opening))) this._opening = null;
-    }
+    } else if (action === "swap_hinge") this._edit(swapHinge(this._doc, this._floorId, this._opening));
+    else if (action === "swap_side") this._edit(swapSide(this._doc, this._floorId, this._opening));
+    else if (action === "fill_wall") this._edit(fillWall(this._doc, this._floorId, this._opening));
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
@@ -1229,7 +1279,8 @@ ${STYLE}
       this._applyArea(e.target.value);
     } else if (e.target.matches?.(".opening-field") && this._opening != null) {
       const field = e.target.getAttribute("data-field");
-      const value = field === "width" ? Number(e.target.value) || "" : e.target.value;
+      const raw = e.target.value;
+      const value = field === "width" ? Number(raw) || "" : field === "sliding" ? raw === "true" : raw;
       this._edit(setOpening(this._doc, this._floorId, this._opening, { [field]: value }));
       this._render();
     } else if (e.target.matches?.("select.category") && this._picked) {

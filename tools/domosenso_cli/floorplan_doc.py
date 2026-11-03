@@ -170,13 +170,25 @@ def _check_opening(opening: dict, areas: set, linked: set, label: str) -> None:
     for area in inside:
         if area not in areas:
             raise DomosensoError(f"opening on floor {label}: {area} is not a room of the floor")
-    # A doorway has no leaf: nothing closes it, and nothing senses it.
-    if opening.get("kind") == "opening":
+    kind = opening.get("kind", "door")
+    # A doorway has no leaf: nothing closes it, and nothing senses it. Fixed glass never opens.
+    if kind == "opening":
         for key in ("material", "entity"):
             if key in opening:
                 raise DomosensoError(f"opening on floor {label}: a doorway has no {key}")
         if opening.get("state") == "closed":
             raise DomosensoError(f"opening on floor {label}: a doorway cannot be closed")
+    if kind == "fixed":
+        for key in ("material", "entity", "state"):
+            if key in opening:
+                raise DomosensoError(f"opening on floor {label}: fixed glass has no {key}")
+    # How a leaf swings is a door's alone; it opens into one of its own sides.
+    for key in ("sliding", "hinge", "opens"):
+        if key in opening and kind != "door":
+            raise DomosensoError(f"opening on floor {label}: only a door has {key}")
+    opens = opening.get("opens")
+    if opens is not None and opens not in inside and not (opens == "outside" and None in opening["rooms"]):
+        raise DomosensoError(f"opening on floor {label}: opens into {opens}, not one of its sides")
     entity = opening.get("entity")
     if entity is not None:
         if entity in linked:

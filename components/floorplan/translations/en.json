@@ -112,9 +112,12 @@
       },
       "opening": {
         "kind": "Kind",
-        "door": "Door",
-        "window": "Window",
-        "opening": "Doorway",
+        "kinds": {
+          "door": "Door",
+          "window": "Window",
+          "opening": "Doorway",
+          "fixed": "Fixed glass"
+        },
         "width": "Width (m)",
         "default": "Without a sensor",
         "open": "Open",
@@ -129,7 +132,15 @@
           "solid": "Solid door",
           "sealed": "Sealed door",
           "glass": "Glass"
-        }
+        },
+        "style": "Type",
+        "styles": {
+          "hinged": "Hinged",
+          "sliding": "Sliding"
+        },
+        "swap_hinge": "⇄ Left/right",
+        "swap_side": "⇅ Other side",
+        "fill_wall": "Whole wall"
       }
     }
   }

@@ -15,7 +15,9 @@ Newest first. Each entry says what changed and what a home that already runs the
   (`"openings": [{"kind": "door", "rooms": [a, b], "at": [x, y], "width": 0.8, "entity": …}]`),
   each optionally linked to its `binary_sensor` or `cover`; rooms may say `outdoor` and `finish`.
   `push` prints `openings change <floor>`. The card draws them, live from a linked sensor, and edit
-  mode's **Doors & windows** tool places and links them. A plan written with
+  mode's **Doors & windows** tool places and links them. A door may say `sliding`, `hinge`
+  (`left`/`right`) and `opens` (the side it opens into); `kind: fixed` is glass that never opens.
+  A plan written with
   an earlier draft's `doors` key: rename it to `openings`, and its `kind` to `material` (a
   `kind: opening` door becomes `kind: opening` without `material`).
 

@@ -371,6 +371,16 @@ def test_push_plan_openings_have_their_own_line_and_name_rooms_of_the_floor(home
         == "FAIL opening on floor ground: binary_sensor.door on two openings"
     code, lines = plan_with({**door, "entity": "light.door"})
     assert code == 1 and "entity" in lines[-1], lines   # the schema refuses another domain
+    code, lines = plan_with({**door, "sliding": True, "hinge": "right", "opens": b},
+                            {"kind": "fixed", "rooms": [a, None], "at": [0.0, 0.5], "width": 3.0},
+                            {"rooms": [a, None], "at": [0.0, 1.5], "opens": "outside"})
+    assert code == 0 and lines[0] == "openings change ground", lines
+    assert plan_with({"kind": "fixed", "rooms": [a, None], "at": [0.0, 0.5], "state": "open"})[1][-1] \
+        == "FAIL opening on floor ground: fixed glass has no state"
+    assert plan_with({"kind": "window", "rooms": [a, None], "at": [0.0, 0.5], "hinge": "left"})[1][-1] \
+        == "FAIL opening on floor ground: only a door has hinge"
+    assert plan_with({**door, "opens": "outside"})[1][-1] \
+        == "FAIL opening on floor ground: opens into outside, not one of its sides"
 
 
 def test_push_plan_room_outdoor_and_finish_are_a_sound_change(home, capsys):

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   openingState, openingShape, wallAt, addOpening, moveOpening, setOpening, removeOpening, openingSensors,
-  linkedSpots, widthOf, materialOf,
+  linkedSpots, widthOf, materialOf, styleOf, wallSpan, swapHinge, swapSide, fillWall,
 } from "./openings.js";
 
 // Two rooms side by side sharing the wall x = 4; the outside is everywhere else.
@@ -100,4 +100,60 @@ test("a linked sensor's dot stands on its opening", () => {
   const spots = linkedSpots(floor([{ rooms: ["a", "b"], at: [4, 1.5], entity: "binary_sensor.x" }, { rooms: ["a", null], at: [1, 0] }]));
   assert.deepEqual([...spots.keys()], ["binary_sensor.x"]);
   assert.ok(near(spots.get("binary_sensor.x"), [4, 1.5]));
+});
+
+test("a door's hinge is left or right seen from the side it opens into; swapping turns it", () => {
+  const o = { rooms: ["a", "b"], at: [4, 1.5], width: 1 };
+  // From room a, facing the wall at x = 4, left is towards y = 0.
+  assert.ok(near(openingShape(floor(), o).hinge, [4, 1]));
+  assert.ok(near(openingShape(floor(), { ...o, hinge: "right" }).hinge, [4, 2]));
+  const into = openingShape(floor(), { ...o, opens: "b" });
+  assert.ok(near(into.normal, [1, 0]));
+  assert.ok(near(into.hinge, [4, 2]));        // from room b, left is towards y = 3
+  let d = doc([o]);
+  d = swapHinge(d, "g", 0);
+  assert.equal(d.floors[0].openings[0].hinge, "right");
+  d = swapHinge(d, "g", 0);
+  assert.equal(d.floors[0].openings[0].hinge, undefined, "left is the default");
+  d = swapSide(d, "g", 0);
+  assert.equal(d.floors[0].openings[0].opens, "b");
+  d = swapSide(d, "g", 0);
+  assert.equal(d.floors[0].openings[0].opens, undefined, "its first room is the default");
+  let out = doc([{ rooms: ["a", null], at: [2, 0] }]);
+  out = swapSide(out, "g", 0);
+  assert.equal(out.floors[0].openings[0].opens, "outside");
+  assert.ok(near(openingShape(floor(), out.floors[0].openings[0]).normal, [0, -1]));
+});
+
+test("sliding is a door's style; a window or doorway sheds a door's swing", () => {
+  assert.equal(styleOf({ rooms: ["a", "b"], sliding: true }), "sliding");
+  assert.equal(styleOf({ kind: "window", rooms: ["a", null], sliding: true }), "hinged");
+  let d = doc([{ rooms: ["a", "b"], at: [4, 1.5] }]);
+  d = setOpening(d, "g", 0, { sliding: true, hinge: "right", opens: "b" });
+  assert.deepEqual(d.floors[0].openings[0], { rooms: ["a", "b"], at: [4, 1.5], sliding: true, hinge: "right", opens: "b" });
+  assert.equal(setOpening(d, "g", 0, { sliding: false }).floors[0].openings[0].sliding, undefined);
+  d = setOpening(d, "g", 0, { kind: "window" });
+  assert.deepEqual(d.floors[0].openings[0], { kind: "window", rooms: ["a", "b"], at: [4, 1.5] });
+  assert.equal(setOpening(doc([{ rooms: ["a", "b"], at: [4, 1.5] }]), "g", 0, { opens: "nowhere" }).floors[0].openings[0].opens, undefined);
+});
+
+test("fixed glass never opens, is glass, and has no sensor", () => {
+  const f = { kind: "fixed", rooms: ["a", null], at: [2, 0] };
+  assert.deepEqual(openingState({ ...f, state: "open" }, {}), { open: false, linked: false, known: true });
+  assert.equal(materialOf({ ...f, material: "solid" }), "glass");
+  assert.equal(widthOf(f), 1.0);
+  const d = setOpening(doc([{ rooms: ["a", null], at: [2, 0], entity: "binary_sensor.x", state: "open", material: "solid", hinge: "right" }]),
+    "g", 0, { kind: "fixed" });
+  assert.deepEqual(d.floors[0].openings[0], f);
+});
+
+test("the free wall either side runs to the nearest corner or junction; whole wall fills it", () => {
+  const B1 = { area_id: "b1", polygon: [[4, 0], [7, 0], [7, 1.2], [4, 1.2]] };
+  const B2 = { area_id: "b2", polygon: [[4, 1.2], [7, 1.2], [7, 3], [4, 3]] };
+  const fl = { floor_id: "g", rooms: [A, B1, B2], points: [], openings: [{ rooms: ["a", "b2"], at: [4, 2], width: 0.8 }] };
+  const span = wallSpan(fl, openingShape(fl, fl.openings[0]));
+  const lengths = [span.before.length, span.after.length].sort();
+  assert.ok(Math.abs(lengths[0] - 0.4) < 1e-9 && Math.abs(lengths[1] - 0.6) < 1e-9, String(lengths));
+  const d = fillWall({ schema: 1, floors: [fl] }, "g", 0);
+  assert.deepEqual(d.floors[0].openings[0], { rooms: ["a", "b2"], at: [4, 2.1], width: 1.8 });
 });
