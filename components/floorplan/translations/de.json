@@ -30,14 +30,16 @@
         "move": "Verschieben",
         "split": "Teilen",
         "join": "Verbinden",
-        "open": "Offen"
+        "open": "Offen",
+        "openings": "Türen & Fenster"
       },
       "hint": {
         "empty": "Dieses Stockwerk hat noch keine Räume und keine Sensoren.",
         "move": "Ziehen Sie Sensoren und Ecken. Doppelklick auf eine Wand fügt eine Ecke hinzu, auf eine Ecke entfernt sie. Tippen Sie auf einen Raum, um ihn einem Bereich zuzuordnen. Ein Gerät auf eine Markierung ziehen, wenn es dieselbe Hardware ist.",
         "split": "Tippen Sie auf zwei Punkte an den Wänden eines Raums.",
         "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich.",
-        "open": "Tippen Sie auf zwei Räume, die ohne Tür ineinander übergehen: ihre Wärmekarten teilen die Messwerte."
+        "open": "Tippen Sie auf zwei Räume, die ohne Tür ineinander übergehen: ihre Wärmekarten teilen die Messwerte.",
+        "openings": "Tippe auf eine Wand, um eine Tür hinzuzufügen; tippe auf eine Tür oder ein Fenster, um sie zu ändern, und ziehe sie an der Wand entlang."
       },
       "area": {
         "label": "Bereich dieses Raums",
@@ -96,6 +98,31 @@
         "no_sensor": "kein Sensor im Raum",
         "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
         "off": "aus"
+      },
+      "opening": {
+        "kind": "Art",
+        "kinds": {
+          "door": "Tür",
+          "window": "Fenster",
+          "opening": "Durchgang",
+          "fixed": "Festverglasung"
+        },
+        "width": "Breite (m)",
+        "default": "Ohne Sensor",
+        "open": "Offen",
+        "closed": "Geschlossen",
+        "unknown": "Unbekannt",
+        "sensor": "Sensor",
+        "no_sensor": "Keiner",
+        "remove": "Entfernen",
+        "style": "Art",
+        "styles": {
+          "hinged": "Drehtür",
+          "sliding": "Schiebetür"
+        },
+        "swap_hinge": "⇄ Links/rechts",
+        "swap_side": "⇅ Andere Seite",
+        "fill_wall": "Ganze Wand"
       }
     }
   }

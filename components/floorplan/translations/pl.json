@@ -30,14 +30,16 @@
         "move": "Przesuń",
         "split": "Podziel",
         "join": "Połącz",
-        "open": "Otwarte"
+        "open": "Otwarte",
+        "openings": "Drzwi i okna"
       },
       "hint": {
         "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
         "move": "Przeciągaj czujniki i narożniki. Dwuklik na ścianie dodaje narożnik, na narożniku go usuwa. Stuknij pomieszczenie, aby przypisać je do obszaru. Upuść urządzenie na znacznik, jeśli to ten sam sprzęt.",
         "split": "Stuknij dwa punkty na ścianach jednego pomieszczenia.",
         "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar.",
-        "open": "Stuknij dwa pomieszczenia otwarte na siebie, bez drzwi: ich mapy dzielą odczyty."
+        "open": "Stuknij dwa pomieszczenia otwarte na siebie, bez drzwi: ich mapy dzielą odczyty.",
+        "openings": "Dotknij ściany, aby dodać drzwi; dotknij drzwi lub okna, aby je zmienić, i przeciągnij wzdłuż ściany."
       },
       "area": {
         "label": "Obszar tego pomieszczenia",
@@ -96,6 +98,31 @@
         "no_sensor": "brak czujnika w pokoju",
         "lamps_legend": "Lampy: włączona świeci według jasności, wyłączona szara",
         "off": "wył."
+      },
+      "opening": {
+        "kind": "Rodzaj",
+        "kinds": {
+          "door": "Drzwi",
+          "window": "Okno",
+          "opening": "Przejście",
+          "fixed": "Szyba stała"
+        },
+        "width": "Szerokość (m)",
+        "default": "Bez czujnika",
+        "open": "Otwarte",
+        "closed": "Zamknięte",
+        "unknown": "Nieznany",
+        "sensor": "Czujnik",
+        "no_sensor": "Brak",
+        "remove": "Usuń",
+        "style": "Typ",
+        "styles": {
+          "hinged": "Skrzydłowe",
+          "sliding": "Przesuwne"
+        },
+        "swap_hinge": "⇄ Lewe/prawe",
+        "swap_side": "⇅ Druga strona",
+        "fill_wall": "Cała ściana"
       }
     }
   }
