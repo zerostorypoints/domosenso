@@ -63,6 +63,12 @@ The separate Frame HA bridge and app negotiate capabilities, filter endpoint and
 and evaluate live evidence. Installing metadata is not permission to read its sources. Legacy
 protocol 1 and its three topics remain supported. See [assistant setup](ASSISTANT.md).
 
+### Ramka wake application (SPEC-030; unreleased)
+
+Optional `tablet_wake_package` is STABLE, default `io.homeassistant.companion.android`.
+The existing wake script launches a configured alternative app without consulting Companion's
+importance sensor. Screen commands, radar policy and all existing entity surfaces are unchanged.
+
 ### Entities a component provides
 
 Each entry in a manifest's `provides.entities` carries its own `stability:` (`frozen`, `stable` or

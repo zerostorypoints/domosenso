@@ -4,6 +4,15 @@ Newest first. Each entry says what changed and what a home that already runs the
 `<prefix>` is the home's `prefix` input.
 
 
+## 0.14.0 (unreleased): choose the application restored on wake
+
+Adds optional `tablet_wake_package` (SPEC-030). Existing homes need no changes: the default keeps
+Companion and its foreground check. A home displaying Frame sets `tablet_wake_package:
+com.domosenso.frame` in its Ramka inputs and updates/renders through the normal deployment flow.
+The selected application must already be installed. Companion still handles the screen commands.
+No pairing, mappings, helper preferences, brightness or radar delays are reset. Validate an actual
+sleep/wake cycle on the tablet; short-cycle tests do not prove recovery from long Doze/process death.
+
 ## 0.13.0 (unreleased): an Exit button instead of the top corners
 
 The two invisible targets in the top corners are gone: they sat over the floor plan's bar (its
@@ -21,6 +30,7 @@ ramka --to 0.13.0`, deploy, press the reload button. Anyone who used the corners
 controls (a tap anywhere) and taps Exit.
 
 ## 0.12.0 (2026-11-02): component-backed assistant answers
+
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.
