@@ -4,6 +4,14 @@ Newest first. Each entry says what changed and what a home that already runs the
 `<prefix>` is the home's `prefix` input.
 
 
+## Unreleased: the music view comes back after a swipe up
+
+A swipe up on the controls hid the now-playing card until the player next started from silence: a
+pause, a restart of Home Assistant or a whole evening of music did not bring it back. The new
+automation `<prefix>_music_default` turns `input_boolean.<prefix>_ambient_music` back on when the
+screen goes off (nobody at the Ramka for the off delay), so the next wake shows the music whenever
+the player plays. Nothing to do: render and deploy bring the automation.
+
 ## 0.14.0 (unreleased): choose the application restored on wake
 
 Also: with `music_visual`, a **Loudness (dB)** switch on the Live visualization sub-view
