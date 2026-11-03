@@ -47,6 +47,8 @@
         "tilt": "Add back music's spectral slope",
         "style": "Style",
         "line_width": "Line width (px)",
+        "loudness": "Loudness (dB) in the corner",
+        "show": "Show",
         "look": "Look (sensor)",
         "active": "Active while on",
         "controls": "Show the console",
@@ -120,7 +122,8 @@
         "show": "source.show must be two frequencies in Hz, the lower first, at least one band apart.",
         "palette": "colour.palette must be zones, series, calm, an entity, or a list of [value, colour] stops with at least one numeric value.",
         "history": "source.history must be a number of seconds above 0.",
-        "fallback": "fallback must be \"classic\" or \"none\"."
+        "fallback": "fallback must be \"classic\" or \"none\".",
+        "loudness": "loudness must be { entity: <entity id>, show: true, false or an entity id }."
       },
       "fallback": {
         "none": "None (calm)",

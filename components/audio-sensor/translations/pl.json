@@ -47,6 +47,8 @@
         "tilt": "Przywróć naturalny spadek widma muzyki",
         "style": "Styl",
         "line_width": "Grubość linii (px)",
+        "loudness": "Głośność (dB) w rogu",
+        "show": "Pokaż",
         "look": "Wygląd (sensor)",
         "active": "Aktywna, gdy włączone",
         "controls": "Pokaż panel sterowania",
@@ -120,7 +122,8 @@
         "show": "source.show musi zawierać dwie częstotliwości w Hz, niższą jako pierwszą, oddalone o co najmniej jedno pasmo.",
         "palette": "colour.palette musi mieć wartość zones, series lub calm, być encją albo listą punktów [wartość, kolor] z co najmniej jedną wartością liczbową.",
         "history": "source.history musi być liczbą sekund większą od 0.",
-        "fallback": "fallback musi mieć wartość \"classic\" albo \"none\"."
+        "fallback": "fallback musi mieć wartość \"classic\" albo \"none\".",
+        "loudness": "loudness musi mieć postać { entity: <id encji>, show: true, false lub id encji }."
       },
       "fallback": {
         "none": "Brak (spokojnie)",

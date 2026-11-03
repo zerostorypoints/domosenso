@@ -772,6 +772,7 @@ PROFILE_DEFAULTS = {
         f"input_boolean.ramka_music_{id}_tilt": "on" if tilt else "off"}.items()
 }
 MUSIC_LIVE = "input_boolean.ramka_music_live"
+MUSIC_LOUDNESS = "input_boolean.ramka_music_loudness"
 MUSIC_DEFAULTS = {
     **LOOK_DEFAULTS, **PROFILE_DEFAULTS, MUSIC_LIVE: "off",
     "input_select.ramka_music_visual": "spectrum", "input_select.ramka_music_palette": "series",
@@ -780,7 +781,7 @@ MUSIC_DEFAULTS = {
     "input_number.ramka_music_line_width_px": 2.8, "input_boolean.ramka_music_tilt": "on",
     "input_number.ramka_music_spectrum_neutral_db": 30, "input_number.ramka_music_spectrum_hot_db": 70,
     "input_number.ramka_music_level_neutral_db": 30, "input_number.ramka_music_level_hot_db": 70,
-    "input_number.ramka_music_fps": 30,
+    "input_number.ramka_music_fps": 30, MUSIC_LOUDNESS: "off",
 }
 # Which page and group each setting belongs to (SPEC-021's table); ambient_music is state the swipes
 # flip, set only by the presence_display group and the global reset.
@@ -1436,6 +1437,7 @@ def bound(prefix, kind):
                      "eq": {k: f"input_number.{prefix}_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")}},
         "style": {"line_width": f"input_number.{prefix}_music_line_width_px"},
         "look": f"sensor.{prefix}_music_look",
+        "loudness": {"entity": "sensor.music_level", "show": f"input_boolean.{prefix}_music_loudness"},
     }
 
 
@@ -1970,7 +1972,7 @@ def test_music_page_rows(demo, live):
 @pytest.mark.parametrize("advanced", ["on", "off"])
 def test_live_subview_rows_follow_live_visual_and_sensor(demo, live, visual, sensor, advanced):
     """SPEC-025's row table, amended: the sensor always; with Live on (V) the mode, the spectrum's
-    flavour and the Advanced switch; A (V and the sensor has the visual's ability) with Advanced: the
+    flavour, the loudness switch and the Advanced switch; A (V and the sensor has the visual's ability) with Advanced: the
     colour range and the response profile with the selected profile's rows, its EQ with the spectrum."""
     states = {"input_boolean.ramka_page_music": "on", MUSIC_LIVE: live, MUSIC_VISUAL: visual, TEMPLATE_SELECT: MATRIX_PROFILE,
               "input_boolean.ramka_settings_advanced": advanced, **SENSOR_CASES[sensor]}
@@ -1979,7 +1981,7 @@ def test_live_subview_rows_follow_live_visual_and_sensor(demo, live, visual, sen
     if sensor != "no_audio_sensor":
         expected.add(MUSIC_SOURCE)
     if live == "on":
-        expected |= {MUSIC_VISUAL, "input_boolean.ramka_settings_advanced"}
+        expected |= {MUSIC_VISUAL, MUSIC_LOUDNESS, "input_boolean.ramka_settings_advanced"}
         if visual == "spectrum":
             expected.add("input_select.ramka_music_spectrum_flavour")
     if active and advanced == "on":
@@ -3818,14 +3820,15 @@ def test_music_settings_page_layout(demo):
         # The sensor, always: the select, the abilities line, the way to the sensor's settings.
         assert not sensor.get("visibility") and [c["type"] for c in sensor["cards"]] == ["heading", "entities", "markdown", "entities"], lang
         # The visualization while Live is on: the mode, the spectrum's flavour with the spectrum, the
-        # Advanced switch; no level flavour, line width, palette or redraw rate.
+        # loudness switch, the Advanced switch; no level flavour, line width, palette or redraw rate.
         assert visualization["visibility"] == [LIVE_ON], lang
         [card] = visualization["cards"][1:]
         assert card["visibility"] == [LIVE_ON], lang
         assert [r["entity"] for r in rows(card)] == [MUSIC_VISUAL, "input_select.ramka_music_spectrum_flavour",
-                                                     "input_boolean.ramka_settings_advanced"], lang
+                                                     MUSIC_LOUDNESS, "input_boolean.ramka_settings_advanced"], lang
         assert row_conditions(card, "input_select.ramka_music_spectrum_flavour") == [visual_is("spectrum")], lang
         assert row_conditions(card, MUSIC_VISUAL) == [] == row_conditions(card, "input_boolean.ramka_settings_advanced"), lang
+        assert row_conditions(card, MUSIC_LOUDNESS) == [], lang
         # (The preview's cards bind them; no row shows them.)
         listed_rows = {r.get("entity") for _, c in view_cards(view) for r in rows(c)}
         for gone in ("ramka_music_level_flavour", "ramka_music_line_width_px", "ramka_music_palette", "ramka_music_fps"):
