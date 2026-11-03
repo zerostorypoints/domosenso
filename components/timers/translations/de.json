@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "description": "Gemeinsame Timer, die Home Assistant wiederherstellt.",
+    "assistant": {
+      "status": {
+        "title": "Timerstatus",
+        "description": "Gemeinsame Timer, die Home Assistant wiederherstellt.",
+        "examples": [
+          "Wie viel Zeit bleibt noch?"
+        ]
+      },
+      "start": {
+        "title": "Timer starten",
+        "description": "Timer starten.",
+        "examples": [
+          "Stelle einen Timer auf fünf Minuten."
+        ]
+      },
+      "pause": {
+        "title": "Timer pausieren",
+        "description": "Timer pausieren.",
+        "examples": [
+          "Pausiere den Timer."
+        ]
+      },
+      "resume": {
+        "title": "Timer fortsetzen",
+        "description": "Timer fortsetzen.",
+        "examples": [
+          "Setze den Timer fort."
+        ]
+      },
+      "cancel": {
+        "title": "Timer abbrechen",
+        "description": "Timer abbrechen.",
+        "examples": [
+          "Brich den Timer ab."
+        ]
+      },
+      "explain": {
+        "title": "Über Timer",
+        "description": "Gemeinsame Countdowns mit Start, Pause, Fortsetzen und Abbrechen.",
+        "examples": [
+          "Was können Timer?"
+        ]
+      }
+    }
+  }
+}

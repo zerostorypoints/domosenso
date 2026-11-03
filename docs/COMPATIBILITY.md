@@ -180,3 +180,21 @@ manifests. Component input updates continue to render private bindings through t
 lifecycle. A scope captures component, subject kind, read capability revisions and fact roles;
 it never authorizes arbitrary newly introduced capabilities or actions. Existing exact selections
 remain valid. The integration owns its storage migration, exclusions and source-editor API.
+## SPEC-031 — optional shared timer commands (development)
+
+Existing assistant v1 `operation: read` remains read-only. New `assistant_actions` manifest metadata
+compiles to private managed `domosenso/assistant-actions/<component>.yaml` with schema1, identity,
+translations, typed definitions and bindings. Only fixed timers.start/pause/resume/cancel commands,
+revision1, timer-action.v1/timer-result.v1 are supported. Installation is not a write grant.
+The bridge additionally requires selected mappings, explicit enablement, valid device proof and
+current HA READ+CONTROL permissions. Old clients/bridges never get a generic service fallback.
+
+Read metadata adds `timers.status` (timer-query.v1/timer-status.v1) and `ramka.current_time`
+(time-query.v1/time.v1). Only the latter can declare `runtime_source: ha_clock`; no executable
+source/template is allowed. Runtime capabilities and their translations are emitted separately under
+`domosenso/assistant-runtime/<component>.yaml`, with the same bounded profile envelope and provenance
+checks. Older bridges ignore this directory. Existing `domosenso/assistant/` definitions, text and
+bindings retain their previous shape and routes, including Ramka reads. A compatible bridge is
+needed only to enable the new runtime and command capabilities. Stable timer entities are timer.<prefix>_<id>, with standard
+HA states/attributes. Idle does not imply completion. See SPEC-031 for write replay/conflict and
+alarm semantics; no global CAS guarantee against direct HA actions is made.

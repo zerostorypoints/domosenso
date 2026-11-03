@@ -38,6 +38,8 @@ ROUTES = {
     'awnings.wind': ('awning-query.v1', 'awnings.v1'),
     'audio-sensor.level': ('audio-query.v1', 'audio-level.v1'),
     'backup.status': ('status-query.v1', 'backup.v1'),
+    'ramka.current_time': ('time-query.v1', 'time.v1'),
+    'timers.status': ('timer-query.v1', 'timer-status.v1'),
     'ramka.status': ('status-query.v1', 'frame.v1'),
 }
 
@@ -189,3 +191,38 @@ def compile_profile(component_dir, manifest, rendered_bindings, version, sha, di
         if policy['owner'] != manifest['id']:
             raise ValueError('assistant: policy owner mismatch')
     return profile
+
+
+def split_runtime_profile(profile):
+    """Keep new runtime-source capabilities outside the legacy strict v1 directory.
+
+    Old bridges load every profile in assistant/ and reject an entire profile on
+    an unknown property. An optional sibling artifact avoids disabling old reads.
+    """
+    caps = profile['definitions']['capabilities']
+    runtime_caps = [c for c in caps if 'runtime_source' in c]
+    if not runtime_caps:
+        return profile, None
+
+    def selected(capabilities, runtime=False):
+        result = copy.deepcopy(profile)
+        result['definitions']['capabilities'] = copy.deepcopy(capabilities)
+        keys = sorted({c[k] for c in capabilities for k in ('title_key', 'description_key', 'examples_key')})
+        result['translations'] = {}
+        for lang, values in profile['translations'].items():
+            output = {}
+            for key in keys:
+                value = values
+                for part in key.split('.'):
+                    value = value[part]
+                _put(output, key, value)
+            result['translations'][lang] = output
+        if runtime:
+            # A runtime clock has no HA entity facts or evaluation policies.
+            for subject in result['bindings']['subjects']:
+                subject['fields'] = {}
+            result['bindings']['policies'] = []
+        validate('assistant-profile', result)
+        return result
+
+    return selected([c for c in caps if 'runtime_source' not in c]), selected(runtime_caps, True)

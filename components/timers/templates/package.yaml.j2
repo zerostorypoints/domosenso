@@ -1,0 +1,18 @@
+[%- from '_validate.jinja' import validate_timers with context -%]
+[%- set p = inputs.prefix | default('domosenso') -%]
+[%- set timers = inputs.timers | default([{'id':'general','label':'General','duration_seconds':300}]) -%]
+[[ validate_timers(p, timers) ]]
+timer:
+[%- for item in timers %]
+  [[ p ]]_[[ item.id ]]:
+    name: [[ item.label | yaml ]]
+    duration: [[ item.duration_seconds ]]
+    restore: true
+[%- endfor %]
+homeassistant:
+  customize:
+[%- for item in timers %]
+    timer.[[ p ]]_[[ item.id ]]:
+      component: timers
+      timer_role: user_countdown
+[%- endfor %]

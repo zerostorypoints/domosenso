@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.13.0
+version: 0.15.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -47,6 +47,10 @@ integrations:
 # it; it is the join key that maps a scene written for one home onto another: a scene's entity →
 # the item that names it → its room → the other home's item with the same room (scenes/README.md).
 inputs:
+  timers:
+    type: list
+    default: []
+    example: [{entity: timer.domosenso_general, label: General}]
   prefix:                       # required: every helper, script, automation and template entity
     type: slug                  # this component creates is named <prefix>_*
     example: ramka
@@ -237,6 +241,7 @@ artifacts:
     - cards/screen-frame-card.js  # custom:screen-frame-card, one screen at the tablet's size (preview dashboard)
     - cards/status-card.js
     - cards/tap-button-card.js
+    - cards/timer-status-card.js
   services: []
   shell:                        # -> /config/shell/: the photo loop's picker and the caption index
     - shell/ramka_pick.py       #    (shell_command.<prefix>_pick / _index call them with photo_dir)

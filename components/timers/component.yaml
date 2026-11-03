@@ -1,0 +1,54 @@
+id: timers
+version: 0.1.0
+summary: Shared countdown timers using Home Assistant helpers
+description_key: meta.description
+photo: null
+devices:
+  requires: []
+host:
+  installs:
+  - container
+  - haos
+  ha_min: '2026.9'
+integrations:
+- name: timer
+  source: core
+  setup: Managed helpers with restore enabled, or existing UI-created helpers mapped
+    in Frame.
+inputs:
+  prefix:
+    type: string
+    default: domosenso
+  timers:
+    type: list
+    default:
+    - id: general
+      label: General
+      duration_seconds: 300
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+assistant_actions:
+  version: 1
+  definition: assistant-actions.yaml
+  bindings: templates/assistant-action-bindings.yaml.j2
+artifacts:
+  templates:
+  - templates/package.yaml.j2
+  - templates/assistant-bindings.yaml.j2
+  - templates/assistant-action-bindings.yaml.j2
+  ha_packages: []
+  services: []
+provides:
+  entities:
+  - id: timer.<prefix>_<id>
+    stability: stable
+    note: Core timer idle/active/paused state; duration, remaining and finishes_at
+      follow HA timer. Idle alone does not indicate completion.
+consumes: []
+tested:
+  ha:
+  - 2026.9.2
+  homes: 0
+local_only: true

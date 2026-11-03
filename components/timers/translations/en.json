@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "description": "Shared timers restored by Home Assistant.",
+    "assistant": {
+      "status": {
+        "title": "Timer status",
+        "description": "Shared timers restored by Home Assistant.",
+        "examples": [
+          "How much time is left?"
+        ]
+      },
+      "start": {
+        "title": "Start timer",
+        "description": "Start timer.",
+        "examples": [
+          "Set a timer for five minutes."
+        ]
+      },
+      "pause": {
+        "title": "Pause timer",
+        "description": "Pause timer.",
+        "examples": [
+          "Pause the timer."
+        ]
+      },
+      "resume": {
+        "title": "Resume timer",
+        "description": "Resume timer.",
+        "examples": [
+          "Resume the timer."
+        ]
+      },
+      "cancel": {
+        "title": "Cancel timer",
+        "description": "Cancel timer.",
+        "examples": [
+          "Cancel the timer."
+        ]
+      },
+      "explain": {
+        "title": "About timers",
+        "description": "Shared countdowns with explicit start, pause, resume and cancellation controls.",
+        "examples": [
+          "What can timers do?"
+        ]
+      }
+    }
+  }
+}

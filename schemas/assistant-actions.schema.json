@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Closed timer command definitions (not grants)",
+  "type": "object",
+  "properties": {
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "enum": [
+              "timers.start",
+              "timers.pause",
+              "timers.resume",
+              "timers.cancel"
+            ]
+          },
+          "revision": {
+            "const": 1
+          },
+          "title_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+          },
+          "description_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+          },
+          "examples_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+          },
+          "operation": {
+            "const": "timer"
+          },
+          "action_type": {
+            "const": "timer-action.v1"
+          },
+          "result_type": {
+            "const": "timer-result.v1"
+          },
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "durationSeconds": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "integer"
+                  },
+                  "minimum": {
+                    "const": 1
+                  },
+                  "maximum": {
+                    "const": 86400
+                  }
+                },
+                "required": [
+                  "type",
+                  "minimum",
+                  "maximum"
+                ],
+                "additionalProperties": false
+              },
+              "confirmReplace": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "boolean"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "confirmation": {
+            "enum": [
+              "replace_active",
+              "none"
+            ]
+          },
+          "effect": {
+            "enum": [
+              "start",
+              "pause",
+              "resume",
+              "cancel"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "title_key",
+          "description_key",
+          "examples_key",
+          "operation",
+          "action_type",
+          "result_type",
+          "parameters",
+          "confirmation",
+          "effect"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "actions"
+  ],
+  "additionalProperties": false
+}
