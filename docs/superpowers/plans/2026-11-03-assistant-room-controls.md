@@ -31,11 +31,11 @@
 
 **Interfaces:** manifest optional `assistant_actions: {version: 1, definition: assistant-actions.yaml, bindings: templates/assistant-actions-bindings.yaml.j2}`. Output `domosenso/assistant-actions/<component>.yaml`, schema 1, component `{id, version, commit, dev}`, definitions `{actions: [...]}`, translations and bindings. Capabilities use allowlisted IDs/revision 1 (`lights.turn_on`, `lights.turn_off`, `awnings.extend`, `awnings.retract`, `awnings.stop`), operation `write`, title/description/examples keys, declared required/optional source roles and no service/prompt fields. Bindings share read subject keys and light/cover entity identities; awning wind guard carries wind+last_heard references and max_age_seconds derived from existing component silence input. Vanilla covers are bridge adapters, not a new framework component. Reuse existing `load_actions(component_dir, manifest, strict_translations=False)` and `compile_actions(component_dir, manifest, rendered_bindings, version, sha, dirty)` from SPEC-031. Merge local approved feature/shared-frame-timers dependency before implementation; extend its closed timer schemas additively, preserving timer operation/parameters and existing outputs. Write a protocol fixture JSON suitable for Task 2 under tests/fixtures/assistant-actions/.
 
-- [ ] Add RED tests for default absence, light/awning compilation, exact provenance, positive finite wind age, undeclared sources, unsafe paths, arbitrary executable fields, translated labels, read bundle byte equality, private managed output tracking and rollback/removal.
-- [ ] Implement optional compiler and catalog validation; reuse safe-path/size/source validation helpers without changing existing read serialization. Track action templates as metadata in recommendations; never HA packages.
-- [ ] Add lights/awnings definitions and bindings, additive version bumps and upgrade docs. No existing instance inputs or default behaviour changes. Existing silence policy is authoritative.
-- [ ] Run focused tests then `tools/check-all.sh` before commit; record Demo: skip because this task compiles metadata without runtime services, fresh HA execution is Task 2.
-- [ ] Commit and write schema/fixture paths plus full evidence in task report. Do not push.
+- [x] Add RED tests for default absence, light/awning compilation, exact provenance, positive finite wind age, undeclared sources, unsafe paths, arbitrary executable fields, translated labels, read bundle byte equality, private managed output tracking and rollback/removal.
+- [x] Implement optional compiler and catalog validation; reuse safe-path/size/source validation helpers without changing existing read serialization. Track action templates as metadata in recommendations; never HA packages.
+- [x] Add lights/awnings definitions and bindings, additive version bumps and upgrade docs. No existing instance inputs or default behaviour changes. Existing silence policy is authoritative.
+- [x] Run focused tests then `tools/check-all.sh` before commit; record Demo: skip because this task compiles metadata without runtime services, fresh HA execution is Task 2.
+- [x] Commit and write schema/fixture paths plus full evidence in task report. Do not push.
 
 ### Task 2: Bridge negotiation, explicit mapping and bounded execution
 
@@ -43,11 +43,11 @@
 
 **Interfaces:** consume Task 1 sidecar fixture and installed provenance; expose new `domosenso_frame/control_targets` and `domosenso_frame/control_action` version 1 authenticated through existing endpoint/device proof. Keep timers' APIs untouched. Targets carry opaque id, kind, room identity/labels/aliases, allowed capabilities and revision; execution accepts target id/revision, capability/revision and requestId only. Results carry accepted/confirmed/moving/failed/unknown and per-target outcomes; no arbitrary service names. `assistant.controls` holds enabled:false and exact source/action grants plus optional vanilla room/wind mapping. Persist bounded request ledger before service dispatch and record terminal/uncertain result; do not automatically replay pending records on restart.
 
-- [ ] Inspect Task 1 report and exact output fixture, write RED tests for explicit grants, HA READ+CONTROL and device revocation, mapping replacements, source overlap/dedupe, area precedence/conflicts, unknown services/classes, unavailable targets and incomplete room scope.
-- [ ] Resolve common source identity from existing maps, compiled sidecars and HA registries; expose administrator review/save in existing Frame integration panel, no YAML or Android duplicate configuration. Select grants by exact entity/source binding; no default auto-enabling.
-- [ ] Implement fixed actions: light.turn_on/off, cover.open/close/stop; awning extend=open_cover, retract=close_cover. Check supported_features, state and permissions at dispatch. Wind extension requires non-alarm known state, parseable nonfuture last-heard and positive bounded age. Deny unknown/missing/stale/replaced wind bindings; retraction/stop do not require safe-wind evidence. Check all target prerequisites before any service call; per-target outcomes survive partial service failure.
-- [ ] Add concurrent duplicate and crash-ledger tests, bounded storage, current source/grant revalidation, no premature physical-completion claim and assumed_state handling.
-- [ ] Run full bridge suites and a fresh isolated HA 2026.9.2 with fictional Domosenso+vanilla inputs, recording exact mocked calls and denied calls. Keep production untouched. Commit and export native protocol fixtures.
+- [x] Inspect Task 1 report and exact output fixture, write RED tests for explicit grants, HA READ+CONTROL and device revocation, mapping replacements, source overlap/dedupe, area precedence/conflicts, unknown services/classes, unavailable targets and incomplete room scope.
+- [x] Resolve common source identity from existing maps, compiled sidecars and HA registries; expose administrator review/save in existing Frame integration panel, no YAML or Android duplicate configuration. Select grants by exact entity/source binding; no default auto-enabling.
+- [x] Implement fixed actions: light.turn_on/off, cover.open/close/stop; awning extend=open_cover, retract=close_cover. Check supported_features, state and permissions at dispatch. Wind extension requires non-alarm known state, parseable nonfuture last-heard and positive bounded age. Deny unknown/missing/stale/replaced wind bindings; retraction/stop do not require safe-wind evidence. Check all target prerequisites before any service call; per-target outcomes survive partial service failure.
+- [x] Add concurrent duplicate and crash-ledger tests, bounded storage, current source/grant revalidation, no premature physical-completion claim and assumed_state handling.
+- [x] Run full bridge suites and a fresh isolated HA 2026.9.2 with fictional Domosenso+vanilla inputs, recording exact mocked calls and denied calls. Keep production untouched. Commit and export native protocol fixtures.
 
 ### Task 3: Native PL/EN intent, clarification and results
 
@@ -55,8 +55,37 @@
 
 **Interfaces:** consume Task 2 validated fixtures and endpoints. Parse deterministic intents to kind/action/target phrase; never a raw entity or service. Clarification stores original capability, bounded candidate list, revision and expiry, cleared on cancel/new unrelated question/reconnect. Exact unambiguous authorized targets execute once using stable requestId; ambiguity/missing target shows choices and asks a short question. No automatic retry on timeout/unknown outcome.
 
-- [ ] RED tests for Polish inflections/ASCII ASR, English room phrases, exact on/off, window coverings and awning vocabulary; negative status/quoted/negated/conditional/compound/future requests cannot dispatch.
-- [ ] Implement current-capability negotiation, exact room/alias resolution, explicit choice confirmation for incomplete room scope, stale-choice rejection and target revision revalidation; older bridge yields unsupported message.
-- [ ] Show controls results and concise localized speech, with accepted vs confirmed distinction and assumed-position note. Return to listening immediately after speech without waiting for cover motion.
-- [ ] Test bilingual end-to-end typed commands with fake bridge fixtures, authorization failures/timeouts/duplicates and lifecycle return to listening; full npm/type/native checks and Android build. No publication of new controls until reviewed.
-- [ ] Commit and report integration acceptance plus remaining physical tests.
+- [x] RED tests for Polish inflections/ASCII ASR, English room phrases, exact on/off, window coverings and awning vocabulary; negative status/quoted/negated/conditional/compound/future requests cannot dispatch.
+- [x] Implement current-capability negotiation, exact room/alias resolution, explicit choice confirmation for incomplete room scope, stale-choice rejection and target revision revalidation; older bridge yields unsupported message.
+- [x] Show controls results and concise localized speech, with accepted vs confirmed distinction and assumed-position note. Return to listening immediately after speech without waiting for cover motion.
+- [x] Test bilingual end-to-end typed commands with fake bridge fixtures, authorization failures/timeouts/duplicates and lifecycle return to listening; full npm/type/native checks and Android build. No publication of new controls until reviewed.
+- [x] Commit and report integration acceptance plus remaining physical tests.
+
+
+## Local implementation evidence
+
+The three task implementations and their scoped fixes passed independent technical
+reviews. Publication, production activation and physical acceptance remain separate.
+The final integration review uses the exact source revisions below; this plan update
+only records completion and does not change runtime code.
+
+| Layer | Reviewed revision | Verification |
+| --- | --- | --- |
+| Framework | `05b4f83`, integrated by `8aafc48` | Full catalog checks, 1598 Python and 775 JavaScript tests, fresh HA and ESPHome configuration checks. Read-bundle byte equality, managed sidecar lifecycle and proxy-group identity regressions pass. |
+| Frame HA bridge | `c4d6689` | 328 Python tests passed, one existing HA-runtime-only skip; 19 Node tests passed. Fresh HA 2026.9.2 exercised both catalog and vanilla mappings with 14 intercepted actuator calls. Cover membership, wind-binding replacement, durable uncertainty and revocation are covered. |
+| Android | `d9b50d3` | 549 tests, typecheck, lint and local development-signed APK build pass. Real React voice lifecycle tests use simulated native audio; exact subject/room ambiguity and incomplete-result PL/EN feedback regressions pass. Unchanged native Java checks passed in the initial implementation. |
+
+Framework action fixtures match the bridge copies byte for byte. The native shared
+controls fixture is SHA-256 `01a2c236b9ff8746441275931edf33ab8338402f16d969c317ab0619c4a8cde5`;
+the matching wire schema is `4d05caeed13d0470454a87077c80adc3b9892a6b3213739bf0c07d18e845ff95`.
+Both were copied from the reviewed bridge revision with committed provenance.
+Existing timer revision 1 and read routes remain covered by the regression suites.
+Old bridges produce unsupported control feedback without enabling a write fallback.
+
+Known verification limits: physical PL/EN speech, tablet layout and real motor state
+have not been accepted for this feature. The local APK is not Play-signed and was not
+installed. Models, wake detector and app version remain unchanged. Test renderer and
+toolchain deprecations, isolated offline HA diagnostics and existing dependency
+advisories remain disclosed maintenance work; passing checks do not mean warning-free
+output or public-distribution readiness. No new capability is advertised on the
+website before release.
