@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.4.0 (unreleased): optional assistant action metadata
+
+Adds a private managed `domosenso/assistant-actions/awnings.yaml` sidecar for awning extend/retract/STOP.
+This is descriptive metadata: no service is called and no write grant is enabled.
+Existing inputs, HA entities, automations, read definitions and default behaviour are preserved.
+
+### What a home does
+
+After release, upgrade tooling to support SPEC-033 before running
+`domosenso update awnings --to 0.4.0`; review and deploy the matching inventory and
+private sidecars through normal staging. Use a bridge advertising these actions at revision 1
+and a client supporting control protocol version 1; released minimum versions are pending.
+Review exact targets and explicitly enable/grant controls in the existing integration editor.
+Read exposure alone never grants control. Extension requires the existing wind and last-heard inputs plus the existing positive finite
+`wind_silent_hours` policy. Missing safety mapping blocks extension; retraction and supported
+STOP do not need calm-wind evidence. Positions may be estimates; device interlocks still apply.
+
+For downgrade, update to the preceding component tag and deploy sidecar removal before
+reverting tooling. Retain the compatible bridge/client until the change is verified; never
+migrate grants to changed bindings. Legacy schema-1 reads and timers remain supported for at
+least one minor version. See [protocol and limits](../../docs/ASSISTANT.md).
+
 ## 0.3.0 (unreleased): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).

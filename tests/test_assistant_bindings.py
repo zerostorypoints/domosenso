@@ -39,7 +39,7 @@ CAPABILITIES = {
     'climate-air': {'temperature', 'humidity', 'status', 'air_readings', 'air_assessment'},
     'media': {'now_playing', 'status', 'mains'}, 'lights': {'status'}, 'calendar': {'agenda'},
     'weather': {'current', 'forecast'}, 'bermuda-presence': {'observations'},
-    'awnings': {'status', 'wind'}, 'audio-sensor': {'level'}, 'backup': {'status'}, 'ramka': {'status'},
+    'awnings': {'status', 'wind'}, 'audio-sensor': {'level'}, 'backup': {'status'}, 'ramka': {'status', 'current_time'}, 'timers': {'status'},
     'remote-access': set(), 'floorplan': set(),
 }
 

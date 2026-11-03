@@ -21,6 +21,20 @@
         "examples": [
           "What does lights do?"
         ]
+      },
+      "turn_on": {
+        "title": "Turn on the light",
+        "description": "Request explicit on for a mapped light; access requires a separate write grant.",
+        "examples": [
+          "Turn on the office lights"
+        ]
+      },
+      "turn_off": {
+        "title": "Turn off the light",
+        "description": "Request explicit off for a mapped light; access requires a separate write grant.",
+        "examples": [
+          "Turn off the office lights"
+        ]
       }
     }
   }

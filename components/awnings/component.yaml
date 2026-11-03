@@ -2,7 +2,7 @@
 # radio node. From 0.2.0 a package with the covers, the wind sensor and its watch, and the frame
 # bridge as a compose service (SPEC-007).
 id: awnings
-version: 0.3.0
+version: 0.4.0
 summary: Somfy RTS awnings through an ESPSomfy-RTS radio node (ESP32 + CC1101), with the awnings' wind sensor
 description_key: meta.description
 photo: null
@@ -81,8 +81,14 @@ assistant:
   definition: assistant.yaml
   bindings: templates/assistant-bindings.yaml.j2
 
+assistant_actions:
+  version: 1
+  definition: assistant-actions.yaml
+  bindings: templates/assistant-actions-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-actions-bindings.yaml.j2
     - templates/assistant-bindings.yaml.j2
     # The covers and the wind sensor against the node's MQTT topics: the node's own Home Assistant
     # discovery is rejected by HA with firmware 2.4.6 ("A device can not be its own via device"), so

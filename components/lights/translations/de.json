@@ -21,6 +21,20 @@
         "examples": [
           "Was bietet Licht?"
         ]
+      },
+      "turn_on": {
+        "title": "Licht einschalten",
+        "description": "Fordert das Einschalten eines zugeordneten Lichts an; eine separate Steuerungsfreigabe ist erforderlich.",
+        "examples": [
+          "Schalte das Licht im Büro ein"
+        ]
+      },
+      "turn_off": {
+        "title": "Licht ausschalten",
+        "description": "Fordert das Ausschalten eines zugeordneten Lichts an; eine separate Steuerungsfreigabe ist erforderlich.",
+        "examples": [
+          "Schalte das Licht im Büro aus"
+        ]
       }
     }
   }

@@ -3,6 +3,30 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.4.0 (unreleased): optional assistant action metadata
+
+Adds a private managed `domosenso/assistant-actions/lights.yaml` sidecar for explicit light on/off.
+This is descriptive metadata: no service is called and no write grant is enabled.
+Existing inputs, HA entities, automations, read definitions and default behaviour are preserved.
+
+### What a home does
+
+After release, upgrade tooling to support SPEC-033 before running
+`domosenso update lights --to 0.4.0`; review and deploy the matching inventory and
+private sidecars through normal staging. Use a bridge advertising these actions at revision 1
+and a client supporting control protocol version 1; released minimum versions are pending.
+Review exact targets and explicitly enable/grant controls in the existing integration editor.
+Read exposure alone never grants control. Template-light commands continue to use the existing Hue group indirection.
+The action-only optional `group: {entity}` relation records the actual `rooms[].group`
+for a proxy while preserving its read identity and command target. The bridge must review
+current members, bind grants/revisions to that membership and invalidate scope growth;
+unknown membership blocks control. No group or room is guessed and no input is added.
+
+For downgrade, update to the preceding component tag and deploy sidecar removal before
+reverting tooling. Retain the compatible bridge/client until the change is verified; never
+migrate grants to changed bindings. Legacy schema-1 reads and timers remain supported for at
+least one minor version. See [protocol and limits](../../docs/ASSISTANT.md).
+
 ## 0.3.0 (unreleased): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).

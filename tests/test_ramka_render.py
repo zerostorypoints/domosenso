@@ -128,10 +128,11 @@ def test_wind_banner_present_and_bound(demo):
 def test_pl_dashboard_has_no_english_ui_labels(demo):
     en, pl = translations("en"), translations("pl")
     shown = list(strings(demo["dashboard.pl.yaml"]))
+    # Optional timers have their own mapped rendering test (tests/test_timers.py).
     for key, pl_value in pl.items():
         # ui.settings.* label the settings dashboard (test_settings_dashboard_pages_per_language),
         # ui.preview.* the preview dashboard (test_preview_links_point_at_existing_settings_views).
-        if not key.startswith("ui.") or key.startswith(("ui.settings.", "ui.preview.")) or pl_value == en[key]:
+        if not key.startswith("ui.") or key.startswith(("ui.settings.", "ui.preview.", "ui.timers.")) or pl_value == en[key]:
             continue
         assert any(word(pl_value).search(s) for s in shown), f"{key}: {pl_value!r} not in the pl dashboard"
         assert not any(word(en[key]).search(s) for s in shown), f"{key}: English {en[key]!r} in the pl dashboard"

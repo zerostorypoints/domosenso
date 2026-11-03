@@ -1,0 +1,70 @@
+actions:
+- id: awnings.extend
+  revision: 1
+  operation: write
+  action_type: control-action.v1
+  result_type: control-result.v1
+  effect: extend
+  parameters: {}
+  confirmation: none
+  title_key: meta.assistant.extend.title
+  description_key: meta.assistant.extend.description
+  examples_key: meta.assistant.extend.examples
+  required_facts:
+  - role: cover
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: cover.<awning>
+  - role: wind
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: binary_sensor.<wind>
+  - role: last_heard
+    type: event
+    units: []
+    source:
+      relation: provides
+      id: input_datetime.<wind_last_heard.id>
+  optional_facts: []
+- id: awnings.retract
+  revision: 1
+  operation: write
+  action_type: control-action.v1
+  result_type: control-result.v1
+  effect: retract
+  parameters: {}
+  confirmation: none
+  title_key: meta.assistant.retract.title
+  description_key: meta.assistant.retract.description
+  examples_key: meta.assistant.retract.examples
+  required_facts:
+  - role: cover
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: cover.<awning>
+  optional_facts: []
+- id: awnings.stop
+  revision: 1
+  operation: write
+  action_type: control-action.v1
+  result_type: control-result.v1
+  effect: stop
+  parameters: {}
+  confirmation: none
+  title_key: meta.assistant.stop.title
+  description_key: meta.assistant.stop.description
+  examples_key: meta.assistant.stop.examples
+  required_facts:
+  - role: cover
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: cover.<awning>
+  optional_facts: []

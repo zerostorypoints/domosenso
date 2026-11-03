@@ -3,6 +3,18 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: lights/awnings 0.4.0 assistant action sidecars (SPEC-033)
+
+Upgrade tooling before these component versions. Optional action metadata installs privately
+under `domosenso/assistant-actions/`, tracked through the normal render/deploy/rollback lifecycle.
+It enables no grants or HA actuation. Existing read bundles and timer semantics are unchanged.
+Use a bridge negotiating SPEC-033 revision-1 actions and a protocol-1 control client; released
+minimum versions are pending. Review exact write grants separately from read exposure.
+Awning extension requires explicit wind/last-heard evidence with the existing silence policy;
+retraction and supported STOP remain independent of a safe-wind assertion.
+Before downgrading tooling, update components to preceding tags and deploy sidecar removal.
+See [shared setup](ASSISTANT.md) and each component's `UPGRADE.md`.
+
 ## Unreleased: component assistant contracts (SPEC-029)
 
 No existing HA helper, dashboard setting or endpoint grant changes. New component definitions
@@ -121,3 +133,13 @@ it follows the steps.
   `sensor.presence_<area slug>` and `automation.ble_proxy_offline` a home had before.
 - **Every other component 0.1.0** (awnings, calendar, climate-air, lights, media, plants, weather):
   catalog entries describing what the Ramka reads; nothing for a home to change.
+
+## Shared timers (SPEC-031, development)
+
+A compatible Frame bridge enables timer commands and the new Ramka clock metadata. Runtime-clock
+metadata is stored in `domosenso/assistant-runtime/`, which old bridges ignore; legacy Ramka read
+metadata stays compatible. New command files are stored separately from read files and are never
+packages or public assets.
+Mappings/grants are opt-in; installing the free timer component does not authorize writes. The
+native application update is independent. No existing HA profile, alarm, setting or helper is
+silently migrated. See components/timers/README.md for Domosenso and vanilla setup.

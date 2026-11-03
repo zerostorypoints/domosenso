@@ -36,6 +36,9 @@
   "remote-access": {
    "page": false
   },
+  "timers": {
+   "page": false
+  },
   "weather": {
    "page": true
   }

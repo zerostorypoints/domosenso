@@ -62,3 +62,20 @@ capabilities:
     max_age_seconds: null
     basis: installed_metadata
   limitations: []
+- id: ramka.current_time
+  revision: 1
+  operation: read
+  query_type: time-query.v1
+  answer_type: time.v1
+  runtime_source: ha_clock
+  title_key: meta.assistant.current_time.title
+  description_key: meta.assistant.current_time.description
+  examples_key: meta.assistant.current_time.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: ramka.current_time
+  freshness:
+    basis: provider_response
+    max_age_seconds: null
+  limitations: []
