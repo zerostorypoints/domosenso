@@ -19,7 +19,8 @@ A home gets:
 5. optionally, the plan on the Ramka as a second view of the controls, reached with a sideways swipe.
 
 Non-goals (from the design): the light and heat map, DLI, "where to place" (next spec); automations
-or templates by position; tapping a room; walls, doors, windows, furniture; several floors at once.
+or templates by position; tapping a room; walls, doors, windows, furniture; several floors at once
+(doors, windows and doorways: Amendment 9).
 
 ## Devices
 
@@ -346,7 +347,8 @@ domain, `device_class` and the registry; nothing is written per home.
 
 ### Out of scope
 
-People's live positions; a radio coverage map; automations by position; walls, doors, windows.
+People's live positions; a radio coverage map; automations by position; walls, doors, windows
+(doors, windows and doorways: Amendment 9).
 
 ### Addition: categories are catalog-wide (the maintainer, 2026-11-01)
 
@@ -688,3 +690,105 @@ line between them and hatched those of them without a sensor of their own.
   floors (stairs to an upper floor), path distance round a corner of an L-shaped open space
   *(straight-line distance is my call; on the home that asked, a corner of the corridor is the only
   place it would differ)*.
+
+## Amendment 9 (openings: doors, windows and doorways on the plan, linked to their sensors)
+
+- Status: draft 2026-11-03, for the maintainer's approval. Source: the maintainer, 2026-11-03:
+  "what happens to doors and windows? Should we include them into the floor plan? I have the
+  proximity sensors, which I want to connect with some of them … Does any of them has a concept of
+  doors / windows or object?".
+- Lifts the non-goal "walls, doors, windows" (Devices, Out of scope) for doors, windows and
+  doorways only; walls stay the rooms' edges, furniture stays out.
+
+### Why one concept
+
+Home Assistant has no door or window object: its registries know entity → device → area → floor,
+and a door exists only as an entity's device class (`binary_sensor` `door`, `window`, `opening`,
+`garage_door`; `cover` `door`, `window`, `garage`, `gate`, …; `lock`). A sensor belongs to one
+area, a door joins two rooms, and no registry holds where it is. Floor-plan cards in the community
+(an SVG drawn by hand with shapes bound to entity ids, or icons over an image) keep the geometry in
+the drawing and the link by hand. The plan document already holds the geometry of the home, so an
+opening is a piece of a room's wall in the document, linked to its entity there. The card draws it
+now; later readers are the climate and security layers (a window open, the open doors at a
+glance).
+
+### Document
+
+`floors[].openings` (`schema: 1`, new optional key, ADDITIVE-ONLY), a list of:
+
+| key | | meaning |
+|---|---|---|
+| `kind` | `door`, `window`, `opening`, `fixed` | default `door`; an `opening` is a doorway without a leaf (an arch, a passage), always open; `fixed` is glass that never opens (a fixed window, a glass wall), always closed |
+| `rooms` | `[a, b]` or `[a, null]` | the two rooms it joins (area ids of the floor), or a room and the outside |
+| `at` | `[x, y]` | its centre in metres, on the rooms' shared wall (or the room's outer wall) |
+| `width` | metres | default 0.8 for a door or a doorway, 1.0 for a window or fixed glass |
+| `state` | `open`, `closed` | when nothing is linked or the entity is unavailable; default `open` between two rooms, `closed` to the outside |
+| `entity` | `binary_sensor.*` or `cover.*` | optional; the opening's live state |
+| `sliding` | `true` | a door only: it slides along the wall instead of swinging |
+| `hinge` | `left`, `right` | a door only: its hinge, seen from the side it opens into, facing it (DIN 107); a sliding door slides towards it; default `left` |
+| `opens` | an area id of `rooms`, or `outside` | a door only: the side it opens into; default its first room |
+
+- **Live state:** a `binary_sensor` `on` is open, `off` closed; a `cover` `open`, `opening` or a
+  position above 0 is open, `closed` or `closing` closed; anything else (`unavailable`, `unknown`,
+  no such entity) falls back to `state`, and the opening is drawn as unknown.
+- **Validation** (`push`, `preview`): `rooms` are rooms of the floor, two different ones or one and
+  `null`; an `opening` has no `state: closed` and no `entity`; `fixed` has no `state` or `entity`;
+  only a door has `sliding`, `hinge` and `opens`, and `opens` is one of its rooms (or `outside`
+  when it has one); an entity's domain is `binary_sensor` or `cover`; one entity on one opening at
+  most. Whether the entity exists and has a fitting device class is the card's to show, not the
+  command's to refuse (it reads no registry).
+- **Command:** `push --plan` prints `openings change <floor>` when a floor's openings differ from
+  the target's (order left out, positions rounded like points).
+
+### Card
+
+- **Drawing** (`lib/openings.js`, pure; drawn over the walls in view and edit mode): a gap in the
+  wall the opening's width wide, with a jamb at both ends; an open door's leaf from its hinge into
+  the side it opens into with a dashed quarter arc of its swing, a closed door's leaf in the gap,
+  lighter than the wall; a sliding door's leaf beside its dotted track (closed: across the gap;
+  open: past its hinge end, over the wall); a window's two panes and its sash along the wall; fixed
+  glass two fainter panes; a doorway the gap alone. A linked one that is open is drawn in
+  `security`'s colour, otherwise in the walls' colour; a linked one whose sensor does not answer is
+  dashed. Its tooltip: the kind, the sensor's name, the state. A linked sensor's point is drawn on
+  its opening (matched by the entity, or the entity's device), and in edit mode it is not dragged
+  off it; the document's point keeps its position.
+- **Edit mode:** a **Doors & windows** tool: a tap on a wall (within 12 px) adds a door there (on
+  the grid along the wall; the rooms are the wall's room and a room sharing the wall within
+  0.05 m, else the outside); a tap on an opening selects it, a drag slides it along the walls (its
+  rooms follow the wall it lands on). The panel sets the **Kind**, the width (metres), the state
+  without a sensor and the **Sensor**; a door's **Type** (hinged or sliding) and two buttons,
+  **⇄ Left/right** (its hinge, or where it slides) and **⇅ Other side** (the side it opens into);
+  **Whole wall** stretches it across the free wall it stands on. While an opening is selected or
+  dragged, two dashed lines along its wall measure the free wall from each of its ends to the
+  nearest corner or junction (a corner of any room on that wall), in metres. The **Sensor** list:
+  the `binary_sensor` door, window, opening and garage-door entities and the door, window, garage
+  and gate covers, those of its rooms' areas first; a sensor already on another opening moves to
+  this one. A doorway's and fixed glass's panels have the kind and the width only. **Remove**
+  deletes it.
+
+### Versions, compatibility
+
+- The next floorplan version, the maintainer's call (no version is bumped with this amendment).
+  COMPATIBILITY's schema row gains `openings`; the push line `openings change`.
+
+### Tests
+
+- `test_cli_floorplan.py`: `openings change`; refused rooms, a closed doorway, a doorway with an
+  entity, a foreign entity domain, an entity twice, an unknown key, fixed glass with a state, a
+  window with a hinge, a door opening into a side it does not have. `lib/openings.test.mjs`: the
+  defaults, live state of each entity kind and the fallback, where an opening sits on its wall, its
+  hinge and side, the free wall either side, add, slide, set, remove. `floorplan-card.test.mjs`:
+  the drawing of each kind and state, a linked point drawn on its opening, the tool's add, panel,
+  slide, hinge, side, sliding, whole wall and remove.
+
+### Out of scope
+
+- Window heights and sills; locks as openings (a `lock` stays a point); tilt (a window ajar counts
+  as open).
+- Proximity or distance sensors as door sensors: such a sensor becomes one through a threshold
+  template in Home Assistant (a `binary_sensor` with device class `door`), linked like any other.
+
+### Open questions
+
+- Whether `kind: opening` replaces open spaces (Amendment 7) for rooms joined by a full-width
+  passage, or both stay.

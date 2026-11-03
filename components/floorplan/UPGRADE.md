@@ -2,6 +2,17 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: doors, windows and doorways on the plan
+
+- **Openings** (SPEC-028 Amendment 9, draft): doors, windows, doorways and fixed glass on a floor
+  (`"openings": [{"kind": "door", "rooms": [a, b], "at": [x, y], "width": 0.8, "entity": …}]`),
+  each optionally linked to its `binary_sensor` or `cover`. A door may say `sliding`, `hinge`
+  (`left`/`right`) and `opens` (the side it opens into). The card draws them, live from a linked
+  sensor, and edit mode's **Doors & windows** tool places, slides and links them. `push` prints
+  `openings change <floor>`.
+- **What a home does:** nothing; a plan without `openings` looks as before. Add them in edit mode
+  and save, or write them into `domosenso/floorplan.json` and `floorplan push`. A `domosenso`
+  command older than this catalog refuses a plan with `openings`.
 
 ## 0.4.0 (unreleased): component-backed assistant answers
 
