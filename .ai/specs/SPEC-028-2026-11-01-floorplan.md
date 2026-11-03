@@ -819,14 +819,22 @@ the drawing, and later the climate and security layers (a window open, the open 
 
 ### Card
 
-- **Drawing:** a door is a gap in the wall with its leaf as a short line across the gap's end
-  and a quarter arc; a window is a double line on the wall; an opening is a gap. Open is drawn in
-  the layer colour of `security`, closed in the walls' colour, unknown dashed. A linked sensor's
-  point is drawn on its opening (its dot on the gap), not where it stands in the room.
-- **Edit mode:** an **Opening** tool: tap a wall to place a door (the kind and width in the
-  panel, then window or opening), drag along the wall to move it, its end to change its width;
-  the panel's **Sensor** list offers the `binary_sensor` door, window, opening and garage-door
-  entities and the door, window, garage and gate covers of its rooms' areas first, then the rest.
+- **Drawing** (`lib/openings.js`, pure; drawn over the walls in view and edit mode): a gap in the
+  wall the opening's width wide; an open door's leaf from its hinge into its first room with a
+  dashed quarter arc of its swing, a closed door's leaf in the gap; a window's two panes along the
+  wall; a doorway the gap alone. A linked one that is open is drawn in `security`'s colour,
+  otherwise in the walls' colour; a linked one whose sensor does not answer is dashed. Its
+  tooltip: the kind, the sensor's name, the state. A linked sensor's point is drawn on its opening
+  (matched by the entity, or the entity's device), and in edit mode it is not dragged off it; the
+  document's point keeps its position.
+- **Edit mode:** a **Doors & windows** tool: a tap on a wall (within 12 px) adds a door there (on
+  the grid along the wall; the rooms are the wall's room and a room sharing the wall within
+  0.05 m, else the outside); a tap on an opening selects it, a drag slides it along the walls (its
+  rooms follow the wall it lands on). The panel sets the kind, the width (metres), the state
+  without a sensor, the material and the **Sensor**: the `binary_sensor` door, window, opening and
+  garage-door entities and the door, window, garage and gate covers, those of its rooms' areas
+  first; a sensor already on another opening moves to this one. A doorway's panel has the kind and
+  the width only. **Remove** deletes it.
 - **Sound maps:** the whole-home model treats an open door or opening as a gap the energy flows
   through and a closed one or a window by its `material`; an open opening to the outside is an
   energy sink. Without openings the maps stay per room or open space (Amendment 8).
@@ -840,7 +848,8 @@ the drawing, and later the climate and security layers (a window open, the open 
 
 - `test_cli_floorplan.py`: `openings change`; refused rooms, a closed `opening`, a foreign
   entity domain, an entity twice. Card tests (with the card's part): live state of each entity
-  kind and the fallback, the drawing of each kind and state, a linked point drawn on its opening.
+  kind and the fallback, the drawing of each kind and state, a linked point drawn on its opening
+  (`lib/openings.test.mjs`, `floorplan-card.test.mjs`); the tool's add, panel, slide and remove.
 
 ### Out of scope
 

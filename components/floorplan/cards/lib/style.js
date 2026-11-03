@@ -104,6 +104,17 @@ export const STYLE = `
   .legend .live { min-width: 9ch; font-variant-numeric: tabular-nums; }   /* no jitter as it changes */
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-left: 6px;
                    background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
+  .opening line, .opening path { vector-effect: non-scaling-stroke; fill: none; }
+  .opening .gap { stroke: var(--card-background-color, #fff); stroke-width: 4; }
+  .opening .leaf, .opening .pane { stroke: var(--primary-text-color); stroke-width: 1.5; }
+  .opening .swing { stroke: var(--secondary-text-color); stroke-width: 1; stroke-dasharray: 3 3; }
+  .opening.linked.open .leaf, .opening.linked.open .pane, .opening.linked.open .swing { stroke: var(--floorplan-security, #e53935); }
+  .opening.unknown .leaf, .opening.unknown .pane { stroke-dasharray: 4 3; }
+  .opening.selected .leaf, .opening.selected .pane, .opening.selected .swing { stroke: var(--accent-color, #ff9800); }
+  .opening.selected .gap { stroke: var(--accent-color, #ff9800); stroke-opacity: 0.35; stroke-width: 8; }
+  .opening .hit { stroke: transparent; stroke-width: 16; cursor: move; }
+  .opening-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .opening-panel input { width: 5em; }
   .open-wall-mask { stroke: var(--card-background-color, #fff); stroke-width: 3; vector-effect: non-scaling-stroke;
                     pointer-events: none; }
   .open-wall { stroke: var(--secondary-text-color); stroke-width: 1.5; stroke-dasharray: 5 4;

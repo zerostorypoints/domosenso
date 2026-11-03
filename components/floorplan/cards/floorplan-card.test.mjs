@@ -1478,3 +1478,89 @@ test("sound maps: a space with an audio sensor shows through to the field's canv
   assert.equal(card.shadowRoot.querySelectorAll(".heat image").length, 0, "no SVG image per frame");
   window.localStorage.clear();
 });
+
+// ---- openings: doors, windows and doorways (SPEC-028 Amendment 9) ---------------------------
+
+function doorHass(state = "off") {
+  const hass = hassOf();
+  hass.devices.d_door = { id: "d_door", name: "Door sensor", area_id: "kitchen" };
+  hass.entities["binary_sensor.kitchen_door"] = { entity_id: "binary_sensor.kitchen_door", device_id: "d_door" };
+  hass.states["binary_sensor.kitchen_door"] = { state, attributes: { device_class: "door", friendly_name: "Kitchen door" } };
+  return hass;
+}
+const withOpenings = (openings, points = []) => {
+  const plan = planOf(points);
+  plan.floors[0].openings = openings;
+  return plan;
+};
+const DOOR = { rooms: ["kitchen", "living_room"], at: [5, 2], entity: "binary_sensor.kitchen_door" };
+
+test("openings are drawn by kind and state: a door's leaf and swing, a window's panes, a doorway's gap", async () => {
+  const plan = withOpenings([
+    { rooms: ["living_room", "kitchen"], at: [5, 1] },
+    { rooms: ["living_room", "kitchen"], at: [5, 3], state: "closed" },
+    { kind: "window", rooms: ["living_room", null], at: [2, 0] },
+    { kind: "opening", rooms: ["kitchen", null], at: [6.5, 4] },
+  ]);
+  const card = await make({ plan }, hassOf());
+  const g = [...card.shadowRoot.querySelectorAll("g.opening")];
+  assert.deepEqual(g.map((n) => n.getAttribute("class")),
+    ["opening door open", "opening door closed", "opening window closed", "opening opening open"]);
+  assert.ok(g[0].querySelector("line.leaf") && g[0].querySelector("path.swing"), "an open door swings");
+  assert.ok(g[1].querySelector("line.leaf") && !g[1].querySelector("path.swing"), "a closed one lies in its gap");
+  assert.equal(g[2].querySelectorAll("line.pane").length, 2);
+  assert.ok(g[3].querySelector("line.gap") && !g[3].querySelector("line.leaf"));
+});
+
+test("a linked opening follows its sensor live; an unavailable one is drawn unknown", async () => {
+  const hass = doorHass("off");
+  const card = await make({ plan: withOpenings([DOOR]) }, hass);
+  assert.equal($(card, "g.opening").getAttribute("class"), "opening door closed linked");
+  card.hass = { ...hass, states: { ...hass.states, "binary_sensor.kitchen_door": { ...hass.states["binary_sensor.kitchen_door"], state: "on" } } };
+  assert.equal($(card, "g.opening").getAttribute("class"), "opening door open linked");
+  card.hass = { ...hass, states: { ...hass.states, "binary_sensor.kitchen_door": { state: "unavailable", attributes: {} } } };
+  assert.equal($(card, "g.opening").getAttribute("class"), "opening door open linked unknown");
+});
+
+test("a linked sensor's dot stands on its opening and is not dragged off it", async () => {
+  const card = await make({ plan: withOpenings([DOOR], [pt("d_door", 6, 3)]) }, doorHass());
+  const marker = $(card, 'g.marker[data-key="d_door"]');
+  assert.equal(marker.getAttribute("transform"), "translate(5 2)");
+  click($(card, "[data-action=edit]"));
+  const [sx, sy] = clientAt(card, 5, 2);
+  const [ex, ey] = clientAt(card, 6.5, 1);
+  pointer($(card, 'g.marker[data-key="d_door"]'), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+  assert.deepEqual([card._doc.floors[0].points[0].x, card._doc.floors[0].points[0].y], [6, 3], "the plan's point is untouched");
+});
+
+test("the Doors & windows tool: a wall tap adds a door; its panel sets kind, width and sensor; drag slides it; remove", async () => {
+  const card = await make({ plan: planOf() }, doorHass());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  tap(card, 5, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  const opening = () => card._doc.floors[0].openings?.[0];
+  assert.deepEqual(opening(), { kind: "door", rooms: ["living_room", "kitchen"], at: [5, 2] });
+  const field = (name) => $(card, `.opening-panel [data-field="${name}"]`);
+  const change = (node, value) => {
+    node.value = value;
+    node.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  };
+  assert.equal(field("entity").options[1].value, "binary_sensor.kitchen_door", "the rooms' door sensor offered first");
+  change(field("entity"), "binary_sensor.kitchen_door");
+  change(field("width"), "0.9");
+  assert.deepEqual(opening(), { kind: "door", rooms: ["living_room", "kitchen"], at: [5, 2], entity: "binary_sensor.kitchen_door", width: 0.9 });
+  change(field("kind"), "opening");
+  assert.equal(opening().entity, undefined, "a doorway has no sensor");
+  assert.equal(field("entity"), null);
+  // Slid along the shared wall, then onto the kitchen's outer wall.
+  const [sx, sy] = clientAt(card, 5, 2);
+  const [ex, ey] = clientAt(card, 6.5, 4.02);
+  pointer($(card, "g.opening line.hit"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointermove", ex, ey);
+  pointer($(card, "svg"), "pointerup", ex, ey);
+  assert.deepEqual(opening().rooms, ["kitchen", null]);
+  click($(card, "[data-action=remove_opening]"));
+  assert.ok(!("openings" in card._doc.floors[0]));
+});

@@ -41,6 +41,8 @@ import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categorie
 import { esc, dotHtml } from "./lib/html.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
+import { KINDS, MATERIALS, kindOf, widthOf, materialOf, openingState, openingShape, addOpening, moveOpening, setOpening,
+  removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
 import { drawGrid, drawDims, drawWallDistances } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { SOUND, soundSensors, readSensor, soundGrid, fieldLevels, sensorLevel, lut, paint, approach, meanEnergy,
@@ -410,7 +412,7 @@ ${STYLE}
     this._registry();
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
-    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() : "";
+    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
     const floor = this._floor;
     const empty = ready && floor && !floor.rooms.length && !floor.points.length;
@@ -445,7 +447,7 @@ ${STYLE}
       html += `<select class="floor" aria-label="${esc(t(h, "card.floorplan.floor"))}">${this._doc.floors.map((f) =>
         `<option value="${esc(f.floor_id)}" ${f.floor_id === this._floorId ? "selected" : ""}>${esc(name(f.floor_id))}</option>`).join("")}</select>`;
     }
-    for (const tool of ["move", "split", "join", "open"]) {
+    for (const tool of ["move", "split", "join", "open", "openings"]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
@@ -561,6 +563,28 @@ ${STYLE}
       + "</div>";
   }
 
+  // The selected opening: its kind, width, state without a sensor, material and sensor; remove.
+  _openingPanelHtml() {
+    const o = this._tool === "openings" && this._floor?.openings?.[this._opening];
+    if (!o) return "";
+    const h = this._hass;
+    const kind = kindOf(o);
+    const opt = (value, text, on) => `<option value="${esc(value)}" ${on ? "selected" : ""}>${esc(text)}</option>`;
+    const sel = (name, label, options) => `<label>${esc(t(h, `card.floorplan.opening.${label}`))}</label>`
+      + `<select class="opening-field" data-field="${name}">${options}</select>`;
+    let html = sel("kind", "kind", KINDS.map((k) => opt(k, t(h, `card.floorplan.opening.${k}`), k === kind)).join(""))
+      + `<label>${esc(t(h, "card.floorplan.opening.width"))}</label>`
+      + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`;
+    if (kind !== "opening") {
+      const state = o.state ?? (o.rooms.includes(null) ? "closed" : "open");
+      html += sel("state", "default", ["open", "closed"].map((s) => opt(s, t(h, `card.floorplan.opening.${s}`), s === state)).join(""))
+        + sel("material", "material", MATERIALS.map((m) => opt(m, t(h, `card.floorplan.opening.materials.${m}`), m === materialOf(o))).join(""))
+        + sel("entity", "sensor", opt("", t(h, "card.floorplan.opening.no_sensor"), !o.entity)
+          + openingSensors(h, o).map((c) => opt(c.id, c.name, c.id === o.entity)).join(""));
+    }
+    return `<div class="opening-panel">${html}<button data-action="remove_opening">${esc(t(h, "card.floorplan.opening.remove"))}</button></div>`;
+  }
+
   _trayHtml() {
     const groups = trayGroups(this._doc, this._hass, [...this._cands.values()]);
     this._oneGroup = groups.length === 1;    // a lone group starts open, several start collapsed
@@ -587,8 +611,8 @@ ${STYLE}
     const size = this._rect();
     this._drawnSize = `${Math.round(size.width)}x${Math.round(size.height)}`;
     this._registry();
-    const floor = this._floor;
-    if (this._status !== "ready" || !floor) return;
+    if (this._status !== "ready" || !this._floor) return;
+    const floor = this._drawnFloor();
     const v = this._view;
     svg.setAttribute("viewBox", `${fmt(v.x)} ${fmt(v.y)} ${fmt(v.w)} ${fmt(v.h)}`);
     const px = this._px();
@@ -615,6 +639,7 @@ ${STYLE}
       el("line", { class: "open-wall-mask", ...at }, svg);
       el("line", { class: "open-wall", ...at }, svg);
     }
+    this._drawOpenings(svg, floor, px, editing);
     // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
     // readings keep clear of them; in view mode the readings are laid out first and a name they
     // would cover moves to a free corner of its room (placeNames, after the layout below).
@@ -713,6 +738,57 @@ ${STYLE}
     }
   }
 
+  // The floor as drawn: a sensor linked to an opening stands on it (SPEC-028 Amendment 9).
+  _drawnFloor() {
+    const floor = this._floor;
+    const spots = linkedSpots(floor);
+    if (!spots.size) return floor;
+    // A sensor's point: its own entity's, or its device's (the device's readings need not include it).
+    const owner = new Map([...spots.keys()].map((id) => [this._hass?.entities?.[id]?.device_id ?? id, spots.get(id)]));
+    const points = floor.points.map((p) => {
+      const spot = [p.entity_id, p.device_id, ...(p.also || [])].map((k) => k && owner.get(k)).find(Boolean);
+      return spot ? { ...p, x: spot[0], y: spot[1], placed: true, linked: true } : p;
+    });
+    return { ...floor, points };
+  }
+
+  // Doors, windows and doorways: a gap in the wall, a door's leaf (open: across its swing, closed:
+  // in the gap), a window's two panes. A linked one shows its sensor's state; unknown is dashed.
+  _drawOpenings(svg, floor, px, editing) {
+    const h = this._hass;
+    const tool = editing && this._tool === "openings";
+    (floor.openings || []).forEach((o, i) => {
+      const shape = openingShape(floor, o);
+      if (!shape) return;
+      const kind = kindOf(o);
+      const state = openingState(o, h);
+      const cls = ["opening", kind, state.open ? "open" : "closed"];
+      if (state.linked) cls.push("linked");
+      if (!state.known) cls.push("unknown");
+      if (tool && this._opening === i) cls.push("selected");
+      const g = el("g", { class: cls.join(" "), "data-kind": "opening", "data-index": i }, svg);
+      const line = (a, b, c) => el("line", { class: c, x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) }, g);
+      const [p, q] = shape.ends;
+      const n = shape.normal;
+      const off = (pt, d) => [pt[0] + n[0] * d, pt[1] + n[1] * d];
+      line(p, q, "gap");
+      if (kind === "window") {
+        line(off(p, 2 * px), off(q, 2 * px), "pane");
+        line(off(p, -2 * px), off(q, -2 * px), "pane");
+      } else if (kind === "door" && state.open) {
+        const tip = off(p, shape.width);
+        line(p, tip, "leaf");
+        // A quarter circle about the hinge from the gap's far end to the leaf's tip.
+        const sweep = shape.dir[0] * n[1] - shape.dir[1] * n[0] > 0 ? 1 : 0;
+        el("path", { class: "swing", d: `M ${fmt(q[0])} ${fmt(q[1])} A ${fmt(shape.width)} ${fmt(shape.width)} 0 0 ${sweep} ${fmt(tip[0])} ${fmt(tip[1])}` }, g);
+      } else if (kind === "door") line(p, q, "leaf");
+      if (tool) line(p, q, "hit");
+      const name = o.entity ? h?.states?.[o.entity]?.attributes?.friendly_name || o.entity : null;
+      el("title", {}, g).textContent = [t(h, `card.floorplan.opening.${kind}`), name,
+        t(h, `card.floorplan.opening.${!state.known ? "unknown" : state.open ? "open" : "closed"}`)].filter(Boolean).join(" · ");
+    });
+  }
+
   // Dots that would cover each other, as clusters of two or more: unplaced points by the room they
   // stand in (key: the area id), and placed points closer on screen than STACK_PX to one another
   // (a stack, key "at:" and its first point's key): zooming in parts them.
@@ -788,7 +864,8 @@ ${STYLE}
     if (editing && keyOf(point) === this._picked) cls.push("picked");
     const cat = this._cat(point);
     cls.push(`cat-${cat.id}`);
-    const g = el("g", { class: cls.join(" "), "data-kind": "point",
+    if (point.linked) cls.push("linked");
+    const g = el("g", { class: cls.join(" "), "data-kind": point.linked ? "linked-point" : "point",
       "data-key": keyOf(point), transform: `translate(${fmt(point.x)} ${fmt(point.y)})` }, svg);
     const shape = { class: "shape", style: `fill: ${colourOf(categoryById(cat.id))}` };
     if (cat.marker === "square") el("rect", { ...shape, x: -6 * px, y: -6 * px, width: 12 * px, height: 12 * px }, g);
@@ -1069,6 +1146,7 @@ ${STYLE}
     const floor = this._floor;
     if (!floor || !this._hass) return "";
     const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._entities)) : [];
+    for (const o of floor.openings || []) if (o.entity) ids.push(o.entity);
     // A map also follows a plant's sensors and the lamps.
     if (this._map()) {
       for (const p of floor.points) {
@@ -1109,6 +1187,9 @@ ${STYLE}
       this._resetPicks();
     } else if (action === "create_area") return void this._createArea();
     else if (action === "close_room") this._edit(closeRoom(this._doc, this._floorId, this._selected));
+    else if (action === "remove_opening") {
+      if (this._edit(removeOpening(this._doc, this._floorId, this._opening))) this._opening = null;
+    }
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
@@ -1144,6 +1225,11 @@ ${STYLE}
       this._render();
     } else if (e.target.matches?.("select.area") && e.target.value) {
       this._applyArea(e.target.value);
+    } else if (e.target.matches?.(".opening-field") && this._opening != null) {
+      const field = e.target.getAttribute("data-field");
+      const value = field === "width" ? Number(e.target.value) || "" : e.target.value;
+      this._edit(setOpening(this._doc, this._floorId, this._opening, { [field]: value }));
+      this._render();
     } else if (e.target.matches?.("select.category") && this._picked) {
       const own = this._cands?.get(this._picked)?.category ?? null;
       this._edit(setPointCategory(this._doc, this._floorId, this._picked, e.target.value, own));
@@ -1170,6 +1256,7 @@ ${STYLE}
     this._picked = null;
     this._openCluster = null;
     this._pendingSplit = null;
+    this._opening = null;
   }
 
   // Apply a refusable edit: a refused one leaves the plan as it was and says so.
@@ -1279,6 +1366,9 @@ ${STYLE}
       const group = item.getAttribute("data-group");
       this._drag = group ? { ...base, kind: "group", key: group } : { ...base, kind: "tray", key: item.getAttribute("data-key") };
       this._drag.label = this._dragLabel(this._drag);     // the ghost's, fixed for the drag
+    } else if (editing && this._tool === "openings" && kind === "opening") {
+      this._drag = { ...base, kind: "opening", index: Number(target.getAttribute("data-index")) };
+      this._opening = this._drag.index;
     } else if (editing && this._tool === "move" && kind === "corner") {
       this._drag = { ...base, kind: "corner", area: target.getAttribute("data-area"), index: Number(target.getAttribute("data-index")) };
     } else {
@@ -1424,6 +1514,8 @@ ${STYLE}
       this._view = { ...d.view0, x: d.view0.x - (e.clientX - d.start[0]) / s, y: d.view0.y - (e.clientY - d.start[1]) / s };
     } else if (d.kind === "point") {
       this._doc = movePoint(this._doc, this._floorId, d.key, this._inRooms(this._at(e))) ?? this._doc;
+    } else if (d.kind === "opening") {
+      this._doc = moveOpening(this._doc, this._floorId, d.index, this._at(e), PICK_PX * 3 * this._px()) ?? this._doc;
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
     } else {      // a tray item or group is dropped on pointerup; until then a ghost shows where
@@ -1464,6 +1556,8 @@ ${STYLE}
     } else if (d.kind === "pan" && !d.moved && this._mode === "edit") {
       this._openCluster = null;
       this._tap(this._at(e), d.area);
+    } else if (d.kind === "opening") {
+      // A tap selects it (on the pointerdown); a drag has slid it along the walls.
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.
     } else if (d.kind === "point") {
@@ -1496,6 +1590,12 @@ ${STYLE}
         this._picks = [];
         if (a !== b) this._edit(openRooms(this._doc, this._floorId, a, b));
       }
+    } else if (this._tool === "openings") {
+      const next = addOpening(this._doc, this._floorId, pt, PICK_PX * this._px());
+      if (next) {
+        this._edit(next);
+        this._opening = this._floor.openings.length - 1;
+      } else this._opening = null;
     } else if (this._tool === "split") {
       const wall = nearestWall(this._floor, pt, PICK_PX * this._px());
       if (!wall) return;
