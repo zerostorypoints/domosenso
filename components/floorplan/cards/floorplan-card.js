@@ -772,6 +772,8 @@ ${STYLE}
       const n = shape.normal;
       const off = (pt, d) => [pt[0] + n[0] * d, pt[1] + n[1] * d];
       line(p, q, "gap");
+      // Jambs across the wall at both ends: a closed door or window still reads as one.
+      if (kind !== "opening") for (const end of [p, q]) line(off(end, -4 * px), off(end, 4 * px), "jamb");
       if (kind === "window") {
         line(off(p, 2 * px), off(q, 2 * px), "pane");
         line(off(p, -2 * px), off(q, -2 * px), "pane");

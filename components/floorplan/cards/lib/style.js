@@ -107,6 +107,8 @@ export const STYLE = `
   .opening line, .opening path { vector-effect: non-scaling-stroke; fill: none; }
   .opening .gap { stroke: var(--card-background-color, #fff); stroke-width: 4; }
   .opening .leaf, .opening .pane { stroke: var(--primary-text-color); stroke-width: 1.5; }
+  .opening .jamb { stroke: var(--primary-text-color); stroke-width: 1.5; }
+  .opening.closed .leaf { stroke: var(--secondary-text-color); stroke-width: 2.5; }
   .opening .swing { stroke: var(--secondary-text-color); stroke-width: 1; stroke-dasharray: 3 3; }
   .opening.linked.open .leaf, .opening.linked.open .pane, .opening.linked.open .swing { stroke: var(--floorplan-security, #e53935); }
   .opening.unknown .leaf, .opening.unknown .pane { stroke-dasharray: 4 3; }
