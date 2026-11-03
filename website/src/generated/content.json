@@ -1577,6 +1577,63 @@
   ],
   "articles": [
     {
+      "slug": "mi-flora-home-assistant-setup",
+      "title": "How to add a Mi Flora plant sensor to Home Assistant",
+      "summary": "Set up Xiaomi BLE for a Flower Care sensor, troubleshoot discovery and missing battery readings, then check the data before adding plant reminders.",
+      "category": "updates",
+      "date": "2026-11-03",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "plants"
+      ],
+      "releases": [],
+      "sources": [
+        "https://www.home-assistant.io/integrations/xiaomi_ble/",
+        "https://www.home-assistant.io/integrations/bluetooth/"
+      ],
+      "body": "For the **HHCCJCY01**, also sold as Flower Care or MiFlora, start with Home Assistant's\n**Xiaomi BLE** integration. First get reliable readings into Home Assistant; then decide\nhow you want to display them or use them in a reminder.\n\n## 1. Check Bluetooth reception\n\nHome Assistant needs a working Bluetooth adapter or compatible Bluetooth proxy within range.\nFor initial setup, place the sensor close to the receiver. If you use an ESPHome proxy,\nconfirm that it is connected to Home Assistant before troubleshooting the plant sensor.\nSee the [Bluetooth integration guide](https://www.home-assistant.io/integrations/bluetooth/)\nfor supported receivers and proxy arrangements.\n\n## 2. Add Xiaomi BLE\n\nThe sensor should be discovered automatically. If necessary, open\n**Settings → Devices & services → Add integration**, select **Xiaomi BLE** and follow\nthe setup steps. Some entities appear only after their first reading arrives.\n\n## 3. Check firmware if discovery fails\n\nOlder firmware may not transmit the required Bluetooth advertisements. Home Assistant lists\n**3.2.1** as the lowest confirmed working firmware version for this model.\n\nIf an update is needed, use the official Flower Care app and follow the linked firmware-update\ninstructions. The app and account are not required for ongoing Home Assistant operation\nafterwards.\n\n## 4. Give the battery reading time\n\nBattery information requires an active Bluetooth connection. Home Assistant requests it only\nonce a day to conserve power, and reception must be strong enough for that connection.\nOther readings arrive through passive broadcasts. A missing battery value therefore does not\nnecessarily mean that every part of the integration has failed.\n\nThese discovery, firmware and battery details come from the\n[Home Assistant MiFlora documentation](https://www.home-assistant.io/integrations/xiaomi_ble/#plant-sensor-flower-care-miflora-hhccjcy01).\n\n## 5. Check the sensor in its final position\n\nAfter setup, move the sensor to its intended pot and inspect the history over a normal watering\ncycle. As a suggested acceptance check:\n\n1. Give the device a name that identifies its pot.\n2. Confirm that readings continue after it leaves the setup location.\n3. Compare the moisture trend with your own observations of the soil.\n4. Check whether gaps appear in the history before creating an alert.\n\nBegin with a reminder you can evaluate. Do not choose one moisture threshold for every plant\nsimply because a dashboard makes it convenient. Record the plant, substrate and threshold you\nchoose in your own home project, so future adjustments have context.\n\n## Use it with DomoSenso\n\nThe [Mi Flora device guide](/devices/mi-flora/) describes the readings to check before assigning\nthe sensor to a plant. The [plants component](/components/plants/) is the next step for the\nframework's plant display. A sensor and a dashboard do not, by themselves, provide automatic\nwatering.\n\nThis article describes the upstream setup and a suggested check of your readings. It does\nnot claim a new hardware test or establish a watering threshold for your plants."
+    },
+    {
+      "slug": "bermuda-bluetooth-proxy-setup",
+      "title": "How to set up a Bermuda Bluetooth proxy for room presence",
+      "summary": "Connect Bluetooth proxies, assign their rooms and check Bermuda's area estimates before building presence automations.",
+      "category": "updates",
+      "date": "2026-11-03",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "bermuda-presence"
+      ],
+      "releases": [],
+      "howto": [
+        "presence-who-is-home"
+      ],
+      "sources": [
+        "https://github.com/agittins/bermuda/wiki/",
+        "https://www.home-assistant.io/integrations/bluetooth/"
+      ],
+      "body": "A Bluetooth proxy receives nearby Bluetooth signals and forwards them to Home Assistant.\nBermuda uses those observations to estimate which room a device is in. The proxy provides\nthe observations; Bermuda interprets them.\n\nThis guide covers the upstream setup and a suggested acceptance check. It does not claim\nthat the procedure has been tested in your home.\n\n## Before you start\n\nHave Home Assistant running, compatible ESP32 hardware with Bluetooth proxy firmware, USB\npower and a Bluetooth device you want to track. Start with two rooms so you can test a\ntransition between them. Home Assistant supports remote Bluetooth adapters through ESPHome;\nthe [Bluetooth integration documentation](https://www.home-assistant.io/integrations/bluetooth/)\nexplains the supported arrangements.\n\n## 1. Connect and name the proxies\n\nSet up your ESP32 devices with ESPHome Bluetooth proxy firmware and add them to Home Assistant\nthrough the ESPHome integration. Assign each proxy to the Home Assistant area where it is\nphysically installed. Choose names that make that assignment easy to check later.\n\n## 2. Select a device in Bermuda\n\nFollow the installation instructions in the\n[Bermuda documentation](https://github.com/agittins/bermuda/wiki/). Open Bermuda's configuration\nunder **Settings → Devices & services** and select the Bluetooth device you want to track.\nBermuda supplies home/away tracking, an estimated area and distance sensors.\n\nPhones that change their Bluetooth address may need additional identity handling. Bermuda\nsupports Home Assistant's Private BLE Device integration for compatible devices. Follow the\nupstream instructions for your model rather than assuming that every phone or tracker\nadvertises a stable identity.\n\n## 3. Check the room estimate\n\nBefore creating an automation, try this small acceptance exercise:\n\n1. Leave the tracked device in the first room and record the reported area.\n2. Carry it into the second room, wait for the estimate to settle and record the result.\n3. Repeat with the device in a pocket and with doors closed.\n4. Leave the device behind and walk out yourself.\n\nThat last step makes the limitation clear: the system is locating the device. A phone on\na desk remains there after its owner leaves.\n\n## If the wrong room appears\n\nFirst check the receiver's assigned area, its connection to Home Assistant and whether the\ndevice is being detected. Keep a short record of locations that are confused. Try changing\none receiver position at a time, then repeat the same exercise. Treat the reported distance\nas an estimate, not a measurement of the room.\n\nOnly build an automation after deciding what should happen when the device is left behind,\ngoes offline or changes rooms briefly. Start with a visible notification so you can inspect\nthe result before using it to control a room.\n\n## Use it with DomoSenso\n\nThe [presence guide](/how-to/presence-who-is-home/) explains the framework's room-presence\napproach and its optional radar hardware. The\n[Bermuda presence component](/components/bermuda-presence/) records the released DomoSenso\nscope. Keep proxy credentials and device identity information in your own home project."
+    },
+    {
+      "slug": "atom-echos3r-home-assistant-assist",
+      "title": "How to connect an M5Stack Atom EchoS3R to Home Assistant Assist",
+      "summary": "Check the hardware model, select the manufacturer's voice firmware and test each stage of a Home Assistant Assist command.",
+      "category": "updates",
+      "date": "2026-11-03",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "audio-sensor"
+      ],
+      "releases": [],
+      "sources": [
+        "https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r",
+        "https://docs.m5stack.com/en/core/Atom_EchoS3R"
+      ],
+      "body": "Start by checking the exact model printed on your device. At the time of writing, M5Stack's\ndocumentation at the Atom EchoS3R guide URL uses the name **Atom VoiceS3R**. Match your hardware\nto the manufacturer's product page before choosing firmware.\n\nThis is a guide to the manufacturer's Assist setup, not a claim of a tested DomoSenso voice\nintegration. DomoSenso currently documents this board as an\n[audio sensor](/devices/m5stack-atom-echos3r/): its package measures sound and keeps the speaker\namplifier off. That package does not add a voice assistant or Bluetooth. Installing voice\nfirmware is a different use of the device; do not assume both functions will keep running.\n\n## 1. Prepare the voice pipeline\n\nChoose the Assist pipeline the satellite will use. The manufacturer documents both Home\nAssistant Cloud and a local pipeline. Test your chosen pipeline in Home Assistant first,\nso you have a working reference before adding the satellite.\n\n## 2. Install firmware for the correct hardware\n\nUse the precompiled firmware or complete ESPHome configuration linked from the\n[manufacturer's setup guide](https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r).\nThe guide currently specifies ESPHome **2026.1.0 or later**. Check that requirement again\nwhen preparing your device.\n\nUse the complete configuration rather than mixing microphone and speaker settings from\nsimilarly named Atom models. Save the configuration and firmware revision you use, along with\nthe ESPHome version. If this device already performs another job, preserve its configuration\nbefore replacing its firmware.\n\n## 3. Add the satellite to Home Assistant\n\nOnce the device joins your network, accept its ESPHome discovery prompt and assign it to an\narea. Open its voice assistant settings, then choose its area and Assist pipeline.\n\nThe manufacturer's example uses **Okay Nabu** as its wake word. Begin with one exposed light\nand a clear command, then check that you can hear the response.\n\n## 4. Find the stage that fails\n\nUse this sequence as a troubleshooting worksheet:\n\n| Observation | Next check |\n| --- | --- |\n| The device is offline | Check power and network connection before changing voice settings. |\n| The device is online but does not react | Confirm the selected firmware and configured wake word. |\n| It reacts but the command fails | Compare the result with the same request in the working Assist pipeline. |\n| The action succeeds but there is no audible reply | Check the response and audio-output stages separately. |\n\nChange one thing at a time and repeat the same command. A clear description such as\n“the light turns on but no response is audible” is more useful than “voice does not work”.\n\n## Choose the job before choosing the package\n\nFor voice interaction, follow the upstream Assist configuration above. For room sound readings,\nread the [DomoSenso audio-sensor component](/components/audio-sensor/) and its stated limits.\nThese are separate configurations, and this article does not establish that they can be combined."
+    },
+    {
       "slug": "ramka-0-9-0",
       "title": "Stop on a page and read it",
       "summary": "Ramka 0.9.0 pauses the rotation from the bottom-right corner and turns plant pages and photos with a sideways swipe. Ramka 0.8.0 and 0.9.0 also bring a list of every plant, climate widgets, named colours, a preview dashboard and a Live visualization switch.",
