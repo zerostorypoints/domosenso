@@ -170,3 +170,13 @@ For a breaking change to a STABLE surface:
 A FROZEN surface does not change inside a major version. Until a component's first release to a
 home other than its author's, a breaking change may skip the bridge if the upgrade note says so;
 the stage 1 renames were made this way.
+
+
+### Future assistant sources (SPEC-032, development)
+
+The Frame bridge may resolve an explicitly granted, versioned future-subject scope against existing
+SPEC-029 bundles. This does not change bundle schema 1, entity IDs or component `assistant`
+manifests. Component input updates continue to render private bindings through the normal deployment
+lifecycle. A scope captures component, subject kind, read capability revisions and fact roles;
+it never authorizes arbitrary newly introduced capabilities or actions. Existing exact selections
+remain valid. The integration owns its storage migration, exclusions and source-editor API.

@@ -144,3 +144,22 @@ reviewed commit after it reaches `main`; existing tags must never be moved.
 | ramka | 0.11.0 | 0.12.0 |
 | remote-access | 0.1.0 | 0.2.0 |
 | weather | 0.1.0 | 0.2.0 |
+
+
+## Future sources and configuration parity (SPEC-032, development)
+
+A compatible Frame bridge offers **All current and future sources** per supported component
+scope. This is an explicit endpoint opt-in with individual exclusions. A new plant configured
+through the component's inputs and normal render/deploy becomes available to answers without a
+second mapping or APK. Existing selections stay unchanged until the administrator opts in.
+Component names, rooms, measurement sources and assessment policies remain authoritative;
+existing manual overrides keep precedence. Only approved read roles/capability revisions are
+included, and HA permissions and sensitive-data gates still apply to every request.
+
+The bridge detects changed private bundles within 30 seconds, including input updates that retain
+the same component version and commit. Missing or invalid bundles disable their dynamic sources.
+Plants and supported room measurements feed bridge display and assistant from the same resolved
+subjects. The classic HA cards retain independent visibility; being visible is not a voice grant.
+Vanilla HA manual adapters are configured once; unmapped sensors remain discovery candidates.
+See [SPEC-032](../.ai/specs/SPEC-032-2026-11-03-assistant-source-parity.md) for boundaries and acceptance.
+This is a development contract pending bridge release, not an automatic upgrade of an installed home.
