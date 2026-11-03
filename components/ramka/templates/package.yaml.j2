@@ -379,8 +379,8 @@ input_select:
 # controls hold [[ d.controls_hold_s ]] s, off delay [[ d.off_delay_s ]] s, brightness [[ d.brightness_min ]] to [[ d.brightness_max ]] with lux_max [[ d.lux_max ]].
 # Ambient has two faces while the media player plays: the now-playing card (default) or the
 # home-info rotation. A swipe up on the controls picks the rotation, a swipe down the music, both
-# leave to ambient; the player starting from silence, or the screen going off, sets it back to the
-# music.
+# leave to ambient; the player starting from silence, or nobody at the Ramka any more (the near
+# zone left, the screen off), sets it back to the music.
 input_boolean:
   [[ p ]]_ambient_music:
     name: [[ named(' ambient shows the music') ]]
@@ -2296,14 +2296,21 @@ automation:
         data:
           option: >-
             {{ [[ live ]] | first }}
-  # The screen off gives the music back: a swipe up chose the rotation for whoever was at the
-  # Ramka, and once nobody is there ambient is back to its default. The next wake shows the music
-  # whenever the player plays, however long it has played (ramka_music_back only sees a start).
+  # Leaving the Ramka gives the music back: a swipe up chose the rotation for whoever stood at
+  # it, and once nobody is within near_cm for the controls' hold, ambient is back to its default
+  # and shows the music whenever the player plays, however long it has played (ramka_music_back
+  # only sees a start). The radar keeps the screen awake while anyone is in the room, so the
+  # near zone and not the screen is what ends a choice; the screen off stays as a fallback.
   - id: [[ p ]]_music_default
     alias: [[ named(' music default') ]]
-    description: "The screen went off: ambient shows the music again whenever the player plays."
+    description: "Nobody at the Ramka any more: ambient shows the music again whenever the player plays."
     mode: single
     triggers:
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_near
+        to: "off"
+        for:
+          seconds: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
       - trigger: state
         entity_id: input_select.[[ p ]]_mode
         to: "off"

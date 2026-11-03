@@ -4181,12 +4181,16 @@ def test_the_screen_off_and_swipe_up_end_a_pause(demo):
         {"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.ramka_paused"}}]
 
 
-def test_the_screen_off_gives_the_music_back(demo):
-    # A swipe up chooses the rotation for whoever is at the Ramka; once nobody is there and the
-    # screen sleeps, ambient is back to its default and shows the music whenever it plays.
+def test_leaving_the_ramka_gives_the_music_back(demo):
+    # A swipe up chooses the rotation for whoever is at the Ramka; once nobody is within near_cm
+    # for the controls' hold (or the screen sleeps), ambient is back to its default and shows the
+    # music whenever it plays. The radar keeps the screen awake while anyone is in the room.
     package = demo["package.yaml"]
     reset = automation(package, "music_default")
-    assert reset["triggers"] == [{"trigger": "state", "entity_id": "input_select.ramka_mode", "to": "off"}]
+    near, screen_off = reset["triggers"]
+    assert (near["entity_id"], near["to"]) == ("binary_sensor.ramka_near", "off")
+    assert "input_number.ramka_controls_hold_s" in near["for"]["seconds"]
+    assert screen_off == {"trigger": "state", "entity_id": "input_select.ramka_mode", "to": "off"}
     assert reset["conditions"] == [
         {"condition": "state", "entity_id": "input_boolean.ramka_ambient_music", "state": "off"}]
     assert reset["actions"] == [
