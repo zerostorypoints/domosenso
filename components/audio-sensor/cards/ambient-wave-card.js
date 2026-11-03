@@ -57,9 +57,16 @@ class AmbientWaveCard extends HTMLElement {
         .message { position: absolute; inset: auto 8px 6px 8px; font-size: 12px; text-align: center;
           color: var(--secondary-text-color); }
         .message[hidden], .controls[hidden], .loudness[hidden] { display: none; }
-        /* Small and in the corner: read across the room without competing with the wave. */
-        .loudness { position: absolute; top: 2px; right: 4px; line-height: 1; font-size: 12px; font-weight: 500;
-          font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; opacity: 0.9; }
+        /* In the corner, read across the room. --level is the palette's colour for the value, as the
+           lines have it; the text is that hue a step towards the theme's text colour (lighter on a
+           dark theme), with a halo of the card's background between it and the lines, as map labels
+           have over roads. Without color-mix the text is the level colour itself. */
+        .loudness { position: absolute; top: 2px; right: 4px; line-height: 1; font-size: 12px; font-weight: 600;
+          font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+          --halo: var(--ha-card-background, var(--card-background-color, #1c1c1c));
+          color: var(--level);
+          color: color-mix(in srgb, var(--level) 70%, var(--primary-text-color, #ffffff));
+          text-shadow: 0 0 2px var(--halo), 0 0 2px var(--halo), 0 0 4px var(--halo), 0 0 6px var(--halo); }
         .fallback-icon { position: absolute; top: 4px; right: 6px; --mdc-icon-size: 18px;
           color: var(--secondary-text-color); opacity: 0.8; }
         .controls { flex: none; border-top: 1px solid var(--divider-color); }
@@ -316,7 +323,7 @@ class AmbientWaveCard extends HTMLElement {
     const fmt = new Intl.NumberFormat(language(this._hass), { maximumFractionDigits: 0 });
     const text = `${fmt.format(value)} ${entity.attributes?.unit_of_measurement ?? "dB"}`;
     if (this._loudness.textContent !== text) this._loudness.textContent = text;
-    this._loudness.style.color = this._palette.css(value);
+    this._loudness.style.setProperty("--level", this._palette.css(value));
   }
 
   _read(hass) {
@@ -469,8 +476,10 @@ class AmbientWaveCard extends HTMLElement {
     this._w = w; this._h = h; this._dpr = dpr;
     this._canvas.width = Math.round(w * dpr);
     this._canvas.height = Math.round(h * dpr);
-    // A quarter of the strip, so a tablet's 63 px strip reads 15 px; never tiny, never large.
-    this._loudness.style.fontSize = `${Math.min(18, Math.max(11, Math.round(h * 0.24)))}px`;
+    // 0.57 of the strip: the now-playing card's volume percentage is 8cqh of a card whose strip is
+    // 14cqh, so a tablet's 63 px strip reads 36 px like it; 15 and 26 px could not be read across
+    // the room. Never tiny, never large.
+    this._loudness.style.fontSize = `${Math.min(40, Math.max(11, Math.round(h * 0.57)))}px`;
     // Resizing clears the canvas; a stopped loop (asleep, hidden, off-screen) would leave it blank.
     if (this._config && !this._raf) {
       if (!this._engine.frame.palette) this._engine.step(0, Date.now(), this._palette, this._engineOpts());
