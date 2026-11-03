@@ -4360,3 +4360,36 @@ def test_exit_left_still_names_the_exit_buttons_page(tmp_path):
     dash = render(tmp_path, inputs)["dashboard.en.yaml"]
     [button] = [n for n in walk(dash) if n.get("type") == "custom:tap-button-card" and n.get("navigate")]
     assert button["navigate"] == "/lovelace/home"
+
+
+@pytest.mark.parametrize("target", [None, "io.homeassistant.companion.android"])
+def test_wake_package_default_preserves_companion_condition(tmp_path, demo, target):
+    inputs = demo_inputs()
+    inputs["tablet_wake_package"] = target
+    actual = render(tmp_path, inputs)
+    assert actual == demo
+    wake = actual["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1]
+    assert wake["then"][0]["data"]["data"]["package_name"] == "io.homeassistant.companion.android"
+    assert wake["if"][0]["conditions"][0]["state"] == ["foreground", "top_sleeping"]
+
+
+def test_wake_package_launches_selected_app_without_companion_importance(tmp_path, demo):
+    inputs = demo_inputs()
+    inputs["tablet_wake_package"] = "com.domosenso.frame"
+    actual = render(tmp_path, inputs)
+    expected = copy.deepcopy(demo)
+    expected["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1] = {
+        "action": inputs["tablet_device"]["notify"],
+        "data": {"message": "command_launch_app", "data": {"package_name": "com.domosenso.frame"}},
+    }
+    # Includes radar, off commands, helpers and every dashboard, not only the launch action.
+    assert actual == expected
+
+
+@pytest.mark.parametrize("target", ["", "frame", "com..frame", "1com.frame", "com.frame-name",
+                                    "com.frame\n", "com.żółw", "com.frame;other", 42, [], {}])
+def test_wake_package_rejects_malformed_identifier(tmp_path, target):
+    inputs = demo_inputs()
+    inputs["tablet_wake_package"] = target
+    with pytest.raises(dr.RenderError, match="tablet_wake_package"):
+        render(tmp_path, inputs)

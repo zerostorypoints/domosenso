@@ -97,3 +97,13 @@ instead: a tap opens `exit_left`, a long press reloads the Ramka with kiosk-mode
 | a sensor the package needs is `unavailable` or missing | Manage sensors |
 | the cards stay empty or show "Custom element doesn't exist" | the WebView version |
 | English words on a Polish (or German) dashboard | the profile's language |
+
+
+## A separate dashboard application
+
+From Ramka 0.14.0, set the installation input `tablet_wake_package: com.domosenso.frame` when
+Frame is the dashboard application. The default remains Home Assistant Companion. Keep Companion
+installed, signed in and allowed to deliver its existing screen/launch notification commands.
+Install and pair Frame separately before selecting it. Render, stage and review the deployment
+plan, then verify a real radar wake restores the chosen app. Do not enable competing native radar
+control when HA already owns sleep and brightness. This does not change any live HA preferences.

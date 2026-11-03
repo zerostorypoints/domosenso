@@ -41,6 +41,21 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - German status words are cut off on the status page at 1100 × 720 ("Eingefah…", "Geschlos…"); seen
   on staging 2026-10-22, already so in 0.1.2.
 
+## Choosing the wake application (0.14.0)
+
+`tablet_wake_package` selects the already-installed Android dashboard application. Omit it to
+keep Companion (`io.homeassistant.companion.android`), or set `com.domosenso.frame` for the native
+Frame app. Companion remains signed in with its existing system-setting and overlay permissions:
+it delivers screen commands even when a different application displays the dashboard.
+
+The default preserves the Companion importance check. For a different package, the existing wake
+script sends its launcher intent unconditionally, since Companion's importance cannot describe
+another app. It brings the existing task forward; no new periodic launch loop is added. An absent
+app or Android denying a background launch is a setup failure, not a reason to launch Companion.
+Use one wake policy owner; keep a separate native radar policy disabled when HA owns the screen.
+Radar, brightness, sleep delays and HA's live settings are unchanged. Configure this installation
+input, render and review the normal deployment plan; never hand-edit the generated package.
+
 ## Dashboards and cards
 
 - A YAML dashboard does not refresh on a page that is already open: press the reload button
