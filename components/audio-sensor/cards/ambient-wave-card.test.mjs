@@ -470,11 +470,11 @@ test("loudness: the level, rounded, coloured by the palette", () => {
   const el = loudness(card);
   assert.equal(el.hidden, false);
   assert.equal(el.textContent, "62 dB");
-  assert.equal(el.style.color, card._palette.css(62.4));
+  assert.equal(el.style.getPropertyValue("--level"), card._palette.css(62.4));
   // A quiet room is the neutral colour, a loud one the hot end.
   card.hass = hassOf({ "sensor.demo_spectrum": entity(csv(31)), "sensor.level": entity("20"), "input_boolean.loud": entity("on") });
   assert.equal(el.textContent, "20 dB");
-  assert.equal(el.style.color, card._palette.css(30));
+  assert.equal(el.style.getPropertyValue("--level"), card._palette.css(30));
   assert.notEqual(card._palette.css(80), card._palette.css(30));
 });
 
@@ -508,9 +508,9 @@ test("loudness: without the option nothing shows; show defaults to on; a bad opt
   assert.throws(() => spectrumCard({ loudness: { entity: "sensor.level", show: "yes" } }), /loudness/);
 });
 
-test("loudness: 0.42 of the strip's height, from 11 to 28 px", () => {
+test("loudness: 0.57 of the strip's height, from 11 to 40 px", () => {
   const card = spectrumCard({ loudness: LOUD });
   document.body.appendChild(card);
-  // The test stage is 120 px tall: 0.42 is 50, so the cap.
-  assert.equal(loudness(card).style.fontSize, "28px");
+  // The test stage is 120 px tall: 0.57 is 68, so the cap.
+  assert.equal(loudness(card).style.fontSize, "40px");
 });
