@@ -9,7 +9,8 @@ Newest first. Each entry says what changed and what a home that already runs the
 A swipe up on the controls hid the now-playing card until the player next started from silence: a
 pause, a restart of Home Assistant or a whole evening of music did not bring it back. The new
 automation `<prefix>_music_default` turns `input_boolean.<prefix>_ambient_music` back on when
-nobody is at the Ramka any more: the near zone left for `controls_hold_s`, or the screen off. So
+nobody is at the Ramka any more: the near zone left for `controls_hold_s`, the screen off, or a
+restart of Home Assistant with nobody there. So
 stepping back from the Ramka shows the music again whenever the player plays. Nothing to do:
 render and deploy bring the automation.
 

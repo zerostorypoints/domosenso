@@ -2300,7 +2300,9 @@ automation:
   # it, and once nobody is within near_cm for the controls' hold, ambient is back to its default
   # and shows the music whenever the player plays, however long it has played (ramka_music_back
   # only sees a start). The radar keeps the screen awake while anyone is in the room, so the
-  # near zone and not the screen is what ends a choice; the screen off stays as a fallback.
+  # near zone and not the screen is what ends a choice; the screen off stays as a fallback. A
+  # restart hides the near zone's change (the sensor comes back off before this listens), so the
+  # start checks once the radar is back, as [[ p ]]_reconcile_after_start does for the screen.
   - id: [[ p ]]_music_default
     alias: [[ named(' music default') ]]
     description: "Nobody at the Ramka any more: ambient shows the music again whenever the player plays."
@@ -2314,11 +2316,22 @@ automation:
       - trigger: state
         entity_id: input_select.[[ p ]]_mode
         to: "off"
-    conditions:
+      - trigger: homeassistant
+        event: start
+        id: start
+    actions:
+      - if:
+          - condition: trigger
+            id: start
+        then:
+          - wait_template: "{{ states('[[ radar.presence ]]') in ['on', 'off'] }}"
+            timeout: "00:02:00"
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_near
+        state: "off"
       - condition: state
         entity_id: input_boolean.[[ p ]]_ambient_music
         state: "off"
-    actions:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_ambient_music

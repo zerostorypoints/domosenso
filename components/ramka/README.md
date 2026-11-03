@@ -88,7 +88,7 @@ input, render and review the normal deployment plan; never hand-edit the generat
 - **The music face comes back the same way.** A swipe up on the controls shows the rotation instead
   of the now-playing card while the player plays; a swipe down, the player starting from silence,
   or nobody at the Ramka any more (automation `<prefix>_music_default`: the near zone left for the
-  controls' hold, or the screen off) gives the music back. So a swipe up lasts while someone stands
+  controls' hold, the screen off, or a restart with nobody there) gives the music back. So a swipe up lasts while someone stands
   at the Ramka: stepping back shows the music again whenever the player plays.
 - **Plant pages turn in Home Assistant** since SPEC-026 (`input_number.<prefix>_plants_page`,
   plants-card's `page:`), so a swipe and the pause reach them; the card's own timer remains for a
