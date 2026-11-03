@@ -508,9 +508,9 @@ test("loudness: without the option nothing shows; show defaults to on; a bad opt
   assert.throws(() => spectrumCard({ loudness: { entity: "sensor.level", show: "yes" } }), /loudness/);
 });
 
-test("loudness: a quarter of the strip's height, from 11 to 18 px", () => {
+test("loudness: 0.42 of the strip's height, from 11 to 28 px", () => {
   const card = spectrumCard({ loudness: LOUD });
   document.body.appendChild(card);
-  // The test stage is 120 px tall: a quarter is 29, so the cap.
-  assert.equal(loudness(card).style.fontSize, "18px");
+  // The test stage is 120 px tall: 0.42 is 50, so the cap.
+  assert.equal(loudness(card).style.fontSize, "28px");
 });

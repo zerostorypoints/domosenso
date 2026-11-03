@@ -469,8 +469,10 @@ class AmbientWaveCard extends HTMLElement {
     this._w = w; this._h = h; this._dpr = dpr;
     this._canvas.width = Math.round(w * dpr);
     this._canvas.height = Math.round(h * dpr);
-    // A quarter of the strip, so a tablet's 63 px strip reads 15 px; never tiny, never large.
-    this._loudness.style.fontSize = `${Math.min(18, Math.max(11, Math.round(h * 0.24)))}px`;
+    // 0.42 of the strip: a tablet's 63 px strip reads 26 px, the size of the now-playing card's meta
+    // line and smaller than its volume percentage (8cqh of a card whose strip is 14cqh); 15 px was
+    // too small to see from across the room. Never tiny, never large.
+    this._loudness.style.fontSize = `${Math.min(28, Math.max(11, Math.round(h * 0.42)))}px`;
     // Resizing clears the canvas; a stopped loop (asleep, hidden, off-screen) would leave it blank.
     if (this._config && !this._raf) {
       if (!this._engine.frame.palette) this._engine.step(0, Date.now(), this._palette, this._engineOpts());
