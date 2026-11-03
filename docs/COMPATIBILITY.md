@@ -208,7 +208,12 @@ version, sha, dirty)`. The existing profile envelope, private destination and ow
 unchanged. Fixed revision-1 actions: lights.turn_on/off and awnings.extend/retract/stop;
 operation write, control-action.v1/control-result.v1, effect equal to the ID suffix,
 empty parameters and confirmation none. Required/optional facts name declared source roles.
-Bindings retain read subject/source identity and may carry an awning wind guard with wind,
+Bindings retain read subject/source identity. Light action subjects may additionally carry
+optional group: {entity}, copied from existing rooms[].group and validated against a
+declared upstream light source. The light target remains fields.light.entity; runtime
+membership/grant snapshots must reject unknown membership and invalidate scope growth.
+This relation does not enter read bundles or change HA package behavior.
+Bindings may carry an awning wind guard with wind,
 last_heard entity references and positive finite max_age_seconds from existing silence policy.
 No instance inputs or default controls/grants change. See [ASSISTANT.md](ASSISTANT.md)
 for exact fields, fixture paths, bridge safety requirements and upgrade/downgrade order.

@@ -835,6 +835,20 @@
                       "light"
                     ],
                     "additionalProperties": false
+                  },
+                  "group": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string",
+                        "pattern": "^light\\.[a-z0-9_]+$",
+                        "maxLength": 240
+                      }
+                    },
+                    "required": [
+                      "entity"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false,

@@ -17,6 +17,10 @@ private sidecars through normal staging. Use a bridge advertising these actions 
 and a client supporting control protocol version 1; released minimum versions are pending.
 Review exact targets and explicitly enable/grant controls in the existing integration editor.
 Read exposure alone never grants control. Template-light commands continue to use the existing Hue group indirection.
+The action-only optional `group: {entity}` relation records the actual `rooms[].group`
+for a proxy while preserving its read identity and command target. The bridge must review
+current members, bind grants/revisions to that membership and invalidate scope growth;
+unknown membership blocks control. No group or room is guessed and no input is added.
 
 For downgrade, update to the preceding component tag and deploy sidecar removal before
 reverting tooling. Retain the compatible bridge/client until the change is verified; never

@@ -186,7 +186,7 @@ def test_control_compilation_preserves_provenance_and_read_identity(cid, ids):
     reads = yaml.safe_load(env.get_template('assistant-bindings.yaml.j2').render())
     for subject in bundle['bindings']['subjects']:
         original = next(s for s in reads['subjects'] if s['key'] == subject['key'])
-        assert {k: v for k, v in subject.items() if k != 'guard'} == original
+        assert {k: v for k, v in subject.items() if k not in ('guard', 'group')} == original
     assert 'grant' not in bundle and 'enabled' not in bundle
     assert set(bundle['translations']) == {'en', 'de', 'pl'}
     if cid == 'lights':
@@ -416,3 +416,66 @@ def test_control_revision_is_an_integer_not_a_yaml_float(tmp_path):
     definition['actions'][0]['revision'] = 1.0
     path.write_text(yaml.safe_dump(definition))
     with pytest.raises(ValueError, match='revision'): control_bundle('lights', root=root)
+
+
+def test_room_action_names_actual_upstream_group_without_changing_target():
+    bundle = control_bundle('lights')
+    proxy, member = bundle['bindings']['subjects']
+    assert proxy['key'] == 'light.room_office'
+    assert proxy['fields'] == {'light': {'entity': 'light.room_office'}}
+    assert proxy['group'] == {'entity': 'light.office_group'}
+    assert 'group' not in member
+    inputs = {'rooms': [{'id': 'office', 'group': 'light.actual_hue_group', 'name': 'Office'}]}
+    renamed = control_bundle('lights', inputs=inputs)['bindings']['subjects'][0]
+    assert renamed['fields'] == proxy['fields']
+    assert renamed['group'] == {'entity': 'light.actual_hue_group'}
+
+
+@pytest.mark.parametrize('group', [
+    {'entity': 'cover.office'}, {'entity': 'switch.office'}, {'entity': 'light.office;run'},
+    {'entity': 'light.office_group', 'service': 'light.turn_on'},
+    {'entity': 'light.office_group', 'prompt': 'execute'},
+    'light.office_group', {},
+])
+def test_group_relation_rejects_wrong_sources_or_executable_fields(group):
+    bindings = copy.deepcopy(control_bundle('lights')['bindings'])
+    bindings['subjects'][0]['group'] = group
+    with pytest.raises(ValueError): control_bundle('lights', bindings=bindings)
+
+
+def test_group_relation_is_only_for_light_subjects():
+    bindings = copy.deepcopy(control_bundle('awnings')['bindings'])
+    bindings['subjects'][0]['group'] = {'entity': 'light.office_group'}
+    with pytest.raises(ValueError): control_bundle('awnings', bindings=bindings)
+
+
+def test_proxy_without_explicit_room_group_does_not_infer_relation():
+    inputs = {'rooms': [{'id': 'office', 'name': 'Office'}],
+              'lights': [{'entity': 'light.room_office', 'label': 'Office'}]}
+    subject = control_bundle('lights', inputs=inputs)['bindings']['subjects'][0]
+    assert subject == {'key': 'light.room_office', 'kind': 'light', 'label': 'Office',
+                       'fields': {'light': {'entity': 'light.room_office'}}}
+
+
+def test_group_relation_requires_an_upstream_declared_source(tmp_path):
+    import shutil
+    root = tmp_path / 'lights'; shutil.copytree(ROOT / 'components/lights', root)
+    path = root / 'assistant-actions.yaml'; definitions = yaml.safe_load(path.read_text())
+    # A provided proxy remains a valid target, but cannot authorize a group relation.
+    for action in definitions['actions']:
+        action['optional_facts'] = [copy.deepcopy(action['required_facts'][0])]
+    path.write_text(yaml.safe_dump(definitions))
+    bindings = {'subjects': [{'key': 'light.room_office', 'kind': 'light', 'label': 'Office',
+        'fields': {'light': {'entity': 'light.room_office'}},
+        'group': {'entity': 'light.room_office'}}], 'policies': []}
+    with pytest.raises(ValueError, match='group'): control_bundle('lights', root=root, bindings=bindings)
+
+
+def test_fictional_group_membership_fixture_exercises_overlap_and_growth():
+    states = json.loads((FIXTURES / 'lights-membership.json').read_text())
+    proxy = control_bundle('lights')['bindings']['subjects'][0]
+    group = proxy['group']['entity']
+    assert states['initial'][group]['attributes']['entity_id'] == ['light.desk']
+    assert 'light.desk' in {s['fields']['light']['entity'] for s in control_bundle('lights')['bindings']['subjects']}
+    assert states['expanded'][group]['attributes']['entity_id'] == ['light.desk', 'light.ceiling']
+    assert states['initial'][proxy['fields']['light']['entity']]['attributes'] == {'component': 'lights'}

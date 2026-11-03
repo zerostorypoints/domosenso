@@ -19,7 +19,20 @@ The action APIs remain `load_actions` and `compile_actions`. Controls use
 and `control-result.v1`, effect equal to the action ID suffix, empty parameters
 and confirmation `none`. Sources use required_facts/optional_facts, with the same
 role/type/units/source shape as read capabilities. Subjects share read keys,
-labels, room keys and target entity references. An optional awning `guard`
+labels, room keys and target entity references. A light proxy additionally carries optional
+`group: {entity}`, from existing `rooms[].group`, referencing a declared upstream light.
+The target remains `fields.light.entity`; no group IDs are inferred. The bridge must bind
+exact current membership to grants/revisions, deduplicate or reject overlaps and invalidate
+membership growth; missing/unknown membership fails closed.
+
+`lights-membership.json` is fictional HA state evidence, with `initial` and `expanded`
+entity-ID-keyed snapshots. Initially `light.office_group` contains `light.desk`, which
+is also an explicit action subject in `lights.json`; `light.room_office` is its proxy
+and still exposes only `component: lights`. The expanded snapshot adds `light.ceiling`.
+This supplies group/member overlap and scope-growth cases without claiming that compiled
+metadata snapshots dynamic membership or grants future members access.
+
+An optional awning `guard`
 references the wind and last-heard entities, with a positive finite
 `max_age_seconds` from the component's existing silence policy. Absence of a
 guard never permits extension; retraction and supported STOP do not require calm

@@ -190,8 +190,14 @@ use the read contract's source-role shape and must name manifest-declared surfac
 No service, script, prompt, arbitrary parameters or grants are accepted. Timer actions
 retain their existing `operation: timer`, types, parameters and confirmation semantics.
 
-Light subjects reuse the existing read subjects and template-light indirection. Awning
-subjects reuse only covers with an explicit entity identity. If a wind input exists,
+Light subjects reuse the existing read subjects and template-light indirection. A room
+proxy's action subject additionally carries optional `group: {entity}`, copied only from
+its configured `rooms[].group` and validated as a declared upstream light source. Its
+`fields.light.entity` remains the proxy target; the relation is descriptive, never another
+command target or a grant. The bridge must resolve current group membership, snapshot the
+exact canonical members in grants/revisions, handle group/member overlap and invalidate
+scope growth. Missing or unknown membership fails closed; group IDs are never inferred
+from a proxy name. Awning subjects reuse only covers with an explicit entity identity. If a wind input exists,
 each awning subject carries an optional `guard` with `wind: {entity}`,
 `last_heard: {entity}` and positive finite `max_age_seconds`. These are the same sources
 as the wind read subject. The age is the existing `wind_silent_hours` policy multiplied

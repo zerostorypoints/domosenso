@@ -52,6 +52,11 @@ def _control_bindings(bindings, definitions, owner):
         if subject['key'] != entity or entity in seen:
             raise ValueError('assistant actions: duplicate or mismatched control identity')
         seen.add(entity)
+        if 'group' in subject:
+            group = subject['group']['entity']
+            if not any(f['role'] == 'light' and f['source']['relation'] == 'upstream' and
+                       _matches_source(group, f['source']) for f in facts):
+                raise ValueError('assistant actions: group requires a declared upstream light source')
         fields = dict(subject['fields'])
         if 'guard' in subject:
             fields.update({role: subject['guard'][role] for role in ('wind', 'last_heard')})
