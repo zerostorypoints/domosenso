@@ -259,9 +259,11 @@ The live wave: a spectrum or one value drawn as calm waves that swell and warm w
 | `controls` | `false` | a console on the card for trying options (a session only, nothing saved) |
 | `active` | none | an entity: while it is not `on` the card draws `still`, then its loop sleeps |
 | `fallback` | `none` | `classic`: while the source is `unavailable`, `unknown`, never seen, or a spectrum is older than 5 s, draw Ramka's classic wave with an info icon; `none` keeps the flavour, calming |
+| `loudness.entity` | none | a level entity (for example `sensor.music_level`): its value, rounded, with its unit (`dB` without one) in the top right corner, small (a quarter of the drawing area's height, 11 to 18 px), in the palette's colour for that value; hidden while it has no number and while the fallback's icon shows |
+| `loudness.show` | `true` | whether the number shows; Ramka binds it to `input_boolean.<prefix>_music_loudness` |
 
 Every number, boolean or choice above except `source.kind`, `source.entity`, `source.attribute`,
-`source.axis`, `source.show`, `active`, `fallback` and `height` may instead name an `input_number`,
+`source.axis`, `source.show`, `active`, `fallback`, `loudness.entity` and `height` may instead name an `input_number`,
 `input_select`, `input_boolean`, `number`, `select` or `sensor` entity: the card reads its state on
 every update, and an unusable state gives that option's default. `fallback` is a literal; entity
 support may come later as an addition.

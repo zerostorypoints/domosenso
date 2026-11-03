@@ -335,6 +335,7 @@
       "music_palette": "Farbpalette",
       "music_spectrum_flavour": "Spektrum-Stil",
       "music_level_flavour": "Pegel-Stil",
+      "music_loudness": "Lautstärke (dB) in der Ecke",
       "music_rise_ms": "Anstieg",
       "music_fall_s": "Abklingen",
       "music_line_width_px": "Linienbreite",

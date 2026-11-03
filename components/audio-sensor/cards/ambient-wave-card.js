@@ -7,6 +7,7 @@
 // flavour: swell
 // active: binary_sensor.<something>   # optional: off draws `still`, then the loop sleeps
 // fallback: classic                   # optional: no data draws the classic wave with an info icon
+// loudness: { entity: sensor.<level>, show: input_boolean.<x> }   # optional: the level in dB, top right
 
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -55,7 +56,10 @@ class AmbientWaveCard extends HTMLElement {
         .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
         .message { position: absolute; inset: auto 8px 6px 8px; font-size: 12px; text-align: center;
           color: var(--secondary-text-color); }
-        .message[hidden], .controls[hidden] { display: none; }
+        .message[hidden], .controls[hidden], .loudness[hidden] { display: none; }
+        /* Small and in the corner: read across the room without competing with the wave. */
+        .loudness { position: absolute; top: 2px; right: 4px; line-height: 1; font-size: 12px; font-weight: 500;
+          font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; opacity: 0.9; }
         .fallback-icon { position: absolute; top: 4px; right: 6px; --mdc-icon-size: 18px;
           color: var(--secondary-text-color); opacity: 0.8; }
         .controls { flex: none; border-top: 1px solid var(--divider-color); }
@@ -64,7 +68,7 @@ class AmbientWaveCard extends HTMLElement {
         ha-card.with-console .stage { flex: 1 0 auto; min-height: 120px; }
       </style>
       <ha-card>
-        <div class="stage"><canvas role="img"></canvas><div class="message" hidden></div></div>
+        <div class="stage"><canvas role="img"></canvas><div class="loudness" hidden></div><div class="message" hidden></div></div>
         <div class="controls" hidden></div>
       </ha-card>`;
     this._card = root.querySelector("ha-card");
@@ -72,6 +76,7 @@ class AmbientWaveCard extends HTMLElement {
     this._stage = root.querySelector(".stage");
     this._canvas = root.querySelector("canvas");
     this._message = root.querySelector(".message");
+    this._loudness = root.querySelector(".loudness");
     this._raf = 0;
     this._connected = false;
     this._onScreen = true;
@@ -154,6 +159,10 @@ class AmbientWaveCard extends HTMLElement {
         { name: "style", type: "expandable", schema: [
           { name: "line_width", selector: number({ min: 0.5, max: 12, step: 0.1 }) },
         ] },
+        { name: "loudness", type: "expandable", schema: [
+          { name: "entity", selector: { entity: { domain: "sensor" } } },
+          { name: "show", selector: { boolean: {} } },
+        ] },
         { name: "look", selector: { entity: { domain: "sensor" } } },
         { name: "active", selector: { entity: {} } },
         { name: "fallback", selector: select("fallback", FALLBACKS) },
@@ -179,7 +188,10 @@ class AmbientWaveCard extends HTMLElement {
     }
     this._neutralRgb = null; // the theme may differ where the card is now attached
     this._primary = null;
-    if (this._config) this._rebuildPalette();
+    if (this._config) {
+      this._rebuildPalette();
+      this._showLoudness();
+    }
     this._measure();
     this._run();
   }
@@ -218,6 +230,7 @@ class AmbientWaveCard extends HTMLElement {
       this._lastStamp = undefined;
       this._read(this._hass);
     }
+    this._showLoudness();
     if (!this._raf) this._draw(this._isActive());
   }
 
@@ -284,10 +297,26 @@ class AmbientWaveCard extends HTMLElement {
     else if (this._config.source.entity) this._read(hass);
     // The icon's text follows the language; whether it shows is decided by the loop.
     if (this._falling) this._setFallback(true);
+    this._showLoudness();
     if (this._sleeping && this._isActive()) {
       this._sleeping = false;
       this._run();
     }
+  }
+
+  // The level as the entity reports it, in the colour the palette gives that value. Hidden while it
+  // is switched off, has no number, or the fallback's icon holds the corner.
+  _showLoudness() {
+    const id = this._config.loudness.entity;
+    const on = id && this._resolved.loudness.show === true && !this._falling;
+    const entity = on ? this._hass?.states?.[id] : undefined;
+    const value = parseFloat(entity?.state);
+    this._loudness.hidden = !Number.isFinite(value);
+    if (this._loudness.hidden) return;
+    const fmt = new Intl.NumberFormat(language(this._hass), { maximumFractionDigits: 0 });
+    const text = `${fmt.format(value)} ${entity.attributes?.unit_of_measurement ?? "dB"}`;
+    if (this._loudness.textContent !== text) this._loudness.textContent = text;
+    this._loudness.style.color = this._palette.css(value);
   }
 
   _read(hass) {
@@ -410,6 +439,7 @@ class AmbientWaveCard extends HTMLElement {
 
   _setFallback(on) {
     this._falling = on;
+    if (this._resolved) this._showLoudness();
     let icon = this._stage.querySelector(".fallback-icon");
     if (!on) { icon?.remove(); return; }
     if (!icon) {
@@ -439,6 +469,8 @@ class AmbientWaveCard extends HTMLElement {
     this._w = w; this._h = h; this._dpr = dpr;
     this._canvas.width = Math.round(w * dpr);
     this._canvas.height = Math.round(h * dpr);
+    // A quarter of the strip, so a tablet's 63 px strip reads 15 px; never tiny, never large.
+    this._loudness.style.fontSize = `${Math.min(18, Math.max(11, Math.round(h * 0.24)))}px`;
     // Resizing clears the canvas; a stopped loop (asleep, hidden, off-screen) would leave it blank.
     if (this._config && !this._raf) {
       if (!this._engine.frame.palette) this._engine.step(0, Date.now(), this._palette, this._engineOpts());
