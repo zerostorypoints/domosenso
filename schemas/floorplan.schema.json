@@ -30,16 +30,18 @@
                     "properties": {"x": {"$ref": "#/$defs/number"}, "y": {"$ref": "#/$defs/number"}}}
         },
         "ceiling": {"type": "number", "exclusiveMinimum": 0, "description": "Ceiling height in metres, for the sound maps' room model"},
-        "doors": {
-          "type": "array", "description": "Doors and openings between rooms, for the sound maps: a door joins two rooms of the floor (or one and the outside, null)",
+        "openings": {
+          "type": "array", "description": "Doors, windows and doorways in the rooms' walls (SPEC-028 Amendment 9): an opening joins two rooms of the floor, or one and the outside (null)",
           "items": {
             "type": "object", "additionalProperties": false, "required": ["rooms", "at"],
             "properties": {
+              "kind": {"enum": ["door", "window", "opening"], "description": "Default door; an opening is a doorway without a leaf, always open"},
               "rooms": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": ["string", "null"], "minLength": 1}},
-              "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}, "description": "The door's centre in metres, on the rooms' shared wall"},
-              "width": {"type": "number", "exclusiveMinimum": 0, "description": "Metres, default 0.8"},
-              "state": {"enum": ["open", "closed"], "description": "Default open (an outside door: closed)"},
-              "kind": {"enum": ["opening", "hollow", "solid", "sealed", "glass"], "description": "Sets how much sound a closed door lets through; default hollow"}
+              "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}, "description": "Its centre in metres, on the rooms' shared wall (or the room's outer wall)"},
+              "width": {"type": "number", "exclusiveMinimum": 0, "description": "Metres; default 0.8 for a door, 1.0 for a window"},
+              "state": {"enum": ["open", "closed"], "description": "When no entity is linked or it is unavailable; default open between rooms, closed to the outside"},
+              "material": {"enum": ["hollow", "solid", "sealed", "glass"], "description": "How much sound a closed door or window lets through; default hollow for a door, glass for a window"},
+              "entity": {"type": "string", "pattern": "^(binary_sensor|cover)\\.[a-z0-9_]+$", "description": "The opening's live state: a door, window or opening binary_sensor, or a cover"}
             }
           }
         }

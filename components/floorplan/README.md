@@ -174,8 +174,9 @@ domosenso floorplan preview production        # --port <n> (default 8130), --no-
 
 ## Limits
 
-- One floor at a time; no walls, doors, windows or furniture; tapping a room in view mode does
-  nothing (SPEC-028 non-goals).
+- One floor at a time; no furniture; tapping a room in view mode does nothing (SPEC-028
+  non-goals). Doors, windows and doorways are in the document (`openings`, Amendment 9, draft) but
+  the card does not draw them yet.
 - A corner added on a wall shared with another room belongs to that room only: dragging it off the
   wall opens a gap the neighbour does not follow.
 - The sound maps' bass is a box model: an L-shaped room, furniture and doors move the real peaks and

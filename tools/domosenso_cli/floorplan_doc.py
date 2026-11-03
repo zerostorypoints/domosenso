@@ -54,13 +54,9 @@ def _refuse_duplicates(doc: dict) -> None:
                 if area in grouped:
                     raise DomosensoError(f"open space on floor {label}: {area} twice")
                 grouped.add(area)
-        for door in floor.get("doors", []):
-            inside = [room for room in door["rooms"] if room is not None]
-            if not inside or len(set(inside)) != len(inside):
-                raise DomosensoError(f"door on floor {label}: needs two rooms, or one and null")
-            for area in inside:
-                if area not in areas:
-                    raise DomosensoError(f"door on floor {label}: {area} is not a room of the floor")
+        linked = set()
+        for opening in floor.get("openings", []):
+            _check_opening(opening, areas, linked, label)
         for point in floor["points"]:
             # A device joined to a point (`also`) is that point's as much as its own device is.
             for key in [point_key(point), *point.get("also", [])]:
@@ -160,20 +156,48 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
                           ("change", lambda p: (p.get("category"), p.get("also", []))))
         if _open(old_floor) != _open(new_floor):
             lines.append(("open", "change", label))
+        if _openings(old_floor) != _openings(new_floor):
+            lines.append(("openings", "change", label))
         if _sound(old_floor) != _sound(new_floor):
             lines.append(("sound", "change", label))
     return lines
 
 
+def _check_opening(opening: dict, areas: set, linked: set, label: str) -> None:
+    inside = [room for room in opening["rooms"] if room is not None]
+    if not inside or len(set(inside)) != len(inside):
+        raise DomosensoError(f"opening on floor {label}: needs two rooms, or one and null")
+    for area in inside:
+        if area not in areas:
+            raise DomosensoError(f"opening on floor {label}: {area} is not a room of the floor")
+    # A doorway has no leaf: nothing closes it, and nothing senses it.
+    if opening.get("kind") == "opening":
+        for key in ("material", "entity"):
+            if key in opening:
+                raise DomosensoError(f"opening on floor {label}: a doorway has no {key}")
+        if opening.get("state") == "closed":
+            raise DomosensoError(f"opening on floor {label}: a doorway cannot be closed")
+    entity = opening.get("entity")
+    if entity is not None:
+        if entity in linked:
+            raise DomosensoError(f"opening on floor {label}: {entity} on two openings")
+        linked.add(entity)
+
+
+def _openings(floor: dict) -> list:
+    """A floor's openings, order left out, positions rounded like points."""
+    return sorted(json.dumps({**o, "at": [_round(v) for v in o["at"]]}, sort_keys=True)
+                  for o in floor.get("openings", []))
+
+
 def _sound(floor: dict) -> tuple:
     """What the sound maps' model reads from a floor: its speakers (rounded like points, order left
-    out), ceiling, doors, and each room's outdoor flag and finish."""
+    out), ceiling, and each room's outdoor flag and finish (openings have their own line)."""
     speakers = sorted((_round(s["x"]), _round(s["y"])) for s in floor.get("speakers", []))
-    doors = sorted(json.dumps({**d, "at": [_round(v) for v in d["at"]]}, sort_keys=True) for d in floor.get("doors", []))
     # Only rooms that say something to the model: a room added or removed has its own line.
     rooms = sorted((r["area_id"], r.get("outdoor", False), r.get("finish"))
                    for r in floor["rooms"] if r.get("outdoor") or r.get("finish"))
-    return speakers, floor.get("ceiling"), doors, rooms
+    return speakers, floor.get("ceiling"), rooms
 
 
 def _open(floor: dict) -> list:

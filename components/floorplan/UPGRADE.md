@@ -11,6 +11,12 @@ Newest first. Each entry says what changed and what a home that already runs the
   (`"speakers": [{"x": …, "y": …}], "ceiling": 2.5` on the floor), then `floorplan push`. Without
   speakers the maps still show, from the sensor's position, and the legend says so. A `domosenso`
   command older than this catalog refuses a plan with these keys.
+- **Openings** (SPEC-028 Amendment 9, draft): doors, windows and doorways on a floor
+  (`"openings": [{"kind": "door", "rooms": [a, b], "at": [x, y], "width": 0.8, "entity": …}]`),
+  each optionally linked to its `binary_sensor` or `cover`; rooms may say `outdoor` and `finish`.
+  `push` prints `openings change <floor>`. The card does not draw them yet. A plan written with
+  an earlier draft's `doors` key: rename it to `openings`, and its `kind` to `material` (a
+  `kind: opening` door becomes `kind: opening` without `material`).
 
 ## 0.4.0 (unreleased): component-backed assistant answers
 

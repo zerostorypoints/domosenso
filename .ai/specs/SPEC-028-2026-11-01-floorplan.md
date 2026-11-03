@@ -19,7 +19,8 @@ A home gets:
 5. optionally, the plan on the Ramka as a second view of the controls, reached with a sideways swipe.
 
 Non-goals (from the design): the light and heat map, DLI, "where to place" (next spec); automations
-or templates by position; tapping a room; walls, doors, windows, furniture; several floors at once.
+or templates by position; tapping a room; walls, doors, windows, furniture; several floors at once
+(doors, windows and doorways: Amendment 9).
 
 ## Devices
 
@@ -346,7 +347,8 @@ domain, `device_class` and the registry; nothing is written per home.
 
 ### Out of scope
 
-People's live positions; a radio coverage map; automations by position; walls, doors, windows.
+People's live positions; a radio coverage map; automations by position; walls, doors, windows
+(doors, windows and doorways: Amendment 9).
 
 ### Addition: categories are catalog-wide (the maintainer, 2026-11-01)
 
@@ -764,3 +766,91 @@ line between them and hatched those of them without a sensor of their own.
 - A spatial correction from several sensors (a residual fitted to them) once a home has more than
   one.
 
+
+## Amendment 9 (openings: doors, windows and doorways on the plan, linked to their sensors)
+
+- Status: draft 2026-11-03, for the maintainer's approval. Source: the maintainer, 2026-11-02, for
+  a whole-home sound model: "music as waves crosses between rooms … all internal doors are open and
+  all external doors (like to balcony) are closed"; then, 2026-11-03: "what happens to doors and
+  windows? Should we include them into the floor plan? I have the proximity sensors, which I want
+  to connect with some of them … Does any of them has a concept of doors / windows or object?".
+- Lifts the non-goal "walls, doors, windows" (Devices, Out of scope) for doors, windows and
+  doorways only; walls stay the rooms' edges, furniture stays out.
+
+### Why one concept
+
+Home Assistant has no door or window object: its registries know entity → device → area → floor,
+and a door exists only as an entity's device class (`binary_sensor` `door`, `window`, `opening`,
+`garage_door`; `cover` `door`, `window`, `garage`, `gate`, …; `lock`). A sensor belongs to one
+area, a door joins two rooms, and no registry holds where it is. Floor-plan cards in the community
+(an SVG drawn by hand with shapes bound to entity ids, or icons over an image) keep the geometry in
+the drawing and the link by hand. The plan document already holds the geometry of the home, so an
+opening is a piece of a room's wall in the document, linked to its entity there. Several readers
+use it: the sound maps (a closed door or window lets less through; Amendment 8's whole-home model),
+the drawing, and later the climate and security layers (a window open, the open doors at a glance).
+
+### Document
+
+`floors[].openings` (`schema: 1`, new optional key, ADDITIVE-ONLY), a list of:
+
+| key | | meaning |
+|---|---|---|
+| `kind` | `door`, `window`, `opening` | default `door`; an `opening` is a doorway without a leaf (an arch, a passage), always open |
+| `rooms` | `[a, b]` or `[a, null]` | the two rooms it joins (area ids of the floor), or a room and the outside |
+| `at` | `[x, y]` | its centre in metres, on the rooms' shared wall (or the room's outer wall) |
+| `width` | metres | default 0.8 for a door, 1.0 for a window, the wall's free width for an opening |
+| `state` | `open`, `closed` | when nothing is linked or the entity is unavailable; default `open` between two rooms, `closed` to the outside |
+| `material` | `hollow`, `solid`, `sealed`, `glass` | how much sound gets through when closed; default `hollow` for a door, `glass` for a window |
+| `entity` | `binary_sensor.*` or `cover.*` | optional; the opening's live state |
+
+- **Live state:** a `binary_sensor` `on` is open, `off` closed; a `cover` `open`, `opening` or a
+  position above 0 is open, `closed` closed; anything else (`unavailable`, `unknown`, no such
+  entity) falls back to `state`, and the opening is drawn as unknown.
+- **Validation** (`push`, `preview`): `rooms` are rooms of the floor, two different ones or one and
+  `null`; an `opening` has no `state: closed`, no `material` and no `entity`; an entity's domain is
+  `binary_sensor` or `cover`; one entity on one opening at most. Whether the entity exists and has
+  a fitting device class is the card's to show, not the command's to refuse (it reads no registry).
+- **Rooms** gain two optional keys read by the sound maps: `outdoor` (a balcony: outside the
+  home, left out of the maps) and `finish` (`furnished`, `soft`, `sparse`, `tiled`, `storage`: how
+  the room absorbs sound; default `furnished`).
+- **Command:** `push --plan` prints `openings change <floor>` when a floor's openings differ from
+  the target's (order left out, positions rounded like points); a room's `outdoor` or `finish`
+  is a `sound change <floor>`.
+
+### Card
+
+- **Drawing:** a door is a gap in the wall with its leaf as a short line across the gap's end
+  and a quarter arc; a window is a double line on the wall; an opening is a gap. Open is drawn in
+  the layer colour of `security`, closed in the walls' colour, unknown dashed. A linked sensor's
+  point is drawn on its opening (its dot on the gap), not where it stands in the room.
+- **Edit mode:** an **Opening** tool: tap a wall to place a door (the kind and width in the
+  panel, then window or opening), drag along the wall to move it, its end to change its width;
+  the panel's **Sensor** list offers the `binary_sensor` door, window, opening and garage-door
+  entities and the door, window, garage and gate covers of its rooms' areas first, then the rest.
+- **Sound maps:** the whole-home model treats an open door or opening as a gap the energy flows
+  through and a closed one or a window by its `material`; an open opening to the outside is an
+  energy sink. Without openings the maps stay per room or open space (Amendment 8).
+
+### Versions, compatibility
+
+- The next floorplan version, the maintainer's call. COMPATIBILITY's schema row gains `openings`
+  and the rooms' `outdoor` and `finish`; the push line `openings change`.
+
+### Tests
+
+- `test_cli_floorplan.py`: `openings change`; refused rooms, a closed `opening`, a foreign
+  entity domain, an entity twice. Card tests (with the card's part): live state of each entity
+  kind and the fallback, the drawing of each kind and state, a linked point drawn on its opening.
+
+### Out of scope
+
+- A door's swing side and direction (the arc is drawn into the first room, from the end nearer the
+  start of the wall); window heights and sills; locks as openings (a `lock` stays a point); tilt
+  (a window ajar counts as open).
+- Proximity or distance sensors as door sensors: such a sensor becomes one through a threshold
+  template in Home Assistant (a `binary_sensor` with device class `door`), linked like any other.
+
+### Open questions
+
+- Whether `kind: opening` replaces open spaces (Amendment 7) for rooms joined by a full-width
+  passage, or both stay.

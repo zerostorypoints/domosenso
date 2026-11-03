@@ -344,17 +344,42 @@ def test_push_plan_sound_line(home, capsys):
     assert lines[0] == "sound change ground" and lines[-1] == "ok", lines
 
 
-def test_push_plan_doors_are_a_sound_change_and_name_rooms_of_the_floor(home, capsys):
+def test_push_plan_openings_have_their_own_line_and_name_rooms_of_the_floor(home, capsys):
     root, box = home
     dash = Dashboards(PLAN)
     box["ha"] = dash.ha
     record(root, "staging", PLAN)
     floor = PLAN["floors"][0]
     a, b = floor["rooms"][0]["area_id"], floor["rooms"][1]["area_id"]
-    door = {"rooms": [a, b], "at": [1.0, 1.0], "width": 0.8}
-    write_plan(root, {**PLAN, "floors": [{**floor, "doors": [door]}, *PLAN["floors"][1:]]})
+    door = {"rooms": [a, b], "at": [1.0, 1.0], "width": 0.8, "entity": "binary_sensor.door"}
+
+    def plan_with(*openings):
+        write_plan(root, {**PLAN, "floors": [{**floor, "openings": list(openings)}, *PLAN["floors"][1:]]})
+        return cli(root, "push", "staging", "--plan"), out(capsys)
+
+    code, lines = plan_with(door, {"kind": "window", "rooms": [a, None], "at": [0.0, 0.5]})
+    assert code == 0 and lines[0] == "openings change ground", lines
+    assert plan_with({**door, "rooms": [a, "nowhere"]})[1][-1] \
+        == "FAIL opening on floor ground: nowhere is not a room of the floor"
+    assert plan_with({**door, "rooms": [None, None]})[1][-1] \
+        == "FAIL opening on floor ground: needs two rooms, or one and null"
+    assert plan_with({"kind": "opening", "rooms": [a, b], "at": [1.0, 1.0], "state": "closed"})[1][-1] \
+        == "FAIL opening on floor ground: a doorway cannot be closed"
+    assert plan_with({"kind": "opening", "rooms": [a, b], "at": [1.0, 1.0], "entity": "binary_sensor.x"})[1][-1] \
+        == "FAIL opening on floor ground: a doorway has no entity"
+    assert plan_with(door, {**door, "at": [2.0, 1.0]})[1][-1] \
+        == "FAIL opening on floor ground: binary_sensor.door on two openings"
+    code, lines = plan_with({**door, "entity": "light.door"})
+    assert code == 1 and "entity" in lines[-1], lines   # the schema refuses another domain
+
+
+def test_push_plan_room_outdoor_and_finish_are_a_sound_change(home, capsys):
+    root, box = home
+    dash = Dashboards(PLAN)
+    box["ha"] = dash.ha
+    record(root, "staging", PLAN)
+    floor = PLAN["floors"][0]
+    rooms = [{**floor["rooms"][0], "finish": "tiled"}, {**floor["rooms"][1], "outdoor": True}, *floor["rooms"][2:]]
+    write_plan(root, {**PLAN, "floors": [{**floor, "rooms": rooms}, *PLAN["floors"][1:]]})
     assert cli(root, "push", "staging", "--plan") == 0
     assert out(capsys)[0] == "sound change ground"
-    write_plan(root, {**PLAN, "floors": [{**floor, "doors": [{**door, "rooms": [a, "nowhere"]}]}, *PLAN["floors"][1:]]})
-    assert cli(root, "push", "staging", "--plan") == 1
-    assert out(capsys)[-1] == "FAIL door on floor ground: nowhere is not a room of the floor"
