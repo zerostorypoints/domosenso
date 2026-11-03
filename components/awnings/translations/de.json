@@ -28,6 +28,27 @@
         "examples": [
           "Was bietet Markisen?"
         ]
+      },
+      "extend": {
+        "title": "Markise ausfahren",
+        "description": "Fordert das Ausfahren nur mit Freigabe und einer aktuellen unbedenklichen Windmeldung an; der bestehende Schutz bleibt wirksam.",
+        "examples": [
+          "Fahre die Markise aus"
+        ]
+      },
+      "retract": {
+        "title": "Markise einfahren",
+        "description": "Fordert das Einfahren mit Freigabe an, ohne eine unbedenkliche Windmeldung vorauszusetzen.",
+        "examples": [
+          "Fahre die Markise ein"
+        ]
+      },
+      "stop": {
+        "title": "Markise anhalten",
+        "description": "Fordert bei unterstützter STOP-Funktion und mit Freigabe das Anhalten an; die Position kann geschätzt sein.",
+        "examples": [
+          "Halte die Markise an"
+        ]
       }
     }
   }

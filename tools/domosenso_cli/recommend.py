@@ -53,6 +53,7 @@ def describes_only(manifest: dict) -> bool:
     that renders only that still describes."""
     artifacts = manifest.get("artifacts") or {}
     skip = {(manifest.get(key) or {}).get("bindings") for key in ("assistant", "assistant_actions")} - {None}
+    skip.add("templates/assistant-actions-bindings.yaml.j2")
     return not any(_installs(v, skip) for k, v in artifacts.items() if k not in NOT_AN_INSTALL)
 
 

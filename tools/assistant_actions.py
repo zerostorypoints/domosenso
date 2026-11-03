@@ -2,7 +2,64 @@
 from pathlib import Path
 from jsonschema import Draft202012Validator
 import json
-from assistant_contract import SCHEMAS, safe_path, _read, _flatten, _put, validate
+import re
+from assistant_contract import SCHEMAS, safe_path, _read, _flatten, _put, _surface, validate
+
+
+CONTROL_ROLES = {
+    'lights.turn_on': ({'light'}, {'light'}),
+    'lights.turn_off': ({'light'}, {'light'}),
+    'awnings.extend': ({'cover', 'wind', 'last_heard'}, set()),
+    'awnings.retract': ({'cover'}, set()),
+    'awnings.stop': ({'cover'}, set()),
+}
+
+
+def _control_definition(action, manifest):
+    cid = action['id']
+    if type(action['revision']) is not int:
+        raise ValueError('assistant actions: control revision must be an integer')
+    if cid not in CONTROL_ROLES or cid.split('.')[0] != manifest['id'] or action['effect'] != cid.split('.')[1]:
+        raise ValueError('assistant actions: unsupported control owner or effect')
+    required, optional = CONTROL_ROLES[cid]
+    for name, roles in (('required_facts', required), ('optional_facts', optional)):
+        if {fact['role'] for fact in action[name]} != roles:
+            raise ValueError('assistant actions: unsupported source roles')
+        for fact in action[name]:
+            role, source = fact['role'], fact['source']
+            expected_type = 'event' if role == 'last_heard' else 'state'
+            if fact['type'] != expected_type or fact['units']:
+                raise ValueError('assistant actions: unsupported source type')
+            if (source.get('component'), source['id']) not in _surface(manifest, source['relation']):
+                raise ValueError(f'assistant actions: undeclared fact source {source["id"]}')
+
+
+def _matches_source(entity, source):
+    # Control surfaces use the same declared placeholders as the read metadata.
+    pattern = re.escape(source['id'])
+    pattern = re.sub(r'<[^>]+>', '[a-z0-9_]+', pattern)
+    return re.fullmatch(pattern, entity) is not None
+
+
+def _control_bindings(bindings, definitions, owner):
+    facts = [f for action in definitions['actions'] for f in action['required_facts'] + action['optional_facts']]
+    target_role, kind = ('light', 'light') if owner == 'lights' else ('cover', 'awning')
+    seen = set()
+    for subject in bindings['subjects']:
+        if subject['kind'] != kind or set(subject['fields']) != {target_role}:
+            raise ValueError('assistant actions: control subject kind or fields mismatch')
+        entity = subject['fields'][target_role]['entity']
+        if subject['key'] != entity or entity in seen:
+            raise ValueError('assistant actions: duplicate or mismatched control identity')
+        seen.add(entity)
+        fields = dict(subject['fields'])
+        if 'guard' in subject:
+            fields.update({role: subject['guard'][role] for role in ('wind', 'last_heard')})
+        for role, field in fields.items():
+            if not any(f['role'] == role and _matches_source(field['entity'], f['source']) for f in facts):
+                raise ValueError('assistant actions: undeclared binding source')
+    if bindings['policies']:
+        raise ValueError('assistant actions: controls have no evaluation policies')
 
 
 def load_actions(component_dir: Path, manifest: dict, *, strict_translations=False):
@@ -22,14 +79,20 @@ def load_actions(component_dir: Path, manifest: dict, *, strict_translations=Fal
     validate('assistant-actions', definitions)
     seen, keys = set(), set()
     for action in definitions['actions']:
-        cid = action['id']; effect = cid.removeprefix('timers.')
-        if manifest['id'] != 'timers' or cid in seen or action['effect'] != effect:
-            raise ValueError('assistant actions: owner, effect or duplicate id')
+        cid = action['id']
+        if cid in seen:
+            raise ValueError('assistant actions: duplicate id')
         seen.add(cid)
-        expected = {'durationSeconds': {'type':'integer','minimum':1,'maximum':86400},
-                    'confirmReplace': {'type':'boolean'}} if effect == 'start' else {}
-        if action['parameters'] != expected or action['confirmation'] != ('replace_active' if effect == 'start' else 'none'):
-            raise ValueError('assistant actions: unsupported parameters or confirmation')
+        if cid.startswith('timers.'):
+            effect = cid.removeprefix('timers.')
+            if manifest['id'] != 'timers' or action['effect'] != effect:
+                raise ValueError('assistant actions: owner or effect')
+            expected = {'durationSeconds': {'type':'integer','minimum':1,'maximum':86400},
+                        'confirmReplace': {'type':'boolean'}} if effect == 'start' else {}
+            if action['parameters'] != expected or action['confirmation'] != ('replace_active' if effect == 'start' else 'none'):
+                raise ValueError('assistant actions: unsupported parameters or confirmation')
+        else:
+            _control_definition(action, manifest)
         keys.update(action[k] for k in ('title_key','description_key','examples_key'))
     english = _flatten(_read(safe_path(component_dir, 'translations/en.json'), True))
     translations = {}
@@ -52,6 +115,11 @@ def compile_actions(component_dir, manifest, rendered_bindings, version, sha, di
     result = {'schema':1,'component':{'id':manifest['id'],'version':version,'commit':sha,'dev':dirty},
               'definitions':definitions,'translations':translations,'bindings':rendered_bindings}
     validate('assistant-actions-profile', result)
+    if manifest['id'] in ('lights', 'awnings'):
+        _control_bindings(rendered_bindings, definitions, manifest['id'])
+        return result
+    if any(s['kind'] != 'timer' or set(s['fields']) != {'timer'} for s in rendered_bindings['subjects']):
+        raise ValueError('assistant actions: expected timer bindings')
     keys = [s['key'] for s in rendered_bindings['subjects']]
     entities = [s['fields']['timer']['entity'] for s in rendered_bindings['subjects']]
     if len(set(keys)) != len(keys) or len(set(entities)) != len(entities):

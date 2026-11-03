@@ -1,0 +1,128 @@
+# Rendered by Domosenso from lights/0.3.0 (aaaaaaaaaaaa) — do not edit
+
+schema: 1
+component:
+  id: lights
+  version: 0.3.0
+  commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  dev: false
+definitions:
+  capabilities:
+  - id: lights.status
+    revision: 1
+    operation: read
+    query_type: light-query.v1
+    answer_type: lights.v1
+    title_key: meta.assistant.status.title
+    description_key: meta.assistant.status.description
+    examples_key: meta.assistant.status.examples
+    required_facts:
+    - role: light
+      type: state
+      units: []
+      source:
+        relation: provides
+        id: light.room_<id>
+    optional_facts:
+    - role: light
+      type: state
+      units: []
+      source:
+        relation: upstream
+        id: light.<room>
+    - role: light
+      type: state
+      units: []
+      source:
+        relation: upstream
+        id: light.<bulb>
+    policy:
+      evaluator: lights.status
+    freshness:
+      max_age_seconds: null
+      basis: reported_state
+    limitations:
+    - missing_source
+  - id: lights.explain
+    revision: 1
+    operation: read
+    query_type: component-query.v1
+    answer_type: component-description.v1
+    title_key: meta.assistant.explain.title
+    description_key: meta.assistant.explain.description
+    examples_key: meta.assistant.explain.examples
+    required_facts: []
+    optional_facts: []
+    policy:
+      evaluator: lights.explain
+    freshness:
+      max_age_seconds: null
+      basis: installed_metadata
+    limitations: []
+translations:
+  en:
+    meta:
+      assistant:
+        explain:
+          description: Lights report states and brightness; unavailable bulbs are
+            not confirmed off.
+          examples:
+          - What does lights do?
+          title: About lights
+        status:
+          description: Report available light or group state and brightness, with
+            coverage limits.
+          examples:
+          - Which lights are on?
+          title: Light status
+  de:
+    meta:
+      assistant:
+        explain:
+          description: Lichter melden Status und Helligkeit; nicht erreichbare Lampen
+            gelten nicht als aus.
+          examples:
+          - Was bietet Licht?
+          title: Über Licht
+        status:
+          description: Status und Helligkeit verfügbarer Lichter oder Gruppen mit
+            Abdeckungsgrenzen melden.
+          examples:
+          - Welche Lichter sind an?
+          title: Lichtstatus
+  pl:
+    meta:
+      assistant:
+        explain:
+          description: Oświetlenie zgłasza stan i jasność; niedostępna żarówka nie
+            jest potwierdzona jako wyłączona.
+          examples:
+          - Do czego służy oświetlenie?
+          title: 'Informacje: oświetlenie'
+        status:
+          description: Podaje stan i jasność dostępnych świateł lub grup z ograniczeniami
+            pokrycia.
+          examples:
+          - Które światła są włączone?
+          title: Stan świateł
+bindings:
+  subjects:
+  - key: light.room_office
+    kind: light
+    label:
+      en: Office
+      de: Büro
+      pl: Gabinet
+    fields:
+      light:
+        entity: light.room_office
+  - key: light.desk
+    kind: light
+    label:
+      en: Desk
+      pl: Biurko
+    fields:
+      light:
+        entity: light.desk
+    roomKey: office
+  policies: []

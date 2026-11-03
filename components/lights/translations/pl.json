@@ -21,6 +21,20 @@
         "examples": [
           "Do czego służy oświetlenie?"
         ]
+      },
+      "turn_on": {
+        "title": "Włącz światło",
+        "description": "Włączenie przypisanego światła wymaga osobnego uprawnienia do sterowania.",
+        "examples": [
+          "Włącz światła w gabinecie"
+        ]
+      },
+      "turn_off": {
+        "title": "Wyłącz światło",
+        "description": "Wyłączenie przypisanego światła wymaga osobnego uprawnienia do sterowania.",
+        "examples": [
+          "Zgaś światła w gabinecie"
+        ]
       }
     }
   }

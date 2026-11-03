@@ -184,7 +184,7 @@ remain valid. The integration owns its storage migration, exclusions and source-
 
 Existing assistant v1 `operation: read` remains read-only. New `assistant_actions` manifest metadata
 compiles to private managed `domosenso/assistant-actions/<component>.yaml` with schema1, identity,
-translations, typed definitions and bindings. Only fixed timers.start/pause/resume/cancel commands,
+translations, typed definitions and bindings. SPEC-031 supports fixed timers.start/pause/resume/cancel commands,
 revision1, timer-action.v1/timer-result.v1 are supported. Installation is not a write grant.
 The bridge additionally requires selected mappings, explicit enablement, valid device proof and
 current HA READ+CONTROL permissions. Old clients/bridges never get a generic service fallback.
@@ -198,3 +198,26 @@ bindings retain their previous shape and routes, including Ramka reads. A compat
 needed only to enable the new runtime and command capabilities. Stable timer entities are timer.<prefix>_<id>, with standard
 HA states/attributes. Idle does not imply completion. See SPEC-031 for write replay/conflict and
 alarm semantics; no global CAS guarantee against direct HA actions is made.
+
+## SPEC-033 — optional room control metadata (development)
+
+`assistant_actions` schema 1 is extended additively using a closed control branch alongside
+the unchanged timer branch. The compiler APIs remain `load_actions(component_dir, manifest,
+*, strict_translations=False)` and `compile_actions(component_dir, manifest, rendered_bindings,
+version, sha, dirty)`. The existing profile envelope, private destination and ownership stay
+unchanged. Fixed revision-1 actions: lights.turn_on/off and awnings.extend/retract/stop;
+operation write, control-action.v1/control-result.v1, effect equal to the ID suffix,
+empty parameters and confirmation none. Required/optional facts name declared source roles.
+Bindings retain read subject/source identity and may carry an awning wind guard with wind,
+last_heard entity references and positive finite max_age_seconds from existing silence policy.
+No instance inputs or default controls/grants change. See [ASSISTANT.md](ASSISTANT.md)
+for exact fields, fixture paths, bridge safety requirements and upgrade/downgrade order.
+
+Legacy schema-1 read serialization and timer output/parameter/operation semantics remain
+unchanged and supported for at least one minor version. Unsupported optional sidecars are
+ignored. A timer-only loader must not interpret new control sidecars as timers. New controls
+require separately negotiated bridge/client support and explicit current write grants;
+component installation, read exposure and future read scopes authorize no writes.
+The canonical assistant-actions-bindings.yaml.j2 template is reserved metadata even when its
+optional declaration is absent; it is never an HA package or a recommendation install signal.
+Website impact: deferred until the component and compatible bridge/client releases are public.

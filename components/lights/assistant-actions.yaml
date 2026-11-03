@@ -1,0 +1,63 @@
+actions:
+- id: lights.turn_on
+  revision: 1
+  operation: write
+  action_type: control-action.v1
+  result_type: control-result.v1
+  effect: turn_on
+  parameters: {}
+  confirmation: none
+  title_key: meta.assistant.turn_on.title
+  description_key: meta.assistant.turn_on.description
+  examples_key: meta.assistant.turn_on.examples
+  required_facts:
+  - role: light
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: light.room_<id>
+  optional_facts:
+  - role: light
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: light.<room>
+  - role: light
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: light.<bulb>
+- id: lights.turn_off
+  revision: 1
+  operation: write
+  action_type: control-action.v1
+  result_type: control-result.v1
+  effect: turn_off
+  parameters: {}
+  confirmation: none
+  title_key: meta.assistant.turn_off.title
+  description_key: meta.assistant.turn_off.description
+  examples_key: meta.assistant.turn_off.examples
+  required_facts:
+  - role: light
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: light.room_<id>
+  optional_facts:
+  - role: light
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: light.<room>
+  - role: light
+    type: state
+    units: []
+    source:
+      relation: upstream
+      id: light.<bulb>

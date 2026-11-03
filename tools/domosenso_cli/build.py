@@ -177,6 +177,8 @@ def plan_outputs(
 
     templates_dir = component_dir / "templates"
     names = sorted(p.relative_to(templates_dir).as_posix() for p in templates_dir.rglob("*.j2")) if templates_dir.is_dir() else []
+    if "assistant_actions" not in manifest:
+        names = [n for n in names if n != "assistant-actions-bindings.yaml.j2"]
     wanted = [n for n in names if instance or not n.startswith(INSTANCE_DIR)]
     if wanted:
         with tempfile.TemporaryDirectory() as scratch:
@@ -277,9 +279,16 @@ def _renderable_copy(component_dir: Path, destination: Path, instance: bool) -> 
     `templates/instance/` only for an instance
     render, so that a template of the home's own layer cannot fail a managed render for want of an input."""
     templates = component_dir / "templates"
+    has_actions = "assistant_actions" in load_manifest(component_dir)
 
     def ignore(directory: str, names: list[str]) -> list[str]:
-        return [INSTANCE_DIR.rstrip("/")] if not instance and Path(directory) == templates else []
+        skipped = []
+        if Path(directory) == templates:
+            if not instance:
+                skipped.append(INSTANCE_DIR.rstrip("/"))
+            if not has_actions:
+                skipped.append("assistant-actions-bindings.yaml.j2")
+        return skipped
 
     shutil.copytree(templates, destination / "templates", ignore=ignore)
     if (component_dir / "translations").is_dir():
