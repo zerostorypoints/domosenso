@@ -163,6 +163,9 @@
 [%- for view in views -%][%- set _ = settings.append(('input_boolean', 'page_' ~ view, view, 'pages', true)) -%][%- endfor -%]
 [#- The live switch is the Music page's, off by default: Classic until the home turns it on. -#]
 [%- if music_visual is not none -%][%- set _ = settings.append(('input_boolean', 'music_live', 'music', 'music_visual', false)) -%][%- endif -%]
+[#- The level in dB in the strip's corner, the Live visualization sub-view's, off by default: a fresh
+    boolean is off, and the seed cannot tell that from a home's choice. -#]
+[%- if music_visual is not none -%][%- set _ = settings.append(('input_boolean', 'music_loudness', 'music_live', 'music_visual', false)) -%][%- endif -%]
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music_live', 'music_visual', value)) -%]
 [%- endfor -%]
@@ -421,6 +424,11 @@ input_boolean:
   [[ p ]]_music_live:
     name: [[ named(' music live visualization') ]]
     icon: mdi:waveform
+  # The level in dB in the strip's top right corner, in the palette's colour (ambient-wave-card's
+  # `loudness`), while the visual draws. No `initial:`: a fresh helper is off.
+  [[ p ]]_music_loudness:
+    name: [[ named(' music loudness') ]]
+    icon: mdi:volume-high
   [[ p ]]_music_tilt:
     name: [[ named(' music tilt') ]]
     icon: mdi:slope-uphill

@@ -6,6 +6,11 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.14.0 (unreleased): choose the application restored on wake
 
+Also: with `music_visual`, a **Loudness (dB)** switch on the Live visualization sub-view
+(`input_boolean.<prefix>_music_loudness`, off by default): on, the live visual shows the music
+level in dB in the strip's top right corner, in the palette's colour. Needs audio-sensor's card with
+its `loudness` option (0.4.0); an older card ignores it. Turn it on in the settings after the update.
+
 Adds optional `tablet_wake_package` (SPEC-030). Existing homes need no changes: the default keeps
 Companion and its foreground check. A home displaying Frame sets `tablet_wake_package:
 com.domosenso.frame` in its Ramka inputs and updates/renders through the normal deployment flow.

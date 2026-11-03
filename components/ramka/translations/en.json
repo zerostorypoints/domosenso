@@ -335,6 +335,7 @@
       "music_palette": "Palette",
       "music_spectrum_flavour": "Spectrum flavour",
       "music_level_flavour": "Level flavour",
+      "music_loudness": "Loudness (dB) in the corner",
       "music_rise_ms": "Rise",
       "music_fall_s": "Fall",
       "music_line_width_px": "Line width",

@@ -256,6 +256,7 @@ provides:                       # <prefix> from inputs
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
     - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level], note: "with music_visual; the input's visual first; classic is no option, it is input_boolean.<prefix>_music_live off (SPEC-025 amendment 1, 0.9.0)"}
     - {id: "input_boolean.<prefix>_music_live", stability: stable, note: "with music_visual; Live visualization: on, the now-playing card draws the select's visual; off (the default), its classic wave (SPEC-025 amendment 1, 0.9.0)"}
+    - {id: "input_boolean.<prefix>_music_loudness", stability: stable, note: "with music_visual; on, the visual shows sensor.music_level in dB in the strip's top right corner, in the palette's colour; off (the default), no number (0.14.0)"}
     - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
     - {id: "input_select.<prefix>_music_palette", stability: stable, note: "with music_visual; the card's palettes, the default first; options additive-only (0.4.0)"}
     - {id: "input_select.<prefix>_{music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the default first (the home's music_visual_options flavour, else dune / centre), then the offered ones: spectrum dune, halo, bars; level centre (SPEC-025 amendment 1, 0.9.0; 0.4.0 offered every flavour of the card)"}

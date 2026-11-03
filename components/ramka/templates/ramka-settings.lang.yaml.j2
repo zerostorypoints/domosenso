@@ -40,7 +40,8 @@
     'colour': {'palette': 'input_select.' ~ m ~ 'palette', 'neutral': 'input_number.' ~ m ~ kind ~ '_neutral_db', 'hot': 'input_number.' ~ m ~ kind ~ '_hot_db'},
     'dynamics': {'rise': 'input_number.' ~ m ~ 'rise_ms', 'fall': 'input_number.' ~ m ~ 'fall_s', 'tilt': 'input_boolean.' ~ m ~ 'tilt',
       'hold': 'input_number.' ~ m ~ 'hold_s', 'eq': {'sub': 'input_number.' ~ m ~ 'eq_sub', 'bass': 'input_number.' ~ m ~ 'eq_bass', 'low_mid': 'input_number.' ~ m ~ 'eq_low_mid', 'mid': 'input_number.' ~ m ~ 'eq_mid', 'presence': 'input_number.' ~ m ~ 'eq_presence', 'air': 'input_number.' ~ m ~ 'eq_air'}},
-    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look'}}) -%]
+    'style': {'line_width': 'input_number.' ~ m ~ 'line_width_px'}, 'look': 'sensor.' ~ p ~ '_music_look',
+    'loudness': {'entity': aliases.level, 'show': 'input_boolean.' ~ p ~ '_music_loudness'}}}) -%]
 [%- endfor -%]
 [%- endif -%]
 [#- The way to the Ramka view (SPEC-021 amendment 1): the dashboard of this page's language, from
@@ -528,8 +529,8 @@ views:
                   action: navigate
                   navigation_path: [[ sensor_url | yaml ]]
       # The visualization while Live is on: the mode (what each draws in its (i)), the spectrum's
-      # flavour with the spectrum (the level offers one only: no row), and the Advanced switch for
-      # the parts below. The line width, the palette and the redraw rate are no rows: they stay at
+      # flavour with the spectrum (the level offers one only: no row), the level in dB in the strip's
+      # corner, and the Advanced switch for the parts below. The line width, the palette and the redraw rate are no rows: they stay at
       # their defaults.
       - type: grid
         visibility: [ [[ live_on ]] ]
@@ -538,7 +539,7 @@ views:
             visibility: [ [[ live_on ]] ]
             entities:[[ rows([('input_select', 'music_visual', visual_descriptions, 'music_visual_mode')]) ]][[
               rows([('input_select', 'music_spectrum_flavour')], visual_is('spectrum')) ]][[
-              rows([('input_boolean', 'settings_advanced')]) ]]
+              rows([('input_boolean', 'music_loudness'), ('input_boolean', 'settings_advanced')]) ]]
       # The colour range: where the palette starts and where it is hot, the user's whichever profile is
       # on; the current visual's pair only. Advanced, and only while the visual is active (A).
       - type: grid
