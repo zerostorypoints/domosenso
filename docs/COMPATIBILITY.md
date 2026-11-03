@@ -98,6 +98,7 @@ Each entry in a manifest's `provides.entities` carries its own `stability:` (`fr
 | `data-own-tap` (SPEC-028): an element so marked handles its own taps; the Ramka's `corner-taps-card` does not treat a tap through it (its composed path) as a tap on the page. The floor plan card's layer chips and its bar (zoom, fit, maps) carry it with `layer_choice: one` | ADDITIVE-ONLY |
 | Config keys a card's `setConfig` reads, and their meaning | STABLE; new optional keys are free |
 | Resource type `module`, ES modules without a build step, JSON imported `with { type: "json" }` | STABLE |
+| Installed card modules: each relative static import and re-export gets `?v=<hash>` of the whole version directory, and each card's resource URL the same `?v=`; a dynamic `import()` appends its importer's own query (`new URL(import.meta.url).search`) | STABLE |
 
 ### Translations
 

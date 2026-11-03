@@ -1,6 +1,7 @@
 """`domosenso init`, `add`, `update` and `status` against a temporary catalog repository and home."""
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -173,7 +174,7 @@ def test_add_writes_skeleton_and_instance_once(home, catalog, capsys):
     assert entry.files[f"{HA}/packages/panel.yaml"].layer == "managed"
     assert (home / HA / "packages/panel.yaml").read_text().endswith("sensor_prefix: demo\n")
     assert (home / HA / "www/domosenso/panel/1.0.0/cards/panel-card.js").is_file()
-    assert entry.resources == ["/local/domosenso/panel/1.0.0/cards/panel-card.js"]
+    assert entry.resources == [card_url(home, "/local/domosenso/panel/1.0.0/cards/panel-card.js")]
 
 
 def test_instance_files_are_the_homes_after_add(added, capsys):
@@ -319,7 +320,7 @@ def test_update_prints_notes_and_removes_old_version_files(added, catalog, capsy
     entry = Lock.load(added).components["panel"]
     assert (entry.version, entry.tag) == ("1.1.0", "panel/1.1.0")
     assert entry.commit == git(catalog, "rev-parse", "panel/1.1.0^{commit}")
-    assert entry.resources == ["/local/domosenso/panel/1.1.0/cards/panel-card.js"]
+    assert entry.resources == [card_url(added, "/local/domosenso/panel/1.1.0/cards/panel-card.js")]
     assert not any("/1.0.0/" in path for path in entry.files)
     assert entry.files[f"{HA}/local.yaml"].layer == "instance"  # the home's file is untouched
     assert (added / HA / "local.yaml").read_text() == "owned_by_home: demo\n"
@@ -583,13 +584,13 @@ DEV_RENDER = ".domosenso/dev-render.json"
 CARD_100 = "/local/domosenso/panel/1.0.0/cards/panel-card.js"
 
 
-def dev_url(home, url):
-    """A dev-rendered card's resource URL: its path plus ?v= and the hash of its version directory
-    (resources.wanted)."""
-    root = home / "home-assistant/www" / "/".join(url.removeprefix("/local/").split("/")[:3])
-    files = sorted(f for f in root.rglob("*") if f.is_file())
-    tree = "".join(f"{f.relative_to(root).as_posix()}\0{hashlib.sha256(f.read_bytes()).hexdigest()}\n" for f in files)
-    return f"{url}?v={hashlib.sha256(tree.encode()).hexdigest()[:8]}"
+def card_url(home, url):
+    """A card's resource URL as its render recorded it (the dev render's, else the lock's): its path
+    plus the ?v= of its version directory (catalog_check.install_version, tested in test_install)."""
+    recorded = inventory(home).get("panel", {}).get("resources") or Lock.load(home).components["panel"].resources
+    got = [u for u in recorded if u.split("?")[0] == url]
+    assert len(got) == 1 and re.fullmatch(re.escape(url) + r"\?v=[0-9a-f]{8}", got[0]), recorded
+    return got[0]
 CARD_110 = "/local/domosenso/panel/1.1.0/cards/panel-card.js"
 
 
@@ -663,7 +664,7 @@ def test_dev_render_writes_inventory(added, catalog, capsys):
     package = f"{HA}/packages/panel.yaml"
     assert entry["files"][package]["sha256"] == hashlib.sha256((added / package).read_bytes()).hexdigest()
     assert f"{HA}/local.yaml" not in entry["files"]  # instance files of a locked component stay the lock's
-    assert entry["resources"] == [CARD_110]
+    assert entry["resources"] == [card_url(added, CARD_110)]
 
 
 def test_dev_add_writes_inventory_with_its_instance_files(home, catalog, capsys):
@@ -672,7 +673,7 @@ def test_dev_add_writes_inventory_with_its_instance_files(home, catalog, capsys)
     entry = inventory(home)["panel"]
     assert entry["files"][f"{HA}/local.yaml"]["layer"] == "instance"
     assert entry["files"][f"{HA}/packages/panel.yaml"]["layer"] == "managed"
-    assert entry["resources"] == [CARD_100]
+    assert entry["resources"] == [card_url(home, CARD_100)]
 
 
 def test_tag_render_drops_inventory_entry(added, catalog, capsys):
@@ -811,18 +812,19 @@ def test_deploy_carries_new_component_from_inventory(home, catalog, capsys, tmp_
     # every file of the dev render is a dev-render line; the instance file is the home's own
     managed = [rel for rel in added_files if rel != "local.yaml"]
     assert [line for line in lines if line.startswith("dev-render ")] == [f"dev-render {rel}" for rel in managed]
-    assert f"resource create {dev_url(home, CARD_100)}" in lines
+    assert f"resource create {card_url(home, CARD_100)}" in lines
 
 
 def test_deploy_new_version_moves_resources(added, catalog, capsys, tmp_path):
     target, resources = tmp_path / "target", _Resources()
     assert deploy_apply(added, target, resources)
-    assert [i["url"] for i in resources.items] == [CARD_100]
+    first = card_url(added, CARD_100)
+    assert [i["url"] for i in resources.items] == [first]
     dev_110(catalog)
     assert run(added, "render", "--catalog-dev", str(catalog), capsys=capsys)[0] == 0
 
     lines = plan_text(deploy_plan(added, target, resources.items))
-    assert f"resource update {dev_url(added, CARD_110)} from {CARD_100}" in lines
+    assert f"resource update {card_url(added, CARD_110)} from {first}" in lines
     assert "remove www/domosenso/panel/1.0.0/cards/panel-card.js" in lines
     assert "add www/domosenso/panel/1.1.0/cards/panel-card.js" in lines
     assert "dev-render www/domosenso/panel/1.1.0/cards/panel-card.js" in lines
@@ -831,7 +833,7 @@ def test_deploy_new_version_moves_resources(added, catalog, capsys, tmp_path):
     assert deploy_apply(added, target, resources)
     assert not [p for p in (target / "www/domosenso/panel/1.0.0").rglob("*") if p.is_file()]
     assert (target / "www/domosenso/panel/1.1.0/cards/panel-card.js").read_text() == "export const v = 2;\n"
-    assert [i["url"] for i in resources.items] == [dev_url(added, CARD_110)]
+    assert [i["url"] for i in resources.items] == [card_url(added, CARD_110)]
     record = json.loads((target / ".domosenso/deployed.json").read_text())
     assert "www/domosenso/panel/1.1.0/cards/panel-card.js" in record["dev_render"]["paths"]
 

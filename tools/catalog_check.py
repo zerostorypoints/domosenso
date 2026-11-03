@@ -8,7 +8,9 @@ Exits 1 on any error, and with --strict on any warning as well.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -252,6 +254,36 @@ def install_files(component_dir: Path, manifest: dict) -> list[str]:
     if cards:
         files |= {f.relative_to(component_dir).as_posix() for f in (component_dir / "translations").glob("*.json")}
     return sorted(files)
+
+
+# Home Assistant serves /local/ for 31 days without asking again, and a module's relative imports drop
+# the `?v=` of the URL it was loaded from. So the files of a version directory are imported with that
+# version's hash, or a browser keeps an old lib/ module or translation next to a new card whenever the
+# same path gets new contents (a dev render, a tag rendered after one). A dynamic import() appends its
+# importer's own query instead (`new URL(import.meta.url).search`), so the two give the same URL.
+_RELATIVE_IMPORT = re.compile(r"""(\b(?:from|import)\s*)(["'])(\.\.?/[^"'?#\s]+)\2""")
+VERSION_LENGTH = 8
+# Part of the hash: how the files are written. A card URL a browser holds from before the imports were
+# versioned (a dev render's hash of the same files) must not come back with other contents.
+_WRITTEN_AS = "imports versioned\n"
+
+
+def install_version(component_dir: Path, manifest: dict) -> str:
+    """The `?v=` of a component's installed files: a hash of the path and contents of every file
+    install_files lists, as they are in the catalog, and of how `versioned` writes them."""
+    component_dir = Path(component_dir)
+    listing = _WRITTEN_AS + "".join(f"{rel}\0{hashlib.sha256((component_dir / rel).read_bytes()).hexdigest()}\n"
+                      for rel in install_files(component_dir, manifest))
+    return hashlib.sha256(listing.encode()).hexdigest()[:VERSION_LENGTH]
+
+
+def versioned(rel: str, content: bytes, version: str) -> bytes:
+    """An installed file as it is written: a JavaScript module's relative static imports and re-exports
+    get `?v=<version>`; every other file, and a specifier that has a query already, is left as it is."""
+    if not rel.endswith((".js", ".mjs")):
+        return content
+    text = _RELATIVE_IMPORT.sub(lambda m: f"{m[1]}{m[2]}{m[3]}?v={version}{m[2]}", content.decode("utf-8"))
+    return text.encode("utf-8")
 
 
 def _translation_values(key, value):
