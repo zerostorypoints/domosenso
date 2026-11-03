@@ -75,6 +75,26 @@ to preserve custom client settings. Integrate these hooks there only through rev
 Repository files cannot silently grant trust on Piotr's or Łukasz's computer. Complete this once
 per clone/client, and repeat when the client requests trust for changed hooks:
 
+For linked worktrees, current Codex resolves project hook declarations from the matching directory
+in the **primary checkout**, even while ordinary project configuration comes from the worktree.
+If that checkout is on an older revision without `.codex/hooks.json`, `/hooks` can show zero
+installed hooks despite the worktree's `features.hooks = true`. Moving the same declarations
+into the worktree's `config.toml` does not fix this: Codex also takes those hook declarations from
+the primary checkout. Check both locations before asking a user to approve an empty hook list.
+
+As part of explicitly authorized hook setup, ensure the primary checkout has the reviewed
+`.codex/hooks.json` and the `tools/agent_workspace.py` that its commands require. Preserve its
+branch and unrelated changes; do not switch or overwrite an occupied checkout to repair setup.
+If bootstrapping missing files, copy the exact reviewed versions, verify their hashes and keep a
+local record of the source revision and files added. This is setup only; implementation stays in
+the session's named linked worktree. Never copy trust state or generate a fake SessionStart record.
+After the user trusts the discovered definitions, start/resume a session and perform the client
+activation test below. A Python file-not-found denial is a broken hook, not a passing guard test.
+
+If the terminal UI immediately disconnects from the shared daemon, `codex --no-daemon -C <worktree>`
+can run an isolated local client for diagnosis without restarting other sessions. This does not
+bypass hook trust. Do not run another implementation client in a worktree already occupied by one.
+
 1. Inspect the committed `.codex/hooks.json`, `.codex/config.toml`, `.claude/settings.json` and
    `tools/agent_workspace.py`. Codex requires project trust and explicit review/trust of the hook
    definition through `/hooks`; changed hook definitions are skipped until trusted. Claude Code also requires
