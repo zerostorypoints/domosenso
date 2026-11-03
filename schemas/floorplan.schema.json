@@ -23,6 +23,23 @@
           "type": "array",
           "description": "Groups of rooms open to each other without doors (SPEC-028 Amendment 7): their heat maps share readings. Each area in one group at most; every area a room of the floor",
           "items": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
+        },
+        "openings": {
+          "type": "array", "description": "Doors, windows and doorways in the rooms' walls (SPEC-028 Amendment 9): an opening joins two rooms of the floor, or one and the outside (null)",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["rooms", "at"],
+            "properties": {
+              "kind": {"enum": ["door", "window", "opening", "fixed"], "description": "Default door; an opening is a doorway without a leaf, always open; fixed is glass that never opens (a fixed window, a glass wall)"},
+              "rooms": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": ["string", "null"], "minLength": 1}},
+              "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}, "description": "Its centre in metres, on the rooms' shared wall (or the room's outer wall)"},
+              "width": {"type": "number", "exclusiveMinimum": 0, "description": "Metres; default 0.8 for a door or a doorway, 1.0 for a window or fixed glass"},
+              "state": {"enum": ["open", "closed"], "description": "When no entity is linked or it is unavailable; default open between rooms, closed to the outside"},
+              "entity": {"type": "string", "pattern": "^(binary_sensor|cover)\\.[a-z0-9_]+$", "description": "The opening's live state: a door, window or opening binary_sensor, or a cover"},
+              "sliding": {"const": true, "description": "A door: slides along the wall instead of swinging"},
+              "hinge": {"enum": ["left", "right"], "description": "A door: its hinge (a sliding door: where it slides to), seen from the side it opens into, facing it; default left"},
+              "opens": {"type": "string", "minLength": 1, "description": "A door: the room it opens into, one of its rooms, or outside; default its first room"}
+            }
+          }
         }
       }
     },

@@ -54,6 +54,9 @@ def _refuse_duplicates(doc: dict) -> None:
                 if area in grouped:
                     raise DomosensoError(f"open space on floor {label}: {area} twice")
                 grouped.add(area)
+        linked = set()
+        for opening in floor.get("openings", []):
+            _check_opening(opening, areas, linked, label)
         for point in floor["points"]:
             # A device joined to a point (`also`) is that point's as much as its own device is.
             for key in [point_key(point), *point.get("also", [])]:
@@ -153,7 +156,47 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
                           ("change", lambda p: (p.get("category"), p.get("also", []))))
         if _open(old_floor) != _open(new_floor):
             lines.append(("open", "change", label))
+        if _openings(old_floor) != _openings(new_floor):
+            lines.append(("openings", "change", label))
     return lines
+
+
+def _check_opening(opening: dict, areas: set, linked: set, label: str) -> None:
+    inside = [room for room in opening["rooms"] if room is not None]
+    if not inside or len(set(inside)) != len(inside):
+        raise DomosensoError(f"opening on floor {label}: needs two rooms, or one and null")
+    for area in inside:
+        if area not in areas:
+            raise DomosensoError(f"opening on floor {label}: {area} is not a room of the floor")
+    kind = opening.get("kind", "door")
+    # A doorway has no leaf: nothing closes it, and nothing senses it. Fixed glass never opens.
+    if kind == "opening":
+        if "entity" in opening:
+            raise DomosensoError(f"opening on floor {label}: a doorway has no entity")
+        if opening.get("state") == "closed":
+            raise DomosensoError(f"opening on floor {label}: a doorway cannot be closed")
+    if kind == "fixed":
+        for key in ("entity", "state"):
+            if key in opening:
+                raise DomosensoError(f"opening on floor {label}: fixed glass has no {key}")
+    # How a leaf swings is a door's alone; it opens into one of its own sides.
+    for key in ("sliding", "hinge", "opens"):
+        if key in opening and kind != "door":
+            raise DomosensoError(f"opening on floor {label}: only a door has {key}")
+    opens = opening.get("opens")
+    if opens is not None and opens not in inside and not (opens == "outside" and None in opening["rooms"]):
+        raise DomosensoError(f"opening on floor {label}: opens into {opens}, not one of its sides")
+    entity = opening.get("entity")
+    if entity is not None:
+        if entity in linked:
+            raise DomosensoError(f"opening on floor {label}: {entity} on two openings")
+        linked.add(entity)
+
+
+def _openings(floor: dict) -> list:
+    """A floor's openings, order left out, positions rounded like points."""
+    return sorted(json.dumps({**o, "at": [_round(v) for v in o["at"]]}, sort_keys=True)
+                  for o in floor.get("openings", []))
 
 
 def _open(floor: dict) -> list:
