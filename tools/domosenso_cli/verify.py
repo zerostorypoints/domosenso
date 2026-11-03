@@ -3,7 +3,8 @@
 SPEC-002 section 3.4. Run right after a restart, again after 10 minutes, and with `--day-after` the
 next morning. Every automation and script loaded in the baseline is loaded, with the same on / off;
 no entity defined in files that had a value is unavailable or unknown (except `after_restart: unknown` entries of
-`domosenso/equivalence.yaml`, and then only `unknown`); no ERROR in the system log from
+`domosenso/equivalence.yaml`, and then only `unknown`, and a scene the home's files make with
+`scene.create`, which a restart removes); no ERROR in the system log from
 configuration, templates, automations or scripts; every resource answers 200 and no two share a file
 name; each kiosk profile has the language of the dashboards `configuration.yaml` loads; every entry of
 `domosenso/silent.yaml` passes (`triggered_within` and `entity_fresh` only with `--day-after`).
@@ -38,6 +39,10 @@ LOG_SOURCES = (
     "homeassistant.components.automation", "homeassistant.components.script",
     "homeassistant.components.template", "homeassistant.components.lovelace",
 )
+# `scene_id: <id>` of a `scene.create` action. Home Assistant gives such a scene no registry entry and
+# no `id` attribute, like a YAML scene without an id, so only the home's files tell the two apart. A
+# templated scene_id is not matched: that scene still counts as one from files.
+SCENE_ID = re.compile(r"^\s*scene_id:\s*[\"']?([a-z0-9_]+)[\"']?\s*(?:#.*)?$", re.MULTILINE)
 LANG_FILE = re.compile(r"\.([a-z]{2})\.ya?ml$")
 
 
@@ -57,7 +62,13 @@ def _runnables(part: str, base: dict, now: dict, compare_state: bool = True) -> 
     return out
 
 
-def _entities(base: dict, now: dict, may_be_unknown: set[str]) -> list[Diff]:
+def _created_scenes(config_dir: Path) -> set[str]:
+    """The scenes the home's own files create at run time (`scene.create`), as entity ids."""
+    return {f"scene.{m}" for path in sorted(config_dir.rglob("*.yaml")) if path.is_file()
+            for m in SCENE_ID.findall(path.read_text(errors="replace"))}
+
+
+def _entities(base: dict, now: dict, may_be_unknown: set[str], created: set[str] = frozenset()) -> list[Diff]:
     out = []
     for eid, was in sorted(base.items()):
         if was["state_class"] != "available" or eid.split(".", 1)[0] in ("automation", "script"):
@@ -65,6 +76,8 @@ def _entities(base: dict, now: dict, may_be_unknown: set[str]) -> list[Diff]:
         if not was.get("from_files", True):
             continue  # a deploy changes files only; an integration's device going away is the house
         cur = now.get(eid)
+        if cur is None and eid in created and was.get("unique_id") is None:
+            continue  # made by scene.create; it lives in memory until the next restart
         if cur is None:
             out.append(Diff("entities", eid, "newly-unavailable", "missing"))
         elif cur["state_class"] == "unknown" and any(fnmatchcase(eid, pattern) for pattern in may_be_unknown):
@@ -190,7 +203,7 @@ async def check(
     diffs = [
         *_runnables("automations", baseline["automations"], current["automations"]),
         *_runnables("scripts", baseline["scripts"], current["scripts"], compare_state=False),
-        *_entities(baseline["entities"], current["entities"], may_be_unknown),
+        *_entities(baseline["entities"], current["entities"], may_be_unknown, _created_scenes(home.config_dir)),
         *_log(current["errors"]),
         *await _resources(ha, current["resources"]),
         *_profiles(home, current["profiles"]),

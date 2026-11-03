@@ -324,3 +324,37 @@ def test_after_restart_entity_unknown_in_baseline_passes(tmp_path):
         now.append({"entity_id": "sensor.amp_codec", "state": now_state, "attributes": {},
                     "last_updated": "2026-10-22T06:00:00+00:00"})
         assert run_verify(tmp_path, FakeHA(responses(now)), baseline=baseline, equivalence=equivalence) == []
+
+
+def _with_scene(state_list: list[dict]) -> list[dict]:
+    return [*state_list, {"entity_id": "scene.tv_before", "state": "2026-10-21T20:00:00+00:00",
+                          "attributes": {"entity_id": ["light.living_room"]},
+                          "last_updated": "2026-10-21T20:00:00+00:00"}]
+
+
+SCENE_PACKAGE = """\
+automation:
+  - id: tv_lights
+    actions:
+      - action: scene.create
+        data:
+          scene_id: tv_before
+          snapshot_entities: [light.living_room]
+"""
+
+
+def test_scene_created_by_the_homes_files_may_go_with_a_restart(tmp_path):
+    # A scene from `scene.create` lives in memory only: the baseline caught one made during a film the
+    # evening before (2026-11-02), and the deploy's restart removed it. Home Assistant gives it no
+    # registry entry and no `id`, like a YAML scene without one; the home's own files tell them apart.
+    baseline = asyncio.run(take(FakeHA(responses(_with_scene(states())))))
+    (tmp_path / "home-assistant" / "packages").mkdir(parents=True)
+    (tmp_path / "home-assistant" / "packages" / "tv.yaml").write_text(SCENE_PACKAGE)
+    assert run_verify(tmp_path, FakeHA(responses()), baseline=baseline) == []
+
+
+def test_scene_from_files_going_missing_fails(tmp_path):
+    baseline = asyncio.run(take(FakeHA(responses(_with_scene(states())))))
+    assert kinds(run_verify(tmp_path, FakeHA(responses()), baseline=baseline)) == [
+        ("entities", "scene.tv_before", "newly-unavailable"),
+    ]
