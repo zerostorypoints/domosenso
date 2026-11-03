@@ -112,6 +112,11 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
   `initial:`, so the choice survives a restart. Both are set in Home Assistant (the switch on the
   settings dashboard's Music page, the visual on its Live visualization sub-view), not on the
   tablet: the Controls page has no visual tile.
+- **Loudness.** `input_boolean.<prefix>_music_loudness` (Live visualization sub-view, the
+  Visualization widget) shows `sensor.music_level` in dB, rounded, in the strip's top right corner,
+  small, in the palette's colour for that level (the visual's own colour range): the card's
+  `loudness`. Off by default; hidden while the level has no number and while the strip falls back to
+  the classic wave.
 - **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
   check that the aliases exist. Without them the card falls back to the classic wave with an info
   icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
@@ -401,7 +406,7 @@ lovelace:
   "Sensor settings ›" (to the sub-view below, while a sensor is selected that has an update rate or
   a calibration); the **Visualization** widget, with V: the mode (spectrum or level, an (i) saying
   what each draws), the spectrum's flavour (dune, halo, bars, and the home's own
-  `music_visual_options` flavour if it is another; the level has no flavour row) and the Advanced
+  `music_visual_options` flavour if it is another; the level has no flavour row), the Loudness switch and the Advanced
   switch; the **Colour range** (Advanced and A); **Advanced: response profile** (Advanced and A),
   one card: the profile select with its (i), then the selected profile's rise, fall, hold, tilt,
   the EQ preset select and the six EQ gains (the EQ with the spectrum only). The line width, the

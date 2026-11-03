@@ -335,6 +335,7 @@
       "music_palette": "Paleta",
       "music_spectrum_flavour": "Styl widma",
       "music_level_flavour": "Styl poziomu",
+      "music_loudness": "Głośność (dB) w rogu",
       "music_rise_ms": "Narastanie",
       "music_fall_s": "Opadanie",
       "music_line_width_px": "Grubość linii",

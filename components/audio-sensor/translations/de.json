@@ -47,6 +47,8 @@
         "tilt": "Spektrale Neigung der Musik ausgleichen",
         "style": "Stil",
         "line_width": "Linienstärke (px)",
+        "loudness": "Lautstärke (dB) in der Ecke",
+        "show": "Anzeigen",
         "look": "Look (Sensor)",
         "active": "Aktiv, solange ein",
         "controls": "Bedienfeld anzeigen",
@@ -120,7 +122,8 @@
         "show": "source.show müssen zwei Frequenzen in Hz sein, die tiefere zuerst, mindestens ein Band auseinander.",
         "palette": "colour.palette muss zones, series, calm, eine Entität oder eine Liste von [Wert, Farbe]-Stufen mit mindestens einem Zahlenwert sein.",
         "history": "source.history muss eine Anzahl Sekunden über 0 sein.",
-        "fallback": "fallback muss \"classic\" oder \"none\" sein."
+        "fallback": "fallback muss \"classic\" oder \"none\" sein.",
+        "loudness": "loudness muss { entity: <Entitäts-ID>, show: true, false oder eine Entitäts-ID } sein."
       },
       "fallback": {
         "none": "Keine (ruhig)",

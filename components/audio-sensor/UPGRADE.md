@@ -5,6 +5,9 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.4.0 (unreleased): component-backed assistant answers
 
+`ambient-wave-card` gains an optional `loudness: {entity, show}`: a level entity's value in dB in
+the drawing area's top right corner, in the palette's colour. Without it the card draws as before.
+
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.
 The component's metadata alone does not grant the Frame app access to its data.
