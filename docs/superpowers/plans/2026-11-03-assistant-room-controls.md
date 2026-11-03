@@ -66,8 +66,10 @@
 
 The three task implementations and their scoped fixes passed independent technical
 reviews. Publication, production activation and physical acceptance remain separate.
-The final integration review uses the exact source revisions below; this plan update
-only records completion and does not change runtime code.
+The table records the reviewed task revisions before final integration acceptance.
+Later scoped native fixes are recorded in that repository's controls documentation
+and acceptance report. This plan update only records completion and does not change
+runtime code.
 
 | Layer | Reviewed revision | Verification |
 | --- | --- | --- |
@@ -89,3 +91,11 @@ toolchain deprecations, isolated offline HA diagnostics and existing dependency
 advisories remain disclosed maintenance work; passing checks do not mean warning-free
 output or public-distribution readiness. No new capability is advertised on the
 website before release.
+
+Final integration policy: closing a pending selection, using Android back,
+backgrounding, or the automatic display expiry cancels that exact pending token.
+An obsolete display must not cancel a newer choice; a command already dispatched
+is unaffected. This follows the existing cancellation boundary without changing
+HA grants or the bridge wire contract. The tradeoff is that a command must be
+repeated after the automatic display return instead of selecting an invisible
+pending choice for the remainder of its former sixty-second lifetime.
