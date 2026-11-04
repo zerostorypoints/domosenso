@@ -1,0 +1,56 @@
+[#
+  The pocket dashboard: one panel view holding one custom:pocket-app card, which draws every screen
+  itself (Home, Rooms, a room, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
+  by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
+  language) and the ids of climate-air's threshold helpers; it reads their states at run time.
+
+  thresholds:
+    rooms: {<room id>: {temp_low, temp_high[, humidity_low, humidity_high]}}  per room with climate
+    air: {<reading>: {fair, poor}}   per air reading any room names, in climate-air's order
+#]
+[%- set fields = ('lights', 'scenes', 'climate', 'air', 'media') -%]
+[%- set readings = ('score', 'co2', 'pm2_5', 'voc', 'nox') -%]
+[%- set comfort = {} -%]
+[%- for room in home.rooms if room.climate is defined -%]
+[%- set keys = ('temp_low', 'temp_high', 'humidity_low', 'humidity_high') if room.climate.humidity is defined else ('temp_low', 'temp_high') -%]
+[%- set ids = {} -%]
+[%- for key in keys %][% set _ = ids.update({key: 'input_number.climate_air_' ~ room.id ~ '_' ~ key}) %][% endfor -%]
+[%- set _ = comfort.update({room.id: ids}) -%]
+[%- endfor -%]
+[%- set air = {} -%]
+[%- for reading in readings if home.rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list -%]
+[%- set _ = air.update({reading: {'fair': 'input_number.climate_air_' ~ reading ~ '_fair', 'poor': 'input_number.climate_air_' ~ reading ~ '_poor'}}) -%]
+[%- endfor -%]
+title: [[ inputs.title | default('Home') | yaml ]]
+views:
+  - title: [[ inputs.title | default('Home') | yaml ]]
+    path: home
+    panel: true
+    cards:
+      - type: custom:pocket-app
+        lang: [[ lang ]]
+        rooms:
+[%- for room in home.rooms %]
+          - id: [[ room.id ]]
+            name: [[ room_name(room) | yaml ]]
+[%- for field in fields if room[field] is defined %]
+            [[ field ]]: [[ room[field] | yaml ]]
+[%- endfor %]
+[%- endfor %]
+[%- if home.outside is defined %]
+        outside: [[ home.outside | yaml ]]
+[%- endif %]
+[%- if home.weather is defined %]
+        weather: [[ home.weather ]]
+[%- endif %]
+        thresholds:
+[%- for name, table in (('rooms', comfort), ('air', air)) %]
+[%- if table %]
+          [[ name ]]:
+[%- for key, ids in table.items() %]
+            [[ key ]]: [[ ids | yaml ]]
+[%- endfor %]
+[%- else %]
+          [[ name ]]: {}
+[%- endif %]
+[%- endfor %]

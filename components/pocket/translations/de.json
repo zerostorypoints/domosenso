@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "description": "Ein Dashboard fürs Handy: die Räume mit Licht, Klima und Luft auf einen Blick, und zuerst, was Aufmerksamkeit braucht.",
+    "assistant": {
+      "explain": {
+        "title": "Über das Handy-Dashboard",
+        "description": "Das Handy-Dashboard zeigt die Räume, das Licht, das Klima und die Luft des Hauses auf dem Handy. Der Assistent kann diese Komponente erklären; er ändert darüber keine Einstellungen.",
+        "examples": [
+          "Was zeigt das Handy-Dashboard?"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+# Domosenso component manifest: the pocket, a phone dashboard. One YAML dashboard per language with
+# one panel view holding one card, `custom:pocket-app`: the rooms, outside and weather of the home
+# inputs and the ids of climate-air's threshold helpers are its config; states come from Home
+# Assistant at run time, levels (good / fair / poor) are computed in the card (cards/lib/level.js).
+# How a home uses it: README.md; upgrade notes: UPGRADE.md.
+id: pocket
+version: 0.1.0
+summary: A phone dashboard for the home's rooms, lights, climate and air
+description_key: meta.description
+photo: null
+uses_home: true               # the rooms, outside and weather come from the home inputs
+
+devices:
+  requires: []
+
+host:
+  installs: [container, haos]   # the card is a Lovelace resource
+  ha_min: "2026.9"
+
+integrations: []
+
+inputs:
+  dashboard_paths:              # the pocket dashboard of each language, plain URL paths as registered
+    type: "map[lang, string]"   # in configuration.yaml
+    default: {en: dashboard-pocket}
+    example: {en: dashboard-pocket, pl: dashboard-pocket-pl}
+  title:                        # the dashboard's title
+    type: string
+    default: Home
+
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
+artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
+    - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
+  ha_packages: []
+  # Served as /local/domosenso/pocket/<version>/: cards/*.js, cards/lib/** and translations/ keep
+  # their paths from this directory (tests and cards/testing/ stay behind).
+  install_path: www/domosenso/pocket/<version>/
+  dashboard_cards:
+    - cards/pocket-app.js       # custom:pocket-app, the whole phone view
+
+provides:
+  entities: []
+
+# The thresholds the card's levels read; with no climate-air in the home they are missing and the
+# card shows no level.
+consumes:
+  - {component: climate-air, id: "input_number.climate_air_<room>_{temp_low,temp_high}"}
+  - {component: climate-air, id: "input_number.climate_air_<room>_{humidity_low,humidity_high}"}
+  - {component: climate-air, id: "input_number.climate_air_<reading>_{fair,poor}"}
+
+tested:
+  ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh pocket)
+  homes: 0                      # no home has run 0.1.0 yet
+local_only: true

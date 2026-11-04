@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "description": "Pulpit domu na telefon: pomieszczenia z oświetleniem, klimatem i jakością powietrza w skrócie, a na początku to, co wymaga uwagi.",
+    "assistant": {
+      "explain": {
+        "title": "O pulpicie na telefon",
+        "description": "Pulpit na telefon pokazuje pomieszczenia domu, oświetlenie, klimat i powietrze na telefonie. Asystent opisuje działanie tego komponentu; nie zmienia przez niego ustawień.",
+        "examples": [
+          "Co pokazuje pulpit na telefon?"
+        ]
+      }
+    }
+  }
+}

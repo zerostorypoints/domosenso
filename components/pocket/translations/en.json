@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "description": "A phone dashboard for the home: rooms with their lights, climate and air at a glance, and what needs attention first.",
+    "assistant": {
+      "explain": {
+        "title": "About the phone dashboard",
+        "description": "The phone dashboard shows the home's rooms, lights, climate and air on a phone. The assistant can explain this component; it does not change settings through it.",
+        "examples": [
+          "What does the phone dashboard show?"
+        ]
+      }
+    }
+  }
+}
