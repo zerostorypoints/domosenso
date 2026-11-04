@@ -5,6 +5,30 @@
   "type": "object",
   "required": ["id", "version", "summary", "description_key", "devices", "host", "integrations", "artifacts", "tested"],
   "properties": {
+    "assistant_actions": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "definition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "bindings": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "version",
+        "definition",
+        "bindings"
+      ],
+      "additionalProperties": false
+    },
     "assistant": {"type": "object", "properties": {"version": {"const": 1}, "definition": {"type": "string", "minLength": 1, "maxLength": 200}, "bindings": {"type": "string", "minLength": 1, "maxLength": 200}}, "required": ["version", "definition", "bindings"], "additionalProperties": false},
     "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
     "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},

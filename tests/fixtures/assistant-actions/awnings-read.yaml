@@ -1,0 +1,168 @@
+# Rendered by Domosenso from awnings/0.3.0 (aaaaaaaaaaaa) — do not edit
+
+schema: 1
+component:
+  id: awnings
+  version: 0.3.0
+  commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  dev: false
+definitions:
+  capabilities:
+  - id: awnings.status
+    revision: 1
+    operation: read
+    query_type: awning-query.v1
+    answer_type: awnings.v1
+    title_key: meta.assistant.status.title
+    description_key: meta.assistant.status.description
+    examples_key: meta.assistant.status.examples
+    required_facts:
+    - role: cover
+      type: state
+      units: []
+      source:
+        relation: provides
+        id: cover.<awning>
+    optional_facts:
+    - role: wind
+      type: state
+      units: []
+      source:
+        relation: provides
+        id: binary_sensor.<wind>
+    - role: last_heard
+      type: event
+      units: []
+      source:
+        relation: provides
+        id: input_datetime.<wind_last_heard.id>
+    policy:
+      evaluator: awnings.status
+    freshness:
+      max_age_seconds: null
+      basis: reported_state
+    limitations:
+    - missing_source
+  - id: awnings.wind
+    revision: 1
+    operation: read
+    query_type: awning-query.v1
+    answer_type: awnings.v1
+    title_key: meta.assistant.wind.title
+    description_key: meta.assistant.wind.description
+    examples_key: meta.assistant.wind.examples
+    required_facts:
+    - role: wind
+      type: state
+      units: []
+      source:
+        relation: provides
+        id: binary_sensor.<wind>
+    optional_facts:
+    - role: last_heard
+      type: event
+      units: []
+      source:
+        relation: provides
+        id: input_datetime.<wind_last_heard.id>
+    policy:
+      evaluator: awnings.wind
+    freshness:
+      max_age_seconds: null
+      basis: reported_state
+    limitations:
+    - missing_source
+    - unknown_freshness
+  - id: awnings.explain
+    revision: 1
+    operation: read
+    query_type: component-query.v1
+    answer_type: component-description.v1
+    title_key: meta.assistant.explain.title
+    description_key: meta.assistant.explain.description
+    examples_key: meta.assistant.explain.examples
+    required_facts: []
+    optional_facts: []
+    policy:
+      evaluator: awnings.explain
+    freshness:
+      max_age_seconds: null
+      basis: installed_metadata
+    limitations: []
+translations:
+  en:
+    meta:
+      assistant:
+        explain:
+          description: Awnings report estimated positions and wind alarms; a cleared
+            alarm does not prove calm.
+          examples:
+          - What does awnings do?
+          title: About awnings
+        status:
+          description: Read configured cover state and its estimated position.
+          examples:
+          - Are the awnings extended?
+          title: Awning status
+        wind:
+          description: Report the wind alarm and when the sensor was last heard.
+          examples:
+          - What does the wind sensor report?
+          title: Wind report
+  de:
+    meta:
+      assistant:
+        explain:
+          description: Markisen melden geschätzte Positionen und Windalarme; ein gelöschter
+            Alarm beweist keine Windstille.
+          examples:
+          - Was bietet Markisen?
+          title: Über Markisen
+        status:
+          description: Status und geschätzte Position der konfigurierten Markisen
+            lesen.
+          examples:
+          - Sind die Markisen ausgefahren?
+          title: Markisenstatus
+        wind:
+          description: Windalarm und letzten Empfang des Sensors melden.
+          examples:
+          - Was meldet der Windsensor?
+          title: Windmeldung
+  pl:
+    meta:
+      assistant:
+        explain:
+          description: Markizy zgłaszają szacowane położenie i alarm wiatru; brak
+            alarmu nie oznacza ciszy.
+          examples:
+          - Do czego służy markizy?
+          title: 'Informacje: markizy'
+        status:
+          description: Podaje stan skonfigurowanych markiz i szacowane położenie.
+          examples:
+          - Czy markizy są rozwinięte?
+          title: Stan markiz
+        wind:
+          description: Podaje alarm wiatru i czas ostatniego sygnału z czujnika.
+          examples:
+          - Co zgłasza czujnik wiatru?
+          title: Odczyt wiatru
+bindings:
+  subjects:
+  - key: cover.terrace
+    kind: awning
+    label: Terrace
+    fields:
+      cover:
+        entity: cover.terrace
+    roomKey: terrace
+  - key: binary_sensor.awnings_wind
+    kind: awning
+    label: Awnings wind
+    fields:
+      wind:
+        entity: binary_sensor.awnings_wind
+      last_heard:
+        entity: input_datetime.wind_heard
+  policies: []

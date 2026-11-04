@@ -110,6 +110,7 @@ and a manifest that says what it needs and which versions it was tested on.
 - **lights** — Philips Hue lights per room, from the bridge's rooms. Tested in 1 home.
 - **media** — a network audio player as a media player; tested with a Hegel H400. Tested in 1 home.
 - **calendar** — events from a CalDAV server such as iCloud. Tested in 1 home.
+- **timers** — shared countdown helpers with restore enabled, classic Ramka controls and separate assistant command metadata. Development; no production home acceptance yet.
 - **weather** — current weather and forecast from Met.no. Tested in 1 home.
 - **backup** — nightly full backup, catch-up after a restart, retention and a stale-backup alert. Tested in 1 home.
 - **remote-access** — Home Assistant from anywhere through a Cloudflare Tunnel, no open port. Tested in 0 homes.

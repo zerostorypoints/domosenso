@@ -174,6 +174,16 @@
     },
     "info_select_row": {
       "about": "About this choice"
+    },
+    "timers": {
+      "paused": "Paused",
+      "unavailable": "Unavailable",
+      "offline": "Offline",
+      "completed": "Timer finished",
+      "inferred_completed": "Elapsed while Home Assistant was offline",
+      "dismiss": "Dismiss alarm",
+      "sound_enable": "Enable sound here · foreground only, no background alarm",
+      "sound_enabled": "Sound enabled here · foreground only, no background alarm"
     }
   },
   "ui": {
@@ -551,6 +561,9 @@
     },
     "exit": {
       "button": "Exit"
+    },
+    "timers": {
+      "heading": "Timers"
     }
   },
   "meta": {
@@ -574,6 +587,13 @@
         "description": "The wall frame displays home information; configured mode does not prove display power.",
         "examples": [
           "What does the wall frame do?"
+        ]
+      },
+      "current_time": {
+        "title": "Current time",
+        "description": "Current time in the Home Assistant time zone.",
+        "examples": [
+          "What time is it?"
         ]
       }
     }

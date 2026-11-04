@@ -132,15 +132,92 @@ reviewed commit after it reaches `main`; existing tags must never be moved.
 | Component | Previous version | Prepared version |
 |---|---|---|
 | audio-sensor | 0.3.0 | 0.4.0 |
-| awnings | 0.2.1 | 0.3.0 |
+| awnings | 0.2.1 | 0.4.0 |
 | backup | 0.1.0 | 0.2.0 |
 | bermuda-presence | 0.2.1 | 0.3.0 |
 | calendar | 0.1.0 | 0.2.0 |
 | climate-air | 0.2.0 | 0.3.0 |
 | floorplan | 0.3.1 | 0.4.0 |
-| lights | 0.2.0 | 0.3.0 |
+| lights | 0.2.0 | 0.4.0 |
 | media | 0.1.0 | 0.2.0 |
 | plants | 0.3.1 | 0.4.0 |
 | ramka | 0.11.0 | 0.12.0 |
 | remote-access | 0.1.0 | 0.2.0 |
 | weather | 0.1.0 | 0.2.0 |
+
+
+## Future sources and configuration parity (SPEC-032, development)
+
+A compatible Frame bridge offers **All current and future sources** per supported component
+scope. This is an explicit endpoint opt-in with individual exclusions. A new plant configured
+through the component's inputs and normal render/deploy becomes available to answers without a
+second mapping or APK. Existing selections stay unchanged until the administrator opts in.
+Component names, rooms, measurement sources and assessment policies remain authoritative;
+existing manual overrides keep precedence. Only approved read roles/capability revisions are
+included, and HA permissions and sensitive-data gates still apply to every request.
+
+The bridge detects changed private bundles within 30 seconds, including input updates that retain
+the same component version and commit. Missing or invalid bundles disable their dynamic sources.
+Plants and supported room measurements feed bridge display and assistant from the same resolved
+subjects. The classic HA cards retain independent visibility; being visible is not a voice grant.
+Vanilla HA manual adapters are configured once; unmapped sensors remain discovery candidates.
+See [SPEC-032](../.ai/specs/SPEC-032-2026-11-03-assistant-source-parity.md) for boundaries and acceptance.
+This is a development contract pending bridge release, not an automatic upgrade of an installed home.
+
+## Explicit light and awning controls (SPEC-033, development)
+
+Lights 0.4.0 and awnings 0.4.0 add optional, descriptive action sidecars. They do not
+perform HA service calls, expose sources, or enable controls. Continue to use HA's
+existing entities, area registry and integration editor; no second room editor is needed.
+A compatible bridge must negotiate SPEC-033 revision 1 and require administrator-enabled
+controls, exact target/action grants and current HA READ+CONTROL permissions. Existing
+read grants, including future read scopes, never authorize an action.
+
+The manifest's optional `assistant_actions` declaration uses version 1, a definition
+file and a separate managed bindings template. `load_actions` and `compile_actions` emit
+`domosenso/assistant-actions/<component>.yaml` in the private config directory, with
+schema 1, exact component `{id, version, commit, dev}` provenance, `definitions.actions`,
+selected en/de/pl translations and `bindings: {subjects, policies}`. The sidecar follows
+normal lock hashes, dev-render ownership, deploy, rollback and removal. It never goes in
+`www` or HA packages. The canonical `assistant-actions-bindings.yaml.j2` template is
+reserved metadata; without the declaration it produces no installed output.
+
+Fixed actions are `lights.turn_on`, `lights.turn_off`, `awnings.extend`,
+`awnings.retract` and `awnings.stop`, revision 1, `operation: write`,
+`action_type: control-action.v1`, `result_type: control-result.v1`, empty `parameters`
+and `confirmation: none`. Their `effect` is the ID suffix. Required and optional facts
+use the read contract's source-role shape and must name manifest-declared surfaces.
+No service, script, prompt, arbitrary parameters or grants are accepted. Timer actions
+retain their existing `operation: timer`, types, parameters and confirmation semantics.
+
+Light subjects reuse the existing read subjects and template-light indirection. A room
+proxy's action subject additionally carries optional `group: {entity}`, copied only from
+its configured `rooms[].group` and validated as a declared upstream light source. Its
+`fields.light.entity` remains the proxy target; the relation is descriptive, never another
+command target or a grant. The bridge must resolve current group membership, snapshot the
+exact canonical members in grants/revisions, handle group/member overlap and invalidate
+scope growth. Missing or unknown membership fails closed; group IDs are never inferred
+from a proxy name. Awning subjects reuse only covers with an explicit entity identity. If a wind input exists,
+each awning subject carries an optional `guard` with `wind: {entity}`,
+`last_heard: {entity}` and positive finite `max_age_seconds`. These are the same sources
+as the wind read subject. The age is the existing `wind_silent_hours` policy multiplied
+by 3600; its default remains 72 hours. An absent guard, unknown/alarm/stale wind input,
+invalid/future last-heard timestamp or inaccessible safety source must block extension
+in the bridge. Retraction and supported STOP do not require a safe-wind assertion.
+Existing device protection remains authoritative; a recent calm report is not a weather
+guarantee, and a service return is not physical confirmation.
+
+The compiler fixtures in `tests/fixtures/assistant-actions/` are fictional integration
+examples for bridge consumers. Generic HA covers use a bridge adapter, rather than a new
+framework component. A bridge loading multiple sidecar types must ignore unsupported
+owners/types without disabling its supported timer artifacts.
+
+Release prerequisites: tooling supporting SPEC-033, a bridge advertising the five action
+IDs above at revision 1, and a client negotiating the bridge control protocol version 1.
+No released bridge/app minimum version is claimed here: this contract is under development.
+Upgrade tooling before components, then the bridge and client, and review grants in the
+existing integration editor. Downgrade components to their preceding tags and deploy the
+removal of their action sidecars before downgrading tooling. Older readers ignore the
+optional directory; the legacy schema-1 read bundles and timer contract remain supported
+for at least one minor version. Never enable grants as part of an upgrade or downgrade.
+Website publication is deferred until tagged component and compatible bridge/client releases.

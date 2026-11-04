@@ -1,0 +1,40 @@
+capabilities:
+- id: timers.status
+  revision: 1
+  operation: read
+  query_type: timer-query.v1
+  answer_type: timer-status.v1
+  title_key: meta.assistant.status.title
+  description_key: meta.assistant.status.description
+  examples_key: meta.assistant.status.examples
+  required_facts:
+  - role: timer
+    type: state
+    units: []
+    source:
+      relation: provides
+      id: timer.<prefix>_<id>
+  optional_facts: []
+  policy:
+    evaluator: timers.status
+  freshness:
+    basis: reported_state
+    max_age_seconds: null
+  limitations:
+  - missing_source
+- id: timers.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: timers.explain
+  freshness:
+    basis: installed_metadata
+    max_age_seconds: null
+  limitations: []

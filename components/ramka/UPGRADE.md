@@ -3,8 +3,18 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.15.0 (unreleased)
 
-## Unreleased: the music view comes back after a swipe up
+### Optional shared timers
+
+The new `timers` input defaults to empty. Selected helpers add standard HA timer tiles to Controls and
+an unobtrusive cross-view countdown badge. Existing controls, settings and radar behavior remain.
+`ramka.current_time` uses the closed `ha_clock` runtime source in a separate private
+`domosenso/assistant-runtime/ramka.yaml` artifact. Older bridges ignore this directory; the legacy
+Ramka read artifact retains its previous definitions and text. Upgrade the bridge to enable time
+answers and timer commands.
+
+### The music view comes back after a swipe up
 
 A swipe up on the controls hid the now-playing card until the player next started from silence: a
 pause, a restart of Home Assistant or a whole evening of music did not bring it back. The new
@@ -14,12 +24,14 @@ restart of Home Assistant with nobody there. So
 stepping back from the Ramka shows the music again whenever the player plays. Nothing to do:
 render and deploy bring the automation.
 
-## 0.14.0 (unreleased): choose the application restored on wake
+### Live music loudness
 
-Also: with `music_visual`, a **Loudness (dB)** switch on the Live visualization sub-view
-(`input_boolean.<prefix>_music_loudness`, off by default): on, the live visual shows the music
-level in dB in the strip's top right corner, in the palette's colour. Needs audio-sensor's card with
-its `loudness` option (0.4.0); an older card ignores it. Turn it on in the settings after the update.
+With `music_visual`, a **Loudness (dB)** switch on the Live visualization sub-view
+(`input_boolean.<prefix>_music_loudness`, off by default) shows the level in dB in the strip's
+top right corner. This requires the audio-sensor 0.4.0 card with its `loudness` option. Older cards
+ignore the option. Turn it on in the settings after the update.
+
+## 0.14.0: choose the application restored on wake
 
 Adds optional `tablet_wake_package` (SPEC-030). Existing homes need no changes: the default keeps
 Companion and its foreground check. A home displaying Frame sets `tablet_wake_package:

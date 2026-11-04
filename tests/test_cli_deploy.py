@@ -1045,10 +1045,16 @@ def test_inventory_with_a_dev_item_is_a_dev_render(tmp_path):
     assert inventory.PACKAGE in record and inventory.PACKAGE in dirty
 
 
-def test_assistant_bundle_deploy_remove_and_rollback_preserve_endpoint_storage(tmp_path):
+@pytest.mark.parametrize('directory,cid', [('assistant','ramka'), ('assistant-actions','lights'), ('assistant-actions','awnings')])
+def test_assistant_bundle_deploy_remove_and_rollback_preserve_endpoint_storage(tmp_path, directory, cid):
     home = Home(tmp_path)
-    path = 'domosenso/assistant/ramka.yaml'
-    home.managed(path, 'schema: 1\ncomponent: {id: ramka}\n')
+    path = f'domosenso/{directory}/{cid}.yaml'
+    if directory == 'assistant-actions':
+        fixture = Path(__file__).parent / 'fixtures/assistant-actions' / f'{cid}.json'
+        content = yaml.safe_dump(json.loads(fixture.read_text()))
+    else:
+        content = 'schema: 1\ncomponent: {id: ramka}\n'
+    home.managed(path, content, cid=cid)
     target = FakeTarget(home.target_dir, check_output=CLEAN)
     on_target(target, '.storage/domosenso_frame', '{"mapping":"local"}')
     store = Resources([])
@@ -1056,7 +1062,7 @@ def test_assistant_bundle_deploy_remove_and_rollback_preserve_endpoint_storage(t
     assert path in plan.add and plan.restart
     run_apply(home, target, store.ha(), plan)
     original = (home.target_dir / path).read_bytes()
-    home.lock.components['ramka'].files.pop(f'{CONFIG}/{path}')
+    home.lock.components[cid].files.pop(f'{CONFIG}/{path}')
     (home.config / path).unlink()
     removal = plan_for(home, target)
     assert path in removal.remove

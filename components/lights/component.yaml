@@ -2,7 +2,7 @@
 # 0.2.0 a package with room lights that follow the bulbs, a lights-on count and the lowest battery
 # (SPEC-008).
 id: lights
-version: 0.3.0
+version: 0.4.0
 summary: Philips Hue lights per room, from the bridge's room groups
 description_key: meta.description
 photo: null
@@ -44,8 +44,14 @@ assistant:
   definition: assistant.yaml
   bindings: templates/assistant-bindings.yaml.j2
 
+assistant_actions:
+  version: 1
+  definition: assistant-actions.yaml
+  bindings: templates/assistant-actions-bindings.yaml.j2
+
 artifacts:
   templates:
+    - templates/assistant-actions-bindings.yaml.j2
     - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2   # -> packages/lights.yaml
   ha_packages: []

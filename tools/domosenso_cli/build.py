@@ -17,7 +17,8 @@ from pathlib import Path
 
 import yaml
 
-from assistant_contract import compile_profile, load_definition
+from assistant_actions import compile_actions, load_actions
+from assistant_contract import compile_profile, load_definition, split_runtime_profile
 from catalog_check import install_dir, install_files, install_version, service_files, versioned
 from domosenso_cli import dev_render, stamps
 from domosenso_cli.catalog import Catalog
@@ -165,6 +166,11 @@ def plan_outputs(
             load_definition(component_dir, manifest)
         except ValueError as exc:
             raise DomosensoError(f"{cid}: {exc}") from exc
+    if "assistant_actions" in manifest:
+        try:
+            load_actions(component_dir, manifest)
+        except ValueError as exc:
+            raise DomosensoError(f"{cid}: {exc}") from exc
     artifacts = manifest.get("artifacts") or {}
     prefix = _config_prefix(home)
     outputs: list[Output] = []
@@ -174,6 +180,8 @@ def plan_outputs(
 
     templates_dir = component_dir / "templates"
     names = sorted(p.relative_to(templates_dir).as_posix() for p in templates_dir.rglob("*.j2")) if templates_dir.is_dir() else []
+    if "assistant_actions" not in manifest:
+        names = [n for n in names if n != "assistant-actions-bindings.yaml.j2"]
     wanted = [n for n in names if instance or not n.startswith(INSTANCE_DIR)]
     if wanted:
         with tempfile.TemporaryDirectory() as scratch:
@@ -205,9 +213,21 @@ def plan_outputs(
                             profile = compile_profile(component_dir, manifest, yaml.safe_load(content), version, sha, dirty)
                         except ValueError as exc:
                             raise DomosensoError(f"{cid}: {exc}") from exc
+                        legacy, runtime = split_runtime_profile(profile)
+                        for directory, artifact in (("assistant", legacy), ("assistant-runtime", runtime)):
+                            if artifact is None:
+                                continue
+                            encoded = (stamps.stamp(cid, version, sha[:SHORT_SHA], dirty) + "\n" +
+                                       yaml.safe_dump(artifact, allow_unicode=True, sort_keys=False)).encode("utf-8")
+                            add(f"domosenso/{directory}/{cid}.yaml", encoded, manifest["assistant"]["definition"])
+                    elif f"templates/{name}" == (manifest.get("assistant_actions") or {}).get("bindings"):
+                        try:
+                            profile = compile_actions(component_dir, manifest, yaml.safe_load(content), version, sha, dirty)
+                        except ValueError as exc:
+                            raise DomosensoError(f"{cid}: {exc}") from exc
                         encoded = (stamps.stamp(cid, version, sha[:SHORT_SHA], dirty) + "\n" +
                                    yaml.safe_dump(profile, allow_unicode=True, sort_keys=False)).encode("utf-8")
-                        add(f"domosenso/assistant/{cid}.yaml", encoded, manifest["assistant"]["definition"])
+                        add(f"domosenso/assistant-actions/{cid}.yaml", encoded, manifest["assistant_actions"]["definition"])
                     elif name.startswith(INSTANCE_DIR):  # the home's own once written: no stamp, it is not "do not edit"
                         text = stamps.body(content.decode("utf-8")).encode("utf-8")
                         add(_instance_destination(rendered), text, f"templates/{name}", "instance")
@@ -263,9 +283,16 @@ def _renderable_copy(component_dir: Path, destination: Path, instance: bool) -> 
     `templates/instance/` only for an instance
     render, so that a template of the home's own layer cannot fail a managed render for want of an input."""
     templates = component_dir / "templates"
+    has_actions = "assistant_actions" in load_manifest(component_dir)
 
     def ignore(directory: str, names: list[str]) -> list[str]:
-        return [INSTANCE_DIR.rstrip("/")] if not instance and Path(directory) == templates else []
+        skipped = []
+        if Path(directory) == templates:
+            if not instance:
+                skipped.append(INSTANCE_DIR.rstrip("/"))
+            if not has_actions:
+                skipped.append("assistant-actions-bindings.yaml.j2")
+        return skipped
 
     shutil.copytree(templates, destination / "templates", ignore=ignore)
     if (component_dir / "translations").is_dir():

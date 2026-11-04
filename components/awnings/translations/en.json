@@ -28,6 +28,27 @@
         "examples": [
           "What does awnings do?"
         ]
+      },
+      "extend": {
+        "title": "Extend the awning",
+        "description": "Request extension only with explicit access and fresh, safe wind evidence; existing protection still applies.",
+        "examples": [
+          "Extend the terrace awning"
+        ]
+      },
+      "retract": {
+        "title": "Retract the awning",
+        "description": "Request retraction with explicit access, without a safe-wind assertion.",
+        "examples": [
+          "Retract the terrace awning"
+        ]
+      },
+      "stop": {
+        "title": "Stop the awning",
+        "description": "Request STOP with explicit access when the integration supports it; position may be estimated.",
+        "examples": [
+          "Stop the terrace awning"
+        ]
       }
     }
   }

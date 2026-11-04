@@ -28,6 +28,27 @@
         "examples": [
           "Do czego służy markizy?"
         ]
+      },
+      "extend": {
+        "title": "Wysuń markizę",
+        "description": "Wysunięcie wymaga uprawnienia i aktualnego potwierdzenia braku alarmu wiatru; dotychczasowe zabezpieczenia nadal działają.",
+        "examples": [
+          "Wysuń markizę na tarasie"
+        ]
+      },
+      "retract": {
+        "title": "Zwiń markizę",
+        "description": "Zwinięcie wymaga uprawnienia, ale nie wymaga potwierdzenia braku alarmu wiatru.",
+        "examples": [
+          "Zwiń markizę na tarasie"
+        ]
+      },
+      "stop": {
+        "title": "Zatrzymaj markizę",
+        "description": "Zatrzymanie wymaga uprawnienia i obsługi STOP przez integrację; pozycja może być szacowana.",
+        "examples": [
+          "Zatrzymaj markizę na tarasie"
+        ]
       }
     }
   }
