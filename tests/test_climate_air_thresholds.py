@@ -140,3 +140,73 @@ def test_too_many_tokens_fail_the_render(tmp_path):
 def test_partial_comfort_defaults_render(tmp_path):
     groups = _groups(_seed(tmp_path, HOME, {**INPUTS, "comfort_defaults": {"temp_low": 18}}))
     assert groups["living_room"] == {"living_room_temp_low": 18, "living_room_temp_high": 24}
+
+def test_no_derived_entities(tmp_path):
+    package = _package(tmp_path)
+    for block in package["template"]:
+        for e in block.get("binary_sensor", []) + block.get("sensor", []):
+            assert not e.get("unique_id", "").startswith("climate_air_")
+
+
+def test_room_with_neither_climate_nor_air_leaves_no_null_keys(tmp_path):
+    home = {"rooms": [{"id": "hall", "name": "Hall", "lights": "light.hall"}]}
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=home)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    assert not _null_paths(package)
+    assert all(b for b in package["template"])
+    assert not {"input_text", "automation", "script"} & set(package)
+
+
+def _null_paths(value, path=""):
+    """Every path in a nested value that holds None."""
+    if value is None:
+        return [path]
+    items = value.items() if isinstance(value, dict) else enumerate(value) if isinstance(value, list) else []
+    return [p for k, v in items for p in _null_paths(v, f"{path}/{k}")]
+
+
+
+
+def test_room_name_with_colon_and_hash_renders_valid_yaml(tmp_path):
+    name = "Loft: east # wing"
+    home = {"rooms": [{"id": "loft", "name": name, "climate": {"temperature": "sensor.t", "humidity": "sensor.h"}}]}
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=home)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    assert package["input_number"]["climate_air_loft_temp_low"]["name"] == name + " comfort temperature low"
+    assert package["input_number"]["climate_air_loft_humidity_high"]["name"] == name + " comfort humidity high"
+
+
+
+
+def test_comfort_defaults_outside_helper_range_fail(tmp_path):
+    from domosenso_render import RenderError
+    for key, value in (("temp_high", 35), ("temp_low", 5), ("humidity_low", 10), ("humidity_high", 90)):
+        with pytest.raises(RenderError, match=f"{key}.*{value}"):
+            render_component(COMPONENT, {**INPUTS, "comfort_defaults": {key: value}}, tmp_path, ["en"], home=HOME)
+
+
+
+
+def test_manifest_provides_every_rendered_entity(tmp_path):
+    import re
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=HOME)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    patterns = [e["id"] for e in manifest["provides"]["entities"]]
+
+    def matches(entity_id):
+        for pattern in patterns:
+            body = re.escape(pattern)
+            body = re.sub(r"\\\{([^}]*)\\\}", lambda m: "(?:" + m.group(1).replace(",", "|") + ")", body)
+            body = re.sub(r"<\w+>", "[a-z0-9_]+", body)
+            if re.fullmatch(body, entity_id):
+                return True
+        return False
+
+    rendered = [k for k in package["input_number"]]
+    ids = [f"input_number.{k}" for k in rendered if k.startswith("climate_air_")]
+    ids += [f"input_text.{k}" for k in package["input_text"]]
+    ids += [f"automation.{a['id']}" for a in package["automation"]]
+    ids += [f"script.{k}" for k in package["script"]]
+    assert ids
+    assert not [i for i in ids if not matches(i)]

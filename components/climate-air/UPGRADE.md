@@ -5,7 +5,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 ## 0.3.0 (unreleased): comfort and air thresholds
 
-New helpers, flags and `sensor.climate_attention` (`provides` in `component.yaml`, feature
+New comfort and air-limit helpers (`provides` in `component.yaml`, feature
 `thresholds`), plus `script.climate_air_thresholds_reset`. They appear once the home names
 `home_inputs`; nothing changes otherwise.
 
@@ -14,9 +14,9 @@ New helpers, flags and `sensor.climate_attention` (`provides` in `component.yaml
 - Nothing, without `home_inputs`. With them, `render` and deploy: the seed automation sets each
   room's range once at start. Change `comfort_defaults` to move the starting range (it applies to
   rooms not yet seeded, or after the reset script).
-- Remove or rename any own entities with the same ids (`binary_sensor.<room>_too_hot` and the
-  like): if an entity already holds an id, Home Assistant gives the new one `..._2`
-  (`default_entity_id` falls back), and anything reading the plain id reads the wrong entity.
+- A home that rendered the earlier unreleased flags removes the orphaned entities
+  (`binary_sensor.<room>_too_*`, `binary_sensor.<room>_air_poor`, `sensor.climate_attention`) from
+  the entity registry.
 
 ## 0.3.0 (unreleased): component-backed assistant answers
 

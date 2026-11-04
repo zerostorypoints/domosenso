@@ -46,12 +46,9 @@ them nothing below is rendered.
   air limits start at the catalog's per-reading defaults. A seed automation gives each room or
   reading its defaults once, at start; a value a person sets stays, and a room added later is
   seeded without touching the others.
-- **Flags.** `binary_sensor.<room>_too_hot`, `_too_cold`, `_too_humid`, `_too_dry` and, for rooms
-  with air readings, `_air_poor`. A flag is unavailable while a reading is not a number. A low
-  limit above the high one never gives both too hot and too cold: too hot wins.
-  `_air_poor` stays available while at least one reading and its poor limit are numbers. Air
-  defaults (fair / poor): score 80 / 60 (lower is worse), co2 800 / 1200, pm2_5 15 / 35,
+- **Air defaults** (fair / poor): score 80 / 60 (lower is worse), co2 800 / 1200, pm2_5 15 / 35,
   voc 150 / 250, nox 20 / 150.
-- **Attention.** `sensor.climate_attention` counts the rooms with any flag on; its `rooms`
-  attribute lists them in the order of the home inputs.
+- **Levels.** The helpers are the shared thresholds; nothing is derived from them here. The cards
+  that show a reading compute its level: good, fair or poor, and a comfort reading outside its
+  range is poor with a side, low or high.
 - **Reset.** `script.climate_air_thresholds_reset` sets every helper back to its default.
