@@ -2,7 +2,7 @@
 // `panel: true` view (Home Assistant's header stays above it) and draws
 //   - the page of the current route (lib/router.js: #/, #/rooms, #/room/<id>, #/media, #/settings),
 //     taken from pages/index.js, which also states the page contract;
-//   - a bottom bar, Home · Rooms · Media · Settings, fixed at the bottom over the phone's safe area;
+//   - a bottom bar, Home · Rooms · Media · Settings, sticky at the bottom over the phone's safe area;
 //   - a thin banner while Home Assistant is not connected (pages then get ctx.offline = true).
 // Navigation sets location.hash: no reload, and the browser's back button returns.
 //
@@ -25,16 +25,19 @@ const translate = createT({ en, de, pl });
 
 const STYLE = `
   :host { display: block; height: 100%; }
+  /* The bar is sticky inside .app, not fixed: it stays within the card's own column (beside an open
+     sidebar on a tablet) and no transformed ancestor in Home Assistant's view can misplace it. */
   .app { --bar: 64px; --safe: env(safe-area-inset-bottom, 0px);
-         box-sizing: border-box; min-height: 100%; background: var(--bg); color: var(--fg);
+         box-sizing: border-box; min-height: 100%; display: flex; flex-direction: column;
+         background: var(--bg); color: var(--fg);
          font-family: -apple-system, "SF Pro Text", Roboto, system-ui, sans-serif; font-weight: 400;
-         -webkit-font-smoothing: antialiased; padding-bottom: calc(var(--bar) + var(--safe)); }
-  .offline { background: var(--warn); color: #1c1f24; font-size: 12.5px; text-align: center;
+         -webkit-font-smoothing: antialiased; }
+  .offline { background: var(--warn); color: var(--on-warn); font-size: 12.5px; text-align: center;
              padding: 6px 16px; }
   .offline[hidden] { display: none; }
-  main { padding: 12px 16px 16px; }
+  main { flex: 1 0 auto; padding: 12px 16px 16px; }
   .placeholder-text { color: var(--mut); font-size: 15px; margin: 32px 0; text-align: center; }
-  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; box-sizing: border-box;
+  nav { position: sticky; bottom: 0; z-index: 2; box-sizing: border-box; flex: 0 0 auto;
         height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
         display: flex; justify-content: space-around; align-items: stretch;
         background: color-mix(in srgb, var(--card) 92%, transparent);
@@ -130,7 +133,13 @@ class PocketApp extends HTMLElement {
     this._tabs.forEach((button, i) => button.addEventListener("click", () => this._navigate(TABS[i].route)));
   }
 
+  // A #/room/<id> whose id is none of config.rooms.
+  _unknownRoom(route) {
+    return route.page === "room" && !this._config.rooms.some((room) => room.id === route.id);
+  }
+
   _navigate(route) {
+    if (this._unknownRoom(parseRoute(route))) route = "#/rooms";
     // Setting the hash fires hashchange later; routing now keeps the tap instant, and the later
     // event finds the page already in place (an update, not a new page).
     if (window.location.hash !== route) window.location.hash = route;
@@ -140,7 +149,13 @@ class PocketApp extends HTMLElement {
   // Shows the page of location.hash: a new element when the route changed, else an update.
   _route() {
     if (!this._root || !this._config) return;
-    const route = parseRoute(window.location.hash);
+    let route = parseRoute(window.location.hash);
+    if (this._unknownRoom(route)) {
+      // A room this dashboard does not have (an old link, a removed room): Rooms instead, in place
+      // of the bad entry so back does not return to it. Pages never see an unknown routeId.
+      window.history.replaceState(window.history.state, "", "#/rooms");
+      route = parseRoute("#/rooms");
+    }
     const key = `${route.page}/${route.id ?? ""}`;
     this._current = route;
     if (key !== this._key) {
@@ -151,11 +166,13 @@ class PocketApp extends HTMLElement {
       this._renderBar();
       return;
     }
+    if (this._barLang !== this._lang()) this._renderBar();
     this._page.update(this._pageEl, this._ctx());
   }
 
   _renderBar() {
     const active = tabOf(this._current?.page);
+    this._barLang = this._lang();
     TABS.forEach((tab, i) => {
       const button = this._tabs[i];
       const label = this._t(`card.pocket.nav.${tab.page}`);

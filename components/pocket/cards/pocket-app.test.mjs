@@ -164,3 +164,57 @@ test("a removed card stops listening to hashchange", async () => {
   await goTo("#/settings");
   assert.deepEqual(active(card), ["home"]);
 });
+
+test("the bar is sticky at the bottom of the card, after the page, not fixed over it", () => {
+  const card = mount();
+  const nav = $(card, "nav");
+  const style = getComputedStyle(nav);
+  assert.equal(style.position, "sticky");
+  assert.equal(style.bottom, "0px");
+  // In the flow after <main>, so it takes its own height and covers no page content.
+  assert.equal(nav.parentElement, $(card, ".app"));
+  assert.equal(nav.previousElementSibling, $(card, "main"));
+  const css = $(card, "style").textContent;
+  assert.doesNotMatch(css, /position:\s*fixed/);
+  assert.match(css, /nav \{[^}]*height:\s*calc\(var\(--bar\) \+ var\(--safe\)\)/);
+  assert.match(css, /nav \{[^}]*padding-bottom:\s*var\(--safe\)/);
+});
+
+test("an unknown room goes to Rooms, replacing the entry; pages never see its id", async () => {
+  const card = mount();
+  const before = window.history.length;
+  await goTo("#/room/nowhere");
+  assert.equal(window.location.hash, "#/rooms");
+  assert.deepEqual(active(card), ["rooms"]);
+  assert.equal(card._ctx().routeId, undefined);
+  card._ctx().navigate("#/room/nowhere");
+  assert.equal(window.location.hash, "#/rooms");
+  assert.equal(card._ctx().routeId, undefined);
+  assert.ok(window.history.length <= before + 1, "at most the one entry of the hash set by the test");
+  card._ctx().navigate("#/room/kitchen");
+  assert.equal(card._ctx().routeId, "kitchen");
+});
+
+test("a card opened on an unknown room shows Rooms", async () => {
+  await goTo("#/room/nowhere");
+  const card = mount();
+  assert.equal(window.location.hash, "#/rooms");
+  assert.deepEqual(active(card), ["rooms"]);
+});
+
+test("the bar's labels follow a change of language without a change of route", () => {
+  const card = mount({ lang: null, hass: hassOf({ locale: { language: "en" } }) });
+  assert.equal(labels(card)[1], "Rooms");
+  card.hass = hassOf({ locale: { language: "pl" } });
+  assert.equal(labels(card)[1], "Pomieszczenia");
+  card.setConfig({ ...config("de") });
+  assert.equal(labels(card)[1], "Räume");
+});
+
+test("the offline banner's text colour is a token of both themes", () => {
+  const card = mount({ hass: hassOf({ connected: false }) });
+  assert.match($(card, "style").textContent, /\.offline \{[^}]*color:\s*var\(--on-warn\)/);
+  assert.equal($(card, ".app").style.getPropertyValue("--on-warn"), "#1c1f24");
+  card.hass = hassOf({ connected: false, themes: { darkMode: true } });
+  assert.equal($(card, ".app").style.getPropertyValue("--on-warn"), "#0f1115");
+});
