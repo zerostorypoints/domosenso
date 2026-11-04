@@ -16,11 +16,13 @@
 
 import * as home from "./home-page.js";
 import * as placeholder from "./placeholder.js";
+import * as rooms from "./rooms-page.js";
+import * as room from "./room-page.js";
 
 export const pages = {
   home,
-  rooms: placeholder,
-  room: placeholder,
+  rooms,
+  room,
   media: placeholder,
   settings: placeholder,
 };

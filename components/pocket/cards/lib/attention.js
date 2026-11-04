@@ -25,7 +25,9 @@ const AIR = [
 ];
 const RANK = { poor: 0, fair: 1 };
 
-function roomLevels(hass, room, thresholds) {
+// The level of every reading of one room that has an entity and limits: [{reading, result}],
+// result as level() gives it (null when a value or limit has no number). The room page uses it too.
+export function roomLevels(hass, room, thresholds) {
   const found = [];
   const comfort = thresholds?.rooms?.[room.id];
   for (const { reading, low, high } of COMFORT) {

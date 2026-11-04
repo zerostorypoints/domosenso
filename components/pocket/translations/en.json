@@ -59,38 +59,83 @@
           "poor_low": "Too cold",
           "poor_high": "Too warm",
           "fair_low": "A bit cool",
-          "fair_high": "A bit warm"
+          "fair_high": "A bit warm",
+          "good": "In range"
         },
         "humidity": {
           "poor_low": "Too dry",
           "poor_high": "Too humid",
           "fair_low": "A bit dry",
-          "fair_high": "A bit humid"
+          "fair_high": "A bit humid",
+          "good": "In range"
         },
         "score": {
           "fair": "Air fair",
-          "poor": "Air poor"
+          "poor": "Air poor",
+          "good": "Good"
         },
         "co2": {
           "fair": "CO₂ raised",
-          "poor": "CO₂ high"
+          "poor": "CO₂ high",
+          "good": "Good"
         },
         "pm2_5": {
           "fair": "PM2.5 raised",
-          "poor": "PM2.5 high"
+          "poor": "PM2.5 high",
+          "good": "Good"
         },
         "voc": {
           "fair": "VOC raised",
-          "poor": "VOC high"
+          "poor": "VOC high",
+          "good": "Good"
         },
         "nox": {
           "fair": "NOx raised",
-          "poor": "NOx high"
+          "poor": "NOx high",
+          "good": "Good"
         }
       },
       "error": {
         "light": "The light did not respond. Try again.",
-        "media": "The player did not respond. Try again."
+        "media": "The player did not respond. Try again.",
+        "scene": "The scene did not start. Try again."
+      },
+      "rooms": {
+        "title": "Rooms",
+        "count": {
+          "one": "{count} room",
+          "few": "{count} rooms",
+          "many": "{count} rooms",
+          "other": "{count} rooms"
+        },
+        "lights_on": "{count} on",
+        "all_off": "All off",
+        "air": "Air {value}",
+        "attention": "Needs attention"
+      },
+      "room": {
+        "back": "Back to rooms",
+        "position": "Room {index} of {count}",
+        "climate": "Climate",
+        "air": "Air",
+        "lights": "Lights",
+        "scenes": "Scenes",
+        "music": "Music",
+        "all_lights": "All",
+        "members": {
+          "one": "{count} light",
+          "few": "{count} lights",
+          "many": "{count} lights",
+          "other": "{count} lights"
+        },
+        "empty": "Nothing to show here",
+        "reading": {
+          "score": "{value}",
+          "co2": "CO₂ {value}",
+          "pm2_5": "PM2.5 {value}",
+          "voc": "VOC {value}",
+          "nox": "NOx {value}"
+        }
       }
     }
   }

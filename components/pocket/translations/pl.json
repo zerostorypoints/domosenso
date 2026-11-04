@@ -59,38 +59,83 @@
           "poor_low": "Za zimno",
           "poor_high": "Za ciepło",
           "fair_low": "Chłodnawo",
-          "fair_high": "Dość ciepło"
+          "fair_high": "Dość ciepło",
+          "good": "W normie"
         },
         "humidity": {
           "poor_low": "Za sucho",
           "poor_high": "Za wilgotno",
           "fair_low": "Dość sucho",
-          "fair_high": "Dość wilgotno"
+          "fair_high": "Dość wilgotno",
+          "good": "W normie"
         },
         "score": {
           "fair": "Powietrze umiarkowane",
-          "poor": "Powietrze złe"
+          "poor": "Powietrze złe",
+          "good": "Dobre"
         },
         "co2": {
           "fair": "CO₂ podwyższone",
-          "poor": "CO₂ wysokie"
+          "poor": "CO₂ wysokie",
+          "good": "Dobre"
         },
         "pm2_5": {
           "fair": "PM2.5 podwyższone",
-          "poor": "PM2.5 wysokie"
+          "poor": "PM2.5 wysokie",
+          "good": "Dobre"
         },
         "voc": {
           "fair": "VOC podwyższone",
-          "poor": "VOC wysokie"
+          "poor": "VOC wysokie",
+          "good": "Dobre"
         },
         "nox": {
           "fair": "NOx podwyższone",
-          "poor": "NOx wysokie"
+          "poor": "NOx wysokie",
+          "good": "Dobre"
         }
       },
       "error": {
         "light": "Światło nie odpowiedziało. Spróbuj ponownie.",
-        "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie."
+        "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie.",
+        "scene": "Scena nie odpowiedziała. Spróbuj ponownie."
+      },
+      "rooms": {
+        "title": "Pomieszczenia",
+        "count": {
+          "one": "{count} pomieszczenie",
+          "few": "{count} pomieszczenia",
+          "many": "{count} pomieszczeń",
+          "other": "{count} pomieszczenia"
+        },
+        "lights_on": "{count} wł.",
+        "all_off": "Wszystko wył.",
+        "air": "Powietrze {value}",
+        "attention": "Wymaga uwagi"
+      },
+      "room": {
+        "back": "Wróć do pomieszczeń",
+        "position": "Pomieszczenie {index} z {count}",
+        "climate": "Klimat",
+        "air": "Powietrze",
+        "lights": "Światła",
+        "scenes": "Sceny",
+        "music": "Muzyka",
+        "all_lights": "Wszystkie",
+        "members": {
+          "one": "{count} światło",
+          "few": "{count} światła",
+          "many": "{count} świateł",
+          "other": "{count} światła"
+        },
+        "empty": "Nic tu nie ma do pokazania",
+        "reading": {
+          "score": "{value}",
+          "co2": "CO₂ {value}",
+          "pm2_5": "PM2.5 {value}",
+          "voc": "VOC {value}",
+          "nox": "NOx {value}"
+        }
       }
     }
   }
