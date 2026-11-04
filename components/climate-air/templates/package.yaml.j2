@@ -12,7 +12,7 @@
 [%- set weather = inputs.outside_weather | default(none) -%]
 [%- set outside_temperature = 'sensor.outside_temperature' if weather else (inputs.outside.temperature if inputs.outside is defined else none) -%]
 [%- set bath_limit = inputs.bathroom_humidity | default(65) -%]
-[%- from '_thresholds.jinja' import air_defaults, comfort_rooms, air_rooms, air_readings -%]
+[%- from '_thresholds.jinja' import air_defaults, comfort_defaults, comfort_rooms, air_rooms, air_readings -%]
 [%- macro quoted(text) -%]'[[ text | replace("\\", "\\\\") | replace("'", "\\'") ]]'[%- endmacro -%]
 # Whole-home climate figures, from the Domosenso catalog (component climate-air). Edit the inputs and
 # render again rather than editing this file.
@@ -173,12 +173,22 @@ template:
 [%- set comfort_ids = comfort_rooms(home).split(',') | select | list -%]
 [%- set comfort = home.rooms | selectattr('id', 'in', comfort_ids) | list -%]
 [%- set readings = air_readings(home).split(',') | select | list -%]
-[%- set limits = inputs.comfort_defaults | default({'temp_low': 20, 'temp_high': 24, 'humidity_low': 40, 'humidity_high': 60}) -%]
-[%- set seed_ids = comfort_ids + (['air'] if readings else []) %]
+[%- set given = inputs.comfort_defaults | default({}) -%]
+[%- set limits = {
+    'temp_low': given.get('temp_low', comfort_defaults.temp_low),
+    'temp_high': given.get('temp_high', comfort_defaults.temp_high),
+    'humidity_low': given.get('humidity_low', comfort_defaults.humidity_low),
+    'humidity_high': given.get('humidity_high', comfort_defaults.humidity_high)} -%]
+[#- The seed tracks helper groups: <room> (temperature pair), <room>.humidity, air.<reading>. -#]
+[%- set seed_ids = [] -%]
+[%- for room in comfort %][% set _ = seed_ids.append(room.id) %][% if room.climate.humidity is defined %][% set _ = seed_ids.append(room.id ~ '.humidity') %][% endif %][% endfor -%]
+[%- for reading in readings %][% set _ = seed_ids.append('air.' ~ reading) %][% endfor -%]
+[%- if (seed_ids | join(',') | length) > 255 %][[ fail('climate-air: the seed list is ' ~ (seed_ids | join(',') | length) ~ ' characters, input_text holds 255: fewer rooms or readings') ]][% endif %]
+
 
 # Comfort ranges per room and air limits (home inputs). The helpers carry no initial value: the seed
-# automation gives each room (and the air limits, as the pseudo room "air") its defaults once, and a
-# value a person sets stays. The script resets every helper to its default.
+# automation gives each helper group its defaults once (groups: <room>, <room>.humidity,
+# air.<reading>), and a value a person sets stays. The script resets every helper to its default.
 input_number:
 [%- for room in comfort %]
 [%- set key = 'climate_air_' ~ room.id %]
@@ -260,8 +270,9 @@ automation:
         event_type: automation_reloaded
     actions:
       - variables:
-          done: "{{ states('input_text.climate_air_seeded').split(',') | map('trim') | reject('eq', '') | list }}"
           ids: [[ seed_ids | tojson ]]
+          # Only tokens this render knows: a removed room or reading drops out of the stored list.
+          done: "{{ states('input_text.climate_air_seeded').split(',') | map('trim') | select('in', ids) | list }}"
 [%- for room in comfort %]
       - if:
           - condition: template
@@ -274,6 +285,10 @@ automation:
             target: {entity_id: input_number.climate_air_[[ room.id ]]_temp_high}
             data: {value: [[ limits.temp_high ]]}
 [%- if room.climate.humidity is defined %]
+      - if:
+          - condition: template
+            value_template: "{{ '[[ room.id ]].humidity' not in done }}"
+        then:
           - action: input_number.set_value
             target: {entity_id: input_number.climate_air_[[ room.id ]]_humidity_low}
             data: {value: [[ limits.humidity_low ]]}
@@ -282,12 +297,11 @@ automation:
             data: {value: [[ limits.humidity_high ]]}
 [%- endif %]
 [%- endfor %]
-[%- if readings %]
+[%- for reading in readings %]
       - if:
           - condition: template
-            value_template: "{{ 'air' not in done }}"
+            value_template: "{{ 'air.[[ reading ]]' not in done }}"
         then:
-[%- for reading in readings %]
           - action: input_number.set_value
             target: {entity_id: input_number.climate_air_[[ reading ]]_fair}
             data: {value: [[ air_defaults[reading][0] ]]}
@@ -295,7 +309,6 @@ automation:
             target: {entity_id: input_number.climate_air_[[ reading ]]_poor}
             data: {value: [[ air_defaults[reading][1] ]]}
 [%- endfor %]
-[%- endif %]
       - action: input_text.set_value
         target: {entity_id: input_text.climate_air_seeded}
         data:

@@ -19,3 +19,5 @@
 [%- for reading in air_defaults if home.rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list %][% set _ = found.append(reading) %][% endfor -%]
 [[ found | join(',') ]]
 [%- endmacro -%]
+[# The comfort range a room starts with; `comfort_defaults` in the inputs overrides it per key. #]
+[%- set comfort_defaults = {'temp_low': 20, 'temp_high': 24, 'humidity_low': 40, 'humidity_high': 60} -%]
