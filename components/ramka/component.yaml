@@ -148,6 +148,10 @@ inputs:
     example: {notify: notify.mobile_app_dining_tablet, sensors: dining_tablet}   # _app_importance, _charger_type,
                                                           # _battery_temperature, binary_sensor.<slug>_is_charging
   alert_notify: {type: action, default: null}             # battery and charger alerts; absent: none
+  tablet_wake_package:
+    type: string
+    default: io.homeassistant.companion.android
+    example: com.domosenso.frame
   alert_title: {type: string, default: "<name>"}
   kiosk_user: {type: string, default: null}               # HA user that gets kiosk-mode
   dashboard_path: {type: string, default: dashboard-ramka}  # the Exit button's long press: this, kiosk-mode off
@@ -257,6 +261,7 @@ provides:                       # <prefix> from inputs
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
     - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level], note: "with music_visual; the input's visual first; classic is no option, it is input_boolean.<prefix>_music_live off (SPEC-025 amendment 1, 0.9.0)"}
     - {id: "input_boolean.<prefix>_music_live", stability: stable, note: "with music_visual; Live visualization: on, the now-playing card draws the select's visual; off (the default), its classic wave (SPEC-025 amendment 1, 0.9.0)"}
+    - {id: "input_boolean.<prefix>_music_loudness", stability: stable, note: "with music_visual; on, the visual shows sensor.music_level in dB in the strip's top right corner, in the palette's colour; off (the default), no number (0.14.0)"}
     - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
     - {id: "input_select.<prefix>_music_palette", stability: stable, note: "with music_visual; the card's palettes, the default first; options additive-only (0.4.0)"}
     - {id: "input_select.<prefix>_{music_spectrum_flavour,music_level_flavour}", stability: stable, note: "with music_visual; the default first (the home's music_visual_options flavour, else dune / centre), then the offered ones: spectrum dune, halo, bars; level centre (SPEC-025 amendment 1, 0.9.0; 0.4.0 offered every flavour of the card)"}
@@ -310,7 +315,7 @@ provides:                       # <prefix> from inputs
   dashboards:
     - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, 0.9.0), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first); the colour selects (air_color_{good,fair,poor}, climate_color_neutral) are custom:ramka-colour-select-row rows, each choice with its colour's dot (0.9.0); the Photos page's albums are its second section, the right column next to Basic (0.9.0)"}
     - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard (default true): one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
-  automations: "<prefix>_{about_discover,presence_on,presence_off,reconcile_after_start,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{about_discover,presence_on,presence_off,reconcile_after_start,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,music_default,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without

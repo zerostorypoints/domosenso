@@ -41,6 +41,21 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - German status words are cut off on the status page at 1100 × 720 ("Eingefah…", "Geschlos…"); seen
   on staging 2026-10-22, already so in 0.1.2.
 
+## Choosing the wake application (0.14.0)
+
+`tablet_wake_package` selects the already-installed Android dashboard application. Omit it to
+keep Companion (`io.homeassistant.companion.android`), or set `com.domosenso.frame` for the native
+Frame app. Companion remains signed in with its existing system-setting and overlay permissions:
+it delivers screen commands even when a different application displays the dashboard.
+
+The default preserves the Companion importance check. For a different package, the existing wake
+script sends its launcher intent unconditionally, since Companion's importance cannot describe
+another app. It brings the existing task forward; no new periodic launch loop is added. An absent
+app or Android denying a background launch is a setup failure, not a reason to launch Companion.
+Use one wake policy owner; keep a separate native radar policy disabled when HA owns the screen.
+Radar, brightness, sleep delays and HA's live settings are unchanged. Configure this installation
+input, render and review the normal deployment plan; never hand-edit the generated package.
+
 ## Dashboards and cards
 
 - A YAML dashboard does not refresh on a page that is already open: press the reload button
@@ -50,7 +65,10 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
   dashboard rebuild then adds one more. `corner-taps-card` and `photo-frame-card` keep one set of
   listeners per page for that reason.
 - `/local/` files are cached for 31 days. A new version of the cards goes to a new
-  `www/domosenso/ramka/<version>/` directory and the resources' URLs change in place.
+  `www/domosenso/ramka/<version>/` directory and the resources' URLs change in place. Every render
+  also gives the resources and the cards' static imports a `?v=` of the whole version directory,
+  so a dev render at the same path reaches the browser too; a dynamic `import()` appends the
+  importer's own query.
 - Day stepping in the agenda must use calendar dates, not 24-hour steps: on the day the clocks go
   back a 24-hour step shows one day twice (`agenda-card.test.mjs` covers it).
 
@@ -70,6 +88,11 @@ who can open the files: [PHOTOS.md](PHOTOS.md).
 - **A pause ends** when the screen goes off (mode `off`, the radar's off delay; automation
   `<prefix>_pause_end`, which also puts the rotation back on its first page) and with a swipe up on
   the controls (the rotation from its first page). It survives a restart of Home Assistant.
+- **The music face comes back the same way.** A swipe up on the controls shows the rotation instead
+  of the now-playing card while the player plays; a swipe down, the player starting from silence,
+  or nobody at the Ramka any more (automation `<prefix>_music_default`: the near zone left for the
+  controls' hold, the screen off, or a restart with nobody there) gives the music back. So a swipe up lasts while someone stands
+  at the Ramka: stepping back shows the music again whenever the player plays.
 - **Plant pages turn in Home Assistant** since SPEC-026 (`input_number.<prefix>_plants_page`,
   plants-card's `page:`), so a swipe and the pause reach them; the card's own timer remains for a
   dashboard without `page:`.
@@ -97,6 +120,11 @@ wave strip: audio-sensor's `ambient-wave-card`, reading the aliases of the board
   `initial:`, so the choice survives a restart. Both are set in Home Assistant (the switch on the
   settings dashboard's Music page, the visual on its Live visualization sub-view), not on the
   tablet: the Controls page has no visual tile.
+- **Loudness.** `input_boolean.<prefix>_music_loudness` (Live visualization sub-view, the
+  Visualization widget) shows `sensor.music_level` in dB, rounded, in the strip's top right corner,
+  small, in the palette's colour for that level (the visual's own colour range): the card's
+  `loudness`. Off by default; hidden while the level has no number and while the strip falls back to
+  the classic wave.
 - **Without audio-sensor.** Ramka's render cannot read another component's inputs, so it does not
   check that the aliases exist. Without them the card falls back to the classic wave with an info
   icon; while `ambient-wave-card` is not loaded at all, the now-playing card draws its own wave.
@@ -386,7 +414,7 @@ lovelace:
   "Sensor settings ›" (to the sub-view below, while a sensor is selected that has an update rate or
   a calibration); the **Visualization** widget, with V: the mode (spectrum or level, an (i) saying
   what each draws), the spectrum's flavour (dune, halo, bars, and the home's own
-  `music_visual_options` flavour if it is another; the level has no flavour row) and the Advanced
+  `music_visual_options` flavour if it is another; the level has no flavour row), the Loudness switch and the Advanced
   switch; the **Colour range** (Advanced and A); **Advanced: response profile** (Advanced and A),
   one card: the profile select with its (i), then the selected profile's rise, fall, hold, tilt,
   the EQ preset select and the six EQ gains (the EQ with the spectrum only). The line width, the

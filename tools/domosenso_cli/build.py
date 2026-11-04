@@ -17,9 +17,9 @@ from pathlib import Path
 
 import yaml
 
-from assistant_contract import compile_profile, load_definition, split_runtime_profile
 from assistant_actions import compile_actions, load_actions
-from catalog_check import install_dir, install_files, service_files
+from assistant_contract import compile_profile, load_definition, split_runtime_profile
+from catalog_check import install_dir, install_files, install_version, service_files, versioned
 from domosenso_cli import dev_render, stamps
 from domosenso_cli.catalog import Catalog
 from domosenso_cli.errors import DomosensoError
@@ -91,13 +91,16 @@ def load_inputs(entry: ComponentEntry) -> dict:
 
 
 def resource_urls(component_dir: Path) -> list[str]:
-    """The Lovelace resources (type module) the component's cards need."""
+    """The Lovelace resources (type module) the component's cards need, each with the version
+    directory's `?v=` (the one their imports carry, catalog_check.install_version)."""
     manifest = load_manifest(component_dir)
     target = install_dir(manifest)
     if not target:
         return []
     www = target.removeprefix("www/")
-    return [f"/local/{www}{c}" for c in (manifest.get("artifacts") or {}).get("dashboard_cards") or [] if c.endswith(".js")]
+    version = install_version(component_dir, manifest)
+    return [f"/local/{www}{c}?v={version}" for c in (manifest.get("artifacts") or {}).get("dashboard_cards") or []
+            if c.endswith(".js")]
 
 
 def _config_prefix(home: HomeConfig) -> str:
@@ -233,8 +236,9 @@ def plan_outputs(
 
     target = install_dir(manifest)
     if target:
+        version_query = install_version(component_dir, manifest)
         for rel in install_files(component_dir, manifest):
-            add(f"{target}{rel}", _read(component_dir, rel), rel)
+            add(f"{target}{rel}", versioned(rel, _read(component_dir, rel), version_query), rel)
     for key in ("shell", "themes"):
         for rel in artifacts.get(key) or []:
             add(f"{key}/{Path(rel).name}", _read(component_dir, rel), rel)

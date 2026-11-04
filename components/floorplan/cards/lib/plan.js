@@ -40,7 +40,7 @@ const floorIndex = (doc, floorId) => doc.floors.findIndex((f) => f.floor_id === 
 const sameXY = (p, q) => Math.abs(p[0] - q[0]) <= SAME && Math.abs(p[1] - q[1]) <= SAME;
 
 // A new doc with the floor replaced by fn(floor); fn returns null to refuse.
-function editFloor(doc, floorId, fn) {
+export function editFloor(doc, floorId, fn) {
   const i = floorIndex(doc, floorId);
   if (i < 0) return null;
   const floor = fn(doc.floors[i]);

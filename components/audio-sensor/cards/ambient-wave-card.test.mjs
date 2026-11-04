@@ -456,3 +456,61 @@ test("the editor offers the fallback choice", () => {
   assert.ok(fallback);
   assert.deepEqual(fallback.selector.select.options.map((o) => o.value), ["none", "classic"]);
 });
+
+// The level in the strip's top right corner: the entity's number, rounded, in the palette's colour
+// for that value; nothing while switched off, without a number, or while the fallback's icon is there.
+const LOUD = { entity: "sensor.level", show: "input_boolean.loud" };
+const loudness = (card) => card.shadowRoot.querySelector(".loudness");
+
+test("loudness: the level, rounded, coloured by the palette", () => {
+  const card = spectrumCard({ loudness: LOUD, colour: { palette: "series", neutral: 30, hot: 70 } });
+  const level = entity("62.4", { attributes: { unit_of_measurement: "dB" } });
+  card.hass = hassOf({ "sensor.demo_spectrum": entity(csv(31)), "sensor.level": level, "input_boolean.loud": entity("on") });
+  document.body.appendChild(card);
+  const el = loudness(card);
+  assert.equal(el.hidden, false);
+  assert.equal(el.textContent, "62 dB");
+  assert.equal(el.style.getPropertyValue("--level"), card._palette.css(62.4));
+  // A quiet room is the neutral colour, a loud one the hot end.
+  card.hass = hassOf({ "sensor.demo_spectrum": entity(csv(31)), "sensor.level": entity("20"), "input_boolean.loud": entity("on") });
+  assert.equal(el.textContent, "20 dB");
+  assert.equal(el.style.getPropertyValue("--level"), card._palette.css(30));
+  assert.notEqual(card._palette.css(80), card._palette.css(30));
+});
+
+test("loudness: the switch, an unavailable level and the fallback hide it", () => {
+  const card = spectrumCard({ loudness: LOUD, fallback: "classic" });
+  const states = (loud, level, spectrum = entity(csv(31))) =>
+    hassOf({ "sensor.demo_spectrum": spectrum, "sensor.level": entity(level), "input_boolean.loud": entity(loud) });
+  card.hass = states("off", "55");
+  document.body.appendChild(card);
+  raf.flush(50);
+  const el = loudness(card);
+  assert.equal(el.hidden, true);
+  card.hass = states("on", "55");
+  assert.equal(el.hidden, false);
+  card.hass = states("on", "unavailable");
+  assert.equal(el.hidden, true);
+  card.hass = states("on", "55", entity("unavailable", { last_updated: "2026-01-15T10:00:05Z" }));
+  raf.flush(50);
+  assert.ok(icon(card));
+  assert.equal(el.hidden, true);
+});
+
+test("loudness: without the option nothing shows; show defaults to on; a bad option is refused", () => {
+  const plain = spectrumCard();
+  plain.hass = hassOf({ "sensor.demo_spectrum": entity(csv(31)), "sensor.level": entity("50") });
+  assert.equal(loudness(plain).hidden, true);
+  const shown = spectrumCard({ loudness: { entity: "sensor.level" } });
+  shown.hass = hassOf({ "sensor.demo_spectrum": entity(csv(31)), "sensor.level": entity("50") });
+  assert.equal(loudness(shown).textContent, "50 dB");
+  assert.throws(() => spectrumCard({ loudness: "sensor.level" }), /loudness/);
+  assert.throws(() => spectrumCard({ loudness: { entity: "sensor.level", show: "yes" } }), /loudness/);
+});
+
+test("loudness: 0.57 of the strip's height, from 11 to 40 px", () => {
+  const card = spectrumCard({ loudness: LOUD });
+  document.body.appendChild(card);
+  // The test stage is 120 px tall: 0.57 is 68, so the cap.
+  assert.equal(loudness(card).style.fontSize, "40px");
+});

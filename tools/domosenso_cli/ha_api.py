@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import http.client
 import json
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -16,6 +17,10 @@ from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import Target
 
 TIMEOUT = 30
+# A socket left unused this long is pinged before the next command: synchronous work in between
+# (a deploy's backup reads over ssh) leaves no time to answer Home Assistant's heartbeat, and it
+# closes the connection unseen until the next read.
+IDLE_CHECK_S = 10
 # Cloudflare refuses urllib's default user agent (error 1010, an HTTP 403) on a Home Assistant
 # reached through a tunnel; any named agent passes.
 USER_AGENT = "domosenso"
@@ -56,6 +61,7 @@ class HA:
         self._token_source = token_source
         self._timeout = timeout
         self._ws: Any = None
+        self._used = 0.0  # time.monotonic() of the socket's last command
         self._next_id = 0
 
     @classmethod
@@ -102,10 +108,29 @@ class HA:
             raise DomosensoError(f"{target}: authentication failed{source}: {reply.get('message', reply.get('type'))}")
         self._ws = ws
 
+    async def _alive(self) -> None:
+        """Drop an idle socket that no longer answers a ping, so the command goes on a fresh one.
+
+        Nothing has been sent yet, so connecting again cannot run a command twice."""
+        try:
+            pong = await self._ws.ping()
+            await asyncio.wait_for(pong, min(self._timeout, 5))
+        except (OSError, WebSocketException, TimeoutError):
+            await self._drop_quietly()
+
+    async def _drop_quietly(self) -> None:
+        try:
+            await self._drop()
+        except (OSError, WebSocketException):
+            pass
+
     async def call(self, type: str, **fields: Any) -> Any:
         """Send one command and return its `result`; other messages (events, other ids) are skipped."""
+        if self._ws is not None and time.monotonic() - self._used > IDLE_CHECK_S:
+            await self._alive()
         if self._ws is None:
             await self._connect()
+        self._used = time.monotonic()
         self._next_id += 1
         n = self._next_id
         try:

@@ -148,8 +148,11 @@ components:
   surface: for one version the tool reads both forms (`<id>@<sha>` and the new one); the change gets
   a line in `docs/UPGRADE_NOTES.md`. The old form disappears from a home at its next `render`.
 - Resources are reconciled by the tool, never by hand. The wanted set is every locked component's
-  `dashboard_cards` (`/local/domosenso/<id>/<version>/cards/<name>.js`, no query string: the path
-  carries the version) plus the home's `resources:` list (a `?v=<first 8 hex of the file's sha256>`
+  `dashboard_cards` (`/local/domosenso/<id>/<version>/cards/<name>.js?v=<hash>`; amended
+  2026-11-03: the path carries the version, but a dev render, or a tag rendered after one, puts new
+  contents at the same path, so the query is a hash of the whole version directory, and every relative
+  static import in the installed modules carries it too, since a module's imports drop the query of
+  the URL it was loaded from) plus the home's `resources:` list (a `?v=<first 8 hex of the file's sha256>`
   query, so a changed file always gets a new URL and the 31-day `/local/` cache cannot serve the
   old one).
 - Matching is by file name: an existing resource whose URL ends in `/<name>.js` (any directory, any

@@ -42,6 +42,14 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   share their readings on the maps instead of stopping at the line between them; the walls between
   them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
   panel names what it is open to and has **Close off**.
+- **Doors, windows and doorways** (SPEC-028 Amendment 9, draft): drawn in the walls, each
+  optionally linked to its door or window sensor (a `binary_sensor` door, window, opening or garage
+  door, or a cover): an open one is drawn open in the security colour, live, and the sensor's dot
+  stands on it. Edit mode's **Doors & windows** tool adds one with a tap on a wall, slides it along
+  the walls (measuring the free wall either side), and sets its kind, width and sensor; a door is
+  hinged or sliding, and two buttons swap its hinge (left/right) and the side it opens into.
+  **Fixed glass** is a window or glass wall that never opens; **Whole wall** stretches an opening
+  across its wall. Stored as `openings` on the floor.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
   else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
 
@@ -166,8 +174,8 @@ domosenso floorplan preview production        # --port <n> (default 8130), --no-
 
 ## Limits
 
-- One floor at a time; no walls, doors, windows or furniture; tapping a room in view mode does
-  nothing (SPEC-028 non-goals).
+- One floor at a time; no furniture; tapping a room in view mode does nothing (SPEC-028
+  non-goals).
 - A corner added on a wall shared with another room belongs to that room only: dragging it off the
   wall opens a gap the neighbour does not follow.
 - Pinch zoom has no automated test (the test DOM has no multi-touch) and has not been tried on a

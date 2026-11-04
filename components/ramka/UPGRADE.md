@@ -13,6 +13,30 @@ Newest first. Each entry says what changed and what a home that already runs the
 `<prefix>` is the home's `prefix` input.
 
 
+## Unreleased: the music view comes back after a swipe up
+
+A swipe up on the controls hid the now-playing card until the player next started from silence: a
+pause, a restart of Home Assistant or a whole evening of music did not bring it back. The new
+automation `<prefix>_music_default` turns `input_boolean.<prefix>_ambient_music` back on when
+nobody is at the Ramka any more: the near zone left for `controls_hold_s`, the screen off, or a
+restart of Home Assistant with nobody there. So
+stepping back from the Ramka shows the music again whenever the player plays. Nothing to do:
+render and deploy bring the automation.
+
+## 0.14.0 (unreleased): choose the application restored on wake
+
+Also: with `music_visual`, a **Loudness (dB)** switch on the Live visualization sub-view
+(`input_boolean.<prefix>_music_loudness`, off by default): on, the live visual shows the music
+level in dB in the strip's top right corner, in the palette's colour. Needs audio-sensor's card with
+its `loudness` option (0.4.0); an older card ignores it. Turn it on in the settings after the update.
+
+Adds optional `tablet_wake_package` (SPEC-030). Existing homes need no changes: the default keeps
+Companion and its foreground check. A home displaying Frame sets `tablet_wake_package:
+com.domosenso.frame` in its Ramka inputs and updates/renders through the normal deployment flow.
+The selected application must already be installed. Companion still handles the screen commands.
+No pairing, mappings, helper preferences, brightness or radar delays are reset. Validate an actual
+sleep/wake cycle on the tablet; short-cycle tests do not prove recovery from long Doze/process death.
+
 ## 0.13.0 (unreleased): an Exit button instead of the top corners
 
 The two invisible targets in the top corners are gone: they sat over the floor plan's bar (its
@@ -30,6 +54,7 @@ ramka --to 0.13.0`, deploy, press the reload button. Anyone who used the corners
 controls (a tap anywhere) and taps Exit.
 
 ## 0.12.0 (2026-11-02): component-backed assistant answers
+
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.

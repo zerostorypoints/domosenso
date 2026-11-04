@@ -24,7 +24,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -132,7 +132,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -403,7 +403,7 @@
           "preview": "/previews/calendar.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -488,7 +488,7 @@
           "preview": "/previews/climate.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -503,7 +503,7 @@
           "preview": "/previews/air.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -600,7 +600,7 @@
           "preview": "/previews/floorplan.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -705,7 +705,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -810,7 +810,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -827,7 +827,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -931,7 +931,7 @@
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1016,7 +1016,7 @@
           "preview": "/previews/climate.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1031,7 +1031,7 @@
           "preview": "/previews/air.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1046,7 +1046,7 @@
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1061,7 +1061,7 @@
           "preview": "/previews/photos.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1076,7 +1076,7 @@
           "preview": "/previews/status.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1093,7 +1093,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1108,7 +1108,7 @@
           "preview": "/previews/floorplan.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1124,7 +1124,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1139,7 +1139,7 @@
           "preview": "/previews/calendar.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1154,7 +1154,7 @@
           "preview": "/previews/clock-weather.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1166,8 +1166,8 @@
         "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
       ],
       "id": "ramka",
-      "version": "0.13.0",
-      "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+      "version": "0.14.0",
+      "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
       "evidencePaths": [
         "components/ramka/component.yaml"
       ],
@@ -1278,7 +1278,7 @@
           "preview": "/previews/clock-weather.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "42a48518363bcab936f2d026a8df35bc84875561",
+          "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1391,7 +1391,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.13.0"
+          "version": "0.14.0"
         },
         {
           "id": "bermuda-presence",
@@ -1472,7 +1472,7 @@
         },
         {
           "id": "ramka",
-          "version": "0.13.0"
+          "version": "0.14.0"
         }
       ],
       "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
@@ -1567,7 +1567,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.13.0"
+          "version": "0.14.0"
         }
       ],
       "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/1578932c0a7013b73016b110ca10acc5eda2dc00/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's two top corners are its way out\ninstead: top-left opens `exit_left`, top-right reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |",
@@ -1576,6 +1576,63 @@
     }
   ],
   "articles": [
+    {
+      "slug": "mi-flora-home-assistant-setup",
+      "title": "How to add a Mi Flora plant sensor to Home Assistant",
+      "summary": "Set up Xiaomi BLE for a Flower Care sensor, troubleshoot discovery and missing battery readings, then check the data before adding plant reminders.",
+      "category": "updates",
+      "date": "2026-11-03",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "plants"
+      ],
+      "releases": [],
+      "sources": [
+        "https://www.home-assistant.io/integrations/xiaomi_ble/",
+        "https://www.home-assistant.io/integrations/bluetooth/"
+      ],
+      "body": "For the **HHCCJCY01**, also sold as Flower Care or MiFlora, start with Home Assistant's\n**Xiaomi BLE** integration. First get reliable readings into Home Assistant; then decide\nhow you want to display them or use them in a reminder.\n\n## 1. Check Bluetooth reception\n\nHome Assistant needs a working Bluetooth adapter or compatible Bluetooth proxy within range.\nFor initial setup, place the sensor close to the receiver. If you use an ESPHome proxy,\nconfirm that it is connected to Home Assistant before troubleshooting the plant sensor.\nSee the [Bluetooth integration guide](https://www.home-assistant.io/integrations/bluetooth/)\nfor supported receivers and proxy arrangements.\n\n## 2. Add Xiaomi BLE\n\nThe sensor should be discovered automatically. If necessary, open\n**Settings → Devices & services → Add integration**, select **Xiaomi BLE** and follow\nthe setup steps. Some entities appear only after their first reading arrives.\n\n## 3. Check firmware if discovery fails\n\nOlder firmware may not transmit the required Bluetooth advertisements. Home Assistant lists\n**3.2.1** as the lowest confirmed working firmware version for this model.\n\nIf an update is needed, use the official Flower Care app and follow the linked firmware-update\ninstructions. The app and account are not required for ongoing Home Assistant operation\nafterwards.\n\n## 4. Give the battery reading time\n\nBattery information requires an active Bluetooth connection. Home Assistant requests it only\nonce a day to conserve power, and reception must be strong enough for that connection.\nOther readings arrive through passive broadcasts. A missing battery value therefore does not\nnecessarily mean that every part of the integration has failed.\n\nThese discovery, firmware and battery details come from the\n[Home Assistant MiFlora documentation](https://www.home-assistant.io/integrations/xiaomi_ble/#plant-sensor-flower-care-miflora-hhccjcy01).\n\n## 5. Check the sensor in its final position\n\nAfter setup, move the sensor to its intended pot and inspect the history over a normal watering\ncycle. As a suggested acceptance check:\n\n1. Give the device a name that identifies its pot.\n2. Confirm that readings continue after it leaves the setup location.\n3. Compare the moisture trend with your own observations of the soil.\n4. Check whether gaps appear in the history before creating an alert.\n\nBegin with a reminder you can evaluate. Do not choose one moisture threshold for every plant\nsimply because a dashboard makes it convenient. Record the plant, substrate and threshold you\nchoose in your own home project, so future adjustments have context.\n\n## Use it with DomoSenso\n\nThe [Mi Flora device guide](/devices/mi-flora/) describes the readings to check before assigning\nthe sensor to a plant. The [plants component](/components/plants/) is the next step for the\nframework's plant display. A sensor and a dashboard do not, by themselves, provide automatic\nwatering.\n\nThis article describes the upstream setup and a suggested check of your readings. It does\nnot claim a new hardware test or establish a watering threshold for your plants."
+    },
+    {
+      "slug": "bermuda-bluetooth-proxy-setup",
+      "title": "How to set up a Bermuda Bluetooth proxy for room presence",
+      "summary": "Connect Bluetooth proxies, assign their rooms and check Bermuda's area estimates before building presence automations.",
+      "category": "updates",
+      "date": "2026-11-03",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "bermuda-presence"
+      ],
+      "releases": [],
+      "howto": [
+        "presence-who-is-home"
+      ],
+      "sources": [
+        "https://github.com/agittins/bermuda/wiki/",
+        "https://www.home-assistant.io/integrations/bluetooth/"
+      ],
+      "body": "A Bluetooth proxy receives nearby Bluetooth signals and forwards them to Home Assistant.\nBermuda uses those observations to estimate which room a device is in. The proxy provides\nthe observations; Bermuda interprets them.\n\nThis guide covers the upstream setup and a suggested acceptance check. It does not claim\nthat the procedure has been tested in your home.\n\n## Before you start\n\nHave Home Assistant running, compatible ESP32 hardware with Bluetooth proxy firmware, USB\npower and a Bluetooth device you want to track. Start with two rooms so you can test a\ntransition between them. Home Assistant supports remote Bluetooth adapters through ESPHome;\nthe [Bluetooth integration documentation](https://www.home-assistant.io/integrations/bluetooth/)\nexplains the supported arrangements.\n\n## 1. Connect and name the proxies\n\nSet up your ESP32 devices with ESPHome Bluetooth proxy firmware and add them to Home Assistant\nthrough the ESPHome integration. Assign each proxy to the Home Assistant area where it is\nphysically installed. Choose names that make that assignment easy to check later.\n\n## 2. Select a device in Bermuda\n\nFollow the installation instructions in the\n[Bermuda documentation](https://github.com/agittins/bermuda/wiki/). Open Bermuda's configuration\nunder **Settings → Devices & services** and select the Bluetooth device you want to track.\nBermuda supplies home/away tracking, an estimated area and distance sensors.\n\nPhones that change their Bluetooth address may need additional identity handling. Bermuda\nsupports Home Assistant's Private BLE Device integration for compatible devices. Follow the\nupstream instructions for your model rather than assuming that every phone or tracker\nadvertises a stable identity.\n\n## 3. Check the room estimate\n\nBefore creating an automation, try this small acceptance exercise:\n\n1. Leave the tracked device in the first room and record the reported area.\n2. Carry it into the second room, wait for the estimate to settle and record the result.\n3. Repeat with the device in a pocket and with doors closed.\n4. Leave the device behind and walk out yourself.\n\nThat last step makes the limitation clear: the system is locating the device. A phone on\na desk remains there after its owner leaves.\n\n## If the wrong room appears\n\nFirst check the receiver's assigned area, its connection to Home Assistant and whether the\ndevice is being detected. Keep a short record of locations that are confused. Try changing\none receiver position at a time, then repeat the same exercise. Treat the reported distance\nas an estimate, not a measurement of the room.\n\nOnly build an automation after deciding what should happen when the device is left behind,\ngoes offline or changes rooms briefly. Start with a visible notification so you can inspect\nthe result before using it to control a room.\n\n## Use it with DomoSenso\n\nThe [presence guide](/how-to/presence-who-is-home/) explains the framework's room-presence\napproach and its optional radar hardware. The\n[Bermuda presence component](/components/bermuda-presence/) records the released DomoSenso\nscope. Keep proxy credentials and device identity information in your own home project."
+    },
+    {
+      "slug": "atom-echos3r-home-assistant-assist",
+      "title": "How to connect an M5Stack Atom EchoS3R to Home Assistant Assist",
+      "summary": "Check the hardware model, select the manufacturer's voice firmware and test each stage of a Home Assistant Assist command.",
+      "category": "updates",
+      "date": "2026-11-03",
+      "status": "published",
+      "author": "DomoSenso",
+      "components": [
+        "audio-sensor"
+      ],
+      "releases": [],
+      "sources": [
+        "https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r",
+        "https://docs.m5stack.com/en/core/Atom_EchoS3R"
+      ],
+      "body": "Start by checking the exact model printed on your device. At the time of writing, M5Stack's\ndocumentation at the Atom EchoS3R guide URL uses the name **Atom VoiceS3R**. Match your hardware\nto the manufacturer's product page before choosing firmware.\n\nThis is a guide to the manufacturer's Assist setup, not a claim of a tested DomoSenso voice\nintegration. DomoSenso currently documents this board as an\n[audio sensor](/devices/m5stack-atom-echos3r/): its package measures sound and keeps the speaker\namplifier off. That package does not add a voice assistant or Bluetooth. Installing voice\nfirmware is a different use of the device; do not assume both functions will keep running.\n\n## 1. Prepare the voice pipeline\n\nChoose the Assist pipeline the satellite will use. The manufacturer documents both Home\nAssistant Cloud and a local pipeline. Test your chosen pipeline in Home Assistant first,\nso you have a working reference before adding the satellite.\n\n## 2. Install firmware for the correct hardware\n\nUse the precompiled firmware or complete ESPHome configuration linked from the\n[manufacturer's setup guide](https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r).\nThe guide currently specifies ESPHome **2026.1.0 or later**. Check that requirement again\nwhen preparing your device.\n\nUse the complete configuration rather than mixing microphone and speaker settings from\nsimilarly named Atom models. Save the configuration and firmware revision you use, along with\nthe ESPHome version. If this device already performs another job, preserve its configuration\nbefore replacing its firmware.\n\n## 3. Add the satellite to Home Assistant\n\nOnce the device joins your network, accept its ESPHome discovery prompt and assign it to an\narea. Open its voice assistant settings, then choose its area and Assist pipeline.\n\nThe manufacturer's example uses **Okay Nabu** as its wake word. Begin with one exposed light\nand a clear command, then check that you can hear the response.\n\n## 4. Find the stage that fails\n\nUse this sequence as a troubleshooting worksheet:\n\n| Observation | Next check |\n| --- | --- |\n| The device is offline | Check power and network connection before changing voice settings. |\n| The device is online but does not react | Confirm the selected firmware and configured wake word. |\n| It reacts but the command fails | Compare the result with the same request in the working Assist pipeline. |\n| The action succeeds but there is no audible reply | Check the response and audio-output stages separately. |\n\nChange one thing at a time and repeat the same command. A clear description such as\n“the light turns on but no response is audible” is more useful than “voice does not work”.\n\n## Choose the job before choosing the package\n\nFor voice interaction, follow the upstream Assist configuration above. For room sound readings,\nread the [DomoSenso audio-sensor component](/components/audio-sensor/) and its stated limits.\nThese are separate configurations, and this article does not establish that they can be combined."
+    },
     {
       "slug": "ramka-0-9-0",
       "title": "Stop on a page and read it",

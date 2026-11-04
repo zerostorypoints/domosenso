@@ -140,37 +140,25 @@ def test_home_resource_with_parent_segment_refused(tmp_path, url):
         wanted(home, Lock())
 
 
-def test_dev_render_card_gets_hash_query(tmp_path):
-    """A dev render keeps its version's path (/0.4.0/), so only a hash makes a changed card a new URL;
-    without it browsers keep the old card for the 31 days /local/ is cached. A locked card's URL changes
-    with its version directory and stays as it is."""
+def test_component_cards_keep_the_version_render_gave_them(tmp_path):
+    """A component card's URL carries the `?v=` its render computed over the whole version directory
+    (catalog_check.install_version), the same one its imports carry: it passes through as recorded, from
+    the lock or from a dev render, so the card and what it imports are one module graph."""
     home = make_home(tmp_path)
-    put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"one")
-    dev = {"ramka": [CARD]}
-    first = wanted(home, Lock(), dev)[0].url
-    put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"two")
+    put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"changed since the render")
+    assert wanted(home, lock_with(f"{CARD}?v=1234abcd"))[0].url == f"{CARD}?v=1234abcd"
+    assert wanted(home, lock_with(CARD), {"ramka": [f"{CARD}?v=feed5678"]})[0].url == f"{CARD}?v=feed5678"
+    assert wanted(home, Lock(), {"x": ["/hacsfiles/x/x.js"]}) == [Resource("/hacsfiles/x/x.js")]
+
+
+def test_dev_render_from_an_older_tool_still_gets_a_hash(tmp_path):
+    """A dev render recorded before the tool versioned the URLs has a bare one: it keeps the hash of its
+    version directory, so the deploy that follows the tool's update does not make it the bare URL a
+    browser may hold from long ago."""
+    home = make_home(tmp_path)
     tree = lambda *files: sha256("".join(f"{rel}\0{sha256(content)}\n" for rel, content in files).encode())[:8]
-    assert first == f"{CARD}?v={tree(('cards/agenda-card.js', b'one'))}"
-    assert wanted(home, Lock(), dev)[0].url == f"{CARD}?v={tree(('cards/agenda-card.js', b'two'))}"
-    assert wanted(home, lock_with(CARD))[0].url == CARD
-
-
-def test_dev_render_hash_covers_the_version_directory(tmp_path):
-    """A card imports its lib/ modules and translations with its own ?v=: a change to one of them alone
-    changes the URL of every card of the version, and the cards share one hash."""
-    home = make_home(tmp_path)
-    other = CARD.replace("agenda-card", "air-card")
-    for rel, content in (("cards/agenda-card.js", b"a"), ("cards/air-card.js", b"b"), ("cards/lib/colours.js", b"1"),
-                         ("translations/en.json", b"{}")):
-        put(home, f"domosenso/ramka/0.1.1/{rel}", content)
-    dev = {"ramka": [CARD, other]}
-    first = [r.url for r in wanted(home, Lock(), dev)]
-    assert first[0].split("?")[1] == first[1].split("?")[1]
-    put(home, "domosenso/ramka/0.1.1/translations/en.json", b'{"k": 1}')
-    second = [r.url for r in wanted(home, Lock(), dev)]
-    put(home, "domosenso/ramka/0.1.1/cards/lib/colours.js", b"2")
-    third = [r.url for r in wanted(home, Lock(), dev)]
-    assert len({first[0], second[0], third[0]}) == 3 and second[0].split("?")[1] == second[1].split("?")[1]
-    # A dev card that is not under /local/, or whose file is not rendered, passes through.
-    assert wanted(home, Lock(), {"x": ["/hacsfiles/x/x.js", "/local/missing.js"]}) == [
-        Resource("/hacsfiles/x/x.js"), Resource("/local/missing.js")]
+    put(home, "domosenso/ramka/0.1.1/cards/agenda-card.js", b"one")
+    put(home, "domosenso/ramka/0.1.1/cards/lib/colours.js", b"1")
+    assert wanted(home, Lock(), {"ramka": [CARD]})[0].url == (
+        f"{CARD}?v={tree(('cards/agenda-card.js', b'one'), ('cards/lib/colours.js', b'1'))}")
+    assert wanted(home, Lock(), {"x": ["/local/missing.js"]}) == [Resource("/local/missing.js")]

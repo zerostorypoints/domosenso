@@ -33,6 +33,9 @@ export const DEFAULTS = {
   colour: { palette: "series", neutral_color: "var(--primary-color)" },
   dynamics: { rise: 200, fall: 4, hold: 1.5, tilt: true, eq: Object.fromEntries(EQ_KEYS.map((k) => [k, 0])) },
   style: { line_width: DEFAULT_LINE_WIDTH },
+  // The room's level as a number in the strip's top right corner, coloured by the palette: a level
+  // entity and whether it shows (a boolean or an entity id). No entity, no number.
+  loudness: { entity: null, show: true },
   controls: false,
   fallback: "none",
   fps: 30,
@@ -67,6 +70,7 @@ const ENTITY_OPTIONS = {
   "dynamics.tilt": { type: "boolean" },
   ...Object.fromEntries(EQ_KEYS.map((k) => [`dynamics.eq.${k}`, { type: "number" }])),
   "style.line_width": { type: "number", valid: validLineWidth },
+  "loudness.show": { type: "boolean" },
   controls: { type: "boolean" },
   fps: { type: "number", valid: (n) => n >= 1 && n <= 60 },
   flavour: { type: "choice" },
@@ -123,6 +127,9 @@ export function normaliseConfig(raw, flavourKinds) {
   const { fps } = config;
   if (!isEntity(fps) && !(Number.isFinite(fps) && fps >= 1 && fps <= 60)) fail("fps");
   if (!FALLBACKS.includes(config.fallback)) fail("fallback");
+  const { loudness } = config;
+  if (!isObject(loudness) || (loudness.entity !== null && !isEntity(loudness.entity))
+    || !(typeof loudness.show === "boolean" || isEntity(loudness.show))) fail("loudness");
   return config;
 }
 
@@ -131,6 +138,7 @@ export function entitiesOf(config) {
   if (config.source?.entity) ids.add(config.source.entity);
   if (config.active) ids.add(config.active);
   if (config.look) ids.add(config.look);
+  if (config.loudness?.entity) ids.add(config.loudness.entity);
   for (const path of Object.keys(ENTITY_OPTIONS)) {
     const v = get(config, path);
     if (isEntity(v)) ids.add(v);

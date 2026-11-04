@@ -2,6 +2,7 @@
 import asyncio
 import json
 import threading
+import time
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 import pytest
 import websockets
 
+from domosenso_cli import ha_api
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.ha_api import HA, ws_url
 from domosenso_cli.home import Target
@@ -321,6 +323,39 @@ def test_call_after_a_closed_connection_reconnects():
                 return await ha.call("y")
 
         assert asyncio.run(go()) == "ok"
+    assert [m["type"] for m in seen] == ["x", "y"]
+
+
+def _closing_idle_handler():
+    """Like Home Assistant missing its heartbeat: the first connection closes after one result."""
+    connections = []
+
+    async def handler(conn, seen):
+        connections.append(conn)
+        await conn.send(json.dumps({"type": "auth_required"}))
+        await conn.recv()
+        await conn.send(json.dumps({"type": "auth_ok"}))
+        async for raw in conn:
+            msg = json.loads(raw)
+            seen.append(msg)
+            await conn.send(json.dumps({"id": msg["id"], "type": "result", "success": True, "result": len(connections)}))
+            if len(connections) == 1:
+                await conn.close()
+                return
+
+    return handler
+
+
+def test_call_after_idle_blocking_reconnects(monkeypatch):
+    with ws_stub(_closing_idle_handler()) as (url, seen):
+        async def go():
+            async with HA(url, TOKEN, timeout=5) as ha:
+                first = await ha.call("x")
+                time.sleep(0.3)  # synchronous work: the loop never sees the close
+                monkeypatch.setattr(ha_api, "IDLE_CHECK_S", 0.1)
+                return first, await ha.call("y")
+
+        assert asyncio.run(go()) == (1, 2)  # the second call went on a new connection
     assert [m["type"] for m in seen] == ["x", "y"]
 
 

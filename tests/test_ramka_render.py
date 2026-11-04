@@ -773,6 +773,7 @@ PROFILE_DEFAULTS = {
         f"input_boolean.ramka_music_{id}_tilt": "on" if tilt else "off"}.items()
 }
 MUSIC_LIVE = "input_boolean.ramka_music_live"
+MUSIC_LOUDNESS = "input_boolean.ramka_music_loudness"
 MUSIC_DEFAULTS = {
     **LOOK_DEFAULTS, **PROFILE_DEFAULTS, MUSIC_LIVE: "off",
     "input_select.ramka_music_visual": "spectrum", "input_select.ramka_music_palette": "series",
@@ -781,7 +782,7 @@ MUSIC_DEFAULTS = {
     "input_number.ramka_music_line_width_px": 2.8, "input_boolean.ramka_music_tilt": "on",
     "input_number.ramka_music_spectrum_neutral_db": 30, "input_number.ramka_music_spectrum_hot_db": 70,
     "input_number.ramka_music_level_neutral_db": 30, "input_number.ramka_music_level_hot_db": 70,
-    "input_number.ramka_music_fps": 30,
+    "input_number.ramka_music_fps": 30, MUSIC_LOUDNESS: "off",
 }
 # Which page and group each setting belongs to (SPEC-021's table); ambient_music is state the swipes
 # flip, set only by the presence_display group and the global reset.
@@ -1437,6 +1438,7 @@ def bound(prefix, kind):
                      "eq": {k: f"input_number.{prefix}_music_eq_{k}" for k in ("sub", "bass", "low_mid", "mid", "presence", "air")}},
         "style": {"line_width": f"input_number.{prefix}_music_line_width_px"},
         "look": f"sensor.{prefix}_music_look",
+        "loudness": {"entity": "sensor.music_level", "show": f"input_boolean.{prefix}_music_loudness"},
     }
 
 
@@ -1971,7 +1973,7 @@ def test_music_page_rows(demo, live):
 @pytest.mark.parametrize("advanced", ["on", "off"])
 def test_live_subview_rows_follow_live_visual_and_sensor(demo, live, visual, sensor, advanced):
     """SPEC-025's row table, amended: the sensor always; with Live on (V) the mode, the spectrum's
-    flavour and the Advanced switch; A (V and the sensor has the visual's ability) with Advanced: the
+    flavour, the loudness switch and the Advanced switch; A (V and the sensor has the visual's ability) with Advanced: the
     colour range and the response profile with the selected profile's rows, its EQ with the spectrum."""
     states = {"input_boolean.ramka_page_music": "on", MUSIC_LIVE: live, MUSIC_VISUAL: visual, TEMPLATE_SELECT: MATRIX_PROFILE,
               "input_boolean.ramka_settings_advanced": advanced, **SENSOR_CASES[sensor]}
@@ -1980,7 +1982,7 @@ def test_live_subview_rows_follow_live_visual_and_sensor(demo, live, visual, sen
     if sensor != "no_audio_sensor":
         expected.add(MUSIC_SOURCE)
     if live == "on":
-        expected |= {MUSIC_VISUAL, "input_boolean.ramka_settings_advanced"}
+        expected |= {MUSIC_VISUAL, MUSIC_LOUDNESS, "input_boolean.ramka_settings_advanced"}
         if visual == "spectrum":
             expected.add("input_select.ramka_music_spectrum_flavour")
     if active and advanced == "on":
@@ -3819,14 +3821,15 @@ def test_music_settings_page_layout(demo):
         # The sensor, always: the select, the abilities line, the way to the sensor's settings.
         assert not sensor.get("visibility") and [c["type"] for c in sensor["cards"]] == ["heading", "entities", "markdown", "entities"], lang
         # The visualization while Live is on: the mode, the spectrum's flavour with the spectrum, the
-        # Advanced switch; no level flavour, line width, palette or redraw rate.
+        # loudness switch, the Advanced switch; no level flavour, line width, palette or redraw rate.
         assert visualization["visibility"] == [LIVE_ON], lang
         [card] = visualization["cards"][1:]
         assert card["visibility"] == [LIVE_ON], lang
         assert [r["entity"] for r in rows(card)] == [MUSIC_VISUAL, "input_select.ramka_music_spectrum_flavour",
-                                                     "input_boolean.ramka_settings_advanced"], lang
+                                                     MUSIC_LOUDNESS, "input_boolean.ramka_settings_advanced"], lang
         assert row_conditions(card, "input_select.ramka_music_spectrum_flavour") == [visual_is("spectrum")], lang
         assert row_conditions(card, MUSIC_VISUAL) == [] == row_conditions(card, "input_boolean.ramka_settings_advanced"), lang
+        assert row_conditions(card, MUSIC_LOUDNESS) == [], lang
         # (The preview's cards bind them; no row shows them.)
         listed_rows = {r.get("entity") for _, c in view_cards(view) for r in rows(c)}
         for gone in ("ramka_music_level_flavour", "ramka_music_line_width_px", "ramka_music_palette", "ramka_music_fps"):
@@ -4179,6 +4182,27 @@ def test_the_screen_off_and_swipe_up_end_a_pause(demo):
         {"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.ramka_paused"}}]
 
 
+def test_leaving_the_ramka_gives_the_music_back(demo):
+    # A swipe up chooses the rotation for whoever is at the Ramka; once nobody is within near_cm
+    # for the controls' hold (or the screen sleeps), ambient is back to its default and shows the
+    # music whenever it plays. The radar keeps the screen awake while anyone is in the room.
+    package = demo["package.yaml"]
+    reset = automation(package, "music_default")
+    near, screen_off, start = reset["triggers"]
+    assert (near["entity_id"], near["to"]) == ("binary_sensor.ramka_near", "off")
+    assert "input_number.ramka_controls_hold_s" in near["for"]["seconds"]
+    assert screen_off == {"trigger": "state", "entity_id": "input_select.ramka_mode", "to": "off"}
+    # A restart: the near sensor comes back off before the triggers listen; the start checks
+    # once the radar is back.
+    assert (start["trigger"], start["event"]) == ("homeassistant", "start")
+    wait, near_off, music_off, turn_on = reset["actions"]
+    assert wait["if"] == [{"condition": "trigger", "id": "start"}]
+    assert "binary_sensor.dining_ble_proxy_dining_presence" in wait["then"][0]["wait_template"]  # the demo's radar
+    assert near_off == {"condition": "state", "entity_id": "binary_sensor.ramka_near", "state": "off"}
+    assert music_off == {"condition": "state", "entity_id": "input_boolean.ramka_ambient_music", "state": "off"}
+    assert turn_on == {"action": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.ramka_ambient_music"}}
+
+
 def test_page_swipes_keep_a_pause(demo, tmp_path):
     package = demo["package.yaml"]
     for script in ("ramka_ambient_next", "ramka_ambient_prev"):
@@ -4361,3 +4385,36 @@ def test_exit_left_still_names_the_exit_buttons_page(tmp_path):
     dash = render(tmp_path, inputs)["dashboard.en.yaml"]
     [button] = [n for n in walk(dash) if n.get("type") == "custom:tap-button-card" and n.get("navigate")]
     assert button["navigate"] == "/lovelace/home"
+
+
+@pytest.mark.parametrize("target", [None, "io.homeassistant.companion.android"])
+def test_wake_package_default_preserves_companion_condition(tmp_path, demo, target):
+    inputs = demo_inputs()
+    inputs["tablet_wake_package"] = target
+    actual = render(tmp_path, inputs)
+    assert actual == demo
+    wake = actual["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1]
+    assert wake["then"][0]["data"]["data"]["package_name"] == "io.homeassistant.companion.android"
+    assert wake["if"][0]["conditions"][0]["state"] == ["foreground", "top_sleeping"]
+
+
+def test_wake_package_launches_selected_app_without_companion_importance(tmp_path, demo):
+    inputs = demo_inputs()
+    inputs["tablet_wake_package"] = "com.domosenso.frame"
+    actual = render(tmp_path, inputs)
+    expected = copy.deepcopy(demo)
+    expected["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1] = {
+        "action": inputs["tablet_device"]["notify"],
+        "data": {"message": "command_launch_app", "data": {"package_name": "com.domosenso.frame"}},
+    }
+    # Includes radar, off commands, helpers and every dashboard, not only the launch action.
+    assert actual == expected
+
+
+@pytest.mark.parametrize("target", ["", "frame", "com..frame", "1com.frame", "com.frame-name",
+                                    "com.frame\n", "com.żółw", "com.frame;other", 42, [], {}])
+def test_wake_package_rejects_malformed_identifier(tmp_path, target):
+    inputs = demo_inputs()
+    inputs["tablet_wake_package"] = target
+    with pytest.raises(dr.RenderError, match="tablet_wake_package"):
+        render(tmp_path, inputs)
