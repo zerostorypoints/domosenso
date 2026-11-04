@@ -3,6 +3,15 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: shared home inputs (`home_inputs`, `uses_home`)
+
+`domosenso.yaml` may name `home_inputs: <path>`, a file of the home's rooms (and `outside`,
+`weather`) that several components share instead of each asking for them again. A component
+manifest may declare `uses_home: true` (it needs the file) or `uses_home: "optional"`; only
+such components read it. `render` validates the file and fails on a repeated room id; it does not
+check the entities against a running Home Assistant, and the lock does not record the file.
+Home action: none now; before rendering a component that declares `uses_home`, upgrade the tooling.
+
 ## Unreleased: lights/awnings 0.4.0 assistant action sidecars (SPEC-033)
 
 Upgrade tooling before these component versions. Optional action metadata installs privately
