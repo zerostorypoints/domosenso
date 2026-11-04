@@ -185,6 +185,58 @@ template:
 [%- for reading in readings %][% set _ = seed_ids.append('air.' ~ reading) %][% endfor -%]
 [%- if (seed_ids | join(',') | length) > 255 %][[ fail('climate-air: the seed list is ' ~ (seed_ids | join(',') | length) ~ ' characters, input_text holds 255: fewer rooms or readings') ]][% endif %]
 
+[%- macro derived(room, suffix, label, device_class, state, needs) %]
+[%- set full_name = room_name(room) ~ ' ' ~ label %]
+      - name: [[ full_name | yaml ]]
+        unique_id: climate_air_[[ room.id ]]_[[ suffix ]]
+        default_entity_id: binary_sensor.[[ room.id ]]_[[ suffix ]]
+[%- if device_class %]
+        device_class: [[ device_class ]]
+[%- endif %]
+        availability: >-
+          {{ [% for n in needs %][% if not loop.first %] and [% endif %]states('[[ n ]]') | is_number[% endfor %] }}
+        state: >-
+          {{ [[ state ]] }}
+        attributes:
+          component: climate-air
+          room: [[ room.id ]]
+[%- endmacro %]
+[%- set air_ids = air_rooms(home).split(',') | select | list -%]
+[%- set air_in = home.rooms | selectattr('id', 'in', air_ids) | list %]
+
+# Derived per room from the helpers below. A low limit above the high one never makes a room both
+# too hot and too cold: too hot wins.
+  - binary_sensor:
+[%- for room in comfort %]
+[%- set key = 'input_number.climate_air_' ~ room.id %]
+[%- set t = room.climate.temperature %]
+[%- set hot = "states('" ~ t ~ "') | float > states('" ~ key ~ "_temp_high') | float" %]
+[[ derived(room, 'too_hot', 'too hot', 'heat', hot, [t, key ~ '_temp_high']) ]]
+[[ derived(room, 'too_cold', 'too cold', 'cold',
+    "states('" ~ t ~ "') | float < states('" ~ key ~ "_temp_low') | float and not (" ~ hot ~ ")",
+    [t, key ~ '_temp_low', key ~ '_temp_high']) ]]
+[%- if room.climate.humidity is defined %]
+[%- set h = room.climate.humidity %]
+[%- set wet = "states('" ~ h ~ "') | float > states('" ~ key ~ "_humidity_high') | float" %]
+[[ derived(room, 'too_humid', 'too humid', 'moisture', wet, [h, key ~ '_humidity_high']) ]]
+[[ derived(room, 'too_dry', 'too dry', none,
+    "states('" ~ h ~ "') | float < states('" ~ key ~ "_humidity_low') | float and not (" ~ wet ~ ")",
+    [h, key ~ '_humidity_low', key ~ '_humidity_high']) ]]
+[%- endif %]
+[%- endfor %]
+[%- for room in air_in %]
+[%- set checks = [] %]
+[%- set needs = [] %]
+[%- for reading in readings if room.air[reading] is defined %]
+[%- set poor = 'input_number.climate_air_' ~ reading ~ '_poor' %]
+[%- set _ = needs.extend([room.air[reading], poor]) %]
+[%- set cmp = '<' if reading == 'score' else '>=' %]
+[%- set _ = checks.append("states('" ~ room.air[reading] ~ "') | float " ~ cmp ~ " states('" ~ poor ~ "') | float") %]
+[%- endfor %]
+[%- if checks %]
+[[ derived(room, 'air_poor', 'air poor', 'problem', checks | join(' or '), needs) ]]
+[%- endif %]
+[%- endfor %]
 
 # Comfort ranges per room and air limits (home inputs). The helpers carry no initial value: the seed
 # automation gives each helper group its defaults once (groups: <room>, <room>.humidity,

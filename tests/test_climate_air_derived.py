@@ -1,0 +1,113 @@
+"""climate-air: the derived binary sensors per room, their HA templates run against fake states."""
+from pathlib import Path
+
+import pytest
+import yaml
+
+from domosenso_render import render_component
+from test_audio_sensor_render import evaluate
+
+ROOT = Path(__file__).resolve().parent.parent
+COMPONENT = ROOT / "components/climate-air"
+INPUTS = yaml.safe_load((ROOT / "examples/demo-home/inputs/climate-air.yaml").read_text(encoding="utf-8"))
+HOME = yaml.safe_load((ROOT / "examples/demo-home/home.inputs.yaml").read_text(encoding="utf-8"))
+
+LIVING = "input_number.climate_air_living_room_"
+TEMP = "sensor.living_room_temperature"
+HUMIDITY = "sensor.living_room_humidity"
+CO2 = "sensor.living_room_co2"
+SCORE = "sensor.living_room_air_quality_score"
+
+
+@pytest.fixture(scope="module")
+def derived(tmp_path_factory):
+    out = tmp_path_factory.mktemp("derived")
+    render_component(COMPONENT, INPUTS, out, ["en"], home=HOME)
+    package = yaml.safe_load((out / "package.yaml").read_text(encoding="utf-8"))
+    return {e["unique_id"]: e for block in package["template"] for e in block.get("binary_sensor", [])
+            if e["unique_id"].startswith("climate_air_")}
+
+
+def _states(**overrides):
+    base = {TEMP: "22", HUMIDITY: "50", CO2: "600", SCORE: "90",
+            LIVING + "temp_low": "20", LIVING + "temp_high": "24",
+            LIVING + "humidity_low": "40", LIVING + "humidity_high": "60",
+            "input_number.climate_air_co2_poor": "1200", "input_number.climate_air_score_poor": "60"}
+    base.update(overrides)
+    return base
+
+
+def _on(derived, uid, states):
+    sensor = derived[uid]
+    assert evaluate(sensor["availability"], states) == "True", uid
+    return evaluate(sensor["state"], states) == "True"
+
+
+def test_too_hot_above_high(derived):
+    assert _on(derived, "climate_air_living_room_too_hot", _states(**{TEMP: "24.5"}))
+    assert not _on(derived, "climate_air_living_room_too_hot", _states(**{TEMP: "24.0"}))
+
+
+def test_too_cold_below_low(derived):
+    assert _on(derived, "climate_air_living_room_too_cold", _states(**{TEMP: "19.5"}))
+    assert not _on(derived, "climate_air_living_room_too_cold", _states(**{TEMP: "20.0"}))
+
+
+def test_inverted_range_is_never_both(derived):
+    states = _states(**{TEMP: "23", LIVING + "temp_low": "25", LIVING + "temp_high": "22"})
+    assert _on(derived, "climate_air_living_room_too_hot", states)
+    assert not _on(derived, "climate_air_living_room_too_cold", states)
+
+
+def test_humid_and_dry(derived):
+    assert _on(derived, "climate_air_living_room_too_humid", _states(**{HUMIDITY: "61"}))
+    assert not _on(derived, "climate_air_living_room_too_humid", _states(**{HUMIDITY: "60"}))
+    assert _on(derived, "climate_air_living_room_too_dry", _states(**{HUMIDITY: "39"}))
+    assert not _on(derived, "climate_air_living_room_too_dry", _states(**{HUMIDITY: "40"}))
+
+
+def test_unavailable_reading_makes_sensor_unavailable(derived):
+    for uid in ("too_hot", "too_cold"):
+        sensor = derived[f"climate_air_living_room_{uid}"]
+        assert evaluate(sensor["availability"], _states(**{TEMP: "unavailable"})) == "False"
+        assert evaluate(sensor["availability"], _states(**{LIVING + "temp_high": "unknown"})) == "False"
+
+
+def test_air_poor_for_co2_and_score(derived):
+    uid = "climate_air_living_room_air_poor"
+    assert _on(derived, uid, _states(**{CO2: "1200"}))
+    assert not _on(derived, uid, _states(**{CO2: "1199"}))
+    assert _on(derived, uid, _states(**{SCORE: "59"}))
+    assert not _on(derived, uid, _states(**{SCORE: "60"}))
+
+
+def test_air_poor_ignores_missing_readings(tmp_path):
+    home = {"rooms": [{"id": "den", "name": "Den", "air": {"co2": "sensor.den_co2"}}]}
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=home)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    found = {e["unique_id"]: e for b in package["template"] for e in b.get("binary_sensor", [])}
+    sensor = found["climate_air_den_air_poor"]
+    assert "score" not in sensor["state"] and "score" not in sensor["availability"]
+    states = {"sensor.den_co2": "1300", "input_number.climate_air_co2_poor": "1200"}
+    assert evaluate(sensor["availability"], states) == "True"
+    assert evaluate(sensor["state"], states) == "True"
+    assert not [u for u in found if u.startswith("climate_air_den_too_")]
+
+
+def test_ids_classes_and_attributes(derived):
+    expected = {"too_hot": "heat", "too_cold": "cold", "too_humid": "moisture", "too_dry": None,
+                "air_poor": "problem"}
+    for suffix, device_class in expected.items():
+        sensor = derived[f"climate_air_living_room_{suffix}"]
+        assert sensor["default_entity_id"] == f"binary_sensor.living_room_{suffix}"
+        assert sensor.get("device_class") == device_class
+        assert sensor["name"] == "Living room " + suffix.replace("_", " ")
+    assert "climate_air_bedroom_too_hot" in derived and "climate_air_bedroom_air_poor" not in derived
+    assert "climate_air_office_too_hot" not in derived
+
+
+def test_every_derived_entity_has_component_attribute(derived):
+    assert derived
+    for uid, sensor in derived.items():
+        room = uid.removeprefix("climate_air_").rsplit("_too_", 1)[0].rsplit("_air_poor", 1)[0]
+        assert sensor["attributes"] == {"component": "climate-air", "room": room}
