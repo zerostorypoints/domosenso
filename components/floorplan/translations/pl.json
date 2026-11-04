@@ -96,6 +96,7 @@
         "now_legend": "teraz, interpolowane w każdym pokoju",
         "day_legend": "{figure} w ostatnich 24 godzinach, interpolowane w każdym pokoju",
         "no_sensor": "brak czujnika w pokoju",
+        "room_sensor": "Czujnik pokoju",
         "lamps_legend": "Lampy: włączona świeci według jasności, wyłączona szara",
         "off": "wył."
       },

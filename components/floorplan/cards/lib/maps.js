@@ -96,39 +96,87 @@ export function colourAt(cls, v) {
   return `rgb(${a.map((x, k) => Math.round(x * (1 - f) + b[k] * f)).join(",")})`;
 }
 
-// The heat inside each room from that room's own samples ([{at: [x, y], value}]), by inverse
+// The heat inside each room from that room's own samples ([{at: [x, y], value, id?}]), by inverse
 // distance squared on a STEP_M grid: walls stop it, no room borrows another's readings, except the
 // rooms of one open space (`groups`: lists of room indices), which share theirs in a straight line.
+// `bases` (per room index, optional) is the room's own sensor as Home Assistant names it for the
+// area: {id, value}. A room with one takes its value everywhere, and each other sample only pulls
+// the cells within SPOT_M of it towards its own value: a sensor on an amplifier or at a vent is a
+// spot, not the room. A room of an open space without one takes its group's. A base whose value
+// is null (the sensor is unavailable) hatches the room: the other samples are not the room either.
 // Returns {cells: [{x, y, value, room}], empty: [room index]} (a room without a sample is hatched).
-export function heat(rooms, samples, step = STEP_M, groups = []) {
+export function heat(rooms, samples, step = STEP_M, groups = [], bases = []) {
   const cells = [];
   const empty = [];
   const groupOf = new Map(groups.flatMap((g) => g.map((i) => [i, g])));
   const inRoom = rooms.map((poly) => samples.filter((s) => pointInPolygon(s.at, poly)));
   rooms.forEach((poly, i) => {
-    const own = (groupOf.get(i) ?? [i]).flatMap((j) => inRoom[j] ?? []);
-    if (!own.length) {
+    const members = groupOf.get(i) ?? [i];
+    const own = members.flatMap((j) => inRoom[j] ?? []);
+    const base = baseOf(bases, i, members);
+    if (base === null || (base === undefined && !own.length)) {
       empty.push(i);
       return;
     }
+    const spots = base === undefined ? [] : own.filter((s) => !base.ids.has(s.id));
     const xs = poly.map((p) => p[0]);
     const ys = poly.map((p) => p[1]);
     for (let x = Math.min(...xs); x < Math.max(...xs); x += step) {
       for (let y = Math.min(...ys); y < Math.max(...ys); y += step) {
         const c = [x + step / 2, y + step / 2];
         if (!pointInPolygon(c, poly)) continue;
-        let num = 0;
-        let den = 0;
-        for (const s of own) {
-          const w = 1 / ((s.at[0] - c[0]) ** 2 + (s.at[1] - c[1]) ** 2 + 0.05);
-          num += s.value * w;
-          den += w;
-        }
-        cells.push({ x, y, value: num / den, room: i });
+        cells.push({ x, y, value: base === undefined ? spread(own, c) : spot(base.value, spots, c), room: i });
       }
     }
   });
   return { cells, empty };
+}
+
+export const SPOT_M = 1.2;       // m: how far a sensor that is not the room's own warms or cools it
+
+// A room's base: its own sensor's, else the mean of its open space's (undefined: none named; null:
+// named, but none has a value). `ids`: every room sensor of the open space, which is no spot.
+function baseOf(bases, i, members) {
+  const named = (bases[i] !== undefined ? [i] : members).map((j) => bases[j]).filter((b) => b !== undefined);
+  if (!named.length) return undefined;
+  const known = named.filter((b) => typeof b.value === "number");
+  if (!known.length) return null;
+  const ids = new Set(members.map((j) => bases[j]?.id).filter(Boolean));
+  return { value: known.reduce((sum, b) => sum + b.value, 0) / known.length, ids };
+}
+
+// Inverse distance squared over the samples: the room as the sensors in it describe it.
+function spread(own, c) {
+  let num = 0;
+  let den = 0;
+  for (const s of own) {
+    const w = 1 / ((s.at[0] - c[0]) ** 2 + (s.at[1] - c[1]) ** 2 + 0.05);
+    num += s.value * w;
+    den += w;
+  }
+  return num / den;
+}
+
+// The base, pulled towards the nearest strong spot: full at the sensor, nothing at SPOT_M.
+function spot(base, spots, c) {
+  let best = 0;
+  let value = base;
+  for (const s of spots) {
+    const d = Math.hypot(s.at[0] - c[0], s.at[1] - c[1]);
+    const w = d < SPOT_M ? (1 - d / SPOT_M) ** 2 : 0;
+    if (w > best) {
+      best = w;
+      value = base + w * (s.value - base);
+    }
+  }
+  return value;
+}
+
+// The area field that names a room's own sensor of a reading, on the maps that use one: the
+// climate layer's temperature and humidity (Home Assistant has no such field for the others).
+export function areaSensorField(layer, cls) {
+  if (layer !== "climate") return null;
+  return { temperature: "temperature_entity_id", humidity: "humidity_entity_id" }[cls] ?? null;
 }
 
 // Each device's lamp: its first `light` entity that is not a group (a group's state lists its

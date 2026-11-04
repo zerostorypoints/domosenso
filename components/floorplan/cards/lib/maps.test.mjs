@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAPS, ruleOf, readingIds, labelClasses, figure, heat, colourAt, lampIndex, lampOf, formatValue } from "./maps.js";
+import { MAPS, ruleOf, readingIds, labelClasses, figure, heat, colourAt, lampIndex, lampOf, formatValue, SPOT_M, areaSensorField } from "./maps.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 const rooms = [sq(0, 0, 3, 3), sq(3, 0, 3, 3)];
@@ -91,4 +91,48 @@ test("an open space shares its readings: a grouped room without a sensor takes t
   const two = heat(three, [{ at: [1, 1], value: 20 }, { at: [5, 1], value: 24 }], undefined, [[0, 1]]);
   const near = two.cells.filter((c) => c.room === 0 && c.x < 1);
   assert.ok(near.every((c) => c.value > 20 && c.value < 24), "the first room feels the second's reading");
+});
+
+// A room's own sensor (its area's temperature or humidity sensor) is the room; the others are spots.
+const room = [sq(0, 0, 6, 4)];
+const air = { at: [1, 1], value: 22, id: "sensor.room" };
+const amp = { at: [5, 3], value: 33, id: "sensor.amp" };
+const cellAt = (cells, [x, y]) => cells.find((c) => x >= c.x && x < c.x + 0.15 && y >= c.y && y < c.y + 0.15);
+
+test("a room with its own sensor takes that value, and another sensor is a spot within SPOT_M", () => {
+  const { cells, empty } = heat(room, [air, amp], undefined, [], [{ id: "sensor.room", value: 22 }]);
+  assert.deepEqual(empty, []);
+  const far = cells.filter((c) => Math.hypot(c.x + 0.075 - 5, c.y + 0.075 - 3) >= SPOT_M);
+  assert.ok(far.length > 0 && far.every((c) => c.value === 22), "the room's value beyond the spot");
+  assert.ok(cellAt(cells, [5, 3]).value > 30, "the spot is hot at the sensor");
+  const ring = cells.filter((c) => { const d = Math.hypot(c.x + 0.075 - 5, c.y + 0.075 - 3); return d > 0.6 && d < SPOT_M; });
+  assert.ok(ring.every((c) => c.value > 22 && c.value < 27.5), "and falls off towards SPOT_M");
+});
+
+test("a room's own sensor counts placed or not; without a value the room is hatched", () => {
+  const unplaced = heat(room, [amp], undefined, [], [{ id: "sensor.room", value: 22 }]);
+  assert.equal(cellAt(unplaced.cells, [1, 1]).value, 22);
+  const gone = heat(room, [air, amp], undefined, [], [{ id: "sensor.room", value: null }]);
+  assert.deepEqual(gone.empty, [0], "unavailable: hatched, not the other sensors' heat");
+  assert.equal(gone.cells.length, 0);
+});
+
+test("without a room sensor the heat is as before", () => {
+  const before = heat(room, [air, amp]);
+  assert.deepEqual(heat(room, [air, amp], undefined, [], [undefined]), before);
+  assert.deepEqual(heat(room, [air, amp], undefined, [], []), before);
+});
+
+test("an open space's room without its own sensor takes the group's", () => {
+  const two = [sq(0, 0, 3, 3), sq(3, 0, 3, 3)];
+  const out = heat(two, [{ at: [1, 1], value: 21, id: "sensor.room" }], undefined, [[0, 1]], [{ id: "sensor.room", value: 21 }]);
+  assert.deepEqual(out.empty, []);
+  assert.ok(out.cells.filter((c) => c.room === 1).every((c) => c.value === 21));
+});
+
+test("only the climate layer's temperature and humidity maps use the area's sensor", () => {
+  assert.equal(areaSensorField("climate", "temperature"), "temperature_entity_id");
+  assert.equal(areaSensorField("climate", "humidity"), "humidity_entity_id");
+  assert.equal(areaSensorField("climate", "carbon_dioxide"), null);
+  assert.equal(areaSensorField("plants", "temperature"), null);
 });

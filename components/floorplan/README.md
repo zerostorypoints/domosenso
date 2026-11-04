@@ -36,7 +36,10 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   their category; a room without one is hatched. **Now / 24 h** switches between the current
   readings and each map's figure over the last 24 hours from the recorder's hourly statistics:
   plants the coldest, brightest and driest hour, rooms the mean, CO₂ the highest. A sensor without
-  statistics (no `state_class`) has no 24 h value. Fixed scales: 17–24 °C, 30–60 %, soil 10–50 %,
+  statistics (no `state_class`) has no 24 h value. On the climate layer's temperature and humidity maps, a room whose area names its
+  own temperature or humidity sensor (Settings → Areas) takes that sensor's value, placed or not;
+  every other sensor in it (one on an amplifier, at a vent) is a spot that fades out within 1.2 m.
+  Such a room is hatched while its own sensor has no value; its tooltip says "Room sensor". Fixed scales: 17–24 °C, 30–60 %, soil 10–50 %,
   400–1400 ppm, 0–20 000 lx (log). The browser remembers the map per layer and the switch.
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
   share their readings on the maps instead of stopping at the line between them; the walls between

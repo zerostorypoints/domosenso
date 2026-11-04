@@ -96,6 +96,7 @@
         "now_legend": "now, interpolated per room",
         "day_legend": "{figure} in the last 24 hours, interpolated per room",
         "no_sensor": "no sensor in the room",
+        "room_sensor": "Room sensor",
         "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
         "off": "off"
       },

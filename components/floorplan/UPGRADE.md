@@ -2,6 +2,14 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: a room's own sensor colours it (#207)
+
+- On the climate maps (temperature, humidity), a room whose Home Assistant area names a
+  temperature or humidity sensor takes its colour from that sensor; the other sensors in the room
+  are spots within 1.2 m. The room is hatched while that sensor has no value.
+- **What a home does:** nothing for rooms without such a sensor: they look as before. To use it,
+  set the area's temperature and humidity sensors under Settings → Areas.
+
 ## Unreleased: doors, windows and doorways on the plan
 
 - **Openings** (SPEC-028 Amendment 9, draft): doors, windows, doorways and fixed glass on a floor
