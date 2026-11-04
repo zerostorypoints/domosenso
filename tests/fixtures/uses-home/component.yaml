@@ -1,0 +1,17 @@
+id: uses-home-fixture
+version: 0.0.1
+summary: Fixture for a component that reads the home inputs
+description_key: meta.description
+photo: null
+uses_home: true
+devices:
+  requires: []
+host:
+  installs:
+  - container
+  ha_min: '2026.9'
+integrations: []
+artifacts:
+  templates:
+  - templates/rooms.lang.yaml.j2
+tested: []

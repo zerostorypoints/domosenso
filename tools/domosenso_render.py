@@ -17,7 +17,9 @@ A nested YAML flow list needs spaces, `[ [ 80 ] ]`: `[[80]]` would read as an
 expression, so a `[[` followed by anything but a letter or underscore is an error.
 
 Template globals: t(key), inputs, lang, fail(message), component (id, version: the manifest's;
-SPEC-023). Filter: yaml (a YAML-safe scalar).
+SPEC-023). A component that declares `uses_home` also gets `home` (the home's shared inputs, None when an
+`uses_home: optional` component runs in a home without them) and room_name(room), the room's name in the
+rendering language (a plain string as is; else the language, then en, then the only value). Filter: yaml (a YAML-safe scalar).
 An input whose value is null counts as absent (`is defined` is false), at every depth.
 
 --stamp puts a first line on every file written:
@@ -44,6 +46,10 @@ LANG_SUFFIX = ".lang.yaml.j2"
 
 class RenderError(Exception):
     pass
+
+
+# `home` not passed at all: the globals stay undefined, so a template that uses them fails loudly.
+_NO_HOME = object()
 
 
 class _MemoryBytecodeCache(BytecodeCache):
@@ -98,8 +104,22 @@ def _load_translations(component_dir: Path, lang: str) -> dict[str, object]:
     return flatten(data)
 
 
+def _room_name(room: dict, lang: str) -> str:
+    name = room["name"]
+    if isinstance(name, str):
+        return name
+    if lang in name:
+        return name[lang]
+    if "en" in name:
+        return name["en"]
+    if len(name) == 1:
+        return next(iter(name.values()))
+    raise RenderError(f"room {room.get('id')!r}: name has no {lang} or en value")
+
+
 def _make_env(
-    component_dir: Path, inputs: dict, lang: str, en: dict, current: dict, root: str = "templates"
+    component_dir: Path, inputs: dict, lang: str, en: dict, current: dict, root: str = "templates",
+    home: dict | None | object = _NO_HOME,
 ) -> Environment:
     def t(key: str):
         if key in current:
@@ -126,6 +146,8 @@ def _make_env(
 
     env.filters["yaml"] = yaml_scalar
     env.globals.update(t=t, inputs=inputs, lang=lang, fail=fail)
+    if home is not _NO_HOME:
+        env.globals.update(home=home, room_name=lambda room: _room_name(room, lang))
     return env
 
 
@@ -187,12 +209,16 @@ def render_component(
     langs: list[str] = DEFAULT_LANGS,
     stamp: bool = False,
     stamp_text: str | None = None,
+    home: dict | None | object = _NO_HOME,
 ) -> list[Path]:
     """`stamp_text` is written verbatim as the first line of every file (the caller includes the newline)
-    and wins over `stamp`: the `domosenso` command writes its own form of the stamp."""
+    and wins over `stamp`: the `domosenso` command writes its own form of the stamp. `home` is the home's
+    shared inputs for a component that uses them (None: it may do without); left out, templates have no `home`."""
     component_dir, out_dir = Path(component_dir), Path(out_dir)
     first_line = stamp_text if stamp_text is not None else stamp_line(component_dir) if stamp else ""
     inputs = drop_none(inputs)  # so that `is defined` in a template means "the home gave a value"
+    if isinstance(home, dict):
+        home = drop_none(home)
     templates_dir = component_dir / "templates"
     names = sorted(p.relative_to(templates_dir).as_posix() for p in templates_dir.rglob("*.j2"))
     en = _load_translations(component_dir, "en")
@@ -201,7 +227,7 @@ def render_component(
     envs = {}
     for lang in set(langs) | {"en"}:
         current = en if lang == "en" else _load_translations(component_dir, lang)
-        envs[lang] = _make_env(component_dir, inputs, lang, en, current)
+        envs[lang] = _make_env(component_dir, inputs, lang, en, current, home=home)
         envs[lang].globals["component"] = {"id": manifest.get("id"), "version": manifest.get("version")}
 
     written: list[Path] = []
