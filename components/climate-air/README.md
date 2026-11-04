@@ -33,3 +33,25 @@ What a home needs to know beyond `component.yaml`.
   enable each one first (above).
 - **Outside** comes from a weather entity's current conditions (`outside_weather`). A home with its
   own outdoor sensor sets `outside.temperature` instead; the difference sensor then uses it.
+
+## Thresholds
+
+Needs `home_inputs`: the home names its rooms, each with `climate` (and optionally `air`). Without
+them nothing below is rendered.
+
+- **Helpers.** Per room with climate, `input_number.climate_air_<room>_temp_low` / `_temp_high`
+  (and `_humidity_low` / `_humidity_high` when the room has a humidity sensor); per air reading in
+  use, `input_number.climate_air_<reading>_fair` / `_poor`.
+- **Defaults.** Rooms start at `comfort_defaults` (20-24 °C, 40-60 % unless the home sets them);
+  air limits start at the catalog's per-reading defaults. A seed automation gives each room or
+  reading its defaults once, at start; a value a person sets stays, and a room added later is
+  seeded without touching the others.
+- **Flags.** `binary_sensor.<room>_too_hot`, `_too_cold`, `_too_humid`, `_too_dry` and, for rooms
+  with air readings, `_air_poor`. A flag is unavailable while a reading is not a number. A low
+  limit above the high one never gives both too hot and too cold: too hot wins.
+  `_air_poor` stays available while at least one reading and its poor limit are numbers. Air
+  defaults (fair / poor): score 80 / 60 (lower is worse), co2 800 / 1200, pm2_5 15 / 35,
+  voc 150 / 250, nox 20 / 150.
+- **Attention.** `sensor.climate_attention` counts the rooms with any flag on; its `rooms`
+  attribute lists them in the order of the home inputs.
+- **Reset.** `script.climate_air_thresholds_reset` sets every helper back to its default.

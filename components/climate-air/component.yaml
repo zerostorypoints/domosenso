@@ -5,6 +5,7 @@ version: 0.3.0
 summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
 description_key: meta.description
 photo: null
+uses_home: optional           # rooms with climate / air in the home inputs get comfort and air-limit helpers
 
 devices:
   requires:
@@ -45,6 +46,9 @@ inputs:
     type: entity_id
     default: null
     example: weather.forecast_home
+  comfort_defaults:             # the seed's starting comfort range per room (with the home inputs)
+    type: "{temp_low, temp_high, humidity_low, humidity_high}"
+    default: {temp_low: 20, temp_high: 24, humidity_low: 40, humidity_high: 60}
   bathroom_humidity:            # % for 10 minutes turns binary_sensor.bathroom_humidity_high on
     type: int
     default: 65
@@ -80,6 +84,17 @@ provides:
     - {id: sensor.most_humid_room, unique_id: climate_most_humid_room, stability: additive-only, note: "the room's label, '—' when no room has a value"}
     - {id: sensor.lowest_sensor_battery, unique_id: climate_lowest_sensor_battery, stability: stable, note: "%, with a battery on any room"}
     - {id: binary_sensor.bathroom_humidity_high, unique_id: climate_bathroom_humidity_high, stability: stable, note: "with a bathroom room"}
+    # Thresholds (with the home inputs): helpers, derived flags per room, the attention count.
+    - {id: "input_number.climate_air_<room>_{temp_low,temp_high}", stability: additive-only, feature: thresholds, note: "°C, per room with climate"}
+    - {id: "input_number.climate_air_<room>_{humidity_low,humidity_high}", stability: additive-only, feature: thresholds, note: "%, per room with humidity"}
+    - {id: "input_number.climate_air_<reading>_{fair,poor}", stability: additive-only, feature: thresholds, note: "per air reading in use"}
+    - {id: "binary_sensor.<room>_{too_hot,too_cold}", stability: additive-only, feature: thresholds}
+    - {id: "binary_sensor.<room>_{too_humid,too_dry}", stability: additive-only, feature: thresholds, note: "rooms with humidity"}
+    - {id: "binary_sensor.<room>_air_poor", stability: additive-only, feature: thresholds, note: "rooms with air readings"}
+    - {id: sensor.climate_attention, unique_id: climate_air_attention, stability: additive-only, feature: thresholds, note: "count of rooms with a flag on; attribute rooms"}
+    - {id: input_text.climate_air_seeded, stability: additive-only, feature: thresholds}
+    - {id: automation.climate_air_thresholds_seed, stability: additive-only, feature: thresholds}
+    - {id: script.climate_air_thresholds_reset, stability: additive-only, feature: thresholds}
 
   upstream:
     - {id: "sensor.<room>_temperature", owner: integration}
