@@ -1,0 +1,21 @@
+[# The threshold helpers' tables and room pickers (home inputs). A macro returns text, so the pickers
+   return comma-joined ids; the package splits them. The air table is the Ramka's own
+   (ramka/templates/_air-policy.jinja): reading -> (fair, poor, min, max, step, unit). #]
+[%- set air_defaults = {
+    'score': (80, 60, 0, 100, 1, ''),
+    'co2': (800, 1200, 400, 5000, 50, 'ppm'),
+    'pm2_5': (15, 35, 1, 250, 1, 'µg/m³'),
+    'voc': (150, 250, 1, 500, 1, ''),
+    'nox': (20, 150, 1, 500, 1, '')} -%]
+[%- macro comfort_rooms(home) -%]
+[%- for room in home.rooms if room.climate is defined %][[ room.id ]][% if not loop.last %],[% endif %][% endfor -%]
+[%- endmacro -%]
+[%- macro air_rooms(home) -%]
+[%- for room in home.rooms if room.air is defined %][[ room.id ]][% if not loop.last %],[% endif %][% endfor -%]
+[%- endmacro -%]
+[# The readings (in table order) that any room with an air block names. #]
+[%- macro air_readings(home) -%]
+[%- set found = [] -%]
+[%- for reading in air_defaults if home.rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list %][% set _ = found.append(reading) %][% endfor -%]
+[[ found | join(',') ]]
+[%- endmacro -%]

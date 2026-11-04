@@ -5,6 +5,7 @@ version: 0.3.0
 summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
 description_key: meta.description
 photo: null
+uses_home: optional           # rooms with climate / air in the home inputs get comfort and air-limit helpers
 
 devices:
   requires:
@@ -45,6 +46,9 @@ inputs:
     type: entity_id
     default: null
     example: weather.forecast_home
+  comfort_defaults:             # the seed's starting comfort range per room (with the home inputs)
+    type: "{temp_low, temp_high, humidity_low, humidity_high}"
+    default: {temp_low: 20, temp_high: 24, humidity_low: 40, humidity_high: 60}
   bathroom_humidity:            # % for 10 minutes turns binary_sensor.bathroom_humidity_high on
     type: int
     default: 65
