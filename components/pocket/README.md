@@ -1,8 +1,45 @@
 # pocket: field notes
 
-A phone dashboard (spec: the pocket phone view). One YAML dashboard per language with one `panel`
-view holding one card, `custom:pocket-app`, which draws every screen itself. Version 0.1.0 is the
-skeleton: the dashboard, the card's config and the level function; the screens follow.
+A phone dashboard for the Companion app, built on the shared home inputs and climate-air's
+threshold helpers. One YAML dashboard per language with one `panel` view holding one card,
+`custom:pocket-app`, which draws every screen itself.
+
+## The 0.1.0 prototype
+
+- **Home**: attention pills, readings (inside and outside), now playing, quick light tiles and a
+  rooms strip.
+- **Rooms** tab: every room with its lights and readings.
+- **Room page**: one room in detail; a horizontal swipe goes to the next or previous room.
+- **Bottom bar**: Home, Rooms, Media, Settings. Media and Settings are "coming next".
+
+Levels are good, fair or poor (plus a side, low or high, for comfort ranges). They are computed in
+the cards from the states and climate-air's limits; the messages are translations.
+
+### Gestures
+
+- A tap toggles a light.
+- A horizontal drag sets its brightness. It never turns a light off: it floors at 1 %.
+- A long press opens Home Assistant's details for the light.
+- A horizontal swipe on a room page goes to the next or previous room.
+
+## Use in the Companion app
+
+Register one dashboard per language in `configuration.yaml` (YAML mode), with the rendered file as
+`filename:`; the main language shows in the sidebar:
+
+```yaml
+lovelace:
+  dashboards:
+    dashboard-pocket:               # the path from dashboard_paths (needs a hyphen)
+      mode: yaml
+      filename: dashboards/pocket.en.yaml   # one per language: pocket.<lang>.yaml
+      title: Home
+      icon: mdi:cellphone
+      show_in_sidebar: true
+```
+
+Restart Home Assistant, then open the dashboard in the Companion app (or set it as the app's
+default dashboard in the user's profile).
 
 ## What a home needs
 

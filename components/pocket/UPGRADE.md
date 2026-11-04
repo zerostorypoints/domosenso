@@ -2,7 +2,7 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
-## 0.1.0: first version
+## 0.1.0 (unreleased): first version
 
 - The phone dashboard: one panel view with `custom:pocket-app`, configured from the home inputs and
   climate-air's threshold helpers.
