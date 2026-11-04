@@ -43,6 +43,9 @@ DECLARATION = """\
 catalog: {catalog}
 config_dir: home-assistant
 esphome_dir: esphome
+# The rooms and sensors every component of this home shares (schemas/home-inputs.schema.json).
+# Only components that declare `uses_home` read it. Uncomment once the file exists.
+# home_inputs: domosenso/home.inputs.yaml
 targets: {{}}
 # To declare targets, replace `targets: {{}}` with the block below, filled in. `staging` is a
 # Home Assistant container whose config directory is on this machine; `production` is one on another
