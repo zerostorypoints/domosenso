@@ -210,7 +210,10 @@ def _local_files(home: HomeConfig) -> list[str]:
 
 
 def read_record(io: TargetIO) -> dict | None:
-    raw = io.read(RECORD)
+    return parse_record(io.read(RECORD))
+
+
+def parse_record(raw: bytes | None) -> dict | None:
     if raw is None:
         return None
     try:
@@ -241,21 +244,25 @@ def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: li
               prune: bool = False) -> Plan:
     dev = dev_renders(home)
     record, sources, dirty = _carried(home, lock, dev)
-    previous = read_record(io)
+    # One call reads the record, hashes what the repository carries and lists both glob sets; only
+    # a path the record names and the repository no longer has needs a second one.
+    seen = io.survey(RECORD, sorted(set(record) | {CONFIGURATION}), [home.local, home.unmanaged_on_target])
+    previous = parse_record(seen.content)
     recorded = previous["files"] if previous else {}
     stale = sorted(p for p in recorded if p not in record and not _kept(home, p))
-    there = io.hashes(sorted(set(record) | set(stale) | {CONFIGURATION}))
+    there = dict(seen.hashes)
+    if unhashed := [p for p in stale if p not in there]:
+        there.update(io.hashes(unhashed))
     add = sorted(p for p in record if there[p] is None)
     change = sorted(p for p in record if there[p] not in (None, record[p]["sha256"]))
     remove = [p for p in stale if there[p] is not None]
     keep = {p for p in record if there[p] == record[p]["sha256"]}
-    listed = io.glob(home.local) if home.local else []
+    listed, unmanaged = seen.globs
     orphan = sorted(p for p in listed if p not in record and p not in recorded and not _kept(home, p))
     keep |= {p for p in listed if _kept(home, p) and p not in record}
     if CONFIGURATION not in record and there[CONFIGURATION] is not None:
         keep.add(CONFIGURATION)  # not carried: the target's own stays as it is
-    if home.unmanaged_on_target:
-        keep |= set(io.glob(home.unmanaged_on_target))
+    keep |= set(unmanaged)
     keep = sorted(p for p in keep if not p.startswith(TOOL_DIR))
     wanted = resources.wanted(home, lock, {cid: entry.get("resources", []) for cid, entry in dev.items()})
     actions = resources.plan(existing_resources, wanted)
@@ -501,14 +508,13 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
     deletes = plan.remove + removed_orphans
     restart = plan.restart or needs_restart(removed_orphans)
     # What is there now, not what the plan saw: a file that appeared since is backed up too.
-    there = io.hashes(sorted(set(writes) | set(deletes)))
+    # The target's calls run in a thread, so the websocket keeps answering Home Assistant meanwhile.
+    there = await asyncio.to_thread(io.hashes, sorted(set(writes) | set(deletes)))
     added = sorted(p for p in writes if there[p] is None)
-    files = {}
-    for path in sorted(p for p, digest in there.items() if digest is not None):
-        current = io.read(path)
-        if current is None:
-            raise DomosensoError(f"{path} vanished from the target while it was backed up: nothing was deployed")
-        files[path] = current
+    files = await asyncio.to_thread(io.read_many, sorted(p for p, digest in there.items() if digest is not None))
+    if vanished := [p for p, data in files.items() if data is None]:
+        raise DomosensoError(f"{', '.join(vanished)} vanished from the target while it was backed up: "
+                             "nothing was deployed")
     try:
         previous_id = json.loads(files[RECORD])["deploy_id"] if RECORD in files else None
     except (ValueError, TypeError, KeyError) as e:
@@ -520,7 +526,7 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
         "created_resources": [a.url for a in plan.resources if a.kind == "create"],
         "allow_dirty": allow_dirty, **({"dev_render": dev_render} if dev_render else {}),
     })
-    _save_backup(home, io, target, deploy_id, backup)
+    await asyncio.to_thread(_save_backup, home, io, target, deploy_id, backup)
     where = f"{_local_dir(home, target, deploy_id)} and {_backup_dir(deploy_id)} on the target"
     retry = f"domosenso rollback {target} {deploy_id}"
 
@@ -530,18 +536,21 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
 
     rep.line("backup", deploy_id)
 
-    try:
+    def copy() -> None:
         io.put(writes)
         io.delete(deletes)
+
+    try:
+        await asyncio.to_thread(copy)
     except Exception as e:
-        restore()
+        await asyncio.to_thread(restore)
         raise DomosensoError(f"copy failed ({e}); the target is restored from the backup") from e
     rep.line("copied", str(len(contents)), "removed", str(len(deletes)))
 
     try:
-        rc, out = io.exec(CHECK_CONFIG, timeout_s=CHECK_CONFIG_TIMEOUT_S)
+        rc, out = await asyncio.to_thread(io.exec, CHECK_CONFIG, timeout_s=CHECK_CONFIG_TIMEOUT_S)
     except Exception as e:
-        restore()
+        await asyncio.to_thread(restore)
         raise DomosensoError(f"check_config did not run ({e}); the target is restored from the backup") from e
     n, details = summarize("check_config", out)
     if rc != 0 or n:
@@ -550,7 +559,7 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
             rep.line("output", " ".join(out.split())[-OUTPUT_TAIL:])
         for line in details[1:]:  # `  error [domain] message`, `  warning [domain] message`
             rep.line(*line.strip().split(" ", 1))
-        restore()
+        await asyncio.to_thread(restore)
         raise DomosensoError(f"check_config: {n} errors" + (f" (exit {rc})" if rc else ""))
     rep.line("check_config", "0 errors")
 
@@ -562,15 +571,16 @@ async def apply(home: HomeConfig, lock: Lock, plan: Plan, io: TargetIO, ha, remo
             restored = "files and resources are restored from the backup"
         except Exception as again:  # noqa: BLE001 - the files must go back even so
             restored = f"files are restored; resources are not ({again}): {retry}"
-            _restore_files(io, backup, where, retry)  # not marked: the rollback still has resources to do
+            # not marked: the rollback still has resources to do
+            await asyncio.to_thread(_restore_files, io, backup, where, retry)
         else:
-            restore()
+            await asyncio.to_thread(restore)
         raise DomosensoError(f"resources failed ({e}); {restored}") from e
 
     if restart:
         rep.line("restart", target)
         try:
-            io.restart(RESTART_TIMEOUT_S)
+            await asyncio.to_thread(io.restart, RESTART_TIMEOUT_S)
             await wait_for_api(ha)
         except DomosensoError as e:
             raise DomosensoError(f"{e}; the files are deployed: domosenso rollback {target} {deploy_id}") from e

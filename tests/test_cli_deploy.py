@@ -4,6 +4,7 @@ import io
 import json
 import re
 import tarfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -1070,3 +1071,93 @@ def test_assistant_bundle_deploy_remove_and_rollback_preserve_endpoint_storage(t
     run_rollback(home, target, store.ha(), deployment)
     assert (home.target_dir / path).read_bytes() == original
     assert (home.target_dir / '.storage/domosenso_frame').read_text() == '{"mapping":"local"}'
+
+
+class Counting(FakeTarget):
+    """FakeTarget that records each operation the deploy asks for (not the ones an operation is
+    built from) and the thread it ran on."""
+
+    OPS = ("hashes", "glob", "read", "read_many", "survey", "put", "delete", "exec", "restart")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ops: list[str] = []
+        self.threads: set[threading.Thread] = set()
+        self._depth = 0
+
+    def __getattribute__(self, name):
+        value = super().__getattribute__(name)
+        if name not in Counting.OPS:
+            return value
+
+        def counted(*args, **kwargs):
+            if self._depth == 0:
+                self.ops.append(name)
+                self.threads.add(threading.current_thread())
+            self._depth += 1
+            try:
+                return value(*args, **kwargs)
+            finally:
+                self._depth -= 1
+
+        return counted
+
+
+def _surveyed_home(tmp_path):
+    home = Home(tmp_path, local=("packages/*.yaml",), unmanaged=("automations.yaml",))
+    home.managed("www/domosenso/ramka/0.1.1/cards/agenda-card.js", "new")
+    home.write("packages/mine.yaml", "b: 1\n")
+    target = Counting(home.target_dir, check_output=CLEAN)
+    on_target(target, "packages/mine.yaml", "b: 0\n")
+    on_target(target, "packages/stray.yaml", "c: 1\n")
+    on_target(target, "automations.yaml", "[]\n")
+    target.ops.clear()
+    return home, target
+
+
+def test_plan_reads_the_target_in_one_call(tmp_path):
+    home, target = _surveyed_home(tmp_path)
+    plan = plan_for(home, target)
+    assert target.ops == ["survey"]
+    assert plan.add == [inventory.PACKAGE, "www/domosenso/ramka/0.1.1/cards/agenda-card.js"]
+    assert plan.change == ["packages/mine.yaml"]
+    assert plan.orphan == ["packages/stray.yaml"]
+    assert "automations.yaml" in plan.keep
+
+
+def test_plan_hashes_the_paths_only_the_record_names_in_a_second_call(tmp_path):
+    home, target = _surveyed_home(tmp_path)
+    on_target(target, "packages/gone.yaml", "d: 1\n")
+    on_target(target, deploy.RECORD, json.dumps({"deploy_id": "20261001T000000Z", "files": {
+        "packages/gone.yaml": {"sha256": sha256(b"d: 1\n"), "layer": "local", "component": None},
+        "packages/mine.yaml": {"sha256": sha256(b"b: 0\n"), "layer": "local", "component": None},
+    }}))
+    target.ops.clear()
+    plan = plan_for(home, target)
+    assert target.ops == ["survey", "hashes"]
+    assert plan.remove == ["packages/gone.yaml"]
+    assert plan.change == ["packages/mine.yaml"]
+
+
+def test_apply_backs_up_in_one_read_and_off_the_event_loop(tmp_path):
+    home, target = _surveyed_home(tmp_path)
+    plan = plan_for(home, target)
+    target.ops.clear()
+    target.threads.clear()
+    run_apply(home, target, Resources([]).ha(), plan, remove_orphans=["packages/stray.yaml"])
+    assert target.ops.count("read_many") == 1 and "read" not in target.ops
+    assert threading.main_thread() not in target.threads  # the websocket keeps its heartbeat meanwhile
+    backup = home.root / ".domosenso" / "deploys" / "staging"
+    (deploy_id,) = [d.name for d in backup.iterdir()]
+    files = tarfile.open(fileobj=io.BytesIO((backup / deploy_id / "files.tar").read_bytes()))
+    assert sorted(files.getnames()) == ["packages/mine.yaml", "packages/stray.yaml"]
+    assert files.extractfile("packages/stray.yaml").read() == b"c: 1\n"
+
+
+def test_a_file_that_vanishes_during_the_backup_stops_the_deploy(tmp_path, monkeypatch):
+    home, target = _surveyed_home(tmp_path)
+    plan = plan_for(home, target)
+    monkeypatch.setattr(FakeTarget, "read_many", lambda self, paths: {p: None for p in paths})
+    with pytest.raises(DomosensoError, match="packages/mine.yaml, packages/stray.yaml vanished from the target"):
+        run_apply(home, target, Resources([]).ha(), plan, remove_orphans=["packages/stray.yaml"])
+    assert (home.target_dir / "packages/mine.yaml").read_text() == "b: 0\n"
