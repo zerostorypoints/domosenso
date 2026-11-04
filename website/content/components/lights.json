@@ -23,7 +23,7 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
+      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -33,8 +33,8 @@
     "Verify group state and brightness; configure Ramka lights inputs for tablet controls."
   ],
   "id": "lights",
-  "version": "0.3.0",
-  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+  "version": "0.4.0",
+  "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
   "evidencePaths": [
     "components/lights/component.yaml"
   ],

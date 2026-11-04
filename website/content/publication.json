@@ -12,9 +12,9 @@
     },
     {
       "id": "awnings",
-      "version": "0.3.0",
-      "tag": "awnings/0.3.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.4.0",
+      "tag": "awnings/0.4.0",
+      "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
@@ -66,9 +66,9 @@
     },
     {
       "id": "lights",
-      "version": "0.3.0",
-      "tag": "lights/0.3.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.4.0",
+      "tag": "lights/0.4.0",
+      "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
@@ -93,9 +93,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.14.0",
-      "tag": "ramka/0.14.0",
-      "commit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
+      "version": "0.15.0",
+      "tag": "ramka/0.15.0",
+      "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
