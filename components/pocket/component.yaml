@@ -20,7 +20,8 @@ host:
 integrations: []
 
 inputs:
-  dashboard_paths:              # the pocket dashboard of each language, plain URL paths as registered
+  dashboard_paths:              # reserved / informational: no template reads it; the paths are the ones
+                                # registered in configuration.yaml, listed here for the home's notes
     type: "map[lang, string]"   # in configuration.yaml
     default: {en: dashboard-pocket}
     example: {en: dashboard-pocket, pl: dashboard-pocket-pl}

@@ -6,8 +6,8 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 
 ## The 0.1.0 prototype
 
-- **Home**: attention pills, readings (inside and outside), now playing, quick light tiles and a
-  rooms strip.
+- **Home**: attention pills, readings (inside and outside, with the air score and a lights-on
+  chip), now playing, quick light tiles and a rooms strip.
 - **Rooms** tab: every room with its lights and readings.
 - **Room page**: one room in detail; a horizontal swipe goes to the next or previous room.
 - **Bottom bar**: Home, Rooms, Media, Settings. Media and Settings are "coming next".
@@ -17,10 +17,12 @@ the cards from the states and climate-air's limits; the messages are translation
 
 ### Gestures
 
-- A tap toggles a light.
+- A tap toggles a light. A tile for several lights switches all of them off when any is on, else
+  all on.
 - A horizontal drag sets its brightness. It never turns a light off: it floors at 1 %.
 - A long press opens Home Assistant's details for the light.
-- A horizontal swipe on a room page goes to the next or previous room.
+- A horizontal swipe on a room page goes to the next or previous room, replacing the history
+  entry: Back returns to Rooms, not through every room.
 
 ## Use in the Companion app
 
@@ -30,7 +32,7 @@ Register one dashboard per language in `configuration.yaml` (YAML mode), with th
 ```yaml
 lovelace:
   dashboards:
-    dashboard-pocket:               # the path from dashboard_paths (needs a hyphen)
+    dashboard-pocket:               # the dashboard's URL path (needs a hyphen)
       mode: yaml
       filename: dashboards/pocket.en.yaml   # one per language: pocket.<lang>.yaml
       title: Home
@@ -47,8 +49,9 @@ default dashboard in the user's profile).
   media, `outside` and `weather`. Without them the render fails.
 - **climate-air** for the levels: its threshold helpers (comfort range per room with climate, air
   limits per reading). Without it the card shows readings but no level.
-- A YAML dashboard per language in `configuration.yaml`, at the paths of `dashboard_paths`
-  (default `dashboard-pocket` for English), each with `filename:` the rendered file.
+- A YAML dashboard per language in `configuration.yaml`, at the paths you choose
+  (`dashboard_paths` is reserved: no template reads it, it only records them; default
+  `dashboard-pocket` for English), each with `filename:` the rendered file.
 
 ## The card's config
 

@@ -65,9 +65,10 @@ export function hassOf(states = baseStates()) {
 
 export function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, routeId } = {}) {
   const routes = [];
-  return { routes, hass, config: cfg, lang, offline, routeId,
+  const options = [];
+  return { routes, options, hass, config: cfg, lang, offline, routeId,
     t: (key, vars) => translate({ locale: { language: lang } }, key, vars),
-    navigate: (route) => routes.push(route) };
+    navigate: (route, opts) => { routes.push(route); if (opts) options.push(opts); } };
 }
 
 export const text = (el) => el.textContent.replace(/\s+/g, " ").trim();

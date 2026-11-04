@@ -42,9 +42,15 @@ export function plural(hass, count, forms) {
   return form == null ? "" : interpolate(form, { count });
 }
 
+const dateFormats = new Map();   // one Intl.DateTimeFormat per language and options
+
 export function formatDate(hass, date, options) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(DATE_LOCALES[language(hass)], options).format(date);
+  const locale = DATE_LOCALES[language(hass)];
+  const key = `${locale}/${JSON.stringify(options ?? null)}`;
+  let format = dateFormats.get(key);
+  if (!format) dateFormats.set(key, format = new Intl.DateTimeFormat(locale, options));
+  return format.format(date);
 }
 
 // Short weekday name. A language may define its own shape under

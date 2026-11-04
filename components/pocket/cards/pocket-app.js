@@ -17,6 +17,7 @@
 
 import { createT, language } from "./lib/i18n.js";
 import { TABS, parseRoute, tabOf } from "./lib/router.js";
+import { setText } from "./lib/page-kit.js";
 import { applyTheme } from "./lib/theme.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -27,11 +28,14 @@ const translate = createT({ en, de, pl });
 const TOAST_MS = 3000;
 
 const STYLE = `
-  :host { display: block; height: 100%; }
+  :host { display: block; }
   /* The bar is sticky inside .app, not fixed: it stays within the card's own column (beside an open
      sidebar on a tablet) and no transformed ancestor in Home Assistant's view can misplace it. */
   .app { --bar: 64px; --safe: env(safe-area-inset-bottom, 0px);
-         box-sizing: border-box; min-height: 100%; display: flex; flex-direction: column;
+         box-sizing: border-box; min-height: 100vh;
+         /* The view sits under HA's header; dvh follows the phone's collapsing browser bars. */
+         min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px));
+         display: flex; flex-direction: column;
          background: var(--bg); color: var(--fg);
          font-family: -apple-system, "SF Pro Text", Roboto, system-ui, sans-serif; font-weight: 400;
          -webkit-font-smoothing: antialiased; }
@@ -44,10 +48,13 @@ const STYLE = `
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
            background: var(--fg); color: var(--bg); box-shadow: 0 4px 16px rgba(0, 0, 0, .18); }
-  .toast[hidden] { display: none; }
+  /* Hidden visually, not display:none: the role=alert element must stay in the layout for screen
+     readers to announce its text when it changes. */
+  .toast:not(.show) { opacity: 0; pointer-events: none; }
   nav { position: sticky; bottom: 0; z-index: 2; box-sizing: border-box; flex: 0 0 auto;
         height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
         display: flex; justify-content: space-around; align-items: stretch;
+        background: var(--card);
         background: color-mix(in srgb, var(--card) 92%, transparent);
         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
         border-top: 1px solid var(--line); }
@@ -114,7 +121,7 @@ class PocketApp extends HTMLElement {
       hass: this._hass,
       config: this._config,
       t: (key, vars) => this._t(key, vars),
-      navigate: (route) => this._navigate(route),
+      navigate: (route, options) => this._navigate(route, options),
       lang: this._lang(),
       offline: this._hass?.connected === false,
       routeId: this._current?.id,
@@ -129,7 +136,7 @@ class PocketApp extends HTMLElement {
         <div class="offline" role="status" hidden></div>
         <main></main>
         <nav>
-          <div class="toast" role="alert" hidden></div>
+          <div class="toast" role="alert"></div>
           ${TABS.map((tab) => `
             <button class="tab" type="button" data-page="${tab.page}">
               <ha-icon icon="${tab.icon}"></ha-icon><span class="label"></span>
@@ -150,8 +157,15 @@ class PocketApp extends HTMLElement {
     return route.page === "room" && !this._config.rooms.some((room) => room.id === route.id);
   }
 
-  _navigate(route) {
+  // options.replace: the route takes the place of the current history entry (room-to-room swipes,
+  // so Back returns to Rooms rather than through every room).
+  _navigate(route, { replace = false } = {}) {
     if (this._unknownRoom(parseRoute(route))) route = "#/rooms";
+    if (replace && window.location.hash !== route) {
+      window.history.replaceState(window.history.state, "", route);
+      this._route();
+      return;
+    }
     // Setting the hash fires hashchange later; routing now keeps the tap instant, and the later
     // event finds the page already in place (an update, not a new page).
     if (window.location.hash !== route) window.location.hash = route;
@@ -199,16 +213,19 @@ class PocketApp extends HTMLElement {
   _showToast(key) {
     if (!key) return;
     this._toast.textContent = this._t(key);
-    this._toast.hidden = false;
+    this._toast.classList.add("show");
     clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => { this._toast.hidden = true; }, this.toastMs);
+    this._toastTimer = setTimeout(() => {
+      this._toast.classList.remove("show");
+      this._toast.textContent = "";
+    }, this.toastMs);
   }
 
   _refresh() {
     applyTheme(this._app, this._hass);
     const offline = this._hass?.connected === false;
     this._banner.hidden = !offline;
-    this._banner.textContent = offline ? this._t("card.pocket.offline") : "";
+    setText(this._banner, offline ? this._t("card.pocket.offline") : "");
     this._app.classList.toggle("is-offline", offline);
     this._route();
   }

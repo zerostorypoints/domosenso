@@ -31,7 +31,7 @@ views:
         lang: [[ lang ]]
         rooms:
 [%- for room in home.rooms %]
-          - id: [[ room.id ]]
+          - id: [[ room.id | yaml ]]
             name: [[ room_name(room) | yaml ]]
 [%- for field in fields if room[field] is defined %]
             [[ field ]]: [[ room[field] | yaml ]]
@@ -41,14 +41,14 @@ views:
         outside: [[ home.outside | yaml ]]
 [%- endif %]
 [%- if home.weather is defined %]
-        weather: [[ home.weather ]]
+        weather: [[ home.weather | yaml ]]
 [%- endif %]
         thresholds:
 [%- for name, table in (('rooms', comfort), ('air', air)) %]
 [%- if table %]
           [[ name ]]:
 [%- for key, ids in table.items() %]
-            [[ key ]]: [[ ids | yaml ]]
+            [[ key | yaml ]]: [[ ids | yaml ]]
 [%- endfor %]
 [%- else %]
           [[ name ]]: {}

@@ -20,6 +20,7 @@ import { reportError } from "./report.js";
 
 const LONG_PRESS_MS = 600;
 const DIRECTION_PX = 8;      // movement before a gesture is a drag or a scroll
+const CLICK_WINDOW_MS = 300;  // a click after a gesture comes right after the pointerup; later ones are the user's
 const CONFIRM_MS = 4000;     // how long a sent brightness waits for Home Assistant to report it
 const GONE = new Set(["unavailable", "unknown"]);
 
@@ -55,7 +56,11 @@ class PocketLightTile extends HTMLElement {
     this.addEventListener("pointerdown", (e) => this._onDown(e));
     this.addEventListener("pointermove", (e) => this._onMove(e));
     this.addEventListener("pointerup", (e) => this._onUp(e));
-    this.addEventListener("pointercancel", () => this._endGesture());
+    this.addEventListener("pointercancel", () => {
+      this._endGesture();
+      clearTimeout(this._suppressTimer);
+      this._suppressClick = false;
+    });
   }
 
   set config(config) {
@@ -168,8 +173,8 @@ class PocketLightTile extends HTMLElement {
     this._button.classList.toggle("on", on || this._preview != null);
     this._button.classList.toggle("muted", !available);
     this._button.disabled = !!this.offline;
-    this._button.setAttribute("aria-pressed", String(on));
-    this._button.setAttribute("aria-label", `${this._config.name}, ${status}`);
+    setAttr(this._button, "aria-pressed", String(on));
+    setAttr(this._button, "aria-label", `${this._config.name}, ${status}`);
     const width = `${pct ?? 0}%`;
     if (this._fill.style.width !== width) this._fill.style.width = width;
   }
@@ -189,6 +194,7 @@ class PocketLightTile extends HTMLElement {
     if (e.button != null && e.button !== 0) return;
     this._endGesture();
     this._dropPreview();
+    clearTimeout(this._suppressTimer);
     this._suppressClick = false;
     this._gesture = { x: e.clientX, y: e.clientY, mode: "pending", pointerId: e.pointerId };
     this._gesture.timer = setTimeout(() => this._longPress(), LONG_PRESS_MS);
@@ -224,6 +230,12 @@ class PocketLightTile extends HTMLElement {
       this._patch();
     }
     this._endGesture({ keepPreview: g?.mode === "drag" });
+    // Only the click the browser fires right after this gesture is swallowed: if none follows
+    // (the pointer left the tile, a keyboard Enter comes later), the next click must work.
+    clearTimeout(this._suppressTimer);
+    if (this._suppressClick) {
+      this._suppressTimer = setTimeout(() => { this._suppressClick = false; }, CLICK_WINDOW_MS);
+    }
   }
 
   _longPress() {
@@ -255,6 +267,10 @@ class PocketLightTile extends HTMLElement {
 
 function setText(el, text) {
   if (el.textContent !== text) el.textContent = text;
+}
+
+function setAttr(el, name, value) {
+  if (el.getAttribute(name) !== value) el.setAttribute(name, value);
 }
 
 if (!customElements.get("pocket-light-tile")) customElements.define("pocket-light-tile", PocketLightTile);

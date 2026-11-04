@@ -100,3 +100,12 @@ def test_component_check_passes():
     assert check_component(COMPONENT / "component.yaml") == []
     errors, warnings = check_translations(COMPONENT)
     assert errors == [] and warnings == []
+
+
+def test_ids_that_are_yaml_booleans_stay_strings(tmp_path):
+    home = {"rooms": [{"id": "on", "name": "On", "climate": {"temperature": "sensor.on_temperature"}}],
+            "weather": "no"}
+    card = _card(_dashboard(tmp_path, home))
+    assert card["rooms"][0]["id"] == "on"
+    assert card["weather"] == "no"
+    assert "on" in card["thresholds"]["rooms"]

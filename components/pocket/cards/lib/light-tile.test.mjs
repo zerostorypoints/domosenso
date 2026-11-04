@@ -189,3 +189,14 @@ test("the preview goes as soon as the real brightness matches it", () => {
   tile.hass = hassOf({ "light.desk": light("on", 255) });   // a later change shows, nothing is held
   assert.equal(fill(tile), "100%");
 });
+
+test("a click that does not follow the gesture is not swallowed (keyboard Enter)", async () => {
+  const hass = hassOf({ "light.desk": light("on", 128) });
+  const tile = mount(hass);
+  pointer(tile, "pointerdown", 40, 10);
+  pointer(tile, "pointermove", 42, 40);   // a scroll: the click that may follow is dropped
+  pointer(tile, "pointerup", 42, 40);
+  await new Promise((r) => setTimeout(r, 350));
+  tile.click();
+  assert.equal(hass.calls.length, 1, "the later click toggles");
+});

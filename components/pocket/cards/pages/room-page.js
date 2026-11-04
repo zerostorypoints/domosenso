@@ -230,7 +230,7 @@ function swipeBetweenRooms(root, parts) {
     // At the first or last room there is no next page, yet swallow stays set: the click the
     // browser fires after the finger lifts would otherwise press whatever the swipe ended on.
     // The next pointerdown clears it.
-    if (next) parts.ctx.navigate(`#/room/${next.id}`);
+    if (next) parts.ctx.navigate(`#/room/${next.id}`, { replace: true });
   });
   root.addEventListener("pointercancel", () => { swipe = null; });
   root.addEventListener("click", (e) => {

@@ -229,17 +229,38 @@ test("a failed action shows a translated toast above the bar for a short time; t
   card.hass = hassOf({ states: { "light.k": { state: "off", attributes: {} } },
     callService: () => Promise.reject(new Error("no")) });
   const toast = $(card, ".toast");
-  assert.equal(toast.hidden, true);
+  assert.ok(!toast.classList.contains("show"));
+  assert.equal(toast.getAttribute("role"), "alert");
   const tile = $(card, "pocket-light-tile");
   tile.click();
   await tick();
-  assert.equal(toast.hidden, false);
+  assert.ok(toast.classList.contains("show"));
   assert.equal(toast.textContent, "Światło nie odpowiedziało. Spróbuj ponownie.");
   assert.ok(!tile.shadowRoot.querySelector(".tile").classList.contains("on"));
   const css = $(card, "style").textContent;
   assert.match(css, /\.toast \{[^}]*font-size: 16px/);
   assert.equal(toast.parentElement, $(card, "nav"), "above the bar, on it");
   assert.match(css, /\.toast \{[^}]*bottom: calc\(100% \+ 8px\)/);
+  assert.match(css, /\.toast:not\(\.show\) \{[^}]*opacity: 0/);
+  assert.doesNotMatch(css, /\.toast\[hidden\]/, "never display:none, so screen readers announce it");
   await new Promise((r) => setTimeout(r, 50));
-  assert.equal(toast.hidden, true);
+  assert.ok(!toast.classList.contains("show"));
+});
+
+test("the shell is at least a viewport tall under the header, with a vh fallback; the bar has a plain background first", () => {
+  const css = $(mount(), "style").textContent;
+  assert.match(css, /min-height: 100vh;[^}]*min-height: calc\(100dvh - var\(--header-height, 56px\) - env\(safe-area-inset-top, 0px\)\)/);
+  assert.match(css, /background: var\(--card\);\s*background: color-mix/);
+});
+
+test("navigate with replace swaps the history entry: Back returns past it", async () => {
+  const card = mount();
+  card._ctx().navigate("#/rooms");
+  card._ctx().navigate("#/room/kitchen", { replace: true });
+  assert.equal(window.location.hash, "#/room/kitchen");
+  assert.equal(card._ctx().routeId, "kitchen");
+  assert.deepEqual(active(card), ["rooms"]);
+  const length = window.history.length;
+  card._ctx().navigate("#/rooms", { replace: true });
+  assert.equal(window.history.length, length, "no entry added");
 });

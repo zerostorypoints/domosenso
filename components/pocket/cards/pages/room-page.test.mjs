@@ -42,6 +42,7 @@ test("a swipe left goes to the next room, right to the previous", () => {
   swipe(el, [300, 200], [200, 210]);
   swipe(el, [100, 200], [200, 195]);
   assert.deepEqual(ctx.routes, ["#/room/office", "#/room/living_room"]);
+  assert.deepEqual(ctx.options, [{ replace: true }, { replace: true }], "swipes replace the history entry");
 });
 
 test("a vertical swipe, a short swipe or a diagonal one does nothing", () => {
