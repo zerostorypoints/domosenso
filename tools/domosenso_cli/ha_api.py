@@ -9,10 +9,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from websockets.asyncio.client import connect
 from websockets.exceptions import WebSocketException
 
+from domosenso_cli import resolve
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import Target
 
@@ -53,6 +55,9 @@ class HA:
 
     `timeout` (seconds) bounds the connect, each authentication read, each call's wait for its
     result and each REST request.
+
+    The host is looked up once, IPv4 first (`resolve`), and every socket goes to that address
+    while the URL keeps the name (Host header, TLS).
     """
 
     def __init__(self, url: str, token: str, token_source: Path | str | None = None, timeout: float = TIMEOUT):
@@ -63,6 +68,11 @@ class HA:
         self._ws: Any = None
         self._used = 0.0  # time.monotonic() of the socket's last command
         self._next_id = 0
+        self._opener: urllib.request.OpenerDirector | None = None
+
+    @property
+    def _host(self) -> str | None:
+        return urlsplit(self.url).hostname
 
     @classmethod
     def for_target(cls, target: Target) -> HA:
@@ -86,7 +96,9 @@ class HA:
     async def _connect(self) -> None:
         target = ws_url(self.url)
         try:
-            ws = await connect(target, max_size=None, open_timeout=self._timeout)
+            address = await asyncio.to_thread(resolve.ipv4, self._host)
+            pinned = {"host": address} if address else {}
+            ws = await connect(target, max_size=None, open_timeout=self._timeout, **pinned)
         except (OSError, WebSocketException, TimeoutError) as e:
             raise DomosensoError(f"cannot connect to {target}: {e}") from e
         try:
@@ -178,7 +190,9 @@ class HA:
         req = urllib.request.Request(self.url + path, headers={"Authorization": f"Bearer {self._token}", "User-Agent": USER_AGENT})
         try:
             try:
-                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                if self._opener is None:
+                    self._opener = resolve.opener(self._host)
+                with self._opener.open(req, timeout=self._timeout) as resp:
                     return resp.status, resp.read()
             except urllib.error.HTTPError as e:
                 return e.code, e.read()

@@ -41,6 +41,9 @@ sys.exit(2)
 SSH_STUB = """#!{python}
 import json, os, sys, time
 argv = sys.argv[1:]
+if argv[:1] == ["-G"]:  # the configuration query: no connection, so not logged as a call
+    sys.stdout.write(os.environ.get("STUB_SSH_CONFIG", "hostname " + argv[-1] + "\\naddressfamily any\\n"))
+    sys.exit(int(os.environ.get("STUB_SSH_CONFIG_RC", "0")))
 with open(os.environ["STUB_LOG"], "a") as log:
     log.write(json.dumps(["ssh", argv, ""]) + "\\n")
 time.sleep(float(os.environ.get("STUB_SLEEP", "0")))
@@ -65,6 +68,7 @@ def stubs(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("STUB_CONFIG", str(config))
     monkeypatch.setenv("STUB_LOG", str(log))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))  # the control socket's directory is made there
 
     def calls(tool=None):
         if not log.exists():
@@ -88,10 +92,10 @@ def make_target(kind, config, **over):
 def io(request, stubs):
     """The same behaviour is promised by both transports; files land in `stubs.config` either way."""
     t = make_target(request.param, stubs.config)
-    return SimpleNamespace(
-        kind=request.param, target=t, config=stubs.config, calls=stubs.calls,
-        io=LocalDocker(t) if request.param == "local-docker" else SshDocker(t),
-    )
+    transport = LocalDocker(t) if request.param == "local-docker" else SshDocker(t)
+    if request.param == "ssh-docker":
+        transport.options()  # ssh's configuration is read once, before a test watches subprocess.run
+    return SimpleNamespace(kind=request.param, target=t, config=stubs.config, calls=stubs.calls, io=transport)
 
 
 def test_put_then_hashes(io):
@@ -172,7 +176,7 @@ def test_ssh_argv_quotes_paths_with_spaces(stubs):
     calls = stubs.calls("ssh")
     assert len(calls) == 3
     for _, argv, _ in calls:
-        assert argv[:-2] == targets.SSH_OPTIONS and argv[-2] == "nas"  # options, host, then one command string
+        assert argv[:-2] == ssh.options() and argv[-2] == "nas"  # options, host, then one command string
         assert "BatchMode=yes" in argv and any(a.startswith("ConnectTimeout=") for a in argv)
         assert argv[-1].startswith("env HASS_DOCKER=1 docker exec -i hass ")
     assert calls[0][1][-1] == "env HASS_DOCKER=1 docker exec -i hass tar -x -C /config"
@@ -436,3 +440,123 @@ def test_fake_target_records_exec_timeouts(tmp_path):
     fake.exec(["ls"])
     fake.exec(["check_config"], timeout_s=600)
     assert fake.exec_timeouts == [targets.COMMAND_TIMEOUT_S, 600]
+
+
+def test_read_many_reads_every_file_in_one_call(io):
+    io.io.put({"a.yaml": b"one", "my dir/b c.yaml": b"two\n", "-dash.yaml": b"\x00\xffbin", "deep/x/y.js": b""})
+    os.symlink("a.yaml", io.config / "link.yaml")
+    (io.config / "folder").mkdir()
+    before = len(io.calls("ssh"))
+    got = io.io.read_many(["a.yaml", "my dir/b c.yaml", "-dash.yaml", "deep/x/y.js", "link.yaml", "missing.yaml",
+                           "folder"])
+    assert got == {"a.yaml": b"one", "my dir/b c.yaml": b"two\n", "-dash.yaml": b"\x00\xffbin", "deep/x/y.js": b"",
+                   "link.yaml": b"one", "missing.yaml": None, "folder": None}
+    if io.kind == "ssh-docker":
+        assert len(io.calls("ssh")) == before + 1
+
+
+def test_read_many_of_nothing_there(io):
+    assert io.io.read_many([]) == {}
+    assert io.io.read_many(["missing.yaml", "nope/x.yaml"]) == {"missing.yaml": None, "nope/x.yaml": None}
+
+
+def test_read_many_refuses_a_path_outside_config(io):
+    with pytest.raises(DomosensoError, match="relative to /config"):
+        io.io.read_many(["a.yaml", "../etc/passwd"])
+
+
+@pytest.mark.parametrize("content", [b'{"files": {}}', b"two\nlines\n", b"", b"no newline\x00\xff", None])
+def test_survey_reads_hashes_and_lists_in_one_call(io, content):
+    files = {"packages/a.yaml": b"a", "packages/b c.yaml": b"b", "www/x.js": b"x", "automations.yaml": b"[]",
+             "other/z.yaml": b"z"}
+    if content is not None:
+        files[".domosenso/deployed.json"] = content
+    io.io.put(files)
+    before = len(io.calls("ssh"))
+    seen = io.io.survey(".domosenso/deployed.json", ["packages/a.yaml", "missing.yaml", "www/x.js"],
+                        [["packages/*.yaml"], [], ["automations.yaml", "www/*.js"]])
+    assert seen.content == content
+    assert seen.hashes == {"packages/a.yaml": targets.file_sha(io.config / "packages/a.yaml"), "missing.yaml": None,
+                           "www/x.js": targets.file_sha(io.config / "www/x.js")}
+    assert seen.globs == [["packages/a.yaml", "packages/b c.yaml"], [], ["automations.yaml", "www/x.js"]]
+    if io.kind == "ssh-docker":
+        assert len(io.calls("ssh")) == before + 1
+
+
+def test_survey_with_nothing_to_hash_or_list(io):
+    seen = io.io.survey("missing.json", [], [[], []])
+    assert (seen.content, seen.hashes, seen.globs) == (None, {}, [[], []])
+
+
+@pytest.mark.parametrize("answer", [b"abc\n", b"h1\n-\n12\nshort", b"h1\n-\n2\nabX", b"h1\n-\n-\nnot-a-path\n",
+                                    b"h1\n-\nx\n"])
+def test_survey_answer_that_cannot_be_read_raises(stubs, monkeypatch, answer):
+    ssh = SshDocker(make_target("ssh-docker", stubs.config))
+    monkeypatch.setattr(targets, "_checked", lambda *a, **kw: answer)
+    with pytest.raises(DomosensoError, match="survey's answer cannot be read"):
+        ssh.survey("r.json", ["a", "b"], [["packages/*.yaml"]])
+
+
+def _short_home(monkeypatch, tmp_path_factory):
+    """A HOME short enough for a control socket (pytest's own tmp paths on macOS are too long)."""
+    import tempfile
+    home = Path(tempfile.mkdtemp(prefix="ds", dir="/tmp"))
+    monkeypatch.setenv("HOME", str(home))
+    return home
+
+
+def test_ssh_calls_share_one_connection(stubs, monkeypatch, tmp_path_factory):
+    home = _short_home(monkeypatch, tmp_path_factory)
+    try:
+        ssh = SshDocker(make_target("ssh-docker", stubs.config))
+        ssh.delete(["a.yaml"])
+        ssh.hashes(["a.yaml"])
+        opts = [argv[:-2] for _, argv, _ in stubs.calls("ssh")]
+        assert opts[0] == opts[1]
+        words = " ".join(opts[0])
+        assert "ControlMaster=auto" in words and "ControlPersist=60" in words
+        assert "ControlPath=~/.ssh/domosenso-%C" in words
+        assert (home / ".ssh").is_dir() and (home / ".ssh").stat().st_mode & 0o777 == 0o700
+    finally:
+        import shutil
+        shutil.rmtree(home)
+
+
+def test_no_shared_connection_when_the_socket_path_would_be_too_long(stubs, monkeypatch):
+    monkeypatch.setenv("HOME", "/" + "h" * 80)
+    assert "ControlMaster=auto" not in SshDocker(make_target("ssh-docker", stubs.config)).options()
+
+
+@pytest.mark.parametrize("config, ipv4, inet", [
+    ("hostname demo-host.example\naddressfamily any\n", "192.0.2.7", True),
+    ("hostname demo-host.example\naddressfamily any\n", None, False),  # no IPv4 address: ssh decides, as before
+    ("hostname demo-host.example\naddressfamily inet6\n", "192.0.2.7", False),  # the user's own choice stays
+    ("hostname demo-host.example\naddressfamily any\nproxyjump bastion\n", "192.0.2.7", False),
+    ("hostname demo-host.example\naddressfamily any\nproxycommand nc %h %p\n", "192.0.2.7", False),
+    ("hostname demo-host.example\naddressfamily any\nproxyjump none\nproxycommand none\n", "192.0.2.7", True),
+    ("", "192.0.2.7", False),  # ssh -G told nothing
+])
+def test_ssh_looks_up_ipv4_alone_when_the_host_has_it(stubs, monkeypatch, config, ipv4, inet):
+    monkeypatch.setenv("STUB_SSH_CONFIG", config)
+    asked = []
+    monkeypatch.setattr(targets.resolve, "ipv4", lambda host: asked.append(host) or ipv4)
+    options = SshDocker(make_target("ssh-docker", stubs.config, host="me@nas")).options()
+    assert ("AddressFamily=inet" in options) is inet
+    assert asked in ([], ["demo-host.example"])
+
+
+def test_ssh_config_that_fails_adds_nothing(stubs, monkeypatch):
+    monkeypatch.setenv("STUB_SSH_CONFIG_RC", "255")
+    monkeypatch.setattr(targets.resolve, "ipv4", lambda host: "192.0.2.7")
+    assert targets.ssh_config("nas") == {}
+    assert "AddressFamily=inet" not in SshDocker(make_target("ssh-docker", stubs.config)).options()
+
+
+def test_ssh_options_are_worked_out_once(stubs, monkeypatch):
+    calls = []
+    real = targets.ssh_config
+    monkeypatch.setattr(targets, "ssh_config", lambda host: calls.append(host) or real(host))
+    ssh = SshDocker(make_target("ssh-docker", stubs.config))
+    ssh.delete(["a.yaml"])
+    ssh.hashes(["a.yaml"])
+    assert calls == ["nas"]
