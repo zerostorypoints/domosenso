@@ -14,8 +14,9 @@ New helpers, flags and `sensor.climate_attention` (`provides` in `component.yaml
 - Nothing, without `home_inputs`. With them, `render` and deploy: the seed automation sets each
   room's range once at start. Change `comfort_defaults` to move the starting range (it applies to
   rooms not yet seeded, or after the reset script).
-- Remove any own entities with the same ids (`binary_sensor.<room>_too_hot` and the like): Home
-  Assistant refuses a second entity with a given `unique_id`.
+- Remove or rename any own entities with the same ids (`binary_sensor.<room>_too_hot` and the
+  like): if an entity already holds an id, Home Assistant gives the new one `..._2`
+  (`default_entity_id` falls back), and anything reading the plain id reads the wrong entity.
 
 ## 0.3.0 (unreleased): component-backed assistant answers
 

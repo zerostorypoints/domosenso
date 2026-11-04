@@ -179,6 +179,11 @@ template:
     'temp_high': given.get('temp_high', comfort_defaults.temp_high),
     'humidity_low': given.get('humidity_low', comfort_defaults.humidity_low),
     'humidity_high': given.get('humidity_high', comfort_defaults.humidity_high)} -%]
+[%- for key, low, high in (('temp', 10, 30), ('humidity', 20, 80)) -%]
+[%- for bound in (key ~ '_low', key ~ '_high') -%]
+[%- if limits[bound] < low or limits[bound] > high %][[ fail('climate-air: comfort_defaults.' ~ bound ~ ' is ' ~ limits[bound] ~ ', outside its helper range ' ~ low ~ ' to ' ~ high) ]][% endif -%]
+[%- endfor -%]
+[%- endfor -%]
 [#- The seed tracks helper groups: <room> (temperature pair), <room>.humidity, air.<reading>. -#]
 [%- set seed_ids = [] -%]
 [%- for room in comfort %][% set _ = seed_ids.append(room.id) %][% if room.climate.humidity is defined %][% set _ = seed_ids.append(room.id ~ '.humidity') %][% endif %][% endfor -%]
@@ -282,10 +287,11 @@ template:
 # air.<reading>), and a value a person sets stays. The script resets every helper to its default.
 [%- if comfort or readings %]
 input_number:
+[%- macro comfort_name(room, what) %][% set full = room_name(room) ~ ' comfort ' ~ what %][[ full | yaml ]][% endmacro %]
 [%- for room in comfort %]
 [%- set key = 'climate_air_' ~ room.id %]
   [[ key ]]_temp_low:
-    name: [[ room_name(room) ]] comfort temperature low
+    name: [[ comfort_name(room, 'temperature low') ]]
     icon: mdi:thermometer-low
     min: 10
     max: 30
@@ -293,7 +299,7 @@ input_number:
     mode: box
     unit_of_measurement: "°C"
   [[ key ]]_temp_high:
-    name: [[ room_name(room) ]] comfort temperature high
+    name: [[ comfort_name(room, 'temperature high') ]]
     icon: mdi:thermometer-high
     min: 10
     max: 30
@@ -302,7 +308,7 @@ input_number:
     unit_of_measurement: "°C"
 [%- if room.climate.humidity is defined %]
   [[ key ]]_humidity_low:
-    name: [[ room_name(room) ]] comfort humidity low
+    name: [[ comfort_name(room, 'humidity low') ]]
     icon: mdi:water-percent
     min: 20
     max: 80
@@ -310,7 +316,7 @@ input_number:
     mode: box
     unit_of_measurement: "%"
   [[ key ]]_humidity_high:
-    name: [[ room_name(room) ]] comfort humidity high
+    name: [[ comfort_name(room, 'humidity high') ]]
     icon: mdi:water-percent
     min: 20
     max: 80
@@ -344,6 +350,8 @@ input_number:
 [%- endfor %]
 
 [%- endif %]
+
+[%- if seed_ids %]
 
 input_text:
   # The ids ("living_room,bedroom,air") whose helpers the seed has already given their defaults.
@@ -438,4 +446,5 @@ script:
         target: {entity_id: input_number.climate_air_[[ reading ]]_poor}
         data: {value: [[ air_defaults[reading][1] ]]}
 [%- endfor %]
+[%- endif %]
 [%- endif %]

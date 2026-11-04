@@ -92,6 +92,8 @@ provides:
     - {id: "binary_sensor.<room>_{too_humid,too_dry}", stability: additive-only, feature: thresholds, note: "rooms with humidity"}
     - {id: "binary_sensor.<room>_air_poor", stability: additive-only, feature: thresholds, note: "rooms with air readings"}
     - {id: sensor.climate_attention, unique_id: climate_air_attention, stability: additive-only, feature: thresholds, note: "count of rooms with a flag on; attribute rooms"}
+    - {id: input_text.climate_air_seeded, stability: additive-only, feature: thresholds}
+    - {id: automation.climate_air_thresholds_seed, stability: additive-only, feature: thresholds}
     - {id: script.climate_air_thresholds_reset, stability: additive-only, feature: thresholds}
 
   upstream:
