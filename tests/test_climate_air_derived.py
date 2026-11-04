@@ -1,11 +1,11 @@
 """climate-air: the derived binary sensors per room, their HA templates run against fake states."""
 from pathlib import Path
 
+import jinja2
 import pytest
 import yaml
 
 from domosenso_render import render_component
-from test_audio_sensor_render import evaluate
 
 ROOT = Path(__file__).resolve().parent.parent
 COMPONENT = ROOT / "components/climate-air"
@@ -17,6 +17,35 @@ TEMP = "sensor.living_room_temperature"
 HUMIDITY = "sensor.living_room_humidity"
 CO2 = "sensor.living_room_co2"
 SCORE = "sensor.living_room_air_quality_score"
+
+
+def _float(value, default=jinja2.utils.missing):
+    """Home Assistant's `float`: without a default a non-number raises, with one it is the fallback."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        if default is jinja2.utils.missing:
+            raise ValueError(f"float got a non-number: {value!r}") from None
+        return default
+
+
+def evaluate(template, states_by_id) -> str:
+    """A Home Assistant template run with stub states; an entity not listed is `unavailable`."""
+    env = jinja2.Environment()
+
+    def states(entity_id):
+        return states_by_id.get(entity_id, "unavailable")
+
+    def is_number(value):
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return False
+        return value not in ("nan", "inf", "-inf")
+
+    env.filters["float"] = _float
+    env.filters["is_number"] = is_number
+    return env.from_string(template).render(states=states).strip()
 
 
 @pytest.fixture(scope="module")
@@ -79,6 +108,56 @@ def test_air_poor_for_co2_and_score(derived):
     assert not _on(derived, uid, _states(**{CO2: "1199"}))
     assert _on(derived, uid, _states(**{SCORE: "59"}))
     assert not _on(derived, uid, _states(**{SCORE: "60"}))
+
+
+def test_air_poor_survives_one_offline_reading(derived):
+    sensor = derived["climate_air_living_room_air_poor"]
+    states = _states(**{CO2: "unavailable", SCORE: "59"})
+    assert evaluate(sensor["availability"], states) == "True"
+    assert evaluate(sensor["state"], states) == "True"
+    states = _states(**{CO2: "unavailable", SCORE: "70"})
+    assert evaluate(sensor["availability"], states) == "True"
+    assert evaluate(sensor["state"], states) == "False"
+    states = _states(**{CO2: "1500", SCORE: "unknown"})
+    assert evaluate(sensor["availability"], states) == "True"
+    assert evaluate(sensor["state"], states) == "True"
+
+
+def test_air_poor_unavailable_when_no_reading_is_a_number(derived):
+    sensor = derived["climate_air_living_room_air_poor"]
+    assert evaluate(sensor["availability"], _states(**{CO2: "unavailable", SCORE: "unknown"})) == "False"
+    assert evaluate(sensor["availability"], _states(**{"input_number.climate_air_co2_poor": "unknown",
+                                                         "input_number.climate_air_score_poor": "unknown"})) == "False"
+
+
+def test_strict_float_raises_so_the_guard_is_proven():
+    with pytest.raises(ValueError):
+        evaluate("{{ states('x') | float }}", {})
+
+
+def test_no_humidity_means_no_humid_or_dry(derived):
+    assert "climate_air_bedroom_too_hot" in derived
+    ids = [u for u in derived if u.startswith("climate_air_")]
+    assert not [u for u in ids if u.startswith("climate_air_den_")]
+    home = {"rooms": [{"id": "den", "name": "Den", "climate": {"temperature": "sensor.den_t"}}]}
+    assert {"too_humid", "too_dry"}.isdisjoint(_rendered_suffixes(home))
+
+
+def _rendered_suffixes(home):
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        render_component(COMPONENT, INPUTS, Path(tmp), ["en"], home=home)
+        package = yaml.safe_load((Path(tmp) / "package.yaml").read_text(encoding="utf-8"))
+    return {e["unique_id"].removeprefix("climate_air_den_") for b in package["template"]
+            for e in b.get("binary_sensor", []) if e["unique_id"].startswith("climate_air_den_")}
+
+
+def test_room_with_neither_climate_nor_air_leaves_no_null_keys(tmp_path):
+    home = {"rooms": [{"id": "hall", "name": "Hall", "lights": "light.hall"}]}
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=home)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    assert not [k for k, v in package.items() if v is None]
+    assert all(b for b in package["template"])
 
 
 def test_air_poor_ignores_missing_readings(tmp_path):
