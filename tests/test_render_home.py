@@ -12,7 +12,7 @@ from domosenso_cli.home import ComponentEntry, HomeConfig
 from domosenso_render import RenderError, render_component
 
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURE = ROOT / "tests/fixtures/uses-home"
+FIXTURE = ROOT / "tests/fixtures/uses-home-fixture"
 DEMO = yaml.safe_load((ROOT / "examples/demo-home/home.inputs.yaml").read_text(encoding="utf-8"))
 
 
@@ -88,5 +88,15 @@ def test_optional_user_sees_home_when_given(tmp_path):
 
 
 def test_catalog_check_accepts_uses_home():
-    errors = check_component(FIXTURE / "component.yaml")
-    assert not [e for e in errors if "uses_home" in e]
+    assert check_component(FIXTURE / "component.yaml") == []
+
+
+@pytest.mark.parametrize("bad", ["maybe", False])
+def test_catalog_check_refuses_a_bad_uses_home(tmp_path, bad):
+    comp = tmp_path / "uses-home-fixture"
+    shutil.copytree(FIXTURE, comp)
+    manifest = yaml.safe_load((comp / "component.yaml").read_text(encoding="utf-8"))
+    manifest["uses_home"] = bad
+    (comp / "component.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
+    errors = check_component(comp / "component.yaml")
+    assert any("uses_home" in e for e in errors), errors

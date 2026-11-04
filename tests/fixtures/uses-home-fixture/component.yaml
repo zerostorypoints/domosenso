@@ -14,4 +14,7 @@ integrations: []
 artifacts:
   templates:
   - templates/rooms.lang.yaml.j2
-tested: []
+tested:
+  ha:
+  - 2026.9.2
+  homes: 0
