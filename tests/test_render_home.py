@@ -100,3 +100,57 @@ def test_catalog_check_refuses_a_bad_uses_home(tmp_path, bad):
     (comp / "component.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
     errors = check_component(comp / "component.yaml")
     assert any("uses_home" in e for e in errors), errors
+
+
+def test_render_component_without_home_refuses_a_component_that_needs_it(tmp_path):
+    with pytest.raises(RenderError, match="uses-home-fixture: uses_home is true but no home inputs were given"):
+        render_component(FIXTURE, {}, tmp_path / "out", ["en"])
+
+
+def test_render_component_without_home_gives_optional_user_none(tmp_path):
+    comp = _component(tmp_path, "[% if home is none %]none[% else %]some[% endif %]\n", uses_home="optional")
+    render_component(comp, {}, tmp_path / "out", ["en"])
+    assert (tmp_path / "out/x.yaml").read_text(encoding="utf-8") == "none\n"
+
+
+def test_main_renders_home_from_home_inputs_file(tmp_path):
+    from domosenso_render import main
+    inputs = tmp_path / "inputs.yaml"
+    inputs.write_text("{}\n")
+    code = main([str(FIXTURE), "--inputs", str(inputs), "--home-inputs",
+                 str(ROOT / "examples/demo-home/home.inputs.yaml"), "--out", str(tmp_path / "out"), "--lang", "en"])
+    assert code == 0
+    assert "Living room" in (tmp_path / "out/rooms.en.yaml").read_text(encoding="utf-8")
+
+
+def test_main_refuses_duplicate_room_ids(tmp_path, capsys):
+    from domosenso_render import main
+    inputs = tmp_path / "inputs.yaml"
+    inputs.write_text("{}\n")
+    home = tmp_path / "home.inputs.yaml"
+    home.write_text("rooms:\n  - {id: a, name: A}\n  - {id: a, name: B}\n")
+    code = main([str(FIXTURE), "--inputs", str(inputs), "--home-inputs", str(home), "--out", str(tmp_path / "out")])
+    assert code == 1
+    assert "home-inputs: rooms: duplicate id a" in capsys.readouterr().err
+
+
+def test_main_without_home_inputs_refuses_a_component_that_needs_them(tmp_path, capsys):
+    from domosenso_render import main
+    inputs = tmp_path / "inputs.yaml"
+    inputs.write_text("{}\n")
+    assert main([str(FIXTURE), "--inputs", str(inputs), "--out", str(tmp_path / "out")]) == 1
+    assert "uses_home is true but no home inputs were given" in capsys.readouterr().err
+
+
+def test_invalid_home_inputs_file_is_ignored_by_a_component_that_does_not_use_it(tmp_path):
+    comp = _component(tmp_path, "[% if home is defined %]has home[% else %]no home[% endif %]\n")
+    bad = tmp_path / "home.inputs.yaml"
+    bad.write_text("rooms: not-a-list\n")
+    (output,) = _plan(tmp_path, comp, bad)
+    assert output.content.endswith(b"no home\n")
+
+
+def test_room_name_refuses_a_name_map_without_language_en_or_a_single_value():
+    from domosenso_render import _room_name
+    with pytest.raises(RenderError, match="room 'a': name has no pl or en value"):
+        _room_name({"id": "a", "name": {"de": "Room one", "fr": "Room two"}}, "pl")

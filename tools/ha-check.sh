@@ -9,6 +9,7 @@
 #
 #   tools/ha-check.sh <component>
 #   INPUTS=<inputs.yaml> tools/ha-check.sh <component>   # other inputs than the demo home's
+#   HOME_INPUTS=<home.inputs.yaml> likewise for the shared home inputs (default: the demo home's)
 #
 # Run from the repository root. Needs docker. Talks to no Home Assistant instance. Exits non-zero
 # when the fresh home has an error.
@@ -45,7 +46,7 @@ for key in ("assistant", "assistant_actions"):
 render_component() {  # renders templates/ into $WORK/rendered
   [ -d "$SRC/templates" ] || return 0
   [ -f "$INPUTS" ] || { echo "$COMP has templates/ but no $INPUTS" >&2; exit 2; }
-  uv run --project "$ROOT" "$ROOT/tools/domosenso_render.py" "$SRC" --inputs "$INPUTS" --out "$WORK/rendered" > /dev/null \
+  uv run --project "$ROOT" "$ROOT/tools/domosenso_render.py" "$SRC" --inputs "$INPUTS" --home-inputs "${HOME_INPUTS:-$ROOT/examples/demo-home/home.inputs.yaml}" --out "$WORK/rendered" > /dev/null \
     || { echo "render failed" >&2; exit 1; }
 }
 

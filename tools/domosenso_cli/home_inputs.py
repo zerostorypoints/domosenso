@@ -4,6 +4,7 @@ from __future__ import annotations
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
 from domosenso_cli.schema import load_validated
+from domosenso_render import duplicate_room_id
 
 PREFIX = "home-inputs: "
 
@@ -16,9 +17,7 @@ def load_home_inputs(home: HomeConfig) -> dict | None:
         data = load_validated(home.home_inputs, "home-inputs")
     except DomosensoError as exc:
         raise DomosensoError(f"{PREFIX}{exc}") from exc
-    seen: set[str] = set()
-    for room in data.get("rooms", []):
-        if room["id"] in seen:
-            raise DomosensoError(f"{PREFIX}rooms: duplicate id {room['id']}")
-        seen.add(room["id"])
+    repeated = duplicate_room_id(data)
+    if repeated is not None:
+        raise DomosensoError(f"{PREFIX}rooms: duplicate id {repeated}")
     return data

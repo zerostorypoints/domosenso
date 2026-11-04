@@ -17,8 +17,8 @@ A nested YAML flow list needs spaces, `[ [ 80 ] ]`: `[[80]]` would read as an
 expression, so a `[[` followed by anything but a letter or underscore is an error.
 
 Template globals: t(key), inputs, lang, fail(message), component (id, version: the manifest's;
-SPEC-023). A component that declares `uses_home` also gets `home` (the home's shared inputs, None when an
-`uses_home: optional` component runs in a home without them) and room_name(room), the room's name in the
+SPEC-023). A component that declares `uses_home` also gets `home` (the home's shared inputs, None when a
+`uses_home: "optional"` component runs in a home without them) and room_name(room), the room's name in the
 rendering language (a plain string as is; else the language, then en, then the only value). Filter: yaml (a YAML-safe scalar).
 An input whose value is null counts as absent (`is defined` is false), at every depth.
 
@@ -102,6 +102,17 @@ def _load_translations(component_dir: Path, lang: str) -> dict[str, object]:
     if not isinstance(data, dict):
         raise RenderError(f"{path}: top level must be an object")
     return flatten(data)
+
+
+def duplicate_room_id(data: dict) -> str | None:
+    """The first room id that repeats in a home inputs mapping, or None. Shared by this module's CLI
+    and `domosenso_cli.home_inputs`, which already imports this module (so no cycle)."""
+    seen: set[str] = set()
+    for room in data.get("rooms", []):
+        if room["id"] in seen:
+            return room["id"]
+        seen.add(room["id"])
+    return None
 
 
 def _room_name(room: dict, lang: str) -> str:
@@ -224,6 +235,10 @@ def render_component(
     en = _load_translations(component_dir, "en")
     manifest_file = component_dir / "component.yaml"
     manifest = (yaml.safe_load(manifest_file.read_text(encoding="utf-8")) or {}) if manifest_file.is_file() else {}
+    if home is _NO_HOME and manifest.get("uses_home") is True:
+        raise RenderError(f"{manifest.get('id')}: uses_home is true but no home inputs were given")
+    if home is _NO_HOME and manifest.get("uses_home") == "optional":
+        home = None
     envs = {}
     for lang in set(langs) | {"en"}:
         current = en if lang == "en" else _load_translations(component_dir, lang)
@@ -290,6 +305,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("component_dir", type=Path)
     parser.add_argument("--inputs", type=Path, required=True, help="YAML file with the instance inputs")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--home-inputs", type=Path, help="YAML file with the home's shared inputs (for uses_home components)")
     parser.add_argument("--lang", default=",".join(DEFAULT_LANGS), help="comma-separated languages")
     parser.add_argument("--stamp", action="store_true",
                         help="first line of every file: '# Rendered by Domosenso from <component>@<commit> — do not edit'")
@@ -299,7 +315,18 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(inputs, dict):
             raise RenderError(f"{args.inputs}: top level must be a mapping")
         langs = [x.strip() for x in args.lang.split(",") if x.strip()]
-        written = render_component(args.component_dir, inputs, args.out, langs, stamp=args.stamp)
+        home = _NO_HOME
+        if args.home_inputs is not None:
+            from domosenso_cli.errors import DomosensoError  # lazy: the package imports this module
+            from domosenso_cli.schema import load_validated
+            try:
+                home = load_validated(args.home_inputs, "home-inputs")
+            except DomosensoError as exc:
+                raise RenderError(f"home-inputs: {exc}") from exc
+            repeated = duplicate_room_id(home)
+            if repeated is not None:
+                raise RenderError(f"home-inputs: rooms: duplicate id {repeated}")
+        written = render_component(args.component_dir, inputs, args.out, langs, stamp=args.stamp, home=home)
     except (RenderError, OSError, ValueError, TypeError, yaml.YAMLError) as exc:
         notes = getattr(exc, "__notes__", [])
         print(f"error: {notes[0] + ': ' if notes else ''}{exc}", file=sys.stderr)

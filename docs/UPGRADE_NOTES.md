@@ -10,8 +10,7 @@ has to act on; the steps are in the component's own `UPGRADE.md`.
 manifest may declare `uses_home: true` (it needs the file) or `uses_home: "optional"`; only
 such components read it. `render` validates the file and fails on a repeated room id; it does not
 check the entities against a running Home Assistant, and the lock does not record the file.
-Home action: none; no released component declares `uses_home` yet. Upgrade the tooling before
-rendering a component that does.
+Home action: none now; before rendering a component that declares `uses_home`, upgrade the tooling.
 
 ## Unreleased: lights/awnings 0.4.0 assistant action sidecars (SPEC-033)
 
