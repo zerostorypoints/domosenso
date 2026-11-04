@@ -1,0 +1,3 @@
+# The values the demo home supplies to the pocket component (its `inputs:` in component.yaml): none,
+# the defaults serve; the rooms come from the demo home's home.inputs.yaml.
+{}

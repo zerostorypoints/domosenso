@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "description": "Ein Dashboard fürs Handy: die Räume mit Licht, Klima und Luft auf einen Blick, und zuerst, was Aufmerksamkeit braucht.",
+    "assistant": {
+      "explain": {
+        "title": "Über das Handy-Dashboard",
+        "description": "Das Handy-Dashboard zeigt die Räume, das Licht, das Klima und die Luft des Hauses auf dem Handy. Der Assistent kann diese Komponente erklären; er ändert darüber keine Einstellungen.",
+        "examples": [
+          "Was zeigt das Handy-Dashboard?"
+        ]
+      }
+    }
+  },
+  "card": {
+    "pocket": {
+      "nav": {
+        "home": "Zuhause",
+        "rooms": "Räume",
+        "media": "Medien",
+        "settings": "Einstellungen"
+      },
+      "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
+      "page": {
+        "coming_next": "Kommt als Nächstes."
+      },
+      "home": {
+        "title": "Zuhause",
+        "all_good": "Alles in Ordnung",
+        "pill": "{room}: {message}",
+        "chip": {
+          "inside": "Innen",
+          "outside": "Aussen",
+          "air": "Luft",
+          "lights_on": "Lichter an"
+        },
+        "quick": "Schnell",
+        "all_off": "Alle aus",
+        "on_now": "{count} an",
+        "none_on": "Keine an",
+        "rooms": "Räume",
+        "all_rooms": "Alle ›",
+        "room_lights_on": "{count} an",
+        "playing": "♪",
+        "nothing_playing": "Nichts läuft",
+        "play": "Abspielen",
+        "pause": "Pause"
+      },
+      "light": {
+        "off": "Aus"
+      },
+      "format": {
+        "temperature": "{value}°",
+        "temperature_range": "{min}–{max}°",
+        "percent": "{value} %",
+        "none": "—"
+      },
+      "reading": {
+        "temperature": {
+          "poor_low": "Zu kalt",
+          "poor_high": "Zu warm",
+          "fair_low": "Etwas kühl",
+          "fair_high": "Etwas warm",
+          "good": "Im Bereich"
+        },
+        "humidity": {
+          "poor_low": "Zu trocken",
+          "poor_high": "Zu feucht",
+          "fair_low": "Etwas trocken",
+          "fair_high": "Etwas feucht",
+          "good": "Im Bereich"
+        },
+        "score": {
+          "fair": "Luft mässig",
+          "poor": "Luft schlecht",
+          "good": "Gut"
+        },
+        "co2": {
+          "fair": "CO₂ erhöht",
+          "poor": "CO₂ hoch",
+          "good": "Gut"
+        },
+        "pm2_5": {
+          "fair": "PM2.5 erhöht",
+          "poor": "PM2.5 hoch",
+          "good": "Gut"
+        },
+        "voc": {
+          "fair": "VOC erhöht",
+          "poor": "VOC hoch",
+          "good": "Gut"
+        },
+        "nox": {
+          "fair": "NOx erhöht",
+          "poor": "NOx hoch",
+          "good": "Gut"
+        }
+      },
+      "error": {
+        "light": "Das Licht hat nicht reagiert. Bitte erneut versuchen.",
+        "media": "Der Player hat nicht reagiert. Bitte erneut versuchen.",
+        "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen."
+      },
+      "rooms": {
+        "title": "Räume",
+        "count": {
+          "one": "{count} Raum",
+          "few": "{count} Räume",
+          "many": "{count} Räume",
+          "other": "{count} Räume"
+        },
+        "lights_on": "{count} an",
+        "all_off": "Alle aus",
+        "air": "Luft {value}",
+        "attention": "Braucht Aufmerksamkeit"
+      },
+      "room": {
+        "back": "Zurück zu den Räumen",
+        "position": "Raum {index} von {count}",
+        "climate": "Klima",
+        "air": "Luft",
+        "lights": "Licht",
+        "scenes": "Szenen",
+        "music": "Musik",
+        "all_lights": "Alle",
+        "members": {
+          "one": "{count} Lampe",
+          "few": "{count} Lampen",
+          "many": "{count} Lampen",
+          "other": "{count} Lampen"
+        },
+        "empty": "Hier gibt es nichts anzuzeigen",
+        "reading": {
+          "score": "{value}",
+          "co2": "CO₂ {value}",
+          "pm2_5": "PM2.5 {value}",
+          "voc": "VOC {value}",
+          "nox": "NOx {value}"
+        }
+      }
+    }
+  }
+}

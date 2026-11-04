@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "description": "Pulpit domu na telefon: pomieszczenia z oświetleniem, klimatem i jakością powietrza w skrócie, a na początku to, co wymaga uwagi.",
+    "assistant": {
+      "explain": {
+        "title": "O pulpicie na telefon",
+        "description": "Pulpit na telefon pokazuje pomieszczenia domu, oświetlenie, klimat i powietrze na telefonie. Asystent opisuje działanie tego komponentu; nie zmienia przez niego ustawień.",
+        "examples": [
+          "Co pokazuje pulpit na telefon?"
+        ]
+      }
+    }
+  },
+  "card": {
+    "pocket": {
+      "nav": {
+        "home": "Dom",
+        "rooms": "Pomieszczenia",
+        "media": "Media",
+        "settings": "Ustawienia"
+      },
+      "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
+      "page": {
+        "coming_next": "Już wkrótce."
+      },
+      "home": {
+        "title": "Dom",
+        "all_good": "Wszystko w porządku",
+        "pill": "{room}: {message}",
+        "chip": {
+          "inside": "W domu",
+          "outside": "Na zewnątrz",
+          "air": "Powietrze",
+          "lights_on": "Włączone światła"
+        },
+        "quick": "Szybkie",
+        "all_off": "Wyłącz wszystko",
+        "on_now": "włączone: {count}",
+        "none_on": "Nic nie świeci",
+        "rooms": "Pomieszczenia",
+        "all_rooms": "Wszystkie ›",
+        "room_lights_on": "{count} wł.",
+        "playing": "♪",
+        "nothing_playing": "Nic nie gra",
+        "play": "Odtwórz",
+        "pause": "Pauza"
+      },
+      "light": {
+        "off": "Wył."
+      },
+      "format": {
+        "temperature": "{value}°",
+        "temperature_range": "{min}–{max}°",
+        "percent": "{value} %",
+        "none": "—"
+      },
+      "reading": {
+        "temperature": {
+          "poor_low": "Za zimno",
+          "poor_high": "Za ciepło",
+          "fair_low": "Chłodnawo",
+          "fair_high": "Dość ciepło",
+          "good": "W normie"
+        },
+        "humidity": {
+          "poor_low": "Za sucho",
+          "poor_high": "Za wilgotno",
+          "fair_low": "Dość sucho",
+          "fair_high": "Dość wilgotno",
+          "good": "W normie"
+        },
+        "score": {
+          "fair": "Powietrze umiarkowane",
+          "poor": "Powietrze złe",
+          "good": "Dobre"
+        },
+        "co2": {
+          "fair": "CO₂ podwyższone",
+          "poor": "CO₂ wysokie",
+          "good": "Dobre"
+        },
+        "pm2_5": {
+          "fair": "PM2.5 podwyższone",
+          "poor": "PM2.5 wysokie",
+          "good": "Dobre"
+        },
+        "voc": {
+          "fair": "VOC podwyższone",
+          "poor": "VOC wysokie",
+          "good": "Dobre"
+        },
+        "nox": {
+          "fair": "NOx podwyższone",
+          "poor": "NOx wysokie",
+          "good": "Dobre"
+        }
+      },
+      "error": {
+        "light": "Światło nie odpowiedziało. Spróbuj ponownie.",
+        "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie.",
+        "scene": "Scena nie odpowiedziała. Spróbuj ponownie."
+      },
+      "rooms": {
+        "title": "Pomieszczenia",
+        "count": {
+          "one": "{count} pomieszczenie",
+          "few": "{count} pomieszczenia",
+          "many": "{count} pomieszczeń",
+          "other": "{count} pomieszczenia"
+        },
+        "lights_on": "{count} wł.",
+        "all_off": "Wszystko wył.",
+        "air": "Powietrze {value}",
+        "attention": "Wymaga uwagi"
+      },
+      "room": {
+        "back": "Wróć do pomieszczeń",
+        "position": "Pomieszczenie {index} z {count}",
+        "climate": "Klimat",
+        "air": "Powietrze",
+        "lights": "Światła",
+        "scenes": "Sceny",
+        "music": "Muzyka",
+        "all_lights": "Wszystkie",
+        "members": {
+          "one": "{count} światło",
+          "few": "{count} światła",
+          "many": "{count} świateł",
+          "other": "{count} światła"
+        },
+        "empty": "Nic tu nie ma do pokazania",
+        "reading": {
+          "score": "{value}",
+          "co2": "CO₂ {value}",
+          "pm2_5": "PM2.5 {value}",
+          "voc": "VOC {value}",
+          "nox": "NOx {value}"
+        }
+      }
+    }
+  }
+}

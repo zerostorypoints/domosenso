@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "description": "A phone dashboard for the home: rooms with their lights, climate and air at a glance, and what needs attention first.",
+    "assistant": {
+      "explain": {
+        "title": "About the phone dashboard",
+        "description": "The phone dashboard shows the home's rooms, lights, climate and air on a phone. The assistant can explain this component; it does not change settings through it.",
+        "examples": [
+          "What does the phone dashboard show?"
+        ]
+      }
+    }
+  },
+  "card": {
+    "pocket": {
+      "nav": {
+        "home": "Home",
+        "rooms": "Rooms",
+        "media": "Media",
+        "settings": "Settings"
+      },
+      "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
+      "page": {
+        "coming_next": "Coming next."
+      },
+      "home": {
+        "title": "Home",
+        "all_good": "All good",
+        "pill": "{room}: {message}",
+        "chip": {
+          "inside": "Inside",
+          "outside": "Outside",
+          "air": "Air",
+          "lights_on": "Lights on"
+        },
+        "quick": "Quick",
+        "all_off": "All off",
+        "on_now": "{count} on now",
+        "none_on": "None on",
+        "rooms": "Rooms",
+        "all_rooms": "All ›",
+        "room_lights_on": "{count} on",
+        "playing": "♪",
+        "nothing_playing": "Nothing playing",
+        "play": "Play",
+        "pause": "Pause"
+      },
+      "light": {
+        "off": "Off"
+      },
+      "format": {
+        "temperature": "{value}°",
+        "temperature_range": "{min}–{max}°",
+        "percent": "{value} %",
+        "none": "—"
+      },
+      "reading": {
+        "temperature": {
+          "poor_low": "Too cold",
+          "poor_high": "Too warm",
+          "fair_low": "A bit cool",
+          "fair_high": "A bit warm",
+          "good": "In range"
+        },
+        "humidity": {
+          "poor_low": "Too dry",
+          "poor_high": "Too humid",
+          "fair_low": "A bit dry",
+          "fair_high": "A bit humid",
+          "good": "In range"
+        },
+        "score": {
+          "fair": "Air fair",
+          "poor": "Air poor",
+          "good": "Good"
+        },
+        "co2": {
+          "fair": "CO₂ raised",
+          "poor": "CO₂ high",
+          "good": "Good"
+        },
+        "pm2_5": {
+          "fair": "PM2.5 raised",
+          "poor": "PM2.5 high",
+          "good": "Good"
+        },
+        "voc": {
+          "fair": "VOC raised",
+          "poor": "VOC high",
+          "good": "Good"
+        },
+        "nox": {
+          "fair": "NOx raised",
+          "poor": "NOx high",
+          "good": "Good"
+        }
+      },
+      "error": {
+        "light": "The light did not respond. Try again.",
+        "media": "The player did not respond. Try again.",
+        "scene": "The scene did not start. Try again."
+      },
+      "rooms": {
+        "title": "Rooms",
+        "count": {
+          "one": "{count} room",
+          "few": "{count} rooms",
+          "many": "{count} rooms",
+          "other": "{count} rooms"
+        },
+        "lights_on": "{count} on",
+        "all_off": "All off",
+        "air": "Air {value}",
+        "attention": "Needs attention"
+      },
+      "room": {
+        "back": "Back to rooms",
+        "position": "Room {index} of {count}",
+        "climate": "Climate",
+        "air": "Air",
+        "lights": "Lights",
+        "scenes": "Scenes",
+        "music": "Music",
+        "all_lights": "All",
+        "members": {
+          "one": "{count} light",
+          "few": "{count} lights",
+          "many": "{count} lights",
+          "other": "{count} lights"
+        },
+        "empty": "Nothing to show here",
+        "reading": {
+          "score": "{value}",
+          "co2": "CO₂ {value}",
+          "pm2_5": "PM2.5 {value}",
+          "voc": "VOC {value}",
+          "nox": "NOx {value}"
+        }
+      }
+    }
+  }
+}
