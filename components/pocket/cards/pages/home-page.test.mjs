@@ -244,3 +244,31 @@ test("the language follows ctx on update", () => {
   assert.equal(text(el.querySelector(".top b")), "Dom");
   assert.ok(!texts(el, ".chips .chip").join(" ").includes("Inside"));
 });
+
+test("lights on: one definition with Rooms, a group counts its members, each lamp once", async () => {
+  const demo = await import("../testing/demo-home.mjs");
+  const rooms = await import("./rooms-page.js");
+  const states = { ...demo.baseStates(),
+    "light.living_room_lamp": demo.st("on", { brightness: 255, friendly_name: "Reading lamp" }) };
+  // The office names a lamp of the living-room group as well: it is still one lamp on.
+  const cfg = { ...demo.config, rooms: demo.config.rooms.map((r) =>
+    r.id === "office" ? { ...r, lights: ["light.office", "light.living_room_lamp"] } : r) };
+  const ctx = demo.ctxOf({ hass: demo.hassOf(states), cfg });
+  const el = mount(ctx);
+  const chip = text(el.querySelector('.chip[data-chip="lights_on"] .v'));
+  assert.equal(chip, "2");
+  assert.match(text(el.querySelector(".quick .all-off")), /2 on now/);
+  const strip = [...el.querySelectorAll(".strip .rc .t2")].map(text);
+  const tab = [...rooms.render(ctx).querySelectorAll(".grid .sq .lab")].map(text);
+  assert.match(strip[0], /2 on/);
+  assert.match(tab[0], /2 on/);
+  assert.match(strip[2], /1 on/);
+});
+
+test("rooms strip: an unavailable reading is a muted dash", () => {
+  const states = { ...baseStates(), "sensor.bedroom_humidity": st("unavailable"), "sensor.bedroom_temperature": st("unknown") };
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  const bedroom = el.querySelectorAll(".strip .rc .t2")[1];
+  assert.equal(text(bedroom), "— · —");
+  assert.equal(bedroom.querySelectorAll(".muted").length, 2);
+});

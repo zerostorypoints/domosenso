@@ -11,7 +11,7 @@
 import { attention } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
 import {
-  el, setText, setAttr, number, temperature, percent, pluralOf, lightsOf, lightsOn, playing,
+  el, setText, setAttr, setLine, number, temperature, percent, pluralOf, lightsOf, lightsOn, playing,
 } from "../lib/page-kit.js";
 
 const STYLE = `
@@ -31,6 +31,7 @@ const STYLE = `
   .rooms .dot[hidden], .rooms .big[hidden] { display: none; }
   .rooms .big { display: block; font-size: 24px; font-weight: 600; letter-spacing: -.5px; }
   .rooms .big.lights { font-size: 20px; }
+  .rooms .lab .muted { opacity: .55; }
   .rooms .lab { display: block; min-height: 15px; font-size: 11.5px; color: var(--mut); margin-top: 2px;
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 `;
@@ -80,14 +81,20 @@ export function update(root, ctx) {
     big.classList.toggle("lights", !hasTemp && lights);
     setText(big, hasTemp ? temperature(ctx, numberOf(hass, room.climate.temperature)) : lights ? onText : "");
 
+    // A reading the room names but cannot read now: a muted dash, so the line does not jump.
     const bits = [];
-    const humidity = numberOf(hass, room.climate?.humidity);
-    if (humidity != null) bits.push(percent(ctx, humidity));
-    const score = numberOf(hass, room.air?.score);
-    if (score != null) bits.push(ctx.t("card.pocket.rooms.air", { value: number(ctx, score, 0) }));
-    if (hasTemp && lights) bits.push(onText);
-    if (playing(hass, room)) bits.push(ctx.t("card.pocket.home.playing"));
-    setText(sq.querySelector(".lab"), bits.join(" · "));
+    if (room.climate?.humidity) {
+      const humidity = numberOf(hass, room.climate.humidity);
+      bits.push({ text: percent(ctx, humidity), muted: humidity == null });
+    }
+    if (room.air?.score) {
+      const score = numberOf(hass, room.air.score);
+      bits.push({ text: ctx.t("card.pocket.rooms.air",
+        { value: score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0) }), muted: score == null });
+    }
+    if (hasTemp && lights) bits.push({ text: onText });
+    if (playing(hass, room)) bits.push({ text: ctx.t("card.pocket.home.playing") });
+    setLine(sq.querySelector(".lab"), bits);
 
     setText(sq.querySelector(".name span"), room.name);
     const dot = sq.querySelector(".dot");

@@ -88,3 +88,12 @@ test("a home without rooms: an empty grid, no error", () => {
   assert.equal(el.querySelectorAll(".grid .sq").length, 0);
   assert.equal(text(el.querySelector(".top .count")), "0 rooms");
 });
+
+test("an unavailable humidity or air score: a muted dash on the line", () => {
+  const states = { ...baseStates(), "sensor.living_room_humidity": st("unavailable"),
+    "sensor.living_room_air_quality_score": st("unknown") };
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  const lab = el.querySelector(".grid .sq .lab");
+  assert.equal(text(lab), "— · Air — · 1 on · ♪");
+  assert.deepEqual([...lab.querySelectorAll(".muted")].map(text), ["—", "Air —"]);
+});

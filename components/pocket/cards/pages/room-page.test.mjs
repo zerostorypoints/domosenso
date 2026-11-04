@@ -244,3 +244,16 @@ test("the language follows ctx on update", () => {
   assert.equal(text(el.querySelector(".sq.climate .lab")), "44 % · Im Bereich");
   assert.equal(text(el.querySelector(".members-toggle")), "2 Lampen ›");
 });
+
+test("an unavailable reading in a square: a muted dash without a level", () => {
+  const states = { ...baseStates(), "sensor.living_room_humidity": st("unavailable"),
+    "sensor.living_room_air_quality_score": st("unavailable") };
+  const el = mount(ctxOf({ hass: hassOf(states), routeId: "living_room" }));
+  const hum = el.querySelector(".sq.climate .lab .v");
+  assert.equal(text(hum), "—");
+  assert.equal(hum.className, "v muted");
+  const score = el.querySelector(".sq.air .big");
+  assert.equal(text(score), "—");
+  assert.equal(score.className, "big muted");
+  assert.match(el.querySelector("style").textContent, /\.sq \.muted\s*\{\s*opacity/);
+});

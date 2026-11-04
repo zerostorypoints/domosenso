@@ -16,12 +16,11 @@
 import { attention } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
 import { formatDate } from "../lib/i18n.js";
-import { reportError } from "../lib/report.js";
+import {
+  GONE, el, setText, setAttr, setLine, number, temperature, percent, call, lightsOf, lightsOn, lightsOnIn,
+  playing,
+} from "../lib/page-kit.js";
 import "../lib/light-tile.js";
-
-const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
-const GONE = new Set(["unavailable", "unknown"]);
-const formats = new Map();     // one Intl.NumberFormat per language and number of digits
 
 const STYLE = `
   .home .top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 4px; }
@@ -71,52 +70,11 @@ const STYLE = `
                        --mdc-icon-size: 18px; }
   .home .strip { margin-bottom: 0; }
   .home .rc { flex: 0 0 138px; }
+  .home .rc .t2 .muted { opacity: .55; }
   .home button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 `;
 
-const lightsOf = (room) => [room.lights ?? []].flat().filter(Boolean);
 const allLights = (config) => [...new Set(config.rooms.flatMap(lightsOf))];
-const isOn = (hass, id) => hass?.states?.[id]?.state === "on";
-
-function setText(el, text) {
-  if (el.textContent !== text) el.textContent = text;
-}
-
-function setAttr(el, name, value) {
-  if (el.getAttribute(name) !== value) el.setAttribute(name, value);
-}
-
-function number(ctx, value, digits) {
-  const key = `${ctx.lang}/${digits}`;
-  if (!formats.has(key)) {
-    formats.set(key, new Intl.NumberFormat(NUMBER_LOCALES[ctx.lang] ?? "en-GB", {
-      minimumFractionDigits: digits, maximumFractionDigits: digits }));
-  }
-  return formats.get(key).format(value);
-}
-
-// A service call whose failure becomes the shell's toast (lib/report.js).
-function call(root, hass, domain, service, data, errorKey) {
-  let result;
-  try {
-    result = hass.callService(domain, service, data);
-  } catch (err) {
-    result = Promise.reject(err);
-  }
-  result?.catch?.(() => reportError(root, errorKey));
-}
-
-function temperature(ctx, value) {
-  return value == null ? ctx.t("card.pocket.format.none")
-    : ctx.t("card.pocket.format.temperature", { value: number(ctx, value, 1) });
-}
-
-function el(tag, className, html) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (html) node.innerHTML = html;
-  return node;
-}
 
 // The page's parts: built once, kept on the element for update().
 export function render(ctx) {
@@ -280,8 +238,7 @@ function updateChips(parts, ctx) {
   const score = numberOf(hass, scoreId);
   set("air", !!scoreId, score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0));
 
-  const lights = allLights(config);
-  set("lights_on", lights.length > 0, String(lights.filter((id) => isOn(hass, id)).length));
+  set("lights_on", allLights(config).length > 0, String(lightsOnIn(hass, config.rooms)));
 }
 
 function updateNow(parts, ctx) {
@@ -318,7 +275,7 @@ function updateQuick(parts, ctx) {
     tile.offline = ctx.offline;
     tile.hass = ctx.hass;
   }
-  const on = allLights(ctx.config).filter((id) => isOn(ctx.hass, id)).length;
+  const on = lightsOnIn(ctx.hass, ctx.config.rooms);
   setText(parts.allOff.querySelector(".t1"), ctx.t("card.pocket.home.all_off"));
   setText(parts.allOff.querySelector(".t2"),
     on > 0 ? ctx.t("card.pocket.home.on_now", { count: on }) : ctx.t("card.pocket.home.none_on"));
@@ -330,18 +287,20 @@ function updateRooms(parts, ctx) {
   setText(parts.roomsTitle, ctx.t("card.pocket.home.rooms"));
   setText(parts.allRooms, ctx.t("card.pocket.home.all_rooms"));
   for (const { room, card } of parts.roomCards) {
+    // A reading the room names but cannot read now: a muted dash.
     const bits = [];
-    if (room.climate?.temperature) bits.push(temperature(ctx, numberOf(hass, room.climate.temperature)));
-    const lights = lightsOf(room);
-    const on = lights.filter((id) => isOn(hass, id)).length;
-    if (on > 0) bits.push(ctx.t("card.pocket.home.room_lights_on", { count: on }));
-    else if (room.climate?.humidity && numberOf(hass, room.climate.humidity) != null) {
-      bits.push(ctx.t("card.pocket.format.percent", { value: number(ctx, numberOf(hass, room.climate.humidity), 0) }));
+    if (room.climate?.temperature) {
+      const value = numberOf(hass, room.climate.temperature);
+      bits.push({ text: temperature(ctx, value), muted: value == null });
     }
-    if ([room.media].flat().some((id) => id && hass?.states?.[id]?.state === "playing")) {
-      bits.push(ctx.t("card.pocket.home.playing"));
+    const on = lightsOn(hass, room);
+    if (on > 0) bits.push({ text: ctx.t("card.pocket.home.room_lights_on", { count: on }) });
+    else if (room.climate?.humidity) {
+      const value = numberOf(hass, room.climate.humidity);
+      bits.push({ text: percent(ctx, value), muted: value == null });
     }
+    if (playing(hass, room)) bits.push({ text: ctx.t("card.pocket.home.playing") });
     setText(card.querySelector(".t1"), room.name);
-    setText(card.querySelector(".t2"), bits.join(" · "));
+    setLine(card.querySelector(".t2"), bits);
   }
 }

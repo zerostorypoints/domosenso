@@ -77,10 +77,35 @@ export function membersOf(hass, room) {
   return Array.isArray(members) ? members.filter((id) => typeof id === "string") : [];
 }
 
-// How many of the room's lamps are on: the members when it has a group, else its lights.
-export function lightsOn(hass, room) {
+// The one definition of "lights on" (Home's chip, All off, the room strip, the Rooms tab): the
+// lamps of a room are its group's members, else the lights it names; a lamp is counted once
+// however many rooms name it.
+export function lampsOf(hass, room) {
   const members = membersOf(hass, room);
-  return (members.length ? members : lightsOf(room)).filter((id) => isOn(hass, id)).length;
+  return members.length ? members : lightsOf(room);
+}
+
+export const lightsOn = (hass, room) => lightsOnIn(hass, [room]);
+
+export function lightsOnIn(hass, rooms) {
+  const lamps = new Set(rooms.flatMap((room) => lampsOf(hass, room)));
+  return [...lamps].filter((id) => isOn(hass, id)).length;
+}
+
+// A line of texts joined by " · ", each its own span; a part with muted: true (a reading that is
+// unavailable, shown as a dash) gets the muted class. Rebuilt only when a text or flag changes.
+export function setLine(line, parts) {
+  const key = JSON.stringify(parts.map((p) => [p.text, !!p.muted]));
+  if (line._lineKey === key) return;
+  line._lineKey = key;
+  const nodes = [];
+  parts.forEach((part, i) => {
+    if (i > 0) nodes.push(document.createTextNode(" · "));
+    const span = el("span", part.muted ? "muted" : "");
+    span.textContent = part.text;
+    nodes.push(span);
+  });
+  line.replaceChildren(...nodes);
 }
 
 export const playerOf = (room) => [room.media ?? []].flat().find(Boolean);

@@ -54,6 +54,7 @@ const STYLE = `
   .room .big { display: block; font-size: 24px; font-weight: 600; letter-spacing: -.5px; }
   .room .lab { display: block; min-height: 15px; font-size: 11.5px; color: var(--mut); margin-top: 2px;
                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .room .sq .muted { opacity: .55; }
   .room .lv-good { color: var(--ok); }
   .room .lv-fair { color: var(--warn); }
   .room .lv-poor { color: var(--bad); }
@@ -226,6 +227,9 @@ function swipeBetweenRooms(root, parts) {
     swallow = true;
     const rooms = parts.ctx.config.rooms;
     const next = rooms[parts.index + (dx < 0 ? 1 : -1)];
+    // At the first or last room there is no next page, yet swallow stays set: the click the
+    // browser fires after the finger lifts would otherwise press whatever the swipe ended on.
+    // The next pointerdown clears it.
     if (next) parts.ctx.navigate(`#/room/${next.id}`);
   });
   root.addEventListener("pointercancel", () => { swipe = null; });
@@ -266,8 +270,8 @@ export function update(root, ctx) {
   if (parts.empty) setText(parts.empty, ctx.t("card.pocket.room.empty"));
 }
 
-function setClass(node, base, lv) {
-  const name = lv ? `${base} lv-${lv}` : base;
+function setClass(node, base, lv, muted = false) {
+  const name = [base, lv && `lv-${lv}`, muted && "muted"].filter(Boolean).join(" ");
   if (node.className !== name) node.className = name;
 }
 
@@ -288,8 +292,9 @@ function updateSquares(parts, ctx) {
     let worst = null;
     s.cells.forEach(({ reading, value }, i) => {
       const lv = levels[reading];
-      setClass(value, i === 0 ? "big" : "v", lv?.level);
-      setText(value, formatted(ctx, reading, numberOf(hass, source[reading])));
+      const n = numberOf(hass, source[reading]);
+      setClass(value, i === 0 ? "big" : "v", lv?.level, n == null);
+      setText(value, formatted(ctx, reading, n));
       if (lv && (!worst || RANK[lv.level] > RANK[worst.result.level])) worst = { reading, result: lv };
     });
     let text = "";
