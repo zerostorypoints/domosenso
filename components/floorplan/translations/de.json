@@ -96,6 +96,7 @@
         "now_legend": "jetzt, pro Raum interpoliert",
         "day_legend": "{figure} in den letzten 24 Stunden, pro Raum interpoliert",
         "no_sensor": "kein Sensor im Raum",
+        "room_sensor": "Raumsensor",
         "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
         "off": "aus"
       },

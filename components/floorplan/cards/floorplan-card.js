@@ -40,7 +40,7 @@ import { KINDS, STYLES, kindOf, widthOf, styleOf, openingState, openingShape, wa
   moveOpening, setOpening, swapHinge, swapSide, fillWall, removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
-import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, lampIndex, lampOf } from "./lib/maps.js";
+import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf } from "./lib/maps.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -253,6 +253,13 @@ class FloorplanCard extends HTMLElement {
     return { layer, cls, rule };
   }
 
+  // Per room of the floor, the entity its area names as its own sensor of the map's reading
+  // (Settings → Areas: the temperature and humidity sensors), or null.
+  _roomSensors(map) {
+    const field = areaSensorField(map.layer, map.cls);
+    return this._floor.rooms.map((r) => (field && this._hass.areas?.[r.area_id]?.[field]) || null);
+  }
+
   // A reading now, or its figure over the last 24 hours by the layer's rule.
   _value(id, cls, layer) {
     return this._day ? figure(this._stats?.[id], ruleOf(layer, cls)) : nowValue(this._hass, id);
@@ -263,8 +270,11 @@ class FloorplanCard extends HTMLElement {
   _wantStats() {
     const map = this._map();
     if (!this._day || !map || map.cls === "lamps") return;
-    // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out.
-    const ids = [...new Set(this._floor.points.flatMap((p) => Object.values(this._readings(p))))].sort().join(",");
+    // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out. And
+    // the rooms' own sensors, which give a room its value placed or not.
+    const own = this._roomSensors(map).filter(Boolean);
+    const ids = [...new Set([...this._floor.points.flatMap((p) => Object.values(this._readings(p))), ...own])]
+      .sort().join(",");
     if (!ids || (ids === this._statIds && Date.now() - this._statsAt < STATS_MS)) return;
     this._fetchStats(ids);
   }
@@ -919,15 +929,21 @@ ${STYLE}
     const samples = floor.points.filter((p) => p.placed).flatMap((p) => {
       const id = this._readings(p)[map.cls];
       const value = id && this._value(id, map.cls, map.layer);
-      return value === undefined ? [] : [{ at: [p.x, p.y], value }];
+      return value === undefined ? [] : [{ at: [p.x, p.y], value, id }];
+    });
+    // Each room's own sensor, as its area names it: the room's value; null without a value.
+    const bases = this._roomSensors(map).map((id) => {
+      if (!id) return undefined;
+      const value = this._value(id, map.cls, map.layer);
+      return { id, value: value === undefined ? null : value };
     });
     // Rooms of one open space share their readings.
     const index = new Map(floor.rooms.map((r, i) => [r.area_id, i]));
     const groups = openSpaces(floor).map((g) => g.map((area) => index.get(area)));
-    const key = JSON.stringify([map.cls, samples, groups]);
+    const key = JSON.stringify([map.cls, samples, groups, bases]);
     if (this._heatCache?.key !== key || this._heatCache.floor !== floor) {
       const g = el("g", { class: "heat" });
-      const { cells, empty } = heat(floor.rooms.map((r) => r.polygon), samples, STEP_M, groups);
+      const { cells, empty } = heat(floor.rooms.map((r) => r.polygon), samples, STEP_M, groups, bases);
       // Cells on a slanted or offset wall overhang it: each room's cells are clipped to the room.
       const defs = el("defs", {}, g);
       const byRoom = new Map();
@@ -1278,8 +1294,12 @@ ${STYLE}
       const roles = main ? `<div class="tip-roles"><span class="dot" style="background: ${colourOf(main)}"></span>`
         + `${esc(categoryName(main, lang))}${further.map((c) => `<br><span class="ring" style="border-color: ${colourOf(c)}"></span>`
           + `${esc(t(h, "card.floorplan.roles.also"))} ${esc(categoryName(c, lang))}`).join("")}</div>` : "";
+      // A room's own sensor, as its area names it, gives the room its colour on the climate maps.
+      const roomSensor = Object.values(h.areas || {}).some((a) => content.ids.includes(a.temperature_entity_id)
+        || content.ids.includes(a.humidity_entity_id));
       tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
         + `<div class="tip-name">${esc(content.name)}</div>` + roles
+        + (roomSensor ? `<div class="tip-value">${esc(t(h, "card.floorplan.maps.room_sensor"))}</div>` : "")
         + [...values, ...presence].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
       this._tipKey = content.key;
     }

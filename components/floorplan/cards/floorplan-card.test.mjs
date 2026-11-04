@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { shadowText } from "./testing/dom-env.mjs";
 import { withPlan } from "./lib/plan.js";
+import { colourAt } from "./lib/maps.js";
 
 await import("./floorplan-card.js");
 const load = (lang) => JSON.parse(readFileSync(new URL(`../translations/${lang}.json`, import.meta.url), "utf8"));
@@ -1329,6 +1330,66 @@ test("maps: 24 h shows each reading's figure from the hourly statistics", async 
     "temperature: the mean; CO2: the highest; humidity without statistics left out");
   click($(card, '.bar [data-map="carbon_dioxide"]'));
   assert.ok(shadowText(card).includes("24 h, highest"));
+  window.localStorage.clear();
+});
+
+// The living room names its own sensor; a thermometer on an amplifier stands in its corner.
+function roomSensorHass(opts) {
+  const hass = mapsHass(opts);
+  hass.areas.living_room.temperature_entity_id = "sensor.alex_temperature";
+  hass.entities["sensor.amp_temperature"] = { entity_id: "sensor.amp_temperature", device_id: null, area_id: "living_room" };
+  hass.states["sensor.amp_temperature"] = { state: "33", attributes: { device_class: "temperature", unit_of_measurement: "°C", state_class: "measurement" } };
+  return hass;
+}
+const ampPt = { entity_id: "sensor.amp_temperature", x: 4.5, y: 3.5, placed: true };
+const fills = (card, pred) => [...card.shadowRoot.querySelectorAll(".heat rect")]
+  .filter((r) => pred(Number(r.getAttribute("x")), Number(r.getAttribute("y")))).map((r) => r.getAttribute("fill"));
+
+test("maps: a room's own sensor colours the room, another sensor in it is a spot", async () => {
+  window.localStorage.clear();
+  const plan = planOf([pt("d_climate", 1, 1), ampPt]);
+  plan.floors[0].open_spaces = [["living_room", "kitchen"]];
+  const card = await make({ plan, layers: ["climate"] }, roomSensorHass());
+  await settle();
+  const far = fills(card, (x, y) => x < 3);
+  assert.ok(far.length > 0 && far.every((f) => f === colourAt("temperature", 21.5)), "the room's value away from the amplifier");
+  assert.ok(fills(card, (x, y) => x > 4.3 && x < 4.6 && y > 3.3 && y < 3.6).includes(colourAt("temperature", 33)), "hot at the amplifier");
+  assert.ok(fills(card, (x) => x > 5 && x < 5.5).length > 0, "the kitchen, open to it, is coloured");
+  const [mx, my] = clientAt(card, 1, 1);
+  pointer($(card, 'g.marker[data-key="d_climate"]'), "pointermove", mx, my);
+  assert.ok(tip(card).textContent.includes(EN("card.floorplan.maps.room_sensor")), tip(card).textContent);
+  // Without the area's sensor the amplifier's heat spreads over the room, as before.
+  const before = roomSensorHass();
+  delete before.areas.living_room.temperature_entity_id;
+  const old = await make({ plan, layers: ["climate"] }, before);
+  await settle();
+  assert.ok(fills(old, (x) => x < 3).some((f) => f !== colourAt("temperature", 21.5)));
+  window.localStorage.clear();
+});
+
+test("maps: a room whose own sensor is unavailable is hatched", async () => {
+  window.localStorage.clear();
+  const hass = roomSensorHass();
+  hass.states["sensor.alex_temperature"] = { state: "unavailable", attributes: { device_class: "temperature" } };
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), ampPt]), layers: ["climate"] }, hass);
+  await settle();
+  assert.equal(card.shadowRoot.querySelectorAll(".heat .no-sensor").length, 2, "the living room and the kitchen");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat rect").length, 0, "no amplifier heat as the room's");
+  window.localStorage.clear();
+});
+
+test("maps: 24 h takes the room sensor's mean, and fetches it though it is not placed", async () => {
+  window.localStorage.clear();
+  const rows = (vals) => vals.map((mean) => ({ start: 0, mean, min: mean, max: mean }));
+  const hass = roomSensorHass({ answers: { "recorder/statistics_during_period": {
+    "sensor.alex_temperature": rows([20, 22]), "sensor.amp_temperature": rows([33]) } } });
+  const card = await make({ plan: planOf([ampPt]), layers: ["climate"] }, hass);
+  await settle();
+  click($(card, '.bar [data-action=day][data-day="1"]'));
+  await settle();
+  const call = hass.calls.find((c) => c.type === "recorder/statistics_during_period");
+  assert.ok(call.statistic_ids.includes("sensor.alex_temperature"), call.statistic_ids.join());
+  assert.ok(fills(card, (x) => x < 3).every((f) => f === colourAt("temperature", 21)));
   window.localStorage.clear();
 });
 
