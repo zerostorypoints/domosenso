@@ -125,13 +125,15 @@ test("the page gets the contract's ctx", async () => {
   assert.equal(card._ctx().routeId, undefined);
 });
 
-test("every page is a placeholder module following the contract", () => {
+test("every page follows the contract; Home is built, a page not built yet says so", async () => {
   assert.deepEqual(Object.keys(pages).sort(), ["home", "media", "room", "rooms", "settings"]);
   for (const [id, page] of Object.entries(pages)) {
     assert.equal(typeof page.render, "function", id);
     assert.equal(typeof page.update, "function", id);
   }
   const card = mount();
+  assert.ok($(card, "main .home"));
+  await goTo("#/media");
   assert.match($(card, "main").textContent, /Coming next/);
 });
 

@@ -22,6 +22,71 @@
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
       "page": {
         "coming_next": "Coming next."
+      },
+      "home": {
+        "title": "Home",
+        "all_good": "All good",
+        "pill": "{room}: {message}",
+        "chip": {
+          "inside": "Inside",
+          "outside": "Outside",
+          "air": "Air",
+          "lights_on": "Lights on"
+        },
+        "quick": "Quick",
+        "all_off": "All off",
+        "on_now": "{count} on now",
+        "none_on": "None on",
+        "rooms": "Rooms",
+        "all_rooms": "All ›",
+        "room_lights_on": "{count} on",
+        "playing": "♪",
+        "nothing_playing": "Nothing playing",
+        "play": "Play",
+        "pause": "Pause"
+      },
+      "light": {
+        "off": "Off"
+      },
+      "format": {
+        "temperature": "{value}°",
+        "temperature_range": "{min}–{max}°",
+        "percent": "{value} %",
+        "none": "—"
+      },
+      "reading": {
+        "temperature": {
+          "poor_low": "Too cold",
+          "poor_high": "Too warm",
+          "fair_low": "A bit cool",
+          "fair_high": "A bit warm"
+        },
+        "humidity": {
+          "poor_low": "Too dry",
+          "poor_high": "Too humid",
+          "fair_low": "A bit dry",
+          "fair_high": "A bit humid"
+        },
+        "score": {
+          "fair": "Air fair",
+          "poor": "Air poor"
+        },
+        "co2": {
+          "fair": "CO₂ raised",
+          "poor": "CO₂ high"
+        },
+        "pm2_5": {
+          "fair": "PM2.5 raised",
+          "poor": "PM2.5 high"
+        },
+        "voc": {
+          "fair": "VOC raised",
+          "poor": "VOC high"
+        },
+        "nox": {
+          "fair": "NOx raised",
+          "poor": "NOx high"
+        }
       }
     }
   }

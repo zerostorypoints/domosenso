@@ -22,6 +22,71 @@
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
       "page": {
         "coming_next": "Kommt als Nächstes."
+      },
+      "home": {
+        "title": "Zuhause",
+        "all_good": "Alles in Ordnung",
+        "pill": "{room}: {message}",
+        "chip": {
+          "inside": "Innen",
+          "outside": "Aussen",
+          "air": "Luft",
+          "lights_on": "Lichter an"
+        },
+        "quick": "Schnell",
+        "all_off": "Alle aus",
+        "on_now": "{count} an",
+        "none_on": "Keine an",
+        "rooms": "Räume",
+        "all_rooms": "Alle ›",
+        "room_lights_on": "{count} an",
+        "playing": "♪",
+        "nothing_playing": "Nichts läuft",
+        "play": "Abspielen",
+        "pause": "Pause"
+      },
+      "light": {
+        "off": "Aus"
+      },
+      "format": {
+        "temperature": "{value}°",
+        "temperature_range": "{min}–{max}°",
+        "percent": "{value} %",
+        "none": "—"
+      },
+      "reading": {
+        "temperature": {
+          "poor_low": "Zu kalt",
+          "poor_high": "Zu warm",
+          "fair_low": "Etwas kühl",
+          "fair_high": "Etwas warm"
+        },
+        "humidity": {
+          "poor_low": "Zu trocken",
+          "poor_high": "Zu feucht",
+          "fair_low": "Etwas trocken",
+          "fair_high": "Etwas feucht"
+        },
+        "score": {
+          "fair": "Luft mässig",
+          "poor": "Luft schlecht"
+        },
+        "co2": {
+          "fair": "CO₂ erhöht",
+          "poor": "CO₂ hoch"
+        },
+        "pm2_5": {
+          "fair": "PM2.5 erhöht",
+          "poor": "PM2.5 hoch"
+        },
+        "voc": {
+          "fair": "VOC erhöht",
+          "poor": "VOC hoch"
+        },
+        "nox": {
+          "fair": "NOx erhöht",
+          "poor": "NOx hoch"
+        }
       }
     }
   }

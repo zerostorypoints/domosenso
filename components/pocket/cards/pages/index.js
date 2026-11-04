@@ -14,10 +14,11 @@
 // The shell keeps the page's element until the route changes, so a page may hold its own state
 // in it between updates.
 
+import * as home from "./home-page.js";
 import * as placeholder from "./placeholder.js";
 
 export const pages = {
-  home: placeholder,
+  home,
   rooms: placeholder,
   room: placeholder,
   media: placeholder,
