@@ -10,5 +10,19 @@
         ]
       }
     }
+  },
+  "card": {
+    "pocket": {
+      "nav": {
+        "home": "Home",
+        "rooms": "Rooms",
+        "media": "Media",
+        "settings": "Settings"
+      },
+      "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
+      "page": {
+        "coming_next": "Coming next."
+      }
+    }
   }
 }

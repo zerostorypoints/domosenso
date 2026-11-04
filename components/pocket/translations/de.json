@@ -10,5 +10,19 @@
         ]
       }
     }
+  },
+  "card": {
+    "pocket": {
+      "nav": {
+        "home": "Zuhause",
+        "rooms": "Räume",
+        "media": "Medien",
+        "settings": "Einstellungen"
+      },
+      "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
+      "page": {
+        "coming_next": "Kommt als Nächstes."
+      }
+    }
   }
 }

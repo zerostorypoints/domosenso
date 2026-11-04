@@ -10,5 +10,19 @@
         ]
       }
     }
+  },
+  "card": {
+    "pocket": {
+      "nav": {
+        "home": "Dom",
+        "rooms": "Pomieszczenia",
+        "media": "Media",
+        "settings": "Ustawienia"
+      },
+      "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
+      "page": {
+        "coming_next": "Już wkrótce."
+      }
+    }
   }
 }
