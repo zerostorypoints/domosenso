@@ -144,8 +144,40 @@ test("now playing: art, title, artist; play/pause in place, elsewhere to Media",
   play.click();
   assert.deepEqual(ctx.hass.calls, [["media_player", "media_play_pause", { entity_id: "media_player.living_room_speaker" }]]);
   assert.deepEqual(ctx.routes, []);
-  card.click();
+  card.querySelector("button.open").click();
   assert.deepEqual(ctx.routes, ["#/media"]);
+  assert.equal(card.querySelector("[role]"), null, "no interactive role around the play button");
+});
+
+test("an unavailable player: a dash, muted, play disabled", () => {
+  const states = { ...baseStates(), "media_player.living_room_speaker": st("unavailable", { media_title: "Old" }) };
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  const card = el.querySelector(".now");
+  assert.ok(!card.hidden);
+  assert.ok(card.classList.contains("muted"));
+  assert.equal(text(card.querySelector(".t1")), "—");
+  assert.ok(card.querySelector("button.play").disabled);
+});
+
+test("a failed play/pause or All off fires pocket-error", async () => {
+  const ctx = ctxOf();
+  ctx.hass.callService = () => Promise.reject(new Error("no"));
+  const el = mount(ctx);
+  const errors = [];
+  el.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
+  el.querySelector(".now button.play").click();
+  el.querySelector(".quick .all-off").click();
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepEqual(errors, ["card.pocket.error.media", "card.pocket.error.light"]);
+});
+
+test("pills are buttons inside list items", () => {
+  const states = { ...baseStates(), "sensor.living_room_co2": st(1250) };
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  const items = [...el.querySelectorAll('.att > [role="listitem"]')];
+  assert.equal(items.length, 1);
+  assert.equal(items[0].firstElementChild.tagName, "BUTTON");
+  assert.equal(items[0].firstElementChild.getAttribute("role"), null);
 });
 
 test("a missing media entity: no now-playing card", () => {

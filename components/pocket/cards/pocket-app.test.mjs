@@ -220,3 +220,26 @@ test("the offline banner's text colour is a token of both themes", () => {
   card.hass = hassOf({ connected: false, themes: { darkMode: true } });
   assert.equal($(card, ".app").style.getPropertyValue("--on-warn"), "#0f1115");
 });
+
+test("a failed action shows a translated toast above the bar for a short time; the tile stays as it was", async () => {
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...config("pl"), rooms: [{ id: "kitchen", name: "Kitchen", lights: "light.k" }] });
+  document.body.appendChild(card);
+  card.toastMs = 30;
+  card.hass = hassOf({ states: { "light.k": { state: "off", attributes: {} } },
+    callService: () => Promise.reject(new Error("no")) });
+  const toast = $(card, ".toast");
+  assert.equal(toast.hidden, true);
+  const tile = $(card, "pocket-light-tile");
+  tile.click();
+  await tick();
+  assert.equal(toast.hidden, false);
+  assert.equal(toast.textContent, "Światło nie odpowiedziało. Spróbuj ponownie.");
+  assert.ok(!tile.shadowRoot.querySelector(".tile").classList.contains("on"));
+  const css = $(card, "style").textContent;
+  assert.match(css, /\.toast \{[^}]*font-size: 16px/);
+  assert.equal(toast.parentElement, $(card, "nav"), "above the bar, on it");
+  assert.match(css, /\.toast \{[^}]*bottom: calc\(100% \+ 8px\)/);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(toast.hidden, true);
+});

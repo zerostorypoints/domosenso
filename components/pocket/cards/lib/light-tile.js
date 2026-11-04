@@ -10,11 +10,17 @@
 //     dragging and sent once on release (light.turn_on with brightness_pct);
 //   - a vertical move cancels: the page scrolls (touch-action: pan-y) and no light changes;
 //   - a 600 ms press opens Home Assistant's more-info dialog (the hass-more-info event).
+// After a drag the sent brightness stays shown until Home Assistant reports it, for at most
+// confirmMs; a failed call drops it at once and fires pocket-error (lib/report.js), so the shell
+// shows a short message and the tile is back on the last known state.
 // Unavailable (every light missing, unavailable or unknown): muted, a dash, no service call.
 // Offline: the button is disabled, no service call.
 
+import { reportError } from "./report.js";
+
 const LONG_PRESS_MS = 600;
 const DIRECTION_PX = 8;      // movement before a gesture is a drag or a scroll
+const CONFIRM_MS = 4000;     // how long a sent brightness waits for Home Assistant to report it
 const GONE = new Set(["unavailable", "unknown"]);
 
 const STYLE = `
@@ -42,6 +48,7 @@ class PocketLightTile extends HTMLElement {
     super();
     this.t = (key) => key;
     this.offline = false;
+    this.confirmMs = CONFIRM_MS;
     this._suppressClick = false;
     this._gesture = null;
     this.addEventListener("click", (e) => this._onClick(e));
@@ -61,10 +68,11 @@ class PocketLightTile extends HTMLElement {
   }
 
   set hass(hass) {
-    // A preview (the brightness being dragged, then sent) holds until one of the lights changes.
-    const changed = this._config?.entities.some((id) => hass?.states?.[id] !== this._hass?.states?.[id]);
-    if (changed && !this._gesture) this._preview = null;
     this._hass = hass;
+    // A sent brightness is shown until Home Assistant reports it (within a percent: 0-255 rounding).
+    if (this._preview != null && !this._gesture && Math.abs((this._brightness() ?? -10) - this._preview) <= 1) {
+      this._dropPreview();
+    }
     this._patch();
   }
 
@@ -74,6 +82,16 @@ class PocketLightTile extends HTMLElement {
 
   disconnectedCallback() {
     this._endGesture();
+    this._dropPreview();
+  }
+
+  // Back to Home Assistant's state: the preview and its timer go.
+  _dropPreview() {
+    clearTimeout(this._confirmTimer);
+    this._confirmTimer = null;
+    if (this._preview == null) return;
+    this._preview = null;
+    this._patch();
   }
 
   _states() {
@@ -108,9 +126,18 @@ class PocketLightTile extends HTMLElement {
 
   _call(service, data = {}) {
     if (!this._canAct()) return;
-    const result = this._hass.callService("light", service, { entity_id: this._target(), ...data });
-    // A failed call leaves the tile on Home Assistant's last state (the next hass update).
-    if (result && typeof result.catch === "function") result.catch(() => {});
+    let result;
+    try {
+      result = this._hass.callService("light", service, { entity_id: this._target(), ...data });
+    } catch (err) {
+      result = Promise.reject(err);
+    }
+    if (result && typeof result.catch === "function") {
+      result.catch(() => {
+        this._dropPreview();
+        reportError(this, "card.pocket.error.light");
+      });
+    }
   }
 
   _build() {
@@ -161,6 +188,7 @@ class PocketLightTile extends HTMLElement {
   _onDown(e) {
     if (e.button != null && e.button !== 0) return;
     this._endGesture();
+    this._dropPreview();
     this._suppressClick = false;
     this._gesture = { x: e.clientX, y: e.clientY, mode: "pending", pointerId: e.pointerId };
     this._gesture.timer = setTimeout(() => this._longPress(), LONG_PRESS_MS);
@@ -190,6 +218,8 @@ class PocketLightTile extends HTMLElement {
     const g = this._gesture;
     if (g?.mode === "drag") {
       this._preview = this._percentAt(e.clientX);
+      clearTimeout(this._confirmTimer);
+      this._confirmTimer = setTimeout(() => this._dropPreview(), this.confirmMs);
       this._call("turn_on", { brightness_pct: this._preview });
       this._patch();
     }

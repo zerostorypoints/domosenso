@@ -135,3 +135,57 @@ test("a hass update patches the tile, it does not rebuild it", () => {
   assert.equal(tile.shadowRoot.querySelector("button"), button);
   assert.ok(!tile.shadowRoot.querySelector(".tile").classList.contains("on"));
 });
+
+const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms));
+const fill = (tile) => tile.shadowRoot.querySelector(".bar i").style.width;
+function drag(tile, from, to) {
+  pointer(tile, "pointerdown", from, 40);
+  pointer(tile, "pointermove", to, 40);
+  pointer(tile, "pointerup", to, 40);
+}
+
+test("a rejected call drops the preview at once and fires pocket-error with a key", async () => {
+  const hass = hassOf({ "light.desk": light("on", 255) });
+  hass.callService = () => Promise.reject(new Error("no"));
+  const tile = mount(hass);
+  const errors = [];
+  document.body.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
+  drag(tile, 180, 100);
+  assert.equal(fill(tile), "50%");
+  await tick();
+  assert.equal(fill(tile), "100%", "back on the last known state");
+  assert.deepEqual(errors, ["card.pocket.error.light"]);
+});
+
+test("a failed toggle fires pocket-error too", async () => {
+  const hass = hassOf({ "light.desk": light("off") });
+  hass.callService = () => { throw new Error("sync"); };
+  const tile = mount(hass);
+  const errors = [];
+  document.body.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
+  tile.click();
+  await tick();
+  assert.deepEqual(errors, ["card.pocket.error.light"]);
+  assert.ok(!tile.shadowRoot.querySelector(".tile").classList.contains("on"));
+});
+
+test("a sent brightness that never comes back is dropped after confirmMs", async () => {
+  const hass = hassOf({ "light.desk": light("on", 255) });
+  const tile = mount(hass);
+  tile.confirmMs = 30;
+  drag(tile, 180, 100);
+  tile.hass = { ...hass, states: { ...hass.states } };     // an update that does not report it
+  assert.equal(fill(tile), "50%");
+  await tick(50);
+  assert.equal(fill(tile), "100%");
+});
+
+test("the preview goes as soon as the real brightness matches it", () => {
+  const hass = hassOf({ "light.desk": light("on", 255) });
+  const tile = mount(hass);
+  drag(tile, 180, 100);
+  tile.hass = hassOf({ "light.desk": light("on", 128) });
+  assert.equal(fill(tile), "50%");
+  tile.hass = hassOf({ "light.desk": light("on", 255) });   // a later change shows, nothing is held
+  assert.equal(fill(tile), "100%");
+});

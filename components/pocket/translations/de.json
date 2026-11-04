@@ -87,6 +87,10 @@
           "fair": "NOx erhöht",
           "poor": "NOx hoch"
         }
+      },
+      "error": {
+        "light": "Das Licht hat nicht reagiert. Bitte erneut versuchen.",
+        "media": "Der Player hat nicht reagiert. Bitte erneut versuchen."
       }
     }
   }

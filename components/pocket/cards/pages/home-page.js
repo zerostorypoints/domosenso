@@ -16,9 +16,12 @@
 import { attention } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
 import { formatDate } from "../lib/i18n.js";
+import { reportError } from "../lib/report.js";
 import "../lib/light-tile.js";
 
 const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
+const GONE = new Set(["unavailable", "unknown"]);
+const formats = new Map();     // one Intl.NumberFormat per language and number of digits
 
 const STYLE = `
   .home .top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 4px; }
@@ -38,9 +41,14 @@ const STYLE = `
                 background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
   .home .chip small { display: block; font-size: 11.5px; color: var(--mut); font-weight: 400; margin-top: 1px; }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .quick-sec[hidden] { display: none; }
-  .home .now { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer;
+  .home .now { display: flex; align-items: center; gap: 12px; padding: 12px;
                background: var(--card); border: 1px solid var(--line); border-radius: 20px; }
-  .home .art { width: 52px; height: 52px; border-radius: 12px; flex: 0 0 auto; overflow: hidden; background: var(--chip); }
+  .home .now .open { flex: 1; min-width: 0; min-height: 52px; margin: 0; padding: 0; border: 0; background: none;
+                     display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: var(--fg);
+                     cursor: pointer; }
+  .home .now.muted .open { opacity: .55; }
+  .home .att .item { flex: 0 0 auto; display: flex; }
+  .home .art { display: block; width: 52px; height: 52px; border-radius: 12px; flex: 0 0 auto; overflow: hidden; background: var(--chip); }
   .home .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .home .meta { flex: 1; min-width: 0; }
   .home .t1 { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -63,7 +71,7 @@ const STYLE = `
                        --mdc-icon-size: 18px; }
   .home .strip { margin-bottom: 0; }
   .home .rc { flex: 0 0 138px; }
-  .home button:focus-visible, .home .now:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .home button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 `;
 
 const lightsOf = (room) => [room.lights ?? []].flat().filter(Boolean);
@@ -79,8 +87,23 @@ function setAttr(el, name, value) {
 }
 
 function number(ctx, value, digits) {
-  return new Intl.NumberFormat(NUMBER_LOCALES[ctx.lang] ?? "en-GB", {
-    minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+  const key = `${ctx.lang}/${digits}`;
+  if (!formats.has(key)) {
+    formats.set(key, new Intl.NumberFormat(NUMBER_LOCALES[ctx.lang] ?? "en-GB", {
+      minimumFractionDigits: digits, maximumFractionDigits: digits }));
+  }
+  return formats.get(key).format(value);
+}
+
+// A service call whose failure becomes the shell's toast (lib/report.js).
+function call(root, hass, domain, service, data, errorKey) {
+  let result;
+  try {
+    result = hass.callService(domain, service, data);
+  } catch (err) {
+    result = Promise.reject(err);
+  }
+  result?.catch?.(() => reportError(root, errorKey));
 }
 
 function temperature(ctx, value) {
@@ -110,9 +133,11 @@ export function render(ctx) {
       <div class="chip" data-chip="air"><span class="v"></span> <small></small></div>
       <div class="chip" data-chip="lights_on"><span class="v"></span> <small></small></div>
     </div>
-    <div class="now" role="link" tabindex="0" hidden>
-      <div class="art"><img alt="" hidden></div>
-      <div class="meta"><span class="t1"></span> <span class="t2"></span></div>
+    <div class="now" hidden>
+      <button class="open" type="button">
+        <span class="art"><img alt="" hidden></span>
+        <span class="meta"><span class="t1"></span> <span class="t2"></span></span>
+      </button>
       <button class="play" type="button"><ha-icon></ha-icon></button>
     </div>
     <div class="quick-sec">
@@ -139,15 +164,12 @@ export function render(ctx) {
   };
 
   const now = parts.now;
-  const open = () => parts.ctx.navigate("#/media");
-  now.addEventListener("click", open);
-  now.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
-  now.querySelector(".play").addEventListener("click", (e) => {
-    e.stopPropagation();
+  now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
+  now.querySelector(".play").addEventListener("click", () => {
     const { hass, offline } = parts.ctx;
     const player = parts.player;
-    if (offline || !player || !hass?.states?.[player] || hass.states[player].state === "unavailable") return;
-    hass.callService("media_player", "media_play_pause", { entity_id: player })?.catch?.(() => {});
+    if (offline || !player || !hass?.states?.[player] || GONE.has(hass.states[player].state)) return;
+    call(root, hass, "media_player", "media_play_pause", { entity_id: player }, "card.pocket.error.media");
   });
 
   const quick = root.querySelector(".quick");
@@ -164,7 +186,7 @@ export function render(ctx) {
   allOff.addEventListener("click", () => {
     const { hass, offline, config } = parts.ctx;
     if (offline || !hass?.callService) return;
-    hass.callService("light", "turn_off", { entity_id: allLights(config) })?.catch?.(() => {});
+    call(root, hass, "light", "turn_off", { entity_id: allLights(config) }, "card.pocket.error.light");
   });
   parts.allOff = allOff;
   quick.append(allOff);
@@ -210,19 +232,25 @@ function updatePills(parts, ctx) {
   parts.pillsKey = key;
   if (pills.length === 0) {
     const pill = el("span", "pill", `<i class="dot good"></i><span></span>`);
-    pill.setAttribute("role", "listitem");
     pill.lastChild.textContent = ctx.t("card.pocket.home.all_good");
-    parts.att.replaceChildren(pill);
+    parts.att.replaceChildren(listItem(pill));
     return;
   }
   parts.att.replaceChildren(...pills.map((item) => {
     const pill = el("button", "pill", `<i class="dot ${item.level}"></i><span></span>`);
     pill.type = "button";
-    pill.setAttribute("role", "listitem");
     pill.lastChild.textContent = item.text;
     pill.addEventListener("click", () => parts.ctx.navigate(item.target));
-    return pill;
+    return listItem(pill);
   }));
+}
+
+// A list item around a pill: the button keeps its own role.
+function listItem(pill) {
+  const item = el("span", "item");
+  item.setAttribute("role", "listitem");
+  item.append(pill);
+  return item;
 }
 
 function updateChips(parts, ctx) {
@@ -264,9 +292,12 @@ function updateNow(parts, ctx) {
   parts.player = player;
   now.hidden = !state;
   if (!state) return;
-  const a = state.attributes ?? {};
+  const gone = GONE.has(state.state);
+  const a = gone ? {} : state.attributes ?? {};
   const playing = state.state === "playing";
-  const title = a.media_title || ctx.t("card.pocket.home.nothing_playing");
+  // An unavailable player: a dash and the muted style (spec 6.5), not "nothing playing".
+  const title = gone ? ctx.t("card.pocket.format.none") : a.media_title || ctx.t("card.pocket.home.nothing_playing");
+  now.classList.toggle("muted", gone);
   setText(now.querySelector(".t1"), title);
   setText(now.querySelector(".t2"), a.media_artist || a.media_album_artist || room.name);
   const img = now.querySelector(".art img");
@@ -276,8 +307,8 @@ function updateNow(parts, ctx) {
   const label = ctx.t(playing ? "card.pocket.home.pause" : "card.pocket.home.play");
   setAttr(play, "aria-label", label);
   setAttr(play.querySelector("ha-icon"), "icon", playing ? "mdi:pause" : "mdi:play");
-  play.disabled = ctx.offline || state.state === "unavailable";
-  setAttr(now, "aria-label", title);
+  play.disabled = ctx.offline || gone;
+  setAttr(now.querySelector(".open"), "aria-label", title);
 }
 
 function updateQuick(parts, ctx) {

@@ -3,7 +3,9 @@
 //   - the page of the current route (lib/router.js: #/, #/rooms, #/room/<id>, #/media, #/settings),
 //     taken from pages/index.js, which also states the page contract;
 //   - a bottom bar, Home · Rooms · Media · Settings, sticky at the bottom over the phone's safe area;
-//   - a thin banner while Home Assistant is not connected (pages then get ctx.offline = true).
+//   - a thin banner while Home Assistant is not connected (pages then get ctx.offline = true);
+//   - a short toast above the bar when an action fails: a page or tile fires pocket-error with a
+//     translation key (lib/report.js), the shell shows its text for TOAST_MS.
 // Navigation sets location.hash: no reload, and the browser's back button returns.
 //
 //   type: custom:pocket-app
@@ -22,6 +24,7 @@ import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
 
 const translate = createT({ en, de, pl });
+const TOAST_MS = 3000;
 
 const STYLE = `
   :host { display: block; height: 100%; }
@@ -37,6 +40,11 @@ const STYLE = `
   .offline[hidden] { display: none; }
   main { flex: 1 0 auto; padding: 12px 16px 16px; }
   .placeholder-text { color: var(--mut); font-size: 15px; margin: 32px 0; text-align: center; }
+  /* The toast rides on the bar: absolute inside the sticky nav, just above its top edge. */
+  .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
+           padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
+           background: var(--fg); color: var(--bg); box-shadow: 0 4px 16px rgba(0, 0, 0, .18); }
+  .toast[hidden] { display: none; }
   nav { position: sticky; bottom: 0; z-index: 2; box-sizing: border-box; flex: 0 0 auto;
         height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
         display: flex; justify-content: space-around; align-items: stretch;
@@ -56,6 +64,7 @@ class PocketApp extends HTMLElement {
   constructor() {
     super();
     this._onHash = () => this._route();
+    this.toastMs = TOAST_MS;
   }
 
   setConfig(config) {
@@ -120,6 +129,7 @@ class PocketApp extends HTMLElement {
         <div class="offline" role="status" hidden></div>
         <main></main>
         <nav>
+          <div class="toast" role="alert" hidden></div>
           ${TABS.map((tab) => `
             <button class="tab" type="button" data-page="${tab.page}">
               <ha-icon icon="${tab.icon}"></ha-icon><span class="label"></span>
@@ -129,6 +139,8 @@ class PocketApp extends HTMLElement {
     this._app = this._root.querySelector(".app");
     this._main = this._root.querySelector("main");
     this._banner = this._root.querySelector(".offline");
+    this._toast = this._root.querySelector(".toast");
+    this._app.addEventListener("pocket-error", (e) => this._showToast(e.detail?.key));
     this._tabs = [...this._root.querySelectorAll(".tab")];
     this._tabs.forEach((button, i) => button.addEventListener("click", () => this._navigate(TABS[i].route)));
   }
@@ -182,6 +194,14 @@ class PocketApp extends HTMLElement {
       if (tab.page === active) button.setAttribute("aria-current", "page");
       else button.removeAttribute("aria-current");
     });
+  }
+
+  _showToast(key) {
+    if (!key) return;
+    this._toast.textContent = this._t(key);
+    this._toast.hidden = false;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { this._toast.hidden = true; }, this.toastMs);
   }
 
   _refresh() {

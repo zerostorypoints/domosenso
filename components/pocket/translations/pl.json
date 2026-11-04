@@ -87,6 +87,10 @@
           "fair": "NOx podwyższone",
           "poor": "NOx wysokie"
         }
+      },
+      "error": {
+        "light": "Światło nie odpowiedziało. Spróbuj ponownie.",
+        "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie."
       }
     }
   }
