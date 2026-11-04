@@ -243,6 +243,40 @@ template:
 [%- endif %]
 [%- endfor %]
 
+[#- Rooms in home order with the derived sensors each one has; the attention sensor is built from it. -#]
+[%- set attention = [] %]
+[%- for room in home.rooms %]
+[%- set ids = [] %]
+[%- if room.id in comfort_ids %]
+[%- for suffix in ['too_hot', 'too_cold'] %][% set _ = ids.append('binary_sensor.' ~ room.id ~ '_' ~ suffix) %][% endfor %]
+[%- if room.climate.humidity is defined %]
+[%- for suffix in ['too_humid', 'too_dry'] %][% set _ = ids.append('binary_sensor.' ~ room.id ~ '_' ~ suffix) %][% endfor %]
+[%- endif %]
+[%- endif %]
+[%- if room.id in air_polled %][% set _ = ids.append('binary_sensor.' ~ room.id ~ '_air_poor') %][% endif %]
+[%- if ids %][% set _ = attention.append([room.id, ids]) %][% endif %]
+[%- endfor %]
+[%- if attention %]
+[%- set rooms_dict %]{[% for entry in attention %]'[[ entry[0] ]]': [[ entry[1] | tojson ]][% if not loop.last %], [% endif %][% endfor %]}[% endset %]
+
+  - sensor:
+      # Rooms with at least one derived sensor on. An unavailable sensor counts as not on.
+      - name: Climate attention
+        unique_id: climate_air_attention
+        default_entity_id: sensor.climate_attention
+        icon: mdi:home-alert-outline
+        state: >-
+          {% set ns = namespace(n=0) %}
+          {% for room, ids in [[ rooms_dict ]].items() %}{% if ids | map('states') | select('eq', 'on') | list | count > 0 %}{% set ns.n = ns.n + 1 %}{% endif %}{% endfor %}
+          {{ ns.n }}
+        attributes:
+          component: climate-air
+          rooms: >-
+            {% set ns = namespace(on=[]) %}
+            {% for room, ids in [[ rooms_dict ]].items() %}{% if ids | map('states') | select('eq', 'on') | list | count > 0 %}{% set ns.on = ns.on + [room] %}{% endif %}{% endfor %}
+            {{ ns.on | tojson }}
+[%- endif %]
+
 # Comfort ranges per room and air limits (home inputs). The helpers carry no initial value: the seed
 # automation gives each helper group its defaults once (groups: <room>, <room>.humidity,
 # air.<reading>), and a value a person sets stays. The script resets every helper to its default.

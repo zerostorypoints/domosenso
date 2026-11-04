@@ -190,3 +190,71 @@ def test_every_derived_entity_has_component_attribute(derived):
     for uid, sensor in derived.items():
         room = uid.removeprefix("climate_air_").rsplit("_too_", 1)[0].rsplit("_air_poor", 1)[0]
         assert sensor["attributes"] == {"component": "climate-air", "room": room}
+
+
+@pytest.fixture(scope="module")
+def attention(tmp_path_factory):
+    out = tmp_path_factory.mktemp("attention")
+    render_component(COMPONENT, INPUTS, out, ["en"], home=HOME)
+    package = yaml.safe_load((out / "package.yaml").read_text(encoding="utf-8"))
+    return {e["unique_id"]: e for b in package["template"] for e in b.get("sensor", [])}["climate_air_attention"]
+
+
+def _attention(sensor, on):
+    import json
+    states = {f"binary_sensor.{r}": "on" for r in on}
+    env = jinja2.Environment()
+    env.filters["states"] = lambda eid: states.get(eid, "unavailable")
+    count = env.from_string(sensor["state"]).render().strip()
+    rooms = env.from_string(sensor["attributes"]["rooms"]).render().strip()
+    return int(count), json.loads(rooms)
+
+
+def test_attention_counts_rooms_once(attention):
+    on = ["living_room_too_hot", "living_room_air_poor", "bedroom_too_cold"]
+    assert _attention(attention, on) == (2, ["living_room", "bedroom"])
+
+
+def test_attention_zero_when_all_off(attention):
+    assert _attention(attention, []) == (0, [])
+
+
+def test_attention_identity(attention):
+    assert attention["default_entity_id"] == "sensor.climate_attention"
+    assert attention["name"] == "Climate attention"
+    assert attention["attributes"]["component"] == "climate-air"
+
+
+def test_attention_absent_without_derived_sensors(tmp_path):
+    home = {"rooms": [{"id": "hall", "name": "Hall", "lights": "light.hall"}]}
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=home)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    assert "climate_air_attention" not in {e["unique_id"] for b in package["template"] for e in b.get("sensor", [])
+                                          if "unique_id" in e}
+
+
+def test_manifest_provides_every_rendered_entity(tmp_path):
+    import re
+    render_component(COMPONENT, INPUTS, tmp_path, ["en"], home=HOME)
+    package = yaml.safe_load((tmp_path / "package.yaml").read_text(encoding="utf-8"))
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    patterns = [e["id"] for e in manifest["provides"]["entities"]]
+
+    def matches(entity_id):
+        for pattern in patterns:
+            body = re.escape(pattern)
+            body = re.sub(r"\\\{([^}]*)\\\}", lambda m: "(?:" + m.group(1).replace(",", "|") + ")", body)
+            body = re.sub(r"<\w+>", "[a-z0-9_]+", body)
+            if re.fullmatch(body, entity_id):
+                return True
+        return False
+
+    rendered = [k for k in package["input_number"]]
+    ids = [f"input_number.{k}" for k in rendered if k.startswith("climate_air_")]
+    ids += [f"script.{k}" for k in package["script"]]
+    for block in package["template"]:
+        for e in block.get("binary_sensor", []) + block.get("sensor", []):
+            if e.get("unique_id", "").startswith("climate_air_"):
+                ids.append(e["default_entity_id"])
+    assert ids
+    assert not [i for i in ids if not matches(i)]

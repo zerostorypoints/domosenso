@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.3.0 (unreleased): comfort and air thresholds
+
+New helpers, flags and `sensor.climate_attention` (`provides` in `component.yaml`, feature
+`thresholds`), plus `script.climate_air_thresholds_reset`. They appear once the home names
+`home_inputs`; nothing changes otherwise.
+
+### What a home does
+
+- Nothing, without `home_inputs`. With them, `render` and deploy: the seed automation sets each
+  room's range once at start. Change `comfort_defaults` to move the starting range (it applies to
+  rooms not yet seeded, or after the reset script).
+- Remove any own entities with the same ids (`binary_sensor.<room>_too_hot` and the like): Home
+  Assistant refuses a second entity with a given `unique_id`.
+
 ## 0.3.0 (unreleased): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
