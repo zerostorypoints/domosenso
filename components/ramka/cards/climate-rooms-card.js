@@ -539,9 +539,17 @@ class ClimateRoomsCard extends HTMLElement {
   // Temperature: the comfort ranges of the temperature and of the humidity, kept in the widget.
   _temperatureSettings(body, w) {
     const inputs = {};
+    // P3.3: a room whose temperature sensor the config maps to climate-air's helpers (`comfort`) shows
+    // and changes those helpers (input_number.set_value), as the Air limits do, so Pocket and the wall
+    // keep one range; a widget without them keeps its own.
+    const helpers = this._config.comfort?.[w.main] ?? {};
+    const live = (key) => {
+      const v = helpers[key] ? Number.parseFloat(this._hass.states[helpers[key]]?.state) : Number.NaN;
+      return Number.isFinite(v) ? v : null;
+    };
     const pair = (legend, lowKey, highKey, step) => {
-      const [lowLabel, low] = this._number("card.climate_rooms.low", w[lowKey] ?? COMFORT[lowKey], { step });
-      const [highLabel, high] = this._number("card.climate_rooms.high", w[highKey] ?? COMFORT[highKey], { step });
+      const [lowLabel, low] = this._number("card.climate_rooms.low", live(lowKey) ?? w[lowKey] ?? COMFORT[lowKey], { step });
+      const [highLabel, high] = this._number("card.climate_rooms.high", live(highKey) ?? w[highKey] ?? COMFORT[highKey], { step });
       low.name = lowKey;
       high.name = highKey;
       inputs[lowKey] = low;
@@ -554,6 +562,11 @@ class ClimateRoomsCard extends HTMLElement {
       const v = Object.fromEntries(Object.entries(inputs).map(([k, input]) => [k, parseFloat(input.value)]));
       if (!Object.values(v).every(Number.isFinite) || v.temp_low >= v.temp_high || v.hum_low >= v.hum_high) {
         return "card.climate_rooms.invalid";
+      }
+      for (const [key, value] of Object.entries(v)) {
+        if (!helpers[key]) continue;
+        if (value !== live(key)) this._hass.callService("input_number", "set_value", { entity_id: helpers[key], value });
+        delete v[key];
       }
       Object.assign(w, v);
       this._save();

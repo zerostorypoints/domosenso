@@ -70,3 +70,42 @@ def test_one_input_of_its_own_and_the_rest_from_the_home(tmp_path):
     for row in own_climate:
         assert row["temperature"] in everything, "the Ramka's own climate list stays"
     assert _home()["weather"] in everything
+
+
+# P3.3: `thresholds: climate-air` points the wall at climate-air's helpers.
+def test_shared_thresholds_point_the_wall_at_climate_air(tmp_path):
+    inputs = {**_inputs(), "thresholds": "climate-air"}
+    texts = _texts(tmp_path / "out", inputs, home=_home())
+    dashboard, settings, package = texts["dashboard.en.yaml"], texts["ramka-settings.en.yaml"], texts["package.yaml"]
+    for reading in ("score", "co2", "pm2_5"):
+        assert f"input_number.climate_air_{reading}_fair" in dashboard
+        assert f"input_number.climate_air_{reading}_poor" in dashboard
+    assert "input_number.ramka_air_co2_raised" not in dashboard, "the cards read climate-air's limits"
+    assert "input_number.climate_air_co2_fair" in settings, "the settings page changes climate-air's limits"
+    # The comfort map, keyed by each home room's temperature sensor.
+    board = yaml.safe_load(dashboard)
+    found = []
+    def walk(node):
+        if isinstance(node, dict):
+            if "comfort" in node:
+                found.append(node["comfort"])
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+    walk(board)
+    assert found and found[0]["sensor.living_room_temperature"] == {
+        "temp_low": "input_number.climate_air_living_room_temp_low", "temp_high": "input_number.climate_air_living_room_temp_high",
+        "hum_low": "input_number.climate_air_living_room_humidity_low", "hum_high": "input_number.climate_air_living_room_humidity_high"}
+    # The Ramka's own helpers stay for one release and follow climate-air's.
+    assert "input_number.ramka_air_co2_raised" in package or "ramka_air_co2_raised:" in package
+    automations = yaml.safe_load(package)["automation"]
+    (follow,) = [a for a in automations if a["id"] == "ramka_air_limits_follow_climate_air"]
+    assert "input_number.climate_air_co2_fair" in follow["trigger"][1]["entity_id"]
+
+
+def test_own_thresholds_are_the_default(tmp_path):
+    texts = _texts(tmp_path / "out", _inputs(), home=_home())
+    assert "climate_air_" not in texts["dashboard.en.yaml"]
+    assert "follow_climate_air" not in texts["package.yaml"]
