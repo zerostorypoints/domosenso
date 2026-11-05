@@ -1,8 +1,11 @@
 // custom:pocket-app, the whole phone view: the shell around the pages. It sits alone in a
 // `panel: true` view (Home Assistant's header stays above it) and draws
-//   - the page of the current route (lib/router.js: #/, #/rooms, #/room/<id>, #/media, #/settings),
-//     taken from pages/index.js, which also states the page contract;
-//   - a bottom bar, Home · Rooms · Media · Settings, sticky at the bottom over the phone's safe area;
+//   - the page of the current route (lib/router.js: #/, #/areas, #/area/<id>, #/climate, #/media,
+//     #/power, #/plants, #/settings, #/floorplan), taken from pages/index.js, which also states the
+//     page contract; the first version's #/rooms and #/room/<id> are replaced by their new hash;
+//   - a bottom bar fixed to the bottom of the screen: Home, the person's chosen pages (their
+//     settings, lib/settings.js, read once from Home Assistant; the defaults until then) and
+//     Settings, at most five;
 //   - a thin banner while Home Assistant is not connected (pages then get ctx.offline = true);
 //   - a short toast above the bar when an action fails: a page or tile fires pocket-error with a
 //     translation key (lib/report.js), the shell shows its text for TOAST_MS.
@@ -10,13 +13,15 @@
 //
 //   type: custom:pocket-app
 //   lang: en                 # the dashboard's language; Home Assistant's when missing
-//   rooms: [{id, name, lights?, scenes?, climate?, air?, media?}]
-//   outside: ...             # optional
+//   rooms: [{id, name, area, lights?, scenes?, climate?, air?, media?}]
+//   outside: ...             # optional; with weather, the Outside pseudo-area (lib/areas.js)
 //   weather: weather.home    # optional
-//   thresholds: {rooms: {<id>: {temp_low, temp_high, ...}}, air: {<reading>: {fair, poor}}}
+//   thresholds: {rooms: {<id>: {temp_low, temp_high, ...}}, outside: {...}, air: {<reading>: {fair, poor}}}
 
 import { createT, language } from "./lib/i18n.js";
-import { TABS, parseRoute, tabOf } from "./lib/router.js";
+import { barTabs, legacyRoute, parseRoute, tabOf } from "./lib/router.js";
+import { areasOf } from "./lib/areas.js";
+import { DEFAULTS, loadSettings, saveSettings, withDefaults } from "./lib/settings.js";
 import { setText } from "./lib/page-kit.js";
 import { applyTheme } from "./lib/theme.js";
 import { pages } from "./pages/index.js";
@@ -29,31 +34,40 @@ const TOAST_MS = 3000;
 
 const STYLE = `
   :host { display: block; }
-  /* The bar is sticky inside .app, not fixed: it stays within the card's own column (beside an open
-     sidebar on a tablet) and no transformed ancestor in Home Assistant's view can misplace it. */
+  /* No horizontal scroll anywhere: nothing in the app is wider than the screen (clip, not hidden:
+     no scroll container, so the page's vertical scroll and HA's pull-to-refresh stay HA's), and
+     no sideways scroller inside it hands its overscroll on to the page. */
   .app { --bar: 64px; --safe: env(safe-area-inset-bottom, 0px);
          box-sizing: border-box; min-height: 100vh;
          /* The view sits under HA's header; dvh follows the phone's collapsing browser bars. */
          min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px));
-         display: flex; flex-direction: column;
+         overflow-x: clip; overscroll-behavior: none;
          background: var(--bg); color: var(--fg);
          font-family: -apple-system, "SF Pro Text", Roboto, system-ui, sans-serif; font-weight: 400;
          -webkit-font-smoothing: antialiased; }
+  .app * { overscroll-behavior-x: none; }
   .offline { background: var(--warn); color: var(--on-warn); font-size: 12.5px; text-align: center;
              padding: 6px 16px; }
   .offline[hidden] { display: none; }
-  main { flex: 1 0 auto; padding: 12px 16px 16px; }
+  /* Room under the page for the fixed bar and the phone's home indicator. A finger moves the page
+     only up and down (pinch zoom stays); the pages' own sideways gestures handle themselves. */
+  main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom; }
   .placeholder-text { color: var(--mut); font-size: 15px; margin: 32px 0; text-align: center; }
-  /* The toast rides on the bar: absolute inside the sticky nav, just above its top edge. */
+  /* The toast rides on the bar: absolute inside the fixed nav, just above its top edge. */
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
            background: var(--fg); color: var(--bg); box-shadow: 0 4px 16px rgba(0, 0, 0, .18); }
   /* Hidden visually, not display:none: the role=alert element must stay in the layout for screen
      readers to announce its text when it changes. */
   .toast:not(.show) { opacity: 0; pointer-events: none; }
-  nav { position: sticky; bottom: 0; z-index: 2; box-sizing: border-box; flex: 0 0 auto;
-        height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
+  /* Fixed to the screen, not sticky in the card: a sticky bar drifted with iOS's rubber-band
+     scroll and with sideways drags. Beside HA's open sidebar (a wide screen) it starts where the
+     sidebar ends (--mdc-drawer-width, which HA leaves unset while the sidebar is a modal drawer).
+     Its background runs to the very bottom: the safe area is padding inside it. */
+  nav { position: fixed; left: var(--mdc-drawer-width, 0px); right: 0; bottom: 0; z-index: 4;
+        box-sizing: border-box; height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
         display: flex; justify-content: space-around; align-items: stretch;
+        touch-action: none; overscroll-behavior: none;
         background: var(--card);
         background: color-mix(in srgb, var(--card) 92%, transparent);
         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
@@ -72,6 +86,7 @@ class PocketApp extends HTMLElement {
     super();
     this._onHash = () => this._route();
     this.toastMs = TOAST_MS;
+    this._settings = withDefaults({});
   }
 
   setConfig(config) {
@@ -86,6 +101,10 @@ class PocketApp extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._root) this._build();
+    if (!this._settingsAsked) {
+      this._settingsAsked = true;
+      loadSettings(hass).then((settings) => this._applySettings(settings));
+    }
     this._refresh();
   }
 
@@ -125,7 +144,16 @@ class PocketApp extends HTMLElement {
       lang: this._lang(),
       offline: this._hass?.connected === false,
       routeId: this._current?.id,
+      settings: this._settings,
+      saveSettings: (patch) => saveSettings(this._hass, patch).then((settings) => this._applySettings(settings)),
     };
+  }
+
+  // The person's settings, read or just saved: the bar follows them.
+  _applySettings(settings) {
+    this._settings = settings;
+    if (this._root) this._renderBar();
+    return settings;
   }
 
   _build() {
@@ -137,30 +165,27 @@ class PocketApp extends HTMLElement {
         <main></main>
         <nav>
           <div class="toast" role="alert"></div>
-          ${TABS.map((tab) => `
-            <button class="tab" type="button" data-page="${tab.page}">
-              <ha-icon icon="${tab.icon}"></ha-icon><span class="label"></span>
-            </button>`).join("")}
         </nav>
       </div>`;
     this._app = this._root.querySelector(".app");
     this._main = this._root.querySelector("main");
     this._banner = this._root.querySelector(".offline");
     this._toast = this._root.querySelector(".toast");
+    this._nav = this._root.querySelector("nav");
     this._app.addEventListener("pocket-error", (e) => this._showToast(e.detail?.key));
-    this._tabs = [...this._root.querySelectorAll(".tab")];
-    this._tabs.forEach((button, i) => button.addEventListener("click", () => this._navigate(TABS[i].route)));
+    this._tabs = [];
   }
 
-  // A #/room/<id> whose id is none of config.rooms.
-  _unknownRoom(route) {
-    return route.page === "room" && !this._config.rooms.some((room) => room.id === route.id);
+  // A #/area/<id> whose id is none of the areas (lib/areas.js: the rooms and the Outside).
+  _unknownArea(route) {
+    return route.page === "area" && !areasOf(this._config).some((area) => area.id === route.id);
   }
 
-  // options.replace: the route takes the place of the current history entry (room-to-room swipes,
-  // so Back returns to Rooms rather than through every room).
+  // options.replace: the route takes the place of the current history entry (area-to-area swipes,
+  // so Back returns to Areas rather than through every area).
   _navigate(route, { replace = false } = {}) {
-    if (this._unknownRoom(parseRoute(route))) route = "#/rooms";
+    route = legacyRoute(route) ?? route;
+    if (this._unknownArea(parseRoute(route))) route = "#/areas";
     if (replace && window.location.hash !== route) {
       window.history.replaceState(window.history.state, "", route);
       this._route();
@@ -175,12 +200,15 @@ class PocketApp extends HTMLElement {
   // Shows the page of location.hash: a new element when the route changed, else an update.
   _route() {
     if (!this._root || !this._config) return;
+    // A link of the first version (#/rooms, #/room/<id>): its new hash, in place of the old entry.
+    const legacy = legacyRoute(window.location.hash);
+    if (legacy) window.history.replaceState(window.history.state, "", legacy);
     let route = parseRoute(window.location.hash);
-    if (this._unknownRoom(route)) {
-      // A room this dashboard does not have (an old link, a removed room): Rooms instead, in place
+    if (this._unknownArea(route)) {
+      // An area this dashboard does not have (an old link, a removed room): Areas instead, in place
       // of the bad entry so back does not return to it. Pages never see an unknown routeId.
-      window.history.replaceState(window.history.state, "", "#/rooms");
-      route = parseRoute("#/rooms");
+      window.history.replaceState(window.history.state, "", "#/areas");
+      route = parseRoute("#/areas");
     }
     const key = `${route.page}/${route.id ?? ""}`;
     this._current = route;
@@ -196,10 +224,26 @@ class PocketApp extends HTMLElement {
     this._page.update(this._pageEl, this._ctx());
   }
 
+  // The bar's buttons are rebuilt only when the person's choice of pages changes.
   _renderBar() {
+    const tabs = barTabs(this._settings?.bar ?? DEFAULTS.bar);
+    const ids = tabs.map((tab) => tab.page).join(" ");
+    if (ids !== this._barIds) {
+      this._barIds = ids;
+      this._tabs = tabs.map((tab) => {
+        const button = document.createElement("button");
+        button.className = "tab";
+        button.type = "button";
+        button.dataset.page = tab.page;
+        button.innerHTML = `<ha-icon icon="${tab.icon}"></ha-icon><span class="label"></span>`;
+        button.addEventListener("click", () => this._navigate(tab.route));
+        return button;
+      });
+      this._nav.replaceChildren(this._toast, ...this._tabs);
+    }
     const active = tabOf(this._current?.page);
     this._barLang = this._lang();
-    TABS.forEach((tab, i) => {
+    tabs.forEach((tab, i) => {
       const button = this._tabs[i];
       const label = this._t(`card.pocket.nav.${tab.page}`);
       button.querySelector(".label").textContent = label;

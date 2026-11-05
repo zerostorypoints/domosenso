@@ -3,26 +3,33 @@
 // The page contract: a page module exports
 //   render(ctx) -> HTMLElement   builds the page once, when its route is entered
 //   update(el, ctx)              refreshes that element on every hass update
-// with ctx = {hass, config, t, navigate, lang, offline, routeId}:
+// with ctx = {hass, config, t, navigate, lang, offline, routeId, settings, saveSettings}:
 //   hass      Home Assistant's object as the card gets it
 //   config    the card config (rooms, outside, weather, thresholds)
 //   t(key, vars)   the translation of card.pocket.* in the dashboard's language
-//   navigate(route)  goes to a route ("#/rooms", "#/room/<id>") without a reload
+//   navigate(route)  goes to a route ("#/areas", "#/area/<id>") without a reload
 //   lang      the dashboard's language
 //   offline   true while Home Assistant is not connected: controls are disabled
-//   routeId   the <id> of #/room/<id>, else undefined
+//   routeId   the <id> of #/area/<id> (a room's id or "outside", lib/areas.js), else undefined
+//   settings  the person's settings (lib/settings.js), the defaults until they are read
+//   saveSettings(patch) -> Promise  saves a change of them; the shell then shows it (the bar)
 // The shell keeps the page's element until the route changes, so a page may hold its own state
 // in it between updates.
 
 import * as home from "./home-page.js";
 import * as placeholder from "./placeholder.js";
-import * as rooms from "./rooms-page.js";
-import * as room from "./room-page.js";
+import * as areas from "./areas-page.js";
+import * as area from "./area-page.js";
 
+// Pages not built yet say so (placeholder.js) until their task builds them.
 export const pages = {
   home,
-  rooms,
-  room,
+  areas,
+  area,
+  climate: placeholder,
   media: placeholder,
+  power: placeholder,
+  plants: placeholder,
   settings: placeholder,
+  floorplan: placeholder,
 };

@@ -1,6 +1,6 @@
 [#
   The pocket dashboard: one panel view holding one custom:pocket-app card, which draws every screen
-  itself (Home, Rooms, a room, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
+  itself (Home, Areas, an area, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
   by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
   language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
   helpers; it reads their states at run time. The cards build the Outside pseudo-area (id

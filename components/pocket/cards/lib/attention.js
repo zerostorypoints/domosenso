@@ -11,6 +11,7 @@
 // config.rooms, readings as above). A reading or a limit without a number gives no item.
 
 import { level, numberOf } from "./level.js";
+import { climateReadings, climateValue, comfortOf } from "./areas.js";
 
 const COMFORT = [
   { reading: "temperature", low: "temp_low", high: "temp_high" },
@@ -26,15 +27,16 @@ const AIR = [
 const RANK = { poor: 0, fair: 1 };
 
 // The level of every reading of one room that has an entity and limits: [{reading, result}],
-// result as level() gives it (null when a value or limit has no number). The room page uses it too.
+// result as level() gives it (null when a value or limit has no number). The area page uses it
+// too, for a room or the Outside (lib/areas.js: its comfort range is thresholds.outside).
 export function roomLevels(hass, room, thresholds) {
   const found = [];
-  const comfort = thresholds?.rooms?.[room.id];
+  const comfort = comfortOf(thresholds, room);
+  const readings = climateReadings(room);
   for (const { reading, low, high } of COMFORT) {
-    const entity = room.climate?.[reading];
-    if (!entity || !comfort) continue;
+    if (!readings.includes(reading) || !comfort) continue;
     const limits = { low: numberOf(hass, comfort[low]), high: numberOf(hass, comfort[high]) };
-    found.push({ reading, result: level(numberOf(hass, entity), "range", limits) });
+    found.push({ reading, result: level(climateValue(hass, room, reading), "range", limits) });
   }
   for (const { reading, kind } of AIR) {
     const entity = room.air?.[reading];
@@ -54,7 +56,7 @@ export function attention(hass, config) {
       if (!result || !(result.level in RANK)) continue;
       const item = { room: room.id, reading, level: result.level };
       if (result.side) item.side = result.side;
-      item.target = `#/room/${room.id}`;
+      item.target = `#/area/${room.id}`;
       items.push(item);
     }
   }

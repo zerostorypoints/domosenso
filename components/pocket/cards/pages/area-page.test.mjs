@@ -1,7 +1,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import "../testing/dom-env.mjs";
-import * as room from "./room-page.js";
+import * as room from "./area-page.js";
 import { pages } from "./index.js";
 import { config, st, baseStates, hassOf, ctxOf, text, texts, pointer } from "../testing/demo-home.mjs";
 
@@ -21,19 +21,19 @@ const swipe = (el, [x0, y0], [x1, y1], target = el) => {
 beforeEach(() => { document.body.innerHTML = ""; });
 
 test("the shell's room entry is this page", () => {
-  assert.equal(pages.room, room);
+  assert.equal(pages.area, room);
 });
 
-test("header: the room's name, back to Rooms, position dots", () => {
+test("header: the room's name, back to Areas, position dots", () => {
   const ctx = ctxOf({ routeId: "bedroom" });
   const el = mount(ctx);
   assert.equal(text(el.querySelector(".top .name")), "Bedroom");
   const dots = el.querySelectorAll(".dots i");
   assert.equal(dots.length, 4);
   assert.ok(dots[1].classList.contains("a"));
-  assert.equal(el.querySelector(".dots").getAttribute("aria-label"), "Room 2 of 4");
+  assert.equal(el.querySelector(".dots").getAttribute("aria-label"), "Area 2 of 4");
   el.querySelector(".top .back").click();
-  assert.deepEqual(ctx.routes, ["#/rooms"]);
+  assert.deepEqual(ctx.routes, ["#/areas"]);
 });
 
 test("a swipe left goes to the next room, right to the previous", () => {
@@ -41,7 +41,7 @@ test("a swipe left goes to the next room, right to the previous", () => {
   const el = mount(ctx);
   swipe(el, [300, 200], [200, 210]);
   swipe(el, [100, 200], [200, 195]);
-  assert.deepEqual(ctx.routes, ["#/room/office", "#/room/living_room"]);
+  assert.deepEqual(ctx.routes, ["#/area/office", "#/area/living_room"]);
   assert.deepEqual(ctx.options, [{ replace: true }, { replace: true }], "swipes replace the history entry");
 });
 
@@ -287,4 +287,47 @@ test("every button of the room page is at least 44 x 44", () => {
     assert.match(rule, /min-height:\s*44px/, sel);
   }
   assert.match(css, /\.play\s*\{[^}]*width:\s*44px;\s*height:\s*44px/);
+});
+
+const outsideConfig = () => ({ ...config,
+  outside: { temperature: "sensor.outside_temperature", humidity: "sensor.outside_humidity" },
+  thresholds: { ...config.thresholds, outside: {
+    temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high",
+    humidity_low: "input_number.out_humidity_low", humidity_high: "input_number.out_humidity_high" } } });
+const outsideStates = (temp, humidity) => ({ ...baseStates(),
+  "sensor.outside_temperature": st(temp), "sensor.outside_humidity": st(humidity),
+  "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24),
+  "input_number.out_humidity_low": st(40), "input_number.out_humidity_high": st(60) });
+
+test("the Outside: its name, last in the dots, only its Climate square, levels from thresholds.outside", () => {
+  const ctx = ctxOf({ cfg: outsideConfig(), routeId: "outside", hass: hassOf(outsideStates(4.5, 50)) });
+  const el = mount(ctx);
+  assert.equal(text(el.querySelector(".top .name")), "Outside");
+  const dots = el.querySelectorAll(".dots i");
+  assert.equal(dots.length, 5);
+  assert.ok(dots[4].classList.contains("a"));
+  assert.equal(el.querySelector(".dots").getAttribute("aria-label"), "Area 5 of 5");
+  assert.equal(el.querySelectorAll(".sq").length, 1);
+  assert.ok(el.querySelector(".sq.climate"));
+  assert.equal(el.querySelector("pocket-light-tile"), null);
+  assert.equal(el.querySelector(".scn"), null);
+  assert.ok(el.querySelector(".media").hidden);
+  assert.equal(el.querySelector(".empty"), null);
+  const big = el.querySelector(".sq.climate .big");
+  assert.equal(text(big), "4.5°");
+  assert.ok(big.classList.contains("lv-poor"), "below the outside range: cold");
+  assert.match(text(el.querySelector(".sq.climate .lab")), /50 %.*Too cold/);
+});
+
+test("the Outside's readings in range are good; the Outside is the last swipe stop", () => {
+  const ctx = ctxOf({ cfg: outsideConfig(), routeId: "outside", hass: hassOf(outsideStates(22, 50)) });
+  const el = mount(ctx);
+  assert.ok(el.querySelector(".sq.climate .big").classList.contains("lv-good"));
+  swipe(el, [300, 200], [200, 210]);
+  swipe(el, [100, 200], [200, 195]);
+  assert.deepEqual(ctx.routes, ["#/area/hall"]);
+  const hallCtx = ctxOf({ cfg: outsideConfig(), routeId: "hall" });
+  const hallEl = room.render(hallCtx);
+  swipe(hallEl, [300, 200], [200, 210]);
+  assert.deepEqual(hallCtx.routes, ["#/area/outside"]);
 });

@@ -1,6 +1,7 @@
-// The room page (spec 6.3, mockup rooms.html screen 2), on the page contract of pages/index.js,
-// for the room ctx.routeId (always one of config.rooms: the shell sends an unknown id to Rooms):
-//   - a back button to Rooms with the room's name, and dots for the room's place in the home;
+// The area page (spec 6.3, mockup rooms.html screen 2), on the page contract of pages/index.js,
+// for the area ctx.routeId: a room, or the Outside pseudo-area (lib/areas.js areasOf; always one
+// of them: the shell sends an unknown id to Areas). The Outside has only its Climate square.
+//   - a back button to Areas with the area's name, and dots for the area's place in the home;
 //   - a horizontal swipe (>= 60 px, mostly horizontal, decided after 8 px as the light tile does)
 //     goes to the next room (swipe left) or the previous one, in the home's order; the first and
 //     the last room stay (no wrap). A swipe that starts on a light tile is the tile's brightness
@@ -19,6 +20,7 @@
 
 import { roomLevels } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
+import { areasOf, climateReadings as climateOf, climateValue } from "../lib/areas.js";
 import {
   GONE, el, setText, setAttr, number, temperature, percent, pluralOf, call, lightsOf, membersOf,
   playerOf, shortName,
@@ -115,12 +117,12 @@ function square(kind, readings) {
 
 export function render(ctx) {
   const root = el("section", "room");
-  const rooms = ctx.config.rooms;
+  const rooms = areasOf(ctx.config, ctx.t);
   const index = Math.max(0, rooms.findIndex((r) => r.id === ctx.routeId));
   const room = rooms[index];
   const lights = lightsOf(room);
   const scenes = [room.scenes ?? []].flat().filter(Boolean);
-  const climateReadings = ["temperature", "humidity"].filter((r) => room.climate?.[r]);
+  const climateReadings = climateOf(room);
   const airReadings = AIR.filter((r) => room.air?.[r]);
   const player = playerOf(room);
 
@@ -128,9 +130,9 @@ export function render(ctx) {
     <div class="top"><button class="back" type="button"><ha-icon icon="mdi:chevron-left"></ha-icon><span class="name"></span></button></div>
     <div class="dots" role="img">${rooms.map((r, i) => `<i${i === index ? ' class="a"' : ""}></i>`).join("")}</div>`;
 
-  const parts = { room, index, ctx, squares: [], scenes: [], tiles: [], memberTiles: [], membersKey: null,
+  const parts = { room, rooms, index, ctx, squares: [], scenes: [], tiles: [], memberTiles: [], membersKey: null,
     back: root.querySelector(".back"), name: root.querySelector(".top .name"), dots: root.querySelector(".dots") };
-  parts.back.addEventListener("click", () => parts.ctx.navigate("#/rooms"));
+  parts.back.addEventListener("click", () => parts.ctx.navigate("#/areas"));
 
   if (climateReadings.length || airReadings.length) {
     const box = el("div", "squares");
@@ -229,12 +231,11 @@ function swipeBetweenRooms(root, parts) {
     const dy = Math.abs(e.clientY - g.y);
     if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < 2 * dy) return;
     swallow = true;
-    const rooms = parts.ctx.config.rooms;
-    const next = rooms[parts.index + (dx < 0 ? 1 : -1)];
+    const next = parts.rooms[parts.index + (dx < 0 ? 1 : -1)];
     // At the first or last room there is no next page, yet swallow stays set: the click the
     // browser fires after the finger lifts would otherwise press whatever the swipe ended on.
     // The next pointerdown clears it.
-    if (next) parts.ctx.navigate(`#/room/${next.id}`, { replace: true });
+    if (next) parts.ctx.navigate(`#/area/${next.id}`, { replace: true });
   });
   root.addEventListener("pointercancel", () => { swipe = null; });
   root.addEventListener("click", (e) => {
@@ -249,16 +250,16 @@ export function update(root, ctx) {
   const parts = root._room;
   parts.ctx = ctx;
   const { room } = parts;
-  const rooms = ctx.config.rooms;
-  setText(parts.name, room.name);
-  setAttr(parts.back, "aria-label", ctx.t("card.pocket.room.back"));
-  setAttr(parts.dots, "aria-label", ctx.t("card.pocket.room.position", { index: parts.index + 1, count: rooms.length }));
+  const { rooms } = parts;
+  setText(parts.name, room.outside ? ctx.t("card.pocket.area.outside") : room.name);
+  setAttr(parts.back, "aria-label", ctx.t("card.pocket.area.back"));
+  setAttr(parts.dots, "aria-label", ctx.t("card.pocket.area.position", { index: parts.index + 1, count: rooms.length }));
   updateSquares(parts, ctx);
   if (parts.lightsSec) {
-    setText(parts.lightsSec, ctx.t(parts.groupTile ? "card.pocket.room.lights" : "card.pocket.room.scenes"));
+    setText(parts.lightsSec, ctx.t(parts.groupTile ? "card.pocket.area.lights" : "card.pocket.area.scenes"));
   }
   if (parts.groupTile) {
-    parts.groupTile.config = { name: ctx.t("card.pocket.room.all_lights"), entities: lightsOf(room) };
+    parts.groupTile.config = { name: ctx.t("card.pocket.area.all_lights"), entities: lightsOf(room) };
     updateMembers(parts, ctx);
   }
   for (const tile of parts.tiles) {
@@ -271,7 +272,7 @@ export function update(root, ctx) {
     button.disabled = !!ctx.offline;
   }
   updateMedia(parts, ctx);
-  if (parts.empty) setText(parts.empty, ctx.t("card.pocket.room.empty"));
+  if (parts.empty) setText(parts.empty, ctx.t("card.pocket.area.empty"));
 }
 
 function setClass(node, base, lv, muted = false) {
@@ -283,7 +284,7 @@ function formatted(ctx, reading, value) {
   if (value == null) return ctx.t("card.pocket.format.none");
   if (reading === "temperature") return temperature(ctx, value);
   if (reading === "humidity") return percent(ctx, value);
-  return ctx.t(`card.pocket.room.reading.${reading}`, { value: number(ctx, value, 0, { grouping: false }) });
+  return ctx.t(`card.pocket.area.reading.${reading}`, { value: number(ctx, value, 0, { grouping: false }) });
 }
 
 function updateSquares(parts, ctx) {
@@ -296,7 +297,7 @@ function updateSquares(parts, ctx) {
     let worst = null;
     s.cells.forEach(({ reading, value }, i) => {
       const lv = levels[reading];
-      const n = numberOf(hass, source[reading]);
+      const n = s.kind === "climate" ? climateValue(hass, room, reading) : numberOf(hass, source[reading]);
       setClass(value, i === 0 ? "big" : "v", lv?.level, n == null);
       setText(value, formatted(ctx, reading, n));
       if (lv && (!worst || RANK[lv.level] > RANK[worst.result.level])) worst = { reading, result: lv };
@@ -310,7 +311,7 @@ function updateSquares(parts, ctx) {
     // No values on the line (a square of one reading): no separator before the level text.
     setText(s.sep, text && s.cells.length > 1 ? " · " : "");
     setText(s.text, text);
-    setText(s.title, ctx.t(`card.pocket.room.${s.kind}`));
+    setText(s.title, ctx.t(`card.pocket.area.${s.kind}`));
     setClass(s.dot, "", worst?.result.level);
   }
 }
@@ -337,7 +338,7 @@ function updateMembers(parts, ctx) {
   }
   parts.toggle.hidden = members.length === 0;
   parts.members.hidden = !parts.open || members.length === 0;
-  setText(parts.toggle, `${ctx.t(`card.pocket.room.members.${pluralOf(ctx, members.length)}`, { count: members.length })} ›`);
+  setText(parts.toggle, `${ctx.t(`card.pocket.area.members.${pluralOf(ctx, members.length)}`, { count: members.length })} ›`);
   setAttr(parts.toggle, "aria-expanded", String(!!parts.open));
 }
 
@@ -346,7 +347,7 @@ function updateMedia(parts, ctx) {
   const state = player ? ctx.hass?.states?.[player] : undefined;
   media.hidden = !state;
   parts.musicSec.hidden = !state;
-  setText(parts.musicSec, ctx.t("card.pocket.room.music"));
+  setText(parts.musicSec, ctx.t("card.pocket.area.music"));
   if (!state) return;
   const gone = GONE.has(state.state);
   const a = gone ? {} : state.attributes ?? {};

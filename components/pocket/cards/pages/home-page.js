@@ -150,12 +150,12 @@ export function render(ctx) {
   quick.append(allOff);
   parts.quickSec.hidden = withLights.length === 0;
 
-  parts.allRooms.addEventListener("click", () => parts.ctx.navigate("#/rooms"));
+  parts.allRooms.addEventListener("click", () => parts.ctx.navigate("#/areas"));
   const strip = root.querySelector(".strip");
   for (const room of rooms) {
     const card = el("button", "rc", `<span class="t1"></span> <span class="t2"></span>`);
     card.type = "button";
-    card.addEventListener("click", () => parts.ctx.navigate(`#/room/${room.id}`));
+    card.addEventListener("click", () => parts.ctx.navigate(`#/area/${room.id}`));
     parts.roomCards.push({ room, card });
     strip.append(card);
   }

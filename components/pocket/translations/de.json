@@ -15,8 +15,11 @@
     "pocket": {
       "nav": {
         "home": "Zuhause",
-        "rooms": "Räume",
+        "areas": "Bereiche",
+        "climate": "Klima",
         "media": "Medien",
+        "power": "Energie",
+        "plants": "Pflanzen",
         "settings": "Einstellungen"
       },
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
@@ -100,22 +103,22 @@
         "media": "Der Player hat nicht reagiert. Bitte erneut versuchen.",
         "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen."
       },
-      "rooms": {
-        "title": "Räume",
+      "areas": {
+        "title": "Bereiche",
         "count": {
-          "one": "{count} Raum",
-          "few": "{count} Räume",
-          "many": "{count} Räume",
-          "other": "{count} Räume"
+          "one": "{count} Bereich",
+          "few": "{count} Bereiche",
+          "many": "{count} Bereiche",
+          "other": "{count} Bereiche"
         },
         "lights_on": "{count} an",
         "all_off": "Alle aus",
         "air": "Luft {value}",
         "attention": "Braucht Aufmerksamkeit"
       },
-      "room": {
-        "back": "Zurück zu den Räumen",
-        "position": "Raum {index} von {count}",
+      "area": {
+        "back": "Zurück zu den Bereichen",
+        "position": "Bereich {index} von {count}",
         "climate": "Klima",
         "air": "Luft",
         "lights": "Licht",
@@ -135,7 +138,8 @@
           "pm2_5": "PM2.5 {value}",
           "voc": "VOC {value}",
           "nox": "NOx {value}"
-        }
+        },
+        "outside": "Draussen"
       }
     }
   }

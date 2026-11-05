@@ -8,9 +8,21 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 
 - **Home**: attention pills, readings (inside and outside, with the air score and a lights-on
   chip), now playing, quick light tiles and a rooms strip.
-- **Rooms** tab: every room with its lights and readings.
-- **Room page**: one room in detail; a horizontal swipe goes to the next or previous room.
-- **Bottom bar**: Home, Rooms, Media, Settings. Media and Settings are "coming next".
+- **Areas** tab (`#/areas`): every room with its lights and readings, then the **Outside** when
+  the home has `outside` or `weather`.
+- **Area page** (`#/area/<id>`): one room in detail, or the Outside's temperature and humidity
+  (levels against climate-air's outside range); a horizontal swipe goes to the next or previous
+  area. The first version's `#/rooms` and `#/room/<id>` links are redirected.
+- **Bottom bar**: fixed to the bottom of the screen (beside HA's sidebar on a wide screen), its
+  background down over the home indicator. Home and Settings always, the person's chosen pages
+  between them, at most five; by default Home, Areas, Climate, Media, Settings. Climate, Media,
+  Power, Plants and Settings are "coming next".
+
+### Per-person settings
+
+Stored in Home Assistant's frontend user data (websocket `frontend/get_user_data` /
+`frontend/set_user_data`, key `domosenso-pocket`): they follow the person to every device and are
+nobody else's. Field `bar`: the page ids on the bar. When they cannot be read, the defaults apply.
 
 Levels are good, fair or poor (plus a side, low or high, for comfort ranges). They are computed in
 the cards from the states and climate-air's limits; the messages are translations.
@@ -21,8 +33,10 @@ the cards from the states and climate-air's limits; the messages are translation
   all on.
 - A horizontal drag sets its brightness. It never turns a light off: it floors at 1 %.
 - A long press opens Home Assistant's details for the light.
-- A horizontal swipe on a room page goes to the next or previous room, replacing the history
-  entry: Back returns to Rooms, not through every room.
+- A horizontal swipe on an area page goes to the next or previous area, replacing the history
+  entry: Back returns to Areas, not through every area.
+- Nothing in the pocket scrolls sideways and the bar takes no drags, so neither a sideways drag
+  nor iOS's rubber band moves the bar or the page; HA's pull to refresh from the top stays.
 
 ## Use in the Companion app
 

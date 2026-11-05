@@ -104,7 +104,7 @@ test("attention pills: translated reading, level and side, poor first; a tap ope
   assert.ok(el.querySelector(".att .pill .dot.poor"));
   assert.ok(el.querySelector(".att .pill .dot.fair"));
   el.querySelectorAll(".att .pill")[1].click();
-  assert.deepEqual(ctx.routes, ["#/room/bedroom"]);
+  assert.deepEqual(ctx.routes, ["#/area/bedroom"]);
 });
 
 test("pills in Polish and German come from the translations", () => {
@@ -208,7 +208,7 @@ test("rooms strip: one card per room, a tap opens it; All opens Rooms", () => {
   assert.match(text(cards[0].querySelector(".t2")), /21\.7°/);
   cards[2].click();
   el.querySelector(".sec .all").click();
-  assert.deepEqual(ctx.routes, ["#/room/office", "#/rooms"]);
+  assert.deepEqual(ctx.routes, ["#/area/office", "#/areas"]);
 });
 
 test("offline: controls are disabled and send nothing", () => {
@@ -247,7 +247,7 @@ test("the language follows ctx on update", () => {
 
 test("lights on: one definition with Rooms, a group counts its members, each lamp once", async () => {
   const demo = await import("../testing/demo-home.mjs");
-  const rooms = await import("./rooms-page.js");
+  const rooms = await import("./areas-page.js");
   const states = { ...demo.baseStates(),
     "light.living_room_lamp": demo.st("on", { brightness: 255, friendly_name: "Reading lamp" }) };
   // The office names a lamp of the living-room group as well: it is still one lamp on.
@@ -275,7 +275,7 @@ test("rooms strip: an unavailable reading is a muted dash", () => {
 
 test("a group that is on with every member unavailable is one lamp on: chip, All off and Rooms agree", async () => {
   const demo = await import("../testing/demo-home.mjs");
-  const rooms = await import("./rooms-page.js");
+  const rooms = await import("./areas-page.js");
   const members = ["light.g_a", "light.g_b", "light.g_c", "light.g_d"];
   const states = { ...demo.baseStates(),
     "light.living_room": demo.st("on", { brightness: 240, entity_id: members }),

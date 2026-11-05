@@ -15,8 +15,11 @@
     "pocket": {
       "nav": {
         "home": "Dom",
-        "rooms": "Pomieszczenia",
+        "areas": "Obszary",
+        "climate": "Klimat",
         "media": "Media",
+        "power": "Energia",
+        "plants": "Rośliny",
         "settings": "Ustawienia"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
@@ -100,22 +103,22 @@
         "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie.",
         "scene": "Scena nie odpowiedziała. Spróbuj ponownie."
       },
-      "rooms": {
-        "title": "Pomieszczenia",
+      "areas": {
+        "title": "Obszary",
         "count": {
-          "one": "{count} pomieszczenie",
-          "few": "{count} pomieszczenia",
-          "many": "{count} pomieszczeń",
-          "other": "{count} pomieszczenia"
+          "one": "{count} obszar",
+          "few": "{count} obszary",
+          "many": "{count} obszarów",
+          "other": "{count} obszaru"
         },
         "lights_on": "{count} wł.",
         "all_off": "Wszystko wył.",
         "air": "Powietrze {value}",
         "attention": "Wymaga uwagi"
       },
-      "room": {
-        "back": "Wróć do pomieszczeń",
-        "position": "Pomieszczenie {index} z {count}",
+      "area": {
+        "back": "Wróć do obszarów",
+        "position": "Obszar {index} z {count}",
         "climate": "Klimat",
         "air": "Powietrze",
         "lights": "Światła",
@@ -135,7 +138,8 @@
           "pm2_5": "PM2.5 {value}",
           "voc": "VOC {value}",
           "nox": "NOx {value}"
-        }
+        },
+        "outside": "Na zewnątrz"
       }
     }
   }

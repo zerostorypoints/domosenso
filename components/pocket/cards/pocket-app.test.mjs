@@ -37,10 +37,10 @@ beforeEach(async () => {
   await goTo("#/");
 });
 
-test("the bar has four translated labels", () => {
-  assert.deepEqual(labels(mount({ lang: "en" })), ["Home", "Rooms", "Media", "Settings"]);
-  assert.deepEqual(labels(mount({ lang: "pl" })), ["Dom", "Pomieszczenia", "Media", "Ustawienia"]);
-  assert.deepEqual(labels(mount({ lang: "de" })), ["Zuhause", "Räume", "Medien", "Einstellungen"]);
+test("the bar has the default five translated labels", () => {
+  assert.deepEqual(labels(mount({ lang: "en" })), ["Home", "Areas", "Climate", "Media", "Settings"]);
+  assert.deepEqual(labels(mount({ lang: "pl" })), ["Dom", "Obszary", "Klimat", "Media", "Ustawienia"]);
+  assert.deepEqual(labels(mount({ lang: "de" })), ["Zuhause", "Bereiche", "Klima", "Medien", "Einstellungen"]);
 });
 
 test("the config's language wins over Home Assistant's", () => {
@@ -51,7 +51,7 @@ test("the config's language wins over Home Assistant's", () => {
 test("each tab is a button of at least 44 px, the bar 64 px over the safe area", () => {
   const card = mount();
   const tabs = $$(card, "nav .tab");
-  assert.equal(tabs.length, 4);
+  assert.equal(tabs.length, 5);
   for (const tab of tabs) assert.equal(tab.tagName, "BUTTON");
   const css = $(card, "style").textContent;
   assert.match(css, /--bar:\s*64px/);
@@ -71,8 +71,8 @@ test("the active item follows location.hash", async () => {
   assert.deepEqual(active(card), ["home"]);
   await goTo("#/settings");
   assert.deepEqual(active(card), ["settings"]);
-  await goTo("#/room/kitchen");
-  assert.deepEqual(active(card), ["rooms"]);
+  await goTo("#/area/kitchen");
+  assert.deepEqual(active(card), ["areas"]);
   assert.equal($(card, "nav .tab.active").getAttribute("aria-current"), "page");
 });
 
@@ -85,25 +85,25 @@ test("navigate updates the hash and the page without re-creating the shell", asy
   const card = mount();
   const nav = $(card, "nav");
   const page = $(card, "main").firstElementChild;
-  card._ctx().navigate("#/rooms");
-  assert.equal(window.location.hash, "#/rooms");
-  assert.deepEqual(active(card), ["rooms"]);
+  card._ctx().navigate("#/areas");
+  assert.equal(window.location.hash, "#/areas");
+  assert.deepEqual(active(card), ["areas"]);
   assert.equal($(card, "nav"), nav);
   assert.notEqual($(card, "main").firstElementChild, page);
   await tick();
-  assert.deepEqual(active(card), ["rooms"]);
+  assert.deepEqual(active(card), ["areas"]);
 });
 
 test("a tap on a tab navigates", () => {
   const card = mount();
-  $$(card, "nav .tab")[3].click();
+  $$(card, "nav .tab")[4].click();
   assert.equal(window.location.hash, "#/settings");
   assert.deepEqual(active(card), ["settings"]);
 });
 
 test("back (hashchange) returns to the page before", async () => {
   const card = mount();
-  card._ctx().navigate("#/rooms");
+  card._ctx().navigate("#/areas");
   await tick();
   await goTo("#/");
   assert.deepEqual(active(card), ["home"]);
@@ -118,7 +118,7 @@ test("a hass update updates the page, it does not re-render it", () => {
 
 test("the page gets the contract's ctx", async () => {
   const card = mount({ lang: "pl" });
-  await goTo("#/room/kitchen");
+  await goTo("#/area/kitchen");
   const ctx = card._ctx();
   assert.equal(ctx.lang, "pl");
   assert.equal(ctx.routeId, "kitchen");
@@ -127,12 +127,13 @@ test("the page gets the contract's ctx", async () => {
   assert.equal(typeof ctx.hass, "object");
   assert.equal(ctx.t("card.pocket.nav.home"), "Dom");
   assert.equal(typeof ctx.navigate, "function");
-  await goTo("#/rooms");
+  await goTo("#/areas");
   assert.equal(card._ctx().routeId, undefined);
 });
 
 test("every page follows the contract; Home is built, a page not built yet says so", async () => {
-  assert.deepEqual(Object.keys(pages).sort(), ["home", "media", "room", "rooms", "settings"]);
+  assert.deepEqual(Object.keys(pages).sort(),
+    ["area", "areas", "climate", "floorplan", "home", "media", "plants", "power", "settings"]);
   for (const [id, page] of Object.entries(pages)) {
     assert.equal(typeof page.render, "function", id);
     assert.equal(typeof page.update, "function", id);
@@ -173,50 +174,64 @@ test("a removed card stops listening to hashchange", async () => {
   assert.deepEqual(active(card), ["home"]);
 });
 
-test("the bar is sticky at the bottom of the card, after the page, not fixed over it", () => {
+test("the bar is fixed to the bottom of the screen, its background down over the safe area", () => {
   const card = mount();
   const nav = $(card, "nav");
   const style = getComputedStyle(nav);
-  assert.equal(style.position, "sticky");
+  assert.equal(style.position, "fixed");
   assert.equal(style.bottom, "0px");
-  // In the flow after <main>, so it takes its own height and covers no page content.
-  assert.equal(nav.parentElement, $(card, ".app"));
-  assert.equal(nav.previousElementSibling, $(card, "main"));
   const css = $(card, "style").textContent;
-  assert.doesNotMatch(css, /position:\s*fixed/);
+  assert.doesNotMatch(css, /position:\s*sticky/);
+  // Full width, or beside HA's open sidebar on a wide screen.
+  assert.match(css, /nav \{[^}]*left: var\(--mdc-drawer-width, 0px\); right: 0; bottom: 0/);
+  // The safe area is padding inside the bar: its background reaches the screen's edge.
   assert.match(css, /nav \{[^}]*height:\s*calc\(var\(--bar\) \+ var\(--safe\)\)/);
   assert.match(css, /nav \{[^}]*padding-bottom:\s*var\(--safe\)/);
+  // The page ends above the bar.
+  assert.match(css, /main \{[^}]*padding: 12px 16px calc\(var\(--bar\) \+ var\(--safe\) \+ 16px\)/);
 });
 
-test("an unknown room goes to Rooms, replacing the entry; pages never see its id", async () => {
+test("no page drift: nothing scrolls sideways, overscroll stays in the app, HA's scroller is left alone", () => {
+  const css = $(mount(), "style").textContent;
+  assert.match(css, /\.app \{[^}]*overflow-x: clip; overscroll-behavior: none/);
+  assert.match(css, /\.app \* \{ overscroll-behavior-x: none; \}/);
+  assert.match(css, /main \{[^}]*touch-action: pan-y/);
+  assert.match(css, /nav \{[^}]*touch-action: none/);
+  // Not overflow-x: hidden, which would make the app a scroll container of its own; and nothing
+  // on :host, so HA's own scroller (pull to refresh from the top) keeps its behaviour.
+  assert.doesNotMatch(css, /overflow-x:\s*hidden/);
+  assert.match(css, /:host \{ display: block; \}/);
+});
+
+test("an unknown area goes to Areas, replacing the entry; pages never see its id", async () => {
   const card = mount();
   const before = window.history.length;
-  await goTo("#/room/nowhere");
-  assert.equal(window.location.hash, "#/rooms");
-  assert.deepEqual(active(card), ["rooms"]);
+  await goTo("#/area/nowhere");
+  assert.equal(window.location.hash, "#/areas");
+  assert.deepEqual(active(card), ["areas"]);
   assert.equal(card._ctx().routeId, undefined);
-  card._ctx().navigate("#/room/nowhere");
-  assert.equal(window.location.hash, "#/rooms");
+  card._ctx().navigate("#/area/nowhere");
+  assert.equal(window.location.hash, "#/areas");
   assert.equal(card._ctx().routeId, undefined);
   assert.ok(window.history.length <= before + 1, "at most the one entry of the hash set by the test");
-  card._ctx().navigate("#/room/kitchen");
+  card._ctx().navigate("#/area/kitchen");
   assert.equal(card._ctx().routeId, "kitchen");
 });
 
-test("a card opened on an unknown room shows Rooms", async () => {
-  await goTo("#/room/nowhere");
+test("a card opened on an unknown area shows Areas", async () => {
+  await goTo("#/area/nowhere");
   const card = mount();
-  assert.equal(window.location.hash, "#/rooms");
-  assert.deepEqual(active(card), ["rooms"]);
+  assert.equal(window.location.hash, "#/areas");
+  assert.deepEqual(active(card), ["areas"]);
 });
 
 test("the bar's labels follow a change of language without a change of route", () => {
   const card = mount({ lang: null, hass: hassOf({ locale: { language: "en" } }) });
-  assert.equal(labels(card)[1], "Rooms");
+  assert.equal(labels(card)[1], "Areas");
   card.hass = hassOf({ locale: { language: "pl" } });
-  assert.equal(labels(card)[1], "Pomieszczenia");
+  assert.equal(labels(card)[1], "Obszary");
   card.setConfig({ ...config("de") });
-  assert.equal(labels(card)[1], "Räume");
+  assert.equal(labels(card)[1], "Bereiche");
 });
 
 test("the offline banner's text colour is a token of both themes", () => {
@@ -261,12 +276,93 @@ test("the shell is at least a viewport tall under the header, with a vh fallback
 
 test("navigate with replace swaps the history entry: Back returns past it", async () => {
   const card = mount();
-  card._ctx().navigate("#/rooms");
-  card._ctx().navigate("#/room/kitchen", { replace: true });
-  assert.equal(window.location.hash, "#/room/kitchen");
+  card._ctx().navigate("#/areas");
+  card._ctx().navigate("#/area/kitchen", { replace: true });
+  assert.equal(window.location.hash, "#/area/kitchen");
   assert.equal(card._ctx().routeId, "kitchen");
-  assert.deepEqual(active(card), ["rooms"]);
+  assert.deepEqual(active(card), ["areas"]);
   const length = window.history.length;
-  card._ctx().navigate("#/rooms", { replace: true });
+  card._ctx().navigate("#/areas", { replace: true });
   assert.equal(window.history.length, length, "no entry added");
+});
+
+test("a link of the first version lands on its new route, in place of the old entry", async () => {
+  const card = mount();
+  const length = window.history.length;
+  await goTo("#/rooms");
+  assert.equal(window.location.hash, "#/areas");
+  assert.deepEqual(active(card), ["areas"]);
+  await goTo("#/room/kitchen");
+  assert.equal(window.location.hash, "#/area/kitchen");
+  assert.equal(card._ctx().routeId, "kitchen");
+  card._ctx().navigate("#/rooms");
+  assert.equal(window.location.hash, "#/areas");
+  assert.ok(window.history.length <= length + 3, "only the entries the test set");
+});
+
+test("the Outside is an area when the home has one; a route to it without one goes to Areas", async () => {
+  mount();
+  await goTo("#/area/outside");
+  assert.equal(window.location.hash, "#/areas");
+  document.body.innerHTML = "";
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...config(), outside: { temperature: "sensor.outside_temperature" } });
+  document.body.appendChild(card);
+  card.hass = hassOf();
+  await goTo("#/area/outside");
+  assert.equal(window.location.hash, "#/area/outside");
+  assert.equal(card._ctx().routeId, "outside");
+  assert.deepEqual(active(card), ["areas"]);
+});
+
+test("pages not built yet say so: climate, power, plants, the floor plan", async () => {
+  const card = mount();
+  for (const hash of ["#/climate", "#/power", "#/plants", "#/floorplan"]) {
+    await goTo(hash);
+    assert.match($(card, "main").textContent, /Coming next/, hash);
+  }
+  assert.deepEqual(active(card), ["areas"], "the floor plan belongs to Areas");
+});
+
+// A hass whose frontend user data holds `stored` under the pocket's key.
+const hassWithData = (stored, calls = []) => hassOf({
+  callWS: async (msg) => {
+    calls.push(msg);
+    if (msg.type === "frontend/get_user_data") return { value: stored };
+    if (msg.type === "frontend/set_user_data") { stored = msg.value; return null; }
+    throw new Error("unknown command");
+  },
+});
+
+test("the bar shows the person's pages from their settings, read once", async () => {
+  const calls = [];
+  const card = mount({ hass: hassWithData({ bar: ["power", "plants"] }, calls) });
+  await tick();
+  assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "power", "plants", "settings"]);
+  assert.deepEqual(labels(card), ["Home", "Power", "Plants", "Settings"]);
+  card.hass = hassWithData({ bar: [] }, calls);
+  await tick();
+  assert.equal(calls.filter((c) => c.type === "frontend/get_user_data").length, 1);
+  assert.deepEqual(card._ctx().settings.bar, ["power", "plants"]);
+  // The toast stays on the bar after it is rebuilt.
+  assert.equal($(card, ".toast").parentElement, $(card, "nav"));
+});
+
+test("settings that cannot be read: the default bar", async () => {
+  const card = mount({ hass: hassOf({ callWS: () => Promise.reject(new Error("unknown command")) }) });
+  await tick();
+  assert.deepEqual(labels(card), ["Home", "Areas", "Climate", "Media", "Settings"]);
+});
+
+test("ctx.saveSettings stores the change and the bar follows it", async () => {
+  const calls = [];
+  const card = mount({ hass: hassWithData(null, calls) });
+  await tick();
+  const saved = await card._ctx().saveSettings({ bar: ["areas", "plants"] });
+  assert.deepEqual(saved.bar, ["areas", "plants"]);
+  assert.deepEqual(calls.at(-1),
+    { type: "frontend/set_user_data", key: "domosenso-pocket", value: { bar: ["areas", "plants"] } });
+  assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "areas", "plants", "settings"]);
+  await goTo("#/plants");
+  assert.deepEqual(active(card), ["plants"]);
 });

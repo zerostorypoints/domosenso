@@ -15,8 +15,11 @@
     "pocket": {
       "nav": {
         "home": "Home",
-        "rooms": "Rooms",
+        "areas": "Areas",
+        "climate": "Climate",
         "media": "Media",
+        "power": "Power",
+        "plants": "Plants",
         "settings": "Settings"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
@@ -100,22 +103,22 @@
         "media": "The player did not respond. Try again.",
         "scene": "The scene did not start. Try again."
       },
-      "rooms": {
-        "title": "Rooms",
+      "areas": {
+        "title": "Areas",
         "count": {
-          "one": "{count} room",
-          "few": "{count} rooms",
-          "many": "{count} rooms",
-          "other": "{count} rooms"
+          "one": "{count} area",
+          "few": "{count} areas",
+          "many": "{count} areas",
+          "other": "{count} areas"
         },
         "lights_on": "{count} on",
         "all_off": "All off",
         "air": "Air {value}",
         "attention": "Needs attention"
       },
-      "room": {
-        "back": "Back to rooms",
-        "position": "Room {index} of {count}",
+      "area": {
+        "back": "Back to areas",
+        "position": "Area {index} of {count}",
         "climate": "Climate",
         "air": "Air",
         "lights": "Lights",
@@ -135,7 +138,8 @@
           "pm2_5": "PM2.5 {value}",
           "voc": "VOC {value}",
           "nox": "NOx {value}"
-        }
+        },
+        "outside": "Outside"
       }
     }
   }
