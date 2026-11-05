@@ -3,8 +3,8 @@
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
 //     reading that was checked, per area, the Outside included, problems first;
-//   - metric chips: inside (the range of the rooms' temperatures), outside, the air score of the
-//     first room that has one, the number of lights on; a chip whose entity the config does not
+//   - metric chips: inside (the range of the rooms' temperatures), outside, the home's air score
+//     (lib/climate.js homeAir: the lowest room's), the number of lights on; a chip whose entity the config does not
 //     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
 //     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
 //     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
@@ -31,6 +31,7 @@ import { formatDate } from "../lib/i18n.js";
 import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
+import { homeAir } from "../lib/climate.js";
 import {
   GONE, el, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
@@ -292,11 +293,9 @@ function updateChips(parts, ctx) {
   set("outside", !!outsideId, temperature(ctx, numberOf(hass, outsideId)), {
     result: levelIn(outsideArea(config), "temperature"), entity: outsideId, reading: "temperature" });
 
-  const airRoom = config.rooms.find((room) => room.air?.score);
-  const scoreId = airRoom?.air.score;
-  const score = numberOf(hass, scoreId);
-  set("air", !!scoreId, score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0), {
-    result: levelIn(airRoom, "score"), entity: scoreId, reading: "score" });
+  const air = homeAir(hass, config);
+  set("air", !!air, air?.value == null ? ctx.t("card.pocket.format.none") : number(ctx, air.value, 0), {
+    result: air?.result, entity: air?.entity, reading: "score" });
 
   set("lights_on", allLights(config).length > 0, String(lightsOnIn(hass, config.rooms)));
 }
@@ -304,10 +303,9 @@ function updateChips(parts, ctx) {
 // The sheet behind a chip (null: nothing to show): inside the checks of the rooms' temperatures,
 // outside and air the trend of their reading, lights on the lights that are on.
 function chipSheet(ctx, name) {
-  const { rooms } = ctx.config;
   if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
   if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
-  if (name === "air") return trendSpec(ctx, rooms.find((room) => room.air?.score), "score");
+  if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
   return null;
 }

@@ -5,12 +5,18 @@
 //       the daily forecast the way Home Assistant's own weather card gets it: the websocket
 //       subscription weather/subscribe_forecast (forecast_type daily). One subscription per entity
 //       however many widgets watch it; the last stop() ends it (a new connection starts a new
-//       one). listener() runs whenever new days arrive or the subscription fails.
-//   daysOf(hass, entity) -> [day]   the subscription's days; until it has some, or when it failed
-//       (an old Home Assistant, a refused call, a hass without subscribeMessage), the entity's
-//       `forecast` attribute (older integrations still carry it); [] without either
-//   splitDays(days, now?, limit?) -> {today, next}   today: the first day when its date is today,
-//       else null; next: the following days, at most limit (NEXT_DAYS)
+//       one). listener() runs whenever new days arrive or the subscription fails. A refused
+//       subscription is asked for again after RETRY_S (10, 30, 60, then every 300 s), as the
+//       Ramka's clock-weather-card does, until it is accepted or the last widget stops.
+//   daysOf(hass, entity) -> [day]   the subscription's days; until it has some (an old Home
+//       Assistant, a refused call, a hass without subscribeMessage), the entity's `forecast`
+//       attribute (older integrations still carry it); [] without either
+//   splitDays(days, now?, limit?, timeZone?) -> {today, next}   today: the day dated today, else
+//       null (a day gone by is dropped); next: the following days, at most limit (NEXT_DAYS).
+//       Dates are Home Assistant's (timeZone: hass.config.time_zone, the browser's without it), and a day
+//       at exactly midnight UTC, as some integrations send a date, is that UTC date
+//   dayKey(day, timeZone?) -> {date: "YYYY-MM-DD", zone}   the date a day stands for, and the
+//       zone to name its weekday in
 //   iconOf(condition) -> an mdi icon name, as the Ramka's clock-weather-card maps Home
 //       Assistant's weather conditions
 //   <pocket-forecast mode="row|strip|list">   the widget: el.ctx = ctx (page contract) draws it;
@@ -42,36 +48,45 @@ export const iconOf = (condition) => ICONS[condition] ?? FALLBACK_ICON;
 
 // --- the subscription ---------------------------------------------------------------------------
 
-const feeds = new Map();       // entity id -> {conn, listeners, days, failed, unsub, ended}
+const feeds = new Map();       // entity id -> {conn, listeners, days, unsub, ended, tries, retry}
+export const RETRY_S = [10, 30, 60, 300];
 
 function notify(feed) {
   if (feed.ended) return;
   for (const listener of [...feed.listeners]) listener();
 }
 
+// A refused subscription: the widgets draw the attribute meanwhile, and it is asked for again.
+function refused(feed) {
+  feed.unsub = null;
+  if (feed.ended) return;
+  notify(feed);
+  const wait = RETRY_S[Math.min(feed.tries++, RETRY_S.length - 1)];
+  feed.retry = setTimeout(() => { feed.retry = null; begin(feed); }, wait * 1000);
+}
+
 function begin(feed) {
-  if (typeof feed.conn?.subscribeMessage !== "function") {
-    feed.failed = true;
-    return;
-  }
+  // Without subscribeMessage there is nothing to ask again: the attribute it is.
+  if (feed.ended || typeof feed.conn?.subscribeMessage !== "function") return;
+  let unsub;
   try {
-    feed.unsub = feed.conn.subscribeMessage((message) => {
+    unsub = feed.conn.subscribeMessage((message) => {
       feed.days = Array.isArray(message?.forecast) ? message.forecast : [];
+      feed.tries = 0;
       notify(feed);
     }, { type: "weather/subscribe_forecast", forecast_type: "daily", entity_id: feed.entity });
   } catch {
-    feed.failed = true;
+    refused(feed);
     return;
   }
-  Promise.resolve(feed.unsub).catch(() => {
-    feed.failed = true;
-    feed.unsub = null;
-    notify(feed);
-  });
+  feed.unsub = unsub;
+  Promise.resolve(unsub).catch(() => { if (feed.unsub === unsub) refused(feed); });
 }
 
 function end(feed) {
   feed.ended = true;
+  clearTimeout(feed.retry);
+  feed.retry = null;
   if (feeds.get(feed.entity) === feed) feeds.delete(feed.entity);
   const unsub = feed.unsub;
   feed.unsub = null;
@@ -88,7 +103,7 @@ export function watchForecast(hass, entity, listener) {
     feed = null;
   }
   if (!feed) {
-    feed = { entity, conn, listeners: new Set(), days: null, failed: false, unsub: null, ended: false };
+    feed = { entity, conn, listeners: new Set(), days: null, unsub: null, ended: false, tries: 0, retry: null };
     feeds.set(entity, feed);
     begin(feed);
   }
@@ -111,13 +126,57 @@ const dateOf = (day) => {
   const date = new Date(day?.datetime);
   return Number.isNaN(date.getTime()) ? null : date;
 };
-const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const ymdFormats = new Map();  // one formatter per time zone ("" the browser's)
 
-export function splitDays(days, now = new Date(), limit = NEXT_DAYS) {
-  const dated = (Array.isArray(days) ? days : []).filter((day) => dateOf(day));
-  const today = dated.length && sameDay(dateOf(dated[0]), now) ? dated[0] : null;
-  const next = dated.filter((day) => day !== today && dateOf(day) > now).slice(0, limit);
+// A date as YYYY-MM-DD in a time zone; an unknown zone is the browser's.
+function ymd(date, timeZone) {
+  const key = timeZone ?? "";
+  if (!ymdFormats.has(key)) {
+    let format;
+    try {
+      format = new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || undefined, year: "numeric", month: "2-digit", day: "2-digit" });
+    } catch {
+      // A zone this browser does not know: its own.
+      format = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" });
+    }
+    ymdFormats.set(key, format);
+  }
+  return ymdFormats.get(key).format(date);
+}
+
+const utcMidnight = (date) => date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
+
+export function dayKey(day, timeZone) {
+  const date = dateOf(day);
+  if (!date) return null;
+  const zone = utcMidnight(date) ? "UTC" : timeZone;
+  return { date: ymd(date, zone), zone };
+}
+
+export function splitDays(days, now = new Date(), limit = NEXT_DAYS, timeZone) {
+  const keyed = (Array.isArray(days) ? days : []).map((day) => ({ day, key: dayKey(day, timeZone) }))
+    .filter(({ key }) => key);
+  const todayDate = ymd(now, timeZone);
+  // A forecast may still start with a day gone by (fetched before midnight): today is the day dated today.
+  const today = keyed.find(({ key }) => key.date === todayDate)?.day ?? null;
+  const next = keyed.filter(({ day, key }) => day !== today && key.date > todayDate).slice(0, limit).map(({ day }) => day);
   return { today, next };
+}
+
+const zones = new Map();       // time zone -> whether this browser knows it
+// Home Assistant's time zone when the browser knows it, else none (the browser's own).
+function timeZoneOf(hass) {
+  const zone = hass?.config?.time_zone;
+  if (typeof zone !== "string" || !zone) return undefined;
+  if (!zones.has(zone)) {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: zone });
+      zones.set(zone, true);
+    } catch {
+      zones.set(zone, false);
+    }
+  }
+  return zones.get(zone) ? zone : undefined;
 }
 
 // Tests start without subscriptions.
@@ -148,7 +207,8 @@ const rainOf = (day) => (isNumber(day?.precipitation_probability) ? day.precipit
 
 function dayName(ctx, day, today) {
   if (day === today) return ctx.t("card.pocket.weather.today");
-  return formatDate({ locale: { language: ctx.lang } }, dateOf(day), { weekday: "short" });
+  const zone = dayKey(day, timeZoneOf(ctx.hass))?.zone;
+  return formatDate({ locale: { language: ctx.lang } }, dateOf(day), zone ? { weekday: "short", timeZone: zone } : { weekday: "short" });
 }
 
 // --- the widget ---------------------------------------------------------------------------------
@@ -233,7 +293,8 @@ class PocketForecast extends HTMLElement {
     const state = entity ? ctx.hass?.states?.[entity] : undefined;
     const mode = this.getAttribute("mode") || "row";
     // The sheet lists every day the forecast gives.
-    const { today, next } = splitDays(daysOf(ctx.hass, entity), new Date(), mode === "list" ? Infinity : NEXT_DAYS);
+    const { today, next } = splitDays(daysOf(ctx.hass, entity), new Date(), mode === "list" ? Infinity : NEXT_DAYS,
+      timeZoneOf(ctx.hass));
     const days = [today, ...next].filter(Boolean);
     const current = state && !GONE.has(state.state) ? state.state : today?.condition;
     const key = JSON.stringify([mode, ctx.lang, current, days, ctx.t("card.pocket.weather.today")]);

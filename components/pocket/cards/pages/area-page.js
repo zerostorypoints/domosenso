@@ -71,7 +71,9 @@ const STYLE = `
      that has to wrap makes them all grow alike), a fixed aspect otherwise. */
   .room .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .room .squares > * { min-width: 0; }
-  .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; align-self: stretch; min-height: 88px; padding: 12px;
+  /* No min-height: an explicit one drops aspect-ratio's automatic minimum, and text that wraps
+     would spill out; without it a square grows with its content (the row, 1fr, with it). */
+  .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; align-self: stretch; padding: 12px;
               container-type: inline-size;
               display: flex; flex-direction: column; justify-content: space-between;
               background: var(--card); border: 1px solid var(--line); border-radius: 18px; }

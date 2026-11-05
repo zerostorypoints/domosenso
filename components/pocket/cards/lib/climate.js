@@ -16,6 +16,10 @@
 //       not numbers, or a range without width, give null.
 //   readingBand(hass, config, area, reading) -> bandOf(...) for an area's reading, its limits
 //       read from climate-air's helpers (lib/areas.js comfortOf, thresholds.air)
+//   homeAir(hass, config) -> {room, entity, value, result} | null
+//       the home's air score, one definition for Home's Air chip and the Climate page's Air
+//       square: the room with the lowest score (the worst air), the first room with a score while
+//       none has a number; null when no room has a score sensor. result: its level, or null
 //   VIEWS   the Climate page's switch: temperature, humidity, air (lib/settings.js climateView)
 
 import { numberOf } from "./level.js";
@@ -32,6 +36,19 @@ const COMFORT = { temperature: ["temp_low", "temp_high"], humidity: ["humidity_l
 const AIR_KIND = { score: "falling", co2: "rising", pm2_5: "rising", voc: "rising", nox: "rising" };
 
 const isNumber = (x) => typeof x === "number" && Number.isFinite(x);
+
+export function homeAir(hass, config) {
+  const rooms = (Array.isArray(config?.rooms) ? config.rooms : []).filter((room) => room.air?.score);
+  if (!rooms.length) return null;
+  let room = rooms[0];
+  let value = numberOf(hass, room.air.score);
+  for (const other of rooms.slice(1)) {
+    const v = numberOf(hass, other.air.score);
+    if (v != null && (value == null || v < value)) [room, value] = [other, v];
+  }
+  const result = roomLevels(hass, room, config.thresholds).find((found) => found.reading === "score")?.result ?? null;
+  return { room, entity: room.air.score, value, result };
+}
 
 export function adviceOf(hass, config) {
   if (!hass?.states || !Array.isArray(config?.rooms)) return [];

@@ -83,3 +83,19 @@ test("readingBand reads the area's helpers: a comfort range, an air limit, none 
   assert.equal(readingBand(hass, config, office, "temperature"), null);
   assert.equal(readingBand(hass, { ...config, thresholds: {} }, living, "co2"), null);
 });
+
+test("homeAir: the room with the lowest score, its entity, value and level; the first while none reads", async () => {
+  const { homeAir } = await import("./climate.js");
+  const cfg = { ...config, rooms: [...config.rooms, { id: "study", name: "Study", air: { score: "sensor.study_score" } }] };
+  const air = homeAir({ states: { ...baseStates(), "sensor.study_score": st(55) } }, cfg);
+  assert.equal(air.room.id, "study");
+  assert.equal(air.entity, "sensor.study_score");
+  assert.equal(air.value, 55);
+  assert.deepEqual(air.result, { level: "poor" });
+  assert.equal(homeAir({ states: { ...baseStates(), "sensor.study_score": st(95) } }, cfg).room.id, "living_room");
+  const none = homeAir({ states: { "sensor.living_room_air_quality_score": st("unavailable") } }, cfg);
+  assert.equal(none.room.id, "living_room");
+  assert.equal(none.value, null);
+  assert.equal(none.result, null);
+  assert.equal(homeAir({ states: {} }, { rooms: [{ id: "a", name: "A" }] }), null);
+});

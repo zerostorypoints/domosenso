@@ -2,7 +2,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import "../testing/dom-env.mjs";
 import {
-  watchForecast, daysOf, splitDays, iconOf, clearForecasts, forecastSpec, forecastSheet, NEXT_DAYS,
+  watchForecast, daysOf, splitDays, dayKey, iconOf, clearForecasts, forecastSpec, forecastSheet, NEXT_DAYS, RETRY_S,
 } from "./weather.js";
 import { createT } from "./i18n.js";
 import en from "../../translations/en.json" with { type: "json" };
@@ -189,4 +189,86 @@ test("the forecast sheet: the current row and every day of the forecast", () => 
   assert.equal(shadow(list).querySelectorAll(".day").length, 7);
   assert.equal(text(shadow(list).querySelector(".day .hl")), "6° / 1°");
   assert.equal(hass.connection.subs.length, 1, "both widgets share one subscription");
+});
+
+test("a refused subscription is asked for again after 10, 30, 60, then 300 s; the last stop ends the retries", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const flush = () => new Promise((r) => setImmediate(r));
+  assert.deepEqual(RETRY_S, [10, 30, 60, 300]);
+  const connection = connectionOf({ refuse: true });
+  const stop = watchForecast(hassOf({ connection }), "weather.home", () => {});
+  const asked = () => connection.subs.length;
+  await flush();
+  assert.equal(asked(), 1);
+  for (const [wait, count] of [[10, 2], [30, 3], [60, 4], [300, 5], [300, 6]]) {
+    t.mock.timers.tick(wait * 1000 - 1);
+    await flush();
+    assert.equal(asked(), count - 1, `not before ${wait} s`);
+    t.mock.timers.tick(1);
+    await flush();
+    assert.equal(asked(), count, `again after ${wait} s`);
+  }
+  stop();
+  t.mock.timers.tick(3600 * 1000);
+  await flush();
+  assert.equal(asked(), 6, "no retry after the last stop");
+});
+
+test("an accepted retry delivers days and stops retrying", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const flush = () => new Promise((r) => setImmediate(r));
+  let refuse = true;
+  const subs = [];
+  const connection = { subscribeMessage(callback) {
+    subs.push(callback);
+    return refuse ? Promise.reject(new Error("not yet")) : Promise.resolve(() => {});
+  } };
+  const hass = hassOf({ connection });
+  const stop = watchForecast(hass, "weather.home", () => {});
+  await flush();
+  refuse = false;
+  t.mock.timers.tick(10 * 1000);
+  await flush();
+  assert.equal(subs.length, 2);
+  subs[1]({ forecast: [dayAt(0)] });
+  t.mock.timers.tick(3600 * 1000);
+  await flush();
+  assert.equal(subs.length, 2, "accepted: no more retries");
+  assert.equal(daysOf(hass, "weather.home").length, 1);
+  stop();
+});
+
+test("today is Home Assistant's date: west of UTC late in the evening, a UTC-midnight first day is today", () => {
+  const zone = "America/New_York";
+  // 20:00 in New York on 5 November is already 6 November in UTC (and in Europe).
+  const now = new Date("2026-11-06T01:00:00Z");
+  const days = ["2026-11-05T00:00:00+00:00", "2026-11-06T00:00:00+00:00", "2026-11-07T00:00:00+00:00"]
+    .map((datetime) => ({ datetime, condition: "sunny", temperature: 10 }));
+  const { today, next } = splitDays(days, now, NEXT_DAYS, zone);
+  assert.equal(today, days[0]);
+  assert.deepEqual(next, days.slice(1));
+  assert.deepEqual(dayKey(days[0], zone), { date: "2026-11-05", zone: "UTC" });
+  // Days at local noon or midnight of HA's zone are that zone's dates.
+  const local = ["2026-11-05T00:00:00-05:00", "2026-11-06T12:00:00-05:00"].map((datetime) => ({ datetime }));
+  assert.equal(splitDays(local, now, NEXT_DAYS, zone).today, local[0]);
+  assert.deepEqual(dayKey(local[0], zone), { date: "2026-11-05", zone });
+  // In Warsaw the same moment is 6 November: the 5th is gone, the 6th is today.
+  assert.equal(splitDays(days, now, NEXT_DAYS, "Europe/Warsaw").today, days[1]);
+});
+
+test("the strip names today and the weekdays in Home Assistant's time zone", () => {
+  const hass = hassOf();
+  hass.config = { time_zone: "Pacific/Kiritimati" };   // UTC+14: its today differs from most browsers'
+  const widget = document.createElement("pocket-forecast");
+  widget.setAttribute("mode", "strip");
+  document.body.append(widget);
+  widget.ctx = ctxOf(hass);
+  const todayThere = new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Kiritimati" }).format(new Date());
+  const noonThere = new Date(`${todayThere}T12:00:00+14:00`);
+  hass.connection.push([0, 1].map((i) => ({ datetime: new Date(noonThere.getTime() + i * 86400000).toISOString(),
+    condition: "sunny", temperature: 20 })));
+  assert.equal(text(shadow(widget).querySelector(".day .dn")), "Today");
+  const tomorrow = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Pacific/Kiritimati" })
+    .format(new Date(noonThere.getTime() + 86400000));
+  assert.equal(text(shadow(widget).querySelectorAll(".day .dn")[1]), tomorrow);
 });

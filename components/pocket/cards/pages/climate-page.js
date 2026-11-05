@@ -6,8 +6,9 @@
 //   - summary squares, one size in a two-column grid as every widget grid: Inside (the range of the
 //     rooms' temperatures, in the worst room's colour, and how many rooms are out of range),
 //     Outside (its temperature in its tone, below its range --cold, above it --warm, with its trend
-//     arrow; the humidity and the level on the line), Air (the lowest air score with its level and
-//     arrow). Inside opens the checks of the rooms' temperatures, Outside and Air their trend;
+//     arrow; the humidity and the level on the line), Air (the home's air score, lib/climate.js
+//     homeAir, with its level and arrow). Inside opens the checks of the rooms' temperatures,
+//     Outside and Air their trend;
 //   - the weather (lib/weather.js): today and the next days as a strip, opening the forecast sheet;
 //     only when the config names a weather entity;
 //   - a Temp / Humidity / Air switch, remembered per person (settings field climateView);
@@ -23,7 +24,7 @@ import { numberOf, toneOf, levelKey } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
 import { areasOf } from "../lib/areas.js";
 import { AIR_READINGS, readingsOf, entityOf, valueOf } from "../lib/checks.js";
-import { adviceOf, readingBand, VIEWS } from "../lib/climate.js";
+import { adviceOf, homeAir, readingBand, VIEWS } from "../lib/climate.js";
 import { checksSpec } from "../lib/detail-sheets.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
@@ -61,7 +62,9 @@ const STYLE = `
   .climate .chev { flex: 0 0 auto; color: var(--mut); font-size: 18px; }
   .climate .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .climate .squares > * { min-width: 0; }
-  .climate .sq { box-sizing: border-box; width: 100%; aspect-ratio: 1 / .62; align-self: stretch; min-height: 88px;
+  /* No min-height: an explicit one drops aspect-ratio's automatic minimum, and text that wraps
+     would spill out; without it a square grows with its content (the row, 1fr, with it). */
+  .climate .sq { box-sizing: border-box; width: 100%; aspect-ratio: 1 / .62; align-self: stretch;
                  margin: 0; padding: 12px; container-type: inline-size;
                  display: flex; flex-direction: column; justify-content: space-between; text-align: left;
                  font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
@@ -233,20 +236,12 @@ function updateAdvice(parts, ctx) {
 const resultIn = (ctx, area, reading) =>
   area ? roomLevels(ctx.hass, area, ctx.config.thresholds).find((found) => found.reading === reading)?.result ?? null : null;
 
-// The room with the lowest air score: what the Air square shows.
-function airRoom(ctx) {
-  const rooms = ctx.config.rooms.filter((room) => room.air?.score);
-  const known = rooms.filter((room) => numberOf(ctx.hass, room.air.score) != null);
-  if (!known.length) return rooms[0] ?? null;
-  return known.reduce((low, room) => (numberOf(ctx.hass, room.air.score) < numberOf(ctx.hass, low.air.score) ? room : low));
-}
-
 const outsideOf = (ctx) => areasOf(ctx.config, ctx.t).find((area) => area.outside) ?? null;
 
 function squareSheet(ctx, name) {
   if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
   if (name === "outside") return trendSpec(ctx, outsideOf(ctx), "temperature");
-  if (name === "air") return trendSpec(ctx, airRoom(ctx), "score");
+  if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   return null;
 }
 
@@ -296,12 +291,11 @@ function updateSquares(parts, ctx) {
     value: temperature(ctx, outTemp), muted: outTemp == null, result: outResult,
     entity: outside?.climate?.temperature, reading: "temperature", line: outLine });
 
-  const room = airRoom(ctx);
-  const score = room ? numberOf(hass, room.air.score) : null;
-  const airResult = resultIn(ctx, room, "score");
-  setSquare(parts, ctx, "air", { shown: !!room,
-    value: score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0), muted: score == null,
-    result: airResult, entity: room?.air?.score, reading: "score",
+  const air = homeAir(hass, config);
+  const airResult = air?.result ?? null;
+  setSquare(parts, ctx, "air", { shown: !!air,
+    value: air?.value == null ? ctx.t("card.pocket.format.none") : number(ctx, air.value, 0), muted: air?.value == null,
+    result: airResult, entity: air?.entity, reading: "score",
     line: airResult ? [{ text: ctx.t(`card.pocket.square.air.score.${airResult.level}`) }] : [] });
 }
 

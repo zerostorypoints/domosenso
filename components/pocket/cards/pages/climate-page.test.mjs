@@ -204,3 +204,28 @@ test("targets of 44 px and text of at least 11.5 px", () => {
   const sizes = [...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]));
   assert.ok(sizes.every((size) => size >= 11.5), sizes.join(" "));
 });
+
+test("the Air square and Home's air chip agree: the lowest score, its trend behind both", async () => {
+  const home = await import("./home-page.js");
+  const cfg = { ...config, rooms: [...config.rooms, { id: "study", name: "Study", air: { score: "sensor.study_score" } }] };
+  const ctx = ctxWith({ cfg, changes: { "sensor.study_score": st(55) } });
+  const el = mount(ctx);
+  const homeEl = home.render(ctx);
+  document.body.append(homeEl);
+  assert.equal(text(el.querySelector('[data-square="air"] .num')), "55");
+  assert.equal(text(homeEl.querySelector('[data-chip="air"] .v')), "55");
+  assert.equal(el.querySelector('[data-square="air"] .big').className, "big lv-poor");
+  el.querySelector('[data-square="air"]').click();
+  homeEl.querySelector('[data-chip="air"]').click();
+  assert.deepEqual(ctx.sheets.map((s) => s.entity), ["sensor.study_score", "sensor.study_score"]);
+});
+
+test("squares grow with their content: a fixed aspect, no min-height (it would drop the automatic minimum)", async () => {
+  const { readFileSync } = await import("node:fs");
+  for (const [file, sel] of [["climate-page.js", ".climate .sq"], ["area-page.js", ".room .sq"], ["areas-page.js", ".rooms .sq"]]) {
+    const css = readFileSync(new URL(file, import.meta.url), "utf8");
+    const rule = css.match(new RegExp(`${sel.replace(/\./g, "\\.")} \\{([^}]*)\\}`))[1];
+    assert.match(rule, /aspect-ratio:/, file);
+    assert.doesNotMatch(rule, /min-height|(?<!-)height:|overflow/, file);
+  }
+});
