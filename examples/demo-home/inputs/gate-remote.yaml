@@ -1,0 +1,8 @@
+# gate-remote in the demo home: one node by the hall, Alex and Sam's garage door at 868.3 MHz.
+nodes:
+  - name: gate-remote
+    friendly_name: Gate remote
+    area: Hall
+    frequency: 868.3MHz
+    gates:
+      - {slug: garage, label: Garage}

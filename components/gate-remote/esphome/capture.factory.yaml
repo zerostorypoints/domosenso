@@ -1,0 +1,19 @@
+# domosenso component gate-remote: factory image for a board nobody has configured. It is the
+# capture firmware plus Wi-Fi provisioning over USB (Improv serial, e.g. from web.esphome.io) and a
+# fallback access point. The capture itself needs no network: the frames are logged over the same
+# USB cable (`esphome logs <file> --device <port>`).
+#
+# Flashed from the catalog: `uvx --from esphome==2026.9.1 esphome run components/gate-remote/esphome/capture.factory.yaml --device <port>`.
+
+packages:
+  capture: !include capture.yaml
+
+esphome:
+  name_add_mac_suffix: true
+
+wifi:
+  ap:
+
+captive_portal:
+
+improv_serial:

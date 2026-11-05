@@ -1,0 +1,17 @@
+capabilities:
+- id: gate-remote.explain
+  revision: 1
+  operation: read
+  query_type: component-query.v1
+  answer_type: component-description.v1
+  title_key: meta.assistant.explain.title
+  description_key: meta.assistant.explain.description
+  examples_key: meta.assistant.explain.examples
+  required_facts: []
+  optional_facts: []
+  policy:
+    evaluator: gate-remote.explain
+  freshness:
+    max_age_seconds: null
+    basis: installed_metadata
+  limitations: []
