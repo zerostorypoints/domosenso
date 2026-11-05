@@ -6,6 +6,15 @@
         "description": "Ein M5Stack-Modul mit einem CC1101-Funkmodul für 855 bis 925 MHz, SMA-Antenne und DIP-Schaltern für die Pinbelegung; mit acht Steckbrücken an das ESP32-Board angeschlossen.",
         "does": "Empfängt beim Aufzeichnen die Frames des Handsenders auf 868 MHz und sendet sie danach, damit das Board das Tor öffnen kann."
       }
+    },
+    "assistant": {
+      "explain": {
+        "title": "Über die Torfernbedienung",
+        "description": "Die Torfernbedienung sendet beim Drücken ihrer Taste den Code des eigenen Handsenders eines Garagen- oder Hoftors; die installierten Metadaten zeigen nicht, ob das Tor offen ist.",
+        "examples": [
+          "Was macht die Torfernbedienung?"
+        ]
+      }
     }
   }
 }

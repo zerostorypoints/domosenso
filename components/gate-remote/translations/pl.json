@@ -6,6 +6,15 @@
         "description": "Moduł M5Stack z układem radiowym CC1101 na pasmo 855–925 MHz, gniazdem anteny SMA i przełącznikami DIP do wyboru pinów; łączy się z płytką ESP32 ośmioma przewodami.",
         "does": "Podczas nagrywania odbiera ramki pilota na 868 MHz, a potem je nadaje, żeby płytka mogła otworzyć bramę."
       }
+    },
+    "assistant": {
+      "explain": {
+        "title": "O pilocie bramy",
+        "description": "Pilot bramy po naciśnięciu przycisku nadaje kod własnego pilota bramy garażowej lub wjazdowej; zainstalowane metadane nie pokazują, czy brama jest otwarta.",
+        "examples": [
+          "Co robi pilot bramy?"
+        ]
+      }
     }
   }
 }
