@@ -47,7 +47,11 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
   more-info), title, artist and album, the progress ticking on the phone, previous / play-pause
   (64 px) / next, a 44 px volume strip (drag along it, tap a point, or the arrow keys) and mute,
   each hidden when the player's `supported_features` lack it, and its app and source. The picker
-  top right lists every area's `media` player in a sheet; the choice is remembered per person.
+  top right lists every area's `media` players (one entity or a list), then every other media
+  player Home Assistant places in an area, in a sheet: each row the player's name, its area and
+  what it plays, or what it is doing (off, idle) when it plays nothing; the choice is remembered
+  per person. An integration that misses some playback (a DLNA renderer does not see Spotify
+  Connect) shows idle while the device plays: name the entity that sees it in the area's `media`.
   Home's now playing and an area's player open Media with that area's player. Every control shows
   its new state at once and rolls back with a toast when the player does not follow.
   - **Sound** (with the input `sound`, audio-sensor in the home): a Media | Sound switch; Sound
