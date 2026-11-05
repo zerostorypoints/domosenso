@@ -426,6 +426,74 @@
           "too_much_fertiliser": "Za dużo nawozu",
           "low_battery": "Słaba bateria"
         }
+      },
+      "sections": {
+        "label": "{name}: {head}, {status}",
+        "areas": {
+          "count": {
+            "one": "{count} obszar",
+            "few": "{count} obszary",
+            "many": "{count} obszarów",
+            "other": "{count} obszaru"
+          },
+          "lights_on": {
+            "one": "{count} światło włączone",
+            "few": "{count} światła włączone",
+            "many": "{count} świateł włączonych",
+            "other": "{count} światła włączonego"
+          }
+        },
+        "climate": {
+          "fine": "Wszystko w normie",
+          "look": {
+            "one": "{count} do sprawdzenia",
+            "few": "{count} do sprawdzenia",
+            "many": "{count} do sprawdzenia",
+            "other": "{count} do sprawdzenia"
+          },
+          "checked": {
+            "one": "{count} odczyt sprawdzony",
+            "few": "{count} odczyty sprawdzone",
+            "many": "{count} odczytów sprawdzonych",
+            "other": "{count} odczytu sprawdzonego"
+          }
+        },
+        "media": {
+          "players": {
+            "one": "{count} odtwarzacz",
+            "few": "{count} odtwarzacze",
+            "many": "{count} odtwarzaczy",
+            "other": "{count} odtwarzacza"
+          }
+        },
+        "power": {
+          "today": "Dziś {value}",
+          "silent": {
+            "one": "{count} licznik bez odczytu",
+            "few": "{count} liczniki bez odczytu",
+            "many": "{count} liczników bez odczytu",
+            "other": "{count} licznika bez odczytu"
+          }
+        },
+        "plants": {
+          "fine": "Wszystkie w porządku",
+          "need": {
+            "one": "{count} wymaga opieki",
+            "few": "{count} wymagają opieki",
+            "many": "{count} wymaga opieki",
+            "other": "{count} wymaga opieki"
+          },
+          "count": {
+            "one": "{count} roślina",
+            "few": "{count} rośliny",
+            "many": "{count} roślin",
+            "other": "{count} rośliny"
+          }
+        },
+        "floorplan": {
+          "head": "Cały dom",
+          "status": "Wszystkie obszary na jednym planie"
+        }
       }
     }
   }

@@ -426,6 +426,74 @@
           "too_much_fertiliser": "Too much fertiliser",
           "low_battery": "Low battery"
         }
+      },
+      "sections": {
+        "label": "{name}: {head}, {status}",
+        "areas": {
+          "count": {
+            "one": "{count} area",
+            "few": "{count} areas",
+            "many": "{count} areas",
+            "other": "{count} areas"
+          },
+          "lights_on": {
+            "one": "{count} light on",
+            "few": "{count} lights on",
+            "many": "{count} lights on",
+            "other": "{count} lights on"
+          }
+        },
+        "climate": {
+          "fine": "All in range",
+          "look": {
+            "one": "{count} needs a look",
+            "few": "{count} need a look",
+            "many": "{count} need a look",
+            "other": "{count} need a look"
+          },
+          "checked": {
+            "one": "{count} reading checked",
+            "few": "{count} readings checked",
+            "many": "{count} readings checked",
+            "other": "{count} readings checked"
+          }
+        },
+        "media": {
+          "players": {
+            "one": "{count} player",
+            "few": "{count} players",
+            "many": "{count} players",
+            "other": "{count} players"
+          }
+        },
+        "power": {
+          "today": "Today {value}",
+          "silent": {
+            "one": "{count} meter not reading",
+            "few": "{count} meters not reading",
+            "many": "{count} meters not reading",
+            "other": "{count} meters not reading"
+          }
+        },
+        "plants": {
+          "fine": "All fine",
+          "need": {
+            "one": "{count} needs care",
+            "few": "{count} need care",
+            "many": "{count} need care",
+            "other": "{count} need care"
+          },
+          "count": {
+            "one": "{count} plant",
+            "few": "{count} plants",
+            "many": "{count} plants",
+            "other": "{count} plants"
+          }
+        },
+        "floorplan": {
+          "head": "Whole home",
+          "status": "Every area on one plan"
+        }
       }
     }
   }

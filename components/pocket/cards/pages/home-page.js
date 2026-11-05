@@ -10,6 +10,9 @@
 //     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
 //     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
 //     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
+//   - Sections (lib/sections.js): a tile per page this home has, the bar's or not, each with its
+//     headline, its status and a dot when it is worth a look (fair or poor, its border too); a tap
+//     opens the page, so every page is reachable from Home while the bar is a quick switch;
 //   - the weather, when the config names a weather entity (lib/weather.js): one row under the
 //     chips, the current condition with today's high / low and chance of rain, opening the
 //     forecast sheet;
@@ -33,6 +36,8 @@ import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
+import { sectionsOf } from "../lib/sections.js";
+import { todayNow } from "../lib/energy.js";
 import {
   GONE, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
@@ -68,6 +73,18 @@ const STYLE = `
   .home .chip .v.lv-cold { color: var(--cold); }
   .home .chip .v.lv-warm { color: var(--warm); }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .art ha-icon[hidden], .home .quick-sec[hidden] { display: none; }
+  .home .sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr));
+                    grid-auto-rows: 1fr; gap: 8px; margin: -4px 0 14px; }
+  .home .sect { box-sizing: border-box; min-width: 0; min-height: 44px; margin: 0; padding: 10px 12px; text-align: left;
+                font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+                display: flex; flex-direction: column; gap: 2px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .home .sect.fair { border-color: var(--warn); }
+  .home .sect.poor { border-color: var(--bad); }
+  .home .sect .nm { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mut); --mdc-icon-size: 18px; }
+  .home .sect .nm .dot { margin-left: auto; }
+  .home .sect .nm .dot[hidden] { display: none; }
+  .home .sect .hd { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .home .sect .st { font-size: 12.5px; color: var(--mut); overflow-wrap: anywhere; }
   .home .wx { box-sizing: border-box; width: 100%; min-height: 52px; margin: -4px 0 14px; padding: 10px 12px;
               display: flex; align-items: center; gap: 8px; text-align: left; font: inherit; color: var(--fg);
               background: var(--card); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; }
@@ -123,6 +140,7 @@ export function render(ctx) {
     <div class="chips">
       ${["inside", "outside", "air", "lights_on"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
     </div>
+    <div class="sections"></div>
     <button class="wx" type="button" hidden><pocket-forecast mode="row"></pocket-forecast><span class="chev">›</span></button>
     <div class="now" hidden>
       <button class="open" type="button">
@@ -225,6 +243,7 @@ export function update(root, ctx) {
     { weekday: "short", day: "numeric", month: "short" }));
   updatePills(parts, ctx);
   updateChips(parts, ctx);
+  updateSections(root, parts, ctx);
   parts.wx.hidden = !ctx.config.weather;
   if (ctx.config.weather) parts.wx.querySelector("pocket-forecast").ctx = ctx;
   updateNow(parts, ctx);
@@ -314,6 +333,44 @@ function chipSheet(ctx, name) {
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
   return null;
+}
+
+// The tiles are rebuilt only when the pages they stand for change; their words and tones are
+// patched. Energy today is asked as the Power page asks it (at most every few minutes).
+function updateSections(root, parts, ctx) {
+  parts.onToday ??= () => { if (root.isConnected) updateSections(root, parts, parts.ctx); };
+  const today = todayNow(ctx.hass, parts.onToday);
+  const list = sectionsOf(ctx, { today });
+  const host = root.querySelector(".sections");
+  const key = list.map((s) => s.page).join(" ");
+  if (parts.sectionsKey !== key) {
+    parts.sectionsKey = key;
+    parts.sections = {};
+    host.replaceChildren(...list.map((section) => {
+      const tile = el("button", "sect", `<span class="nm"><ha-icon></ha-icon><span class="n"></span><i class="dot" hidden></i></span><span class="hd"></span><span class="st"></span>`);
+      tile.type = "button";
+      tile.dataset.page = section.page;
+      tile.querySelector("ha-icon").setAttribute("icon", section.icon);
+      tile.addEventListener("click", () => parts.ctx.navigate(section.route));
+      parts.sections[section.page] = tile;
+      return tile;
+    }));
+  }
+  host.hidden = list.length === 0;
+  for (const section of list) {
+    const tile = parts.sections[section.page];
+    const name = ctx.t(`card.pocket.nav.${section.page}`);
+    setText(tile.querySelector(".n"), name);
+    setText(tile.querySelector(".hd"), section.head);
+    setText(tile.querySelector(".st"), section.status);
+    const cls = ["sect", section.tone].filter(Boolean).join(" ");
+    if (tile.className !== cls) tile.className = cls;
+    const dot = tile.querySelector(".dot");
+    dot.hidden = !section.tone;
+    const dotCls = ["dot", section.tone].filter(Boolean).join(" ");
+    if (dot.className !== dotCls) dot.className = dotCls;
+    setAttr(tile, "aria-label", ctx.t("card.pocket.sections.label", { name, head: section.head, status: section.status }));
+  }
 }
 
 function updateNow(parts, ctx) {

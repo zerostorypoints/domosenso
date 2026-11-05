@@ -426,6 +426,74 @@
           "too_much_fertiliser": "Zu viel Dünger",
           "low_battery": "Batterie schwach"
         }
+      },
+      "sections": {
+        "label": "{name}: {head}, {status}",
+        "areas": {
+          "count": {
+            "one": "{count} Bereich",
+            "few": "{count} Bereiche",
+            "many": "{count} Bereiche",
+            "other": "{count} Bereiche"
+          },
+          "lights_on": {
+            "one": "{count} Licht an",
+            "few": "{count} Lichter an",
+            "many": "{count} Lichter an",
+            "other": "{count} Lichter an"
+          }
+        },
+        "climate": {
+          "fine": "Alles im Bereich",
+          "look": {
+            "one": "{count} zu prüfen",
+            "few": "{count} zu prüfen",
+            "many": "{count} zu prüfen",
+            "other": "{count} zu prüfen"
+          },
+          "checked": {
+            "one": "{count} Messwert geprüft",
+            "few": "{count} Messwerte geprüft",
+            "many": "{count} Messwerte geprüft",
+            "other": "{count} Messwerte geprüft"
+          }
+        },
+        "media": {
+          "players": {
+            "one": "{count} Player",
+            "few": "{count} Player",
+            "many": "{count} Player",
+            "other": "{count} Player"
+          }
+        },
+        "power": {
+          "today": "Heute {value}",
+          "silent": {
+            "one": "{count} Zähler ohne Wert",
+            "few": "{count} Zähler ohne Wert",
+            "many": "{count} Zähler ohne Wert",
+            "other": "{count} Zähler ohne Wert"
+          }
+        },
+        "plants": {
+          "fine": "Alle in Ordnung",
+          "need": {
+            "one": "{count} braucht Pflege",
+            "few": "{count} brauchen Pflege",
+            "many": "{count} brauchen Pflege",
+            "other": "{count} brauchen Pflege"
+          },
+          "count": {
+            "one": "{count} Pflanze",
+            "few": "{count} Pflanzen",
+            "many": "{count} Pflanzen",
+            "other": "{count} Pflanzen"
+          }
+        },
+        "floorplan": {
+          "head": "Ganzes Zuhause",
+          "status": "Alle Bereiche auf einem Plan"
+        }
       }
     }
   }

@@ -473,7 +473,8 @@ test("weather: one row under the chips from the daily forecast subscription, ope
   const el = mount(ctx);
   const wx = el.querySelector(".wx");
   assert.equal(wx.hidden, false);
-  assert.equal(wx.previousElementSibling.className, "chips", "right under the readings");
+  assert.equal(wx.previousElementSibling.className, "sections", "under the Sections");
+  assert.equal(wx.previousElementSibling.previousElementSibling.className, "chips", "which are right under the readings");
   assert.equal(subs.length, 1);
   assert.equal(subs[0].message.forecast_type, "daily");
   const noon = new Date();

@@ -7,7 +7,9 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 ## The 0.1.0 prototype
 
 - **Home**: attention pills, readings (inside and outside, with the air score and a lights-on
-  chip), the weather in one row (with a `weather` entity: the condition now, today's high / low
+  chip), Sections (a tile per page the home has, on the bar or not: Areas, Climate, Media, Power,
+  Plants, Floor plan, each with a headline, a status and an amber or red dot when it is worth a
+  look by the levels its page uses; a tap opens the page), the weather in one row (with a `weather` entity: the condition now, today's high / low
   and chance of rain, opening the forecast sheet), now playing, quick light tiles and a rooms strip.
 - **Climate & air** (`#/climate`): an advice card only while a limit is crossed now (a poor CO₂ or
   VOC: open a window; a poor air reading by name; a room too cold, warm, dry or humid), squares for
