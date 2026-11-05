@@ -1404,7 +1404,7 @@
         }
       ],
       "setup": [
-        "Choose a prefix (default domosenso) and one to sixteen timers, each with a slug id, a plain label and a length of 1 to 86,400 seconds; the default is one General timer of five minutes. Use ids that no helper in your home already has: the component creates only the helpers it names, and a helper that exists already is not meant to be installed over.",
+        "Choose a prefix (default domosenso) and one to sixteen timers, each with a slug id, a plain label and a length of 1 to 86,400 seconds; the default is one General timer of five minutes. Use ids that no helper in your home already has: the component creates only the helpers it names.",
         "Add it with domosenso add timers@0.1.0, then render and deploy: Home Assistant gets one timer helper per entry, named timer.<prefix>_<id>, with Restore switched on.",
         "To show them on a Ramka (0.15.0 or later), list the helpers in its timers input, for example timer.domosenso_general with the label General. Controls gets a standard timer tile for each, and a small countdown badge sits over every screen of the Ramka; tapping either opens Home Assistant’s own timer dialog."
       ],
@@ -1440,8 +1440,8 @@
           },
           {
             "label": "Running",
-            "headline": "One countdown, read everywhere",
-            "detail": "The timer is a standard Home Assistant helper, so every screen that shows it reads the same time left: the Ramka’s tile on Controls and its badge.",
+            "headline": "The same time left on every screen",
+            "detail": "The timer is a standard Home Assistant helper. The Ramka’s tile on Controls and its badge both read it.",
             "values": [
               {
                 "label": "Left",
@@ -1461,7 +1461,7 @@
           {
             "label": "Paused",
             "headline": "A pause keeps the time left",
-            "detail": "A paused timer holds its remaining time. Restore is on, so Home Assistant brings an active or paused timer back after a restart; one that ended while it was down does not announce itself.",
+            "detail": "A paused timer holds its remaining time. Restore is on, so Home Assistant brings an active or paused timer back after a restart; one that ended while it was down is not replayed.",
             "values": [
               {
                 "label": "Left",
