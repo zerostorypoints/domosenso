@@ -204,7 +204,7 @@ test("picker: the sheet of every area's player; a pick shows at once, is saved, 
   const sheet = playerSheet.render(ctx, spec);
   assert.equal(text(sheet.querySelector("h3")), "Player");
   assert.deepEqual(texts(sheet, ".row .t1"), ["Living room speaker", "Bedroom speaker"]);
-  assert.deepEqual(texts(sheet, ".row .t2"), ["Living room · Devil Like Me", "Bedroom"]);
+  assert.deepEqual(texts(sheet, ".row .t2"), ["Living room · Devil Like Me", "Bedroom · Idle"], "not playing: what it is doing");
   assert.deepEqual([...sheet.querySelectorAll(".row")].map((r) => r.getAttribute("aria-pressed")), ["true", "false"]);
   sheet.querySelector(`[data-player="${BEDROOM}"]`).click();
   await settle();

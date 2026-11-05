@@ -357,7 +357,16 @@
         "power_on": "Turn on",
         "power_off": "Turn off",
         "input": "Input",
-        "input_of": "Input: {name}. Change input"
+        "input_of": "Input: {name}. Change input",
+        "state": {
+          "playing": "Playing",
+          "paused": "Paused",
+          "idle": "Idle",
+          "off": "Off",
+          "on": "On",
+          "standby": "Standby",
+          "buffering": "Buffering"
+        }
       },
       "sound": {
         "averages": "Averages",

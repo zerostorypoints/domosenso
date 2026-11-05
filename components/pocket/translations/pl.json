@@ -357,7 +357,16 @@
         "power_on": "Włącz",
         "power_off": "Wyłącz",
         "input": "Wejście",
-        "input_of": "Wejście: {name}. Zmień wejście"
+        "input_of": "Wejście: {name}. Zmień wejście",
+        "state": {
+          "playing": "Odtwarza",
+          "paused": "Wstrzymany",
+          "idle": "Bezczynny",
+          "off": "Wyłączony",
+          "on": "Włączony",
+          "standby": "Czuwanie",
+          "buffering": "Buforowanie"
+        }
       },
       "sound": {
         "averages": "Średnie",

@@ -357,7 +357,16 @@
         "power_on": "Einschalten",
         "power_off": "Ausschalten",
         "input": "Eingang",
-        "input_of": "Eingang: {name}. Eingang wechseln"
+        "input_of": "Eingang: {name}. Eingang wechseln",
+        "state": {
+          "playing": "Spielt",
+          "paused": "Pausiert",
+          "idle": "Untätig",
+          "off": "Aus",
+          "on": "An",
+          "standby": "Standby",
+          "buffering": "Puffert"
+        }
       },
       "sound": {
         "averages": "Mittelwerte",
