@@ -48,9 +48,9 @@ test("the first version's routes have new hashes; others have none", () => {
 });
 
 test("every page the bar can show, in order; an area and the floor plan belong to Areas", () => {
-  assert.deepEqual(TABS.map((tab) => tab.page), ["home", "areas", "climate", "media", "power", "plants", "scenes", "floorplan", "settings"]);
+  assert.deepEqual(TABS.map((tab) => tab.page), ["home", "areas", "controls", "climate", "media", "power", "plants", "scenes", "floorplan", "settings"]);
   assert.deepEqual(TABS.map((tab) => tab.route),
-    ["#/", "#/areas", "#/climate", "#/media", "#/power", "#/plants", "#/scenes", "#/floorplan", "#/settings"]);
+    ["#/", "#/areas", "#/controls", "#/climate", "#/media", "#/power", "#/plants", "#/scenes", "#/floorplan", "#/settings"]);
   for (const tab of TABS) assert.deepEqual(parseRoute(tab.route), { page: tab.page });
   assert.equal(tabOf("area"), "areas");
   assert.equal(tabOf("floorplan"), "areas");

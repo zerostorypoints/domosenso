@@ -71,7 +71,7 @@ try {
 }
 const TOAST_MS = 3000;
 // The pages Home's Systems opens (lib/sections.js): off the bar, they get a way back to Systems.
-const SYSTEMS_PAGES = ["areas", "climate", "media", "power", "plants", "scenes", "floorplan", "system"];
+const SYSTEMS_PAGES = ["areas", "controls", "climate", "media", "power", "plants", "scenes", "floorplan", "system"];
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).

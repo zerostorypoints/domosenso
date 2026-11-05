@@ -23,7 +23,8 @@
         "floorplan": "Grundriss",
         "settings": "Einstellungen",
         "scenes": "Szenen",
-        "system": "System"
+        "system": "System",
+        "controls": "Steuerung"
       },
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
       "home": {
@@ -109,7 +110,9 @@
       "error": {
         "light": "Das Licht hat nicht reagiert. Bitte erneut versuchen.",
         "media": "Der Player hat nicht reagiert. Bitte erneut versuchen.",
-        "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen."
+        "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen.",
+        "cover": "Die Abdeckung hat sich nicht bewegt. Bitte erneut versuchen.",
+        "timer": "Der Timer hat nicht reagiert. Bitte erneut versuchen."
       },
       "areas": {
         "title": "Bereiche",
@@ -535,6 +538,29 @@
           "backup": "Backup {when}",
           "backup_failed": "Letztes Backup fehlgeschlagen",
           "no_backup": "Noch kein Backup"
+        },
+        "controls": {
+          "lights_on": {
+            "one": "{count} Licht an",
+            "few": "{count} Lichter an",
+            "many": "{count} Lichter an",
+            "other": "{count} Lichter an"
+          },
+          "lights_off": "Lichter aus",
+          "playing": "Musik läuft",
+          "open": {
+            "one": "{count} offen",
+            "few": "{count} offen",
+            "many": "{count} offen",
+            "other": "{count} offen"
+          },
+          "running": {
+            "one": "{count} Timer läuft",
+            "few": "{count} Timer laufen",
+            "many": "{count} Timer laufen",
+            "other": "{count} Timer laufen"
+          },
+          "quiet": "Nichts läuft"
         }
       },
       "scenes": {
@@ -568,7 +594,68 @@
         "open_settings": "Home-Assistant-Einstellungen"
       },
       "menu": "Home-Assistant-Menü",
-      "back_systems": "Zurück zu den Systemen"
+      "back_systems": "Zurück zu den Systemen",
+      "controls": {
+        "title": "Steuerung",
+        "view": {
+          "controls": "Steuerung",
+          "status": "Status",
+          "label": "Ansicht der Steuerung"
+        },
+        "music": "Musik",
+        "covers": "Abdeckungen",
+        "timers": "Timer",
+        "lights": "Lichter",
+        "volume_down": "Leiser",
+        "volume_up": "Lauter",
+        "cover": {
+          "open": "Offen",
+          "closed": "Geschlossen",
+          "opening": "Öffnet",
+          "closing": "Schließt",
+          "position": "Offen {value} %"
+        },
+        "cover_act": {
+          "open": "{name} öffnen",
+          "stop": "{name} stoppen",
+          "close": "{name} schließen"
+        },
+        "all_open": "Alle öffnen",
+        "all_close": "Alle schließen",
+        "timer": {
+          "active": "Läuft",
+          "paused": "Pausiert",
+          "idle": "Bereit"
+        },
+        "timer_start": "Start",
+        "timer_pause": "Pause",
+        "timer_cancel": "Abbrechen",
+        "status": {
+          "covers": "Abdeckungen",
+          "contacts": "Türen und Fenster",
+          "lights": "Lichter",
+          "locks": "Schlösser"
+        },
+        "contact": {
+          "open": "Offen",
+          "closed": "Geschlossen"
+        },
+        "light": {
+          "on": "An",
+          "off": "Aus",
+          "on_level": "An · {value} %"
+        },
+        "lock": {
+          "locked": "Verriegelt",
+          "unlocked": "Entriegelt",
+          "locking": "Verriegelt",
+          "unlocking": "Entriegelt",
+          "jammed": "Blockiert",
+          "open": "Offen",
+          "opening": "Öffnet"
+        },
+        "none": "In diesem Zuhause gibt es noch nichts zu steuern."
+      }
     }
   }
 }

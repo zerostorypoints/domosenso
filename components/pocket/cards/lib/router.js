@@ -11,6 +11,7 @@
 export const TABS = [
   { page: "home", route: "#/", icon: "mdi:home-outline" },
   { page: "areas", route: "#/areas", icon: "mdi:view-grid-outline" },
+  { page: "controls", route: "#/controls", icon: "mdi:tune-variant" },
   { page: "climate", route: "#/climate", icon: "mdi:thermometer" },
   { page: "media", route: "#/media", icon: "mdi:music" },
   { page: "power", route: "#/power", icon: "mdi:flash-outline" },
@@ -39,7 +40,7 @@ export function defaultBar(config) {
 export const FIXED_TABS = ["home", "settings"];
 export const MAX_TABS = 5;
 
-const SINGLE = new Set(["areas", "climate", "media", "power", "plants", "scenes", "system", "settings", "floorplan"]);
+const SINGLE = new Set(["areas", "controls", "climate", "media", "power", "plants", "scenes", "system", "settings", "floorplan"]);
 // Home's second view (pages/home-page.js): #/systems, the tiles per aspect.
 export const HOME_VIEWS = ["overview", "systems"];
 // The System page (pages/system-page.js): reached from Home's Systems, never on the bar.
@@ -53,6 +54,8 @@ export function parseRoute(hash) {
   const parts = text.slice(2).split("/");
   if (parts.length > 1 && parts[parts.length - 1] === "") parts.pop();
   if (parts.length === 1 && parts[0] === "systems") return { page: "home", id: "systems" };
+  // Controls' second view, the status (pages/controls-page.js).
+  if (parts.length === 2 && parts[0] === "controls" && parts[1] === "status") return { page: "controls", id: "status" };
   if (parts.length === 1 && SINGLE.has(parts[0])) return { page: parts[0] };
   // Settings' panels (pages/settings-page.js PANELS): another one is Settings itself.
   if (parts.length === 2 && parts[0] === "settings") {

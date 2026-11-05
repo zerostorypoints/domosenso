@@ -12,6 +12,7 @@
 //
 // What each says:
 //   Areas      the number of areas (the Outside included); the lights on
+//   Controls   the lights on, else off; music playing, covers open, timers running, else quiet
 //   Climate    "All in range" or how many readings need a look (lib/checks.js: the rooms' comfort
 //              ranges and air limits, as the attention pills: not the Outside); the rooms they are
 //              in; poor / fair by the worst
@@ -36,6 +37,7 @@ import { wattsText } from "../pages/power-page.js";
 import { SYSTEM } from "./router.js";
 import { allScenes, chosenScenes } from "./scenes.js";
 import { ago, systemOf } from "./system.js";
+import { coversOf, timersOf } from "./controls.js";
 
 const GONE = new Set(["unavailable", "unknown"]);
 const PAGES = [...TABS.map((tab) => tab.page).filter((page) => page !== "home" && page !== "settings"), SYSTEM.page];
@@ -113,6 +115,24 @@ const SUMMARIES = {
     return { head: ctx.t(`card.pocket.sections.plants.need.${pluralOf(ctx, need.length)}`, { count: need.length }),
       status: `${worst.name} · ${ctx.t(`card.pocket.plants.reason.${worst.reasons[0]}`)}`,
       tone: worst.rank <= 1 ? "poor" : "fair" };
+  },
+
+  controls(ctx) {
+    const { hass, config } = ctx;
+    const covers = coversOf(hass);
+    const timers = timersOf(hass);
+    const lamps = (config.rooms ?? []).some((room) => [room.lights ?? []].flat().length);
+    if (!covers.length && !timers.length && !lamps && !playersOf(config, hass).length) return null;
+    const on = lightsOnIn(hass, config.rooms ?? []);
+    const head = on ? ctx.t(`card.pocket.sections.controls.lights_on.${pluralOf(ctx, on)}`, { count: on })
+      : ctx.t("card.pocket.sections.controls.lights_off");
+    const bits = [];
+    if (playersOf(config, hass).some((p) => hass?.states?.[p.id]?.state === "playing")) bits.push(ctx.t("card.pocket.sections.controls.playing"));
+    const open = covers.filter((id) => ["open", "opening", "closing"].includes(hass.states[id]?.state)).length;
+    if (open) bits.push(ctx.t(`card.pocket.sections.controls.open.${pluralOf(ctx, open)}`, { count: open }));
+    const running = timers.filter((id) => hass.states[id]?.state === "active").length;
+    if (running) bits.push(ctx.t(`card.pocket.sections.controls.running.${pluralOf(ctx, running)}`, { count: running }));
+    return { head, status: bits.join(" · ") || ctx.t("card.pocket.sections.controls.quiet") };
   },
 
   scenes(ctx) {

@@ -23,7 +23,8 @@
         "floorplan": "Rzut",
         "settings": "Ustawienia",
         "scenes": "Sceny",
-        "system": "System"
+        "system": "System",
+        "controls": "Sterowanie"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
       "home": {
@@ -109,7 +110,9 @@
       "error": {
         "light": "Światło nie odpowiedziało. Spróbuj ponownie.",
         "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie.",
-        "scene": "Scena nie odpowiedziała. Spróbuj ponownie."
+        "scene": "Scena nie odpowiedziała. Spróbuj ponownie.",
+        "cover": "Osłona się nie poruszyła. Spróbuj ponownie.",
+        "timer": "Minutnik nie zareagował. Spróbuj ponownie."
       },
       "areas": {
         "title": "Obszary",
@@ -535,6 +538,29 @@
           "backup": "Kopia {when}",
           "backup_failed": "Ostatnia kopia nieudana",
           "no_backup": "Brak kopii"
+        },
+        "controls": {
+          "lights_on": {
+            "one": "{count} światło włączone",
+            "few": "{count} światła włączone",
+            "many": "{count} świateł włączonych",
+            "other": "{count} światła włączonego"
+          },
+          "lights_off": "Światła wyłączone",
+          "playing": "Gra muzyka",
+          "open": {
+            "one": "{count} otwarta",
+            "few": "{count} otwarte",
+            "many": "{count} otwartych",
+            "other": "{count} otwartej"
+          },
+          "running": {
+            "one": "{count} minutnik działa",
+            "few": "{count} minutniki działają",
+            "many": "{count} minutników działa",
+            "other": "{count} minutnika działa"
+          },
+          "quiet": "Nic nie działa"
         }
       },
       "scenes": {
@@ -568,7 +594,68 @@
         "open_settings": "Ustawienia Home Assistant"
       },
       "menu": "Menu Home Assistant",
-      "back_systems": "Wróć do systemów"
+      "back_systems": "Wróć do systemów",
+      "controls": {
+        "title": "Sterowanie",
+        "view": {
+          "controls": "Sterowanie",
+          "status": "Stan",
+          "label": "Widok sterowania"
+        },
+        "music": "Muzyka",
+        "covers": "Osłony",
+        "timers": "Minutniki",
+        "lights": "Światła",
+        "volume_down": "Ciszej",
+        "volume_up": "Głośniej",
+        "cover": {
+          "open": "Otwarta",
+          "closed": "Zamknięta",
+          "opening": "Otwiera się",
+          "closing": "Zamyka się",
+          "position": "Otwarta {value} %"
+        },
+        "cover_act": {
+          "open": "Otwórz: {name}",
+          "stop": "Zatrzymaj: {name}",
+          "close": "Zamknij: {name}"
+        },
+        "all_open": "Otwórz wszystkie",
+        "all_close": "Zamknij wszystkie",
+        "timer": {
+          "active": "Działa",
+          "paused": "Wstrzymany",
+          "idle": "Gotowy"
+        },
+        "timer_start": "Start",
+        "timer_pause": "Pauza",
+        "timer_cancel": "Anuluj",
+        "status": {
+          "covers": "Osłony",
+          "contacts": "Drzwi i okna",
+          "lights": "Światła",
+          "locks": "Zamki"
+        },
+        "contact": {
+          "open": "Otwarte",
+          "closed": "Zamknięte"
+        },
+        "light": {
+          "on": "Włączone",
+          "off": "Wyłączone",
+          "on_level": "Włączone · {value} %"
+        },
+        "lock": {
+          "locked": "Zamknięty",
+          "unlocked": "Otwarty",
+          "locking": "Zamyka się",
+          "unlocking": "Otwiera się",
+          "jammed": "Zablokowany",
+          "open": "Otwarty",
+          "opening": "Otwiera się"
+        },
+        "none": "W tym domu nie ma jeszcze czym sterować."
+      }
     }
   }
 }

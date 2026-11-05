@@ -23,7 +23,8 @@
         "floorplan": "Floor plan",
         "settings": "Settings",
         "scenes": "Scenes",
-        "system": "System"
+        "system": "System",
+        "controls": "Controls"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
       "home": {
@@ -109,7 +110,9 @@
       "error": {
         "light": "The light did not respond. Try again.",
         "media": "The player did not respond. Try again.",
-        "scene": "The scene did not start. Try again."
+        "scene": "The scene did not start. Try again.",
+        "cover": "The cover did not move. Try again.",
+        "timer": "The timer did not follow. Try again."
       },
       "areas": {
         "title": "Areas",
@@ -535,6 +538,29 @@
           "backup": "Backup {when}",
           "backup_failed": "Last backup failed",
           "no_backup": "No backup yet"
+        },
+        "controls": {
+          "lights_on": {
+            "one": "{count} light on",
+            "few": "{count} lights on",
+            "many": "{count} lights on",
+            "other": "{count} lights on"
+          },
+          "lights_off": "Lights off",
+          "playing": "Music playing",
+          "open": {
+            "one": "{count} open",
+            "few": "{count} open",
+            "many": "{count} open",
+            "other": "{count} open"
+          },
+          "running": {
+            "one": "{count} timer running",
+            "few": "{count} timers running",
+            "many": "{count} timers running",
+            "other": "{count} timers running"
+          },
+          "quiet": "Nothing running"
         }
       },
       "scenes": {
@@ -568,7 +594,68 @@
         "open_settings": "Home Assistant settings"
       },
       "menu": "Home Assistant menu",
-      "back_systems": "Back to Systems"
+      "back_systems": "Back to Systems",
+      "controls": {
+        "title": "Controls",
+        "view": {
+          "controls": "Controls",
+          "status": "Status",
+          "label": "Controls view"
+        },
+        "music": "Music",
+        "covers": "Covers",
+        "timers": "Timers",
+        "lights": "Lights",
+        "volume_down": "Volume down",
+        "volume_up": "Volume up",
+        "cover": {
+          "open": "Open",
+          "closed": "Closed",
+          "opening": "Opening",
+          "closing": "Closing",
+          "position": "Open {value} %"
+        },
+        "cover_act": {
+          "open": "Open {name}",
+          "stop": "Stop {name}",
+          "close": "Close {name}"
+        },
+        "all_open": "All open",
+        "all_close": "All closed",
+        "timer": {
+          "active": "Running",
+          "paused": "Paused",
+          "idle": "Ready"
+        },
+        "timer_start": "Start",
+        "timer_pause": "Pause",
+        "timer_cancel": "Cancel",
+        "status": {
+          "covers": "Covers",
+          "contacts": "Doors and windows",
+          "lights": "Lights",
+          "locks": "Locks"
+        },
+        "contact": {
+          "open": "Open",
+          "closed": "Closed"
+        },
+        "light": {
+          "on": "On",
+          "off": "Off",
+          "on_level": "On · {value} %"
+        },
+        "lock": {
+          "locked": "Locked",
+          "unlocked": "Unlocked",
+          "locking": "Locking",
+          "unlocking": "Unlocking",
+          "jammed": "Jammed",
+          "open": "Open",
+          "opening": "Opening"
+        },
+        "none": "Nothing to control in this home yet."
+      }
     }
   }
 }
