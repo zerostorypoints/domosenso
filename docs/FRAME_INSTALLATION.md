@@ -95,6 +95,29 @@ background, settings and overlay permissions as required by the selected path. W
 may be unavailable after a reboot; resolve its current endpoint and verify the model before
 commands. Application recovery must work without an attached debugger or USB.
 
+### Native Android BLE development path
+
+HA Server's `examples/android-ble` now supplies an optional native advertisement collector and
+HA remote-scanner adapter. It uses Android's own radio and a bounded atomic app-private stream;
+standard HA vendor integrations decode the bytes. This removes the need for an external proxy
+for supported advertisement measurements within radio range. It requires Android12/API31 or
+newer and an explicit installation-owned sensor address allowlist. Hardware, permissions,
+coverage and screen-off reception still require acceptance on the selected device.
+
+The first stage is non-connectable: no GATT, pairing or sensor writes. Mi Flora measurements
+can arrive as advertisements, but its GATT battery read is outside this stage. A dedicated
+ESPHome receiver remains an alternative for coverage, active connections or other hosts. Do not
+share a receiver owned by another HA to make the native path appear complete. Disable the
+old-host state mirror before accepting native entity freshness, preserve canonical history
+identities, and distinguish radio callbacks from numeric restored or mirrored states.
+
+The receiver checks stream and observation ages, rejects replay and reports permission loss,
+radio-off and scan failure. Automatic rescan after Bluetooth off/on or scan failure is still
+deferred; the first-stage recovery procedure is a Server restart. On older Android systems,
+native BLE is explicitly unsupported even though the Server's own minimum SDK is lower.
+Use the owning Server guide for the exact protocol, build and setup steps. Decoder/runtime
+fixtures do not certify physical radio reception or a completed standalone delivery.
+
 ## Adapting to another device
 
 Keep the home data model, component inputs and screen behavior. Replace only the affected
