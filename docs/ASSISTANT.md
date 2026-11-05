@@ -1,5 +1,13 @@
 # Component-backed assistant answers
 
+The [shared-home metadata design](superpowers/specs/2026-11-05-shared-home-component-metadata.md)
+connects these contracts to display-independent home inputs. Its
+[implementation handoff](handoffs/2026-11-05-shared-home-metadata.md) records remaining
+framework, Bridge, browser-card and native Frame work with a component coverage matrix.
+The [installation profile](superpowers/specs/2026-11-05-tablet-installation-profile.md)
+keeps tablet/server requirements separate from shared home inputs and browser delivery.
+These documents describe the proposed integration and its independent acceptance gates.
+
 Implementation of [SPEC-029](../.ai/specs/SPEC-029-2026-10-31-assistant-component-contract.md).
 This contract is unreleased. Component metadata, a compatible Frame HA bridge and a compatible
 Frame app are required together; a file in the catalog alone does not enable voice answers.
