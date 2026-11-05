@@ -4,8 +4,8 @@
 //
 //   systemOf(hass, now?) -> {updates: [id], backup: {last, attempted, state, age, failed} | null,
 //                            silent: [{device, name, area}], tone}
-//     updates   update.* entities that are on (an update is available; a skipped one is off), listed
-//               (not hidden or disabled), by name
+//     updates   update.* entities that are on (an update is available; a skipped one is off), not
+//               hidden or disabled (their config / diagnostic category does not count), by name
 //     backup    Home Assistant's backup integration (platform "backup"): its last successful and last
 //               attempted automatic backup (Date | null), its manager's state, the age of the last
 //               successful one in ms; failed: the last attempt is more than an hour after the last
@@ -46,8 +46,10 @@ const dateOf = (hass, id) => {
 export function systemOf(hass, now = Date.now()) {
   const states = hass?.states ?? {};
   const name = (id) => states[id]?.attributes?.title || states[id]?.attributes?.friendly_name || id;
+  // An update entity is a config or diagnostic one by nature: only a hidden or disabled one is left out.
+  const listedUpdate = (reg) => !reg || (!reg.hidden && !reg.hidden_by && !reg.disabled_by);
   const updates = Object.keys(states).filter((id) => id.startsWith("update.") && states[id].state === "on"
-    && (!hass.entities?.[id] || shownEntity(hass.entities[id]))).sort((a, b) => name(a).localeCompare(name(b)));
+    && listedUpdate(hass.entities?.[id])).sort((a, b) => name(a).localeCompare(name(b)));
 
   const ids = backupIds(hass);
   let backup = null;

@@ -95,6 +95,7 @@ function systemHass({ last = "2026-11-03T04:19:33+00:00", attempted = "2026-11-0
   hass.devices = { d_amp: { id: "d_amp", name: "Amplifier", area_id: "living_room" }, d_lamp: { id: "d_lamp", name: "Lamp" } };
   hass.areas = { living_room: { name: "Living room" } };
   hass.entities = {
+    "update.router": { entity_id: "update.router", entity_category: "config" },
     "sensor.amp_power": { entity_id: "sensor.amp_power", device_id: "d_amp" },
     "sensor.amp_volume": { entity_id: "sensor.amp_volume", device_id: "d_amp" },
     "sensor.lamp_power": { entity_id: "sensor.lamp_power", device_id: "d_lamp" },
@@ -105,7 +106,7 @@ function systemHass({ last = "2026-11-03T04:19:33+00:00", attempted = "2026-11-0
 test("system: updates waiting, the backup's age and failure, devices that read nothing", () => {
   const now = Date.parse("2026-11-05T12:00:00Z");
   const sys = systemOf(systemHass(), now);
-  assert.deepEqual(sys.updates, ["update.router"]);
+  assert.deepEqual(sys.updates, ["update.router"], "a config-category update entity counts");
   assert.equal(sys.backup.failed, false);
   assert.equal(sys.tone, null, "an update and a silent device are news, not a problem");
   assert.deepEqual(sys.silent.map((d) => [d.name, d.area]), [["Amplifier", "Living room"]]);
