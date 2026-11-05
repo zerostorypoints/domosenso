@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import {componentName,evidenceLabel,type Component,repository} from '@/lib/catalog';
 import {MobileNav} from './mobile-nav';
 import {RedditLink} from './reddit-link';
@@ -7,7 +8,7 @@ import {validMeasurementId} from '@/lib/analytics-consent';
 export function Arrow() { return <span aria-hidden="true">↗</span>; }
 
 export function Brand() {
-  return <span className="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 14 16 4l12 10v14H4V14Z M10 27V16h5v11 M20 27V13h4v14 M19 5V2h5v7" stroke="currentColor" strokeWidth="1.6"/></svg>Domo<span>Senso.</span><small>FRAMEWORK</small></span>;
+  return <span className="brand"><Image src="/brand/logo-compact-color.svg" width={400} height={56} alt="DomoSenso.org" className="brand-logo" unoptimized /></span>;
 }
 
 export function Header() {

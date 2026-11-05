@@ -186,3 +186,7 @@ From your home's folder: `uv run --project <path to the clone> domosenso <comman
 For a private installation, [set up local home staging](docs/HOME_STAGING.md) with the shared
 `stage-home-update` skill and framework tools. Each home/worktree gets its own isolated runtime;
 private inputs and local customizations remain in the home repository.
+
+## Brand identity
+
+The approved portal family, domain-specific logo assets and manufacturing reference live in [branding/](branding/README.md). The [brand book](branding/brand-book.pdf) and its [editable source](branding/brand-book.md) explain the shared .com/.org geometry, colours, typography, clear space and 20 mm casing symbols. Rebuild generated site assets from this source before publishing.
