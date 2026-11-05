@@ -24,3 +24,13 @@ Scope: the approved Open shoulder framework symbol and shared DomoSenso family g
 ## Publication
 
 The task authorises updating the websites and saving approved assets. Push a task PR for the framework change. Main currently requires one independent human approval plus framework/website checks. Do not impersonate a maintainer, submit the human approval, queue unrequested auto-merge or bypass that gate. Verify the live build revision and assets after an approved merge; until then production remains unchanged. No component tags, Home Assistant or tablet deployment is part of this task.
+
+## Production verification after merge
+
+PR #223 was manually approved and merged as `2917f9611e08fbeb24a37ef70e2103a8f79d8c6b` on 5 November 2026. Cloudflare's live `/build.json` reports that exact revision. The public compact logo, favicon, app icon and social PNG match the approved source byte-for-byte. All 59 sitemap HTML pages contain the new shared header/footer logo. Home and Ramka pages were visually reviewed at 320, 390 and 1440 px: both logos load when visible and no horizontal overflow occurs. The agent-facing llms and Ramka Markdown files remain available.
+
+The commercial PR #5 also merged, as `fd770e765715b57604acba97b7b48c5307acc736`. Its Vercel deployment `dpl_87M2iLaWSjoP4JvJyes846SjAnEK` serves the approved assets publicly in the existing `fra1` region. DE/EN pages and .ch path/query redirects were verified. Both owning main branches now contain the guide and their domain-specific identity assets.
+
+The first post-merge IndexNow run failed before sending URLs: `website_changes.py` decoded changed PNG data as UTF-8. The follow-up preserves byte comparisons for site assets and unrelated files while keeping editorial content parsed as text. Six real-Git regressions failed with UnicodeDecodeError before that correction and pass afterwards, covering binary addition/update/removal, unchanged images, a non-site PDF and the CLI URL list. All 40 route-mapping/IndexNow tests passed. The corrected command was run once for the actual branding merge and IndexNow accepted its three mapped URLs with HTTP 200; this is receipt, not an indexing guarantee.
+
+Search Console and Bing sitemap resubmission is deferred: no connected tools for those services are available in this session. Branding does not change the sitemap URL set. The source-only route-mapping fix does not require another visual deployment; it follows the normal human approval gate in its own PR.
