@@ -2,6 +2,20 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: the home's rooms name and colour the plan
+
+- `floorplan-card` takes `rooms`, the home inputs' rooms (`[{id, name, area, climate?}]`):
+  - a room's name, one string or one per language (HA's language, else `en`), replaces its HA
+    area's name on the plan;
+  - the room's selected temperature or humidity sensor colours it on the climate map, ahead of the
+    one its HA area names (Settings → Areas).
+
+  The area id stays the key and the geometry stays the plan's.
+- `domosenso floorplan push` writes `rooms` from the home's `home_inputs`, and Pocket passes them on
+  its pages.
+- What a home does: nothing, or `floorplan push` again to give the standalone floor plan the
+  home's names.
+
 ## Unreleased: options for a host page (a phone)
 
 - `floorplan-card` takes `area` (that area's room alone, fitted, read-only), `zoom: false` (a fixed

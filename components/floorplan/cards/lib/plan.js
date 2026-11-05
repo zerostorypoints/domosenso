@@ -260,7 +260,27 @@ export function roomOf(doc, floorId, pt) {
   return floor?.rooms.find((r) => pointInPolygon(pt, r.polygon))?.area_id ?? null;
 }
 
-export function roomLabel(room, hass) {
+// The home inputs' room for an HA area (the card option `rooms`, as a host passes the home's
+// rooms: {id, name, area?, climate?}; a room without `area` names its id): null when none.
+export function homeRoom(rooms, areaId) {
+  if (!Array.isArray(rooms) || !areaId) return null;
+  return rooms.find((r) => r && (r.area ?? r.id) === areaId) ?? null;
+}
+
+// A name, or a name per language: HA's language, else en, else the only one.
+function nameIn(name, hass) {
+  if (typeof name === "string") return name;
+  if (!name || typeof name !== "object") return null;
+  const lang = hass?.locale?.language ?? hass?.language;
+  const values = Object.values(name);
+  return name[lang] ?? name.en ?? (values.length === 1 ? values[0] : null);
+}
+
+// A room's name: the home inputs' (decision record of #219, agreement 11), else HA's area name,
+// else the area id (missing: true).
+export function roomLabel(room, hass, rooms) {
+  const own = nameIn(homeRoom(rooms, room.area_id)?.name, hass);
+  if (own) return { text: own, missing: false };
   const name = hass.areas?.[room.area_id]?.name;
   return name ? { text: name, missing: false } : { text: room.area_id, missing: true };
 }

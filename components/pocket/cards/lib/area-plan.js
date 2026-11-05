@@ -36,7 +36,10 @@ export const PLAN_STYLE = `
 `;
 
 // The floor plan card's config for one area (components/floorplan: `area` and the host options).
-export const planConfig = (areaId) => ({ area: areaId, context: true, edit: false, zoom: false, maps: true, chips: false, values: true });
+// `rooms`: the home inputs' rooms as Pocket has them (names in its language, HA area, climate), so the
+// plan shows the same names and colours each room by the same sensor (decision record of #219, 11).
+export const planConfig = (areaId, rooms) => ({ area: areaId, context: true, edit: false, zoom: false, maps: true, chips: false, values: true,
+  ...(Array.isArray(rooms) && rooms.length ? { rooms: rooms.map(({ id, name, area, climate }) => ({ id, name, area, ...(climate ? { climate } : {}) })) } : {}) });
 
 export function renderAreaPlan(ctx, area) {
   const areaId = haAreaOf(ctx.config, area);
@@ -55,7 +58,7 @@ export function renderAreaPlan(ctx, area) {
   const attach = (plan) => {
     if (state.card || !plan) return;
     const card = document.createElement(ELEMENT);
-    card.setConfig({ ...planConfig(areaId), plan });
+    card.setConfig({ ...planConfig(areaId, state.ctx.config?.rooms), plan });
     card.addEventListener("floorplan-status", (e) => {
       root.hidden = e.detail?.status !== "ready";
       update(state.ctx);

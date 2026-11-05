@@ -133,8 +133,10 @@ test("the area's room on the floor plan's own card, with the home's floorplan", 
   await settle();
   const card = el.querySelector(".area-plan floorplan-card");
   assert.ok(card, "the floorplan component's element");
-  assert.deepEqual(card._config, { edit: false, values: true, maps: true, zoom: false, chips: false, tap_tips: true, area: "living_room",
+  const { rooms, ...rest } = card._config;
+  assert.deepEqual(rest, { edit: false, values: true, maps: true, zoom: false, chips: false, tap_tips: true, area: "living_room",
     context: true, plan: PLAN });
+  assert.deepEqual(rooms.map((r) => [r.id, r.area]), config.rooms.map((r) => [r.id, r.area]), "the home's rooms go along");
   assert.equal(el.querySelector(".area-plan").hidden, false, "shown once the card says the room is on the plan");
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room[data-area]").length, 1, "the area's own room, tappable");
   assert.ok(card.shadowRoot.querySelectorAll("g.context polygon.room").length > 0, "its neighbours, faded");
@@ -161,6 +163,10 @@ test("an area not on the plan hides its part; a home without the floorplan has n
 
 test("planConfig is the floor plan card's host options", () => {
   assert.deepEqual(planConfig("hall"), { area: "hall", context: true, edit: false, zoom: false, maps: true, chips: false, values: true });
+  // The home's rooms go along: the plan names and colours them as Pocket does.
+  const rooms = [{ id: "lounge", name: "Lounge", area: "living_room", lights: "light.x", climate: { temperature: "sensor.t" } }];
+  assert.deepEqual(planConfig("living_room", rooms).rooms,
+    [{ id: "lounge", name: "Lounge", area: "living_room", climate: { temperature: "sensor.t" } }]);
 });
 
 test("the plan is read once per session: two area visits, one lovelace/config", async () => {

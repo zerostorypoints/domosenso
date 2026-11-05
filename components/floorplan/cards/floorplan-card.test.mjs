@@ -1367,6 +1367,22 @@ test("maps: a room's own sensor colours the room, another sensor in it is a spot
   window.localStorage.clear();
 });
 
+// Decision record of #219 (agreement 11): the home inputs' selected sensor for a room (option
+// `rooms`, as Pocket passes them) is the room's own, ahead of the one its HA area names; the
+// home's room name replaces the area's.
+test("maps and names: the home inputs' room gives its own sensor and its name", async () => {
+  window.localStorage.clear();
+  const hass = roomSensorHass();
+  delete hass.areas.living_room.temperature_entity_id;
+  const rooms = [{ id: "lounge", area: "living_room", name: "Lounge", climate: { temperature: "sensor.alex_temperature" } }];
+  const card = await make({ plan: planOf([pt("d_climate", 1, 1), ampPt]), layers: ["climate"], rooms }, hass);
+  await settle();
+  const far = fills(card, (x, y) => x < 3);
+  assert.ok(far.length > 0 && far.every((f) => f === colourAt("temperature", 21.5)), "the selected sensor colours the room");
+  assert.ok(shadowText(card).includes("Lounge"), "the home's name for the room");
+  window.localStorage.clear();
+});
+
 test("maps: a room whose own sensor is unavailable is hatched", async () => {
   window.localStorage.clear();
   const hass = roomSensorHass();

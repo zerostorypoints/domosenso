@@ -67,7 +67,7 @@ export function render(ctx) {
       return;
     }
     const card = document.createElement(ELEMENT);
-    card.setConfig({ ...planConfig(), plan });
+    card.setConfig({ ...planConfig(undefined, parts.ctx.config?.rooms), plan });
     card.addEventListener("room-tap", (e) => {
       const target = areasOf(parts.ctx.config).find((area) => haAreaOf(parts.ctx.config, area) === e.detail?.area_id);
       if (target) parts.ctx.navigate(`#/area/${target.id}`);

@@ -15,6 +15,7 @@ import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 
+from domosenso_cli.home_inputs import load_home_inputs
 from domosenso_cli import cmd_deploy, floorplan_doc as doc, floorplan_preview as preview
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
@@ -153,7 +154,8 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
             await ha.call("lovelace/dashboards/create", url_path=doc.URL_PATH, title=TITLE, icon="mdi:floor-plan",
                           show_in_sidebar=True, require_admin=False,
                           allow_single_word=True)  # HA wants a hyphen in url_path otherwise
-        await ha.call("lovelace/config/save", url_path=doc.URL_PATH, config=doc.dashboard_config(new))
+        rooms = doc.card_rooms(load_home_inputs(HomeConfig.load(args.home)))
+        await ha.call("lovelace/config/save", url_path=doc.URL_PATH, config=doc.dashboard_config(new, rooms))
     doc.write_json(args.home / STATE_DIR / f"{args.target}.pulled.json", doc.without_source(new))
     rep.line("pushed")
     return rep.ok()
