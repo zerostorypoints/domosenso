@@ -93,9 +93,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.14.0",
-      "tag": "ramka/0.14.0",
-      "commit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
+      "version": "0.16.0",
+      "tag": "ramka/0.16.0",
+      "commit": "10364b429c878830af61f3da2256fff98d0dcf84",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]

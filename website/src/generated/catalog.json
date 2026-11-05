@@ -807,9 +807,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.14.0",
-      "sourceTag": "ramka/0.14.0",
-      "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
+      "version": "0.16.0",
+      "sourceTag": "ramka/0.16.0",
+      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -883,6 +883,11 @@
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ],
       "inputs": [
+        {
+          "name": "timers",
+          "type": "list",
+          "required": false
+        },
         {
           "name": "prefix",
           "type": "slug",
@@ -966,6 +971,11 @@
         {
           "name": "lights_all_off",
           "type": "entity_id",
+          "required": false
+        },
+        {
+          "name": "actions",
+          "type": "list[{entity: button.* | input_button.* | script.* | scene.*, label, icon?, confirm?: bool, room?}]",
           "required": false
         },
         {
@@ -1129,8 +1139,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/1591da50762f96b7f64c4fd66e2ec970f6de9d16/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/1591da50762f96b7f64c4fd66e2ec970f6de9d16/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/10364b429c878830af61f3da2256fff98d0dcf84/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/components/ramka/UPGRADE.md"
     },
     {
       "id": "weather",
