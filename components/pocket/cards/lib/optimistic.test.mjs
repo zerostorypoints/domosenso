@@ -147,3 +147,79 @@ test("a later send for the same entity takes it over: the earlier one no longer 
   assert.ok(store.pending("light.a"), "the second call still waits");
   assert.deepEqual(reports, []);
 });
+
+const dim = (pct) => ({ state: "on", attributes: { brightness: Math.round(pct * 255 / 100) } });
+
+test("a dimmed group with an on/off member: the member is only expected on, the drag confirms without a toast", async () => {
+  const { store, reports } = storeOf({ timeoutMs: 20 });
+  const hass = hassOf({
+    "light.g": st("off", { entity_id: ["light.dimmer", "light.plug", "light.bare"], supported_color_modes: ["brightness", "onoff"] }),
+    "light.dimmer": st("off", { supported_color_modes: ["brightness"] }),
+    "light.plug": st("off", { supported_color_modes: ["onoff"] }),
+    "light.bare": st("off") });
+  send(store, hass, { "light.g": dim(40) }, { service: "turn_on" });
+  assert.equal(store.view(hass).states["light.plug"].attributes.brightness, undefined, "no brightness invented");
+  store.update(hassOf({
+    "light.g": st("on", { entity_id: ["light.dimmer", "light.plug", "light.bare"], brightness: 102 }),
+    "light.dimmer": st("on", { brightness: 102 }),
+    "light.plug": st("on", { supported_color_modes: ["onoff"] }),
+    "light.bare": st("on") }));       // an on/off light that does not say so reports no brightness
+  for (const id of ["light.g", "light.dimmer", "light.plug", "light.bare"]) assert.ok(!store.pending(id), id);
+  await tick(30);
+  assert.deepEqual(reports, []);
+});
+
+test("a light that clamps the brightness it is sent confirms within about 3 %", async () => {
+  const { store, reports } = storeOf({ timeoutMs: 20 });
+  const hass = hassOf({ "light.a": st("on", { brightness: 255 }) });
+  send(store, hass, { "light.a": dim(1) }, { service: "turn_on" });      // 3 of 255
+  store.update(hassOf({ "light.a": st("on", { brightness: 10 }) }));     // its floor
+  assert.ok(!store.pending("light.a"));
+  await tick(30);
+  assert.deepEqual(reports, []);
+});
+
+test("one call, one toast: a timeout and then a rejection report once", async () => {
+  let reject;
+  const { store, reports } = storeOf({ timeoutMs: 10 });
+  const hass = hassOf({ "light.a": st("on") }, () => new Promise((_, no) => { reject = no; }));
+  send(store, hass, { "light.a": { state: "off" } });
+  await tick(20);
+  reject(new Error("late"));
+  await tick();
+  assert.deepEqual(reports, [["el", "card.pocket.error.light"]]);
+});
+
+test("a call taken over by a later one reports nothing when it fails", async () => {
+  let rejectFirst;
+  const { store, reports } = storeOf();
+  const answers = [() => new Promise((_, no) => { rejectFirst = no; }), () => Promise.resolve()];
+  const hass = hassOf({ "light.a": st("off") }, () => answers.shift()());
+  send(store, hass, { "light.a": { state: "on" } }, { service: "turn_on" });
+  send(store, hass, { "light.a": dim(50) }, { service: "turn_on" });
+  rejectFirst(new Error("no"));
+  await tick();
+  assert.deepEqual(reports, []);
+  assert.ok(store.pending("light.a"), "the later call still holds it");
+});
+
+test("a double tap: the first call's late report does not flash; the wait ends without a toast", async () => {
+  const { store, reports } = storeOf({ timeoutMs: 30 });
+  const off = hassOf({ "light.a": st("off") });
+  send(store, off, { "light.a": { state: "on" } }, { service: "turn_on" });
+  assert.equal(store.view(off).states["light.a"].state, "on");
+  send(store, off, { "light.a": { state: "off" } });                    // the second tap, before any report
+  assert.equal(store.view(off).states["light.a"].state, "off");
+  const late = hassOf({ "light.a": st("on") });                          // the first call's report
+  store.update(late);
+  assert.equal(store.view(late).states["light.a"].state, "off", "no flash of on");
+  const final = hassOf({ "light.a": st("off") });
+  store.update(final);
+  assert.ok(!store.pending("light.a"), "the second call's report settles it");
+  // A double tap whose first call never shows: the quiet hold ends without a toast.
+  send(store, final, { "light.a": { state: "on" } }, { service: "turn_on" });
+  send(store, final, { "light.a": { state: "off" } });
+  await tick(45);
+  assert.ok(!store.pending("light.a"));
+  assert.deepEqual(reports, []);
+});

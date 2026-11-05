@@ -15,19 +15,27 @@
 // its available members to follow, so every tile and count agrees at once.
 //
 // An expected entity is settled when Home Assistant reports
-//   - the expected state (attributes within TOLERANCE): confirmed;
+//   - the expected state, attributes within TOLERANCE (a light that clamps the brightness it is
+//     sent lands close to it); an attribute the light does not report at all (an on/off light in
+//     a dimmed group) is not waited for, and an entity that cannot dim (supported_color_modes is
+//     onoff alone) is only expected on;
 //   - a third state, neither the one before the call nor the expected one (a player that goes
 //     idle on pause, a light that became unavailable): Home Assistant has spoken, it is followed.
 // A report that still shows the state before the call (a group whose members switch one by one)
 // keeps waiting. A call that fails, or one whose entities are not all settled after timeoutMs,
 // rolls back what it still holds and reports errorKey once (report(el, key), by default the
 // pocket-error event of lib/report.js). A later send for the same entity takes it over: the
-// earlier call no longer reports for it.
+// earlier call no longer rolls it back or reports for it; a call that holds nothing any more
+// reports nothing.
+// A send whose expected state is already the reported one while an earlier call still holds the
+// entity (a second tap before the first one's report) keeps holding it quietly: the first call's
+// late report does not flash on screen. It settles on a new report of the expected state; when
+// none comes, the wait ends without a toast (the reported state was right all along).
 
 import { reportError } from "./report.js";
 
 export const CONFIRM_MS = 4000;
-const TOLERANCE = { brightness: 3 };     // 0-255; brightness_pct rounds to 2.55 steps
+const TOLERANCE = { brightness: 8 };     // 0-255: about 3 %, for rounding and lights that clamp
 const RAW = Symbol("raw hass");
 const GONE = new Set(["unavailable", "unknown"]);
 
@@ -40,35 +48,51 @@ function membersOf(hass, id) {
   return members.filter((m) => typeof m === "string" && hass.states[m] && !GONE.has(hass.states[m].state));
 }
 
+// What an entity can be expected to report: an on/off-only light reports no brightness.
+function wantFor(state, want) {
+  const modes = state?.attributes?.supported_color_modes;
+  const onOff = Array.isArray(modes) && modes.length > 0 && modes.every((mode) => mode === "onoff");
+  if (!onOff || want.attributes?.brightness == null) return want;
+  const { brightness, ...attributes } = want.attributes;
+  return { ...want, attributes };
+}
+
 function matches(state, want) {
   if (!state) return false;
   if (want.state != null && state.state !== want.state) return false;
   return Object.entries(want.attributes ?? {}).every(([name, value]) => {
     const got = state.attributes?.[name];
+    if (got == null) return true;      // not reported by this entity: nothing to wait for
     if (typeof value === "number" && typeof got === "number") return Math.abs(got - value) <= (TOLERANCE[name] ?? 0);
     return got === value;
   });
 }
 
 export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError } = {}) {
-  const held = new Map();      // entity id -> {want, from, sendId}
+  const held = new Map();      // entity id -> {want, from, fromObject, sendId, quiet}
   let sends = 0;
   let version = 0;
   let cache = null;
 
   const changed = () => { version += 1; store.onChange?.(); };
 
-  // Drops what call sendId still holds; true when it held anything.
-  function rollback(sendId) {
+  // Drops what call sendId still holds. Returns whether it held anything that tells of a
+  // failure: on a timeout, a quiet hold (the reported state was already the expected one) does not.
+  function rollback(sendId, { timeout = false } = {}) {
     let dropped = false;
+    let failed = false;
     for (const [id, entry] of held) {
-      if (entry.sendId === sendId) { held.delete(id); dropped = true; }
+      if (entry.sendId !== sendId) continue;
+      held.delete(id);
+      dropped = true;
+      if (!timeout || !entry.quiet) failed = true;
     }
-    return dropped;
+    return { dropped, failed };
   }
 
   function settled(state, entry) {
     if (entry.want.changed) return !!state && state !== entry.fromObject;
+    if (entry.quiet) return !state || (state !== entry.fromObject && matches(state, entry.want));
     if (matches(state, entry.want)) return true;
     if (!state) return true;
     return entry.want.state != null && state.state !== entry.from && state.state !== entry.want.state;
@@ -86,15 +110,26 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
         if (want.changed) continue;
         for (const member of membersOf(real, id)) wanted[member] ??= want;
       }
-      for (const [id, want] of Object.entries(wanted)) {
+      for (const [id, given] of Object.entries(wanted)) {
         const state = real?.states?.[id];
-        if (!state || (!want.changed && matches(state, want))) { held.delete(id); continue; }
-        held.set(id, { want, from: state.state, fromObject: state, sendId });
+        const want = given.changed ? given : wantFor(state, given);
+        const earlier = held.get(id);
+        if (!state) { held.delete(id); continue; }
+        if (!want.changed && matches(state, want)) {
+          // Already reported as wanted: hold it only while an earlier call's report may still come.
+          if (earlier) held.set(id, { want, from: state.state, fromObject: state, sendId, quiet: true });
+          continue;
+        }
+        held.set(id, { want, from: state.state, fromObject: state, sendId, quiet: false });
       }
-      const fail = () => {
-        const dropped = rollback(sendId);
+      let reported = false;
+      const end = (options) => {
+        const { dropped, failed } = rollback(sendId, options);
         if (dropped) changed();
-        report(el, errorKey);
+        if (failed && !reported) {
+          reported = true;
+          report(el, errorKey);
+        }
       };
       let result;
       try {
@@ -102,16 +137,11 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
       } catch (err) {
         result = Promise.reject(err);
       }
-      result?.catch?.(() => fail());
-      const timer = setTimeout(() => {
-        if (!rollback(sendId)) return;
-        changed();
-        report(el, errorKey);
-      }, store.timeoutMs);
+      result?.catch?.(() => end());
+      const timer = setTimeout(() => end({ timeout: true }), store.timeoutMs);
       timer?.unref?.();     // node (the tests): a pending check does not hold the process
       changed();
     },
-
     update(hass) {
       const real = raw(hass);
       let dropped = false;
