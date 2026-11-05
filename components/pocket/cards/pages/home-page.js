@@ -393,7 +393,7 @@ function updateSections(root, parts, ctx) {
       tile.type = "button";
       tile.dataset.page = section.page;
       tile.querySelector("ha-icon").setAttribute("icon", section.icon);
-      tile.addEventListener("click", () => parts.ctx.navigate(section.route));
+      tile.addEventListener("click", () => parts.ctx.navigate(section.route, { from: "systems" }));
       parts.sections[section.page] = tile;
       return tile;
     }));

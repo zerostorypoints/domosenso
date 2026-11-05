@@ -854,3 +854,19 @@ test("a page of Systems off the bar has a way back to Systems; the menu opens on
   haButton.remove();
   window.history.replaceState(null, "", "#/");
 });
+
+test("any page opened from Systems has the way back, on the bar or not; a bar tab's page has none", async () => {
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", rooms: [{ id: "living_room", name: "Living room" }] });
+  window.history.replaceState(null, "", "#/systems");
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  app._navigate("#/climate");
+  assert.equal(app.shadowRoot.querySelector("main .top > .ha-back"), null, "Climate from its bar tab: no back");
+  app._navigate("#/systems");
+  app._navigate("#/climate", { from: "systems" });
+  assert.ok(app.shadowRoot.querySelector("main .top > .ha-back"), "Climate (on the bar) from Systems: back");
+  app.remove();
+  window.history.replaceState(null, "", "#/");
+});

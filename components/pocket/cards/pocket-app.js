@@ -286,17 +286,24 @@ class PocketApp extends HTMLElement {
     top.style.position = "relative";
     top.style.paddingLeft = "44px";
     top.prepend(button);
-    // A page of Systems that is not on the person's bar has no tab to return by: a way back to
-    // Systems beside the menu button (a page with its own back, an area or a panel, has a routeId).
+    // A page opened from Systems has a way back to it beside the menu button, on the bar or not;
+    // one off the bar has it however it was reached (no tab to return by). A page with its own back
+    // (an area, a floor plan from an area) has a routeId; Controls' status view is still Controls.
     const page = this._current?.page;
     const onBar = (this._barIds ?? "").split(" ").includes(page);
-    if (SYSTEMS_PAGES.includes(page) && !onBar && this._current?.id == null) {
+    const own = this._current?.id != null && page !== "controls";
+    if (SYSTEMS_PAGES.includes(page) && !own && (this._fromSystems || !onBar)) {
       const back = document.createElement("button");
       back.type = "button";
       back.className = "ha-back";
       back.innerHTML = `<ha-icon icon="mdi:chevron-left"></ha-icon>`;
       back.setAttribute("aria-label", this._t("card.pocket.back_systems"));
-      back.addEventListener("click", () => this._navigate("#/systems"));
+      // Back through history when Systems is the entry under this page, so the phone's own back
+      // and this arrow agree; else to Systems as a new entry.
+      back.addEventListener("click", () => {
+        if (this._fromSystems) window.history.back();
+        else this._navigate("#/systems");
+      });
       top.style.paddingLeft = "80px";
       top.prepend(back);
     }
@@ -372,8 +379,10 @@ class PocketApp extends HTMLElement {
 
   // options.replace: the route takes the place of the current history entry (area-to-area swipes,
   // so Back returns to Areas rather than through every area).
-  _navigate(route, { replace = false } = {}) {
+  _navigate(route, { replace = false, from = null } = {}) {
     route = legacyRoute(route) ?? route;
+    // Where the page about to open was opened from: Systems gives it a back arrow (_addMenu).
+    this._pendingFrom = from;
     if (this._unknownArea(parseRoute(route))) route = "#/areas";
     // From an open sheet: the route takes the sheet's entry, so Back goes to the page under it.
     if (this._sheet?.ownsEntry()) replace = true;
@@ -402,6 +411,10 @@ class PocketApp extends HTMLElement {
       route = parseRoute("#/areas");
     }
     const key = `${route.page}/${route.id ?? ""}`;
+    // Opened from Systems, it keeps its way back while it stays the same page (a switch of its
+    // own views is still that page); another page forgets it.
+    if (route.page !== this._current?.page) this._fromSystems = this._pendingFrom === "systems";
+    this._pendingFrom = null;
     this._current = route;
     if (key !== this._key) {
       this._key = key;
