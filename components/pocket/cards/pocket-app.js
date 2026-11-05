@@ -16,8 +16,8 @@
 //     (ctx.optimistic); a send or a rollback redraws the page, each hass drops what it reports;
 //   - one bottom sheet over the page and the bar (lib/sheet.js): a page opens it with
 //     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js;
-//     "checks", "air", "lights", lib/detail-sheets.js); the content is updated with the page, and a
-//     new route closes it. Back closes it first. A route taken while a sheet is open takes the
+//     "checks", "air", "lights", lib/detail-sheets.js; "forecast", lib/weather.js); the content is
+//     updated with the page, and a new route closes it. Back closes it first. A route taken while a sheet is open takes the
 //     place of the sheet's history entry, and a sheet's entry left behind (a reload, a return to
 //     the dashboard) is cleared, so Back never stops at a sheet that is no longer there.
 // Navigation sets location.hash: no reload, and the browser's back button returns.
@@ -39,6 +39,7 @@ import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
 import { checks, air, lights } from "./lib/detail-sheets.js";
+import { forecastSheet } from "./lib/weather.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -49,7 +50,7 @@ const TOAST_MS = 3000;
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
-const SHEETS = { trend: trendSheet, checks, air, lights };
+const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet };
 
 const STYLE = `
   :host { display: block; }

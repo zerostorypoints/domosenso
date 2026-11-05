@@ -263,6 +263,60 @@
       "lights": {
         "title": "Włączone światła",
         "none": "Nic nie świeci"
+      },
+      "climate": {
+        "title": "Klimat i powietrze",
+        "advice": {
+          "open_window": "Otwórz okno",
+          "too_warm": "Za ciepło",
+          "too_cold": "Za zimno",
+          "too_dry": "Za sucho",
+          "too_humid": "Za wilgotno"
+        },
+        "advice_value": "{reading} {value}",
+        "square": {
+          "inside": "W domu",
+          "outside": "Na zewnątrz",
+          "air": "Powietrze"
+        },
+        "all_in_range": "Wszystko w normie",
+        "out_of_range": {
+          "one": "{count} poza normą",
+          "few": "{count} poza normą",
+          "many": "{count} poza normą",
+          "other": "{count} poza normą"
+        },
+        "view": {
+          "label": "Odczyt",
+          "temperature": "Temp.",
+          "humidity": "Wilgotność",
+          "air": "Powietrze"
+        },
+        "empty": "Żaden obszar nie ma tego odczytu"
+      },
+      "weather": {
+        "title": "Pogoda",
+        "today": "Dziś",
+        "high_low": "{high} / {low}",
+        "rain": "{value} % szans na opady",
+        "none": "Brak prognozy",
+        "condition": {
+          "clear-night": "Bezchmurna noc",
+          "cloudy": "Pochmurno",
+          "fog": "Mgła",
+          "hail": "Grad",
+          "lightning": "Burza",
+          "lightning-rainy": "Burza z deszczem",
+          "partlycloudy": "Częściowe zachmurzenie",
+          "pouring": "Ulewa",
+          "rainy": "Deszcz",
+          "snowy": "Śnieg",
+          "snowy-rainy": "Deszcz ze śniegiem",
+          "sunny": "Słonecznie",
+          "windy": "Wietrznie",
+          "windy-variant": "Wietrznie",
+          "exceptional": "Nietypowo"
+        }
       }
     }
   }

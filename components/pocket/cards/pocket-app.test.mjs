@@ -367,9 +367,9 @@ test("the Outside is an area when the home has one; a route to it without one go
   assert.deepEqual(active(card), ["areas"]);
 });
 
-test("pages not built yet say so: climate, power, plants, the floor plan", async () => {
+test("pages not built yet say so: power, plants, the floor plan", async () => {
   const card = mount();
-  for (const hash of ["#/climate", "#/power", "#/plants", "#/floorplan"]) {
+  for (const hash of ["#/power", "#/plants", "#/floorplan"]) {
     await goTo(hash);
     assert.match($(card, "main").textContent, /Coming next/, hash);
   }
@@ -462,7 +462,7 @@ test("two saves at once run one after the other: both fields are kept", async ()
   const ctx = card._ctx();
   await Promise.all([ctx.saveSettings({ bar: ["areas"] }), ctx.saveSettings({ theme: "dark" })]);
   assert.deepEqual(stored(), { bar: ["areas"], theme: "dark" });
-  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark" });
+  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark", climateView: "temperature" });
 });
 
 test("a failed save does not stop the next one", async () => {
@@ -720,4 +720,19 @@ test("a sheet's state left on the entry (a reload, a return to the dashboard) is
   document.body.append(card);
   assert.equal(window.history.state?.pocketSheet, undefined, "cleared when the card comes back");
   assert.equal(window.location.hash, "#/area/kitchen");
+});
+
+test("#/climate is the Climate & air page; the forecast sheet is the shell's, closed when the route changes", async () => {
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...config(), weather: "weather.home" });
+  document.body.appendChild(card);
+  card.hass = hassOf({ states: { "weather.home": { state: "sunny", attributes: {} } } });
+  await goTo("#/climate");
+  assert.equal($(card, "main .climate .top b").textContent, "Climate & air");
+  assert.deepEqual(active(card), ["climate"]);
+  $(card, "main .climate .wx").click();
+  assert.ok($(card, ".sheet .forecast-sheet"));
+  assert.equal($(card, ".sheet").getAttribute("aria-label"), "Weather");
+  await goTo("#/");
+  assert.equal($(card, ".sheet-layer").hidden, true);
 });

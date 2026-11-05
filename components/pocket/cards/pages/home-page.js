@@ -10,6 +10,9 @@
 //     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
 //     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
 //     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
+//   - the weather, when the config names a weather entity (lib/weather.js): one row under the
+//     chips, the current condition with today's high / low and chance of rain, opening the
+//     forecast sheet;
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
 //     a tap elsewhere opens Media; no card while the player is missing from Home Assistant;
 //   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
@@ -27,6 +30,7 @@ import { checksSpec, lightsSpec } from "../lib/detail-sheets.js";
 import { formatDate } from "../lib/i18n.js";
 import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
+import { forecastSpec } from "../lib/weather.js";
 import {
   GONE, el, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
@@ -60,6 +64,12 @@ const STYLE = `
   .home .chip .v.lv-cold { color: var(--cold); }
   .home .chip .v.lv-warm { color: var(--warm); }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .quick-sec[hidden] { display: none; }
+  .home .wx { box-sizing: border-box; width: 100%; min-height: 52px; margin: -4px 0 14px; padding: 10px 12px;
+              display: flex; align-items: center; gap: 8px; text-align: left; font: inherit; color: var(--fg);
+              background: var(--card); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; }
+  .home .wx pocket-forecast { flex: 1; min-width: 0; }
+  .home .wx .chev { flex: 0 0 auto; color: var(--mut); font-size: 18px; }
+  .home .wx[hidden] { display: none; }
   .home .now { display: flex; align-items: center; gap: 12px; padding: 12px;
                background: var(--card); border: 1px solid var(--line); border-radius: 20px; }
   .home .now .open { flex: 1; min-width: 0; min-height: 52px; margin: 0; padding: 0; border: 0; background: none;
@@ -107,6 +117,7 @@ export function render(ctx) {
     <div class="chips">
       ${["inside", "outside", "air", "lights_on"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
     </div>
+    <button class="wx" type="button" hidden><pocket-forecast mode="row"></pocket-forecast><span class="chev">›</span></button>
     <div class="now" hidden>
       <button class="open" type="button">
         <span class="art"><img alt="" hidden></span>
@@ -127,6 +138,7 @@ export function render(ctx) {
     att: root.querySelector(".att"),
     chips: Object.fromEntries([...root.querySelectorAll(".chip")].map((chip) => [chip.dataset.chip, chip])),
     now: root.querySelector(".now"),
+    wx: root.querySelector(".wx"),
     quickSec: root.querySelector(".quick-sec"),
     quickTitle: root.querySelector(".quick-title"),
     roomsTitle: root.querySelector(".rooms-title"),
@@ -145,6 +157,8 @@ export function render(ctx) {
   }
   // Stable (lib/trend.js calls each waiting widget once); one redraw per frame for all answers.
   parts.onTrend = coalesce(() => { if (root.isConnected) updateChips(parts, parts.ctx); });
+
+  parts.wx.addEventListener("click", () => parts.ctx.openSheet?.(forecastSpec(parts.ctx)));
 
   const now = parts.now;
   now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
@@ -204,6 +218,8 @@ export function update(root, ctx) {
     { weekday: "short", day: "numeric", month: "short" }));
   updatePills(parts, ctx);
   updateChips(parts, ctx);
+  parts.wx.hidden = !ctx.config.weather;
+  if (ctx.config.weather) parts.wx.querySelector("pocket-forecast").ctx = ctx;
   updateNow(parts, ctx);
   updateQuick(parts, ctx);
   updateRooms(parts, ctx);

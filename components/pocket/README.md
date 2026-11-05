@@ -7,7 +7,15 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 ## The 0.1.0 prototype
 
 - **Home**: attention pills, readings (inside and outside, with the air score and a lights-on
-  chip), now playing, quick light tiles and a rooms strip.
+  chip), the weather in one row (with a `weather` entity: the condition now, today's high / low
+  and chance of rain, opening the forecast sheet), now playing, quick light tiles and a rooms strip.
+- **Climate & air** (`#/climate`): an advice card only while a limit is crossed now (a poor CO₂ or
+  VOC: open a window; a poor air reading by name; a room too cold, warm, dry or humid), squares for
+  Inside, Outside and Air, the weather forecast as a strip (today and the next four days, from
+  Home Assistant's daily `weather/subscribe_forecast`, else the entity's `forecast` attribute),
+  and a Temp / Humidity / Air switch (remembered per person) over every area, the Outside
+  included: each value on a bar of its comfort range, or the air's good / fair / poor with marks at
+  climate-air's limits. Every card, square and row opens its trend.
 - **Areas** tab (`#/areas`): every room with its lights and readings, then the **Outside** when
   the home has `outside` or `weather`.
 - **Area page** (`#/area/<id>`): one room in detail, or the Outside's temperature and humidity
@@ -30,8 +38,8 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
   close button, a tap above it or the phone's Back.
 - **Bottom bar**: fixed to the bottom of the screen (beside HA's sidebar on a wide screen), its
   background down over the home indicator. Home and Settings always, the person's chosen pages
-  between them, at most five; by default Home, Areas, Climate, Media, Settings. Climate, Media,
-  Power and Plants are "coming next".
+  between them, at most five; by default Home, Areas, Climate, Media, Settings. Media, Power and
+  Plants are "coming next".
 - **Settings** (`#/settings`): Appearance (System / Light / Dark), the bar's pages (at most three
   besides Home and Settings), the comfort ranges and air limits (each value opens Home Assistant's
   dialog of its climate-air helper, which changes it), and About: the pocket's version, every

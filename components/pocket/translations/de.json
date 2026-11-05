@@ -263,6 +263,60 @@
       "lights": {
         "title": "Lichter an",
         "none": "Keine an"
+      },
+      "climate": {
+        "title": "Klima & Luft",
+        "advice": {
+          "open_window": "Fenster öffnen",
+          "too_warm": "Zu warm",
+          "too_cold": "Zu kalt",
+          "too_dry": "Zu trocken",
+          "too_humid": "Zu feucht"
+        },
+        "advice_value": "{reading} {value}",
+        "square": {
+          "inside": "Drinnen",
+          "outside": "Draussen",
+          "air": "Luft"
+        },
+        "all_in_range": "Alles im Bereich",
+        "out_of_range": {
+          "one": "{count} ausserhalb",
+          "few": "{count} ausserhalb",
+          "many": "{count} ausserhalb",
+          "other": "{count} ausserhalb"
+        },
+        "view": {
+          "label": "Messwert",
+          "temperature": "Temp.",
+          "humidity": "Feuchte",
+          "air": "Luft"
+        },
+        "empty": "Kein Bereich hat diesen Messwert"
+      },
+      "weather": {
+        "title": "Wetter",
+        "today": "Heute",
+        "high_low": "{high} / {low}",
+        "rain": "{value} % Regenrisiko",
+        "none": "Noch keine Vorhersage",
+        "condition": {
+          "clear-night": "Klare Nacht",
+          "cloudy": "Bewölkt",
+          "fog": "Nebel",
+          "hail": "Hagel",
+          "lightning": "Gewitter",
+          "lightning-rainy": "Gewitter mit Regen",
+          "partlycloudy": "Teilweise bewölkt",
+          "pouring": "Starkregen",
+          "rainy": "Regen",
+          "snowy": "Schnee",
+          "snowy-rainy": "Schneeregen",
+          "sunny": "Sonnig",
+          "windy": "Windig",
+          "windy-variant": "Windig",
+          "exceptional": "Aussergewöhnlich"
+        }
       }
     }
   }

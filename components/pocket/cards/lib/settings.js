@@ -8,15 +8,20 @@
 // Fields:
 //   bar     the page ids on the bottom bar (lib/router.js barTabs: Home and Settings always)
 //   theme   the Appearance: "system" (the phone's), "light" or "dark" (lib/theme.js MODES)
+//   climateView   the reading the Climate page shows: "temperature", "humidity" or "air"
+//                 (lib/climate.js VIEWS), the switch's last choice
 //
 // A call that fails (an old Home Assistant, a lost connection, a hass without callWS) gives the
 // defaults on load (readSettings rejects instead); on save it rejects and writes nothing.
+
+import { VIEWS } from "./climate.js";
 
 export const KEY = "domosenso-pocket";
 
 export const DEFAULTS = Object.freeze({
   bar: Object.freeze(["home", "areas", "climate", "media", "settings"]),
   theme: "system",
+  climateView: "temperature",
 });
 
 const THEMES = ["system", "light", "dark"];
@@ -29,6 +34,7 @@ export function withDefaults(stored) {
   const result = { ...DEFAULTS, ...value, bar: [...DEFAULTS.bar] };
   if (Array.isArray(value.bar) && value.bar.every((id) => typeof id === "string")) result.bar = [...value.bar];
   if (!THEMES.includes(value.theme)) result.theme = DEFAULTS.theme;
+  if (!VIEWS.includes(value.climateView)) result.climateView = DEFAULTS.climateView;
   return result;
 }
 

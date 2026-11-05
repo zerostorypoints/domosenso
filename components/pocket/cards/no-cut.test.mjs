@@ -30,7 +30,8 @@ test("no card style ellipsizes or clamps text", () => {
 
 test("grids of widgets have equal rows: every widget grid sets grid-auto-rows: 1fr", () => {
   const grids = [["pages/area-page.js", ".room .squares"], ["pages/area-page.js", ".room .members"],
-    ["pages/areas-page.js", ".rooms .grid"], ["pages/home-page.js", ".home .quick"], ["lib/detail-sheets.js", ".detail .tiles"]];
+    ["pages/areas-page.js", ".rooms .grid"], ["pages/home-page.js", ".home .quick"],
+    ["pages/climate-page.js", ".climate .squares"], ["lib/detail-sheets.js", ".detail .tiles"]];
   for (const [file, sel] of grids) {
     const css = readFileSync(join(here, file), "utf8");
     const rule = css.match(new RegExp(`${sel.replace(/\./g, "\\.")} \\{([^}]*)\\}`))?.[1] ?? "";

@@ -437,3 +437,42 @@ test("trend arrows on the outside and air chips from the last hour; none on insi
   assert.equal(hass.ws.length, 2, "updates fetch nothing");
   clearHistoryCache();
 });
+
+test("weather: one row under the chips from the daily forecast subscription, opening the forecast sheet", async () => {
+  const { clearForecasts } = await import("../lib/weather.js");
+  clearForecasts();
+  const subs = [];
+  const hass = hassOf({ ...baseStates(), "weather.forecast_home": st("sunny", { temperature: 7 }) });
+  hass.connection = { subscribeMessage: (callback, message) => {
+    const sub = { callback, message, ended: false };
+    subs.push(sub);
+    return Promise.resolve(() => { sub.ended = true; });
+  } };
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx);
+  const wx = el.querySelector(".wx");
+  assert.equal(wx.hidden, false);
+  assert.equal(wx.previousElementSibling.className, "chips", "right under the readings");
+  assert.equal(subs.length, 1);
+  assert.equal(subs[0].message.forecast_type, "daily");
+  const noon = new Date();
+  noon.setHours(12, 0, 0, 0);
+  subs[0].callback({ forecast: [{ datetime: noon.toISOString(), condition: "rainy", temperature: 9, templow: 2,
+    precipitation_probability: 30 }] });
+  const row = wx.querySelector("pocket-forecast").shadowRoot;
+  assert.equal(row.querySelector("ha-icon").getAttribute("icon"), "mdi:weather-sunny", "the condition now");
+  assert.equal(text(row.querySelector(".cond")), "Sunny");
+  assert.equal(text(row.querySelector(".hl")), "9° / 2°");
+  assert.equal(text(row.querySelector(".rain")), "30 %");
+  wx.click();
+  assert.deepEqual(ctx.sheets.at(-1), { kind: "forecast", title: "Weather" });
+  el.remove();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(subs[0].ended, true, "leaving the page ends the subscription");
+});
+
+test("weather: no row without a weather entity", () => {
+  const { weather, ...cfg } = config;
+  const el = mount(ctxOf({ cfg }));
+  assert.equal(el.querySelector(".wx").hidden, true);
+});

@@ -263,6 +263,60 @@
       "lights": {
         "title": "Lights on",
         "none": "No lights on"
+      },
+      "climate": {
+        "title": "Climate & air",
+        "advice": {
+          "open_window": "Open a window",
+          "too_warm": "Too warm",
+          "too_cold": "Too cold",
+          "too_dry": "Too dry",
+          "too_humid": "Too humid"
+        },
+        "advice_value": "{reading} {value}",
+        "square": {
+          "inside": "Inside",
+          "outside": "Outside",
+          "air": "Air"
+        },
+        "all_in_range": "All in range",
+        "out_of_range": {
+          "one": "{count} out of range",
+          "few": "{count} out of range",
+          "many": "{count} out of range",
+          "other": "{count} out of range"
+        },
+        "view": {
+          "label": "Reading",
+          "temperature": "Temp",
+          "humidity": "Humidity",
+          "air": "Air"
+        },
+        "empty": "No area has this reading"
+      },
+      "weather": {
+        "title": "Weather",
+        "today": "Today",
+        "high_low": "{high} / {low}",
+        "rain": "{value} % chance of rain",
+        "none": "No forecast yet",
+        "condition": {
+          "clear-night": "Clear night",
+          "cloudy": "Cloudy",
+          "fog": "Fog",
+          "hail": "Hail",
+          "lightning": "Thunderstorm",
+          "lightning-rainy": "Thunderstorm with rain",
+          "partlycloudy": "Partly cloudy",
+          "pouring": "Pouring rain",
+          "rainy": "Rain",
+          "snowy": "Snow",
+          "snowy-rainy": "Sleet",
+          "sunny": "Sunny",
+          "windy": "Windy",
+          "windy-variant": "Windy",
+          "exceptional": "Exceptional"
+        }
       }
     }
   }
