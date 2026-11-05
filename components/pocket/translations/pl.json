@@ -332,6 +332,36 @@
         "open": "Otwórz",
         "layers": "Warstwy",
         "none": "Ten dom nie ma jeszcze rzutu."
+      },
+      "media": {
+        "title": "Media",
+        "picker": "Odtwarzacz",
+        "picker_of": "Odtwarzacz: {name}",
+        "none": "W tym domu nie ma odtwarzacza.",
+        "details": "{name}: szczegóły odtwarzacza",
+        "previous": "Poprzedni",
+        "next": "Następny",
+        "mute": "Wycisz",
+        "unmute": "Włącz dźwięk",
+        "volume": "Głośność {value}",
+        "volume_label": "Głośność",
+        "level": "Poziom dźwięku",
+        "level_now": "{value} dB teraz",
+        "playing_what": "{name} · {title}",
+        "tab": {
+          "label": "Media lub dźwięk",
+          "media": "Media",
+          "sound": "Dźwięk"
+        }
+      },
+      "sound": {
+        "averages": "Średnie",
+        "db": "{value} dB",
+        "average": {
+          "leq_1_min": "Leq 1 min",
+          "leq_15_min": "Leq 15 min",
+          "leq_1_h": "Leq 1 h"
+        }
       }
     }
   }

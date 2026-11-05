@@ -2,6 +2,17 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
+## 0.1.0 (unreleased): Media and its Sound tab
+
+- **Media** (`#/media`) is built: artwork, progress, transport, volume, mute, source line and a
+  player picker of the areas' `media` players (remembered per person, settings field
+  `mediaPlayer`). Home's now playing and an area's player open it with their player
+  (`#/media/<area id>`).
+- With the new input `sound: true` (and optionally `sound_averages`), Media gets a **Sound** tab
+  with audio-sensor's live meter and the home's Leq averages.
+- **What a home does:** nothing for Media. For Sound: set `sound: true` in the pocket's inputs
+  with audio-sensor added, and name its Leq sensors under `sound_averages` if it has them.
+
 ## 0.1.0 (unreleased): all sensors of an area, the floor plan
 
 - An area page lists **All sensors** of its HA area by the catalog's categories (collapsed), each

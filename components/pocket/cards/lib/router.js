@@ -1,7 +1,7 @@
 // The pocket's routes live in location.hash: Home Assistant's own router ignores the hash, so a
 // change of page never reloads the dashboard and the browser's back button walks the pages.
-//   #/ home   #/areas  areas   #/area/<id>  one area   #/climate   #/media   #/power   #/plants
-//   #/settings   #/floorplan
+//   #/ home   #/areas  areas   #/area/<id>  one area   #/climate   #/media   #/media/<id>  Media
+//   with that area's player   #/power   #/plants   #/settings   #/floorplan
 // Anything else is home, so a stale or mistyped link still lands somewhere useful. The routes of
 // the first version (#/rooms, #/room/<id>) are redirected: legacyRoute() names their new hash.
 
@@ -37,9 +37,9 @@ export function parseRoute(hash) {
   const parts = text.slice(2).split("/");
   if (parts.length > 1 && parts[parts.length - 1] === "") parts.pop();
   if (parts.length === 1 && SINGLE.has(parts[0])) return { page: parts[0] };
-  if (parts.length === 2 && parts[0] === "area" && parts[1]) {
+  if (parts.length === 2 && (parts[0] === "area" || parts[0] === "media") && parts[1]) {
     try {
-      return { page: "area", id: decodeURIComponent(parts[1]) };
+      return { page: parts[0], id: decodeURIComponent(parts[1]) };
     } catch {
       return { ...HOME };
     }

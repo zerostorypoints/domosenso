@@ -32,6 +32,14 @@ inputs:
     type: bool                  # the floor plan view (#/floorplan, a bar item each person may turn on). Needs
     default: false              # the floorplan component added and its plan pushed (SPEC-028)
     example: true
+  sound:                        # true: a Sound tab inside Media, with audio-sensor's live meter (its card
+    type: bool                  # room-meter-card on the music aliases sensor.music_level and
+    default: false              # sensor.music_spl_offset). Needs the audio-sensor component added
+    example: true
+  sound_averages:               # the home's own Leq sensors (dB SPL) under the meter, one square each; the
+    type: "{leq_1_min?, leq_15_min?, leq_1_h?: entity_id}"   # 1 min one is also the meter's marker.
+    default: null               # Read only with `sound`; another key fails the render
+    example: {leq_1_min: sensor.room_leq_1_min, leq_15_min: sensor.room_leq_15_min, leq_1_h: sensor.room_leq_1_h}
 
 assistant:
   version: 1
@@ -63,6 +71,11 @@ consumes:
   # with the component.
   - {component: floorplan, id: "dashboard url path floorplan"}
   - {component: floorplan, element: floorplan-card}
+  # With sound: Media's Sound tab, audio-sensor's music aliases on its live meter. The card's
+  # resource comes with the component.
+  - {component: audio-sensor, id: sensor.music_level}
+  - {component: audio-sensor, id: sensor.music_spl_offset}
+  - {component: audio-sensor, element: room-meter-card}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh pocket)

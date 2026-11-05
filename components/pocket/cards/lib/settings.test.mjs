@@ -106,3 +106,13 @@ test("the Climate view: temperature by default; a stored humidity or air wins; a
   assert.deepEqual(hass.store["domosenso-pocket"], { theme: "dark", climateView: "air" });
   assert.equal(saved.climateView, "air");
 });
+
+test("the media player: a stored string is kept, anything else is dropped", async () => {
+  assert.equal(withDefaults({ mediaPlayer: "media_player.den" }).mediaPlayer, "media_player.den");
+  assert.equal("mediaPlayer" in withDefaults({ mediaPlayer: 3 }), false);
+  assert.equal("mediaPlayer" in withDefaults({}), false);
+  const hass = hassWith({ "domosenso-pocket": { theme: "dark" } });
+  const saved = await saveSettings(hass, { mediaPlayer: "media_player.den" });
+  assert.equal(saved.mediaPlayer, "media_player.den");
+  assert.deepEqual(hass.store["domosenso-pocket"], { theme: "dark", mediaPlayer: "media_player.den" });
+});

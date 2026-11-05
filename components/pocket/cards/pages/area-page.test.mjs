@@ -209,6 +209,9 @@ test("media row: art, title, artist, play/pause", () => {
   assert.equal(play.getAttribute("aria-label"), "Pause");
   play.click();
   assert.deepEqual(ctx.hass.calls, [["media_player", "media_play_pause", { entity_id: "media_player.living_room_speaker" }]]);
+  assert.deepEqual(ctx.routes, []);
+  row.querySelector(".open").click();
+  assert.deepEqual(ctx.routes, ["#/media/living_room"], "a tap beside play opens Media with this player");
 });
 
 test("section titles", () => {

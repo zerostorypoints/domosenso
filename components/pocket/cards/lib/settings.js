@@ -10,6 +10,8 @@
 //   theme   the Appearance: "system" (the phone's), "light" or "dark" (lib/theme.js MODES)
 //   climateView   the reading the Climate page shows: "temperature", "humidity" or "air"
 //                 (lib/climate.js VIEWS), the switch's last choice
+//   mediaPlayer   the media player the Media page shows (an entity id of an area's `media`), the
+//                 picker's last choice; absent until one is picked
 //
 // A call that fails (an old Home Assistant, a lost connection, a hass without callWS) gives the
 // defaults on load (readSettings rejects instead); on save it rejects and writes nothing.
@@ -35,6 +37,7 @@ export function withDefaults(stored) {
   if (Array.isArray(value.bar) && value.bar.every((id) => typeof id === "string")) result.bar = [...value.bar];
   if (!THEMES.includes(value.theme)) result.theme = DEFAULTS.theme;
   if (!VIEWS.includes(value.climateView)) result.climateView = DEFAULTS.climateView;
+  if (typeof value.mediaPlayer !== "string") delete result.mediaPlayer;
   return result;
 }
 

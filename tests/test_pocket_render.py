@@ -148,3 +148,33 @@ def test_consumes_the_floorplan_card_as_an_element():
     manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
     assert {"component": "floorplan", "element": "floorplan-card"} in manifest["consumes"]
     assert manifest["inputs"]["floorplan"]["default"] is False
+
+
+def test_sound_only_with_the_input(tmp_path):
+    assert "sound" not in _card(_dashboard(tmp_path / "without"))
+    card = _card(_dashboard(tmp_path / "with", inputs={**INPUTS, "sound": True}))
+    assert card["sound"] == {"level": "sensor.music_level", "offset": "sensor.music_spl_offset"}
+    averages = {"leq_1_min": "sensor.a_leq_1_min", "leq_1_h": "sensor.a_leq_1_h"}
+    card = _card(_dashboard(tmp_path / "avg", inputs={**INPUTS, "sound": True, "sound_averages": averages}))
+    assert card["sound"]["averages"] == averages
+    # The averages are read only with `sound`.
+    card = _card(_dashboard(tmp_path / "off", inputs={**INPUTS, "sound_averages": averages}))
+    assert "sound" not in card
+
+
+def test_sound_averages_unknown_key_fails(tmp_path):
+    with pytest.raises(RenderError, match="sound_averages: unknown key leq_5_min"):
+        _dashboard(tmp_path, inputs={**INPUTS, "sound": True, "sound_averages": {"leq_5_min": "sensor.x"}})
+
+
+def test_consumes_the_room_meter_card_and_the_music_aliases():
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    for item in ({"component": "audio-sensor", "element": "room-meter-card"},
+                 {"component": "audio-sensor", "id": "sensor.music_level"},
+                 {"component": "audio-sensor", "id": "sensor.music_spl_offset"}):
+        assert item in manifest["consumes"], item
+    assert manifest["inputs"]["sound"]["default"] is False
+    audio = yaml.safe_load((ROOT / "components/audio-sensor/component.yaml").read_text(encoding="utf-8"))
+    assert "cards/room-meter-card.js" in audio["artifacts"]["dashboard_cards"]
+    provided = {e["id"] for e in audio["provides"]["entities"]}
+    assert {"sensor.music_level", "sensor.music_spl_offset"} <= provided

@@ -9,6 +9,10 @@ test("the pages and an area by id", () => {
   }
   assert.deepEqual(parseRoute("#/area/kitchen"), { page: "area", id: "kitchen" });
   assert.deepEqual(parseRoute("#/area/outside"), { page: "area", id: "outside" });
+  assert.deepEqual(parseRoute("#/media/living%20room"), { page: "media", id: "living room" });
+  assert.deepEqual(parseRoute("#/media/"), { page: "media" });
+  assert.deepEqual(parseRoute("#/media/a/b"), { page: "home" });
+  assert.equal(tabOf("media"), "media");
 });
 
 test("an empty hash is home", () => {

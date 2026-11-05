@@ -332,6 +332,36 @@
         "open": "Open",
         "layers": "Layers",
         "none": "This home has no floor plan yet."
+      },
+      "media": {
+        "title": "Media",
+        "picker": "Player",
+        "picker_of": "Player: {name}",
+        "none": "No media player in this home.",
+        "details": "{name}: player details",
+        "previous": "Previous",
+        "next": "Next",
+        "mute": "Mute",
+        "unmute": "Unmute",
+        "volume": "Volume {value}",
+        "volume_label": "Volume",
+        "level": "Sound level",
+        "level_now": "{value} dB now",
+        "playing_what": "{name} · {title}",
+        "tab": {
+          "label": "Media or sound",
+          "media": "Media",
+          "sound": "Sound"
+        }
+      },
+      "sound": {
+        "averages": "Averages",
+        "db": "{value} dB",
+        "average": {
+          "leq_1_min": "Leq 1 min",
+          "leq_15_min": "Leq 15 min",
+          "leq_1_h": "Leq 1 h"
+        }
       }
     }
   }

@@ -21,7 +21,8 @@
 //     group's entity_id attribute);
 //   - its scenes as a sideways row of buttons (scene.turn_on), a pressed one marked until Home
 //     Assistant reports that it ran;
-//   - its player: artwork, title, artist, play/pause;
+//   - its player: artwork, title, artist, play/pause; a tap elsewhere opens Media with it
+//     (#/media/<id>);
 // Every control sends through ctx.optimistic (lib/optimistic.js): its new state shows at once.
 //   - the area's part of the floor plan (lib/area-plan.js: the floorplan component's own card with
 //     the area's room alone), when the home has the floorplan and the area is on it;
@@ -122,6 +123,9 @@ const STYLE = `
   .room .media { display: flex; align-items: center; gap: 12px; padding: 12px;
                  background: var(--card); border: 1px solid var(--line); border-radius: 20px; }
   .room .media.muted .meta, .room .media.muted .art { opacity: .55; }
+  .room .media .open { flex: 1; min-width: 0; min-height: 52px; margin: 0; padding: 0; border: 0; background: none;
+                       display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: var(--fg);
+                       cursor: pointer; }
   .room .art { display: block; width: 52px; height: 52px; border-radius: 12px; flex: 0 0 auto; overflow: hidden;
                background: var(--chip); }
   .room .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -239,10 +243,12 @@ export function render(ctx) {
 
   parts.musicSec = el("div", "sec");
   parts.media = el("div", "media",
-    `<span class="art"><img alt="" hidden></span>
-     <span class="meta"><span class="t1"></span> <span class="t2"></span></span>
+    `<button class="open" type="button"><span class="art"><img alt="" hidden></span>
+     <span class="meta"><span class="t1"></span> <span class="t2"></span></span></button>
      <button class="play" type="button"><ha-icon></ha-icon></button>`);
   parts.player = player;
+  parts.media.querySelector(".open").addEventListener("click", () =>
+    parts.ctx.navigate(`#/media/${encodeURIComponent(room.id)}`));
   parts.media.querySelector(".play").addEventListener("click", () => {
     const { hass, offline, optimistic } = parts.ctx;
     const state = player ? hass?.states?.[player] : undefined;
@@ -454,8 +460,9 @@ function updateMedia(parts, ctx) {
   const a = gone ? {} : state.attributes ?? {};
   const isPlaying = state.state === "playing";
   media.classList.toggle("muted", gone);
-  setText(media.querySelector(".t1"),
-    gone ? ctx.t("card.pocket.format.none") : a.media_title || ctx.t("card.pocket.home.nothing_playing"));
+  const title = gone ? ctx.t("card.pocket.format.none") : a.media_title || ctx.t("card.pocket.home.nothing_playing");
+  setText(media.querySelector(".t1"), title);
+  setAttr(media.querySelector(".open"), "aria-label", title);
   setText(media.querySelector(".t2"), a.media_artist || a.media_album_artist || room.name);
   const img = media.querySelector(".art img");
   if (a.entity_picture) setAttr(img, "src", a.entity_picture);

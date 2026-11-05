@@ -140,8 +140,10 @@ test("every page follows the contract; Home is built, a page not built yet says 
   }
   const card = mount();
   assert.ok($(card, "main .home"));
-  await goTo("#/media");
+  await goTo("#/power");
   assert.match($(card, "main").textContent, /Coming next/);
+  await goTo("#/media");
+  assert.ok($(card, "main .media"), "Media is built");
 });
 
 test("offline: a banner and ctx.offline; back online it goes", () => {

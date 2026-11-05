@@ -43,6 +43,17 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
   after a lost connection) and handed to every floor plan card the pocket shows. A bar item each person may turn on in
   Settings (off by default); without the floorplan component neither the page's plan nor the
   item is offered.
+- **Media** (`#/media`, `#/media/<area id>`): the shown player's artwork (tap: Home Assistant's
+  more-info), title, artist and album, the progress ticking on the phone, previous / play-pause
+  (64 px) / next, a 44 px volume strip (drag along it, tap a point, or the arrow keys) and mute,
+  each hidden when the player's `supported_features` lack it, and its app and source. The picker
+  top right lists every area's `media` player in a sheet; the choice is remembered per person.
+  Home's now playing and an area's player open Media with that area's player. Every control shows
+  its new state at once and rolls back with a toast when the player does not follow.
+  - **Sound** (with the input `sound`, audio-sensor in the home): a Media | Sound switch; Sound
+    shows audio-sensor's own live meter (`room-meter-card` on `sensor.music_level` and
+    `sensor.music_spl_offset`) and, with `sound_averages`, the home's Leq averages (1 min, 15 min,
+    1 h), each opening its trend. Media's source line then shows the level now.
 - **Widgets**: squares in a grid (an area's, the Areas tab's) share one size: equal columns and
   rows, a fixed aspect (a lone square does not stretch); no text is ellipsized anywhere, a long
   name wraps and a big value shrinks with its square. Each shows a
@@ -124,6 +135,9 @@ default dashboard in the user's profile).
   floor plan view; its Lovelace resource comes with that component and its plan with `domosenso
   floorplan push`. Needs the floorplan version that has the card's `area`, `zoom` and `chips`
   options (unreleased after 0.4.0).
+- **audio-sensor** (optional, with the input `sound: true`): its music aliases and its
+  `room-meter-card`, whose Lovelace resource comes with that component. The averages
+  (`sound_averages`: `leq_1_min`, `leq_15_min`, `leq_1_h`) are the home's own sensors in dB SPL.
 - **climate-air** for the levels: its threshold helpers (comfort range per room with climate, air
   limits per reading). Without it the card shows readings but no level.
 - A YAML dashboard per language in `configuration.yaml`, at the paths you choose
@@ -143,6 +157,7 @@ Rendered from the home inputs; nothing in it is a state.
 | `thresholds.outside` | with `outside`: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with outside humidity), climate-air's outside helpers; absent without `outside` |
 | `thresholds.air` | per air reading any room names (score, co2, pm2_5, voc, nox): `fair`, `poor` ids |
 | `floorplan` | `true` with the input `floorplan`: the home has the floorplan component, whose card the area pages and the floor plan view use; absent otherwise |
+| `sound` | with the input `sound`: `level` (`sensor.music_level`), `offset` (`sensor.music_spl_offset`) and `averages` (the input `sound_averages`); absent otherwise |
 
 ## Levels
 

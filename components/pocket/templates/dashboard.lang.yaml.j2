@@ -5,7 +5,9 @@
   language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
   helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
   `outside`, reserved) from `outside` and `weather`. With the input `floorplan` the card shows the
-  floorplan component's card (consumed as the element floorplan-card).
+  floorplan component's card (consumed as the element floorplan-card). With the input `sound` Media
+  gets its Sound tab: audio-sensor's music aliases on its meter (the element room-meter-card) and
+  the home's averages (the input `sound_averages`, read only with `sound`).
 
   thresholds:
     rooms: {<room id>: {temp_low, temp_high[, humidity_low, humidity_high]}}  per room with climate
@@ -56,6 +58,17 @@ views:
         # The floorplan component's card (its resource comes with that component): the area pages'
         # part of the plan and the floor plan view.
         floorplan: true
+[%- endif %]
+[%- if inputs.sound | default(false) %]
+        # audio-sensor's music level and offset on its own meter (its resource comes with that
+        # component), the home's averages under it.
+        sound:
+          level: sensor.music_level
+          offset: sensor.music_spl_offset
+[%- if inputs.sound_averages | default(none) %]
+[%- for key in inputs.sound_averages if key not in ('leq_1_min', 'leq_15_min', 'leq_1_h') %][[ fail('sound_averages: unknown key ' ~ key ~ ' (leq_1_min, leq_15_min, leq_1_h)') ]][% endfor %]
+          averages: [[ inputs.sound_averages | yaml ]]
+[%- endif %]
 [%- endif %]
         thresholds:
 [%- if comfort %]

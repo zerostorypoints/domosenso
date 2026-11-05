@@ -17,7 +17,8 @@
 //   - one bottom sheet over the page and the bar (lib/sheet.js): a page opens it with
 //     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js;
 //     "checks", "air", "lights", lib/detail-sheets.js; "forecast", lib/weather.js; "layers", the
-//     floor plan's layer chips, lib/layer-sheet.js); the content is
+//     floor plan's layer chips, lib/layer-sheet.js; "players", Media's player picker,
+//     lib/player-sheet.js), closed again with ctx.closeSheet(); the content is
 //     updated with the page, and a new route closes it. Back closes it first. A route taken while a sheet is open takes the
 //     place of the sheet's history entry, and a sheet's entry left behind (a reload, a return to
 //     the dashboard) is cleared, so Back never stops at a sheet that is no longer there.
@@ -31,6 +32,8 @@
 //   thresholds: {rooms: {<id>: {temp_low, temp_high, ...}}, outside: {...}, air: {<reading>: {fair, poor}}}
 //   floorplan: true          # optional: the home has the floorplan component (its card, floorplan-card,
 //                            # on the area pages and the floor plan view; the bar may offer the view)
+//   sound: {level, offset?, averages?}   # optional: the home has audio-sensor; Media's Sound tab
+//                            # (lib/sound-panel.js, its card room-meter-card)
 
 import { createT, language } from "./lib/i18n.js";
 import { barTabs, legacyRoute, optionalPages, parseRoute, tabOf } from "./lib/router.js";
@@ -44,6 +47,7 @@ import * as trendSheet from "./lib/trend-sheet.js";
 import { checks, air, lights } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
+import * as playerSheet from "./lib/player-sheet.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -55,7 +59,8 @@ const TOAST_MS = 3000;
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
-const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet };
+const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
+  players: playerSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -213,6 +218,7 @@ class PocketApp extends HTMLElement {
       settings: this._settings,
       saveSettings: (patch) => this._saveSettings(patch),
       openSheet: (spec, options) => this._openSheet(spec, options),
+      closeSheet: () => { if (this._sheet?.isOpen) this._sheet.close(); },
     };
   }
 

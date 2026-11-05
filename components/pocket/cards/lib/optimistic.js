@@ -36,7 +36,9 @@
 import { reportError } from "./report.js";
 
 export const CONFIRM_MS = 4000;
-const TOLERANCE = { brightness: 8 };     // 0-255: about 3 %, for rounding and lights that clamp
+// brightness 0-255: about 3 %, for rounding and lights that clamp; volume_level 0-1: a player that
+// rounds the level it is sent to its own steps.
+const TOLERANCE = { brightness: 8, volume_level: 0.02 };
 const RAW = Symbol("raw hass");
 const GONE = new Set(["unavailable", "unknown"]);
 

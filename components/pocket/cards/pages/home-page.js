@@ -14,7 +14,8 @@
 //     chips, the current condition with today's high / low and chance of rain, opening the
 //     forecast sheet;
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
-//     a tap elsewhere opens Media; no card while the player is missing from Home Assistant;
+//     a tap elsewhere opens Media with that room's player (#/media/<room id>); no card while the
+//     player is missing from Home Assistant;
 //   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
 //     an All off tile;
 //   - a sideways strip of the rooms, each opening its room page.
@@ -162,7 +163,8 @@ export function render(ctx) {
   parts.wx.addEventListener("click", () => parts.ctx.openSheet?.(forecastSpec(parts.ctx)));
 
   const now = parts.now;
-  now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
+  now.querySelector(".open").addEventListener("click", () =>
+    parts.ctx.navigate(parts.mediaRoom ? `#/media/${encodeURIComponent(parts.mediaRoom.id)}` : "#/media"));
   now.querySelector(".play").addEventListener("click", () => {
     const { hass, offline, optimistic } = parts.ctx;
     const player = parts.player;
@@ -316,6 +318,7 @@ function updateNow(parts, ctx) {
   const player = room ? [room.media].flat()[0] : undefined;
   const state = player ? ctx.hass?.states?.[player] : undefined;
   parts.player = player;
+  parts.mediaRoom = room;
   now.hidden = !state;
   if (!state) return;
   const gone = GONE.has(state.state);

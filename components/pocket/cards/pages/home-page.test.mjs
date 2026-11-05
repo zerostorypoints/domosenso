@@ -165,7 +165,7 @@ test("now playing: art, title, artist; play/pause in place, elsewhere to Media",
   assert.deepEqual(ctx.hass.calls, [["media_player", "media_play_pause", { entity_id: "media_player.living_room_speaker" }]]);
   assert.deepEqual(ctx.routes, []);
   card.querySelector("button.open").click();
-  assert.deepEqual(ctx.routes, ["#/media"]);
+  assert.deepEqual(ctx.routes, ["#/media/living_room"], "Media opens with that room's player");
   assert.equal(card.querySelector("[role]"), null, "no interactive role around the play button");
 });
 

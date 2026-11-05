@@ -332,6 +332,36 @@
         "open": "Öffnen",
         "layers": "Ebenen",
         "none": "Dieses Zuhause hat noch keinen Grundriss."
+      },
+      "media": {
+        "title": "Medien",
+        "picker": "Player",
+        "picker_of": "Player: {name}",
+        "none": "In diesem Zuhause gibt es keinen Mediaplayer.",
+        "details": "{name}: Player-Details",
+        "previous": "Zurück",
+        "next": "Weiter",
+        "mute": "Stumm",
+        "unmute": "Ton an",
+        "volume": "Lautstärke {value}",
+        "volume_label": "Lautstärke",
+        "level": "Schallpegel",
+        "level_now": "{value} dB jetzt",
+        "playing_what": "{name} · {title}",
+        "tab": {
+          "label": "Medien oder Klang",
+          "media": "Medien",
+          "sound": "Klang"
+        }
+      },
+      "sound": {
+        "averages": "Mittelwerte",
+        "db": "{value} dB",
+        "average": {
+          "leq_1_min": "Leq 1 min",
+          "leq_15_min": "Leq 15 min",
+          "leq_1_h": "Leq 1 h"
+        }
       }
     }
   }
