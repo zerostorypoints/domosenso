@@ -3,6 +3,28 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased (P3): thresholds from climate-air (`thresholds: climate-air`, optional)
+
+With `thresholds: climate-air` (and the climate-air component installed), the wall reads climate-air's
+helpers, the same thresholds Pocket reads:
+- the Air page's and the Climate page's air limits read `input_number.climate_air_<reading>_{fair,poor}`;
+- with the home inputs, each room's comfort range reads
+  `input_number.climate_air_<room>_{temp,humidity}_{low,high}`, matched by the room's temperature
+  sensor. The widget editor changes those helpers, and the widget keeps no copy of the range.
+- The settings page's air limits change climate-air's helpers.
+- The Ramka's own `input_number.<prefix>_air_*` helpers stay for this release and follow climate-air's
+  (automation `<prefix>_air_limits_follow_climate_air`), for automations that still read them. They
+  go in the next release.
+
+What a home does:
+1. Before switching, compare the Ramka's live limits with climate-air's (`domosenso snapshot`; the
+   migration report lists each pair as equal or conflicting) and set climate-air's to the values the
+   household chose.
+2. Set `thresholds: climate-air`, then `render`.
+3. `compare` a snapshot from before against one from after.
+
+`own` (the default) changes nothing.
+
 ## Unreleased (P3): rooms from the shared home inputs
 
 The Ramka declares `uses_home: optional`. When the home has shared inputs (`home_inputs:` in

@@ -12,7 +12,19 @@
      status   contacts and locks from the rooms' lists, {entity, label}, beside the Ramka's own status
               keys (a key the Ramka gives wins)
    Colours, the wall's layout and every other input stay the Ramka's own. -#]
+[%- from '_air-policy.jinja' import air_limits -%]
 [%- set merged = dict(inputs) -%]
+[#- P3.3: the thresholds the wall reads. `thresholds: climate-air` points every air limit at
+    climate-air's helpers (input_number.climate_air_<reading>_{fair,poor}) and, with home inputs, each
+    room's comfort range at input_number.climate_air_<room>_{temp,humidity}_{low,high}, keyed by the
+    room's temperature sensor; otherwise the Ramka's own (input_number.<prefix>_air_<reading>_<key>). -#]
+[%- set shared = inputs.thresholds is defined and inputs.thresholds == 'climate-air' -%]
+[%- set limit_ids = {} -%]
+[%- for reading, l in air_limits.items() -%]
+  [%- set _ = limit_ids.update({reading: (['input_number.climate_air_' ~ reading ~ '_fair', 'input_number.climate_air_' ~ reading ~ '_poor'] if shared
+        else ['input_number.' ~ inputs.prefix ~ '_air_' ~ reading ~ '_' ~ l[0], 'input_number.' ~ inputs.prefix ~ '_air_' ~ reading ~ '_' ~ l[1]])}) -%]
+[%- endfor -%]
+[%- set _ = merged.update({'air_limit_ids': limit_ids, 'shared_thresholds': shared}) -%]
 [%- if home is defined and home -%]
 [%- macro _name(item, room) -%][[ room_name(item) if item is mapping and item.name is defined else room_name(room) ]][%- endmacro -%]
 [%- set ns = namespace(lights=[], climate=[], covers=[], contacts=[], locks=[], air=none) -%]
@@ -39,6 +51,15 @@
 [%- endfor -%]
 [%- if inputs.lights is not defined and ns.lights %][% set _ = merged.update({'lights': ns.lights}) %][% endif -%]
 [%- if inputs.climate is not defined and ns.climate %][% set _ = merged.update({'climate': ns.climate}) %][% endif -%]
+[%- if shared -%]
+  [%- set comfort = {} -%]
+  [%- for room in home.rooms if room.climate is defined -%]
+    [%- set ids = {'temp_low': 'input_number.climate_air_' ~ room.id ~ '_temp_low', 'temp_high': 'input_number.climate_air_' ~ room.id ~ '_temp_high'} -%]
+    [%- if room.climate.humidity is defined %][% set _ = ids.update({'hum_low': 'input_number.climate_air_' ~ room.id ~ '_humidity_low', 'hum_high': 'input_number.climate_air_' ~ room.id ~ '_humidity_high'}) %][% endif -%]
+    [%- set _ = comfort.update({room.climate.temperature: ids}) -%]
+  [%- endfor -%]
+  [%- set _ = merged.update({'comfort_ids': comfort}) -%]
+[%- endif -%]
 [%- if inputs.covers is not defined and ns.covers %][% set _ = merged.update({'covers': ns.covers}) %][% endif -%]
 [%- if inputs.air is not defined and ns.air %][% set _ = merged.update({'air': ns.air}) %][% endif -%]
 [%- if inputs.weather is not defined and home.weather is defined %][% set _ = merged.update({'weather': home.weather}) %][% endif -%]

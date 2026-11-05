@@ -113,6 +113,9 @@ inputs:
   outside:                      # outside on the charts, dashed and thicker
     type: "{temperature, humidity?, color?}"
     default: null
+  thresholds:                   # own (the Ramka's own helpers) or climate-air: the air limits and, with home
+    type: "own | climate-air"   # inputs, each room's comfort range come from climate-air's helpers, one definition
+    default: own                # for the wall and Pocket; the Ramka's air helpers follow them for one release (P3)
   rooms_columns: {type: int, default: 5}
   air:                          # at least one tile: the air page; absent: no air page (0.2.0)
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
