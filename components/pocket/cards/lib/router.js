@@ -14,8 +14,14 @@ export const TABS = [
   { page: "media", route: "#/media", icon: "mdi:music" },
   { page: "power", route: "#/power", icon: "mdi:flash-outline" },
   { page: "plants", route: "#/plants", icon: "mdi:sprout-outline" },
+  { page: "floorplan", route: "#/floorplan", icon: "mdi:floor-plan" },
   { page: "settings", route: "#/settings", icon: "mdi:cog-outline" },
 ];
+
+// Pages only a home with their component has (the floor plan: the floorplan component, config
+// `floorplan`): the bar and Settings offer them only then (optionalPages).
+export const OPTIONAL_TABS = ["floorplan"];
+export const optionalPages = (config) => OPTIONAL_TABS.filter((page) => !config?.[page]);
 
 // Home and Settings are always on the bar (Settings is where the bar is changed); the others are
 // each person's choice (lib/settings.js), at most MAX_TABS in all.
@@ -50,15 +56,18 @@ export function legacyRoute(hash) {
   return room ? `#/area/${room[1]}` : null;
 }
 
-// The tab a page belongs to: an area and the floor plan are reached from Areas.
-export function tabOf(page) {
-  return page === "area" || page === "floorplan" ? "areas" : page;
+// The tab a page belongs to: an area is reached from Areas, and so is the floor plan when the bar
+// has no tab of its own for it (`tabs`: the bar's page ids).
+export function tabOf(page, tabs = []) {
+  if (page === "floorplan") return tabs.includes("floorplan") ? "floorplan" : "areas";
+  return page === "area" ? "areas" : page;
 }
 
 // The bar's tabs for a list of chosen page ids: Home first and Settings last always, the chosen
-// others in the bar's order, unknown ids and repeats ignored, at most MAX_TABS in all.
-export function barTabs(chosen) {
-  const wanted = new Set(Array.isArray(chosen) ? chosen : []);
+// others in the bar's order, unknown ids, repeats and the pages in `without` (optionalPages: the
+// home lacks their component) ignored, at most MAX_TABS in all.
+export function barTabs(chosen, { without = [] } = {}) {
+  const wanted = new Set((Array.isArray(chosen) ? chosen : []).filter((page) => !without.includes(page)));
   const room = MAX_TABS - FIXED_TABS.length;
   const picked = TABS.filter((tab) => !FIXED_TABS.includes(tab.page) && wanted.has(tab.page)).slice(0, room);
   return [TABS[0], ...picked, TABS[TABS.length - 1]];

@@ -4,7 +4,8 @@
   by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
   language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
   helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
-  `outside`, reserved) from `outside` and `weather`.
+  `outside`, reserved) from `outside` and `weather`. With the input `floorplan` the card shows the
+  floorplan component's card (consumed as the element floorplan-card).
 
   thresholds:
     rooms: {<room id>: {temp_low, temp_high[, humidity_low, humidity_high]}}  per room with climate
@@ -50,6 +51,11 @@ views:
 [%- endif %]
 [%- if home.weather is defined %]
         weather: [[ home.weather | yaml ]]
+[%- endif %]
+[%- if inputs.floorplan | default(false) %]
+        # The floorplan component's card (its resource comes with that component): the area pages'
+        # part of the plan and the floor plan view.
+        floorplan: true
 [%- endif %]
         thresholds:
 [%- if comfort %]

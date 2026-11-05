@@ -367,13 +367,41 @@ test("the Outside is an area when the home has one; a route to it without one go
   assert.deepEqual(active(card), ["areas"]);
 });
 
-test("pages not built yet say so: power, plants, the floor plan", async () => {
+test("pages not built yet say so: power, plants", async () => {
   const card = mount();
-  for (const hash of ["#/power", "#/plants", "#/floorplan"]) {
+  for (const hash of ["#/power", "#/plants"]) {
     await goTo(hash);
     assert.match($(card, "main").textContent, /Coming next/, hash);
   }
+});
+
+test("the floor plan without the floorplan component says there is none, under Areas", async () => {
+  const card = mount();
+  await goTo("#/floorplan");
+  assert.match($(card, "main").textContent, /no floor plan/);
   assert.deepEqual(active(card), ["areas"], "the floor plan belongs to Areas");
+});
+
+test("the floor plan on the bar only with the floorplan component, its own tab when it is there", async () => {
+  const without = mount({ hass: hassWithData({ bar: ["areas", "floorplan"] }) });
+  await tick();
+  assert.deepEqual($$(without, "nav .tab").map((el) => el.dataset.page), ["home", "areas", "settings"]);
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...config(), floorplan: true });
+  document.body.appendChild(card);
+  card.hass = hassWithData({ bar: ["areas", "floorplan"] });
+  await tick();
+  assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "areas", "floorplan", "settings"]);
+  assert.deepEqual(labels(card), ["Home", "Areas", "Floor plan", "Settings"]);
+  await goTo("#/floorplan");
+  assert.deepEqual(active(card), ["floorplan"]);
+});
+
+test("the shell opens the floor plan's layers sheet", () => {
+  const card = mount();
+  const chips = [{ id: "climate", name: "Climate", colour: "red", on: true }];
+  assert.equal(card._ctx().openSheet({ kind: "layers", card: { layerChips: chips, pressLayer() {} }, title: "Layers" }), true);
+  assert.match($(card, ".sheet-layer").textContent, /Climate/);
 });
 
 // A hass whose frontend user data holds `stored` under the pocket's key.

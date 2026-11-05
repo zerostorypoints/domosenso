@@ -20,6 +20,7 @@
         "media": "Media",
         "power": "Energia",
         "plants": "Rośliny",
+        "floorplan": "Rzut",
         "settings": "Ustawienia"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
@@ -317,6 +318,19 @@
           "windy-variant": "Wietrznie",
           "exceptional": "Nietypowo"
         }
+      },
+      "sensors": {
+        "title": "Wszystkie czujniki",
+        "state": {
+          "on": "Wł.",
+          "off": "Wył."
+        }
+      },
+      "floorplan": {
+        "title": "Rzut",
+        "open": "Otwórz",
+        "layers": "Warstwy",
+        "none": "Ten dom nie ma jeszcze rzutu."
       }
     }
   }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseRoute, legacyRoute, TABS, tabOf, barTabs, MAX_TABS } from "./router.js";
+import { parseRoute, legacyRoute, TABS, tabOf, barTabs, MAX_TABS, optionalPages } from "./router.js";
 
 test("the pages and an area by id", () => {
   assert.deepEqual(parseRoute("#/"), { page: "home" });
@@ -43,12 +43,14 @@ test("the first version's routes have new hashes; others have none", () => {
 });
 
 test("every page the bar can show, in order; an area and the floor plan belong to Areas", () => {
-  assert.deepEqual(TABS.map((tab) => tab.page), ["home", "areas", "climate", "media", "power", "plants", "settings"]);
+  assert.deepEqual(TABS.map((tab) => tab.page), ["home", "areas", "climate", "media", "power", "plants", "floorplan", "settings"]);
   assert.deepEqual(TABS.map((tab) => tab.route),
-    ["#/", "#/areas", "#/climate", "#/media", "#/power", "#/plants", "#/settings"]);
+    ["#/", "#/areas", "#/climate", "#/media", "#/power", "#/plants", "#/floorplan", "#/settings"]);
   for (const tab of TABS) assert.deepEqual(parseRoute(tab.route), { page: tab.page });
   assert.equal(tabOf("area"), "areas");
   assert.equal(tabOf("floorplan"), "areas");
+  assert.equal(tabOf("floorplan", ["home", "floorplan", "settings"]), "floorplan", "its own tab when the bar has one");
+  assert.equal(tabOf("area", ["home", "floorplan", "settings"]), "areas");
   assert.equal(tabOf("areas"), "areas");
   assert.equal(tabOf("home"), "home");
 });
@@ -60,6 +62,15 @@ test("the bar: Home and Settings always, the chosen pages in the bar's order, at
   assert.deepEqual(pages(["plants", "areas"]), ["home", "areas", "plants", "settings"]);
   assert.deepEqual(pages([]), ["home", "settings"]);
   assert.deepEqual(pages(undefined), ["home", "settings"]);
-  assert.deepEqual(pages(["power", "power", "nowhere", "floorplan"]), ["home", "power", "settings"]);
+  assert.deepEqual(pages(["power", "power", "nowhere"]), ["home", "power", "settings"]);
   assert.deepEqual(pages(["areas", "climate", "media", "power", "plants"]), ["home", "areas", "climate", "media", "settings"]);
+});
+
+test("the floor plan is on the bar only for a home with the floorplan component", () => {
+  assert.deepEqual(optionalPages({}), ["floorplan"]);
+  assert.deepEqual(optionalPages({ floorplan: true }), []);
+  const pages = (chosen, config) => barTabs(chosen, { without: optionalPages(config) }).map((tab) => tab.page);
+  assert.deepEqual(pages(["areas", "floorplan"], {}), ["home", "areas", "settings"]);
+  assert.deepEqual(pages(["areas", "floorplan"], { floorplan: true }), ["home", "areas", "floorplan", "settings"]);
+  assert.deepEqual(barTabs(["floorplan"]).map((tab) => tab.page), ["home", "floorplan", "settings"]);
 });

@@ -136,3 +136,15 @@ def test_thresholds_outside_name_the_climate_air_helpers(tmp_path):
         "temp_low": "input_number.climate_air_outside_temp_low",
         "temp_high": "input_number.climate_air_outside_temp_high",
     }
+
+
+def test_floorplan_only_with_the_input(tmp_path):
+    assert "floorplan" not in _card(_dashboard(tmp_path / "without"))
+    card = _card(_dashboard(tmp_path / "with", inputs={**INPUTS, "floorplan": True}))
+    assert card["floorplan"] is True
+
+
+def test_consumes_the_floorplan_card_as_an_element():
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    assert {"component": "floorplan", "element": "floorplan-card"} in manifest["consumes"]
+    assert manifest["inputs"]["floorplan"]["default"] is False

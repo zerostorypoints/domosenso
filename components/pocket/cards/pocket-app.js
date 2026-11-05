@@ -16,7 +16,8 @@
 //     (ctx.optimistic); a send or a rollback redraws the page, each hass drops what it reports;
 //   - one bottom sheet over the page and the bar (lib/sheet.js): a page opens it with
 //     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js;
-//     "checks", "air", "lights", lib/detail-sheets.js; "forecast", lib/weather.js); the content is
+//     "checks", "air", "lights", lib/detail-sheets.js; "forecast", lib/weather.js; "layers", the
+//     floor plan's layer chips, lib/layer-sheet.js); the content is
 //     updated with the page, and a new route closes it. Back closes it first. A route taken while a sheet is open takes the
 //     place of the sheet's history entry, and a sheet's entry left behind (a reload, a return to
 //     the dashboard) is cleared, so Back never stops at a sheet that is no longer there.
@@ -28,9 +29,11 @@
 //   outside: ...             # optional; with weather, the Outside pseudo-area (lib/areas.js)
 //   weather: weather.home    # optional
 //   thresholds: {rooms: {<id>: {temp_low, temp_high, ...}}, outside: {...}, air: {<reading>: {fair, poor}}}
+//   floorplan: true          # optional: the home has the floorplan component (its card, floorplan-card,
+//                            # on the area pages and the floor plan view; the bar may offer the view)
 
 import { createT, language } from "./lib/i18n.js";
-import { barTabs, legacyRoute, parseRoute, tabOf } from "./lib/router.js";
+import { barTabs, legacyRoute, optionalPages, parseRoute, tabOf } from "./lib/router.js";
 import { areasOf } from "./lib/areas.js";
 import { DEFAULTS, readSettings, saveSettings, withDefaults } from "./lib/settings.js";
 import { setText } from "./lib/page-kit.js";
@@ -40,6 +43,7 @@ import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
 import { checks, air, lights } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
+import * as layerSheet from "./lib/layer-sheet.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -50,7 +54,7 @@ const TOAST_MS = 3000;
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
-const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet };
+const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -316,7 +320,7 @@ class PocketApp extends HTMLElement {
 
   // The bar's buttons are rebuilt only when the person's choice of pages changes.
   _renderBar() {
-    const tabs = barTabs(this._settings?.bar ?? DEFAULTS.bar);
+    const tabs = barTabs(this._settings?.bar ?? DEFAULTS.bar, { without: optionalPages(this._config) });
     const ids = tabs.map((tab) => tab.page).join(" ");
     if (ids !== this._barIds) {
       this._barIds = ids;
@@ -331,7 +335,7 @@ class PocketApp extends HTMLElement {
       });
       this._nav.replaceChildren(this._toast, ...this._tabs);
     }
-    const active = tabOf(this._current?.page);
+    const active = tabOf(this._current?.page, tabs.map((tab) => tab.page));
     this._barLang = this._lang();
     tabs.forEach((tab, i) => {
       const button = this._tabs[i];

@@ -20,6 +20,7 @@
         "media": "Media",
         "power": "Power",
         "plants": "Plants",
+        "floorplan": "Floor plan",
         "settings": "Settings"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
@@ -317,6 +318,19 @@
           "windy-variant": "Windy",
           "exceptional": "Exceptional"
         }
+      },
+      "sensors": {
+        "title": "All sensors",
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
+      },
+      "floorplan": {
+        "title": "Floor plan",
+        "open": "Open",
+        "layers": "Layers",
+        "none": "This home has no floor plan yet."
       }
     }
   }

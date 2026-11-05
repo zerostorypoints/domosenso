@@ -23,6 +23,10 @@
 //     Assistant reports that it ran;
 //   - its player: artwork, title, artist, play/pause;
 // Every control sends through ctx.optimistic (lib/optimistic.js): its new state shows at once.
+//   - the area's part of the floor plan (lib/area-plan.js: the floorplan component's own card with
+//     the area's room alone), when the home has the floorplan and the area is on it;
+//   - "All sensors" (lib/sensor-list.js), collapsed: every sensor of the area's HA area by the
+//     catalog's categories, as the floor plan finds them, each with a number opening its trend;
 //   - a room with none of these: its name and "nothing to show here".
 // The Climate square opens the trend sheet (ctx.openSheet, lib/trend-sheet.js) of its first
 // reading when the area names an entity for it (the Outside's weather attribute has none: that
@@ -41,6 +45,8 @@ import {
   playerOf, shortName,
 } from "../lib/page-kit.js";
 import { trendSpec } from "../lib/trend-sheet.js";
+import { SENSOR_STYLE, renderSensors } from "../lib/sensor-list.js";
+import { PLAN_STYLE, renderAreaPlan } from "../lib/area-plan.js";
 import "../lib/light-tile.js";
 
 const DIRECTION_PX = 8;      // movement before a gesture is a swipe or a scroll
@@ -164,7 +170,7 @@ export function render(ctx) {
   const airReadings = AIR.filter((r) => room.air?.[r]);
   const player = playerOf(room);
 
-  root.innerHTML = `<style>${STYLE}</style>
+  root.innerHTML = `<style>${STYLE}${SENSOR_STYLE}${PLAN_STYLE}</style>
     <div class="top"><button class="back" type="button"><ha-icon icon="mdi:chevron-left"></ha-icon><span class="name"></span></button></div>
     <div class="dots" role="img">${rooms.map((r, i) => `<i${i === index ? ' class="a"' : ""}></i>`).join("")}</div>`;
 
@@ -246,6 +252,11 @@ export function render(ctx) {
       expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });
   });
   root.append(parts.musicSec, parts.media);
+
+  parts.plan = renderAreaPlan(ctx, room);
+  if (parts.plan) root.append(parts.plan.el);
+  parts.sensors = renderSensors(ctx, room);
+  root.append(parts.sensors.el);
 
   if (!lights.length && !scenes.length && !parts.squares.length && !player) {
     parts.empty = el("p", "empty");
@@ -344,7 +355,13 @@ export function update(root, ctx) {
     button.disabled = !!ctx.offline;
   }
   updateMedia(parts, ctx);
-  if (parts.empty) setText(parts.empty, ctx.t("card.pocket.area.empty"));
+  parts.plan?.update(ctx);
+  parts.sensors.update(ctx);
+  if (parts.empty) {
+    setText(parts.empty, ctx.t("card.pocket.area.empty"));
+    // Its sensors or its part of the plan are something to show.
+    parts.empty.hidden = !parts.sensors.el.hidden || (parts.plan && !parts.plan.el.hidden);
+  }
 }
 
 function setClass(node, base, lv, muted = false) {

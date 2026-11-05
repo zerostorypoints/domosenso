@@ -28,6 +28,10 @@ inputs:
   title:                        # the dashboard's title
     type: string
     default: Home
+  floorplan:                    # true: the floorplan component's card on each area page (the area's room) and
+    type: bool                  # the floor plan view (#/floorplan, a bar item each person may turn on). Needs
+    default: false              # the floorplan component added and its plan pushed (SPEC-028)
+    example: true
 
 assistant:
   version: 1
@@ -54,6 +58,11 @@ consumes:
   - {component: climate-air, id: "input_number.climate_air_<room>_{temp_low,temp_high}"}
   - {component: climate-air, id: "input_number.climate_air_<room>_{humidity_low,humidity_high}"}
   - {component: climate-air, id: "input_number.climate_air_<reading>_{fair,poor}"}
+  # With floorplan: the plan on the area pages and the floor plan view (its options area, zoom, chips,
+  # the room-tap and floorplan-status events, layerChips / pressLayer). The card's resource comes
+  # with the component.
+  - {component: floorplan, id: "dashboard url path floorplan"}
+  - {component: floorplan, element: floorplan-card}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh pocket)

@@ -20,7 +20,24 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
   the home has `outside` or `weather`.
 - **Area page** (`#/area/<id>`): one room in detail, or the Outside's temperature and humidity
   (levels against climate-air's outside range); a horizontal swipe goes to the next or previous
-  area. The first version's `#/rooms` and `#/room/<id>` links are redirected.
+  area. The first version's `#/rooms` and `#/room/<id>` links are redirected. Below its controls:
+  - **its part of the floor plan** (with the input `floorplan`): the floorplan component's own
+    card with `area` set to the area's HA area, so it draws that room alone with its sensors and
+    readings, fixed (a finger on it scrolls the page), without maps or chips; hidden while the
+    area has no room on the plan. A tap on it, or **Open**, goes to the floor plan view;
+  - **All sensors**, collapsed under a 44 px header with their count: every `sensor` and
+    `binary_sensor` whose HA area is the area's (the entity's own area, else its device's), grouped
+    by the catalog's categories (`categories/*.yaml`) exactly as the floor plan groups devices
+    (`cards/lib/categories.js` and `categories.json` are copies of the floor plan's, held equal by
+    a test and by `tools/category_index.py`). Hidden and disabled entities, diagnostic and
+    configuration entities and a disabled device's are left out. Each row shows the name and the
+    value as Home Assistant words it; a row with a number opens its trend sheet.
+- **Floor plan** (`#/floorplan`, with the input `floorplan`): the floorplan component's card as
+  tall as the screen between the header and the bar, read-only. Two fingers zoom, a drag pans,
+  its + / − / fit buttons and maps stay in its bar at 44 px; its layer chips are in a bottom sheet
+  behind **Layers**. A tap on a room opens that area's page. A bar item each person may turn on in
+  Settings (off by default); without the floorplan component neither the page's plan nor the
+  item is offered.
 - **Widgets**: squares in a grid (an area's, the Areas tab's) share one size: equal columns and
   rows, a fixed aspect (a lone square does not stretch); no text is ellipsized anywhere, a long
   name wraps and a big value shrinks with its square. Each shows a
@@ -98,6 +115,10 @@ default dashboard in the user's profile).
 
 - The **home inputs** (`uses_home: true`): the rooms with their lights, scenes, climate, air and
   media, `outside` and `weather`. Without them the render fails.
+- **floorplan** (optional, with the input `floorplan: true`): its card on the area pages and the
+  floor plan view; its Lovelace resource comes with that component and its plan with `domosenso
+  floorplan push`. Needs the floorplan version that has the card's `area`, `zoom` and `chips`
+  options (unreleased after 0.4.0).
 - **climate-air** for the levels: its threshold helpers (comfort range per room with climate, air
   limits per reading). Without it the card shows readings but no level.
 - A YAML dashboard per language in `configuration.yaml`, at the paths you choose
@@ -116,6 +137,7 @@ Rendered from the home inputs; nothing in it is a state.
 | `thresholds.rooms` | per room with climate: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with a humidity sensor), each a climate-air `input_number` id |
 | `thresholds.outside` | with `outside`: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with outside humidity), climate-air's outside helpers; absent without `outside` |
 | `thresholds.air` | per air reading any room names (score, co2, pm2_5, voc, nox): `fair`, `poor` ids |
+| `floorplan` | `true` with the input `floorplan`: the home has the floorplan component, whose card the area pages and the floor plan view use; absent otherwise |
 
 ## Levels
 

@@ -222,3 +222,15 @@ test("a person who is not an administrator sees the HA area's name without a lin
     assert.equal(changed, false);
   }
 });
+
+test("Bottom bar: the floor plan is a choice only in a home with the floorplan component, off by default", async () => {
+  assert.ok(!texts(mount(), ".bar .row .label").includes("Floor plan"));
+  const ctx = settingsCtx({ cfg: { ...config, floorplan: true }, settings: { bar: ["home", "areas", "settings"], theme: "system" } });
+  const el = mount(ctx);
+  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Climate", "Media", "Power", "Plants", "Floor plan"]);
+  const plan = switches(el).find((s) => s.dataset.page === "floorplan");
+  assert.equal(plan.getAttribute("aria-checked"), "false");
+  plan.click();
+  await tick();
+  assert.deepEqual(ctx.saves, [{ bar: ["home", "areas", "floorplan", "settings"] }]);
+});

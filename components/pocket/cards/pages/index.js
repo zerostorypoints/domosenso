@@ -20,7 +20,7 @@
 //   openSheet(spec, {stack?})  opens the shell's bottom sheet (lib/sheet.js) of spec.kind, over
 //             the page: {kind: "trend", entity, title, ...} (lib/trend-sheet.js trendSpec builds
 //             one), "checks", "air", "lights" (lib/detail-sheets.js), "forecast"
-//             (lib/weather.js forecastSpec); stack: on top of the open
+//             (lib/weather.js forecastSpec), "layers" (lib/layer-sheet.js layerSpec); stack: on top of the open
 //             sheet, Back returns to it
 // The shell keeps the page's element until the route changes, so a page may hold its own state
 // in it between updates.
@@ -31,6 +31,7 @@ import * as areas from "./areas-page.js";
 import * as area from "./area-page.js";
 import * as settings from "./settings-page.js";
 import * as climate from "./climate-page.js";
+import * as floorplan from "./floorplan-page.js";
 
 // Pages not built yet say so (placeholder.js) until their task builds them.
 export const pages = {
@@ -42,5 +43,5 @@ export const pages = {
   power: placeholder,
   plants: placeholder,
   settings,
-  floorplan: placeholder,
+  floorplan,
 };

@@ -14,7 +14,7 @@
 // comfort and area rows follow the config); update() patches text and state.
 
 import { areasOf, comfortOf } from "../lib/areas.js";
-import { FIXED_TABS, MAX_TABS, TABS } from "../lib/router.js";
+import { FIXED_TABS, MAX_TABS, TABS, optionalPages } from "../lib/router.js";
 import { MODES } from "../lib/theme.js";
 import { reportError } from "../lib/report.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
@@ -85,7 +85,10 @@ function valueOf(hass, id) {
 
 // The settings shown: the person's with the changes not saved yet over them.
 const shown = (parts) => ({ ...parts.ctx.settings, ...parts.pending });
-const chosenOf = (settings) => CHOICES.filter((page) => (settings.bar ?? []).includes(page));
+// The pages this home's bar can show (the floor plan only with the floorplan component), and the
+// chosen ones among them.
+const choicesOf = (config) => CHOICES.filter((page) => !optionalPages(config).includes(page));
+const chosenOf = (settings, choices = CHOICES) => choices.filter((page) => (settings.bar ?? []).includes(page));
 
 function moreInfo(button, entityId) {
   const event = new Event("hass-more-info", { bubbles: true, composed: true });
@@ -192,17 +195,18 @@ export function render(ctx) {
     $(".seg").append(button);
   }
 
-  for (const page of CHOICES) {
+  parts.choices = choicesOf(ctx.config);
+  for (const page of parts.choices) {
     const row = el("div", "row", `<span class="label"></span>`);
     const button = el("button", "switch", "<i></i>");
     button.type = "button";
     setAttr(button, "role", "switch");
     button.dataset.page = page;
     button.addEventListener("click", () => {
-      const chosen = chosenOf(shown(parts));
+      const chosen = chosenOf(shown(parts), parts.choices);
       const on = chosen.includes(page);
       if (!on && chosen.length >= ROOM) return;
-      const next = CHOICES.filter((p) => (p === page ? !on : chosen.includes(p)));
+      const next = parts.choices.filter((p) => (p === page ? !on : chosen.includes(p)));
       change(root, { bar: [FIXED_TABS[0], ...next, FIXED_TABS[1]] });
     });
     row.append(button);
@@ -291,7 +295,7 @@ export function update(root, ctx) {
 
   setText($(".bar h3"), ctx.t("card.pocket.settings.bar.title"));
   setText($(".bar .fixed"), ctx.t("card.pocket.settings.bar.fixed", { count: ROOM }));
-  const chosen = chosenOf(settings);
+  const chosen = chosenOf(settings, parts.choices);
   const full = chosen.length >= ROOM;
   for (const { page, row, button } of parts.switches) {
     const on = chosen.includes(page);

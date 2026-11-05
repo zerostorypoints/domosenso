@@ -20,6 +20,7 @@
         "media": "Medien",
         "power": "Energie",
         "plants": "Pflanzen",
+        "floorplan": "Grundriss",
         "settings": "Einstellungen"
       },
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
@@ -317,6 +318,19 @@
           "windy-variant": "Windig",
           "exceptional": "Aussergewöhnlich"
         }
+      },
+      "sensors": {
+        "title": "Alle Sensoren",
+        "state": {
+          "on": "Ein",
+          "off": "Aus"
+        }
+      },
+      "floorplan": {
+        "title": "Grundriss",
+        "open": "Öffnen",
+        "layers": "Ebenen",
+        "none": "Dieses Zuhause hat noch keinen Grundriss."
       }
     }
   }
