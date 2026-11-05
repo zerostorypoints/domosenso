@@ -5,8 +5,9 @@
 # this home's file from now on; the package is the catalog's at that tag.
 #
 # Each gate's code is one captured frame in the file named in its button below, next to this file:
-# capture it with the capture firmware (the component's README, "Capture"), paste the list, and
-# keep the file out of git (`*.code.yaml` in this directory's .gitignore): it opens the gate.
+# capture it with the capture firmware (the component's README, "Capture"), paste the list, then
+# move the file to the home's private folder with `domosenso private adopt` (a git-ignored link
+# stays here): it opens the gate.
 substitutions:
   name: [[ item.name | yaml ]]
   friendly_name: [[ item.friendly_name | default(item.name) | yaml ]]

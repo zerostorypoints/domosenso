@@ -49,6 +49,7 @@ class HomeConfig:
     unmanaged_on_target: list[str] = field(default_factory=list)
     kiosk_users: list[str] = field(default_factory=list)
     custom_integrations: dict[str, str] = field(default_factory=dict)
+    id: str | None = None  # names the private folder (SPEC-035)
 
     def catalog_source(self) -> str | Path:
         """A URL as written; a local path resolved against the home root (`catalog:` may be relative)."""
@@ -93,6 +94,7 @@ class HomeConfig:
             unmanaged_on_target=list(data.get("unmanaged_on_target", [])),
             kiosk_users=list(data.get("kiosk_users", [])),
             custom_integrations=dict(data.get("custom_integrations", {})),
+            id=data.get("id"),
         )
 
 
