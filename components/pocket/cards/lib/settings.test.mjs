@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULTS, KEY, loadSettings, saveSettings, withDefaults } from "./settings.js";
+import { DEFAULTS, KEY, loadSettings, readSettings, saveSettings, withDefaults } from "./settings.js";
 
 // A hass whose callWS keeps the frontend user data in memory and records every call.
 function hassWith(store = {}) {
@@ -62,4 +62,27 @@ test("save without a connection or with a failing write rejects", async () => {
   await assert.rejects(saveSettings({}, { bar: [] }));
   const hass = { callWS: (msg) => msg.type === "frontend/set_user_data" ? Promise.reject(new Error("no")) : Promise.resolve({ value: null }) };
   await assert.rejects(saveSettings(hass, { bar: [] }));
+});
+
+test("save whose read fails rejects and writes nothing: the other stored fields stay", async () => {
+  const calls = [];
+  const hass = { callWS: (msg) => {
+    calls.push(msg.type);
+    return msg.type === "frontend/get_user_data" ? Promise.reject(new Error("lost")) : Promise.resolve(null);
+  } };
+  await assert.rejects(saveSettings(hass, { bar: ["home"] }));
+  assert.deepEqual(calls, ["frontend/get_user_data"]);
+});
+
+test("save with nothing stored yet ({value: null}) starts from the patch, defaults merged", async () => {
+  const hass = hassWith();
+  const saved = await saveSettings(hass, { theme: "dark" });
+  assert.deepEqual(hass.store["domosenso-pocket"], { theme: "dark" });
+  assert.deepEqual(saved, { bar: [...DEFAULTS.bar], theme: "dark" });
+});
+
+test("readSettings rejects on a failed call; nothing stored or no callWS: the defaults", async () => {
+  await assert.rejects(readSettings({ callWS: () => Promise.reject(new Error("no")) }));
+  assert.deepEqual((await readSettings(hassWith())).bar, [...DEFAULTS.bar]);
+  assert.deepEqual((await readSettings({})).bar, [...DEFAULTS.bar]);
 });

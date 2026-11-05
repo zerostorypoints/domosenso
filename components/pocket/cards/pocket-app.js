@@ -21,7 +21,7 @@
 import { createT, language } from "./lib/i18n.js";
 import { barTabs, legacyRoute, parseRoute, tabOf } from "./lib/router.js";
 import { areasOf } from "./lib/areas.js";
-import { DEFAULTS, loadSettings, saveSettings, withDefaults } from "./lib/settings.js";
+import { DEFAULTS, readSettings, saveSettings, withDefaults } from "./lib/settings.js";
 import { setText } from "./lib/page-kit.js";
 import { applyTheme } from "./lib/theme.js";
 import { pages } from "./pages/index.js";
@@ -87,6 +87,8 @@ class PocketApp extends HTMLElement {
     this._onHash = () => this._route();
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
+    this._saveQueue = Promise.resolve();
+    this._savesApplied = 0;
   }
 
   setConfig(config) {
@@ -101,11 +103,32 @@ class PocketApp extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._root) this._build();
-    if (!this._settingsAsked) {
-      this._settingsAsked = true;
-      loadSettings(hass).then((settings) => this._applySettings(settings));
-    }
+    const retry = this._settingsRetry && hass?.connected !== false;
+    if (!this._settingsAsked || retry) this._loadSettings(hass);
     this._refresh();
+  }
+
+  // Reads the settings once. A read that fails while Home Assistant is not connected is tried
+  // again with the next hass that is. A read that lands after a save has been applied is older
+  // than what the bar shows, and is dropped.
+  _loadSettings(hass) {
+    this._settingsAsked = true;
+    this._settingsRetry = false;
+    const saves = this._savesApplied;
+    readSettings(hass).then(
+      (settings) => { if (this._savesApplied === saves) this._applySettings(settings); },
+      () => { if (hass?.connected === false) this._settingsRetry = true; });
+  }
+
+  // Saves run one after another (each reads, merges and writes), so two saves never interleave
+  // and lose a field; a failed save does not stop the next one.
+  _saveSettings(patch) {
+    const run = this._saveQueue.then(() => saveSettings(this._hass, patch)).then((settings) => {
+      this._savesApplied += 1;
+      return this._applySettings(settings);
+    });
+    this._saveQueue = run.catch(() => {});
+    return run;
   }
 
   get hass() {
@@ -145,7 +168,7 @@ class PocketApp extends HTMLElement {
       offline: this._hass?.connected === false,
       routeId: this._current?.id,
       settings: this._settings,
-      saveSettings: (patch) => saveSettings(this._hass, patch).then((settings) => this._applySettings(settings)),
+      saveSettings: (patch) => this._saveSettings(patch),
     };
   }
 

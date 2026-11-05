@@ -9,7 +9,7 @@
 //   bar   the page ids on the bottom bar (lib/router.js barTabs: Home and Settings always)
 //
 // A call that fails (an old Home Assistant, a lost connection, a hass without callWS) gives the
-// defaults on load; on save it rejects, so the caller can say so.
+// defaults on load (readSettings rejects instead); on save it rejects and writes nothing.
 
 export const KEY = "domosenso-pocket";
 
@@ -27,28 +27,31 @@ export function withDefaults(stored) {
   return result;
 }
 
+// What is stored: {} when nothing is yet ({value: null}); a failed call rejects.
 async function stored(hass) {
   const answer = await hass.callWS({ type: "frontend/get_user_data", key: KEY });
   return isObject(answer?.value) ? answer.value : {};
 }
 
-export async function loadSettings(hass) {
+// As loadSettings, but a call that fails rejects, so the caller can tell a failure from defaults.
+export async function readSettings(hass) {
   if (typeof hass?.callWS !== "function") return withDefaults({});
+  return withDefaults(await stored(hass));
+}
+
+export async function loadSettings(hass) {
   try {
-    return withDefaults(await stored(hass));
+    return await readSettings(hass);
   } catch {
     return withDefaults({});
   }
 }
 
+// A read that fails rejects the save and writes nothing: writing the patch alone would wipe the
+// other stored fields.
 export async function saveSettings(hass, patch) {
   if (typeof hass?.callWS !== "function") throw new Error("pocket settings: no connection");
-  let current = {};
-  try {
-    current = await stored(hass);
-  } catch {
-    // Nothing stored yet, or it cannot be read: the patch starts the value.
-  }
+  const current = await stored(hass);
   const value = { ...current, ...(isObject(patch) ? patch : {}) };
   await hass.callWS({ type: "frontend/set_user_data", key: KEY, value });
   return withDefaults(value);

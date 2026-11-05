@@ -366,3 +366,100 @@ test("ctx.saveSettings stores the change and the bar follows it", async () => {
   await goTo("#/plants");
   assert.deepEqual(active(card), ["plants"]);
 });
+
+// A hass over a stored value whose first get_user_data waits until release() is called; every
+// call after it answers on a later tick, so concurrent calls could interleave.
+function slowFirstRead(initial) {
+  let stored = initial;
+  let release;
+  const first = new Promise((resolve) => { release = resolve; });
+  let reads = 0;
+  const later = () => new Promise((resolve) => setTimeout(resolve, 1));
+  const hass = hassOf({
+    callWS: async (msg) => {
+      if (msg.type === "frontend/get_user_data") {
+        const snapshot = stored;
+        if (reads++ === 0) { await first; return { value: snapshot }; }
+        await later();
+        return { value: stored };
+      }
+      await later();
+      stored = msg.value;
+      return null;
+    },
+  });
+  return { hass, release: () => release(), stored: () => stored };
+}
+
+test("a first read that lands after a save does not undo the save", async () => {
+  const { hass, release } = slowFirstRead({ bar: ["power"] });
+  const card = mount({ hass });
+  await card._ctx().saveSettings({ bar: ["plants"] });
+  assert.deepEqual(card._ctx().settings.bar, ["plants"]);
+  release();
+  await tick();
+  assert.deepEqual(card._ctx().settings.bar, ["plants"]);
+  assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "plants", "settings"]);
+});
+
+test("two saves at once run one after the other: both fields are kept", async () => {
+  const { hass, release, stored } = slowFirstRead(null);
+  const card = mount({ hass });
+  release();
+  await tick();
+  const ctx = card._ctx();
+  await Promise.all([ctx.saveSettings({ bar: ["areas"] }), ctx.saveSettings({ theme: "dark" })]);
+  assert.deepEqual(stored(), { bar: ["areas"], theme: "dark" });
+  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark" });
+});
+
+test("a failed save does not stop the next one", async () => {
+  let fail = true;
+  let stored = null;
+  const hass = hassOf({ callWS: async (msg) => {
+    if (msg.type === "frontend/get_user_data") return { value: stored };
+    if (fail) { fail = false; throw new Error("lost"); }
+    stored = msg.value;
+    return null;
+  } });
+  const card = mount({ hass });
+  await tick();
+  const ctx = card._ctx();
+  const [first, second] = await Promise.allSettled(
+    [ctx.saveSettings({ bar: ["power"] }), ctx.saveSettings({ bar: ["plants"] })]);
+  assert.equal(first.status, "rejected");
+  assert.equal(second.status, "fulfilled");
+  assert.deepEqual(stored, { bar: ["plants"] });
+});
+
+test("a read that fails while offline is tried again once Home Assistant is connected", async () => {
+  let reads = 0;
+  const callWS = async () => {
+    reads += 1;
+    if (reads === 1) throw new Error("not connected");
+    return { value: { bar: ["power"] } };
+  };
+  const card = mount({ hass: hassOf({ connected: false, callWS }) });
+  await tick();
+  assert.deepEqual(labels(card), ["Home", "Areas", "Climate", "Media", "Settings"]);
+  card.hass = hassOf({ connected: false, callWS });
+  await tick();
+  assert.equal(reads, 1, "not while still offline");
+  card.hass = hassOf({ connected: true, callWS });
+  await tick();
+  assert.equal(reads, 2);
+  assert.deepEqual(labels(card), ["Home", "Power", "Settings"]);
+  card.hass = hassOf({ connected: true, callWS });
+  await tick();
+  assert.equal(reads, 2, "read once it succeeded");
+});
+
+test("a read that fails while connected is not retried on every update", async () => {
+  let reads = 0;
+  const callWS = async () => { reads += 1; throw new Error("unknown command"); };
+  const card = mount({ hass: hassOf({ callWS }) });
+  await tick();
+  card.hass = hassOf({ callWS });
+  await tick();
+  assert.equal(reads, 1);
+});
