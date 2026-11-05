@@ -20,6 +20,7 @@ function safetyHass(extra = {}) {
     "siren.hall": st("off", { friendly_name: "Hall siren" }),
     "person.alex": st("home", { friendly_name: "Alex" }),
     "person.sam": st("not_home", { friendly_name: "Sam" }),
+    "person.wall": st("home", { friendly_name: "Wall", person_role: "kiosk" }),
     "binary_sensor.living_room_presence": st("on", { friendly_name: "Living room presence", device_class: "occupancy" }),
     "binary_sensor.office_presence": st("off", { friendly_name: "Office presence", device_class: "occupancy" }),
     "binary_sensor.radar_engineering": st("on", { friendly_name: "Radar engineering", device_class: "occupancy" }),

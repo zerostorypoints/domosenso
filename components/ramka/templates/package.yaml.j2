@@ -653,6 +653,17 @@ input_number:
   [%- endfor %]
   [%- endfor %]
 
+[%- if inputs.kiosk_user is defined and inputs.kiosk_user %]
+# The kiosk user's person is the wall tablet's account, not someone who lives here: marked so a
+# phone's "Who is home" (Pocket's Safety) leaves it out. HA names a person person.<its name as a
+# slug>; a name with characters beyond letters, digits, spaces and hyphens may not match, and is
+# then simply not marked.
+homeassistant:
+  customize:
+    person.[[ inputs.kiosk_user | lower | replace(' ', '_') | replace('-', '_') ]]:
+      person_role: kiosk
+[%- endif %]
+
 timer:
   [[ p ]]_controls:
     name: [[ named(' controls') ]]
