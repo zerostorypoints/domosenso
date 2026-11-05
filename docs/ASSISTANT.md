@@ -7,8 +7,43 @@ framework, Bridge, browser-card and native Frame work with a component coverage 
 The [installation profile](superpowers/specs/2026-11-05-tablet-installation-profile.md)
 keeps tablet/server requirements separate from shared home inputs and browser delivery.
 These documents describe the proposed integration and its independent acceptance gates.
-The draft [SPEC-035](../.ai/specs/SPEC-035-2026-11-05-shared-home-native-metadata.md)
+[SPEC-037](../.ai/specs/SPEC-037-2026-11-05-shared-home-native-metadata.md)
 reconciles native v2 authoring and compatibility; it does not enable a runtime profile.
+
+## Canonical native projection (unreleased)
+
+An optional `client` on a canonical `assistant.yaml` capability adds `version: 2`,
+`anchors_key`, `selectors` and `presentation`. Presentation has at most three summary
+fact-role references and eight detail sections (`layout: value|rows|table`, `label_key`,
+`roles`). Every referenced role is declared by the same capability; anchors and labels
+come from its en/de/pl translations with English fallback. There is no second v2
+definition or binding template.
+
+The regular home renderer derives a private managed schema-2 artifact at
+`domosenso/assistant-metadata/<component>.yaml`, with canonical
+`definitions.capabilities`, selected `translations`, normalized `bindings` and pinned
+`component` provenance. It is not the authenticated discovery/query wire format. Its
+shape differs from the historical native experiment. Current released Bridge/app
+compatibility is not claimed. No production component opts in as part of the compiler
+change. Removing `client` and rendering removes the sidecar through normal ownership;
+deploy and rollback handle it like other private managed files.
+
+Subject `aliases` and `roomAliases` are optional private binding annotations. Each maps
+`en/de/pl` to at most 16 nonempty phrases of 120 characters. Room aliases require an
+explicit `roomKey` and consistent declarations for that key; ambiguous aliases across
+subjects remain ambiguous. Validate the annotations, then omit them and client-only
+translation keys from strict schema-1 output. Other unknown fields still fail. No
+alias changes identity, permissions or a grant.
+
+New metadata-only measurements use `policy.evaluator: measurement.v1`,
+`query_type: measurement-query.v1` and `answer_type: measurement.v1`, with one required
+numeric fact/declared unit and a bounded measurement/reported-state freshness policy.
+Such capabilities are v2-only and never enter a legacy bundle. Specialized evaluators
+retain their existing allowlist and semantics. The
+[fictional fixtures](../tests/fixtures/assistant-metadata-canonical/README.md) pin two
+successive capability additions and their schema/byte hashes for Bridge integration.
+Compilation does not advertise v2 or enable any endpoint; runtime parity, permissions,
+transport, native language and hardware acceptance remain separate release gates.
 
 Implementation of [SPEC-029](../.ai/specs/SPEC-029-2026-10-31-assistant-component-contract.md).
 This contract is unreleased. Component metadata, a compatible Frame HA bridge and a compatible

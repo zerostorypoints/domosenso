@@ -1045,12 +1045,16 @@ def test_inventory_with_a_dev_item_is_a_dev_render(tmp_path):
     assert inventory.PACKAGE in record and inventory.PACKAGE in dirty
 
 
-@pytest.mark.parametrize('directory,cid', [('assistant','ramka'), ('assistant-actions','lights'), ('assistant-actions','awnings')])
+@pytest.mark.parametrize('directory,cid', [('assistant','ramka'), ('assistant-actions','lights'),
+                                         ('assistant-actions','awnings'), ('assistant-metadata','workbench')])
 def test_assistant_bundle_deploy_remove_and_rollback_preserve_endpoint_storage(tmp_path, directory, cid):
     home = Home(tmp_path)
     path = f'domosenso/{directory}/{cid}.yaml'
     if directory == 'assistant-actions':
         fixture = Path(__file__).parent / 'fixtures/assistant-actions' / f'{cid}.json'
+        content = yaml.safe_dump(json.loads(fixture.read_text()))
+    elif directory == 'assistant-metadata':
+        fixture = Path(__file__).parent / 'fixtures/assistant-metadata-canonical/temperature-humidity.json'
         content = yaml.safe_dump(json.loads(fixture.read_text()))
     else:
         content = 'schema: 1\ncomponent: {id: ramka}\n'

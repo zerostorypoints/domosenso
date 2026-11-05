@@ -1,6 +1,8 @@
-# SPEC-035: Shared home metadata and the native Frame contract
+# SPEC-037: Shared home metadata and the native Frame contract
 
-- Status: draft 2026-11-05; H0-native amendment awaiting human approval.
+- Status: approved 2026-11-05 in the coordinating chat. The maintainer answered
+  “ok” to acceptance of SPEC-037 and confirmed execution after the metadata → Bridge →
+  Frame sequence. This approval covers implementation, not production or release.
 - Source: the maintainer requested implementation after the design and handoff in
   [PR #219](https://github.com/zerostorypoints/domosenso/pull/219), merged as
   `6d3d8e27c839553a249db5d5b53a6d3aa21949c3`.
@@ -9,17 +11,23 @@
 
 ## Authority and specification identity
 
+The native draft was first reviewed as SPEC-035 in PR #237. Concurrent main work
+assigned SPEC-035 to the private-home folder and SPEC-036 to printable enclosures.
+This renumbering to SPEC-037 preserves the native approval and meaning; it adds no
+runtime scope. References to SPEC-035 in the original review refer to this document.
+
+
 The gate component keeps [SPEC-034](SPEC-034-2026-11-05-gate-remote.md). The historical
 native document at `.ai/specs/SPEC-034-2026-11-04-metadata-driven-frame-client.md` in
 framework revision `e67f0c0ed4557e0bd45d569d7c3583f176149c20` is reproduced below so this
-proposal can be reviewed without another session's local branch. SPEC-035 identifies
+proposal can be reviewed without another session's local branch. SPEC-037 identifies
 the native contract going forward. Update native experimental references when those
 branches are integrated; do not rename the gate spec or silently rewrite its meaning.
 
 The amendment in this section takes precedence over the retained historical text.
 The historical protocol/limits remain the starting contract where this section does
-not change them. Approval of #219 accepts the design direction; it does not mark this
-new schema amendment approved or a prototype ready for release.
+not change them. Approval of #219 accepted the design direction. Subsequent explicit acceptance of
+SPEC-037 approves this amendment; neither approval marks a prototype ready for release.
 
 ## Goal, placement and independent delivery
 
