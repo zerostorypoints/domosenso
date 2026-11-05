@@ -9,6 +9,9 @@
   write a code example or a `.gitignore` line (that would need a schema and tool change): the device
   file's header and the README say what to create and ignore. `tools/esphome-check.sh` copies the
   demo home's `*.code.yaml` beside the device files and does not check them alone.
+- Amendment 2 (2026-11-05, for approval with the PR into main): the status page does not list
+  actions; they have no state to show (a button's state is its last press). The preview shows them
+  on its controls tab, as it renders the controls block.
 - Source: maintainer request after a working prototype in his home: capture a gate handset's code,
   send it from Home Assistant, put the button on the Ramka's controls. The prototype is that home's
   own firmware (not in this repository); everything below that is marked tested was tested there on
@@ -154,3 +157,12 @@ stays draft until the tags exist (website audit skill).
   expected to work (inference until the staging/tablet check).
 - Whether `script` parameters of type `int[]` pass a 75-element list from `!include` in ESPHome
   2026.9.1 (expected; checked at the first compile).
+
+## Tasks (coordinator: this session)
+
+| # | task | PR into `feature/gate-remote` | state |
+|---|---|---|---|
+| 1 | gate-remote 0.1.0, device m5stack-module-cc1101, wiring, demo node, esphome-check carries code files | #218 | merged 2026-11-05 |
+| 2 | ramka 0.16.0 `actions` on the controls, demo actions, tests | #220 (demo run: placement under the awnings at 1100 × 720 in en, de, pl) | merged 2026-11-05 |
+| 3 | the feature branch into `main` | this plan's last PR | open, waits for the maintainer |
+
