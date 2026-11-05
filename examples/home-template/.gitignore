@@ -1,5 +1,8 @@
 # Never in the home repository, even a private one: secrets, tokens, Home Assistant's own state.
+# ESPHome's secrets.yaml and a gate's captured code live in the home's private folder,
+# ~/.config/domosenso/homes/<id>/; the home holds git-ignored links (`domosenso private`, SPEC-035).
 secrets.yaml
+*.code.yaml
 token
 *.token
 .storage/

@@ -38,15 +38,25 @@ deliberately.
    A frame cut by noise (a value far off the others, such as −126 among thousands) is the wrong one
    to copy; take another repeat. Rounding each value to the handset's grid (all values are about a
    multiple of one unit) is optional; the tested frame was rounded to 1016 µs.
-7. Add `*.code.yaml` to the `.gitignore` of the home's ESPHome directory. The code opens the gate.
+7. Move the file into the home's private folder (SPEC-035); a link stays in its place:
+
+   ```bash
+   uv run --project <catalog checkout> domosenso private adopt esphome/<name>-<slug>.code.yaml
+   ```
+
+   The code opens the gate: it never sits in the repository, nor only in a worktree or clone that can
+   be deleted. A home whose `.gitignore` predates the home template's `*.code.yaml` line adds it.
 
 ## Send
 
 1. Flash the device file `domosenso add` wrote (`<name>.yaml`) over USB or OTA.
 2. Adopt the node in Home Assistant (Settings → Devices & services → Discovered → ESPHome).
-3. One press of `button.<node>_<gate>` sends the frame `repeat` times (5) with `gap` (9150 µs)
+3. One press of the gate's button sends the frame `repeat` times (5) with `gap` (9150 µs)
    between, as the tested handset does; the board's LED shows blue while it sends. Holding the
-   board's own button for a second presses the first gate.
+   board's own button for a second presses the first gate. Home Assistant names the button from the
+   node's area, friendly name and the gate's label: `button.hall_gate_remote_garage` for the demo
+   home's node (`area: Hall`), `button.gate_remote_garage` without an area. Home Assistant 2026.9.2
+   did so in the first home.
 
 Tested in one home on 2026-11-05: an 868.3 MHz handset, 75 pulses per frame on a 1.016 ms grid, about
 9.15 ms between repeats; a press sent over the native API opened the gate with the node in a room of
