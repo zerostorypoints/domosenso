@@ -4,6 +4,10 @@ A phone dashboard for the Companion app, built on the shared home inputs and cli
 threshold helpers. One YAML dashboard per language with one `panel` view holding one card,
 `custom:pocket-app`, which draws every screen itself.
 
+The design system (navigation, widgets, tiles, sheets, levels, data sources, the checklist for a
+new feature and the decisions behind them) is [DESIGN.md](DESIGN.md); a change that adds or alters
+a pattern updates it.
+
 ## The 0.1.0 prototype
 
 - **Home** in two views, switched under the title: **Overview** (`#/`): attention pills, widgets
