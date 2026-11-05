@@ -560,7 +560,8 @@
         "silent": "Devices not reading",
         "all_reading": "Every device reads.",
         "open_settings": "Home Assistant settings"
-      }
+      },
+      "menu": "Home Assistant menu"
     }
   }
 }

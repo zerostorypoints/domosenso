@@ -560,7 +560,8 @@
         "silent": "Geräte ohne Werte",
         "all_reading": "Jedes Gerät liefert Werte.",
         "open_settings": "Home-Assistant-Einstellungen"
-      }
+      },
+      "menu": "Home-Assistant-Menü"
     }
   }
 }

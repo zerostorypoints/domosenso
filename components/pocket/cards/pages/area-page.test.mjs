@@ -94,8 +94,8 @@ test("swipes work in both directions on every area, the Outside included, with n
 
 test("the page fills the screen above the bar: a swipe below short content is the page's", () => {
   const css = mount().querySelector("style").textContent;
-  assert.match(css, /\.room \{[^}]*min-height: calc\(100vh - var\(--header-height, 56px\) - var\(--bar, 64px\) - 28px\)/);
-  assert.match(css, /\.room \{[^}]*min-height: calc\(100dvh - var\(--header-height, 56px\)[^}]*var\(--safe, 0px\) - 28px\)/);
+  assert.match(css, /\.room \{[^}]*min-height: calc\(100vh - var\(--kiosk-header-height, var\(--header-height, 56px\)\) - var\(--bar, 64px\) - 28px\)/);
+  assert.match(css, /\.room \{[^}]*min-height: calc\(100dvh - var\(--kiosk-header-height, var\(--header-height, 56px\)\)[^}]*var\(--safe, 0px\) - 28px\)/);
 });
 
 test("the page leaves vertical scroll to the browser", () => {

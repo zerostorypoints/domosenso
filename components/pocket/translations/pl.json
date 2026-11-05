@@ -560,7 +560,8 @@
         "silent": "Urządzenia bez odczytu",
         "all_reading": "Każde urządzenie odpowiada.",
         "open_settings": "Ustawienia Home Assistant"
-      }
+      },
+      "menu": "Menu Home Assistant"
     }
   }
 }

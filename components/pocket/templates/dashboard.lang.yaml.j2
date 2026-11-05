@@ -33,6 +33,14 @@
 [%- set _ = air.update({reading: {'fair': 'input_number.climate_air_' ~ reading ~ '_fair', 'poor': 'input_number.climate_air_' ~ reading ~ '_poor'}}) -%]
 [%- endfor -%]
 title: [[ inputs.title | default('Home') | yaml ]]
+# On a phone (a window up to KIOSK_WIDTH px wide, landscape included) Home Assistant's header is
+# hidden by kiosk-mode (a HACS plugin, the one the Ramka uses; without it the header simply stays):
+# the pocket's own menu button opens HA's sidebar. On a wider screen (a browser, a tablet) HA's
+# header stays as HA draws it.
+kiosk_mode:
+  mobile_settings:
+    hide_header: true
+    custom_width: 932
 views:
   - title: [[ inputs.title | default('Home') | yaml ]]
     path: home

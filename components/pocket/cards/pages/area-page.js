@@ -62,8 +62,8 @@ export const SHORT_LINE_CHARS = 22;
 const STYLE = `
   /* As tall as the screen between HA's header and the bar (main's padding: 12 px over, 16 px under). */
   .room { touch-action: pan-y; box-sizing: border-box;
-          min-height: calc(100vh - var(--header-height, 56px) - var(--bar, 64px) - 28px);
-          min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px)
+          min-height: calc(100vh - var(--kiosk-header-height, var(--header-height, 56px)) - var(--bar, 64px) - 28px);
+          min-height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - env(safe-area-inset-top, 0px)
                            - var(--bar, 64px) - var(--safe, 0px) - 28px); }
   .room .top { display: flex; align-items: center; margin: -4px 0 2px; }
   .room .back { min-height: 44px; margin: 0 0 0 -8px; padding: 0 8px 0 0; border: 0; background: none;

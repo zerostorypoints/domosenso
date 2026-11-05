@@ -75,7 +75,7 @@ const STYLE = `
   .app { --bar: 64px; --safe: env(safe-area-inset-bottom, 0px);
          box-sizing: border-box; min-height: 100vh;
          /* The view sits under HA's header; dvh follows the phone's collapsing browser bars. */
-         min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px));
+         min-height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - env(safe-area-inset-top, 0px));
          overflow-x: clip; overscroll-behavior: none;
          background: var(--bg); color: var(--fg);
          font-family: -apple-system, "SF Pro Text", Roboto, system-ui, sans-serif; font-weight: 400;
@@ -88,6 +88,12 @@ const STYLE = `
      only up and down (pinch zoom stays); the pages' own sideways gestures handle themselves. */
   main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom;
          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .headless main { padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 4px)); }
+  .ha-menu { position: absolute; left: -6px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+             margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--fg); cursor: pointer;
+             display: flex; align-items: center; justify-content: center; --mdc-icon-size: 24px;
+             -webkit-tap-highlight-color: transparent; }
+  .ha-menu:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
   /* The toast rides on the bar: absolute inside the fixed nav, just above its top edge. */
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
@@ -226,6 +232,29 @@ class PocketApp extends HTMLElement {
     const width = `${Math.round(box.width)}px`;
     if (this.style.getPropertyValue("--bar-left") !== left) this.style.setProperty("--bar-left", left);
     if (this.style.getPropertyValue("--bar-width") !== width) this.style.setProperty("--bar-width", width);
+    // Without HA's header above it (kiosk-mode hides it on a phone) the card starts at the top of
+    // the screen: the page then keeps clear of the status bar and the notch itself.
+    const headless = box.top + (window.scrollY || 0) < 8;
+    this._app?.classList.toggle("headless", headless);
+  }
+
+  // The menu button left of a page's title (its first .top row): it opens Home Assistant's own
+  // sidebar (the hass-toggle-menu event, as HA's header button does), so HA's menu is at hand
+  // where kiosk-mode hides the header; elsewhere it is there too, for one behaviour everywhere.
+  _addMenu(pageEl) {
+    const top = pageEl?.querySelector?.(".top");
+    if (!top || top.querySelector(":scope > .ha-menu")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ha-menu";
+    button.innerHTML = `<ha-icon icon="mdi:menu"></ha-icon>`;
+    button.setAttribute("aria-label", this._t("card.pocket.menu"));
+    button.addEventListener("click", () =>
+      this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true })));
+    // Inline: it wins over every page's own .top padding, whatever its selector.
+    top.style.position = "relative";
+    top.style.paddingLeft = "44px";
+    top.prepend(button);
   }
 
   // The language of every word: the dashboard's (config.lang), else Home Assistant's.
@@ -335,6 +364,7 @@ class PocketApp extends HTMLElement {
       this._pageEl = this._page.render(this._ctx());
       this._sheet.dismiss();
       this._main.replaceChildren(this._pageEl);
+      this._addMenu(this._pageEl);
       this._renderBar();
       return;
     }

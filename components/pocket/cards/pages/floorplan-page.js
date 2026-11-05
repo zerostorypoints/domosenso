@@ -36,7 +36,7 @@ const STYLE = `
   .plan-page .layers:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
   /* The screen between HA's header and the bar, less main's padding (12 + 16 px) and the title row. */
   .plan-page .box { --floorplan-target: 44px; height: 420px;
-                    height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px)
+                    height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - env(safe-area-inset-top, 0px)
                                  - var(--bar, 64px) - var(--safe, 0px) - 28px - 52px);
                     min-height: 320px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
   .plan-page .none { color: var(--mut); font-size: 15px; margin: 32px 0; text-align: center; }

@@ -327,7 +327,7 @@ test("a failed action shows a translated toast above the bar for a short time; t
 
 test("the shell is at least a viewport tall under the header, with a vh fallback; the bar has a plain background first", () => {
   const css = $(mount(), "style").textContent;
-  assert.match(css, /min-height: 100vh;[^}]*min-height: calc\(100dvh - var\(--header-height, 56px\) - env\(safe-area-inset-top, 0px\)\)/);
+  assert.match(css, /min-height: 100vh;[^}]*min-height: calc\(100dvh - var\(--kiosk-header-height, var\(--header-height, 56px\)\) - env\(safe-area-inset-top, 0px\)\)/);
   assert.match(css, /background: var\(--card\);\s*background: color-mix/);
 });
 
@@ -806,4 +806,20 @@ test("the bar spans the card's measured box: beside HA's sidebar it starts where
   card._placeBar();
   assert.equal(card.style.getPropertyValue("--bar-left"), "256px", "an unmeasured box keeps the last place");
   window.dispatchEvent(new window.Event("resize"));
+});
+
+test("a menu button left of every page's title opens Home Assistant's sidebar", async () => {
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", rooms: [{ id: "living_room", name: "Living room" }] });
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const button = app.shadowRoot.querySelector("main .top > .ha-menu");
+  assert.ok(button, "on Home's title row");
+  assert.equal(button.getAttribute("aria-label"), "Home Assistant menu");
+  let toggled = 0;
+  document.body.addEventListener("hass-toggle-menu", () => { toggled += 1; }, { once: true });
+  button.click();
+  assert.equal(toggled, 1);
+  app.remove();
 });
