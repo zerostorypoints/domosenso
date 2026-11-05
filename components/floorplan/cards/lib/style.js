@@ -4,16 +4,20 @@ export const STYLE = `
   ha-card { height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
             overflow: hidden; font: 14px var(--ha-font-family-body, sans-serif); }
   .bar, .area-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; }
-  .area-panel:empty { display: none; }
+  .area-panel:empty, .bar:empty { display: none; }
   .bar .spacer { flex: 1; }
   button { font: inherit; cursor: pointer; padding: 4px 10px; border-radius: 14px; background: none;
            color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   button.on, button.primary { color: var(--text-primary-color, #fff); background: var(--primary-color);
                               border-color: var(--primary-color); }
   button:disabled { opacity: 0.4; cursor: default; }
+  /* A host on a phone asks for finger-sized targets (--floorplan-target: 44px); unset, as before. */
+  .bar button, .chip { min-width: var(--floorplan-target, auto); min-height: var(--floorplan-target, auto); }
   select, input { font: inherit; }
   .body { flex: 1; display: flex; min-height: 280px; position: relative; }
   svg { flex: 1; min-width: 0; height: 100%; min-height: 280px; touch-action: none; user-select: none; }
+  /* zoom: false: the plan stays as fitted and a finger on it scrolls the page. */
+  .fixed svg { touch-action: pan-y; }
   .room { fill: var(--secondary-background-color, #f2f2f2); stroke: var(--primary-text-color);
           stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .room.selected, .room.picked { fill: var(--primary-color); fill-opacity: 0.25; }

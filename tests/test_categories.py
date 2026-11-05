@@ -12,6 +12,9 @@ CASES = json.loads((ROOT / "tests" / "fixtures" / "category-cases.json").read_te
 def test_index_is_current():
     assert category_index.OUT.read_text(encoding="utf-8") == category_index.render(), \
         "components/floorplan/cards/lib/categories.json is stale: run uv run tools/category_index.py"
+    for copy in category_index.COPIES:
+        assert copy.read_text(encoding="utf-8") == category_index.render(), \
+            f"{copy.relative_to(ROOT)} is stale: run uv run tools/category_index.py"
 
 
 def test_every_named_kind_and_device_exists_and_orders_are_unique():

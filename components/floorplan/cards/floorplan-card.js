@@ -18,6 +18,13 @@
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
 //   maps: true                         # false: no maps on the plants, climate and light layers
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
+//   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
+//   zoom: true                         # false: no wheel, pinch, pan or zoom buttons (the page scrolls)
+//   chips: true                        # false: no layer chips; a host offers them (layerChips, pressLayer)
+//
+// Events, bubbling out of the card: `room-tap` ({area_id}) for a tap on a room in view mode, and
+// `floorplan-status` ({status}: loading, none, unsupported, no_area, ready) when the status changes;
+// the host element carries the status as data-status too.
 //
 // With one of the plants, climate or light layers shown (Amendment 7) the bar offers its maps: the
 // reading interpolated inside each room, or the lamps; and "now" or the map's figure over the last
@@ -36,7 +43,7 @@ import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categorie
 import { esc, dotHtml } from "./lib/html.js";
 import { fitView, frame, toPlan, snapCorner, gridOnWall, nearestWall, entityMap, pointEntities, valueText } from "./lib/view.js";
 import { trayHtml } from "./lib/tray.js";
-import { KINDS, STYLES, kindOf, widthOf, styleOf, openingState, openingShape, wallSpan, addOpening,
+import { KINDS, STYLES, opensInto, kindOf, widthOf, styleOf, openingState, openingShape, wallSpan, addOpening,
   moveOpening, setOpening, swapHinge, swapSide, fillWall, removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
@@ -108,8 +115,11 @@ const fmt = (v) => String(Math.round(v * 1e6) / 1e6);
 
 class FloorplanCard extends HTMLElement {
   setConfig(config) {
-    this._config = { edit: true, values: true, maps: true, ...config };
-    this._status = "loading";      // loading | none | unsupported | ready
+    this._config = { edit: true, values: true, maps: true, zoom: true, chips: true, ...config };
+    // One area's room (a phone's area page): read-only, so its scoped floor is never saved.
+    if (this._config.area) this._config.edit = false;
+    this._scoped = new WeakMap();  // floor -> that floor with the area's room alone (config.area)
+    this._status = "loading";      // loading | none | unsupported | no_area | ready
     this._doc = null;              // the plan as edited
     this._loaded = null;           // the plan as read: the save guard compares against it
     this._base = null;             // the plan as read, with one empty floor if it had none: Cancel returns here
@@ -312,7 +322,33 @@ class FloorplanCard extends HTMLElement {
   }
 
   get _floor() {
-    return this._doc?.floors.find((f) => f.floor_id === this._floorId) ?? null;
+    const floor = this._doc?.floors.find((f) => f.floor_id === this._floorId) ?? null;
+    return floor && this._config.area ? this._scope(floor) : floor;
+  }
+
+  // With `area`: the floor with that area's room alone, the points standing in it (or on its walls)
+  // and its openings. An opening whose first room is the other one is turned round (the same wall,
+  // the same side it opens into), so its shape is found from this room. Kept per floor object.
+  _scope(floor) {
+    let scoped = this._scoped.get(floor);
+    if (scoped) return scoped;
+    const area = this._config.area;
+    const room = floor.rooms.find((r) => r.area_id === area);
+    const inside = (p) => room && (pointInPolygon([p.x, p.y], room.polygon) || snapToEdge(room.polygon, [p.x, p.y], 1e-6));
+    const openings = (floor.openings || []).filter((o) => room && o.rooms.includes(area)).map((o) =>
+      (o.rooms.find((x) => x !== null) === area ? o
+        : { ...o, rooms: [area, ...o.rooms.filter((x) => x !== area)], opens: opensInto(o) ?? "outside" }));
+    scoped = { ...floor, rooms: room ? [room] : [], points: floor.points.filter(inside), openings, open_spaces: [] };
+    this._scoped.set(floor, scoped);
+    return scoped;
+  }
+
+  // The status, told to the host when it changes: data-status and a floorplan-status event.
+  _announce() {
+    if (this._announced === this._status) return;
+    this._announced = this._status;
+    this.setAttribute("data-status", this._status);
+    this.dispatchEvent(new window.CustomEvent("floorplan-status", { detail: { status: this._status }, bubbles: true, composed: true }));
   }
 
   async _load() {
@@ -333,13 +369,16 @@ class FloorplanCard extends HTMLElement {
   _setPlan(plan) {
     if (!plan) this._status = "none";
     else if (!supported(plan)) this._status = "unsupported";
-    else {
+    else if (this._config.area && !plan.floors.some((f) => f.rooms.some((r) => r.area_id === this._config.area))) {
+      this._status = "no_area";
+    } else {
       this._status = "ready";
       // `floors: []` is a valid plan (what `floorplan push` writes first): edit it as one floor without an id.
       this._doc = plan.floors.length ? plan : { ...plan, floors: emptyPlan([null]).floors };
       this._loaded = plan;
       this._base = this._doc;
-      const wanted = plan.floors.find((f) => f.floor_id === this._config.floor);
+      const wanted = this._config.area ? plan.floors.find((f) => f.rooms.some((r) => r.area_id === this._config.area))
+        : plan.floors.find((f) => f.floor_id === this._config.floor);
       this._floorId = (wanted ?? plan.floors[0])?.floor_id ?? null;
       this._view = fitView(this._floor);
     }
@@ -388,6 +427,7 @@ ${STYLE}
     const ready = this._status === "ready";
     const editing = ready && this._mode === "edit";
     $("ha-card").classList.toggle("editing", editing);
+    $("ha-card").classList.toggle("fixed", !this._config.zoom);
     this._fill();
     $(".bar").innerHTML = ready ? this._barHtml(editing) : "";
     // One layer at a time (a wall tablet): the bars keep their taps (data-own-tap), so a page that
@@ -405,13 +445,14 @@ ${STYLE}
     const hint = empty ? "card.floorplan.hint.empty" : editing ? `card.floorplan.hint.${this._tool}` : null;
     $(".hint").textContent = hint ? t(h, hint) : "";
     const notice = { loading: "card.floorplan.loading", none: "card.floorplan.no_plan",
-      unsupported: "card.floorplan.unsupported" }[this._status];
+      unsupported: "card.floorplan.unsupported", no_area: "card.floorplan.no_area" }[this._status];
     $(".message").innerHTML = notice
       ? `<div class="notice">${esc(t(h, notice))}</div>`
       : this._message ? esc(t(h, this._message.key, this._message.vars)) : "";
     this._svg.style.display = ready ? "" : "none";
     this._drawSvg(editing);
     this._stamp = this._valueStamp();
+    this._announce();
   }
 
   _barHtml(editing) {
@@ -421,11 +462,13 @@ ${STYLE}
     const zoom = btn("zoom_in", "+", t(h, "card.floorplan.zoom_in"))
       + btn("zoom_out", "−", t(h, "card.floorplan.zoom_out"))
       + btn("fit", t(h, "card.floorplan.fit"));
-    // View mode: the maps on the left, zoom on the right; edit mode: zoom, then the tools.
+    // View mode: the maps on the left, zoom on the right; edit mode: zoom, then the tools. A bar
+    // with nothing in it (zoom: false, no maps, no Edit) is left out.
     if (!editing) {
-      let html = `${this._mapsHtml()}<span class="spacer"></span>${zoom}`;
-      if (this._config.edit && h?.user?.is_admin) html += btn("edit", t(h, "card.floorplan.edit"));
-      return html;
+      let tail = this._config.zoom ? zoom : "";
+      if (this._config.edit && h?.user?.is_admin) tail += btn("edit", t(h, "card.floorplan.edit"));
+      const maps = this._mapsHtml();
+      return maps || tail ? `${maps}<span class="spacer"></span>${tail}` : "";
     }
     let html = `${zoom}<span class="spacer"></span>`;
     if (this._doc.floors.length > 1) {
@@ -498,16 +541,38 @@ ${STYLE}
       <button data-action="create_area">${esc(t(h, "card.floorplan.area.create"))}</button>`;
   }
 
+  // The layer chips: a category each with a point on this floor, unless the config fixes the
+  // layers; `on` while its layer shows. Read by a host that shows them itself (chips: false).
+  get layerChips() {
+    if (this._status !== "ready" || (this._config.layers && !this._one) || !this._floor) return [];
+    const lang = this._hass?.language;
+    const ids = new Set(this._one ? this._config.layers : this._floor.points.flatMap((p) => this._cat(p).roles));
+    return PLACEABLE.filter((c) => ids.has(c.id)).map((c) => ({ id: c.id, name: categoryName(c, lang), colour: colourOf(c),
+      on: this._one ? c.id === this._chosen : !this._hidden.has(c.id) }));
+  }
+
+  // A chip pressed (here or by a host): one layer chosen, or one switched off or on.
+  pressLayer(id) {
+    if (this._one) {
+      this._chosen = id;
+      save(CHOSEN_KEY, this._chosen);
+    } else {
+      if (this._hidden.has(id)) this._hidden.delete(id);
+      else this._hidden.add(id);
+      save(HIDDEN_KEY, [...this._hidden]);
+    }
+    this._render();
+  }
+
   // A chip per category with a point on this floor, unless the config fixes the layers.
   _layersHtml() {
-    if ((this._config.layers && !this._one) || !this._floor) return "";
+    if ((this._config.layers && !this._one) || !this._floor || !this._config.chips) return "";
     const h = this._hass;
     const roles = this._floor.points.map((p) => this._cat(p).roles);
-    const ids = new Set(this._one ? this._config.layers : roles.flat());
-    const cats = PLACEABLE.filter((c) => ids.has(c.id));
+    const cats = this.layerChips.map((chip) => ({ ...categoryById(chip.id), on: chip.on }));
     // One layer at a time (a wall tablet): the chips keep their taps (data-own-tap), so a page that
     // goes back on a tap anywhere does not go back on them.
-    const pressed = (c) => (this._one ? c.id === this._chosen : !this._hidden.has(c.id));
+    const pressed = (c) => c.on;
     const own = this._one ? " data-own-tap" : "";
     if (!cats.length) return "";
     // A ring on the plan gets its explanation here once.
@@ -1049,15 +1114,7 @@ ${STYLE}
       this._day = button.getAttribute("data-day") === "1";
       save(AGG_KEY, this._day);
       this._heatCache = null;
-    } else if (action === "layer" && this._one) {
-      this._chosen = button.getAttribute("data-layer");
-      save(CHOSEN_KEY, this._chosen);
-    } else if (action === "layer") {
-      const id = button.getAttribute("data-layer");
-      if (this._hidden.has(id)) this._hidden.delete(id);
-      else this._hidden.add(id);
-      save(HIDDEN_KEY, [...this._hidden]);
-    }
+    } else if (action === "layer") return void this.pressLayer(button.getAttribute("data-layer"));
     this._render();
   }
 
@@ -1172,7 +1229,7 @@ ${STYLE}
   }
 
   _onWheel(e) {
-    if (this._status !== "ready") return;
+    if (this._status !== "ready" || !this._config.zoom) return;
     e.preventDefault();
     this._view = zoomAt(this._view, e.deltaY > 0 ? ZOOM_STEP : 1 / ZOOM_STEP, this._at(e));
     this._render();
@@ -1198,7 +1255,7 @@ ${STYLE}
     } catch {
       // a synthetic or already released pointer cannot be captured; the events still bubble here
     }
-    if (this._pointers.size === 2) {
+    if (this._pointers.size === 2 && this._config.zoom) {
       this._drag = { kind: "pinch", dist: this._pinchDist() };
       return;
     }
@@ -1363,6 +1420,7 @@ ${STYLE}
     }
     if (!d.moved && Math.hypot(e.clientX - d.start[0], e.clientY - d.start[1]) < TAP_PX) return;
     d.moved = true;
+    if (d.kind === "pan" && !this._config.zoom) return;     // a fixed plan: the move is only not a tap
     if (d.kind === "pan") {
       const { s } = frame(d.view0, this._rect());
       if (!s) return;
@@ -1415,6 +1473,14 @@ ${STYLE}
       // A tap selects it (on the pointerdown); a drag has slid it along the walls.
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.
+    } else if (d.kind === "pan" && !d.moved && this._mode !== "edit") {
+      // View mode: a tap on a room tells the host which area it is (a phone opens its page).
+      const pt = this._at(e);
+      const room = this._floor?.rooms.find((r) => pointInPolygon(pt, r.polygon));
+      if (room) {
+        this.dispatchEvent(new window.CustomEvent("room-tap", { detail: { area_id: room.area_id }, bubbles: true, composed: true }));
+      }
+      return;
     } else if (d.kind === "point") {
       // Dropped on another placed dot: onto it exactly, so the two stack into one dot with a list.
       const at = this._inRooms(this._at(e));

@@ -2,6 +2,16 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: options for a host page (a phone)
+
+- `floorplan-card` takes `area` (that area's room alone, fitted, read-only), `zoom: false` (a fixed
+  plan the page scrolls past) and `chips: false` (the layer chips shown by the host through
+  `layerChips` and `pressLayer`), fires `room-tap` (`{area_id}`) for a tap on a room in view mode and
+  `floorplan-status` when its status changes (also `data-status` on the card), and sizes its
+  buttons by `--floorplan-target` when a host sets it. Used by the pocket's area page and floor plan view.
+- **What a home does:** nothing. Without the new options the card draws and behaves as before; the
+  new events fire whether or not anything listens.
+
 ## Unreleased: a room's own sensor colours it (#207)
 
 - On the climate maps (temperature, humidity), a room whose Home Assistant area names a

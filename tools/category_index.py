@@ -4,6 +4,8 @@
 Writes components/floorplan/cards/lib/categories.json: categories/*.yaml by order, each with the
 rules of the kinds and devices it names resolved (tools/domosenso_cli/categories.py). The card runs
 in a browser without the catalog, so the index ships with the component and is current at its tag.
+The pocket groups an area's sensors by the same categories and ships the same file (COPIES), next
+to its copy of the floor plan's lib/categories.js.
 
     uv run tools/category_index.py           # write it
     uv run tools/category_index.py --check   # exit 1 when the file differs (pytest runs this)
@@ -21,6 +23,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from domosenso_cli.categories import build  # noqa: E402
 
 OUT = ROOT / "components" / "floorplan" / "cards" / "lib" / "categories.json"
+COPIES = [ROOT / "components" / "pocket" / "cards" / "lib" / "categories.json"]
 
 
 def render(root: Path = ROOT) -> str:
@@ -33,14 +36,16 @@ def main() -> int:
     args = parser.parse_args()
     text = render()
     if args.check:
-        current = OUT.read_text(encoding="utf-8") if OUT.is_file() else ""
-        if current != text:
-            print(f"FAIL {OUT.relative_to(ROOT)} is stale: run uv run tools/category_index.py")
-            return 1
+        for out in [OUT, *COPIES]:
+            current = out.read_text(encoding="utf-8") if out.is_file() else ""
+            if current != text:
+                print(f"FAIL {out.relative_to(ROOT)} is stale: run uv run tools/category_index.py")
+                return 1
         print("ok")
         return 0
-    OUT.write_text(text, encoding="utf-8")
-    print(f"write {OUT.relative_to(ROOT)}")
+    for out in [OUT, *COPIES]:
+        out.write_text(text, encoding="utf-8")
+        print(f"write {out.relative_to(ROOT)}")
     return 0
 
 
