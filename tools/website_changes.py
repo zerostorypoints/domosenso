@@ -23,9 +23,9 @@ SITE_CODE_REASON = 'site code changed — check all pages'
 GENERATED = 'website/src/generated/'
 
 
-def show(root, ref, path):
-    """File content at `ref`, or None when the file does not exist there."""
-    r = subprocess.run(['git', '-C', str(root), 'show', f'{ref}:{path}'], capture_output=True, text=True)
+def show(root, ref, path, *, binary=False):
+    """File content at `ref`, or None when absent; opaque assets can stay bytes."""
+    r = subprocess.run(['git', '-C', str(root), 'show', f'{ref}:{path}'], capture_output=True, text=not binary)
     return r.stdout if r.returncode == 0 else None
 
 
@@ -46,7 +46,9 @@ def verb(old, new, noun):
 
 
 def routes_for(path, root, base, head):
-    old, new = show(root, base, path), show(root, head, path)
+    # Only editorial content is parsed. Images, fonts and unrelated files need byte equality.
+    binary = not path.startswith(CONTENT)
+    old, new = show(root, base, path, binary=binary), show(root, head, path, binary=binary)
     if old == new:
         return []
     for folder, noun, index in (('how-to', 'how-to', 'how-to index'), ('journal', 'article', 'journal index')):
