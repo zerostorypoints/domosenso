@@ -1011,6 +1011,13 @@ script:
           data:
             package_name: [[ wake_package | yaml ]]
 [% endif %]
+      # A busy single-mode script or an unmet client guard returns without sending a policy.
+      # Startup callers need this explicit receipt, not just a normal service return.
+      - variables:
+          screen_policy_response:
+            sent: true
+      - stop: "Screen policy sent"
+        response_variable: screen_policy_response
   # Show the controls, or keep them up: the near automation and a tap on the screen (the
   # corner-taps card's tap option) both land here. The hold timer counts from leaving the near
   # zone, not from the last trigger, so while someone is within near_cm there is no timer at all;
@@ -1971,8 +1978,9 @@ automation:
                       then:
                         - sequence:
                             - action: script.[[ p ]]_screen_on
+                              response_variable: screen_policy_result
                             - variables:
-                                screen_policy_delivered: true
+                                screen_policy_delivered: "{{ screen_policy_result is mapping and screen_policy_result.get('sent', false) }}"
                           continue_on_error: true
                     - if:
                         - condition: template

@@ -4349,7 +4349,7 @@ def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
     resume = wake["sequence"][0]
     assert resume["if"] == on["conditions"], "only an off view switches to ambient"
     assert resume["then"] == on["actions"][:-1], "preserve controls/calendar when already active"
-    assert on["actions"][-1] in list(walk(wake["sequence"])), "always repair the Android screen policy"
+    assert any(n.get("action") == on["actions"][-1]["action"] for n in walk(wake["sequence"])), "always repair the Android screen policy"
 
     held, *actions = sleep["sequence"]
     assert sleep["conditions"] == [{"condition": "state", "entity_id": presence, "state": "off"}]
@@ -4408,6 +4408,15 @@ def test_reconcile_after_start_is_listed_as_provided():
     assert "reconcile_after_start" in provided
 
 
+def test_start_requires_an_explicit_screen_policy_receipt(demo):
+    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
+    call = next(n for n in walk(wake) if n.get("action") == "script.ramka_screen_on")
+    assert call.get("response_variable") == "screen_policy_result", "a busy single script returns without sending"
+    finish = demo["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-2:]
+    assert finish[0]["variables"]["screen_policy_response"] == {"sent": True}
+    assert finish[1]["response_variable"] == "screen_policy_response"
+
+
 # ---- 0.13.0: the way out is a button on the controls, not the top corners --------------------------
 
 def test_the_way_out_is_an_exit_button_on_the_controls(demo):
@@ -4440,7 +4449,7 @@ def test_wake_package_default_preserves_companion_condition(tmp_path, demo, targ
     inputs["tablet_wake_package"] = target
     actual = render(tmp_path, inputs)
     assert actual == demo
-    wake = actual["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1]
+    wake = actual["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-3]
     assert wake["then"][0]["data"]["data"]["package_name"] == "io.homeassistant.companion.android"
     assert wake["if"][0]["conditions"][0]["state"] == ["foreground", "top_sleeping"]
 
@@ -4450,7 +4459,7 @@ def test_wake_package_launches_selected_app_without_companion_importance(tmp_pat
     inputs["tablet_wake_package"] = "com.domosenso.frame"
     actual = render(tmp_path, inputs)
     expected = copy.deepcopy(demo)
-    expected["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1] = {
+    expected["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-3] = {
         "action": inputs["tablet_device"]["notify"],
         "data": {"message": "command_launch_app", "data": {"package_name": "com.domosenso.frame"}},
     }

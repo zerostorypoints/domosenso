@@ -16,6 +16,9 @@ screen immediately rather than leaving the OS asleep behind a restored ambient h
 If Companion's local push connection is still reconnecting, startup retries delivery every
 five seconds, for up to 24 attempts. It stops at the first successful send, does not send wake
 commands while presence is absent, and reports an error if a present room exhausts the bound.
+The wake script returns a receipt only after its notification sequence completes. Busy or
+guard-skipped calls therefore cannot prematurely end startup retries. Existing callers can
+continue ignoring the optional response.
 `tools/check-ramka-startup.sh`, included in the full checks, exercises the rendered actions in
 the pinned HA script engine with a late, permanently unavailable and returning test client.
 

@@ -2,11 +2,12 @@
 import asyncio
 import copy
 import logging
+import re
 import tempfile
 from pathlib import Path
 
 import yaml
-from homeassistant.core import Context, HomeAssistant
+from homeassistant.core import Context, HomeAssistant, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.script import Script
@@ -24,6 +25,9 @@ logging.getLogger().setLevel(logging.INFO)
 PACKAGE = yaml.safe_load(Path('/fixture/package.yaml').read_text())
 CONTROLLER = next(a for a in PACKAGE['automation'] if a['id'] == 'ramka_reconcile_after_start')
 PRESENCE = CONTROLLER['actions'][-1]['choose'][0]['conditions'][0]['entity_id']
+WAKE = PACKAGE['script']['ramka_screen_on']
+BATTERY = 'sensor.' + re.search(r'states.sensor.([a-z0-9_]+)', WAKE['sequence'][0]['value_template'])[1]
+NOTIFY = next(step['action'] for step in WAKE['sequence'] if step.get('action', '').startswith('notify.'))
 
 
 def walk(node):
@@ -36,15 +40,23 @@ def walk(node):
             yield from walk(value)
 
 
-async def check(mode='ambient', presence='on', failures=2, arrive=False, disappear=False):
+async def check(mode='ambient', presence='on', failures=2, arrive=False, disappear=False,
+                overlap=False, register_late=False, ignore_receipt=False):
     with tempfile.TemporaryDirectory() as directory:
         logs_before = len(LOGS)
         hass = HomeAssistant(directory)
         attempts = []
         sleeps = []
+        entered = asyncio.Event()
+        release = asyncio.Event()
 
-        async def wake(call):
+        async def notify(call):
+            if call.data.get('message') != 'command_screen_off_timeout':
+                return
             attempts.append(1)
+            if overlap and len(attempts) == 1:
+                entered.set()
+                await release.wait()
             if disappear:
                 hass.states.async_set(PRESENCE, 'off')
             if len(attempts) <= failures:
@@ -61,14 +73,30 @@ async def check(mode='ambient', presence='on', failures=2, arrive=False, disappe
         async def cancel(call):
             pass
 
-        hass.services.async_register('script', 'ramka_screen_on', wake)
+        hass.services.async_register(*NOTIFY.split('.', 1), notify)
+        real_wake = Script(hass, cv.SCRIPT_SCHEMA(WAKE['sequence']), 'screen fixture',
+                           'script', script_mode=WAKE['mode'])
+
+        async def wake_service(call):
+            result = await real_wake.async_run(context=call.context)
+            return result.service_response if result is not None else None
+
+        # Match the core script service adapter, retaining the real single-mode run behavior.
+        hass.services.async_register('script', 'ramka_screen_on', wake_service,
+                                     supports_response=SupportsResponse.OPTIONAL)
         hass.services.async_register('script', 'ramka_screen_off', sleep)
         hass.services.async_register('input_select', 'select_option', select)
         hass.services.async_register('timer', 'cancel', cancel)
         hass.states.async_set(PRESENCE, presence)
         hass.states.async_set('input_select.ramka_mode', mode)
         hass.states.async_set('input_number.ramka_off_delay_s', '1')
+        if not register_late:
+            hass.states.async_set(BATTERY, '80')
         await hass.async_start()
+        if ignore_receipt:
+            await hass.services.async_call('script', 'ramka_screen_on', {}, blocking=True, context=Context())
+            await hass.async_stop()
+            return len(attempts), 0, mode, None
         actions = copy.deepcopy(CONTROLLER['actions'])
         # Keep the actual bound and conditions; shorten only the retry cadence for this test.
         for node in walk(actions):
@@ -79,13 +107,33 @@ async def check(mode='ambient', presence='on', failures=2, arrive=False, disappe
             await asyncio.sleep(0.02)
             hass.states.async_set(PRESENCE, 'on')
         task = asyncio.create_task(approach()) if arrive else None
+        async def register():
+            await asyncio.sleep(0.005)
+            hass.states.async_set(BATTERY, '80')
+        registration = asyncio.create_task(register()) if register_late else None
+        external = None
+        if overlap:
+            external = asyncio.create_task(hass.services.async_call(
+                'script', 'ramka_screen_on', {}, blocking=True, return_response=True, context=Context()))
+            await entered.wait()
+        run = asyncio.create_task(script.async_run(context=Context()))
+        if overlap:
+            await asyncio.sleep(0.005)
+            assert not run.done(), 'a skipped busy script must not count as successful delivery'
+            release.set()
+            try:
+                await external
+            except HomeAssistantError:
+                pass
         error = None
         try:
-            await script.async_run(context=Context())
+            await run
         except HomeAssistantError as caught:
             error = caught
         if task:
             await task
+        if registration:
+            await registration
         final_mode = hass.states.get('input_select.ramka_mode').state
         await hass.async_stop()
         # A top-level HA stop(error=true) is logged and traced rather than re-raised.
@@ -107,7 +155,13 @@ async def main():
     assert calls == 24 and error is not None, (calls, error, LOGS[-3:])
     calls, _, _, error = await check(failures=100, disappear=True)
     assert calls == 1 and error is None, 'do not send wake commands after presence leaves'
-    print('startup runtime: 8 cases passed (late push, restored modes, arrival, absence, failure bound)')
+    calls, _, _, error = await check(overlap=True)
+    assert calls == 3 and error is None, 'overlapping real screen scripts must retry after a skip'
+    calls, _, _, error = await check(register_late=True)
+    assert calls == 3 and error is None, 'an unmet real screen guard must not count as delivery'
+    calls, _, _, error = await check(failures=0, ignore_receipt=True)
+    assert calls == 1 and error is None, 'existing callers can ignore the optional receipt'
+    print('startup runtime: 11 cases passed (real screen script, late push, overlap, arrival, absence, bound)')
 
 
 asyncio.run(main())
