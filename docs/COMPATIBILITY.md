@@ -55,6 +55,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | Private managed `<config_dir>/domosenso/assistant/<id>.yaml`, schema 1, pinned component identity, definitions, translations and typed bindings | STABLE |
 | Capability id + revision, query/answer type pairs and allowlisted evaluator semantics | STABLE; a meaning change requires a new revision and negotiated dual support |
 | `meta.assistant.*` translation keys | ADDITIVE-ONLY; English fallback, en/de/pl catalog coverage |
+| Optional canonical capability `client` authoring annotations and private derived `domosenso/assistant-metadata/<id>.yaml`, schema 2 ([SPEC-037](../.ai/specs/SPEC-037-2026-11-05-shared-home-native-metadata.md)); normalized subject/room aliases; generic `measurement.v1` evaluator | Unreleased native surface; schema-1 fields/paths/validators stay STABLE and unchanged. Requires matching future Bridge projection; not compatible with the historical independent-definition schema-2 prototype |
 
 Definitions cannot contain executable prompts, service calls or code. Their fact sources must be
 listed in the owning manifest's `provides`, `upstream` or declared `consumes`. Rendered bindings

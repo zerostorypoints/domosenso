@@ -3,6 +3,21 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: a room's `lights` may list several, with names
+
+A room's `lights` in `home.inputs.yaml` takes one entity (a group, its members read at run time), as
+before, or a list of lights or groups, each an entity id or `{entity, name}` (one name, or one per
+language), as the Ramka labels its lights. Pocket counts and switches each one; the Ramka takes the
+names as its lights' labels when its own `lights` list is left out. Nothing changes for a home that
+names one.
+
+## Unreleased: home inputs list a room's covers, contacts and locks (optional)
+
+A room in `home.inputs.yaml` may list `covers`, `contacts` and `locks`: each an entity id, or
+`{entity, name}` with the name as one string or one per language. Pocket shows them first in that
+room, in the listed order and under that name, and the Ramka takes them when its own lists are left
+out; the room's other ones are still found by HA area. Nothing changes for a home that lists none.
+
 ## Unreleased: the lock records the home inputs each consumer was rendered from
 
 For a component that uses the home inputs (`uses_home`), `domosenso.lock`, and the dev render
@@ -33,6 +48,21 @@ manifest may declare `uses_home: true` (it needs the file) or `uses_home: "optio
 such components read it. `render` validates the file and fails on a repeated room id; it does not
 check the entities against a running Home Assistant, and the lock does not record the file.
 Home action: none now; before rendering a component that declares `uses_home`, upgrade the tooling.
+
+## Unreleased: canonical native metadata projection (SPEC-037)
+
+No existing component opts in and no endpoint exposure changes. Upgrade framework tools
+before rendering a future component that declares optional canonical `client` metadata.
+The tools derive a private managed `domosenso/assistant-metadata/<id>.yaml`; existing
+schema-1 files retain their strict shape. Alias-only changes do not alter legacy bytes
+at identical provenance. A new generic measurement capability has no legacy bundle.
+
+The private schema-2 canonical shape is distinct from the local historical prototype;
+do not mix their files or claim a released Bridge minimum. Runtime negotiation/parity
+and native activation require their own acceptance. No APK change, helper migration,
+grant or device setup is performed by the compiler. Before downgrading tools, revert
+to component tags without `client`, render and deploy sidecar removal, retaining the
+compatible private configuration and the ordinary rollback checkpoint.
 
 ## Unreleased: lights/awnings 0.4.0 assistant action sidecars (SPEC-033)
 
