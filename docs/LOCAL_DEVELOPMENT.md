@@ -61,6 +61,30 @@ name and deletes only that generated instance and its labelled Docker resources.
 label or symlink mismatches stop the operation. There are no production-target, token-import,
 home-input or remote-URL options.
 
+### Screenshots for a pull request
+
+A pull request that changes what a person sees (a card, a dashboard, a settings page, a website
+page) carries screenshots of each changed screen in its description (the PR template asks), at the target device's size
+(phone 390×844, the Ramka's tablet 1100×720, desktop 1440×1000), light and dark where both exist.
+They come from this fictional demo, never from a real home (AGENTS.md, Privacy). Push the images to
+a branch `pr-evidence/<PR number>` that is never merged, so they stay out of `main`'s history, and
+link them at that branch's commit. Name a screen the demo cannot show (hardware, a HACS plugin) as
+not shown, with the reason.
+
+The demo also installs Pocket (the phone view) and the climate-air thresholds it reads, from the
+demo home's shared inputs (`examples/demo-home/home.inputs.yaml`), as dashboards
+`dashboard-pocket-<lang>`. Take the images from a running demo with the website's Playwright:
+
+```sh
+node tools/dev_home/screenshots.mjs --name review --out .domosenso/shots \
+  --routes "home:#/,climate:#/climate" [--dark] [--click "Inside"]
+```
+
+`--dashboard` picks another dashboard (default `dashboard-pocket-en/home`), `--width`/`--height`
+another device size. The demo sets states without the entity registry and without HA areas, so a
+screen that finds devices by area (Pocket's area pages, Controls' Status) shows only what the home
+inputs name; kiosk-mode is not installed, so HA's header stays above a phone view.
+
 ## Isolation and synthetic boundaries
 
 HA has exactly one Docker **internal** network, no published port and no default route. It has

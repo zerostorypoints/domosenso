@@ -20,7 +20,7 @@
 - Demo decision (`skip` / `run`) and concrete reason:
 - If running: `run-demo` label, scenario, tested revision and result/evidence:
 - Applicable staging scenarios (first install, upgrade, restart, reconnect):
-- UI screenshots / device evidence, or why not applicable:
+- UI screenshots (required when a screen changes: demo data, target size, light/dark; images on `pr-evidence/<PR number>`, see docs/LOCAL_DEVELOPMENT.md) / device evidence, or why not applicable:
 - How to open the interactive staging preview (credentials supplied privately), tested SHA and things to try:
 - Known limitations:
 

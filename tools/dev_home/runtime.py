@@ -200,6 +200,19 @@ class Demo:
             dashboard = source.name != 'package.yaml'
             target = self.config / ('dashboards' if dashboard else 'packages') / (source.name if dashboard else 'ramka.yaml')
             shutil.copyfile(source, target)
+        # Pocket, the phone view, beside the Ramka: it and the climate-air thresholds it reads take
+        # the demo home's shared inputs (home.inputs.yaml), as a home's render gives them.
+        home = yaml.safe_load((fixture / 'home.inputs.yaml').read_text())
+        for component, package in [('climate-air', 'climate_air.yaml'), ('pocket', None)]:
+            rendered = self.path / f'rendered-{component}'
+            shutil.rmtree(rendered, ignore_errors=True)
+            component_inputs = yaml.safe_load((fixture / f'inputs/{component}.yaml').read_text()) or {}
+            render_component(self.root / 'components' / component, component_inputs, rendered, stamp=True, home=home)
+            if package:
+                shutil.copyfile(rendered / 'package.yaml', self.config / 'packages' / package)
+            for source in rendered.glob('dashboard.*.yaml'):
+                shutil.copyfile(source, self.config / 'dashboards' / source.name.replace('dashboard.', f'{component}.'))
+            resource_urls += install(self.root / 'components' / component, self.config)[1]
         shutil.copytree(fixture / 'custom_components/domosenso_demo', self.config / 'custom_components/domosenso_demo', dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copytree(fixture / 'media', self.config / 'www/ramka', dirs_exist_ok=True)
         shutil.copytree(fixture / 'media', self.config / 'www/media', dirs_exist_ok=True)
@@ -250,6 +263,7 @@ lovelace:
                        f'      filename: dashboards/ramka-settings.{lang}.yaml\n      require_admin: true\n')
             config += (f'    ramka-preview-{lang}:\n      mode: yaml\n      title: Ramka preview {lang}\n'
                        f'      filename: dashboards/ramka-preview.{lang}.yaml\n      require_admin: true\n')
+            config += f'    dashboard-pocket-{lang}:\n      mode: yaml\n      title: Pocket {lang}\n      filename: dashboards/pocket.{lang}.yaml\n'
         (self.config / 'configuration.yaml').write_text(config)
 
     def api(self, path, data=None, authenticated=True, method=None):

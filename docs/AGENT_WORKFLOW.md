@@ -155,6 +155,9 @@ actions. A practical brief is: implement and test; push this task branch; open/u
 queue auto-merge after independent agent review. That last action is optional and must be within
 the human's task authorisation. Agents handle technical review and test evidence; humans get a
 short summary of changed behaviour, screenshots/demo evidence, risks and unresolved decisions.
+A pull request that changes a screen carries screenshots of it in its description: from the
+fictional demo, at the device's size, light and dark, never from a real home
+([how](LOCAL_DEVELOPMENT.md#screenshots-for-a-pull-request)).
 
 The implementing agent owns its worktree and fixes review findings. A separate review agent uses
 its own worktree/branch at the exact revision. It reports findings and evidence but **never submits
