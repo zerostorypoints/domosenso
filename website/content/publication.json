@@ -66,9 +66,9 @@
     },
     {
       "id": "gate-remote",
-      "version": "0.1.0",
-      "tag": "gate-remote/0.1.0",
-      "commit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "version": "0.1.1",
+      "tag": "gate-remote/0.1.1",
+      "commit": "7d087839c6189ca41dfdaf2995fe15d9c2604c67",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home.",
         "Fixed-code handsets only: two presses of a rolling-code handset give different frames, and the node cannot send them.",

@@ -565,9 +565,9 @@
     },
     {
       "id": "gate-remote",
-      "version": "0.1.0",
-      "sourceTag": "gate-remote/0.1.0",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "version": "0.1.1",
+      "sourceTag": "gate-remote/0.1.1",
+      "sourceCommit": "7d087839c6189ca41dfdaf2995fe15d9c2604c67",
       "summary": "A garage door or gate opened from Home Assistant by sending its own handset's fixed code from an ESP32 and a CC1101",
       "requirements": [
         {
@@ -627,8 +627,8 @@
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/10364b429c878830af61f3da2256fff98d0dcf84/components/gate-remote",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/components/gate-remote/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/7d087839c6189ca41dfdaf2995fe15d9c2604c67/components/gate-remote",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/7d087839c6189ca41dfdaf2995fe15d9c2604c67/components/gate-remote/UPGRADE.md"
     },
     {
       "id": "lights",
