@@ -155,9 +155,9 @@ gate; keep that default for a gate. While the node is unreachable a greyed butto
 ## Hints from real installations
 
 - Tested in one home on 5 November 2026 with an 868.3 MHz handset: 75 pulses per frame on a
-  1.016 ms grid, about 9.15 ms between repeats. Two presses gave identical frames, and a press sent
-  from Home Assistant opened the gate with the node in a room of the flat. That test ran on the
-  home's own firmware, the precursor of the component's packages; the packages themselves are
-  config- and compile-checked so far.
+  1.016 ms grid, about 9.15 ms between repeats. Two presses gave identical frames. The home's own
+  firmware, the precursor of the component's packages, opened the gate with a press sent over the
+  native API; the same evening the component's transmit package (0.1.0), pressed from Home Assistant,
+  opened it too, with the node in a room of the flat.
 - The same capture log showed a 4.2 ms pulse once a second from some other transmitter. It was
   harmless.

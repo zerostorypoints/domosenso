@@ -69,5 +69,5 @@ consumes: []
 tested:
   ha: ["2026.9.2"]
   esphome: ["2026.9.1"]                   # config of the demo device file and the factory image, compile of both
-  homes: 1                                # an 868.3 MHz fixed-code handset, 2026-11-05 (SPEC-034)
+  homes: 1                                # an 868.3 MHz fixed-code handset, 2026-11-05: the 0.1.0 transmit package, pressed from HA, opened it (SPEC-034)
 local_only: true

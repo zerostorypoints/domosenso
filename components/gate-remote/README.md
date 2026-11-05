@@ -59,8 +59,9 @@ deliberately.
    did so in the first home.
 
 Tested in one home on 2026-11-05: an 868.3 MHz handset, 75 pulses per frame on a 1.016 ms grid, about
-9.15 ms between repeats; a press sent over the native API opened the gate with the node in a room of
-the flat. A 4.2 ms pulse once a second from some other transmitter showed up in that home's capture
+9.15 ms between repeats. A press sent over the native API from the home's own firmware opened the gate,
+and the same evening a press from Home Assistant through this component's transmit package (0.1.0)
+opened it too, with the node in a room of the flat. A 4.2 ms pulse once a second from some other transmitter showed up in that home's capture
 log and was harmless.
 
 ## Why the radio never listens in the transmit firmware
