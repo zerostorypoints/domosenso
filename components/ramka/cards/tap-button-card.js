@@ -53,8 +53,9 @@ class TapButtonCard extends HTMLElement {
   _targetUnavailable() {
     if (this._config.navigate) return false;
     const target = this._config.target?.entity_id ?? this._config.data?.entity_id;
-    if (target == null) return false; // Area/device targets are resolved by Home Assistant.
-    const ids = Array.isArray(target) ? target : [target];
+    // Area/device targets and HA's special all/none selectors are resolved by HA itself.
+    if (target == null || target === "all" || target === "none") return false;
+    const ids = Array.isArray(target) ? target : target.split(",").map((id) => id.trim());
     return !ids.length || ids.some((id) => {
       const state = this._hass?.states?.[id];
       // A scene exists before its first activation, when its timestamp is still unknown.
@@ -102,6 +103,8 @@ class TapButtonCard extends HTMLElement {
         }
         ha-card.pressed { background-color: var(--secondary-background-color); }
         ha-card.disabled { cursor: default; opacity: 0.5; }
+        .disabled ha-icon { --mdc-icon-size: ${tall ? 48 : 28}px; }
+        .disabled .name { white-space: normal; text-align: center; overflow-wrap: anywhere; font-size: ${tall ? 14 : 15}px; }
         ha-icon { --mdc-icon-size: ${tall ? 64 : 28}px; color: var(--state-icon-color, var(--primary-color)); }
         .name { font-size: ${tall ? 16 : 15}px; font-weight: 500; color: var(--primary-text-color); white-space: nowrap; }
         .name.hint { color: var(--warning-color, #ffa600); }

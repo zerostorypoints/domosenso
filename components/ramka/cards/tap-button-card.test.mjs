@@ -155,3 +155,19 @@ test("a target lost between two taps cancels the pending double tap", () => {
   assert.equal(calls.length, 0);
   assert.notEqual(nameText(card), "Open");
 });
+
+test("Home Assistant comma-separated and all target strings retain their meaning", () => {
+  for (const entity_id of ["light.first, light.second", "all"]) {
+    const { card, calls } = makeCard({ config: { taps: 1, action: "light.turn_off", target: { entity_id } } });
+    card.hass = { locale: { language: "en" }, states: { "light.first": { state: "on" }, "light.second": { state: "off" } },
+      callService: (...args) => calls.push(args) };
+    tap(card);
+    assert.deepEqual(calls, [["light", "turn_off", {}, { entity_id }]]);
+    if (entity_id !== "all") {
+      card.hass = { locale: { language: "en" }, states: { "light.first": { state: "on" } },
+        callService: (...args) => calls.push(args) };
+      tap(card);
+      assert.equal(calls.length, 1, "each member of a comma-separated target must exist");
+    }
+  }
+});
