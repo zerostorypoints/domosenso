@@ -76,7 +76,8 @@ accepts:
 Nothing else in the folder is copied to the site. The guide's other links become GitHub links at the
 pinned commit, as today; GitHub shows an STL in its 3D viewer and offers every file for download.
 The device page's image renderer stays as it is (a linked figure, caption "Open full-size diagram").
-Inference, to check on a built page: its CSS keeps the 4:3 preview's aspect ratio.
+Checked on a local build with the documentation commit moved to the implementation: the 1600 × 1200
+preview shows at 900 × 675, its aspect ratio kept, and the file links go to GitHub at that commit.
 
 The site shows the enclosure only after the website's normal publication PR moves
 `documentationCommit` to a commit with it and adds the preview to `assets.json`;

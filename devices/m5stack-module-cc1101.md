@@ -63,7 +63,7 @@ screws; the lid snaps on. The Atom's button sits at the bottom of a finger well,
 stands upright out of the back wall.
 
 - [How to print and assemble it](enclosures/m5stack-cc1101-atom-lite/README.md): print settings,
-  hardware, assembly, the parameters and what a first print has to confirm.
+  hardware, wiring, assembly, the parameters and what a first print has to confirm.
 - Bambu Studio projects (P2S, settings applied): [base](enclosures/m5stack-cc1101-atom-lite/3mf/base.3mf),
   [base with wall ears](enclosures/m5stack-cc1101-atom-lite/3mf/base_wall.3mf),
   [lid](enclosures/m5stack-cc1101-atom-lite/3mf/lid.3mf),
