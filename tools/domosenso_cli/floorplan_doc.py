@@ -94,11 +94,26 @@ def without_source(doc: dict) -> dict:
     return {key: value for key, value in doc.items() if key != "source"}
 
 
-def dashboard_config(doc: dict) -> dict:
+def card_rooms(home_inputs: dict | None) -> list[dict]:
+    """The home inputs' rooms as the card's option `rooms` (decision record of #219, agreement 11):
+    each room's id, its name (one or per language), its HA area and its climate sensors; the card
+    shows the name and colours the room by the selected sensor. Nothing else of the home inputs."""
+    rooms = []
+    for room in (home_inputs or {}).get("rooms") or []:
+        item = {"id": room["id"], "name": room["name"], "area": room.get("area", room["id"])}
+        if room.get("climate"):
+            item["climate"] = dict(room["climate"])
+        rooms.append(item)
+    return rooms
+
+
+def dashboard_config(doc: dict, rooms: list[dict] | None = None) -> dict:
+    card = {"type": CARD_TYPE, "plan": without_source(doc)}
+    if rooms:
+        card["rooms"] = rooms
     return {
         "title": "Floor plan",
-        "views": [{"path": "plan", "type": "panel",
-                   "cards": [{"type": CARD_TYPE, "plan": without_source(doc)}]}],
+        "views": [{"path": "plan", "type": "panel", "cards": [card]}],
     }
 
 

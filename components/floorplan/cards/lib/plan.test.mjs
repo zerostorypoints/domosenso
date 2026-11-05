@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel,
+  POINT_CLASSES, SCHEMA_VERSION, supported, emptyPlan, candidates, autoPlace, tray, roomOf, roomLabel, homeRoom,
   movePoint, moveCorner, insertCorner, removeCorner, splitRoom, joinRooms, linkRoom, withPlan,
   extract, addPoint, addPoints, DERIVED_PLATFORMS, roomHint, trayGroups, candidateName, keysOf, joinPoint,
   separatePoint, registryLinks, pointCategory, presenceEntities, openSpaces, openRooms, closeRoom, facingWalls,
@@ -129,6 +129,21 @@ test("roomOf and roomLabel", () => {
   assert.equal(roomOf(doc(), "ground", [20, 1]), null);
   assert.deepEqual(roomLabel({ area_id: "kitchen" }, hass), { text: "Kitchen", missing: false });
   assert.deepEqual(roomLabel({ area_id: "office" }, hass), { text: "office", missing: true });
+});
+
+// The home inputs' rooms, as a host passes them (option `rooms`; decision record of #219,
+// agreement 11): a room's name in the dashboard's language wins over HA's area name; the area id
+// stays the key; a name per language picks HA's language, else en.
+test("roomLabel takes the home inputs' name for the room's area", () => {
+  const rooms = [{ id: "cook", area: "kitchen", name: "Cooking corner" },
+    { id: "work", area: "office", name: { en: "Study", de: "Arbeitszimmer" } }];
+  assert.deepEqual(roomLabel({ area_id: "kitchen" }, hass, rooms), { text: "Cooking corner", missing: false });
+  assert.deepEqual(roomLabel({ area_id: "office" }, { ...hass, language: "de" }, rooms), { text: "Arbeitszimmer", missing: false });
+  assert.deepEqual(roomLabel({ area_id: "office" }, { ...hass, language: "pl" }, rooms), { text: "Study", missing: false });
+  assert.deepEqual(roomLabel({ area_id: "hall" }, hass, rooms), roomLabel({ area_id: "hall" }, hass));
+  assert.equal(homeRoom(rooms, "office").id, "work");
+  assert.equal(homeRoom(rooms, "hall"), null);
+  assert.equal(homeRoom([{ id: "hall", name: "Hall" }], "hall").id, "hall", "a room without area names its id");
 });
 
 test("movePoint sets placed and refuses an unknown key", () => {

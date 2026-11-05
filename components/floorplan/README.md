@@ -99,6 +99,14 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
 Every user can read the `floorplan` dashboard, the Ramka's kiosk user included; saving needs an
 administrator (`lovelace/config/save` requires one).
 
+### The home's rooms
+
+When the home has shared inputs (`home_inputs:` in `domosenso.yaml`), the plan shows each room
+under the home's name for it, in the dashboard's language. On the climate map, a room is coloured by
+the temperature or humidity sensor the home selects for it. The HA area stays the room's identity,
+and devices are still found in it by area. `floorplan push` writes them into the floor plan
+dashboard, and Pocket passes them on its pages.
+
 ## Setting it up
 
 1. `domosenso add floorplan@0.1.0`, `render`, `deploy`: installs the card as a Lovelace resource.

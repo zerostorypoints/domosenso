@@ -36,7 +36,7 @@ import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
 import { zoomAt, snapToEdge, pointInPolygon, widestRow, insideRooms } from "./lib/geometry.js";
 import {
-  supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, movePoint, moveCorner, insertCorner, removeCorner,
+  supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, homeRoom, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
   candidates, pointCategory, setPointCategory, joinPoint, separatePoint, registryLinks, presenceEntities,
   openSpaces, openRooms, closeRoom, facingWalls,
@@ -269,11 +269,15 @@ class FloorplanCard extends HTMLElement {
     return { layer, cls, rule };
   }
 
-  // Per room of the floor, the entity its area names as its own sensor of the map's reading
-  // (Settings → Areas: the temperature and humidity sensors), or null.
+  // Per room of the floor, its own sensor of the map's reading, or null: the one the home inputs
+  // select for the room (option `rooms`, its climate's temperature or humidity; decision record of
+  // #219, agreement 11), else the one its area names (Settings → Areas: the temperature and
+  // humidity sensors).
   _roomSensors(map) {
     const field = areaSensorField(map.layer, map.cls);
-    return this._floor.rooms.map((r) => (field && this._hass.areas?.[r.area_id]?.[field]) || null);
+    if (!field) return this._floor.rooms.map(() => null);
+    return this._floor.rooms.map((r) => homeRoom(this._config.rooms, r.area_id)?.climate?.[map.cls]
+      || this._hass.areas?.[r.area_id]?.[field] || null);
   }
 
   // A reading now, or its figure over the last 24 hours by the layer's rule.
@@ -350,7 +354,7 @@ class FloorplanCard extends HTMLElement {
     for (const room of full.rooms) {
       if (room.area_id === this._config.area) continue;
       el("polygon", { class: "room", points: room.polygon.map((p) => p.join(",")).join(" ") }, group);
-      const label = roomLabel(room, this._hass);
+      const label = roomLabel(room, this._hass, this._config.rooms);
       const spot = widestRow(room.polygon);
       el("text", { class: "label", x: fmt(spot.x), y: fmt(spot.y), "font-size": fmt(12 * px) }, group).textContent = label.text;
     }
@@ -717,7 +721,7 @@ ${STYLE}
     // would cover moves to a free corner of its room (placeNames, after the layout below).
     const nameGroup = el("g", {}, svg);
     const roomNames = floor.rooms.map((room) => {
-      const label = roomLabel(room, h);
+      const label = roomLabel(room, h, this._config.rooms);
       const spot = widestRow(room.polygon);
       const size = labelSize(label.text, spot.width, px) * px;
       const w = String(label.text).length * CHAR_EM * size;
