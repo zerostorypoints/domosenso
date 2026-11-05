@@ -46,6 +46,8 @@ states:
   light.kids_room: "off"
   light.hall: "off"
   scene.all_lights_off: unknown
+  scene.movie_night: unknown
+  button.gate_remote_garage: unknown         # gate-remote's garage button (a button's state is its last press)
 
   # temperature (°C) and humidity (%) per room, and outside
   sensor.living_room_temperature: 21.8

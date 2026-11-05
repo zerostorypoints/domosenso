@@ -1,0 +1,15 @@
+id: m5stack-module-cc1101
+names: {en: M5Stack Module CC1101 (868 MHz), de: M5Stack Module CC1101 (868 MHz), pl: M5Stack Module CC1101 (868 MHz)}
+description_key: meta.devices.m5stack-module-cc1101.description
+does_key: meta.devices.m5stack-module-cc1101.does
+photo: null
+component: gate-remote
+tested: {homes: 1}  # an 868.3 MHz gate handset, 2026-11-05 (SPEC-034)
+# M5Stack SKU M146: an Ebyte E07-900M10S (CC1101, 855-925 MHz) on an M-Bus module. The radio is not
+# a device of its own in Home Assistant: the ESPHome node reports the board (m5stack-atom), and the
+# catalog's firmware sets project domosenso.gate-remote (inference, from ESPHome's device info).
+match:
+  - integration: esphome
+    manufacturer: domosenso
+    model: gate-remote
+    note: inference

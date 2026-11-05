@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "description": "Opens a garage door or gate from Home Assistant by sending the code of its own handset. An ESP32 board with a CC1101 transceiver records the handset once, then sends the same frames from a button in Home Assistant, from the board's own button, or from the Ramka. Works with fixed-code handsets only.",
+    "devices": {
+      "m5stack-module-cc1101": {
+        "description": "An M5Stack module with a CC1101 transceiver for 855 to 925 MHz, an SMA antenna and DIP switches that choose its pins; wired to the ESP32 board with eight jumpers.",
+        "does": "Hears the handset's frames at 868 MHz during capture and sends them afterwards, so the board can open the gate."
+      }
+    },
+    "assistant": {
+      "explain": {
+        "title": "About the gate remote",
+        "description": "The gate remote sends a garage door's or gate's own handset code when its button is pressed; installed metadata does not show whether the gate is open.",
+        "examples": [
+          "What does the gate remote do?"
+        ]
+      }
+    }
+  }
+}
