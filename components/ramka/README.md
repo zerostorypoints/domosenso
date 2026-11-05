@@ -13,8 +13,9 @@ wins. See `UPGRADE.md`, "rooms from the shared home inputs".
 ## A panel without music or calendars
 
 Leave out `media_player` (or set it to null/empty text) to omit player controls, the now-playing
-view and the player-return automation. `music_visual` is inactive without a player. The shared
-media-state helpers remain for the ambient/screen policy; media-playing stays false.
+view and the `music_back` player-start trigger. `music_visual` is inactive without a player. The
+shared media-state helpers and helper-only `music_default` policy remain for the ambient/screen
+policy; media-playing stays false.
 
 Leave out `calendar`, set it to null/empty text, or use `calendar: []` to omit the agenda,
 calendar buttons and `show_calendar` script. Either source can be used independently. The

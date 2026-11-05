@@ -7,7 +7,8 @@ Newest first. Each entry says what changed and what a home that already runs the
 
 `media_player` is optional. Omit it or use null/empty text to leave out music cards and player
 commands; the shared media-state helpers stay, with media-playing false. Without a player,
-`music_visual` is inactive and no player-return or music-watching automation is created.
+`music_visual` is inactive; the `music_back` player-start trigger and music-watching automation
+are omitted. The helper-only `music_default` policy remains.
 
 `calendar` is optional and accepts an empty list, null or empty text. Without calendars there is
 no agenda, calendar control or `show_calendar` script. Settings/preview explain the missing
