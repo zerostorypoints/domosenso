@@ -26,6 +26,8 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | Remote package URL `github://zerostorypoints/domosenso/components/<id>/<path>@<component>/<version>` (ESPHome device files, `dashboard_import`; at most 255 characters) | FROZEN |
 | Component ids (the directory name, `^[a-z0-9]+(-[a-z0-9]+)*$`) | FROZEN |
 | Device ids (`devices/<id>.yaml`) | STABLE |
+| Printable enclosures `devices/enclosures/<id>/` with `README.md`, `stl/`, `3mf/`, `preview/` ([SPEC-036](../.ai/specs/SPEC-036-2026-11-05-printable-enclosures.md)) | ADDITIVE-ONLY |
+| Served enclosure previews `/enclosures/<id>/<name>.png` on domosenso.org, from `devices/enclosures/<id>/preview/<name>.png` ([SPEC-036](../.ai/specs/SPEC-036-2026-11-05-printable-enclosures.md)) | STABLE |
 | ESPHome `project:` name `domosenso.<component>` (`domosenso.bermuda-presence`, `domosenso.audio-sensor`) | STABLE |
 | Card install path `www/domosenso/<id>/<version>/`, served as `/local/domosenso/<id>/<version>/` | FROZEN |
 

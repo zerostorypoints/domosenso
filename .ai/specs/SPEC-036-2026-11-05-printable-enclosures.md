@@ -1,6 +1,6 @@
 # SPEC-036: printable enclosures in the catalog, shown in the device guides on domosenso.org
 
-- Status: draft 2026-11-05.
+- Status: approved 2026-11-05 by the maintainer, as written.
 - Source: maintainer request 2026-11-05. An enclosure for the `gate-remote` node (M5Stack Module
   CC1101 wired to an Atom Lite) was designed in his home repository and approved for printing; he
   asked to publish it on domosenso.org the way the wiring diagrams are published, and to prepare it

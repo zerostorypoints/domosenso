@@ -3,6 +3,7 @@ from datetime import date
 import json
 from pathlib import Path, PurePosixPath
 import re
+import subprocess
 from urllib.parse import urlparse
 
 import yaml
@@ -145,22 +146,41 @@ def build_content(root, publication):
     return {'components':components, 'devices':devices, 'articles':sorted(articles,key=lambda a:(a['date'],a['slug']),reverse=True), 'howTos':sorted(howtos,key=lambda h:h['slug']), 'assets':assets}
 
 
+WIRING_SOURCE = re.compile(r'devices/wiring/[a-z0-9-]+\.svg')
+# SPEC-036: an enclosure's previews, each served at exactly /enclosures/<id>/<name>.png
+ENCLOSURE_PREVIEW = re.compile(r'devices/enclosures/([a-z0-9]+(?:-[a-z0-9]+)*)/preview/([a-z0-9]+(?:-[a-z0-9]+)*)\.png')
+PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
+
+
+def read_bytes(root, commit, path):
+    result = subprocess.run(['git', '-C', str(root), 'show', f'{commit}:{path}'], capture_output=True)
+    require(result.returncode == 0, f'cannot read source asset from git: {path}')
+    return result.stdout
+
+
 def export_source_assets(root, publication, check):
-    """Copy only explicit, immutable public diagram sources; verify bytes in CI."""
+    """Copy only explicit, immutable public sources (wiring diagrams, enclosure previews); verify bytes in CI."""
     root = Path(root)
     for asset in json.loads((root/'website/content/assets.json').read_text()):
         if 'sourcePath' not in asset:
             continue
         path = asset['sourcePath']; sha = asset['sourceCommit']
-        require(re.fullmatch(r'devices/wiring/[a-z0-9-]+\.svg', path) and safe_public_path(asset['path']), 'invalid source asset')
+        preview = ENCLOSURE_PREVIEW.fullmatch(path)
+        require((preview or WIRING_SOURCE.fullmatch(path)) and safe_public_path(asset['path']), 'invalid source asset')
         require(COMMIT.fullmatch(sha) and sha == publication.get('documentationCommit', publication['frameworkCommit']), 'asset source commit mismatch')
-        data = read(root, sha, path) + '\n'
-        require('<script' not in data.lower() and 'javascript:' not in data.lower(), 'unsafe SVG asset')
+        if preview:
+            require(asset['path'] == f'/enclosures/{preview[1]}/{preview[2]}.png', 'invalid enclosure preview path')
+            data = read_bytes(root, sha, path)
+            require(data.startswith(PNG_SIGNATURE), 'enclosure preview is not a PNG')
+        else:
+            text = read(root, sha, path) + '\n'
+            require('<script' not in text.lower() and 'javascript:' not in text.lower(), 'unsafe SVG asset')
+            data = text.encode('utf-8')
         target = root/'website/public'/asset['path'].lstrip('/')
         if check:
-            require(target.is_file() and target.read_text() == data, 'stale source asset')
+            require(target.is_file() and target.read_bytes() == data, 'stale source asset')
         else:
-            target.parent.mkdir(parents=True,exist_ok=True); target.write_text(data)
+            target.parent.mkdir(parents=True,exist_ok=True); target.write_bytes(data)
 
 
 def verify_content_refs(root, publication, content):
