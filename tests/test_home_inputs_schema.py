@@ -43,3 +43,28 @@ def test_air_needs_at_least_one_reading(tmp_path):
 def test_bad_entity_id_is_refused(tmp_path):
     with pytest.raises(DomosensoError):
         load(tmp_path, "rooms:\n  - {id: x, name: X, lights: Living room}\n")
+
+
+
+# Decision record of #219 (agreement 9): optional shared labels and order for covers, contacts and
+# locks per room; an entity id or {entity, name}, the name one string or one per language.
+def _validate(tmp_path, room):
+    import yaml
+    path = tmp_path / "home.inputs.yaml"
+    path.write_text(yaml.safe_dump({"rooms": [{"id": "living_room", "name": "Living room", **room}]}))
+    return load_validated(path, "home-inputs")
+
+
+def test_room_covers_contacts_locks_are_optional_lists(tmp_path):
+    _validate(tmp_path, {
+        "covers": ["cover.living_room_blind", {"entity": "cover.terrace_awning", "name": {"en": "Awning", "de": "Markise"}}],
+        "contacts": [{"entity": "binary_sensor.terrace_door", "name": "Terrace door"}],
+        "locks": ["lock.front_door"]})
+
+
+@pytest.mark.parametrize("bad", [{"covers": []}, {"covers": ["cover.a", "cover.a"]}, {"locks": [{"name": "x"}]},
+                                 {"contacts": [{"entity": "binary_sensor.a", "name": "A", "area": "x"}]},
+                                 {"covers": "cover.a"}])
+def test_room_covers_contacts_locks_refuse_bad_shapes(tmp_path, bad):
+    with pytest.raises(DomosensoError):
+        _validate(tmp_path, bad)

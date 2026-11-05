@@ -16,7 +16,7 @@
 //     timeline of its states (lib/sensor-list.js sensorSpec).
 // Every control sends through ctx.optimistic: its new state at once, rolled back with a toast.
 
-import { contactsOf, coverMoving, coversOf, groupedByArea, locksOf, timerLeft, timersOf } from "../lib/controls.js";
+import { contactsOf, coverMoving, coversOf, groupedByArea, labelOf, locksOf, timerLeft, timersOf } from "../lib/controls.js";
 import { can, playersOf } from "../lib/media.js";
 import { sensorSpec } from "../lib/sensor-list.js";
 import { GONE, operable, el, lightsOf, lampsOf, number, setArt, setAttr, setText } from "../lib/page-kit.js";
@@ -123,7 +123,7 @@ export function render(ctx) {
   for (const key of root.querySelectorAll(".music .key")) key.addEventListener("click", () => musicKey(root, key.dataset.act));
   for (const button of root.querySelectorAll(".covers .all button")) {
     button.addEventListener("click", () => {
-      const ids = coversOf(parts.ctx.hass).filter((id) => operable(parts.ctx.hass.states[id]));
+      const ids = coversOf(parts.ctx.hass, parts.ctx.config).filter((id) => operable(parts.ctx.hass.states[id]));
       if (ids.length) coverCall(root, ids, button.dataset.all);
     });
   }
@@ -286,7 +286,7 @@ function coverWords(ctx, state) {
 function updateCovers(root, parts, ctx) {
   const section = root.querySelector(".covers");
   const { hass } = ctx;
-  const groups = groupedByArea(hass, ctx.config, ctx.t, coversOf(hass));
+  const groups = groupedByArea(hass, ctx.config, ctx.t, coversOf(hass, ctx.config));
   section.hidden = groups.length === 0;
   if (!groups.length) return false;
   setText(section.querySelector("h3"), ctx.t("card.pocket.controls.covers"));
@@ -315,7 +315,7 @@ function updateCovers(root, parts, ctx) {
     const bits = features(state);
     // An awning moves sideways; a blind, a shutter or a garage door up and down.
     const sideways = state?.attributes?.device_class === "awning";
-    setText(row.querySelector(".n"), state?.attributes?.friendly_name || row.dataset.entity);
+    setText(row.querySelector(".n"), labelOf(hass, ctx.config, row.dataset.entity));
     setText(row.querySelector("small"), coverWords(ctx, state));
     for (const [act, flag, icon] of [["open", COVER.open, sideways ? "mdi:arrow-expand-horizontal" : "mdi:arrow-up"],
       ["stop", COVER.stop, "mdi:stop"], ["close", COVER.close, sideways ? "mdi:arrow-collapse-horizontal" : "mdi:arrow-down"]]) {
@@ -327,7 +327,7 @@ function updateCovers(root, parts, ctx) {
     }
   }
   const all = section.querySelector(".all");
-  all.hidden = coversOf(hass).length < 2;
+  all.hidden = coversOf(hass, ctx.config).length < 2;
   setText(all.querySelector('[data-all="open"] span'), ctx.t("card.pocket.controls.all_open"));
   setText(all.querySelector('[data-all="close"] span'), ctx.t("card.pocket.controls.all_close"));
   return true;
@@ -420,13 +420,13 @@ const ACTIVE = {
 function statusItems(ctx) {
   const { hass, config } = ctx;
   const sections = [];
-  const covers = coversOf(hass);
+  const covers = coversOf(hass, config);
   if (covers.length) sections.push({ kind: "covers", ids: covers });
-  const contacts = contactsOf(hass);
+  const contacts = contactsOf(hass, config);
   if (contacts.length) sections.push({ kind: "contacts", ids: contacts });
   const rooms = (config.rooms ?? []).filter((r) => lightsOf(r).length);
   if (rooms.length) sections.push({ kind: "lights", rooms });
-  const locks = locksOf(hass);
+  const locks = locksOf(hass, config);
   if (locks.length) sections.push({ kind: "locks", ids: locks });
   return sections;
 }
@@ -486,7 +486,7 @@ function updateStatus(root, parts, ctx) {
       const id = tile.dataset.entity;
       const state = hass.states?.[id];
       const domain = id.split(".")[0];
-      name = state?.attributes?.friendly_name || id;
+      name = labelOf(hass, ctx.config, id);
       gone = !state || GONE.has(state.state);
       active = !gone && ACTIVE[domain](state.state);
       if (kind === "covers") {

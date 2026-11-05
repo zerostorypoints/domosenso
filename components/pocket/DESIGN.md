@@ -235,6 +235,7 @@ The level keys and their boundaries are the shared contract
 | A card that sizes itself is never put in a fixed-height box | the floor plan's map bar cut the plan |
 | Timers are named in the inputs, never every `timer.*` | components keep internal timers (the Ramka's controls timer); the Ramka takes a list too |
 | User timers are found by `timer_role: user_countdown`; a list in the inputs wins | the timers component marks the timers it makes for people; agreed in #219 (decision D4), replacing the row above |
+| A room may list its covers, contacts and locks (order, name); the rest are found by area | the Ramka's wall lists them by hand; a phone should show the same names first without losing new devices (#219, agreement 9) |
 | `unknown` does not disable a control, `unavailable` does | HA accepts a command for an entity whose value is not known yet; agreed in the shared-model review (#219) |
 | Phones are audited at eight sizes, 277–956 px | Android phones are 360–412 wide, iPhones 375–440, and zoom makes them narrower; one 390 × 844 frame missed broken words and a cramped landscape |
 

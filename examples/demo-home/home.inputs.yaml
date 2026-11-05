@@ -12,6 +12,8 @@ rooms:
       score: sensor.living_room_air_quality_score
       co2: sensor.living_room_co2
     media: media_player.living_room_speaker
+    covers:                   # listed first in the room, under this name; the rest are found by area
+      - {entity: cover.awning_living_room, name: {en: Terrace awning, de: Terrassenmarkise, pl: Markiza tarasowa}}
   - id: bedroom
     name: Bedroom
     climate:

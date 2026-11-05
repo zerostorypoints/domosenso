@@ -6,7 +6,10 @@
 //
 //   groupedByArea(hass, config, t, ids) -> [{key, name, ids}]   the pocket's areas in order (by
 //       their HA area), then HA's other areas by name, then no area (name ""); ids by name
-//   coversOf(hass), contactsOf(hass), locksOf(hass) -> [id]   the listed ones
+//   coversOf(hass, config), contactsOf(hass, config), locksOf(hass, config) -> [id]   the ones the
+//       home inputs' rooms list (in order), then the ones found by area
+//   listedOf(config, kind) -> [{id, name?, room}]   what the rooms list for covers / contacts / locks
+//   labelOf(hass, config, id) -> string   the listed name, else HA's friendly name
 //   timersOf(hass, config) -> [id]   the timers a list in the inputs names (config.timers, legacy or
 //       manual) that Home Assistant has; without one, every listed timer.* the timers component marks
 //       timer_role: user_countdown, by name; never every timer.*, so a component's own stays out
@@ -29,7 +32,36 @@ const listed = (hass, id) => {
 const ofDomain = (hass, domain, extra = () => true) => Object.keys(hass?.states ?? {})
   .filter((id) => id.startsWith(`${domain}.`) && listed(hass, id) && extra(hass.states[id]));
 
-export const coversOf = (hass) => ofDomain(hass, "cover");
+// Decision record of #219 (agreement 9): a room of the home inputs may list its covers, contacts
+// and locks (an id, or {entity, name} with the name in the dashboard's language). Listed ones come
+// first, in room order then list order; the rest are still found by HA area, so a new device is
+// never left out.
+export function listedOf(config, kind) {
+  const out = [];
+  for (const room of config?.rooms ?? []) {
+    for (const item of room?.[kind] ?? []) {
+      const id = typeof item === "string" ? item : item?.entity;
+      if (typeof id !== "string" || out.some((l) => l.id === id)) continue;
+      out.push({ id, name: typeof item === "object" && typeof item.name === "string" ? item.name : undefined, room });
+    }
+  }
+  return out;
+}
+const withListed = (hass, config, kind, found) => {
+  const listed = listedOf(config, kind).map((l) => l.id).filter((id) => hass?.states?.[id]);
+  return [...listed, ...found.filter((id) => !listed.includes(id))];
+};
+const KINDS = ["covers", "contacts", "locks"];
+// The name a row or tile shows: the home inputs' label, else HA's friendly name, else the id.
+export function labelOf(hass, config, id) {
+  for (const kind of KINDS) {
+    const hit = listedOf(config, kind).find((l) => l.id === id);
+    if (hit?.name) return hit.name;
+  }
+  return hass?.states?.[id]?.attributes?.friendly_name || id;
+}
+
+export const coversOf = (hass, config) => withListed(hass, config, "covers", ofDomain(hass, "cover"));
 // Decision D4 (docs/2026-11-05-shared-home-decisions.md): the timers component marks the timers it
 // makes for people (timer_role: user_countdown); a component's internal timer carries no role.
 export const USER_TIMER_ROLE = "user_countdown";
@@ -39,9 +71,9 @@ export function timersOf(hass, config) {
   return ofDomain(hass, "timer", (state) => state.attributes?.timer_role === USER_TIMER_ROLE)
     .sort((a, b) => nameOf(hass, a).localeCompare(nameOf(hass, b)) || (a < b ? -1 : 1));
 }
-export const locksOf = (hass) => ofDomain(hass, "lock");
-export const contactsOf = (hass) => ofDomain(hass, "binary_sensor",
-  (state) => CONTACT_CLASSES.includes(state.attributes?.device_class));
+export const locksOf = (hass, config) => withListed(hass, config, "locks", ofDomain(hass, "lock"));
+export const contactsOf = (hass, config) => withListed(hass, config, "contacts", ofDomain(hass, "binary_sensor",
+  (state) => CONTACT_CLASSES.includes(state.attributes?.device_class)));
 
 const nameOf = (hass, id) => hass?.states?.[id]?.attributes?.friendly_name || id;
 
@@ -49,10 +81,13 @@ export function groupedByArea(hass, config, t, ids) {
   const areas = areasOf(config, t);
   const byHaArea = new Map(areas.map((area) => [haAreaOf(config, area), area]));
   const groups = new Map();
+  const listed = new Map();
+  for (const kind of KINDS) for (const [i, l] of listedOf(config, kind).entries()) if (!listed.has(l.id)) listed.set(l.id, { ...l, i });
   for (const id of ids) {
     const reg = hass?.entities?.[id];
     const haArea = reg ? entityArea(hass, reg) : null;
-    const area = haArea ? byHaArea.get(haArea) : null;
+    const listedRoom = listed.get(id)?.room;
+    const area = (listedRoom && areas.find((a) => a.id === listedRoom.id)) || (haArea ? byHaArea.get(haArea) : null);
     let key = "none";
     let name = "";
     let order = areas.length + 1;
@@ -71,7 +106,12 @@ export function groupedByArea(hass, config, t, ids) {
   return [...groups.values()]
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
     .map(({ key, name, ids: list }) => ({ key, name,
-      ids: list.sort((a, b) => nameOf(hass, a).localeCompare(nameOf(hass, b)) || (a < b ? -1 : 1)) }));
+      ids: list.sort((a, b) => {
+        const la = listed.get(a)?.i ?? Infinity;
+        const lb = listed.get(b)?.i ?? Infinity;
+        if (la !== lb) return la - lb;
+        return labelOf(hass, config, a).localeCompare(labelOf(hass, config, b)) || (a < b ? -1 : 1);
+      }) }));
 }
 
 // "1:02:03" or "0:05:00" in seconds.

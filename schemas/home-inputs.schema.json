@@ -4,52 +4,108 @@
   "title": "The home inputs file: rooms and outside, shared by every component that reads them",
   "type": "object",
   "additionalProperties": false,
-  "required": ["rooms"],
+  "required": [
+    "rooms"
+  ],
   "properties": {
-    "rooms": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/room"}},
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/room"
+      }
+    },
     "outside": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["temperature"],
+      "required": [
+        "temperature"
+      ],
       "properties": {
-        "temperature": {"$ref": "#/$defs/entity"},
-        "humidity": {"$ref": "#/$defs/entity"},
-        "area": {"$ref": "#/$defs/area"}
+        "temperature": {
+          "$ref": "#/$defs/entity"
+        },
+        "humidity": {
+          "$ref": "#/$defs/entity"
+        },
+        "area": {
+          "$ref": "#/$defs/area"
+        }
       }
     },
-    "weather": {"$ref": "#/$defs/entity"}
+    "weather": {
+      "$ref": "#/$defs/entity"
+    }
   },
   "$defs": {
-    "entity": {"type": "string", "pattern": "^[a-z_]+\\.[a-z0-9_]+$"},
-    "area": {"description": "a Home Assistant area id", "type": "string", "pattern": "^[a-z0-9_]+$"},
+    "entity": {
+      "type": "string",
+      "pattern": "^[a-z_]+\\.[a-z0-9_]+$"
+    },
+    "area": {
+      "description": "a Home Assistant area id",
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
     "name": {
       "oneOf": [
-        {"type": "string", "minLength": 1},
+        {
+          "type": "string",
+          "minLength": 1
+        },
         {
           "type": "object",
           "minProperties": 1,
-          "propertyNames": {"pattern": "^[a-z]{2}$"},
-          "additionalProperties": {"type": "string", "minLength": 1}
+          "propertyNames": {
+            "pattern": "^[a-z]{2}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       ]
     },
     "room": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name"],
+      "required": [
+        "id",
+        "name"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-        "name": {"$ref": "#/$defs/name"},
-        "area": {"$ref": "#/$defs/area"},
-        "lights": {"$ref": "#/$defs/entity"},
-        "scenes": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "area": {
+          "$ref": "#/$defs/area"
+        },
+        "lights": {
+          "$ref": "#/$defs/entity"
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entity"
+          }
+        },
         "climate": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["temperature"],
+          "required": [
+            "temperature"
+          ],
           "properties": {
-            "temperature": {"$ref": "#/$defs/entity"},
-            "humidity": {"$ref": "#/$defs/entity"}
+            "temperature": {
+              "$ref": "#/$defs/entity"
+            },
+            "humidity": {
+              "$ref": "#/$defs/entity"
+            }
           }
         },
         "air": {
@@ -57,21 +113,91 @@
           "additionalProperties": false,
           "minProperties": 1,
           "properties": {
-            "score": {"$ref": "#/$defs/entity"},
-            "co2": {"$ref": "#/$defs/entity"},
-            "pm2_5": {"$ref": "#/$defs/entity"},
-            "voc": {"$ref": "#/$defs/entity"},
-            "nox": {"$ref": "#/$defs/entity"}
+            "score": {
+              "$ref": "#/$defs/entity"
+            },
+            "co2": {
+              "$ref": "#/$defs/entity"
+            },
+            "pm2_5": {
+              "$ref": "#/$defs/entity"
+            },
+            "voc": {
+              "$ref": "#/$defs/entity"
+            },
+            "nox": {
+              "$ref": "#/$defs/entity"
+            }
           }
         },
         "media": {
           "description": "The area's media player, or several (the first is the area's own; a player whose integration misses some playback, as a DLNA renderer misses Spotify Connect, may need its other entity named too).",
           "oneOf": [
-            {"$ref": "#/$defs/entity"},
-            {"type": "array", "items": {"$ref": "#/$defs/entity"}, "minItems": 1, "uniqueItems": true}
+            {
+              "$ref": "#/$defs/entity"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/entity"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
           ]
+        },
+        "covers": {
+          "description": "Covers (awnings, blinds, shutters) the room shows first, in this order, under these names; the room's other covers are still found by its HA area.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/labelled"
+          }
+        },
+        "contacts": {
+          "description": "Doors and windows (binary sensors) the room shows first, in this order, under these names; others are still found by area.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/labelled"
+          }
+        },
+        "locks": {
+          "description": "Locks the room shows first, in this order, under these names; others are still found by area.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/labelled"
+          }
         }
       }
+    },
+    "labelled": {
+      "description": "An entity, or an entity with the name the home shows for it (one string, or one per language).",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/entity"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "name"
+          ],
+          "properties": {
+            "entity": {
+              "$ref": "#/$defs/entity"
+            },
+            "name": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        }
+      ]
     }
   }
 }

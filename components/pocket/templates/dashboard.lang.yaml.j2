@@ -56,6 +56,18 @@ views:
 [%- for field in fields if room[field] is defined %]
             [[ field ]]: [[ room[field] | yaml ]]
 [%- endfor %]
+[#- Covers, contacts and locks the room lists first (decision record of #219): an entity, or an
+    entity with its name in this language. -#]
+[%- for kind in ('covers', 'contacts', 'locks') if room[kind] is defined %]
+            [[ kind ]]:
+[%- for item in room[kind] %]
+[%- if item is mapping %]
+              - {entity: [[ item.entity | yaml ]], name: [[ room_name(item) | yaml ]]}
+[%- else %]
+              - [[ item | yaml ]]
+[%- endif %]
+[%- endfor %]
+[%- endfor %]
 [%- endfor %]
 [%- if home.outside is defined %]
         outside: [[ home.outside | yaml ]]

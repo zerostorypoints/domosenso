@@ -187,3 +187,16 @@ def test_plants_flag_only_with_the_input(tmp_path):
     manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
     assert manifest["inputs"]["plants"]["default"] is False
     assert {"component": "plants", "id": "plant.<plant>"} in manifest["consumes"]
+
+
+def test_listed_covers_contacts_locks_pass_with_names_in_the_language(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["rooms"][0]["covers"] = ["cover.living_room_blind",
+                                  {"entity": "cover.awning_living_room", "name": {"en": "Awning", "de": "Markise"}}]
+    home["rooms"][0]["locks"] = [{"entity": "lock.front_door", "name": "Front door"}]
+    card = _card(_dashboard(tmp_path / "de", home, lang="de"))
+    living = card["rooms"][0]
+    assert living["covers"] == ["cover.living_room_blind", {"entity": "cover.awning_living_room", "name": "Markise"}]
+    assert living["locks"] == [{"entity": "lock.front_door", "name": "Front door"}]
+    assert "contacts" not in living
+    assert "covers" not in card["rooms"][1]
