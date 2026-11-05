@@ -44,7 +44,7 @@ ROUTES = {
 }
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=8)
 def _validator(name: str):
     return Draft202012Validator(json.loads((SCHEMAS / f'{name}.schema.json').read_text()))
 
@@ -79,13 +79,35 @@ def safe_path(root: Path, relative: str) -> Path:
     return path
 
 
+class _AssistantLoader(yaml.SafeLoader):
+    def compose_node(self, parent, index):
+        if self.check_event(yaml.AliasEvent):
+            raise ValueError('assistant: YAML aliases are not supported')
+        return super().compose_node(parent, index)
+
+    def construct_mapping(self, node, deep=False):
+        keys = [key.value for key, _ in node.value if isinstance(key, yaml.ScalarNode)]
+        if len(keys) != len(node.value) or len(keys) != len(set(keys)):
+            raise ValueError('assistant: invalid or duplicate YAML key')
+        return super().construct_mapping(node, deep)
+
+
+def parse_bindings(data):
+    if len(data) > MAX_BYTES:
+        raise ValueError('assistant: input exceeds size limit')
+    try:
+        return yaml.load(data, Loader=_AssistantLoader)
+    except (yaml.YAMLError, UnicodeError, RecursionError) as exc:
+        raise ValueError('assistant: invalid YAML') from exc
+
+
 def _read(path: Path, json_file=False):
     try:
         with path.open('rb') as file:
             data = file.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES:
             raise ValueError('assistant: input exceeds size limit')
-        return json.loads(data) if json_file else yaml.safe_load(data)
+        return json.loads(data) if json_file else parse_bindings(data)
     except (OSError, UnicodeError, yaml.YAMLError, json.JSONDecodeError) as exc:
         raise ValueError(f'assistant: cannot parse {path.name}') from exc
 
@@ -144,7 +166,8 @@ def load_definition(component_dir: Path, manifest: dict, *, strict_translations=
             raise ValueError('assistant: capability owner or duplicate id')
         ids.add(cid)
         route = ('component-query.v1', 'component-description.v1') if cid == manifest['id'] + '.explain' else ROUTES.get(cid)
-        if route != (cap['query_type'], cap['answer_type']) or cap['policy']['evaluator'] != cid or cap['revision'] != 1:
+        generic = is_generic(cap)
+        if not generic and (route != (cap['query_type'], cap['answer_type']) or cap['policy']['evaluator'] != cid or cap['revision'] != 1):
             raise ValueError('assistant: unsupported capability, evaluator, revision or type pair')
         if cap['freshness']['basis'] == 'measurement' and cap['freshness']['max_age_seconds'] is None:
             raise ValueError('assistant: measurement freshness requires a maximum report age')
@@ -153,7 +176,15 @@ def load_definition(component_dir: Path, manifest: dict, *, strict_translations=
             pair = (source.get('component'), source['id'])
             if pair not in _surface(manifest, source['relation']):
                 raise ValueError(f'assistant: undeclared fact source {source["id"]}')
-        keys.update(cap[k] for k in ('title_key','description_key','examples_key'))
+        roles = {fact['role'] for fact in cap['required_facts'] + cap['optional_facts']}
+        if 'client' in cap:
+            presentation = cap['client']['presentation']
+            used = set(presentation['summary'])
+            for section in presentation['details']:
+                used.update(section['roles'])
+            if used - roles:
+                raise ValueError('assistant: undeclared presentation role')
+        keys.update(translation_keys(cap))
     english = _flatten(_read(safe_path(component_dir, 'translations/en.json'), True))
     translations = {}
     for lang in ('en', 'de', 'pl'):
@@ -168,7 +199,89 @@ def load_definition(component_dir: Path, manifest: dict, *, strict_translations=
                 raise ValueError(f'assistant: missing translation {lang}:{key}')
             _put(output, key, translated.get(key, english[key]))
         translations[lang] = output
+    for cap in definitions['capabilities']:
+        if 'client' in cap:
+            key = cap['client']['anchors_key']
+            for values in translations.values():
+                flat = _flatten(values)
+                phrases = flat[key]
+                validate('frame-assistant-metadata-phrases', phrases)
+                text = {'type': 'string', 'minLength': 1, 'maxLength': 120,
+                        'pattern': r'^(?=\s*\S)[^\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]+$'}
+                schemas = {cap['title_key']: text,
+                           cap['description_key']: {**text, 'maxLength': 300},
+                           cap['examples_key']: {'type': 'array', 'minItems': 1, 'maxItems': 8,
+                                                'uniqueItems': True, 'items': {**text, 'maxLength': 240}}}
+                schemas.update({section['label_key']: text for section in cap['client']['presentation']['details']})
+                for text_key, schema in schemas.items():
+                    if not Draft202012Validator(schema).is_valid(flat[text_key]):
+                        raise ValueError(f'assistant: invalid client translation {text_key}')
     return definitions, translations
+
+
+def is_generic(cap):
+    """Only this reviewed evaluator can extend reads without a legacy ID registration."""
+    if cap['policy']['evaluator'] != 'measurement.v1':
+        return False
+    facts = cap['required_facts']
+    if ('client' not in cap or cap['query_type'] != 'measurement-query.v1' or
+            cap['answer_type'] != 'measurement.v1' or cap['revision'] != 1 or
+            len(facts) != 1 or facts[0]['type'] != 'number' or cap['optional_facts'] or
+            len(facts[0]['units']) != 1 or facts[0]['units'][0] not in
+            {'°C', '°F', '%', 'ppm', 'µg/m³', 'dB', 'W', 'V', 'lx', 'index'} or
+            cap['freshness']['basis'] not in {'measurement', 'reported_state'} or
+            cap['freshness']['max_age_seconds'] is None or 'runtime_source' in cap):
+        raise ValueError('assistant: unsupported generic measurement declaration')
+    return True
+
+
+def translation_keys(cap, client=True):
+    keys = {cap[k] for k in ('title_key', 'description_key', 'examples_key')}
+    if client and 'client' in cap:
+        keys.add(cap['client']['anchors_key'])
+        keys.update(section['label_key'] for section in cap['client']['presentation']['details'])
+    return keys
+
+
+def selected_translations(translations, capabilities, *, client=False):
+    keys = sorted({key for cap in capabilities for key in translation_keys(cap, client)})
+    result = {}
+    for lang, values in translations.items():
+        flat = _flatten(values)
+        output = {}
+        for key in keys:
+            _put(output, key, flat[key])
+        result[lang] = output
+    return result
+
+
+def normalize_bindings(bindings, definitions, owner):
+    """Validate annotations without weakening the legacy wire schema."""
+    try:
+        if len(json.dumps(bindings, allow_nan=False).encode()) > MAX_BYTES:
+            raise ValueError('too large')
+    except (TypeError, ValueError, RecursionError) as exc:
+        raise ValueError('assistant: invalid finite bindings') from exc
+    schema = _validator('frame-assistant-metadata').schema['properties']['bindings']
+    error = next(Draft202012Validator(schema).iter_errors(bindings), None)
+    if error:
+        raise ValueError(f'assistant: invalid bindings: {error.message}')
+    roles = {fact['role'] for cap in definitions['capabilities'] for fact in cap['required_facts'] + cap['optional_facts']}
+    seen, rooms = set(), {}
+    for subject in bindings['subjects']:
+        if subject['key'] in seen:
+            raise ValueError('assistant: duplicate subject key')
+        seen.add(subject['key'])
+        if subject['fields'].keys() - roles:
+            raise ValueError('assistant: undeclared binding role')
+        if 'roomKey' in subject:
+            aliases = subject.get('roomAliases', {})
+            if rooms.setdefault(subject['roomKey'], aliases) != aliases:
+                raise ValueError('assistant: conflicting room aliases')
+    for policy in bindings['policies']:
+        if policy['owner'] != owner:
+            raise ValueError('assistant: policy owner mismatch')
+    return copy.deepcopy(bindings)
 
 
 def compile_profile(component_dir, manifest, rendered_bindings, version, sha, dirty):
@@ -176,6 +289,22 @@ def compile_profile(component_dir, manifest, rendered_bindings, version, sha, di
     if version != manifest['version']:
         raise ValueError('assistant: component version mismatch')
     definitions, translations = load_definition(Path(component_dir), manifest)
+    rendered_bindings = normalize_bindings(rendered_bindings, definitions, manifest['id'])
+    has_generic = any(is_generic(cap) for cap in definitions['capabilities'])
+    legacy_caps = [copy.deepcopy(cap) for cap in definitions['capabilities'] if not is_generic(cap)]
+    if not legacy_caps:
+        return None
+    translations = selected_translations(translations, legacy_caps)
+    for cap in legacy_caps:
+        cap.pop('client', None)
+    definitions = {'capabilities': legacy_caps}
+    for subject in rendered_bindings['subjects']:
+        subject.pop('aliases', None)
+        subject.pop('roomAliases', None)
+    legacy_roles = {fact['role'] for cap in legacy_caps for fact in cap['required_facts'] + cap['optional_facts']}
+    if has_generic:
+        for subject in rendered_bindings['subjects']:
+            subject['fields'] = {k: v for k, v in subject['fields'].items() if k in legacy_roles}
     profile = {'schema': 1, 'component': {'id': manifest['id'], 'version': version, 'commit': sha, 'dev': dirty},
                'definitions': definitions, 'translations': translations, 'bindings': rendered_bindings}
     validate('assistant-profile', profile)
@@ -199,6 +328,8 @@ def split_runtime_profile(profile):
     Old bridges load every profile in assistant/ and reject an entire profile on
     an unknown property. An optional sibling artifact avoids disabling old reads.
     """
+    if profile is None:
+        return None, None
     caps = profile['definitions']['capabilities']
     runtime_caps = [c for c in caps if 'runtime_source' in c]
     if not runtime_caps:

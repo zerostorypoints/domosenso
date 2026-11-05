@@ -34,6 +34,21 @@ such components read it. `render` validates the file and fails on a repeated roo
 check the entities against a running Home Assistant, and the lock does not record the file.
 Home action: none now; before rendering a component that declares `uses_home`, upgrade the tooling.
 
+## Unreleased: canonical native metadata projection (SPEC-037)
+
+No existing component opts in and no endpoint exposure changes. Upgrade framework tools
+before rendering a future component that declares optional canonical `client` metadata.
+The tools derive a private managed `domosenso/assistant-metadata/<id>.yaml`; existing
+schema-1 files retain their strict shape. Alias-only changes do not alter legacy bytes
+at identical provenance. A new generic measurement capability has no legacy bundle.
+
+The private schema-2 canonical shape is distinct from the local historical prototype;
+do not mix their files or claim a released Bridge minimum. Runtime negotiation/parity
+and native activation require their own acceptance. No APK change, helper migration,
+grant or device setup is performed by the compiler. Before downgrading tools, revert
+to component tags without `client`, render and deploy sidecar removal, retaining the
+compatible private configuration and the ordinary rollback checkpoint.
+
 ## Unreleased: lights/awnings 0.4.0 assistant action sidecars (SPEC-033)
 
 Upgrade tooling before these component versions. Optional action metadata installs privately

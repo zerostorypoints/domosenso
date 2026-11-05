@@ -244,6 +244,96 @@
           },
           "runtime_source": {
             "const": "ha_clock"
+          },
+          "client": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "anchors_key",
+              "selectors",
+              "presentation"
+            ],
+            "properties": {
+              "version": {
+                "const": 2
+              },
+              "anchors_key": {
+                "type": "string",
+                "maxLength": 120,
+                "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+              },
+              "selectors": {
+                "type": "array",
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "area",
+                    "subject"
+                  ]
+                }
+              },
+              "presentation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "summary",
+                  "details"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "array",
+                    "maxItems": 3,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-z0-9_-]*$"
+                    }
+                  },
+                  "details": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "layout",
+                        "label_key",
+                        "roles"
+                      ],
+                      "properties": {
+                        "layout": {
+                          "enum": [
+                            "value",
+                            "rows",
+                            "table"
+                          ]
+                        },
+                        "label_key": {
+                          "type": "string",
+                          "maxLength": 120,
+                          "pattern": "^meta\\.assistant\\.[a-z0-9_.]+$"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "maxItems": 32,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80,
+                            "pattern": "^[a-z][a-z0-9_-]*$"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "required": [
