@@ -68,6 +68,7 @@ layer_choice: one                  # with layers: a chip each, one layer at a ti
 maps: true                         # false: no maps
 fill: true                         # optional: as tall as the screen below the card's top
 area: living_room                  # optional: that area's room alone, fitted to the card; no Edit
+context: true                      # with area: the floor's other rooms faded around it
 zoom: true                         # false: no wheel, pinch, pan or zoom buttons; a finger scrolls the page
 chips: true                        # false: no layer chips (a host shows them: layerChips, pressLayer)
 tap_tips: true                     # false: a finger's tap on a marker shows no tooltip
@@ -78,6 +79,9 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
 - `area: <area_id>` draws the floor that holds that area's room with that room alone, the points
   standing in it or on its walls, and its doors and windows; it is fitted to the card and has no
   Edit button. An area with no room on the plan says so (status `no_area`).
+- With `area`, `context: true` also draws the floor's other rooms faded (outline and name only: no
+  points, readings or taps) and fits 1.5 m more on every side, so the room is seen among its
+  neighbours.
 - A tap on a room in view mode fires `room-tap` (`detail: {area_id}`, bubbling out of the card); a
   drag, pinch or zoom does not. Edit mode's taps are the editor's, as before.
 - The card's status is its `data-status` attribute (`loading`, `none`, `unsupported`, `no_area`,

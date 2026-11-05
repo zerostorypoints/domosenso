@@ -252,6 +252,13 @@ export function spanOf(points) {
   return min <= max ? { min, max } : null;
 }
 
+// SVG elements have no `hidden` property in Safari (only HTML elements do): setting it there is a
+// plain JS property and the `hidden` attribute stays, so the chart never shows. The attribute is
+// toggled instead.
+export function showSvg(node, shown) {
+  node.toggleAttribute("hidden", !shown);
+}
+
 function drawChart(parts, ctx, data, band) {
   const status = data?.status ?? "loading";
   const has = status === "ready" && data.span;
@@ -261,7 +268,7 @@ function drawChart(parts, ctx, data, band) {
   else if (!has) message = ctx.t("card.pocket.trend.empty");
   setText(parts.state, message);
   parts.state.hidden = !message;
-  parts.svg.hidden = !has;
+  showSvg(parts.svg, has);
   const dateOptions = parts.range === "24h" ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" };
   const locale = { locale: { language: ctx.lang } };
   setText(parts.from, has ? formatDate(locale, new Date(data.start), dateOptions) : "");
@@ -272,7 +279,7 @@ function drawChart(parts, ctx, data, band) {
   parts.chartKey = key;
   const chart = chartOf(data.points, band, data.start, data.end);
   setAttr(parts.line, "d", chart.path);
-  parts.band.hidden = !chart.band;
+  showSvg(parts.band, !!chart.band);
   if (chart.band) {
     setAttr(parts.band, "y", String(chart.band.y));
     setAttr(parts.band, "height", String(chart.band.height));
@@ -371,8 +378,8 @@ function updateTimeline(parts, ctx) {
   else if (!has) message = ctx.t("card.pocket.trend.empty");
   setText(parts.state, message);
   parts.state.hidden = !message;
-  parts.svg.hidden = !has;
-  parts.band.hidden = true;
+  showSvg(parts.svg, has);
+  showSvg(parts.band, false);
   const dateOptions = parts.range === "24h" ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" };
   const locale = { locale: { language: ctx.lang } };
   setText(parts.from, has ? formatDate(locale, new Date(data.start), dateOptions) : "");

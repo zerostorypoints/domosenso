@@ -1,10 +1,13 @@
 // The area page's part of the floor plan: the floorplan component's own card (custom:floorplan-card,
 // consumed as an element, never redrawn here) with `area` set to the area's HA area, so it draws
-// that room alone with its sensors and their readings, fitted, read-only, fixed (zoom: false: a
-// finger on it scrolls the page) and without maps or chips. Shown only when the home has the
+// that room with its sensors and their readings, the rooms around it faded (context: true), fitted,
+// read-only, fixed (zoom: false: a finger on it scrolls the page) and without maps or chips; its
+// layers are in the bottom sheet the Layers button opens (lib/layer-sheet.js), as on the floor plan
+// view. Shown only when the home has the
 // floorplan component (config `floorplan`, which the dashboard template sets from the home's
 // inputs; the card's resource comes with that component) and the card says the area is on the plan
-// (its floorplan-status is ready). A tap on it, or on "Open", opens the floor plan view. The plan is
+// (its floorplan-status is ready). A tap on it, or on "Open", opens the floor plan view from this
+// area (#/floorplan/<area id>: its back button returns here). The plan is
 // read once per session (lib/plan-cache.js) and handed to the card as its `plan:`; without a plan
 // the part stays hidden.
 //
@@ -13,6 +16,7 @@
 import { haAreaOf } from "./sensors.js";
 import { el, setText } from "./page-kit.js";
 import { loadPlan } from "./plan-cache.js";
+import { layerSpec } from "./layer-sheet.js";
 
 export const ELEMENT = "floorplan-card";
 
@@ -20,30 +24,39 @@ export const PLAN_STYLE = `
   .area-plan[hidden] { display: none; }
   .area-plan .bar-row { display: flex; align-items: center; justify-content: space-between; margin: 18px 4px 8px; }
   .area-plan .t { font-size: 12.5px; font-weight: 600; color: var(--mut); text-transform: uppercase; letter-spacing: .5px; }
-  .area-plan .open { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; border: 0; background: none;
+  .area-plan .acts { display: flex; gap: 12px; }
+  .area-plan .layers[hidden] { display: none; }
+  .area-plan .open, .area-plan .layers { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; border: 0; background: none;
                      font: inherit; font-size: 13px; color: var(--acc); cursor: pointer; }
   .area-plan .box { height: 280px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
-  .area-plan .open:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .area-plan .open:focus-visible, .area-plan .layers:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 `;
 
 // The floor plan card's config for one area (components/floorplan: `area` and the host options).
-export const planConfig = (areaId) => ({ area: areaId, edit: false, zoom: false, maps: false, chips: false, values: true });
+export const planConfig = (areaId) => ({ area: areaId, context: true, edit: false, zoom: false, maps: false, chips: false, values: true });
 
 export function renderAreaPlan(ctx, area) {
   const areaId = haAreaOf(ctx.config, area);
   if (!ctx.config?.floorplan || !areaId) return null;
   const root = el("div", "area-plan",
-    `<div class="bar-row"><span class="t"></span><button class="open" type="button"></button></div><div class="box"></div>`);
+    `<div class="bar-row"><span class="t"></span><span class="acts"><button class="layers" type="button" hidden></button><button class="open" type="button"></button></span></div><div class="box"></div>`);
   root.hidden = true;
   const state = { ctx, card: null };
-  const open = () => state.ctx.navigate("#/floorplan");
+  const open = () => state.ctx.navigate(`#/floorplan/${encodeURIComponent(area.id)}`);
   root.querySelector(".open").addEventListener("click", open);
+  const layers = root.querySelector(".layers");
+  layers.addEventListener("click", () => {
+    if (state.card) state.ctx.openSheet?.(layerSpec(state.ctx, state.card));
+  });
 
   const attach = (plan) => {
     if (state.card || !plan) return;
     const card = document.createElement(ELEMENT);
     card.setConfig({ ...planConfig(areaId), plan });
-    card.addEventListener("floorplan-status", (e) => { root.hidden = e.detail?.status !== "ready"; });
+    card.addEventListener("floorplan-status", (e) => {
+      root.hidden = e.detail?.status !== "ready";
+      update(state.ctx);
+    });
     card.addEventListener("room-tap", open);
     state.card = card;
     root.querySelector(".box").append(card);
@@ -58,6 +71,8 @@ export function renderAreaPlan(ctx, area) {
     state.ctx = ctx;
     setText(root.querySelector(".t"), ctx.t("card.pocket.floorplan.title"));
     setText(root.querySelector(".open"), `${ctx.t("card.pocket.floorplan.open")} ›`);
+    setText(layers, ctx.t("card.pocket.floorplan.layers"));
+    layers.hidden = !(state.card?.layerChips?.length > 0);
     if (state.card) state.card.hass = ctx.hass;
   }
 

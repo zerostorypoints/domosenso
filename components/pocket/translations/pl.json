@@ -328,7 +328,8 @@
         "title": "Rzut",
         "open": "Otwórz",
         "layers": "Warstwy",
-        "none": "Ten dom nie ma jeszcze rzutu."
+        "none": "Ten dom nie ma jeszcze rzutu.",
+        "back": "Wróć do: {name}"
       },
       "media": {
         "title": "Media",
@@ -349,7 +350,9 @@
           "label": "Media lub dźwięk",
           "media": "Media",
           "sound": "Dźwięk"
-        }
+        },
+        "power_on": "Włącz",
+        "power_off": "Wyłącz"
       },
       "sound": {
         "averages": "Średnie",

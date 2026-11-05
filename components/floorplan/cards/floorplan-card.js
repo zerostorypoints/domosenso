@@ -19,6 +19,7 @@
 //   maps: true                         # false: no maps on the plants, climate and light layers
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
 //   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
+//   context: true                      # with area: the floor's other rooms faded around it, for orientation
 //   zoom: true                         # false: no wheel, pinch, pan or zoom buttons (the page scrolls)
 //   chips: true                        # false: no layer chips; a host offers them (layerChips, pressLayer)
 //   tap_tips: true                     # false: a finger's tap on a marker shows no tooltip
@@ -69,6 +70,7 @@ const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while t
 const HOUR_MS = 60 * 60 * 1000;
 const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
 const FILL_GAP_PX = 8;
+const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around an area (context: true)
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -330,6 +332,30 @@ class FloorplanCard extends HTMLElement {
     return floor && this._config.area ? this._scope(floor) : floor;
   }
 
+  // The view fitted to the floor drawn; with `area` and `context`, CONTEXT_M more on every side, so
+  // the neighbouring rooms show at the edges.
+  _fit() {
+    const view = fitView(this._floor);
+    if (!this._config.area || !this._config.context) return view;
+    const box = { x: view.x - CONTEXT_M, y: view.y - CONTEXT_M, w: view.w + 2 * CONTEXT_M, h: view.h + 2 * CONTEXT_M };
+    return { ...box, max: { w: box.w } };
+  }
+
+  // With `area` and `context`: the floor's other rooms, drawn first, faded, with their names and
+  // nothing else (no points, no readings, no taps): where the room is in the home.
+  _drawContext(svg, px) {
+    const full = this._doc?.floors.find((f) => f.floor_id === this._floorId);
+    if (!this._config.area || !this._config.context || !full) return;
+    const group = el("g", { class: "context" }, svg);
+    for (const room of full.rooms) {
+      if (room.area_id === this._config.area) continue;
+      el("polygon", { class: "room", points: room.polygon.map((p) => p.join(",")).join(" ") }, group);
+      const label = roomLabel(room, this._hass);
+      const spot = widestRow(room.polygon);
+      el("text", { class: "label", x: fmt(spot.x), y: fmt(spot.y), "font-size": fmt(12 * px) }, group).textContent = label.text;
+    }
+  }
+
   // With `area`: the floor with that area's room alone, the points standing in it (or on its walls)
   // and its openings. An opening whose first room is the other one is turned round (the same wall,
   // the same side it opens into), so its shape is found from this room. Kept per floor object.
@@ -384,7 +410,7 @@ class FloorplanCard extends HTMLElement {
       const wanted = this._config.area ? plan.floors.find((f) => f.rooms.some((r) => r.area_id === this._config.area))
         : plan.floors.find((f) => f.floor_id === this._config.floor);
       this._floorId = (wanted ?? plan.floors[0])?.floor_id ?? null;
-      this._view = fitView(this._floor);
+      this._view = this._fit();
     }
     this._render();
   }
@@ -669,6 +695,7 @@ ${STYLE}
     const names = [];       // where each room's name is, for readings to keep clear of
     const map = this._map();
     this._mapNow = map;
+    this._drawContext(svg, px);
     for (const room of floor.rooms) {
       const cls = ["room"];
       if (room.area_id === this._selected) cls.push("selected");
@@ -1096,7 +1123,7 @@ ${STYLE}
     const centre = [this._view.x + this._view.w / 2, this._view.y + this._view.h / 2];
     if (action === "zoom_in") this._view = zoomAt(this._view, 1 / ZOOM_STEP, centre);
     else if (action === "zoom_out") this._view = zoomAt(this._view, ZOOM_STEP, centre);
-    else if (action === "fit") this._view = fitView(this._floor);
+    else if (action === "fit") this._view = this._fit();
     else if (action === "edit") this._enterEdit();
     else if (action === "cancel") this._leaveEdit(this._base);
     else if (action === "save") return void this._save();
@@ -1132,7 +1159,7 @@ ${STYLE}
     if (e.target.matches?.("select.floor")) {
       this._floorId = this._doc.floors.find((f) => String(f.floor_id) === e.target.value)?.floor_id ?? this._floorId;
       this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
-      this._view = fitView(this._floor);
+      this._view = this._fit();
       this._resetPicks();
       this._render();
     } else if (e.target.matches?.("select.area") && e.target.value) {

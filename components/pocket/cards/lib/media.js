@@ -14,7 +14,7 @@
 //   clock(seconds) -> "m:ss" or "h:mm:ss"
 
 export const FEATURES = Object.freeze({
-  pause: 1, seek: 2, volume_set: 4, volume_mute: 8, previous: 16, next: 32, play: 16384,
+  pause: 1, seek: 2, volume_set: 4, volume_mute: 8, previous: 16, next: 32, turn_on: 128, turn_off: 256, play: 16384,
 });
 
 export function playersOf(config) {

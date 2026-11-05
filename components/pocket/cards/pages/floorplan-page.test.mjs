@@ -129,3 +129,19 @@ test("a home with the floorplan component but no plan says there is none", async
   assert.equal(el.querySelector("floorplan-card"), null);
   assert.equal(el.querySelector(".none").hidden, false);
 });
+
+test("opened from an area: the title is a back button to that area; opened from the bar: no back", async () => {
+  const ctx = ctxOf({ hass: planHass(), cfg, routeId: "living_room" });
+  const el = await mount(ctx);
+  const back = el.querySelector(".back");
+  assert.equal(back.hidden, false);
+  assert.equal(el.querySelector(".top .title").hidden, true, "one title, in the back button");
+  assert.equal(text(back), "Floor plan");
+  assert.equal(back.getAttribute("aria-label"), "Back to Living room");
+  back.click();
+  assert.deepEqual(ctx.routes, ["#/area/living_room"]);
+  const plain = await mount(ctxOf({ hass: planHass(), cfg }));
+  assert.equal(plain.querySelector(".back").hidden, true);
+  assert.equal(plain.querySelector(".top .title").hidden, false);
+  assert.equal(text(plain.querySelector(".top .title")), "Floor plan");
+});

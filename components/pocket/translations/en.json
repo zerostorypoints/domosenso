@@ -328,7 +328,8 @@
         "title": "Floor plan",
         "open": "Open",
         "layers": "Layers",
-        "none": "This home has no floor plan yet."
+        "none": "This home has no floor plan yet.",
+        "back": "Back to {name}"
       },
       "media": {
         "title": "Media",
@@ -349,7 +350,9 @@
           "label": "Media or sound",
           "media": "Media",
           "sound": "Sound"
-        }
+        },
+        "power_on": "Turn on",
+        "power_off": "Turn off"
       },
       "sound": {
         "averages": "Averages",

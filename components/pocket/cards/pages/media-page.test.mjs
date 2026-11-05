@@ -339,3 +339,26 @@ test("artwork that fails to load: the music icon instead; a new picture is tried
   page.update(el, ctx);
   assert.ok(!img.hidden && icon.hidden);
 });
+
+test("power: shown when the player can turn off (or on, while off); a tap turns it off or on at once", () => {
+  const ctx = ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("playing", { supported_features: 1 | 256 }) } });
+  const el = mount(ctx);
+  const power = el.querySelector(".power");
+  assert.equal(power.hidden, false);
+  assert.equal(power.getAttribute("aria-pressed"), "true");
+  assert.equal(power.getAttribute("aria-label"), "Turn off");
+  power.click();
+  assert.deepEqual(ctx.raw.calls.at(-1), ["media_player", "turn_off", { entity_id: SPEAKER }]);
+  assert.equal(power.getAttribute("aria-pressed"), "false", "optimistic: off before Home Assistant reports it");
+
+  const off = ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("off", { supported_features: 128 | 256 }) } });
+  const offEl = mount(off);
+  assert.equal(offEl.querySelector(".power").getAttribute("aria-label"), "Turn on");
+  offEl.querySelector(".power").click();
+  assert.deepEqual(off.raw.calls.at(-1), ["media_player", "turn_on", { entity_id: SPEAKER }]);
+
+  const cannot = mount(ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("playing", { supported_features: 1 }) } }));
+  assert.equal(cannot.querySelector(".power").hidden, true, "no turn_off: no power button");
+  const offOnly = mount(ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("off", { supported_features: 256 }) } }));
+  assert.equal(offOnly.querySelector(".power").hidden, true, "off and no turn_on: nothing to press");
+});

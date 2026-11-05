@@ -12,6 +12,8 @@
 //     Home Assistant's more-info dialog of the player; title, artist, album, wrapped, never cut;
 //   - the progress (media_position, media_duration, media_position_updated_at), ticking each second
 //     on the phone while it plays and the Media tab shows;
+//   - a power button by the player's name when it can turn on or off (supported_features), lit
+//     while the player is on; a tap turns it off, or on when it is off;
 //   - previous / play-pause (64 px) / next, each hidden when the player's supported_features lack
 //     it (play-pause shows for a player that reports no features at all);
 //   - the volume: a strip of its own (44 px), a horizontal drag sets it from the finger's place
@@ -42,6 +44,13 @@ const STYLE = `
   .media .pick { min-width: 44px; min-height: 44px; margin: 0; padding: 0 10px; border: 0; border-radius: 12px;
                  background: none; color: var(--mut); font: inherit; font-size: 13px; text-align: right;
                  display: flex; align-items: center; gap: 2px; cursor: pointer; overflow-wrap: anywhere; --mdc-icon-size: 18px; }
+  .media .ends { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .media .power { flex: 0 0 auto; width: 44px; height: 44px; margin: 0; padding: 0; border: 1px solid var(--line);
+                  border-radius: 50%; background: var(--card); color: var(--mut); cursor: pointer;
+                  display: flex; align-items: center; justify-content: center; --mdc-icon-size: 22px; }
+  .media .power[aria-pressed="true"] { color: var(--acc); border-color: var(--acc); }
+  .media .power[hidden] { display: none; }
+  .media .power:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
   .media .pick.single { cursor: default; }
   .media .pick.single ha-icon { display: none; }
   .media .seg { display: flex; gap: 2px; margin: 0 0 14px; padding: 3px; border-radius: 12px; background: var(--chip); }
@@ -97,7 +106,7 @@ const GLYPH = { previous: "mdi:skip-previous", next: "mdi:skip-next" };
 export function render(ctx) {
   const root = el("section", "media");
   root.innerHTML = `<style>${STYLE}</style>
-    <div class="top"><b></b><button class="pick" type="button"><span class="name"></span><ha-icon icon="mdi:chevron-down"></ha-icon></button></div>
+    <div class="top"><b></b><span class="ends"><button class="pick" type="button"><span class="name"></span><ha-icon icon="mdi:chevron-down"></ha-icon></button><button class="power" type="button" hidden><ha-icon icon="mdi:power"></ha-icon></button></span></div>
     <div class="seg" role="group" hidden>
       ${TABS.map((tab) => `<button type="button" data-tab="${tab}" aria-pressed="false"></button>`).join("")}
     </div>
@@ -120,7 +129,7 @@ export function render(ctx) {
   const q = (sel) => root.querySelector(sel);
   const parts = {
     ctx, picked: undefined, tab: "media", preview: null, gesture: null, now: () => Date.now(), timer: null,
-    title: q(".top b"), pick: q(".pick"), seg: q(".seg"), player: q(".player"), none: q(".none"),
+    title: q(".top b"), pick: q(".pick"), power: q(".power"), seg: q(".seg"), player: q(".player"), none: q(".none"),
     art: q(".art"), img: q(".art img"), prog: q(".prog"), bar: q(".prog .bar i"), pos: q(".pos"), dur: q(".dur"),
     play: q(".play"), previous: q(".previous"), next: q(".next"), mute: q(".mute"), vol: q(".vol"),
     volume: q(".volume"), line: q(".src .line"), level: q(".level"),
@@ -148,6 +157,7 @@ export function render(ctx) {
   });
   for (const action of ["previous", "play", "next"]) parts[action].addEventListener("click", () => transport(root, action));
   parts.mute.addEventListener("click", () => toggleMute(root));
+  parts.power.addEventListener("click", () => togglePower(root));
   parts.level.addEventListener("click", () => {
     const sound = parts.ctx.config?.sound;
     if (sound?.level) parts.ctx.openSheet?.({ kind: "trend", entity: sound.level, title: parts.ctx.t("card.pocket.media.level"), digits: 1 });
@@ -263,6 +273,16 @@ function transport(root, action) {
   }
 }
 
+// Off turns on; any other state turns off. What "on" becomes (idle, on, playing) is the player's:
+// turning on waits for any new state.
+function togglePower(root) {
+  const player = live(root._media);
+  if (!player) return;
+  if (player.state.state === "off") {
+    if (can(player.state, "turn_on")) send(root, player, "turn_on", {}, { changed: true });
+  } else if (can(player.state, "turn_off")) send(root, player, "turn_off", {}, { state: "off" });
+}
+
 function toggleMute(root) {
   const player = live(root._media);
   if (!player || !can(player.state, "volume_mute")) return;
@@ -364,6 +384,11 @@ function updatePlayer(parts, ctx, chosen) {
   setAttr(parts.previous, "aria-label", ctx.t("card.pocket.media.previous"));
   setAttr(parts.next, "aria-label", ctx.t("card.pocket.media.next"));
   for (const button of [parts.play, parts.previous, parts.next, parts.mute]) button.disabled = disabled;
+  const isOff = state?.state === "off";
+  parts.power.hidden = gone || !(isOff ? can(state, "turn_on") : can(state, "turn_off"));
+  parts.power.disabled = !!ctx.offline;
+  setAttr(parts.power, "aria-pressed", String(!isOff));
+  setAttr(parts.power, "aria-label", ctx.t(isOff ? "card.pocket.media.power_on" : "card.pocket.media.power_off"));
 
   const muted = !!a.is_volume_muted;
   parts.mute.hidden = !can(state, "volume_mute");

@@ -182,3 +182,10 @@ test("a home with only a weather entity: the Outside reads it", () => {
 test("no outside and no weather: no Outside", () => {
   assert.equal(mount().querySelectorAll(".grid .sq").length, 4);
 });
+
+test("squares have a definite width, so Safari takes their height from the aspect ratio", () => {
+  const style = rooms.render(ctxOf({ hass: hassOf(baseStates()), cfg: config })).querySelector("style").textContent;
+  const rule = style.match(/\.rooms \.sq \{[^}]*\}/)[0];
+  assert.match(rule, /width: 100%/);
+  assert.match(rule, /aspect-ratio/);
+});

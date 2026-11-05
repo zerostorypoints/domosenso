@@ -9,6 +9,7 @@ test("the pages and an area by id", () => {
   }
   assert.deepEqual(parseRoute("#/area/kitchen"), { page: "area", id: "kitchen" });
   assert.deepEqual(parseRoute("#/area/outside"), { page: "area", id: "outside" });
+  assert.deepEqual(parseRoute("#/floorplan/living_room"), { page: "floorplan", id: "living_room" }, "opened from an area");
   assert.deepEqual(parseRoute("#/media/living%20room"), { page: "media", id: "living room" });
   assert.deepEqual(parseRoute("#/media/"), { page: "media" });
   assert.deepEqual(parseRoute("#/media/a/b"), { page: "home" });
