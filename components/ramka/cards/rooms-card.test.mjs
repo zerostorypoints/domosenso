@@ -143,6 +143,20 @@ test("thresholds on: a Temperature widget's values blue below, neutral within, r
   assert.deepEqual(colours(widgetCard([temperature()], { extra: { "sensor.t": sensor("unavailable") } }))[0], ["", ""]);
 });
 
+// P3.3 (thresholds: climate-air): a room whose temperature sensor the config maps to climate-air's
+// helpers takes its range from them, ahead of the widget's own; a helper without a number falls back.
+test("thresholds on with comfort: climate-air's helpers give the room's range", () => {
+  const comfort = { "sensor.t": { temp_low: "input_number.climate_air_den_temp_low", temp_high: "input_number.climate_air_den_temp_high",
+    hum_low: "input_number.climate_air_den_humidity_low", hum_high: "input_number.climate_air_den_humidity_high" } };
+  const helpers = { "input_number.climate_air_den_temp_low": sensor("22"), "input_number.climate_air_den_temp_high": sensor("26"),
+    "input_number.climate_air_den_humidity_low": sensor("30"), "input_number.climate_air_den_humidity_high": sensor("unavailable") };
+  const own = temperature({ temp_low: 18, temp_high: 21, hum_low: 30, hum_high: 45 });
+  const at = (t, h) => colours(widgetCard([own], { config: { comfort },
+    extra: { ...helpers, "sensor.t": sensor(String(t)), "sensor.h": sensor(String(h)) } }))[0];
+  assert.deepEqual(at(21.5, 44), [BLUE, NEUTRAL], "22 °C from the helper; the humidity's high falls back to the widget's 45");
+  assert.deepEqual(at(25, 46), [NEUTRAL, RED]);
+});
+
 test("thresholds on, no colour selects: an Air quality widget's CO2 and PM2.5 neutral while good, amber fair, red poor, from the Air page's limits", () => {
   const air = { type: "air", label: "A", main: "sensor.co2", extra: "sensor.pm" };
   const at = (co2, pm, limits = {}) => colours(widgetCard([air], { extra: { "sensor.co2": sensor(String(co2)), "sensor.pm": sensor(String(pm)), ...limits } }))[0];

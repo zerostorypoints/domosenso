@@ -100,6 +100,8 @@ done
 background "ha-check ramka (pages left out)" env INPUTS="$ROOT/tests/fixtures/ramka-without-pages.yaml" tools/ha-check.sh ramka
 # ramka 0.7.0: plants: discover (SPEC-022).
 background "ha-check ramka (plants discover)" env INPUTS="$ROOT/tests/fixtures/ramka-plants-discover.yaml" tools/ha-check.sh ramka
+background "ha-check ramka (rooms from the home inputs)" env INPUTS="$ROOT/tests/fixtures/ramka-from-home.yaml" tools/ha-check.sh ramka
+background "ha-check ramka (shared thresholds)" env INPUTS="$ROOT/tests/fixtures/ramka-shared-thresholds.yaml" tools/ha-check.sh ramka
 collect
 fi
 echo "skip demo acceptance (opt-in: run-demo PR label or explicit local demo command)"

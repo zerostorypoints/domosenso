@@ -25,6 +25,7 @@ from domosenso_cli import dev_render, stamps
 from domosenso_cli.catalog import Catalog
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import ComponentEntry, HomeConfig
+from domosenso_cli.home_inputs import load_home_inputs
 from domosenso_cli.lock import FileRecord, Lock
 from domosenso_render import LANG_SUFFIX, RenderError, render_component, render_device_files
 
@@ -184,6 +185,13 @@ def plan_outputs(
     if "assistant_actions" not in manifest:
         names = [n for n in names if n != "assistant-actions-bindings.yaml.j2"]
     wanted = [n for n in names if instance or not n.startswith(INSTANCE_DIR)]
+    home_kwargs = {}
+    if manifest.get("uses_home"):
+        shared = load_home_inputs(home)
+        # "optional" passes None through: the templates test `home` themselves
+        if shared is None and manifest["uses_home"] is True:
+            raise DomosensoError(f"{cid}: uses home inputs, but domosenso.yaml names no home_inputs")
+        home_kwargs["home"] = shared
     if wanted:
         with tempfile.TemporaryDirectory() as scratch:
             source = _renderable_copy(component_dir, Path(scratch) / "src", instance)
@@ -191,7 +199,7 @@ def plan_outputs(
             try:
                 render_component(
                     source, load_inputs(entry), out, entry.langs,
-                    stamp_text=stamps.stamp(cid, version, sha[:SHORT_SHA], dirty),
+                    stamp_text=stamps.stamp(cid, version, sha[:SHORT_SHA], dirty), **home_kwargs,
                 )
             except RenderError as exc:
                 raise DomosensoError(f"{cid}: render failed: {exc}") from exc

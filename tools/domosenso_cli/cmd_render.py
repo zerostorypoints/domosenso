@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from domosenso_cli import dev_render, inventory
+from domosenso_cli import dev_render, home_inputs, inventory
 from domosenso_cli.build import (
     file_records, file_sha, git_head_date, git_short_head, load_manifest, open_catalog, own_dev_files, plan_outputs, resource_urls,
     sha256,
@@ -58,7 +58,8 @@ def render_ids(home: HomeConfig, lock: Lock, ids: list[str], force: bool, dev: P
             _report_forgotten(home, lock, cid, {o.dest for o in outputs}, rep)
             dev_render.record(home.root, cid, version, f"{head}-dirty",
                               {o.dest: {"sha256": sha256(o.content), "layer": o.layer} for o in outputs},
-                              resource_urls(component_dir), git_head_date(dev))
+                              resource_urls(component_dir), git_head_date(dev),
+                              home_inputs=_home_digest(home, component_dir))
             continue
         locked = lock.components[cid]
         component_dir = catalog.checkout(cid, locked.version, locked.commit)
@@ -128,6 +129,7 @@ def apply_component(
         **{p: r for p, r in locked.files.items() if r.layer == "instance"}, **file_records(home, outputs),
     }
     locked.resources = resource_urls(component_dir)
+    locked.home_inputs = _home_digest(home, component_dir)
     lock.save(home.root)  # per component: files already written stay described if a later one fails
     dev_render.drop(home.root, cid)
 
@@ -151,3 +153,8 @@ def _remove(home: HomeConfig, dest: str) -> None:
 def _report(rep: Reporter, actions: list[tuple[str, str]]) -> None:
     for action, dest in actions:
         rep.line(action, dest)
+
+
+def _home_digest(home: HomeConfig, component_dir: Path) -> str | None:
+    """The digest of the home inputs a component that uses them is rendered from; None otherwise."""
+    return home_inputs.digest(home) if load_manifest(component_dir).get("uses_home") else None

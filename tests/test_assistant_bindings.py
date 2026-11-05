@@ -40,7 +40,7 @@ CAPABILITIES = {
     'media': {'now_playing', 'status', 'mains'}, 'lights': {'status'}, 'calendar': {'agenda'},
     'weather': {'current', 'forecast'}, 'bermuda-presence': {'observations'},
     'awnings': {'status', 'wind'}, 'audio-sensor': {'level'}, 'backup': {'status'}, 'ramka': {'status', 'current_time'}, 'timers': {'status'},
-    'remote-access': set(), 'floorplan': set(), 'gate-remote': set(),
+    'remote-access': set(), 'floorplan': set(), 'gate-remote': set(), 'pocket': set(),
 }
 
 
@@ -148,7 +148,10 @@ def test_all_components_declare_translated_capabilities_and_render_bindings(tmp_
                 assert text['title'] and text['description'] and 1 <= len(text['examples']) <= 3
         source = ROOT / 'examples' / 'demo-home' / 'inputs' / f'{cid}.yaml'
         inputs = yaml.safe_load(source.read_text()) if source.exists() else examples[cid]
-        render_component(root, inputs, tmp_path / cid)
+        # A component that must have the home inputs renders with the demo home's.
+        home = (yaml.safe_load((ROOT / 'examples/demo-home/home.inputs.yaml').read_text())
+                if manifest.get('uses_home') is True else None)
+        render_component(root, inputs, tmp_path / cid, **({'home': home} if home else {}))
         bindings = yaml.safe_load((tmp_path / cid / 'assistant-bindings.yaml').read_text())
         from assistant_contract import compile_profile
         compiled = compile_profile(root, manifest, bindings, manifest['version'], 'a' * 40, False)
@@ -161,7 +164,7 @@ def test_all_components_declare_translated_capabilities_and_render_bindings(tmp_
         assert set(bindings) == {'subjects', 'policies'}
         roles = {f['role'] for c in definitions for f in c['required_facts'] + c['optional_facts']}
         assert all(set(subject['fields']) <= roles for subject in bindings['subjects'])
-        assert bindings['subjects'] or cid in {'audio-sensor', 'remote-access', 'floorplan', 'gate-remote'}
+        assert bindings['subjects'] or cid in {'audio-sensor', 'remote-access', 'floorplan', 'gate-remote', 'pocket'}
         if cid == 'remote-access':
             assert bindings == {'subjects': [], 'policies': []}
 

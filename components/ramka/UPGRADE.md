@@ -3,6 +3,61 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: the kiosk user's person is marked
+
+With `kiosk_user`, the package marks `person.<the kiosk user as a slug>` with `person_role: kiosk`
+(`homeassistant: customize`), so Pocket's Safety leaves the wall tablet's account out of "Who is
+home". Nothing to do; a kiosk user named with characters beyond letters, digits, spaces and hyphens
+may not match its person, which is then simply not marked.
+
+## Unreleased (P3): thresholds from climate-air (`thresholds: climate-air`, optional)
+
+With `thresholds: climate-air` (and the climate-air component installed), the wall reads climate-air's
+helpers, the same thresholds Pocket reads:
+- the Air page's and the Climate page's air limits read `input_number.climate_air_<reading>_{fair,poor}`;
+- with the home inputs, each room's comfort range reads
+  `input_number.climate_air_<room>_{temp,humidity}_{low,high}`, matched by the room's temperature
+  sensor. The widget editor changes those helpers, and the widget keeps no copy of the range.
+- The settings page's air limits change climate-air's helpers.
+- The Ramka's own `input_number.<prefix>_air_*` helpers stay for this release and follow climate-air's
+  (automation `<prefix>_air_limits_follow_climate_air`), for automations that still read them. They
+  go in the next release.
+
+What a home does:
+1. Before switching, run `domosenso thresholds <target>`. It reads the running home and lists each
+   limit and comfort range as `equal` or `conflict`, the Ramka's value beside climate-air's. Set
+   climate-air's helper to the value the household chose (Settings → Comfort ranges in Pocket, or
+   the helper itself), and run it again until it ends `ok`. A render never resolves a conflict:
+   seed-once does not overwrite a helper that exists.
+2. Set `thresholds: climate-air`, then `render`.
+3. `compare` a snapshot from before against one from after. The Ramka's air helpers keep their ids
+   (they now follow climate-air's), so the snapshots compare without new `equivalence.yaml` entries.
+
+`own` (the default) changes nothing.
+
+## Unreleased (P3): rooms from the shared home inputs
+
+The Ramka declares `uses_home: optional`. When the home has shared inputs (`home_inputs:` in
+`domosenso.yaml`), each of these inputs falls back to them if the Ramka's own file leaves it out:
+- `lights`: each room's lights, labelled with the room's name or the light's own name;
+- `climate`: each room with climate, labelled with the room's name;
+- `outside` and `weather`;
+- `air`: the first room with air;
+- `covers`: each room's listed covers;
+- `status` contacts and locks: each room's listed ones.
+
+An input the Ramka's file gives wins, unchanged, so a home that keeps its lists sees nothing
+change. Colours and the wall's layout stay the Ramka's.
+
+What a home does: nothing now. To move:
+1. Make sure `home.inputs.yaml` names the same entities.
+2. Remove the Ramka's own `lights`, `climate`, `outside`, `air` and `weather` one at a time, running
+   `domosenso render` after each.
+3. Before deploying, `domosenso compare` a snapshot from before against one from after.
+
+The labels then come from the room's name, so a light or widget whose label differed from its
+room's name needs `{entity, name}` in the home inputs.
+
 ## 0.16.0 (unreleased)
 
 ### Shortcuts on the controls

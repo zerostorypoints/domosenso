@@ -2,6 +2,35 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: the home's rooms name and colour the plan
+
+- `floorplan-card` takes `rooms`, the home inputs' rooms (`[{id, name, area, climate?}]`):
+  - a room's name, one string or one per language (HA's language, else `en`), replaces its HA
+    area's name on the plan;
+  - the room's selected temperature or humidity sensor colours it on the climate map, ahead of the
+    one its HA area names (Settings → Areas).
+
+  The area id stays the key and the geometry stays the plan's.
+- `domosenso floorplan push` writes `rooms` from the home's `home_inputs`, and Pocket passes them on
+  its pages.
+- What a home does: nothing, or `floorplan push` again to give the standalone floor plan the
+  home's names.
+
+## Unreleased: options for a host page (a phone)
+
+- `floorplan-card` takes `area` (that area's room alone, fitted, read-only), `zoom: false` (a fixed
+  plan the page scrolls past) and `chips: false` (the layer chips shown by the host through
+  `layerChips` and `pressLayer`), fires `room-tap` (`{area_id}`) for a tap on a room in view mode and
+  `floorplan-status` when its status changes (also `data-status` on the card), and sizes its
+  buttons by `--floorplan-target` when a host sets it. Used by the pocket's area page and floor plan view.
+- A finger's tap on a marker in view mode shows its tooltip until the next tap (`tap_tips: false`
+  turns it off), on the floor plan dashboard too; a mouse keeps hover.
+- The scan form, `usable`, `DERIVED_PLATFORMS` and `extract` moved to `cards/lib/shared.js`
+  (plan.js re-exports them); the pocket ships a verbatim copy, written and checked by
+  `tools/category_index.py`.
+- **What a home does:** nothing. Without the new options the card draws and behaves as before; the
+  new events fire whether or not anything listens.
+
 ## Unreleased: a room's own sensor colours it (#207)
 
 - On the climate maps (temperature, humidity), a room whose Home Assistant area names a

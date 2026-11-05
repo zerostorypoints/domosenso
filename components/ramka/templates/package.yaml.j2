@@ -4,6 +4,7 @@
   by tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
   Assistant. Inputs: component.yaml `inputs:`.
 #]
+[%- from '_home.jinja' import merged as inputs with context -%]
 [%- set p = inputs.prefix -%]
 [%- set name = inputs.name | default(p | replace('_', ' ') | title) -%]
 [%- set notify = inputs.tablet_device.notify -%]
@@ -651,6 +652,17 @@ input_number:
     mode: box
   [%- endfor %]
   [%- endfor %]
+
+[%- if inputs.kiosk_user is defined and inputs.kiosk_user %]
+# The kiosk user's person is the wall tablet's account, not someone who lives here: marked so a
+# phone's "Who is home" (Pocket's Safety) leaves it out. HA names a person person.<its name as a
+# slug>; a name with characters beyond letters, digits, spaces and hyphens may not match, and is
+# then simply not marked.
+homeassistant:
+  customize:
+    person.[[ inputs.kiosk_user | lower | replace(' ', '_') | replace('-', '_') ]]:
+      person_role: kiosk
+[%- endif %]
 
 timer:
   [[ p ]]_controls:
@@ -1848,6 +1860,34 @@ script:
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
+[%- if inputs.shared_thresholds and air_readings %]
+  # P3.3 (thresholds: climate-air): climate-air's air limits are the definition; the Ramka's own
+  # helpers follow them, at start and on each change, for automations that still read them. They
+  # go in the next release.
+  - id: [[ p ]]_air_limits_follow_climate_air
+    alias: [[ named(' air limits follow climate-air') ]]
+    mode: queued
+    trigger:
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id:
+        [%- for reading in air_readings %]
+          - [[ inputs.air_limit_ids[reading][0] ]]
+          - [[ inputs.air_limit_ids[reading][1] ]]
+        [%- endfor %]
+    action:
+      [%- for reading in air_readings %]
+      [%- set l = air_limits[reading] %]
+      [%- for i in [0, 1] %]
+      - if: "{{ states('[[ inputs.air_limit_ids[reading][i] ]]') | is_number }}"
+        then:
+          - action: input_number.set_value
+            target: {entity_id: input_number.[[ p ]]_air_[[ reading ]]_[[ l[i] ]]}
+            data: {value: "{{ states('[[ inputs.air_limit_ids[reading][i] ]]') | float }}"}
+      [%- endfor %]
+      [%- endfor %]
+[%- endif %]
   # The About page's discovery at start and nightly, so the list is current without a Refresh
   # (SPEC-023). The registries are on disk before start ends; a minute lets HACS load first.
   - id: [[ p ]]_about_discover
