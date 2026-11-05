@@ -35,6 +35,7 @@ COMMANDS: dict[str, str | None] = {
     "http": "domosenso_cli.http_config",
     "floorplan": "domosenso_cli.floorplan",
     "private": "domosenso_cli.private",
+    "thresholds": "domosenso_cli.thresholds",
 }
 
 SUMMARIES = {
@@ -55,6 +56,7 @@ SUMMARIES = {
     "http": "set Home Assistant's HTTP settings for a reverse proxy",
     "floorplan": "move the floor plan between Home Assistant and the home repository",
     "private": "link the home's private files from its folder outside the repository",
+    "thresholds": "the Ramka's limits and comfort ranges beside climate-air's, before sharing them",
 }
 
 
