@@ -1,0 +1,7 @@
+{
+  "domain": "org",
+  "fonts": "website/public/fonts",
+  "public": "website/public/brand",
+  "favicon": "website/public/icon.svg",
+  "social": "website/public/social.png"
+}

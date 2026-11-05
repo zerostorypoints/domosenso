@@ -23,6 +23,8 @@ code,pre,.mono,.eyebrow,.step-number,.pill { font-family: var(--mono); }
 .header,.edition,.footer,.page { max-width: 1380px; margin-inline: auto; padding-inline: 48px; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 25px; }
 .brand { display: flex; align-items: center; font-size: 24px; letter-spacing: -.06em; line-height: 1; }
+.brand-logo { display: block; width: 224px; height: auto; }
+@media(max-width:700px) { .brand-logo { width:200px; } }
 .brand>span { font-weight: 600; }
 .brand svg { width: 29px; height: 29px; margin-right: 9px; }
 .brand small { font: 9px var(--mono); letter-spacing: .1em; border-left: 1px solid var(--line); padding: 9px 0 9px 16px; margin-left: 16px; }
