@@ -36,7 +36,8 @@ test("grids of widgets have equal rows: every widget grid sets grid-auto-rows: 1
   for (const [file, sel] of grids) {
     const css = readFileSync(join(here, file), "utf8");
     const rule = css.match(new RegExp(`${sel.replace(/\./g, "\\.")} \\{([^}]*)\\}`))?.[1] ?? "";
-    assert.match(rule, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, `${file} ${sel}`);
+    // As many equal columns of at least 160 px as fit: two upright on a phone, more in landscape.
+    assert.match(rule, /grid-template-columns: repeat\(auto-fill, minmax\(min\(var\(--square-min, 160px\), 100%\), 1fr\)\)/, `${file} ${sel}`);
     assert.match(rule, /grid-auto-rows: 1fr/, `${file} ${sel}`);
   }
 });

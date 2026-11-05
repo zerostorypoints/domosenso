@@ -352,7 +352,9 @@
           "sound": "Dźwięk"
         },
         "power_on": "Włącz",
-        "power_off": "Wyłącz"
+        "power_off": "Wyłącz",
+        "input": "Wejście",
+        "input_of": "Wejście: {name}. Zmień wejście"
       },
       "sound": {
         "averages": "Średnie",

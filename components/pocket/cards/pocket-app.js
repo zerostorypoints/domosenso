@@ -50,6 +50,7 @@ import { checks, air, lights } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
+import * as sourceSheet from "./lib/source-sheet.js";
 import { powerSheet } from "./pages/power-page.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
@@ -63,7 +64,7 @@ const TOAST_MS = 3000;
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
-  players: playerSheet, power: powerSheet };
+  players: playerSheet, power: powerSheet, sources: sourceSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -84,7 +85,8 @@ const STYLE = `
   .offline[hidden] { display: none; }
   /* Room under the page for the fixed bar and the phone's home indicator. A finger moves the page
      only up and down (pinch zoom stays); the pages' own sideways gestures handle themselves. */
-  main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom; }
+  main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   /* The toast rides on the bar: absolute inside the fixed nav, just above its top edge. */
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
@@ -93,11 +95,13 @@ const STYLE = `
      readers to announce its text when it changes. */
   .toast:not(.show) { opacity: 0; pointer-events: none; }
   /* Fixed to the screen, not sticky in the card: a sticky bar drifted with iOS's rubber-band
-     scroll and with sideways drags. Beside HA's open sidebar (a wide screen) it starts where the
-     sidebar ends (--mdc-drawer-width, which HA leaves unset while the sidebar is a modal drawer).
-     Its background runs to the very bottom: the safe area is padding inside it. */
-  nav { position: fixed; left: var(--mdc-drawer-width, 0px); right: 0; bottom: 0; z-index: 4;
+     scroll and with sideways drags. It spans the card's own box (--bar-left, --bar-width:
+     _placeBar measures it), so beside HA's sidebar (a phone in landscape, a wide screen) it starts
+     where the sidebar ends; HA sets no variable for that width. Its background runs to the very
+     bottom: the safe area is padding inside it, and the phone's side insets in landscape too. */
+  nav { position: fixed; left: var(--bar-left, 0px); width: var(--bar-width, 100%); bottom: 0; z-index: 4;
         box-sizing: border-box; height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
+        padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
         display: flex; justify-content: space-around; align-items: stretch;
         touch-action: none; overscroll-behavior: none;
         background: var(--card);
@@ -120,6 +124,7 @@ class PocketApp extends HTMLElement {
     this._onHash = () => this._route();
     this._onScheme = () => this._paint();
     this._onPop = () => this._sheet?.onPopState();
+    this._onResize = () => this._placeBar();
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
     this._saveQueue = Promise.resolve();
@@ -188,6 +193,12 @@ class PocketApp extends HTMLElement {
 
   connectedCallback() {
     window.addEventListener("hashchange", this._onHash);
+    window.addEventListener("resize", this._onResize);
+    if (typeof ResizeObserver === "function") {
+      this._resize ??= new ResizeObserver(this._onResize);
+      this._resize.observe(this);
+    }
+    this._placeBar();
     window.addEventListener("popstate", this._onPop);
     this._scheme = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
     this._scheme?.addEventListener?.("change", this._onScheme);
@@ -198,9 +209,22 @@ class PocketApp extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this._onHash);
+    window.removeEventListener("resize", this._onResize);
+    this._resize?.disconnect();
     window.removeEventListener("popstate", this._onPop);
     this._sheet?.dismiss();
     this._scheme?.removeEventListener?.("change", this._onScheme);
+  }
+
+  // The fixed bar over the card's own box: left and width in the viewport (HA's sidebar, when it
+  // stands beside the view, moves the box). An unmeasured box (0 wide) keeps the last values.
+  _placeBar() {
+    const box = this.getBoundingClientRect?.();
+    if (!box || !(box.width > 0)) return;
+    const left = `${Math.round(box.left)}px`;
+    const width = `${Math.round(box.width)}px`;
+    if (this.style.getPropertyValue("--bar-left") !== left) this.style.setProperty("--bar-left", left);
+    if (this.style.getPropertyValue("--bar-width") !== width) this.style.setProperty("--bar-width", width);
   }
 
   // The language of every word: the dashboard's (config.lang), else Home Assistant's.

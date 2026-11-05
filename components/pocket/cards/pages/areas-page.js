@@ -23,7 +23,7 @@ const STYLE = `
   .rooms .top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 8px; }
   .rooms .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .rooms .top .count { font-size: 12px; color: var(--mut); }
-  .rooms .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .rooms .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   /* No min-height: an explicit one drops aspect-ratio's automatic minimum, and text that wraps
      would spill out; without it a square grows with its content (the row, 1fr, with it). */
   /* width: 100% gives WebKit a definite width to take the height from; without it Safari sizes

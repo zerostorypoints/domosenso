@@ -14,6 +14,8 @@
 //     on the phone while it plays and the Media tab shows;
 //   - a power button by the player's name when it can turn on or off (supported_features), lit
 //     while the player is on; a tap turns it off, or on when it is off;
+//   - the input (the player's source) as a button opening the input sheet (lib/source-sheet.js)
+//     when the player can select a source and lists more than one; a pick selects it at once;
 //   - previous / play-pause (64 px) / next, each hidden when the player's supported_features lack
 //     it (play-pause shows for a player that reports no features at all);
 //   - the volume: a strip of its own (44 px), a horizontal drag sets it from the finger's place
@@ -28,6 +30,7 @@
 // patches them.
 
 import { can, chosenPlayer, clock, playersOf, progressOf } from "../lib/media.js";
+import { sourceSpec, sourcesOf } from "../lib/source-sheet.js";
 import { playerSpec } from "../lib/player-sheet.js";
 import { STYLE as SOUND_STYLE, renderSound } from "../lib/sound-panel.js";
 import { reportError } from "../lib/report.js";
@@ -65,6 +68,14 @@ const STYLE = `
   .media .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .media .art ha-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   .media .meta { margin-top: 14px; overflow-wrap: anywhere; }
+  /* A short, wide screen (a phone in landscape): the artwork on the left, no taller than the room
+     between the header and the bar, the rest beside it. */
+  @media (orientation: landscape) and (max-height: 560px) {
+    .media .player { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 20px; align-items: start; }
+    .media .player > * { grid-column: 2; }
+    .media .player > .art { grid-column: 1; grid-row: 1 / span 8; width: min(40vw, calc(100dvh - 200px)); max-width: none; }
+    .media .player > .meta { margin-top: 0; }
+  }
   .media .title { font-size: 19px; font-weight: 600; }
   .media .artist { font-size: 14px; color: var(--mut); margin-top: 2px; }
   .media .album { font-size: 12.5px; color: var(--mut); margin-top: 2px; }
@@ -90,6 +101,13 @@ const STYLE = `
   .media .mute { flex: 0 0 auto; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 12px;
                  background: var(--chip); color: var(--fg); display: flex; align-items: center; justify-content: center;
                  cursor: pointer; --mdc-icon-size: 22px; }
+  .media .input { box-sizing: border-box; width: 100%; min-height: 44px; margin: 10px 0 0; padding: 0 12px;
+                  display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px;
+                  background: var(--card); color: var(--fg); font: inherit; font-size: 14px; text-align: left;
+                  cursor: pointer; --mdc-icon-size: 20px; }
+  .media .input .k { color: var(--mut); }
+  .media .input .v { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .media .input ha-icon { flex: 0 0 auto; color: var(--mut); }
   .media .src { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px;
                 margin-top: 6px; font-size: 12.5px; color: var(--mut); overflow-wrap: anywhere; }
   .media .src .line { min-width: 0; }
@@ -123,6 +141,7 @@ export function render(ctx) {
         <button class="mute" type="button"><ha-icon icon="mdi:volume-high"></ha-icon></button>
         <div class="vol" role="slider" tabindex="0" data-drag aria-valuemin="0" aria-valuemax="100"><i></i><span></span></div>
       </div>
+      <button class="input" type="button" hidden><ha-icon icon="mdi:import"></ha-icon><span class="k"></span><span class="v"></span><ha-icon icon="mdi:chevron-down"></ha-icon></button>
       <div class="src"><span class="line"></span><button class="level" type="button" hidden></button></div>
     </div>
     <p class="none" hidden></p>`;
@@ -132,13 +151,13 @@ export function render(ctx) {
     title: q(".top b"), pick: q(".pick"), power: q(".power"), seg: q(".seg"), player: q(".player"), none: q(".none"),
     art: q(".art"), img: q(".art img"), prog: q(".prog"), bar: q(".prog .bar i"), pos: q(".pos"), dur: q(".dur"),
     play: q(".play"), previous: q(".previous"), next: q(".next"), mute: q(".mute"), vol: q(".vol"),
-    volume: q(".volume"), line: q(".src .line"), level: q(".level"),
+    volume: q(".volume"), line: q(".src .line"), level: q(".level"), input: q(".input"),
   };
   root._media = parts;
 
   parts.pick.addEventListener("click", () => {
     const { ctx: now } = parts;
-    if (playersOf(now.config).length < 2) return;
+    if (playersOf(now.config, now.hass).length < 2) return;
     now.openSheet?.(playerSpec(now, playerOf(parts, now)?.id, (id) => pickPlayer(root, id)));
   });
   for (const button of parts.seg.querySelectorAll("button")) {
@@ -158,6 +177,14 @@ export function render(ctx) {
   for (const action of ["previous", "play", "next"]) parts[action].addEventListener("click", () => transport(root, action));
   parts.mute.addEventListener("click", () => toggleMute(root));
   parts.power.addEventListener("click", () => togglePower(root));
+  parts.input.addEventListener("click", () => {
+    const player = live(parts);
+    if (!player || sourcesOf(player.state).length === 0) return;
+    parts.ctx.openSheet?.(sourceSpec(parts.ctx, player.id, (source) => {
+      parts.ctx.closeSheet?.();
+      pickSource(root, source);
+    }));
+  });
   parts.level.addEventListener("click", () => {
     const sound = parts.ctx.config?.sound;
     if (sound?.level) parts.ctx.openSheet?.({ kind: "trend", entity: sound.level, title: parts.ctx.t("card.pocket.media.level"), digits: 1 });
@@ -177,14 +204,16 @@ export function update(root, ctx) {
   const parts = root._media;
   parts.ctx = ctx;
   setText(parts.title, ctx.t("card.pocket.media.title"));
-  const players = playersOf(ctx.config);
+  const players = playersOf(ctx.config, ctx.hass);
   const chosen = playerOf(parts, ctx);
   parts.pick.hidden = !chosen;
   parts.pick.classList.toggle("single", players.length < 2);
   if (chosen) {
-    setText(parts.pick.querySelector(".name"), chosen.room.name);
-    setAttr(parts.pick, "aria-label", players.length < 2 ? chosen.room.name
-      : ctx.t("card.pocket.media.picker_of", { name: chosen.room.name }));
+    // With one player its area names it; with several (an area may have more than one) its own name.
+    const name = players.length < 2 ? chosen.room.name
+      : ctx.hass?.states?.[chosen.id]?.attributes?.friendly_name || chosen.room.name;
+    setText(parts.pick.querySelector(".name"), name);
+    setAttr(parts.pick, "aria-label", players.length < 2 ? name : ctx.t("card.pocket.media.picker_of", { name }));
   }
 
   const sound = !!parts.sound;
@@ -281,6 +310,12 @@ function togglePower(root) {
   if (player.state.state === "off") {
     if (can(player.state, "turn_on")) send(root, player, "turn_on", {}, { changed: true });
   } else if (can(player.state, "turn_off")) send(root, player, "turn_off", {}, { state: "off" });
+}
+
+function pickSource(root, source) {
+  const player = live(root._media);
+  if (!player || !sourcesOf(player.state).includes(source)) return;
+  send(root, player, "select_source", { source }, { attributes: { source } });
 }
 
 function toggleMute(root) {
@@ -400,9 +435,16 @@ function updatePlayer(parts, ctx, chosen) {
   setAttr(parts.vol, "aria-disabled", String(disabled));
   updateVolume(parts, ctx);
 
+  const sources = gone ? [] : sourcesOf(state);
+  parts.input.hidden = sources.length === 0;
+  parts.input.disabled = disabled;
+  setText(parts.input.querySelector(".k"), ctx.t("card.pocket.media.input"));
+  setText(parts.input.querySelector(".v"), a.source || ctx.t("card.pocket.format.none"));
+  setAttr(parts.input, "aria-label", ctx.t("card.pocket.media.input_of", { name: a.source || ctx.t("card.pocket.format.none") }));
   const line = [];
   if (a.app_name) line.push({ text: a.app_name });
-  if (a.source && a.source !== a.app_name) line.push({ text: a.source });
+  // The source is on the input button when there is one.
+  if (a.source && a.source !== a.app_name && parts.input.hidden) line.push({ text: a.source });
   setLine(parts.line, line);
   const sound = ctx.config?.sound;
   const db = sound?.level ? parseFloat(ctx.hass?.states?.[sound.level]?.state) : NaN;

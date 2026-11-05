@@ -352,7 +352,9 @@
           "sound": "Klang"
         },
         "power_on": "Einschalten",
-        "power_off": "Ausschalten"
+        "power_off": "Ausschalten",
+        "input": "Eingang",
+        "input_of": "Eingang: {name}. Eingang wechseln"
       },
       "sound": {
         "averages": "Mittelwerte",

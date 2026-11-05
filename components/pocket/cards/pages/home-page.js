@@ -47,7 +47,7 @@ const STYLE = `
                              margin: 4px -16px 14px; padding: 0 16px; }
   .home .att::-webkit-scrollbar, .home .strip::-webkit-scrollbar { display: none; }
   /* Equal cells, two per row: four in one row are too narrow for the inside range (21.0–22.0°). */
-  .home .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
+  .home .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); gap: 8px; margin: 4px 0 14px; }
   .home .pill { flex: 0 0 auto; box-sizing: border-box; min-width: 44px; min-height: 44px; margin: 0; padding: 8px 12px;
                 display: flex; gap: 7px; align-items: center; font: inherit; font-size: 12.5px; color: var(--fg);
                 background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
@@ -96,7 +96,7 @@ const STYLE = `
                font-size: 13px; font-weight: 600; }
   .home .sec .all { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; text-align: right; border: 0; background: none;
                     font: inherit; font-size: 13px; font-weight: 400; color: var(--mut); cursor: pointer; }
-  .home .quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .home .quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .home .all-off, .home .rc { box-sizing: border-box; min-height: 64px; margin: 0; padding: 12px; text-align: left;
                               font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
                               border-radius: 18px; cursor: pointer; }

@@ -310,7 +310,7 @@ test("the group tile takes on/off from the group's state: off with a brightness 
 
 test("one square size: two equal columns, a fixed aspect, a lone square does not stretch", () => {
   const css = mount(ctxOf({ routeId: "bedroom" })).querySelector("style").textContent;
-  assert.match(css, /\.squares\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.squares\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(min\(var\(--square-min, 160px\), 100%\), 1fr\)\)/);
   assert.match(css, /\.squares > \*\s*\{[^}]*min-width:\s*0/);
   assert.match(css, /\.room \.sq\s*\{[^}]*aspect-ratio:\s*1 \/ \.62/);
   assert.doesNotMatch(css, /only-child|grid-column/, "no rule widens a lone square");

@@ -352,7 +352,9 @@
           "sound": "Sound"
         },
         "power_on": "Turn on",
-        "power_off": "Turn off"
+        "power_off": "Turn off",
+        "input": "Input",
+        "input_of": "Input: {name}. Change input"
       },
       "sound": {
         "averages": "Averages",

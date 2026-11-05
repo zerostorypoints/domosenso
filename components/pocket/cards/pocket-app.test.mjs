@@ -232,8 +232,9 @@ test("the bar is fixed to the bottom of the screen, its background down over the
   assert.equal(style.bottom, "0px");
   const css = $(card, "style").textContent;
   assert.doesNotMatch(css, /position:\s*sticky/);
-  // Full width, or beside HA's open sidebar on a wide screen.
-  assert.match(css, /nav \{[^}]*left: var\(--mdc-drawer-width, 0px\); right: 0; bottom: 0/);
+  // Over the card's own box (beside HA's sidebar in landscape), full width until measured.
+  assert.match(css, /nav \{[^}]*left: var\(--bar-left, 0px\); width: var\(--bar-width, 100%\); bottom: 0/);
+  assert.match(css, /nav \{[^}]*padding-left: env\(safe-area-inset-left, 0px\)/);
   // The safe area is padding inside the bar: its background reaches the screen's edge.
   assert.match(css, /nav \{[^}]*height:\s*calc\(var\(--bar\) \+ var\(--safe\)\)/);
   assert.match(css, /nav \{[^}]*padding-bottom:\s*var\(--safe\)/);
@@ -793,4 +794,16 @@ test("#/climate is the Climate & air page; the forecast sheet is the shell's, cl
   assert.equal($(card, ".sheet").getAttribute("aria-label"), "Weather");
   await goTo("#/");
   assert.equal($(card, ".sheet-layer").hidden, true);
+});
+
+test("the bar spans the card's measured box: beside HA's sidebar it starts where the sidebar ends", () => {
+  const card = mount();
+  card.getBoundingClientRect = () => ({ left: 256, top: 56, width: 676, height: 374, right: 932, bottom: 430, x: 256, y: 56 });
+  card._placeBar();
+  assert.equal(card.style.getPropertyValue("--bar-left"), "256px");
+  assert.equal(card.style.getPropertyValue("--bar-width"), "676px");
+  card.getBoundingClientRect = () => ({ left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0 });
+  card._placeBar();
+  assert.equal(card.style.getPropertyValue("--bar-left"), "256px", "an unmeasured box keeps the last place");
+  window.dispatchEvent(new window.Event("resize"));
 });

@@ -59,7 +59,7 @@ export const DETAIL_STYLE = `
   .detail .dot.lv-poor { background: var(--bad); }
   .detail .dot.lv-cold { background: var(--cold); }
   .detail .dot.lv-warm { background: var(--warm); }
-  .detail .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .detail .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
 `;
 
 const areaName = (ctx, area) => (area.outside ? ctx.t("card.pocket.area.outside") : area.name);
