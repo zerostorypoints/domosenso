@@ -3,6 +3,13 @@
 What a home needs to know beyond `component.yaml` and the comments in `templates/package.yaml.j2`.
 Breaking changes and the steps for an existing home: [UPGRADE.md](UPGRADE.md).
 
+## The home's rooms (shared home inputs)
+
+With `home_inputs:` in `domosenso.yaml`, the Ramka can leave out `lights`, `climate`, `outside`,
+`air`, `weather`, `covers` and the status contacts and locks: it takes them from the home's rooms,
+as Pocket and the floor plan do (`templates/_home.jinja`). A list the Ramka's inputs give still
+wins. See `UPGRADE.md`, "rooms from the shared home inputs".
+
 ## Setting up the tablet
 
 Step by step, with every Android and Companion app setting and what to switch off, on the tested

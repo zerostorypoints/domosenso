@@ -4,6 +4,7 @@
   (dashboard.<lang>.yaml) by tools/domosenso_render.py: every label is t('ui.…') or an input's
   `label`. Double square brackets are the renderer's; {{ }} would be Home Assistant's.
 #]
+[%- from '_home.jinja' import merged as inputs with context -%]
 [%- from '_air-policy.jinja' import air_limits -%]
 [%- set p = inputs.prefix -%]
 [#- Tested layouts (SPEC-011 section 7.4): the CSS px range of screens each one fits. A screen no
