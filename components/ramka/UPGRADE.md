@@ -3,6 +3,13 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: the kiosk user's person is marked
+
+With `kiosk_user`, the package marks `person.<the kiosk user as a slug>` with `person_role: kiosk`
+(`homeassistant: customize`), so Pocket's Safety leaves the wall tablet's account out of "Who is
+home". Nothing to do; a kiosk user named with characters beyond letters, digits, spaces and hyphens
+may not match its person, which is then simply not marked.
+
 ## Unreleased (P3): thresholds from climate-air (`thresholds: climate-air`, optional)
 
 With `thresholds: climate-air` (and the climate-air component installed), the wall reads climate-air's

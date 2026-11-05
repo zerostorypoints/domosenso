@@ -8,7 +8,7 @@
 //                              restored (no integration provides it any more: attributes.restored) is
 //                              left out, as hidden, disabled, diagnostic and configuration ones are
 //   sirensOf(hass) -> [id]     the listed siren.*
-//   peopleOf(hass) -> [id]     person.*, by name
+//   peopleOf(hass) -> [id]     person.*, by name, never a kiosk's account (person_role: kiosk)
 //   occupiedAreas(hass, config, t) -> [{key, name, ids}]   occupancy and presence sensors that sense
 //                              someone now, grouped by area (lib/controls.js groupedByArea)
 //   issuesOf(hass, config) -> [{kind, id}]   what needs a look, in this order: alarm (on), siren
@@ -43,7 +43,9 @@ export const reporting = (state) => !!state && !GONE.has(state.state);
 export const alarmsOf = (hass) => ofDomain(hass, "binary_sensor",
   (state) => ALARM_CLASSES.includes(state.attributes?.device_class) && !state.attributes?.component);
 export const sirensOf = (hass) => ofDomain(hass, "siren");
-export const peopleOf = (hass) => ofDomain(hass, "person");
+// A wall tablet's account (the Ramka marks its kiosk user's person person_role: kiosk) is no one
+// who lives here.
+export const peopleOf = (hass) => ofDomain(hass, "person", (state) => state.attributes?.person_role !== "kiosk");
 
 export function occupiedAreas(hass, config, t) {
   const ids = ofDomain(hass, "binary_sensor", (state) => PRESENCE_CLASSES.includes(state.attributes?.device_class)

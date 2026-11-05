@@ -4473,3 +4473,13 @@ def test_an_action_of_another_domain_fails(tmp_path):
     inputs["actions"] = [{"entity": "light.kitchen", "label": "Kitchen"}]
     with pytest.raises(dr.RenderError, match="actions: light.kitchen"):
         render(tmp_path, inputs)
+
+
+def test_the_kiosk_users_person_is_marked_a_kiosk(tmp_path):
+    """Pocket's Safety leaves the wall tablet's account out of "Who is home" by this mark."""
+    inputs = {**demo_inputs(), "kiosk_user": "Wall Tablet"}
+    package = render(tmp_path, inputs)["package.yaml"]
+    assert package["homeassistant"]["customize"]["person.wall_tablet"] == {"person_role": "kiosk"}
+    bare = {k: v for k, v in demo_inputs().items() if k != "kiosk_user"}
+    assert "homeassistant" not in render(tmp_path / "bare", bare)["package.yaml"] or \
+        "customize" not in render(tmp_path / "bare2", bare)["package.yaml"].get("homeassistant", {})

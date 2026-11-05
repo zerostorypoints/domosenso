@@ -254,6 +254,7 @@ The level keys and their boundaries are the shared contract
 | Safety is broader than UC10: alarms, siren and who is home beside doors, locks and covers | the home had no contacts or locks yet; what it has (a siren, presence) is safety too |
 | Risky acts confirm in place with a second tap, not a dialog | one hand, no modal to dismiss; the safe direction (lock, stop) acts at once |
 | A component's own flag is never an alarm | climate-air's "bathroom humidity high" carries the moisture class of a leak sensor |
+| A kiosk's account is no one at home (`person_role: kiosk`, set by the Ramka) | HA makes a person for every user, the wall tablet's login too; the component that owns the kiosk marks it |
 
 ## 12. Phones: sizes, platforms and the audit
 
