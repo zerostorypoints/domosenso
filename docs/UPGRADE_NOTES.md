@@ -3,6 +3,20 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: the lock records the home inputs each consumer was rendered from
+
+For a component that uses the home inputs (`uses_home`), `domosenso.lock`, and the dev render
+inventory, record `home_inputs`: the sha256 of the inputs' content as rendered (canonical JSON, so a
+comment or the YAML style is no change).
+- `status` prints `stale <id> (home inputs changed)` for a consumer rendered from other inputs and
+  ends `FAIL <n> stale render(s)`.
+- `deploy --plan` and `--apply` refuse with `FAIL stale render: <id>… (home inputs changed; render
+  it)`.
+- `render` records the current digest.
+
+A lock written before records nothing and is not judged until its next render. What a home does:
+run `domosenso render` once, which also records the digest.
+
 ## Unreleased: home inputs name HA areas; room id `outside` reserved
 
 A room may name its Home Assistant area (`area:`, default the room's id), and so may the `outside`
