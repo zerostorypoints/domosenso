@@ -2,20 +2,27 @@
   The pocket dashboard: one panel view holding one custom:pocket-app card, which draws every screen
   itself (Home, Rooms, a room, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
   by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
-  language) and the ids of climate-air's threshold helpers; it reads their states at run time.
+  language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
+  helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
+  `outside`, reserved) from `outside` and `weather`.
 
   thresholds:
     rooms: {<room id>: {temp_low, temp_high[, humidity_low, humidity_high]}}  per room with climate
+    outside: {temp_low, temp_high[, humidity_low, humidity_high]}   with the home's outside
     air: {<reading>: {fair, poor}}   per air reading any room names, in climate-air's order
 #]
 [%- set fields = ('lights', 'scenes', 'climate', 'air', 'media') -%]
 [%- set readings = ('score', 'co2', 'pm2_5', 'voc', 'nox') -%]
+[#- The comfort helpers' ids per group: each room with climate, then outside. -#]
+[%- macro helper_ids(id, humid) -%]
+[%- set keys = ('temp_low', 'temp_high', 'humidity_low', 'humidity_high') if humid else ('temp_low', 'temp_high') -%]
+[%- set ids = {} -%]
+[%- for key in keys %][% set _ = ids.update({key: 'input_number.climate_air_' ~ id ~ '_' ~ key}) %][% endfor -%]
+[[ ids | yaml ]]
+[%- endmacro -%]
 [%- set comfort = {} -%]
 [%- for room in home.rooms if room.climate is defined -%]
-[%- set keys = ('temp_low', 'temp_high', 'humidity_low', 'humidity_high') if room.climate.humidity is defined else ('temp_low', 'temp_high') -%]
-[%- set ids = {} -%]
-[%- for key in keys %][% set _ = ids.update({key: 'input_number.climate_air_' ~ room.id ~ '_' ~ key}) %][% endfor -%]
-[%- set _ = comfort.update({room.id: ids}) -%]
+[%- set _ = comfort.update({room.id: (room.climate.humidity is defined)}) -%]
 [%- endfor -%]
 [%- set air = {} -%]
 [%- for reading in readings if home.rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list -%]
@@ -33,6 +40,7 @@ views:
 [%- for room in home.rooms %]
           - id: [[ room.id | yaml ]]
             name: [[ room_name(room) | yaml ]]
+            area: [[ room.area | default(room.id) | yaml ]]
 [%- for field in fields if room[field] is defined %]
             [[ field ]]: [[ room[field] | yaml ]]
 [%- endfor %]
@@ -44,13 +52,22 @@ views:
         weather: [[ home.weather | yaml ]]
 [%- endif %]
         thresholds:
-[%- for name, table in (('rooms', comfort), ('air', air)) %]
-[%- if table %]
-          [[ name ]]:
-[%- for key, ids in table.items() %]
+[%- if comfort %]
+          rooms:
+[%- for id, humid in comfort.items() %]
+            [[ id | yaml ]]: [[ helper_ids(id, humid) ]]
+[%- endfor %]
+[%- else %]
+          rooms: {}
+[%- endif %]
+[%- if home.outside is defined %]
+          outside: [[ helper_ids('outside', home.outside.humidity is defined) ]]
+[%- endif %]
+[%- if air %]
+          air:
+[%- for key, ids in air.items() %]
             [[ key | yaml ]]: [[ ids | yaml ]]
 [%- endfor %]
 [%- else %]
-          [[ name ]]: {}
+          air: {}
 [%- endif %]
-[%- endfor %]

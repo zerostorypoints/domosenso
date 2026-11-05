@@ -92,6 +92,8 @@ def test_seed_groups_and_defaults(tmp_path):
         "living_room.humidity": {"living_room_humidity_low": 40, "living_room_humidity_high": 60},
         "bedroom": {"bedroom_temp_low": 20, "bedroom_temp_high": 24},
         "bedroom.humidity": {"bedroom_humidity_low": 40, "bedroom_humidity_high": 60},
+        "outside": {"outside_temp_low": 20, "outside_temp_high": 24},
+        "outside.humidity": {"outside_humidity_low": 40, "outside_humidity_high": 60},
         "air.score": {"score_fair": 80, "score_poor": 60},
         "air.co2": {"co2_fair": 800, "co2_poor": 1200},
     }
@@ -127,7 +129,8 @@ def test_stored_list_is_pruned_to_known_tokens(tmp_path):
     variables = seed["actions"][0]["variables"]
     assert "select('in', ids)" in variables["done"]
     assert "unknown" not in variables["done"]  # 'unknown' is not a token, so the filter drops it
-    assert variables["ids"] == ["living_room", "living_room.humidity", "bedroom", "bedroom.humidity", "air.score", "air.co2"]
+    assert variables["ids"] == ["living_room", "living_room.humidity", "bedroom", "bedroom.humidity",
+                                "outside", "outside.humidity", "air.score", "air.co2"]
     assert seed["actions"][-1]["data"]["value"].startswith("{{ (done + (ids | reject('in', done)")
 
 
@@ -210,3 +213,56 @@ def test_manifest_provides_every_rendered_entity(tmp_path):
     ids += [f"script.{k}" for k in package["script"]]
     assert ids
     assert not [i for i in ids if not matches(i)]
+
+
+# The outside comfort range: helpers like a room's, wider ranges, seeded from the Ramka's widget range.
+
+def test_outside_helpers_with_humidity(tmp_path):
+    numbers = _package(tmp_path)["input_number"]
+    temp = numbers["climate_air_outside_temp_low"]
+    assert temp["name"] == "Outside comfort temperature low"
+    assert (temp["min"], temp["max"], temp["step"], temp["unit_of_measurement"]) == (-40, 50, 0.5, "°C")
+    assert "climate_air_outside_temp_high" in numbers
+    humidity = numbers["climate_air_outside_humidity_high"]
+    assert (humidity["min"], humidity["max"], humidity["step"]) == (0, 100, 1)
+    assert "climate_air_outside_humidity_low" in numbers
+
+
+def test_outside_without_humidity_has_the_temperature_pair_only(tmp_path):
+    home = {"rooms": [{"id": "den", "name": "Den"}], "outside": {"temperature": "sensor.out_t"}}
+    package = _package(tmp_path, home)
+    assert {k for k in package["input_number"]} == {"climate_air_outside_temp_low", "climate_air_outside_temp_high"}
+    assert set(_groups(_seed(tmp_path / "seed", home))) == {"outside"}
+
+
+def test_no_outside_no_outside_helpers(tmp_path):
+    home = {"rooms": [{"id": "den", "name": "Den", "climate": {"temperature": "sensor.t"}}], "weather": "weather.home"}
+    numbers = _package(tmp_path, home)["input_number"]
+    assert not [k for k in numbers if "outside" in k]
+
+
+def test_outside_comfort_defaults_and_reset(tmp_path):
+    inputs = {**INPUTS, "outside_comfort_defaults": {"temp_low": -5, "humidity_high": 90}}
+    groups = _groups(_seed(tmp_path, HOME, inputs))
+    assert groups["outside"] == {"outside_temp_low": -5, "outside_temp_high": 24}
+    assert groups["outside.humidity"] == {"outside_humidity_low": 40, "outside_humidity_high": 90}
+    steps = _package(tmp_path / "reset", HOME, inputs)["script"]["climate_air_thresholds_reset"]["sequence"]
+    reset = {s["target"]["entity_id"]: s["data"]["value"] for s in steps}
+    assert reset["input_number.climate_air_outside_temp_low"] == -5
+    assert reset["input_number.climate_air_outside_humidity_high"] == 90
+
+
+def test_outside_comfort_defaults_outside_helper_range_fail(tmp_path):
+    for key, value in (("temp_low", -45), ("temp_high", 55), ("humidity_low", -1), ("humidity_high", 101)):
+        with pytest.raises(RenderError, match=f"outside_comfort_defaults.{key}.*{value}"):
+            render_component(COMPONENT, {**INPUTS, "outside_comfort_defaults": {key: value}}, tmp_path, ["en"], home=HOME)
+
+
+def test_component_defaults_match_the_ramka_widget_range():
+    import re
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    widgets = (ROOT / "components/ramka/cards/lib/climate-widgets.js").read_text(encoding="utf-8")
+    ramka = dict(re.findall(r"(\w+): (\d+)", re.search(r"export const COMFORT = \{([^}]*)\}", widgets).group(1)))
+    given = manifest["inputs"]["outside_comfort_defaults"]["default"]
+    assert given == {"temp_low": int(ramka["temp_low"]), "temp_high": int(ramka["temp_high"]),
+                     "humidity_low": int(ramka["hum_low"]), "humidity_high": int(ramka["hum_high"])}

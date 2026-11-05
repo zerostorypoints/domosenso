@@ -3,6 +3,14 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: home inputs name HA areas; room id `outside` reserved
+
+A room may name its Home Assistant area (`area:`, default the room's id), and so may the `outside`
+block. The room id `outside` is reserved for the Outside pseudo-area: `render` (and every command
+that loads the home inputs) fails with `home-inputs: rooms: id outside is reserved ...`.
+Home action: rename a room with id `outside`, if any; name `area` where a room's id is not its
+area's id.
+
 ## Unreleased: shared home inputs (`home_inputs`, `uses_home`)
 
 `domosenso.yaml` may name `home_inputs: <path>`, a file of the home's rooms (and `outside`,

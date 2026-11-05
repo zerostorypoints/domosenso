@@ -60,9 +60,10 @@ Rendered from the home inputs; nothing in it is a state.
 | key | holds |
 |---|---|
 | `lang` | the dashboard's language |
-| `rooms` | per room in the home's order: `id`, `name` (in this language), and `lights`, `scenes`, `climate`, `air`, `media` as the home gives them |
-| `outside`, `weather` | as the home gives them; absent when it does not |
+| `rooms` | per room in the home's order: `id`, `name` (in this language), `area` (its HA area: the room's `area`, else its id), and `lights`, `scenes`, `climate`, `air`, `media` as the home gives them |
+| `outside`, `weather` | as the home gives them (`outside` with its `area` when named); absent when it does not. The cards build the **Outside** pseudo-area (id `outside`, which no room may take) from them, listed after the rooms |
 | `thresholds.rooms` | per room with climate: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with a humidity sensor), each a climate-air `input_number` id |
+| `thresholds.outside` | with `outside`: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with outside humidity), climate-air's outside helpers; absent without `outside` |
 | `thresholds.air` | per air reading any room names (score, co2, pm2_5, voc, nox): `fair`, `poor` ids |
 
 ## Levels

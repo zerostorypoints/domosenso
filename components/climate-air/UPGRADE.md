@@ -3,6 +3,18 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.3.0 (unreleased): the outside comfort range
+
+With the home inputs' `outside`, new helpers `input_number.climate_air_outside_{temp_low,temp_high}`
+(and the humidity pair with outside humidity), seeded once (tokens `outside`, `outside.humidity`)
+from `outside_comfort_defaults` (20-24 °C, 40-60 %, the Ramka's widget range) and set by the reset
+script.
+
+### What a home does
+
+- `render` and deploy. A home whose Ramka Outside widget has its own range sets
+  `outside_comfort_defaults` to it before the first deploy (the seed runs once).
+
 ## 0.3.0 (unreleased): comfort and air thresholds
 
 New comfort and air-limit helpers (`provides` in `component.yaml`, feature

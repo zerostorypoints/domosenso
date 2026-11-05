@@ -46,6 +46,13 @@ them nothing below is rendered.
   air limits start at the catalog's per-reading defaults. A seed automation gives each room or
   reading its defaults once, at start; a value a person sets stays, and a room added later is
   seeded without touching the others.
+- **Outside.** With the home inputs' `outside` block, `input_number.climate_air_outside_temp_low` /
+  `_temp_high` (-40 to 50 °C), and `_humidity_low` / `_humidity_high` (0 to 100 %) when outside has
+  a humidity sensor; seed groups `outside` and `outside.humidity`, so `outside` is no room id.
+  They start at `outside_comfort_defaults`: **20-24 °C, 40-60 %**, the Ramka's Temperature widget
+  range (`cards/lib/climate-widgets.js` `COMFORT`), which its Outside widget reads until its own
+  settings set one. A home that set a range on its Ramka Outside widget gives those values in
+  `outside_comfort_defaults` (or sets the helpers once), as the helpers do not read the Ramka.
 - **Air defaults** (fair / poor): score 80 / 60 (lower is worse), co2 800 / 1200, pm2_5 15 / 35,
   voc 150 / 250, nox 20 / 150.
 - **Levels.** The helpers are the shared thresholds; nothing is derived from them here. The cards

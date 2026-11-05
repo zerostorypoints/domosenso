@@ -43,7 +43,7 @@ def test_rooms_follow_the_home_in_order(tmp_path):
     for key in ("lights", "scenes", "climate", "air", "media"):
         assert living[key] == source[key], key
     office = card["rooms"][2]
-    assert office == {"id": "office", "name": "Office", "lights": "light.office"}
+    assert office == {"id": "office", "name": "Office", "area": "office", "lights": "light.office"}
 
 
 def test_outside_and_weather(tmp_path):
@@ -84,6 +84,7 @@ def test_no_humidity_no_humidity_thresholds(tmp_path):
     assert thresholds == {"rooms": {"den": {"temp_low": "input_number.climate_air_den_temp_low",
                                             "temp_high": "input_number.climate_air_den_temp_high"}},
                           "air": {}}
+    assert "outside" not in thresholds
 
 
 def test_title_from_the_inputs(tmp_path):
@@ -109,3 +110,29 @@ def test_ids_that_are_yaml_booleans_stay_strings(tmp_path):
     assert card["rooms"][0]["id"] == "on"
     assert card["weather"] == "no"
     assert "on" in card["thresholds"]["rooms"]
+
+
+def test_room_area_defaults_to_its_id(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["rooms"][1]["area"] = "master_bedroom"
+    rooms = _card(_dashboard(tmp_path, home))["rooms"]
+    assert [r["area"] for r in rooms] == ["living_room", "master_bedroom", "office"]
+
+
+def test_outside_area_passes_through(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["outside"]["area"] = "garden"
+    assert _card(_dashboard(tmp_path, home))["outside"]["area"] == "garden"
+
+
+def test_thresholds_outside_name_the_climate_air_helpers(tmp_path):
+    thresholds = _card(_dashboard(tmp_path))["thresholds"]
+    assert thresholds["outside"] == {
+        key: f"input_number.climate_air_outside_{key}"
+        for key in ("temp_low", "temp_high", "humidity_low", "humidity_high")
+    }
+    home = {"rooms": [{"id": "den", "name": "Den"}], "outside": {"temperature": "sensor.out_t"}}
+    assert _card(_dashboard(tmp_path / "dry", home))["thresholds"]["outside"] == {
+        "temp_low": "input_number.climate_air_outside_temp_low",
+        "temp_high": "input_number.climate_air_outside_temp_high",
+    }

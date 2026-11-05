@@ -51,6 +51,20 @@ def test_duplicate_room_ids_are_refused(tmp_path):
     assert str(exc.value) == "home-inputs: rooms: duplicate id kitchen"
 
 
+def test_room_id_outside_is_reserved(tmp_path):
+    rooms = {"rooms": [{"id": "kitchen", "name": "Kitchen"}, {"id": "outside", "name": "Garden"}]}
+    with pytest.raises(DomosensoError) as exc:
+        load_home_inputs(make_home(tmp_path, rooms))
+    assert str(exc.value) == "home-inputs: rooms: id outside is reserved for the outside area; name the room otherwise"
+
+
+def test_room_and_outside_may_name_an_area(tmp_path):
+    data = {"rooms": [{"id": "kitchen", "name": "Kitchen", "area": "kuchnia"}],
+            "outside": {"temperature": "sensor.t", "area": "garden"}}
+    result = load_home_inputs(make_home(tmp_path, data))
+    assert result["rooms"][0]["area"] == "kuchnia" and result["outside"]["area"] == "garden"
+
+
 def test_invalid_file_is_prefixed(tmp_path):
     with pytest.raises(DomosensoError) as exc:
         load_home_inputs(make_home(tmp_path, {"rooms": [{"name": "No id"}]}))
