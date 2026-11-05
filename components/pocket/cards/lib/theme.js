@@ -11,7 +11,7 @@
 // contrast: var(--primary-background-color, <the pocket's value>) and so on. HA's variables carry
 // only the theme it shows now (hass.themes.darkMode), so a variant forced against it takes the
 // pocket's own values for all its tokens. The level colours (--ok, --warn, --bad, --cold, --warm),
-// --chip, --lamp and --on-warn are always the pocket's own.
+// --lamp and --on-warn are always the pocket's own.
 
 export const BASE = {
   "--bg": "--primary-background-color",
@@ -20,6 +20,7 @@ export const BASE = {
   "--mut": "--secondary-text-color",
   "--line": "--divider-color",
   "--acc": "--primary-color",
+  "--chip": "--secondary-background-color",
 };
 
 // The pocket's own values: the approved mockup's, plus --on-warn (text on a --warn background) and

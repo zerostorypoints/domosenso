@@ -586,3 +586,22 @@ test("snappy through the shell: a tap shows at once on every page's control, the
   assert.ok(lit(officeTile()));
   assert.ok(!card._optimistic.pending("light.office"));
 });
+
+test("a save updates the Settings page in place: the same element, the new choice shown", async () => {
+  let stored = null;
+  const card = mount({ hass: hassOf({ callWS: async (msg) => {
+    if (msg.type === "frontend/get_user_data") return { value: stored };
+    stored = msg.value;
+    return null;
+  } }) });
+  await goTo("#/settings");
+  await tick();
+  const page = $(card, "main > section.settings");
+  assert.ok(page);
+  await card._ctx().saveSettings({ theme: "dark" });
+  assert.equal($(card, "main > section.settings"), page);
+  assert.equal(page.querySelector('.seg button[data-mode="dark"]').getAttribute("aria-checked"), "true");
+  await card._ctx().saveSettings({ bar: ["home", "power", "settings"] });
+  assert.equal($(card, "main > section.settings"), page);
+  assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "power", "settings"]);
+});

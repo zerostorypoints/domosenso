@@ -7,7 +7,8 @@
 //     of its helper (the hass-more-info event), so HA's own dialog changes it;
 //   - About, read-only: the pocket's version, every component the home runs (the attribute
 //     `components` of sensor.domosenso_components, which the domosenso command writes from the
-//     lock), the HA area each pocket area reads, links to HA's area pages and to the catalog.
+//     lock), the HA area each pocket area reads (a link to HA's area page for an administrator,
+//     opened inside HA without a reload), links to the catalog.
 // A change of setting shows at once and is saved through ctx.saveSettings; a save that fails
 // puts the shown value back and toasts (lib/report.js). render() builds the groups once (the
 // comfort and area rows follow the config); update() patches text and state.
@@ -220,6 +221,12 @@ export function render(ctx) {
 
   for (const area of areasOf(ctx.config)) {
     const link = el("a", "row", `<span class="label"><span class="name"></span><small></small></span><span class="go">›</span>`);
+    link.addEventListener("click", (event) => {
+      const href = link.getAttribute("href");
+      if (!href) return;
+      event.preventDefault();
+      openInHa(href);
+    });
     parts.areaLinks.push({ area, link });
     $(".area-map").append(link);
   }
@@ -231,6 +238,15 @@ export function render(ctx) {
 
 // The HA area an area of the pocket reads: a room's `area` (its id when the home names none); the
 // Outside's `outside.area` when the home names one.
+// Goes to a page of Home Assistant's own without a reload, as HA's navigate() does: a new history
+// entry, then location-changed on the window, which HA's router follows.
+export function openInHa(path) {
+  window.history.pushState(null, "", path);
+  const event = new Event("location-changed", { bubbles: true, composed: true });
+  event.detail = { replace: false };
+  window.dispatchEvent(event);
+}
+
 const haAreaOf = (config, area) => (area.outside ? config?.outside?.area : area.area ?? area.id) || null;
 
 function updateComponents(parts, root, ctx) {
@@ -322,9 +338,11 @@ export function update(root, ctx) {
     setText(link.querySelector("small"), !id ? ctx.t("card.pocket.settings.about.no_area")
       : haName ? ctx.t("card.pocket.settings.about.ha_area", { name: haName })
         : ctx.t("card.pocket.settings.about.unknown_area", { id }));
-    if (id) setAttr(link, "href", `${AREA_URL}${encodeURIComponent(id)}`);
+    // HA's area pages are under its settings, which only an administrator may open.
+    const linked = id && hass?.user?.is_admin === true;
+    if (linked) setAttr(link, "href", `${AREA_URL}${encodeURIComponent(id)}`);
     else link.removeAttribute("href");
-    link.querySelector(".go").hidden = !id;
+    link.querySelector(".go").hidden = !linked;
   }
   const catalog = $(".catalog");
   setAttr(catalog, "href", CATALOG_URL);

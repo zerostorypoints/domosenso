@@ -30,6 +30,9 @@ test("the base tokens are HA's variables, with the pocket's value behind, when H
   assert.equal(tokens["--mut"], "var(--secondary-text-color, #9aa1ab)");
   assert.equal(tokens["--line"], "var(--divider-color, #262a31)");
   assert.equal(tokens["--acc"], "var(--primary-color, #5b9bff)");
+  assert.equal(tokens["--chip"], "var(--secondary-background-color, #22262d)");
+  assert.equal(tokensOf("light", light)["--chip"], "var(--secondary-background-color, #eef1f5)");
+  assert.equal(tokensOf("light", dark)["--chip"], "#eef1f5");
   // Levels and the lamp stay the pocket's own.
   assert.equal(tokens["--ok"], TOKENS.dark["--ok"]);
   assert.equal(tokens["--lamp"], TOKENS.dark["--lamp"]);

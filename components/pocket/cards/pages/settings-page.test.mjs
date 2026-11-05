@@ -164,7 +164,7 @@ test("About without the inventory: says so", () => {
 test("About: the HA area each area reads, linked to HA's area page; the catalog's links", () => {
   const cfg = { ...config, rooms: config.rooms.map((r) => (r.id === "office" ? { ...r, area: "study" } : r)),
     weather: "weather.home" };
-  const hass = { ...hassOf(), areas: { living_room: { area_id: "living_room", name: "Lounge" },
+  const hass = { ...hassOf(), user: { is_admin: true }, areas: { living_room: { area_id: "living_room", name: "Lounge" },
     study: { area_id: "study", name: "Study" } } };
   const el = mount(settingsCtx({ cfg, hass }));
   const links = [...el.querySelectorAll(".about .area-map a")];
@@ -185,4 +185,40 @@ test("tap targets of at least 44 px, text of at least 11.5 px", () => {
     assert.match(css, new RegExp(`\\.settings ${sel.replace(".", "\\.")} \\{[^}]*min-height: 44px`), sel);
   }
   for (const m of css.matchAll(/font-size: ([\d.]+)px/g)) assert.ok(Number(m[1]) >= 11.5, m[0]);
+});
+
+test("an administrator's area link opens HA's area page without a reload", () => {
+  const hass = { ...hassOf(), user: { is_admin: true }, areas: { living_room: { name: "Lounge" } } };
+  const el = mount(settingsCtx({ hass }));
+  const link = el.querySelector(".about .area-map a");
+  const changes = [];
+  const onChange = (e) => changes.push([window.location.pathname, e.detail]);
+  window.addEventListener("location-changed", onChange);
+  const before = window.location.pathname;
+  try {
+    const event = new window.MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+    assert.ok(event.defaultPrevented, "no page load");
+    assert.deepEqual(changes, [["/config/areas/area/living_room", { replace: false }]]);
+  } finally {
+    window.removeEventListener("location-changed", onChange);
+    window.history.pushState(null, "", before);
+  }
+});
+
+test("a person who is not an administrator sees the HA area's name without a link", () => {
+  for (const user of [{ is_admin: false }, undefined]) {
+    const hass = { ...hassOf(), user, areas: { living_room: { name: "Lounge" } } };
+    const el = mount(settingsCtx({ hass }));
+    const link = el.querySelector(".about .area-map a");
+    assert.equal(link.hasAttribute("href"), false);
+    assert.ok(link.querySelector(".go").hidden);
+    assert.equal(text(link.querySelector("small")), "Home Assistant area: Lounge");
+    let changed = false;
+    const onChange = () => { changed = true; };
+    window.addEventListener("location-changed", onChange);
+    link.click();
+    window.removeEventListener("location-changed", onChange);
+    assert.equal(changed, false);
+  }
 });

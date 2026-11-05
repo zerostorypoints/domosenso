@@ -194,7 +194,9 @@ class PocketApp extends HTMLElement {
     if (this._root) {
       this._paint();
       this._renderBar();
-      if (this.isConnected) this._route();   // the page shows them too (Settings)
+      // The page shows them too (Settings): an update of the page in place, never a new one, so a
+      // save does not rebuild the page under the finger.
+      if (this.isConnected && this._page && this._pageEl) this._page.update(this._pageEl, this._ctx());
     }
     return settings;
   }
