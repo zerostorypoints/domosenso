@@ -14,7 +14,7 @@ REPO = Path(__file__).resolve().parent.parent
 DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
-COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "gate-remote", "lights", "media", "plants", "ramka", "remote-access", "timers", "weather"]
+COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "gate-remote", "lights", "media", "plants", "pocket", "ramka", "remote-access", "timers", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
          "network-audio-player", "plant-sensor", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
 DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "m5stack-module-cc1101", "mi-flora", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]
@@ -339,6 +339,8 @@ ENTITY_OWNER = {
     "sensor.outside_temperature": "weather", "sensor.outside_humidity": "weather", "weather.forecast_home": "weather",
     "plant.monstera": "plants", "plant.ficus": "plants", "plant.basil": "plants",
     "binary_sensor.balcony_door_contact": None, "lock.front_door": None,
+    "binary_sensor.kitchen_smoke": None, "binary_sensor.bathroom_leak": None, "siren.hall_siren": None,
+    "person.alex": None, "person.sam": None,
     "calendar.family": "calendar",
 }
 DEVICE_ENTITIES = {

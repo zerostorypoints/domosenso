@@ -189,12 +189,15 @@ def test_every_existing_catalog_capability_has_a_canonical_projection_without_op
             'floorplan': {}, 'calendar': {'calendar': 'calendar.family'},
             'weather': {'weather': 'weather.forecast_home'}, 'media': {'media_player': 'media_player.player'},
         }[source.name]
-        out = tmp_path / ('out-' + source.name); render_component(root, inputs, out)
+        # A component that uses the shared home inputs (uses_home) renders with the demo home's.
+        home = ({'home': yaml.safe_load((ROOT / 'examples/demo-home/home.inputs.yaml').read_text())}
+                if manifest.get('uses_home') else {})
+        out = tmp_path / ('out-' + source.name); render_component(root, inputs, out, **home)
         bindings = yaml.safe_load((out / 'assistant-bindings.yaml').read_text())
         artifact = metadata((root, manifest, definitions, bindings))
         assert {x['id'] for x in artifact['definitions']['capabilities']} == {x['id'] for x in definitions['capabilities']}
         total += len(definitions['capabilities'])
-    assert total == 39
+    assert total == 40  # main's 39 and pocket.explain (feature/pocket)
 
 
 def test_catalog_accepts_only_declared_anchor_phrase_lists(component):

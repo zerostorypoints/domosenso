@@ -5,17 +5,16 @@
 import { pointInPolygon, centroid, interiorPoint, splitPolygon, joinPolygons } from "./geometry.js";
 import { language } from "./i18n.js";
 import { rolesOf, categoryById, FALLBACK } from "./categories.js";
+import { DERIVED_PLATFORMS, CARD_TYPE, usable, scanForm, extract } from "./shared.js";
+
+// What other components copy verbatim (lib/shared.js), part of this module's surface as before.
+export { DERIVED_PLATFORMS, usable, scanForm, extract };
 
 export const POINT_CLASSES = ["temperature", "humidity", "illuminance", "moisture", "carbon_dioxide", "pm25"];
-// Integrations whose entities are computed from other entities: they carry a point device_class
-// but are not a sensor in a room, and listed they made the tray too long to use.
-export const DERIVED_PLATFORMS = ["template", "statistics", "min_max", "derivative", "integration",
-  "utility_meter", "filter", "trend", "threshold", "compensation", "group"];
 export const SCHEMA_VERSION = 1;
 const SPREAD_M = 0.3;   // m: the radius sensors put down together are spread on, so none hides another
 const BELOW_M = 0.6;    // m: auto-placed sensors sit this far under the centroid, clear of the labels
 const TALL_M = 2;       // m: ... in a room at least this tall; a lower one has no room for it
-const CARD_TYPE = "custom:floorplan-card";
 const SAME = 1e-9;   // joinPolygons compares corners with this absolute tolerance
 
 // A millimetre, as floorplan_doc.py compares: finer values are drag noise, and a saved plan with
@@ -66,31 +65,6 @@ function isPointEntity(hass, entityId) {
   if (DERIVED_PLATFORMS.includes(hass.entities?.[entityId]?.platform)) return false;
   const cls = hass.states?.[entityId]?.attributes?.device_class;
   return POINT_CLASSES.includes(cls);
-}
-
-// An entity that may count for a device's category: not computed from others (Amendment 3), not a
-// diagnostic or configuration entity, not a group (an entity_id list, e.g. a Hue room or zone).
-function usable(hass, id, reg) {
-  if (id.startsWith("plant.")) return true;
-  if (DERIVED_PLATFORMS.includes(reg.platform) || reg.entity_category || reg.hidden) return false;
-  if (id.startsWith("group.")) return false;
-  return !Array.isArray(hass.states?.[id]?.attributes?.entity_id);
-}
-
-// SPEC-010's scan form of a device or of an entity without one (categories.js). `entryDomains`:
-// config entry id -> integration domain (`config_entries/get`, no admin needed); without it the
-// platforms of a device's entities stand in.
-function scanForm(hass, ids, device, isHub, entryDomains) {
-  const platforms = ids.map((id) => (id.startsWith("plant.") ? "plant" : hass.entities?.[id]?.platform)).filter(Boolean);
-  const fromEntries = (device?.config_entries || []).map((e) => entryDomains[e]).filter(Boolean);
-  return {
-    integrations: [...new Set([...fromEntries, ...platforms])],
-    manufacturer: device?.manufacturer ?? null, model: device?.model ?? null, model_id: device?.model_id ?? null,
-    entity_domains: [...new Set(ids.map((id) => id.split(".")[0]))],
-    device_classes: [...new Set(ids.map((id) => hass.states?.[id]?.attributes?.device_class).filter(Boolean))],
-    entity_names: ids.map((id) => hass.entities?.[id]?.original_name).filter(Boolean),
-    is_hub: isHub,
-  };
 }
 
 // What can be put on the plan (SPEC-028 Amendment 5): every enabled hardware device with a usable
@@ -286,7 +260,27 @@ export function roomOf(doc, floorId, pt) {
   return floor?.rooms.find((r) => pointInPolygon(pt, r.polygon))?.area_id ?? null;
 }
 
-export function roomLabel(room, hass) {
+// The home inputs' room for an HA area (the card option `rooms`, as a host passes the home's
+// rooms: {id, name, area?, climate?}; a room without `area` names its id): null when none.
+export function homeRoom(rooms, areaId) {
+  if (!Array.isArray(rooms) || !areaId) return null;
+  return rooms.find((r) => r && (r.area ?? r.id) === areaId) ?? null;
+}
+
+// A name, or a name per language: HA's language, else en, else the only one.
+function nameIn(name, hass) {
+  if (typeof name === "string") return name;
+  if (!name || typeof name !== "object") return null;
+  const lang = hass?.locale?.language ?? hass?.language;
+  const values = Object.values(name);
+  return name[lang] ?? name.en ?? (values.length === 1 ? values[0] : null);
+}
+
+// A room's name: the home inputs' (decision record of #219, agreement 11), else HA's area name,
+// else the area id (missing: true).
+export function roomLabel(room, hass, rooms) {
+  const own = nameIn(homeRoom(rooms, room.area_id)?.name, hass);
+  if (own) return { text: own, missing: false };
   const name = hass.areas?.[room.area_id]?.name;
   return name ? { text: name, missing: false } : { text: room.area_id, missing: true };
 }
@@ -547,12 +541,3 @@ export function withPlan(config, doc) {
   };
 }
 
-// The plan of the dashboard's floor plan card, or null (floorplan_doc.extract).
-export function extract(config) {
-  for (const view of config?.views || []) {
-    for (const card of view?.cards || []) {
-      if (card?.type === CARD_TYPE) return card.plan && typeof card.plan === "object" ? card.plan : null;
-    }
-  }
-  return null;
-}

@@ -3,6 +3,36 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.3.0 (unreleased): the outside comfort range
+
+With the home inputs' `outside`, new helpers `input_number.climate_air_outside_{temp_low,temp_high}`
+(and the humidity pair with outside humidity), seeded once (tokens `outside`, `outside.humidity`)
+from `outside_comfort_defaults` (20-24 °C, 40-60 %, the Ramka's widget range) and set by the reset
+script.
+
+### What a home does
+
+- `render` and deploy. A home whose Ramka Outside widget has its own range sets
+  `outside_comfort_defaults` to it before the first deploy (the seed runs once).
+- The tokens `outside` and `outside.humidity` add up to 25 characters (with their commas) to the
+  seed list, which an `input_text` holds to 255: a home already near the limit fails `render` with
+  `climate-air: the seed list is <n> characters, input_text holds 255`.
+
+## 0.3.0 (unreleased): comfort and air thresholds
+
+New comfort and air-limit helpers (`provides` in `component.yaml`, feature
+`thresholds`), plus `script.climate_air_thresholds_reset`. They appear once the home names
+`home_inputs`; nothing changes otherwise.
+
+### What a home does
+
+- Nothing, without `home_inputs`. With them, `render` and deploy: the seed automation sets each
+  room's range once at start. Change `comfort_defaults` to move the starting range (it applies to
+  rooms not yet seeded, or after the reset script).
+- A home that rendered the earlier unreleased flags removes the orphaned entities
+  (`binary_sensor.<room>_too_*`, `binary_sensor.<room>_air_poor`, `sensor.climate_attention`) from
+  the entity registry.
+
 ## 0.3.0 (unreleased): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).

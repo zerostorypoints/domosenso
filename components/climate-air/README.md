@@ -33,3 +33,31 @@ What a home needs to know beyond `component.yaml`.
   enable each one first (above).
 - **Outside** comes from a weather entity's current conditions (`outside_weather`). A home with its
   own outdoor sensor sets `outside.temperature` instead; the difference sensor then uses it.
+
+## Thresholds
+
+Needs `home_inputs`: the home names its rooms, each with `climate` (and optionally `air`). Without
+them nothing below is rendered.
+
+- **Helpers.** Per room with climate, `input_number.climate_air_<room>_temp_low` / `_temp_high`
+  (and `_humidity_low` / `_humidity_high` when the room has a humidity sensor); per air reading in
+  use, `input_number.climate_air_<reading>_fair` / `_poor`.
+- **Defaults.** Rooms start at `comfort_defaults` (20-24 °C, 40-60 % unless the home sets them);
+  air limits start at the catalog's per-reading defaults. A seed automation gives each room or
+  reading its defaults once, at start; a value a person sets stays, and a room added later is
+  seeded without touching the others.
+- **Outside.** With the home inputs' `outside` block, `input_number.climate_air_outside_temp_low` /
+  `_temp_high` (-40 to 50 °C), and `_humidity_low` / `_humidity_high` (0 to 100 %) when outside has
+  a humidity sensor; seed groups `outside` and `outside.humidity`, so `outside` is no room id.
+  The helpers' names are English whatever the home's language: the group's name is the literal
+  `Outside` (`Outside comfort temperature low`, ...), where a room's group takes the room's name.
+  They start at `outside_comfort_defaults`: **20-24 °C, 40-60 %**, the Ramka's Temperature widget
+  range (`cards/lib/climate-widgets.js` `COMFORT`), which its Outside widget reads until its own
+  settings set one. A home that set a range on its Ramka Outside widget gives those values in
+  `outside_comfort_defaults` (or sets the helpers once), as the helpers do not read the Ramka.
+- **Air defaults** (fair / poor): score 80 / 60 (lower is worse), co2 800 / 1200, pm2_5 15 / 35,
+  voc 150 / 250, nox 20 / 150.
+- **Levels.** The helpers are the shared thresholds; nothing is derived from them here. The cards
+  that show a reading compute its level: good, fair or poor, and a comfort reading outside its
+  range is poor with a side, low or high.
+- **Reset.** `script.climate_air_thresholds_reset` sets every helper back to its default.

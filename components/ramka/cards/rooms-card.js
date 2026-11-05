@@ -16,6 +16,8 @@
 //   slots: input_number.ramka_climate_slots         # optional, with entity: how many widgets of the
 //                                                   # list show (a number or an entity); the rest
 //                                                   # stay in the list, unseen
+//   comfort: {sensor.<temperature>: {temp_low, temp_high, hum_low?, hum_high?: input_number.*}}  # optional
+//            (P3.3, thresholds: climate-air): a room's range from climate-air's helpers, by its temperature
 //   thresholds: input_boolean.ramka_climate_thresholds  # optional, with entity: while on, the values
 //                                                   # are coloured by their thresholds (below)
 //   air_limits:                                     # optional: the Air page's limits, fair from and
@@ -158,8 +160,15 @@ class RoomsCard extends HTMLElement {
     const own = this._config.neutral_color;
     const neutral = own ? selectedColour(states, own, NEUTRAL) : THRESHOLD.neutral;
     if (w.type === "temperature") {
+      // A room's comfort range: climate-air's helpers when the config maps its temperature sensor to
+      // them (`comfort`, P3.3; one definition with Pocket), else the widget's own, else the default.
+      const helpers = this._config.comfort?.[room.temperature] ?? {};
+      const limit = (key) => {
+        const own = helpers[key] ? Number.parseFloat(states[helpers[key]]?.state) : Number.NaN;
+        return Number.isFinite(own) ? own : w[key] ?? COMFORT[key];
+      };
       const range = (value, lowKey, highKey) =>
-        ({ low, within: neutral, high, null: "" })[band(value, w[lowKey] ?? COMFORT[lowKey], w[highKey] ?? COMFORT[highKey])];
+        ({ low, within: neutral, high, null: "" })[band(value, limit(lowKey), limit(highKey))];
       return [range(this._number(room.temperature), "temp_low", "temp_high"), range(this._number(room.humidity), "hum_low", "hum_high")];
     }
     if (w.type === "air") {

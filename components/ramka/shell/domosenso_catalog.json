@@ -33,6 +33,9 @@
   "plants": {
    "page": true
   },
+  "pocket": {
+   "page": false
+  },
   "ramka": {
    "page": true
   },

@@ -34,6 +34,7 @@ from pathlib import Path
 import yaml
 
 from check_config_parse import NO_JSON, summarize
+from domosenso_cli.home_inputs import stale_consumers
 from domosenso_cli import dev_render, inventory, resources
 from domosenso_cli.build import file_sha, sha256
 from domosenso_cli.errors import DomosensoError
@@ -242,6 +243,10 @@ def dev_renders(home: HomeConfig) -> dict[str, dict]:
 
 def make_plan(home: HomeConfig, lock: Lock, io: TargetIO, existing_resources: list[dict],
               prune: bool = False) -> Plan:
+    # A consumer rendered from older home inputs would deploy files that no longer describe the
+    # home: refused before anything is planned (decision record of #219, H1).
+    if stale := stale_consumers(home, lock):
+        raise DomosensoError(f"stale render: {', '.join(stale)} (home inputs changed; render it)")
     dev = dev_renders(home)
     record, sources, dirty = _carried(home, lock, dev)
     # One call reads the record, hashes what the repository carries and lists both glob sets; only

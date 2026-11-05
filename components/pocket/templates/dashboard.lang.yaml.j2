@@ -1,0 +1,122 @@
+[#
+  The pocket dashboard: one panel view holding one custom:pocket-app card, which draws every screen
+  itself (Home, Areas, an area, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
+  by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
+  language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
+  helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
+  `outside`, reserved) from `outside` and `weather`. With the input `floorplan` the card shows the
+  floorplan component's card (consumed as the element floorplan-card). With the input `sound` Media
+  gets its Sound tab: audio-sensor's music aliases on its meter (the element room-meter-card) and
+  the home's averages (the input `sound_averages`, read only with `sound`). With the input `plants`
+  (the plants component in the home) Plants is on the bar by default.
+
+  thresholds:
+    rooms: {<room id>: {temp_low, temp_high[, humidity_low, humidity_high]}}  per room with climate
+    outside: {temp_low, temp_high[, humidity_low, humidity_high]}   with the home's outside
+    air: {<reading>: {fair, poor}}   per air reading any room names, in climate-air's order
+#]
+[%- set fields = ('lights', 'scenes', 'climate', 'air', 'media') -%]
+[%- set readings = ('score', 'co2', 'pm2_5', 'voc', 'nox') -%]
+[#- The comfort helpers' ids per group: each room with climate, then outside. -#]
+[%- macro helper_ids(id, humid) -%]
+[%- set keys = ('temp_low', 'temp_high', 'humidity_low', 'humidity_high') if humid else ('temp_low', 'temp_high') -%]
+[%- set ids = {} -%]
+[%- for key in keys %][% set _ = ids.update({key: 'input_number.climate_air_' ~ id ~ '_' ~ key}) %][% endfor -%]
+[[ ids | yaml ]]
+[%- endmacro -%]
+[%- set comfort = {} -%]
+[%- for room in home.rooms if room.climate is defined -%]
+[%- set _ = comfort.update({room.id: (room.climate.humidity is defined)}) -%]
+[%- endfor -%]
+[%- set air = {} -%]
+[%- for reading in readings if home.rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list -%]
+[%- set _ = air.update({reading: {'fair': 'input_number.climate_air_' ~ reading ~ '_fair', 'poor': 'input_number.climate_air_' ~ reading ~ '_poor'}}) -%]
+[%- endfor -%]
+title: [[ inputs.title | default('Home') | yaml ]]
+# On a phone (a window up to KIOSK_WIDTH px wide, landscape included) Home Assistant's header is
+# hidden by kiosk-mode (a HACS plugin, the one the Ramka uses; without it the header simply stays):
+# the pocket's own menu button opens HA's sidebar. On a wider screen (a browser, a tablet) HA's
+# header stays as HA draws it.
+kiosk_mode:
+  mobile_settings:
+    hide_header: true
+    custom_width: 932
+views:
+  - title: [[ inputs.title | default('Home') | yaml ]]
+    path: home
+    panel: true
+    cards:
+      - type: custom:pocket-app
+        lang: [[ lang ]]
+        rooms:
+[%- for room in home.rooms %]
+          - id: [[ room.id | yaml ]]
+            name: [[ room_name(room) | yaml ]]
+            area: [[ room.area | default(room.id) | yaml ]]
+[%- for field in fields if room[field] is defined %]
+            [[ field ]]: [[ room[field] | yaml ]]
+[%- endfor %]
+[#- Covers, contacts and locks the room lists first (decision record of #219): an entity, or an
+    entity with its name in this language. -#]
+[%- for kind in ('covers', 'contacts', 'locks') if room[kind] is defined %]
+            [[ kind ]]:
+[%- for item in room[kind] %]
+[%- if item is mapping %]
+              - {entity: [[ item.entity | yaml ]], name: [[ room_name(item) | yaml ]]}
+[%- else %]
+              - [[ item | yaml ]]
+[%- endif %]
+[%- endfor %]
+[%- endfor %]
+[%- endfor %]
+[%- if home.outside is defined %]
+        outside: [[ home.outside | yaml ]]
+[%- endif %]
+[%- if home.weather is defined %]
+        weather: [[ home.weather | yaml ]]
+[%- endif %]
+[%- if inputs.floorplan | default(false) %]
+        # The floorplan component's card (its resource comes with that component): the area pages'
+        # part of the plan and the floor plan view.
+        floorplan: true
+[%- endif %]
+[%- if inputs.plants | default(false) %]
+        # The plants component is in the home: Plants is on the default bar (the page finds every
+        # plant.* itself; a home without the flag still has the page in Settings).
+        plants: true
+[%- endif %]
+[%- if inputs.timers | default([]) %]
+        # The home's own list of timers; without it the card finds the user timers by their role.
+        timers: [[ inputs.timers | list | yaml ]]
+[%- endif %]
+[%- if inputs.sound | default(false) %]
+        # audio-sensor's music level and offset on its own meter (its resource comes with that
+        # component), the home's averages under it.
+        sound:
+          level: sensor.music_level
+          offset: sensor.music_spl_offset
+[%- if inputs.sound_averages | default(none) %]
+[%- for key in inputs.sound_averages if key not in ('leq_1_min', 'leq_15_min', 'leq_1_h') %][[ fail('sound_averages: unknown key ' ~ key ~ ' (leq_1_min, leq_15_min, leq_1_h)') ]][% endfor %]
+          averages: [[ inputs.sound_averages | yaml ]]
+[%- endif %]
+[%- endif %]
+        thresholds:
+[%- if comfort %]
+          rooms:
+[%- for id, humid in comfort.items() %]
+            [[ id | yaml ]]: [[ helper_ids(id, humid) ]]
+[%- endfor %]
+[%- else %]
+          rooms: {}
+[%- endif %]
+[%- if home.outside is defined %]
+          outside: [[ helper_ids('outside', home.outside.humidity is defined) ]]
+[%- endif %]
+[%- if air %]
+          air:
+[%- for key, ids in air.items() %]
+            [[ key | yaml ]]: [[ ids | yaml ]]
+[%- endfor %]
+[%- else %]
+          air: {}
+[%- endif %]

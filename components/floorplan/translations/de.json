@@ -18,6 +18,7 @@
       "loading": "Grundriss wird geladen…",
       "no_plan": "Noch kein Grundriss. Erstellen Sie einen mit dem Skill floorplan-from-image oder mit domosenso floorplan push.",
       "unsupported": "Dieser Grundriss hat ein neueres Format, als diese Karte lesen kann. Aktualisieren Sie die Komponente floorplan.",
+      "no_area": "Dieser Bereich ist nicht im Grundriss.",
       "edit": "Bearbeiten",
       "save": "Speichern",
       "cancel": "Abbrechen",

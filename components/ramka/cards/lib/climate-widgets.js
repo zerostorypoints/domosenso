@@ -100,15 +100,17 @@ export function storedWidget(w, label) {
   return out;
 }
 
-// Where a value sits in a comfort range: "low", "within" or "high"; null without a number.
+// Where a value sits in a comfort range: "low", "within" or "high" (edges within); null without a
+// number, or without both limits as numbers (the shared contract, decision D1: no level, the value
+// still shown; tests/fixtures/assessment.json).
 export function band(value, low, high) {
-  if (!Number.isFinite(value)) return null;
+  if (![value, low, high].every(Number.isFinite)) return null;
   return value < low ? "low" : value > high ? "high" : "within";
 }
 
 // An air reading's level from its two limits, as the air-card reads them: below the first is good,
-// below the second fair, else poor; null without a number.
+// below the second fair, else poor; null without a number, or without both limits as numbers.
 export function level(value, fair, poor) {
-  if (!Number.isFinite(value)) return null;
+  if (![value, fair, poor].every(Number.isFinite)) return null;
   return value < fair ? "good" : value < poor ? "fair" : "poor";
 }

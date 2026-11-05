@@ -1,0 +1,175 @@
+// Small helpers the pages share: patching the DOM without rebuilding it, numbers in the
+// dashboard's language, and the facts about a room both pages show (its lights, how many are on, whether it plays).
+
+import { trendArrow } from "./trend.js";
+
+const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
+const formats = new Map();     // one Intl.NumberFormat per language and number of digits
+const pluralRules = new Map();
+
+// A state without a value to show: HA has none yet (unknown) or cannot reach the device (unavailable).
+export const GONE = new Set(["unavailable", "unknown"]);
+
+// Whether a control can act on an entity. Only `unavailable` (or no entity) blocks: `unknown` is a
+// value not known yet (a cover's position after a restart, a never-run scene, a speaker that has
+// not reported), and Home Assistant still takes the command. Shown values keep using GONE.
+export const operable = (state) => !!state && state.state !== "unavailable";
+
+export function setText(el, text) {
+  if (el.textContent !== text) el.textContent = text;
+}
+
+export function setAttr(el, name, value) {
+  if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+}
+
+export function el(tag, className, html) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (html) node.innerHTML = html;
+  return node;
+}
+
+// grouping: false for readings such as CO2 ppm, shown as 1300 rather than 1,300.
+export function number(ctx, value, digits, { grouping = true } = {}) {
+  const key = `${ctx.lang}/${digits}/${grouping}`;
+  if (!formats.has(key)) {
+    formats.set(key, new Intl.NumberFormat(NUMBER_LOCALES[ctx.lang] ?? "en-GB", {
+      minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: grouping }));
+  }
+  return formats.get(key).format(value);
+}
+
+export function temperature(ctx, value) {
+  return value == null ? ctx.t("card.pocket.format.none")
+    : ctx.t("card.pocket.format.temperature", { value: number(ctx, value, 1) });
+}
+
+export function percent(ctx, value) {
+  return value == null ? ctx.t("card.pocket.format.none")
+    : ctx.t("card.pocket.format.percent", { value: number(ctx, value, 0) });
+}
+
+const READING_DIGITS = { temperature: 1, humidity: 0 };
+
+// A reading's value in words, as a widget or a sheet's row shows it: temperature and humidity as
+// everywhere in the pocket, the others as a whole number with their entity's unit when it has one.
+export function readingText(ctx, reading, value, unit) {
+  if (value == null) return ctx.t("card.pocket.format.none");
+  if (reading === "temperature") return temperature(ctx, value);
+  if (reading === "humidity") return percent(ctx, value);
+  const text = number(ctx, value, READING_DIGITS[reading] ?? 0, { grouping: false });
+  return unit ? ctx.t("card.pocket.trend.value", { value: text, unit }) : text;
+}
+
+// The trend arrow next to a value (lib/trend.js): its glyph, its direction in words for a screen
+// reader, nothing while the direction is not known.
+export function setArrow(node, ctx, direction) {
+  setText(node, trendArrow(direction));
+  node.hidden = !direction;
+  if (direction) setAttr(node, "aria-label", ctx.t(`card.pocket.trend.direction.${direction}`));
+  else node.removeAttribute("aria-label");
+  setAttr(node, "role", "img");
+}
+
+// A stable function that runs fn once on the next animation frame however often it is called
+// before then: many trend answers landing together redraw a widget or a sheet once.
+export function coalesce(fn) {
+  let queued = false;
+  const frame = typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+    ? (f) => window.requestAnimationFrame(f) : (f) => setTimeout(f, 0);
+  return () => {
+    if (queued) return;
+    queued = true;
+    frame(() => { queued = false; fn(); });
+  };
+}
+
+// The plural category of a count in the dashboard's language (one, few, many, other), as
+// Intl.PluralRules names them: a counted text is a group of keys, one per category, and the page
+// looks up t(`<group>.${pluralOf(ctx, n)}`) (a literal group key would not be a text).
+export function pluralOf(ctx, count) {
+  const locale = NUMBER_LOCALES[ctx.lang] ?? "en-GB";
+  if (!pluralRules.has(locale)) pluralRules.set(locale, new Intl.PluralRules(locale));
+  return pluralRules.get(locale).select(count);
+}
+
+// A room's lights: one entity, or a list of entities or {entity, name} (the home inputs, P3).
+export const lightsOf = (room) => [room.lights ?? []].flat()
+  .map((l) => (typeof l === "string" ? l : l?.entity)).filter((id) => typeof id === "string" && id);
+export const isOn = (hass, id) => hass?.states?.[id]?.state === "on";
+
+// The lamps of a room: the members of its light group (the group's entity_id attribute) when the
+// room names one group, else the lights it names. A single light without members has none.
+export function membersOf(hass, room) {
+  const lights = lightsOf(room);
+  if (lights.length !== 1) return lights;
+  const members = hass?.states?.[lights[0]]?.attributes?.entity_id;
+  return Array.isArray(members) ? members.filter((id) => typeof id === "string") : [];
+}
+
+// The one definition of "lights on" (Home's chip, All off, the room strip, the Rooms tab): the
+// lamps of a room are its group's members that are available, else the lights it names; a lamp
+// is counted once however many rooms name it. A group none of whose members is available (a Hue
+// room group can report on while its bulbs are unreachable) is one lamp itself, so the count
+// agrees with the group's own tile.
+export function lampsOf(hass, room) {
+  const available = membersOf(hass, room).filter((id) => {
+    const state = hass?.states?.[id]?.state;
+    return state != null && !GONE.has(state);
+  });
+  return available.length ? available : lightsOf(room);
+}
+
+export const lightsOn = (hass, room) => lightsOnIn(hass, [room]);
+
+export function lightsOnIn(hass, rooms) {
+  const lamps = new Set(rooms.flatMap((room) => lampsOf(hass, room)));
+  return [...lamps].filter((id) => isOn(hass, id)).length;
+}
+
+// A line of texts joined by " · ", each its own span; a part with muted: true (a reading that is
+// unavailable, shown as a dash) gets the muted class. Rebuilt only when a text or flag changes.
+export function setLine(line, parts) {
+  const key = JSON.stringify(parts.map((p) => [p.text, !!p.muted]));
+  if (line._lineKey === key) return;
+  line._lineKey = key;
+  const nodes = [];
+  parts.forEach((part, i) => {
+    if (i > 0) nodes.push(document.createTextNode(" · "));
+    const span = el("span", part.muted ? "muted" : "");
+    span.textContent = part.text;
+    nodes.push(span);
+  });
+  line.replaceChildren(...nodes);
+}
+
+export const playerOf = (room) => [room.media ?? []].flat().find(Boolean);
+export const playing = (hass, room) =>
+  [room.media ?? []].flat().some((id) => id && hass?.states?.[id]?.state === "playing");
+
+// An entity's name for a tile or button inside its room: the friendly name without the room's
+// name in front ("Living room Relax" -> "Relax"), else the object id.
+export function shortName(hass, id, room) {
+  const name = hass?.states?.[id]?.attributes?.friendly_name || id.split(".").pop().replace(/_/g, " ");
+  const prefix = `${room.name} `;
+  const short = name.toLowerCase().startsWith(prefix.toLowerCase()) ? name.slice(prefix.length).trim() : name;
+  return short || name;
+}
+
+// A player's artwork: the image of src, or the music icon in its place while there is none or it
+// failed to load (a stale proxy URL, a lost connection); a new src is tried again.
+export function setArt(img, icon, src) {
+  if (!img._artWired) {
+    img._artWired = true;
+    img.addEventListener("error", () => {
+      img._broken = img.getAttribute("src");
+      img.hidden = true;
+      if (icon) icon.hidden = false;
+    });
+  }
+  if (src) setAttr(img, "src", src);
+  const ok = !!src && src !== img._broken;
+  img.hidden = !ok;
+  if (icon) icon.hidden = ok;
+}
