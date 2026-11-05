@@ -1917,8 +1917,10 @@ automation:
   # 2b. After a start (#52). 1 and 2 fire on changes of presence, and a restart hides one: the radar
   #    restores its state before the automations load, so a frame restored `off` stays dark in a
   #    used room and one restored lit stays lit in an empty one. Once presence is known (a radar
-  #    integration may come up after the start), the same conditions and actions as 1 and 2 run;
-  #    the sleep waits off_delay_s from the start, as if presence had dropped then.
+  #    integration may come up after the start), reapply the Android screen policy even when
+  #    the restored helper already matches it: the OS can retain a different timeout across a
+  #    power loss. Keep an active view; only an off view resumes ambient. Sleep waits off_delay_s
+  #    from the start, as if presence had dropped then.
   - id: [[ p ]]_reconcile_after_start
     alias: [[ named(' reconcile after start') ]]
     description: "After a Home Assistant start: wake or sleep the screen for the presence the radar restored."
@@ -1935,15 +1937,17 @@ automation:
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "on"
-              - condition: state
-                entity_id: input_select.[[ p ]]_mode
-                state: "off"
             sequence:
-              - action: input_select.select_option
-                target:
-                  entity_id: input_select.[[ p ]]_mode
-                data:
-                  option: ambient
+              - if:
+                  - condition: state
+                    entity_id: input_select.[[ p ]]_mode
+                    state: "off"
+                then:
+                  - action: input_select.select_option
+                    target:
+                      entity_id: input_select.[[ p ]]_mode
+                    data:
+                      option: ambient
               - action: script.[[ p ]]_screen_on
           - conditions:
               - condition: state
@@ -1957,11 +1961,6 @@ automation:
                 state: "off"
                 for:
                   seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
-              - condition: not
-                conditions:
-                  - condition: state
-                    entity_id: input_select.[[ p ]]_mode
-                    state: "off"
               - action: timer.cancel
                 target:
                   entity_id: timer.[[ p ]]_controls

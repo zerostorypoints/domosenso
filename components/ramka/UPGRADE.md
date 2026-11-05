@@ -3,6 +3,15 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.15.1 (unreleased)
+
+After Home Assistant starts, radar reconciliation reapplies the actual Android screen policy
+even when the restored mode helper already says the frame is on or off. Android's saved screen
+timeout can disagree with HA's last persisted helper after an interrupted shutdown. Presence
+wakes the screen while preserving an active controls/calendar view; absence still waits the
+configured delay before sleeping it. No new inputs or migration are required. Render and verify
+a restart from a short Android screen timeout with presence detected.
+
 ## 0.15.0 (unreleased)
 
 ### Optional shared timers

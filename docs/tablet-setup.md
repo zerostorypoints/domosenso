@@ -107,3 +107,43 @@ installed, signed in and allowed to deliver its existing screen/launch notificat
 Install and pair Frame separately before selecting it. Render, stage and review the deployment
 plan, then verify a real radar wake restores the chosen app. Do not enable competing native radar
 control when HA already owns sleep and brightness. This does not change any live HA preferences.
+
+### Home Assistant on the tablet
+
+For an on-device HA Server pilot, Frame and Companion remain separate apps. The optional
+[official minimal Companion](https://companion.home-assistant.io/docs/core/android-flavors/)
+uses package `io.homeassistant.companion.android.minimal`. Register its local server at
+`http://127.0.0.1:8123` with a regular kiosk account. Enable `mobile_app` in local HA.
+An existing full Companion can retain its NAS registration while the minimal client serves
+local HA. During isolation, disable the old Android package locally. Removing a server inside
+Companion can revoke its session on that HA.
+
+Name the new device, for example, `Frame local`, then confirm the generated notify service
+and sensor slugs. Put the actual values in this installation's Ramka inputs and render again.
+For example:
+
+```yaml
+tablet_device:
+  notify: notify.mobile_app_frame_local
+  sensors: frame_local
+tablet_wake_package: com.domosenso.frame
+```
+
+Use the installed Frame package for `tablet_wake_package`, including a pilot suffix when
+applicable. Keep Frame as the default Home app and save the classic HA dashboard selection.
+Local HA must receive the radar states directly. Its generated screen scripts then own sleep,
+brightness and the launch of Frame.
+
+In the minimal client's server settings, set **Persistent connection** to **Always** and
+confirm Local Push is connected. Apply the permissions and battery settings from section 3.
+Under **Manage sensors**, enable the listed sensors and enable **Interactive** and
+**Screen off timeout** for verification. Confirm that local HA receives their updates.
+Match the account's display name, language, time format, backend-selected theme and default
+dashboard to the rendered kiosk configuration.
+
+After continuous radar absence for the configured delay, verify an actual screen-off report.
+Approach the tablet, verify radar presence and screen-on, then observe a reading page followed
+by a decoded photo without touching the screen. Repeat after reboot and with USB disconnected.
+Test LAN Wi-Fi with WAN unavailable separately from switching Wi-Fi off. Companion's persistent
+connection can depend on Android reporting an active network even for a loopback server.
+[Local Push requirements](https://companion.home-assistant.io/docs/notifications/notification-local/)
