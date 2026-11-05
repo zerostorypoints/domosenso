@@ -1920,7 +1920,8 @@ automation:
   #    integration may come up after the start), reapply the Android screen policy even when
   #    the restored helper already matches it: the OS can retain a different timeout across a
   #    power loss. Keep an active view; only an off view resumes ambient. Sleep waits off_delay_s
-  #    from the start, as if presence had dropped then.
+  #    from the start, as if presence had dropped then; an arrival interrupts that wait so a
+  #    restored lit helper cannot hide a physically sleeping screen during startup.
   - id: [[ p ]]_reconcile_after_start
     alias: [[ named(' reconcile after start') ]]
     description: "After a Home Assistant start: wake or sleep the screen for the presence the radar restored."
@@ -1932,6 +1933,15 @@ automation:
       - wait_template: "{{ states('[[ radar.presence ]]') in ['on', 'off'] }}"
         timeout: "00:02:00"
         continue_on_timeout: false
+      - if:
+          - condition: state
+            entity_id: [[ radar.presence ]]
+            state: "off"
+        then:
+          - wait_template: "{{ is_state('[[ radar.presence ]]', 'on') }}"
+            timeout:
+              seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
+            continue_on_timeout: true
       - choose:
           - conditions:
               - condition: state
@@ -1954,8 +1964,6 @@ automation:
                 entity_id: [[ radar.presence ]]
                 state: "off"
             sequence:
-              - delay:
-                  seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "off"

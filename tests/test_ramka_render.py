@@ -4338,7 +4338,7 @@ def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
     assert reconcile["triggers"] == [{"trigger": "homeassistant", "event": "start"}]
     assert reconcile["mode"] == "restart"
 
-    wait, choose = reconcile["actions"]
+    wait, absence_wait, choose = reconcile["actions"]
     assert presence in wait["wait_template"] and "'on', 'off'" in wait["wait_template"]
     assert wait["continue_on_timeout"] is False
 
@@ -4351,9 +4351,10 @@ def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
     assert resume["then"] == on["actions"][:-1], "preserve controls/calendar when already active"
     assert screen_on == on["actions"][-1], "always repair the Android screen policy"
 
-    delay, held, *actions = sleep["sequence"]
+    held, *actions = sleep["sequence"]
     assert sleep["conditions"] == [{"condition": "state", "entity_id": presence, "state": "off"}]
-    assert delay["delay"] == off["triggers"][0]["for"], "off_delay_s, counted from the start"
+    assert absence_wait["if"] == sleep["conditions"]
+    assert absence_wait["then"][0]["timeout"] == off["triggers"][0]["for"], "off_delay_s, counted from the start"
     assert held == {"condition": "state", "entity_id": presence, "state": "off", "for": off["triggers"][0]["for"]}
     assert actions == off["actions"], "an off helper does not prove the physical screen is asleep"
 
@@ -4362,7 +4363,7 @@ def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
 def test_start_wakes_present_room_despite_restored_lit_mode(demo, restored_mode):
     """Android can retain a short screen timeout while HA restores an older lit helper."""
     presence = demo_inputs()["radar"]["presence"]
-    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][1]["choose"][0]
+    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
     states = {presence: "on", "input_select.ramka_mode": restored_mode}
     assert all(states[c["entity_id"]] == c["state"] for c in wake["conditions"])
     assert any(s.get("action") == "script.ramka_screen_on" for s in wake["sequence"])
@@ -4370,11 +4371,23 @@ def test_start_wakes_present_room_despite_restored_lit_mode(demo, restored_mode)
 
 def test_start_sleeps_absent_room_despite_restored_off_mode(demo):
     """A restored off helper does not prove that Android's actual screen is asleep."""
-    sleep = automation(demo["package.yaml"], "reconcile_after_start")["actions"][1]["choose"][1]
-    _, held, *actuation = sleep["sequence"]
+    sleep = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][1]
+    held, *actuation = sleep["sequence"]
     assert held["state"] == "off" and "for" in held
     assert not any("condition" in step for step in actuation)
     assert actuation[-1]["action"] == "script.ramka_screen_off"
+
+
+def test_start_absence_wait_is_interrupted_by_arrival(demo):
+    """A sleeping OS and restored ambient helper must wake on an arrival during startup delay."""
+    presence = demo_inputs()["radar"]["presence"]
+    actions = automation(demo["package.yaml"], "reconcile_after_start")["actions"]
+    arrival_waits = [node for node in walk(actions) if presence in node.get("wait_template", "")
+                     and "'on'" in node["wait_template"] and "'off'" not in node["wait_template"]]
+    assert arrival_waits, "a fixed delay misses arrivals while the restored helper already says ambient"
+    wait = arrival_waits[0]
+    assert wait["timeout"] == automation(demo["package.yaml"], "presence_off")["triggers"][0]["for"]
+    assert wait["continue_on_timeout"] is True, "continuous absence still reaches the sleep branch"
 
 
 def test_reconcile_after_start_is_listed_as_provided():

@@ -10,7 +10,9 @@ even when the restored mode helper already says the frame is on or off. Android'
 timeout can disagree with HA's last persisted helper after an interrupted shutdown. Presence
 wakes the screen while preserving an active controls/calendar view; absence still waits the
 configured delay before sleeping it. No new inputs or migration are required. Render and verify
-a restart from a short Android screen timeout with presence detected.
+a restart from a short Android screen timeout with presence detected, including an arrival
+during the initial absence delay. That arrival now interrupts the startup wait and wakes the
+screen immediately rather than leaving the OS asleep behind a restored ambient helper.
 
 ## 0.15.0 (unreleased)
 
