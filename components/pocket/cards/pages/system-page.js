@@ -23,7 +23,7 @@ const STYLE = `
                  display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; }
   .system h3 + .row, .system h3 + div > .row:first-child { border-top: 0; }
   .system button.row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .system .row .label { min-width: 0; overflow-wrap: anywhere; }
+  .system .row .label { flex: 1 1 7em; min-width: 0; overflow-wrap: break-word; }
   .system .row small { display: block; font-size: 12.5px; color: var(--mut); }
   .system .row .v { flex: 0 0 auto; font-weight: 600; text-align: right; }
   .system .lv-fair { color: var(--warn); }

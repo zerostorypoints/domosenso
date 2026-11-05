@@ -29,7 +29,7 @@ const STYLE = `
   .controls .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 4px 8px; }
   .controls .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .controls .views { display: flex; gap: 2px; margin: 0 0 12px; padding: 3px; border-radius: 12px; background: var(--chip); }
-  .controls .views button { flex: 1 1 0; min-height: 40px; margin: 0; padding: 0; border: 0; border-radius: 9px; background: none;
+  .controls .views button { flex: 1 1 0; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 9px; background: none;
                             color: var(--fg); font: inherit; font-size: 14px; cursor: pointer; }
   .controls .views button[aria-selected="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
   .controls h3 { margin: 18px 4px 8px; font-size: 13px; font-weight: 600; color: var(--mut); }

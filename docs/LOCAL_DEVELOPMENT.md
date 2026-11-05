@@ -81,7 +81,9 @@ node tools/dev_home/screenshots.mjs --name review --out .domosenso/shots \
 ```
 
 `--dashboard` picks another dashboard (default `dashboard-pocket-en/home`), `--width`/`--height`
-another device size. The demo sets states without the entity registry and without HA areas, so a
+another device size. `node tools/dev_home/phone_audit.mjs --name review` checks a phone dashboard at eight sizes
+(compact Android to iPhone Pro Max, landscape, 130 % zoom): sideways scroll, targets under 44 px, cut
+text, words split over lines; it ends with `ok` or `FAIL <n> findings` (Pocket's DESIGN.md, section 12). The demo sets states without the entity registry and without HA areas, so a
 screen that finds devices by area (Pocket's area pages, Controls' Status) shows only what the home
 inputs name; kiosk-mode is not installed, so HA's header stays above a phone view.
 

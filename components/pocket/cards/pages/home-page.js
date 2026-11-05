@@ -84,7 +84,7 @@ const STYLE = `
   .home .chip .v.lv-warm { color: var(--warm); }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .art ha-icon[hidden], .home .quick-sec[hidden] { display: none; }
   .home .views { display: flex; gap: 2px; margin: 0 0 12px; padding: 3px; border-radius: 12px; background: var(--chip); }
-  .home .views button { flex: 1 1 0; min-height: 40px; margin: 0; padding: 0; border: 0; border-radius: 9px; background: none;
+  .home .views button { flex: 1 1 0; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 9px; background: none;
                         color: var(--fg); font: inherit; font-size: 14px; cursor: pointer; }
   .home .views button[aria-selected="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
   .home .chips[hidden], .home .sections[hidden] { display: none; }

@@ -138,6 +138,13 @@ const STYLE = `
   .tab ha-icon { --mdc-icon-size: 24px; }
   .tab.active { color: var(--acc); }
   .tab:focus-visible { outline: 2px solid var(--acc); outline-offset: -4px; border-radius: 12px; }
+  /* A phone on its side has little height (under 480 px): the bar is 48 px, the icon beside its
+     label, as iOS's compact tab bar and Android's 48 dp target; the page keeps the rest. */
+  @media (orientation: landscape) and (max-height: 480px) {
+    .app { --bar: 48px; }
+    .tab { flex-direction: row; gap: 6px; padding: 0 4px; font-size: 12.5px; }
+    .tab ha-icon { --mdc-icon-size: 22px; }
+  }
 ${SHEET_STYLE}
 `;
 
