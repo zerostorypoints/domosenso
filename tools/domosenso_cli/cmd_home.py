@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import yaml
 
 from domosenso_cli.home_inputs import stale_consumers
-from domosenso_cli import dev_render, inventory
+from domosenso_cli import dev_render, inventory, private
 from domosenso_cli.build import (
     file_records, file_sha, git_short_head, is_dashboard_template, load_manifest, open_catalog, parse_spec,
     plan_outputs, sha256,
@@ -41,6 +41,10 @@ TOOL_DIR = ".domosenso"
 DECLARATION = """\
 # The home's declaration for `domosenso`: written once by `domosenso init`, then edited by hand
 # and by `domosenso add`. Reference: SPEC-002 section 1.2.
+# `id` names the home's private folder outside this repository, ~/.config/domosenso/homes/<id>/
+# (SPEC-035): `domosenso private adopt <file>` moves a secret there, `domosenso private link` links
+# it into a new checkout or worktree.
+id: {id}
 catalog: {catalog}
 config_dir: home-assistant
 esphome_dir: esphome
@@ -91,6 +95,19 @@ def _init_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--catalog", required=True, metavar="<path or URL>",
                         help="the catalog repository, written to domosenso.yaml as given "
                              "(a relative path is relative to the home)")
+    parser.add_argument("--id", metavar="<slug>",
+                        help="names the home's private folder (default: the home directory's name as a slug)")
+
+
+def _home_id(args: argparse.Namespace) -> str:
+    if args.id is not None:
+        if not COMPONENT_ID.match(args.id):
+            raise DomosensoError(f"{args.id!r} is not an id (lower case, digits and hyphens)")
+        return args.id
+    slug = re.sub(r"[^a-z0-9]+", "-", args.home.name.lower()).strip("-")
+    if not slug:
+        raise DomosensoError(f"no id from the directory name {args.home.name!r}: give --id")
+    return slug
 
 
 def _init_run(args: argparse.Namespace, rep: Reporter) -> int:
@@ -100,8 +117,9 @@ def _init_run(args: argparse.Namespace, rep: Reporter) -> int:
             raise DomosensoError(f"{name} exists: {root / name}")
     if not args.catalog.strip():
         raise DomosensoError("--catalog is empty")
+    home_id = _home_id(args)
     declaration = root / HOME_FILE
-    _write(declaration, DECLARATION.format(catalog=_scalar(args.catalog)), HOME_FILE)
+    _write(declaration, DECLARATION.format(id=home_id, catalog=_scalar(args.catalog)), HOME_FILE)
     try:
         Lock().save(root)
     except OSError as exc:
@@ -415,8 +433,10 @@ def classify(home: HomeConfig, lock: Lock) -> dict[str, str]:
                 elif (
                     _matches(unmanaged, *names_to_try)
                     or (in_config and names_to_try[1] in BUILT_IN_UNMANAGED)
-                    # ESPHome's secrets, read by the device files, git-ignored by the home template
+                    # ESPHome's secrets, read by the device files, git-ignored by the home template, and
+                    # gate-remote's captured codes beside the device files (SPEC-035)
                     or (not in_config and path == home.esphome_dir / "secrets.yaml")
+                    or (not in_config and path.parent == home.esphome_dir and name.endswith(".code.yaml"))
                     or TOOL_DIR in Path(from_root).parts
                 ):
                     kind = "unmanaged"
@@ -442,6 +462,7 @@ def _status_run(args: argparse.Namespace, rep: Reporter) -> int:
         rep.line("integration", name, version, "(manual)")
     _report_outside_ha(home, lock, catalog, rep)
     _check_dashboard_entries(home, lock, rep)
+    private.report(home, rep)
     stale = stale_consumers(home, lock)
     for cid in stale:
         rep.line("stale", cid, "(home inputs changed)")

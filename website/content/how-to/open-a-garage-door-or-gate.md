@@ -117,7 +117,13 @@ gate's code file next to the node's device file in your home's ESPHome directory
 A frame cut by noise, with one value far off the others (such as −126 among thousands), is the
 wrong one to copy; take another repeat. Rounding each value to the handset's grid is optional.
 
-Add `*.code.yaml` to the `.gitignore` of your home's ESPHome directory. The code opens the gate.
+The code opens the gate, so move the file out of the repository into your home's private folder;
+a git-ignored link stays in its place, and a new clone or worktree gets it back with
+`domosenso private link`:
+
+```bash
+uv run --project ~/path/to/domosenso domosenso private adopt esphome/<name>-<slug>.code.yaml
+```
 
 ## 5. Flash the device file and adopt the node
 
@@ -138,6 +144,10 @@ actions:
   - {entity: button.gate_remote_garage, label: Garage, icon: mdi:garage-variant}
 ```
 
+Home Assistant names the button from the node's area, its friendly name and the gate's label:
+`button.gate_remote_garage` for a node without an area, `button.hall_gate_remote_garage` with
+`area: Hall`. Use the id Settings → Entities shows.
+
 The button sits on the controls under the awnings, or in a column of its own without covers. A tap
 asks Home Assistant's confirmation before it acts, so a stray tap on the tablet does not open the
 gate; keep that default for a gate. While the node is unreachable a greyed button shows instead.
@@ -145,9 +155,9 @@ gate; keep that default for a gate. While the node is unreachable a greyed butto
 ## Hints from real installations
 
 - Tested in one home on 5 November 2026 with an 868.3 MHz handset: 75 pulses per frame on a
-  1.016 ms grid, about 9.15 ms between repeats. Two presses gave identical frames, and a press sent
-  from Home Assistant opened the gate with the node in a room of the flat. That test ran on the
-  home's own firmware, the precursor of the component's packages; the packages themselves are
-  config- and compile-checked so far.
+  1.016 ms grid, about 9.15 ms between repeats. Two presses gave identical frames. The home's own
+  firmware, the precursor of the component's packages, opened the gate with a press sent over the
+  native API; the same evening the component's transmit package (0.1.0), pressed from Home Assistant,
+  opened it too, with the node in a room of the flat.
 - The same capture log showed a 4.2 ms pulse once a second from some other transmitter. It was
   harmless.

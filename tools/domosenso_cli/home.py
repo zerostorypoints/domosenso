@@ -50,6 +50,7 @@ class HomeConfig:
     kiosk_users: list[str] = field(default_factory=list)
     custom_integrations: dict[str, str] = field(default_factory=dict)
     home_inputs: Path | None = None
+    id: str | None = None  # names the private folder (SPEC-035)
 
     def catalog_source(self) -> str | Path:
         """A URL as written; a local path resolved against the home root (`catalog:` may be relative)."""
@@ -95,6 +96,7 @@ class HomeConfig:
             kiosk_users=list(data.get("kiosk_users", [])),
             custom_integrations=dict(data.get("custom_integrations", {})),
             home_inputs=root / data["home_inputs"] if "home_inputs" in data else None,
+            id=data.get("id"),
         )
 
 

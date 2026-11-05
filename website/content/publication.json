@@ -112,6 +112,17 @@
       ]
     },
     {
+      "id": "timers",
+      "version": "0.1.0",
+      "tag": "timers/0.1.0",
+      "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+      "limitations": [
+        "Not field-tested: no home has run it yet, and the component’s own notes call this a development source that promises no physical alarm reliability.",
+        "Home Assistant restores active and paused timers after a restart, but it does not replay the timer.finished event for one that ended while it was down; a timer that is idle does not by itself show that it finished.",
+        "The shared alarm sound, timer commands from a native app and the assistant’s timer actions need the separate Frame app with timer support. This version names no minimum app version, so only the helpers and the Ramka’s tile and badge are described here."
+      ]
+    },
+    {
       "id": "weather",
       "version": "0.2.0",
       "tag": "weather/0.2.0",
@@ -158,5 +169,5 @@
       "title": "Ramka photo slideshow"
     }
   ],
-  "documentationCommit": "10364b429c878830af61f3da2256fff98d0dcf84"
+  "documentationCommit": "b6e14f963a161b097976f66491d5b239e69f9739"
 }

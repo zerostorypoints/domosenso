@@ -30,7 +30,7 @@ esphome:
   min_version: 2026.9.0
   project:
     name: domosenso.gate-remote
-    version: 0.1.0  # the manifest's version (catalog_check)
+    version: 0.1.1  # the manifest's version (catalog_check)
   on_boot:
     priority: -100  # after the CC1101's setup, which ends in receive mode
     then:
