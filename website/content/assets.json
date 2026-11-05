@@ -292,5 +292,55 @@
     "credit": "DomoSenso",
     "license": "Apache-2.0",
     "scope": "public-device-guide"
+  },
+  {
+    "path": "/enclosures/m5stack-cc1101-atom-lite/back.png",
+    "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/back.png",
+    "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+    "alt": "The enclosure from the antenna side, with the antenna upright out of the back wall",
+    "kind": "enclosure-preview",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/enclosures/m5stack-cc1101-atom-lite/open.png",
+    "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/open.png",
+    "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+    "alt": "The open enclosure: the CC1101 module lying flat, the orange jumper clamp over the eight housings, and the Atom Lite on its pedestal",
+    "kind": "enclosure-preview",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/enclosures/m5stack-cc1101-atom-lite/exploded.png",
+    "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/exploded.png",
+    "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+    "alt": "The enclosure exploded: the lid with its spring flaps, the jumper clamp, and the base with the module and the Atom wired inside",
+    "kind": "enclosure-preview",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/enclosures/m5stack-cc1101-atom-lite/section.png",
+    "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/section.png",
+    "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+    "alt": "A cut through the enclosure at the clamp: the module at the bottom left, the jumpers running from the housings under the clamp to the Atom under the lid on the right",
+    "kind": "enclosure-preview",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/enclosures/m5stack-cc1101-atom-lite/plate.png",
+    "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/plate.png",
+    "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+    "alt": "The print plate: base, lid and jumper clamp laid out flat for printing",
+    "kind": "enclosure-preview",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
   }
 ]

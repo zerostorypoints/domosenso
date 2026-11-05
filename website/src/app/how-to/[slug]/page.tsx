@@ -7,6 +7,7 @@ import {howTos,howToJsonLd,visibleHowTos,splitLead} from '@/lib/howto';
 import {componentName} from '@/lib/catalog';
 import {metadata as meta} from '@/lib/seo';
 import {PageIntro} from '@/components/site';
+import {ImageParagraph,MarkdownImage} from '@/components/markdown-image';
 type Props={params:Promise<{slug:string}>};
 export const dynamicParams=false;
 export function generateStaticParams(){return visibleHowTos(howTos).map(h=>({slug:h.slug}));}
@@ -25,7 +26,7 @@ export default async function Page({params}:Props){
     {h.branches.map((b,i)=><tr key={i}><td>{b.situation}</td><td>{b.needs}</td><td>{b.wiring}</td><td>{b.supported==='yes'?'Yes':b.supported==='coming-soon'?(b.issue?<a href={b.issue}>Coming soon ↗</a>:'Coming soon'):'No'}</td></tr>)}
    </tbody></table></div>
    {yes.length>0&&<section className="howto-prompt"><h2>Tell your agent</h2>{yes.map((b,i)=><div key={i}>{yes.length>1&&<p className="howto-prompt-for">{b.situation}</p>}<pre className="code"><code>{b.prompt}</code></pre></div>)}</section>}
-   <ReactMarkdown remarkPlugins={[remarkGfm]}>{rest}</ReactMarkdown>
+   <ReactMarkdown remarkPlugins={[remarkGfm]} components={{p:ImageParagraph,img:({src,alt,title})=><MarkdownImage src={src} alt={alt} title={title} fallback={h.title}/>}}>{rest}</ReactMarkdown>
   </article><aside className="article-sidebar">
    {h.components.length>0&&<section><h2>Components</h2>{h.components.map(id=><Link href={`/components/${id}/`} key={id}>{componentName(id)} ↗</Link>)}</section>}
    {h.devices.length>0&&<section><h2>Devices</h2>{h.devices.map(id=><Link href={`/devices/${id}/`} key={id}>{devices.find(d=>d.id===id)?.title??id} ↗</Link>)}</section>}

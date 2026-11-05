@@ -47,6 +47,7 @@ Assistant: decide that deliberately. Rolling codes are out of scope; step 1 tell
 - Eight Dupont jumpers, female at the module's end and male at the Atom's.
 - A USB cable for flashing and a USB power supply for the node.
 - A multimeter with a continuity test, to find the module's pin 1 before power.
+- Optionally, a 3D printer for the enclosure of the 868 MHz module and the Atom (step 7).
 
 **What your agent does, and what you do.** The agent adds the
 [gate-remote component](/components/gate-remote/) to your home, which writes the node's device
@@ -66,9 +67,11 @@ press again.
 
 ## 2. Wire the boards and set the DIP switches
 
-Eight jumpers connect the module to the Atom. The [module's guide](/devices/m5stack-module-cc1101/)
-has the diagram and the pin table: G, 5V, G23, G19, G33, G21, G22 and G25 on the Atom go to the
-module's M-Bus pins 1, 28, 7, 9, 11, 8, 20 and 22.
+Eight jumpers connect the module to the Atom: G, 5V, G23, G19, G33, G21, G22 and G25 on the Atom
+go to the module's M-Bus pins 1, 28, 7, 9, 11, 8, 20 and 22. The pin table is in the
+[module's guide](/devices/m5stack-module-cc1101/).
+
+![The module pin side up, antenna at the top, and the Atom from above: eight wires from G, 5V, G23, G19, G33, G21, G22, G25 to module pins 1, 28, 7, 9, 11, 8, 20, 22](/wiring/m5stack-cc1101-atom-lite.svg)
 
 - Power from the Atom's 5V socket, never 3V3. The module has its own 5 V to 3.3 V regulator; its
   3.3 V pin is not connected to anything.
@@ -81,7 +84,8 @@ module's M-Bus pins 1, 28, 7, 9, 11, 8, 20 and 22.
   must never be switched onto the same pin.
 - Screw the 868 MHz antenna onto the SMA socket before the node transmits.
 - The module's pins are short and Dupont sockets seat only part-way. The node works that way, but
-  an enclosure or a strip of tape that holds the eight housings keeps them from working loose.
+  the enclosure in step 7, or a strip of tape that holds the eight housings, keeps them from
+  working loose.
 
 ## 3. Flash the capture firmware and read the frames
 
@@ -151,6 +155,26 @@ Home Assistant names the button from the node's area, its friendly name and the 
 The button sits on the controls under the awnings, or in a column of its own without covers. A tap
 asks Home Assistant's confirmation before it acts, so a stray tap on the tablet does not open the
 gate; keep that default for a gate. While the node is unreachable a greyed button shows instead.
+
+## 7. Optionally, put the node in a printed enclosure
+
+For the 868 MHz module and the Atom there is a printable three-part box: base, lid and a clamp for
+the jumpers. Two spring flaps in the lid press the clamp onto the eight housings, which keeps them on
+the module's short pins. No supports and no screws; the lid snaps on. The Atom's button sits at the
+bottom of a finger well that a deliberate fingertip reaches and a hand resting on the box does not.
+The antenna stands upright out of the back wall, and a variant of the base has ears for a wall.
+
+![The closed enclosure: a grey box with the DomoSenso.org symbol, vent slots and a ring around the button well on its lid, the USB-C opening on the right and the antenna standing up at the back](/enclosures/m5stack-cc1101-atom-lite/closed.png "Closed")
+![The enclosure from the antenna side, with the antenna upright out of the back wall](/enclosures/m5stack-cc1101-atom-lite/back.png "Antenna side")
+![The open enclosure: the CC1101 module lying flat, the orange jumper clamp over the eight housings, and the Atom Lite on its pedestal](/enclosures/m5stack-cc1101-atom-lite/open.png "Open, the clamp over the jumpers")
+![The enclosure exploded: the lid with its spring flaps, the jumper clamp, and the base with the module and the Atom wired inside](/enclosures/m5stack-cc1101-atom-lite/exploded.png "Exploded: lid, clamp, base")
+![A cut through the enclosure at the clamp: the module at the bottom left, the jumpers running from the housings under the clamp to the Atom under the lid on the right](/enclosures/m5stack-cc1101-atom-lite/section.png "Section through the clamp")
+![The print plate: base, lid and jumper clamp laid out flat for printing](/enclosures/m5stack-cc1101-atom-lite/plate.png "Print plate")
+
+The files are in the [module's guide](/devices/m5stack-module-cc1101/), under Enclosure: Bambu
+Studio projects with the settings applied, STLs for other slicers, the OpenSCAD source, and how to
+print and assemble it. The pictures are renders of the model. It has not been printed yet: the
+dimensions come from M5Stack's drawings, and the model checks its own fits.
 
 ## Hints from real installations
 
