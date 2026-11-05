@@ -242,7 +242,7 @@ def test_loops_follow_the_inputs(demo):
     inputs = demo_inputs()
     dashboard = demo["dashboard.en.yaml"]
     light_tiles = [n for n in walk(dashboard) if n.get("type") == "tile" and str(n.get("entity")).startswith("light.")]
-    assert [t["entity"] for t in light_tiles[::2]] == [light["entity"] for light in inputs["lights"]]
+    assert [t["entity"] for t in light_tiles] == [light["entity"] for light in inputs["lights"]]
     rooms = next(n for n in walk(dashboard) if n.get("type") == "custom:rooms-card")["rooms"]
     assert [r["name"] for r in rooms] == [c["label"] for c in inputs["climate"]]
     awnings = [n["target"]["entity_id"] for n in walk(dashboard)
@@ -1916,6 +1916,55 @@ def visible(conditions, states, missing="unknown") -> bool:
         state = states.get(c["entity"], missing)
         return state in as_list(c["state"]) if "state" in c else state not in as_list(c["state_not"])
     return all(holds(c) for c in conditions or [])
+
+
+@pytest.mark.parametrize("bad", [None, "unknown", "unavailable"])
+def test_controls_missing_dependencies_have_inert_labelled_fallbacks(demo, bad):
+    """Absent bindings must not instantiate native entity cards or leave actions visible."""
+    inputs = demo_inputs()
+    targets = [inputs["media_player"], inputs["calendar"],
+               *(x["entity"] for x in inputs["covers"]), *(x["entity"] for x in inputs["lights"])]
+    states = {"input_select.ramka_mode": "controls", "input_boolean.ramka_controls_plan": "off",
+              "input_boolean.ramka_page_calendar": "on"}
+    if bad is not None:
+        states.update({e: bad for e in targets})
+    for lang in LANGS:
+        cards = [c for s in sections(demo[f"dashboard.{lang}.yaml"])
+                 if visible(s.get("visibility"), states)
+                 for c in s.get("cards", []) if visible(c.get("visibility"), states)]
+        assert not [c for c in cards if c.get("entity") in targets], (lang, bad)
+        labels = [c.get("name", "") for c in cards if c.get("type") == "button"]
+        suffix = translations(lang)["ui.common.unreachable"]
+        for label in [translations(lang)["ui.media.player"], translations(lang)["ui.calendar.button"],
+                      *(x["label"] for x in inputs["covers"]), *(x["label"] for x in inputs["lights"])]:
+            assert f"{label} ({suffix})" in labels, (lang, bad, label)
+        for c in cards:
+            if c.get("type") == "button" and suffix in c.get("name", ""):
+                assert not c.get("entity")
+                for key in ["tap_action", "hold_action", "double_tap_action"]:
+                    assert c[key] == {"action": "none"}
+        # Per-device actions must disappear; aggregate tap buttons enforce actual targets at runtime.
+        assert not [c for c in cards if c.get("action", "").startswith("media_player.")]
+        assert not [c for c in cards if c.get("action", "").startswith("cover.")
+                    and isinstance(c.get("target", {}).get("entity_id"), str)]
+
+
+def test_controls_available_dependencies_keep_native_cards_and_commands(demo):
+    inputs = demo_inputs()
+    targets = [inputs["media_player"], inputs["calendar"],
+               *(x["entity"] for x in inputs["covers"]), *(x["entity"] for x in inputs["lights"])]
+    states = {e: "on" for e in targets}
+    states.update({inputs["media_player"]: "playing", "input_select.ramka_mode": "controls",
+                   "input_boolean.ramka_controls_plan": "off", "input_boolean.ramka_page_calendar": "on"})
+    for lang in LANGS:
+        cards = [c for s in sections(demo[f"dashboard.{lang}.yaml"])
+                 if visible(s.get("visibility"), states)
+                 for c in s.get("cards", []) if visible(c.get("visibility"), states)]
+        assert set(targets) <= {c.get("entity") for c in cards}
+        assert any(c.get("action") == "media_player.media_pause" for c in cards)
+        assert any(c.get("action") == "cover.open_cover" for c in cards)
+        assert any(c.get("action") == "scene.turn_on" for c in cards)
+        assert not [c for c in cards if translations(lang)["ui.common.unreachable"] in c.get("name", "")]
 
 
 def shown_with(view, states, missing="unknown") -> set[str]:

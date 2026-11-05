@@ -724,7 +724,7 @@ views:
             entity: [[ mp ]]
             visibility: &player_on
               - {condition: state, entity: [[ mp ]], state_not: "off"}
-              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+              - {condition: state, entity: [[ mp ]], state_not: [unknown, unavailable]}
           # Everything under the player is one row high so the column fits under the artwork.
           # tap-button-card rather than button cards, which take two rows whatever grid_options
           # say, or tiles, which take half the column at the least.
@@ -745,7 +745,7 @@ views:
               - {condition: state, entity: [[ mp ]], state_not: playing}
             [%- endif %]
               - {condition: state, entity: [[ mp ]], state_not: "off"}
-              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+              - {condition: state, entity: [[ mp ]], state_not: [unknown, unavailable]}
             [%- if key in ('previous', 'next') and inputs.media_service_sensor is defined %]
               # A service that gives the player no skip (Spotify Connect on some players).
               - {condition: state, entity: [[ inputs.media_service_sensor ]], state_not: [[ inputs.media_service_no_skip | default('Spotify') | yaml ]]}
@@ -810,8 +810,9 @@ views:
             grid_options: {columns: 6, rows: 1}
             visibility:
               - {condition: state, entity: [[ mp ]], state_not: "off"}
-              - {condition: state, entity: [[ mp ]], state_not: unavailable}
+              - {condition: state, entity: [[ mp ]], state_not: [unknown, unavailable]}
               - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
+              - {condition: state, entity: [[ calendars[0] ]], state_not: [unknown, unavailable]}
           # Controls on approach (radar) on/off; off means a tap only. Always shown.
           - type: tile
             entity: input_boolean.[[ p ]]_near_enabled
@@ -842,8 +843,21 @@ views:
               - condition: or
                 conditions:
                   - {condition: state, entity: [[ mp ]], state: "off"}
-                  - {condition: state, entity: [[ mp ]], state: unavailable}
+                  - {condition: state, entity: [[ mp ]], state: [unknown, unavailable]}
               - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
+              - {condition: state, entity: [[ calendars[0] ]], state_not: [unknown, unavailable]}
+          - type: button
+            name: [[ twin(t('ui.calendar.button')) ]]
+            icon: mdi:calendar-month
+            show_state: false
+            color: disabled
+            tap_action: {action: none}
+            hold_action: {action: none}
+            double_tap_action: {action: none}
+            grid_options: {columns: 12, rows: 1}
+            visibility:
+              - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
+              - {condition: state, entity: [[ calendars[0] ]], state: [unknown, unavailable]}
           - type: button
             name: [[ inputs.media_turn_on_label | default(t('ui.media.turn_on')) | yaml ]]
             icon: [[ inputs.media_icon | default('mdi:speaker') ]]
@@ -857,16 +871,17 @@ views:
             visibility:
               - {condition: state, entity: [[ mp ]], state: "off"}
           # Off at the mains (or unreachable): nothing to switch on from here.
-          - type: tile
-            entity: [[ mp ]]
+          - type: button
             name: [[ twin(media_label) ]]
-            hide_state: true
+            icon: [[ inputs.media_icon | default('mdi:speaker') ]]
+            show_state: false
             color: disabled
             tap_action: {action: none}
-            icon_tap_action: {action: none}
+            hold_action: {action: none}
+            double_tap_action: {action: none}
             grid_options: {columns: 12, rows: 3}
             visibility:
-              - {condition: state, entity: [[ mp ]], state: unavailable}
+              - {condition: state, entity: [[ mp ]], state: [unknown, unavailable]}
       [%- if timers %]
       - type: grid
         [%- if not preview %]
@@ -902,7 +917,7 @@ views:
             icon_tap_action: {action: none}
             grid_options: {columns: 12, rows: 1}
             visibility:
-              - {condition: state, entity: [[ cover.entity ]], state_not: unavailable}
+              - {condition: state, entity: [[ cover.entity ]], state_not: [unknown, unavailable]}
           [%- for key, icon, action in [('open', 'mdi:arrow-expand-horizontal', 'open_cover'), ('stop', 'mdi:stop', 'stop_cover'), ('close', 'mdi:arrow-collapse-horizontal', 'close_cover')] %]
           - type: custom:tap-button-card
             name: [[ t('ui.covers.' ~ key) | yaml ]]
@@ -912,19 +927,20 @@ views:
             target: {entity_id: [[ cover.entity ]]}
             columns: 4
             visibility:
-              - {condition: state, entity: [[ cover.entity ]], state_not: unavailable}
+              - {condition: state, entity: [[ cover.entity ]], state_not: [unknown, unavailable]}
           [%- endfor %]
           # The same tile greyed out and inert while the device cannot be reached.
-          - type: tile
-            entity: [[ cover.entity ]]
+          - type: button
             name: [[ twin(cover.label) ]]
-            hide_state: true
+            icon: mdi:awning
+            show_state: false
             color: disabled
             tap_action: {action: none}
-            icon_tap_action: {action: none}
+            hold_action: {action: none}
+            double_tap_action: {action: none}
             grid_options: {columns: 12}
             visibility:
-              - {condition: state, entity: [[ cover.entity ]], state: unavailable}
+              - {condition: state, entity: [[ cover.entity ]], state: [unknown, unavailable]}
           [%- endfor %]
           [%- for key, icon, action in [('all_open', 'mdi:arrow-expand-horizontal', 'open_cover'), ('all_close', 'mdi:arrow-collapse-horizontal', 'close_cover')] %]
           - type: custom:tap-button-card
@@ -952,39 +968,39 @@ views:
             name: [[ light.label | yaml ]]
             grid_options: {columns: 6}
             visibility:
-              - {condition: state, entity: [[ light.entity ]], state_not: unavailable}
+              - {condition: state, entity: [[ light.entity ]], state_not: [unknown, unavailable]}
             features:
               - type: light-brightness
           # The same tile greyed out and inert while the device cannot be reached.
-          - type: tile
-            entity: [[ light.entity ]]
+          - type: button
             name: [[ twin(light.label) ]]
-            hide_state: true
+            icon: mdi:lightbulb
+            show_state: false
             color: disabled
             tap_action: {action: none}
-            icon_tap_action: {action: none}
+            hold_action: {action: none}
+            double_tap_action: {action: none}
             grid_options: {columns: 6}
             visibility:
-              - {condition: state, entity: [[ light.entity ]], state: unavailable}
+              - {condition: state, entity: [[ light.entity ]], state: [unknown, unavailable]}
           [%- endfor %]
           # With a scene: one call (a Hue bridge takes one command per second per group, so one
           # scene beats a call per room); without one, light.turn_off on every room.
-          - type: button
+          - type: custom:tap-button-card
             name: [[ t('ui.lights.all_off') | yaml ]]
             icon: mdi:lightbulb-group-off-outline
-            show_state: false
-            tap_action:
-              action: perform-action
+            taps: 1
             [%- if inputs.lights_all_off is defined %]
-              perform_action: scene.turn_on
-              target:
-                entity_id: [[ inputs.lights_all_off ]]
+            action: scene.turn_on
+            target:
+              entity_id: [[ inputs.lights_all_off ]]
             [%- else %]
-              perform_action: light.turn_off
-              target:
-                entity_id: [[ lights | map(attribute='entity') | list | yaml ]]
+            action: light.turn_off
+            target:
+              entity_id: [[ lights | map(attribute='entity') | list | yaml ]]
             [%- endif %]
-            grid_options: {columns: 12, rows: 2}
+            columns: 12
+            rows: 2
       [%- endif %]
 [%- if inputs.floorplan | default(false) and not preview %]
 

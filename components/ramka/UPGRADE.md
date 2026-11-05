@@ -22,6 +22,14 @@ continue ignoring the optional response.
 `tools/check-ramka-startup.sh`, included in the full checks, exercises the rendered actions in
 the pinned HA script engine with a late, permanently unavailable and returning test client.
 
+Controls now show labelled inert buttons when a configured media player, calendar, cover or
+light is absent, unknown or unavailable, instead of native missing-entity warnings. Associated
+per-device actions hide until that dependency returns. Service tap buttons also reject missing
+or unavailable explicit entity targets, including an incomplete group, and update when states
+recover. A present scene with an unknown first-activation timestamp remains usable. Aggregate
+light commands use the same target-aware tap button. No integration or device is added by this
+fallback: missing bindings still need their actual integration before controls work.
+
 ## 0.15.0 (unreleased)
 
 ### Optional shared timers

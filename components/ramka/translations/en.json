@@ -63,7 +63,8 @@
       "not_home": "Away"
     },
     "tap_button": {
-      "hint": "Tap twice"
+      "hint": "Tap twice",
+      "unavailable": "unreachable"
     },
     "plants": {
       "gauge": {

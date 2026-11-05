@@ -11,7 +11,7 @@ function makeCard({ lang = "pl", config = {} } = {}) {
   const card = document.createElement("tap-button-card");
   card.setConfig({ action: "cover.open_cover", target: { entity_id: "cover.awning" }, name: "Open", ...config });
   const calls = [];
-  card.hass = { locale: { language: lang }, callService: (...args) => calls.push(args) };
+  card.hass = { locale: { language: lang }, states: { "cover.awning": { state: "closed" } }, callService: (...args) => calls.push(args) };
   return { card, calls };
 }
 
@@ -39,7 +39,7 @@ test("a configured hint wins over the default", () => {
 
 test("the hint follows the language of the moment, not of setConfig", () => {
   const { card } = makeCard({ lang: "en" });
-  card.hass = { locale: { language: "de" }, callService: () => {} };
+  card.hass = { locale: { language: "de" }, states: { "cover.awning": { state: "closed" } }, callService: () => {} };
   tap(card);
   mock.timers.tick(450);
   assert.equal(nameText(card), "Zweimal tippen");
@@ -106,4 +106,52 @@ test("a press let go early is a tap; a cancelled press does nothing", () => {
 test("a button needs an action or a page to go to", () => {
   const card = document.createElement("tap-button-card");
   assert.throws(() => card.setConfig({ name: "x" }), /action or navigate/);
+});
+
+test("missing, unknown and unavailable explicit targets cannot receive commands", () => {
+  for (const state of [undefined, "unknown", "unavailable"]) {
+    const { card, calls } = makeCard({ config: { taps: 1 } });
+    card.hass = { locale: { language: "en" }, states: state ? { "cover.awning": { state } } : {},
+      callService: (...args) => calls.push(args) };
+    tap(card);
+    assert.equal(calls.length, 0, String(state));
+    assert.equal(card.shadowRoot.querySelector("ha-card").getAttribute("aria-disabled"), "true");
+    assert.match(nameText(card), /Open/);
+    assert.notEqual(nameText(card), "Open", "the unavailable state is labelled");
+  }
+});
+
+test("one missing group member blocks the whole group, then recovery needs no reload", () => {
+  const { card, calls } = makeCard({ config: { taps: 1, target: { entity_id: ["cover.awning", "cover.other"] } } });
+  const hass = { locale: { language: "en" }, states: { "cover.awning": { state: "closed" } },
+    callService: (...args) => calls.push(args) };
+  card.hass = hass;
+  tap(card);
+  assert.equal(calls.length, 0);
+  card.hass = { ...hass, states: { ...hass.states, "cover.other": { state: "open" } } };
+  tap(card);
+  assert.equal(calls.length, 1);
+  assert.equal(nameText(card), "Open");
+  card.hass = hass;
+  tap(card);
+  assert.equal(calls.length, 1, "a later loss blocks again");
+});
+
+test("a present never-activated scene with unknown state is still usable", () => {
+  const { card, calls } = makeCard({ config: { taps: 1, action: "scene.turn_on", target: { entity_id: "scene.all_off" } } });
+  card.hass = { locale: { language: "en" }, states: { "scene.all_off": { state: "unknown" } },
+    callService: (...args) => calls.push(args) };
+  tap(card);
+  assert.deepEqual(calls, [["scene", "turn_on", {}, { entity_id: "scene.all_off" }]]);
+});
+
+test("a target lost between two taps cancels the pending double tap", () => {
+  const { card, calls } = makeCard();
+  tap(card);
+  card.hass = { locale: { language: "en" }, states: {}, callService: (...args) => calls.push(args) };
+  mock.timers.tick(100);
+  tap(card);
+  mock.timers.tick(1600);
+  assert.equal(calls.length, 0);
+  assert.notEqual(nameText(card), "Open");
 });
