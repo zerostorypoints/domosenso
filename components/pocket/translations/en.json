@@ -221,7 +221,8 @@
           "falling": "Falling",
           "steady": "Steady"
         },
-        "on_share": "On {share} of {range}"
+        "on_share": "On {share} of {range}",
+        "measurement": "Measurement"
       },
       "square": {
         "air": {

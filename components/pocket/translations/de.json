@@ -221,7 +221,8 @@
           "falling": "Fallend",
           "steady": "Gleichbleibend"
         },
-        "on_share": "{share} von {range} ein"
+        "on_share": "{share} von {range} ein",
+        "measurement": "Messwert"
       },
       "square": {
         "air": {

@@ -5,9 +5,12 @@
 //       area's reading (lib/areas.js area; reading temperature, humidity, score, co2, pm2_5, voc,
 //       nox): the entity, the title and the area's name, the comfort band and the level limits
 //       (climate-air's helper ids, read at run time); null when the area names no entity for it
+//   readingSpec(ctx, area, reading, entity) -> spec | null   the same for any entity measuring
+//       that reading in the area (a sibling of another reading on the same sensor, lib/measurements.js)
+//   READING_ORDER                     the readings in the Ramka's order
 //   render(ctx, spec) -> HTMLElement,  update(el, ctx)   on the page contract (pages/index.js)
 //
-// spec = {kind: "trend", entity, title, subtitle?, reading?, digits?, timeline?,
+// spec = {kind: "trend", entity, title, subtitle?, reading?, digits?, timeline?, area?,
 //         band?: {low?, high?},                   helper ids: the shaded comfort band (a missing
 //                                                 side runs to the chart's edge)
 //         level?: {kind: "range", low, high} | {kind: "rising" | "falling", fair, poor}}   helper ids
@@ -28,6 +31,10 @@
 // state muted, unavailable or unknown left empty; the value is the state as Home Assistant words
 // it, and the note how long it was on in the period.
 //
+// The sheet is the sensor's, not only the reading's: when the entity's device measures more than
+// one thing (lib/measurements.js), the title is a drop-down of its measurements, the one the sheet
+// was opened for chosen; a pick shows that measurement in the same sheet, on the same period.
+//
 // In a dashboard (Home Assistant's card helpers, lib/ha-chart.js) the chart itself is Home
 // Assistant's own card, as on the Ramka: history-graph, or statistics-graph with the mean and its
 // min / max for 7 d and 30 d of a sensor with statistics; one card per range, made when the range is
@@ -39,6 +46,7 @@ import { comfortOf } from "./areas.js";
 import { RANGES, STATE_RANGES, seriesOf, statesOf } from "./history.js";
 import { sensorValue } from "./sensors.js";
 import { haChartConfig, haCharts, mountHaChart } from "./ha-chart.js";
+import { measurementsOf } from "./measurements.js";
 import { formatDate } from "./i18n.js";
 import { el, setAttr, setText, number, temperature, percent } from "./page-kit.js";
 
@@ -51,11 +59,20 @@ const DIGITS = { temperature: 1, humidity: 0, score: 0, co2: 0, pm2_5: 0, voc: 0
 
 const COMFORT = { temperature: ["temp_low", "temp_high"], humidity: ["humidity_low", "humidity_high"] };
 const AIR = { score: "falling", co2: "rising", pm2_5: "rising", voc: "rising", nox: "rising" };
+export const READING_ORDER = ["temperature", "humidity", "score", "co2", "pm2_5", "voc", "nox"];
 
 export const TREND_STYLE = `
   .trend { padding-bottom: 4px; }
   .trend .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   .trend .title { font-size: 17px; font-weight: 600; }
+  .trend .title[hidden], .trend .pick[hidden] { display: none; }
+  /* The sensor's measurements: a native drop-down (the phone's own picker), dressed as the title. */
+  .trend .pick { position: relative; display: inline-flex; align-items: center; min-width: 0; margin: -10px 0 -10px -4px; }
+  .trend .pick select { appearance: none; -webkit-appearance: none; min-height: 44px; max-width: 100%; margin: 0;
+                        padding: 0 30px 0 4px; border: 0; border-radius: 10px; background: none; color: var(--fg);
+                        font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+  .trend .pick select:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
+  .trend .pick ha-icon { position: absolute; right: 4px; pointer-events: none; color: var(--mut); --mdc-icon-size: 20px; }
   .trend .where, .trend .note, .trend .axis { font-size: 12.5px; color: var(--mut); }
   .trend .where { text-align: right; overflow-wrap: anywhere; }
   .trend .now { margin-top: 6px; }
@@ -91,11 +108,14 @@ export const TREND_STYLE = `
 
 export function trendSpec(ctx, area, reading) {
   if (!area) return null;
+  return readingSpec(ctx, area, reading, AIR[reading] ? area.air?.[reading] : area.climate?.[reading]);
+}
+
+export function readingSpec(ctx, area, reading, entity) {
+  if (!area || !entity) return null;
   const airKind = AIR[reading];
-  const entity = airKind ? area.air?.[reading] : area.climate?.[reading];
-  if (!entity) return null;
   const spec = {
-    kind: "trend", entity, reading,
+    kind: "trend", entity, reading, area: area.id,
     title: ctx.t(`card.pocket.trend.reading.${reading}`),
     subtitle: area.outside ? ctx.t("card.pocket.area.outside") : area.name,
   };
@@ -119,10 +139,20 @@ export function trendSpec(ctx, area, reading) {
 
 export function render(ctx, spec) {
   const root = el("div", "trend");
+  build(root, ctx, spec, DEFAULT_RANGE);
+  return root;
+}
+
+// The sheet's content for one spec, built into root; a pick of another measurement builds it again
+// (the charts of the one before dropped), on the period shown when it has that period.
+function build(root, ctx, spec, range) {
+  for (const entry of Object.values(root._trend?.ha?.charts ?? {})) entry.chart.drop();
+  const measurements = measurementsOf(ctx, spec);
+  const ranges = spec.timeline ? STATE_RANGES : RANGE_IDS;
   root.innerHTML = `<style>${TREND_STYLE}</style>
-    <div class="row"><span class="title"></span><span class="where"></span></div>
+    <div class="row"><span class="title"></span><label class="pick" hidden><select></select><ha-icon icon="mdi:chevron-down"></ha-icon></label><span class="where"></span></div>
     <div class="row now"><span class="big"></span><span class="note"></span></div>
-    <div class="seg" role="group">${(spec.timeline ? STATE_RANGES : RANGE_IDS).map((id) => `<button type="button" data-range="${id}"></button>`).join("")}</div>
+    <div class="seg" role="group">${ranges.map((id) => `<button type="button" data-range="${id}"></button>`).join("")}</div>
     <div class="chart">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" hidden>
         <rect class="band" x="0" width="${W}" hidden></rect>
@@ -134,8 +164,9 @@ export function render(ctx, spec) {
     <div class="axis"><span class="from"></span><span class="to"></span></div>
     <div class="ha-chart" hidden></div>`;
   const parts = {
-    spec, ctx, range: DEFAULT_RANGE, data: {}, chartKey: null,
+    spec, ctx, range: ranges.includes(range) ? range : DEFAULT_RANGE, data: {}, chartKey: null, measurements,
     title: root.querySelector(".title"), where: root.querySelector(".where"),
+    pick: root.querySelector(".pick"), select: root.querySelector(".pick select"),
     big: root.querySelector(".big"), note: root.querySelector(".note"),
     seg: root.querySelector(".seg"), buttons: [...root.querySelectorAll(".seg button")],
     svg: root.querySelector("svg"), band: root.querySelector(".band"), line: root.querySelector(".line"),
@@ -156,10 +187,23 @@ export function render(ctx, spec) {
     root.querySelector(".axis").hidden = true;
     parts.ha.host.hidden = false;
   }
+  if (measurements.length) {
+    parts.title.hidden = true;
+    parts.pick.hidden = false;
+    for (const m of measurements) {
+      const option = document.createElement("option");
+      option.value = m.entity;
+      parts.select.append(option);
+    }
+    parts.select.value = spec.entity;
+    parts.select.addEventListener("change", () => {
+      const next = parts.measurements.find((m) => m.entity === parts.select.value);
+      if (next && next.entity !== parts.spec.entity) build(root, parts.ctx, next.spec, parts.range);
+    });
+  }
   root._trend = parts;
   load(root, parts);
   update(root, ctx);
-  return root;
 }
 
 // Fetches the current range once per sheet; a switch back shows what was fetched, and tries again
@@ -189,6 +233,10 @@ export function update(root, ctx) {
   const { spec } = parts;
   const { hass } = ctx;
   setText(parts.title, spec.title ?? "");
+  if (parts.measurements.length) {
+    setAttr(parts.select, "aria-label", ctx.t("card.pocket.trend.measurement"));
+    [...parts.select.options].forEach((option, i) => setText(option, parts.measurements[i].label));
+  }
   setText(parts.where, spec.subtitle ?? "");
   setAttr(parts.seg, "aria-label", ctx.t("card.pocket.trend.period"));
   for (const button of parts.buttons) {

@@ -86,12 +86,12 @@ test("every row opens its sheet: a number its trend, an on/off sensor its timeli
   assert.ok(rows.every((row) => row.tagName === "BUTTON"));
   rows[2].click();
   assert.deepEqual(ctx.sheets, [{ kind: "trend", entity: "sensor.living_room_temperature", title: "Temperature",
-    subtitle: "Living room", reading: "temperature" }]);
+    subtitle: "Living room", reading: "temperature", area: "living_room" }]);
   rows[1].click();
   assert.equal(ctx.sheets[1].reading, "humidity");
   rows[0].click();
   assert.deepEqual(ctx.sheets[2], { kind: "trend", entity: "binary_sensor.door", title: "Door", subtitle: "Living room",
-    timeline: true });
+    timeline: true, area: "living_room" });
 });
 
 test("an update patches the values in place; a new entity rebuilds the rows", () => {
