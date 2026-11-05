@@ -43,7 +43,7 @@ home's own, edited by hand), validated by `schemas/home-inputs.schema.json`:
 ```yaml
 rooms:                        # the order is the order everywhere (swipes, lists)
   - id: living_room
-    name: {en: Living room, pl: Salon}
+    name: {en: Living room, de: Wohnzimmer}
     area: living_room         # the HA area the room reads (default: its id)
     lights: light.living_room # a group; members are read at run time
     scenes: [scene.living_room_relax]
