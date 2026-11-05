@@ -178,3 +178,12 @@ def test_consumes_the_room_meter_card_and_the_music_aliases():
     assert "cards/room-meter-card.js" in audio["artifacts"]["dashboard_cards"]
     provided = {e["id"] for e in audio["provides"]["entities"]}
     assert {"sensor.music_level", "sensor.music_spl_offset"} <= provided
+
+
+def test_plants_flag_only_with_the_input(tmp_path):
+    assert _card(_dashboard(tmp_path / "with"))["plants"] is True, "the demo home has the plants component"
+    card = _card(_dashboard(tmp_path / "without", inputs={**INPUTS, "plants": False}))
+    assert "plants" not in card
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    assert manifest["inputs"]["plants"]["default"] is False
+    assert {"component": "plants", "id": "plant.<plant>"} in manifest["consumes"]

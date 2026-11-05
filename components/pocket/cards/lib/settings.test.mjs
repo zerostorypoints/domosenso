@@ -116,3 +116,11 @@ test("the media player: a stored string is kept, anything else is dropped", asyn
   assert.equal(saved.mediaPlayer, "media_player.den");
   assert.deepEqual(hass.store["domosenso-pocket"], { theme: "dark", mediaPlayer: "media_player.den" });
 });
+
+test("a home's default bar is used while nothing is stored, never over a stored one", async () => {
+  const bar = ["home", "areas", "climate", "plants", "settings"];
+  assert.deepEqual(withDefaults({}, bar).bar, bar);
+  assert.deepEqual(withDefaults({ bar: ["power"] }, bar).bar, ["power"]);
+  assert.deepEqual((await loadSettings(undefined, bar)).bar, bar);
+  assert.deepEqual((await readSettings(hassWith(), bar)).bar, bar);
+});

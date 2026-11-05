@@ -7,6 +7,8 @@
 // hidden while the area has no sensor.
 //
 //   renderSensors(ctx, area) -> {el, update(ctx)}
+//   sensorSpec(ctx, id, name, where) -> spec   the trend sheet of one sensor (a timeline when it
+//       has no number)
 //
 // The rows are rebuilt only when the entities or their categories change; update() patches the
 // values and the words.
@@ -39,8 +41,9 @@ export const SENSOR_STYLE = `
 
 const READINGS = { temperature: "temperature", humidity: "humidity" };
 
-// The trend sheet's spec for one sensor: its name, the area, and the digits its state shows.
-function sensorSpec(ctx, id, name, where) {
+// The trend sheet's spec for one sensor: its name, the area, and the digits its state shows (the
+// Power and Plants pages open their rows' trends with it too).
+export function sensorSpec(ctx, id, name, where) {
   const state = ctx.hass?.states?.[id];
   if (!isNumeric(ctx.hass, id)) return { kind: "trend", entity: id, title: name, subtitle: where, timeline: true };
   const reading = READINGS[state?.attributes?.device_class];

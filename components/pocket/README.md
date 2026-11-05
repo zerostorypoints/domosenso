@@ -54,6 +54,40 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
     shows audio-sensor's own live meter (`room-meter-card` on `sensor.music_level` and
     `sensor.music_spl_offset`) and, with `sound_averages`, the home's Leq averages (1 min, 15 min,
     1 h), each opening its trend. Media's source line then shows the level now.
+- **Power** (`#/power`, a bar item each person may turn on in Settings, off by default; needs no
+  input): every `sensor` of device class `power`, `apparent_power`, `power_factor`, `energy`,
+  `current` or `voltage`, found the way an area's All sensors are (Home Assistant's registries: the
+  entity's area, else its device's; hidden, disabled, diagnostic and configuration entities and a
+  disabled device's left out), grouped by area (the pocket's areas first, then Home Assistant's
+  other areas, then "No area") and by device. Each row shows the name without the device's in
+  front, the value as Home Assistant words it and the last hour's trend arrow (none for `energy`,
+  a counter that only rises), and opens its trend. Two squares: **Now**, the sum of the power
+  meters that measure separate loads, opening a sheet of those meters, and **Today**, today's kWh
+  from Home Assistant's Energy dashboard (`energy/get_prefs`: the grid's imports, else the
+  individual devices not included in another one's; `recorder/statistics_during_period`, period
+  day, change, in kWh, from local midnight), opening the import's trend; hidden when the home has
+  no energy preferences. The rule of Now, stated on its sheet: device class `power` in W / kW / MW
+  only; one sensor per device, its highest reading (a total and its channels or phases would count
+  twice); a device connected through another device (`via_device_id`) whose own power is counted
+  is left out; an entity without a device counts on its own. Two meters in series that Home
+  Assistant does not link (a mains meter and a plug behind it) are both counted. In the catalog a
+  meter is so far the `mains-meter` kind (power and voltage, a Shelly PM Mini tested), the `mains`
+  input of media and the Ramka; the Power page reads it, and any other meter, from the registries.
+- **Plants** (`#/plants`; on the default bar, in Media's place, with the input `plants`: the plants
+  component in the home; else a bar item each person may turn on): every `plant.*` with its
+  readings, grouped by area, the area whose plant needs most first, plants worst first, and a line
+  with how many need something. A plant's readings (moisture, fertiliser, light, temperature,
+  battery) come from its sensors (the plant's `sensors` attribute, else
+  `sensor.<plant>_<moisture|conductivity|illuminance|temperature|battery>`, the plants component's
+  entities), else its attributes, each in its tone against the plant's bands (`domosenso_bands`,
+  which the plants component writes, over the component's defaults); a reading with a sensor
+  opens its trend. What a plant needs is said in plain words: thirsty, too wet, needs light, too
+  much light, cold, warm, needs fertiliser, too much fertiliser, low battery (below 15 %); light is
+  judged on the day's brightest reading (`sensor.<plant>_illuminance_max_24h`, else
+  `max_brightness`), never on the dark of the night, and the plant integration's own `problem`
+  adds its reasons too. The area is the plant's own in the registry, else its sensors' device's
+  (a Mi Flora), else the plants component's room matched by name to a pocket room or an HA area.
+  With no plant the page says so.
 - **Widgets**: squares in a grid (an area's, the Areas tab's) share one size: equal columns and
   rows, a fixed aspect (a lone square does not stretch); no text is ellipsized anywhere, a long
   name wraps and a big value shrinks with its square. Each shows a
@@ -71,8 +105,9 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
   close button, a tap above it or the phone's Back.
 - **Bottom bar**: fixed to the bottom of the screen (beside HA's sidebar on a wide screen), its
   background down over the home indicator. Home and Settings always, the person's chosen pages
-  between them, at most five; by default Home, Areas, Climate, Media, Settings. Media, Power and
-  Plants are "coming next".
+  between them, at most five; by default Home, Areas, Climate, Media, Settings, and with the input
+  `plants` Home, Areas, Climate, Plants, Settings (Media is a tap away on Home's now playing); a
+  person's own choice in Settings wins.
 - **Settings** (`#/settings`): Appearance (System / Light / Dark), the bar's pages (at most three
   besides Home and Settings), the comfort ranges and air limits (each value opens Home Assistant's
   dialog of its climate-air helper, which changes it), and About: the pocket's version, every
@@ -138,6 +173,8 @@ default dashboard in the user's profile).
 - **audio-sensor** (optional, with the input `sound: true`): its music aliases and its
   `room-meter-card`, whose Lovelace resource comes with that component. The averages
   (`sound_averages`: `leq_1_min`, `leq_15_min`, `leq_1_h`) are the home's own sensors in dB SPL.
+- **plants** (optional, with the input `plants: true`): Plants on the default bar. The page reads
+  every `plant.*` whether or not the flag is set.
 - **climate-air** for the levels: its threshold helpers (comfort range per room with climate, air
   limits per reading). Without it the card shows readings but no level.
 - A YAML dashboard per language in `configuration.yaml`, at the paths you choose
@@ -157,6 +194,7 @@ Rendered from the home inputs; nothing in it is a state.
 | `thresholds.outside` | with `outside`: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with outside humidity), climate-air's outside helpers; absent without `outside` |
 | `thresholds.air` | per air reading any room names (score, co2, pm2_5, voc, nox): `fair`, `poor` ids |
 | `floorplan` | `true` with the input `floorplan`: the home has the floorplan component, whose card the area pages and the floor plan view use; absent otherwise |
+| `plants` | `true` with the input `plants`: the home has the plants component, so Plants is on the default bar; absent otherwise |
 | `sound` | with the input `sound`: `level` (`sensor.music_level`), `offset` (`sensor.music_spl_offset`) and `averages` (the input `sound_averages`); absent otherwise |
 
 ## Levels

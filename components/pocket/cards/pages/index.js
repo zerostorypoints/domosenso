@@ -21,30 +21,31 @@
 //   openSheet(spec, {stack?})  opens the shell's bottom sheet (lib/sheet.js) of spec.kind, over
 //             the page: {kind: "trend", entity, title, ...} (lib/trend-sheet.js trendSpec builds
 //             one), "checks", "air", "lights" (lib/detail-sheets.js), "forecast"
-//             (lib/weather.js forecastSpec), "layers" (lib/layer-sheet.js layerSpec), "players"
+//             (lib/weather.js forecastSpec), "power" (pages/power-page.js powerSpec: the meters the
+//             Now square adds up), "layers" (lib/layer-sheet.js layerSpec), "players"
 //             (lib/player-sheet.js playerSpec); stack: on top of the open sheet, Back returns to it
 //   closeSheet()  closes the open sheet as the person would (a pick in the players sheet)
 // The shell keeps the page's element until the route changes, so a page may hold its own state
 // in it between updates.
 
 import * as home from "./home-page.js";
-import * as placeholder from "./placeholder.js";
 import * as areas from "./areas-page.js";
 import * as area from "./area-page.js";
 import * as settings from "./settings-page.js";
 import * as climate from "./climate-page.js";
 import * as floorplan from "./floorplan-page.js";
 import * as media from "./media-page.js";
+import * as power from "./power-page.js";
+import * as plants from "./plants-page.js";
 
-// Pages not built yet say so (placeholder.js) until their task builds them.
 export const pages = {
   home,
   areas,
   area,
   climate,
   media,
-  power: placeholder,
-  plants: placeholder,
+  power,
+  plants,
   settings,
   floorplan,
 };

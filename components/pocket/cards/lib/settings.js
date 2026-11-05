@@ -2,8 +2,11 @@
 // commands frontend/get_user_data and frontend/set_user_data, key KEY): they follow the person
 // to every phone and browser they sign in on, and nobody else sees them. Plain ES module: no DOM.
 //
-//   loadSettings(hass) -> Promise<settings>          DEFAULTS merged under what is stored
-//   saveSettings(hass, patch) -> Promise<settings>   merges patch into the stored value, saves it
+//   loadSettings(hass, bar?) -> Promise<settings>          DEFAULTS merged under what is stored
+//   saveSettings(hass, patch, bar?) -> Promise<settings>   merges patch into the stored value, saves it
+//   withDefaults(stored, bar?) -> settings
+// bar: the home's default bar (lib/router.js defaultBar: Plants in a home with plants), used while
+// the person has not chosen one; DEFAULTS.bar when not given.
 //
 // Fields:
 //   bar     the page ids on the bottom bar (lib/router.js barTabs: Home and Settings always)
@@ -31,9 +34,9 @@ const THEMES = ["system", "light", "dark"];
 const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
 
 // DEFAULTS with the stored fields over them; a stored field of the wrong type is ignored.
-export function withDefaults(stored) {
+export function withDefaults(stored, bar = DEFAULTS.bar) {
   const value = isObject(stored) ? stored : {};
-  const result = { ...DEFAULTS, ...value, bar: [...DEFAULTS.bar] };
+  const result = { ...DEFAULTS, ...value, bar: [...bar] };
   if (Array.isArray(value.bar) && value.bar.every((id) => typeof id === "string")) result.bar = [...value.bar];
   if (!THEMES.includes(value.theme)) result.theme = DEFAULTS.theme;
   if (!VIEWS.includes(value.climateView)) result.climateView = DEFAULTS.climateView;
@@ -48,25 +51,25 @@ async function stored(hass) {
 }
 
 // As loadSettings, but a call that fails rejects, so the caller can tell a failure from defaults.
-export async function readSettings(hass) {
-  if (typeof hass?.callWS !== "function") return withDefaults({});
-  return withDefaults(await stored(hass));
+export async function readSettings(hass, bar) {
+  if (typeof hass?.callWS !== "function") return withDefaults({}, bar);
+  return withDefaults(await stored(hass), bar);
 }
 
-export async function loadSettings(hass) {
+export async function loadSettings(hass, bar) {
   try {
-    return await readSettings(hass);
+    return await readSettings(hass, bar);
   } catch {
-    return withDefaults({});
+    return withDefaults({}, bar);
   }
 }
 
 // A read that fails rejects the save and writes nothing: writing the patch alone would wipe the
 // other stored fields.
-export async function saveSettings(hass, patch) {
+export async function saveSettings(hass, patch, bar) {
   if (typeof hass?.callWS !== "function") throw new Error("pocket settings: no connection");
   const current = await stored(hass);
   const value = { ...current, ...(isObject(patch) ? patch : {}) };
   await hass.callWS({ type: "frontend/set_user_data", key: KEY, value });
-  return withDefaults(value);
+  return withDefaults(value, bar);
 }

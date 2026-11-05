@@ -12,6 +12,9 @@
 //       diagnostic and configuration entities left out, and those of a disabled device
 //   sensorValue(hass, id, t) -> text            the state as Home Assistant words it
 //   isNumeric(hass, id) -> boolean              a sensor with a number (it has a trend to show)
+//   shownEntity(reg) -> boolean                 a registry entry the pages list (the rules above)
+//   entityArea(hass, reg) -> area_id | null | undefined   the entity's area, else its device's;
+//       undefined for a disabled device's (the Power and Plants pages find theirs the same way)
 //   loadEntryDomains(hass) -> Promise<{entry id: domain}>   config_entries/get, asked once per page
 //       load: a device's integrations, as the floor plan reads them; {} when the call fails
 //
@@ -30,7 +33,17 @@ export function haAreaOf(config, area) {
   return (area.outside ? config?.outside?.area : area.area ?? area.id) || null;
 }
 
-const shown = (reg) => reg && !reg.hidden && !reg.hidden_by && !reg.disabled_by && !reg.entity_category;
+// A registry entry a page lists: not hidden, not disabled, not diagnostic or configuration.
+export const shownEntity = (reg) => reg && !reg.hidden && !reg.hidden_by && !reg.disabled_by && !reg.entity_category;
+const shown = shownEntity;
+
+// The HA area an entity stands in, as the floor plan reads it: its own area_id, else its
+// device's; null for neither. A disabled device's entities stand nowhere (undefined).
+export function entityArea(hass, reg) {
+  const device = reg?.device_id ? hass?.devices?.[reg.device_id] : null;
+  if (device?.disabled_by) return undefined;
+  return reg?.area_id || device?.area_id || null;
+}
 
 // A device's category from all of its usable entities (wherever they stand), once per call.
 function deviceCategory(hass, deviceId, entryDomains, cache) {
@@ -57,9 +70,8 @@ export function areaSensors(hass, areaId, entryDomains = {}) {
   for (const reg of Object.values(hass.entities)) {
     const id = reg.entity_id;
     if (!id || !DOMAINS.includes(id.split(".")[0]) || !shown(reg) || !hass.states?.[id]) continue;
+    if (entityArea(hass, reg) !== areaId) continue;
     const device = reg.device_id ? hass.devices?.[reg.device_id] : null;
-    if (device?.disabled_by) continue;
-    if ((reg.area_id || device?.area_id) !== areaId) continue;
     const category = device ? deviceCategory(hass, reg.device_id, entryDomains, cache)
       : rolesOf(scanForm(hass, [id], null, false, entryDomains))[0].id;
     if (!groups.has(category)) groups.set(category, []);

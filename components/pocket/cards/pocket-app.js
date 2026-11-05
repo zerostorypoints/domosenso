@@ -4,7 +4,8 @@
 //     #/power, #/plants, #/settings, #/floorplan), taken from pages/index.js, which also states the
 //     page contract; the first version's #/rooms and #/room/<id> are replaced by their new hash;
 //   - a bottom bar fixed to the bottom of the screen: Home, the person's chosen pages (their
-//     settings, lib/settings.js, read once from Home Assistant; the defaults until then) and
+//     settings, lib/settings.js, read once from Home Assistant; the home's defaults until then,
+//     lib/router.js defaultBar) and
 //     Settings, at most five;
 //   - the colours of the person's Appearance (lib/theme.js): System follows the phone's
 //     prefers-color-scheme, and a change of it repaints at once;
@@ -18,7 +19,7 @@
 //     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js;
 //     "checks", "air", "lights", lib/detail-sheets.js; "forecast", lib/weather.js; "layers", the
 //     floor plan's layer chips, lib/layer-sheet.js; "players", Media's player picker,
-//     lib/player-sheet.js), closed again with ctx.closeSheet(); the content is
+//     lib/player-sheet.js; "power", the meters behind the Power page's Now, pages/power-page.js), closed again with ctx.closeSheet(); the content is
 //     updated with the page, and a new route closes it. Back closes it first. A route taken while a sheet is open takes the
 //     place of the sheet's history entry, and a sheet's entry left behind (a reload, a return to
 //     the dashboard) is cleared, so Back never stops at a sheet that is no longer there.
@@ -32,13 +33,14 @@
 //   thresholds: {rooms: {<id>: {temp_low, temp_high, ...}}, outside: {...}, air: {<reading>: {fair, poor}}}
 //   floorplan: true          # optional: the home has the floorplan component (its card, floorplan-card,
 //                            # on the area pages and the floor plan view; the bar may offer the view)
+//   plants: true             # optional: the home has the plants component; Plants is on the default bar
 //   sound: {level, offset?, averages?}   # optional: the home has audio-sensor; Media's Sound tab
 //                            # (lib/sound-panel.js, its card room-meter-card)
 
 import { createT, language } from "./lib/i18n.js";
-import { barTabs, legacyRoute, optionalPages, parseRoute, tabOf } from "./lib/router.js";
+import { barTabs, defaultBar, legacyRoute, optionalPages, parseRoute, tabOf } from "./lib/router.js";
 import { areasOf } from "./lib/areas.js";
-import { DEFAULTS, readSettings, saveSettings, withDefaults } from "./lib/settings.js";
+import { readSettings, saveSettings, withDefaults } from "./lib/settings.js";
 import { setText } from "./lib/page-kit.js";
 import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
@@ -48,6 +50,7 @@ import { checks, air, lights } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
+import { powerSheet } from "./pages/power-page.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -60,7 +63,7 @@ const TOAST_MS = 3000;
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
-  players: playerSheet };
+  players: playerSheet, power: powerSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -82,7 +85,6 @@ const STYLE = `
   /* Room under the page for the fixed bar and the phone's home indicator. A finger moves the page
      only up and down (pinch zoom stays); the pages' own sideways gestures handle themselves. */
   main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom; }
-  .placeholder-text { color: var(--mut); font-size: 15px; margin: 32px 0; text-align: center; }
   /* The toast rides on the bar: absolute inside the fixed nav, just above its top edge. */
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
@@ -130,6 +132,8 @@ class PocketApp extends HTMLElement {
   setConfig(config) {
     if (!config || typeof config !== "object") throw new Error("pocket-app: a config is required");
     this._config = { ...config, rooms: Array.isArray(config.rooms) ? config.rooms : [] };
+    // Until the person's settings are read, the home's default bar (Plants with plants).
+    if (!this._settingsRead) this._settings = withDefaults({}, defaultBar(this._config));
     if (this._root) {
       this._key = null;   // a new config (the editor, a reload of the dashboard) renders the page anew
       this._route();
@@ -154,16 +158,20 @@ class PocketApp extends HTMLElement {
     this._settingsAsked = true;
     this._settingsRetry = false;
     const saves = this._savesApplied;
-    readSettings(hass).then(
-      (settings) => { if (this._savesApplied === saves) this._applySettings(settings); },
+    readSettings(hass, defaultBar(this._config)).then(
+      (settings) => {
+        this._settingsRead = true;
+        if (this._savesApplied === saves) this._applySettings(settings);
+      },
       () => { if (hass?.connected === false) this._settingsRetry = true; });
   }
 
   // Saves run one after another (each reads, merges and writes), so two saves never interleave
   // and lose a field; a failed save does not stop the next one.
   _saveSettings(patch) {
-    const run = this._saveQueue.then(() => saveSettings(this._hass, patch)).then((settings) => {
+    const run = this._saveQueue.then(() => saveSettings(this._hass, patch, defaultBar(this._config))).then((settings) => {
       this._savesApplied += 1;
+      this._settingsRead = true;
       return this._applySettings(settings);
     });
     this._saveQueue = run.catch(() => {});
@@ -329,7 +337,7 @@ class PocketApp extends HTMLElement {
 
   // The bar's buttons are rebuilt only when the person's choice of pages changes.
   _renderBar() {
-    const tabs = barTabs(this._settings?.bar ?? DEFAULTS.bar, { without: optionalPages(this._config) });
+    const tabs = barTabs(this._settings?.bar ?? defaultBar(this._config), { without: optionalPages(this._config) });
     const ids = tabs.map((tab) => tab.page).join(" ");
     if (ids !== this._barIds) {
       this._barIds = ids;

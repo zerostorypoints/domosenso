@@ -131,7 +131,7 @@ test("the page gets the contract's ctx", async () => {
   assert.equal(card._ctx().routeId, undefined);
 });
 
-test("every page follows the contract; Home is built, a page not built yet says so", async () => {
+test("every page follows the contract; each one is built", async () => {
   assert.deepEqual(Object.keys(pages).sort(),
     ["area", "areas", "climate", "floorplan", "home", "media", "plants", "power", "settings"]);
   for (const [id, page] of Object.entries(pages)) {
@@ -141,7 +141,9 @@ test("every page follows the contract; Home is built, a page not built yet says 
   const card = mount();
   assert.ok($(card, "main .home"));
   await goTo("#/power");
-  assert.match($(card, "main").textContent, /Coming next/);
+  assert.ok($(card, "main .power"), "Power is built");
+  await goTo("#/plants");
+  assert.ok($(card, "main .plants"), "Plants is built");
   await goTo("#/media");
   assert.ok($(card, "main .media"), "Media is built");
 });
@@ -369,12 +371,19 @@ test("the Outside is an area when the home has one; a route to it without one go
   assert.deepEqual(active(card), ["areas"]);
 });
 
-test("pages not built yet say so: power, plants", async () => {
+test("Power and Plants with nothing in Home Assistant: their empty states", async () => {
   const card = mount();
-  for (const hash of ["#/power", "#/plants"]) {
-    await goTo(hash);
-    assert.match($(card, "main").textContent, /Coming next/, hash);
-  }
+  await goTo("#/power");
+  assert.match($(card, "main .power .empty").textContent, /No power, energy, current or voltage sensors/);
+  await goTo("#/plants");
+  assert.match($(card, "main .plants .empty").textContent, /No plants/);
+});
+
+test("the Power page's Now opens the meters sheet (kind power)", async () => {
+  const card = mount();
+  await goTo("#/power");
+  assert.equal(card._ctx().openSheet({ kind: "power", title: "Now" }), true);
+  assert.ok($(card, ".power-sheet"));
 });
 
 test("the floor plan without the floorplan component says there is none, under Areas", async () => {
@@ -434,6 +443,25 @@ test("settings that cannot be read: the default bar", async () => {
   const card = mount({ hass: hassOf({ callWS: () => Promise.reject(new Error("unknown command")) }) });
   await tick();
   assert.deepEqual(labels(card), ["Home", "Areas", "Climate", "Media", "Settings"]);
+});
+
+test("a home with plants: Plants in Media's place on the default bar; a person's own bar wins", async () => {
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...config(), plants: true });
+  document.body.appendChild(card);
+  card.hass = hassWithData(null);
+  await tick();
+  assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "areas", "climate", "plants", "settings"]);
+  assert.deepEqual(card._ctx().settings.bar, ["home", "areas", "climate", "plants", "settings"]);
+  const chosen = document.createElement("pocket-app");
+  chosen.setConfig({ ...config(), plants: true });
+  document.body.appendChild(chosen);
+  chosen.hass = hassWithData({ bar: ["media"] });
+  await tick();
+  assert.deepEqual($$(chosen, "nav .tab").map((el) => el.dataset.page), ["home", "media", "settings"]);
+  // A save of another field keeps the home's default bar (nothing stored for it).
+  const saved = await card._ctx().saveSettings({ theme: "dark" });
+  assert.deepEqual(saved.bar, ["home", "areas", "climate", "plants", "settings"]);
 });
 
 test("ctx.saveSettings stores the change and the bar follows it", async () => {

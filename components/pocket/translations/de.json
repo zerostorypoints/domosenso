@@ -24,9 +24,6 @@
         "settings": "Einstellungen"
       },
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
-      "page": {
-        "coming_next": "Kommt als Nächstes."
-      },
       "home": {
         "title": "Zuhause",
         "all_good": "Alles in Ordnung",
@@ -361,6 +358,56 @@
           "leq_1_min": "Leq 1 min",
           "leq_15_min": "Leq 15 min",
           "leq_1_h": "Leq 1 h"
+        }
+      },
+      "power": {
+        "title": "Strom",
+        "now": "Jetzt",
+        "today": "Heute",
+        "from": {
+          "grid": "Aus dem Netz",
+          "devices": "Geräte"
+        },
+        "meters": {
+          "one": "{count} Zähler",
+          "few": "{count} Zähler",
+          "many": "{count} Zähler",
+          "other": "{count} Zähler"
+        },
+        "no_area": "Kein Bereich",
+        "empty": "In Home Assistant gibt es noch keine Sensoren für Leistung, Energie, Strom oder Spannung.",
+        "rule": "Die Summe der Leistungszähler auf dieser Seite, einer pro Gerät: ein Zähler hinter einem anderen gemessenen Gerät fehlt."
+      },
+      "plants": {
+        "title": "Pflanzen",
+        "fine": "Gut",
+        "no_reading": "Kein Messwert",
+        "all_fine": "Allen Pflanzen geht es gut",
+        "need": {
+          "one": "{count} Pflanze braucht etwas",
+          "few": "{count} Pflanzen brauchen etwas",
+          "many": "{count} Pflanzen brauchen etwas",
+          "other": "{count} Pflanzen brauchen etwas"
+        },
+        "no_area": "Kein Bereich",
+        "empty": "In Home Assistant gibt es noch keine Pflanzen. Die Komponente plants legt eine pro Pflanzensensor an.",
+        "reading": {
+          "moisture": "Feuchte",
+          "conductivity": "Dünger",
+          "illuminance": "Licht",
+          "temperature": "Temperatur",
+          "battery": "Batterie"
+        },
+        "reason": {
+          "thirsty": "Durstig",
+          "too_wet": "Zu nass",
+          "needs_light": "Braucht Licht",
+          "too_much_light": "Zu viel Licht",
+          "cold": "Zu kalt",
+          "warm": "Zu warm",
+          "needs_fertiliser": "Braucht Dünger",
+          "too_much_fertiliser": "Zu viel Dünger",
+          "low_battery": "Batterie schwach"
         }
       }
     }

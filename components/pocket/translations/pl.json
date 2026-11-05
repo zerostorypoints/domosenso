@@ -24,9 +24,6 @@
         "settings": "Ustawienia"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
-      "page": {
-        "coming_next": "Już wkrótce."
-      },
       "home": {
         "title": "Dom",
         "all_good": "Wszystko w porządku",
@@ -361,6 +358,56 @@
           "leq_1_min": "Leq 1 min",
           "leq_15_min": "Leq 15 min",
           "leq_1_h": "Leq 1 h"
+        }
+      },
+      "power": {
+        "title": "Prąd",
+        "now": "Teraz",
+        "today": "Dziś",
+        "from": {
+          "grid": "Z sieci",
+          "devices": "Urządzenia"
+        },
+        "meters": {
+          "one": "{count} licznik",
+          "few": "{count} liczniki",
+          "many": "{count} liczników",
+          "other": "{count} licznika"
+        },
+        "no_area": "Bez obszaru",
+        "empty": "W Home Assistant nie ma jeszcze czujników mocy, energii, prądu ani napięcia.",
+        "rule": "Suma liczników mocy z tej strony, po jednym na urządzenie: licznik za innym mierzonym urządzeniem jest pominięty."
+      },
+      "plants": {
+        "title": "Rośliny",
+        "fine": "W porządku",
+        "no_reading": "Brak odczytu",
+        "all_fine": "Wszystkie rośliny w porządku",
+        "need": {
+          "one": "{count} roślina czegoś potrzebuje",
+          "few": "{count} rośliny czegoś potrzebują",
+          "many": "{count} roślin czegoś potrzebuje",
+          "other": "{count} rośliny czegoś potrzebuje"
+        },
+        "no_area": "Bez obszaru",
+        "empty": "W Home Assistant nie ma jeszcze roślin. Komponent plants dodaje jedną na każdy czujnik.",
+        "reading": {
+          "moisture": "Wilgotność",
+          "conductivity": "Nawóz",
+          "illuminance": "Światło",
+          "temperature": "Temperatura",
+          "battery": "Bateria"
+        },
+        "reason": {
+          "thirsty": "Chce pić",
+          "too_wet": "Za mokro",
+          "needs_light": "Potrzebuje światła",
+          "too_much_light": "Za dużo światła",
+          "cold": "Za zimno",
+          "warm": "Za ciepło",
+          "needs_fertiliser": "Potrzebuje nawozu",
+          "too_much_fertiliser": "Za dużo nawozu",
+          "low_battery": "Słaba bateria"
         }
       }
     }

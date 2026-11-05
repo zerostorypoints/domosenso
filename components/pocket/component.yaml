@@ -32,6 +32,10 @@ inputs:
     type: bool                  # the floor plan view (#/floorplan, a bar item each person may turn on). Needs
     default: false              # the floorplan component added and its plan pushed (SPEC-028)
     example: true
+  plants:                       # true: the home has the plants component, so Plants is on the bottom bar by
+    type: bool                  # default (in Media's place). The Plants page finds every plant.* itself; without
+    default: false              # the flag it is still offered in Settings, and shows its empty state with no plant
+    example: true
   sound:                        # true: a Sound tab inside Media, with audio-sensor's live meter (its card
     type: bool                  # room-meter-card on the music aliases sensor.music_level and
     default: false              # sensor.music_spl_offset). Needs the audio-sensor component added
@@ -76,6 +80,11 @@ consumes:
   - {component: audio-sensor, id: sensor.music_level}
   - {component: audio-sensor, id: sensor.music_spl_offset}
   - {component: audio-sensor, element: room-meter-card}
+  # With plants: the Plants page reads every plant.* the plants component sets up, its readings'
+  # sensors and its bands (found at run time, the ids are not configured).
+  - {component: plants, id: "plant.<plant>"}
+  - {component: plants, id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}"}
+  - {component: plants, id: "sensor.<plant>_illuminance_max_24h"}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh pocket)

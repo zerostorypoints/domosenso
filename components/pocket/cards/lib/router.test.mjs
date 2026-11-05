@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseRoute, legacyRoute, TABS, tabOf, barTabs, MAX_TABS, optionalPages } from "./router.js";
+import { parseRoute, legacyRoute, TABS, tabOf, barTabs, MAX_TABS, optionalPages, defaultBar } from "./router.js";
 
 test("the pages and an area by id", () => {
   assert.deepEqual(parseRoute("#/"), { page: "home" });
@@ -77,4 +77,12 @@ test("the floor plan is on the bar only for a home with the floorplan component"
   assert.deepEqual(pages(["areas", "floorplan"], {}), ["home", "areas", "settings"]);
   assert.deepEqual(pages(["areas", "floorplan"], { floorplan: true }), ["home", "areas", "floorplan", "settings"]);
   assert.deepEqual(barTabs(["floorplan"]).map((tab) => tab.page), ["home", "floorplan", "settings"]);
+});
+
+test("the default bar: Media without plants; with plants Plants in its place; Power off", () => {
+  assert.deepEqual(defaultBar({}), ["home", "areas", "climate", "media", "settings"]);
+  assert.deepEqual(defaultBar(undefined), ["home", "areas", "climate", "media", "settings"]);
+  assert.deepEqual(defaultBar({ plants: true }), ["home", "areas", "climate", "plants", "settings"]);
+  assert.equal(barTabs(defaultBar({ plants: true })).length, MAX_TABS);
+  assert.ok(!defaultBar({ plants: true }).includes("power"));
 });

@@ -24,9 +24,6 @@
         "settings": "Settings"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
-      "page": {
-        "coming_next": "Coming next."
-      },
       "home": {
         "title": "Home",
         "all_good": "All good",
@@ -361,6 +358,56 @@
           "leq_1_min": "Leq 1 min",
           "leq_15_min": "Leq 15 min",
           "leq_1_h": "Leq 1 h"
+        }
+      },
+      "power": {
+        "title": "Power",
+        "now": "Now",
+        "today": "Today",
+        "from": {
+          "grid": "From the grid",
+          "devices": "Devices"
+        },
+        "meters": {
+          "one": "{count} meter",
+          "few": "{count} meters",
+          "many": "{count} meters",
+          "other": "{count} meters"
+        },
+        "no_area": "No area",
+        "empty": "No power, energy, current or voltage sensors in Home Assistant yet.",
+        "rule": "The sum of the power meters listed on this page, one per device: a meter behind another device that is measured is left out."
+      },
+      "plants": {
+        "title": "Plants",
+        "fine": "Fine",
+        "no_reading": "No reading",
+        "all_fine": "All plants are fine",
+        "need": {
+          "one": "{count} plant needs something",
+          "few": "{count} plants need something",
+          "many": "{count} plants need something",
+          "other": "{count} plants need something"
+        },
+        "no_area": "No area",
+        "empty": "No plants in Home Assistant yet. The plants component adds one per plant sensor.",
+        "reading": {
+          "moisture": "Moisture",
+          "conductivity": "Fertiliser",
+          "illuminance": "Light",
+          "temperature": "Temperature",
+          "battery": "Battery"
+        },
+        "reason": {
+          "thirsty": "Thirsty",
+          "too_wet": "Too wet",
+          "needs_light": "Needs light",
+          "too_much_light": "Too much light",
+          "cold": "Cold",
+          "warm": "Warm",
+          "needs_fertiliser": "Needs fertiliser",
+          "too_much_fertiliser": "Too much fertiliser",
+          "low_battery": "Low battery"
         }
       }
     }

@@ -31,11 +31,19 @@ test("no card style ellipsizes or clamps text", () => {
 test("grids of widgets have equal rows: every widget grid sets grid-auto-rows: 1fr", () => {
   const grids = [["pages/area-page.js", ".room .squares"], ["pages/area-page.js", ".room .members"],
     ["pages/areas-page.js", ".rooms .grid"], ["pages/home-page.js", ".home .quick"],
-    ["pages/climate-page.js", ".climate .squares"], ["lib/detail-sheets.js", ".detail .tiles"]];
+    ["pages/climate-page.js", ".climate .squares"], ["lib/detail-sheets.js", ".detail .tiles"],
+    ["pages/power-page.js", ".power .squares"]];
   for (const [file, sel] of grids) {
     const css = readFileSync(join(here, file), "utf8");
     const rule = css.match(new RegExp(`${sel.replace(/\./g, "\\.")} \\{([^}]*)\\}`))?.[1] ?? "";
     assert.match(rule, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, `${file} ${sel}`);
     assert.match(rule, /grid-auto-rows: 1fr/, `${file} ${sel}`);
   }
+});
+
+test("a plant's readings are equal cells: three columns, equal rows", () => {
+  const css = readFileSync(join(here, "pages/plants-page.js"), "utf8");
+  const rule = css.match(/\.plants \.grid \{([^}]*)\}/)?.[1] ?? "";
+  assert.match(rule, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(rule, /grid-auto-rows: 1fr/);
 });
