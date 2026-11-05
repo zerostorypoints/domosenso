@@ -126,7 +126,8 @@
             "lights",
             "awnings",
             "media",
-            "gate-remote"
+            "gate-remote",
+            "timers"
           ],
           "availability": "conditional",
           "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
@@ -701,7 +702,8 @@
             "lights",
             "awnings",
             "media",
-            "gate-remote"
+            "gate-remote",
+            "timers"
           ],
           "availability": "conditional",
           "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
@@ -809,7 +811,8 @@
             "lights",
             "awnings",
             "media",
-            "gate-remote"
+            "gate-remote",
+            "timers"
           ],
           "availability": "conditional",
           "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
@@ -932,7 +935,8 @@
             "lights",
             "awnings",
             "media",
-            "gate-remote"
+            "gate-remote",
+            "timers"
           ],
           "availability": "conditional",
           "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
@@ -1199,7 +1203,8 @@
             "lights",
             "awnings",
             "media",
-            "gate-remote"
+            "gate-remote",
+            "timers"
           ],
           "availability": "conditional",
           "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
@@ -1370,6 +1375,113 @@
       }
     },
     {
+      "outcome": "Run shared countdown timers on Home Assistant’s own timer helpers.",
+      "categories": [
+        "utilities"
+      ],
+      "hardware": "none",
+      "ui": "consumer",
+      "deviceIds": [],
+      "views": [
+        {
+          "id": "controls",
+          "title": "Room controls",
+          "owner": "ramka",
+          "providers": [
+            "lights",
+            "awnings",
+            "media",
+            "gate-remote",
+            "timers"
+          ],
+          "availability": "conditional",
+          "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
+          "preview": "/previews/controls.svg",
+          "previewType": "illustration",
+          "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+          "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+          "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+        }
+      ],
+      "setup": [
+        "Choose a prefix (default domosenso) and one to sixteen timers, each with a slug id, a plain label and a length of 1 to 86,400 seconds; the default is one General timer of five minutes. Use ids that no helper in your home already has: the component creates only the helpers it names.",
+        "Add it with domosenso add timers@0.1.0, then render and deploy: Home Assistant gets one timer helper per entry, named timer.<prefix>_<id>, with Restore switched on.",
+        "To show them on a Ramka (0.15.0 or later), list the helpers in its timers input, for example timer.domosenso_general with the label General. Controls gets a standard timer tile for each, and a small countdown badge sits over every screen of the Ramka; tapping either opens Home Assistant’s own timer dialog."
+      ],
+      "id": "timers",
+      "version": "0.1.0",
+      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+      "evidencePaths": [
+        "components/timers/component.yaml",
+        "components/timers/README.md",
+        "components/timers/UPGRADE.md"
+      ],
+      "scenario": {
+        "states": [
+          {
+            "label": "Ready",
+            "headline": "A timer waits at its length",
+            "detail": "Each helper has a fixed length from its input, five minutes by default. Nothing counts down until someone starts it.",
+            "values": [
+              {
+                "label": "Timer",
+                "value": "General"
+              },
+              {
+                "label": "Length",
+                "value": "5:00"
+              },
+              {
+                "label": "State",
+                "value": "Idle"
+              }
+            ],
+            "level": 100
+          },
+          {
+            "label": "Running",
+            "headline": "The same time left on every screen",
+            "detail": "The timer is a standard Home Assistant helper. The Ramka’s tile on Controls and its badge both read it.",
+            "values": [
+              {
+                "label": "Left",
+                "value": "3:42"
+              },
+              {
+                "label": "State",
+                "value": "Active"
+              },
+              {
+                "label": "Shown on",
+                "value": "Tile and badge"
+              }
+            ],
+            "level": 74
+          },
+          {
+            "label": "Paused",
+            "headline": "A pause keeps the time left",
+            "detail": "A paused timer holds its remaining time. Restore is on, so Home Assistant brings an active or paused timer back after a restart; one that ended while it was down is not replayed.",
+            "values": [
+              {
+                "label": "Left",
+                "value": "2:10"
+              },
+              {
+                "label": "State",
+                "value": "Paused"
+              },
+              {
+                "label": "Restore",
+                "value": "On"
+              }
+            ],
+            "level": 43
+          }
+        ]
+      }
+    },
+    {
       "outcome": "Bring the forecast into Home Assistant.",
       "categories": [
         "climate",
@@ -1458,7 +1570,7 @@
       "title": "CC1101 radio module",
       "summary": "A radio link to Somfy RTS awnings.",
       "sourcePath": "devices/cc1101.md",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "awnings"
       ],
@@ -1468,16 +1580,16 @@
           "version": "0.4.0"
         }
       ],
-      "body": "# CC1101 radio module: wiring and setup\n\nA CC1101 433 MHz transceiver, the Ebyte **E07-M1101D** with an SMA antenna socket, on an M5Stack\nAtom Lite that runs ESPSomfy-RTS: the `awnings` component's node, which sends and hears Somfy RTS.\nDevice file: [cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/cc1101.yaml).\n\n## Wiring\n\n![E07-M1101D on an M5Stack Atom Lite: eight wires from G, 3V3, G22, G21, G33, G23, G19, G25 to module pins 1 to 8, and a 433 MHz antenna on the SMA socket](/wiring/cc1101-atom-lite.svg)\n\n| E07-M1101D pin | signal | Atom Lite (bottom header) | wire | ESPSomfy-RTS, Radio page |\n|---|---|---|---|---|\n| 1 | GND | G | black | |\n| 2 | VCC | 3V3 (**never 5V**) | red | |\n| 3 | GDO0 | G22 | purple | TX 22 |\n| 4 | CSN | G21 | orange | CSN 21 |\n| 5 | SCK | G33 | yellow | SCLK 33 |\n| 6 | MOSI | G23 | blue | MOSI 23 |\n| 7 | MISO | G19 | green | MISO 19 |\n| 8 | GDO2 | G25 | white | RX 25 |\n\nPin 1 has the square pad. The pinout is the one the ESPSomfy-RTS wiki gives for this module; it is\nthe wiring of the first home's node. The Atom's 5V and the Grove port stay free. Another CC1101\nboard (a different maker) can number its pins differently: go by the signal names printed on it,\nnot by the numbers.\n\n## The antenna\n\n- Screw a **433 MHz** antenna onto the SMA socket before the node transmits. A CC1101 sending into\n  an open socket can damage its output stage (general radio practice, not seen here).\n- The antenna decides what the node hears. One home's wind sensor reached the node at −83 to\n  −86 dBm and only part of its reports arrived, with gaps of hours (`components/awnings/README.md`).\n  Stand the antenna upright and move the node, or the antenna on a short cable, towards the\n  sensor and the awnings; keep it clear of metal.\n\n## Firmware and first start\n\nESPSomfy-RTS is a release binary flashed over USB with `esptool`, then set up in its own web\npage: the network, then on the Radio page the pins of the right-hand column above, then MQTT and a\nvirtual remote per awning. The commands and steps: `components/awnings/README.md`, \"Flashing the\nnode\". The radio answers when `GET http://<node>/controller` shows\n`transceiver.config.radioInit: true`; `false` means the CC1101 did not answer on SPI with these pins\n(a wire on the wrong socket, or VCC missing).\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| `radioInit: false` | a wire on the wrong socket, the pins in ESPSomfy's Radio page not matching the wiring, or VCC not on 3V3 |\n| awnings do not move, the node logs sending | no antenna, or the virtual remote not paired with the awning |\n| the node hears the handsets only sometimes | reception: antenna position and distance |\n\nThe second and third rows are inference from how RTS works, apart from reception, which the first\nhome saw.",
+      "body": "# CC1101 radio module: wiring and setup\n\nA CC1101 433 MHz transceiver, the Ebyte **E07-M1101D** with an SMA antenna socket, on an M5Stack\nAtom Lite that runs ESPSomfy-RTS: the `awnings` component's node, which sends and hears Somfy RTS.\nDevice file: [cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/cc1101.yaml).\n\n## Wiring\n\n![E07-M1101D on an M5Stack Atom Lite: eight wires from G, 3V3, G22, G21, G33, G23, G19, G25 to module pins 1 to 8, and a 433 MHz antenna on the SMA socket](/wiring/cc1101-atom-lite.svg)\n\n| E07-M1101D pin | signal | Atom Lite (bottom header) | wire | ESPSomfy-RTS, Radio page |\n|---|---|---|---|---|\n| 1 | GND | G | black | |\n| 2 | VCC | 3V3 (**never 5V**) | red | |\n| 3 | GDO0 | G22 | purple | TX 22 |\n| 4 | CSN | G21 | orange | CSN 21 |\n| 5 | SCK | G33 | yellow | SCLK 33 |\n| 6 | MOSI | G23 | blue | MOSI 23 |\n| 7 | MISO | G19 | green | MISO 19 |\n| 8 | GDO2 | G25 | white | RX 25 |\n\nPin 1 has the square pad. The pinout is the one the ESPSomfy-RTS wiki gives for this module; it is\nthe wiring of the first home's node. The Atom's 5V and the Grove port stay free. Another CC1101\nboard (a different maker) can number its pins differently: go by the signal names printed on it,\nnot by the numbers.\n\n## The antenna\n\n- Screw a **433 MHz** antenna onto the SMA socket before the node transmits. A CC1101 sending into\n  an open socket can damage its output stage (general radio practice, not seen here).\n- The antenna decides what the node hears. One home's wind sensor reached the node at −83 to\n  −86 dBm and only part of its reports arrived, with gaps of hours (`components/awnings/README.md`).\n  Stand the antenna upright and move the node, or the antenna on a short cable, towards the\n  sensor and the awnings; keep it clear of metal.\n\n## Firmware and first start\n\nESPSomfy-RTS is a release binary flashed over USB with `esptool`, then set up in its own web\npage: the network, then on the Radio page the pins of the right-hand column above, then MQTT and a\nvirtual remote per awning. The commands and steps: `components/awnings/README.md`, \"Flashing the\nnode\". The radio answers when `GET http://<node>/controller` shows\n`transceiver.config.radioInit: true`; `false` means the CC1101 did not answer on SPI with these pins\n(a wire on the wrong socket, or VCC missing).\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| `radioInit: false` | a wire on the wrong socket, the pins in ESPSomfy's Radio page not matching the wiring, or VCC not on 3V3 |\n| awnings do not move, the node logs sending | no antenna, or the virtual remote not paired with the awning |\n| the node hears the handsets only sometimes | reception: antenna position and distance |\n\nThe second and third rows are inference from how RTS works, apart from reception, which the first\nhome saw.",
       "photo": "/hardware/cc1101.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/cc1101.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/cc1101.md"
     },
     {
       "id": "hegel-h400",
       "title": "Hegel",
       "summary": "The integrated amplifier used for the documented audio integration.",
       "sourcePath": "devices/hegel-h400.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "media"
       ],
@@ -1489,14 +1601,14 @@
       ],
       "body": "## Configure the amplifier\n\nConnect and set up the amplifier using its manufacturer instructions. The documented integration is hegel_streaming, exposing a media_player in Home Assistant.\n\n## Verify supported controls\n\nCheck playback, track metadata and standby behavior, then map the media player to Ramka. Support for other players depends on meeting the component’s contract.\n\n## Optional power measurement\n\nA mains meter is optional, not required for playback. The indexed meter is the [Shelly PM Mini Gen3](/devices/shelly-pm-mini-gen3/); other meters need their own verification. Electrical installation requires a qualified installer.\n\n## Setup references\n\n- [Hegel Streaming installation and supported models](https://github.com/zerostorypoints/hegel-home-assistant)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": "/hardware/hegel-h400.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/hegel-h400.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/hegel-h400.yaml"
     },
     {
       "id": "hlk-ld2410c",
       "title": "HLK-LD2410C radar",
       "summary": "Presence and distance over UART.",
       "sourcePath": "devices/hlk-ld2410c.md",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "ramka",
         "bermuda-presence"
@@ -1511,16 +1623,16 @@
           "version": "0.3.0"
         }
       ],
-      "body": "# HLK-LD2410C radar: wiring and setup\n\nA Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already runs as a\n`bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a\nradar like this to wake its screen. Device file: [hlk-ld2410c.yaml](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/hlk-ld2410c.yaml).\n\n## Wiring\n\n![HLK-LD2410C on an M5Stack Atom Lite: 5V to VCC, G to GND, G22 to TX, G19 to RX, OUT not connected](/wiring/hlk-ld2410c-atom-lite.svg)\n\n| Atom Lite (bottom header) | HLK-LD2410C | wire | why |\n|---|---|---|---|\n| 5V | VCC | red | the module needs 5 V; **never 3V3** |\n| G | GND | black | |\n| G22 | TX | purple | the Atom receives on G22 (`rx_pin: GPIO22`) |\n| G19 | RX | green | the Atom sends on G19 (`tx_pin: GPIO19`) |\n| — | OUT | — | not connected: presence comes over the UART |\n\nSource: `components/bermuda-presence/esphome/ld2410.yaml`, the wiring of the first home's boards.\nThe labels are the ones printed on the Atom and on the module; the diagram shows which socket goes to\nwhich pin, not where they sit on the boards. Colours are a convention: any colour works if both ends\nmatch. The Grove port stays free.\n\n## Firmware\n\nThe board's thin device file pulls the radar package next to the proxy package; with\n`radar: true` on that proxy in the component's inputs, `domosenso add` writes it so (SPEC-015):\n\n```yaml\npackages:\n  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/<version>\n  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/<version>\n```\n\nThen `esphome config`, `compile` and a flash, as for any proxy (`components/bermuda-presence/README.md`).\nThe UART runs at 256000 baud, the module's factory setting.\n\n## After the first start\n\n- The module keeps its settings (gates, thresholds, timeout, its own Bluetooth) in its own flash:\n  set them once from Home Assistant; they survive a reflash of the Atom.\n- Engineering mode is the one setting it forgets on a restart, and the light reading only comes in\n  engineering frames, so the package switches it back on 10 s after every boot.\n- New entities on the proxy's device: presence, moving and still target, detection distance and\n  the others listed under `features.radar` in `components/bermuda-presence/component.yaml`.\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| no radar entities at all | the device file lacks the `radar:` package line |\n| radar entities `unavailable` or never changing | TX and RX swapped (TX must go to G22), or VCC on 3V3 |\n| the Atom resets or drops off Wi-Fi when the radar is plugged in | a weak USB supply: the radar draws its power through the Atom; use a plain 5 V USB supply (the `power` note on `ble-proxy` in `components/bermuda-presence/component.yaml`) |\n| presence that never clears with nobody there | sensitivity and gates, set from Home Assistant; the module keeps them |\n\nThe last two rows are inference from how the module and the board are powered and set up, not\ncases seen in the first home.",
+      "body": "# HLK-LD2410C radar: wiring and setup\n\nA Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already runs as a\n`bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a\nradar like this to wake its screen. Device file: [hlk-ld2410c.yaml](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/hlk-ld2410c.yaml).\n\n## Wiring\n\n![HLK-LD2410C on an M5Stack Atom Lite: 5V to VCC, G to GND, G22 to TX, G19 to RX, OUT not connected](/wiring/hlk-ld2410c-atom-lite.svg)\n\n| Atom Lite (bottom header) | HLK-LD2410C | wire | why |\n|---|---|---|---|\n| 5V | VCC | red | the module needs 5 V; **never 3V3** |\n| G | GND | black | |\n| G22 | TX | purple | the Atom receives on G22 (`rx_pin: GPIO22`) |\n| G19 | RX | green | the Atom sends on G19 (`tx_pin: GPIO19`) |\n| — | OUT | — | not connected: presence comes over the UART |\n\nSource: `components/bermuda-presence/esphome/ld2410.yaml`, the wiring of the first home's boards.\nThe labels are the ones printed on the Atom and on the module; the diagram shows which socket goes to\nwhich pin, not where they sit on the boards. Colours are a convention: any colour works if both ends\nmatch. The Grove port stays free.\n\n## Firmware\n\nThe board's thin device file pulls the radar package next to the proxy package; with\n`radar: true` on that proxy in the component's inputs, `domosenso add` writes it so (SPEC-015):\n\n```yaml\npackages:\n  proxy: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ble-proxy.yaml@bermuda-presence/<version>\n  radar: github://zerostorypoints/domosenso/components/bermuda-presence/esphome/ld2410.yaml@bermuda-presence/<version>\n```\n\nThen `esphome config`, `compile` and a flash, as for any proxy (`components/bermuda-presence/README.md`).\nThe UART runs at 256000 baud, the module's factory setting.\n\n## After the first start\n\n- The module keeps its settings (gates, thresholds, timeout, its own Bluetooth) in its own flash:\n  set them once from Home Assistant; they survive a reflash of the Atom.\n- Engineering mode is the one setting it forgets on a restart, and the light reading only comes in\n  engineering frames, so the package switches it back on 10 s after every boot.\n- New entities on the proxy's device: presence, moving and still target, detection distance and\n  the others listed under `features.radar` in `components/bermuda-presence/component.yaml`.\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| no radar entities at all | the device file lacks the `radar:` package line |\n| radar entities `unavailable` or never changing | TX and RX swapped (TX must go to G22), or VCC on 3V3 |\n| the Atom resets or drops off Wi-Fi when the radar is plugged in | a weak USB supply: the radar draws its power through the Atom; use a plain 5 V USB supply (the `power` note on `ble-proxy` in `components/bermuda-presence/component.yaml`) |\n| presence that never clears with nobody there | sensitivity and gates, set from Home Assistant; the module keeps them |\n\nThe last two rows are inference from how the module and the board are powered and set up, not\ncases seen in the first home.",
       "photo": "/hardware/hlk-ld2410c.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/hlk-ld2410c.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/hlk-ld2410c.md"
     },
     {
       "id": "hue-bridge",
       "title": "Philips Hue Bridge",
       "summary": "Lighting through the bridge’s room groups.",
       "sourcePath": "devices/hue-bridge.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "lights"
       ],
@@ -1532,14 +1644,14 @@
       ],
       "body": "## Connect existing lighting\n\nSet up the bridge and pair the bulbs using the manufacturer’s setup process. Organize lights into room groups, then add the Hue integration in Home Assistant.\n\n## Verify the group\n\nCheck that the expected room entity responds to on/off and brightness changes before mapping it into DomoSenso. Ramka can show controls for configured light entities. No additional circuit wiring is specified by this component.\n\n## Setup references\n\n- [Philips Hue setup and room groups — Home Assistant](https://www.home-assistant.io/integrations/hue/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": "/hardware/hue-bridge.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/hue-bridge.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/hue-bridge.yaml"
     },
     {
       "id": "m5stack-atom-echos3r",
       "title": "M5Stack Atom EchoS3R",
       "summary": "A small ESP32-S3 board with a microphone, used as a room sound sensor.",
       "sourcePath": "devices/m5stack-atom-echos3r.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "audio-sensor"
       ],
@@ -1551,14 +1663,14 @@
       ],
       "body": "## What it does here\n\nThe board runs the audio-sensor ESPHome package: a sound level every second and a third-octave spectrum (31 bands, 20 Hz to 20 kHz) about five times a second. It only measures; the package keeps the speaker amplifier off and adds no voice assistant or Bluetooth.\n\n## Power and first flash\n\nPower it from a plain 5 V USB supply. Flash it the first time over USB: hold the button while plugging in the cable, then run ESPHome with the device file the component writes for your home. Later updates go over Wi-Fi. Wi-Fi credentials and the API key stay in your private home project.\n\n## Limits\n\nIt is not a measurement microphone: one analog MEMS capsule and one offset per board. One board has been tested in one home.\n\n## Setup references\n\n- [M5Stack Atom EchoS3R — M5Stack documentation](https://docs.m5stack.com/en/core/Atom_EchoS3R)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": null,
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/m5stack-atom-echos3r.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/m5stack-atom-echos3r.yaml"
     },
     {
       "id": "m5stack-atom-lite",
       "title": "M5Stack Atom Lite",
       "summary": "A compact board with three distinct installation roles.",
       "sourcePath": "devices/m5stack-atom-lite.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "bermuda-presence",
         "awnings",
@@ -1595,14 +1707,14 @@
       ],
       "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\nFor a gate remote, a board runs the gate-remote component's firmware, first to capture the handset and then to send its code, with an [M5Stack CC1101 module](/devices/m5stack-module-cc1101/) for 868 MHz handsets. The module takes 5 V from the Atom's 5V socket.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": "/hardware/m5stack-atom-lite.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/m5stack-atom-lite.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/m5stack-atom-lite.yaml"
     },
     {
       "id": "m5stack-module-cc1101",
       "title": "M5Stack Module CC1101 (868 MHz)",
       "summary": "A radio link to a garage door or gate handset at 868 MHz.",
       "sourcePath": "devices/m5stack-module-cc1101.md",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "gate-remote"
       ],
@@ -1612,16 +1724,16 @@
           "version": "0.1.0"
         }
       ],
-      "body": "# M5Stack Module CC1101 (868 MHz): wiring and setup\n\nM5Stack's Module CC1101 (SKU M146): an Ebyte **E07-900M10S** (CC1101, 855 to 925 MHz) on an M-Bus\nmodule with an SMA antenna socket, wired to an M5Stack Atom Lite with eight Dupont jumpers. The\n`gate-remote` component's node, which captures and sends a gate handset's code at 868 MHz.\nDevice file: [m5stack-module-cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/m5stack-module-cc1101.yaml). For 433 MHz the other module,\n[cc1101.md](/devices/cc1101/), has the same signals on the same Atom sockets.\n\n## Wiring\n\n![The module pin side up, antenna at the top, and the Atom from above: eight wires from G, 5V, G23, G19, G33, G21, G22, G25 to module pins 1, 28, 7, 9, 11, 8, 20, 22](/wiring/m5stack-cc1101-atom-lite.svg)\n\n| Atom Lite socket | module M-Bus pin | label on the module's top side | signal | wire |\n|---|---|---|---|---|\n| G | 1 | GND | ground | black |\n| 5V | 28 | 5V | power | red |\n| G23 | 7 | 23 | SPI MOSI | blue |\n| G19 | 9 | 19 | SPI MISO | green |\n| G33 | 11 | 18 | SPI clock | yellow |\n| G21 | 8 | 25 | CSN | orange |\n| G22 | 20 | 5 | GDO0, transmit data | purple |\n| G25 | 22 | 13 | GDO2, receive data | white |\n\n- **Power from 5V, never 3V3.** The module has its own regulator (VRH3301, 5 V → 3.3 V, M5Stack\n  schematic SCH V0.1 2024-12-30); its M-Bus 3.3 V pin is not connected to anything.\n- **The labels on the top side** are the GPIOs of M5Stack's Core controllers, not the Atom's: use\n  them only to find a pin. Each pin goes through the board: a female socket on top, a short male pin\n  underneath.\n- **Pin columns on the pin side:** the column at the board edge holds the odd pins 1 to 29, pin 1 at\n  the antenna end; the inner column the even pins 2 to 30. The module's printed \"5V\" arrow points at\n  the inner column's 14th pin, which is pin 28. Before power, a continuity test from the antenna\n  socket's shell must beep on the edge column's top three pins (1, 3, 5: ground).\n- **Short pins.** Dupont sockets seat only part-way on the module's pins and can work loose. The node\n  works that way (tested), but an enclosure or a strip of tape that holds the eight housings is wise.\n\n## DIP switches\n\nOn the top side, next to a printed table. ON is the side printed \"ON\".\n\n| switch | ON routes | set |\n|---|---|---|\n| SW1 1 | CSN to pin 8 | **ON** |\n| SW1 2, 3, 4 | CSN to pins 23, 21, 24 | off |\n| SW2 1, 2, 3 | GDO2 to pins 2, 22, 20 | **2 ON**, 1 and 3 off |\n| SW2 4, 5, 6 | GDO0 to pins 2, 22, 20 | **6 ON**, 4 and 5 off |\n\nGDO0 and GDO2 share the same three pins, so they must not be switched onto the same one.\n\n## First start\n\nCapture firmware and the steps: [components/gate-remote/README.md](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/components/gate-remote/README.md).\nAt boot the log shows `CC1101 found! Chip ID: 0x0014`; `Failed to verify CC1101.` means one of the SPI\nwires or CSN does not seat. Tested with the SPI bus at 1 MHz over Dupont jumpers.\n\n## The antenna\n\nScrew an 868 MHz antenna onto the SMA socket before the node transmits (the module ships with a\n2.5 dBi rubber antenna). A CC1101 sending into an open socket can damage its output stage (general\nradio practice, not seen here).",
+      "body": "# M5Stack Module CC1101 (868 MHz): wiring and setup\n\nM5Stack's Module CC1101 (SKU M146): an Ebyte **E07-900M10S** (CC1101, 855 to 925 MHz) on an M-Bus\nmodule with an SMA antenna socket, wired to an M5Stack Atom Lite with eight Dupont jumpers. The\n`gate-remote` component's node, which captures and sends a gate handset's code at 868 MHz.\nDevice file: [m5stack-module-cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/m5stack-module-cc1101.yaml). For 433 MHz the other module,\n[cc1101.md](/devices/cc1101/), has the same signals on the same Atom sockets.\n\n## Wiring\n\n![The module pin side up, antenna at the top, and the Atom from above: eight wires from G, 5V, G23, G19, G33, G21, G22, G25 to module pins 1, 28, 7, 9, 11, 8, 20, 22](/wiring/m5stack-cc1101-atom-lite.svg)\n\n| Atom Lite socket | module M-Bus pin | label on the module's top side | signal | wire |\n|---|---|---|---|---|\n| G | 1 | GND | ground | black |\n| 5V | 28 | 5V | power | red |\n| G23 | 7 | 23 | SPI MOSI | blue |\n| G19 | 9 | 19 | SPI MISO | green |\n| G33 | 11 | 18 | SPI clock | yellow |\n| G21 | 8 | 25 | CSN | orange |\n| G22 | 20 | 5 | GDO0, transmit data | purple |\n| G25 | 22 | 13 | GDO2, receive data | white |\n\n- **Power from 5V, never 3V3.** The module has its own regulator (VRH3301, 5 V → 3.3 V, M5Stack\n  schematic SCH V0.1 2024-12-30); its M-Bus 3.3 V pin is not connected to anything.\n- **The labels on the top side** are the GPIOs of M5Stack's Core controllers, not the Atom's: use\n  them only to find a pin. Each pin goes through the board: a female socket on top, a short male pin\n  underneath.\n- **Pin columns on the pin side:** the column at the board edge holds the odd pins 1 to 29, pin 1 at\n  the antenna end; the inner column the even pins 2 to 30. The module's printed \"5V\" arrow points at\n  the inner column's 14th pin, which is pin 28. Before power, a continuity test from the antenna\n  socket's shell must beep on the edge column's top three pins (1, 3, 5: ground).\n- **Short pins.** Dupont sockets seat only part-way on the module's pins and can work loose. The node\n  works that way (tested), but something that holds the eight housings is wise: the\n  [enclosure](#enclosure) below, or a strip of tape.\n\n## DIP switches\n\nOn the top side, next to a printed table. ON is the side printed \"ON\".\n\n| switch | ON routes | set |\n|---|---|---|\n| SW1 1 | CSN to pin 8 | **ON** |\n| SW1 2, 3, 4 | CSN to pins 23, 21, 24 | off |\n| SW2 1, 2, 3 | GDO2 to pins 2, 22, 20 | **2 ON**, 1 and 3 off |\n| SW2 4, 5, 6 | GDO0 to pins 2, 22, 20 | **6 ON**, 4 and 5 off |\n\nGDO0 and GDO2 share the same three pins, so they must not be switched onto the same one.\n\n## First start\n\nCapture firmware and the steps: [components/gate-remote/README.md](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/components/gate-remote/README.md).\nAt boot the log shows `CC1101 found! Chip ID: 0x0014`; `Failed to verify CC1101.` means one of the SPI\nwires or CSN does not seat. Tested with the SPI bus at 1 MHz over Dupont jumpers.\n\n## Enclosure\n\n![The closed enclosure: a grey box with the DomoSenso.org symbol, vent slots and a ring around the button well on its lid, the USB-C opening on the right and the antenna standing up at the back](/enclosures/m5stack-cc1101-atom-lite/closed.png)\n\nA printable three-part box for the module, the Atom and the eight jumpers: a clamp held down by two\nspring flaps in the lid keeps the female housings on the module's short pins. No supports, no\nscrews; the lid snaps on. The Atom's button sits at the bottom of a finger well, and the antenna\nstands upright out of the back wall.\n\n- [How to print and assemble it](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/README.md): print settings,\n  hardware, wiring, assembly, the parameters and what a first print has to confirm.\n- Bambu Studio projects (P2S, settings applied): [base](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/3mf/base.3mf),\n  [base with wall ears](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/3mf/base_wall.3mf),\n  [lid](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/3mf/lid.3mf),\n  [clamp](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/3mf/clamp.3mf).\n- STL for other slicers: [base](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/stl/base.stl),\n  [base with wall ears](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/stl/base_wall.stl),\n  [lid](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/stl/lid.stl),\n  [clamp](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/stl/clamp.stl),\n  [ring and logo inlay](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/stl/lid_inlay_parts.stl) (optional,\n  second filament).\n- [Parametric source](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/enclosures/m5stack-cc1101-atom-lite/enclosure.scad) (OpenSCAD).\n\nNothing has been printed yet: the dimensions come from M5Stack's drawings, and the model checks its\nown fits and strains.\n\n## The antenna\n\nScrew an 868 MHz antenna onto the SMA socket before the node transmits (the module ships with a\n2.5 dBi rubber antenna). A CC1101 sending into an open socket can damage its output stage (general\nradio practice, not seen here).",
       "photo": null,
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/m5stack-module-cc1101.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/m5stack-module-cc1101.md"
     },
     {
       "id": "mi-flora",
       "title": "Mi Flora plant sensor",
       "summary": "Soil and light readings for individual plants.",
       "sourcePath": "devices/mi-flora.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "plants"
       ],
@@ -1633,14 +1745,14 @@
       ],
       "body": "## Place and discover\n\nInstall the sensor as instructed by its manufacturer and provide Bluetooth coverage with a proxy. Set up the Xiaomi BLE integration (xiaomi_ble) in Home Assistant.\n\n## Check each plant\n\nConfirm soil moisture, conductivity, light and temperature update before assigning the plant. Choose suitable thresholds for the plant and substrate. Ramka can display a plant page when configured; this sensor does not provide automatic watering.\n\n## Setup references\n\n- [Xiaomi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/xiaomi_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": "/hardware/mi-flora.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/mi-flora.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/mi-flora.yaml"
     },
     {
       "id": "ruuvi-air",
       "title": "Ruuvi Air",
       "summary": "Optional air-quality readings over Bluetooth.",
       "sourcePath": "devices/ruuvi-air.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "climate-air"
       ],
@@ -1652,14 +1764,14 @@
       ],
       "body": "## Provide Bluetooth coverage\n\nSet up the sensor according to its manufacturer instructions. The documented integration is ruuvitag_ble; the component can use a Bluetooth proxy supplied by Room presence.\n\n## Check the entities\n\nVerify the CO2, particle and other available readings before mapping air inputs. The air page is conditional on those inputs; a temperature-only setup does not automatically gain air-quality measurements.\n\n## Setup references\n\n- [Ruuvi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/ruuvitag_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": "/hardware/ruuvi-air.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/ruuvi-air.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/ruuvi-air.yaml"
     },
     {
       "id": "shelly-pm-mini-gen3",
       "title": "Shelly PM Mini Gen3",
       "summary": "A small in-wall power meter behind the player's socket, read locally.",
       "sourcePath": "devices/shelly-pm-mini-gen3.md",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "media"
       ],
@@ -1669,16 +1781,16 @@
           "version": "0.2.0"
         }
       ],
-      "body": "# Shelly PM Mini Gen3: wiring behind a socket\n\nA small power meter for the wall box (model S3PM-001PCEU16). It sits in series with a socket's phase\nand only measures: power, voltage, current and energy of what is plugged in. It does not switch.\nHome Assistant reads it locally through the core `shelly` integration, without a cloud account.\nIn DomoSenso it is the `mains-meter` behind the music player: map its power and voltage sensors to\nRamka's `mains` input and the now-playing view shows the player's draw and voltage.\nDevice file: [shelly-pm-mini-gen3.yaml](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/shelly-pm-mini-gen3.yaml).\n\n## Wiring\n\n![Shelly PM Mini Gen3 in a socket's wall box: the supply and onward phase meet in connector L, lead A goes to Shelly L, lead B from Shelly O to the socket's L; connector N feeds the socket's N (lead C) and Shelly N (lead D); the onward N and both PE stay in the socket](/wiring/shelly-pm-mini-gen3-socket.svg)\n\n| lead | from | to |\n|---|---|---|\n| A | connector L (supply phase, onward phase) | Shelly L |\n| B | Shelly O | socket L |\n| C | connector N (supply neutral) | socket N |\n| D | connector N | Shelly N |\n\n- The onward phase, to the next socket on the circuit, joins in connector L, before the meter. Only\n  what is plugged into this socket is measured; the next sockets are not.\n- The onward neutral and both protective earths stay in the socket insert, as before.\n- The two O terminals on the case are bridged inside; one is enough.\n- Leads: short pieces of the supply's cross-section. The Shelly's screw terminals take 0.5 to 4 mm²,\n  stripped 6 to 7 mm, at 0.4 Nm; the circuit breaker must be type B or C, 16 A at most (Shelly's\n  specification). The connectors take the strip length printed on them.\n- This is the wiring of the first home's meter, behind a multiple socket with a three-way lever\n  connector for each of L and N. A socket with a switched outlet or a different terminal layout\n  needs its own plan.\n\n## Safety\n\nMains work. Switch off the circuit breaker and prove 0 V on L and N at the socket before touching a\nwire. Have it done by a qualified electrician, or only as far as your local rules allow you to do it\nyourself; some countries require an inspection afterwards. The drawing explains the connection, it\nis not an installation approval.\n\n## In Home Assistant\n\nThe `shelly` integration discovers the meter on the network. Check that the power and voltage\nsensors update while the player is playing and in standby. The catalog recognises the meter by the\nintegration and a model name containing PM Mini (`domosenso recommend --from-ha`).\n\n## Limits\n\nOne meter has been tested, in one home, behind one amplifier. Other metering Shelly models are\nreported as likely mains meters, not as indexed devices.\n\n## References\n\n- [Shelly PM Mini Gen3 — Shelly knowledge base](https://kb.shelly.cloud/knowledge-base/shelly-pm-mini-gen3)\n- [Shelly — Home Assistant](https://www.home-assistant.io/integrations/shelly/)",
+      "body": "# Shelly PM Mini Gen3: wiring behind a socket\n\nA small power meter for the wall box (model S3PM-001PCEU16). It sits in series with a socket's phase\nand only measures: power, voltage, current and energy of what is plugged in. It does not switch.\nHome Assistant reads it locally through the core `shelly` integration, without a cloud account.\nIn DomoSenso it is the `mains-meter` behind the music player: map its power and voltage sensors to\nRamka's `mains` input and the now-playing view shows the player's draw and voltage.\nDevice file: [shelly-pm-mini-gen3.yaml](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/shelly-pm-mini-gen3.yaml).\n\n## Wiring\n\n![Shelly PM Mini Gen3 in a socket's wall box: the supply and onward phase meet in connector L, lead A goes to Shelly L, lead B from Shelly O to the socket's L; connector N feeds the socket's N (lead C) and Shelly N (lead D); the onward N and both PE stay in the socket](/wiring/shelly-pm-mini-gen3-socket.svg)\n\n| lead | from | to |\n|---|---|---|\n| A | connector L (supply phase, onward phase) | Shelly L |\n| B | Shelly O | socket L |\n| C | connector N (supply neutral) | socket N |\n| D | connector N | Shelly N |\n\n- The onward phase, to the next socket on the circuit, joins in connector L, before the meter. Only\n  what is plugged into this socket is measured; the next sockets are not.\n- The onward neutral and both protective earths stay in the socket insert, as before.\n- The two O terminals on the case are bridged inside; one is enough.\n- Leads: short pieces of the supply's cross-section. The Shelly's screw terminals take 0.5 to 4 mm²,\n  stripped 6 to 7 mm, at 0.4 Nm; the circuit breaker must be type B or C, 16 A at most (Shelly's\n  specification). The connectors take the strip length printed on them.\n- This is the wiring of the first home's meter, behind a multiple socket with a three-way lever\n  connector for each of L and N. A socket with a switched outlet or a different terminal layout\n  needs its own plan.\n\n## Safety\n\nMains work. Switch off the circuit breaker and prove 0 V on L and N at the socket before touching a\nwire. Have it done by a qualified electrician, or only as far as your local rules allow you to do it\nyourself; some countries require an inspection afterwards. The drawing explains the connection, it\nis not an installation approval.\n\n## In Home Assistant\n\nThe `shelly` integration discovers the meter on the network. Check that the power and voltage\nsensors update while the player is playing and in standby. The catalog recognises the meter by the\nintegration and a model name containing PM Mini (`domosenso recommend --from-ha`).\n\n## Limits\n\nOne meter has been tested, in one home, behind one amplifier. Other metering Shelly models are\nreported as likely mains meters, not as indexed devices.\n\n## References\n\n- [Shelly PM Mini Gen3 — Shelly knowledge base](https://kb.shelly.cloud/knowledge-base/shelly-pm-mini-gen3)\n- [Shelly — Home Assistant](https://www.home-assistant.io/integrations/shelly/)",
       "photo": "/hardware/shelly-pm-mini-gen3.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/shelly-pm-mini-gen3.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/shelly-pm-mini-gen3.md"
     },
     {
       "id": "tapo-t315",
       "title": "Tapo T315",
       "summary": "Room temperature and humidity through a Tapo hub.",
       "sourcePath": "devices/tapo-t315.yaml",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "climate-air"
       ],
@@ -1690,14 +1802,14 @@
       ],
       "body": "## Pair with the hub\n\nThe documented setup uses a Tapo H200 hub. Pair the sensor with its hub, then configure the TP-Link/Tapo integration in Home Assistant.\n\n## Verify readings\n\nConfirm fresh temperature and humidity entities. Map them into the climate-air inputs and, if desired, Ramka’s climate page. No custom wiring is required for this sensor setup. Follow the model’s manufacturer instructions for battery installation and placement.\n\n## Setup references\n\n- [TP-Link Smart Home and hub-attached sensors — Home Assistant](https://www.home-assistant.io/integrations/tplink/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
       "photo": "/hardware/tapo-t315.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/tapo-t315.yaml"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/devices/tapo-t315.yaml"
     },
     {
       "id": "tcl-9469x",
       "title": "TCL wall tablet",
       "summary": "Companion app, screen behavior and the tested landscape layout.",
       "sourcePath": "docs/tablet-setup.md",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "components": [
         "ramka"
       ],
@@ -1707,9 +1819,9 @@
           "version": "0.16.0"
         }
       ],
-      "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's Exit button on the controls is its way out\ninstead: a tap opens `exit_left`, a long press reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |\n\n\n## A separate dashboard application\n\nFrom Ramka 0.14.0, set the installation input `tablet_wake_package: com.domosenso.frame` when\nFrame is the dashboard application. The default remains Home Assistant Companion. Keep Companion\ninstalled, signed in and allowed to deliver its existing screen/launch notification commands.\nInstall and pair Frame separately before selecting it. Render, stage and review the deployment\nplan, then verify a real radar wake restores the chosen app. Do not enable competing native radar\ncontrol when HA already owns sleep and brightness. This does not change any live HA preferences.",
+      "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's Exit button on the controls is its way out\ninstead: a tap opens `exit_left`, a long press reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |\n\n\n## A separate dashboard application\n\nFrom Ramka 0.14.0, set the installation input `tablet_wake_package: com.domosenso.frame` when\nFrame is the dashboard application. The default remains Home Assistant Companion. Keep Companion\ninstalled, signed in and allowed to deliver its existing screen/launch notification commands.\nInstall and pair Frame separately before selecting it. Render, stage and review the deployment\nplan, then verify a real radar wake restores the chosen app. Do not enable competing native radar\ncontrol when HA already owns sleep and brightness. This does not change any live HA preferences.",
       "photo": "/hardware/tcl-9469x.webp",
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/docs/tablet-setup.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/blob/b6e14f963a161b097976f66491d5b239e69f9739/docs/tablet-setup.md"
     }
   ],
   "articles": [
@@ -2066,7 +2178,7 @@
     {
       "path": "/wiring/hlk-ld2410c-atom-lite.svg",
       "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "alt": "Wiring diagram: hlk ld2410c atom lite",
       "kind": "wiring",
       "credit": "DomoSenso",
@@ -2076,7 +2188,7 @@
     {
       "path": "/wiring/cc1101-atom-lite.svg",
       "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "alt": "Wiring diagram: cc1101 atom lite",
       "kind": "wiring",
       "credit": "DomoSenso",
@@ -2086,7 +2198,7 @@
     {
       "path": "/wiring/shelly-pm-mini-gen3-socket.svg",
       "sourcePath": "devices/wiring/shelly-pm-mini-gen3-socket.svg",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "alt": "Wiring diagram: Shelly PM Mini Gen3 behind a socket",
       "kind": "wiring",
       "credit": "DomoSenso",
@@ -2096,7 +2208,7 @@
     {
       "path": "/wiring/m5stack-cc1101-atom-lite.svg",
       "sourcePath": "devices/wiring/m5stack-cc1101-atom-lite.svg",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
       "alt": "Wiring diagram: M5Stack Module CC1101 on an M5Stack Atom Lite",
       "kind": "wiring",
       "credit": "DomoSenso",
@@ -2274,6 +2386,16 @@
       "width": 820,
       "height": 720,
       "sha256": "779c75c02a6c2950ee873444717e1153eb17cc3ef00cc10c0b50ed9806a40d46"
+    },
+    {
+      "path": "/enclosures/m5stack-cc1101-atom-lite/closed.png",
+      "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/closed.png",
+      "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+      "alt": "The closed enclosure for the M5Stack Module CC1101 and the Atom Lite",
+      "kind": "enclosure-preview",
+      "credit": "DomoSenso",
+      "license": "Apache-2.0",
+      "scope": "public-device-guide"
     }
   ]
 }

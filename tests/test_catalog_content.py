@@ -330,7 +330,7 @@ ENTITY_OWNER = {
     "cover.awning_living_room": "awnings", "cover.awning_kitchen": "awnings", "binary_sensor.awnings_wind": "awnings",
     **{f"light.{room}": "lights" for room in ["living_room", "dining", "kitchen", "office", "bedroom", "kids_room", "hall"]},
     "scene.all_lights_off": "lights",
-    "scene.movie_night": None, "button.gate_remote_garage": "gate-remote",
+    "scene.movie_night": None, "button.hall_gate_remote_garage": "gate-remote",
     **{f"sensor.{room}_{kind}": "climate-air" for room in ROOMS_TAPO for kind in ("temperature", "humidity")},
     "sensor.dining_air_temperature": "climate-air", "sensor.dining_air_humidity": "climate-air",
     "sensor.dining_air_quality_score": "climate-air", "sensor.dining_air_carbon_dioxide": "climate-air",
@@ -484,3 +484,27 @@ def test_privacy_scan_covers_docs_and_allows_only_the_names():
     assert privacy_hits(doc, "~/" + "".join(("pio", "trdz")) + "/x") == ["docs/x.md:1"]
     for word in ("".join(("Zoll", "weg 12")), "".join(("Pral", "nia")), "".join(("tablet_", "jad", "alnia_mode"))):
         assert privacy_hits(doc, word) == ["docs/x.md:1"], word
+
+
+# SPEC-036: printable enclosures beside the device guides
+def enclosure_dirs():
+    return sorted(p for p in (REPO / "devices" / "enclosures").iterdir() if p.is_dir())
+
+
+def test_enclosures_are_complete():
+    dirs = enclosure_dirs()
+    assert dirs, "no enclosure under devices/enclosures/"
+    for d in dirs:
+        assert re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", d.name), d.name
+        assert (d / "README.md").is_file(), d
+        assert list(d.glob("*.scad")), f"{d.name}: no OpenSCAD source"
+        assert list((d / "stl").glob("*.stl")), f"{d.name}: no STL"
+        assert list((d / "preview").glob("*.png")), f"{d.name}: no preview"
+
+
+def test_enclosure_links_resolve():
+    from test_docs import broken_links
+    readmes = [d / "README.md" for d in enclosure_dirs()]
+    guides = [g for g in sorted((REPO / "devices").glob("*.md")) if "enclosures/" in g.read_text(encoding="utf-8")]
+    assert guides, "no device guide links an enclosure"
+    assert [b for doc in readmes + guides for b in broken_links(doc)] == []
