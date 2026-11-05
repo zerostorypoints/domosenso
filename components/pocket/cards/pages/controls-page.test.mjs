@@ -101,3 +101,25 @@ test("an unknown cover can be operated; an unavailable one cannot", () => {
   assert.deepEqual(ctx.raw.calls.at(-1), ["cover", "close_cover", { entity_id: "cover.terrace_awning" }]);
   el.remove();
 });
+
+// Decision D4: without a list in the inputs, the user timers are the ones the timers component marks
+// (timer_role: user_countdown); a component's internal timer has no role and stays out. A list in
+// the inputs (legacy or manual) wins over discovery.
+test("timers: found by role when the inputs name none; a named list wins", async () => {
+  const { timersOf } = await import("../lib/controls.js");
+  const hass = controlsHass({
+    "timer.domosenso_tea": st("idle", { friendly_name: "Tea", duration: "0:04:00", component: "timers", timer_role: "user_countdown" }),
+    "timer.domosenso_eggs": st("idle", { friendly_name: "Eggs", duration: "0:07:00", component: "timers", timer_role: "user_countdown" }),
+    "timer.ramka_controls": st("active", { friendly_name: "Ramka controls" }),
+  });
+  assert.deepEqual(timersOf(hass, {}), ["timer.domosenso_eggs", "timer.domosenso_tea"]);
+  assert.deepEqual(timersOf(hass, { timers: [] }), ["timer.domosenso_eggs", "timer.domosenso_tea"]);
+  assert.deepEqual(timersOf(hass, { timers: ["timer.kitchen"] }), ["timer.kitchen"]);
+  hass.entities = { ...hass.entities, "timer.domosenso_eggs": { entity_id: "timer.domosenso_eggs", hidden: true } };
+  assert.deepEqual(timersOf(hass, {}), ["timer.domosenso_tea"], "a hidden timer stays out");
+  const el = mount(ctxOf({ hass, cfg: config }));
+  assert.equal(el.querySelector(".timers").hidden, false);
+  assert.equal(el.querySelector('[data-entity="timer.ramka_controls"]'), null);
+  assert.ok(el.querySelector('[data-entity="timer.domosenso_tea"]'));
+  el.remove();
+});

@@ -228,4 +228,5 @@ when the row has a level. A row that opens something is a `button`.
 | Back from every page opened from Systems | a page on the bar opened from Systems still came from Systems |
 | A card that sizes itself is never put in a fixed-height box | the floor plan's map bar cut the plan |
 | Timers are named in the inputs, never every `timer.*` | components keep internal timers (the Ramka's controls timer); the Ramka takes a list too |
+| User timers are found by `timer_role: user_countdown`; a list in the inputs wins | the timers component marks the timers it makes for people; agreed in #219 (decision D4), replacing the row above |
 | `unknown` does not disable a control, `unavailable` does | HA accepts a command for an entity whose value is not known yet; agreed in the shared-model review (#219) |
