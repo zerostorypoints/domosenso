@@ -43,9 +43,11 @@ const STYLE = `
   .home .top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 4px; }
   .home .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .home .top .date { font-size: 12px; color: var(--mut); }
-  .home .att, .home .chips, .home .strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
-                                           margin: 4px -16px 14px; padding: 0 16px; }
-  .home .att::-webkit-scrollbar, .home .chips::-webkit-scrollbar, .home .strip::-webkit-scrollbar { display: none; }
+  .home .att, .home .strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+                             margin: 4px -16px 14px; padding: 0 16px; }
+  .home .att::-webkit-scrollbar, .home .strip::-webkit-scrollbar { display: none; }
+  /* Equal cells, two per row: four in one row are too narrow for the inside range (21.0–22.0°). */
+  .home .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
   .home .pill { flex: 0 0 auto; box-sizing: border-box; min-width: 44px; min-height: 44px; margin: 0; padding: 8px 12px;
                 display: flex; gap: 7px; align-items: center; font: inherit; font-size: 12.5px; color: var(--fg);
                 background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
@@ -53,7 +55,7 @@ const STYLE = `
   .home .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: var(--ok); }
   .home .dot.fair { background: var(--warn); }
   .home .dot.poor { background: var(--bad); }
-  .home .chip { flex: 0 0 auto; min-width: 58px; padding: 9px 12px; font-size: 16px; font-weight: 600;
+  .home .chip { min-width: 0; padding: 9px 12px; overflow-wrap: anywhere; font-size: 16px; font-weight: 600;
                 background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
   .home button.chip { box-sizing: border-box; min-height: 44px; margin: 0; font-family: inherit; line-height: inherit;
                        color: var(--fg); text-align: left; cursor: pointer; }
