@@ -292,7 +292,9 @@ def versioned(rel: str, content: bytes, version: str) -> bytes:
     return text.encode("utf-8")
 
 
-def _translation_values(key, value):
+def _translation_values(key, value, anchor_keys=()):
+    if key in anchor_keys:
+        return value if isinstance(value, list) else None
     if key.startswith("meta.assistant.") and key.endswith(".examples"):
         if isinstance(value, list) and 1 <= len(value) <= 3 and all(
             isinstance(item, str) and 1 <= len(item) <= 300 for item in value
@@ -311,8 +313,17 @@ def check_translations(component_dir: Path) -> tuple[list[str], list[str]]:
     en, en_err = _load_translation(tdir / f"{SOURCE_LANGUAGE}.json")
     if en is None:
         return [en_err], []
+    anchor_keys = set()
+    manifest, _ = _load_yaml(component_dir / 'component.yaml')
+    if isinstance(manifest, dict) and 'assistant' in manifest:
+        from assistant_contract import load_definition
+        try:
+            definitions, _ = load_definition(component_dir, manifest)
+            anchor_keys = {cap['client']['anchors_key'] for cap in definitions['capabilities'] if 'client' in cap}
+        except ValueError:
+            pass  # check_component reports the invalid declaration; lists still fail below.
     for key, value in en.items():
-        if _translation_values(key, value) is None:
+        if _translation_values(key, value, anchor_keys) is None:
             errors.append(f"{tdir / 'en.json'}: {key}: value must be a string (assistant examples: 1–3 bounded strings)")
     for lang in LANGUAGES:
         if lang == SOURCE_LANGUAGE:
@@ -328,7 +339,7 @@ def check_translations(component_dir: Path) -> tuple[list[str], list[str]]:
         for key, value in flat.items():
             if key not in en:
                 errors.append(f"{file}: key '{key}' is not in en.json")
-            strings = _translation_values(key, value)
+            strings = _translation_values(key, value, anchor_keys)
             if strings is None:
                 errors.append(f"{file}: {key}: value must be a string (assistant examples: 1–3 bounded strings)")
             elif lang == "de" and any("ß" in text for text in strings):

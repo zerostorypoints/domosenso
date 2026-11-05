@@ -18,7 +18,8 @@ from pathlib import Path
 import yaml
 
 from assistant_actions import compile_actions, load_actions
-from assistant_contract import compile_profile, load_definition, split_runtime_profile
+from assistant_contract import compile_profile, load_definition, parse_bindings, split_runtime_profile
+from assistant_metadata import compile_metadata
 from catalog_check import install_dir, install_files, install_version, service_files, versioned
 from domosenso_cli import dev_render, stamps
 from domosenso_cli.catalog import Catalog
@@ -210,11 +211,14 @@ def plan_outputs(
                     content = (out / rendered).read_bytes()
                     if f"templates/{name}" == (manifest.get("assistant") or {}).get("bindings"):
                         try:
-                            profile = compile_profile(component_dir, manifest, yaml.safe_load(content), version, sha, dirty)
+                            bindings = parse_bindings(content)
+                            profile = compile_profile(component_dir, manifest, bindings, version, sha, dirty)
+                            metadata = compile_metadata(component_dir, manifest, bindings, version, sha, dirty)
                         except ValueError as exc:
                             raise DomosensoError(f"{cid}: {exc}") from exc
                         legacy, runtime = split_runtime_profile(profile)
-                        for directory, artifact in (("assistant", legacy), ("assistant-runtime", runtime)):
+                        for directory, artifact in (("assistant", legacy), ("assistant-runtime", runtime),
+                                                    ("assistant-metadata", metadata)):
                             if artifact is None:
                                 continue
                             encoded = (stamps.stamp(cid, version, sha[:SHORT_SHA], dirty) + "\n" +
