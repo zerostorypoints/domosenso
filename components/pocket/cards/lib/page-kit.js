@@ -7,7 +7,13 @@ const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
 const formats = new Map();     // one Intl.NumberFormat per language and number of digits
 const pluralRules = new Map();
 
+// A state without a value to show: HA has none yet (unknown) or cannot reach the device (unavailable).
 export const GONE = new Set(["unavailable", "unknown"]);
+
+// Whether a control can act on an entity. Only `unavailable` (or no entity) blocks: `unknown` is a
+// value not known yet (a cover's position after a restart, a never-run scene, a speaker that has
+// not reported), and Home Assistant still takes the command. Shown values keep using GONE.
+export const operable = (state) => !!state && state.state !== "unavailable";
 
 export function setText(el, text) {
   if (el.textContent !== text) el.textContent = text;

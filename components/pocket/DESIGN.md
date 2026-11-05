@@ -142,6 +142,10 @@ when the row has a level. A row that opens something is a `button`.
   (measurements).
 - Media: transport (64 px play), a 44 px volume strip, mute, power when supported, the input chip
   beside what plays when the player can select a source.
+- A control is enabled unless its entity is missing or `unavailable` (`operable` in
+  `lib/page-kit.js`). `unknown` is a value not known yet, such as a cover's position after a restart,
+  a never-run scene or a speaker that has not reported: the value shows as a dash, but the control
+  still acts, because Home Assistant takes the command.
 
 ## 5. Data: where things come from
 
@@ -224,3 +228,4 @@ when the row has a level. A row that opens something is a `button`.
 | Back from every page opened from Systems | a page on the bar opened from Systems still came from Systems |
 | A card that sizes itself is never put in a fixed-height box | the floor plan's map bar cut the plan |
 | Timers are named in the inputs, never every `timer.*` | components keep internal timers (the Ramka's controls timer); the Ramka takes a list too |
+| `unknown` does not disable a control, `unavailable` does | HA accepts a command for an entity whose value is not known yet; agreed in the shared-model review (#219) |

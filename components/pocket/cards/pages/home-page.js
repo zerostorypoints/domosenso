@@ -49,7 +49,7 @@ import { todayNow } from "../lib/energy.js";
 import { HOME_VIEWS } from "../lib/router.js";
 import { playersOf } from "../lib/media.js";
 import {
-  GONE, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
+  GONE, operable, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
@@ -216,7 +216,7 @@ export function render(ctx) {
     const { hass, offline, optimistic } = parts.ctx;
     const player = parts.player;
     const state = player ? hass?.states?.[player] : undefined;
-    if (offline || !state || GONE.has(state.state)) return;
+    if (offline || !operable(state)) return;
     optimistic.send(root, hass, { domain: "media_player", service: "media_play_pause", data: { entity_id: player },
       errorKey: "card.pocket.error.media",
       expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });
