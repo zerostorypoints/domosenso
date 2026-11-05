@@ -1,0 +1,62 @@
+# domosenso component gate-remote: capture firmware. An M5Stack Atom Lite (ESP32) with a CC1101
+# transceiver listens on the handset's frequency and logs every frame it hears as raw timings, so a
+# home can see whether its handset sends a fixed code (two presses, the same frame) and copy one
+# frame into a code file for the transmit firmware (README, "Capture").
+#
+# Listen only. In receive mode the CC1101 drives GDO0 with the demodulated data, so GDO0 is left
+# unconfigured here (the board's pin stays an input) and the receiver reads GDO2. Tested 2026-11-05
+# at 868.3 MHz with the M5Stack Module CC1101 (SPEC-034).
+#
+# Shared as a remote package; it reads no secret. The factory image (capture.factory.yaml) adds
+# Improv over USB; the logs are read with `esphome logs` over the same cable.
+
+substitutions:
+  name: gate-remote
+  friendly_name: Gate remote
+  frequency: 433.92MHz           # the device file sets the handset's
+  pin_clk: GPIO33                # Atom Lite wiring (devices/m5stack-module-cc1101.md)
+  pin_mosi: GPIO23
+  pin_miso: GPIO19
+  pin_cs: GPIO21
+  pin_gdo2: GPIO25
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+  project:
+    name: domosenso.gate-remote
+    version: 0.1.0  # the manifest's version (catalog_check)
+
+esp32:
+  board: m5stack-atom
+  variant: esp32
+  framework:
+    type: esp-idf
+
+logger:  # serial at 115200: the capture is read over USB
+
+spi:
+  clk_pin: ${pin_clk}
+  mosi_pin: ${pin_mosi}
+  miso_pin: ${pin_miso}
+
+cc1101:
+  id: radio
+  cs_pin: ${pin_cs}
+  frequency: ${frequency}
+  modulation_type: ASK/OOK
+  # The component's defaults otherwise: 203 kHz filter bandwidth, 5 kBd, 0 dB attenuation.
+
+remote_receiver:
+  pin: ${pin_gdo2}
+  dump:
+    - raw
+    - rc_switch  # a fixed-code protocol it may happen to know; the raw frame is what the code file takes
+  # 50 us filter, 10 ms idle ends a frame: a handset's own gap between repeats (about 9 ms on the
+  # tested one) stays inside one logged block, so one press shows its frames together.
+
+sensor:
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s

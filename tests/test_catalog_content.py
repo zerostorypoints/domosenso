@@ -14,10 +14,10 @@ REPO = Path(__file__).resolve().parent.parent
 DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
-COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "lights", "media", "plants", "pocket", "ramka", "remote-access", "timers", "weather"]
+COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "gate-remote", "lights", "media", "plants", "pocket", "ramka", "remote-access", "timers", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "mains-meter", "mqtt-broker",
          "network-audio-player", "plant-sensor", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
-DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "mi-flora", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]
+DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "m5stack-module-cc1101", "mi-flora", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]
 
 # id -> (time, tablet)
 SCENES = {
@@ -330,6 +330,7 @@ ENTITY_OWNER = {
     "cover.awning_living_room": "awnings", "cover.awning_kitchen": "awnings", "binary_sensor.awnings_wind": "awnings",
     **{f"light.{room}": "lights" for room in ["living_room", "dining", "kitchen", "office", "bedroom", "kids_room", "hall"]},
     "scene.all_lights_off": "lights",
+    "scene.movie_night": None, "button.gate_remote_garage": "gate-remote",
     **{f"sensor.{room}_{kind}": "climate-air" for room in ROOMS_TAPO for kind in ("temperature", "humidity")},
     "sensor.dining_air_temperature": "climate-air", "sensor.dining_air_humidity": "climate-air",
     "sensor.dining_air_quality_score": "climate-air", "sensor.dining_air_carbon_dioxide": "climate-air",

@@ -107,6 +107,7 @@ and a manifest that says what it needs and which versions it was tested on.
 - **bermuda-presence** — which room each phone, tablet and watch is in, from Bluetooth through ESPHome proxies and Bermuda. Tested in 1 home.
 - **plants** — soil moisture, conductivity, light and temperature of houseplants (Mi Flora). Tested in 1 home.
 - **awnings** — Somfy RTS awnings through an ESPSomfy-RTS radio node, with the wind sensor. Tested in 1 home.
+- **gate-remote** — a garage door or gate opened from Home Assistant by sending its own handset's fixed code from an ESP32 and a CC1101 transceiver. Tested in 1 home.
 - **lights** — Philips Hue lights per room, from the bridge's rooms. Tested in 1 home.
 - **media** — a network audio player as a media player; tested with a Hegel H400. Tested in 1 home.
 - **calendar** — events from a CalDAV server such as iCloud. Tested in 1 home.
@@ -185,3 +186,7 @@ From your home's folder: `uv run --project <path to the clone> domosenso <comman
 For a private installation, [set up local home staging](docs/HOME_STAGING.md) with the shared
 `stage-home-update` skill and framework tools. Each home/worktree gets its own isolated runtime;
 private inputs and local customizations remain in the home repository.
+
+## Brand identity
+
+The approved portal family, domain-specific logo assets and manufacturing reference live in [branding/](branding/README.md). The [brand book](branding/brand-book.pdf) and its [editable source](branding/brand-book.md) explain the shared .com/.org geometry, colours, typography, clear space and 20 mm casing symbols. Rebuild generated site assets from this source before publishing.

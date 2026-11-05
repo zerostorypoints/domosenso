@@ -21,6 +21,9 @@
   "floorplan": {
    "page": true
   },
+  "gate-remote": {
+   "page": true
+  },
   "lights": {
    "page": true
   },
@@ -137,6 +140,19 @@
     }
    ],
    "name": "M5Stack Atom Lite",
+   "page": true
+  },
+  {
+   "id": "m5stack-module-cc1101",
+   "match": [
+    {
+     "integration": "esphome",
+     "manufacturer": "domosenso",
+     "model": "gate-remote",
+     "note": "inference"
+    }
+   ],
+   "name": "M5Stack Module CC1101 (868 MHz)",
    "page": true
   },
   {

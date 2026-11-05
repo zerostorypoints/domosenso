@@ -1,0 +1,109 @@
+{
+  "outcome": "Open a fixed-code garage door or gate from Home Assistant.",
+  "categories": [
+    "utilities"
+  ],
+  "hardware": "required",
+  "ui": "consumer",
+  "deviceIds": [
+    "m5stack-atom-lite",
+    "m5stack-module-cc1101"
+  ],
+  "views": [
+    {
+      "id": "controls",
+      "title": "Room controls",
+      "owner": "ramka",
+      "providers": [
+        "lights",
+        "awnings",
+        "media",
+        "gate-remote"
+      ],
+      "availability": "conditional",
+      "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
+      "preview": "/previews/controls.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Use it only for a door or gate you may open with the handset you already have. A shared gate, such as a building’s garage, opens for everyone who can press the button in Home Assistant: decide that deliberately.",
+    "Wire an Atom Lite to a CC1101 module for the handset’s band (the M5Stack module for 868 MHz, tested; the E07-M1101D for 433 MHz, untested), set the DIP switches and screw the antenna on, following the wiring guide.",
+    "Flash the capture firmware over USB and press the handset twice. The same frame both times means a fixed code: paste one frame into the gate’s code file beside the device file and keep *.code.yaml out of git. Different frames mean a rolling code: stop there.",
+    "Flash the device file domosenso add wrote, adopt the node in Home Assistant and press the gate’s button. Optionally list the button in the Ramka’s actions input."
+  ],
+  "id": "gate-remote",
+  "version": "0.1.0",
+  "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+  "evidencePaths": [
+    "components/gate-remote/component.yaml",
+    "components/gate-remote/README.md"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Ready",
+        "headline": "One button per gate",
+        "detail": "The node waits. A press in Home Assistant, on the Ramka or a one-second hold of the board’s own button sends the code.",
+        "values": [
+          {
+            "label": "Button",
+            "value": "Garage"
+          },
+          {
+            "label": "Handset",
+            "value": "Fixed code"
+          },
+          {
+            "label": "Radio",
+            "value": "Idle"
+          }
+        ],
+        "level": 0
+      },
+      {
+        "label": "Send",
+        "headline": "Send the handset’s own code",
+        "detail": "One press sends the captured frame five times, about 9 ms apart, while the board’s LED shows blue. The gate’s state is not reported back.",
+        "values": [
+          {
+            "label": "Button",
+            "value": "Pressed"
+          },
+          {
+            "label": "Frames",
+            "value": "5"
+          },
+          {
+            "label": "LED",
+            "value": "Blue"
+          }
+        ],
+        "level": 100
+      },
+      {
+        "label": "Rolling code",
+        "headline": "A rolling code stops at capture",
+        "detail": "Two presses of a rolling-code handset give different frames. The node cannot send such a code, and the component ends there.",
+        "values": [
+          {
+            "label": "Press 1",
+            "value": "Frame A"
+          },
+          {
+            "label": "Press 2",
+            "value": "Frame B"
+          },
+          {
+            "label": "Result",
+            "value": "Not supported"
+          }
+        ],
+        "level": 0
+      }
+    ]
+  }
+}
