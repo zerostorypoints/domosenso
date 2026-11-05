@@ -1,0 +1,38 @@
+# gate-remote: a gate remote at 868.3MHz. Written once by `domosenso add` from gate-remote 0.1.0,
+# this home's file from now on; the package is the catalog's at that tag.
+#
+# Each gate's code is one captured frame in the file named in its button below, next to this file:
+# capture it with the capture firmware (the component's README, "Capture"), paste the list, and
+# keep the file out of git (`*.code.yaml` in this directory's .gitignore): it opens the gate.
+substitutions:
+  name: "gate-remote"
+  friendly_name: "Gate remote"
+  frequency: "868.3MHz"
+
+esphome:
+  area: "Hall"
+
+packages:
+  gate: github://zerostorypoints/domosenso/components/gate-remote/esphome/transmit.yaml@gate-remote/0.1.0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:  # uploads authenticated with the API key
+
+button:
+  - platform: template
+    id: gate_primary
+    name: "Garage"
+    icon: mdi:garage-variant
+    on_press:
+      - script.execute:
+          id: gate_send
+          code: !include gate-remote-garage.code.yaml

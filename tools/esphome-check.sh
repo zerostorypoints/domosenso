@@ -47,6 +47,10 @@ src, dst, remote = map(pathlib.Path, sys.argv[1:4])
 comp = sys.argv[4]
 pat = re.compile(r"^(\s+)(\w+): github://zerostorypoints/domosenso/(\S+)@(\S+)$", re.M)
 for f in sorted(src.glob("*.yaml")):
+    if f.name.endswith(".code.yaml"):
+        # A device file's !include (gate-remote's captured code): copied beside it, never checked alone.
+        (dst / f.name).write_text(f.read_text())
+        continue
     if f"github://zerostorypoints/domosenso/components/{comp}/" not in f.read_text():
         print(f"skipped      {f.name} (no package of {comp})")
         continue
@@ -66,6 +70,7 @@ fail=0
 # file it may lack required blocks (ble-proxy.yaml has no Wi-Fi network on purpose).
 for f in "$WORK"/factory/*.factory.yaml "$WORK"/home/*.yaml; do
   [ "$(basename "$f")" = secrets.yaml ] && continue
+  case "$f" in *.code.yaml) continue ;; esac
   if "${ESPHOME[@]}" config "$f" > "$WORK/$(basename "$f").out" 2>&1; then echo "config ok    $f"
   else echo "config FAIL  $f (see $WORK/$(basename "$f").out)"; fail=1; fi
 done

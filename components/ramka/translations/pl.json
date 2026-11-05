@@ -564,6 +564,10 @@
     },
     "timers": {
       "heading": "Minutniki"
+    },
+    "actions": {
+      "heading": "Skróty",
+      "confirm": "na pewno?"
     }
   },
   "meta": {
