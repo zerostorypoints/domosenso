@@ -24,7 +24,8 @@
         "settings": "Ustawienia",
         "scenes": "Sceny",
         "system": "System",
-        "controls": "Sterowanie"
+        "controls": "Sterowanie",
+        "safety": "Bezpieczeństwo"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
       "home": {
@@ -112,7 +113,8 @@
         "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie.",
         "scene": "Scena nie odpowiedziała. Spróbuj ponownie.",
         "cover": "Osłona się nie poruszyła. Spróbuj ponownie.",
-        "timer": "Minutnik nie zareagował. Spróbuj ponownie."
+        "timer": "Minutnik nie zareagował. Spróbuj ponownie.",
+        "safety": "Akcja bezpieczeństwa się nie powiodła."
       },
       "areas": {
         "title": "Obszary",
@@ -561,6 +563,16 @@
             "other": "{count} minutnika działa"
           },
           "quiet": "Nic nie działa"
+        },
+        "safety": {
+          "quiet": "Wszystko w porządku",
+          "quiet_status": "Drzwi, alarmy i kto jest w domu",
+          "issues": {
+            "one": "{count} do sprawdzenia",
+            "few": "{count} do sprawdzenia",
+            "many": "{count} do sprawdzenia",
+            "other": "{count} do sprawdzenia"
+          }
         }
       },
       "scenes": {
@@ -655,6 +667,45 @@
           "opening": "Otwiera się"
         },
         "none": "W tym domu nie ma jeszcze czym sterować."
+      },
+      "safety": {
+        "quiet": "Wszystko w porządku",
+        "none": "Nie ma tu jeszcze czego pilnować: brak drzwi, okien, zamków, rolet, alarmów, syren i osób w Home Assistant.",
+        "section": {
+          "alarms": "Alarmy",
+          "contacts": "Drzwi i okna",
+          "locks": "Zamki",
+          "covers": "Rolety",
+          "siren": "Syrena",
+          "presence": "Kto jest w domu"
+        },
+        "issue": {
+          "alarm": "{name}: alarm",
+          "siren": "{name} wyje",
+          "open": "{name} otwarte",
+          "unlocked": "{name} odblokowany",
+          "cover": "{name} otwarta"
+        },
+        "alarm": {
+          "detected": "Wykryto",
+          "clear": "Spokój"
+        },
+        "siren": {
+          "on": "Wyje",
+          "off": "Cicho"
+        },
+        "not_reporting": "Nie raportuje",
+        "home": "W domu",
+        "away": "Poza domem",
+        "someone_in": "Ktoś jest w",
+        "lock": "Zablokuj",
+        "unlock": "Odblokuj",
+        "confirm_unlock": "Stuknij ponownie, aby odblokować",
+        "close_all": "Zamknij wszystkie",
+        "confirm_close_all": "Stuknij ponownie, aby zamknąć",
+        "test": "Test",
+        "confirm_test": "Stuknij ponownie, aby włączyć",
+        "stop": "Zatrzymaj"
       }
     }
   }

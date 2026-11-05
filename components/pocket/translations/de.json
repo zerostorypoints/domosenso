@@ -24,7 +24,8 @@
         "settings": "Einstellungen",
         "scenes": "Szenen",
         "system": "System",
-        "controls": "Steuerung"
+        "controls": "Steuerung",
+        "safety": "Sicherheit"
       },
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
       "home": {
@@ -112,7 +113,8 @@
         "media": "Der Player hat nicht reagiert. Bitte erneut versuchen.",
         "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen.",
         "cover": "Die Abdeckung hat sich nicht bewegt. Bitte erneut versuchen.",
-        "timer": "Der Timer hat nicht reagiert. Bitte erneut versuchen."
+        "timer": "Der Timer hat nicht reagiert. Bitte erneut versuchen.",
+        "safety": "Die Sicherheitsaktion ist nicht durchgegangen."
       },
       "areas": {
         "title": "Bereiche",
@@ -561,6 +563,16 @@
             "other": "{count} Timer laufen"
           },
           "quiet": "Nichts läuft"
+        },
+        "safety": {
+          "quiet": "Alles ruhig",
+          "quiet_status": "Türen, Alarme und wer zu Hause ist",
+          "issues": {
+            "one": "{count} zum Ansehen",
+            "few": "{count} zum Ansehen",
+            "many": "{count} zum Ansehen",
+            "other": "{count} zum Ansehen"
+          }
         }
       },
       "scenes": {
@@ -655,6 +667,45 @@
           "opening": "Öffnet"
         },
         "none": "In diesem Zuhause gibt es noch nichts zu steuern."
+      },
+      "safety": {
+        "quiet": "Alles ruhig",
+        "none": "Hier gibt es noch nichts zu beobachten: keine Türen, Fenster, Schlösser, Rollos, Alarme, Sirenen oder Personen in Home Assistant.",
+        "section": {
+          "alarms": "Alarme",
+          "contacts": "Türen und Fenster",
+          "locks": "Schlösser",
+          "covers": "Rollos",
+          "siren": "Sirene",
+          "presence": "Wer ist zu Hause"
+        },
+        "issue": {
+          "alarm": "{name}: Alarm",
+          "siren": "{name} ertönt",
+          "open": "{name} offen",
+          "unlocked": "{name} entriegelt",
+          "cover": "{name} offen"
+        },
+        "alarm": {
+          "detected": "Erkannt",
+          "clear": "Ruhig"
+        },
+        "siren": {
+          "on": "Ertönt",
+          "off": "Ruhig"
+        },
+        "not_reporting": "Meldet nichts",
+        "home": "Zu Hause",
+        "away": "Weg",
+        "someone_in": "Jemand in",
+        "lock": "Verriegeln",
+        "unlock": "Entriegeln",
+        "confirm_unlock": "Nochmals tippen zum Entriegeln",
+        "close_all": "Alle schliessen",
+        "confirm_close_all": "Nochmals tippen zum Schliessen",
+        "test": "Testen",
+        "confirm_test": "Nochmals tippen zum Auslösen",
+        "stop": "Stopp"
       }
     }
   }

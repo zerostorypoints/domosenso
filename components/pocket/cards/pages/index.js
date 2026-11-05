@@ -38,6 +38,7 @@ import * as media from "./media-page.js";
 import * as power from "./power-page.js";
 import * as plants from "./plants-page.js";
 import * as scenes from "./scenes-page.js";
+import * as safety from "./safety-page.js";
 import * as controls from "./controls-page.js";
 import * as system from "./system-page.js";
 
@@ -50,6 +51,7 @@ export const pages = {
   power,
   plants,
   scenes,
+  safety,
   controls,
   system,
   settings,

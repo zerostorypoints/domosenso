@@ -93,7 +93,14 @@ function measure(minTarget) {
       }
     }
     const r = el.children.length === 0 && el.textContent.trim() ? shown(el) : null;
-    if (r && (r.right > width + 1 || r.left < -1)) findings.push(`off screen "${label(el)}" ${Math.round(r.left)}..${Math.round(r.right)} (${where(el)})`);
+    // Inside a row that scrolls sideways (the pills, the area strip) a swipe reaches it: not off screen.
+    const scrolls = (e) => {
+      for (let a = e.parentElement || e.getRootNode()?.host; a; a = a.parentElement || a.getRootNode()?.host) {
+        if (["auto", "scroll"].includes(getComputedStyle(a).overflowX)) return true;
+      }
+      return false;
+    };
+    if (r && (r.right > width + 1 || r.left < -1) && !scrolls(el)) findings.push(`off screen "${label(el)}" ${Math.round(r.left)}..${Math.round(r.right)} (${where(el)})`);
   }
   return findings;
 }

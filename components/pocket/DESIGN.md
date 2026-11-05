@@ -134,6 +134,16 @@ when the row has a level. A row that opens something is a `button`.
   Controls; a door or window opens its timeline.
 - What the Ramka has for a wall only (calendar button, near toggle, Exit) is not on the phone.
 
+### 4.6a Safety page (P4)
+
+- The answer first: one line, "All quiet" (green dot) or the issues joined (red dot), each issue
+  named as the person names the thing (`labelOf`: the home inputs' label, else HA's name).
+- Then sections in a fixed order, each only when the home has such entities: Alarms, Doors and
+  windows, Locks, Covers, Siren, Who is home. A row: name, state, at most one action button.
+- A state that is not reporting reads "Not reporting" in the fair colour: on a safety page, silence
+  is information, not a dash.
+- Issues are also Home's first pills (red), each opening Safety; they come before readings.
+
 ### 4.7 Controls (elements)
 
 - Light tile (`<pocket-light-tile>`): tap toggles, drag sets brightness; a group counts its members.
@@ -142,6 +152,9 @@ when the row has a level. A row that opens something is a `button`.
   (measurements).
 - Media: transport (64 px play), a 44 px volume strip, mute, power when supported, the input chip
   beside what plays when the player can select a source.
+- Risky acts confirm in place (`lib/confirm.js`), never with a dialog: the first tap turns the button
+  red and reads "Tap again to …" for 4 s; the second tap acts; otherwise it goes back. Unlock, Close
+  all and sounding a siren confirm; locking and stopping a siren act at once (the safe direction).
 - A control is enabled unless its entity is missing or `unavailable` (`operable` in
   `lib/page-kit.js`). `unknown` is a value not known yet, such as a cover's position after a restart,
   a never-run scene or a speaker that has not reported: the value shows as a dash, but the control
@@ -238,6 +251,9 @@ The level keys and their boundaries are the shared contract
 | A room may list its covers, contacts and locks (order, name); the rest are found by area | the Ramka's wall lists them by hand; a phone should show the same names first without losing new devices (#219, agreement 9) |
 | `unknown` does not disable a control, `unavailable` does | HA accepts a command for an entity whose value is not known yet; agreed in the shared-model review (#219) |
 | Phones are audited at eight sizes, 277–956 px | Android phones are 360–412 wide, iPhones 375–440, and zoom makes them narrower; one 390 × 844 frame missed broken words and a cramped landscape |
+| Safety is broader than UC10: alarms, siren and who is home beside doors, locks and covers | the home had no contacts or locks yet; what it has (a siren, presence) is safety too |
+| Risky acts confirm in place with a second tap, not a dialog | one hand, no modal to dismiss; the safe direction (lock, stop) acts at once |
+| A component's own flag is never an alarm | climate-air's "bathroom humidity high" carries the moisture class of a leak sensor |
 
 ## 12. Phones: sizes, platforms and the audit
 
