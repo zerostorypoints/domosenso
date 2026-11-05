@@ -1,7 +1,7 @@
 # SPEC-034: gate-remote, a fixed-code gate handset replayed from an ESP32 + CC1101, and gate buttons on the Ramka
 
 - Status: approved 2026-11-05 by the maintainer, as written.
-- Amendment 1 (2026-11-05, during implementation, for approval with the component's PR):
+- Amendment 1 (2026-11-05, during implementation; approved by the maintainer 2026-11-05):
   `node`, `frequency` and `gates` became one list input `nodes` (the device-file renderer iterates a
   list input, SPEC-015), each node with its own frequency and gates; `pins` is not an input but
   substitutions in the packages that the home's device file may override; capture runs from the
@@ -9,7 +9,7 @@
   write a code example or a `.gitignore` line (that would need a schema and tool change): the device
   file's header and the README say what to create and ignore. `tools/esphome-check.sh` copies the
   demo home's `*.code.yaml` beside the device files and does not check them alone.
-- Amendment 2 (2026-11-05, for approval with the PR into main): the status page does not list
+- Amendment 2 (2026-11-05; approved by the maintainer 2026-11-05): the status page does not list
   actions; they have no state to show (a button's state is its last press). The preview shows them
   on its controls tab, as it renders the controls block.
 - Source: maintainer request after a working prototype in his home: capture a gate handset's code,
