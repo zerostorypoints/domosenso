@@ -1958,7 +1958,36 @@ automation:
                       entity_id: input_select.[[ p ]]_mode
                     data:
                       option: ambient
-              - action: script.[[ p ]]_screen_on
+              # Registration can restore before Companion's local push socket reconnects.
+              # Retry only this startup delivery, ending at the first successful policy send.
+              - variables:
+                  screen_policy_delivered: false
+              - repeat:
+                  sequence:
+                    - if:
+                        - condition: state
+                          entity_id: [[ radar.presence ]]
+                          state: "on"
+                      then:
+                        - sequence:
+                            - action: script.[[ p ]]_screen_on
+                            - variables:
+                                screen_policy_delivered: true
+                          continue_on_error: true
+                    - if:
+                        - condition: template
+                          value_template: "{{ not screen_policy_delivered }}"
+                      then:
+                        - delay: "00:00:05"
+                  until:
+                    - condition: template
+                      value_template: "{{ screen_policy_delivered or repeat.index >= 24 }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ not screen_policy_delivered and is_state('[[ radar.presence ]]', 'on') }}"
+                then:
+                  - stop: "The screen client did not accept the startup policy after 24 attempts"
+                    error: true
           - conditions:
               - condition: state
                 entity_id: [[ radar.presence ]]

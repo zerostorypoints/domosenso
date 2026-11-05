@@ -4346,10 +4346,10 @@ def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
     on, off = automation(package, "presence_on"), automation(package, "presence_off")
     assert {"condition": "state", "entity_id": presence, "state": "on"} in wake["conditions"]
     assert wake["conditions"] == [{"condition": "state", "entity_id": presence, "state": "on"}]
-    resume, screen_on = wake["sequence"]
+    resume = wake["sequence"][0]
     assert resume["if"] == on["conditions"], "only an off view switches to ambient"
     assert resume["then"] == on["actions"][:-1], "preserve controls/calendar when already active"
-    assert screen_on == on["actions"][-1], "always repair the Android screen policy"
+    assert on["actions"][-1] in list(walk(wake["sequence"])), "always repair the Android screen policy"
 
     held, *actions = sleep["sequence"]
     assert sleep["conditions"] == [{"condition": "state", "entity_id": presence, "state": "off"}]
@@ -4366,7 +4366,7 @@ def test_start_wakes_present_room_despite_restored_lit_mode(demo, restored_mode)
     wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
     states = {presence: "on", "input_select.ramka_mode": restored_mode}
     assert all(states[c["entity_id"]] == c["state"] for c in wake["conditions"])
-    assert any(s.get("action") == "script.ramka_screen_on" for s in wake["sequence"])
+    assert any(s.get("action") == "script.ramka_screen_on" for s in walk(wake["sequence"]))
 
 
 def test_start_sleeps_absent_room_despite_restored_off_mode(demo):
@@ -4388,6 +4388,19 @@ def test_start_absence_wait_is_interrupted_by_arrival(demo):
     wait = arrival_waits[0]
     assert wait["timeout"] == automation(demo["package.yaml"], "presence_off")["triggers"][0]["for"]
     assert wait["continue_on_timeout"] is True, "continuous absence still reaches the sleep branch"
+
+
+def test_start_retries_screen_delivery_until_the_local_client_connects(demo):
+    """A registered mobile client can still have no push socket at the HA started event."""
+    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
+    repeats = [node["repeat"] for node in wake["sequence"] if "repeat" in node]
+    assert repeats, "startup must retry a failed screen command instead of leaving Android asleep"
+    retry = repeats[0]
+    attempts = [node for node in walk(retry) if node.get("continue_on_error") is True]
+    assert attempts and any(node.get("action") == "script.ramka_screen_on" for node in walk(attempts))
+    assert "screen_policy_delivered" in retry["until"][0]["value_template"]
+    assert "24" in retry["until"][0]["value_template"], "bounded startup retry, not a foreground watchdog"
+    assert wake["sequence"][-1]["then"][0]["error"] is True, "exhaustion must not look successful"
 
 
 def test_reconcile_after_start_is_listed_as_provided():

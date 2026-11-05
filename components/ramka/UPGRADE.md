@@ -13,6 +13,11 @@ configured delay before sleeping it. No new inputs or migration are required. Re
 a restart from a short Android screen timeout with presence detected, including an arrival
 during the initial absence delay. That arrival now interrupts the startup wait and wakes the
 screen immediately rather than leaving the OS asleep behind a restored ambient helper.
+If Companion's local push connection is still reconnecting, startup retries delivery every
+five seconds, for up to 24 attempts. It stops at the first successful send, does not send wake
+commands while presence is absent, and reports an error if a present room exhausts the bound.
+`tools/check-ramka-startup.sh`, included in the full checks, exercises the rendered actions in
+the pinned HA script engine with a late, permanently unavailable and returning test client.
 
 ## 0.15.0 (unreleased)
 

@@ -8,7 +8,7 @@
 #   catalog_check --strict,
 #   tools/ha-check.sh for every component with a Home Assistant part (ha/, templates/ or
 #   artifacts.ha_instance), tools/esphome-check.sh for every component with esphome/,
-#   home staging runtime acceptance. Demo acceptance is a separate opt-in check.
+#   home staging and Ramka screen startup runtime acceptance. Demo acceptance is separate opt-in.
 #
 #   tools/check-all.sh [--local]
 # --local excludes HA/ESPHome runtime checks and never reports a full pass.
@@ -87,6 +87,7 @@ if [ "$mode" = full ]; then
 step "Home Assistant image" ha_image
 # Home staging first: it is the longest, the others fill the remaining slots.
 background "home staging runtime" uv run tools/home-staging-check.py
+background "Ramka startup screen runtime" tools/check-ramka-startup.sh
 for manifest in components/*/component.yaml; do
   dir=$(dirname "$manifest"); comp=$(basename "$dir")
   if [ -d "$dir/ha" ] || [ -d "$dir/templates" ] || grep -q '^  ha_instance:' "$manifest"; then
