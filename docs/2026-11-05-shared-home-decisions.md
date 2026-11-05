@@ -24,8 +24,10 @@ tones) belong to translations and presentation.
 
 A value or a limit that isn't a finite number gives **no level**, and the number is still shown. The
 cases are in [`tests/fixtures/assessment.json`](../tests/fixtures/assessment.json). Every
-implementation runs them: Pocket's `cards/lib/level.js`, the Python reference in
-`tests/test_assessment_fixtures.py`, and the Ramka's and the Bridge's when they move onto it.
+implementation runs them: Pocket's `cards/lib/level.js`, the Ramka's `band()` and `level()`
+(`components/ramka/cards/lib/climate-widgets.fixtures.test.mjs`; the air score is the air-card's
+ordered levels), the Python reference in `tests/test_assessment_fixtures.py`, and the Bridge when it
+moves onto it. The floor plan's climate map is a continuous colour scale, not a level, and runs none.
 
 ## D2. Helper ids and the policy owner
 
