@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Öffnet ein Garagen- oder Hoftor aus Home Assistant, indem es den Code des eigenen Handsenders sendet. Ein ESP32-Board mit einem CC1101-Funkmodul zeichnet den Handsender einmal auf und sendet danach dieselben Frames, über eine Taste in Home Assistant, die Taste am Board oder die Ramka. Nur für Handsender mit festem Code.",
+    "devices": {
+      "m5stack-module-cc1101": {
+        "description": "Ein M5Stack-Modul mit einem CC1101-Funkmodul für 855 bis 925 MHz, SMA-Antenne und DIP-Schaltern für die Pinbelegung; mit acht Steckbrücken an das ESP32-Board angeschlossen.",
+        "does": "Empfängt beim Aufzeichnen die Frames des Handsenders auf 868 MHz und sendet sie danach, damit das Board das Tor öffnen kann."
+      }
+    }
+  }
+}

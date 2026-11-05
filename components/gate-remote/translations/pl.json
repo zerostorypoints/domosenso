@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "description": "Otwiera bramę garażową lub wjazdową z Home Assistant, nadając kod jej własnego pilota. Płytka ESP32 z modułem radiowym CC1101 raz nagrywa pilota, a potem nadaje te same ramki: z przycisku w Home Assistant, z przycisku na płytce albo z Ramki. Działa tylko z pilotami o stałym kodzie.",
+    "devices": {
+      "m5stack-module-cc1101": {
+        "description": "Moduł M5Stack z układem radiowym CC1101 na pasmo 855–925 MHz, gniazdem anteny SMA i przełącznikami DIP do wyboru pinów; łączy się z płytką ESP32 ośmioma przewodami.",
+        "does": "Podczas nagrywania odbiera ramki pilota na 868 MHz, a potem je nadaje, żeby płytka mogła otworzyć bramę."
+      }
+    }
+  }
+}

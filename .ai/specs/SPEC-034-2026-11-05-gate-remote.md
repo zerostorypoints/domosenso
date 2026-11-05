@@ -1,6 +1,14 @@
 # SPEC-034: gate-remote, a fixed-code gate handset replayed from an ESP32 + CC1101, and gate buttons on the Ramka
 
 - Status: approved 2026-11-05 by the maintainer, as written.
+- Amendment 1 (2026-11-05, during implementation, for approval with the component's PR):
+  `node`, `frequency` and `gates` became one list input `nodes` (the device-file renderer iterates a
+  list input, SPEC-015), each node with its own frequency and gates; `pins` is not an input but
+  substitutions in the packages that the home's device file may override; capture runs from the
+  factory image `capture.factory.yaml` over USB, not from a device file; `domosenso add` does not
+  write a code example or a `.gitignore` line (that would need a schema and tool change): the device
+  file's header and the README say what to create and ignore. `tools/esphome-check.sh` copies the
+  demo home's `*.code.yaml` beside the device files and does not check them alone.
 - Source: maintainer request after a working prototype in his home: capture a gate handset's code,
   send it from Home Assistant, put the button on the Ramka's controls. The prototype is that home's
   own firmware (not in this repository); everything below that is marked tested was tested there on
