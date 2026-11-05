@@ -823,3 +823,34 @@ test("a menu button left of every page's title opens Home Assistant's sidebar", 
   assert.equal(toggled, 1);
   app.remove();
 });
+
+test("a page of Systems off the bar has a way back to Systems; the menu opens only from a menu button", async () => {
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", rooms: [{ id: "living_room", name: "Living room" }] });
+  window.history.replaceState(null, "", "#/power");
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const back = app.shadowRoot.querySelector("main .top > .ha-back");
+  assert.ok(back, "Power is not on the default bar");
+  assert.equal(back.getAttribute("aria-label"), "Back to Systems");
+  back.click();
+  assert.equal(window.location.hash, "#/systems");
+  assert.equal(app.shadowRoot.querySelector("main .top > .ha-back"), null, "Home has none");
+
+  let reached = 0;
+  const listen = () => { reached += 1; };
+  document.body.addEventListener("hass-toggle-menu", listen);
+  document.body.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+  assert.equal(reached, 0, "a swipe's request is ignored here");
+  app.shadowRoot.querySelector("main .top > .ha-menu").click();
+  assert.equal(reached, 1, "the menu button's goes through");
+  const haButton = document.createElement("ha-menu-button");
+  document.body.append(haButton);
+  haButton.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+  assert.equal(reached, 2, "HA's own header button too");
+  document.body.removeEventListener("hass-toggle-menu", listen);
+  app.remove();
+  haButton.remove();
+  window.history.replaceState(null, "", "#/");
+});

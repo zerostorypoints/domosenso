@@ -61,6 +61,8 @@ import pl from "../translations/pl.json" with { type: "json" };
 
 const translate = createT({ en, de, pl });
 const TOAST_MS = 3000;
+// The pages Home's Systems opens (lib/sections.js): off the bar, they get a way back to Systems.
+const SYSTEMS_PAGES = ["areas", "climate", "media", "power", "plants", "scenes", "floorplan", "system"];
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
@@ -93,7 +95,11 @@ const STYLE = `
              margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--fg); cursor: pointer;
              display: flex; align-items: center; justify-content: center; --mdc-icon-size: 24px;
              -webkit-tap-highlight-color: transparent; }
-  .ha-menu:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
+  .ha-menu:focus-visible, .ha-back:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
+  .ha-back { position: absolute; left: 34px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+             margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--acc); cursor: pointer;
+             display: flex; align-items: center; justify-content: center; --mdc-icon-size: 30px;
+             -webkit-tap-highlight-color: transparent; }
   /* The toast rides on the bar: absolute inside the fixed nav, just above its top edge. */
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
@@ -131,6 +137,14 @@ class PocketApp extends HTMLElement {
     this._onHash = () => this._route();
     this._onScheme = () => this._paint();
     this._onPop = () => this._sheet?.onPopState();
+    // Home Assistant's sidebar opens only from a menu button (the pocket's, or HA's own in its
+    // header on a wide screen): the Companion app's swipe from the left edge also asks for it
+    // (hass-toggle-menu), which on a phone fights the way back; on this dashboard it is ignored.
+    this._onToggleMenu = (event) => {
+      if (this._ownMenu) return;
+      if (event.composedPath().some((node) => node?.localName === "ha-menu-button")) return;
+      event.stopImmediatePropagation();
+    };
     this._onResize = () => this._placeBar();
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
@@ -199,6 +213,7 @@ class PocketApp extends HTMLElement {
   }
 
   connectedCallback() {
+    window.addEventListener("hass-toggle-menu", this._onToggleMenu, true);
     window.addEventListener("hashchange", this._onHash);
     window.addEventListener("resize", this._onResize);
     if (typeof ResizeObserver === "function") {
@@ -215,6 +230,7 @@ class PocketApp extends HTMLElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener("hass-toggle-menu", this._onToggleMenu, true);
     window.removeEventListener("hashchange", this._onHash);
     window.removeEventListener("resize", this._onResize);
     this._resize?.disconnect();
@@ -249,12 +265,32 @@ class PocketApp extends HTMLElement {
     button.className = "ha-menu";
     button.innerHTML = `<ha-icon icon="mdi:menu"></ha-icon>`;
     button.setAttribute("aria-label", this._t("card.pocket.menu"));
-    button.addEventListener("click", () =>
-      this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true })));
+    button.addEventListener("click", () => {
+      this._ownMenu = true;
+      try {
+        this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+      } finally {
+        this._ownMenu = false;
+      }
+    });
     // Inline: it wins over every page's own .top padding, whatever its selector.
     top.style.position = "relative";
     top.style.paddingLeft = "44px";
     top.prepend(button);
+    // A page of Systems that is not on the person's bar has no tab to return by: a way back to
+    // Systems beside the menu button (a page with its own back, an area or a panel, has a routeId).
+    const page = this._current?.page;
+    const onBar = (this._barIds ?? "").split(" ").includes(page);
+    if (SYSTEMS_PAGES.includes(page) && !onBar && this._current?.id == null) {
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "ha-back";
+      back.innerHTML = `<ha-icon icon="mdi:chevron-left"></ha-icon>`;
+      back.setAttribute("aria-label", this._t("card.pocket.back_systems"));
+      back.addEventListener("click", () => this._navigate("#/systems"));
+      top.style.paddingLeft = "80px";
+      top.prepend(back);
+    }
   }
 
   // The language of every word: the dashboard's (config.lang), else Home Assistant's.
@@ -364,8 +400,8 @@ class PocketApp extends HTMLElement {
       this._pageEl = this._page.render(this._ctx());
       this._sheet.dismiss();
       this._main.replaceChildren(this._pageEl);
-      this._addMenu(this._pageEl);
       this._renderBar();
+      this._addMenu(this._pageEl);
       return;
     }
     if (this._barLang !== this._lang()) this._renderBar();

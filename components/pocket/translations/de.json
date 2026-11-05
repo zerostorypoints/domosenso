@@ -561,7 +561,8 @@
         "all_reading": "Jedes Gerät liefert Werte.",
         "open_settings": "Home-Assistant-Einstellungen"
       },
-      "menu": "Home-Assistant-Menü"
+      "menu": "Home-Assistant-Menü",
+      "back_systems": "Zurück zu den Systemen"
     }
   }
 }

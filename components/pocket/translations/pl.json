@@ -561,7 +561,8 @@
         "all_reading": "Każde urządzenie odpowiada.",
         "open_settings": "Ustawienia Home Assistant"
       },
-      "menu": "Menu Home Assistant"
+      "menu": "Menu Home Assistant",
+      "back_systems": "Wróć do systemów"
     }
   }
 }

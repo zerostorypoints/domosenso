@@ -561,7 +561,8 @@
         "all_reading": "Every device reads.",
         "open_settings": "Home Assistant settings"
       },
-      "menu": "Home Assistant menu"
+      "menu": "Home Assistant menu",
+      "back_systems": "Back to Systems"
     }
   }
 }
