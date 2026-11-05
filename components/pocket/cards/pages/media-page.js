@@ -7,10 +7,11 @@
 //     one that plays, the first);
 //   - with the config `sound` (audio-sensor in the home): a Media | Sound switch; Sound shows
 //     audio-sensor's live meter and the averages (lib/sound-panel.js);
-//   - large artwork (entity_picture, which Home Assistant serves through its own proxy), opening
+//   - large artwork (entity_picture, which Home Assistant serves through its own proxy; the music
+//     icon while there is none or it fails to load), opening
 //     Home Assistant's more-info dialog of the player; title, artist, album, wrapped, never cut;
 //   - the progress (media_position, media_duration, media_position_updated_at), ticking each second
-//     on the phone while it plays;
+//     on the phone while it plays and the Media tab shows;
 //   - previous / play-pause (64 px) / next, each hidden when the player's supported_features lack
 //     it (play-pause shows for a player that reports no features at all);
 //   - the volume: a strip of its own (44 px), a horizontal drag sets it from the finger's place
@@ -28,7 +29,7 @@ import { can, chosenPlayer, clock, playersOf, progressOf } from "../lib/media.js
 import { playerSpec } from "../lib/player-sheet.js";
 import { STYLE as SOUND_STYLE, renderSound } from "../lib/sound-panel.js";
 import { reportError } from "../lib/report.js";
-import { GONE, el, number, percent, setAttr, setLine, setText } from "../lib/page-kit.js";
+import { GONE, el, number, percent, setArt, setAttr, setLine, setText } from "../lib/page-kit.js";
 
 const DIRECTION_PX = 8;   // movement before a gesture on the strip is a drag or a scroll
 const KEY_STEP = 5;       // percent per arrow key
@@ -118,7 +119,7 @@ export function render(ctx) {
     <p class="none" hidden></p>`;
   const q = (sel) => root.querySelector(sel);
   const parts = {
-    ctx, picked: undefined, tab: "media", preview: null, gesture: null, now: () => Date.now(),
+    ctx, picked: undefined, tab: "media", preview: null, gesture: null, now: () => Date.now(), timer: null,
     title: q(".top b"), pick: q(".pick"), seg: q(".seg"), player: q(".player"), none: q(".none"),
     art: q(".art"), img: q(".art img"), prog: q(".prog"), bar: q(".prog .bar i"), pos: q(".pos"), dur: q(".dur"),
     play: q(".play"), previous: q(".previous"), next: q(".next"), mute: q(".mute"), vol: q(".vol"),
@@ -158,16 +159,6 @@ export function render(ctx) {
     root.append(parts.sound.el);
   }
 
-  // The progress ticks on the phone while the page is shown; it stops once the page is gone.
-  let shown = false;
-  parts.timer = setInterval(() => {
-    if (root.isConnected) {
-      shown = true;
-      updateProgress(parts, parts.ctx);
-    } else if (shown) clearInterval(parts.timer);
-  }, TICK_MS);
-  parts.timer?.unref?.();     // node (the tests): the tick does not hold the process
-
   update(root, ctx);
   return root;
 }
@@ -204,6 +195,33 @@ export function update(root, ctx) {
   setText(parts.none, ctx.t("card.pocket.media.none"));
   parts.player.hidden = tab !== "media" || !chosen;
   if (chosen) updatePlayer(parts, ctx, chosen);
+  syncTicker(root, parts);
+}
+
+// The progress ticks each second only while it can move: the page connected, the Media tab
+// shown, the player playing with a duration. The shell keeps the page across a trip to another
+// panel and updates it on the way back, so the next update starts the ticker again.
+function ticking(root, parts) {
+  if (!root.isConnected || (parts.sound && parts.tab !== "media")) return false;
+  const chosen = playerOf(parts, parts.ctx);
+  const state = chosen ? parts.ctx.hass?.states?.[chosen.id] : undefined;
+  return state?.state === "playing" && !!progressOf(state, parts.now());
+}
+
+function syncTicker(root, parts) {
+  const want = ticking(root, parts);
+  if (want && !parts.timer) {
+    parts.timer = setInterval(() => {
+      if (ticking(root, parts)) updateProgress(parts, parts.ctx);
+      else stopTicker(parts);
+    }, TICK_MS);
+    parts.timer?.unref?.();     // node (the tests): the tick does not hold the process
+  } else if (!want && parts.timer) stopTicker(parts);
+}
+
+function stopTicker(parts) {
+  clearInterval(parts.timer);
+  parts.timer = null;
 }
 
 const playerOf = (parts, ctx) =>
@@ -328,8 +346,7 @@ function updatePlayer(parts, ctx, chosen) {
   const disabled = gone || !!ctx.offline;
   parts.player.classList.toggle("muted", gone);
 
-  if (a.entity_picture) setAttr(parts.img, "src", a.entity_picture);
-  parts.img.hidden = !a.entity_picture;
+  setArt(parts.img, parts.art.querySelector("ha-icon"), a.entity_picture);
   setAttr(parts.art, "aria-label", ctx.t("card.pocket.media.details", { name: a.friendly_name || chosen.room.name }));
   setText(parts.player.querySelector(".title"),
     gone ? ctx.t("card.pocket.format.none") : a.media_title || ctx.t("card.pocket.home.nothing_playing"));

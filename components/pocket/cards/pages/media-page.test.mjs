@@ -286,3 +286,56 @@ test("volume: a failed call goes back to the reported volume with the toast", as
   assert.equal(text(vol.querySelector("span")), "Volume 25 %");
   assert.deepEqual(errors, ["card.pocket.error.media"]);
 });
+
+test("progress ticker: survives a trip away from the page, as the shell keeps the page element", (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const ctx = ctxWith({ routeId: "living_room" });
+  const el = mount(ctx);
+  let now = Date.parse("2026-11-05T20:00:41.000Z");
+  el._media.now = () => now;
+  page.update(el, ctx);
+  assert.ok(el._media.timer, "ticking while it plays");
+  now += 2000;
+  t.mock.timers.tick(1000);
+  assert.equal(text(el.querySelector(".pos")), "2:23");
+  el.remove();                       // another HA panel
+  t.mock.timers.tick(1000);
+  assert.equal(el._media.timer, null, "stopped while disconnected");
+  document.body.appendChild(el);     // back: the shell's connectedCallback updates the page
+  page.update(el, ctx);
+  assert.ok(el._media.timer);
+  now += 10_000;
+  t.mock.timers.tick(1000);
+  assert.equal(text(el.querySelector(".pos")), "2:33", "time advances again");
+});
+
+test("progress ticker: only while playing and on the Media tab", (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const paused = mount(ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("paused") } }));
+  assert.equal(paused._media.timer, null);
+  const ctx = ctxWith({ routeId: "living_room", cfg: { ...config, sound: SOUND } });
+  const el = mount(ctx);
+  assert.ok(el._media.timer);
+  el.querySelector('.seg [data-tab="sound"]').click();
+  assert.equal(el._media.timer, null, "no ticks behind the Sound tab");
+  el.querySelector('.seg [data-tab="media"]').click();
+  assert.ok(el._media.timer);
+  ctx.hass = hassOf(states({ [SPEAKER]: speaker("paused") }));
+  page.update(el, ctx);
+  assert.equal(el._media.timer, null, "paused: stopped");
+});
+
+test("artwork that fails to load: the music icon instead; a new picture is tried again", () => {
+  const ctx = ctxWith({ routeId: "living_room" });
+  const el = mount(ctx);
+  const img = el.querySelector(".art img");
+  const icon = el.querySelector(".art ha-icon");
+  assert.ok(!img.hidden && icon.hidden);
+  img.dispatchEvent(new Event("error"));
+  assert.ok(img.hidden && !icon.hidden);
+  page.update(el, ctx);
+  assert.ok(img.hidden, "the broken picture stays hidden on the next update");
+  ctx.hass = hassOf(states({ [SPEAKER]: speaker("playing", { entity_picture: "/api/media_player_proxy/y" }) }));
+  page.update(el, ctx);
+  assert.ok(!img.hidden && icon.hidden);
+});

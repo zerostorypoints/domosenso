@@ -148,3 +148,20 @@ export function shortName(hass, id, room) {
   const short = name.toLowerCase().startsWith(prefix.toLowerCase()) ? name.slice(prefix.length).trim() : name;
   return short || name;
 }
+
+// A player's artwork: the image of src, or the music icon in its place while there is none or it
+// failed to load (a stale proxy URL, a lost connection); a new src is tried again.
+export function setArt(img, icon, src) {
+  if (!img._artWired) {
+    img._artWired = true;
+    img.addEventListener("error", () => {
+      img._broken = img.getAttribute("src");
+      img.hidden = true;
+      if (icon) icon.hidden = false;
+    });
+  }
+  if (src) setAttr(img, "src", src);
+  const ok = !!src && src !== img._broken;
+  img.hidden = !ok;
+  if (icon) icon.hidden = ok;
+}

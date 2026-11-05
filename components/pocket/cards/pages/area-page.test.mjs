@@ -214,6 +214,15 @@ test("media row: art, title, artist, play/pause", () => {
   assert.deepEqual(ctx.routes, ["#/media/living_room"], "a tap beside play opens Media with this player");
 });
 
+test("media row: artwork that fails to load shows the music icon", () => {
+  const el = mount(ctxOf());
+  const img = el.querySelector(".media .art img");
+  const icon = el.querySelector(".media .art ha-icon");
+  assert.ok(!img.hidden && icon.hidden);
+  img.dispatchEvent(new Event("error"));
+  assert.ok(img.hidden && !icon.hidden);
+});
+
 test("section titles", () => {
   assert.deepEqual(texts(mount(), ".sec:not([hidden])"), ["Lights", "Music"]);
 });

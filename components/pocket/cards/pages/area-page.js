@@ -42,7 +42,7 @@ import { trendNow } from "../lib/trend.js";
 import { airSpec } from "../lib/detail-sheets.js";
 import { areasOf, climateReadings as climateOf, climateValue } from "../lib/areas.js";
 import {
-  GONE, el, setText, setAttr, setArrow, coalesce, number, temperature, percent, pluralOf, lightsOf, membersOf,
+  GONE, el, setArt, setText, setAttr, setArrow, coalesce, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
 import { trendSpec } from "../lib/trend-sheet.js";
@@ -108,7 +108,7 @@ const STYLE = `
   .room .sec { font-size: 12.5px; font-weight: 600; margin: 18px 4px 8px; color: var(--mut);
                text-transform: uppercase; letter-spacing: .5px; }
   .room .sec[hidden], .room .media[hidden], .room .members[hidden], .room .members-toggle[hidden],
-  .room .art img[hidden] { display: none; }
+  .room .art img[hidden], .room .art ha-icon[hidden] { display: none; }
   .room .members-toggle { display: block; min-width: 44px; min-height: 44px; margin: 4px 0 0 auto; padding: 0 4px; border: 0;
                           background: none; font: inherit; font-size: 13px; color: var(--mut); cursor: pointer; }
   .room .members { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; margin-top: 4px; }
@@ -129,6 +129,8 @@ const STYLE = `
   .room .art { display: block; width: 52px; height: 52px; border-radius: 12px; flex: 0 0 auto; overflow: hidden;
                background: var(--chip); }
   .room .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .room .art ha-icon { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
+                       color: var(--mut); --mdc-icon-size: 26px; }
   .room .meta { flex: 1; min-width: 0; }
   .room .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .room .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow-wrap: anywhere; }
@@ -243,7 +245,7 @@ export function render(ctx) {
 
   parts.musicSec = el("div", "sec");
   parts.media = el("div", "media",
-    `<button class="open" type="button"><span class="art"><img alt="" hidden></span>
+    `<button class="open" type="button"><span class="art"><img alt="" hidden><ha-icon icon="mdi:music"></ha-icon></span>
      <span class="meta"><span class="t1"></span> <span class="t2"></span></span></button>
      <button class="play" type="button"><ha-icon></ha-icon></button>`);
   parts.player = player;
@@ -464,9 +466,7 @@ function updateMedia(parts, ctx) {
   setText(media.querySelector(".t1"), title);
   setAttr(media.querySelector(".open"), "aria-label", title);
   setText(media.querySelector(".t2"), a.media_artist || a.media_album_artist || room.name);
-  const img = media.querySelector(".art img");
-  if (a.entity_picture) setAttr(img, "src", a.entity_picture);
-  img.hidden = !a.entity_picture;
+  setArt(media.querySelector(".art img"), media.querySelector(".art ha-icon"), a.entity_picture);
   const play = media.querySelector(".play");
   setAttr(play, "aria-label", ctx.t(isPlaying ? "card.pocket.home.pause" : "card.pocket.home.play"));
   setAttr(play.querySelector("ha-icon"), "icon", isPlaying ? "mdi:pause" : "mdi:play");
