@@ -117,7 +117,13 @@ gate's code file next to the node's device file in your home's ESPHome directory
 A frame cut by noise, with one value far off the others (such as −126 among thousands), is the
 wrong one to copy; take another repeat. Rounding each value to the handset's grid is optional.
 
-Add `*.code.yaml` to the `.gitignore` of your home's ESPHome directory. The code opens the gate.
+The code opens the gate, so move the file out of the repository into your home's private folder;
+a git-ignored link stays in its place, and a new clone or worktree gets it back with
+`domosenso private link`:
+
+```bash
+uv run --project ~/path/to/domosenso domosenso private adopt esphome/<name>-<slug>.code.yaml
+```
 
 ## 5. Flash the device file and adopt the node
 
@@ -137,6 +143,10 @@ With the [Ramka](/components/ramka/) wall tablet (0.16.0 or later), list the but
 actions:
   - {entity: button.gate_remote_garage, label: Garage, icon: mdi:garage-variant}
 ```
+
+Home Assistant names the button from the node's area, its friendly name and the gate's label:
+`button.gate_remote_garage` for a node without an area, `button.hall_gate_remote_garage` with
+`area: Hall`. Use the id Settings → Entities shows.
 
 The button sits on the controls under the awnings, or in a column of its own without covers. A tap
 asks Home Assistant's confirmation before it acts, so a stray tap on the tablet does not open the

@@ -97,7 +97,8 @@ image, or code from this catalog.
 ESPHome has no container and no dashboard here. Home Assistant's built-in ESPHome integration talks
 to each board over its native API (port 6053); compiling and flashing is the CLI on your computer,
 `uvx esphome@2026.9.1 run <device>.yaml`. The board's Wi-Fi name and password go into the firmware
-at that flash, from the home's `esphome/secrets.yaml` (git-ignored), so joining the Wi-Fi and the
+at that flash, from the home's `esphome/secrets.yaml` (a git-ignored link into the home's private
+folder, "First steps"), so joining the Wi-Fi and the
 first flash are one step. The ESPHome dashboard can run as one more container next to Home
 Assistant (`ghcr.io/esphome/esphome`, host network); the catalog does not test that.
 
@@ -146,8 +147,22 @@ uv run --project ~/path/to/domosenso domosenso init --catalog ~/path/to/domosens
 ```
 
 `init` writes `domosenso.yaml` (targets, components, local files) and a lock file. Copy
-`examples/home-template/.gitignore` from the catalog into the home: it keeps `secrets.yaml`, tokens,
-`.storage/`, the database and `.domosenso/` out of git.
+`examples/home-template/.gitignore` from the catalog into the home: it keeps `secrets.yaml`, gate
+codes (`*.code.yaml`), tokens, `.storage/`, the database and `.domosenso/` out of git.
+
+`init` also writes `id`, which names the home's private folder `~/.config/domosenso/homes/<id>/`
+(under `$XDG_CONFIG_HOME` when that is set). Files git must not hold and you cannot regenerate live
+there, laid out as in the home, and the home holds links to them: ESPHome's `esphome/secrets.yaml`,
+and a gate's captured code from gate-remote. Write such a file in the home, then move it out:
+
+```bash
+uv run --project ~/path/to/domosenso domosenso private adopt esphome/secrets.yaml
+```
+
+A new clone or git worktree of the home has no links yet: `status` names them
+(`private-link <path> missing`) and `domosenso private link` creates them. Removing a worktree removes
+only the links. The folder holds the only copy of these files, so include it in your backup; Time
+Machine and most backup tools cover `~/.config` unless it was excluded.
 
 If you want the home on GitHub, make it **private**: it names your rooms, devices and entities. Check
 that `git ls-files` lists none of the ignored files above and nothing with `token` in its name. If

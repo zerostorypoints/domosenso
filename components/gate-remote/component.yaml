@@ -4,7 +4,7 @@
 # Fixed-code handsets only: two presses of a rolling-code handset give different frames, and that
 # ends at capture (README). SPEC-034.
 id: gate-remote
-version: 0.1.0
+version: 0.1.1
 summary: A garage door or gate opened from Home Assistant by sending its own handset's fixed code from an ESP32 and a CC1101
 description_key: meta.description
 photo: null
@@ -29,8 +29,9 @@ integrations:
   - {name: esphome, source: core, setup: "flash the capture factory image over USB, capture the handset, then flash the home's device file and adopt the node in Settings → Devices & services"}
 
 # One node per item; `domosenso add` writes the node's device file once (esphome/device.yaml.j2).
-# Each gate's code lives next to that file in <name>-<slug>.code.yaml: one captured frame, the
-# home's secret, never committed (README, "Capture").
+# Each gate's code is <name>-<slug>.code.yaml next to that file: one captured frame, the home's
+# secret, kept in the home's private folder and linked there (`domosenso private adopt`, SPEC-035;
+# README, "Capture").
 inputs:
   nodes:
     type: "list[{name: slug, friendly_name?: string, area?: area_name, frequency: frequency, gates: list[{slug, label}], repeat?: int, gap_us?: int}]"
@@ -58,10 +59,10 @@ artifacts:
 
 provides:
   entities:
-    - {id: "button.<friendly name slug>_<label slug>", stability: stable, from: esphome,
-       note: "one per gate; pressing it sends the gate's code `repeat` times; id built by HA from the node's friendly name and the gate's label"}
-    - {id: "light.<friendly name slug>_led", stability: stable, from: esphome, note: "blue while the node sends"}
-    - {id: "sensor.<friendly name slug>_wi_fi_signal", stability: stable, from: esphome}
+    - {id: "button.<area slug>_<friendly name slug>_<label slug>", stability: stable, from: esphome,
+       note: "one per gate; pressing it sends the gate's code `repeat` times; id built by HA from the node's area (only when the node sets `area`), friendly name and the gate's label, not by this component"}
+    - {id: "light.<area slug>_<friendly name slug>_led", stability: stable, from: esphome, note: "blue while the node sends; the area part as above"}
+    - {id: "sensor.<area slug>_<friendly name slug>_wi_fi_signal", stability: stable, from: esphome, note: "the area part as above"}
 
 consumes: []
 
