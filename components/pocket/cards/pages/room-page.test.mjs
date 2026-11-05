@@ -258,3 +258,33 @@ test("an unavailable reading in a square: a muted dash without a level", () => {
   assert.equal(score.className, "big muted");
   assert.match(el.querySelector("style").textContent, /\.sq \.muted\s*\{\s*opacity/);
 });
+
+test("the group tile takes on/off from the group's state: off with a brightness is off", () => {
+  const states = { ...baseStates(), "light.living_room": st("off", { brightness: 107,
+    entity_id: ["light.living_room_ceiling", "light.living_room_lamp"] }) };
+  const el = mount(ctxOf({ hass: hassOf(states), routeId: "living_room" }));
+  const button = el.querySelector(".group pocket-light-tile").shadowRoot.querySelector(".tile");
+  assert.ok(!button.classList.contains("on"), "unlit");
+  assert.equal(button.querySelector(".t2").textContent, "Off");
+  assert.equal(button.querySelector(".bar i").style.width, "0%");
+});
+
+test("climate and air squares fit side by side: a minmax(0, 1fr) grid, children min-width 0", () => {
+  const css = mount().querySelector("style").textContent;
+  assert.match(css, /\.squares\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.squares > \*\s*\{[^}]*min-width:\s*0/);
+  assert.match(css, /\.squares > :only-child\s*\{[^}]*grid-column:\s*1 \/ -1/);
+  assert.match(css, /\.sq \.value\s*\{[^}]*min-width:\s*0/);
+  assert.match(css, /\.lab\s*\{[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/);
+  assert.match(css, /\.big\s*\{[^}]*text-overflow:\s*ellipsis/);
+});
+
+test("every button of the room page is at least 44 x 44", () => {
+  const css = mount().querySelector("style").textContent;
+  for (const sel of [".back", ".members-toggle", ".scn"]) {
+    const rule = css.match(new RegExp(`\\.room \\${sel}\\s*\\{([^}]*)\\}`))[1];
+    assert.match(rule, /min-width:\s*44px/, sel);
+    assert.match(rule, /min-height:\s*44px/, sel);
+  }
+  assert.match(css, /\.play\s*\{[^}]*width:\s*44px;\s*height:\s*44px/);
+});

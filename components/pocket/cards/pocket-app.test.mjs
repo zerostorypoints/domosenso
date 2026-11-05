@@ -60,6 +60,12 @@ test("each tab is a button of at least 44 px, the bar 64 px over the safe area",
   assert.match(css, /min-width:\s*44px/);
 });
 
+test("bar labels are at least 11.5 px", () => {
+  const css = $(mount(), "style").textContent;
+  const size = Number(css.match(/\.tab \{[^}]*font-size:\s*([\d.]+)px/)[1]);
+  assert.ok(size >= 11.5, `tab label ${size} px`);
+});
+
 test("the active item follows location.hash", async () => {
   const card = mount();
   assert.deepEqual(active(card), ["home"]);

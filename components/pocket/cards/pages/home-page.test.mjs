@@ -272,3 +272,47 @@ test("rooms strip: an unavailable reading is a muted dash", () => {
   assert.equal(text(bedroom), "— · —");
   assert.equal(bedroom.querySelectorAll(".muted").length, 2);
 });
+
+test("a group that is on with every member unavailable is one lamp on: chip, All off and Rooms agree", async () => {
+  const demo = await import("../testing/demo-home.mjs");
+  const rooms = await import("./rooms-page.js");
+  const members = ["light.g_a", "light.g_b", "light.g_c", "light.g_d"];
+  const states = { ...demo.baseStates(),
+    "light.living_room": demo.st("on", { brightness: 240, entity_id: members }),
+    ...Object.fromEntries(members.map((id) => [id, demo.st("unavailable")])) };
+  const ctx = demo.ctxOf({ hass: demo.hassOf(states) });
+  const el = mount(ctx);
+  assert.equal(text(el.querySelector('.chip[data-chip="lights_on"] .v')), "1");
+  assert.match(text(el.querySelector(".quick .all-off")), /1 on now/);
+  const tab = [...rooms.render(ctx).querySelectorAll(".grid .sq .lab")].map(text);
+  assert.match(tab[0], /1 on/);
+});
+
+test("a group with some members available counts those members only", async () => {
+  const demo = await import("../testing/demo-home.mjs");
+  const { lightsOn, lightsOnIn } = await import("../lib/page-kit.js");
+  const members = ["light.g_a", "light.g_b", "light.g_c"];
+  const states = { "light.g": demo.st("on", { entity_id: members }),
+    "light.g_a": demo.st("on"), "light.g_b": demo.st("off"), "light.g_c": demo.st("unavailable") };
+  const hass = demo.hassOf(states);
+  const room = { id: "r", name: "R", lights: "light.g" };
+  assert.equal(lightsOn(hass, room), 1);
+  states["light.g_b"] = demo.st("on");
+  assert.equal(lightsOnIn(hass, [room]), 2);
+  states["light.g_a"] = demo.st("unknown");
+  states["light.g_b"] = demo.st("unknown");
+  assert.equal(lightsOn(hass, room), 1, "none available: the group itself, which is on");
+  states["light.g"] = demo.st("off");
+  assert.equal(lightsOn(hass, room), 0);
+});
+
+test("every link and button of Home is at least 44 x 44", () => {
+  const css = mount().querySelector("style").textContent;
+  const rule = (sel) => css.match(new RegExp(`${sel.replace(/\./g, "\\.")}\\s*\\{([^}]*)\\}`))[1];
+  for (const sel of [".home .sec .all", ".home .pill"]) {
+    assert.match(rule(sel), /min-width:\s*44px/, sel);
+    assert.match(rule(sel), /min-height:\s*44px/, sel);
+  }
+  assert.match(rule(".home .play"), /width:\s*44px;\s*height:\s*44px/);
+  assert.match(rule(".home .all-off, .home .rc"), /min-height:\s*64px/);
+});

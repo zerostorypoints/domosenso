@@ -35,14 +35,16 @@ const STYLE = `
   .room .top { display: flex; align-items: center; margin: -4px 0 2px; }
   .room .back { min-height: 44px; margin: 0 0 0 -8px; padding: 0 8px 0 0; border: 0; background: none;
                 display: flex; align-items: center; gap: 2px; font: inherit; color: var(--fg); cursor: pointer;
-                min-width: 0; -webkit-tap-highlight-color: transparent; }
+                min-width: 44px; -webkit-tap-highlight-color: transparent; }
   .room .back ha-icon { --mdc-icon-size: 28px; flex: 0 0 auto; }
   .room .back .name { font-size: 24px; font-weight: 650; letter-spacing: -.4px;
                       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room .dots { display: flex; gap: 5px; justify-content: center; margin: 2px 0 12px; }
   .room .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--line); }
   .room .dots i.a { width: 16px; background: var(--fg); }
-  .room .squares { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .room .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .room .squares > * { min-width: 0; }
+  .room .squares > :only-child { grid-column: 1 / -1; }
   .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; min-height: 88px; padding: 12px;
               display: flex; flex-direction: column; justify-content: space-between;
               background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
@@ -51,7 +53,9 @@ const STYLE = `
   .room .sq .head i.lv-good { background: var(--ok); }
   .room .sq .head i.lv-fair { background: var(--warn); }
   .room .sq .head i.lv-poor { background: var(--bad); }
-  .room .big { display: block; font-size: 24px; font-weight: 600; letter-spacing: -.5px; }
+  .room .sq .value { min-width: 0; }
+  .room .big { display: block; font-size: 24px; font-weight: 600; letter-spacing: -.5px;
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room .lab { display: block; min-height: 15px; font-size: 11.5px; color: var(--mut); margin-top: 2px;
                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room .sq .muted { opacity: .55; }
@@ -62,13 +66,13 @@ const STYLE = `
                text-transform: uppercase; letter-spacing: .5px; }
   .room .sec[hidden], .room .media[hidden], .room .members[hidden], .room .members-toggle[hidden],
   .room .art img[hidden] { display: none; }
-  .room .members-toggle { display: block; min-height: 44px; margin: 4px 0 0 auto; padding: 0 4px; border: 0;
+  .room .members-toggle { display: block; min-width: 44px; min-height: 44px; margin: 4px 0 0 auto; padding: 0 4px; border: 0;
                           background: none; font: inherit; font-size: 13px; color: var(--mut); cursor: pointer; }
   .room .members { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
   .room .scenes { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y;
                   margin: 10px -16px 0; padding: 0 16px; }
   .room .scenes::-webkit-scrollbar { display: none; }
-  .room .scn { flex: 0 0 auto; min-height: 44px; margin: 0; padding: 10px 14px; font: inherit; font-size: 13px;
+  .room .scn { flex: 0 0 auto; min-width: 44px; min-height: 44px; margin: 0; padding: 10px 14px; font: inherit; font-size: 13px;
                color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 14px;
                cursor: pointer; }
   .room .scn:disabled, .room .play:disabled { opacity: .55; cursor: default; }
