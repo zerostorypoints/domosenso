@@ -17,6 +17,7 @@ from types import SimpleNamespace
 
 import yaml
 
+from domosenso_cli.home_inputs import stale_consumers
 from domosenso_cli import dev_render, inventory, private
 from domosenso_cli.build import (
     file_records, file_sha, git_short_head, is_dashboard_template, load_manifest, open_catalog, parse_spec,
@@ -47,6 +48,9 @@ id: {id}
 catalog: {catalog}
 config_dir: home-assistant
 esphome_dir: esphome
+# The rooms and sensors every component of this home shares (schemas/home-inputs.schema.json).
+# Only components that declare `uses_home` read it. Uncomment once the file exists.
+# home_inputs: domosenso/home.inputs.yaml
 targets: {{}}
 # To declare targets, replace `targets: {{}}` with the block below, filled in. `staging` is a
 # Home Assistant container whose config directory is on this machine; `production` is one on another
@@ -459,8 +463,14 @@ def _status_run(args: argparse.Namespace, rep: Reporter) -> int:
     _report_outside_ha(home, lock, catalog, rep)
     _check_dashboard_entries(home, lock, rep)
     private.report(home, rep)
+    stale = stale_consumers(home, lock)
+    for cid in stale:
+        rep.line("stale", cid, "(home inputs changed)")
     unclassified = sum(1 for kind in classes.values() if kind == "unclassified")
-    return rep.fail(f"{unclassified} unclassified") if unclassified else rep.ok()
+    problems = [f"{unclassified} unclassified"] if unclassified else []
+    if stale:
+        problems.append(f"{len(stale)} stale render{'s' if len(stale) > 1 else ''}")
+    return rep.fail(", ".join(problems)) if problems else rep.ok()
 
 
 def _report_outside_ha(home: HomeConfig, lock: Lock, catalog, rep: Reporter) -> None:

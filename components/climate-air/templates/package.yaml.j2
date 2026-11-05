@@ -12,6 +12,7 @@
 [%- set weather = inputs.outside_weather | default(none) -%]
 [%- set outside_temperature = 'sensor.outside_temperature' if weather else (inputs.outside.temperature if inputs.outside is defined else none) -%]
 [%- set bath_limit = inputs.bathroom_humidity | default(65) -%]
+[%- from '_thresholds.jinja' import air_defaults, comfort_defaults, outside_comfort_defaults, outside_helper_ranges, comfort_rooms, air_rooms, air_readings -%]
 [%- macro quoted(text) -%]'[[ text | replace("\\", "\\\\") | replace("'", "\\'") ]]'[%- endmacro -%]
 # Whole-home climate figures, from the Domosenso catalog (component climate-air). Edit the inputs and
 # render again rather than editing this file.
@@ -167,4 +168,207 @@ template:
              or [% endif %]states('[[ room.humidity ]]') | float(0) >= [[ bath_limit ]][% endfor %] }}
         attributes:
           component: climate-air
+[%- endif %]
+[%- if home %]
+[%- set comfort_ids = comfort_rooms(home).split(',') | select | list -%]
+[%- set comfort = home.rooms | selectattr('id', 'in', comfort_ids) | list -%]
+[%- set readings = air_readings(home).split(',') | select | list -%]
+[%- set given = inputs.comfort_defaults | default({}) -%]
+[%- set limits = {
+    'temp_low': given.get('temp_low', comfort_defaults.temp_low),
+    'temp_high': given.get('temp_high', comfort_defaults.temp_high),
+    'humidity_low': given.get('humidity_low', comfort_defaults.humidity_low),
+    'humidity_high': given.get('humidity_high', comfort_defaults.humidity_high)} -%]
+[%- set room_ranges = {'temp': (10, 30), 'humidity': (20, 80)} -%]
+[%- for key, (low, high) in room_ranges.items() -%]
+[%- for bound in (key ~ '_low', key ~ '_high') -%]
+[%- if limits[bound] < low or limits[bound] > high %][[ fail('climate-air: comfort_defaults.' ~ bound ~ ' is ' ~ limits[bound] ~ ', outside its helper range ' ~ low ~ ' to ' ~ high) ]][% endif -%]
+[%- endfor -%]
+[%- endfor -%]
+[#- Outside (the home's `outside` block): a pseudo-room with id `outside`, which no room may take. -#]
+[%- set outside = home.outside | default(none) -%]
+[%- set outside_given = inputs.outside_comfort_defaults | default({}) -%]
+[%- set outside_limits = {} -%]
+[%- for bound in ('temp_low', 'temp_high', 'humidity_low', 'humidity_high') %][% set _ = outside_limits.update({bound: outside_given.get(bound, outside_comfort_defaults[bound])}) %][% endfor -%]
+[%- for key, (low, high) in outside_helper_ranges.items() -%]
+[%- for bound in (key ~ '_low', key ~ '_high') -%]
+[%- if outside_limits[bound] < low or outside_limits[bound] > high %][[ fail('climate-air: outside_comfort_defaults.' ~ bound ~ ' is ' ~ outside_limits[bound] ~ ', outside its helper range ' ~ low ~ ' to ' ~ high) ]][% endif -%]
+[%- endfor -%]
+[%- endfor -%]
+[#- The comfort groups: (id, helper prefix, display name, has humidity, limits, ranges). -#]
+[%- set groups = [] -%]
+[%- for room in comfort %][% set _ = groups.append((room.id, 'climate_air_' ~ room.id, room_name(room), room.climate.humidity is defined, limits, room_ranges)) %][% endfor -%]
+[%- if outside %][% set _ = groups.append(('outside', 'climate_air_outside', 'Outside', outside.humidity is defined, outside_limits, outside_helper_ranges)) %][% endif -%]
+[#- The seed tracks helper groups: <room> (temperature pair), <room>.humidity, outside,
+    outside.humidity, air.<reading>. -#]
+[%- set seed_ids = [] -%]
+[%- for g in groups %][% set _ = seed_ids.append(g[0]) %][% if g[3] %][% set _ = seed_ids.append(g[0] ~ '.humidity') %][% endif %][% endfor -%]
+[%- for reading in readings %][% set _ = seed_ids.append('air.' ~ reading) %][% endfor -%]
+[%- if (seed_ids | join(',') | length) > 255 %][[ fail('climate-air: the seed list is ' ~ (seed_ids | join(',') | length) ~ ' characters, input_text holds 255: fewer rooms or readings') ]][% endif %]
+
+# Comfort ranges per room and outside, and air limits (home inputs). The helpers carry no initial
+# value: the seed automation gives each helper group its defaults once (groups: <room>,
+# <room>.humidity, outside, outside.humidity, air.<reading>), and a value a person sets stays. The
+# script resets every helper to its default.
+[%- if groups or readings %]
+input_number:
+[%- macro comfort_name(name, what) %][% set full = name ~ ' comfort ' ~ what %][[ full | yaml ]][% endmacro %]
+[%- for id, key, name, humid, _, ranges in groups %]
+  [[ key ]]_temp_low:
+    name: [[ comfort_name(name, 'temperature low') ]]
+    icon: mdi:thermometer-low
+    min: [[ ranges.temp[0] ]]
+    max: [[ ranges.temp[1] ]]
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+  [[ key ]]_temp_high:
+    name: [[ comfort_name(name, 'temperature high') ]]
+    icon: mdi:thermometer-high
+    min: [[ ranges.temp[0] ]]
+    max: [[ ranges.temp[1] ]]
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+[%- if humid %]
+  [[ key ]]_humidity_low:
+    name: [[ comfort_name(name, 'humidity low') ]]
+    icon: mdi:water-percent
+    min: [[ ranges.humidity[0] ]]
+    max: [[ ranges.humidity[1] ]]
+    step: 1
+    mode: box
+    unit_of_measurement: "%"
+  [[ key ]]_humidity_high:
+    name: [[ comfort_name(name, 'humidity high') ]]
+    icon: mdi:water-percent
+    min: [[ ranges.humidity[0] ]]
+    max: [[ ranges.humidity[1] ]]
+    step: 1
+    mode: box
+    unit_of_measurement: "%"
+[%- endif %]
+[%- endfor %]
+[%- for reading in readings %]
+[%- set d = air_defaults[reading] %]
+  climate_air_[[ reading ]]_fair:
+    name: Air [[ reading | replace('_', '.') ]] fair limit
+    icon: mdi:air-filter
+    min: [[ d[2] ]]
+    max: [[ d[3] ]]
+    step: [[ d[4] ]]
+    mode: box
+[%- if d[5] %]
+    unit_of_measurement: "[[ d[5] ]]"
+[%- endif %]
+  climate_air_[[ reading ]]_poor:
+    name: Air [[ reading | replace('_', '.') ]] poor limit
+    icon: mdi:air-filter
+    min: [[ d[2] ]]
+    max: [[ d[3] ]]
+    step: [[ d[4] ]]
+    mode: box
+[%- if d[5] %]
+    unit_of_measurement: "[[ d[5] ]]"
+[%- endif %]
+[%- endfor %]
+
+[%- endif %]
+
+[%- if seed_ids %]
+
+input_text:
+  # The ids ("living_room,bedroom,air") whose helpers the seed has already given their defaults.
+  climate_air_seeded:
+    name: Climate air thresholds seeded
+    icon: mdi:check-all
+    max: 255
+
+automation:
+  - id: climate_air_thresholds_seed
+    alias: Climate air thresholds seed
+    description: "Start or automation reload: give each room not yet seeded its default comfort ranges (and the air limits theirs), once; a value a person set stays."
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: automation_reloaded
+    actions:
+      - variables:
+          ids: [[ seed_ids | tojson ]]
+          # Only tokens this render knows: a removed room or reading drops out of the stored list.
+          done: "{{ states('input_text.climate_air_seeded').split(',') | map('trim') | select('in', ids) | list }}"
+[%- for id, key, _, humid, start, _ in groups %]
+      - if:
+          - condition: template
+            value_template: "{{ '[[ id ]]' not in done }}"
+        then:
+          - action: input_number.set_value
+            target: {entity_id: input_number.[[ key ]]_temp_low}
+            data: {value: [[ start.temp_low ]]}
+          - action: input_number.set_value
+            target: {entity_id: input_number.[[ key ]]_temp_high}
+            data: {value: [[ start.temp_high ]]}
+[%- if humid %]
+      - if:
+          - condition: template
+            value_template: "{{ '[[ id ]].humidity' not in done }}"
+        then:
+          - action: input_number.set_value
+            target: {entity_id: input_number.[[ key ]]_humidity_low}
+            data: {value: [[ start.humidity_low ]]}
+          - action: input_number.set_value
+            target: {entity_id: input_number.[[ key ]]_humidity_high}
+            data: {value: [[ start.humidity_high ]]}
+[%- endif %]
+[%- endfor %]
+[%- for reading in readings %]
+      - if:
+          - condition: template
+            value_template: "{{ 'air.[[ reading ]]' not in done }}"
+        then:
+          - action: input_number.set_value
+            target: {entity_id: input_number.climate_air_[[ reading ]]_fair}
+            data: {value: [[ air_defaults[reading][0] ]]}
+          - action: input_number.set_value
+            target: {entity_id: input_number.climate_air_[[ reading ]]_poor}
+            data: {value: [[ air_defaults[reading][1] ]]}
+[%- endfor %]
+      - action: input_text.set_value
+        target: {entity_id: input_text.climate_air_seeded}
+        data:
+          value: "{{ (done + (ids | reject('in', done) | list)) | join(',') }}"
+
+script:
+  climate_air_thresholds_reset:
+    alias: Climate air thresholds reset
+    description: Set every comfort range and air limit back to its default.
+    mode: single
+    sequence:
+[%- for _, key, _, humid, start, _ in groups %]
+      - action: input_number.set_value
+        target: {entity_id: input_number.[[ key ]]_temp_low}
+        data: {value: [[ start.temp_low ]]}
+      - action: input_number.set_value
+        target: {entity_id: input_number.[[ key ]]_temp_high}
+        data: {value: [[ start.temp_high ]]}
+[%- if humid %]
+      - action: input_number.set_value
+        target: {entity_id: input_number.[[ key ]]_humidity_low}
+        data: {value: [[ start.humidity_low ]]}
+      - action: input_number.set_value
+        target: {entity_id: input_number.[[ key ]]_humidity_high}
+        data: {value: [[ start.humidity_high ]]}
+[%- endif %]
+[%- endfor %]
+[%- for reading in readings %]
+      - action: input_number.set_value
+        target: {entity_id: input_number.climate_air_[[ reading ]]_fair}
+        data: {value: [[ air_defaults[reading][0] ]]}
+      - action: input_number.set_value
+        target: {entity_id: input_number.climate_air_[[ reading ]]_poor}
+        data: {value: [[ air_defaults[reading][1] ]]}
+[%- endfor %]
+[%- endif %]
 [%- endif %]

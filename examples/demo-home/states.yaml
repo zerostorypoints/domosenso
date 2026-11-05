@@ -84,10 +84,24 @@ states:
   binary_sensor.balcony_door_contact: "off"
   lock.front_door: locked
 
+  # Pocket's Safety page (P4): alarms, a siren and the people of the home
+  binary_sensor.kitchen_smoke: "off"
+  binary_sensor.bathroom_leak: "off"
+  siren.hall_siren: "off"
+  person.alex: home
+  person.sam: not_home
+
   weather.forecast_home: partlycloudy
   calendar.family: "off"
 
 attributes:
+  binary_sensor.balcony_door_contact: {friendly_name: Balcony door, device_class: door}
+  lock.front_door: {friendly_name: Front door}
+  binary_sensor.kitchen_smoke: {friendly_name: Kitchen smoke, device_class: smoke}
+  binary_sensor.bathroom_leak: {friendly_name: Bathroom leak, device_class: moisture}
+  siren.hall_siren: {friendly_name: Hall siren, supported_features: 19}
+  person.alex: {friendly_name: Alex}
+  person.sam: {friendly_name: Sam}
   media_player.living_room_speaker:
     friendly_name: Living room speaker
     volume_level: 0.25

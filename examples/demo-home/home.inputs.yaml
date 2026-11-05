@@ -1,0 +1,28 @@
+# The demo home's shared inputs: rooms and the entities every component may read about them.
+# Entity ids are the ones in states.yaml where it has them.
+rooms:
+  - id: living_room
+    name: Living room
+    lights: light.living_room
+    scenes: [scene.all_lights_off]
+    climate:
+      temperature: sensor.living_room_temperature
+      humidity: sensor.living_room_humidity
+    air:
+      score: sensor.living_room_air_quality_score
+      co2: sensor.living_room_co2
+    media: media_player.living_room_speaker
+    covers:                   # listed first in the room, under this name; the rest are found by area
+      - {entity: cover.awning_living_room, name: {en: Terrace awning, de: Terrassenmarkise, pl: Markiza tarasowa}}
+  - id: bedroom
+    name: Bedroom
+    climate:
+      temperature: sensor.bedroom_temperature
+      humidity: sensor.bedroom_humidity
+  - id: office
+    name: Office
+    lights: light.office
+outside:
+  temperature: sensor.outside_temperature
+  humidity: sensor.outside_humidity
+weather: weather.forecast_home

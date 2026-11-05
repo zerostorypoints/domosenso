@@ -8,7 +8,8 @@ it describes this working copy, not the home's history.
 
     {"<id>": {"version": "1.1.0", "commit": "<short head>-dirty", "released": "<head's date>",
               "files": {"<dest from the home root>": {"sha256": "...", "layer": "managed"}},
-              "resources": ["/local/domosenso/<id>/1.1.0/cards/<card>.js"]}}
+              "resources": ["/local/domosenso/<id>/1.1.0/cards/<card>.js"],
+              "home_inputs": "<sha256 of the home inputs it was rendered from, uses_home only>"}}
 """
 from __future__ import annotations
 
@@ -53,7 +54,7 @@ def _save(root: Path, data: dict[str, dict]) -> None:
 
 
 def record(root: Path, cid: str, version: str, commit: str, files: dict[str, dict], resources: list[str],
-           released: str = "") -> None:
+           released: str = "", home_inputs: str | None = None) -> None:
     """Replace `cid`'s entry. Instance files an earlier entry holds (from `add --catalog-dev`) are kept:
     a later dev render does not render them again, and the deploy still needs them."""
     data = load(root)
@@ -61,6 +62,8 @@ def record(root: Path, cid: str, version: str, commit: str, files: dict[str, dic
             if f.get("layer") == "instance" and p not in files}
     data[cid] = {"version": version, "commit": commit, "released": released, "files": {**kept, **files},
                  "resources": list(resources)}
+    if home_inputs:
+        data[cid]["home_inputs"] = home_inputs  # the digest it was rendered from (uses_home only)
     _save(root, data)
 
 

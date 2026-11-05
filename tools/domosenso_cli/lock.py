@@ -29,6 +29,7 @@ class LockEntry:
     files: dict[str, FileRecord] = field(default_factory=dict)
     resources: list[str] = field(default_factory=list)
     released: str | None = None  # the tag commit's date, YYYY-MM-DD (SPEC-023); absent in older locks
+    home_inputs: str | None = None  # the digest of the home inputs it was rendered from (uses_home only)
 
 
 @dataclass
@@ -52,6 +53,7 @@ class Lock:
                     },
                     resources=list(raw.get("resources", [])),
                     released=raw.get("released"),
+                    home_inputs=raw.get("home_inputs"),
                 )
                 for cid, raw in data["components"].items()
             }
@@ -93,4 +95,6 @@ def _entry_data(entry: LockEntry) -> dict:
     }
     if entry.released:
         data["released"] = entry.released
+    if entry.home_inputs:
+        data["home_inputs"] = entry.home_inputs
     return data

@@ -9,6 +9,7 @@
   The standing rule: a new Ramka setting gets its row here, on its view's page, in the same change
   (tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset).
 #]
+[%- from '_home.jinja' import merged as inputs with context -%]
 [%- set p = inputs.prefix -%]
 [%- set music_visual = inputs.music_visual | default(none) -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
@@ -119,19 +120,19 @@
 [%- endif %]
 [%- if h | length > 2 and h[2] == 'colour' %]
 [[ lead ]]type: custom:ramka-colour-select-row
-[[ pad ]]entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+[[ pad ]]entity: [[ h[1][1:] if h[1].startswith('=') else h[0] ~ '.' ~ p ~ '_' ~ h[1] ]]
 [[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
 [[ pad ]]lang: [[ lang ]]
 [%- elif h | length > 2 and h[2] %]
 [[ lead ]]type: custom:ramka-info-select-row
-[[ pad ]]entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+[[ pad ]]entity: [[ h[1][1:] if h[1].startswith('=') else h[0] ~ '.' ~ p ~ '_' ~ h[1] ]]
 [[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
 [[ pad ]]descriptions:
 [%- for option, text in h[2].items() %]
 [[ pad ]]  [[ option ]]: [[ text | tojson ]]
 [%- endfor %]
 [%- else %]
-[[ lead ]]entity: [[ h[0] ]].[[ p ]]_[[ h[1] ]]
+[[ lead ]]entity: [[ h[1][1:] if h[1].startswith('=') else h[0] ~ '.' ~ p ~ '_' ~ h[1] ]]
 [[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
 [%- endif %]
 [%- endfor -%]
@@ -384,10 +385,14 @@ views:
             entity: sensor.[[ p ]]_climate_rooms
             slots: input_number.[[ p ]]_climate_slots
             neutral_color: input_select.[[ p ]]_climate_color_neutral
+            [%- if inputs.comfort_ids is defined and inputs.comfort_ids %]
+            # P3.3: each room's comfort range from climate-air's helpers, by its temperature sensor.
+            comfort: [[ inputs.comfort_ids | tojson ]]
+            [%- endif %]
 [%- if inputs.air is defined and (inputs.air.co2 is defined or inputs.air.pm2_5 is defined) %]
             air_limits:
 [%- for reading in ['co2', 'pm2_5'] if inputs.air[reading] is defined %]
-              [[ reading ]]: [input_number.[[ p ]]_air_[[ reading ]]_raised, input_number.[[ p ]]_air_[[ reading ]]_high]
+              [[ reading ]]: [[ inputs.air_limit_ids[reading] | list ]]
 [%- endfor %]
 [%- endif %]
             script: script.[[ p ]]_climate_rooms_set[[ render_time([('inputs.rooms', labels(inputs.climate)), ('inputs.rooms_columns', inputs.rooms_columns | default(5))]) ]][[ reset(view) ]]
@@ -396,7 +401,7 @@ views:
 [%- for key in ['score', 'co2', 'pm2_5', 'voc', 'nox'] if inputs.air[key] is defined -%]
 [%- set _ = readings.append(('readings.' ~ key, inputs.air[key])) -%]
 [%- set _ = switches.append(('input_boolean', 'air_' ~ key)) -%]
-[%- for which in air_limits[key][:2] -%][%- set _ = limits.append(('input_number', 'air_' ~ key ~ '_' ~ which)) -%][%- endfor -%]
+[%- for which in air_limits[key][:2] -%][%- set _ = limits.append(('input_number', ('=' ~ inputs.air_limit_ids[key][loop.index0]) if inputs.shared_thresholds else 'air_' ~ key ~ '_' ~ which, '', 'air_' ~ key ~ '_' ~ which)) -%][%- endfor -%]
 [%- endfor -%]
 [%- set colour_rows = [('input_select', 'air_color_good', 'colour'), ('input_select', 'air_color_fair', 'colour'), ('input_select', 'air_color_poor', 'colour')] -%]
 [[ switch_section('air', switches + [('input_boolean', 'settings_advanced')]) ]][[ advanced_section(limits + colour_rows) ]][[ render_time(readings, t('ui.settings.inputs.readings')) ]][[ reset(view) ]]

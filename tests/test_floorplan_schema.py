@@ -263,3 +263,19 @@ def test_diff_open_spaces_is_one_line_per_floor():
     same = copy.deepcopy(new)
     same["floors"][0]["open_spaces"] = [["kitchen", "living_room"]]
     assert diff(new, same) == [], "the order inside and between groups does not matter"
+
+
+def test_dashboard_config_carries_the_home_rooms():
+    from domosenso_cli.floorplan_doc import card_rooms
+    home = {"rooms": [{"id": "living_room", "name": {"en": "Living room", "de": "Wohnzimmer"}, "lights": "light.x",
+                       "climate": {"temperature": "sensor.living_room_temperature"}},
+                      {"id": "office", "name": "Office", "area": "study"}], "weather": "weather.home"}
+    rooms = card_rooms(home)
+    assert rooms == [{"id": "living_room", "name": {"en": "Living room", "de": "Wohnzimmer"}, "area": "living_room",
+                      "climate": {"temperature": "sensor.living_room_temperature"}},
+                     {"id": "office", "name": "Office", "area": "study"}]
+    card = dashboard_config(demo(), rooms)["views"][0]["cards"][0]
+    assert card["rooms"] == rooms
+    assert extract(dashboard_config(demo(), rooms)) == without_source(demo())
+    assert "rooms" not in dashboard_config(demo())["views"][0]["cards"][0]
+    assert card_rooms(None) == []

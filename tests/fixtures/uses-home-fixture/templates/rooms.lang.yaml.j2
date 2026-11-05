@@ -1,0 +1,4 @@
+rooms:
+[% for r in home.rooms %]
+  - [[ room_name(r) | yaml ]]
+[% endfor %]

@@ -384,6 +384,27 @@ test("a Temperature widget's dialog: four comfort numbers, 20-24 °C and 40-60 %
   card.remove();
 });
 
+// P3.3 (thresholds: climate-air): a room whose temperature sensor the config maps to climate-air's
+// helpers shows and changes those (input_number.set_value), not a copy in the widget.
+test("a Temperature widget's dialog with comfort helpers: their values, changed in climate-air", () => {
+  const ids = { temp_low: "input_number.climate_air_kitchen_temp_low", temp_high: "input_number.climate_air_kitchen_temp_high",
+    hum_low: "input_number.climate_air_kitchen_humidity_low", hum_high: "input_number.climate_air_kitchen_humidity_high" };
+  const states = { [ids.temp_low]: { state: "21", attributes: {} }, [ids.temp_high]: { state: "25", attributes: {} },
+    [ids.hum_low]: { state: "35", attributes: {} }, [ids.hum_high]: { state: "55", attributes: {} } };
+  const { card, calls } = makeCard({ rooms: [KT], states, config: { comfort: { "sensor.k_t": ids } } });
+  document.body.append(card);
+  const dialog = openDialog(card);
+  const n = numbers(dialog);
+  assert.deepEqual(Object.fromEntries(Object.entries(n).map(([k, i]) => [k, i.value])),
+                   { temp_low: "21", temp_high: "25", hum_low: "35", hum_high: "55" });
+  n.temp_low.value = "20.5";
+  submit(dialog);
+  assert.deepEqual(calls.filter((c) => c[0] === "input_number"),
+                   [["input_number", "set_value", { entity_id: ids.temp_low, value: 20.5 }]]);
+  assert.deepEqual(saved(calls), [KT], "the widget keeps no copy of the range");
+  card.remove();
+});
+
 test("an unusable range is refused with a message; the dialog stays open", () => {
   const { card, calls } = makeCard({ rooms: [KT] });
   const dialog = openDialog(card);

@@ -3,6 +3,52 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: a room's `lights` may list several, with names
+
+A room's `lights` in `home.inputs.yaml` takes one entity (a group, its members read at run time), as
+before, or a list of lights or groups, each an entity id or `{entity, name}` (one name, or one per
+language), as the Ramka labels its lights. Pocket counts and switches each one; the Ramka takes the
+names as its lights' labels when its own `lights` list is left out. Nothing changes for a home that
+names one.
+
+## Unreleased: home inputs list a room's covers, contacts and locks (optional)
+
+A room in `home.inputs.yaml` may list `covers`, `contacts` and `locks`: each an entity id, or
+`{entity, name}` with the name as one string or one per language. Pocket shows them first in that
+room, in the listed order and under that name, and the Ramka takes them when its own lists are left
+out; the room's other ones are still found by HA area. Nothing changes for a home that lists none.
+
+## Unreleased: the lock records the home inputs each consumer was rendered from
+
+For a component that uses the home inputs (`uses_home`), `domosenso.lock`, and the dev render
+inventory, record `home_inputs`: the sha256 of the inputs' content as rendered (canonical JSON, so a
+comment or the YAML style is no change).
+- `status` prints `stale <id> (home inputs changed)` for a consumer rendered from other inputs and
+  ends `FAIL <n> stale render(s)`.
+- `deploy --plan` and `--apply` refuse with `FAIL stale render: <id>… (home inputs changed; render
+  it)`.
+- `render` records the current digest.
+
+A lock written before records nothing and is not judged until its next render. What a home does:
+run `domosenso render` once, which also records the digest.
+
+## Unreleased: home inputs name HA areas; room id `outside` reserved
+
+A room may name its Home Assistant area (`area:`, default the room's id), and so may the `outside`
+block. The room id `outside` is reserved for the Outside pseudo-area: `render` (and every command
+that loads the home inputs) fails with `home-inputs: rooms: id outside is reserved ...`.
+Home action: rename a room with id `outside`, if any; name `area` where a room's id is not its
+area's id.
+
+## Unreleased: shared home inputs (`home_inputs`, `uses_home`)
+
+`domosenso.yaml` may name `home_inputs: <path>`, a file of the home's rooms (and `outside`,
+`weather`) that several components share instead of each asking for them again. A component
+manifest may declare `uses_home: true` (it needs the file) or `uses_home: "optional"`; only
+such components read it. `render` validates the file and fails on a repeated room id; it does not
+check the entities against a running Home Assistant, and the lock does not record the file.
+Home action: none now; before rendering a component that declares `uses_home`, upgrade the tooling.
+
 ## Unreleased: canonical native metadata projection (SPEC-037)
 
 No existing component opts in and no endpoint exposure changes. Upgrade framework tools

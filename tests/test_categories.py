@@ -12,6 +12,26 @@ CASES = json.loads((ROOT / "tests" / "fixtures" / "category-cases.json").read_te
 def test_index_is_current():
     assert category_index.OUT.read_text(encoding="utf-8") == category_index.render(), \
         "components/floorplan/cards/lib/categories.json is stale: run uv run tools/category_index.py"
+    for copy in category_index.COPIES:
+        assert copy.read_text(encoding="utf-8") == category_index.render(), \
+            f"{copy.relative_to(ROOT)} is stale: run uv run tools/category_index.py"
+
+
+def test_lib_copies_are_the_floor_plans_files():
+    assert category_index.LIB_COPIES, "the pocket copies categories.js and shared.js"
+    for source, copy in category_index.LIB_COPIES:
+        assert copy.read_text(encoding="utf-8") == source.read_text(encoding="utf-8"), \
+            f"{copy.relative_to(ROOT)} differs from {source.relative_to(ROOT)}: run uv run tools/category_index.py"
+
+
+def test_check_fails_when_a_lib_copy_drifts(tmp_path, monkeypatch, capsys):
+    source, _ = category_index.LIB_COPIES[1]
+    drifted = tmp_path / "shared.js"
+    drifted.write_text(source.read_text(encoding="utf-8") + "// changed\n", encoding="utf-8")
+    monkeypatch.setattr(category_index, "LIB_COPIES", [(source, drifted)])
+    monkeypatch.setattr("sys.argv", ["category_index.py", "--check"])
+    assert category_index.main() == 1
+    assert "is stale" in capsys.readouterr().out
 
 
 def test_every_named_kind_and_device_exists_and_orders_are_unique():

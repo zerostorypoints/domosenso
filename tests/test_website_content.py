@@ -32,13 +32,13 @@ def article(base, pub, status='published', **overrides):
     (base / 'journal/sample-release.md').write_text('---\n'+yaml.safe_dump(meta)+'---\n# A useful change\n\nA sample article.\n')
 
 
-def howto(base, name='sample-guide', **overrides):
+def howto(base, name='sample-guide', body='# Guide\n\nA sample guide.\n', **overrides):
     import yaml
     meta = dict(slug=name, title='Sample guide', description='A short description', components=['sample'], devices=[],
                 status='published', updated='2026-10-29', sources=['https://example.org/source'],
                 branches=[dict(situation='You have it', needs='Nothing', wiring='None', supported='yes', prompt='Do it')])
     meta.update(overrides)
-    (base / f'how-to/{name}.md').write_text('---\n'+yaml.safe_dump(meta)+'---\n# Guide\n\nA sample guide.\n')
+    (base / f'how-to/{name}.md').write_text('---\n'+yaml.safe_dump(meta)+'---\n'+body)
 
 
 def test_howto_published_and_draft_are_exported(catalog):
@@ -75,6 +75,20 @@ def test_invalid_howto_fails(catalog, field, value, message):
     root, pub, _ = catalog
     base = seed(root, pub); howto(base, **{field: value})
     with pytest.raises(ValueError, match=message): build_content(root, pub)
+
+
+def test_howto_images_must_be_published_assets(catalog):
+    root, pub, _ = catalog
+    base = seed(root, pub)
+    howto(base, body='# Guide\n\n![Wiring](/wiring/a.svg)\n![Box](/enclosures/box/open.png "Open")\n')
+    with pytest.raises(ValueError, match='how-to image not in assets.json: /wiring/a.svg'): build_content(root, pub)
+    for path in ('wiring/a.svg', 'enclosures/box/open.png'):
+        (root / 'website/public' / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / 'website/public' / path).write_bytes(b'x')
+    (base / 'assets.json').write_text(json.dumps([
+        dict(path=f'/{p}', alt='a', kind=k, credit='DomoSenso', license='Apache-2.0', scope='public-device-guide')
+        for p, k in (('wiring/a.svg', 'wiring'), ('enclosures/box/open.png', 'enclosure-preview'))]))
+    assert '![Box](/enclosures/box/open.png "Open")' in build_content(root, pub)['howTos'][0]['body']
 
 
 def test_journal_howto_reference_must_exist(catalog):

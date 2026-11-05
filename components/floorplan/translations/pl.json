@@ -18,6 +18,7 @@
       "loading": "Wczytywanie rzutu…",
       "no_plan": "Nie ma jeszcze rzutu. Utwórz go umiejętnością floorplan-from-image albo poleceniem domosenso floorplan push.",
       "unsupported": "Ten rzut zapisano w nowszym formacie, niż odczytuje ta karta. Zaktualizuj komponent floorplan.",
+      "no_area": "Tego obszaru nie ma na rzucie.",
       "edit": "Edytuj",
       "save": "Zapisz",
       "cancel": "Anuluj",

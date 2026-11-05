@@ -116,7 +116,12 @@ def test_check_jobs_limits_how_many_run_at_once(checks, tmp_path):
     result, _ = checks(CHECK_JOBS='2')
     assert result.returncode == 0
     peaks = [int(n) for n in (tmp_path / 'calls.peak').read_text().split()]
-    assert len(peaks) == 4 and max(peaks) <= 2
+    # One per check started: the fake catalog's one ha-check and one esphome-check component, plus
+    # check-all.sh's fixed Ramka scenarios; never more than two at once.
+    fixed = sum(1 for line in (ROOT / "tools/check-all.sh").read_text().splitlines()
+                if line.startswith("background ") and "tools/ha-check.sh ramka" in line)
+    scenarios = 2 + fixed
+    assert len(peaks) == scenarios and max(peaks) <= 2
 
 
 def test_the_image_is_pulled_before_home_staging_starts(checks):

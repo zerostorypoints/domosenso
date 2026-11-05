@@ -1,0 +1,4 @@
+# The values the demo home supplies to the pocket component (its `inputs:` in component.yaml): the
+# demo home has the plants component, so Plants is on the default bar; the rest are the defaults;
+# the rooms come from the demo home's home.inputs.yaml.
+plants: true

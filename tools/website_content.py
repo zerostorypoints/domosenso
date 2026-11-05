@@ -114,6 +114,9 @@ def build_content(root, publication):
                 require(urlparse(branch.get('issue') or '').scheme == 'https' and urlparse(branch['issue']).netloc, 'coming-soon branch needs an issue')
             if branch['supported'] == 'yes':
                 require(isinstance(branch.get('prompt'), str) and branch['prompt'].strip(), 'supported branch needs a prompt')
+        # A how-to shows only images the site serves from assets.json: its wiring diagrams and enclosure previews.
+        for src in MARKDOWN_IMAGE.findall(body):
+            require(src in asset_paths, f'how-to image not in assets.json: {src}')
         item['body'] = body
         howtos.append(item)
     articles = []; slugs = set()
@@ -146,6 +149,7 @@ def build_content(root, publication):
     return {'components':components, 'devices':devices, 'articles':sorted(articles,key=lambda a:(a['date'],a['slug']),reverse=True), 'howTos':sorted(howtos,key=lambda h:h['slug']), 'assets':assets}
 
 
+MARKDOWN_IMAGE = re.compile(r'!\[[^\]]*\]\(\s*<?([^)\s>]+)')
 WIRING_SOURCE = re.compile(r'devices/wiring/[a-z0-9-]+\.svg')
 # SPEC-036: an enclosure's previews, each served at exactly /enclosures/<id>/<name>.png
 ENCLOSURE_PREVIEW = re.compile(r'devices/enclosures/([a-z0-9]+(?:-[a-z0-9]+)*)/preview/([a-z0-9]+(?:-[a-z0-9]+)*)\.png')

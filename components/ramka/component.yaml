@@ -13,6 +13,8 @@ summary: Wall tablet with radar wake-up, an ambient page rotation, music, awning
 description_key: meta.description
 photo: null
 
+uses_home: optional           # lights, climate, outside, air, weather, covers and status contacts/locks fall back to the home inputs (P3)
+
 devices:
   requires:
     - kind: android-tablet
@@ -111,6 +113,9 @@ inputs:
   outside:                      # outside on the charts, dashed and thicker
     type: "{temperature, humidity?, color?}"
     default: null
+  thresholds:                   # own (the Ramka's own helpers) or climate-air: the air limits and, with home
+    type: "own | climate-air"   # inputs, each room's comfort range come from climate-air's helpers, one definition
+    default: own                # for the wall and Pocket; the Ramka's air helpers follow them for one release (P3)
   rooms_columns: {type: int, default: 5}
   air:                          # at least one tile: the air page; absent: no air page (0.2.0)
     type: "{score?, co2?, pm2_5?, voc?, nox?}"
@@ -141,7 +146,7 @@ inputs:
     type: "list[category]"      # a chip each, one shown at a time, the first at the start
     default: [climate, plants]
     example: [plants, climate, security, light]
-  weather: {type: entity_id, required: true, example: weather.forecast_home}
+  weather: {type: entity_id, example: weather.forecast_home}   # required unless the home inputs name it
   calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
   photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
     type: path                  # entities, shell commands or index automation (0.2.0)
