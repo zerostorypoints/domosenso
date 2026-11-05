@@ -34,6 +34,9 @@ lights:
   - {entity: light.kids_room, label: Kids' room, room: kids_room}
   - {entity: light.hall, label: Hall, room: hall}
 lights_all_off: scene.all_lights_off
+actions:                       # SPEC-034: the garage door from gate-remote, and a scene without a confirmation
+  - {entity: button.gate_remote_garage, label: Garage, icon: mdi:garage-variant, room: hall}
+  - {entity: scene.movie_night, label: Movie night, confirm: false, room: living_room}
 
 climate:
   - {label: Living room, temperature: sensor.living_room_temperature, humidity: sensor.living_room_humidity, room: living_room}

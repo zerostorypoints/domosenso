@@ -4418,3 +4418,58 @@ def test_wake_package_rejects_malformed_identifier(tmp_path, target):
     inputs["tablet_wake_package"] = target
     with pytest.raises(dr.RenderError, match="tablet_wake_package"):
         render(tmp_path, inputs)
+
+
+# ---- 0.16.0: actions on the controls (SPEC-034) ------------------------------------------------
+
+
+def test_actions_follow_the_input_with_confirmation_by_default(demo):
+    actions = demo_inputs()["actions"]
+    for lang in LANGS:
+        buttons = [n for n in walk(demo[f"dashboard.{lang}.yaml"])
+                   if n.get("type") == "button" and n.get("entity") in {a["entity"] for a in actions}]
+        assert [b["entity"] for b in buttons] == [a["entity"] for a in actions]
+        services = {"button": "button.press", "scene": "scene.turn_on"}
+        for button, action in zip(buttons, actions):
+            tap = button["tap_action"]
+            assert tap["perform_action"] == services[action["entity"].split(".")[0]]
+            assert tap["target"] == {"entity_id": action["entity"]}
+            if action.get("confirm", True):
+                assert action["label"] in tap["confirmation"]["text"]
+            else:
+                assert "confirmation" not in tap
+        twins = [n for n in walk(demo[f"dashboard.{lang}.yaml"])
+                 if n.get("type") == "tile" and n.get("entity") in {a["entity"] for a in actions}]
+        assert all(t["color"] == "disabled" and t["tap_action"] == {"action": "none"} for t in twins)
+        assert len(twins) == len(actions)
+
+
+def test_actions_sit_under_the_awnings_and_alone_without_them(demo, tmp_path):
+    heading = translations("en")["ui.actions.heading"]
+
+    def grid_of_actions(dashboard):
+        return next(s for s in sections(dashboard) if s.get("type") == "grid"
+                    and any(c.get("heading") == heading for c in s.get("cards", [])))
+
+    with_covers = grid_of_actions(demo["dashboard.en.yaml"])
+    assert with_covers["cards"][0]["heading"] == translations("en")["ui.covers.heading"]
+    inputs = demo_inputs()
+    inputs["covers"] = []
+    alone = grid_of_actions(render(tmp_path, inputs)["dashboard.en.yaml"])
+    assert alone["cards"][0]["heading"] == heading
+
+
+def test_without_actions_the_dashboard_renders_as_0_15_0(tmp_path):
+    without = demo_inputs()
+    del without["actions"]
+    empty = demo_inputs()
+    empty["actions"] = []
+    assert texts(tmp_path / "a", without) == texts(tmp_path / "b", empty)
+    assert all(translations("en")["ui.actions.heading"] not in text for text in texts(tmp_path / "a", without).values())
+
+
+def test_an_action_of_another_domain_fails(tmp_path):
+    inputs = demo_inputs()
+    inputs["actions"] = [{"entity": "light.kitchen", "label": "Kitchen"}]
+    with pytest.raises(dr.RenderError, match="actions: light.kitchen"):
+        render(tmp_path, inputs)

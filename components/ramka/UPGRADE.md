@@ -3,6 +3,16 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.16.0 (unreleased)
+
+### Shortcuts on the controls
+
+The new optional `actions` input puts one-tap buttons on the controls: a `button`, `input_button`,
+`script` or `scene` each, under the awnings (or in a column of their own without `covers`). Each
+asks Home Assistant's own confirmation before it acts, unless the item sets `confirm: false`; a
+greyed twin shows while the entity is unavailable. Nothing to do: without `actions` the dashboard
+renders as before (SPEC-034).
+
 ## 0.15.0 (unreleased)
 
 ### Optional shared timers
