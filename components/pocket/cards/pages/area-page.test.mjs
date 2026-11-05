@@ -402,3 +402,34 @@ test("snappy: a pressed scene is marked until it runs; silence rolls back with t
   assert.equal(el.querySelector(".media .play").getAttribute("aria-label"), "Pause", "no report: back as it was");
   assert.deepEqual(errors, ["card.pocket.error.scene", "card.pocket.error.media"]);
 });
+
+test("the Climate and Air squares open the trend of their first reading", () => {
+  const ctx = ctxOf({ routeId: "living_room" });
+  const el = mount(ctx);
+  const climate = el.querySelector(".sq.climate");
+  const air = el.querySelector(".sq.air");
+  assert.equal(climate.tagName, "BUTTON");
+  climate.click();
+  air.click();
+  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.title, s.subtitle]), [
+    ["trend", "sensor.living_room_temperature", "Temperature", "Living room"],
+    ["trend", "sensor.living_room_air_quality_score", "Air score", "Living room"],
+  ]);
+});
+
+test("a swipe that ends on a square opens no sheet", () => {
+  const ctx = ctxOf({ routeId: "bedroom" });
+  const el = mount(ctx);
+  const sq = el.querySelector(".sq.climate");
+  swipe(el, [300, 200], [200, 210], sq);
+  sq.click();
+  assert.deepEqual(ctx.sheets, []);
+});
+
+test("the Outside's square from the weather alone opens nothing", () => {
+  const cfg = { ...config, weather: "weather.home" };
+  const ctx = ctxOf({ routeId: "outside", cfg });
+  const el = mount(ctx);
+  const sq = el.querySelector(".sq.climate");
+  assert.equal(sq.tagName, "DIV");
+});

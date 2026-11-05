@@ -190,6 +190,34 @@
           "repo": "Kod na GitHubie"
         },
         "error": "Ustawienie nie zostało zapisane. Spróbuj ponownie."
+      },
+      "sheet": {
+        "close": "Zamknij"
+      },
+      "trend": {
+        "period": "Okres",
+        "range": {
+          "24h": "24 h",
+          "7d": "7 dni",
+          "30d": "30 dni"
+        },
+        "loading": "Wczytywanie…",
+        "empty": "Brak danych za ten okres",
+        "error": "Nie udało się wczytać historii",
+        "band": "Zakres {low}–{high}",
+        "band_low": "Od {low}",
+        "band_high": "Do {high}",
+        "span": "{range}: {min}–{max}",
+        "value": "{value} {unit}",
+        "reading": {
+          "temperature": "Temperatura",
+          "humidity": "Wilgotność",
+          "score": "Jakość powietrza",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "LZO",
+          "nox": "NOx"
+        }
       }
     }
   }

@@ -13,7 +13,10 @@
 //     translation key (lib/report.js), the shell shows its text for TOAST_MS;
 //   - snappy controls: one optimistic store (lib/optimistic.js) for every page; pages get hass
 //     with the states their controls expect over the reported ones (ctx.hass) and the store
-//     (ctx.optimistic); a send or a rollback redraws the page, each hass drops what it reports.
+//     (ctx.optimistic); a send or a rollback redraws the page, each hass drops what it reports;
+//   - one bottom sheet over the page and the bar (lib/sheet.js): a page opens it with
+//     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js);
+//     the content is updated with the page, and a new route closes it. Back closes it first.
 // Navigation sets location.hash: no reload, and the browser's back button returns.
 //
 //   type: custom:pocket-app
@@ -30,6 +33,8 @@ import { DEFAULTS, readSettings, saveSettings, withDefaults } from "./lib/settin
 import { setText } from "./lib/page-kit.js";
 import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
+import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
+import * as trendSheet from "./lib/trend-sheet.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -37,6 +42,10 @@ import pl from "../translations/pl.json" with { type: "json" };
 
 const translate = createT({ en, de, pl });
 const TOAST_MS = 3000;
+
+// The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
+// render(ctx, spec) -> HTMLElement, update(el, ctx).
+const SHEETS = { trend: trendSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -85,6 +94,7 @@ const STYLE = `
   .tab ha-icon { --mdc-icon-size: 24px; }
   .tab.active { color: var(--acc); }
   .tab:focus-visible { outline: 2px solid var(--acc); outline-offset: -4px; border-radius: 12px; }
+${SHEET_STYLE}
 `;
 
 class PocketApp extends HTMLElement {
@@ -92,6 +102,7 @@ class PocketApp extends HTMLElement {
     super();
     this._onHash = () => this._route();
     this._onScheme = () => this._paint();
+    this._onPop = () => this._sheet?.onPopState();
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
     this._saveQueue = Promise.resolve();
@@ -152,6 +163,7 @@ class PocketApp extends HTMLElement {
 
   connectedCallback() {
     window.addEventListener("hashchange", this._onHash);
+    window.addEventListener("popstate", this._onPop);
     this._scheme = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
     this._scheme?.addEventListener?.("change", this._onScheme);
     if (this._root) this._paint();
@@ -160,6 +172,8 @@ class PocketApp extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this._onHash);
+    window.removeEventListener("popstate", this._onPop);
+    this._sheet?.dismiss();
     this._scheme?.removeEventListener?.("change", this._onScheme);
   }
 
@@ -185,6 +199,7 @@ class PocketApp extends HTMLElement {
       routeId: this._current?.id,
       settings: this._settings,
       saveSettings: (patch) => this._saveSettings(patch),
+      openSheet: (spec) => this._openSheet(spec),
     };
   }
 
@@ -218,6 +233,7 @@ class PocketApp extends HTMLElement {
     this._toast = this._root.querySelector(".toast");
     this._nav = this._root.querySelector("nav");
     this._app.addEventListener("pocket-error", (e) => this._showToast(e.detail?.key));
+    this._sheet = createSheet(this._app, { t: (key, vars) => this._t(key, vars) });
     this._tabs = [];
   }
 
@@ -261,12 +277,25 @@ class PocketApp extends HTMLElement {
       this._key = key;
       this._page = pages[route.page];
       this._pageEl = this._page.render(this._ctx());
+      this._sheet.dismiss();
       this._main.replaceChildren(this._pageEl);
       this._renderBar();
       return;
     }
     if (this._barLang !== this._lang()) this._renderBar();
-    this._page.update(this._pageEl, this._ctx());
+    const ctx = this._ctx();
+    this._page.update(this._pageEl, ctx);
+    if (this._sheet.isOpen) this._sheetKind.update(this._sheet.content, ctx);
+  }
+
+  // A page's ctx.openSheet(spec): the sheet of spec.kind, in place of any open one. False for a
+  // kind the shell does not know.
+  _openSheet(spec) {
+    const kind = SHEETS[spec?.kind];
+    if (!kind || !this._sheet) return false;
+    this._sheetKind = kind;
+    this._sheet.open(kind.render(this._ctx(), spec), spec.title);
+    return true;
   }
 
   // The bar's buttons are rebuilt only when the person's choice of pages changes.

@@ -605,3 +605,62 @@ test("a save updates the Settings page in place: the same element, the new choic
   assert.equal($(card, "main > section.settings"), page);
   assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "power", "settings"]);
 });
+
+// A home with one reading and a websocket for its history: the trend sheet through the shell.
+function mountTrend() {
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...config(), rooms: [{ id: "kitchen", name: "Kitchen", climate: { temperature: "sensor.kitchen_t" } }] });
+  document.body.appendChild(card);
+  const ws = [];
+  const hassWith = (value) => hassOf({
+    states: { "sensor.kitchen_t": { state: String(value), attributes: {} } },
+    callWS: (msg) => {
+      if (msg.type === "frontend/get_user_data") return Promise.resolve({ value: null });
+      ws.push(msg);
+      return Promise.resolve({ "sensor.kitchen_t": [{ s: "20", lu: Date.now() / 1000 - 600 }] });
+    },
+  });
+  card.hass = hassWith(20.5);
+  return { card, ws, hassWith };
+}
+
+test("a square opens the trend sheet over the page and the bar; hass updates patch it", async () => {
+  await goTo("#/area/kitchen");
+  const { card, ws, hassWith } = mountTrend();
+  const layer = $(card, ".sheet-layer");
+  assert.equal(layer.hidden, true);
+  $(card, ".sq.climate").click();
+  assert.equal(layer.hidden, false);
+  assert.equal($(card, ".sheet").getAttribute("aria-label"), "Temperature");
+  await tick();
+  assert.equal(ws.length, 1);
+  assert.equal($(card, ".sheet .big").textContent, "20.5°");
+  const big = $(card, ".sheet .big");
+  card.hass = hassWith(21.2);
+  assert.equal($(card, ".sheet .big"), big, "patched, not rebuilt");
+  assert.equal(big.textContent, "21.2°");
+  assert.equal(ws.length, 1);
+});
+
+test("Back closes the sheet and leaves the page where it was; a new route closes it too", async () => {
+  await goTo("#/area/kitchen");
+  const { card } = mountTrend();
+  const page = $(card, "main > *");
+  $(card, ".sq.climate").click();
+  assert.ok(window.history.state?.pocketSheet, "an entry for Back to pop");
+  window.history.replaceState(null, "", window.location.hash);
+  window.dispatchEvent(new window.PopStateEvent("popstate", { state: null }));
+  assert.equal($(card, ".sheet-layer").hidden, true);
+  assert.equal($(card, "main > *"), page);
+  assert.equal(window.location.hash, "#/area/kitchen");
+  $(card, ".sq.climate").click();
+  await goTo("#/");
+  assert.equal($(card, ".sheet-layer").hidden, true);
+});
+
+test("an unknown sheet kind opens nothing", async () => {
+  await goTo("#/area/kitchen");
+  const { card } = mountTrend();
+  assert.equal(card._ctx().openSheet({ kind: "nope" }), false);
+  assert.equal($(card, ".sheet-layer").hidden, true);
+});

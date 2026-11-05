@@ -3,7 +3,8 @@
 // The page contract: a page module exports
 //   render(ctx) -> HTMLElement   builds the page once, when its route is entered
 //   update(el, ctx)              refreshes that element on every hass update
-// with ctx = {hass, optimistic, config, t, navigate, lang, offline, routeId, settings, saveSettings}:
+// with ctx = {hass, optimistic, config, t, navigate, lang, offline, routeId, settings, saveSettings,
+//            openSheet}:
 //   hass      Home Assistant's object, with the states the controls just sent shown over the
 //             reported ones (lib/optimistic.js view)
 //   optimistic  the store every control sends through: store.send(el, ctx.hass, {domain,
@@ -16,6 +17,8 @@
 //   routeId   the <id> of #/area/<id> (a room's id or "outside", lib/areas.js), else undefined
 //   settings  the person's settings (lib/settings.js), the defaults until they are read
 //   saveSettings(patch) -> Promise  saves a change of them; the shell then shows it (the bar)
+//   openSheet(spec)  opens the shell's bottom sheet (lib/sheet.js) of spec.kind, over the page:
+//             {kind: "trend", entity, title, ...} (lib/trend-sheet.js trendSpec builds one)
 // The shell keeps the page's element until the route changes, so a page may hold its own state
 // in it between updates.
 

@@ -190,6 +190,34 @@
           "repo": "Source on GitHub"
         },
         "error": "The setting was not saved. Try again."
+      },
+      "sheet": {
+        "close": "Close"
+      },
+      "trend": {
+        "period": "Period",
+        "range": {
+          "24h": "24 h",
+          "7d": "7 d",
+          "30d": "30 d"
+        },
+        "loading": "Loading…",
+        "empty": "No data for this period",
+        "error": "Could not load the history",
+        "band": "Range {low}–{high}",
+        "band_low": "From {low}",
+        "band_high": "Up to {high}",
+        "span": "{range}: {min}–{max}",
+        "value": "{value} {unit}",
+        "reading": {
+          "temperature": "Temperature",
+          "humidity": "Humidity",
+          "score": "Air score",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "VOC",
+          "nox": "NOx"
+        }
       }
     }
   }

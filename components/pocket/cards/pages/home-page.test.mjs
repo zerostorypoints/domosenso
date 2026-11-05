@@ -67,7 +67,9 @@ function hassOf(states = baseStates()) {
 function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, timeoutMs } = {}) {
   const routes = [];
   const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});
-  const ctx = { routes, raw: hass, optimistic, config: cfg, lang, offline, routeId: undefined,
+  const sheets = [];
+  const ctx = { routes, sheets, raw: hass, optimistic, config: cfg, lang, offline, routeId: undefined,
+    openSheet: (spec) => sheets.push(spec),
     get hass() { return optimistic.view(ctx.raw); },
     set hass(value) { ctx.raw = value; optimistic.update(value); },
     t: (key, vars) => translate({ locale: { language: lang } }, key, vars),
@@ -356,4 +358,23 @@ test("snappy: play/pause flips at once; a failed call flips it back with the toa
   await new Promise((r) => setTimeout(r, 5));
   assert.equal(play.getAttribute("aria-label"), "Pause");
   assert.deepEqual(errors, ["card.pocket.error.media"]);
+});
+
+test("the inside, outside and air chips open the trend of their main reading; lights on opens nothing", () => {
+  const ctx = ctxOf();
+  const el = home.render(ctx);
+  document.body.appendChild(el);
+  const chip = (name) => el.querySelector(`.chip[data-chip="${name}"]`);
+  for (const name of ["inside", "outside", "air"]) {
+    assert.equal(chip(name).tagName, "BUTTON", name);
+    chip(name).click();
+  }
+  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.subtitle]), [
+    ["trend", "sensor.living_room_temperature", "Living room"],
+    ["trend", "sensor.outside_temperature", "Outside"],
+    ["trend", "sensor.living_room_air_quality_score", "Living room"],
+  ]);
+  assert.equal(chip("lights_on").tagName, "DIV");
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /button\.chip \{[^}]*min-height: 44px/);
 });

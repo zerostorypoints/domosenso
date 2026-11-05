@@ -4,7 +4,9 @@
 //     pill when nothing is fair or poor;
 //   - metric chips: inside (the range of the rooms' temperatures), outside, the air score of the
 //     first room that has one, the number of lights on; a chip whose entity the config does not
-//     name is left out, one whose reading is unavailable shows a dash;
+//     name is left out, one whose reading is unavailable shows a dash; inside, outside and air
+//     open the trend sheet (ctx.openSheet, lib/trend-sheet.js) of their main reading: the first
+//     room's temperature, the outside temperature, the air score shown;
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
 //     a tap elsewhere opens Media; no card while the player is missing from Home Assistant;
 //   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
@@ -18,6 +20,8 @@
 import { attention } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
 import { formatDate } from "../lib/i18n.js";
+import { outsideArea } from "../lib/areas.js";
+import { trendSpec } from "../lib/trend-sheet.js";
 import {
   GONE, el, setText, setAttr, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
@@ -40,6 +44,8 @@ const STYLE = `
   .home .dot.poor { background: var(--bad); }
   .home .chip { flex: 0 0 auto; min-width: 58px; padding: 9px 12px; font-size: 16px; font-weight: 600;
                 background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+  .home button.chip { box-sizing: border-box; min-height: 44px; margin: 0; font-family: inherit; line-height: inherit;
+                       color: var(--fg); text-align: left; cursor: pointer; }
   .home .chip small { display: block; font-size: 11.5px; color: var(--mut); font-weight: 400; margin-top: 1px; }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .quick-sec[hidden] { display: none; }
   .home .now { display: flex; align-items: center; gap: 12px; padding: 12px;
@@ -88,9 +94,9 @@ export function render(ctx) {
     <div class="top"><b></b> <span class="date"></span></div>
     <div class="att" role="list"></div>
     <div class="chips">
-      <div class="chip" data-chip="inside"><span class="v"></span> <small></small></div>
-      <div class="chip" data-chip="outside"><span class="v"></span> <small></small></div>
-      <div class="chip" data-chip="air"><span class="v"></span> <small></small></div>
+      <button class="chip" type="button" data-chip="inside"><span class="v"></span> <small></small></button>
+      <button class="chip" type="button" data-chip="outside"><span class="v"></span> <small></small></button>
+      <button class="chip" type="button" data-chip="air"><span class="v"></span> <small></small></button>
       <div class="chip" data-chip="lights_on"><span class="v"></span> <small></small></div>
     </div>
     <div class="now" hidden>
@@ -122,6 +128,14 @@ export function render(ctx) {
     pillsKey: null,
     ctx,
   };
+
+  for (const [name, chip] of Object.entries(parts.chips)) {
+    if (chip.tagName !== "BUTTON") continue;
+    chip.addEventListener("click", () => {
+      const spec = chipTrend(parts.ctx, name);
+      if (spec) parts.ctx.openSheet?.(spec);
+    });
+  }
 
   const now = parts.now;
   now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
@@ -247,6 +261,15 @@ function updateChips(parts, ctx) {
   set("air", !!scoreId, score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0));
 
   set("lights_on", allLights(config).length > 0, String(lightsOnIn(hass, config.rooms)));
+}
+
+// The main reading of a chip, as a trend sheet's spec (null: nothing to show).
+function chipTrend(ctx, name) {
+  const { rooms } = ctx.config;
+  if (name === "inside") return trendSpec(ctx, rooms.find((room) => room.climate?.temperature), "temperature");
+  if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
+  if (name === "air") return trendSpec(ctx, rooms.find((room) => room.air?.score), "score");
+  return null;
 }
 
 function updateNow(parts, ctx) {

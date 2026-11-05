@@ -19,7 +19,9 @@
 //   - its player: artwork, title, artist, play/pause;
 // Every control sends through ctx.optimistic (lib/optimistic.js): its new state shows at once.
 //   - a room with none of these: its name and "nothing to show here".
-// The squares open nothing yet (the trend sheet is not built). render() builds every element
+// A square opens the trend sheet (ctx.openSheet, lib/trend-sheet.js) of its first reading when the
+// area names an entity for it (the Outside's weather attribute has none: that square opens nothing).
+// render() builds every element
 // once; update() patches text and classes, and rebuilds the lamp tiles only when the members change.
 
 import { roomLevels } from "../lib/attention.js";
@@ -29,6 +31,7 @@ import {
   GONE, el, setText, setAttr, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
+import { trendSpec } from "../lib/trend-sheet.js";
 import "../lib/light-tile.js";
 
 const DIRECTION_PX = 8;      // movement before a gesture is a swipe or a scroll
@@ -59,6 +62,7 @@ const STYLE = `
   .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; min-height: 88px; padding: 12px;
               display: flex; flex-direction: column; justify-content: space-between;
               background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+  .room button.sq { width: 100%; margin: 0; font: inherit; color: var(--fg); text-align: left; cursor: pointer; }
   .room .sq .head { font-size: 11.5px; color: var(--mut); display: flex; align-items: center; gap: 5px; }
   .room .sq .head i { width: 7px; height: 7px; border-radius: 50%; background: transparent; }
   .room .sq .head i.lv-good { background: var(--ok); }
@@ -107,10 +111,11 @@ const STYLE = `
 
 // A square of readings: the first one big, the others on the line under it, each value in a
 // span of its own so it carries its level's colour.
-function square(kind, readings) {
-  const sq = el("div", `sq ${kind}`,
+function square(kind, readings, opens) {
+  const sq = el(opens ? "button" : "div", `sq ${kind}`,
     `<span class="head"><span class="title"></span><i></i></span>
      <span class="value"><span class="big"></span><span class="lab"></span></span>`);
+  if (opens) sq.type = "button";
   const lab = sq.querySelector(".lab");
   const cells = readings.map((reading, i) => {
     if (i === 0) return { reading, value: sq.querySelector(".big") };
@@ -146,8 +151,18 @@ export function render(ctx) {
 
   if (climateReadings.length || airReadings.length) {
     const box = el("div", "squares");
-    if (climateReadings.length) parts.squares.push(square("climate", climateReadings));
-    if (airReadings.length) parts.squares.push(square("air", airReadings));
+    const add = (kind, readings) => {
+      const s = square(kind, readings, !!trendSpec(ctx, room, readings[0]));
+      if (s.sq.tagName === "BUTTON") {
+        s.sq.addEventListener("click", () => {
+          const spec = trendSpec(parts.ctx, room, readings[0]);
+          if (spec) parts.ctx.openSheet?.(spec);
+        });
+      }
+      parts.squares.push(s);
+    };
+    if (climateReadings.length) add("climate", climateReadings);
+    if (airReadings.length) add("air", airReadings);
     box.append(...parts.squares.map((s) => s.sq));
     root.append(box);
   }

@@ -190,6 +190,34 @@
           "repo": "Quellcode auf GitHub"
         },
         "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut."
+      },
+      "sheet": {
+        "close": "Schliessen"
+      },
+      "trend": {
+        "period": "Zeitraum",
+        "range": {
+          "24h": "24 h",
+          "7d": "7 T",
+          "30d": "30 T"
+        },
+        "loading": "Wird geladen…",
+        "empty": "Keine Daten für diesen Zeitraum",
+        "error": "Der Verlauf konnte nicht geladen werden",
+        "band": "Bereich {low}–{high}",
+        "band_low": "Ab {low}",
+        "band_high": "Bis {high}",
+        "span": "{range}: {min}–{max}",
+        "value": "{value} {unit}",
+        "reading": {
+          "temperature": "Temperatur",
+          "humidity": "Luftfeuchtigkeit",
+          "score": "Luftqualität",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "VOC",
+          "nox": "NOx"
+        }
       }
     }
   }

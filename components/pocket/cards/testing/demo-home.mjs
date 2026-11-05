@@ -70,7 +70,9 @@ export function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = fa
   const routes = [];
   const options = [];
   const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});
-  const ctx = { routes, options, raw: hass, optimistic, config: cfg, lang, offline, routeId,
+  const sheets = [];   // every spec a page passed to ctx.openSheet
+  const ctx = { routes, options, sheets, raw: hass, optimistic, config: cfg, lang, offline, routeId,
+    openSheet: (spec) => { sheets.push(spec); return true; },
     get hass() { return optimistic.view(ctx.raw); },
     set hass(value) { ctx.raw = value; optimistic.update(value); },
     t: (key, vars) => translate({ locale: { language: lang } }, key, vars),
