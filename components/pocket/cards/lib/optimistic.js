@@ -74,7 +74,9 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
   let sends = 0;
   let version = 0;
   let cache = null;
-  const overtaken = new Set();   // sends a later send took an entity over from
+  // Both bounded by the calls in flight: a send leaves them when its call settles.
+  const inFlight = new Set();    // sends whose service call has not settled yet
+  const overtaken = new Set();   // of those, the ones a later send took an entity over from
 
   const changed = () => { version += 1; store.onChange?.(); };
 
@@ -116,7 +118,7 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
         const state = real?.states?.[id];
         const want = given.changed ? given : wantFor(state, given);
         const earlier = held.get(id);
-        if (earlier) overtaken.add(earlier.sendId);
+        if (earlier && inFlight.has(earlier.sendId)) overtaken.add(earlier.sendId);
         if (!state) { held.delete(id); continue; }
         if (!want.changed && matches(state, want)) {
           // Already reported as wanted: hold it only while an earlier call's report may still come.
@@ -141,11 +143,14 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
       } catch (err) {
         result = Promise.reject(err);
       }
-      result?.catch?.(() => end());
-      const timer = setTimeout(() => {
-        end({ timeout: true });
-        overtaken.delete(sendId);
-      }, store.timeoutMs);
+      // The taken-over mark lives as long as the call: a rejection after the timeout still
+      // knows whether a later send owns the entity now.
+      const settle = () => { inFlight.delete(sendId); overtaken.delete(sendId); };
+      if (typeof result?.then === "function") {
+        inFlight.add(sendId);
+        result.then(settle, () => { end(); settle(); });
+      }
+      const timer = setTimeout(() => end({ timeout: true }), store.timeoutMs);
       timer?.unref?.();     // node (the tests): a pending check does not hold the process
       changed();
     },

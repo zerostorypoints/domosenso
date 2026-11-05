@@ -250,3 +250,32 @@ test("a rejected call taken over by a later one stays silent, also once the late
   await tick();
   assert.deepEqual(reports, []);
 });
+
+test("a call that rejects after the timeout: silent when taken over, one toast when not", async () => {
+  const rejects = [];
+  const slow = () => new Promise((_, no) => rejects.push(no));
+  const { store, reports } = storeOf({ timeoutMs: 10 });
+  // Taken over: the first call's quiet timeout and late rejection both stay silent.
+  const hass = hassOf({ "light.a": st("off") }, slow);
+  send(store, hass, { "light.a": { state: "on" } }, { service: "turn_on" });
+  store.timeoutMs = 1000;
+  send(store, hass, { "light.a": { state: "on", attributes: { brightness: 50 } } }, { service: "turn_on" });
+  store.timeoutMs = 10;
+  await tick(20);
+  rejects[0](new Error("late"));
+  await tick();
+  assert.deepEqual(reports, [], "the later call owns the entity");
+  // Not taken over, nothing held at the timeout: the late rejection toasts once.
+  const other = hassOf({ "light.b": st("off") }, slow);
+  send(store, other, { "light.b": { state: "off" } });
+  await tick(20);
+  rejects[2](new Error("late"));
+  await tick();
+  assert.deepEqual(reports, [["el", "card.pocket.error.light"]]);
+  // Not taken over, toasted on its timeout: the late rejection adds none.
+  send(store, other, { "light.b": { state: "on" } }, { service: "turn_on" });
+  await tick(20);
+  rejects[3](new Error("late"));
+  await tick();
+  assert.deepEqual(reports, [["el", "card.pocket.error.light"], ["el", "card.pocket.error.light"]]);
+});
