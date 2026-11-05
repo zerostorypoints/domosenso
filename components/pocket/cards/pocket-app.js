@@ -44,6 +44,7 @@ import * as trendSheet from "./lib/trend-sheet.js";
 import { checks, air, lights } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
+import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -132,6 +133,8 @@ class PocketApp extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // Offline: the floor plan is read again after the reconnect (lib/plan-cache.js).
+    if (hass?.connected === false) forgetPlan();
     this._optimistic.update(hass);
     if (!this._root) this._build();
     const retry = this._settingsRetry && hass?.connected !== false;

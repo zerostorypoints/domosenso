@@ -223,7 +223,8 @@
           "rising": "Rising",
           "falling": "Falling",
           "steady": "Steady"
-        }
+        },
+        "on_share": "On {share} of {range}"
       },
       "square": {
         "air": {

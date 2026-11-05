@@ -7,14 +7,17 @@
 // area's page: the pocket area whose HA area it is (lib/sensors.js haAreaOf); a room no pocket
 // area reads opens nothing. Read-only (edit: false): the plan is edited on a large screen.
 //
-// Without the floorplan component (config `floorplan` unset) or before its card is defined, the
-// page says there is no floor plan. render() builds it once; update() hands the card hass.
+// The plan is read once per session (lib/plan-cache.js) and handed to the card as its `plan:`.
+// Without the floorplan component (config `floorplan` unset) or without a plan, the page says there
+// is no floor plan; while it is read, it shows nothing. render() builds it once; update() hands the
+// card hass.
 
 import { areasOf } from "../lib/areas.js";
 import { haAreaOf } from "../lib/sensors.js";
 import { ELEMENT } from "../lib/area-plan.js";
 import { layerSpec } from "../lib/layer-sheet.js";
 import { el, setAttr, setText } from "../lib/page-kit.js";
+import { loadPlan } from "../lib/plan-cache.js";
 
 const STYLE = `
   .plan-page .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 8px; }
@@ -40,16 +43,20 @@ export function render(ctx) {
     <div class="top"><b></b><button class="layers" type="button" hidden><ha-icon icon="mdi:layers-outline"></ha-icon><span></span></button></div>
     <div class="box" hidden></div>
     <p class="none" hidden></p>`;
-  const parts = { ctx, card: null, layers: root.querySelector(".layers"), box: root.querySelector(".box"),
+  const parts = { ctx, card: null, loading: !!ctx.config?.floorplan, layers: root.querySelector(".layers"), box: root.querySelector(".box"),
     none: root.querySelector(".none") };
   root._plan = parts;
   parts.layers.addEventListener("click", () => {
     if (parts.card) parts.ctx.openSheet?.(layerSpec(parts.ctx, parts.card));
   });
-  const attach = () => {
-    if (parts.card) return;
+  const attach = (plan) => {
+    parts.loading = false;
+    if (parts.card || !plan) {
+      update(root, parts.ctx);
+      return;
+    }
     const card = document.createElement(ELEMENT);
-    card.setConfig(planConfig());
+    card.setConfig({ ...planConfig(), plan });
     card.addEventListener("room-tap", (e) => {
       const target = areasOf(parts.ctx.config).find((area) => haAreaOf(parts.ctx.config, area) === e.detail?.area_id);
       if (target) parts.ctx.navigate(`#/area/${target.id}`);
@@ -61,8 +68,8 @@ export function render(ctx) {
     update(root, parts.ctx);
   };
   if (ctx.config?.floorplan) {
-    if (customElements.get(ELEMENT)) attach();
-    else customElements.whenDefined?.(ELEMENT).then(attach);
+    const defined = customElements.get(ELEMENT) ? Promise.resolve() : customElements.whenDefined(ELEMENT);
+    Promise.all([loadPlan(ctx.hass), defined]).then(([plan]) => attach(plan));
   }
   update(root, ctx);
   return root;
@@ -76,7 +83,7 @@ export function update(root, ctx) {
   setText(parts.layers.querySelector("span"), label);
   setAttr(parts.layers, "aria-label", label);
   parts.box.hidden = !parts.card;
-  parts.none.hidden = !!parts.card;
+  parts.none.hidden = !!parts.card || parts.loading;
   setText(parts.none, ctx.t("card.pocket.floorplan.none"));
   if (!parts.card) {
     parts.layers.hidden = true;

@@ -7,6 +7,7 @@ import * as room from "./area-page.js";
 import { config, baseStates, hassOf, ctxOf, text, texts } from "../testing/demo-home.mjs";
 import { planConfig } from "../lib/area-plan.js";
 import { clearEntryDomains } from "../lib/sensors.js";
+import { forgetPlan } from "../lib/plan-cache.js";
 
 await import("../../../floorplan/cards/floorplan-card.js");
 
@@ -57,6 +58,7 @@ function mount(ctx) {
 beforeEach(() => {
   document.body.innerHTML = "";
   clearEntryDomains();
+  forgetPlan();
 });
 
 test("All sensors: collapsed under a 44 px header with the count, by category when opened", () => {
@@ -76,17 +78,20 @@ test("All sensors: collapsed under a 44 px header with the count, by category wh
   assert.deepEqual(texts(el, ".sensors .row .v"), ["Off", "48 %", "21.7 °C"]);
 });
 
-test("a row with a number opens its trend sheet; an on/off sensor's opens nothing", () => {
+test("every row opens its sheet: a number its trend, an on/off sensor its timeline", () => {
   const ctx = ctxOf({ hass: registryHass(), routeId: "living_room" });
   const el = mount(ctx);
   el.querySelector(".sensors .head").click();
   const rows = [...el.querySelectorAll(".sensors .row")];
-  assert.equal(rows[0].tagName, "DIV", "the door");
+  assert.ok(rows.every((row) => row.tagName === "BUTTON"));
   rows[2].click();
   assert.deepEqual(ctx.sheets, [{ kind: "trend", entity: "sensor.living_room_temperature", title: "Temperature",
     subtitle: "Living room", reading: "temperature" }]);
   rows[1].click();
   assert.equal(ctx.sheets[1].reading, "humidity");
+  rows[0].click();
+  assert.deepEqual(ctx.sheets[2], { kind: "trend", entity: "binary_sensor.door", title: "Door", subtitle: "Living room",
+    timeline: true });
 });
 
 test("an update patches the values in place; a new entity rebuilds the rows", () => {
@@ -123,10 +128,11 @@ test("All sensors in Polish and German", () => {
 test("the area's room on the floor plan's own card, with the home's floorplan", async () => {
   const ctx = ctxOf({ hass: registryHass(), routeId: "living_room", cfg: { ...config, floorplan: true } });
   const el = mount(ctx);
+  await settle();
   const card = el.querySelector(".area-plan floorplan-card");
   assert.ok(card, "the floorplan component's element");
-  assert.deepEqual(card._config, { edit: false, values: true, maps: false, zoom: false, chips: false, area: "living_room" });
-  await settle();
+  assert.deepEqual(card._config, { edit: false, values: true, maps: false, zoom: false, chips: false, tap_tips: true, area: "living_room",
+    plan: PLAN });
   assert.equal(el.querySelector(".area-plan").hidden, false, "shown once the card says the room is on the plan");
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 1);
   assert.equal(text(el.querySelector(".area-plan .t")), "Floor plan");
@@ -146,4 +152,39 @@ test("an area not on the plan hides its part; a home without the floorplan has n
 
 test("planConfig is the floor plan card's host options", () => {
   assert.deepEqual(planConfig("hall"), { area: "hall", edit: false, zoom: false, maps: false, chips: false, values: true });
+});
+
+test("the plan is read once per session: two area visits, one lovelace/config", async () => {
+  const hass = registryHass();
+  const cfg = { ...config, floorplan: true };
+  mount(ctxOf({ hass, routeId: "living_room", cfg }));
+  await settle();
+  document.body.innerHTML = "";
+  const again = mount(ctxOf({ hass, routeId: "living_room", cfg }));
+  await settle();
+  assert.ok(again.querySelector(".area-plan floorplan-card"));
+  assert.equal(hass.ws.filter((type) => type === "lovelace/config").length, 1);
+});
+
+test("a failed read is forgotten: the next visit asks again", async () => {
+  const hass = registryHass();
+  let fail = true;
+  const answer = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "lovelace/config" && fail) {
+      hass.ws.push(msg.type);
+      throw { code: "config_not_found" };
+    }
+    return answer(msg);
+  };
+  const cfg = { ...config, floorplan: true };
+  const first = mount(ctxOf({ hass, routeId: "living_room", cfg }));
+  await settle();
+  assert.equal(first.querySelector(".area-plan floorplan-card"), null);
+  assert.ok(first.querySelector(".area-plan").hidden);
+  fail = false;
+  const second = mount(ctxOf({ hass, routeId: "living_room", cfg }));
+  await settle();
+  assert.ok(second.querySelector(".area-plan floorplan-card"));
+  assert.equal(hass.ws.filter((type) => type === "lovelace/config").length, 2);
 });

@@ -223,7 +223,8 @@
           "rising": "Steigend",
           "falling": "Fallend",
           "steady": "Gleichbleibend"
-        }
+        },
+        "on_share": "{share} von {range} ein"
       },
       "square": {
         "air": {

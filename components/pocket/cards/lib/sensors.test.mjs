@@ -44,8 +44,8 @@ export const registryHass = () => ({
   },
 });
 
-test("lib/categories.js and categories.json are the floor plan's own files", () => {
-  for (const name of ["categories.js", "categories.json"]) {
+test("lib/categories.js, categories.json and shared.js are the floor plan's own files", () => {
+  for (const name of ["categories.js", "categories.json", "shared.js"]) {
     assert.equal(readFileSync(here(name), "utf8"), readFileSync(here(`../../../floorplan/cards/lib/${name}`), "utf8"), name);
   }
 });

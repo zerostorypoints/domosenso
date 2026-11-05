@@ -21,6 +21,7 @@
 //   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
 //   zoom: true                         # false: no wheel, pinch, pan or zoom buttons (the page scrolls)
 //   chips: true                        # false: no layer chips; a host offers them (layerChips, pressLayer)
+//   tap_tips: true                     # false: a finger's tap on a marker shows no tooltip
 //
 // Events, bubbling out of the card: `room-tap` ({area_id}) for a tap on a room in view mode, and
 // `floorplan-status` ({status}: loading, none, unsupported, no_area, ready) when the status changes;
@@ -115,7 +116,7 @@ const fmt = (v) => String(Math.round(v * 1e6) / 1e6);
 
 class FloorplanCard extends HTMLElement {
   setConfig(config) {
-    this._config = { edit: true, values: true, maps: true, zoom: true, chips: true, ...config };
+    this._config = { edit: true, values: true, maps: true, zoom: true, chips: true, tap_tips: true, ...config };
     // One area's room (a phone's area page): read-only, so its scoped floor is never saved.
     if (this._config.area) this._config.edit = false;
     this._scoped = new WeakMap();  // floor -> that floor with the area's room alone (config.area)
@@ -410,7 +411,8 @@ ${STYLE}
     card.addEventListener("pointerup", (e) => this._onUp(e));
     card.addEventListener("pointercancel", (e) => this._onUp(e, true));
     card.addEventListener("lostpointercapture", (e) => this._onUp(e, true));
-    card.addEventListener("pointerleave", () => this._showTip(null));
+    // A tooltip a finger's tap opened stays when the finger lifts (touch fires pointerleave then).
+    card.addEventListener("pointerleave", () => { if (!this._pinned) this._showTip(null); });
     if (typeof ResizeObserver === "function") new ResizeObserver(() => this._resized()).observe(this._svg);
     this._svg.addEventListener("wheel", (e) => this._onWheel(e), { passive: false });
     this._svg.addEventListener("dblclick", (e) => this._onDblClick(e));
@@ -1239,6 +1241,9 @@ ${STYLE}
     if (this._status !== "ready" || (e.button !== undefined && e.button !== 0)) return;
     this._showTip(null);
     this._hoverKey = null;
+    // A tooltip a tap opened closes with this pointer; if it is a tap, it does nothing else.
+    const hadTip = !!this._pinned;
+    this._pinned = null;
     const item = e.target.closest?.(".tray [data-key], .tray summary[data-group]");
     const listed = e.target.closest?.(".cluster-list [data-point]");
     const inSvg = this._svg.contains(e.target) || e.target === this._svg;
@@ -1282,7 +1287,10 @@ ${STYLE}
     } else {
       // A cluster drags like the background (a pan); a tap on it opens its list.
       const cluster = kind === "cluster" ? target.getAttribute("data-cluster") : null;
-      this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null, cluster };
+      // A finger (no hover) on a marker in view mode: a tap shows its tooltip.
+      const touch = !!e.pointerType && e.pointerType !== "mouse";
+      const marker = touch ? e.target.closest?.("g.marker[data-key]:not(.ghost)")?.getAttribute("data-key") ?? null : null;
+      this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null, cluster, touch, marker, hadTip };
     }
   }
 
@@ -1303,11 +1311,7 @@ ${STYLE}
     if (key && key === this._tipKey) return void this._showTip({ key }, e);
     let content = null;
     if (marker) {
-      const point = this._floor?.points.find((p) => keyOf(p) === hoverKey);
-      if (point) {
-        content = { key, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
-          presence: presenceEntities(this._hass, point), roles: this._cat(point).roles };
-      }
+      content = this._markerTip(hoverKey);
     } else if (cluster) {
       const c = this._clusters(this._floor).get(cluster.getAttribute("data-cluster"));
       if (c) content = { key, ids: [],
@@ -1320,6 +1324,32 @@ ${STYLE}
       if (c) content = { key, name: candidateName(this._hass, c), ids: c.entities };
     }
     this._showTip(content, e);
+  }
+
+  // A marker's tooltip content: its names, readings, presence sensors and roles; null when gone.
+  _markerTip(pointKey) {
+    const point = this._floor?.points.find((p) => keyOf(p) === pointKey);
+    if (!point) return null;
+    return { key: `m:${pointKey}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
+      presence: presenceEntities(this._hass, point), roles: this._cat(point).roles };
+  }
+
+  // A tooltip a tap opened (no hover on a phone): it stays, with the marker's links, until the next
+  // tap; a pointerdown hides it at once.
+  _pinTip(pointKey, e) {
+    const content = this._markerTip(pointKey);
+    if (!content) return;
+    this._pinned = pointKey;
+    this._hoverKey = pointKey;
+    this._drawSvg(false);
+    this._showTip(content, e);
+  }
+
+  _unpinTip() {
+    this._pinned = null;
+    this._hoverKey = null;
+    this._showTip(null);
+    this._drawSvg(false);
   }
 
   // A point's device name, then those of the devices joined to it as the same hardware.
@@ -1474,6 +1504,12 @@ ${STYLE}
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.
     } else if (d.kind === "pan" && !d.moved && this._mode !== "edit") {
+      // A finger's tap on a marker shows its tooltip until the next tap elsewhere; that tap only
+      // closes it (it opens no room).
+      if (d.touch && this._config.tap_tips) {
+        if (d.marker) return void this._pinTip(d.marker, e);
+        if (d.hadTip) return void this._unpinTip();
+      }
       // View mode: a tap on a room tells the host which area it is (a phone opens its page).
       const pt = this._at(e);
       const room = this._floor?.rooms.find((r) => pointInPolygon(pt, r.polygon));

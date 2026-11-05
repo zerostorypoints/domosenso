@@ -2,8 +2,9 @@
 // (lib/sensors.js: the floor plan's registries and categories), in a section that starts collapsed.
 // Its header is one 44 px button with the count; open, a heading per category (its colour's dot
 // and name), then a row per entity: its name (the area's name in front left out) and its value as
-// Home Assistant words it. A row with a number opens its trend sheet (ctx.openSheet, kind "trend");
-// an on/off sensor's row opens nothing. The section is hidden while the area has no sensor.
+// Home Assistant words it. Every row opens its trend sheet (ctx.openSheet, kind "trend"): a line for a
+// number, a timeline of its states for an on/off or other sensor (timeline: true). The section is
+// hidden while the area has no sensor.
 //
 //   renderSensors(ctx, area) -> {el, update(ctx)}
 //
@@ -41,6 +42,7 @@ const READINGS = { temperature: "temperature", humidity: "humidity" };
 // The trend sheet's spec for one sensor: its name, the area, and the digits its state shows.
 function sensorSpec(ctx, id, name, where) {
   const state = ctx.hass?.states?.[id];
+  if (!isNumeric(ctx.hass, id)) return { kind: "trend", entity: id, title: name, subtitle: where, timeline: true };
   const reading = READINGS[state?.attributes?.device_class];
   const digits = Math.min(2, (String(state?.state ?? "").split(".")[1] ?? "").length);
   return { kind: "trend", entity: id, title: name, subtitle: where, ...(reading ? { reading } : { digits }) };
@@ -79,15 +81,12 @@ export function renderSensors(ctx, area) {
       state.cats.push({ group, label: cat.querySelector("span") });
       nodes.push(cat);
       for (const id of group.entities) {
-        const opens = isNumeric(ctx.hass, id);
-        const row = el(opens ? "button" : "div", "row", `<span class="nm"></span><span class="v"></span>`);
-        if (opens) {
-          row.type = "button";
-          row.addEventListener("click", () => {
-            const name = shortName(state.ctx.hass, id, area);
-            state.ctx.openSheet?.(sensorSpec(state.ctx, id, name, where()));
-          });
-        }
+        const row = el("button", "row", `<span class="nm"></span><span class="v"></span>`);
+        row.type = "button";
+        row.addEventListener("click", () => {
+          const name = shortName(state.ctx.hass, id, area);
+          state.ctx.openSheet?.(sensorSpec(state.ctx, id, name, where()));
+        });
         row.dataset.entity = id;
         state.rows.push({ id, row, name: row.querySelector(".nm"), value: row.querySelector(".v") });
         nodes.push(row);
@@ -102,7 +101,7 @@ export function renderSensors(ctx, area) {
     askDomains(hass);
     const groups = areaSensors(hass, haAreaOf(ctx.config, area), state.domains);
     const count = groups.reduce((sum, g) => sum + g.entities.length, 0);
-    const key = JSON.stringify([groups.map((g) => [g.category, g.entities]), groups.flatMap((g) => g.entities.map((id) => isNumeric(hass, id)))]);
+    const key = JSON.stringify(groups.map((g) => [g.category, g.entities]));
     if (key !== state.key) {
       state.key = key;
       rebuild(ctx, groups);

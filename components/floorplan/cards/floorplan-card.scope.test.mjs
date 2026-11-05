@@ -68,9 +68,15 @@ async function make(config, events = []) {
   $(card, "svg").getBoundingClientRect = () => RECT;
   return card;
 }
-const pointer = (node, type, x, y, id = 1) => node.dispatchEvent(new window.PointerEvent(type, {
-  bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: id, button: 0, isPrimary: id === 1,
+const pointer = (node, type, x, y, id = 1, pointerType = "mouse") => node.dispatchEvent(new window.PointerEvent(type, {
+  bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: id, button: 0, isPrimary: id === 1, pointerType,
 }));
+// A finger's tap: down and up at one spot, then the pointerleave touch fires after it.
+const fingerTap = (card, node, x, y) => {
+  pointer(node, "pointerdown", x, y, 1, "touch");
+  pointer(node, "pointerup", x, y, 1, "touch");
+  $(card, "ha-card").dispatchEvent(new window.PointerEvent("pointerleave", { pointerType: "touch" }));
+};
 function clientAt(card, px, py) {
   const [x, y, w, h] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
   const s = Math.min(RECT.width / w, RECT.height / h);
@@ -180,4 +186,50 @@ test("chips stay in the card by default and press the same way", async () => {
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
   assert.equal(card.layerChips.find((c) => c.id === "plants").on, false);
   window.localStorage.clear();
+});
+
+test("a finger's tap on a marker shows its tooltip until the next tap elsewhere, which opens no room", async () => {
+  const events = [];
+  const card = await make({ plan: plan() }, events);
+  const tip = $(card, ".tip");
+  const [mx, my] = clientAt(card, 2, 2);
+  fingerTap(card, $(card, 'g.marker[data-key="d_climate"] .shape'), mx, my);
+  assert.equal(tip.hidden, false, "shown, and kept after the finger leaves");
+  assert.match(tip.textContent, /Climate sensor/);
+  assert.match(tip.textContent, /21[.,]5/);
+  assert.equal(events.filter(([type]) => type === "room-tap").length, 0, "a marker's tap opens no room");
+  const [rx, ry] = clientAt(card, 6.5, 1);
+  fingerTap(card, $(card, 'polygon.room[data-area="kitchen"]'), rx, ry);
+  assert.equal(tip.hidden, true);
+  assert.equal(events.filter(([type]) => type === "room-tap").length, 0, "the closing tap only closes");
+  fingerTap(card, $(card, 'polygon.room[data-area="kitchen"]'), rx, ry);
+  assert.deepEqual(events.filter(([type]) => type === "room-tap"), [["room-tap", { area_id: "kitchen" }]]);
+});
+
+test("a finger's drag after a tip drops it; the next tap opens its room", async () => {
+  const events = [];
+  const card = await make({ plan: plan() }, events);
+  const [mx, my] = clientAt(card, 2, 2);
+  fingerTap(card, $(card, 'g.marker[data-key="d_climate"] .shape'), mx, my);
+  const svg = $(card, "svg");
+  pointer(svg, "pointerdown", 100, 100, 1, "touch");
+  pointer(svg, "pointermove", 160, 100, 1, "touch");
+  pointer(svg, "pointerup", 160, 100, 1, "touch");
+  assert.equal($(card, ".tip").hidden, true);
+  const [rx, ry] = clientAt(card, 6.5, 1);
+  fingerTap(card, $(card, 'polygon.room[data-area="kitchen"]'), rx, ry);
+  assert.equal(events.filter(([type]) => type === "room-tap").length, 1);
+});
+
+test("a mouse click on a marker pins nothing (it has hover); tap_tips: false pins nothing either", async () => {
+  const mouse = await make({ plan: plan() });
+  const [mx, my] = clientAt(mouse, 2, 2);
+  const shape = $(mouse, 'g.marker[data-key="d_climate"] .shape');
+  pointer(shape, "pointerdown", mx, my);
+  pointer(shape, "pointerup", mx, my);
+  $(mouse, "ha-card").dispatchEvent(new window.PointerEvent("pointerleave", { pointerType: "mouse" }));
+  assert.equal($(mouse, ".tip").hidden, true);
+  const off = await make({ plan: plan(), tap_tips: false });
+  fingerTap(off, $(off, 'g.marker[data-key="d_climate"] .shape'), ...clientAt(off, 2, 2));
+  assert.equal($(off, ".tip").hidden, true);
 });

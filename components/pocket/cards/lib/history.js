@@ -9,6 +9,9 @@
 //   seriesOf(hass, entityId, range, now?)                the points of one range of the trend sheet:
 //       "24h" history, "7d" hourly statistics, "30d" daily statistics; a sensor without statistics
 //       (no state_class) falls back to its history over the same span
+//   statesOf(hass, entityId, range, now?)                an entity's states as they changed, for the
+//       trend sheet's timeline of an on/off or other non-numeric entity: [{t, s}] (s the state
+//       text), from history over "24h" or "7d" (no statistics: they hold numbers only)
 //
 // Every function returns a Promise; a failed call rejects with Home Assistant's error.
 
@@ -39,7 +42,8 @@ function millis(value, unit) {
   return null;
 }
 
-export async function historyPoints(hass, entityId, start, end) {
+// The recorder's rows of one entity, each as {t, s}: when it changed and its state text.
+async function historyRows(hass, entityId, start, end) {
   const result = await hass.callWS({
     type: "history/history_during_period",
     start_time: new Date(start).toISOString(),
@@ -52,8 +56,20 @@ export async function historyPoints(hass, entityId, start, end) {
   return rows.map((row) => ({
     t: row.lu != null ? millis(row.lu, "s") : row.lc != null ? millis(row.lc, "s")
       : millis(row.last_updated ?? row.last_changed),
-    v: numeric(row.s ?? row.state),
+    s: row.s ?? row.state,
   })).filter((p) => p.t != null).sort((a, b) => a.t - b.t);
+}
+
+export async function historyPoints(hass, entityId, start, end) {
+  return (await historyRows(hass, entityId, start, end)).map(({ t, s }) => ({ t, v: numeric(s) }));
+}
+
+export const STATE_RANGES = ["24h", "7d"];
+
+export async function statesOf(hass, entityId, range, now = Date.now()) {
+  if (!STATE_RANGES.includes(range)) throw new Error(`unknown range: ${range}`);
+  return (await historyRows(hass, entityId, now - RANGES[range].span, now))
+    .map(({ t, s }) => ({ t, s: s == null ? null : String(s) }));
 }
 
 export async function statisticsPoints(hass, entityId, start, end, period) {

@@ -30,12 +30,17 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
     by the catalog's categories (`categories/*.yaml`) exactly as the floor plan groups devices
     (`cards/lib/categories.js` and `categories.json` are copies of the floor plan's, held equal by
     a test and by `tools/category_index.py`). Hidden and disabled entities, diagnostic and
-    configuration entities and a disabled device's are left out. Each row shows the name and the
-    value as Home Assistant words it; a row with a number opens its trend sheet.
+    configuration entities and a disabled device's are left out (the scan form and those rules
+    are the floor plan's own `cards/lib/shared.js`, copied verbatim the same way). Each row shows
+    the name and the value as Home Assistant words it and opens its sheet: a number its trend, an
+    on/off or other sensor a timeline of its states over 24 h or 7 d (history; on in the accent)
+    with how long it was on.
 - **Floor plan** (`#/floorplan`, with the input `floorplan`): the floorplan component's card as
   tall as the screen between the header and the bar, read-only. Two fingers zoom, a drag pans,
   its + / − / fit buttons and maps stay in its bar at 44 px; its layer chips are in a bottom sheet
-  behind **Layers**. A tap on a room opens that area's page. A bar item each person may turn on in
+  behind **Layers**. A tap on a room opens that area's page; a tap on a marker shows its tooltip
+  until the next tap. The plan is read from the `floorplan` dashboard once per session (again
+  after a lost connection) and handed to every floor plan card the pocket shows. A bar item each person may turn on in
   Settings (off by default); without the floorplan component neither the page's plan nor the
   item is offered.
 - **Widgets**: squares in a grid (an area's, the Areas tab's) share one size: equal columns and

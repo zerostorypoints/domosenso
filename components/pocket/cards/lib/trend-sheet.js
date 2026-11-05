@@ -7,7 +7,7 @@
 //       (climate-air's helper ids, read at run time); null when the area names no entity for it
 //   render(ctx, spec) -> HTMLElement,  update(el, ctx)   on the page contract (pages/index.js)
 //
-// spec = {kind: "trend", entity, title, subtitle?, reading?, digits?,
+// spec = {kind: "trend", entity, title, subtitle?, reading?, digits?, timeline?,
 //         band?: {low?, high?},                   helper ids: the shaded comfort band (a missing
 //                                                 side runs to the chart's edge)
 //         level?: {kind: "range", low, high} | {kind: "rising" | "falling", fair, poor}}   helper ids
@@ -19,10 +19,17 @@
 // loads, when it has no numbers or when the call fails, a line of text says so. render() builds
 // everything once; update() patches the value and redraws the chart only when its data or band
 // changed.
+//
+// timeline: true (an on/off or other non-numeric entity, lib/sensor-list.js) draws its states as a
+// timeline instead of a line: one band across, a segment per state from history (lib/history.js
+// statesOf; statistics hold numbers only, so 24 h and 7 d alone), "on" in the accent, any other
+// state muted, unavailable or unknown left empty; the value is the state as Home Assistant words
+// it, and the note how long it was on in the period.
 
 import { level, numberOf } from "./level.js";
 import { comfortOf } from "./areas.js";
-import { RANGES, seriesOf } from "./history.js";
+import { RANGES, STATE_RANGES, seriesOf, statesOf } from "./history.js";
+import { sensorValue } from "./sensors.js";
 import { formatDate } from "./i18n.js";
 import { el, setAttr, setText, number, temperature, percent } from "./page-kit.js";
 
@@ -65,6 +72,8 @@ export const TREND_STYLE = `
   .trend .state { position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center;
                   font-size: 15px; color: var(--mut); text-align: center; }
   .trend .axis { display: flex; justify-content: space-between; margin-top: 6px; }
+  .trend .tl-on { fill: var(--acc); }
+  .trend .tl-other { fill: var(--line); }
 `;
 
 export function trendSpec(ctx, area, reading) {
@@ -100,11 +109,12 @@ export function render(ctx, spec) {
   root.innerHTML = `<style>${TREND_STYLE}</style>
     <div class="row"><span class="title"></span><span class="where"></span></div>
     <div class="row now"><span class="big"></span><span class="note"></span></div>
-    <div class="seg" role="group">${RANGE_IDS.map((id) => `<button type="button" data-range="${id}"></button>`).join("")}</div>
+    <div class="seg" role="group">${(spec.timeline ? STATE_RANGES : RANGE_IDS).map((id) => `<button type="button" data-range="${id}"></button>`).join("")}</div>
     <div class="chart">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" hidden>
         <rect class="band" x="0" width="${W}" hidden></rect>
         <path class="line" vector-effect="non-scaling-stroke"></path>
+        <g class="timeline"></g>
       </svg>
       <p class="state" role="status"></p>
     </div>
@@ -115,6 +125,7 @@ export function render(ctx, spec) {
     big: root.querySelector(".big"), note: root.querySelector(".note"),
     seg: root.querySelector(".seg"), buttons: [...root.querySelectorAll(".seg button")],
     svg: root.querySelector("svg"), band: root.querySelector(".band"), line: root.querySelector(".line"),
+    timeline: root.querySelector(".timeline"),
     state: root.querySelector(".state"), from: root.querySelector(".from"), to: root.querySelector(".to"),
   };
   for (const button of parts.buttons) {
@@ -146,7 +157,7 @@ function load(root, parts) {
   const now = Date.now();
   parts.data[range] = { status: "loading" };
   const entry = parts.data[range];
-  seriesOf(hass, parts.spec.entity, range, now).then(
+  (parts.spec.timeline ? statesOf : seriesOf)(hass, parts.spec.entity, range, now).then(
     (points) => Object.assign(entry, { status: "ready", points, start: now - RANGES[range].span, end: now }),
     () => Object.assign(entry, { status: "error" }))
     .then(() => { if (root.isConnected) update(root, parts.ctx); });
@@ -165,6 +176,10 @@ export function update(root, ctx) {
     setAttr(button, "aria-pressed", String(button.dataset.range === parts.range));
   }
 
+  if (spec.timeline) {
+    updateTimeline(parts, ctx);
+    return;
+  }
   const value = numberOf(hass, spec.entity);
   const unit = hass?.states?.[spec.entity]?.attributes?.unit_of_measurement;
   const format = (v) => valueText(ctx, spec, v, unit);
@@ -277,3 +292,72 @@ export function chartOf(points, band, start, end) {
 }
 
 const round = (n) => Math.round(n * 10) / 10;
+
+// ---- the timeline of a non-numeric entity ------------------------------------------------------
+
+function updateTimeline(parts, ctx) {
+  setText(parts.big, sensorValue(ctx.hass, parts.spec.entity, ctx.t));
+  if (parts.big.className !== "big") parts.big.className = "big";
+  const data = parts.data[parts.range];
+  const ready = data?.status === "ready";
+  const share = ready ? onShare(data.points, data.start, data.end) : null;
+  setText(parts.note, share == null ? "" : ctx.t("card.pocket.trend.on_share", {
+    share: percent(ctx, share * 100), range: ctx.t(`card.pocket.trend.range.${parts.range}`) }));
+  const status = data?.status ?? "loading";
+  const has = ready && data.points.some((p) => p.s != null && p.t <= data.end);
+  let message = "";
+  if (status === "loading") message = ctx.t("card.pocket.trend.loading");
+  else if (status === "error") message = ctx.t("card.pocket.trend.error");
+  else if (!has) message = ctx.t("card.pocket.trend.empty");
+  setText(parts.state, message);
+  parts.state.hidden = !message;
+  parts.svg.hidden = !has;
+  parts.band.hidden = true;
+  const dateOptions = parts.range === "24h" ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" };
+  const locale = { locale: { language: ctx.lang } };
+  setText(parts.from, has ? formatDate(locale, new Date(data.start), dateOptions) : "");
+  setText(parts.to, has ? formatDate(locale, new Date(data.end), dateOptions) : "");
+  if (!has) return;
+  const key = JSON.stringify(["timeline", parts.range, data.start]);
+  if (key === parts.chartKey) return;
+  parts.chartKey = key;
+  const ns = "http://www.w3.org/2000/svg";
+  parts.timeline.replaceChildren(...timelineOf(data.points, data.start, data.end).map((seg) => {
+    const rect = document.createElementNS(ns, "rect");
+    for (const [name, value] of Object.entries({ x: seg.x, width: seg.width, y: TIMELINE_Y, height: TIMELINE_H,
+      class: seg.on ? "tl-on" : "tl-other", "data-state": seg.state })) rect.setAttribute(name, String(value));
+    return rect;
+  }));
+}
+
+const TIMELINE_H = 48;
+const TIMELINE_Y = (H - TIMELINE_H) / 2;
+
+// The segments of the states over [start, end] in drawing units: each state from its change to the
+// next (the last until the end); unavailable, unknown and no state are gaps.
+export function timelineOf(points, start, end) {
+  const series = [...points].sort((a, b) => a.t - b.t);
+  const x = (t) => round(Math.min(W, Math.max(0, ((t - start) / (end - start)) * W)));
+  const out = [];
+  series.forEach((p, i) => {
+    const to = i + 1 < series.length ? series[i + 1].t : end;
+    if (p.s == null || p.s === "unavailable" || p.s === "unknown" || to <= start) return;
+    const x0 = x(p.t);
+    const width = round(x(to) - x0);
+    if (width > 0) out.push({ x: x0, width, state: p.s, on: p.s === "on" });
+  });
+  return out;
+}
+
+// How much of [start, end] the entity was "on", 0 to 1; null without an on/off state in it.
+export function onShare(points, start, end) {
+  const series = [...points].sort((a, b) => a.t - b.t);
+  if (!series.some((p) => p.s === "on" || p.s === "off")) return null;
+  let on = 0;
+  series.forEach((p, i) => {
+    const from = Math.max(start, p.t);
+    const to = Math.min(end, i + 1 < series.length ? series[i + 1].t : end);
+    if (p.s === "on" && to > from) on += to - from;
+  });
+  return on / (end - start);
+}

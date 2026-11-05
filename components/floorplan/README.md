@@ -70,6 +70,7 @@ fill: true                         # optional: as tall as the screen below the c
 area: living_room                  # optional: that area's room alone, fitted to the card; no Edit
 zoom: true                         # false: no wheel, pinch, pan or zoom buttons; a finger scrolls the page
 chips: true                        # false: no layer chips (a host shows them: layerChips, pressLayer)
+tap_tips: true                     # false: a finger's tap on a marker shows no tooltip
 ```
 
 **For a host page** (the pocket's area page and floor plan view, on a phone):
@@ -85,6 +86,9 @@ chips: true                        # false: no layer chips (a host shows them: l
 - With `chips: false` the layer chips are left out; the card's `layerChips` (`[{id, name, colour,
   on}]`) lists them and `pressLayer(id)` presses one, as a tap on the chip would (the same browser
   memory). A host shows them elsewhere, in a bottom sheet.
+- **On a phone** (a finger: no hover), a tap on a marker in view mode shows its tooltip, with its
+  links, until the next tap; that next tap only closes it (it fires no `room-tap`), and a drag or
+  pinch closes it too. A mouse keeps hover. `tap_tips: false` turns it off.
 - `--floorplan-target: 44px` (a CSS variable on the card) makes the bar's buttons and the chips at
   least that big, for fingers.
 

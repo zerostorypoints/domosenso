@@ -9,6 +9,11 @@ Newest first. Each entry says what changed and what a home that already runs the
   `layerChips` and `pressLayer`), fires `room-tap` (`{area_id}`) for a tap on a room in view mode and
   `floorplan-status` when its status changes (also `data-status` on the card), and sizes its
   buttons by `--floorplan-target` when a host sets it. Used by the pocket's area page and floor plan view.
+- A finger's tap on a marker in view mode shows its tooltip until the next tap (`tap_tips: false`
+  turns it off), on the floor plan dashboard too; a mouse keeps hover.
+- The scan form, `usable`, `DERIVED_PLATFORMS` and `extract` moved to `cards/lib/shared.js`
+  (plan.js re-exports them); the pocket ships a verbatim copy, written and checked by
+  `tools/category_index.py`.
 - **What a home does:** nothing. Without the new options the card draws and behaves as before; the
   new events fire whether or not anything listens.
 

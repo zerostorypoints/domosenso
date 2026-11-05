@@ -15,18 +15,15 @@
 //   loadEntryDomains(hass) -> Promise<{entry id: domain}>   config_entries/get, asked once per page
 //       load: a device's integrations, as the floor plan reads them; {} when the call fails
 //
-// The scan form (SPEC-010) is the floor plan's (components/floorplan/cards/lib/plan.js scanForm):
-// the integrations of a device's config entries and its entities' platforms, its manufacturer and
-// model, its usable entities' domains, device classes and original names, and whether other devices
-// reach Home Assistant through it.
+// The scan form (SPEC-010) and which entities count for it are the floor plan's own functions:
+// lib/shared.js is a verbatim copy of components/floorplan/cards/lib/shared.js (written and checked
+// by tools/category_index.py, like categories.js and categories.json).
 
 import { CATEGORIES, FALLBACK, categoryById, categoryName, colourOf, rolesOf } from "./categories.js";
+import { scanForm, usable } from "./shared.js";
 
 const DOMAINS = ["sensor", "binary_sensor"];
 const GONE = new Set(["unavailable", "unknown"]);
-// The floor plan's computed platforms (plan.js DERIVED_PLATFORMS): they say nothing of a device.
-const DERIVED = ["template", "statistics", "min_max", "derivative", "integration", "utility_meter", "filter", "trend",
-  "threshold", "compensation", "group"];
 
 export function haAreaOf(config, area) {
   if (!area) return null;
@@ -34,27 +31,6 @@ export function haAreaOf(config, area) {
 }
 
 const shown = (reg) => reg && !reg.hidden && !reg.hidden_by && !reg.disabled_by && !reg.entity_category;
-
-// An entity that may count for its device's category, as the floor plan's usable().
-function usable(hass, id, reg) {
-  if (id.startsWith("plant.")) return true;
-  if (DERIVED.includes(reg.platform) || reg.entity_category || reg.hidden) return false;
-  if (id.startsWith("group.")) return false;
-  return !Array.isArray(hass.states?.[id]?.attributes?.entity_id);
-}
-
-function scanForm(hass, ids, device, isHub, entryDomains) {
-  const platforms = ids.map((id) => (id.startsWith("plant.") ? "plant" : hass.entities?.[id]?.platform)).filter(Boolean);
-  const fromEntries = (device?.config_entries || []).map((e) => entryDomains[e]).filter(Boolean);
-  return {
-    integrations: [...new Set([...fromEntries, ...platforms])],
-    manufacturer: device?.manufacturer ?? null, model: device?.model ?? null, model_id: device?.model_id ?? null,
-    entity_domains: [...new Set(ids.map((id) => id.split(".")[0]))],
-    device_classes: [...new Set(ids.map((id) => hass.states?.[id]?.attributes?.device_class).filter(Boolean))],
-    entity_names: ids.map((id) => hass.entities?.[id]?.original_name).filter(Boolean),
-    is_hub: isHub,
-  };
-}
 
 // A device's category from all of its usable entities (wherever they stand), once per call.
 function deviceCategory(hass, deviceId, entryDomains, cache) {

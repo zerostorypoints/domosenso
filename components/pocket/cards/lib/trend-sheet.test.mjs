@@ -1,7 +1,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import "../testing/dom-env.mjs";
-import { trendSpec, render, update, chartOf, TREND_STYLE } from "./trend-sheet.js";
+import { trendSpec, render, update, chartOf, timelineOf, onShare, TREND_STYLE } from "./trend-sheet.js";
 import { areasOf } from "./areas.js";
 import { config, st, baseStates, hassOf, ctxOf, text } from "../testing/demo-home.mjs";
 
@@ -246,4 +246,32 @@ test("a range whose fetch failed is fetched again when the person switches back 
   assert.equal(el.querySelector("svg").hidden, false, "the retry drew the line");
   assert.equal(hass.ws.filter((m) => m.type === "history/history_during_period").length, 2);
   assert.equal(el._trend.request, undefined, "no request counter");
+});
+
+test("timeline: an on/off entity's states over 24 h and 7 d from history, no statistics", async () => {
+  const states = { ...baseStates(), "binary_sensor.door": st("on", { device_class: "door" }) };
+  const hass = wsHass({ "history/history_during_period": history("binary_sensor.door", ["off", "on", "unavailable", "on"]) }, states);
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx, { kind: "trend", entity: "binary_sensor.door", title: "Door", subtitle: "Hall", timeline: true });
+  assert.deepEqual([...el.querySelectorAll(".seg button")].map((b) => b.dataset.range), ["24h", "7d"]);
+  await tick();
+  update(el, ctx);
+  assert.equal(text(el.querySelector(".big")), "On");
+  const rects = [...el.querySelectorAll(".timeline rect")];
+  assert.deepEqual(rects.map((r) => [r.getAttribute("data-state"), r.getAttribute("class")]),
+    [["off", "tl-other"], ["on", "tl-on"], ["on", "tl-on"]], "unavailable is a gap");
+  assert.equal(text(el.querySelector(".note")), "On 50 % of 24 h");
+  assert.equal(el.querySelector(".line").getAttribute("d"), null, "no line");
+  el.querySelector('.seg button[data-range="7d"]').click();
+  await tick();
+  assert.deepEqual(hass.ws.map((m) => m.type), ["history/history_during_period", "history/history_during_period"]);
+  assert.equal(Date.parse(hass.ws[1].end_time) - Date.parse(hass.ws[1].start_time), 7 * 24 * HOUR);
+});
+
+test("timeline: segments and the share of on time", () => {
+  const points = [{ t: 0, s: "off" }, { t: 25, s: "on" }, { t: 75, s: "unknown" }];
+  assert.deepEqual(timelineOf(points, 0, 100), [{ x: 0, width: 80, state: "off", on: false }, { x: 80, width: 160, state: "on", on: true }]);
+  assert.equal(onShare(points, 0, 100), 0.5);
+  assert.equal(onShare([{ t: 0, s: "idle" }], 0, 100), null);
+  assert.equal(onShare([{ t: -50, s: "on" }], 0, 100), 1, "a state from before the period counts from its start");
 });

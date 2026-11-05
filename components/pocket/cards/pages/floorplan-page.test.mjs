@@ -5,6 +5,7 @@ import "../testing/dom-env.mjs";
 import * as page from "./floorplan-page.js";
 import { pages } from "./index.js";
 import * as layerSheet from "../lib/layer-sheet.js";
+import { forgetPlan } from "../lib/plan-cache.js";
 import { config, hassOf, ctxOf, text, texts } from "../testing/demo-home.mjs";
 
 await import("../../../floorplan/cards/floorplan-card.js");
@@ -39,6 +40,7 @@ const cfg = { ...config, floorplan: true };
 beforeEach(() => {
   document.body.innerHTML = "";
   window.localStorage.clear();
+  forgetPlan();
 });
 
 async function mount(ctx) {
@@ -58,7 +60,7 @@ test("the floorplan component's card, read-only, its chips moved out, zoom kept,
   const el = await mount(ctx);
   const card = el.querySelector(".box floorplan-card");
   assert.ok(card);
-  assert.deepEqual(card._config, { edit: false, values: true, maps: true, zoom: true, chips: false });
+  assert.deepEqual(card._config, { edit: false, values: true, maps: true, zoom: true, chips: false, tap_tips: true, plan: PLAN });
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 2);
   assert.ok(card.shadowRoot.querySelector("[data-action=zoom_in]"), "pinch, pan and the zoom buttons are the card's");
   assert.equal(card.shadowRoot.querySelector(".layers").innerHTML, "");
@@ -118,4 +120,12 @@ test("the page in Polish and German", async () => {
     assert.equal(text(el.querySelector(".top b")), title);
     assert.equal(text(el.querySelector(".layers span")), layers);
   }
+});
+
+test("a home with the floorplan component but no plan says there is none", async () => {
+  const hass = planHass();
+  hass.callWS = async () => { throw { code: "config_not_found" }; };
+  const el = await mount(ctxOf({ hass, cfg }));
+  assert.equal(el.querySelector("floorplan-card"), null);
+  assert.equal(el.querySelector(".none").hidden, false);
 });
