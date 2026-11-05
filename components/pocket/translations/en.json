@@ -15,14 +15,15 @@
     "pocket": {
       "nav": {
         "home": "Home",
-        "rooms": "Rooms",
+        "areas": "Areas",
+        "climate": "Climate",
         "media": "Media",
+        "power": "Power",
+        "plants": "Plants",
+        "floorplan": "Floor plan",
         "settings": "Settings"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
-      "page": {
-        "coming_next": "Coming next."
-      },
       "home": {
         "title": "Home",
         "all_good": "All good",
@@ -46,7 +47,8 @@
         "pause": "Pause"
       },
       "light": {
-        "off": "Off"
+        "off": "Off",
+        "brightness": "{name} brightness"
       },
       "format": {
         "temperature": "{value}°",
@@ -100,22 +102,22 @@
         "media": "The player did not respond. Try again.",
         "scene": "The scene did not start. Try again."
       },
-      "rooms": {
-        "title": "Rooms",
+      "areas": {
+        "title": "Areas",
         "count": {
-          "one": "{count} room",
-          "few": "{count} rooms",
-          "many": "{count} rooms",
-          "other": "{count} rooms"
+          "one": "{count} area",
+          "few": "{count} areas",
+          "many": "{count} areas",
+          "other": "{count} areas"
         },
         "lights_on": "{count} on",
         "all_off": "All off",
         "air": "Air {value}",
         "attention": "Needs attention"
       },
-      "room": {
-        "back": "Back to rooms",
-        "position": "Room {index} of {count}",
+      "area": {
+        "back": "Back to areas",
+        "position": "Area {index} of {count}",
         "climate": "Climate",
         "air": "Air",
         "lights": "Lights",
@@ -135,6 +137,277 @@
           "pm2_5": "PM2.5 {value}",
           "voc": "VOC {value}",
           "nox": "NOx {value}"
+        },
+        "outside": "Outside"
+      },
+      "settings": {
+        "title": "Settings",
+        "appearance": "Appearance",
+        "theme": {
+          "system": "System",
+          "light": "Light",
+          "dark": "Dark"
+        },
+        "bar": {
+          "title": "Bottom bar",
+          "fixed": "Home and Settings are always there; choose up to {count} more.",
+          "full": "{count} pages are on the bar. Turn one off to add another."
+        },
+        "comfort": {
+          "title": "Comfort ranges",
+          "hint": "Tap a value to change it in Home Assistant.",
+          "temperature": "Temperature",
+          "humidity": "Humidity",
+          "low": "from",
+          "high": "to",
+          "edit": "{area}, {reading} {side}: {value}"
+        },
+        "air": {
+          "title": "Air limits",
+          "score": "Air score",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "VOC",
+          "nox": "NOx"
+        },
+        "air_side": {
+          "fair": "fair at",
+          "poor": "poor at"
+        },
+        "about": {
+          "title": "About",
+          "version": "Pocket {version}",
+          "dev": "{version} (development)",
+          "components": "Components this home runs",
+          "missing": "The list of components is missing: sensor.domosenso_components appears with the next domosenso render and deploy.",
+          "areas": "Areas and what they read",
+          "ha_area": "Home Assistant area: {name}",
+          "unknown_area": "Home Assistant area {id}: not found",
+          "no_area": "From the outside sensors and the weather",
+          "catalog": "Domosenso catalog",
+          "repo": "Source on GitHub"
+        },
+        "error": "The setting was not saved. Try again."
+      },
+      "sheet": {
+        "close": "Close"
+      },
+      "trend": {
+        "period": "Period",
+        "range": {
+          "24h": "24 h",
+          "7d": "7 d",
+          "30d": "30 d"
+        },
+        "loading": "Loading…",
+        "empty": "No data for this period",
+        "error": "Could not load the history",
+        "band": "Range {low}–{high}",
+        "band_low": "From {low}",
+        "band_high": "Up to {high}",
+        "span": "{range}: {min}–{max}",
+        "value": "{value} {unit}",
+        "reading": {
+          "temperature": "Temperature",
+          "humidity": "Humidity",
+          "score": "Air score",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "VOC",
+          "nox": "NOx"
+        },
+        "direction": {
+          "rising": "Rising",
+          "falling": "Falling",
+          "steady": "Steady"
+        },
+        "on_share": "On {share} of {range}"
+      },
+      "square": {
+        "air": {
+          "score": {
+            "good": "Air good",
+            "fair": "Air fair",
+            "poor": "Air poor"
+          },
+          "co2": {
+            "good": "CO₂ fine",
+            "fair": "CO₂ raised",
+            "poor": "CO₂ high"
+          },
+          "pm2_5": {
+            "good": "PM2.5 fine",
+            "fair": "PM2.5 raised",
+            "poor": "PM2.5 high"
+          },
+          "voc": {
+            "good": "VOC fine",
+            "fair": "VOC raised",
+            "poor": "VOC high"
+          },
+          "nox": {
+            "good": "NOx fine",
+            "fair": "NOx raised",
+            "poor": "NOx high"
+          }
+        }
+      },
+      "checks": {
+        "title": "What was checked",
+        "inside": "Temperature inside",
+        "no_limits": "No limits set",
+        "no_value": "No reading",
+        "empty": "Nothing to check"
+      },
+      "lights": {
+        "title": "Lights on",
+        "none": "No lights on"
+      },
+      "climate": {
+        "title": "Climate & air",
+        "advice": {
+          "open_window": "Open a window",
+          "too_warm": "Too warm",
+          "too_cold": "Too cold",
+          "too_dry": "Too dry",
+          "too_humid": "Too humid"
+        },
+        "advice_value": "{reading} {value}",
+        "square": {
+          "inside": "Inside",
+          "outside": "Outside",
+          "air": "Air"
+        },
+        "all_in_range": "All in range",
+        "out_of_range": {
+          "one": "{count} out of range",
+          "few": "{count} out of range",
+          "many": "{count} out of range",
+          "other": "{count} out of range"
+        },
+        "view": {
+          "label": "Reading",
+          "temperature": "Temp",
+          "humidity": "Humidity",
+          "air": "Air"
+        },
+        "empty": "No area has this reading"
+      },
+      "weather": {
+        "title": "Weather",
+        "today": "Today",
+        "high_low": "{high} / {low}",
+        "rain": "{value} % chance of rain",
+        "none": "No forecast yet",
+        "condition": {
+          "clear-night": "Clear night",
+          "cloudy": "Cloudy",
+          "fog": "Fog",
+          "hail": "Hail",
+          "lightning": "Thunderstorm",
+          "lightning-rainy": "Thunderstorm with rain",
+          "partlycloudy": "Partly cloudy",
+          "pouring": "Pouring rain",
+          "rainy": "Rain",
+          "snowy": "Snow",
+          "snowy-rainy": "Sleet",
+          "sunny": "Sunny",
+          "windy": "Windy",
+          "windy-variant": "Windy",
+          "exceptional": "Exceptional"
+        }
+      },
+      "sensors": {
+        "title": "All sensors",
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
+      },
+      "floorplan": {
+        "title": "Floor plan",
+        "open": "Open",
+        "layers": "Layers",
+        "none": "This home has no floor plan yet."
+      },
+      "media": {
+        "title": "Media",
+        "picker": "Player",
+        "picker_of": "Player: {name}",
+        "none": "No media player in this home.",
+        "details": "{name}: player details",
+        "previous": "Previous",
+        "next": "Next",
+        "mute": "Mute",
+        "unmute": "Unmute",
+        "volume": "Volume {value}",
+        "volume_label": "Volume",
+        "level": "Sound level",
+        "level_now": "{value} dB now",
+        "playing_what": "{name} · {title}",
+        "tab": {
+          "label": "Media or sound",
+          "media": "Media",
+          "sound": "Sound"
+        }
+      },
+      "sound": {
+        "averages": "Averages",
+        "db": "{value} dB",
+        "average": {
+          "leq_1_min": "Leq 1 min",
+          "leq_15_min": "Leq 15 min",
+          "leq_1_h": "Leq 1 h"
+        }
+      },
+      "power": {
+        "title": "Power",
+        "now": "Now",
+        "today": "Today",
+        "from": {
+          "grid": "From the grid",
+          "devices": "Devices"
+        },
+        "meters": {
+          "one": "{count} meter",
+          "few": "{count} meters",
+          "many": "{count} meters",
+          "other": "{count} meters"
+        },
+        "no_area": "No area",
+        "empty": "No power, energy, current or voltage sensors in Home Assistant yet.",
+        "rule": "The sum of the power meters listed on this page, one per device: a meter behind another device that is measured is left out."
+      },
+      "plants": {
+        "title": "Plants",
+        "fine": "Fine",
+        "no_reading": "No reading",
+        "all_fine": "All plants are fine",
+        "need": {
+          "one": "{count} plant needs something",
+          "few": "{count} plants need something",
+          "many": "{count} plants need something",
+          "other": "{count} plants need something"
+        },
+        "no_area": "No area",
+        "empty": "No plants in Home Assistant yet. The plants component adds one per plant sensor.",
+        "reading": {
+          "moisture": "Moisture",
+          "conductivity": "Fertiliser",
+          "illuminance": "Light",
+          "temperature": "Temperature",
+          "battery": "Battery"
+        },
+        "reason": {
+          "thirsty": "Thirsty",
+          "too_wet": "Too wet",
+          "needs_light": "Needs light",
+          "too_much_light": "Too much light",
+          "cold": "Cold",
+          "warm": "Warm",
+          "needs_fertiliser": "Needs fertiliser",
+          "too_much_fertiliser": "Too much fertiliser",
+          "low_battery": "Low battery"
         }
       }
     }

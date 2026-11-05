@@ -13,13 +13,15 @@
       "required": ["temperature"],
       "properties": {
         "temperature": {"$ref": "#/$defs/entity"},
-        "humidity": {"$ref": "#/$defs/entity"}
+        "humidity": {"$ref": "#/$defs/entity"},
+        "area": {"$ref": "#/$defs/area"}
       }
     },
     "weather": {"$ref": "#/$defs/entity"}
   },
   "$defs": {
     "entity": {"type": "string", "pattern": "^[a-z_]+\\.[a-z0-9_]+$"},
+    "area": {"description": "a Home Assistant area id", "type": "string", "pattern": "^[a-z0-9_]+$"},
     "name": {
       "oneOf": [
         {"type": "string", "minLength": 1},
@@ -38,6 +40,7 @@
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
         "name": {"$ref": "#/$defs/name"},
+        "area": {"$ref": "#/$defs/area"},
         "lights": {"$ref": "#/$defs/entity"},
         "scenes": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
         "climate": {

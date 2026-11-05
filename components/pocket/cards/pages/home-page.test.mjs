@@ -4,6 +4,7 @@ import "../testing/dom-env.mjs";
 import * as home from "./home-page.js";
 import { pages } from "./index.js";
 import { createT } from "../lib/i18n.js";
+import { createOptimistic } from "../lib/optimistic.js";
 import en from "../../translations/en.json" with { type: "json" };
 import de from "../../translations/de.json" with { type: "json" };
 import pl from "../../translations/pl.json" with { type: "json" };
@@ -61,11 +62,20 @@ function hassOf(states = baseStates()) {
     callService: (d, s, data) => { calls.push([d, s, data]); return Promise.resolve(); } };
 }
 
-function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false } = {}) {
+// As the shell's: ctx.hass is the optimistic store's view of the raw hass; ctx.redraw (set by a
+// test) runs on each send or rollback.
+function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, timeoutMs } = {}) {
   const routes = [];
-  return { routes, hass, config: cfg, lang, offline, routeId: undefined,
+  const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});
+  const sheets = [];
+  const ctx = { routes, sheets, raw: hass, optimistic, config: cfg, lang, offline, routeId: undefined,
+    openSheet: (spec) => sheets.push(spec),
+    get hass() { return optimistic.view(ctx.raw); },
+    set hass(value) { ctx.raw = value; optimistic.update(value); },
     t: (key, vars) => translate({ locale: { language: lang } }, key, vars),
     navigate: (route) => routes.push(route) };
+  optimistic.onChange = () => ctx.redraw?.();
+  return ctx;
 }
 
 function mount(ctx = ctxOf()) {
@@ -95,7 +105,7 @@ test("nothing to report: one all-good pill", () => {
   assert.ok(el.querySelector(".att .pill .dot.good"));
 });
 
-test("attention pills: translated reading, level and side, poor first; a tap opens the room", () => {
+test("attention pills: translated reading, level and side, poor first; a tap opens the checks sheet", () => {
   const states = { ...baseStates(), "sensor.living_room_co2": st(1250), "sensor.bedroom_temperature": st(23),
     "sensor.living_room_air_quality_score": st(70) };
   const ctx = ctxOf({ hass: hassOf(states) });
@@ -104,7 +114,17 @@ test("attention pills: translated reading, level and side, poor first; a tap ope
   assert.ok(el.querySelector(".att .pill .dot.poor"));
   assert.ok(el.querySelector(".att .pill .dot.fair"));
   el.querySelectorAll(".att .pill")[1].click();
-  assert.deepEqual(ctx.routes, ["#/room/bedroom"]);
+  assert.deepEqual(ctx.routes, []);
+  assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }]);
+});
+
+test("All good is a button: it opens the checks sheet", () => {
+  const ctx = ctxOf();
+  const el = mount(ctx);
+  const pill = el.querySelector(".att .pill");
+  assert.equal(pill.tagName, "BUTTON");
+  pill.click();
+  assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }]);
 });
 
 test("pills in Polish and German come from the translations", () => {
@@ -145,7 +165,7 @@ test("now playing: art, title, artist; play/pause in place, elsewhere to Media",
   assert.deepEqual(ctx.hass.calls, [["media_player", "media_play_pause", { entity_id: "media_player.living_room_speaker" }]]);
   assert.deepEqual(ctx.routes, []);
   card.querySelector("button.open").click();
-  assert.deepEqual(ctx.routes, ["#/media"]);
+  assert.deepEqual(ctx.routes, ["#/media/living_room"], "Media opens with that room's player");
   assert.equal(card.querySelector("[role]"), null, "no interactive role around the play button");
 });
 
@@ -187,6 +207,27 @@ test("a missing media entity: no now-playing card", () => {
   assert.ok(el.querySelector(".now").hidden);
 });
 
+test("now playing: artwork that fails to load, or none, shows the music icon; a new picture is tried", () => {
+  const ctx = ctxOf();
+  const el = mount(ctx);
+  const img = el.querySelector(".now .art img");
+  const icon = el.querySelector(".now .art ha-icon");
+  assert.ok(!img.hidden && icon.hidden);
+  img.dispatchEvent(new Event("error"));
+  assert.ok(img.hidden && !icon.hidden);
+  home.update(el, ctx);
+  assert.ok(img.hidden, "the broken picture stays hidden on the next update");
+  const states = baseStates();
+  states["media_player.living_room_speaker"] = st("playing", { media_title: "B", entity_picture: "/api/media_player_proxy/y" });
+  ctx.hass = hassOf(states);
+  home.update(el, ctx);
+  assert.ok(!img.hidden && icon.hidden);
+  states["media_player.living_room_speaker"] = st("paused", { media_title: "B" });
+  ctx.hass = hassOf({ ...states });
+  home.update(el, ctx);
+  assert.ok(img.hidden && !icon.hidden, "no picture: the icon");
+});
+
 test("quick tiles: one light tile per room with lights, and All off", () => {
   const ctx = ctxOf();
   const el = mount(ctx);
@@ -208,7 +249,7 @@ test("rooms strip: one card per room, a tap opens it; All opens Rooms", () => {
   assert.match(text(cards[0].querySelector(".t2")), /21\.7°/);
   cards[2].click();
   el.querySelector(".sec .all").click();
-  assert.deepEqual(ctx.routes, ["#/room/office", "#/rooms"]);
+  assert.deepEqual(ctx.routes, ["#/area/office", "#/areas"]);
 });
 
 test("offline: controls are disabled and send nothing", () => {
@@ -247,7 +288,7 @@ test("the language follows ctx on update", () => {
 
 test("lights on: one definition with Rooms, a group counts its members, each lamp once", async () => {
   const demo = await import("../testing/demo-home.mjs");
-  const rooms = await import("./rooms-page.js");
+  const rooms = await import("./areas-page.js");
   const states = { ...demo.baseStates(),
     "light.living_room_lamp": demo.st("on", { brightness: 255, friendly_name: "Reading lamp" }) };
   // The office names a lamp of the living-room group as well: it is still one lamp on.
@@ -275,7 +316,7 @@ test("rooms strip: an unavailable reading is a muted dash", () => {
 
 test("a group that is on with every member unavailable is one lamp on: chip, All off and Rooms agree", async () => {
   const demo = await import("../testing/demo-home.mjs");
-  const rooms = await import("./rooms-page.js");
+  const rooms = await import("./areas-page.js");
   const members = ["light.g_a", "light.g_b", "light.g_c", "light.g_d"];
   const states = { ...demo.baseStates(),
     "light.living_room": demo.st("on", { brightness: 240, entity_id: members }),
@@ -315,4 +356,144 @@ test("every link and button of Home is at least 44 x 44", () => {
   }
   assert.match(rule(".home .play"), /width:\s*44px;\s*height:\s*44px/);
   assert.match(rule(".home .all-off, .home .rc"), /min-height:\s*64px/);
+});
+
+test("snappy: All off shows every light off at once (the tiles and the chip), confirmed by Home Assistant", () => {
+  const ctx = ctxOf();
+  const el = mount(ctx);
+  ctx.redraw = () => home.update(el, ctx);
+  const tiles = [...el.querySelectorAll(".quick pocket-light-tile")];
+  assert.ok(tiles[0].shadowRoot.querySelector(".tile").classList.contains("on"));
+  el.querySelector(".quick .all-off").click();
+  assert.ok(tiles.every((tile) => !tile.shadowRoot.querySelector(".tile").classList.contains("on")), "off at once");
+  assert.equal(text(el.querySelector('[data-chip="lights_on"] .v')), "0");
+  assert.match(text(el.querySelector(".quick .all-off")), /None on/);
+  const states = Object.fromEntries(Object.entries(ctx.raw.states).map(([id, s]) =>
+    [id, id.startsWith("light.") ? { ...s, state: "off" } : s]));
+  ctx.hass = { ...ctx.raw, states };
+  home.update(el, ctx);
+  assert.ok(!ctx.optimistic.pending("light.living_room"));
+  assert.equal(text(el.querySelector('[data-chip="lights_on"] .v')), "0");
+});
+
+test("snappy: play/pause flips at once; a failed call flips it back with the toast", async () => {
+  const ctx = ctxOf();
+  ctx.raw.callService = () => Promise.reject(new Error("no"));
+  const el = mount(ctx);
+  ctx.redraw = () => home.update(el, ctx);
+  const errors = [];
+  el.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
+  const play = el.querySelector(".now button.play");
+  play.click();
+  assert.equal(play.getAttribute("aria-label"), "Play");
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(play.getAttribute("aria-label"), "Pause");
+  assert.deepEqual(errors, ["card.pocket.error.media"]);
+});
+
+test("every chip opens its sheet: inside the temperature checks, outside and air their trend, lights on the lights", () => {
+  const ctx = ctxOf();
+  const el = home.render(ctx);
+  document.body.appendChild(el);
+  const chip = (name) => el.querySelector(`.chip[data-chip="${name}"]`);
+  for (const name of ["inside", "outside", "air", "lights_on"]) {
+    assert.equal(chip(name).tagName, "BUTTON", name);
+    chip(name).click();
+  }
+  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.subtitle]), [
+    ["checks", undefined, undefined],
+    ["trend", "sensor.outside_temperature", "Outside"],
+    ["trend", "sensor.living_room_air_quality_score", "Living room"],
+    ["lights", undefined, undefined],
+  ]);
+  assert.deepEqual(ctx.sheets[0], { kind: "checks", title: "Temperature inside", readings: ["temperature"], inside: true });
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /button\.chip \{[^}]*min-height: 44px/);
+});
+
+const withOutsideRange = { ...config, thresholds: { ...config.thresholds, outside: {
+  temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } } };
+const outsideRangeStates = (temp) => ({ ...baseStates(), "sensor.outside_temperature": st(temp),
+  "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24) });
+
+test("side colours: outside below its range is cold blue, above it warm; inside the worst room; air its level", () => {
+  const cold = mount(ctxOf({ hass: hassOf(outsideRangeStates(5)), cfg: withOutsideRange }));
+  assert.equal(cold.querySelector('[data-chip="outside"] .v').className, "v lv-cold");
+  const warm = mount(ctxOf({ hass: hassOf(outsideRangeStates(30)), cfg: withOutsideRange }));
+  assert.equal(warm.querySelector('[data-chip="outside"] .v').className, "v lv-warm");
+  const states = { ...baseStates(), "sensor.bedroom_temperature": st(23), "sensor.living_room_air_quality_score": st(70) };
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  assert.equal(el.querySelector('[data-chip="inside"] .v').className, "v lv-warm", "the bedroom is above its range");
+  assert.equal(el.querySelector('[data-chip="air"] .v').className, "v lv-fair");
+  assert.equal(el.querySelector('[data-chip="outside"] .v').className, "v", "no outside range: no level");
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /\.v\.lv-cold\s*\{\s*color:\s*var\(--cold\)/);
+  assert.match(css, /\.v\.lv-warm\s*\{\s*color:\s*var\(--warm\)/);
+});
+
+test("trend arrows on the outside and air chips from the last hour; none on inside and lights", async () => {
+  const { clearHistoryCache } = await import("../lib/trend.js");
+  clearHistoryCache();
+  const hass = hassOf();
+  hass.ws = [];
+  const series = { "sensor.outside_temperature": [7, 6, 5.5], "sensor.living_room_air_quality_score": [81, 81, 81] };
+  hass.callWS = (msg) => {
+    hass.ws.push(...msg.entity_ids);
+    const start = Date.parse(msg.start_time);
+    const step = (Date.parse(msg.end_time) - start) / 3;
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => [id,
+      (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 }))])));
+  };
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx);
+  await new Promise((r) => setTimeout(r, 0));
+  const arrow = (name) => el.querySelector(`[data-chip="${name}"] .arrow`);
+  assert.equal(arrow("outside").textContent, "↓");
+  assert.equal(arrow("outside").getAttribute("aria-label"), "Falling");
+  assert.equal(arrow("air").textContent, "→");
+  assert.ok(arrow("inside").hidden && arrow("lights_on").hidden);
+  assert.deepEqual(hass.ws.sort(), ["sensor.living_room_air_quality_score", "sensor.outside_temperature"]);
+  home.update(el, ctx);
+  home.update(el, ctx);
+  assert.equal(hass.ws.length, 2, "updates fetch nothing");
+  clearHistoryCache();
+});
+
+test("weather: one row under the chips from the daily forecast subscription, opening the forecast sheet", async () => {
+  const { clearForecasts } = await import("../lib/weather.js");
+  clearForecasts();
+  const subs = [];
+  const hass = hassOf({ ...baseStates(), "weather.forecast_home": st("sunny", { temperature: 7 }) });
+  hass.connection = { subscribeMessage: (callback, message) => {
+    const sub = { callback, message, ended: false };
+    subs.push(sub);
+    return Promise.resolve(() => { sub.ended = true; });
+  } };
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx);
+  const wx = el.querySelector(".wx");
+  assert.equal(wx.hidden, false);
+  assert.equal(wx.previousElementSibling.className, "chips", "right under the readings");
+  assert.equal(subs.length, 1);
+  assert.equal(subs[0].message.forecast_type, "daily");
+  const noon = new Date();
+  noon.setHours(12, 0, 0, 0);
+  subs[0].callback({ forecast: [{ datetime: noon.toISOString(), condition: "rainy", temperature: 9, templow: 2,
+    precipitation_probability: 30 }] });
+  const row = wx.querySelector("pocket-forecast").shadowRoot;
+  assert.equal(row.querySelector("ha-icon").getAttribute("icon"), "mdi:weather-sunny", "the condition now");
+  assert.equal(text(row.querySelector(".cond")), "Sunny");
+  assert.equal(text(row.querySelector(".hl")), "9° / 2°");
+  assert.equal(text(row.querySelector(".rain")), "30 %");
+  wx.click();
+  assert.deepEqual(ctx.sheets.at(-1), { kind: "forecast", title: "Weather" });
+  el.remove();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(subs[0].ended, true, "leaving the page ends the subscription");
+});
+
+test("weather: no row without a weather entity", () => {
+  const { weather, ...cfg } = config;
+  const el = mount(ctxOf({ cfg }));
+  assert.equal(el.querySelector(".wx").hidden, true);
 });

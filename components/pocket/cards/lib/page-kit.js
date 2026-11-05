@@ -1,8 +1,7 @@
-// Small helpers the Rooms tab and the room page share: patching the DOM without rebuilding it,
-// numbers in the dashboard's language, a service call whose failure becomes the shell's toast,
-// and the facts about a room both pages show (its lights, how many are on, whether it plays).
+// Small helpers the pages share: patching the DOM without rebuilding it, numbers in the
+// dashboard's language, and the facts about a room both pages show (its lights, how many are on, whether it plays).
 
-import { reportError } from "./report.js";
+import { trendArrow } from "./trend.js";
 
 const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
 const formats = new Map();     // one Intl.NumberFormat per language and number of digits
@@ -45,6 +44,41 @@ export function percent(ctx, value) {
     : ctx.t("card.pocket.format.percent", { value: number(ctx, value, 0) });
 }
 
+const READING_DIGITS = { temperature: 1, humidity: 0 };
+
+// A reading's value in words, as a widget or a sheet's row shows it: temperature and humidity as
+// everywhere in the pocket, the others as a whole number with their entity's unit when it has one.
+export function readingText(ctx, reading, value, unit) {
+  if (value == null) return ctx.t("card.pocket.format.none");
+  if (reading === "temperature") return temperature(ctx, value);
+  if (reading === "humidity") return percent(ctx, value);
+  const text = number(ctx, value, READING_DIGITS[reading] ?? 0, { grouping: false });
+  return unit ? ctx.t("card.pocket.trend.value", { value: text, unit }) : text;
+}
+
+// The trend arrow next to a value (lib/trend.js): its glyph, its direction in words for a screen
+// reader, nothing while the direction is not known.
+export function setArrow(node, ctx, direction) {
+  setText(node, trendArrow(direction));
+  node.hidden = !direction;
+  if (direction) setAttr(node, "aria-label", ctx.t(`card.pocket.trend.direction.${direction}`));
+  else node.removeAttribute("aria-label");
+  setAttr(node, "role", "img");
+}
+
+// A stable function that runs fn once on the next animation frame however often it is called
+// before then: many trend answers landing together redraw a widget or a sheet once.
+export function coalesce(fn) {
+  let queued = false;
+  const frame = typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+    ? (f) => window.requestAnimationFrame(f) : (f) => setTimeout(f, 0);
+  return () => {
+    if (queued) return;
+    queued = true;
+    frame(() => { queued = false; fn(); });
+  };
+}
+
 // The plural category of a count in the dashboard's language (one, few, many, other), as
 // Intl.PluralRules names them: a counted text is a group of keys, one per category, and the page
 // looks up t(`<group>.${pluralOf(ctx, n)}`) (a literal group key would not be a text).
@@ -52,17 +86,6 @@ export function pluralOf(ctx, count) {
   const locale = NUMBER_LOCALES[ctx.lang] ?? "en-GB";
   if (!pluralRules.has(locale)) pluralRules.set(locale, new Intl.PluralRules(locale));
   return pluralRules.get(locale).select(count);
-}
-
-// A service call whose failure becomes the shell's toast (lib/report.js).
-export function call(root, hass, domain, service, data, errorKey) {
-  let result;
-  try {
-    result = hass.callService(domain, service, data);
-  } catch (err) {
-    result = Promise.reject(err);
-  }
-  result?.catch?.(() => reportError(root, errorKey));
 }
 
 export const lightsOf = (room) => [room.lights ?? []].flat().filter(Boolean);
@@ -124,4 +147,21 @@ export function shortName(hass, id, room) {
   const prefix = `${room.name} `;
   const short = name.toLowerCase().startsWith(prefix.toLowerCase()) ? name.slice(prefix.length).trim() : name;
   return short || name;
+}
+
+// A player's artwork: the image of src, or the music icon in its place while there is none or it
+// failed to load (a stale proxy URL, a lost connection); a new src is tried again.
+export function setArt(img, icon, src) {
+  if (!img._artWired) {
+    img._artWired = true;
+    img.addEventListener("error", () => {
+      img._broken = img.getAttribute("src");
+      img.hidden = true;
+      if (icon) icon.hidden = false;
+    });
+  }
+  if (src) setAttr(img, "src", src);
+  const ok = !!src && src !== img._broken;
+  img.hidden = !ok;
+  if (icon) icon.hidden = ok;
 }

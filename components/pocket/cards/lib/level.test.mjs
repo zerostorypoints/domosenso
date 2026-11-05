@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { level, numberOf } from "./level.js";
+import { level, numberOf, toneOf, levelKey } from "./level.js";
 
 const comfort = { low: 20, high: 24 };
 
@@ -65,4 +65,14 @@ test("numberOf is null without a number", () => {
   assert.equal(numberOf(undefined, "sensor.t"), null);
   assert.equal(numberOf({}, "sensor.t"), null);
   assert.equal(numberOf(h, undefined), null);
+});
+
+test("toneOf: below a range cold, above it warm, else the level; levelKey names the side", () => {
+  assert.equal(toneOf(level(5, "range", { low: 20, high: 24 })), "cold");
+  assert.equal(toneOf(level(30, "range", { low: 20, high: 24 })), "warm");
+  assert.equal(toneOf(level(22, "range", { low: 20, high: 24 })), "good");
+  assert.equal(toneOf(level(900, "rising", { fair: 800, poor: 1200 })), "fair");
+  assert.equal(toneOf(null), null);
+  assert.equal(levelKey({ level: "poor", side: "low" }), "poor_low");
+  assert.equal(levelKey({ level: "fair" }), "fair");
 });

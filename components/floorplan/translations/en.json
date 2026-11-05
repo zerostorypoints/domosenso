@@ -18,6 +18,7 @@
       "loading": "Loading the floor plan…",
       "no_plan": "No floor plan yet. Make one with the floorplan-from-image skill or domosenso floorplan push.",
       "unsupported": "This floor plan was written in a newer format than this card reads. Update the floorplan component.",
+      "no_area": "This area is not on the floor plan.",
       "edit": "Edit",
       "save": "Save",
       "cancel": "Cancel",

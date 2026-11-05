@@ -28,6 +28,22 @@ inputs:
   title:                        # the dashboard's title
     type: string
     default: Home
+  floorplan:                    # true: the floorplan component's card on each area page (the area's room) and
+    type: bool                  # the floor plan view (#/floorplan, a bar item each person may turn on). Needs
+    default: false              # the floorplan component added and its plan pushed (SPEC-028)
+    example: true
+  plants:                       # true: the home has the plants component, so Plants is on the bottom bar by
+    type: bool                  # default (in Media's place). The Plants page finds every plant.* itself; without
+    default: false              # the flag it is still offered in Settings, and shows its empty state with no plant
+    example: true
+  sound:                        # true: a Sound tab inside Media, with audio-sensor's live meter (its card
+    type: bool                  # room-meter-card on the music aliases sensor.music_level and
+    default: false              # sensor.music_spl_offset). Needs the audio-sensor component added
+    example: true
+  sound_averages:               # the home's own Leq sensors (dB SPL) under the meter, one square each; the
+    type: "{leq_1_min?, leq_15_min?, leq_1_h?: entity_id}"   # 1 min one is also the meter's marker.
+    default: null               # Read only with `sound`; another key fails the render
+    example: {leq_1_min: sensor.room_leq_1_min, leq_15_min: sensor.room_leq_15_min, leq_1_h: sensor.room_leq_1_h}
 
 assistant:
   version: 1
@@ -54,6 +70,21 @@ consumes:
   - {component: climate-air, id: "input_number.climate_air_<room>_{temp_low,temp_high}"}
   - {component: climate-air, id: "input_number.climate_air_<room>_{humidity_low,humidity_high}"}
   - {component: climate-air, id: "input_number.climate_air_<reading>_{fair,poor}"}
+  # With floorplan: the plan on the area pages and the floor plan view (its options area, zoom, chips,
+  # the room-tap and floorplan-status events, layerChips / pressLayer). The card's resource comes
+  # with the component.
+  - {component: floorplan, id: "dashboard url path floorplan"}
+  - {component: floorplan, element: floorplan-card}
+  # With sound: Media's Sound tab, audio-sensor's music aliases on its live meter. The card's
+  # resource comes with the component.
+  - {component: audio-sensor, id: sensor.music_level}
+  - {component: audio-sensor, id: sensor.music_spl_offset}
+  - {component: audio-sensor, element: room-meter-card}
+  # With plants: the Plants page reads every plant.* the plants component sets up, its readings'
+  # sensors and its bands (found at run time, the ids are not configured).
+  - {component: plants, id: "plant.<plant>"}
+  - {component: plants, id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}"}
+  - {component: plants, id: "sensor.<plant>_illuminance_max_24h"}
 
 tested:
   ha: ["2026.9.2"]              # check_config on the demo home (tools/ha-check.sh pocket)

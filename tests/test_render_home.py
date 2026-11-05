@@ -134,6 +134,17 @@ def test_main_refuses_duplicate_room_ids(tmp_path, capsys):
     assert "home-inputs: rooms: duplicate id a" in capsys.readouterr().err
 
 
+def test_main_refuses_the_reserved_room_id(tmp_path, capsys):
+    from domosenso_render import main
+    inputs = tmp_path / "inputs.yaml"
+    inputs.write_text("{}\n")
+    home = tmp_path / "home.inputs.yaml"
+    home.write_text("rooms:\n  - {id: outside, name: Garden}\n")
+    code = main([str(FIXTURE), "--inputs", str(inputs), "--home-inputs", str(home), "--out", str(tmp_path / "out")])
+    assert code == 1
+    assert "home-inputs: rooms: id outside is reserved" in capsys.readouterr().err
+
+
 def test_main_without_home_inputs_refuses_a_component_that_needs_them(tmp_path, capsys):
     from domosenso_render import main
     inputs = tmp_path / "inputs.yaml"

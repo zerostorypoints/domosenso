@@ -115,6 +115,20 @@ def duplicate_room_id(data: dict) -> str | None:
     return None
 
 
+# The id of the Outside pseudo-area (the pocket card builds it from `outside`): no room may take it.
+RESERVED_ROOM_ID = "outside"
+
+
+def room_id_problem(data: dict) -> str | None:
+    """What is wrong with a home inputs mapping's room ids ("rooms: ..."), or None."""
+    repeated = duplicate_room_id(data)
+    if repeated is not None:
+        return f"rooms: duplicate id {repeated}"
+    if any(room["id"] == RESERVED_ROOM_ID for room in data.get("rooms", [])):
+        return f"rooms: id {RESERVED_ROOM_ID} is reserved for the outside area; name the room otherwise"
+    return None
+
+
 def _room_name(room: dict, lang: str) -> str:
     name = room["name"]
     if isinstance(name, str):
@@ -323,9 +337,9 @@ def main(argv: list[str] | None = None) -> int:
                 home = load_validated(args.home_inputs, "home-inputs")
             except DomosensoError as exc:
                 raise RenderError(f"home-inputs: {exc}") from exc
-            repeated = duplicate_room_id(home)
-            if repeated is not None:
-                raise RenderError(f"home-inputs: rooms: duplicate id {repeated}")
+            problem = room_id_problem(home)
+            if problem is not None:
+                raise RenderError(f"home-inputs: {problem}")
         written = render_component(args.component_dir, inputs, args.out, langs, stamp=args.stamp, home=home)
     except (RenderError, OSError, ValueError, TypeError, yaml.YAMLError) as exc:
         notes = getattr(exc, "__notes__", [])

@@ -43,7 +43,7 @@ def test_rooms_follow_the_home_in_order(tmp_path):
     for key in ("lights", "scenes", "climate", "air", "media"):
         assert living[key] == source[key], key
     office = card["rooms"][2]
-    assert office == {"id": "office", "name": "Office", "lights": "light.office"}
+    assert office == {"id": "office", "name": "Office", "area": "office", "lights": "light.office"}
 
 
 def test_outside_and_weather(tmp_path):
@@ -84,6 +84,7 @@ def test_no_humidity_no_humidity_thresholds(tmp_path):
     assert thresholds == {"rooms": {"den": {"temp_low": "input_number.climate_air_den_temp_low",
                                             "temp_high": "input_number.climate_air_den_temp_high"}},
                           "air": {}}
+    assert "outside" not in thresholds
 
 
 def test_title_from_the_inputs(tmp_path):
@@ -109,3 +110,80 @@ def test_ids_that_are_yaml_booleans_stay_strings(tmp_path):
     assert card["rooms"][0]["id"] == "on"
     assert card["weather"] == "no"
     assert "on" in card["thresholds"]["rooms"]
+
+
+def test_room_area_defaults_to_its_id(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["rooms"][1]["area"] = "master_bedroom"
+    rooms = _card(_dashboard(tmp_path, home))["rooms"]
+    assert [r["area"] for r in rooms] == ["living_room", "master_bedroom", "office"]
+
+
+def test_outside_area_passes_through(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["outside"]["area"] = "garden"
+    assert _card(_dashboard(tmp_path, home))["outside"]["area"] == "garden"
+
+
+def test_thresholds_outside_name_the_climate_air_helpers(tmp_path):
+    thresholds = _card(_dashboard(tmp_path))["thresholds"]
+    assert thresholds["outside"] == {
+        key: f"input_number.climate_air_outside_{key}"
+        for key in ("temp_low", "temp_high", "humidity_low", "humidity_high")
+    }
+    home = {"rooms": [{"id": "den", "name": "Den"}], "outside": {"temperature": "sensor.out_t"}}
+    assert _card(_dashboard(tmp_path / "dry", home))["thresholds"]["outside"] == {
+        "temp_low": "input_number.climate_air_outside_temp_low",
+        "temp_high": "input_number.climate_air_outside_temp_high",
+    }
+
+
+def test_floorplan_only_with_the_input(tmp_path):
+    assert "floorplan" not in _card(_dashboard(tmp_path / "without"))
+    card = _card(_dashboard(tmp_path / "with", inputs={**INPUTS, "floorplan": True}))
+    assert card["floorplan"] is True
+
+
+def test_consumes_the_floorplan_card_as_an_element():
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    assert {"component": "floorplan", "element": "floorplan-card"} in manifest["consumes"]
+    assert manifest["inputs"]["floorplan"]["default"] is False
+
+
+def test_sound_only_with_the_input(tmp_path):
+    assert "sound" not in _card(_dashboard(tmp_path / "without"))
+    card = _card(_dashboard(tmp_path / "with", inputs={**INPUTS, "sound": True}))
+    assert card["sound"] == {"level": "sensor.music_level", "offset": "sensor.music_spl_offset"}
+    averages = {"leq_1_min": "sensor.a_leq_1_min", "leq_1_h": "sensor.a_leq_1_h"}
+    card = _card(_dashboard(tmp_path / "avg", inputs={**INPUTS, "sound": True, "sound_averages": averages}))
+    assert card["sound"]["averages"] == averages
+    # The averages are read only with `sound`.
+    card = _card(_dashboard(tmp_path / "off", inputs={**INPUTS, "sound_averages": averages}))
+    assert "sound" not in card
+
+
+def test_sound_averages_unknown_key_fails(tmp_path):
+    with pytest.raises(RenderError, match="sound_averages: unknown key leq_5_min"):
+        _dashboard(tmp_path, inputs={**INPUTS, "sound": True, "sound_averages": {"leq_5_min": "sensor.x"}})
+
+
+def test_consumes_the_room_meter_card_and_the_music_aliases():
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    for item in ({"component": "audio-sensor", "element": "room-meter-card"},
+                 {"component": "audio-sensor", "id": "sensor.music_level"},
+                 {"component": "audio-sensor", "id": "sensor.music_spl_offset"}):
+        assert item in manifest["consumes"], item
+    assert manifest["inputs"]["sound"]["default"] is False
+    audio = yaml.safe_load((ROOT / "components/audio-sensor/component.yaml").read_text(encoding="utf-8"))
+    assert "cards/room-meter-card.js" in audio["artifacts"]["dashboard_cards"]
+    provided = {e["id"] for e in audio["provides"]["entities"]}
+    assert {"sensor.music_level", "sensor.music_spl_offset"} <= provided
+
+
+def test_plants_flag_only_with_the_input(tmp_path):
+    assert _card(_dashboard(tmp_path / "with"))["plants"] is True, "the demo home has the plants component"
+    card = _card(_dashboard(tmp_path / "without", inputs={**INPUTS, "plants": False}))
+    assert "plants" not in card
+    manifest = yaml.safe_load((COMPONENT / "component.yaml").read_text(encoding="utf-8"))
+    assert manifest["inputs"]["plants"]["default"] is False
+    assert {"component": "plants", "id": "plant.<plant>"} in manifest["consumes"]

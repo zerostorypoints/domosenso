@@ -49,6 +49,9 @@ inputs:
   comfort_defaults:             # the seed's starting comfort range per room (with the home inputs)
     type: "{temp_low, temp_high, humidity_low, humidity_high}"
     default: {temp_low: 20, temp_high: 24, humidity_low: 40, humidity_high: 60}
+  outside_comfort_defaults:     # the seed's starting outside range (home inputs `outside`); the Ramka's widget range
+    type: "{temp_low, temp_high, humidity_low, humidity_high}"
+    default: {temp_low: 20, temp_high: 24, humidity_low: 40, humidity_high: 60}
   bathroom_humidity:            # % for 10 minutes turns binary_sensor.bathroom_humidity_high on
     type: int
     default: 65
@@ -87,6 +90,8 @@ provides:
     # Thresholds (with the home inputs): helpers, the seed and the reset script.
     - {id: "input_number.climate_air_<room>_{temp_low,temp_high}", stability: additive-only, feature: thresholds, note: "°C, per room with climate"}
     - {id: "input_number.climate_air_<room>_{humidity_low,humidity_high}", stability: additive-only, feature: thresholds, note: "%, per room with humidity"}
+    - {id: "input_number.climate_air_outside_{temp_low,temp_high}", stability: additive-only, feature: thresholds, note: "°C, with the home inputs' outside"}
+    - {id: "input_number.climate_air_outside_{humidity_low,humidity_high}", stability: additive-only, feature: thresholds, note: "%, with outside humidity"}
     - {id: "input_number.climate_air_<reading>_{fair,poor}", stability: additive-only, feature: thresholds, note: "per air reading in use"}
     - {id: input_text.climate_air_seeded, stability: additive-only, feature: thresholds}
     - {id: automation.climate_air_thresholds_seed, stability: additive-only, feature: thresholds}

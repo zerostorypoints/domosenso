@@ -1,48 +1,60 @@
 // <pocket-light-tile>: one light (or a room's lights together) as a tile of the Home page's Quick
-// grid and the room page. Set its properties, not attributes:
+// grid and the area page. Set its properties, not attributes:
 //   tile.t = ctx.t;  tile.config = {name, entities: [light ids]};  tile.offline = ctx.offline;
+//   tile.optimistic = ctx.optimistic;   (lib/optimistic.js; the tile keeps its own store without)
 //   tile.hass = hass   (each update; the tile patches itself, it never rebuilds)
 //
-// Touch (spec 6.2, 6.3):
-//   - a tap toggles: light.toggle for one light; for several, all off when any is on, else all on
-//     (light.toggle on a mixed group would flip each light and keep the group mixed);
-//   - a horizontal drag sets the brightness from the finger's position across the tile, shown while
-//     dragging and sent once on release (light.turn_on with brightness_pct);
-//   - a vertical move cancels: the page scrolls (touch-action: pan-y) and no light changes;
-//   - a 600 ms press opens Home Assistant's more-info dialog (the hass-more-info event).
-// After a drag the sent brightness stays shown until Home Assistant reports it, for at most
-// confirmMs; a new state that is not on drops it (on/off comes from the state, and a brightness
-// is shown only while on: a group can keep a brightness attribute while off); a failed call drops it at once and fires pocket-error (lib/report.js), so the shell
-// shows a short message and the tile is back on the last known state.
+// Touch (spec 6.2, 6.3; the phone check of iteration 2):
+//   - the tile's body: a tap switches the light: off when it shows on, else on (for several
+//     lights: all off when any is on, else all on); a 600 ms press opens Home Assistant's more-info
+//     dialog (the hass-more-info event); any move of the finger (a swipe between areas, a scroll)
+//     is not the tile's: nothing changes and the move goes on to the page;
+//   - the brightness strip under it (44 px tall, a slider): a horizontal drag sets the brightness
+//     from the finger's position along the strip, shown while dragging and sent once on release
+//     (light.turn_on with brightness_pct); a tap on it sends the brightness of that point; a
+//     vertical move is the page's scroll. Arrow keys step it. The strip carries data-drag: the area
+//     swipe leaves a gesture that starts on it alone. A light without a dimmer has no strip.
+// What the tile sends goes through the optimistic store: the new state shows at once, stays until
+// Home Assistant reports it, and goes back with a toast (pocket-error) when the call fails or no
+// report comes in time.
 // Unavailable (every light missing, unavailable or unknown): muted, a dash, no service call.
-// Offline: the button is disabled, no service call.
+// Offline: the controls are disabled, no service call.
 
-import { reportError } from "./report.js";
+import { createOptimistic } from "./optimistic.js";
 
 const LONG_PRESS_MS = 600;
 const DIRECTION_PX = 8;      // movement before a gesture is a drag or a scroll
 const CLICK_WINDOW_MS = 300;  // a click after a gesture comes right after the pointerup; later ones are the user's
-const CONFIRM_MS = 4000;     // how long a sent brightness waits for Home Assistant to report it
+const KEY_STEP = 10;          // percent per arrow key on the strip
 const GONE = new Set(["unavailable", "unknown"]);
 
 const STYLE = `
   :host { display: block; }
-  .tile { box-sizing: border-box; width: 100%; height: 100%; min-height: 64px; margin: 0; padding: 12px;
-          display: block; text-align: left; font: inherit; color: var(--fg);
+  .tile { box-sizing: border-box; width: 100%; height: 100%; min-height: 64px; margin: 0; padding: 0;
+          display: flex; flex-direction: column; color: var(--fg);
           background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-          cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+          touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
           -webkit-tap-highlight-color: transparent; }
-  .tile:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-  .tile:disabled { cursor: default; }
+  .main { box-sizing: border-box; flex: 1 1 auto; width: 100%; min-height: 44px; margin: 0; padding: 12px 12px 8px;
+          display: block; text-align: left; font: inherit; color: inherit; background: none; border: 0;
+          border-radius: 18px 18px 0 0; cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+  .main:focus-visible, .bar:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .main:disabled { cursor: default; }
   .ic { width: 30px; height: 30px; border-radius: 50%; background: var(--chip); margin-bottom: 8px;
         display: flex; align-items: center; justify-content: center; color: var(--mut); }
   .ic ha-icon { --mdc-icon-size: 18px; }
   .tile.on .ic { background: color-mix(in srgb, var(--lamp) 35%, var(--card)); color: var(--fg); }
-  .t1 { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; }
-  .bar { display: block; height: 8px; border-radius: 4px; background: var(--chip); margin-top: 9px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--lamp); border-radius: 4px; }
+  /* The brightness strip: a slider a thumb can hold, with a grip line at the level. */
+  .bar { position: relative; box-sizing: border-box; display: block; height: 44px; margin: 0 8px 8px;
+         border-radius: 12px; background: var(--chip); overflow: hidden; cursor: ew-resize; touch-action: pan-y; }
+  .bar i { display: block; height: 100%; background: color-mix(in srgb, var(--lamp) 70%, var(--chip)); }
+  .bar i::after { content: ""; position: absolute; top: 12px; bottom: 12px; width: 3px; margin-left: -8px;
+                  border-radius: 2px; background: var(--fg); opacity: .35; }
+  .bar[hidden] { display: none; }
   .tile.muted { opacity: .55; }
+  .tile.muted .bar { cursor: default; }
 `;
 
 class PocketLightTile extends HTMLElement {
@@ -50,7 +62,7 @@ class PocketLightTile extends HTMLElement {
     super();
     this.t = (key) => key;
     this.offline = false;
-    this.confirmMs = CONFIRM_MS;
+    this.optimistic = null;
     this._suppressClick = false;
     this._gesture = null;
     this.addEventListener("click", (e) => this._onClick(e));
@@ -62,6 +74,16 @@ class PocketLightTile extends HTMLElement {
       clearTimeout(this._suppressTimer);
       this._suppressClick = false;
     });
+    this.addEventListener("keydown", (e) => this._onKey(e));
+  }
+
+  // How long a sent state waits for Home Assistant's report (the tile's own store).
+  set confirmMs(ms) {
+    this._store().timeoutMs = ms;
+  }
+
+  get confirmMs() {
+    return this._store().timeoutMs;
   }
 
   set config(config) {
@@ -75,14 +97,7 @@ class PocketLightTile extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // A sent brightness is shown until Home Assistant reports it (within a percent: 0-255 rounding),
-    // or until Home Assistant reports a new state that is not on: the light did not come on (a
-    // group whose members are unreachable takes the brightness and stays off), and the tile
-    // follows the state, not the preview.
-    if (this._preview != null && !this._gesture) {
-      const reported = Math.abs((this._brightness() ?? -10) - this._preview) <= 1;
-      if (reported || (this._stateChanged() && !this._on())) this._dropPreview();
-    }
+    this._store().update(hass);
     this._patch();
   }
 
@@ -92,27 +107,21 @@ class PocketLightTile extends HTMLElement {
 
   disconnectedCallback() {
     this._endGesture();
-    this._dropPreview();
   }
 
-  // Back to Home Assistant's state: the preview and its timer go.
-  _dropPreview() {
-    clearTimeout(this._confirmTimer);
-    this._confirmTimer = null;
-    if (this._preview == null) return;
-    this._preview = null;
-    this._patch();
+  // The page's store (ctx.optimistic) when it passes one, else the tile's own, which redraws it.
+  _store() {
+    if (this.optimistic) return this.optimistic;
+    if (!this._own) {
+      this._own = createOptimistic();
+      this._own.onChange = () => this._patch();
+    }
+    return this._own;
   }
 
   _states() {
-    return (this._config?.entities ?? []).map((id) => this._hass?.states?.[id]).filter(Boolean);
-  }
-
-  // Whether a light's state object differs from the one it had when the brightness was sent
-  // (Home Assistant replaces an entity's state object on every change).
-  _stateChanged() {
-    const sent = this._sentStates ?? [];
-    return (this._config?.entities ?? []).some((id, i) => this._hass?.states?.[id] !== sent[i]);
+    const hass = this._store().view(this._hass);
+    return (this._config?.entities ?? []).map((id) => hass?.states?.[id]).filter(Boolean);
   }
 
   _available() {
@@ -121,6 +130,14 @@ class PocketLightTile extends HTMLElement {
 
   _on() {
     return this._states().some((s) => s.state === "on");
+  }
+
+  // A light that only switches (supported_color_modes is onoff alone) has no brightness strip.
+  _dimmable() {
+    return this._states().some((s) => {
+      const modes = s.attributes?.supported_color_modes;
+      return !Array.isArray(modes) || modes.some((mode) => mode !== "onoff");
+    });
   }
 
   // The mean brightness of the lights that are on, in percent; null when none is on.
@@ -141,34 +158,38 @@ class PocketLightTile extends HTMLElement {
     return ids.length === 1 ? ids[0] : ids;
   }
 
-  _call(service, data = {}) {
+  // One call through the optimistic store: each available light of the tile expects `want`.
+  _send(service, data, want) {
     if (!this._canAct()) return;
-    let result;
-    try {
-      result = this._hass.callService("light", service, { entity_id: this._target(), ...data });
-    } catch (err) {
-      result = Promise.reject(err);
+    const expect = {};
+    for (const state of this._config.entities.map((id) => [id, this._hass?.states?.[id]])) {
+      if (state[1] && !GONE.has(state[1].state)) expect[state[0]] = want;
     }
-    if (result && typeof result.catch === "function") {
-      result.catch(() => {
-        this._dropPreview();
-        reportError(this, "card.pocket.error.light");
-      });
-    }
+    this._store().send(this, this._hass, { domain: "light", service,
+      data: { entity_id: this._target(), ...data }, errorKey: "card.pocket.error.light", expect });
+  }
+
+  _sendBrightness(pct) {
+    this._send("turn_on", { brightness_pct: pct },
+      { state: "on", attributes: { brightness: Math.round(pct * 255 / 100) } });
   }
 
   _build() {
     this._root = this.attachShadow({ mode: "open" });
     this._root.innerHTML = `
       <style>${STYLE}</style>
-      <button class="tile" type="button">
-        <span class="ic"><ha-icon icon="mdi:lightbulb"></ha-icon></span>
-        <span class="t1"></span><span class="t2"></span>
-        <span class="bar"><i></i></span>
-      </button>`;
-    this._button = this._root.querySelector(".tile");
+      <div class="tile">
+        <button class="main" type="button">
+          <span class="ic"><ha-icon icon="mdi:lightbulb"></ha-icon></span>
+          <span class="t1"></span><span class="t2"></span>
+        </button>
+        <span class="bar" role="slider" tabindex="0" data-drag aria-valuemin="1" aria-valuemax="100"><i></i></span>
+      </div>`;
+    this._tile = this._root.querySelector(".tile");
+    this._button = this._root.querySelector(".main");
     this._name = this._root.querySelector(".t1");
     this._status = this._root.querySelector(".t2");
+    this._strip = this._root.querySelector(".bar");
     this._fill = this._root.querySelector(".bar i");
   }
 
@@ -180,15 +201,26 @@ class PocketLightTile extends HTMLElement {
     const pct = this._preview ?? (on ? this._brightness() : null);
     let status = this.t("card.pocket.format.none");
     if (available) status = pct != null ? this.t("card.pocket.format.percent", { value: pct }) : this.t("card.pocket.light.off");
+    const locked = !!this.offline || !available;
     setText(this._name, this._config.name);
     setText(this._status, status);
-    this._button.classList.toggle("on", on || this._preview != null);
-    this._button.classList.toggle("muted", !available);
+    this._tile.classList.toggle("on", on || this._preview != null);
+    this._tile.classList.toggle("muted", !available);
     this._button.disabled = !!this.offline;
     setAttr(this._button, "aria-pressed", String(on));
     setAttr(this._button, "aria-label", `${this._config.name}, ${status}`);
+    this._strip.hidden = !this._dimmable();
+    setAttr(this._strip, "aria-label", this.t("card.pocket.light.brightness", { name: this._config.name }));
+    setAttr(this._strip, "aria-valuenow", String(pct ?? 0));
+    setAttr(this._strip, "aria-valuetext", status);
+    setAttr(this._strip, "aria-disabled", String(locked));
+    setAttr(this._strip, "tabindex", locked ? "-1" : "0");
     const width = `${pct ?? 0}%`;
     if (this._fill.style.width !== width) this._fill.style.width = width;
+  }
+
+  _onStrip(e) {
+    return !!this._strip && !!e.composedPath?.().includes(this._strip);
   }
 
   _onClick(e) {
@@ -197,19 +229,19 @@ class PocketLightTile extends HTMLElement {
       e.stopPropagation();
       return;
     }
-    if (!this._canAct()) return;
-    if (this._config.entities.length === 1) this._call("toggle");
-    else this._call(this._on() ? "turn_off" : "turn_on");
+    if (this._onStrip(e) || !this._canAct()) return;     // the strip acts on its pointerup
+    const on = this._on();
+    this._send(on ? "turn_off" : "turn_on", {}, { state: on ? "off" : "on" });
   }
 
   _onDown(e) {
     if (e.button != null && e.button !== 0) return;
     this._endGesture();
-    this._dropPreview();
     clearTimeout(this._suppressTimer);
     this._suppressClick = false;
-    this._gesture = { x: e.clientX, y: e.clientY, mode: "pending", pointerId: e.pointerId };
-    this._gesture.timer = setTimeout(() => this._longPress(), LONG_PRESS_MS);
+    const strip = this._onStrip(e);
+    this._gesture = { x: e.clientX, y: e.clientY, mode: "pending", strip, pointerId: e.pointerId };
+    if (!strip) this._gesture.timer = setTimeout(() => this._longPress(), LONG_PRESS_MS);
   }
 
   _onMove(e) {
@@ -221,12 +253,14 @@ class PocketLightTile extends HTMLElement {
       if (Math.abs(dx) < DIRECTION_PX && Math.abs(dy) < DIRECTION_PX) return;
       clearTimeout(g.timer);
       this._suppressClick = true;
-      if (Math.abs(dx) <= Math.abs(dy) || !this._canAct()) {
-        g.mode = "cancel";     // a scroll: the light stays as it is
+      // On the body any move is the page's (a scroll, a swipe between areas); on the strip a
+      // vertical one is.
+      if (!g.strip || Math.abs(dx) <= Math.abs(dy) || !this._canAct()) {
+        g.mode = "cancel";
         return;
       }
       g.mode = "drag";
-      try { this.setPointerCapture?.(g.pointerId); } catch { /* the pointer may already be gone */ }
+      try { this._strip.setPointerCapture?.(g.pointerId); } catch { /* the pointer may already be gone */ }
     }
     this._preview = this._percentAt(e.clientX);
     this._patch();
@@ -234,21 +268,27 @@ class PocketLightTile extends HTMLElement {
 
   _onUp(e) {
     const g = this._gesture;
-    if (g?.mode === "drag") {
-      this._preview = this._percentAt(e.clientX);
-      clearTimeout(this._confirmTimer);
-      this._confirmTimer = setTimeout(() => this._dropPreview(), this.confirmMs);
-      this._sentStates = this._config.entities.map((id) => this._hass?.states?.[id]);
-      this._call("turn_on", { brightness_pct: this._preview });
-      this._patch();
+    // A drag along the strip, or a tap on it: the brightness of where the finger lifts.
+    if (g?.strip && g.mode !== "cancel" && this._canAct()) {
+      this._suppressClick = true;
+      this._preview = null;
+      this._sendBrightness(this._percentAt(e.clientX));
     }
-    this._endGesture({ keepPreview: g?.mode === "drag" });
+    this._endGesture();
     // Only the click the browser fires right after this gesture is swallowed: if none follows
     // (the pointer left the tile, a keyboard Enter comes later), the next click must work.
     clearTimeout(this._suppressTimer);
     if (this._suppressClick) {
       this._suppressTimer = setTimeout(() => { this._suppressClick = false; }, CLICK_WINDOW_MS);
     }
+  }
+
+  _onKey(e) {
+    if (!this._onStrip(e) || !this._canAct()) return;
+    const step = { ArrowRight: KEY_STEP, ArrowUp: KEY_STEP, ArrowLeft: -KEY_STEP, ArrowDown: -KEY_STEP }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    this._sendBrightness(Math.min(100, Math.max(1, (this._brightness() ?? 0) + step)));
   }
 
   _longPress() {
@@ -262,17 +302,17 @@ class PocketLightTile extends HTMLElement {
     this.dispatchEvent(event);
   }
 
-  _endGesture({ keepPreview = false } = {}) {
+  _endGesture() {
     if (this._gesture) clearTimeout(this._gesture.timer);
     this._gesture = null;
-    if (!keepPreview && this._preview != null) {
+    if (this._preview != null) {
       this._preview = null;
       this._patch();
     }
   }
 
   _percentAt(x) {
-    const rect = this.getBoundingClientRect();
+    const rect = this._strip.getBoundingClientRect();
     if (!rect.width) return this._brightness() ?? 100;
     return Math.min(100, Math.max(1, Math.round((x - rect.left) / rect.width * 100)));
   }

@@ -54,7 +54,8 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   **Fixed glass** is a window or glass wall that never opens; **Whole wall** stretches an opening
   across its wall. Stored as `openings` on the floor.
 - Zoom with the wheel, two fingers, or the + / − / fit buttons; drag the background to pan. Nothing
-  else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`).
+  else reacts to a tap, so the card can sit on a wall tablet (the Ramka embeds it with `edit: false`);
+  a tap on a room only tells a host page which room it was (`room-tap`, below).
 
 ```yaml
 type: custom:floorplan-card
@@ -66,7 +67,30 @@ layers: [climate, plants]          # optional: only these categories, no chips
 layer_choice: one                  # with layers: a chip each, one layer at a time (the Ramka)
 maps: true                         # false: no maps
 fill: true                         # optional: as tall as the screen below the card's top
+area: living_room                  # optional: that area's room alone, fitted to the card; no Edit
+zoom: true                         # false: no wheel, pinch, pan or zoom buttons; a finger scrolls the page
+chips: true                        # false: no layer chips (a host shows them: layerChips, pressLayer)
+tap_tips: true                     # false: a finger's tap on a marker shows no tooltip
 ```
+
+**For a host page** (the pocket's area page and floor plan view, on a phone):
+
+- `area: <area_id>` draws the floor that holds that area's room with that room alone, the points
+  standing in it or on its walls, and its doors and windows; it is fitted to the card and has no
+  Edit button. An area with no room on the plan says so (status `no_area`).
+- A tap on a room in view mode fires `room-tap` (`detail: {area_id}`, bubbling out of the card); a
+  drag, pinch or zoom does not. Edit mode's taps are the editor's, as before.
+- The card's status is its `data-status` attribute (`loading`, `none`, `unsupported`, `no_area`,
+  `ready`), and a `floorplan-status` event (`detail: {status}`) fires when it changes, so a host can
+  hide the card while there is no plan or no room.
+- With `chips: false` the layer chips are left out; the card's `layerChips` (`[{id, name, colour,
+  on}]`) lists them and `pressLayer(id)` presses one, as a tap on the chip would (the same browser
+  memory). A host shows them elsewhere, in a bottom sheet.
+- **On a phone** (a finger: no hover), a tap on a marker in view mode shows its tooltip, with its
+  links, until the next tap; that next tap only closes it (it fires no `room-tap`), and a drag or
+  pinch closes it too. A mouse keeps hover. `tap_tips: false` turns it off.
+- `--floorplan-target: 44px` (a CSS variable on the card) makes the bar's buttons and the chips at
+  least that big, for fingers.
 
 Every user can read the `floorplan` dashboard, the Ramka's kiosk user included; saving needs an
 administrator (`lovelace/config/save` requires one).

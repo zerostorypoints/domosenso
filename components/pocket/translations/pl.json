@@ -15,14 +15,15 @@
     "pocket": {
       "nav": {
         "home": "Dom",
-        "rooms": "Pomieszczenia",
+        "areas": "Obszary",
+        "climate": "Klimat",
         "media": "Media",
+        "power": "Energia",
+        "plants": "Rośliny",
+        "floorplan": "Rzut",
         "settings": "Ustawienia"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
-      "page": {
-        "coming_next": "Już wkrótce."
-      },
       "home": {
         "title": "Dom",
         "all_good": "Wszystko w porządku",
@@ -46,7 +47,8 @@
         "pause": "Pauza"
       },
       "light": {
-        "off": "Wył."
+        "off": "Wył.",
+        "brightness": "Jasność: {name}"
       },
       "format": {
         "temperature": "{value}°",
@@ -100,22 +102,22 @@
         "media": "Odtwarzacz nie odpowiedział. Spróbuj ponownie.",
         "scene": "Scena nie odpowiedziała. Spróbuj ponownie."
       },
-      "rooms": {
-        "title": "Pomieszczenia",
+      "areas": {
+        "title": "Obszary",
         "count": {
-          "one": "{count} pomieszczenie",
-          "few": "{count} pomieszczenia",
-          "many": "{count} pomieszczeń",
-          "other": "{count} pomieszczenia"
+          "one": "{count} obszar",
+          "few": "{count} obszary",
+          "many": "{count} obszarów",
+          "other": "{count} obszaru"
         },
         "lights_on": "{count} wł.",
         "all_off": "Wszystko wył.",
         "air": "Powietrze {value}",
         "attention": "Wymaga uwagi"
       },
-      "room": {
-        "back": "Wróć do pomieszczeń",
-        "position": "Pomieszczenie {index} z {count}",
+      "area": {
+        "back": "Wróć do obszarów",
+        "position": "Obszar {index} z {count}",
         "climate": "Klimat",
         "air": "Powietrze",
         "lights": "Światła",
@@ -135,6 +137,277 @@
           "pm2_5": "PM2.5 {value}",
           "voc": "VOC {value}",
           "nox": "NOx {value}"
+        },
+        "outside": "Na zewnątrz"
+      },
+      "settings": {
+        "title": "Ustawienia",
+        "appearance": "Wygląd",
+        "theme": {
+          "system": "Systemowy",
+          "light": "Jasny",
+          "dark": "Ciemny"
+        },
+        "bar": {
+          "title": "Dolny pasek",
+          "fixed": "Dom i Ustawienia są zawsze; wybierz jeszcze maks. {count}.",
+          "full": "Pasek jest pełny (maks. {count}). Wyłącz jedną stronę, aby dodać inną."
+        },
+        "comfort": {
+          "title": "Zakresy komfortu",
+          "hint": "Dotknij wartości, aby zmienić ją w Home Assistant.",
+          "temperature": "Temperatura",
+          "humidity": "Wilgotność",
+          "low": "od",
+          "high": "do",
+          "edit": "{area}, {reading} {side}: {value}"
+        },
+        "air": {
+          "title": "Progi powietrza",
+          "score": "Ocena powietrza",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "LZO",
+          "nox": "NOx"
+        },
+        "air_side": {
+          "fair": "średnio od",
+          "poor": "źle od"
+        },
+        "about": {
+          "title": "O aplikacji",
+          "version": "Pocket {version}",
+          "dev": "{version} (rozwojowa)",
+          "components": "Komponenty działające w tym domu",
+          "missing": "Brak listy komponentów: sensor.domosenso_components pojawi się po następnym domosenso render i wdrożeniu.",
+          "areas": "Obszary i co odczytują",
+          "ha_area": "Obszar Home Assistant: {name}",
+          "unknown_area": "Obszar Home Assistant {id}: nie znaleziono",
+          "no_area": "Z czujników zewnętrznych i pogody",
+          "catalog": "Katalog Domosenso",
+          "repo": "Kod na GitHubie"
+        },
+        "error": "Ustawienie nie zostało zapisane. Spróbuj ponownie."
+      },
+      "sheet": {
+        "close": "Zamknij"
+      },
+      "trend": {
+        "period": "Okres",
+        "range": {
+          "24h": "24 h",
+          "7d": "7 dni",
+          "30d": "30 dni"
+        },
+        "loading": "Wczytywanie…",
+        "empty": "Brak danych za ten okres",
+        "error": "Nie udało się wczytać historii",
+        "band": "Zakres {low}–{high}",
+        "band_low": "Od {low}",
+        "band_high": "Do {high}",
+        "span": "{range}: {min}–{max}",
+        "value": "{value} {unit}",
+        "reading": {
+          "temperature": "Temperatura",
+          "humidity": "Wilgotność",
+          "score": "Jakość powietrza",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "LZO",
+          "nox": "NOx"
+        },
+        "direction": {
+          "rising": "Rośnie",
+          "falling": "Spada",
+          "steady": "Bez zmian"
+        },
+        "on_share": "Włączony {share} z {range}"
+      },
+      "square": {
+        "air": {
+          "score": {
+            "good": "Powietrze dobre",
+            "fair": "Powietrze średnie",
+            "poor": "Powietrze złe"
+          },
+          "co2": {
+            "good": "CO₂ w normie",
+            "fair": "CO₂ podwyższone",
+            "poor": "CO₂ wysokie"
+          },
+          "pm2_5": {
+            "good": "PM2.5 w normie",
+            "fair": "PM2.5 podwyższone",
+            "poor": "PM2.5 wysokie"
+          },
+          "voc": {
+            "good": "LZO w normie",
+            "fair": "LZO podwyższone",
+            "poor": "LZO wysokie"
+          },
+          "nox": {
+            "good": "NOx w normie",
+            "fair": "NOx podwyższone",
+            "poor": "NOx wysokie"
+          }
+        }
+      },
+      "checks": {
+        "title": "Co sprawdzono",
+        "inside": "Temperatura w domu",
+        "no_limits": "Brak progów",
+        "no_value": "Brak odczytu",
+        "empty": "Nie ma czego sprawdzać"
+      },
+      "lights": {
+        "title": "Włączone światła",
+        "none": "Nic nie świeci"
+      },
+      "climate": {
+        "title": "Klimat i powietrze",
+        "advice": {
+          "open_window": "Otwórz okno",
+          "too_warm": "Za ciepło",
+          "too_cold": "Za zimno",
+          "too_dry": "Za sucho",
+          "too_humid": "Za wilgotno"
+        },
+        "advice_value": "{reading} {value}",
+        "square": {
+          "inside": "W domu",
+          "outside": "Na zewnątrz",
+          "air": "Powietrze"
+        },
+        "all_in_range": "Wszystko w normie",
+        "out_of_range": {
+          "one": "{count} poza normą",
+          "few": "{count} poza normą",
+          "many": "{count} poza normą",
+          "other": "{count} poza normą"
+        },
+        "view": {
+          "label": "Odczyt",
+          "temperature": "Temp.",
+          "humidity": "Wilgotność",
+          "air": "Powietrze"
+        },
+        "empty": "Żaden obszar nie ma tego odczytu"
+      },
+      "weather": {
+        "title": "Pogoda",
+        "today": "Dziś",
+        "high_low": "{high} / {low}",
+        "rain": "{value} % szans na opady",
+        "none": "Brak prognozy",
+        "condition": {
+          "clear-night": "Bezchmurna noc",
+          "cloudy": "Pochmurno",
+          "fog": "Mgła",
+          "hail": "Grad",
+          "lightning": "Burza",
+          "lightning-rainy": "Burza z deszczem",
+          "partlycloudy": "Częściowe zachmurzenie",
+          "pouring": "Ulewa",
+          "rainy": "Deszcz",
+          "snowy": "Śnieg",
+          "snowy-rainy": "Deszcz ze śniegiem",
+          "sunny": "Słonecznie",
+          "windy": "Wietrznie",
+          "windy-variant": "Wietrznie",
+          "exceptional": "Nietypowo"
+        }
+      },
+      "sensors": {
+        "title": "Wszystkie czujniki",
+        "state": {
+          "on": "Wł.",
+          "off": "Wył."
+        }
+      },
+      "floorplan": {
+        "title": "Rzut",
+        "open": "Otwórz",
+        "layers": "Warstwy",
+        "none": "Ten dom nie ma jeszcze rzutu."
+      },
+      "media": {
+        "title": "Media",
+        "picker": "Odtwarzacz",
+        "picker_of": "Odtwarzacz: {name}",
+        "none": "W tym domu nie ma odtwarzacza.",
+        "details": "{name}: szczegóły odtwarzacza",
+        "previous": "Poprzedni",
+        "next": "Następny",
+        "mute": "Wycisz",
+        "unmute": "Włącz dźwięk",
+        "volume": "Głośność {value}",
+        "volume_label": "Głośność",
+        "level": "Poziom dźwięku",
+        "level_now": "{value} dB teraz",
+        "playing_what": "{name} · {title}",
+        "tab": {
+          "label": "Media lub dźwięk",
+          "media": "Media",
+          "sound": "Dźwięk"
+        }
+      },
+      "sound": {
+        "averages": "Średnie",
+        "db": "{value} dB",
+        "average": {
+          "leq_1_min": "Leq 1 min",
+          "leq_15_min": "Leq 15 min",
+          "leq_1_h": "Leq 1 h"
+        }
+      },
+      "power": {
+        "title": "Prąd",
+        "now": "Teraz",
+        "today": "Dziś",
+        "from": {
+          "grid": "Z sieci",
+          "devices": "Urządzenia"
+        },
+        "meters": {
+          "one": "{count} licznik",
+          "few": "{count} liczniki",
+          "many": "{count} liczników",
+          "other": "{count} licznika"
+        },
+        "no_area": "Bez obszaru",
+        "empty": "W Home Assistant nie ma jeszcze czujników mocy, energii, prądu ani napięcia.",
+        "rule": "Suma liczników mocy z tej strony, po jednym na urządzenie: licznik za innym mierzonym urządzeniem jest pominięty."
+      },
+      "plants": {
+        "title": "Rośliny",
+        "fine": "W porządku",
+        "no_reading": "Brak odczytu",
+        "all_fine": "Wszystkie rośliny w porządku",
+        "need": {
+          "one": "{count} roślina czegoś potrzebuje",
+          "few": "{count} rośliny czegoś potrzebują",
+          "many": "{count} roślin czegoś potrzebuje",
+          "other": "{count} rośliny czegoś potrzebuje"
+        },
+        "no_area": "Bez obszaru",
+        "empty": "W Home Assistant nie ma jeszcze roślin. Komponent plants dodaje jedną na każdy czujnik.",
+        "reading": {
+          "moisture": "Wilgotność",
+          "conductivity": "Nawóz",
+          "illuminance": "Światło",
+          "temperature": "Temperatura",
+          "battery": "Bateria"
+        },
+        "reason": {
+          "thirsty": "Chce pić",
+          "too_wet": "Za mokro",
+          "needs_light": "Potrzebuje światła",
+          "too_much_light": "Za dużo światła",
+          "cold": "Za zimno",
+          "warm": "Za ciepło",
+          "needs_fertiliser": "Potrzebuje nawozu",
+          "too_much_fertiliser": "Za dużo nawozu",
+          "low_battery": "Słaba bateria"
         }
       }
     }

@@ -40,12 +40,12 @@ test("everything within its limits: no items", () => {
 
 test("CO2 at 1250 with poor from 1200: one poor item for the room", () => {
   assert.deepEqual(attention(hassOf({ "sensor.living_co2": st(1250) }), config),
-    [{ room: "living", reading: "co2", level: "poor", target: "#/room/living" }]);
+    [{ room: "living", reading: "co2", level: "poor", target: "#/area/living" }]);
 });
 
 test("temperature 25 with high 24: poor on the high side", () => {
   assert.deepEqual(attention(hassOf({ "sensor.bed_t": st(25) }), config),
-    [{ room: "bed", reading: "temperature", level: "poor", side: "high", target: "#/room/bed" }]);
+    [{ room: "bed", reading: "temperature", level: "poor", side: "high", target: "#/area/bed" }]);
 });
 
 test("humidity below its range: poor low; the score below fair: fair", () => {
