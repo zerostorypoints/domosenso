@@ -122,7 +122,10 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 
 Stored in Home Assistant's frontend user data (websocket `frontend/get_user_data` /
 `frontend/set_user_data`, key `domosenso-pocket`): they follow the person to every device and are
-nobody else's. Fields `bar`: the page ids on the bar; `theme`: `system` (default), `light` or `dark`. When they cannot be read, the defaults apply.
+nobody else's. Fields `bar`: the page ids on the bar; `theme`: `system` (default), `light` or `dark`;
+`climateView`: the reading the Climate page shows, `temperature` (default), `humidity` or `air`;
+`mediaPlayer`: the media player the Media page shows (the entity id of an area's `media`). When
+they cannot be read, the defaults apply.
 
 Levels are good, fair or poor (plus a side, low or high, for comfort ranges). They are computed in
 the cards from the states and climate-air's limits; the messages are translations.

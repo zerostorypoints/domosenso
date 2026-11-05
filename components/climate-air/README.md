@@ -49,6 +49,8 @@ them nothing below is rendered.
 - **Outside.** With the home inputs' `outside` block, `input_number.climate_air_outside_temp_low` /
   `_temp_high` (-40 to 50 °C), and `_humidity_low` / `_humidity_high` (0 to 100 %) when outside has
   a humidity sensor; seed groups `outside` and `outside.humidity`, so `outside` is no room id.
+  The helpers' names are English whatever the home's language: the group's name is the literal
+  `Outside` (`Outside comfort temperature low`, ...), where a room's group takes the room's name.
   They start at `outside_comfort_defaults`: **20-24 °C, 40-60 %**, the Ramka's Temperature widget
   range (`cards/lib/climate-widgets.js` `COMFORT`), which its Outside widget reads until its own
   settings set one. A home that set a range on its Ramka Outside widget gives those values in

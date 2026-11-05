@@ -1,7 +1,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import "../testing/dom-env.mjs";
-import { trendSpec, render, update, chartOf, timelineOf, onShare, TREND_STYLE } from "./trend-sheet.js";
+import { trendSpec, render, update, chartOf, thin, spanOf, timelineOf, onShare, TREND_STYLE } from "./trend-sheet.js";
 import { areasOf } from "./areas.js";
 import { config, st, baseStates, hassOf, ctxOf, text } from "../testing/demo-home.mjs";
 
@@ -219,6 +219,53 @@ test("chartOf: time across, value up, the band's edges in range, a gap breaks th
   const flat = chartOf([{ t: 0, v: 5 }], {}, 0, 100);
   assert.equal(flat.path, "M0 75 L320 75", "a flat line in the middle, held to the end");
   assert.equal(flat.band, null);
+});
+
+// A sensor that reports every second for a day, and more: 100 000 points.
+const LONG = 100000;
+const longSeries = (gapAt = -1) => Array.from({ length: LONG }, (_, i) =>
+  ({ t: i, v: i === gapAt ? null : 20 + Math.sin(i / 500) * 3 + (i === 4321 ? 9 : 0) + (i === 54321 ? -9 : 0) }));
+
+test("100 000 points: the span in one pass, the path thinned to a few points per drawing unit", () => {
+  const points = longSeries();
+  assert.deepEqual(spanOf(points), { min: points[54321].v, max: points[4321].v });
+  const chart = chartOf(points, { low: 20, high: 22 }, 0, LONG);
+  const moves = chart.path.split(/[ML]/).filter(Boolean).length;
+  assert.ok(moves <= 4 * 320 + 1, `${moves} points`);
+  assert.match(chart.path, /^M0 /);
+  assert.match(chart.path, /L320 [\d.]+$/, "held to the end");
+  const ys = chart.path.split(/[ML]/).filter(Boolean).map((xy) => Number(xy.trim().split(" ")[1]));
+  // The spike and the dip survive the thinning: near the top and the bottom of the value axis.
+  assert.ok(Math.max(...ys) > 130 && Math.min(...ys) < 20, "the dip near the bottom, the spike near the top");
+});
+
+test("thin: a gap in a long series still breaks the line; a run of gaps is one break", () => {
+  const points = longSeries(50000);
+  points[50001].v = null;
+  const out = thin(points, 0, LONG);
+  assert.equal(out.filter((p) => p.v == null).length, 1);
+  const path = chartOf(points, {}, 0, LONG).path;
+  assert.equal(path.match(/M/g).length, 2, "two pieces");
+});
+
+test("a sheet over 100 000 points draws, and a hass update reads none of them again", async () => {
+  const id = "sensor.living_room_temperature";
+  const hass = wsHass({ "history/history_during_period": (msg) => {
+    const start = Date.parse(msg.start_time);
+    return { [id]: longSeries().map((p) => ({ s: String(p.v), lu: (start + p.t * 864) / 1000 })) };
+  } });
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx, trendSpec(ctx, room("living_room"), "temperature"));
+  await tick();
+  assert.equal(el.querySelector("svg").hidden, false);
+  const note = text(el.querySelector(".note"));
+  assert.match(note, /24 h: 13\.9°–31\.1°$/, "the spike and the dip");
+  // The points are only read when the answer lands: an update works without them.
+  el._trend.data["24h"].points = null;
+  ctx.hass = { ...hass, states: { ...baseStates(), [id]: st(23.4) } };
+  update(el, ctx);
+  assert.equal(text(el.querySelector(".big")), "23.4°");
+  assert.equal(text(el.querySelector(".note")), note);
 });
 
 test("sizes: switch buttons at least 44 px, text at least 11.5 px", () => {

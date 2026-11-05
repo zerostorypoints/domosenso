@@ -11,7 +11,7 @@
 //       has no number)
 //
 // The rows are rebuilt only when the entities or their categories change; update() patches the
-// values and the words.
+// values and the words, and only while the section is open.
 
 import { areaSensors, haAreaOf, isNumeric, loadEntryDomains, sensorValue } from "./sensors.js";
 import { el, setAttr, setText, shortName } from "./page-kit.js";
@@ -102,18 +102,26 @@ export function renderSensors(ctx, area) {
     state.ctx = ctx;
     const { hass } = ctx;
     askDomains(hass);
+    // areaSensors gives the same array while the registries and the area's entities are the same:
+    // nothing to compare then.
     const groups = areaSensors(hass, haAreaOf(ctx.config, area), state.domains);
-    const count = groups.reduce((sum, g) => sum + g.entities.length, 0);
-    const key = JSON.stringify(groups.map((g) => [g.category, g.entities]));
-    if (key !== state.key) {
-      state.key = key;
-      rebuild(ctx, groups);
+    if (groups !== state.groups) {
+      state.groups = groups;
+      state.count = groups.reduce((sum, g) => sum + g.entities.length, 0);
+      const key = JSON.stringify(groups.map((g) => [g.category, g.entities]));
+      if (key !== state.key) {
+        state.key = key;
+        rebuild(ctx, groups);
+      }
     }
+    const count = state.count;
     root.hidden = count === 0;
     setText(head.querySelector(".t"), ctx.t("card.pocket.sensors.title"));
     setText(head.querySelector(".n"), String(count));
     setAttr(head, "aria-expanded", String(state.open));
     list.hidden = !state.open;
+    // Collapsed, the rows are out of sight: their words wait for the next open (its click updates).
+    if (!state.open) return;
     for (const { group, label } of state.cats) setText(label, group.name);
     for (const { id, name, value } of state.rows) {
       setText(name, shortName(hass, id, area));

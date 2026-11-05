@@ -8,7 +8,8 @@
 //       by hass.areas); areaId: the HA area, null for the entities in no area (last). The pocket's
 //       areas first in their order, then the other HA areas by name, then no area. Devices by name,
 //       an entity without a device in a group of its own (device null); entities by CLASSES order,
-//       then by name.
+//       then by name. The same array again while nothing it reads changed (a hass update with
+//       the same registries, config, areas and meters groups nothing).
 //   classOf(hass, id) -> device class | undefined   the state's, else the registry's
 //   watts(hass, id) -> number | null    a power sensor's value in W (W, kW, MW), null when not a number
 //   powerNow(hass, groups) -> {watts, entities: [id]} | null   the home's power now: the sum of the
@@ -24,7 +25,7 @@
 // cannot tell, and the page says the sum is of the meters it lists.
 
 import { areasOf } from "./areas.js";
-import { entityArea, haAreaOf, shownEntity } from "./sensors.js";
+import { entityArea, haAreaOf, registryIndex, shownEntity } from "./sensors.js";
 
 export const CLASSES = ["power", "apparent_power", "power_factor", "energy", "current", "voltage"];
 const GONE = new Set(["unavailable", "unknown"]);
@@ -51,16 +52,35 @@ export function entityName(hass, id, device) {
 
 const byName = (a, b) => (a ?? "").localeCompare(b ?? "");
 
+// The listed sensors with an area (or none), once per registry index (lib/sensors.js); and the
+// last grouping, kept while the registries, the config, hass.areas and the meters with a state and
+// a class of CLASSES are the same, so a hass update does not group again.
+const candidates = new WeakMap();   // registry index -> {regs, last}
+
 export function powerSensors(hass, config) {
-  if (!hass?.entities) return [];
+  const index = registryIndex(hass);
+  if (!index) return [];
+  let known = candidates.get(index);
+  if (!known) {
+    known = { regs: Object.values(hass.entities).filter((reg) => reg.entity_id?.startsWith("sensor.")
+      && shownEntity(reg) && entityArea(hass, reg) !== undefined), last: null };
+    candidates.set(index, known);
+  }
+  const regs = known.regs.filter((reg) => hass.states?.[reg.entity_id] && CLASSES.includes(classOf(hass, reg.entity_id)));
+  const ids = regs.map((reg) => reg.entity_id);
+  const last = known.last;
+  if (last && last.config === config && last.areas === hass.areas && last.ids.length === ids.length
+    && last.ids.every((id, i) => id === ids[i])) return last.groups;
+  const groups = groupMeters(hass, config, regs);
+  known.last = { config, areas: hass.areas, ids, groups };
+  return groups;
+}
+
+function groupMeters(hass, config, regs) {
   const areas = new Map();          // HA area id (or "") -> Map(device id or "" -> [entity ids])
-  for (const reg of Object.values(hass.entities)) {
+  for (const reg of regs) {
     const id = reg.entity_id;
-    if (!id?.startsWith("sensor.") || !shownEntity(reg) || !hass.states?.[id]) continue;
-    if (!CLASSES.includes(classOf(hass, id))) continue;
-    const areaId = entityArea(hass, reg);
-    if (areaId === undefined) continue;
-    const key = areaId ?? "";
+    const key = entityArea(hass, reg) ?? "";
     if (!areas.has(key)) areas.set(key, new Map());
     const devices = areas.get(key);
     const device = reg.device_id && hass.devices?.[reg.device_id] ? reg.device_id : "";

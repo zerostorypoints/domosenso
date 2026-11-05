@@ -177,6 +177,9 @@ class FloorplanCard extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("resize", this._onResize);
+    // The element may be kept and shown again (the Ramka hides its plan): a tooltip a tap pinned
+    // would come back over a plan the person has not touched since.
+    if (this._pinned) this._unpinTip();
   }
 
   // `fill`: as tall as the screen below the card's top; true when the height changed.

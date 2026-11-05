@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { historyPoints, statisticsPoints, seriesOf, RANGES } from "./history.js";
+import { historyPoints, historyPointsOf, statisticsPoints, seriesOf, RANGES } from "./history.js";
 
 const NOW = Date.parse("2026-11-05T12:00:00Z");
 const HOUR = 3600 * 1000;
@@ -83,4 +83,15 @@ test("series: a failed call rejects, an unknown range throws", async () => {
   const hass = fakeHass({ "history/history_during_period": new Error("boom") });
   await assert.rejects(seriesOf(hass, "sensor.t", "24h", NOW), /boom/);
   await assert.rejects(seriesOf(hass, "sensor.t", "1y", NOW), /unknown range/);
+});
+
+test("historyPointsOf: several entities in one call, each its points; one with no rows gets []", async () => {
+  const hass = fakeHass({ "history/history_during_period": {
+    "sensor.a": [{ s: "1", lu: (NOW - HOUR) / 1000 }, { s: "x", lu: (NOW - 1000) / 1000 }],
+    "sensor.b": [{ s: "2", lu: (NOW - 2000) / 1000 }] } });
+  const points = await historyPointsOf(hass, ["sensor.a", "sensor.b", "sensor.c"], NOW - HOUR, NOW);
+  assert.equal(hass.calls.length, 1);
+  assert.deepEqual(hass.calls[0].entity_ids, ["sensor.a", "sensor.b", "sensor.c"]);
+  assert.deepEqual(points, { "sensor.a": [{ t: NOW - HOUR, v: 1 }, { t: NOW - 1000, v: null }],
+    "sensor.b": [{ t: NOW - 2000, v: 2 }], "sensor.c": [] });
 });

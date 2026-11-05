@@ -483,11 +483,12 @@ function trendHass(series, states = baseStates()) {
   hass.ws = [];
   hass.callWS = (msg) => {
     hass.ws.push(msg);
-    const id = msg.entity_ids[0];
     const start = Date.parse(msg.start_time);
-    const values = series[id] ?? [];
-    const step = (Date.parse(msg.end_time) - start) / Math.max(1, values.length);
-    return Promise.resolve({ [id]: values.map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 })) });
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => {
+      const values = series[id] ?? [];
+      const step = (Date.parse(msg.end_time) - start) / Math.max(1, values.length);
+      return [id, values.map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 }))];
+    })));
   };
   return hass;
 }
@@ -505,7 +506,9 @@ test("trend arrows from the last hour, fetched once, not on every hass update", 
   assert.equal(climate.getAttribute("aria-label"), "Rising");
   assert.equal(el.querySelector(".sq.air .arrow").textContent, "↓");
   const asked = hass.ws.length;
-  assert.equal(asked, 2);
+  assert.equal(asked, 1, "one history call for both readings");
+  assert.deepEqual([...hass.ws[0].entity_ids].sort(),
+    ["sensor.living_room_air_quality_score", "sensor.living_room_temperature"]);
   for (let i = 0; i < 5; i += 1) room.update(el, ctx);
   assert.equal(hass.ws.length, asked, "updates fetch nothing");
   clearHistoryCache();

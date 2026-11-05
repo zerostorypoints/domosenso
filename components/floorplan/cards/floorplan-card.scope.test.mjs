@@ -221,6 +221,17 @@ test("a finger's drag after a tip drops it; the next tap opens its room", async 
   assert.equal(events.filter(([type]) => type === "room-tap").length, 1);
 });
 
+test("a tooltip a tap pinned is gone when the card leaves the page and comes back", async () => {
+  const card = await make({ plan: plan() });
+  fingerTap(card, $(card, 'g.marker[data-key="d_climate"] .shape'), ...clientAt(card, 2, 2));
+  assert.equal($(card, ".tip").hidden, false);
+  const parent = card.parentNode;
+  card.remove();
+  parent.append(card);
+  assert.equal($(card, ".tip").hidden, true);
+  assert.equal(card._pinned, null, "the next tap is a plain tap, not the one that closes it");
+});
+
 test("a mouse click on a marker pins nothing (it has hover); tap_tips: false pins nothing either", async () => {
   const mouse = await make({ plan: plan() });
   const [mx, my] = clientAt(mouse, 2, 2);

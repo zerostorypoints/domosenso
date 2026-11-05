@@ -4,6 +4,8 @@
 //   historyPoints(hass, entityId, start, end)            the recorder's states (websocket
 //       history/history_during_period, minimal_response, no_attributes): every change, the state
 //       at `start` first
+//   historyPointsOf(hass, entityIds, start, end)         the same for several entities in one call:
+//       {entity id: points}
 //   statisticsPoints(hass, entityId, start, end, period) the long-term statistics' means
 //       (recorder/statistics_during_period, period "hour" or "day"); [] when the sensor has none
 //   seriesOf(hass, entityId, range, now?)                the points of one range of the trend sheet:
@@ -42,26 +44,38 @@ function millis(value, unit) {
   return null;
 }
 
-// The recorder's rows of one entity, each as {t, s}: when it changed and its state text.
-async function historyRows(hass, entityId, start, end) {
+// The recorder's rows of some entities, each as {t, s}: when it changed and its state text; one
+// call for all of them.
+async function historyRowsOf(hass, entityIds, start, end) {
   const result = await hass.callWS({
     type: "history/history_during_period",
     start_time: new Date(start).toISOString(),
     end_time: new Date(end).toISOString(),
-    entity_ids: [entityId],
+    entity_ids: entityIds,
     minimal_response: true,
     no_attributes: true,
   });
-  const rows = Array.isArray(result?.[entityId]) ? result[entityId] : [];
-  return rows.map((row) => ({
-    t: row.lu != null ? millis(row.lu, "s") : row.lc != null ? millis(row.lc, "s")
-      : millis(row.last_updated ?? row.last_changed),
-    s: row.s ?? row.state,
-  })).filter((p) => p.t != null).sort((a, b) => a.t - b.t);
+  return Object.fromEntries(entityIds.map((entityId) => {
+    const rows = Array.isArray(result?.[entityId]) ? result[entityId] : [];
+    return [entityId, rows.map((row) => ({
+      t: row.lu != null ? millis(row.lu, "s") : row.lc != null ? millis(row.lc, "s")
+        : millis(row.last_updated ?? row.last_changed),
+      s: row.s ?? row.state,
+    })).filter((p) => p.t != null).sort((a, b) => a.t - b.t)];
+  }));
+}
+
+async function historyRows(hass, entityId, start, end) {
+  return (await historyRowsOf(hass, [entityId], start, end))[entityId];
 }
 
 export async function historyPoints(hass, entityId, start, end) {
   return (await historyRows(hass, entityId, start, end)).map(({ t, s }) => ({ t, v: numeric(s) }));
+}
+
+export async function historyPointsOf(hass, entityIds, start, end) {
+  const rows = await historyRowsOf(hass, entityIds, start, end);
+  return Object.fromEntries(Object.entries(rows).map(([id, list]) => [id, list.map(({ t, s }) => ({ t, v: numeric(s) }))]));
 }
 
 export const STATE_RANGES = ["24h", "7d"];

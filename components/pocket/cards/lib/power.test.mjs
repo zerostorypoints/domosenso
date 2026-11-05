@@ -71,3 +71,21 @@ test("a meter's name without its device's in front", () => {
   assert.equal(entityName(hass, "sensor.heater_power", null), "Heater power");
   assert.equal(entityName(hass, "sensor.heater_power", "Heater power"), "Heater power", "never empty");
 });
+
+test("a hass update with the same registries and meters groups nothing again: the same array", () => {
+  const base = powerHass();
+  let scans = 0;
+  const entities = new Proxy(base.entities, { ownKeys(target) { scans += 1; return Reflect.ownKeys(target); } });
+  const hass = { ...base, entities };
+  const first = powerSensors(hass, config);
+  const after = scans;
+  const states = { ...hass.states, "sensor.mains_power": st(900, hass.states["sensor.mains_power"].attributes) };
+  const next = { ...hass, states };
+  assert.equal(powerSensors(next, config), first);
+  assert.equal(powerSensors(next, config), first, "twice in one update (the page and the Now sheet)");
+  assert.equal(scans, after, "the registry is not listed again");
+  const gone = { ...next, states: { ...states } };
+  delete gone.states["sensor.heater_power"];
+  assert.ok(!powerSensors(gone, config).some((g) => g.areaId === "bedroom"), "a meter's state gone: grouped again");
+  assert.notEqual(powerSensors({ ...next, entities: { ...base.entities } }, config), first, "a new registry");
+});

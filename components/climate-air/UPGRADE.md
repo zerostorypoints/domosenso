@@ -14,6 +14,9 @@ script.
 
 - `render` and deploy. A home whose Ramka Outside widget has its own range sets
   `outside_comfort_defaults` to it before the first deploy (the seed runs once).
+- The tokens `outside` and `outside.humidity` add up to 25 characters (with their commas) to the
+  seed list, which an `input_text` holds to 255: a home already near the limit fails `render` with
+  `climate-air: the seed list is <n> characters, input_text holds 255`.
 
 ## 0.3.0 (unreleased): comfort and air thresholds
 

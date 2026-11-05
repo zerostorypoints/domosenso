@@ -438,11 +438,11 @@ test("trend arrows on the outside and air chips from the last hour; none on insi
   hass.ws = [];
   const series = { "sensor.outside_temperature": [7, 6, 5.5], "sensor.living_room_air_quality_score": [81, 81, 81] };
   hass.callWS = (msg) => {
-    hass.ws.push(msg.entity_ids[0]);
-    const id = msg.entity_ids[0];
+    hass.ws.push(...msg.entity_ids);
     const start = Date.parse(msg.start_time);
     const step = (Date.parse(msg.end_time) - start) / 3;
-    return Promise.resolve({ [id]: (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 })) });
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => [id,
+      (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 }))])));
   };
   const ctx = ctxOf({ hass });
   const el = mount(ctx);

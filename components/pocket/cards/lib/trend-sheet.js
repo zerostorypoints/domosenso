@@ -17,8 +17,10 @@
 // the period in words, a 24 h / 7 d / 30 d switch and one SVG line (no chart library) over the
 // band. Data from lib/history.js seriesOf: history for 24 h, statistics for 7 d and 30 d; while it
 // loads, when it has no numbers or when the call fails, a line of text says so. render() builds
-// everything once; update() patches the value and redraws the chart only when its data or band
-// changed.
+// everything once; what the data gives (its span, the timeline's share) is worked out once when it
+// lands; update() patches the value and redraws the chart only when its data or band changed. A
+// long series (a sensor that reports every second) is drawn from at most four points per drawing
+// unit across (the first, lowest, highest and last of each), so the path stays short.
 //
 // timeline: true (an on/off or other non-numeric entity, lib/sensor-list.js) draws its states as a
 // timeline instead of a line: one band across, a segment per state from history (lib/history.js
@@ -158,7 +160,7 @@ function load(root, parts) {
   parts.data[range] = { status: "loading" };
   const entry = parts.data[range];
   (parts.spec.timeline ? statesOf : seriesOf)(hass, parts.spec.entity, range, now).then(
-    (points) => Object.assign(entry, { status: "ready", points, start: now - RANGES[range].span, end: now }),
+    (points) => Object.assign(entry, digest(parts.spec, points, now - RANGES[range].span, now)),
     () => Object.assign(entry, { status: "error" }))
     .then(() => { if (root.isConnected) update(root, parts.ctx); });
 }
@@ -189,7 +191,7 @@ export function update(root, ctx) {
 
   const band = { low: numberOf(hass, spec.band?.low), high: numberOf(hass, spec.band?.high) };
   const data = parts.data[parts.range];
-  const span = data?.status === "ready" ? spanOf(data.points) : null;
+  const span = data?.status === "ready" ? data.span : null;
   const notes = [];
   if (band.low != null && band.high != null) {
     notes.push(ctx.t("card.pocket.trend.band", { low: format(band.low), high: format(band.high) }));
@@ -226,14 +228,33 @@ function levelClass(value, hass, spec) {
   return `lv-${result.level}`;
 }
 
-function spanOf(points) {
-  const values = (points ?? []).map((p) => p.v).filter((v) => v != null);
-  return values.length ? { min: Math.min(...values), max: Math.max(...values) } : null;
+// What a landed answer gives, worked out once: the points in time order, the span of the numbers
+// (a line) or the share of the period on and whether any state falls in it (a timeline).
+function digest(spec, points, start, end) {
+  const sorted = [...points].sort((a, b) => a.t - b.t);
+  const entry = { status: "ready", points: sorted, start, end };
+  if (spec.timeline) {
+    entry.share = onShare(sorted, start, end);
+    entry.has = sorted.some((p) => p.s != null && p.t <= end);
+  } else entry.span = spanOf(sorted);
+  return entry;
+}
+
+// The lowest and the highest number, in one pass (a spread of a long array overflows the stack).
+export function spanOf(points) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of points ?? []) {
+    if (p.v == null) continue;
+    if (p.v < min) min = p.v;
+    if (p.v > max) max = p.v;
+  }
+  return min <= max ? { min, max } : null;
 }
 
 function drawChart(parts, ctx, data, band) {
   const status = data?.status ?? "loading";
-  const has = status === "ready" && spanOf(data.points);
+  const has = status === "ready" && data.span;
   let message = "";
   if (status === "loading") message = ctx.t("card.pocket.trend.loading");
   else if (status === "error") message = ctx.t("card.pocket.trend.error");
@@ -260,21 +281,23 @@ function drawChart(parts, ctx, data, band) {
 
 // The line and the band in drawing units: time across, value up; the value axis spans the points
 // and the band's edges, with PAD over and under. An unknown value breaks the line; the last value
-// holds until the end of the period (a state lasts until it changes).
+// holds until the end of the period (a state lasts until it changes). More than MAX_POINTS numbers
+// are thinned to the first, lowest, highest and last of each drawing unit across (thin below).
 export function chartOf(points, band, start, end) {
-  const known = points.filter((p) => p.v != null);
   const edges = [band?.low, band?.high].filter((v) => v != null);
-  let lo = Math.min(...known.map((p) => p.v), ...edges);
-  let hi = Math.max(...known.map((p) => p.v), ...edges);
+  const span = spanOf(points);
+  let lo = Math.min(span?.min ?? Infinity, ...edges);
+  let hi = Math.max(span?.max ?? -Infinity, ...edges);
   if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
   const pad = (hi - lo) * PAD;
   lo -= pad;
   hi += pad;
   const x = (t) => round(Math.min(W, Math.max(0, ((t - start) / (end - start)) * W)));
   const y = (v) => round(H - ((v - lo) / (hi - lo)) * H);
-  const series = [...points].sort((a, b) => a.t - b.t);
-  const last = series[series.length - 1];
-  if (last && last.v != null && last.t < end) series.push({ t: end, v: last.v });
+  const sorted = [...points].sort((a, b) => a.t - b.t);
+  const last = sorted[sorted.length - 1];
+  if (last && last.v != null && last.t < end) sorted.push({ t: end, v: last.v });
+  const series = sorted.length > MAX_POINTS ? thin(sorted, start, end) : sorted;
   let path = "";
   let pen = false;
   for (const p of series) {
@@ -293,6 +316,43 @@ export function chartOf(points, band, start, end) {
 
 const round = (n) => Math.round(n * 10) / 10;
 
+const MAX_POINTS = 2 * W;      // below this the series is drawn as it is
+
+// The points of a long series that a line W units wide can show: per unit across, the first, the
+// lowest, the highest and the last number in time order; a gap (null) is kept, so the line still
+// breaks there.
+export function thin(series, start, end) {
+  const out = [];
+  let bucket = null;
+  let first = null;
+  let low = null;
+  let high = null;
+  let last = null;
+  const close = () => {
+    if (first) out.push(...[...new Set([first, low, high, last])].sort((a, b) => a.t - b.t));
+    first = low = high = last = null;
+  };
+  for (const p of series) {
+    if (p.v == null) {
+      close();
+      bucket = null;
+      if (out.length && out[out.length - 1].v != null) out.push(p);
+      continue;
+    }
+    const at = Math.min(W - 1, Math.max(0, Math.floor(((p.t - start) / (end - start)) * W)));
+    if (at !== bucket) {
+      close();
+      bucket = at;
+    }
+    if (!first) first = low = high = p;
+    if (p.v < low.v) low = p;
+    if (p.v > high.v) high = p;
+    last = p;
+  }
+  close();
+  return out;
+}
+
 // ---- the timeline of a non-numeric entity ------------------------------------------------------
 
 function updateTimeline(parts, ctx) {
@@ -300,11 +360,11 @@ function updateTimeline(parts, ctx) {
   if (parts.big.className !== "big") parts.big.className = "big";
   const data = parts.data[parts.range];
   const ready = data?.status === "ready";
-  const share = ready ? onShare(data.points, data.start, data.end) : null;
+  const share = ready ? data.share : null;
   setText(parts.note, share == null ? "" : ctx.t("card.pocket.trend.on_share", {
     share: percent(ctx, share * 100), range: ctx.t(`card.pocket.trend.range.${parts.range}`) }));
   const status = data?.status ?? "loading";
-  const has = ready && data.points.some((p) => p.s != null && p.t <= data.end);
+  const has = ready && data.has;
   let message = "";
   if (status === "loading") message = ctx.t("card.pocket.trend.loading");
   else if (status === "error") message = ctx.t("card.pocket.trend.error");

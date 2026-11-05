@@ -126,10 +126,10 @@ test("the trend arrow of the temperature, from the last hour, one redraw for all
   hass.ws = [];
   const series = { "sensor.living_room_temperature": [21, 21.7], "sensor.bedroom_temperature": [22.5, 21.9] };
   hass.callWS = (msg) => {
-    const id = msg.entity_ids[0];
-    hass.ws.push(id);
+    hass.ws.push(...msg.entity_ids);
     const start = Date.parse(msg.start_time);
-    return Promise.resolve({ [id]: (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 })) });
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => [id,
+      (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 }))])));
   };
   const el = mount(ctxOf({ hass }));
   await new Promise((r) => setTimeout(r, 30));

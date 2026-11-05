@@ -8,7 +8,8 @@
 //       less is steady; fewer than two numbers in the hour give null.
 //   recentHistory(hass, entityId, now?) -> Promise<points | null>
 //       the last hour of an entity, fetched at most once every REFRESH_MS per entity and shared by
-//       every widget that asks (null when the fetch failed: tried again after REFRESH_MS)
+//       every widget that asks (null when the fetch failed: tried again after REFRESH_MS); the
+//       entities asked in the same task are fetched in one history call
 //   peekHistory(entityId) -> points | null   what recentHistory last fetched, without fetching
 //   trendArrow(direction) -> the arrow glyph of a direction, "" for none
 //   trendNow(hass, entityId, kind, onReady?, now?) -> direction | null   for a widget's update():
@@ -19,7 +20,7 @@
 // Steps per kind (a reading's name in the card config); power and anything else are a share of
 // the hour's mean value, as their scale differs from one meter to the next.
 
-import { historyPoints } from "./history.js";
+import { historyPointsOf } from "./history.js";
 
 const HOUR = 3600 * 1000;
 export const REFRESH_MS = 5 * 60 * 1000;
@@ -62,11 +63,32 @@ export function recentHistory(hass, entityId, now = Date.now()) {
   const hit = cache.get(entityId);
   if (hit && now - hit.at < REFRESH_MS) return hit.promise;
   const entry = { at: now, points: hit?.points ?? null, done: false };
-  entry.promise = historyPoints(hass, entityId, now - HOUR, now).then(
+  entry.promise = batched(hass, entityId, now).then(
     (points) => { entry.points = points; entry.done = true; return points; },
     () => { entry.points = null; entry.done = true; return null; });
   cache.set(entityId, entry);
   return entry.promise;
+}
+
+// The entities asked within one task share one history call: a page of N meters opens with one
+// call, not N. Each batch spans the earliest asker's hour to the latest asker's now.
+const batches = new Map();     // hass -> {from, to, waiting: Map(entity id -> promise)}
+
+function batched(hass, entityId, now) {
+  let batch = batches.get(hass);
+  if (!batch) {
+    batch = { from: now, to: now, waiting: new Map(), answer: null };
+    batches.set(hass, batch);
+    const current = batch;
+    batch.answer = new Promise((resolve) => queueMicrotask(resolve)).then(() => {
+      batches.delete(hass);
+      return historyPointsOf(hass, [...current.waiting.keys()], current.from - HOUR, current.to);
+    });
+  }
+  batch.from = Math.min(batch.from, now);
+  batch.to = Math.max(batch.to, now);
+  if (!batch.waiting.has(entityId)) batch.waiting.set(entityId, batch.answer.then((byId) => byId[entityId] ?? []));
+  return batch.waiting.get(entityId);
 }
 
 export function trendNow(hass, entityId, kind, onReady, now = Date.now()) {
@@ -89,4 +111,5 @@ export function peekHistory(entityId) {
 // Tests start from an empty cache.
 export function clearHistoryCache() {
   cache.clear();
+  batches.clear();
 }

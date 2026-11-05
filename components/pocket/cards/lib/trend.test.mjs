@@ -98,7 +98,28 @@ test("trendNow: the cached direction; one fetch, each waiting widget told once w
   assert.equal(trendNow(hass, "sensor.t", "temperature", a, NOW + MIN), "rising");
   assert.equal(hass.calls.length, 1, "within REFRESH_MS: no fetch");
   trendNow(hass, "sensor.t", "temperature", a, NOW + REFRESH_MS);
+  await new Promise((r) => setTimeout(r, 0));
   assert.equal(hass.calls.length, 2, "stale: fetched again");
   assert.equal(trendNow(hass, undefined, "temperature", a, NOW), null);
   assert.equal(trendNow({}, "sensor.none", "temperature", a, NOW), null, "no websocket: no direction");
+});
+
+test("the entities asked in one task share one history call; each gets its own points", async () => {
+  const hass = fakeHass((msg) => Object.fromEntries(msg.entity_ids.map((id, i) =>
+    [id, [{ s: String(i), lu: (NOW - 50 * MIN) / 1000 }]])));
+  const ids = ["sensor.a", "sensor.b", "sensor.c", "sensor.d"];
+  const answers = await Promise.all(ids.map((id) => recentHistory(hass, id, NOW)));
+  assert.equal(hass.calls.length, 1, "one call for four entities");
+  assert.deepEqual(hass.calls[0].entity_ids, ids);
+  assert.deepEqual(answers.map((points) => points[0].v), [0, 1, 2, 3]);
+  await recentHistory(hass, "sensor.e", NOW + MIN);
+  assert.equal(hass.calls.length, 2, "a later task its own call");
+});
+
+test("a failed batch gives null to every entity in it", async () => {
+  const calls = [];
+  const hass = { callWS: (msg) => { calls.push(msg); return Promise.reject(new Error("down")); } };
+  const answers = await Promise.all(["sensor.a", "sensor.b"].map((id) => recentHistory(hass, id, NOW)));
+  assert.deepEqual(answers, [null, null]);
+  assert.equal(calls.length, 1);
 });

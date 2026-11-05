@@ -83,10 +83,10 @@ test("trend arrows from the last hour, none for energy counters", async () => {
   const asked = [];
   ctx.raw.callWS = (msg) => {
     if (msg.type !== "history/history_during_period") return Promise.reject(new Error("no"));
-    const id = msg.entity_ids[0];
-    asked.push(id);
+    asked.push(...msg.entity_ids);
     const start = Date.parse(msg.start_time) / 1000;
-    return Promise.resolve({ [id]: [{ s: "10", lu: start }, { s: "100", lu: start + 1800 }] });
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => [id,
+      [{ s: "10", lu: start }, { s: "100", lu: start + 1800 }]])));
   };
   const el = mount(ctx);
   await tick();
@@ -147,4 +147,20 @@ test("words in Polish and German", () => {
     assert.equal(text(el.querySelector(".top b")), title);
     assert.ok(texts(el, ".area .sec").includes(none));
   }
+});
+
+test("every row's trend arrow from one history call, on open and every refresh", async () => {
+  const ctx = ctxOf({ hass: powerHass() });
+  const calls = [];
+  ctx.raw.callWS = (msg) => {
+    if (msg.type !== "history/history_during_period") return Promise.reject(new Error("no"));
+    calls.push(msg);
+    return Promise.resolve({});
+  };
+  const el = mount(ctx);
+  await tick();
+  const rows = [...el.querySelectorAll(".row")].filter((row) => !row.dataset.entity.endsWith("_energy")).length;
+  assert.ok(rows > 2);
+  assert.equal(calls.length, 1, `${rows} rows, one call`);
+  assert.equal(calls[0].entity_ids.length, rows);
 });

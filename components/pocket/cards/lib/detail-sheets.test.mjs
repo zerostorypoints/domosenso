@@ -97,10 +97,10 @@ test("arrows from the last hour's history, each row its own, fetched once", asyn
   hass.ws = [];
   const series = { "sensor.living_room_temperature": [21.0, 21.7], "sensor.living_room_co2": [900, 768] };
   hass.callWS = (msg) => {
-    const id = msg.entity_ids[0];
-    hass.ws.push(id);
+    hass.ws.push(...msg.entity_ids);
     const start = Date.parse(msg.start_time);
-    return Promise.resolve({ [id]: (series[id] ?? [44, 44]).map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 })) });
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => [id,
+      (series[id] ?? [44, 44]).map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 }))])));
   };
   const ctx = ctxOf({ hass });
   const el = mount(air, ctx, airSpec(ctx, config.rooms[0]));
@@ -164,17 +164,20 @@ test("sizes: rows at least 44 px tall, text at least 11.5 px, level colours from
 test("checks: every reading's trend fetched at once, the answers drawn in one or two redraws", async () => {
   const hass = hassOf(states());
   hass.ws = [];
+  hass.calls = 0;
   hass.callWS = (msg) => {
-    const id = msg.entity_ids[0];
-    hass.ws.push(id);
+    hass.calls += 1;
+    hass.ws.push(...msg.entity_ids);
     const start = Date.parse(msg.start_time);
-    return Promise.resolve({ [id]: [20, 21].map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 })) });
+    return Promise.resolve(Object.fromEntries(msg.entity_ids.map((id) => [id,
+      [20, 21].map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 }))])));
   };
   const ctx = ctxOf({ cfg: withOutside, hass });
   const el = mount(checks, ctx, checksSpec(ctx));
   const rows = el.querySelectorAll(".drow").length;
-  assert.equal(hass.ws.length, rows, "one fetch per reading");
   await frame();
+  assert.equal(hass.ws.length, rows, "every reading asked");
+  assert.equal(hass.calls, 1, "in one history call");
   assert.ok(el._detail.redraws >= 1 && el._detail.redraws <= 2, `redraws: ${el._detail.redraws} for ${rows} answers`);
   assert.ok([...el.querySelectorAll(".drow .arrow")].every((a) => !a.hidden));
 });

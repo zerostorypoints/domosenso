@@ -137,3 +137,32 @@ test("config entry domains are asked once; a failure answers {} and is asked aga
   assert.deepEqual(await loadEntryDomains(ok), { e1: "zha" });
   clearEntryDomains();
 });
+
+// A registry object that counts how often it is listed (Object.values, Object.keys).
+function counted(object) {
+  const seen = { scans: 0 };
+  const proxy = new Proxy(object, { ownKeys(target) { seen.scans += 1; return Reflect.ownKeys(target); } });
+  return { proxy, seen };
+}
+
+test("a hass update with the same registries scans nothing again and gives the same groups", () => {
+  const base = registryHass();
+  const entities = counted(base.entities);
+  const devices = counted(base.devices);
+  const hass = { ...base, entities: entities.proxy, devices: devices.proxy };
+  const first = areaSensors(hass, "living_room");
+  const scans = [entities.seen.scans, devices.seen.scans];
+  assert.ok(scans[0] >= 1 && scans[1] >= 1);
+  const states = { ...hass.states, "sensor.lr_temperature": { ...hass.states["sensor.lr_temperature"], state: "22.1" } };
+  const next = { ...hass, states };
+  assert.equal(areaSensors(next, "living_room"), first, "the same array");
+  areaSensors(next, "hall");
+  assert.deepEqual([entities.seen.scans, devices.seen.scans], scans, "no registry scanned again, another area neither");
+  // A state that goes away, a new registry object, other config entries: grouped again.
+  const gone = { ...next, states: { ...states } };
+  delete gone.states["sensor.plant_moisture"];
+  assert.ok(!areaSensors(gone, "living_room").flatMap((g) => g.entities).includes("sensor.plant_moisture"));
+  const renewed = { ...next, entities: { ...base.entities } };
+  assert.notEqual(areaSensors(renewed, "living_room"), first);
+  assert.notEqual(areaSensors(next, "living_room", { e1: "zha" }), first);
+});

@@ -9,7 +9,10 @@
 //       id when the home names none), the Outside's `outside.area`
 //   areaSensors(hass, areaId, entryDomains?) -> [{category, name, colour, entities: [id]}]
 //       the categories in the catalog's order, each with its entities by name; hidden, disabled,
-//       diagnostic and configuration entities left out, and those of a disabled device
+//       diagnostic and configuration entities left out, and those of a disabled device; the same
+//       array again while nothing it reads from the registries changed (registryIndex below)
+//   registryIndex(hass) -> {byDevice, hubs, byArea, ...} | null   the registries indexed once per
+//       hass.entities and hass.devices object (the Power page reads its meters through it too)
 //   sensorValue(hass, id, t) -> text            the state as Home Assistant words it
 //   isNumeric(hass, id) -> boolean              a sensor with a number (it has a trend to show)
 //   shownEntity(reg) -> boolean                 a registry entry the pages list (the rules above)
@@ -45,15 +48,47 @@ export function entityArea(hass, reg) {
   return reg?.area_id || device?.area_id || null;
 }
 
+// The registries indexed once per pair of hass.entities and hass.devices (Home Assistant replaces
+// either object when it changes, never edits it in place): each device's entities, the devices
+// other devices connect through, and the listed sensors of every area. Per hass update the pages
+// then look up what they need instead of scanning every entity and device again.
+const indexes = new WeakMap();   // hass.entities -> {devices, byDevice, hubs, byArea, areas}
+
+export function registryIndex(hass) {
+  const entities = hass?.entities;
+  if (!entities) return null;
+  const hit = indexes.get(entities);
+  if (hit && hit.devices === hass.devices) return hit;
+  const byDevice = new Map();
+  const byArea = new Map();
+  for (const reg of Object.values(entities)) {
+    if (reg.device_id) {
+      if (!byDevice.has(reg.device_id)) byDevice.set(reg.device_id, []);
+      byDevice.get(reg.device_id).push(reg);
+    }
+    const id = reg.entity_id;
+    if (!id || !DOMAINS.includes(id.split(".")[0]) || !shown(reg)) continue;
+    const areaId = entityArea(hass, reg);
+    if (!areaId) continue;
+    if (!byArea.has(areaId)) byArea.set(areaId, []);
+    byArea.get(areaId).push(reg);
+  }
+  const hubs = new Set();
+  for (const d of Object.values(hass.devices || {})) {
+    if (d.via_device_id && !d.disabled_by && d.entry_type !== "service") hubs.add(d.via_device_id);
+  }
+  const index = { devices: hass.devices, byDevice, hubs, byArea, areas: new Map() };
+  indexes.set(entities, index);
+  return index;
+}
+
 // A device's category from all of its usable entities (wherever they stand), once per call.
-function deviceCategory(hass, deviceId, entryDomains, cache) {
+function deviceCategory(hass, index, deviceId, entryDomains, cache) {
   if (cache.has(deviceId)) return cache.get(deviceId);
   const device = hass.devices?.[deviceId];
-  const own = Object.values(hass.entities || {})
-    .filter((reg) => reg.device_id === deviceId && usable(hass, reg.entity_id, reg)).map((reg) => reg.entity_id);
-  const hub = Object.values(hass.devices || {}).some((d) => d.via_device_id === deviceId && !d.disabled_by
-    && d.entry_type !== "service");
-  const id = own.length ? rolesOf(scanForm(hass, own, device, hub, entryDomains))[0].id : FALLBACK.id;
+  const own = (index.byDevice.get(deviceId) ?? [])
+    .filter((reg) => usable(hass, reg.entity_id, reg)).map((reg) => reg.entity_id);
+  const id = own.length ? rolesOf(scanForm(hass, own, device, index.hubs.has(deviceId), entryDomains))[0].id : FALLBACK.id;
   cache.set(deviceId, id);
   return id;
 }
@@ -63,25 +98,37 @@ function nameOf(hass, id) {
   return hass.states?.[id]?.attributes?.friendly_name || reg?.name || reg?.original_name || id;
 }
 
-export function areaSensors(hass, areaId, entryDomains = {}) {
+const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+// The groups are kept per area until the registries, the config entries' domains, the language or
+// the area's entities with a state change: a hass update with none of these changed returns the
+// same array without grouping again (a sensor renamed alone keeps its place until then).
+const NO_DOMAINS = Object.freeze({});   // one object, so a call without domains finds its cache
+
+export function areaSensors(hass, areaId, entryDomains = NO_DOMAINS) {
   if (!areaId || !hass?.entities) return [];
+  const index = registryIndex(hass);
+  const lang = hass.locale?.language || hass.language;
+  const regs = (index.byArea.get(areaId) ?? []).filter((reg) => hass.states?.[reg.entity_id]);
+  const ids = regs.map((reg) => reg.entity_id);
+  const hit = index.areas.get(areaId);
+  if (hit && hit.entryDomains === entryDomains && hit.lang === lang && sameList(hit.ids, ids)) return hit.groups;
   const cache = new Map();
   const groups = new Map();
-  for (const reg of Object.values(hass.entities)) {
+  for (const reg of regs) {
     const id = reg.entity_id;
-    if (!id || !DOMAINS.includes(id.split(".")[0]) || !shown(reg) || !hass.states?.[id]) continue;
-    if (entityArea(hass, reg) !== areaId) continue;
     const device = reg.device_id ? hass.devices?.[reg.device_id] : null;
-    const category = device ? deviceCategory(hass, reg.device_id, entryDomains, cache)
+    const category = device ? deviceCategory(hass, index, reg.device_id, entryDomains, cache)
       : rolesOf(scanForm(hass, [id], null, false, entryDomains))[0].id;
     if (!groups.has(category)) groups.set(category, []);
     groups.get(category).push(id);
   }
-  const lang = hass.locale?.language || hass.language;
-  return CATEGORIES.filter((c) => groups.has(c.id)).map((c) => ({
+  const result = CATEGORIES.filter((c) => groups.has(c.id)).map((c) => ({
     category: c.id, name: categoryName(c, lang), colour: colourOf(categoryById(c.id)),
     entities: groups.get(c.id).sort((a, b) => nameOf(hass, a).localeCompare(nameOf(hass, b)) || (a < b ? -1 : 1)),
   }));
+  index.areas.set(areaId, { entryDomains, lang, ids, groups: result });
+  return result;
 }
 
 export function sensorValue(hass, id, t) {

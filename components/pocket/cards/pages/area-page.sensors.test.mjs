@@ -105,7 +105,9 @@ test("an update patches the values in place; a new entity rebuilds the rows", ()
   room.update(el, ctx);
   assert.equal(el.querySelector('.sensors .row[data-entity="sensor.alex_humidity"]'), row, "the same row");
   assert.equal(text(row.querySelector(".v")), "51 %");
-  next.entities["sensor.alex_pressure"] = { entity_id: "sensor.alex_pressure", device_id: "d_climate", platform: "zha" };
+  // Home Assistant gives a new registry object when it changes, never the same one edited.
+  next.entities = { ...next.entities,
+    "sensor.alex_pressure": { entity_id: "sensor.alex_pressure", device_id: "d_climate", platform: "zha" } };
   next.states["sensor.alex_pressure"] = { state: "1012", attributes: { unit_of_measurement: "hPa", friendly_name: "Pressure" } };
   ctx.hass = { ...next };
   room.update(el, ctx);
@@ -187,4 +189,18 @@ test("a failed read is forgotten: the next visit asks again", async () => {
   await settle();
   assert.ok(second.querySelector(".area-plan floorplan-card"));
   assert.equal(hass.ws.filter((type) => type === "lovelace/config").length, 2);
+});
+
+test("collapsed, an update leaves the rows' values for the next open", () => {
+  const ctx = ctxOf({ hass: registryHass(), routeId: "living_room" });
+  const el = mount(ctx);
+  const value = () => text(el.querySelector('.sensors .row[data-entity="sensor.alex_humidity"] .v'));
+  const before = value();
+  const next = registryHass();
+  next.states["sensor.alex_humidity"] = { ...next.states["sensor.alex_humidity"], state: "51" };
+  ctx.hass = next;
+  room.update(el, ctx);
+  assert.equal(value(), before, "out of sight: not patched");
+  el.querySelector(".sensors .head").click();
+  assert.equal(value(), "51 %", "patched on open");
 });
