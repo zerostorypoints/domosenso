@@ -62,12 +62,17 @@ const STYLE = `
   .media .seg button[aria-pressed="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
   .media .player { padding: 0 6px; }
   .media .player.muted .art, .media .player.muted .meta { opacity: .55; }
-  .media .art { box-sizing: border-box; display: block; width: 100%; max-width: 420px; aspect-ratio: 1; margin: 0 auto;
+  /* The artwork gives way to the controls: on a phone every common control (transport, volume,
+     mute) stays on the first screen; it is as wide as the column only where the height allows it
+     (470 px: the rows under it, the bar and the margins), never under 160 px. */
+  .media .art { box-sizing: border-box; display: block; aspect-ratio: 1; margin: 0 auto;
+                width: min(100%, 420px, max(160px, calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - 470px)));
                 padding: 0; border: 0; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer;
                 background: var(--chip); color: var(--mut); box-shadow: 0 10px 30px rgba(0, 0, 0, .2); --mdc-icon-size: 72px; }
   .media .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .media .art ha-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-  .media .meta { margin-top: 14px; overflow-wrap: anywhere; }
+  .media .meta { margin-top: 14px; display: flex; align-items: flex-start; gap: 10px; }
+  .media .meta .info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   /* A short, wide screen (a phone in landscape): the artwork on the left, no taller than the room
      between the header and the bar, the rest beside it. */
   @media (orientation: landscape) and (max-height: 560px) {
@@ -101,12 +106,13 @@ const STYLE = `
   .media .mute { flex: 0 0 auto; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 12px;
                  background: var(--chip); color: var(--fg); display: flex; align-items: center; justify-content: center;
                  cursor: pointer; --mdc-icon-size: 22px; }
-  .media .input { box-sizing: border-box; width: 100%; min-height: 44px; margin: 10px 0 0; padding: 0 12px;
-                  display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px;
-                  background: var(--card); color: var(--fg); font: inherit; font-size: 14px; text-align: left;
-                  cursor: pointer; --mdc-icon-size: 20px; }
-  .media .input .k { color: var(--mut); }
-  .media .input .v { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+  /* The input, beside what plays: a compact chip, its label said by aria-label. */
+  .media .input { box-sizing: border-box; flex: 0 1 auto; max-width: 48%; min-height: 44px; margin: 0; padding: 0 8px 0 10px;
+                  display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 22px;
+                  background: var(--card); color: var(--fg); font: inherit; font-size: 13px; text-align: left;
+                  cursor: pointer; --mdc-icon-size: 18px; }
+  .media .input .k { display: none; }
+  .media .input .v { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
   .media .input ha-icon { flex: 0 0 auto; color: var(--mut); }
   .media .src { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px;
                 margin-top: 6px; font-size: 12.5px; color: var(--mut); overflow-wrap: anywhere; }
@@ -130,7 +136,7 @@ export function render(ctx) {
     </div>
     <div class="player">
       <button class="art" type="button"><ha-icon icon="mdi:music"></ha-icon><img alt="" hidden></button>
-      <div class="meta"><div class="title"></div><div class="artist"></div><div class="album"></div></div>
+      <div class="meta"><div class="info"><div class="title"></div><div class="artist"></div><div class="album"></div></div><button class="input" type="button" hidden><ha-icon icon="mdi:import"></ha-icon><span class="k"></span><span class="v"></span><ha-icon icon="mdi:chevron-down"></ha-icon></button></div>
       <div class="prog" hidden><span class="bar"><i></i></span><div class="times"><span class="pos"></span><span class="dur"></span></div></div>
       <div class="transport">
         <button class="cb previous" type="button" data-action="previous"><ha-icon icon="${GLYPH.previous}"></ha-icon></button>
@@ -141,7 +147,6 @@ export function render(ctx) {
         <button class="mute" type="button"><ha-icon icon="mdi:volume-high"></ha-icon></button>
         <div class="vol" role="slider" tabindex="0" data-drag aria-valuemin="0" aria-valuemax="100"><i></i><span></span></div>
       </div>
-      <button class="input" type="button" hidden><ha-icon icon="mdi:import"></ha-icon><span class="k"></span><span class="v"></span><ha-icon icon="mdi:chevron-down"></ha-icon></button>
       <div class="src"><span class="line"></span><button class="level" type="button" hidden></button></div>
     </div>
     <p class="none" hidden></p>`;

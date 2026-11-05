@@ -411,3 +411,10 @@ test("input: a button with the current source when the player can select one of 
     assert.equal(other.querySelector(".input").hidden, true, JSON.stringify(attrs));
   }
 });
+
+test("on a phone the controls stay on the first screen: the artwork is sized from the screen's height; the input sits beside what plays", () => {
+  const el = mount(ctxWith({ routeId: "living_room" }));
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /\.media \.art \{[^}]*width: min\(100%, 420px, max\(160px, calc\(100dvh - var\(--kiosk-header-height, var\(--header-height, 56px\)\) - 470px\)\)\)/);
+  assert.equal(el.querySelector(".input").parentElement.className, "meta", "beside the title, not under the volume");
+});
