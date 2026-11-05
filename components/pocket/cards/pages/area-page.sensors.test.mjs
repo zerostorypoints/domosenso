@@ -133,7 +133,7 @@ test("the area's room on the floor plan's own card, with the home's floorplan", 
   await settle();
   const card = el.querySelector(".area-plan floorplan-card");
   assert.ok(card, "the floorplan component's element");
-  assert.deepEqual(card._config, { edit: false, values: true, maps: false, zoom: false, chips: false, tap_tips: true, area: "living_room",
+  assert.deepEqual(card._config, { edit: false, values: true, maps: true, zoom: false, chips: false, tap_tips: true, area: "living_room",
     context: true, plan: PLAN });
   assert.equal(el.querySelector(".area-plan").hidden, false, "shown once the card says the room is on the plan");
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room[data-area]").length, 1, "the area's own room, tappable");
@@ -160,7 +160,7 @@ test("an area not on the plan hides its part; a home without the floorplan has n
 });
 
 test("planConfig is the floor plan card's host options", () => {
-  assert.deepEqual(planConfig("hall"), { area: "hall", context: true, edit: false, zoom: false, maps: false, chips: false, values: true });
+  assert.deepEqual(planConfig("hall"), { area: "hall", context: true, edit: false, zoom: false, maps: true, chips: false, values: true });
 });
 
 test("the plan is read once per session: two area visits, one lovelace/config", async () => {

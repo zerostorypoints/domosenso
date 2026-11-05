@@ -204,3 +204,32 @@ test("stack: dismiss closes every sheet", () => {
   assert.equal(layer.hidden, true);
   assert.equal(sheet.content, null);
 });
+
+const finger = (target, type, x, y) => {
+  const event = new Event(type, { bubbles: true, cancelable: true, composed: true });
+  event.touches = type === "touchend" ? [] : [{ clientX: x, clientY: y }];
+  target.dispatchEvent(event);
+  return event;
+};
+
+test("a finger anywhere on the sheet drags it down from the top of its content; the page behind never moves", () => {
+  const { sheet, content, layer, closed } = setup();
+  sheet.open(content, "Temperature");
+  finger(content, "touchstart", 100, 300);
+  const first = finger(content, "touchmove", 102, 320);
+  assert.equal(first.defaultPrevented, true, "the page does not scroll or pull to refresh");
+  finger(content, "touchmove", 102, 420);
+  finger(content, "touchend", 102, 420);
+  assert.equal(closed.length, 1, "past CLOSE_PX on the content closes");
+
+  sheet.open(content, "Temperature");
+  finger(content, "touchstart", 100, 300);
+  const sideways = finger(content, "touchmove", 160, 310);
+  assert.equal(sideways.defaultPrevented, false, "a sideways drag is the content's");
+  const slider = document.createElement("div");
+  slider.setAttribute("data-drag", "");
+  content.append(slider);
+  finger(slider, "touchstart", 100, 300);
+  assert.equal(finger(slider, "touchmove", 100, 400).defaultPrevented, false, "a slider drags itself");
+  assert.equal(finger(layer.querySelector(".scrim"), "touchmove", 10, 10).defaultPrevented, true);
+});
