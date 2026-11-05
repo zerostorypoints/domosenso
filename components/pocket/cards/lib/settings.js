@@ -6,7 +6,8 @@
 //   saveSettings(hass, patch) -> Promise<settings>   merges patch into the stored value, saves it
 //
 // Fields:
-//   bar   the page ids on the bottom bar (lib/router.js barTabs: Home and Settings always)
+//   bar     the page ids on the bottom bar (lib/router.js barTabs: Home and Settings always)
+//   theme   the Appearance: "system" (the phone's), "light" or "dark" (lib/theme.js MODES)
 //
 // A call that fails (an old Home Assistant, a lost connection, a hass without callWS) gives the
 // defaults on load (readSettings rejects instead); on save it rejects and writes nothing.
@@ -15,7 +16,10 @@ export const KEY = "domosenso-pocket";
 
 export const DEFAULTS = Object.freeze({
   bar: Object.freeze(["home", "areas", "climate", "media", "settings"]),
+  theme: "system",
 });
+
+const THEMES = ["system", "light", "dark"];
 
 const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
 
@@ -24,6 +28,7 @@ export function withDefaults(stored) {
   const value = isObject(stored) ? stored : {};
   const result = { ...DEFAULTS, ...value, bar: [...DEFAULTS.bar] };
   if (Array.isArray(value.bar) && value.bar.every((id) => typeof id === "string")) result.bar = [...value.bar];
+  if (!THEMES.includes(value.theme)) result.theme = DEFAULTS.theme;
   return result;
 }
 

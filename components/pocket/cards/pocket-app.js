@@ -6,6 +6,8 @@
 //   - a bottom bar fixed to the bottom of the screen: Home, the person's chosen pages (their
 //     settings, lib/settings.js, read once from Home Assistant; the defaults until then) and
 //     Settings, at most five;
+//   - the colours of the person's Appearance (lib/theme.js): System follows the phone's
+//     prefers-color-scheme, and a change of it repaints at once;
 //   - a thin banner while Home Assistant is not connected (pages then get ctx.offline = true);
 //   - a short toast above the bar when an action fails: a page or tile fires pocket-error with a
 //     translation key (lib/report.js), the shell shows its text for TOAST_MS;
@@ -89,6 +91,7 @@ class PocketApp extends HTMLElement {
   constructor() {
     super();
     this._onHash = () => this._route();
+    this._onScheme = () => this._paint();
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
     this._saveQueue = Promise.resolve();
@@ -149,11 +152,15 @@ class PocketApp extends HTMLElement {
 
   connectedCallback() {
     window.addEventListener("hashchange", this._onHash);
+    this._scheme = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
+    this._scheme?.addEventListener?.("change", this._onScheme);
+    if (this._root) this._paint();
     if (this._root) this._route();   // the hash may have changed while the card was away
   }
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this._onHash);
+    this._scheme?.removeEventListener?.("change", this._onScheme);
   }
 
   // The language of every word: the dashboard's (config.lang), else Home Assistant's.
@@ -184,7 +191,11 @@ class PocketApp extends HTMLElement {
   // The person's settings, read or just saved: the bar follows them.
   _applySettings(settings) {
     this._settings = settings;
-    if (this._root) this._renderBar();
+    if (this._root) {
+      this._paint();
+      this._renderBar();
+      if (this.isConnected) this._route();   // the page shows them too (Settings)
+    }
     return settings;
   }
 
@@ -297,8 +308,15 @@ class PocketApp extends HTMLElement {
     }, this.toastMs);
   }
 
+  // The person's Appearance over the phone's scheme (read now: the card may be built before it is
+  // connected) and Home Assistant's theme.
+  _paint() {
+    const scheme = this._scheme ?? window.matchMedia?.("(prefers-color-scheme: dark)");
+    applyTheme(this._app, this._hass, { mode: this._settings?.theme, systemDark: scheme?.matches === true });
+  }
+
   _refresh() {
-    applyTheme(this._app, this._hass);
+    this._paint();
     const offline = this._hass?.connected === false;
     this._banner.hidden = !offline;
     setText(this._banner, offline ? this._t("card.pocket.offline") : "");

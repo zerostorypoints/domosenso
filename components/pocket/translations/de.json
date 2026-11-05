@@ -141,6 +141,55 @@
           "nox": "NOx {value}"
         },
         "outside": "Draussen"
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "appearance": "Darstellung",
+        "theme": {
+          "system": "System",
+          "light": "Hell",
+          "dark": "Dunkel"
+        },
+        "bar": {
+          "title": "Untere Leiste",
+          "fixed": "Zuhause und Einstellungen sind immer da; wähle bis zu {count} weitere.",
+          "full": "{count} Seiten sind in der Leiste. Schalte eine aus, um eine andere hinzuzufügen."
+        },
+        "comfort": {
+          "title": "Komfortbereiche",
+          "hint": "Tippe auf einen Wert, um ihn in Home Assistant zu ändern.",
+          "temperature": "Temperatur",
+          "humidity": "Luftfeuchtigkeit",
+          "low": "ab",
+          "high": "bis",
+          "edit": "{area}, {reading} {side}: {value}"
+        },
+        "air": {
+          "title": "Luftgrenzwerte",
+          "score": "Luftqualität",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "VOC",
+          "nox": "NOx"
+        },
+        "air_side": {
+          "fair": "mässig ab",
+          "poor": "schlecht ab"
+        },
+        "about": {
+          "title": "Über",
+          "version": "Pocket {version}",
+          "dev": "{version} (Entwicklung)",
+          "components": "Komponenten, die dieses Zuhause nutzt",
+          "missing": "Die Liste der Komponenten fehlt: sensor.domosenso_components erscheint mit dem nächsten domosenso render und Deploy.",
+          "areas": "Bereiche und was sie lesen",
+          "ha_area": "Home-Assistant-Bereich: {name}",
+          "unknown_area": "Home-Assistant-Bereich {id}: nicht gefunden",
+          "no_area": "Aus den Aussensensoren und dem Wetter",
+          "catalog": "Domosenso-Katalog",
+          "repo": "Quellcode auf GitHub"
+        },
+        "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut."
       }
     }
   }

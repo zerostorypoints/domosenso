@@ -24,7 +24,7 @@ test("the defaults: Home, Areas, Climate, Media, Settings on the bar", () => {
 
 test("nothing stored: the defaults; the read asks for the pocket's key", async () => {
   const hass = hassWith();
-  assert.deepEqual(await loadSettings(hass), { bar: ["home", "areas", "climate", "media", "settings"] });
+  assert.deepEqual(await loadSettings(hass), { bar: ["home", "areas", "climate", "media", "settings"], theme: "system" });
   assert.deepEqual(hass.calls, [{ type: "frontend/get_user_data", key: "domosenso-pocket" }]);
 });
 
@@ -85,4 +85,13 @@ test("readSettings rejects on a failed call; nothing stored or no callWS: the de
   await assert.rejects(readSettings({ callWS: () => Promise.reject(new Error("no")) }));
   assert.deepEqual((await readSettings(hassWith())).bar, [...DEFAULTS.bar]);
   assert.deepEqual((await readSettings({})).bar, [...DEFAULTS.bar]);
+});
+
+test("the Appearance: system by default; a stored light or dark wins; anything else is system", () => {
+  assert.equal(DEFAULTS.theme, "system");
+  assert.equal(withDefaults({}).theme, "system");
+  assert.equal(withDefaults({ theme: "light" }).theme, "light");
+  assert.equal(withDefaults({ theme: "dark" }).theme, "dark");
+  assert.equal(withDefaults({ theme: "auto" }).theme, "system");
+  assert.equal(withDefaults({ theme: 1 }).theme, "system");
 });

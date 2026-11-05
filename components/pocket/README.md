@@ -16,13 +16,22 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 - **Bottom bar**: fixed to the bottom of the screen (beside HA's sidebar on a wide screen), its
   background down over the home indicator. Home and Settings always, the person's chosen pages
   between them, at most five; by default Home, Areas, Climate, Media, Settings. Climate, Media,
-  Power, Plants and Settings are "coming next".
+  Power and Plants are "coming next".
+- **Settings** (`#/settings`): Appearance (System / Light / Dark), the bar's pages (at most three
+  besides Home and Settings), the comfort ranges and air limits (each value opens Home Assistant's
+  dialog of its climate-air helper, which changes it), and About: the pocket's version, every
+  component the home runs (`sensor.domosenso_components`, which the `domosenso` command writes),
+  the Home Assistant area each pocket area reads, and links to the catalog.
+- **Colours**: the base colours (background, cards, text, lines, accent) are Home Assistant's
+  theme variables, so the pocket has the theme's contrast; level colours and the lamp are the
+  pocket's own. System follows the phone's light or dark setting; Light or Dark against Home
+  Assistant's current theme uses the pocket's own palette for that variant.
 
 ### Per-person settings
 
 Stored in Home Assistant's frontend user data (websocket `frontend/get_user_data` /
 `frontend/set_user_data`, key `domosenso-pocket`): they follow the person to every device and are
-nobody else's. Field `bar`: the page ids on the bar. When they cannot be read, the defaults apply.
+nobody else's. Fields `bar`: the page ids on the bar; `theme`: `system` (default), `light` or `dark`. When they cannot be read, the defaults apply.
 
 Levels are good, fair or poor (plus a side, low or high, for comfort ranges). They are computed in
 the cards from the states and climate-air's limits; the messages are translations.

@@ -141,6 +141,55 @@
           "nox": "NOx {value}"
         },
         "outside": "Na zewnątrz"
+      },
+      "settings": {
+        "title": "Ustawienia",
+        "appearance": "Wygląd",
+        "theme": {
+          "system": "Systemowy",
+          "light": "Jasny",
+          "dark": "Ciemny"
+        },
+        "bar": {
+          "title": "Dolny pasek",
+          "fixed": "Dom i Ustawienia są zawsze; wybierz jeszcze maks. {count}.",
+          "full": "Pasek jest pełny (maks. {count}). Wyłącz jedną stronę, aby dodać inną."
+        },
+        "comfort": {
+          "title": "Zakresy komfortu",
+          "hint": "Dotknij wartości, aby zmienić ją w Home Assistant.",
+          "temperature": "Temperatura",
+          "humidity": "Wilgotność",
+          "low": "od",
+          "high": "do",
+          "edit": "{area}, {reading} {side}: {value}"
+        },
+        "air": {
+          "title": "Progi powietrza",
+          "score": "Ocena powietrza",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "LZO",
+          "nox": "NOx"
+        },
+        "air_side": {
+          "fair": "średnio od",
+          "poor": "źle od"
+        },
+        "about": {
+          "title": "O aplikacji",
+          "version": "Pocket {version}",
+          "dev": "{version} (rozwojowa)",
+          "components": "Komponenty działające w tym domu",
+          "missing": "Brak listy komponentów: sensor.domosenso_components pojawi się po następnym domosenso render i wdrożeniu.",
+          "areas": "Obszary i co odczytują",
+          "ha_area": "Obszar Home Assistant: {name}",
+          "unknown_area": "Obszar Home Assistant {id}: nie znaleziono",
+          "no_area": "Z czujników zewnętrznych i pogody",
+          "catalog": "Katalog Domosenso",
+          "repo": "Kod na GitHubie"
+        },
+        "error": "Ustawienie nie zostało zapisane. Spróbuj ponownie."
       }
     }
   }

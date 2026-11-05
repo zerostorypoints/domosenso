@@ -156,15 +156,61 @@ test("offline: a banner and ctx.offline; back online it goes", () => {
   assert.equal(card._ctx().offline, false);
 });
 
-test("light tokens by default, dark with hass.themes.darkMode", () => {
-  const card = mount();
-  const app = $(card, ".app");
-  assert.equal(app.style.getPropertyValue("--bg"), "#f6f7f9");
-  assert.equal(app.style.getPropertyValue("--acc"), "#2f7cf6");
-  card.hass = hassOf({ themes: { darkMode: true } });
-  assert.equal(app.style.getPropertyValue("--bg"), "#0f1115");
-  assert.equal(app.style.getPropertyValue("--acc"), "#5b9bff");
-  assert.equal(app.dataset.theme, "dark");
+// A matchMedia whose prefers-color-scheme answer the test sets; set(dark) fires its change event.
+function fakeScheme(dark = false) {
+  const listeners = new Set();
+  const media = { matches: dark, addEventListener: (_t, fn) => listeners.add(fn),
+    removeEventListener: (_t, fn) => listeners.delete(fn) };
+  const original = window.matchMedia;
+  window.matchMedia = () => media;
+  return { media, listeners, set: (value) => { media.matches = value; for (const fn of listeners) fn(); },
+    restore: () => { window.matchMedia = original; } };
+}
+
+test("System follows the phone, not HA's darkMode; HA's own variables when its theme is the same", () => {
+  const scheme = fakeScheme(false);
+  try {
+    const card = mount();
+    const app = $(card, ".app");
+    assert.equal(app.dataset.theme, "light");
+    assert.equal(app.style.getPropertyValue("--bg"), "var(--primary-background-color, #f6f7f9)");
+    assert.equal(app.style.getPropertyValue("--acc"), "var(--primary-color, #2f7cf6)");
+    assert.equal(app.style.getPropertyValue("--ok"), "#10b981");
+    // HA turns dark, the phone stays light: the pocket's own light values (HA's are dark ones now).
+    card.hass = hassOf({ themes: { darkMode: true } });
+    assert.equal(app.dataset.theme, "light");
+    assert.equal(app.style.getPropertyValue("--bg"), "#f6f7f9");
+    // The phone turns dark: repainted at once, with HA's dark variables.
+    scheme.set(true);
+    assert.equal(app.dataset.theme, "dark");
+    assert.equal(app.style.getPropertyValue("--bg"), "var(--primary-background-color, #0f1115)");
+    assert.equal(app.style.getPropertyValue("--cold"), "#60a5fa");
+    card.remove();
+    assert.equal(scheme.listeners.size, 0);
+  } finally {
+    scheme.restore();
+  }
+});
+
+test("a saved Light or Dark forces that variant", async () => {
+  const scheme = fakeScheme(true);
+  try {
+    let stored = { theme: "light" };
+    const card = mount({ hass: hassOf({ themes: { darkMode: true }, callWS: async (msg) => {
+      if (msg.type === "frontend/get_user_data") return { value: stored };
+      stored = msg.value;
+      return null;
+    } }) });
+    await tick();
+    const app = $(card, ".app");
+    assert.equal(app.dataset.theme, "light");
+    assert.equal(app.style.getPropertyValue("--fg"), "#1c1f24");
+    await card._ctx().saveSettings({ theme: "dark" });
+    assert.equal(app.dataset.theme, "dark");
+    assert.equal(app.style.getPropertyValue("--fg"), "var(--primary-text-color, #eef0f3)");
+  } finally {
+    scheme.restore();
+  }
 });
 
 test("a removed card stops listening to hashchange", async () => {
@@ -238,8 +284,14 @@ test("the offline banner's text colour is a token of both themes", () => {
   const card = mount({ hass: hassOf({ connected: false }) });
   assert.match($(card, "style").textContent, /\.offline \{[^}]*color:\s*var\(--on-warn\)/);
   assert.equal($(card, ".app").style.getPropertyValue("--on-warn"), "#1c1f24");
-  card.hass = hassOf({ connected: false, themes: { darkMode: true } });
-  assert.equal($(card, ".app").style.getPropertyValue("--on-warn"), "#0f1115");
+  const scheme = fakeScheme(true);
+  try {
+    card.remove();
+    document.body.appendChild(card);
+    assert.equal($(card, ".app").style.getPropertyValue("--on-warn"), "#0f1115");
+  } finally {
+    scheme.restore();
+  }
 });
 
 test("a failed action shows a translated toast above the bar for a short time; the tile stays as it was", async () => {

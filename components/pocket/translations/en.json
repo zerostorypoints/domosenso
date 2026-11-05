@@ -141,6 +141,55 @@
           "nox": "NOx {value}"
         },
         "outside": "Outside"
+      },
+      "settings": {
+        "title": "Settings",
+        "appearance": "Appearance",
+        "theme": {
+          "system": "System",
+          "light": "Light",
+          "dark": "Dark"
+        },
+        "bar": {
+          "title": "Bottom bar",
+          "fixed": "Home and Settings are always there; choose up to {count} more.",
+          "full": "{count} pages are on the bar. Turn one off to add another."
+        },
+        "comfort": {
+          "title": "Comfort ranges",
+          "hint": "Tap a value to change it in Home Assistant.",
+          "temperature": "Temperature",
+          "humidity": "Humidity",
+          "low": "from",
+          "high": "to",
+          "edit": "{area}, {reading} {side}: {value}"
+        },
+        "air": {
+          "title": "Air limits",
+          "score": "Air score",
+          "co2": "CO₂",
+          "pm2_5": "PM2.5",
+          "voc": "VOC",
+          "nox": "NOx"
+        },
+        "air_side": {
+          "fair": "fair at",
+          "poor": "poor at"
+        },
+        "about": {
+          "title": "About",
+          "version": "Pocket {version}",
+          "dev": "{version} (development)",
+          "components": "Components this home runs",
+          "missing": "The list of components is missing: sensor.domosenso_components appears with the next domosenso render and deploy.",
+          "areas": "Areas and what they read",
+          "ha_area": "Home Assistant area: {name}",
+          "unknown_area": "Home Assistant area {id}: not found",
+          "no_area": "From the outside sensors and the weather",
+          "catalog": "Domosenso catalog",
+          "repo": "Source on GitHub"
+        },
+        "error": "The setting was not saved. Try again."
       }
     }
   }

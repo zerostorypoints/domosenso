@@ -23,6 +23,7 @@ import * as home from "./home-page.js";
 import * as placeholder from "./placeholder.js";
 import * as areas from "./areas-page.js";
 import * as area from "./area-page.js";
+import * as settings from "./settings-page.js";
 
 // Pages not built yet say so (placeholder.js) until their task builds them.
 export const pages = {
@@ -33,6 +34,6 @@ export const pages = {
   media: placeholder,
   power: placeholder,
   plants: placeholder,
-  settings: placeholder,
+  settings,
   floorplan: placeholder,
 };
