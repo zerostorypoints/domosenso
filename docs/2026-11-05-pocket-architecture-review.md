@@ -35,6 +35,11 @@ shared inputs had proven themselves in a second consumer.
 
 ## 3. The shared home model (P1, P2): the main idea to review
 
+> **Decided since** (review of #219, 2026-11-05): the level keys, helper ids, the mapping from the
+> Ramka's helpers, discovery, operable states and settings scopes are recorded in
+> [the shared home decisions](2026-11-05-shared-home-decisions.md). The cases every implementation
+> runs are in `tests/fixtures/assessment.json`.
+
 ### 3.1 Home inputs: describe the home once
 
 `domosenso.yaml` may name one file, `home_inputs: domosenso/home.inputs.yaml` (instance layer: the

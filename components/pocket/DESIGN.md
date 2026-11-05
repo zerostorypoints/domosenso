@@ -165,6 +165,11 @@ when the row has a level. A row that opens something is a `button`.
 
 ## 6. Levels and colour
 
+The level keys and their boundaries are the shared contract
+([decision D1](../../docs/2026-11-05-shared-home-decisions.md#d1-assessment-keys)).
+`cards/lib/level.fixtures.test.mjs` runs `level()` over the shared cases in
+`tests/fixtures/assessment.json`; a change to a boundary is a change to that file, not to Pocket alone.
+
 - Vocabulary from the Ramka: **good / fair / poor**; a comfort range adds the sides **cold** (below)
   and **warm** (above).
 - Tokens (`lib/theme.js`): `--ok` good, `--warn` fair, `--bad` poor, `--cold` blue, `--warm` red;
