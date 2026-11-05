@@ -110,6 +110,54 @@ def test_other_files_map_to_nothing(repo):
                          'website/README.md']) == []
 
 
+@pytest.mark.parametrize('change', ['add', 'update', 'remove'])
+def test_binary_site_asset_changes_are_reported(repo, change):
+    root, _, commit, git = repo
+    path = 'website/public/social.png'
+    asset = root / path
+    asset.parent.mkdir(parents=True, exist_ok=True)
+    if change != 'add':
+        asset.write_bytes(b'\x89PNG\r\n\x1a\n\x80')
+        commit(); git('tag', '-f', 'base')
+    if change == 'remove':
+        asset.unlink()
+    else:
+        asset.write_bytes(b'\x89PNG\r\n\x1a\n\x81')
+    commit()
+    assert routes(repo, [path]) == [('/', 'site code changed — check all pages')]
+
+
+def test_binary_brand_document_is_not_a_website_page(repo):
+    root, _, commit, _ = repo
+    asset = root / 'branding/brand-book.pdf'
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b'%PDF-1.4\n\xff\x80')
+    commit()
+    assert routes(repo, ['branding/brand-book.pdf']) == []
+
+
+def test_unchanged_binary_asset_is_not_reported(repo):
+    root, write, commit, git = repo
+    asset = root / 'website/public/social.png'
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b'\x89PNG\r\n\x1a\n\x80')
+    commit(); git('tag', '-f', 'base')
+    write('README.md', 'unrelated change'); commit()
+    assert routes(repo, ['website/public/social.png']) == []
+
+
+def test_cli_reports_binary_assets_without_decoding_them(repo, capsys):
+    root, _, commit, _ = repo
+    asset = root / 'website/public/apple-icon.png'
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b'\x89PNG\r\n\x1a\n\xff')
+    commit()
+    tool().main(['--root', str(root), '--base', 'base', '--format', 'urls'])
+    assert capsys.readouterr().out.splitlines() == [
+        'https://domosenso.org/', 'https://domosenso.org/llms.txt',
+        'https://domosenso.org/llms-full.txt']
+
+
 def test_cli(repo, capsys):
     root, write, commit, _ = repo
     write('website/content/how-to/x.md', howto()); write('website/content/how-to/y.md', howto('draft'))
