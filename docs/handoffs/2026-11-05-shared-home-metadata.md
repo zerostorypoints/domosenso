@@ -7,7 +7,7 @@ stay in their private instance repository.
 
 ## Starting point
 
-The framework main already declares 38 read/explanation capabilities across 14
+The framework main already declares 39 read/explanation capabilities across 15
 components through `assistant.yaml`. Source selection, shared timers and light/awning
 action metadata from framework PR #204 are merged. Bridge PR #4 remains open at the
 inspection baseline. Android PR #2 is merged. Treat release, publication, installation
@@ -20,8 +20,8 @@ enabling v2.
 
 | Source | Pinned inspection reference | Files to inspect first |
 |---|---|---|
-| Framework main | `013af945fad43217272aa6d2b3e52af82ef1322b` | `docs/ASSISTANT.md`, SPEC-029/032/033, `tools/assistant_contract.py`, component definitions and binding templates |
-| Shared inputs/Pocket | `60a36a20da393b523bc0eb3bb476f3caee583e0a` | `schemas/home-inputs.schema.json`, `tools/domosenso_cli/home_inputs.py`, `tools/domosenso_render.py`, `components/pocket/` |
+| Framework main | `6bfe35f2ae81db276446d4e82522c6f32fce180e` | Includes gate-remote, `docs/ASSISTANT.md`, SPEC-029/032/033, `tools/assistant_contract.py` and component binding templates |
+| Shared inputs/Pocket | `2ed2abb4428a57e4fd864b84502ab448490b1816` | `schemas/home-inputs.schema.json`, `tools/domosenso_cli/home_inputs.py`, renderer, area discovery, settings and the unknown-state control fix |
 | Framework v2 | `e67f0c0ed4557e0bd45d569d7c3583f176149c20` | `tools/assistant_metadata.py`, `schemas/frame-assistant-metadata.schema.json`, `tests/test_assistant_metadata.py`, `docs/research/frame-read-routing/` |
 | Metadata-client design | `2b989bd` | `.ai/specs/SPEC-034-2026-11-04-metadata-driven-frame-client.md` and its implementation plan |
 | Bridge v1 integration | `c4d668904c07f9430d3a347f6fc9fdb32220174d` | PR #4, source selection, timers and control execution |
@@ -29,7 +29,10 @@ enabling v2.
 | Android main | `51540f0d36530531b1ebcc645444950a67a236ac` | Current speech, display, timer and control lifecycle |
 | Android v2 | `20f082e46b97a8a1ce2a93bfb0c20e590a04fc74` | `src/assistant/metadata/`, `src/voice/assistant-turn.ts`, `src/controls/metadata-intent.ts`, `src/timers/metadata-actions.ts` |
 
-Resolve abbreviated hashes in their repository. Fetch and compare current remote
+Baselines were rechecked at 2026-11-05 17:01 UTC. The original `60a36a2` home-input
+pin is historical only. The updated Pocket schema permits one media player or a list,
+with runtime discovery supplementing selected defaults. Its architecture guide and
+draft integration are in PR #224. Resolve abbreviated hashes in their repository. Fetch and compare current remote
 states before integrating. Do not reset another session's worktree. Allocate one
 owned worktree and named branch per implementation/review session.
 
@@ -59,11 +62,29 @@ are exposed correctly. It does not need an invented numeric sensor.
 | ramka | `status`, `current_time`, `explain` | Reported mode/configuration and current HA timezone, available without owning shared home data |
 | floorplan | `explain` | Installed purpose, HA areas versus geometry, no occupancy inference |
 | remote-access | `explain` | Authorized installed configuration, no invented tunnel-health measurement |
-| timers | `status`, `explain` | Current shared helper identity, remaining duration, cancellation/reconnect and separate mutation grants |
+| gate-remote | `explain` | Installed purpose and limitations; explanation does not expose actuation |
+| timers | `status`, `explain` | Discover eligible `timer_role: user_countdown` helpers, preserve explicit selections and require separate native read/mutation grants |
 | pocket, integration branch | Read its own `assistant.yaml` at the selected integration revision | Shared input consumption and purpose, no dependency on Ramka configuration |
 | Future component | Explicit definition plus supported primitive/evaluator | Same conformance contract and metadata-only extension test |
 
-## H0 — Reconcile contracts before coding
+## H0-lite — Agree browser policy vocabulary and helper identity
+
+Owner is the framework coordinator with the Pocket/Ramka owners. Limit this browser
+prerequisite to stable assessment keys, helper IDs and domain policy ownership.
+
+- Use `good/fair/poor` and optional `side: low|high` in shared semantic results. Keep
+  localized wording and cold/warm colors in presentation. Pin inclusive comfort
+  endpoints, rising `>=` boundaries and falling `<` boundaries.
+- Map Ramka's legacy `raised/high` helper names explicitly to shared `fair/poor`
+  thresholds. Preserve effective live values before any helper rename.
+- Keep readings and policy settings in the domain model, with assessments computed
+  by conforming card JS or Bridge Python evaluators.
+
+Done when H1/C1 can proceed with unambiguous policy keys and an existing-home migration
+contract. Android packaging, broker dependencies and voice release approval belong to
+other tracks and do not expand H0-lite.
+
+## H0-native — Reconcile native metadata contracts
 
 Owner is the framework coordinator. Read this design, the existing specifications,
 Pocket's `home_inputs` work and all three v2 branches. Produce a short decision record
@@ -76,8 +97,9 @@ target. Issue #203's 90% experiment is an intermediate routing milestone.
 Approval of the new schema/API amendment precedes runtime changes. This handoff
 does not claim that a new wire format or public shared-data API is already approved.
 
-Done when one implementer can identify the authoritative room, fact-role, policy,
-binding and grant definition for each consumer without introducing another copy.
+Done when the native implementer can identify the authoritative fact-role, policy,
+binding, primitive revision and grant definition without introducing another copy.
+Browser work proceeds against H0-lite while the native amendment is reviewed.
 
 ## H1 — Integrate shared home inputs and migration
 
@@ -89,21 +111,33 @@ Use the existing `tests/test_cli_home_inputs.py`, `test_home_inputs_schema.py` a
 `test_render_home.py` as regression entry points.
 
 - Verify `home_inputs`, `uses_home: true` and `uses_home: optional` behavior, malformed
-  data, reserved outside identity, unresolved HA area references and translated names.
+  data, reserved outside identity, HA area references, translated names and the existing
+  one-or-many media shape. Preserve registry-based discovery without re-rendering.
 - Keep selected room defaults separate from complete device inventories. Exercise two
   independently addressable sources of the same metric in one room and explicit
   default selection, without merging their identities or exposure grants.
-- Extend render dependency tracking so a shared edit marks every consumer affected,
-  updates the appropriate managed hashes and participates in deploy plans/rollback.
+- Add a per-consumer home-input digest to the reviewed lock format. `status` reports
+  stale consumers and deployment detects stale renders before apply. A re-render
+  refreshes the digest and managed output hashes for deploy plans and rollback.
 - Prepare an additive migration from duplicated client inputs. Equal bindings can
   become shared references. Report conflicting source, area and policy choices.
-  Preserve current local overrides until a user explicitly resolves each conflict.
-- Render Pocket, Ramka, Floorplan and assistant bindings from the shared layer. Domain
-  subject/policy inputs remain owned by their components. Retain legacy input-only
-  installations and document the compatibility bridge.
+  Read effective helper values from an authorized snapshot. Seed-once applies only
+  to newly initialized helpers; different restored target values are conflicts.
+  Preserve local overrides and require an explicit choice before applying a conflict.
+  Verify before/after snapshots with `compare` and reviewed equivalence mappings.
+- Render Pocket and Ramka from shared inputs. Define Floorplan's optional consumption
+  explicitly: shared localized room labels, order in matching lists and selected default
+  measurements where no explicit Floorplan override exists. Preserve HA-area identity,
+  geometry and runtime discovery. Assistant bindings reuse this data in track B.
+  Domain subject/policy inputs stay component-owned. Keep legacy input-only homes
+  renderable through the documented compatibility bridge.
+- Specify optional shared labels/order for covers, contacts and locks before extending
+  the schema. Preserve dynamic discovery, avoid duplicate identities and keep client
+  visibility separate. Exclude all Android/installation fields from home inputs.
 
-Done when a fresh fictional home uses Pocket and Floorplan plus assistant bindings
-without Ramka, and a second legacy home migrates without silent input changes.
+Done when a fresh fictional home uses Pocket and Floorplan without Ramka or Bridge,
+including a changed shared label/default visibly consumed by Floorplan, and a second
+legacy home migrates without silent input changes. Native binding acceptance is track B.
 Removing either display must preserve shared data and the remaining consumer.
 
 ## H2 — Finish component metadata and compiler projections
@@ -136,15 +170,16 @@ different ID plus new subject/alias can be installed as data on the same Bridge
 binary and APK. Use `workbench.station_temperature` and
 `workbench.station_humidity`, with declared fictional sources and supported units.
 
-## B1 — Resolve shared data independently of displays
+## B1 — Resolve native data independently of display configuration
 
 Owner is the free HA Bridge. Integrate the reviewed v1 increment before dependent
 v2 work. Inspect `assistant_bindings.py`, `assistant_selection.py`,
 `assistant_refresh.py`, `assistant_projection.py` and the existing Studio source API.
 
-- Factor room/source/policy resolution into shared domain code. Keep client-specific
-  selection and display configuration as adapters. Pocket and Floorplan must not
-  require a Ramka endpoint to resolve a room or sensor.
+- Implement the shared semantic contract and fixture corpus in Bridge Python. Browser
+  cards implement it in JavaScript on core HA; they do not require Bridge installation.
+  A backend-evidence browser adapter is optional. Keep native selection and display
+  configuration separate from domain resolution and require no Ramka endpoint/YAML.
 - Normalize compiled component bindings and explicit vanilla mappings into the same
   semantic input. Keep provenance differences visible in administrator diagnostics.
 - Verify inventory provenance, actual HA areas, entity identities and current
@@ -190,8 +225,9 @@ existing activation/projection/control tests as entry points, extending their co
 ## C1 — Connect browser cards to shared semantics
 
 Owners are the Pocket, Ramka and Floorplan component implementers, coordinated with
-the framework and Bridge owners. This task follows H1/H2 and the shared resolver
-contract from B1. Changing render inputs alone does not complete it.
+the framework owner. This browser task follows H0-lite/H1 and the shared semantic
+contract. It can ship before H2, B1/B2, F1/F2 or tablet provisioning. Changing render
+inputs alone does not complete it.
 
 Inspect Pocket's `templates/dashboard.lang.yaml.j2` and
 `cards/lib/{climate,level,attention,sensors}.js`, Ramka's
@@ -204,23 +240,52 @@ those entry points before extracting shared code.
   supplied by Ramka and the owning domain component. Report conflicts before choosing
   one. Preserve accepted household policy values through migration.
 - Feed each card the same stable source/subject/area and effective policy references.
-  Keep the existing HA state access and authentication where supported. If a client
-  uses backend evidence, add a reviewed adapter rather than copying private grants
-  or native pairing into browser code.
+  Preserve native HA registry discovery, using entity area before device area, and
+  the HA user's permissions. Selected defaults do not restrict the complete displayed
+  inventory. Keep hidden/disabled/category filters domain-aware, including intentional
+  update-entity exceptions. An optional backend adapter must not become required.
 - Use a common documented interpretation for units, age, unavailable values, partial
   coverage and assessment. If evaluation remains in browser code, exercise it with
-  the same fixtures and expected evidence as the Bridge. Missing policy retains the
-  raw numeric value and withholds an assessment.
+  one versioned corpus under `tests/fixtures/`, including missing/invalid limits,
+  units and exact boundaries. Bridge Python runs a pinned copy with a digest check.
+  Freshness/partial evidence use companion cases. Missing policy retains the raw
+  numeric value and withholds an assessment.
 - Retain independent card layout, navigation and Floorplan geometry. Removing or
   omitting Ramka must leave the other cards functional. Do not add component-specific
   parsing or per-home sensor IDs to the renderer libraries.
 - Verify changed source, live threshold, fallback threshold, stale timestamp,
   revocation/visibility where applicable, two sources in one room and partial
-  evidence. Assert identical semantic results across all cards and Frame speech.
+  evidence. Compare JavaScript consumers using shared expected semantic results.
+  Native Frame/Bridge run the same fixtures in their own release track.
+- Add domain-aware operability fixtures covering `{domain, state, supported action}`.
+  Missing or unavailable targets block controls. Unknown scenes, covers and locks may
+  remain operable where supported and authorized. Preserve Pocket's existing fix
+  at `85afeb5` and test recovery when an entity reappears.
+- Discover eligible user timers by `timer_role: user_countdown`, preserving existing
+  explicit/manual choices while excluding internal helpers. Browser consumers use
+  HA permissions; native exposure and mutation grants remain a separate decision.
+- Keep shared helper settings, per-person preferences and per-device startup settings
+  in their documented scopes. Pocket uses HA frontend user data and local storage.
+  Verify account switching and reinstall behavior without changing exposure grants.
 
 Done when the same source and policy revision produces the same numeric value,
-freshness qualification and assessment in Pocket, Ramka, Floorplan and Bridge output,
-including a fictional home that never installs Ramka.
+freshness qualification and assessment in Pocket, Ramka and Floorplan, including a
+fictional home with neither Ramka nor Bridge installed. Compare to the shared expected
+fixtures; native executable parity is verified separately in F2.
+
+## A2 — Accept and release the browser track
+
+Owner is the framework coordinator with browser component implementers. Run applicable
+catalog and card checks, isolated HA rendering/browser scenarios and the shared
+assessment/operability/evidence fixtures. Test a fresh home without Frame Bridge and
+a legacy Ramka migration using current helper values, `snapshot` and `compare`.
+Verify default-source overrides, registry discovery, live thresholds, independent
+user/device settings and deleting one display while another remains usable.
+
+Record exact component versions and upgrade steps before the release decision.
+Browser acceptance does not require PL/EN voice accuracy, a native APK or Android
+hardware. Companion-driven screen reconciliation is separately tested device lifecycle
+work and does not block P3's input/threshold migration.
 
 ## F1 — Finish generic Frame consumption and routing
 
@@ -251,7 +316,7 @@ baseline component family, with complete and partial evidence, in both PL and EN
 Both differently named fictional capabilities must work without an APK or Bridge
 code change between their exposure steps.
 
-## F2 — Prove cross-client consistency and release readiness
+## F2 — Prove native compatibility and release readiness
 
 Owner is the coordinator with repository implementers. Keep one fixture set and
 schema digest across framework, Bridge, native tests and relevant browser clients.
@@ -266,9 +331,11 @@ schema digest across framework, Bridge, native tests and relevant browser client
    correct, no supported-example regressions, no silent broadening and zero
    unauthorized/mis-scoped writes. Exercise every matrix row through conformance
    fixtures even if the language holdout samples capability families.
-3. Compare two independent fictional homes, all consumers, both locales and old/new
-   Bridge/APK combinations. Change a source, label, policy, permission and area. Check
-   numerical facts, assessment, missing-data wording and help from the same revision.
+3. Compare two independent fictional homes, both locales and old/new Bridge/APK
+   combinations against the versioned common fixtures and available browser results.
+   Change a source, label, policy, permission and area. Check numerical facts, assessment,
+   missing-data wording and help from the same revision. Native acceptance must not
+   retroactively gate an independently accepted browser release.
 4. Perform separate physical acceptance for microphone, speech, display, reconnect and
    process lifecycle. Synthetic text accuracy and earlier local HA tests are separate
    evidence. Use fictitious actuators or intercepted services for control acceptance.
@@ -278,11 +345,19 @@ schema digest across framework, Bridge, native tests and relevant browser client
 
 ## Ordering and approval boundaries
 
-H0 precedes schema or runtime changes. H1 and H2 follow the agreed shared contracts.
-B1 follows shared identity/binding decisions. C1 implements the browser consumers
-against those contracts. B2 and F1 use matching schema/wire fixtures and progress
-against the same coverage matrix. F2 gates activation after C1 as well as backend
-and native conformance pass.
+Track A is H0-lite -> H1 -> C1 -> A2. It covers shared inputs, browser semantic parity
+and P3 Ramka migration. Review and integration of PR #224 can supply a common base;
+that merge remains a separate maintainer decision.
+
+Track B is H0-native -> H2 -> B1/B2 -> F1 -> F2. It shares agreed semantic fixtures with
+track A and gates only native metadata v2 activation. Reuse approved shared contracts
+without waiting for unrelated browser or Android changes.
+
+Track S is the separate [installation profile](../superpowers/specs/2026-11-05-tablet-installation-profile.md).
+Provider topology, installation identity, runtime packaging, broker persistence,
+provisioning and remote support belong there. The home-input schema and browser cards
+do not read that profile or contain Android-only fields. Native hardware acceptance
+can depend on the applicable S gates; ordinary browser delivery does not.
 
 This handoff authorizes no production installation, device configuration change,
 actuation, store publication, repository push or merge. Implementers follow the
@@ -299,10 +374,22 @@ pages. Record deferred pages and exact released versions in the website audit.
 ## Ready-to-use next-session brief
 
 Read the linked design and this handoff. Verify current repository revisions and the
-Pocket home-input implementation before changing code. Produce the H0 contract decision
-record and resolve the specification-number collision. Implement H1/H2, B1/B2, C1 and F1
-in owned worktrees using matching fixtures. Preserve all coverage rows and explicit
-client grants. Treat #203 as an intermediate routing prerequisite and run the full F2
-release gate before enabling v2. Keep household data in a private instance repository.
+Pocket home-input implementation before changing code. Start track A with H0-lite,
+H1/C1 and independent A2 acceptance. Start track B with its own H0-native amendment
+and resolve the specification-number collision before H2/B1/B2/F1/F2. Use owned worktrees
+and matching fixtures. Preserve all coverage rows, HA browser permissions and native
+client grants. Treat #203 as an intermediate routing prerequisite and run F2 before
+enabling v2. Keep installation concerns in track S and household data in a private instance repository.
 Report each task as implemented, independently verified, released and installed
 separately, with exact revisions and remaining manual acceptance.
+
+## Review disposition and current ownership
+
+The authoring session coordinates PR #219 and owns the document corrections.
+Pocket review comments and their technical replies are incorporated here and in
+the design. The browser/runtime split, assessment vocabulary, authoritative area
+discovery, role-based timer eligibility, live-value migration, per-consumer digest,
+shared fixtures, Floorplan input precedence and settings scopes are explicit above.
+The tablet addendum is isolated in track S. Request another Pocket-side review after
+the corrected documents are pushed; accepting replies alone does not accept the
+updated wording or authorize implementation/merge.

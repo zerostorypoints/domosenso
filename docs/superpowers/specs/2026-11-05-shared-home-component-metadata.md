@@ -20,8 +20,9 @@ The home binds those definitions to actual HA entities. Compatible clients can u
 new subject or capability made from supported primitives after a metadata update.
 New primitive types and new actuator operations require compatible implementation.
 
-The initial catalog baseline has 14 components and 38 declared read/explanation
-capabilities. Pocket is an additional component on `feature/pocket` and belongs in the
+The reviewed catalog baseline has 15 components and 39 declared read/explanation
+capabilities, including the explanation-only gate-remote component. Pocket is an
+additional component on `feature/pocket` and belongs in the
 integration acceptance matrix when that branch is adopted. Future components use the
 same conformance rules.
 
@@ -29,8 +30,8 @@ same conformance rules.
 
 | Work | Inspected baseline | Consequence |
 |---|---|---|
-| Framework main | `013af945fad43217272aa6d2b3e52af82ef1322b` | Contains assistant definitions, private v1 bindings, source parity and light/awning action metadata |
-| Shared home inputs | `feature/pocket` at `60a36a20da393b523bc0eb3bb476f3caee583e0a` | Has `home_inputs`, `uses_home`, a schema, loader, renderer integration and tests |
+| Framework main | `6bfe35f2ae81db276446d4e82522c6f32fce180e` | Contains assistant definitions, private v1 bindings, source parity, light/awning action metadata and gate-remote |
+| Shared home inputs | `feature/pocket` at `2ed2abb4428a57e4fd864b84502ab448490b1816` | Includes one-or-many media bindings, area discovery, user/device settings and domain-aware unknown-state controls |
 | Home inputs first implementation | `1e8f53fb7fc863743fd7b92a7fdd8c2ddbfd8687` | Preserve the reusable loader and standalone renderer behavior |
 | Bridge main | `f6659cda094f0cbcec67c06f35f86ec11f35595e` | Existing component reads and explicit source selection |
 | Bridge v1 increment | `c4d668904c07f9430d3a347f6fc9fdb32220174d`, PR #4 | Timers, shared sources and negotiated controls remain a pending integration dependency |
@@ -39,7 +40,9 @@ same conformance rules.
 | Bridge v2 experiment | `codex/frame-metadata-v2-bridge` at `bed8a1b` | Generic measurement reads and projection of authorized v1 evaluators |
 | Android v2 experiment | `codex/frame-metadata-v2-android` at `20f082e` | Generic catalog session, matching and presentation, with experimental routing disabled |
 
-These are inspection baselines, not a compatible release bill of materials. Resolve
+These baselines were rechecked at 2026-11-05 17:01 UTC after Pocket review. The original
+home-input pin `60a36a2` remains historical provenance only. These are inspection
+baselines, not a compatible release bill of materials. Resolve
 full commit hashes and compare trees when beginning implementation. Branch tips can
 advance. Preserve the reviewed v1 increments while reconciling the experimental code.
 
@@ -70,38 +73,58 @@ part of the migration. These are proposed integration decisions for review.
 | Private `home.inputs.yaml` | Stable home room keys, explicit HA area references, shared source bindings and localized labels | Resolve a shared room/source without depending on a display |
 | Domain component | Fact roles, units, freshness, assessment policy and supported capabilities | Compile the same semantics for every consumer |
 | Private component inputs | Domain-specific subjects and local policy settings | Preserve local choices through upgrades |
-| Client configuration | Layout, geometry, navigation, rotation, display order and visibility | Select a presentation and permitted subset of shared data |
-| HA integration and runtime | Validate provenance, resolve data, enforce permissions and evaluate evidence | Return the current authorized projection |
+| Household settings | Domain helpers for comfort ranges and air thresholds | Preserve live values and explicit migration choices |
+| Per-person client configuration | HA frontend user data for theme, navigation, selected views/players/scenes | Follow the authenticated person across devices using that client without changing permissions |
+| Per-device client configuration | Origin-scoped browser local storage or native device storage for startup/kiosk behavior | Define reinstall/account-switch behavior and retain independent device identity |
+| Presentation configuration | Layout, geometry, rotation and display ordering | Keep visual choices independent of domain policy |
+| HA Bridge | Validate native bindings, resolve data, enforce native grants and evaluate evidence | Required for native Frame; optional for browser cards |
+| Browser card runtime | HA registry/state access and the shared semantic contract | Use the HA user's permissions and a conforming JavaScript evaluator on core HA |
 | Native Frame | ASR, bounded intent matching, clarification, rendering, TTS and lifecycle | Interpret supported wire primitives and current descriptors |
 
-The historical integration name `domosenso_frame` can remain during compatibility
-migration. Shared domain resolution must not require a Ramka endpoint or its YAML.
-Factor reusable resolution and policy code behind client adapters inside the free HA
-integration first. Creating a second HA integration is unnecessary for this milestone.
+The shared resolver is a contract plus versioned conformance fixtures, with JavaScript
+evaluation in cards and Python evaluation in the Bridge. Pocket and Floorplan work
+on core HA without installing `domosenso_frame`. Browser clients can optionally use
+a backend evidence adapter. Native Frame retains its required Bridge. Both implementations
+must agree on semantics without making the browser release depend on the native one.
 
 ## Shared inputs and runtime data
 
 Use the existing `domosenso.yaml` key `home_inputs` to name the private file. The file
 already supports `rooms`, `outside` and `weather`. Room fields include `id`, `name`,
-`area`, `lights`, `scenes`, `climate`, `air` and `media`. Components declare `uses_home`
+`area`, `lights`, `scenes`, `climate`, `air` and `media`. The current `media` field accepts
+one entity or a nonempty unique list. Components declare `uses_home`
 and templates receive `home` and `room_name`. The current loader validates file shape.
 
 Shared inputs are installation configuration. HA supplies live state, device and area
 membership. A compiled binding is a reference to that state and includes provenance.
 Clients must not interpret a saved input file or a restored HA value as a current reading.
+Assessment levels are computed where shown from readings and effective policy; they
+are not persisted as derived fields in shared home inputs.
 
 The schema's single room temperature or light reference is an explicit selected
 source/default, not the room's complete device inventory. Keep additional sources as
 distinct domain subjects or registry devices. A default room reading must not silently
 replace another device's reading, merge subjects, or imply permission to read every
-device in the area. Extend cardinality through a reviewed additive schema change if
-a consumer needs multiple selected sources for one room role.
+device in the area. Browser discovery can include additional HA-authorized devices
+without a render. The existing media list already supports several explicitly named
+players. Other new cardinalities require a reviewed additive schema change.
+
+Registry discovery uses an entity's own HA area, falling back to its device's area.
+This association is HA data. Apply domain-aware hidden/disabled/diagnostic/configuration
+filters, including intentional exceptions such as update entities. New devices in
+an area can appear dynamically. A home input names an ambiguous default or supplies
+shared labels/order; it is not a mandatory list of everything a browser card may show.
 
 Keep plant definitions in plants, calendar selections in calendar, and threshold
 policies in the owning domain component. Shared inputs can refer to their stable
 subjects when consumers need them. Do not duplicate every domain's complete inputs in
-the shared file. Credentials, device addresses and secrets stay in their existing
-private configuration and are excluded from client discovery.
+the shared file. Optional shared labels/order for covers, contacts and locks can be
+added by a reviewed schema amendment, combined with registry discovery without duplicate
+identities. A client-specific visibility choice remains in that client's settings.
+Credentials, device addresses and secrets stay in their existing private configuration
+and are excluded from client discovery. Android, broker location, signing, provisioning
+and installation identity fields are excluded from the home-input schema entirely.
+They belong to the separate [installation profile requirements](2026-11-05-tablet-installation-profile.md).
 
 Retain the distinction between a home room key, an HA area ID and a floorplan polygon.
 The home input loader currently permits an area default derived from the room key.
@@ -109,6 +132,13 @@ At runtime, verify that the resulting ID exists. A missing or ambiguous associat
 must be visible as an unresolved binding. Room-name resemblance and polygon overlap
 do not establish membership. Floorplan geometry and manual visual placement remain
 presentation data.
+
+Floorplan does not currently declare `uses_home`. Its concrete integration is optional
+shared localized room labels, order in matching lists, and the selected default
+measurement where no explicit Floorplan source override exists. HA areas own identity,
+the plan owns polygon placement, and registry discovery remains available. Verify these
+specific source/label precedence rules rather than treating an unchanged Floorplan
+installation as proof of shared-input consumption.
 
 An example private shape using fictional entities follows the existing input schema.
 
@@ -136,7 +166,8 @@ Keep four separate concepts in the contract.
 2. A fact role identifies an exact semantic input, such as indoor temperature,
    moisture, reported position or last observed timestamp.
 3. A capability describes a supported question or operation and its required facts.
-4. A grant determines which user/device/endpoint may read or act on the resolved subjects.
+4. HA permissions determine browser access. Native Frame additionally requires the
+   explicit user/device/endpoint grants for resolved subjects and operations.
 
 Fact roles carry accepted units, source relation, cardinality, scope and freshness
 requirements. Cross-component sources must follow declared `provides`, `consumes` and
@@ -147,6 +178,12 @@ Use stable namespaced capability IDs and stable subject/area keys. Localized lab
 and aliases help a person choose the key. Counts deduplicate subject keys, so a plant
 with several metrics is counted once. Sensitive presence and calendar facts require
 explicit exposure.
+
+The existing timers component supplies a role-discovery pattern through
+`component: timers` and `timer_role: user_countdown`. Consumers can discover eligible
+user timers by that marker while preserving explicit legacy/manual selections.
+Internal timers remain excluded. Eligibility does not create a native read/action
+grant or bypass HA permissions; future-source grants still require explicit approval.
 
 ## One semantic source with several projections
 
@@ -178,22 +215,24 @@ write grammar remain implementation code.
 ```mermaid
 flowchart TD
     H[Private shared home inputs] --> C[Component compiler]
-    D[Domain definitions and local policies] --> C
-    C --> B[Verified private bindings]
-    R[HA registries and live states] --> S[Shared semantic resolver]
-    B --> S
-    S --> P[Per-client authorized projection]
-    P --> K[Ramka]
-    P --> F[Floorplan]
-    P --> O[Pocket]
-    P --> N[Native Frame]
+    D[Domain definitions and effective policy] --> C
+    C --> B[Rendered browser config and private native bindings]
+    T[Shared semantic contract and fixtures] --> J[JavaScript card evaluation]
+    T --> P[Python Bridge evaluation]
+    R[HA registries and live states] --> J
+    R --> P
+    B --> J
+    B --> P
+    J --> K[Ramka / Floorplan / Pocket]
+    P --> N[Native Frame with explicit grants]
 ```
 
 Browser cards retain normal HA authentication and supported direct HA state access.
 Native Frame retains its paired device and endpoint grants. Shared inputs do not create
 a grant or require browser cards to impersonate a paired native device. The shared
-resolver supplies consistent subject identity, policy and evidence through the
-appropriate adapter. New public APIs require their own reviewed compatibility surface.
+contract supplies consistent subject identity, policy and evidence through those
+independent implementations. A Bridge-backed browser adapter is optional. New public
+APIs require their own reviewed compatibility surface.
 
 V2 discovery uses the already prototyped `assistant_metadata` and
 `assistant_metadata_query` commands with explicit client primitive support. Revisions
@@ -210,9 +249,19 @@ scope validation. They cannot select writes or generate entity IDs or facts.
 
 Temperature/humidity and air assessment belong to their domain policies. Preserve
 current effective values while migrating any legacy Ramka-owned configuration.
-Display-specific colors and row heights stay client choices. The definition of
-good/raised/high, effective thresholds, unit handling, missing evidence and freshness
-must agree across Pocket, Floorplan, Ramka and Frame speech.
+Display-specific colors and row heights stay client choices. Stable assessment keys
+are `good`, `fair` and `poor`, with optional `side: low|high` for comfort ranges.
+Wording such as raised/high and colors such as cold/warm are presentation choices.
+Pocket already returns this structured result. Existing Ramka `raised/high` helper
+IDs require an explicit mapping to the shared `fair/poor` threshold keys, with live
+values and compatible existing-home behavior preserved before any rename.
+
+Shared fixtures must pin boundary behavior. Rising readings enter a worse band at
+`>= limit`; falling readings enter it below `< limit`; range endpoints are included.
+Missing or invalid policy yields no level, with the numeric reading still available.
+Store one versioned assessment corpus under `tests/fixtures/`; run it from card JS
+tests and Bridge Python tests, with a pinned copy and digest check across repositories.
+Freshness and partial evidence have companion fixtures.
 
 For example, one authorized CO2 source can appear as a Floorplan marker, Pocket tile,
 Ramka card and spoken answer. All four must refer to the same source and policy
@@ -226,10 +275,17 @@ names. Resolve the effective domain policy in the migration, then update each ca
 adapter and its missing/stale/assessment handling. Preserve visual-only choices.
 Conformance fixtures must compare the cards' results with Bridge evidence.
 
+Availability is domain-aware. Keep missing, unavailable, unknown and stale distinct.
+An `unknown` scene, cover or lock may remain operable if its domain, supported action
+and current authorization allow it. A missing or unavailable target blocks the action.
+Use common `{domain, state, supported action} -> display/operability` fixtures. Pocket's
+unknown-state correction is already present at `85afeb5` in the inspected branch.
+
 Help lists the current supported and authorized capabilities, with localized examples.
 Speech gives at most three short qualified clauses. Detailed views show scope,
 source availability and the evidence behind the assessment. Both consume one typed
-answer. PL/EN matching and speech are release requirements. Component metadata retains
+answer. PL/EN matching and speech are native release requirements. Browser releases
+use their own acceptance gate. Component metadata retains
 en/de/pl translation coverage.
 
 ## Migration decisions
@@ -237,17 +293,35 @@ en/de/pl translation coverage.
 1. Reconcile `feature/pocket` shared inputs with current main before creating another
    input schema. Keep existing component-only homes renderable.
 2. Provide a dry-run migration report for duplicated room/source/policy settings.
-   Equal bindings can become shared references. Conflicts require an explicit choice.
-   Never choose a threshold or entity silently by precedence across displays.
+   Read current helper values from an authorized snapshot, not template defaults.
+   Equal bindings can become shared references. Seed-once initializes new helpers only;
+   conflicting restored target values require an explicit choice before apply.
+   Verify before/after snapshots with `compare` and reviewed equivalence mappings.
 3. Preserve local overrides, managed-file ownership, deploy hashes and rollback.
-   One shared edit must invalidate every affected dependent render. Removing one
+   Record a home-input digest per consumer in the lock through a reviewed schema
+   change. Status reports stale renders; deploy detects them before apply; re-rendering
+   refreshes the digest and output hashes. Removing one
    client must not remove shared inputs or another component's bindings.
 4. Keep HA registries and per-client grants authoritative. Reconcile renamed, deleted
    and reassigned entities without broadening scopes.
-5. Complete all 14 baseline component read/explanation families through the existing
+5. Complete all 15 baseline component read/explanation families through the existing
    projection path, then onboard Pocket and future components using the same checks.
-6. Activate v2 after the held-out routing and compatibility gates pass. Preserve v1
-   execution routes for existing approved controls and timers during this milestone.
+6. Release the browser track after its own shared-policy/migration/card acceptance.
+   Activate native v2 after its held-out routing and compatibility gates pass. Preserve
+   v1 execution routes for existing approved controls and timers during this milestone.
+
+## Independent delivery tracks
+
+Track A starts with H0-lite, limited to vocabulary, helper identity and domain policy
+ownership, then H1, C1 and browser acceptance A2. It does not depend on Bridge v2,
+95% voice routing or Android provisioning. Review and integration of Pocket PR #224
+can give the tracks one base; merging it remains a separate maintainer decision.
+
+Track B covers H0-native, H2, B1, B2, F1 and F2. It reuses the shared semantics and
+gates native v2 activation. Track S covers the installation profile and tablet/server
+recovery. Its Android and deployment requirements do not enlarge H0-lite or home inputs.
+Screen-state reconciliation also applies to a Companion-driven Ramka, but is a separate
+device-lifecycle concern and does not block its shared-input migration.
 
 ## Completion evidence
 
@@ -272,8 +346,8 @@ acceptance from one working temperature example.
 
 ## Pinned source references
 
-- [Shared input schema and implementation baseline](https://github.com/zerostorypoints/domosenso/blob/60a36a20da393b523bc0eb3bb476f3caee583e0a/schemas/home-inputs.schema.json)
-- [Existing assistant ownership and domain contract](https://github.com/zerostorypoints/domosenso/blob/013af945fad43217272aa6d2b3e52af82ef1322b/docs/ASSISTANT.md)
+- [Shared input schema and implementation baseline](https://github.com/zerostorypoints/domosenso/blob/2ed2abb4428a57e4fd864b84502ab448490b1816/schemas/home-inputs.schema.json)
+- [Existing assistant ownership and domain contract](https://github.com/zerostorypoints/domosenso/blob/6bfe35f2ae81db276446d4e82522c6f32fce180e/docs/ASSISTANT.md)
 - [Approved metadata-client design at its historical path](https://github.com/zerostorypoints/domosenso/blob/2b989bd/.ai/specs/SPEC-034-2026-11-04-metadata-driven-frame-client.md)
 - [Archived routing evidence](https://github.com/zerostorypoints/domosenso/blob/e67f0c0ed4557e0bd45d569d7c3583f176149c20/docs/research/frame-read-routing/matcher/README.md)
 - [Routing follow-up issue](https://github.com/zerostorypoints/domosenso/issues/203)
