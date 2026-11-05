@@ -200,7 +200,7 @@ The level keys and their boundaries are the shared contract
   `update(el, ctx)` patches; `ctx` carries hass (optimistic view), config, settings, `t`, `navigate`,
   `openSheet`, `routeId`.
 - WebKit (the iPhone) first: aspect-ratio grid items need a definite width; SVG has no `hidden`
-  property (toggle the attribute); test in a 390 × 844 frame and 932 × 430 landscape.
+  property (toggle the attribute). Every size in section 12 is tested, not only one iPhone.
 - Tests per module (`*.test.mjs`), against the demo home only (no home's names or ids in the
   catalog).
 
@@ -213,7 +213,8 @@ The level keys and their boundaries are the shared contract
 3. What makes it "worth a look"? Its level rule, or none.
 4. Is every target 44 px, every word translated, every value uncut, every control optimistic?
 5. Does it work in both themes, portrait and landscape, with HA's header and without?
-6. Update this file when the feature brings a new pattern.
+6. Does `tools/dev_home/phone_audit.mjs` end with `ok` at every size of section 12?
+7. Update this file when the feature brings a new pattern.
 
 ## 11. Decisions log
 
@@ -235,3 +236,47 @@ The level keys and their boundaries are the shared contract
 | Timers are named in the inputs, never every `timer.*` | components keep internal timers (the Ramka's controls timer); the Ramka takes a list too |
 | User timers are found by `timer_role: user_countdown`; a list in the inputs wins | the timers component marks the timers it makes for people; agreed in #219 (decision D4), replacing the row above |
 | `unknown` does not disable a control, `unavailable` does | HA accepts a command for an entity whose value is not known yet; agreed in the shared-model review (#219) |
+| Phones are audited at eight sizes, 277–956 px | Android phones are 360–412 wide, iPhones 375–440, and zoom makes them narrower; one 390 × 844 frame missed broken words and a cramped landscape |
+
+## 12. Phones: sizes, platforms and the audit
+
+Pocket runs in the HA Companion app's web view on iPhone and Android, and in a phone's browser. It
+follows the platforms' own rules where a web page can:
+
+| rule | source | in Pocket |
+|---|---|---|
+| A control a finger taps measures at least 44 × 44 | Apple HIG: 44 × 44 pt; Material: 48 × 48 dp, with 8 dp between targets | 44 px minimum everywhere; 48 px for the landscape bar and settings rows; neighbours spaced, or one control |
+| The screen's edges belong to the system | safe areas (notch, Dynamic Island, home indicator); Android's edge-to-edge insets | `env(safe-area-inset-*)` on the bar, the page sides and the headless title; the bar's background runs under the home indicator |
+| One column layout for phones | Material's compact width class (under 600 dp); iPhone's compact width | phones are 277–440 CSS px wide; grids drop a column before a word would break |
+| A phone on its side keeps its content | iOS's compact-height tab bar (icon beside the label); Material's compact height | under 480 px high in landscape the bar is 48 px, the icon beside its label |
+| Larger text and page zoom still fit | Dynamic Type and Android font scale; the Companion app's page zoom | words stay whole (`overflow-wrap: break-word`, never `anywhere`); a row wraps its values under the label; under 330 px Media's player chip shows its chevron and keeps the area as its label |
+| Nothing scrolls sideways | both platforms | `overflow-x: clip` on the app; the audit checks every page |
+
+**Sizes the audit runs** (CSS px; `tools/dev_home/phone_audit.mjs`, on the demo):
+
+| size | stands for |
+|---|---|
+| 360 × 780 | compact Android (Galaxy S25, A series) |
+| 375 × 667 | iPhone SE: narrow and short |
+| 390 × 844 | iPhone 13–16 |
+| 412 × 915 | Pixel, Galaxy S Ultra and Plus |
+| 440 × 956 | iPhone Pro Max |
+| 844 × 390 | a phone on its side |
+| 300 × 650, 277 × 600 | 390 and 360 at 130 % zoom or larger text |
+
+For each size and page the audit fails when:
+- the page scrolls sideways;
+- a tappable element is under 44 px either way;
+- text is cut or off the screen;
+- a word is split across two lines.
+
+Run it before a pull request that changes a page, and put its last line in the PR. Each size's
+screenshots come with `--out`.
+
+**What the audit does not prove:**
+- the real Companion app (kiosk-mode hides HA's header there; the demo keeps it);
+- iOS Dynamic Type, which a web view applies only to text using the system font style;
+- a foldable's inner screen;
+- dark-mode contrast.
+
+Those are checked on a real phone.

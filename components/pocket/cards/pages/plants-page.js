@@ -32,12 +32,12 @@ const STYLE = `
   .plants .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
   .plants .ph .nm { font-size: 17px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
   .plants .ph .why { font-size: 13px; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
-  .plants .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 6px; }
+  .plants .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); grid-auto-rows: 1fr; gap: 6px; }
   .plants .rd { box-sizing: border-box; min-width: 0; min-height: 52px; margin: 0; padding: 6px 8px;
                 display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: left;
                 font: inherit; color: var(--fg); background: var(--chip); border: 0; border-radius: 12px; }
   .plants button.rd { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .plants .rd .l { font-size: 11.5px; color: var(--mut); overflow-wrap: anywhere; }
+  .plants .rd .l { font-size: 11.5px; color: var(--mut); overflow-wrap: break-word; }
   .plants .rd .v { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .plants .muted { opacity: .55; }
   .plants .lv-good { color: var(--ok); }

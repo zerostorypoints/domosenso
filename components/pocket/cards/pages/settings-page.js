@@ -63,10 +63,10 @@ const STYLE = `
   .settings .seg button { flex: 1 1 0; min-height: 44px; margin: 0; border: 0; border-radius: 10px; background: none;
                           font: inherit; font-size: 15px; color: var(--fg); cursor: pointer; }
   .settings .seg button[aria-checked="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
-  .settings .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px;
+  .settings .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; min-height: 48px;
                    border-top: 1px solid var(--line); font-size: 15px; }
   .settings .row:first-of-type { border-top: 0; }
-  .settings .row .label { min-width: 0; overflow-wrap: anywhere; }
+  .settings .row .label { flex: 1 1 7em; min-width: 0; overflow-wrap: break-word; }
   .settings .row .label small { display: block; font-size: 12.5px; color: var(--mut); }
   .settings .switch { box-sizing: border-box; flex: 0 0 auto; width: 56px; min-height: 44px; margin: 0; padding: 0 4px;
                       border: 0; background: none; cursor: pointer; display: flex; align-items: center; }
@@ -75,7 +75,7 @@ const STYLE = `
                                border-radius: 50%; background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
   .settings .switch[aria-checked="true"] i { background: var(--acc); }
   .settings .switch[aria-checked="true"] i::after { left: 21px; }
-  .settings .values { display: flex; gap: 6px; flex: 0 0 auto; }
+  .settings .values { display: flex; gap: 6px; flex: 0 0 auto; margin-left: auto; }
   .settings .value { box-sizing: border-box; min-width: 64px; min-height: 44px; margin: 0; padding: 4px 10px;
                      border: 0; border-radius: 12px; background: var(--chip); color: var(--fg); font: inherit;
                      font-size: 15px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column;

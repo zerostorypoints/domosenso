@@ -42,9 +42,11 @@ test("grids of widgets have equal rows: every widget grid sets grid-auto-rows: 1
   }
 });
 
-test("a plant's readings are equal cells: three columns, equal rows", () => {
+// Equal columns, as many as fit at the width of a reading's longest word (three on a phone, two on
+// a narrow one or with larger text: DESIGN.md section 12), and equal rows.
+test("a plant's readings are equal cells: equal columns that fit their words, equal rows", () => {
   const css = readFileSync(join(here, "pages/plants-page.js"), "utf8");
   const rule = css.match(/\.plants \.grid \{([^}]*)\}/)?.[1] ?? "";
-  assert.match(rule, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(rule, /grid-template-columns: repeat\(auto-fit, minmax\(86px, 1fr\)\)/);
   assert.match(rule, /grid-auto-rows: 1fr/);
 });

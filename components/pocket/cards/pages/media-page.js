@@ -46,8 +46,11 @@ const STYLE = `
   .media .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .media .pick { min-width: 44px; min-height: 44px; margin: 0; padding: 0 10px; border: 0; border-radius: 12px;
                  background: none; color: var(--mut); font: inherit; font-size: 13px; text-align: right;
-                 display: flex; align-items: center; gap: 2px; cursor: pointer; overflow-wrap: anywhere; --mdc-icon-size: 18px; }
+                 display: flex; align-items: center; gap: 2px; cursor: pointer; overflow-wrap: break-word; --mdc-icon-size: 18px; }
   .media .ends { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  /* Under 330 px (a small phone with larger text) the area's name does not fit beside the title:
+     the chevron stays, the name is the button's label and the sheet lists every area by name. */
+  @media (max-width: 330px) { .media .pick .name { display: none; } }
   .media .power { flex: 0 0 auto; width: 44px; height: 44px; margin: 0; padding: 0; border: 1px solid var(--line);
                   border-radius: 50%; background: var(--card); color: var(--mut); cursor: pointer;
                   display: flex; align-items: center; justify-content: center; --mdc-icon-size: 22px; }
