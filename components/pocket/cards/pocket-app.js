@@ -38,6 +38,8 @@
 //   sound: {level, offset?, averages?}   # optional: the home has audio-sensor; Media's Sound tab
 //                            # (lib/sound-panel.js, its card room-meter-card)
 
+// The pages Home's Systems opens: off the bar, or opened from Systems, they get a way back to it.
+import { SYSTEMS_PAGES } from "./lib/sections.js";
 import { createT, language } from "./lib/i18n.js";
 import { barTabs, defaultBar, legacyRoute, optionalPages, parseRoute, tabOf } from "./lib/router.js";
 import { areasOf } from "./lib/areas.js";
@@ -71,8 +73,6 @@ try {
   // never in the way of the dashboard that loads
 }
 const TOAST_MS = 3000;
-// The pages Home's Systems opens (lib/sections.js): off the bar, they get a way back to Systems.
-const SYSTEMS_PAGES = ["areas", "controls", "climate", "media", "power", "plants", "scenes", "floorplan", "system"];
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).

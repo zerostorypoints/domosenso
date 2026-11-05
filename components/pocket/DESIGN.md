@@ -30,13 +30,13 @@ Principles, in order when they conflict:
 
 - **Routes in the hash** (`lib/router.js`): `#/`, `#/systems`, `#/areas`, `#/area/<id>`,
   `#/controls[/status]`,
-  `#/climate`, `#/media[/<id>]`, `#/power`, `#/plants`, `#/scenes`, `#/system`, `#/floorplan[/<id>]`,
+  `#/climate`, `#/media[/<id>]`, `#/power`, `#/plants`, `#/scenes`, `#/safety`, `#/system`, `#/floorplan[/<id>]`,
   `#/settings[/<panel>]`. Back and deep links work; nothing reloads.
 - **Levels:**
   - Level 0: **Home**, in two views switched under the title: **Overview** (what is happening now and
     quick actions) and **Systems** (one tile per aspect, the way into every page).
-  - Level 1: a **page** per aspect (Areas, Controls, Climate, Media, Power, Plants, Scenes, System,
-    Floor plan, Settings). A page with two faces of the same aspect has views switched under its
+  - Level 1: a **page** per aspect (Areas, Controls, Climate, Media, Power, Plants, Scenes, Safety,
+    System, Floor plan, Settings). A page with two faces of the same aspect has views switched under its
     title, never two pages: Home (Overview | Systems), Controls (Controls | Status).
   - Level 2: an **area** page or a **panel** (Settings → Comfort ranges, About), with a back button
     in its title row.
@@ -217,17 +217,37 @@ The level keys and their boundaries are the shared contract
 - Tests per module (`*.test.mjs`), against the demo home only (no home's names or ids in the
   catalog).
 
-## 10. Adding a feature: checklist
+## 10. Adding a page or a feature: the contract
 
-1. Which level is it? An aspect → a page with a Systems tile (and a bar choice). A reading →
-   a widget of one of the two kinds. A choice → a sheet. A home-wide value → a Settings panel.
-2. Where does its data come from? The registries by area, the home inputs, or a component's
+A page is registered in **one place**, `TABS` in `lib/router.js` (or `SYSTEM`); everything else that
+lists pages is derived from it, and a contract test fails when a derived part is missing. Never keep
+a second list of pages.
+
+| a page needs | where it comes from | checked by |
+|---|---|---|
+| a route `#/<page>` | derived from `TABS` (`SINGLE`) | `router.test.mjs`: every tab's route parses to its page |
+| a Systems tile | derived (`SYSTEMS_PAGES` in `lib/sections.js`); its summary in `SUMMARIES` | Systems tests (a page without a summary throws) |
+| the way back from Systems | derived (the shell uses `SYSTEMS_PAGES`) | `pocket-app.test.mjs`: **contract: every page Systems opens has the way back** |
+| a bar choice in Settings | derived from `TABS` | `settings-page.test.mjs` |
+| its name in en / de / pl (`card.pocket.nav.<page>`) | the translations | `router.test.mjs`: **contract: every page has its name** |
+| the phone audit | derived (the audit reads the router) | `tools/dev_home/phone_audit.mjs`, default routes |
+| its module in `pages/index.js` | by hand (an import) | `pocket-app.test.mjs`: every page follows the contract |
+
+Then, for any feature:
+
+1. Which level is it? An aspect → a page (above). A reading → a widget of one of the two kinds. A
+   choice → a sheet. A home-wide value → a Settings panel.
+2. How does a person get back from it? Level 2 and the sheets have their own back (section 2); a
+   new kind of place needs its back defined here before it is built.
+3. Where does its data come from? The registries by area, the home inputs, or a component's
    provided entities; never a new list in Pocket's inputs without a reason.
-3. What makes it "worth a look"? Its level rule, or none.
-4. Is every target 44 px, every word translated, every value uncut, every control optimistic?
-5. Does it work in both themes, portrait and landscape, with HA's header and without?
-6. Does `tools/dev_home/phone_audit.mjs` end with `ok` at every size of section 12?
-7. Update this file when the feature brings a new pattern.
+4. What makes it "worth a look"? Its level rule, or none. Does it add pills on Home?
+5. Is every target 44 px, every word translated, every value uncut, every control optimistic, every
+   risky act confirmed in place (section 4.7)?
+6. Does it work in both themes, portrait and landscape, with HA's header and without?
+7. Does `tools/dev_home/phone_audit.mjs` end with `ok` at every size of section 12, and does the pull
+   request show it (screenshots from the demo, `docs/LOCAL_DEVELOPMENT.md`)?
+8. Update this file (sections 2 and 3 for a page) and the decisions log when it brings a new pattern.
 
 ## 11. Decisions log
 
@@ -255,6 +275,7 @@ The level keys and their boundaries are the shared contract
 | Risky acts confirm in place with a second tap, not a dialog | one hand, no modal to dismiss; the safe direction (lock, stop) acts at once |
 | A component's own flag is never an alarm | climate-air's "bathroom humidity high" carries the moisture class of a leak sensor |
 | A kiosk's account is no one at home (`person_role: kiosk`, set by the Ramka) | HA makes a person for every user, the wall tablet's login too; the component that owns the kiosk marks it |
+| A page is registered once (`TABS`); every list of pages is derived, and contract tests check the rest | Safety shipped without its back arrow: the shell kept its own copy of the Systems pages, the router another, the audit a third (review 2026-11-05) |
 
 ## 12. Phones: sizes, platforms and the audit
 

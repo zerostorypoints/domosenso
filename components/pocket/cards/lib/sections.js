@@ -41,7 +41,11 @@ import { contactsOf, coversOf, labelOf, locksOf, timersOf } from "./controls.js"
 import { alarmsOf, issuesOf, peopleOf, sirensOf } from "./safety.js";
 
 const GONE = new Set(["unavailable", "unknown"]);
-const PAGES = [...TABS.map((tab) => tab.page).filter((page) => page !== "home" && page !== "settings"), SYSTEM.page];
+// Every page Home's Systems can open: the router's pages besides Home and Settings, and System. The
+// shell gives each the way back to Systems (pocket-app.js); one list, so a page added to the router
+// gets both its tile and its back arrow.
+export const SYSTEMS_PAGES = [...TABS.map((tab) => tab.page).filter((page) => page !== "home" && page !== "settings"), SYSTEM.page];
+const PAGES = SYSTEMS_PAGES;
 const TAB_OF = Object.fromEntries([...TABS, SYSTEM].map((tab) => [tab.page, tab]));
 
 export function sectionsOf(ctx, { today = null, pages = PAGES } = {}) {

@@ -41,11 +41,13 @@ export function defaultBar(config) {
 export const FIXED_TABS = ["home", "settings"];
 export const MAX_TABS = 5;
 
-const SINGLE = new Set(["areas", "controls", "climate", "media", "power", "plants", "scenes", "safety", "system", "settings", "floorplan"]);
+// Every page but Home has a one-part route of its own (#/<page>): from the pages above, never a list
+// of its own to keep in step (a page added to TABS routes at once).
 // Home's second view (pages/home-page.js): #/systems, the tiles per aspect.
 export const HOME_VIEWS = ["overview", "systems"];
 // The System page (pages/system-page.js): reached from Home's Systems, never on the bar.
 export const SYSTEM = { page: "system", route: "#/system", icon: "mdi:server-outline" };
+const SINGLE = new Set([...TABS, SYSTEM].map((tab) => tab.page).filter((page) => page !== "home"));
 const HOME = Object.freeze({ page: "home" });
 export const SETTINGS_PANELS = ["comfort", "about"];
 
