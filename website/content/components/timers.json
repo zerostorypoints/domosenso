@@ -1,0 +1,107 @@
+{
+  "outcome": "Run shared countdown timers on Home Assistant’s own timer helpers.",
+  "categories": [
+    "utilities"
+  ],
+  "hardware": "none",
+  "ui": "consumer",
+  "deviceIds": [],
+  "views": [
+    {
+      "id": "controls",
+      "title": "Room controls",
+      "owner": "ramka",
+      "providers": [
+        "lights",
+        "awnings",
+        "media",
+        "gate-remote",
+        "timers"
+      ],
+      "availability": "conditional",
+      "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
+      "preview": "/previews/controls.svg",
+      "previewType": "illustration",
+      "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
+      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
+    }
+  ],
+  "setup": [
+    "Choose a prefix (default domosenso) and one to sixteen timers, each with a slug id, a plain label and a length of 1 to 86,400 seconds; the default is one General timer of five minutes. Use ids that no helper in your home already has: the component creates only the helpers it names.",
+    "Add it with domosenso add timers@0.1.0, then render and deploy: Home Assistant gets one timer helper per entry, named timer.<prefix>_<id>, with Restore switched on.",
+    "To show them on a Ramka (0.15.0 or later), list the helpers in its timers input, for example timer.domosenso_general with the label General. Controls gets a standard timer tile for each, and a small countdown badge sits over every screen of the Ramka; tapping either opens Home Assistant’s own timer dialog."
+  ],
+  "id": "timers",
+  "version": "0.1.0",
+  "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+  "evidencePaths": [
+    "components/timers/component.yaml",
+    "components/timers/README.md",
+    "components/timers/UPGRADE.md"
+  ],
+  "scenario": {
+    "states": [
+      {
+        "label": "Ready",
+        "headline": "A timer waits at its length",
+        "detail": "Each helper has a fixed length from its input, five minutes by default. Nothing counts down until someone starts it.",
+        "values": [
+          {
+            "label": "Timer",
+            "value": "General"
+          },
+          {
+            "label": "Length",
+            "value": "5:00"
+          },
+          {
+            "label": "State",
+            "value": "Idle"
+          }
+        ],
+        "level": 100
+      },
+      {
+        "label": "Running",
+        "headline": "The same time left on every screen",
+        "detail": "The timer is a standard Home Assistant helper. The Ramka’s tile on Controls and its badge both read it.",
+        "values": [
+          {
+            "label": "Left",
+            "value": "3:42"
+          },
+          {
+            "label": "State",
+            "value": "Active"
+          },
+          {
+            "label": "Shown on",
+            "value": "Tile and badge"
+          }
+        ],
+        "level": 74
+      },
+      {
+        "label": "Paused",
+        "headline": "A pause keeps the time left",
+        "detail": "A paused timer holds its remaining time. Restore is on, so Home Assistant brings an active or paused timer back after a restart; one that ended while it was down is not replayed.",
+        "values": [
+          {
+            "label": "Left",
+            "value": "2:10"
+          },
+          {
+            "label": "State",
+            "value": "Paused"
+          },
+          {
+            "label": "Restore",
+            "value": "On"
+          }
+        ],
+        "level": 43
+      }
+    ]
+  }
+}

@@ -40,7 +40,7 @@
    "page": false
   },
   "timers": {
-   "page": false
+   "page": true
   },
   "weather": {
    "page": true

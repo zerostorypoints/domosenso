@@ -1210,6 +1210,55 @@
       "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/components/ramka/UPGRADE.md"
     },
     {
+      "id": "timers",
+      "version": "0.1.0",
+      "sourceTag": "timers/0.1.0",
+      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+      "summary": "Shared countdown timers using Home Assistant helpers",
+      "requirements": [],
+      "integrations": [
+        {
+          "name": "timer",
+          "source": "core",
+          "setup": "Managed helpers with restore enabled, or existing UI-created helpers mapped in Frame."
+        }
+      ],
+      "optionalRequirements": [],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [],
+      "testedHomes": 0,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Not field-tested: no home has run it yet, and the component’s own notes call this a development source that promises no physical alarm reliability.",
+        "Home Assistant restores active and paused timers after a restart, but it does not replay the timer.finished event for one that ended while it was down; a timer that is idle does not by itself show that it finished.",
+        "The shared alarm sound, timer commands from a native app and the assistant’s timer actions need the separate Frame app with timer support. This version names no minimum app version, so only the helpers and the Ramka’s tile and badge are described here."
+      ],
+      "inputs": [
+        {
+          "name": "prefix",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "timers",
+          "type": "list",
+          "required": false
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/61f07374ef99bdc2522346a181fbd955b9f9c28b/components/timers",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/61f07374ef99bdc2522346a181fbd955b9f9c28b/components/timers/UPGRADE.md"
+    },
+    {
       "id": "weather",
       "version": "0.2.0",
       "sourceTag": "weather/0.2.0",
