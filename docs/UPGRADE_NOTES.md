@@ -3,6 +3,21 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: a room's `lights` may list several, with names
+
+A room's `lights` in `home.inputs.yaml` takes one entity (a group, its members read at run time), as
+before, or a list of lights or groups, each an entity id or `{entity, name}` (one name, or one per
+language), as the Ramka labels its lights. Pocket counts and switches each one; the Ramka takes the
+names as its lights' labels when its own `lights` list is left out. Nothing changes for a home that
+names one.
+
+## Unreleased: home inputs list a room's covers, contacts and locks (optional)
+
+A room in `home.inputs.yaml` may list `covers`, `contacts` and `locks`: each an entity id, or
+`{entity, name}` with the name as one string or one per language. Pocket shows them first in that
+room, in the listed order and under that name, and the Ramka takes them when its own lists are left
+out; the room's other ones are still found by HA area. Nothing changes for a home that lists none.
+
 ## Unreleased: the lock records the home inputs each consumer was rendered from
 
 For a component that uses the home inputs (`uses_home`), `domosenso.lock`, and the dev render
