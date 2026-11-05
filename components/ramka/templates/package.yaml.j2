@@ -46,7 +46,10 @@
 [%- endfor -%]
 [%- if not pages -%][[ fail('ramka: status_page: false leaves no ambient page; give climate, air, plants or photo_dir') ]][%- endif -%]
 [#- The now-playing card's music visual (0.4.0): spectrum or level, chosen on the tablet. -#]
-[%- set music_visual = inputs.music_visual | default(none) -%]
+[%- set mp = inputs.media_player | default(none) -%]
+[%- set calendar_input = inputs.calendar | default([]) -%]
+[%- set calendars = ([calendar_input] if calendar_input is string else calendar_input) if calendar_input else [] -%]
+[%- set music_visual = (inputs.music_visual | default(none)) if mp else none -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
 [%- set other_visual = 'level' if music_visual == 'spectrum' else 'spectrum' -%]
 [#- ---- Live settings (0.4.0, SPEC-021) ----------------------------------------------------------
@@ -821,7 +824,11 @@ template:
         icon: mdi:play-circle
         delay_off:
           seconds: 5
-        state: "{{ is_state('[[ inputs.media_player ]]', 'playing') }}"
+        [%- if mp %]
+        state: "{{ is_state('[[ mp ]]', 'playing') }}"
+        [%- else %]
+        state: "{{ false }}"
+        [%- endif %]
       # Ambient shows the now-playing card: the player plays, the music face is chosen and the
       # music view is switched on (input_boolean.[[ p ]]_page_music; off, ambient keeps the
       # rotation). Every view condition and the loop's start/stop read this one sensor. The marker
@@ -1300,6 +1307,7 @@ script:
         timeout: 5
         continue_on_timeout: true
 [%- endif %]
+[%- if calendars %]
   # The calendar screen, from the calendar button on the controls. Same hold rules as the
   # controls: no timer while someone is within near_cm, controls_hold_s after leaving. Not while the
   # calendar view is switched off (its buttons hide then too).
@@ -1330,6 +1338,7 @@ script:
               entity_id: timer.[[ p ]]_controls
             data:
               duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
+[%- endif %]
 [%- if inputs.floorplan | default(false) %]
 
   # A sideways swipe on the controls: the plan instead of the controls, and back (SPEC-028).
@@ -2236,6 +2245,7 @@ automation:
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
+[%- if mp %]
   - id: [[ p ]]_music_back
     alias: [[ named(' music back') ]]
     description: "The media player starts playing from silence: ambient shows the music again."
@@ -2246,13 +2256,14 @@ automation:
       # playing when an amplifier wakes from standby), so the trigger takes the step out of
       # silence into buffering too; with `to: playing` alone it can miss every start.
       - trigger: state
-        entity_id: [[ inputs.media_player ]]
+        entity_id: [[ mp ]]
         from: ["off", "on", "idle", "unavailable"]
         to: [buffering, playing]
     actions:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_ambient_music
+[%- endif %]
 [%- if music_visual %]
   # audio-sensor sends its fast data only while someone can see it: the watching flag is on while
   # this Ramka's music view is, or another Ramka's (one flag per home, never toggled). The grace

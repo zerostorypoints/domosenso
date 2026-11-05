@@ -1,0 +1,22 @@
+# Fictional sensor/light panel: no media player or calendar integration.
+prefix: ramka
+radar:
+  presence: binary_sensor.dining_ble_proxy_dining_presence
+  distance: sensor.dining_ble_proxy_dining_detection_distance
+climate:
+- label: Living room
+  temperature: sensor.living_room_temperature
+  humidity: sensor.living_room_humidity
+outside:
+  temperature: sensor.outside_temperature
+  humidity: sensor.outside_humidity
+air:
+  co2: sensor.dining_air_carbon_dioxide
+lights:
+- entity: light.living_room
+  label: Living room
+weather: weather.forecast_home
+calendar: []
+tablet_device:
+  notify: notify.mobile_app_dining_tablet
+  sensors: dining_tablet

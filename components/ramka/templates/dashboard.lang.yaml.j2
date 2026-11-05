@@ -30,14 +30,15 @@
 [%- for l in layouts -%][%- set _ = tested.append(l.name ~ ' for ' ~ l.min_width ~ '-' ~ l.max_width ~ ' x ' ~ l.min_height ~ '-' ~ l.max_height) -%][%- endfor -%]
 [[ fail('ramka: no tested layout for ' ~ screen.width ~ 'x' ~ screen.height ~ ' CSS px (tested: ' ~ (tested | join(', ')) ~ ')') ]]
 [%- endif -%]
-[%- set mp = inputs.media_player -%]
+[%- set mp = inputs.media_player | default(none) -%]
 [%- if inputs.photo_dir is defined -%]
 [%- set photo_dir = inputs.photo_dir.rstrip('/') -%]
 [%- if not photo_dir.startswith('/config/www/') -%][[ photo_dir_must_be_under_config_www ]][%- endif -%]
 [%- set local = '/local/' ~ photo_dir[12:] -%]
 [%- set photo_index = local ~ '/index.json' -%]
 [%- endif -%]
-[%- set calendars = [inputs.calendar] if inputs.calendar is string else inputs.calendar -%]
+[%- set calendar_input = inputs.calendar | default([]) -%]
+[%- set calendars = ([calendar_input] if calendar_input is string else calendar_input) if calendar_input else [] -%]
 [%- set unreachable = ' (' ~ t('ui.common.unreachable') ~ ')' -%]
 [%- set media_label = inputs.media_label | default(t('ui.media.player')) -%]
 [%- set covers = inputs.covers | default([]) -%]
@@ -69,7 +70,7 @@
     (music_visual_options) are the package's: its seed and reset write them, and it checks them.
     A render cannot see audio-sensor's inputs: a home without its music aliases gets the classic
     wave from the card's fallback, not a failed render. -#]
-[%- set music_visual = inputs.music_visual | default(none) -%]
+[%- set music_visual = (inputs.music_visual | default(none)) if mp else none -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
 [%- set visuals = {} -%]
 [%- if music_visual is not none -%]
@@ -256,6 +257,7 @@ views:
       # at the lowest brightness, a clock here would still glow through, so the view is black and
       # empty in this state (the view's background above).
 [%- block music %]
+[%- if mp %]
       # ---- Now playing: ambient while the media player plays ---------------------------------
       # Readable from across the room: now-playing-card draws artwork, title, artist, album, a
       # live progress bar and the volume in large type; below it the time, the weather and, with
@@ -333,6 +335,7 @@ views:
             hours: 1
             grid_options: {columns: 16, rows: 4}
           [%- endif %]
+[%- endif %]
 [%- endblock %]
 [%- block climate %]
 [%- if inputs.climate is defined %]
@@ -731,6 +734,7 @@ views:
 [%- endif %]
 [%- endblock %]
 [%- block calendar %]
+[%- if calendars %]
 
       # ---- Calendar: from the calendar button on the controls --------------------------------
       # agenda-card: today large on the left, the next six days beside it.
@@ -751,6 +755,7 @@ views:
             days: 7
             height: calc([[ vh ]] - 16px)
             grid_options: {columns: full, rows: 1}
+[%- endif %]
 [%- endblock %]
 [%- block controls %]
 
@@ -771,6 +776,7 @@ views:
           [%- endif %]
         [%- endif %]
         cards:
+          [%- if mp %]
           - type: heading
             heading: [[ t('ui.media.heading') | yaml ]]
           - type: media-control
@@ -849,6 +855,8 @@ views:
             icon_tap_action: *standby
             grid_options: {columns: 6, rows: 1}
             visibility: *player_on
+          [%- endif %]
+          [%- if calendars and mp %]
           # The calendar beside standby while the player is on; full width (below) while it is not.
           # Neither while the calendar view is switched off (input_boolean.[[ p ]]_page_calendar).
           - type: tile
@@ -865,6 +873,7 @@ views:
               - {condition: state, entity: [[ mp ]], state_not: "off"}
               - {condition: state, entity: [[ mp ]], state_not: unavailable}
               - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
+          [%- endif %]
           # Controls on approach (radar) on/off; off means a tap only. Always shown.
           - type: tile
             entity: input_boolean.[[ p ]]_near_enabled
@@ -883,20 +892,31 @@ views:
             hold_navigate: [[ exit_right | yaml ]]
             columns: 4
             rows: 1
+          [%- if calendars %]
           - type: tile
             entity: [[ calendars[0] ]]
             name: [[ t('ui.calendar.button') | yaml ]]
             icon: mdi:calendar-month
             hide_state: true
+            [%- if mp %]
             tap_action: *show_calendar
+            [%- else %]
+            tap_action: &show_calendar
+              action: perform-action
+              perform_action: script.[[ p ]]_show_calendar
+            [%- endif %]
             icon_tap_action: *show_calendar
             grid_options: {columns: 12, rows: 1}
             visibility:
+              [%- if mp %]
               - condition: or
                 conditions:
                   - {condition: state, entity: [[ mp ]], state: "off"}
                   - {condition: state, entity: [[ mp ]], state: unavailable}
+              [%- endif %]
               - {condition: state, entity: input_boolean.[[ p ]]_page_calendar, state: "on"}
+          [%- endif %]
+          [%- if mp %]
           - type: button
             name: [[ inputs.media_turn_on_label | default(t('ui.media.turn_on')) | yaml ]]
             icon: [[ inputs.media_icon | default('mdi:speaker') ]]
@@ -920,6 +940,7 @@ views:
             grid_options: {columns: 12, rows: 3}
             visibility:
               - {condition: state, entity: [[ mp ]], state: unavailable}
+          [%- endif %]
       [%- if timers %]
       - type: grid
         [%- if not preview %]

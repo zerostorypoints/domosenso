@@ -10,6 +10,22 @@ With `home_inputs:` in `domosenso.yaml`, the Ramka can leave out `lights`, `clim
 as Pocket and the floor plan do (`templates/_home.jinja`). A list the Ramka's inputs give still
 wins. See `UPGRADE.md`, "rooms from the shared home inputs".
 
+## A panel without music or calendars
+
+Leave out `media_player` (or set it to null/empty text) to omit player controls, the now-playing
+view and the player-return automation. `music_visual` is inactive without a player. The shared
+media-state helpers remain for the ambient/screen policy; media-playing stays false.
+
+Leave out `calendar`, set it to null/empty text, or use `calendar: []` to omit the agenda,
+calendar buttons and `show_calendar` script. Either source can be used independently. The
+settings and preview retain their pages with a “not configured” notice for absent sources.
+Configured player/calendar inputs keep their current behavior. Weather still needs its own
+binding or the shared home inputs; `outside` sensor bindings are separate from the forecast.
+
+A fictional minimum is `tests/fixtures/ramka-minimal.yaml`. Validate it with
+`INPUTS=tests/fixtures/ramka-minimal.yaml tools/ha-check.sh ramka`. The fixture binds no real
+hardware and does not prove sensor reception or physical controls.
+
 ## Setting up the tablet
 
 Step by step, with every Android and Companion app setting and what to switch off, on the tested

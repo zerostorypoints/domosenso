@@ -3,6 +3,18 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: panels without a player or calendars
+
+`media_player` is optional. Omit it or use null/empty text to leave out music cards and player
+commands; the shared media-state helpers stay, with media-playing false. Without a player,
+`music_visual` is inactive and no player-return or music-watching automation is created.
+
+`calendar` is optional and accepts an empty list, null or empty text. Without calendars there is
+no agenda, calendar control or `show_calendar` script. Settings/preview explain the missing
+binding. A player without calendars and calendars without a player both work. Existing
+configured homes need no input changes and retain the same rendered output. Weather remains
+required through the Ramka inputs or the shared home inputs.
+
 ## Unreleased: the kiosk user's person is marked
 
 With `kiosk_user`, the package marks `person.<the kiosk user as a slug>` with `person_role: kiosk`

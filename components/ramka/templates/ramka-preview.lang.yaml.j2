@@ -26,10 +26,10 @@
 [#- Every screen: the ambient rotation's order, then the calendar, the controls and the now-playing
     screen; the settings page of each has the same path and the same title and icon
     (templates/ramka-settings.lang.yaml.j2). `needs`: the input that adds a screen this render left
-    out (the settings pages' own rule); the calendar, the controls and the music are in every home. -#]
+    out (the settings pages' own rule); the controls are in every home. -#]
 [%- set has = {'climate': inputs.climate is defined, 'air': air is not none, 'plants': inputs.plants is defined,
-    'photos': inputs.photo_dir is defined, 'status': inputs.status_page | default(true), 'calendar': true, 'controls': true, 'music': true} -%]
-[%- set needs = {'climate': 'climate', 'air': 'air', 'plants': 'plants', 'photos': 'photo_dir', 'status': 'status_page'} -%]
+    'photos': inputs.photo_dir is defined, 'status': inputs.status_page | default(true), 'calendar': calendars | length > 0, 'controls': true, 'music': mp is not none and mp != ''} -%]
+[%- set needs = {'climate': 'climate', 'air': 'air', 'plants': 'plants', 'photos': 'photo_dir', 'status': 'status_page', 'calendar': 'calendar', 'music': 'media_player'} -%]
 [%- set icons = {'climate': 'mdi:home-thermometer', 'air': 'mdi:air-filter', 'plants': 'mdi:flower', 'photos': 'mdi:image-multiple',
     'status': 'mdi:list-status', 'calendar': 'mdi:calendar', 'controls': 'mdi:gesture-tap', 'music': 'mdi:music'} -%]
 # Rendered from the Domosenso catalog, component ramka (templates/ramka-preview.lang.yaml.j2),

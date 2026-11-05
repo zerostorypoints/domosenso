@@ -4483,3 +4483,52 @@ def test_the_kiosk_users_person_is_marked_a_kiosk(tmp_path):
     bare = {k: v for k, v in demo_inputs().items() if k != "kiosk_user"}
     assert "homeassistant" not in render(tmp_path / "bare", bare)["package.yaml"] or \
         "customize" not in render(tmp_path / "bare2", bare)["package.yaml"].get("homeassistant", {})
+
+
+@pytest.mark.parametrize('value', ['omitted', None, ''])
+def test_without_player_has_no_media_targets_or_return_trigger(tmp_path, value):
+    inputs = demo_inputs()
+    if value == 'omitted':
+        inputs.pop('media_player')
+    else:
+        inputs['media_player'] = value
+    rendered = render(tmp_path, inputs)
+    package = rendered['package.yaml']
+    assert 'ramka_music_back' not in {a['id'] for a in package['automation']}
+    assert 'ramka_music_watching' not in {a['id'] for a in package['automation']}
+    for name, tree in rendered.items():
+        assert not any(s.startswith('media_player.') for s in strings(tree)), name
+        assert not any(n.get('type') in ('media-control', 'custom:now-playing-card') for n in walk(tree)), name
+    assert not any('entity_id' in n and n['entity_id'] is None for n in walk(package))
+    # A calendar remains usable when it is the only optional control source.
+    assert 'ramka_show_calendar' in package['script']
+    assert any(n.get('type') == 'custom:agenda-card' for n in walk(rendered['dashboard.en.yaml']))
+
+
+@pytest.mark.parametrize('value', ['omitted', None, '', []])
+def test_without_calendars_has_no_calendar_targets_or_empty_agenda(tmp_path, value):
+    inputs = demo_inputs()
+    if value == 'omitted':
+        inputs.pop('calendar')
+    else:
+        inputs['calendar'] = value
+    rendered = render(tmp_path, inputs)
+    assert 'ramka_show_calendar' not in rendered['package.yaml']['script']
+    for name, tree in rendered.items():
+        assert not any(s.startswith('calendar.') or s == 'script.ramka_show_calendar' for s in strings(tree)), name
+        assert not any(n.get('type') == 'custom:agenda-card' for n in walk(tree)), name
+    assert any(n.get('type') == 'media-control' for n in walk(rendered['dashboard.en.yaml']))
+
+
+def test_minimal_panel_has_only_bound_optional_controls(tmp_path):
+    inputs = yaml.safe_load((REPO / 'tests/fixtures/ramka-minimal.yaml').read_text())
+    rendered = render(tmp_path, inputs)
+    for lang in LANGS:
+        dashboard = rendered[f'dashboard.{lang}.yaml']
+        assert any(n.get('entity') == 'light.living_room' for n in walk(dashboard))
+        assert not any(s.startswith(('media_player.', 'calendar.', 'cover.')) for s in strings(dashboard))
+    package = rendered['package.yaml']
+    # Stable shared helpers remain valid for the ambient/screen policy even without a player.
+    sensors = [s for t in package['template'] for s in t.get('binary_sensor', [])]
+    media = next(s for s in sensors if s.get('default_entity_id') == 'binary_sensor.ramka_media_playing')
+    assert dr.Environment().from_string(str(media['state'])).render().lower() == 'false'
