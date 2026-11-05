@@ -100,3 +100,14 @@ test("Home's Systems view and the System page are routes; the System page belong
   assert.deepEqual(parseRoute("#/scenes"), { page: "scenes" });
   assert.equal(tabOf("system"), "home");
 });
+
+// Every page has its name in every language (card.pocket.nav.<page>): the bar, Systems' tiles and
+// the page's title use it. A page added to the router without its words fails here.
+test("contract: every page has its name in en, de and pl", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { SYSTEM } = await import("./router.js");
+  for (const lang of ["en", "de", "pl"]) {
+    const words = JSON.parse(readFileSync(new URL(`../../translations/${lang}.json`, import.meta.url), "utf8")).card.pocket.nav;
+    for (const { page } of [...TABS, SYSTEM]) assert.ok(words[page], `${lang}: card.pocket.nav.${page}`);
+  }
+});

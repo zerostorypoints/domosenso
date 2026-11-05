@@ -870,3 +870,31 @@ test("any page opened from Systems has the way back, on the bar or not; a bar ta
   app.remove();
   window.history.replaceState(null, "", "#/");
 });
+
+// The navigation contract for every page (DESIGN.md section 2): each page Home's Systems can open
+// (lib/sections.js SYSTEMS_PAGES, from the router) has the way back when opened from Systems, and
+// none from its own bar tab. A page added later is covered without touching this test.
+test("contract: every page Systems opens has the way back from Systems, none from its bar tab", async () => {
+  const { SYSTEMS_PAGES } = await import("./lib/sections.js");
+  const { TABS, SYSTEM } = await import("./lib/router.js");
+  const routes = Object.fromEntries([...TABS, SYSTEM].map((tab) => [tab.page, tab.route]));
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", floorplan: true, rooms: [{ id: "living_room", name: "Living room" }] });
+  window.history.replaceState(null, "", "#/systems");
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(SYSTEMS_PAGES.includes("safety") && SYSTEMS_PAGES.includes("system"));
+  for (const page of SYSTEMS_PAGES) {
+    app._navigate("#/systems");
+    app._navigate(routes[page], { from: "systems" });
+    assert.ok(app.shadowRoot.querySelector("main .top > .ha-back"), `${page} from Systems: back`);
+  }
+  // The default bar's pages from their own tab: the bar is the way, no back arrow.
+  for (const page of ["areas", "climate"]) {
+    app._navigate(routes[page]);
+    assert.equal(app.shadowRoot.querySelector("main .top > .ha-back"), null, `${page} from its bar tab: none`);
+  }
+  app.remove();
+  window.history.replaceState(null, "", "#/");
+});

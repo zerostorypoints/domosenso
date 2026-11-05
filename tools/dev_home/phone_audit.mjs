@@ -16,9 +16,15 @@ import { parseArgs } from "node:util";
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 const { chromium } = createRequire(path.join(root, "website/package.json"))("playwright-core");
 
-const DEFAULT_ROUTES = "home:#/,systems:#/systems,areas:#/areas,area:#/area/living_room,controls:#/controls,"
-  + "status:#/controls/status,climate:#/climate,media:#/media,plants:#/plants,scenes:#/scenes,system:#/system,"
-  + "settings:#/settings,comfort:#/settings/comfort";
+// Every page the router knows, so a page added later is audited without touching this list: Home and
+// its Systems view, each page of the bar and System, Controls' Status, each Settings panel and one area.
+const router = await import(new URL("../../components/pocket/cards/lib/router.js", import.meta.url).href);
+const DEFAULT_ROUTES = [
+  "home:#/", "systems:#/systems",
+  ...[...router.TABS, router.SYSTEM].filter((tab) => tab.page !== "home").map((tab) => `${tab.page}:${tab.route}`),
+  "status:#/controls/status", "area:#/area/living_room",
+  ...router.SETTINGS_PANELS.map((panel) => `${panel}:#/settings/${panel}`),
+].join(",");
 const { values: o } = parseArgs({ options: {
   name: { type: "string" }, out: { type: "string" },
   dashboard: { type: "string", default: "dashboard-pocket-en/home" },
