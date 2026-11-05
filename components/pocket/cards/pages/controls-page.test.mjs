@@ -123,3 +123,32 @@ test("timers: found by role when the inputs name none; a named list wins", async
   assert.ok(el.querySelector('[data-entity="timer.domosenso_tea"]'));
   el.remove();
 });
+
+// Decision record of #219 (agreement 9): covers, contacts and locks a room lists come first in that
+// room, in the listed order and under the listed name; the rest are still found by HA area; a new
+// device is never left out.
+test("listed covers, contacts and locks: their room, their order and name first; the rest by area", async () => {
+  const { coversOf, labelOf, listedOf } = await import("../lib/controls.js");
+  const hass = controlsHass({
+    "cover.kitchen_blind": st("closed", { friendly_name: "Kitchen blind", supported_features: 3 }),
+    "lock.front_door": st("locked", { friendly_name: "Front door lock" }),
+  });
+  hass.entities["cover.kitchen_blind"] = { entity_id: "cover.kitchen_blind", area_id: "living_room" };
+  const rooms = config.rooms.map((r, i) => (i === 0 ? { ...r,
+    covers: ["cover.kitchen_blind", { entity: "cover.bedroom_blind", name: "Big blind" }],
+    locks: [{ entity: "lock.front_door", name: "Front door" }] } : r));
+  const cfg = { ...config, rooms };
+  assert.deepEqual(listedOf(cfg, "covers").map((l) => l.id), ["cover.kitchen_blind", "cover.bedroom_blind"]);
+  assert.deepEqual(coversOf(hass, cfg), ["cover.kitchen_blind", "cover.bedroom_blind", "cover.terrace_awning"]);
+  assert.equal(labelOf(hass, cfg, "cover.bedroom_blind"), "Big blind");
+  assert.equal(labelOf(hass, cfg, "cover.terrace_awning"), "Terrace awning");
+  const el = mount(ctxOf({ hass, cfg }));
+  // The bedroom blind is listed in the living room: it shows there, after the kitchen blind, under its
+  // listed name; the awning HA places in the living room follows them.
+  // (One room only: Controls shows no room headings.)
+  assert.deepEqual(texts(el, ".covers .row .n"), ["Kitchen blind", "Big blind", "Terrace awning"]);
+  el.remove();
+  const status = mount(ctxOf({ hass, cfg, routeId: "status" }));
+  assert.equal(text(status.querySelector('.st[data-entity="lock.front_door"] .n')), "Front door");
+  status.remove();
+});
