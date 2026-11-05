@@ -26,7 +26,9 @@ const STYLE = `
   .rooms .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   /* No min-height: an explicit one drops aspect-ratio's automatic minimum, and text that wraps
      would spill out; without it a square grows with its content (the row, 1fr, with it). */
-  .rooms .sq { box-sizing: border-box; aspect-ratio: 1 / .82; align-self: stretch; min-width: 0;
+  /* width: 100% gives WebKit a definite width to take the height from; without it Safari sizes
+     the square from the stretched row and the squares grow to a screen tall. */
+  .rooms .sq { box-sizing: border-box; width: 100%; aspect-ratio: 1 / .82; align-self: stretch; min-width: 0;
                margin: 0; padding: 12px; container-type: inline-size;
                display: flex; flex-direction: column; justify-content: space-between; text-align: left;
                font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);

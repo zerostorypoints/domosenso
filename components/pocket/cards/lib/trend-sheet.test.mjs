@@ -86,16 +86,16 @@ test("24 h: loading first, then the line from history over the shaded comfort ba
   const ctx = ctxOf({ hass });
   const el = mount(ctx, trendSpec(ctx, room("living_room"), "temperature"));
   assert.equal(text(el.querySelector(".state")), "Loading…");
-  assert.equal(el.querySelector("svg").hidden, true);
+  assert.equal(el.querySelector("svg").hasAttribute("hidden"), true);
   await tick();
   assert.equal(hass.ws.length, 1);
   assert.equal(hass.ws[0].type, "history/history_during_period");
   assert.deepEqual(hass.ws[0].entity_ids, ["sensor.living_room_temperature"]);
   assert.equal(el.querySelector(".state").hidden, true);
-  assert.equal(el.querySelector("svg").hidden, false);
+  assert.equal(el.querySelector("svg").hasAttribute("hidden"), false);
   const path = el.querySelector(".line").getAttribute("d");
   assert.match(path, /^M0 [\d.]+( L[\d.]+ [\d.]+){4}$/, "four points and the last value held to now");
-  assert.equal(el.querySelector(".band").hidden, false);
+  assert.equal(el.querySelector(".band").hasAttribute("hidden"), false);
   assert.equal(text(el.querySelector(".title")), "Temperature");
   assert.equal(text(el.querySelector(".where")), "Living room");
   assert.equal(text(el.querySelector(".big")), "21.7°");
@@ -143,7 +143,7 @@ test("a sensor without statistics: 7 d from its history", async () => {
   await tick();
   assert.deepEqual(hass.ws.map((m) => m.type).slice(1),
     ["recorder/statistics_during_period", "history/history_during_period"]);
-  assert.equal(el.querySelector("svg").hidden, false);
+  assert.equal(el.querySelector("svg").hasAttribute("hidden"), false);
 });
 
 test("no numbers in the period: the empty text; a failed call: the error text", async () => {
@@ -153,7 +153,7 @@ test("no numbers in the period: the empty text; a failed call: the error text", 
   let el = mount(ctx, trendSpec(ctx, room("living_room"), "temperature"));
   await tick();
   assert.equal(text(el.querySelector(".state")), "No data for this period");
-  assert.equal(el.querySelector("svg").hidden, true);
+  assert.equal(el.querySelector("svg").hasAttribute("hidden"), true);
   const failing = wsHass({ "history/history_during_period": new Error("down") });
   ctx = ctxOf({ hass: failing });
   el = mount(ctx, trendSpec(ctx, room("living_room"), "temperature"));
@@ -257,7 +257,7 @@ test("a sheet over 100 000 points draws, and a hass update reads none of them ag
   const ctx = ctxOf({ hass });
   const el = mount(ctx, trendSpec(ctx, room("living_room"), "temperature"));
   await tick();
-  assert.equal(el.querySelector("svg").hidden, false);
+  assert.equal(el.querySelector("svg").hasAttribute("hidden"), false);
   const note = text(el.querySelector(".note"));
   assert.match(note, /24 h: 13\.9°–31\.1°$/, "the spike and the dip");
   // The points are only read when the answer lands: an update works without them.
@@ -290,7 +290,7 @@ test("a range whose fetch failed is fetched again when the person switches back 
   el.querySelector('[data-range="24h"]').click();
   await tick();
   await tick();
-  assert.equal(el.querySelector("svg").hidden, false, "the retry drew the line");
+  assert.equal(el.querySelector("svg").hasAttribute("hidden"), false, "the retry drew the line");
   assert.equal(hass.ws.filter((m) => m.type === "history/history_during_period").length, 2);
   assert.equal(el._trend.request, undefined, "no request counter");
 });

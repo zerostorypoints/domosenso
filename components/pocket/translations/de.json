@@ -328,7 +328,8 @@
         "title": "Grundriss",
         "open": "Öffnen",
         "layers": "Ebenen",
-        "none": "Dieses Zuhause hat noch keinen Grundriss."
+        "none": "Dieses Zuhause hat noch keinen Grundriss.",
+        "back": "Zurück zu {name}"
       },
       "media": {
         "title": "Medien",
@@ -349,7 +350,9 @@
           "label": "Medien oder Klang",
           "media": "Medien",
           "sound": "Klang"
-        }
+        },
+        "power_on": "Einschalten",
+        "power_off": "Ausschalten"
       },
       "sound": {
         "averages": "Mittelwerte",

@@ -134,14 +134,21 @@ test("the area's room on the floor plan's own card, with the home's floorplan", 
   const card = el.querySelector(".area-plan floorplan-card");
   assert.ok(card, "the floorplan component's element");
   assert.deepEqual(card._config, { edit: false, values: true, maps: false, zoom: false, chips: false, tap_tips: true, area: "living_room",
-    plan: PLAN });
+    context: true, plan: PLAN });
   assert.equal(el.querySelector(".area-plan").hidden, false, "shown once the card says the room is on the plan");
-  assert.equal(card.shadowRoot.querySelectorAll("polygon.room").length, 1);
+  assert.equal(card.shadowRoot.querySelectorAll("polygon.room[data-area]").length, 1, "the area's own room, tappable");
+  assert.ok(card.shadowRoot.querySelectorAll("g.context polygon.room").length > 0, "its neighbours, faded");
   assert.equal(text(el.querySelector(".area-plan .t")), "Floor plan");
   el.querySelector(".area-plan .open").click();
-  assert.deepEqual(ctx.routes, ["#/floorplan"]);
+  assert.deepEqual(ctx.routes, ["#/floorplan/living_room"], "the view opened from this area, to come back to it");
   card.dispatchEvent(new window.CustomEvent("room-tap", { detail: { area_id: "living_room" }, bubbles: true }));
-  assert.deepEqual(ctx.routes, ["#/floorplan", "#/floorplan"]);
+  assert.deepEqual(ctx.routes, ["#/floorplan/living_room", "#/floorplan/living_room"]);
+  const layers = el.querySelector(".area-plan .layers");
+  assert.ok(card.layerChips.length > 0, "the climate sensor gives the card a layer");
+  assert.equal(layers.hidden, false, "Layers shows when the card has layers");
+  layers.click();
+  assert.equal(ctx.sheets.at(-1).kind, "layers");
+  assert.equal(ctx.sheets.at(-1).card, card, "the sheet presses this card's layers");
 });
 
 test("an area not on the plan hides its part; a home without the floorplan has none", async () => {
@@ -153,7 +160,7 @@ test("an area not on the plan hides its part; a home without the floorplan has n
 });
 
 test("planConfig is the floor plan card's host options", () => {
-  assert.deepEqual(planConfig("hall"), { area: "hall", edit: false, zoom: false, maps: false, chips: false, values: true });
+  assert.deepEqual(planConfig("hall"), { area: "hall", context: true, edit: false, zoom: false, maps: false, chips: false, values: true });
 });
 
 test("the plan is read once per session: two area visits, one lovelace/config", async () => {

@@ -38,6 +38,8 @@ export const STYLE = `
   .marker text { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; }
   .marker.picked .shape { stroke: var(--accent-color, #ff9800); }
   .ghost { opacity: 0.6; pointer-events: none; }
+  /* context: true: the rooms around the area, for orientation only. */
+  .context { opacity: 0.3; pointer-events: none; }
   .to-wall { stroke: var(--primary-color); stroke-width: 1; stroke-dasharray: 4 3;
              vector-effect: non-scaling-stroke; pointer-events: none; }
   .tray { width: 180px; overflow-y: auto; border-left: 1px solid var(--divider-color); padding: 8px;

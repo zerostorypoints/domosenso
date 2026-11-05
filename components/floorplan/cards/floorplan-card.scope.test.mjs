@@ -105,6 +105,25 @@ test("area: a door turned round is drawn where the whole plan draws it", async (
   }
 });
 
+test("area with context: the other rooms faded and named, untappable, without their points; the view wider", async () => {
+  const card = await make({ plan: plan(), area: "living_room", context: true });
+  const faded = $$(card, "g.context polygon.room");
+  assert.equal(faded.length, 1, "the kitchen, faded");
+  assert.equal(faded[0].getAttribute("data-area"), null, "a faded room is not a room to tap");
+  assert.ok($(card, "g.context text.label").textContent.includes("Kitchen"));
+  assert.deepEqual($$(card, "polygon.room[data-area]").map((r) => r.getAttribute("data-area")), ["living_room"]);
+  assert.deepEqual($$(card, "g.marker").map((g) => g.getAttribute("data-key")), ["d_climate"], "no kitchen plant");
+  const width = (c) => Number($(c, "svg").getAttribute("viewBox").split(" ")[2]);
+  const alone = await make({ plan: plan(), area: "living_room" });
+  assert.ok(Math.abs(width(card) - width(alone) - 3) < 1e-6, `1.5 m more on each side: ${width(card)} vs ${width(alone)}`);
+});
+
+test("context without area changes nothing", async () => {
+  const card = await make({ plan: plan(), context: true });
+  assert.equal($$(card, "g.context").length, 0);
+  assert.equal($$(card, "polygon.room").length, 2);
+});
+
 test("area: a room on another floor shows that floor's room", async () => {
   const card = await make({ plan: plan(), area: "office", floor: "ground" });
   assert.deepEqual($$(card, "polygon.room").map((r) => r.getAttribute("data-area")), ["office"]);
