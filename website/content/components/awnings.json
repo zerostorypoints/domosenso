@@ -17,14 +17,15 @@
       "providers": [
         "lights",
         "awnings",
-        "media"
+        "media",
+        "gate-remote"
       ],
       "availability": "conditional",
-      "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights and covers appear when configured.",
+      "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "1591da50762f96b7f64c4fd66e2ec970f6de9d16",
+      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

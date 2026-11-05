@@ -72,6 +72,7 @@ calendars or floor plans. A real home lives in its own repository.
 | [bermuda-presence](components/bermuda-presence/component.yaml) | Room-level presence of phones and tablets from BLE proxies and Bermuda |
 | [calendar](components/calendar/component.yaml) | Calendar events from a CalDAV server |
 | [climate-air](components/climate-air/component.yaml) | Room temperature and humidity (Tapo), air quality (Ruuvi Air) |
+| [gate-remote](components/gate-remote/component.yaml) | A garage door or gate opened by sending its own handset's fixed code from an ESP32 and a CC1101 |
 | [lights](components/lights/component.yaml) | Philips Hue lights per room |
 | [media](components/media/component.yaml) | A network audio player as a media player (tested: Hegel H400) |
 | [plants](components/plants/component.yaml) | Houseplant sensors (Xiaomi Mi Flora) |

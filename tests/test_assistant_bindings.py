@@ -40,7 +40,7 @@ CAPABILITIES = {
     'media': {'now_playing', 'status', 'mains'}, 'lights': {'status'}, 'calendar': {'agenda'},
     'weather': {'current', 'forecast'}, 'bermuda-presence': {'observations'},
     'awnings': {'status', 'wind'}, 'audio-sensor': {'level'}, 'backup': {'status'}, 'ramka': {'status', 'current_time'}, 'timers': {'status'},
-    'remote-access': set(), 'floorplan': set(),
+    'remote-access': set(), 'floorplan': set(), 'gate-remote': set(),
 }
 
 
@@ -161,7 +161,7 @@ def test_all_components_declare_translated_capabilities_and_render_bindings(tmp_
         assert set(bindings) == {'subjects', 'policies'}
         roles = {f['role'] for c in definitions for f in c['required_facts'] + c['optional_facts']}
         assert all(set(subject['fields']) <= roles for subject in bindings['subjects'])
-        assert bindings['subjects'] or cid in {'audio-sensor', 'remote-access', 'floorplan'}
+        assert bindings['subjects'] or cid in {'audio-sensor', 'remote-access', 'floorplan', 'gate-remote'}
         if cid == 'remote-access':
             assert bindings == {'subjects': [], 'policies': []}
 

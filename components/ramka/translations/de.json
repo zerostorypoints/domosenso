@@ -564,6 +564,10 @@
     },
     "timers": {
       "heading": "Timer"
+    },
+    "actions": {
+      "heading": "Kurzbefehle",
+      "confirm": "sicher?"
     }
   },
   "meta": {

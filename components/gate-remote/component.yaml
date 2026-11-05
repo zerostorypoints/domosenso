@@ -1,0 +1,72 @@
+# Domosenso component manifest: a garage door or gate opened from Home Assistant by sending the
+# code of its own handset. An ESP32 board with a sub-GHz CC1101 transceiver captures the handset's
+# code once (capture firmware, read over USB) and then sends it from a button (transmit firmware).
+# Fixed-code handsets only: two presses of a rolling-code handset give different frames, and that
+# ends at capture (README). SPEC-034.
+id: gate-remote
+version: 0.1.0
+summary: A garage door or gate opened from Home Assistant by sending its own handset's fixed code from an ESP32 and a CC1101
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: gate-handset
+      protocol: "fixed code, ASK/OOK, 300-928 MHz"
+      note: "the handset the home already uses; captured once, never changed; rolling codes are out of scope"
+    - kind: esp32-board
+      recommend: [m5stack-atom-lite]
+      count: "1 per node"
+    - kind: radio-transceiver
+      recommend: [m5stack-module-cc1101, cc1101]
+      note: "the module's band has to match the handset: m5stack-module-cc1101 for 868 MHz (tested), cc1101 (E07-M1101D) for 433 MHz (inference)"
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - {name: esphome, source: core, setup: "flash the capture factory image over USB, capture the handset, then flash the home's device file and adopt the node in Settings → Devices & services"}
+
+# One node per item; `domosenso add` writes the node's device file once (esphome/device.yaml.j2).
+# Each gate's code lives next to that file in <name>-<slug>.code.yaml: one captured frame, the
+# home's secret, never committed (README, "Capture").
+inputs:
+  nodes:
+    type: "list[{name: slug, friendly_name?: string, area?: area_name, frequency: frequency, gates: list[{slug, label}], repeat?: int, gap_us?: int}]"
+    example: [{name: gate-remote, friendly_name: Gate remote, area: Hall, frequency: 868.3MHz, gates: [{slug: garage, label: Garage}]}]
+
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
+artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
+  esphome:
+    packages:                             # remote packages, github://zerostorypoints/domosenso/components/gate-remote/esphome/<file>@gate-remote/<version>
+      - {file: esphome/transmit.yaml, project: domosenso.gate-remote}
+      - {file: esphome/capture.yaml, project: domosenso.gate-remote}
+    factory: esphome/capture.factory.yaml # listen only, Improv over USB: what a board gets first, to capture the handset
+    instance: examples/demo-home/esphome/<name>.yaml
+    devices:
+      {template: esphome/device.yaml.j2, each: nodes, file: <name>.yaml}
+    secrets: [wifi_ssid, wifi_password, api_encryption_key]
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "button.<friendly name slug>_<label slug>", stability: stable, from: esphome,
+       note: "one per gate; pressing it sends the gate's code `repeat` times; id built by HA from the node's friendly name and the gate's label"}
+    - {id: "light.<friendly name slug>_led", stability: stable, from: esphome, note: "blue while the node sends"}
+    - {id: "sensor.<friendly name slug>_wi_fi_signal", stability: stable, from: esphome}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  esphome: ["2026.9.1"]                   # config of the demo device file and the factory image, compile of both
+  homes: 1                                # an 868.3 MHz fixed-code handset, 2026-11-05 (SPEC-034)
+local_only: true

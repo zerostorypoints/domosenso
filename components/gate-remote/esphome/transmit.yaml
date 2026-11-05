@@ -1,0 +1,123 @@
+# domosenso component gate-remote: transmit firmware. The device file defines one template button
+# per gate whose on_press runs the script below with that gate's code (one captured frame, from its
+# code file); this package sends it `repeat` times with `gap` between, as the handset does.
+#
+# GDO0 carries the data into the CC1101 while it transmits, and in receive mode the chip drives GDO0
+# itself. So this node never enters receive mode: the radio idles from boot and between sends, and
+# GDO0 is never driven from both sides. Tested 2026-11-05: one press over the native API opened the
+# gate of the first home (SPEC-034).
+#
+# Shared as a remote package; it reads no secret (Wi-Fi, API key and OTA live in the device file).
+
+substitutions:
+  name: gate-remote
+  friendly_name: Gate remote
+  frequency: 433.92MHz           # the device file sets the handset's
+  repeat: "5"                    # frames per press; the tested handset sends at least three
+  gap: 9150us                    # between frames, the tested handset's
+  hold: 1s                       # the board's own button held this long presses the first gate
+  pin_clk: GPIO33                # Atom Lite wiring (devices/m5stack-module-cc1101.md)
+  pin_mosi: GPIO23
+  pin_miso: GPIO19
+  pin_cs: GPIO21
+  pin_gdo0: GPIO22
+  pin_led: GPIO27
+  pin_button: GPIO39
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+  project:
+    name: domosenso.gate-remote
+    version: 0.1.0  # the manifest's version (catalog_check)
+  on_boot:
+    priority: -100  # after the CC1101's setup, which ends in receive mode
+    then:
+      - cc1101.set_idle
+
+esp32:
+  board: m5stack-atom
+  variant: esp32
+  framework:
+    type: esp-idf
+
+logger:
+
+spi:
+  clk_pin: ${pin_clk}
+  mosi_pin: ${pin_mosi}
+  miso_pin: ${pin_miso}
+
+cc1101:
+  id: radio
+  cs_pin: ${pin_cs}
+  frequency: ${frequency}
+  modulation_type: ASK/OOK
+  output_power: 10  # dBm, the default
+
+remote_transmitter:
+  id: tx
+  pin: ${pin_gdo0}
+  carrier_duty_percent: 100%
+  on_transmit:
+    then:
+      - cc1101.begin_tx
+      - light.turn_on: {id: led, brightness: 40%, red: 0%, green: 0%, blue: 100%}
+  on_complete:
+    then:
+      - cc1101.set_idle
+      - light.turn_off: led
+
+script:
+  - id: gate_send
+    mode: queued
+    parameters:
+      code: int[]
+    then:
+      - remote_transmitter.transmit_raw:
+          transmitter_id: tx
+          # The script's int[] is std::vector<int>; transmit_raw takes std::vector<int32_t> (long on the ESP32).
+          code: !lambda return std::vector<int32_t>(code.begin(), code.end());
+          repeat:
+            times: ${repeat}
+            wait_time: ${gap}
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: led
+    name: LED
+    pin: ${pin_led}
+    num_leds: 1
+    chipset: SK6812
+    channel_colors: GRB
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+
+# The board's button: held for `hold` it presses the first gate (`gate_primary`, defined by the
+# device file), a way to open without Home Assistant. A short press does nothing.
+binary_sensor:
+  - platform: gpio
+    id: board_button
+    pin:
+      number: ${pin_button}
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at least ${hold}
+        then:
+          - button.press: gate_primary
+
+sensor:
+  - platform: wifi_signal
+    name: Wi-Fi signal
+    update_interval: 60s
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s
+
+button:
+  - platform: restart
+    name: Restart
