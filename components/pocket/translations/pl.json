@@ -272,8 +272,8 @@
         "empty": "Nie ma czego sprawdzać"
       },
       "lights": {
-        "title": "Włączone światła",
-        "none": "Nic nie świeci"
+        "title": "Światła",
+        "none": "W tym domu nie ma świateł."
       },
       "climate": {
         "title": "Klimat i powietrze",

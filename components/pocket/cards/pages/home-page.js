@@ -10,7 +10,9 @@
 //     reading that was checked, per area, the Outside included, problems first;
 //   - metric chips: inside (the range of the rooms' temperatures), outside, the home's air score
 //     (lib/climate.js homeAir: the lowest room's), the number of lights on, the power now and the
-//     plants (their Sections summary, lib/sections.js; each opens its page); a chip whose entity the config does not
+//     plants (their Systems summary, lib/sections.js). Every widget opens a sheet, never a page
+//     (lib/detail-sheets.js: an aggregate list or one sensor's trend): power the meters behind
+//     the sum, plants every plant; a chip whose entity the config does not
 //     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
 //     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
 //     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
@@ -35,7 +37,8 @@
 import { attention, roomLevels } from "../lib/attention.js";
 import { numberOf, toneOf } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
-import { checksSpec, lightsSpec } from "../lib/detail-sheets.js";
+import { checksSpec, lightsSpec, plantsSpec } from "../lib/detail-sheets.js";
+import { powerSpec } from "./power-page.js";
 import { formatDate } from "../lib/i18n.js";
 import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
@@ -196,10 +199,7 @@ export function render(ctx) {
 
   for (const [name, chip] of Object.entries(parts.chips)) {
     chip.addEventListener("click", () => {
-      if (name === "power" || name === "plants") {
-        parts.ctx.navigate(`#/${name}`);
-        return;
-      }
+
       const spec = chipSheet(parts.ctx, name);
       if (spec) parts.ctx.openSheet?.(spec);
     });
@@ -371,6 +371,8 @@ function chipSheet(ctx, name) {
   if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
+  if (name === "power") return powerSpec(ctx);
+  if (name === "plants") return plantsSpec(ctx);
   return null;
 }
 

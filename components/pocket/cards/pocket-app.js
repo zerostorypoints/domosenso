@@ -46,7 +46,7 @@ import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
-import { checks, air, lights } from "./lib/detail-sheets.js";
+import { checks, air, lights, plants as plantsSheet } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
@@ -65,7 +65,7 @@ const TOAST_MS = 3000;
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
-  players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet };
+  players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet, plants: plantsSheet };
 
 const STYLE = `
   :host { display: block; }

@@ -76,3 +76,22 @@ test("on Home: under the readings, each tile opens its page, a tone colours its 
   assert.equal(host.querySelector(".sect[data-page=climate]"), climate);
   el.remove();
 });
+
+test("every Overview widget opens a sheet: power the meters behind it, plants every plant", async () => {
+  const { plants } = await import("./detail-sheets.js");
+  const ctx = ctxOf({ hass: plantsHass() });
+  const pctx = ctxOf({ hass: powerHass() });
+  const el = home.render(pctx);
+  el.querySelector('.chip[data-chip="power"]').click();
+  assert.equal(pctx.sheets.at(-1).kind, "power");
+  assert.deepEqual(pctx.routes, [], "no page change");
+  const plantsHome = home.render(ctx);
+  plantsHome.querySelector('.chip[data-chip="plants"]').click();
+  assert.equal(ctx.sheets.at(-1).kind, "plants");
+  const sheet = plants.render(ctx, ctx.sheets.at(-1));
+  const rows = [...sheet.querySelectorAll(".drow")];
+  assert.ok(rows.length > 0);
+  assert.match(text(rows[0]), /Thirsty/, "the worst first, with what it needs");
+  rows[0].click();
+  assert.equal(ctx.sheets.at(-1).kind, "trend", "a row opens its moisture's trend");
+});

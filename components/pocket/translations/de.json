@@ -272,8 +272,8 @@
         "empty": "Nichts zu prüfen"
       },
       "lights": {
-        "title": "Lichter an",
-        "none": "Keine an"
+        "title": "Lichter",
+        "none": "Keine Lichter in diesem Zuhause."
       },
       "climate": {
         "title": "Klima & Luft",

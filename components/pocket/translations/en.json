@@ -272,8 +272,8 @@
         "empty": "Nothing to check"
       },
       "lights": {
-        "title": "Lights on",
-        "none": "No lights on"
+        "title": "Lights",
+        "none": "No lights in this home."
       },
       "climate": {
         "title": "Climate & air",

@@ -8,9 +8,18 @@
 //           temperature, rooms only) its inside chip.
 //   air     {kind: "air", title, subtitle, area}           every air reading of one area, the same
 //           rows, in the home's order; behind the area page's Air square.
-//   lights  {kind: "lights", title}                         the lamps that are on, per room, each a
-//           <pocket-light-tile>; a lamp switched off here stays in the list until the sheet closes,
-//           so a tile does not vanish under the finger. Behind Home's lights-on chip.
+//   lights  {kind: "lights", title}                         every lamp, per room, each a
+//           <pocket-light-tile> to switch or dim it: the sheet is where a light is turned on, so it
+//           lists them all, not only those on. Behind Home's lights-on chip.
+//   plants  {kind: "plants", title}                         every plant by area (lib/plants.js), the
+//           worst first: its name, what it needs (or fine) as a dot and words; a row opens the trend
+//           of its soil moisture (else its first reading with a sensor), the sensor's other
+//           measurements a pick away. Behind Overview's plants widget.
+//
+// Every widget on Overview opens a sheet of one of two kinds: an aggregate (many sensors: a list,
+// each row opening its trend; inside, lights, power, plants) or one sensor (its trend, its
+// measurements a pick away; outside, air). A widget never leaves the page: pages are reached from
+// Systems or the bar.
 //
 //   checksSpec(ctx, options?), airSpec(ctx, area), lightsSpec(ctx) -> spec   what a page passes
 //
@@ -23,7 +32,9 @@ import { areasOf } from "./areas.js";
 import { checksOf, areaRows, AIR_READINGS } from "./checks.js";
 import { trendNow } from "./trend.js";
 import { trendSpec } from "./trend-sheet.js";
-import { el, setText, setArrow, readingText, lampsOf, isOn, shortName, coalesce } from "./page-kit.js";
+import { plantsOf } from "./plants.js";
+import { sensorSpec } from "./sensor-list.js";
+import { el, setText, setArrow, readingText, lampsOf, shortName, coalesce } from "./page-kit.js";
 import "./light-tile.js";
 
 export const DETAIL_STYLE = `
@@ -77,6 +88,10 @@ export function airSpec(ctx, area) {
 
 export function lightsSpec(ctx) {
   return { kind: "lights", title: ctx.t("card.pocket.lights.title") };
+}
+
+export function plantsSpec(ctx) {
+  return { kind: "plants", title: ctx.t("card.pocket.plants.title") };
 }
 
 // The sheet's frame: a title row, the list, and a line for an empty list.
@@ -213,8 +228,7 @@ function drawLights(parts, ctx) {
     const ids = lampsOf(hass, room).filter((id) => {
       if (seen.has(id)) return false;
       seen.add(id);
-      if (isOn(hass, id)) parts.shown.add(id);
-      return parts.shown.has(id);
+      return true;
     });
     if (ids.length) groups.push({ room, ids });
   }
@@ -255,9 +269,69 @@ export const lights = {
   render(ctx, spec) {
     const parts = frame(spec);
     parts.ctx = ctx;
-    parts.shown = new Set();
     parts.tiles = new Map();
     parts.draw = drawLights;
+    parts.root._detail = parts;
+    update(parts.root, ctx);
+    return parts.root;
+  },
+  update: (root, ctx) => update(root, ctx),
+};
+
+// --- plants -------------------------------------------------------------------------------------
+
+const PLANT_TONE = (plant) => (plant.rank <= 1 ? "lv-poor" : plant.rank === 2 ? "lv-fair" : plant.rank === 3 ? "lv-good" : "");
+
+function drawPlants(parts, ctx) {
+  const { hass } = ctx;
+  const groups = plantsOf(hass, ctx.config);
+  const key = JSON.stringify(groups.map((g) => [g.areaId, g.label, g.plants.map((p) => p.id)]));
+  if (key !== parts.listKey) {
+    parts.listKey = key;
+    parts.rows = [];
+    parts.list.replaceChildren(...groups.map((group) => {
+      const box = el("div", "grp");
+      const name = el("div", "gname");
+      name.textContent = group.area ? areaName(ctx, group.area)
+        : group.label || (group.areaId ? hass.areas?.[group.areaId]?.name ?? group.areaId : ctx.t("card.pocket.plants.no_area"));
+      const rows = el("div", "rows");
+      for (const plant of group.plants) {
+        const reading = plant.readings.find((r) => r.reading === "moisture" && r.entity) ?? plant.readings.find((r) => r.entity);
+        const row = el(reading ? "button" : "div", "drow",
+          `<i class="dot"></i><span class="dname"><span class="r"></span><span class="lt"></span></span>`);
+        if (reading) {
+          row.type = "button";
+          row.addEventListener("click", () => parts.ctx.openSheet?.(
+            sensorSpec(parts.ctx, reading.entity, ctx.t(`card.pocket.plants.reading.${reading.reading}`), plant.name), { stack: true }));
+        }
+        parts.rows.push({ row, id: plant.id });
+        rows.append(row);
+      }
+      box.append(name, rows);
+      return box;
+    }));
+  }
+  const byId = new Map(groups.flatMap((g) => g.plants).map((p) => [p.id, p]));
+  for (const { row, id } of parts.rows) {
+    const plant = byId.get(id);
+    if (!plant) continue;
+    setText(row.querySelector(".r"), plant.name);
+    setText(row.querySelector(".lt"), plant.reasons.length
+      ? plant.reasons.map((r) => ctx.t(`card.pocket.plants.reason.${r}`)).join(" · ")
+      : ctx.t(plant.rank === 4 ? "card.pocket.plants.no_reading" : "card.pocket.plants.fine"));
+    const dot = row.querySelector(".dot");
+    const name = ["dot", PLANT_TONE(plant)].filter(Boolean).join(" ");
+    if (dot.className !== name) dot.className = name;
+  }
+  parts.empty.hidden = groups.length > 0;
+  setText(parts.empty, groups.length ? "" : ctx.t("card.pocket.plants.empty"));
+}
+
+export const plants = {
+  render(ctx, spec) {
+    const parts = frame(spec);
+    parts.ctx = ctx;
+    parts.draw = drawPlants;
     parts.root._detail = parts;
     update(parts.root, ctx);
     return parts.root;
