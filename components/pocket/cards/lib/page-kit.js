@@ -94,7 +94,9 @@ export function pluralOf(ctx, count) {
   return pluralRules.get(locale).select(count);
 }
 
-export const lightsOf = (room) => [room.lights ?? []].flat().filter(Boolean);
+// A room's lights: one entity, or a list of entities or {entity, name} (the home inputs, P3).
+export const lightsOf = (room) => [room.lights ?? []].flat()
+  .map((l) => (typeof l === "string" ? l : l?.entity)).filter((id) => typeof id === "string" && id);
 export const isOn = (hass, id) => hass?.states?.[id]?.state === "on";
 
 // The lamps of a room: the members of its light group (the group's entity_id attribute) when the

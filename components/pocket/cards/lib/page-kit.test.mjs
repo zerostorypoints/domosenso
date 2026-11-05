@@ -9,6 +9,8 @@ const st = (state, attributes = {}) => ({ state, attributes });
 test("lights: one entity or several, empty without", () => {
   assert.deepEqual(lightsOf({ lights: "light.living_room" }), ["light.living_room"]);
   assert.deepEqual(lightsOf({ lights: ["light.ceiling", "light.reading_lamp"] }), ["light.ceiling", "light.reading_lamp"]);
+  assert.deepEqual(lightsOf({ lights: [{ entity: "light.ceiling", name: "Ceiling" }, "light.reading_lamp"] }),
+    ["light.ceiling", "light.reading_lamp"]);
   assert.deepEqual(lightsOf({}), []);
 });
 

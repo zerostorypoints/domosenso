@@ -74,6 +74,7 @@ def test_room_covers_contacts_locks_refuse_bad_shapes(tmp_path, bad):
 def test_room_lights_one_or_several(tmp_path):
     _validate(tmp_path, {"lights": "light.living_room"})
     _validate(tmp_path, {"lights": ["light.ceiling", "light.reading_lamp"]})
+    _validate(tmp_path, {"lights": [{"entity": "light.ceiling", "name": {"en": "Ceiling", "de": "Decke"}}, "light.reading_lamp"]})
     for bad in ([], ["light.a", "light.a"], ["not an entity"]):
         with pytest.raises(DomosensoError):
             _validate(tmp_path, {"lights": bad})

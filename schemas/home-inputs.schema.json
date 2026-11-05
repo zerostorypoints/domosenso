@@ -85,7 +85,7 @@
           "$ref": "#/$defs/area"
         },
         "lights": {
-          "description": "The room's lights: a light group (its members read at run time), or several lights or groups (as the Ramka lists them).",
+          "description": "The room's lights: a light group (its members read at run time), or several lights or groups, each an entity or {entity, name} (as the Ramka lists them with labels).",
           "oneOf": [
             {
               "$ref": "#/$defs/entity"
@@ -93,7 +93,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/entity"
+                "$ref": "#/$defs/labelled"
               },
               "minItems": 1,
               "uniqueItems": true
