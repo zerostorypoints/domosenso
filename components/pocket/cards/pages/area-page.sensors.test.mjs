@@ -86,12 +86,12 @@ test("every row opens its sheet: a number its trend, an on/off sensor its timeli
   assert.ok(rows.every((row) => row.tagName === "BUTTON"));
   rows[2].click();
   assert.deepEqual(ctx.sheets, [{ kind: "trend", entity: "sensor.living_room_temperature", title: "Temperature",
-    subtitle: "Living room", reading: "temperature" }]);
+    subtitle: "Living room", reading: "temperature", area: "living_room" }]);
   rows[1].click();
   assert.equal(ctx.sheets[1].reading, "humidity");
   rows[0].click();
   assert.deepEqual(ctx.sheets[2], { kind: "trend", entity: "binary_sensor.door", title: "Door", subtitle: "Living room",
-    timeline: true });
+    timeline: true, area: "living_room" });
 });
 
 test("an update patches the values in place; a new entity rebuilds the rows", () => {
@@ -133,7 +133,7 @@ test("the area's room on the floor plan's own card, with the home's floorplan", 
   await settle();
   const card = el.querySelector(".area-plan floorplan-card");
   assert.ok(card, "the floorplan component's element");
-  assert.deepEqual(card._config, { edit: false, values: true, maps: false, zoom: false, chips: false, tap_tips: true, area: "living_room",
+  assert.deepEqual(card._config, { edit: false, values: true, maps: true, zoom: false, chips: false, tap_tips: true, area: "living_room",
     context: true, plan: PLAN });
   assert.equal(el.querySelector(".area-plan").hidden, false, "shown once the card says the room is on the plan");
   assert.equal(card.shadowRoot.querySelectorAll("polygon.room[data-area]").length, 1, "the area's own room, tappable");
@@ -160,7 +160,7 @@ test("an area not on the plan hides its part; a home without the floorplan has n
 });
 
 test("planConfig is the floor plan card's host options", () => {
-  assert.deepEqual(planConfig("hall"), { area: "hall", context: true, edit: false, zoom: false, maps: false, chips: false, values: true });
+  assert.deepEqual(planConfig("hall"), { area: "hall", context: true, edit: false, zoom: false, maps: true, chips: false, values: true });
 });
 
 test("the plan is read once per session: two area visits, one lovelace/config", async () => {

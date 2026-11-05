@@ -1,9 +1,10 @@
 // The area page's part of the floor plan: the floorplan component's own card (custom:floorplan-card,
 // consumed as an element, never redrawn here) with `area` set to the area's HA area, so it draws
 // that room with its sensors and their readings, the rooms around it faded (context: true), fitted,
-// read-only, fixed (zoom: false: a finger on it scrolls the page) and without maps or chips; its
-// layers are in the bottom sheet the Layers button opens (lib/layer-sheet.js), as on the floor plan
-// view. Shown only when the home has the
+// read-only, fixed (zoom: false: a finger on it scrolls the page) and without chips; its layers are
+// in the bottom sheet the Layers button opens (lib/layer-sheet.js), as on the floor plan view, and
+// its maps (maps: true) in the card's own bar, offered with one of climate, light or plants shown
+// alone: the room's temperature, humidity or CO₂ drawn on it. Shown only when the home has the
 // floorplan component (config `floorplan`, which the dashboard template sets from the home's
 // inputs; the card's resource comes with that component) and the card says the area is on the plan
 // (its floorplan-status is ready). A tap on it, or on "Open", opens the floor plan view from this
@@ -28,12 +29,14 @@ export const PLAN_STYLE = `
   .area-plan .layers[hidden] { display: none; }
   .area-plan .open, .area-plan .layers { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; border: 0; background: none;
                      font: inherit; font-size: 13px; color: var(--acc); cursor: pointer; }
-  .area-plan .box { height: 280px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+  /* The card sizes itself: its plan at least 280 px (floorplan lib/style.js) and, with a map shown, its
+     bar of map choices and the scale above it; a fixed height would cut the plan. */
+  .area-plan .box { min-height: 280px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
   .area-plan .open:focus-visible, .area-plan .layers:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 `;
 
 // The floor plan card's config for one area (components/floorplan: `area` and the host options).
-export const planConfig = (areaId) => ({ area: areaId, context: true, edit: false, zoom: false, maps: false, chips: false, values: true });
+export const planConfig = (areaId) => ({ area: areaId, context: true, edit: false, zoom: false, maps: true, chips: false, values: true });
 
 export function renderAreaPlan(ctx, area) {
   const areaId = haAreaOf(ctx.config, area);

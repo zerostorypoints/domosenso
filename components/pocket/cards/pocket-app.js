@@ -34,6 +34,7 @@
 //   floorplan: true          # optional: the home has the floorplan component (its card, floorplan-card,
 //                            # on the area pages and the floor plan view; the bar may offer the view)
 //   plants: true             # optional: the home has the plants component; Plants is on the default bar
+//   timers: [timer.x]        # optional: the timers Controls shows (pages/controls-page.js)
 //   sound: {level, offset?, averages?}   # optional: the home has audio-sensor; Media's Sound tab
 //                            # (lib/sound-panel.js, its card room-meter-card)
 
@@ -46,24 +47,37 @@ import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
-import { checks, air, lights } from "./lib/detail-sheets.js";
+import { checks, air, lights, plants as plantsSheet } from "./lib/detail-sheets.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
+import * as sourceSheet from "./lib/source-sheet.js";
+import * as sceneSheet from "./lib/scene-sheet.js";
 import { powerSheet } from "./pages/power-page.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
+import { redirectAtStart } from "./lib/start.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
 
 const translate = createT({ en, de, pl });
+
+// Every Lovelace dashboard loads this module (a dashboard resource): on a device set to open the
+// pocket at start (Settings → This device, lib/start.js), the app's first dashboard moves here.
+try {
+  redirectAtStart(window);
+} catch {
+  // never in the way of the dashboard that loads
+}
 const TOAST_MS = 3000;
+// The pages Home's Systems opens (lib/sections.js): off the bar, they get a way back to Systems.
+const SYSTEMS_PAGES = ["areas", "controls", "climate", "media", "power", "plants", "scenes", "floorplan", "system"];
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
-  players: playerSheet, power: powerSheet };
+  players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet, plants: plantsSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -73,7 +87,7 @@ const STYLE = `
   .app { --bar: 64px; --safe: env(safe-area-inset-bottom, 0px);
          box-sizing: border-box; min-height: 100vh;
          /* The view sits under HA's header; dvh follows the phone's collapsing browser bars. */
-         min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px));
+         min-height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - env(safe-area-inset-top, 0px));
          overflow-x: clip; overscroll-behavior: none;
          background: var(--bg); color: var(--fg);
          font-family: -apple-system, "SF Pro Text", Roboto, system-ui, sans-serif; font-weight: 400;
@@ -84,7 +98,18 @@ const STYLE = `
   .offline[hidden] { display: none; }
   /* Room under the page for the fixed bar and the phone's home indicator. A finger moves the page
      only up and down (pinch zoom stays); the pages' own sideways gestures handle themselves. */
-  main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom; }
+  main { padding: 12px 16px calc(var(--bar) + var(--safe) + 16px); touch-action: pan-y pinch-zoom;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .headless main { padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 4px)); }
+  .ha-menu { position: absolute; left: -6px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+             margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--fg); cursor: pointer;
+             display: flex; align-items: center; justify-content: center; --mdc-icon-size: 24px;
+             -webkit-tap-highlight-color: transparent; }
+  .ha-menu:focus-visible, .ha-back:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
+  .ha-back { position: absolute; left: 34px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+             margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--acc); cursor: pointer;
+             display: flex; align-items: center; justify-content: center; --mdc-icon-size: 30px;
+             -webkit-tap-highlight-color: transparent; }
   /* The toast rides on the bar: absolute inside the fixed nav, just above its top edge. */
   .toast { position: absolute; left: 16px; right: 16px; bottom: calc(100% + 8px); box-sizing: border-box;
            padding: 12px 16px; border-radius: 14px; font-size: 16px; line-height: 1.3;
@@ -93,11 +118,13 @@ const STYLE = `
      readers to announce its text when it changes. */
   .toast:not(.show) { opacity: 0; pointer-events: none; }
   /* Fixed to the screen, not sticky in the card: a sticky bar drifted with iOS's rubber-band
-     scroll and with sideways drags. Beside HA's open sidebar (a wide screen) it starts where the
-     sidebar ends (--mdc-drawer-width, which HA leaves unset while the sidebar is a modal drawer).
-     Its background runs to the very bottom: the safe area is padding inside it. */
-  nav { position: fixed; left: var(--mdc-drawer-width, 0px); right: 0; bottom: 0; z-index: 4;
+     scroll and with sideways drags. It spans the card's own box (--bar-left, --bar-width:
+     _placeBar measures it), so beside HA's sidebar (a phone in landscape, a wide screen) it starts
+     where the sidebar ends; HA sets no variable for that width. Its background runs to the very
+     bottom: the safe area is padding inside it, and the phone's side insets in landscape too. */
+  nav { position: fixed; left: var(--bar-left, 0px); width: var(--bar-width, 100%); bottom: 0; z-index: 4;
         box-sizing: border-box; height: calc(var(--bar) + var(--safe)); padding-bottom: var(--safe);
+        padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
         display: flex; justify-content: space-around; align-items: stretch;
         touch-action: none; overscroll-behavior: none;
         background: var(--card);
@@ -120,6 +147,15 @@ class PocketApp extends HTMLElement {
     this._onHash = () => this._route();
     this._onScheme = () => this._paint();
     this._onPop = () => this._sheet?.onPopState();
+    // Home Assistant's sidebar opens only from a menu button (the pocket's, or HA's own in its
+    // header on a wide screen): the Companion app's swipe from the left edge also asks for it
+    // (hass-toggle-menu), which on a phone fights the way back; on this dashboard it is ignored.
+    this._onToggleMenu = (event) => {
+      if (this._ownMenu) return;
+      if (event.composedPath().some((node) => node?.localName === "ha-menu-button")) return;
+      event.stopImmediatePropagation();
+    };
+    this._onResize = () => this._placeBar();
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
     this._saveQueue = Promise.resolve();
@@ -187,7 +223,14 @@ class PocketApp extends HTMLElement {
   }
 
   connectedCallback() {
+    window.addEventListener("hass-toggle-menu", this._onToggleMenu, true);
     window.addEventListener("hashchange", this._onHash);
+    window.addEventListener("resize", this._onResize);
+    if (typeof ResizeObserver === "function") {
+      this._resize ??= new ResizeObserver(this._onResize);
+      this._resize.observe(this);
+    }
+    this._placeBar();
     window.addEventListener("popstate", this._onPop);
     this._scheme = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
     this._scheme?.addEventListener?.("change", this._onScheme);
@@ -197,10 +240,74 @@ class PocketApp extends HTMLElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener("hass-toggle-menu", this._onToggleMenu, true);
     window.removeEventListener("hashchange", this._onHash);
+    window.removeEventListener("resize", this._onResize);
+    this._resize?.disconnect();
     window.removeEventListener("popstate", this._onPop);
     this._sheet?.dismiss();
     this._scheme?.removeEventListener?.("change", this._onScheme);
+  }
+
+  // The fixed bar over the card's own box: left and width in the viewport (HA's sidebar, when it
+  // stands beside the view, moves the box). An unmeasured box (0 wide) keeps the last values.
+  _placeBar() {
+    const box = this.getBoundingClientRect?.();
+    if (!box || !(box.width > 0)) return;
+    const left = `${Math.round(box.left)}px`;
+    const width = `${Math.round(box.width)}px`;
+    if (this.style.getPropertyValue("--bar-left") !== left) this.style.setProperty("--bar-left", left);
+    if (this.style.getPropertyValue("--bar-width") !== width) this.style.setProperty("--bar-width", width);
+    // Without HA's header above it (kiosk-mode hides it on a phone) the card starts at the top of
+    // the screen: the page then keeps clear of the status bar and the notch itself.
+    const headless = box.top + (window.scrollY || 0) < 8;
+    this._app?.classList.toggle("headless", headless);
+  }
+
+  // The menu button left of a page's title (its first .top row): it opens Home Assistant's own
+  // sidebar (the hass-toggle-menu event, as HA's header button does), so HA's menu is at hand
+  // where kiosk-mode hides the header; elsewhere it is there too, for one behaviour everywhere.
+  _addMenu(pageEl) {
+    const top = pageEl?.querySelector?.(".top");
+    if (!top || top.querySelector(":scope > .ha-menu")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ha-menu";
+    button.innerHTML = `<ha-icon icon="mdi:menu"></ha-icon>`;
+    button.setAttribute("aria-label", this._t("card.pocket.menu"));
+    button.addEventListener("click", () => {
+      this._ownMenu = true;
+      try {
+        this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+      } finally {
+        this._ownMenu = false;
+      }
+    });
+    // Inline: it wins over every page's own .top padding, whatever its selector.
+    top.style.position = "relative";
+    top.style.paddingLeft = "44px";
+    top.prepend(button);
+    // A page opened from Systems has a way back to it beside the menu button, on the bar or not;
+    // one off the bar has it however it was reached (no tab to return by). A page with its own back
+    // (an area, a floor plan from an area) has a routeId; Controls' status view is still Controls.
+    const page = this._current?.page;
+    const onBar = (this._barIds ?? "").split(" ").includes(page);
+    const own = this._current?.id != null && page !== "controls";
+    if (SYSTEMS_PAGES.includes(page) && !own && (this._fromSystems || !onBar)) {
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "ha-back";
+      back.innerHTML = `<ha-icon icon="mdi:chevron-left"></ha-icon>`;
+      back.setAttribute("aria-label", this._t("card.pocket.back_systems"));
+      // Back through history when Systems is the entry under this page, so the phone's own back
+      // and this arrow agree; else to Systems as a new entry.
+      back.addEventListener("click", () => {
+        if (this._fromSystems) window.history.back();
+        else this._navigate("#/systems");
+      });
+      top.style.paddingLeft = "80px";
+      top.prepend(back);
+    }
   }
 
   // The language of every word: the dashboard's (config.lang), else Home Assistant's.
@@ -273,8 +380,10 @@ class PocketApp extends HTMLElement {
 
   // options.replace: the route takes the place of the current history entry (area-to-area swipes,
   // so Back returns to Areas rather than through every area).
-  _navigate(route, { replace = false } = {}) {
+  _navigate(route, { replace = false, from = null } = {}) {
     route = legacyRoute(route) ?? route;
+    // Where the page about to open was opened from: Systems gives it a back arrow (_addMenu).
+    this._pendingFrom = from;
     if (this._unknownArea(parseRoute(route))) route = "#/areas";
     // From an open sheet: the route takes the sheet's entry, so Back goes to the page under it.
     if (this._sheet?.ownsEntry()) replace = true;
@@ -303,6 +412,10 @@ class PocketApp extends HTMLElement {
       route = parseRoute("#/areas");
     }
     const key = `${route.page}/${route.id ?? ""}`;
+    // Opened from Systems, it keeps its way back while it stays the same page (a switch of its
+    // own views is still that page); another page forgets it.
+    if (route.page !== this._current?.page) this._fromSystems = this._pendingFrom === "systems";
+    this._pendingFrom = null;
     this._current = route;
     if (key !== this._key) {
       this._key = key;
@@ -311,6 +424,7 @@ class PocketApp extends HTMLElement {
       this._sheet.dismiss();
       this._main.replaceChildren(this._pageEl);
       this._renderBar();
+      this._addMenu(this._pageEl);
       return;
     }
     if (this._barLang !== this._lang()) this._renderBar();

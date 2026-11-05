@@ -94,8 +94,8 @@ test("swipes work in both directions on every area, the Outside included, with n
 
 test("the page fills the screen above the bar: a swipe below short content is the page's", () => {
   const css = mount().querySelector("style").textContent;
-  assert.match(css, /\.room \{[^}]*min-height: calc\(100vh - var\(--header-height, 56px\) - var\(--bar, 64px\) - 28px\)/);
-  assert.match(css, /\.room \{[^}]*min-height: calc\(100dvh - var\(--header-height, 56px\)[^}]*var\(--safe, 0px\) - 28px\)/);
+  assert.match(css, /\.room \{[^}]*min-height: calc\(100vh - var\(--kiosk-header-height, var\(--header-height, 56px\)\) - var\(--bar, 64px\) - 28px\)/);
+  assert.match(css, /\.room \{[^}]*min-height: calc\(100dvh - var\(--kiosk-header-height, var\(--header-height, 56px\)\)[^}]*var\(--safe, 0px\) - 28px\)/);
 });
 
 test("the page leaves vertical scroll to the browser", () => {
@@ -310,7 +310,7 @@ test("the group tile takes on/off from the group's state: off with a brightness 
 
 test("one square size: two equal columns, a fixed aspect, a lone square does not stretch", () => {
   const css = mount(ctxOf({ routeId: "bedroom" })).querySelector("style").textContent;
-  assert.match(css, /\.squares\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.squares\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(min\(var\(--square-min, 160px\), 100%\), 1fr\)\)/);
   assert.match(css, /\.squares > \*\s*\{[^}]*min-width:\s*0/);
   assert.match(css, /\.room \.sq\s*\{[^}]*aspect-ratio:\s*1 \/ \.62/);
   assert.doesNotMatch(css, /only-child|grid-column/, "no rule widens a lone square");

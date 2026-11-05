@@ -40,9 +40,9 @@ test("the shell's settings entry is this page", () => {
 test("the groups, translated", () => {
   const el = mount();
   assert.equal(text(el.querySelector(".top b")), "Settings");
-  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "Bottom bar", "Comfort ranges", "About"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "This device", "Bottom bar", "Comfort ranges", "About"]);
   settingsPage.update(el, settingsCtx({ lang: "pl" }));
-  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "Dolny pasek", "Zakresy komfortu", "O aplikacji"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "To urządzenie", "Dolny pasek", "Zakresy komfortu", "O aplikacji"]);
   settingsPage.update(el, settingsCtx({ lang: "de" }));
   assert.equal(text(el.querySelector(".top b")), "Einstellungen");
 });
@@ -77,24 +77,24 @@ test("a failed save puts back what was shown and toasts", async () => {
 test("Bottom bar: a switch per page besides Home and Settings; at most three on, the others disabled with a hint", async () => {
   const ctx = settingsCtx();
   const el = mount(ctx);
-  assert.deepEqual(switches(el).map((b) => b.dataset.page), ["areas", "climate", "media", "power", "plants"]);
-  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Climate", "Media", "Power", "Plants"]);
-  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "true", "true", "false", "false"]);
-  assert.deepEqual(switches(el).map((b) => b.disabled), [false, false, false, true, true]);
+  assert.deepEqual(switches(el).map((b) => b.dataset.page), ["areas", "controls", "climate", "media", "power", "plants", "scenes"]);
+  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Controls", "Climate", "Media", "Power", "Plants", "Scenes"]);
+  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "true", "true", "false", "false", "false"]);
+  assert.deepEqual(switches(el).map((b) => b.disabled), [false, true, false, false, true, true, true]);
   assert.equal(el.querySelector(".bar .full").hidden, false);
   assert.match(text(el.querySelector(".bar .full")), /3 pages are on the bar/);
-  switches(el)[3].click();
+  switches(el)[4].click();      // Power: off and disabled
   await tick();
   assert.equal(ctx.saves.length, 0, "a disabled switch saves nothing");
 
-  switches(el)[1].click();      // Climate off
+  switches(el)[2].click();      // Climate off
   assert.equal(el.querySelector(".bar .full").hidden, true);
-  assert.deepEqual(switches(el).map((b) => b.disabled), [false, false, false, false, false]);
-  switches(el)[4].click();      // Plants on, before the first save has landed
+  assert.deepEqual(switches(el).map((b) => b.disabled), [false, false, false, false, false, false, false]);
+  switches(el)[5].click();      // Plants on, before the first save has landed
   await tick();
   assert.deepEqual(ctx.saves, [{ bar: ["home", "areas", "media", "settings"] },
     { bar: ["home", "areas", "media", "plants", "settings"] }]);
-  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "true", "false", "true"]);
+  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "false", "true", "false", "true", "false"]);
 });
 
 test("controls are disabled while offline", () => {
@@ -227,10 +227,51 @@ test("Bottom bar: the floor plan is a choice only in a home with the floorplan c
   assert.ok(!texts(mount(), ".bar .row .label").includes("Floor plan"));
   const ctx = settingsCtx({ cfg: { ...config, floorplan: true }, settings: { bar: ["home", "areas", "settings"], theme: "system" } });
   const el = mount(ctx);
-  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Climate", "Media", "Power", "Plants", "Floor plan"]);
+  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Controls", "Climate", "Media", "Power", "Plants", "Scenes", "Floor plan"]);
   const plan = switches(el).find((s) => s.dataset.page === "floorplan");
   assert.equal(plan.getAttribute("aria-checked"), "false");
   plan.click();
   await tick();
   assert.deepEqual(ctx.saves, [{ bar: ["home", "areas", "floorplan", "settings"] }]);
+});
+
+test("two levels: Settings holds Appearance, the bar and a row per panel; each panel is its own page with a Back", () => {
+  const top = mount(settingsCtx());
+  const shownGroups = (el) => [...el.querySelectorAll(".group")].filter((g) => !g.hidden).map((g) => g.classList[1]);
+  assert.deepEqual(shownGroups(top), ["appearance", "device", "bar", "menu"], "the home's values are a step away");
+  assert.deepEqual(texts(top, ".menu .row .name"), ["Comfort ranges", "About"]);
+  assert.equal(text(top.querySelector(".menu [data-panel=comfort] small")), "2 areas · Air limits");
+  assert.match(text(top.querySelector(".menu [data-panel=about] small")), /^Pocket /);
+  assert.equal(top.querySelector(".back").hidden, true);
+  top.querySelector(".menu [data-panel=comfort]").click();
+  top.querySelector(".menu [data-panel=about]").click();
+  const ctx = settingsCtx({ routeId: "comfort" });
+  const comfort = mount(ctx);
+  assert.deepEqual(shownGroups(comfort), ["comfort"]);
+  assert.equal(comfort.querySelector(".top > b").hidden, true);
+  assert.equal(text(comfort.querySelector(".back")), "Comfort ranges");
+  assert.equal(comfort.querySelector(".back").getAttribute("aria-label"), "Back to Settings");
+  comfort.querySelector(".back").click();
+  assert.deepEqual(ctx.routes, ["#/settings"]);
+  assert.deepEqual(shownGroups(mount(settingsCtx({ routeId: "about" }))), ["about"]);
+});
+
+test("a home without comfort helpers has no Comfort ranges row", () => {
+  const el = mount(settingsCtx({ cfg: { ...config, thresholds: {} } }));
+  assert.equal(el.querySelector(".menu [data-panel=comfort]").hidden, true);
+  assert.equal(el.querySelector(".menu [data-panel=about]").hidden, false);
+});
+
+test("This device: open Pocket at the app's start, here only; off again restores HA's start", () => {
+  window.history.replaceState(null, "", "/dashboard-pocket/home#/settings");
+  const el = mount();
+  const start = el.querySelector(".device .start");
+  assert.equal(start.getAttribute("aria-checked"), "false");
+  start.click();
+  assert.equal(window.localStorage.getItem("domosenso-pocket-start"), "/dashboard-pocket");
+  assert.equal(start.getAttribute("aria-checked"), "true");
+  assert.match(text(el.querySelector(".device small")), /opens here/);
+  start.click();
+  assert.equal(window.localStorage.getItem("domosenso-pocket-start"), null);
+  assert.equal(start.getAttribute("aria-checked"), "false");
 });

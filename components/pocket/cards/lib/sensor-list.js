@@ -7,8 +7,9 @@
 // hidden while the area has no sensor.
 //
 //   renderSensors(ctx, area) -> {el, update(ctx)}
-//   sensorSpec(ctx, id, name, where) -> spec   the trend sheet of one sensor (a timeline when it
-//       has no number)
+//   sensorSpec(ctx, id, name, where, areaId?) -> spec   the trend sheet of one sensor (a timeline
+//       when it has no number); areaId, the pocket area it stands in, lets the sheet's other
+//       measurements of the same device find the area's levels (lib/measurements.js)
 //
 // The rows are rebuilt only when the entities or their categories change; update() patches the
 // values and the words, and only while the section is open.
@@ -43,12 +44,13 @@ const READINGS = { temperature: "temperature", humidity: "humidity" };
 
 // The trend sheet's spec for one sensor: its name, the area, and the digits its state shows (the
 // Power and Plants pages open their rows' trends with it too).
-export function sensorSpec(ctx, id, name, where) {
+export function sensorSpec(ctx, id, name, where, areaId) {
   const state = ctx.hass?.states?.[id];
-  if (!isNumeric(ctx.hass, id)) return { kind: "trend", entity: id, title: name, subtitle: where, timeline: true };
+  const area = areaId ? { area: areaId } : {};
+  if (!isNumeric(ctx.hass, id)) return { kind: "trend", entity: id, title: name, subtitle: where, timeline: true, ...area };
   const reading = READINGS[state?.attributes?.device_class];
   const digits = Math.min(2, (String(state?.state ?? "").split(".")[1] ?? "").length);
-  return { kind: "trend", entity: id, title: name, subtitle: where, ...(reading ? { reading } : { digits }) };
+  return { kind: "trend", entity: id, title: name, subtitle: where, ...(reading ? { reading } : { digits }), ...area };
 }
 
 export function renderSensors(ctx, area) {
@@ -88,7 +90,7 @@ export function renderSensors(ctx, area) {
         row.type = "button";
         row.addEventListener("click", () => {
           const name = shortName(state.ctx.hass, id, area);
-          state.ctx.openSheet?.(sensorSpec(state.ctx, id, name, where()));
+          state.ctx.openSheet?.(sensorSpec(state.ctx, id, name, where(), area.id));
         });
         row.dataset.entity = id;
         state.rows.push({ id, row, name: row.querySelector(".nm"), value: row.querySelector(".v") });

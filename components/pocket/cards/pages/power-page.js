@@ -27,7 +27,7 @@ const NO_ARROW = new Set(["energy"]);
 const STYLE = `
   .power .top { padding: 4px 4px 8px; }
   .power .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
-  .power .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .power .squares { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .power .squares > * { min-width: 0; }
   .power .squares:not(:has(.sq:not([hidden]))) { display: none; }
   .power .sq { box-sizing: border-box; width: 100%; aspect-ratio: 1 / .62; align-self: stretch;

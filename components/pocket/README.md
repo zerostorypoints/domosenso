@@ -4,11 +4,47 @@ A phone dashboard for the Companion app, built on the shared home inputs and cli
 threshold helpers. One YAML dashboard per language with one `panel` view holding one card,
 `custom:pocket-app`, which draws every screen itself.
 
+The design system (navigation, widgets, tiles, sheets, levels, data sources, the checklist for a
+new feature and the decisions behind them) is [DESIGN.md](DESIGN.md); a change that adds or alters
+a pattern updates it.
+
 ## The 0.1.0 prototype
 
-- **Home**: attention pills, readings (inside and outside, with the air score and a lights-on
-  chip), the weather in one row (with a `weather` entity: the condition now, today's high / low
-  and chance of rain, opening the forecast sheet), now playing, quick light tiles and a rooms strip.
+- **Home** in two views, switched under the title: **Overview** (`#/`): attention pills, widgets
+  (inside and outside, the air score, lights on, power now and plants, each opening its details or
+  page), the weather in one row (with a `weather` entity: the condition now, today's high / low and
+  chance of rain, opening the forecast sheet), now playing (whatever plays anywhere, else the first
+  area's player) and quick light tiles. **Systems** (`#/systems`): the same pills and a tile per
+  aspect the home has, on the bar or not (Areas, Climate, Media, Power, Plants, Scenes, Floor plan,
+  System), each with a headline, a status and an amber or red dot when it is worth a look by the
+  levels its page uses; a tap opens the page: from the high level down to the details.
+- **Controls** (`#/controls`, `#/controls/status`): the Ramka's controls and status for the phone, two
+  views under the title. Controls: music (the player that plays), covers by area (open / stop /
+  close, all open / all closed), timers (the input `timers`, as the Ramka's: time left, start or pause, cancel), lights (a tile per room,
+  All off). Status: covers, doors and windows, lights per room and locks, read-only. Covers, timers,
+  contacts (binary sensors of class door, window, garage door or opening) and locks are found by
+  area through the registries; each section only when the home has some.
+- **Scenes** (`#/scenes`): the scenes a person keeps at hand, by area, one tap each; "Choose" lists
+  every scene Home Assistant has (found by area through the registries) with a switch each. The
+  choice is per person; until one is made, the scenes the home inputs name.
+- **System** (`#/system`, from Systems): the last automatic backup (amber after 8 days, red after
+  30 or when the last attempt failed), the updates waiting (each opening HA's more-info), the
+  devices that read nothing, and for an administrator a link to HA's settings.
+- **Widgets** (Overview): each opens a sheet, never a page. An aggregate (many sensors: Inside,
+  Lights on with every lamp to switch, Power with its meters, Plants with every plant) lists them,
+  each row opening its trend; one sensor (Outside, Air) opens its trend, the sensor's other
+  measurements a pick away. A sheet closes by a finger dragged down anywhere on it from the top of
+  its content; the page behind never pulls to refresh while it is open.
+- **Back**: every page opened from Systems has a back arrow to Systems beside the menu button (on
+  the bar or not); a page off the bar has it however it was reached.
+- **This device** (Settings): "Open Pocket when the app starts" moves the app's first dashboard of a
+  session to the pocket on this phone or browser only (its local storage; HA's own default
+  dashboard is per user). Off: HA opens as it would.
+- **The header on a phone**: the dashboard asks kiosk-mode (a HACS plugin, installed by hand; the
+  Ramka uses it too) to hide Home Assistant's header up to 932 px wide; a menu button left of every
+  page's title opens HA's sidebar, the only way it opens on this dashboard: the Companion app's
+  swipe from the left edge is ignored here, so it never fights the way back. Without kiosk-mode the
+  header stays; on a wider screen HA's header is as HA draws it (its menu button works).
 - **Climate & air** (`#/climate`): an advice card only while a limit is crossed now (a poor CO₂ or
   VOC: open a window; a poor air reading by name; a room too cold, warm, dry or humid), squares for
   Inside, Outside and Air, the weather forecast as a strip (today and the next four days, from
@@ -47,7 +83,11 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
   more-info), title, artist and album, the progress ticking on the phone, previous / play-pause
   (64 px) / next, a 44 px volume strip (drag along it, tap a point, or the arrow keys) and mute,
   each hidden when the player's `supported_features` lack it, and its app and source. The picker
-  top right lists every area's `media` player in a sheet; the choice is remembered per person.
+  top right lists every area's `media` players (one entity or a list), then every other media
+  player Home Assistant places in an area, in a sheet: each row the player's name, its area and
+  what it plays, or what it is doing (off, idle) when it plays nothing; the choice is remembered
+  per person. An integration that misses some playback (a DLNA renderer does not see Spotify
+  Connect) shows idle while the device plays: name the entity that sees it in the area's `media`.
   Home's now playing and an area's player open Media with that area's player. Every control shows
   its new state at once and rolls back with a toast when the player does not follow.
   - **Sound** (with the input `sound`, audio-sensor in the home): a Media | Sound switch; Sound

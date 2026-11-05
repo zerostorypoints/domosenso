@@ -62,8 +62,8 @@ export const SHORT_LINE_CHARS = 22;
 const STYLE = `
   /* As tall as the screen between HA's header and the bar (main's padding: 12 px over, 16 px under). */
   .room { touch-action: pan-y; box-sizing: border-box;
-          min-height: calc(100vh - var(--header-height, 56px) - var(--bar, 64px) - 28px);
-          min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px)
+          min-height: calc(100vh - var(--kiosk-header-height, var(--header-height, 56px)) - var(--bar, 64px) - 28px);
+          min-height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - env(safe-area-inset-top, 0px)
                            - var(--bar, 64px) - var(--safe, 0px) - 28px); }
   .room .top { display: flex; align-items: center; margin: -4px 0 2px; }
   .room .back { min-height: 44px; margin: 0 0 0 -8px; padding: 0 8px 0 0; border: 0; background: none;
@@ -76,7 +76,7 @@ const STYLE = `
   .room .dots i.a { width: 16px; background: var(--fg); }
   /* One size for every square: equal columns, equal rows (the tallest square's height, so text
      that has to wrap makes them all grow alike), a fixed aspect otherwise. */
-  .room .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .room .squares { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .room .squares > * { min-width: 0; }
   /* No min-height: an explicit one drops aspect-ratio's automatic minimum, and text that wraps
      would spill out; without it a square grows with its content (the row, 1fr, with it). */
@@ -111,7 +111,7 @@ const STYLE = `
   .room .art img[hidden], .room .art ha-icon[hidden] { display: none; }
   .room .members-toggle { display: block; min-width: 44px; min-height: 44px; margin: 4px 0 0 auto; padding: 0 4px; border: 0;
                           background: none; font: inherit; font-size: 13px; color: var(--mut); cursor: pointer; }
-  .room .members { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; margin-top: 4px; }
+  .room .members { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; margin-top: 4px; }
   .room .scenes { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y;
                   margin: 10px -16px 0; padding: 0 16px; }
   .room .scenes::-webkit-scrollbar { display: none; }

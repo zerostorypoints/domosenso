@@ -133,7 +133,7 @@ test("the page gets the contract's ctx", async () => {
 
 test("every page follows the contract; each one is built", async () => {
   assert.deepEqual(Object.keys(pages).sort(),
-    ["area", "areas", "climate", "floorplan", "home", "media", "plants", "power", "settings"]);
+    ["area", "areas", "climate", "controls", "floorplan", "home", "media", "plants", "power", "scenes", "settings", "system"]);
   for (const [id, page] of Object.entries(pages)) {
     assert.equal(typeof page.render, "function", id);
     assert.equal(typeof page.update, "function", id);
@@ -232,8 +232,9 @@ test("the bar is fixed to the bottom of the screen, its background down over the
   assert.equal(style.bottom, "0px");
   const css = $(card, "style").textContent;
   assert.doesNotMatch(css, /position:\s*sticky/);
-  // Full width, or beside HA's open sidebar on a wide screen.
-  assert.match(css, /nav \{[^}]*left: var\(--mdc-drawer-width, 0px\); right: 0; bottom: 0/);
+  // Over the card's own box (beside HA's sidebar in landscape), full width until measured.
+  assert.match(css, /nav \{[^}]*left: var\(--bar-left, 0px\); width: var\(--bar-width, 100%\); bottom: 0/);
+  assert.match(css, /nav \{[^}]*padding-left: env\(safe-area-inset-left, 0px\)/);
   // The safe area is padding inside the bar: its background reaches the screen's edge.
   assert.match(css, /nav \{[^}]*height:\s*calc\(var\(--bar\) \+ var\(--safe\)\)/);
   assert.match(css, /nav \{[^}]*padding-bottom:\s*var\(--safe\)/);
@@ -326,7 +327,7 @@ test("a failed action shows a translated toast above the bar for a short time; t
 
 test("the shell is at least a viewport tall under the header, with a vh fallback; the bar has a plain background first", () => {
   const css = $(mount(), "style").textContent;
-  assert.match(css, /min-height: 100vh;[^}]*min-height: calc\(100dvh - var\(--header-height, 56px\) - env\(safe-area-inset-top, 0px\)\)/);
+  assert.match(css, /min-height: 100vh;[^}]*min-height: calc\(100dvh - var\(--kiosk-header-height, var\(--header-height, 56px\)\) - env\(safe-area-inset-top, 0px\)\)/);
   assert.match(css, /background: var\(--card\);\s*background: color-mix/);
 });
 
@@ -793,4 +794,79 @@ test("#/climate is the Climate & air page; the forecast sheet is the shell's, cl
   assert.equal($(card, ".sheet").getAttribute("aria-label"), "Weather");
   await goTo("#/");
   assert.equal($(card, ".sheet-layer").hidden, true);
+});
+
+test("the bar spans the card's measured box: beside HA's sidebar it starts where the sidebar ends", () => {
+  const card = mount();
+  card.getBoundingClientRect = () => ({ left: 256, top: 56, width: 676, height: 374, right: 932, bottom: 430, x: 256, y: 56 });
+  card._placeBar();
+  assert.equal(card.style.getPropertyValue("--bar-left"), "256px");
+  assert.equal(card.style.getPropertyValue("--bar-width"), "676px");
+  card.getBoundingClientRect = () => ({ left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0 });
+  card._placeBar();
+  assert.equal(card.style.getPropertyValue("--bar-left"), "256px", "an unmeasured box keeps the last place");
+  window.dispatchEvent(new window.Event("resize"));
+});
+
+test("a menu button left of every page's title opens Home Assistant's sidebar", async () => {
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", rooms: [{ id: "living_room", name: "Living room" }] });
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const button = app.shadowRoot.querySelector("main .top > .ha-menu");
+  assert.ok(button, "on Home's title row");
+  assert.equal(button.getAttribute("aria-label"), "Home Assistant menu");
+  let toggled = 0;
+  document.body.addEventListener("hass-toggle-menu", () => { toggled += 1; }, { once: true });
+  button.click();
+  assert.equal(toggled, 1);
+  app.remove();
+});
+
+test("a page of Systems off the bar has a way back to Systems; the menu opens only from a menu button", async () => {
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", rooms: [{ id: "living_room", name: "Living room" }] });
+  window.history.replaceState(null, "", "#/power");
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const back = app.shadowRoot.querySelector("main .top > .ha-back");
+  assert.ok(back, "Power is not on the default bar");
+  assert.equal(back.getAttribute("aria-label"), "Back to Systems");
+  back.click();
+  assert.equal(window.location.hash, "#/systems");
+  assert.equal(app.shadowRoot.querySelector("main .top > .ha-back"), null, "Home has none");
+
+  let reached = 0;
+  const listen = () => { reached += 1; };
+  document.body.addEventListener("hass-toggle-menu", listen);
+  document.body.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+  assert.equal(reached, 0, "a swipe's request is ignored here");
+  app.shadowRoot.querySelector("main .top > .ha-menu").click();
+  assert.equal(reached, 1, "the menu button's goes through");
+  const haButton = document.createElement("ha-menu-button");
+  document.body.append(haButton);
+  haButton.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+  assert.equal(reached, 2, "HA's own header button too");
+  document.body.removeEventListener("hass-toggle-menu", listen);
+  app.remove();
+  haButton.remove();
+  window.history.replaceState(null, "", "#/");
+});
+
+test("any page opened from Systems has the way back, on the bar or not; a bar tab's page has none", async () => {
+  const app = document.createElement("pocket-app");
+  app.setConfig({ type: "custom:pocket-app", lang: "en", rooms: [{ id: "living_room", name: "Living room" }] });
+  window.history.replaceState(null, "", "#/systems");
+  document.body.append(app);
+  app.hass = (await import("./testing/demo-home.mjs")).hassOf();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  app._navigate("#/climate");
+  assert.equal(app.shadowRoot.querySelector("main .top > .ha-back"), null, "Climate from its bar tab: no back");
+  app._navigate("#/systems");
+  app._navigate("#/climate", { from: "systems" });
+  assert.ok(app.shadowRoot.querySelector("main .top > .ha-back"), "Climate (on the bar) from Systems: back");
+  app.remove();
+  window.history.replaceState(null, "", "#/");
 });

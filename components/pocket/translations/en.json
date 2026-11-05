@@ -21,7 +21,10 @@
         "power": "Power",
         "plants": "Plants",
         "floorplan": "Floor plan",
-        "settings": "Settings"
+        "settings": "Settings",
+        "scenes": "Scenes",
+        "system": "System",
+        "controls": "Controls"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
       "home": {
@@ -32,7 +35,9 @@
           "inside": "Inside",
           "outside": "Outside",
           "air": "Air",
-          "lights_on": "Lights on"
+          "lights_on": "Lights on",
+          "power": "Power",
+          "plants": "Plants"
         },
         "quick": "Quick",
         "all_off": "All off",
@@ -44,7 +49,12 @@
         "playing": "♪",
         "nothing_playing": "Nothing playing",
         "play": "Play",
-        "pause": "Pause"
+        "pause": "Pause",
+        "view": {
+          "overview": "Overview",
+          "systems": "Systems",
+          "label": "Home view"
+        }
       },
       "light": {
         "off": "Off",
@@ -100,7 +110,9 @@
       "error": {
         "light": "The light did not respond. Try again.",
         "media": "The player did not respond. Try again.",
-        "scene": "The scene did not start. Try again."
+        "scene": "The scene did not start. Try again.",
+        "cover": "The cover did not move. Try again.",
+        "timer": "The timer did not follow. Try again."
       },
       "areas": {
         "title": "Areas",
@@ -160,7 +172,8 @@
           "humidity": "Humidity",
           "low": "from",
           "high": "to",
-          "edit": "{area}, {reading} {side}: {value}"
+          "edit": "{area}, {reading} {side}: {value}",
+          "summary": "{count} areas"
         },
         "air": {
           "title": "Air limits",
@@ -187,7 +200,14 @@
           "catalog": "Domosenso catalog",
           "repo": "Source on GitHub"
         },
-        "error": "The setting was not saved. Try again."
+        "error": "The setting was not saved. Try again.",
+        "back": "Back to Settings",
+        "device": {
+          "title": "This device",
+          "start": "Open Pocket when the app starts",
+          "start_on": "On this device the app opens here. Off: Home Assistant opens as usual.",
+          "start_off": "Only this phone or browser; others keep their own start page."
+        }
       },
       "sheet": {
         "close": "Close"
@@ -221,7 +241,8 @@
           "falling": "Falling",
           "steady": "Steady"
         },
-        "on_share": "On {share} of {range}"
+        "on_share": "On {share} of {range}",
+        "measurement": "Measurement"
       },
       "square": {
         "air": {
@@ -260,8 +281,8 @@
         "empty": "Nothing to check"
       },
       "lights": {
-        "title": "Lights on",
-        "none": "No lights on"
+        "title": "Lights",
+        "none": "No lights in this home."
       },
       "climate": {
         "title": "Climate & air",
@@ -352,7 +373,18 @@
           "sound": "Sound"
         },
         "power_on": "Turn on",
-        "power_off": "Turn off"
+        "power_off": "Turn off",
+        "input": "Input",
+        "input_of": "Input: {name}. Change input",
+        "state": {
+          "playing": "Playing",
+          "paused": "Paused",
+          "idle": "Idle",
+          "off": "Off",
+          "on": "On",
+          "standby": "Standby",
+          "buffering": "Buffering"
+        }
       },
       "sound": {
         "averages": "Averages",
@@ -412,6 +444,217 @@
           "too_much_fertiliser": "Too much fertiliser",
           "low_battery": "Low battery"
         }
+      },
+      "sections": {
+        "label": "{name}: {head}, {status}",
+        "areas": {
+          "count": {
+            "one": "{count} area",
+            "few": "{count} areas",
+            "many": "{count} areas",
+            "other": "{count} areas"
+          },
+          "lights_on": {
+            "one": "{count} light on",
+            "few": "{count} lights on",
+            "many": "{count} lights on",
+            "other": "{count} lights on"
+          }
+        },
+        "climate": {
+          "fine": "All in range",
+          "look": {
+            "one": "{count} needs a look",
+            "few": "{count} need a look",
+            "many": "{count} need a look",
+            "other": "{count} need a look"
+          },
+          "checked": {
+            "one": "{count} reading checked",
+            "few": "{count} readings checked",
+            "many": "{count} readings checked",
+            "other": "{count} readings checked"
+          }
+        },
+        "media": {
+          "players": {
+            "one": "{count} player",
+            "few": "{count} players",
+            "many": "{count} players",
+            "other": "{count} players"
+          }
+        },
+        "power": {
+          "today": "Today {value}",
+          "silent": {
+            "one": "{count} meter not reading",
+            "few": "{count} meters not reading",
+            "many": "{count} meters not reading",
+            "other": "{count} meters not reading"
+          }
+        },
+        "plants": {
+          "fine": "All fine",
+          "need": {
+            "one": "{count} needs care",
+            "few": "{count} need care",
+            "many": "{count} need care",
+            "other": "{count} need care"
+          },
+          "count": {
+            "one": "{count} plant",
+            "few": "{count} plants",
+            "many": "{count} plants",
+            "other": "{count} plants"
+          }
+        },
+        "floorplan": {
+          "head": "Whole home",
+          "status": "Every area on one plan"
+        },
+        "scenes": {
+          "shown": {
+            "one": "{count} scene",
+            "few": "{count} scenes",
+            "many": "{count} scenes",
+            "other": "{count} scenes"
+          },
+          "none": "None chosen yet",
+          "all": {
+            "one": "{count} in Home Assistant",
+            "few": "{count} in Home Assistant",
+            "many": "{count} in Home Assistant",
+            "other": "{count} in Home Assistant"
+          }
+        },
+        "system": {
+          "updates": {
+            "one": "{count} update",
+            "few": "{count} updates",
+            "many": "{count} updates",
+            "other": "{count} updates"
+          },
+          "up_to_date": "Up to date",
+          "backup": "Backup {when}",
+          "backup_failed": "Last backup failed",
+          "no_backup": "No backup yet"
+        },
+        "controls": {
+          "lights_on": {
+            "one": "{count} light on",
+            "few": "{count} lights on",
+            "many": "{count} lights on",
+            "other": "{count} lights on"
+          },
+          "lights_off": "Lights off",
+          "playing": "Music playing",
+          "open": {
+            "one": "{count} open",
+            "few": "{count} open",
+            "many": "{count} open",
+            "other": "{count} open"
+          },
+          "running": {
+            "one": "{count} timer running",
+            "few": "{count} timers running",
+            "many": "{count} timers running",
+            "other": "{count} timers running"
+          },
+          "quiet": "Nothing running"
+        }
+      },
+      "scenes": {
+        "title": "Scenes",
+        "choose": "Choose",
+        "choose_label": "Choose the scenes shown here",
+        "no_area": "No area",
+        "activate": "Activate {name}",
+        "empty": "No scenes chosen yet. Choose the ones you use from every scene Home Assistant has.",
+        "pick_title": "Scenes on this page",
+        "pick_hint": "Switch on the scenes to keep at hand. Your choice; others choose their own."
+      },
+      "system": {
+        "title": "System",
+        "backup": "Backup",
+        "last_backup": "Last automatic backup",
+        "failed": "Failed",
+        "manager": "Now",
+        "state": {
+          "idle": "Idle",
+          "create_backup": "Creating a backup",
+          "receive_backup": "Receiving a backup",
+          "restore_backup": "Restoring",
+          "blocked": "Blocked"
+        },
+        "updates": "Updates",
+        "version": "{from} → {to}",
+        "up_to_date": "Everything is up to date.",
+        "silent": "Devices not reading",
+        "all_reading": "Every device reads.",
+        "open_settings": "Home Assistant settings"
+      },
+      "menu": "Home Assistant menu",
+      "back_systems": "Back to Systems",
+      "controls": {
+        "title": "Controls",
+        "view": {
+          "controls": "Controls",
+          "status": "Status",
+          "label": "Controls view"
+        },
+        "music": "Music",
+        "covers": "Covers",
+        "timers": "Timers",
+        "lights": "Lights",
+        "volume_down": "Volume down",
+        "volume_up": "Volume up",
+        "cover": {
+          "open": "Open",
+          "closed": "Closed",
+          "opening": "Opening",
+          "closing": "Closing",
+          "position": "Open {value} %"
+        },
+        "cover_act": {
+          "open": "Open {name}",
+          "stop": "Stop {name}",
+          "close": "Close {name}"
+        },
+        "all_open": "All open",
+        "all_close": "All closed",
+        "timer": {
+          "active": "Running",
+          "paused": "Paused",
+          "idle": "Ready"
+        },
+        "timer_start": "Start",
+        "timer_pause": "Pause",
+        "timer_cancel": "Cancel",
+        "status": {
+          "covers": "Covers",
+          "contacts": "Doors and windows",
+          "lights": "Lights",
+          "locks": "Locks"
+        },
+        "contact": {
+          "open": "Open",
+          "closed": "Closed"
+        },
+        "light": {
+          "on": "On",
+          "off": "Off",
+          "on_level": "On · {value} %"
+        },
+        "lock": {
+          "locked": "Locked",
+          "unlocked": "Unlocked",
+          "locking": "Locking",
+          "unlocking": "Unlocking",
+          "jammed": "Jammed",
+          "open": "Open",
+          "opening": "Opening"
+        },
+        "none": "Nothing to control in this home yet."
       }
     }
   }

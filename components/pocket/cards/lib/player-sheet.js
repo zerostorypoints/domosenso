@@ -1,6 +1,6 @@
 // The Media page's player picker in the shell's bottom sheet (ctx.openSheet({kind: "players"})):
-// one 56 px row per area's player (lib/media.js playersOf), its area's name over the player's
-// name and what it plays; the one the page shows is marked. A tap hands the player to the page
+// one 56 px row per area's player (lib/media.js playersOf: the home's and those HA places in its
+// areas), the player's name over its area's name and what it plays; the one the page shows is marked. A tap hands the player to the page
 // (spec.onPick), which remembers it and closes the sheet.
 //
 //   playerSpec(ctx, current, onPick) -> spec    {kind: "players", current, onPick, title}
@@ -32,7 +32,7 @@ export function playerSpec(ctx, current, onPick) {
 
 export function render(ctx, spec) {
   const root = el("div", "player-sheet", `<style>${STYLE}</style><h3></h3><div class="rows" role="group"></div>`);
-  const rows = playersOf(ctx.config).map((player) => {
+  const rows = playersOf(ctx.config, ctx.hass).map((player) => {
     const row = el("button", "row",
       `<span class="meta"><span class="t1"></span><span class="t2"></span></span><ha-icon class="mark" icon="mdi:check"></ha-icon>`);
     row.type = "button";
@@ -55,11 +55,20 @@ export function update(root, ctx) {
     const state = ctx.hass?.states?.[player.id];
     const a = state?.attributes ?? {};
     const name = a.friendly_name || player.id;
+    // What it plays, else what it is doing (off, idle, paused): a row is never just its area.
     const what = !state || GONE.has(state.state) ? ctx.t("card.pocket.format.none")
-      : a.media_title ? ctx.t("card.pocket.media.playing_what", { name, title: a.media_title })
-        : name;
-    setText(row.querySelector(".t1"), player.room.name);
-    setText(row.querySelector(".t2"), what);
+      : a.media_title ? a.media_title : stateWords(ctx, state);
+    setText(row.querySelector(".t1"), name);
+    setText(row.querySelector(".t2"), [player.room.name, what].filter(Boolean).join(" · "));
     setAttr(row, "aria-pressed", String(player.id === spec.current));
   }
+}
+
+// A player's state as Home Assistant words it in the person's language; without HA's formatter
+// (the tests), the pocket's own words for the usual states, else the state itself.
+function stateWords(ctx, state) {
+  if (typeof ctx.hass?.formatEntityState === "function") return ctx.hass.formatEntityState(state);
+  const key = `card.pocket.media.state.${state.state}`;
+  const words = ctx.t(key);
+  return words && words !== key ? words : state.state;
 }

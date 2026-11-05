@@ -33,6 +33,14 @@
 [%- set _ = air.update({reading: {'fair': 'input_number.climate_air_' ~ reading ~ '_fair', 'poor': 'input_number.climate_air_' ~ reading ~ '_poor'}}) -%]
 [%- endfor -%]
 title: [[ inputs.title | default('Home') | yaml ]]
+# On a phone (a window up to KIOSK_WIDTH px wide, landscape included) Home Assistant's header is
+# hidden by kiosk-mode (a HACS plugin, the one the Ramka uses; without it the header simply stays):
+# the pocket's own menu button opens HA's sidebar. On a wider screen (a browser, a tablet) HA's
+# header stays as HA draws it.
+kiosk_mode:
+  mobile_settings:
+    hide_header: true
+    custom_width: 932
 views:
   - title: [[ inputs.title | default('Home') | yaml ]]
     path: home
@@ -64,6 +72,10 @@ views:
         # The plants component is in the home: Plants is on the default bar (the page finds every
         # plant.* itself; a home without the flag still has the page in Settings).
         plants: true
+[%- endif %]
+[%- if inputs.timers | default([]) %]
+        # The timers Controls shows, as the Ramka's controls take them.
+        timers: [[ inputs.timers | list | yaml ]]
 [%- endif %]
 [%- if inputs.sound | default(false) %]
         # audio-sensor's music level and offset on its own meter (its resource comes with that

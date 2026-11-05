@@ -60,7 +60,7 @@ const STYLE = `
   .climate .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .climate .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow-wrap: anywhere; }
   .climate .chev { flex: 0 0 auto; color: var(--mut); font-size: 18px; }
-  .climate .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .climate .squares { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .climate .squares > * { min-width: 0; }
   /* No min-height: an explicit one drops aspect-ratio's automatic minimum, and text that wraps
      would spill out; without it a square grows with its content (the row, 1fr, with it). */

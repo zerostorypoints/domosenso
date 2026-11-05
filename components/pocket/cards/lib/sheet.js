@@ -22,7 +22,11 @@
 //                                         closes (the shell patches it with the current state)
 //
 // It closes by
-//   - a drag down on the grab handle of at least CLOSE_PX (shorter ones spring back),
+//   - a drag down of at least CLOSE_PX (shorter ones spring back): on the grab handle, or a finger
+//     anywhere on the sheet while its content is scrolled to the top (a drag that starts sideways,
+//     or on a control that drags itself, a [data-drag] slider, is left to it). While the sheet is
+//     open a finger on it or on the dimmed page never reaches the page behind, so the phone's
+//     pull-to-refresh does not start under it;
 //   - the close button (44 px), a tap on the dimmed page above it, Escape,
 //   - the phone's back gesture: open pushes a history entry (same URL, a state that names this
 //     sheet), so Back pops it and the sheet closes; Back again leaves as before. A close by the
@@ -37,7 +41,7 @@ export const SHEET_STYLE = `
   .sheet-layer .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .32); }
   .sheet-layer .sheet { position: absolute; left: var(--mdc-drawer-width, 0px); right: 0; bottom: 0;
                         box-sizing: border-box; max-height: 88vh; max-height: 88dvh; overflow-y: auto;
-                        overscroll-behavior: contain; padding: 0 16px calc(16px + var(--safe, 0px));
+                        overscroll-behavior: none; padding: 0 16px calc(16px + var(--safe, 0px));
                         background: var(--card); color: var(--fg); border-radius: 22px 22px 0 0;
                         box-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
                         animation: pocket-sheet-up .22s ease-out; }
@@ -188,6 +192,7 @@ export function createSheet(host, { t } = {}) {
   let drag = null;
   grab.addEventListener("pointerdown", (e) => {
     if (e.button != null && e.button !== 0) return;
+    if (e.pointerType === "touch") return;     // a finger: the touch drag below
     drag = { y: e.clientY, dy: 0 };
     grab.setPointerCapture?.(e.pointerId);
     panel.classList.remove("settle");
@@ -212,6 +217,55 @@ export function createSheet(host, { t } = {}) {
   };
   grab.addEventListener("pointerup", (e) => end(e, false));
   grab.addEventListener("pointercancel", (e) => end(e, true));
+
+  // A finger: the whole sheet drags it down while its content is at the top. Non-passive, so the
+  // move can be kept from the page (its scroll and pull-to-refresh).
+  let touch = null;
+  const ownDrag = (e) => e.composedPath().some((node) => node !== grab && node?.hasAttribute?.("data-drag"));
+  panel.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1 || e.target.closest?.(".close") || ownDrag(e)) {
+      touch = null;
+      return;
+    }
+    const p = e.touches[0];
+    touch = { x: p.clientX, y: p.clientY, top: panel.scrollTop <= 0, dragging: false, dy: 0 };
+  }, { passive: true });
+  panel.addEventListener("touchmove", (e) => {
+    if (!touch) return;
+    const p = e.touches[0];
+    const dx = p.clientX - touch.x;
+    const dy = p.clientY - touch.y;
+    if (!touch.dragging) {
+      // Down and more down than sideways, from the top of the content: the sheet's drag.
+      if (!touch.top || panel.scrollTop > 0 || dy <= 4 || Math.abs(dx) > dy) {
+        if (Math.abs(dy) > 4 || Math.abs(dx) > 4) touch = null;   // a scroll or a sideways drag
+        return;
+      }
+      touch.dragging = true;
+      touch.y = p.clientY;
+      panel.classList.remove("settle");
+      panel.classList.add("dragging");
+    }
+    e.preventDefault();
+    touch.dy = Math.max(0, p.clientY - touch.y);
+    panel.style.transform = `translateY(${touch.dy}px)`;
+  }, { passive: false });
+  const touchEnd = (cancelled) => {
+    const t = touch;
+    touch = null;
+    if (!t?.dragging) return;
+    panel.classList.remove("dragging");
+    if (!cancelled && t.dy >= CLOSE_PX) {
+      sheet.close();
+      return;
+    }
+    panel.classList.add("settle");
+    panel.style.transform = "";
+  };
+  panel.addEventListener("touchend", () => touchEnd(false));
+  panel.addEventListener("touchcancel", () => touchEnd(true));
+  // The dimmed page: a finger there moves nothing behind it (a tap still closes the sheet).
+  layer.querySelector(".scrim").addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
   return sheet;
 }

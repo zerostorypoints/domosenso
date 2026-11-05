@@ -64,7 +64,13 @@
             "nox": {"$ref": "#/$defs/entity"}
           }
         },
-        "media": {"$ref": "#/$defs/entity"}
+        "media": {
+          "description": "The area's media player, or several (the first is the area's own; a player whose integration misses some playback, as a DLNA renderer misses Spotify Connect, may need its other entity named too).",
+          "oneOf": [
+            {"$ref": "#/$defs/entity"},
+            {"type": "array", "items": {"$ref": "#/$defs/entity"}, "minItems": 1, "uniqueItems": true}
+          ]
+        }
       }
     }
   }

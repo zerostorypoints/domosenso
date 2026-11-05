@@ -30,7 +30,7 @@ test("specs: titles from the translations", () => {
   assert.deepEqual(checksSpec(ctx, { readings: ["temperature"], inside: true }),
     { kind: "checks", title: "Temperature inside", readings: ["temperature"], inside: true });
   assert.deepEqual(airSpec(ctx, config.rooms[0]), { kind: "air", area: "living_room", title: "Air", subtitle: "Living room" });
-  assert.deepEqual(lightsSpec(ctx), { kind: "lights", title: "Lights on" });
+  assert.deepEqual(lightsSpec(ctx), { kind: "lights", title: "Lights" });
 });
 
 test("checks: every reading per area, the Outside first when it is the problem, cold in blue", () => {
@@ -128,21 +128,19 @@ test("air: every air reading of the area with value, level and its trend", () =>
   assert.equal(ctx.sheets[0].entity, "sensor.living_room_co2");
 });
 
-test("lights: the lamps that are on, per room, as tiles; one switched off stays until the sheet closes", () => {
-  const ctx = ctxOf();
+test("lights: every lamp per room as tiles, on or off: the sheet is where a light is turned on", () => {
+  const ctx = ctxOf({ hass: hassOf({ ...baseStates(), "light.living_room_ceiling": st("off") }) });
   const el = mount(lights, ctx, lightsSpec(ctx));
-  assert.deepEqual(texts(el, ".gname"), ["Living room"]);
+  assert.deepEqual(texts(el, ".gname"), ["Living room", "Office"], "nothing on, every lamp listed");
   const tiles = [...el.querySelectorAll("pocket-light-tile")];
-  assert.equal(tiles.length, 1);
-  assert.equal(tiles[0].config.entities[0], "light.living_room_ceiling");
-  assert.equal(tiles[0].shadowRoot.querySelector(".t1").textContent, "Ceiling");
-  ctx.hass = hassOf({ ...baseStates(), "light.living_room_ceiling": st("off"), "light.office": st("on") });
+  assert.ok(tiles.some((t) => t.config.entities[0] === "light.living_room_ceiling"));
+  assert.equal(el.querySelector(".empty").hidden, true);
+  ctx.hass = hassOf({ ...baseStates(), "light.office": st("on") });
   lights.update(el, ctx);
-  assert.deepEqual(texts(el, ".gname"), ["Living room", "Office"]);
-  assert.equal(el.querySelector("pocket-light-tile"), tiles[0], "the same tile, now off");
-  const none = ctxOf({ hass: hassOf({ ...baseStates(), "light.living_room_ceiling": st("off") }) });
+  assert.equal(el.querySelector("pocket-light-tile"), tiles[0], "the same tiles as states change");
+  const none = ctxOf({ cfg: { ...config, rooms: config.rooms.map(({ lights: _, ...room }) => room) } });
   const empty = mount(lights, none, lightsSpec(none));
-  assert.equal(text(empty.querySelector(".empty")), "No lights on");
+  assert.equal(text(empty.querySelector(".empty")), "No lights in this home.");
 });
 
 test("pl and de: every word from the translations", () => {

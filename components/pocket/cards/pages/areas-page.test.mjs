@@ -112,7 +112,7 @@ test("the big temperature in its level's colour: below the range cold, in it goo
 
 test("one square size: equal columns and rows, a fixed aspect; the big value shrinks to fit", () => {
   const css = mount().querySelector("style").textContent;
-  assert.match(css, /\.grid \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*grid-auto-rows: 1fr/);
+  assert.match(css, /\.grid \{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(min\(var\(--square-min, 160px\), 100%\), 1fr\)\);[^}]*grid-auto-rows: 1fr/);
   assert.match(css, /\.rooms \.sq \{[^}]*aspect-ratio: 1 \/ \.82;[^}]*align-self: stretch/);
   assert.match(css, /\.rooms \.sq \{[^}]*container-type: inline-size/);
   assert.match(css, /\.rooms \.big \{[^}]*flex-wrap: wrap[^}]*font-size: clamp\(16px, 15cqi, 24px\)/);

@@ -48,9 +48,9 @@ test("the first version's routes have new hashes; others have none", () => {
 });
 
 test("every page the bar can show, in order; an area and the floor plan belong to Areas", () => {
-  assert.deepEqual(TABS.map((tab) => tab.page), ["home", "areas", "climate", "media", "power", "plants", "floorplan", "settings"]);
+  assert.deepEqual(TABS.map((tab) => tab.page), ["home", "areas", "controls", "climate", "media", "power", "plants", "scenes", "floorplan", "settings"]);
   assert.deepEqual(TABS.map((tab) => tab.route),
-    ["#/", "#/areas", "#/climate", "#/media", "#/power", "#/plants", "#/floorplan", "#/settings"]);
+    ["#/", "#/areas", "#/controls", "#/climate", "#/media", "#/power", "#/plants", "#/scenes", "#/floorplan", "#/settings"]);
   for (const tab of TABS) assert.deepEqual(parseRoute(tab.route), { page: tab.page });
   assert.equal(tabOf("area"), "areas");
   assert.equal(tabOf("floorplan"), "areas");
@@ -86,4 +86,17 @@ test("the default bar: Media without plants; with plants Plants in its place; Po
   assert.deepEqual(defaultBar({ plants: true }), ["home", "areas", "climate", "plants", "settings"]);
   assert.equal(barTabs(defaultBar({ plants: true })).length, MAX_TABS);
   assert.ok(!defaultBar({ plants: true }).includes("power"));
+});
+
+test("Settings' panels are routes of their own; an unknown panel is Settings", () => {
+  assert.deepEqual(parseRoute("#/settings/comfort"), { page: "settings", id: "comfort" });
+  assert.deepEqual(parseRoute("#/settings/about/"), { page: "settings", id: "about" });
+  assert.deepEqual(parseRoute("#/settings/nope"), { page: "settings" });
+});
+
+test("Home's Systems view and the System page are routes; the System page belongs to Home", () => {
+  assert.deepEqual(parseRoute("#/systems"), { page: "home", id: "systems" });
+  assert.deepEqual(parseRoute("#/system"), { page: "system" });
+  assert.deepEqual(parseRoute("#/scenes"), { page: "scenes" });
+  assert.equal(tabOf("system"), "home");
 });

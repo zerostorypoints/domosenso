@@ -21,7 +21,10 @@
         "power": "Energie",
         "plants": "Pflanzen",
         "floorplan": "Grundriss",
-        "settings": "Einstellungen"
+        "settings": "Einstellungen",
+        "scenes": "Szenen",
+        "system": "System",
+        "controls": "Steuerung"
       },
       "offline": "Keine Verbindung zu Home Assistant. Die Steuerung ist pausiert, bis sie wieder da ist.",
       "home": {
@@ -32,7 +35,9 @@
           "inside": "Innen",
           "outside": "Aussen",
           "air": "Luft",
-          "lights_on": "Lichter an"
+          "lights_on": "Lichter an",
+          "power": "Strom",
+          "plants": "Pflanzen"
         },
         "quick": "Schnell",
         "all_off": "Alle aus",
@@ -44,7 +49,12 @@
         "playing": "♪",
         "nothing_playing": "Nichts läuft",
         "play": "Abspielen",
-        "pause": "Pause"
+        "pause": "Pause",
+        "view": {
+          "overview": "Überblick",
+          "systems": "Systeme",
+          "label": "Ansicht"
+        }
       },
       "light": {
         "off": "Aus",
@@ -100,7 +110,9 @@
       "error": {
         "light": "Das Licht hat nicht reagiert. Bitte erneut versuchen.",
         "media": "Der Player hat nicht reagiert. Bitte erneut versuchen.",
-        "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen."
+        "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen.",
+        "cover": "Die Abdeckung hat sich nicht bewegt. Bitte erneut versuchen.",
+        "timer": "Der Timer hat nicht reagiert. Bitte erneut versuchen."
       },
       "areas": {
         "title": "Bereiche",
@@ -160,7 +172,8 @@
           "humidity": "Luftfeuchtigkeit",
           "low": "ab",
           "high": "bis",
-          "edit": "{area}, {reading} {side}: {value}"
+          "edit": "{area}, {reading} {side}: {value}",
+          "summary": "{count} Bereiche"
         },
         "air": {
           "title": "Luftgrenzwerte",
@@ -187,7 +200,14 @@
           "catalog": "Domosenso-Katalog",
           "repo": "Quellcode auf GitHub"
         },
-        "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut."
+        "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut.",
+        "back": "Zurück zu den Einstellungen",
+        "device": {
+          "title": "Dieses Gerät",
+          "start": "Pocket beim Start der App öffnen",
+          "start_on": "Auf diesem Gerät öffnet die App hier. Aus: Home Assistant öffnet wie gewohnt.",
+          "start_off": "Nur dieses Telefon oder dieser Browser; andere behalten ihre eigene Startseite."
+        }
       },
       "sheet": {
         "close": "Schliessen"
@@ -221,7 +241,8 @@
           "falling": "Fallend",
           "steady": "Gleichbleibend"
         },
-        "on_share": "{share} von {range} ein"
+        "on_share": "{share} von {range} ein",
+        "measurement": "Messwert"
       },
       "square": {
         "air": {
@@ -260,8 +281,8 @@
         "empty": "Nichts zu prüfen"
       },
       "lights": {
-        "title": "Lichter an",
-        "none": "Keine an"
+        "title": "Lichter",
+        "none": "Keine Lichter in diesem Zuhause."
       },
       "climate": {
         "title": "Klima & Luft",
@@ -352,7 +373,18 @@
           "sound": "Klang"
         },
         "power_on": "Einschalten",
-        "power_off": "Ausschalten"
+        "power_off": "Ausschalten",
+        "input": "Eingang",
+        "input_of": "Eingang: {name}. Eingang wechseln",
+        "state": {
+          "playing": "Spielt",
+          "paused": "Pausiert",
+          "idle": "Untätig",
+          "off": "Aus",
+          "on": "An",
+          "standby": "Standby",
+          "buffering": "Puffert"
+        }
       },
       "sound": {
         "averages": "Mittelwerte",
@@ -412,6 +444,217 @@
           "too_much_fertiliser": "Zu viel Dünger",
           "low_battery": "Batterie schwach"
         }
+      },
+      "sections": {
+        "label": "{name}: {head}, {status}",
+        "areas": {
+          "count": {
+            "one": "{count} Bereich",
+            "few": "{count} Bereiche",
+            "many": "{count} Bereiche",
+            "other": "{count} Bereiche"
+          },
+          "lights_on": {
+            "one": "{count} Licht an",
+            "few": "{count} Lichter an",
+            "many": "{count} Lichter an",
+            "other": "{count} Lichter an"
+          }
+        },
+        "climate": {
+          "fine": "Alles im Bereich",
+          "look": {
+            "one": "{count} zu prüfen",
+            "few": "{count} zu prüfen",
+            "many": "{count} zu prüfen",
+            "other": "{count} zu prüfen"
+          },
+          "checked": {
+            "one": "{count} Messwert geprüft",
+            "few": "{count} Messwerte geprüft",
+            "many": "{count} Messwerte geprüft",
+            "other": "{count} Messwerte geprüft"
+          }
+        },
+        "media": {
+          "players": {
+            "one": "{count} Player",
+            "few": "{count} Player",
+            "many": "{count} Player",
+            "other": "{count} Player"
+          }
+        },
+        "power": {
+          "today": "Heute {value}",
+          "silent": {
+            "one": "{count} Zähler ohne Wert",
+            "few": "{count} Zähler ohne Wert",
+            "many": "{count} Zähler ohne Wert",
+            "other": "{count} Zähler ohne Wert"
+          }
+        },
+        "plants": {
+          "fine": "Alle in Ordnung",
+          "need": {
+            "one": "{count} braucht Pflege",
+            "few": "{count} brauchen Pflege",
+            "many": "{count} brauchen Pflege",
+            "other": "{count} brauchen Pflege"
+          },
+          "count": {
+            "one": "{count} Pflanze",
+            "few": "{count} Pflanzen",
+            "many": "{count} Pflanzen",
+            "other": "{count} Pflanzen"
+          }
+        },
+        "floorplan": {
+          "head": "Ganzes Zuhause",
+          "status": "Alle Bereiche auf einem Plan"
+        },
+        "scenes": {
+          "shown": {
+            "one": "{count} Szene",
+            "few": "{count} Szenen",
+            "many": "{count} Szenen",
+            "other": "{count} Szenen"
+          },
+          "none": "Noch keine gewählt",
+          "all": {
+            "one": "{count} in Home Assistant",
+            "few": "{count} in Home Assistant",
+            "many": "{count} in Home Assistant",
+            "other": "{count} in Home Assistant"
+          }
+        },
+        "system": {
+          "updates": {
+            "one": "{count} Update",
+            "few": "{count} Updates",
+            "many": "{count} Updates",
+            "other": "{count} Updates"
+          },
+          "up_to_date": "Aktuell",
+          "backup": "Backup {when}",
+          "backup_failed": "Letztes Backup fehlgeschlagen",
+          "no_backup": "Noch kein Backup"
+        },
+        "controls": {
+          "lights_on": {
+            "one": "{count} Licht an",
+            "few": "{count} Lichter an",
+            "many": "{count} Lichter an",
+            "other": "{count} Lichter an"
+          },
+          "lights_off": "Lichter aus",
+          "playing": "Musik läuft",
+          "open": {
+            "one": "{count} offen",
+            "few": "{count} offen",
+            "many": "{count} offen",
+            "other": "{count} offen"
+          },
+          "running": {
+            "one": "{count} Timer läuft",
+            "few": "{count} Timer laufen",
+            "many": "{count} Timer laufen",
+            "other": "{count} Timer laufen"
+          },
+          "quiet": "Nichts läuft"
+        }
+      },
+      "scenes": {
+        "title": "Szenen",
+        "choose": "Wählen",
+        "choose_label": "Szenen für diese Seite wählen",
+        "no_area": "Kein Bereich",
+        "activate": "{name} aktivieren",
+        "empty": "Noch keine Szenen gewählt. Wähle die, die du nutzt, aus allen Szenen in Home Assistant.",
+        "pick_title": "Szenen auf dieser Seite",
+        "pick_hint": "Schalte die Szenen ein, die du griffbereit haben willst. Deine Wahl; andere wählen ihre eigenen."
+      },
+      "system": {
+        "title": "System",
+        "backup": "Backup",
+        "last_backup": "Letztes automatisches Backup",
+        "failed": "Fehlgeschlagen",
+        "manager": "Jetzt",
+        "state": {
+          "idle": "Untätig",
+          "create_backup": "Erstellt ein Backup",
+          "receive_backup": "Empfängt ein Backup",
+          "restore_backup": "Stellt wieder her",
+          "blocked": "Blockiert"
+        },
+        "updates": "Updates",
+        "version": "{from} → {to}",
+        "up_to_date": "Alles ist aktuell.",
+        "silent": "Geräte ohne Werte",
+        "all_reading": "Jedes Gerät liefert Werte.",
+        "open_settings": "Home-Assistant-Einstellungen"
+      },
+      "menu": "Home-Assistant-Menü",
+      "back_systems": "Zurück zu den Systemen",
+      "controls": {
+        "title": "Steuerung",
+        "view": {
+          "controls": "Steuerung",
+          "status": "Status",
+          "label": "Ansicht der Steuerung"
+        },
+        "music": "Musik",
+        "covers": "Abdeckungen",
+        "timers": "Timer",
+        "lights": "Lichter",
+        "volume_down": "Leiser",
+        "volume_up": "Lauter",
+        "cover": {
+          "open": "Offen",
+          "closed": "Geschlossen",
+          "opening": "Öffnet",
+          "closing": "Schliesst",
+          "position": "Offen {value} %"
+        },
+        "cover_act": {
+          "open": "{name} öffnen",
+          "stop": "{name} stoppen",
+          "close": "{name} schliessen"
+        },
+        "all_open": "Alle öffnen",
+        "all_close": "Alle schliessen",
+        "timer": {
+          "active": "Läuft",
+          "paused": "Pausiert",
+          "idle": "Bereit"
+        },
+        "timer_start": "Start",
+        "timer_pause": "Pause",
+        "timer_cancel": "Abbrechen",
+        "status": {
+          "covers": "Abdeckungen",
+          "contacts": "Türen und Fenster",
+          "lights": "Lichter",
+          "locks": "Schlösser"
+        },
+        "contact": {
+          "open": "Offen",
+          "closed": "Geschlossen"
+        },
+        "light": {
+          "on": "An",
+          "off": "Aus",
+          "on_level": "An · {value} %"
+        },
+        "lock": {
+          "locked": "Verriegelt",
+          "unlocked": "Entriegelt",
+          "locking": "Verriegelt",
+          "unlocking": "Entriegelt",
+          "jammed": "Blockiert",
+          "open": "Offen",
+          "opening": "Öffnet"
+        },
+        "none": "In diesem Zuhause gibt es noch nichts zu steuern."
       }
     }
   }

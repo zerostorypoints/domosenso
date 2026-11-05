@@ -1,15 +1,26 @@
-// The Home page (spec 6.2, mockup home-a-themes.html), on the page contract of pages/index.js:
+// The Home page (spec 6.2, mockup home-a-themes.html), on the page contract of pages/index.js, in
+// two views switched by a segmented control under the title (#/ Overview, #/systems Systems; a
+// switch replaces the history entry, so Back leaves Home rather than walking the views):
+//   Overview: what is happening now and the quick actions (the pills, the widgets, the weather, now
+//     playing, Quick); Systems: the pills and a tile per aspect (lib/sections.js), each opening its
+//     page: from the high level down to the details.
 //   - the title and today's date;
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
 //     reading that was checked, per area, the Outside included, problems first;
 //   - metric chips: inside (the range of the rooms' temperatures), outside, the home's air score
-//     (lib/climate.js homeAir: the lowest room's), the number of lights on; a chip whose entity the config does not
+//     (lib/climate.js homeAir: the lowest room's), the number of lights on, the power now and the
+//     plants (their Systems summary, lib/sections.js). Every widget opens a sheet, never a page
+//     (lib/detail-sheets.js: an aggregate list or one sensor's trend): power the meters behind
+//     the sum, plants every plant; a chip whose entity the config does not
 //     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
 //     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
 //     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
 //     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
 //     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
+//   - Systems (lib/sections.js): a tile per page this home has, the bar's or not, each with its
+//     headline, its status and a dot when it is worth a look (fair or poor, its border too); a tap
+//     opens the page, so every page is reachable from Home while the bar is a quick switch;
 //   - the weather, when the config names a weather entity (lib/weather.js): one row under the
 //     chips, the current condition with today's high / low and chance of rain, opening the
 //     forecast sheet;
@@ -17,8 +28,7 @@
 //     a tap elsewhere opens Media with that room's player (#/media/<room id>); no card while the
 //     player is missing from Home Assistant;
 //   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
-//     an All off tile;
-//   - a sideways strip of the rooms, each opening its room page.
+//     an All off tile.
 // Every control sends through ctx.optimistic (lib/optimistic.js): All off shows every light off at
 // once (the tiles and the lights-on chip too), play/pause its new state, before Home Assistant
 // reports them. render() builds every element once; update() only patches text and attributes (the pills are
@@ -27,12 +37,17 @@
 import { attention, roomLevels } from "../lib/attention.js";
 import { numberOf, toneOf } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
-import { checksSpec, lightsSpec } from "../lib/detail-sheets.js";
+import { checksSpec, lightsSpec, plantsSpec } from "../lib/detail-sheets.js";
+import { powerSpec } from "./power-page.js";
 import { formatDate } from "../lib/i18n.js";
 import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
+import { sectionsOf } from "../lib/sections.js";
+import { todayNow } from "../lib/energy.js";
+import { HOME_VIEWS } from "../lib/router.js";
+import { playersOf } from "../lib/media.js";
 import {
   GONE, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
@@ -47,7 +62,7 @@ const STYLE = `
                              margin: 4px -16px 14px; padding: 0 16px; }
   .home .att::-webkit-scrollbar, .home .strip::-webkit-scrollbar { display: none; }
   /* Equal cells, two per row: four in one row are too narrow for the inside range (21.0–22.0°). */
-  .home .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
+  .home .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); gap: 8px; margin: 4px 0 14px; }
   .home .pill { flex: 0 0 auto; box-sizing: border-box; min-width: 44px; min-height: 44px; margin: 0; padding: 8px 12px;
                 display: flex; gap: 7px; align-items: center; font: inherit; font-size: 12.5px; color: var(--fg);
                 background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
@@ -68,6 +83,23 @@ const STYLE = `
   .home .chip .v.lv-cold { color: var(--cold); }
   .home .chip .v.lv-warm { color: var(--warm); }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .art ha-icon[hidden], .home .quick-sec[hidden] { display: none; }
+  .home .views { display: flex; gap: 2px; margin: 0 0 12px; padding: 3px; border-radius: 12px; background: var(--chip); }
+  .home .views button { flex: 1 1 0; min-height: 40px; margin: 0; padding: 0; border: 0; border-radius: 9px; background: none;
+                        color: var(--fg); font: inherit; font-size: 14px; cursor: pointer; }
+  .home .views button[aria-selected="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+  .home .chips[hidden], .home .sections[hidden] { display: none; }
+  .home .sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr));
+                    grid-auto-rows: 1fr; gap: 8px; margin: -4px 0 14px; }
+  .home .sect { box-sizing: border-box; min-width: 0; min-height: 44px; margin: 0; padding: 10px 12px; text-align: left;
+                font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+                display: flex; flex-direction: column; gap: 2px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .home .sect.fair { border-color: var(--warn); }
+  .home .sect.poor { border-color: var(--bad); }
+  .home .sect .nm { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mut); --mdc-icon-size: 18px; }
+  .home .sect .nm .dot { margin-left: auto; }
+  .home .sect .nm .dot[hidden] { display: none; }
+  .home .sect .hd { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .home .sect .st { font-size: 12.5px; color: var(--mut); overflow-wrap: anywhere; }
   .home .wx { box-sizing: border-box; width: 100%; min-height: 52px; margin: -4px 0 14px; padding: 10px 12px;
               display: flex; align-items: center; gap: 8px; text-align: left; font: inherit; color: var(--fg);
               background: var(--card); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; }
@@ -96,7 +128,7 @@ const STYLE = `
                font-size: 13px; font-weight: 600; }
   .home .sec .all { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; text-align: right; border: 0; background: none;
                     font: inherit; font-size: 13px; font-weight: 400; color: var(--mut); cursor: pointer; }
-  .home .quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
+  .home .quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--square-min, 160px), 100%), 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .home .all-off, .home .rc { box-sizing: border-box; min-height: 64px; margin: 0; padding: 12px; text-align: left;
                               font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
                               border-radius: 18px; cursor: pointer; }
@@ -119,10 +151,12 @@ export function render(ctx) {
   root.innerHTML = `
     <style>${STYLE}</style>
     <div class="top"><b></b> <span class="date"></span></div>
+    <div class="views" role="tablist">${HOME_VIEWS.map((view) => `<button type="button" role="tab" data-view="${view}"></button>`).join("")}</div>
     <div class="att" role="list"></div>
     <div class="chips">
-      ${["inside", "outside", "air", "lights_on"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
+      ${["inside", "outside", "air", "lights_on", "power", "plants"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
     </div>
+    <div class="sections"></div>
     <button class="wx" type="button" hidden><pocket-forecast mode="row"></pocket-forecast><span class="chev">›</span></button>
     <div class="now" hidden>
       <button class="open" type="button">
@@ -135,8 +169,7 @@ export function render(ctx) {
       <div class="sec"><span class="quick-title"></span></div>
       <div class="quick"></div>
     </div>
-    <div class="sec"><span class="rooms-title"></span><button class="all" type="button"></button></div>
-    <div class="strip"></div>`;
+`;
 
   const parts = {
     title: root.querySelector(".top b"),
@@ -147,16 +180,26 @@ export function render(ctx) {
     wx: root.querySelector(".wx"),
     quickSec: root.querySelector(".quick-sec"),
     quickTitle: root.querySelector(".quick-title"),
-    roomsTitle: root.querySelector(".rooms-title"),
-    allRooms: root.querySelector(".sec .all"),
+    view: ctx.routeId === "systems" ? "systems" : "overview",
     tiles: [],
-    roomCards: [],
     pillsKey: null,
     ctx,
   };
 
+  for (const button of root.querySelectorAll(".views button")) {
+    button.addEventListener("click", () => {
+      if (button.dataset.view === parts.view) return;
+      parts.ctx.navigate(button.dataset.view === "systems" ? "#/systems" : "#/", { replace: true });
+    });
+  }
+  // One view at a time: the pills are in both.
+  const systems = parts.view === "systems";
+  root.querySelector(".chips").hidden = systems;
+  root.querySelector(".sections").hidden = !systems;
+
   for (const [name, chip] of Object.entries(parts.chips)) {
     chip.addEventListener("click", () => {
+
       const spec = chipSheet(parts.ctx, name);
       if (spec) parts.ctx.openSheet?.(spec);
     });
@@ -200,17 +243,8 @@ export function render(ctx) {
   });
   parts.allOff = allOff;
   quick.append(allOff);
-  parts.quickSec.hidden = withLights.length === 0;
+  parts.quickSec.hidden = withLights.length === 0 || parts.view === "systems";
 
-  parts.allRooms.addEventListener("click", () => parts.ctx.navigate("#/areas"));
-  const strip = root.querySelector(".strip");
-  for (const room of rooms) {
-    const card = el("button", "rc", `<span class="t1"></span> <span class="t2"></span>`);
-    card.type = "button";
-    card.addEventListener("click", () => parts.ctx.navigate(`#/area/${room.id}`));
-    parts.roomCards.push({ room, card });
-    strip.append(card);
-  }
 
   root._home = parts;
   update(root, ctx);
@@ -225,11 +259,27 @@ export function update(root, ctx) {
     { weekday: "short", day: "numeric", month: "short" }));
   updatePills(parts, ctx);
   updateChips(parts, ctx);
+  updateSections(root, parts, ctx);
   parts.wx.hidden = !ctx.config.weather;
   if (ctx.config.weather) parts.wx.querySelector("pocket-forecast").ctx = ctx;
   updateNow(parts, ctx);
   updateQuick(parts, ctx);
-  updateRooms(parts, ctx);
+  updateViews(root, parts, ctx);
+}
+
+// The switch of the views, and what each shows (the pills are in both).
+function updateViews(root, parts, ctx) {
+  const systems = parts.view === "systems";
+  for (const button of root.querySelectorAll(".views button")) {
+    setText(button, ctx.t(`card.pocket.home.view.${button.dataset.view}`));
+    setAttr(button, "aria-selected", String(button.dataset.view === parts.view));
+  }
+  setAttr(root.querySelector(".views"), "aria-label", ctx.t("card.pocket.home.view.label"));
+  if (systems) {
+    parts.wx.hidden = true;
+    parts.now.hidden = true;
+    parts.quickSec.hidden = true;
+  }
 }
 
 function updatePills(parts, ctx) {
@@ -304,6 +354,14 @@ function updateChips(parts, ctx) {
     result: air?.result, entity: air?.entity, reading: "score" });
 
   set("lights_on", allLights(config).length > 0, String(lightsOnIn(hass, config.rooms)));
+
+  // Power and plants say what their Systems tiles say, in their tone.
+  if (parts.view === "systems") return;
+  const sections = Object.fromEntries(sectionsOf(ctx, { pages: ["power", "plants"] }).map((section) => [section.page, section]));
+  for (const name of ["power", "plants"]) {
+    const section = sections[name];
+    set(name, !!section, section?.head ?? "", { result: section?.tone ? { level: section.tone } : null });
+  }
 }
 
 // The sheet behind a chip (null: nothing to show): inside the checks of the rooms' temperatures,
@@ -313,13 +371,58 @@ function chipSheet(ctx, name) {
   if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
+  if (name === "power") return powerSpec(ctx);
+  if (name === "plants") return plantsSpec(ctx);
   return null;
+}
+
+// The tiles are rebuilt only when the pages they stand for change; their words and tones are
+// patched. Energy today is asked as the Power page asks it (at most every few minutes).
+function updateSections(root, parts, ctx) {
+  if (parts.view !== "systems") return;
+  parts.onToday ??= () => { if (root.isConnected) updateSections(root, parts, parts.ctx); };
+  const today = todayNow(ctx.hass, parts.onToday);
+  const list = sectionsOf(ctx, { today });
+  const host = root.querySelector(".sections");
+  const key = list.map((s) => s.page).join(" ");
+  if (parts.sectionsKey !== key) {
+    parts.sectionsKey = key;
+    parts.sections = {};
+    host.replaceChildren(...list.map((section) => {
+      const tile = el("button", "sect", `<span class="nm"><ha-icon></ha-icon><span class="n"></span><i class="dot" hidden></i></span><span class="hd"></span><span class="st"></span>`);
+      tile.type = "button";
+      tile.dataset.page = section.page;
+      tile.querySelector("ha-icon").setAttribute("icon", section.icon);
+      tile.addEventListener("click", () => parts.ctx.navigate(section.route, { from: "systems" }));
+      parts.sections[section.page] = tile;
+      return tile;
+    }));
+  }
+  host.hidden = list.length === 0;
+  for (const section of list) {
+    const tile = parts.sections[section.page];
+    const name = ctx.t(`card.pocket.nav.${section.page}`);
+    setText(tile.querySelector(".n"), name);
+    setText(tile.querySelector(".hd"), section.head);
+    setText(tile.querySelector(".st"), section.status);
+    const cls = ["sect", section.tone].filter(Boolean).join(" ");
+    if (tile.className !== cls) tile.className = cls;
+    const dot = tile.querySelector(".dot");
+    dot.hidden = !section.tone;
+    const dotCls = ["dot", section.tone].filter(Boolean).join(" ");
+    if (dot.className !== dotCls) dot.className = dotCls;
+    setAttr(tile, "aria-label", ctx.t("card.pocket.sections.label", { name, head: section.head, status: section.status }));
+  }
 }
 
 function updateNow(parts, ctx) {
   const now = parts.now;
-  const room = ctx.config.rooms.find((r) => r.media);
-  const player = room ? [room.media].flat()[0] : undefined;
+  // What plays anywhere (any player of lib/media.js playersOf: the home's and those HA places in an
+  // area), else the first area's own player.
+  const players = playersOf(ctx.config, ctx.hass);
+  const pick = players.find((p) => ctx.hass?.states?.[p.id]?.state === "playing") ?? players[0];
+  const room = pick?.room;
+  const player = pick?.id;
   const state = player ? ctx.hass?.states?.[player] : undefined;
   parts.player = player;
   parts.mediaRoom = room;
@@ -356,27 +459,4 @@ function updateQuick(parts, ctx) {
   setText(parts.allOff.querySelector(".t2"),
     on > 0 ? ctx.t("card.pocket.home.on_now", { count: on }) : ctx.t("card.pocket.home.none_on"));
   parts.allOff.disabled = !!ctx.offline;
-}
-
-function updateRooms(parts, ctx) {
-  const { hass } = ctx;
-  setText(parts.roomsTitle, ctx.t("card.pocket.home.rooms"));
-  setText(parts.allRooms, ctx.t("card.pocket.home.all_rooms"));
-  for (const { room, card } of parts.roomCards) {
-    // A reading the room names but cannot read now: a muted dash.
-    const bits = [];
-    if (room.climate?.temperature) {
-      const value = numberOf(hass, room.climate.temperature);
-      bits.push({ text: temperature(ctx, value), muted: value == null });
-    }
-    const on = lightsOn(hass, room);
-    if (on > 0) bits.push({ text: ctx.t("card.pocket.home.room_lights_on", { count: on }) });
-    else if (room.climate?.humidity) {
-      const value = numberOf(hass, room.climate.humidity);
-      bits.push({ text: percent(ctx, value), muted: value == null });
-    }
-    if (playing(hass, room)) bits.push({ text: ctx.t("card.pocket.home.playing") });
-    setText(card.querySelector(".t1"), room.name);
-    setLine(card.querySelector(".t2"), bits);
-  }
 }

@@ -5,6 +5,7 @@ import "../testing/dom-env.mjs";
 import * as page from "./media-page.js";
 import { pages } from "./index.js";
 import * as playerSheet from "../lib/player-sheet.js";
+import * as sourceSheet from "../lib/source-sheet.js";
 import { chosenPlayer, clock, playersOf, progressOf } from "../lib/media.js";
 import { ELEMENT, meterConfig } from "../lib/sound-panel.js";
 import { config as demo, baseStates, st, hassOf, ctxOf, text, texts, pointer } from "../testing/demo-home.mjs";
@@ -72,7 +73,7 @@ test("the shell's media page is this page", () => {
 test("artwork, title, artist, album, progress, source line of the route's player", () => {
   const el = mount();
   assert.equal(text(el.querySelector(".top b")), "Media");
-  assert.equal(text(el.querySelector(".pick")), "Living room");
+  assert.equal(text(el.querySelector(".pick")), "Living room speaker", "several players: the player's own name");
   assert.equal(el.querySelector(".art img").getAttribute("src"), "/api/media_player_proxy/x");
   assert.equal(text(el.querySelector(".title")), "Devil Like Me");
   assert.equal(text(el.querySelector(".artist")), "Rainbow Kitten Surprise");
@@ -189,27 +190,27 @@ test("which player: the route's area, else the person's last choice, else one pl
   assert.equal(chosenPlayer({ config, hass: idle }).id, BEDROOM);
   assert.equal(chosenPlayer({ config: { rooms: [] } }), undefined);
   const el = mount(ctxWith({ settings: { mediaPlayer: BEDROOM } }));
-  assert.equal(text(el.querySelector(".pick")), "Bedroom");
+  assert.equal(text(el.querySelector(".pick")), "Bedroom speaker");
 });
 
 test("picker: the sheet of every area's player; a pick shows at once, is saved, closes the sheet", async () => {
   const ctx = ctxWith({ routeId: "living_room" });
   const el = mount(ctx);
-  assert.equal(el.querySelector(".pick").getAttribute("aria-label"), "Player: Living room");
+  assert.equal(el.querySelector(".pick").getAttribute("aria-label"), "Player: Living room speaker");
   el.querySelector(".pick").click();
   const [spec] = ctx.sheets;
   assert.equal(spec.kind, "players");
   assert.equal(spec.current, SPEAKER);
   const sheet = playerSheet.render(ctx, spec);
   assert.equal(text(sheet.querySelector("h3")), "Player");
-  assert.deepEqual(texts(sheet, ".row .t1"), ["Living room", "Bedroom"]);
-  assert.deepEqual(texts(sheet, ".row .t2"), ["Living room speaker · Devil Like Me", "Bedroom speaker"]);
+  assert.deepEqual(texts(sheet, ".row .t1"), ["Living room speaker", "Bedroom speaker"]);
+  assert.deepEqual(texts(sheet, ".row .t2"), ["Living room · Devil Like Me", "Bedroom · Idle"], "not playing: what it is doing");
   assert.deepEqual([...sheet.querySelectorAll(".row")].map((r) => r.getAttribute("aria-pressed")), ["true", "false"]);
   sheet.querySelector(`[data-player="${BEDROOM}"]`).click();
   await settle();
   assert.deepEqual(ctx.saved, [{ mediaPlayer: BEDROOM }]);
   assert.equal(ctx.closed, 1);
-  assert.equal(text(el.querySelector(".pick")), "Bedroom", "the pick wins over the route");
+  assert.equal(text(el.querySelector(".pick")), "Bedroom speaker", "the pick wins over the route");
   el.querySelector(".play").click();
   assert.deepEqual(ctx.raw.calls, [["media_player", "media_play_pause", { entity_id: BEDROOM }]]);
 });
@@ -361,4 +362,59 @@ test("power: shown when the player can turn off (or on, while off); a tap turns 
   assert.equal(cannot.querySelector(".power").hidden, true, "no turn_off: no power button");
   const offOnly = mount(ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("off", { supported_features: 256 }) } }));
   assert.equal(offOnly.querySelector(".power").hidden, true, "off and no turn_on: nothing to press");
+});
+
+test("players HA places in an area are offered after the home's own, unavailable and hidden ones left out", () => {
+  const SONOS = "media_player.office_speaker";
+  const hass = hassOf(states({
+    [SONOS]: st("idle", { friendly_name: "Office speaker", supported_features: ALL }),
+    "media_player.old_box": st("unavailable", { friendly_name: "Old box" }),
+    "media_player.hidden_one": st("idle", { friendly_name: "Hidden" }),
+    "media_player.elsewhere": st("idle", { friendly_name: "Garage" }),
+  }));
+  hass.devices = { d_sonos: { id: "d_sonos", area_id: "office" } };
+  hass.entities = {
+    [SONOS]: { entity_id: SONOS, device_id: "d_sonos" },
+    "media_player.old_box": { entity_id: "media_player.old_box", area_id: "office" },
+    "media_player.hidden_one": { entity_id: "media_player.hidden_one", area_id: "office", hidden: true },
+    "media_player.elsewhere": { entity_id: "media_player.elsewhere", area_id: "garage" },
+    [SPEAKER]: { entity_id: SPEAKER, area_id: "living_room" },
+  };
+  const ids = playersOf(config, hass).map((p) => p.id);
+  assert.deepEqual(ids, [SPEAKER, BEDROOM, SONOS], "the named ones first, once each; the office's by its device's area");
+  assert.equal(playersOf(config, hass).find((p) => p.id === SONOS).room.id, "office");
+  assert.deepEqual(playersOf(config).map((p) => p.id), [SPEAKER, BEDROOM], "without hass: the named ones");
+});
+
+test("input: a button with the current source when the player can select one of several; a pick selects it at once", async () => {
+  const sources = { supported_features: ALL | 2048, source: "Radio 357", source_list: ["Radio 357", "Radio Nowy Świat"] };
+  const ctx = ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("playing", sources) } });
+  const el = mount(ctx);
+  const input = el.querySelector(".input");
+  assert.equal(input.hidden, false);
+  assert.equal(text(input.querySelector(".v")), "Radio 357");
+  assert.ok(!text(el.querySelector(".src .line")).includes("Radio 357"), "the source is not said twice");
+  input.click();
+  const spec = ctx.sheets.at(-1);
+  assert.equal(spec.kind, "sources");
+  assert.equal(spec.player, SPEAKER);
+  const sheet = sourceSheet.render(ctx, spec);
+  assert.deepEqual(texts(sheet, ".row span"), ["Radio 357", "Radio Nowy Świat"]);
+  assert.deepEqual([...sheet.querySelectorAll(".row")].map((r) => r.getAttribute("aria-pressed")), ["true", "false"]);
+  sheet.querySelectorAll(".row")[1].click();
+  assert.deepEqual(ctx.raw.calls.at(-1), ["media_player", "select_source", { entity_id: SPEAKER, source: "Radio Nowy Świat" }]);
+  assert.equal(text(input.querySelector(".v")), "Radio Nowy Świat", "optimistic: the new input before HA reports it");
+
+  for (const attrs of [{ supported_features: ALL, source_list: ["A", "B"] }, { supported_features: ALL | 2048, source_list: ["A"] },
+    { supported_features: ALL | 2048 }]) {
+    const other = mount(ctxWith({ routeId: "living_room", changes: { [SPEAKER]: speaker("playing", attrs) } }));
+    assert.equal(other.querySelector(".input").hidden, true, JSON.stringify(attrs));
+  }
+});
+
+test("on a phone the controls stay on the first screen: the artwork is sized from the screen's height; the input sits beside what plays", () => {
+  const el = mount(ctxWith({ routeId: "living_room" }));
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /\.media \.art \{[^}]*width: min\(100%, 420px, max\(160px, calc\(100dvh - var\(--kiosk-header-height, var\(--header-height, 56px\)\) - 470px\)\)\)/);
+  assert.equal(el.querySelector(".input").parentElement.className, "meta", "beside the title, not under the volume");
 });

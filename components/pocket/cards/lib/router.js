@@ -11,10 +11,12 @@
 export const TABS = [
   { page: "home", route: "#/", icon: "mdi:home-outline" },
   { page: "areas", route: "#/areas", icon: "mdi:view-grid-outline" },
+  { page: "controls", route: "#/controls", icon: "mdi:tune-variant" },
   { page: "climate", route: "#/climate", icon: "mdi:thermometer" },
   { page: "media", route: "#/media", icon: "mdi:music" },
   { page: "power", route: "#/power", icon: "mdi:flash-outline" },
   { page: "plants", route: "#/plants", icon: "mdi:sprout-outline" },
+  { page: "scenes", route: "#/scenes", icon: "mdi:palette-outline" },
   { page: "floorplan", route: "#/floorplan", icon: "mdi:floor-plan" },
   { page: "settings", route: "#/settings", icon: "mdi:cog-outline" },
 ];
@@ -38,15 +40,27 @@ export function defaultBar(config) {
 export const FIXED_TABS = ["home", "settings"];
 export const MAX_TABS = 5;
 
-const SINGLE = new Set(["areas", "climate", "media", "power", "plants", "settings", "floorplan"]);
+const SINGLE = new Set(["areas", "controls", "climate", "media", "power", "plants", "scenes", "system", "settings", "floorplan"]);
+// Home's second view (pages/home-page.js): #/systems, the tiles per aspect.
+export const HOME_VIEWS = ["overview", "systems"];
+// The System page (pages/system-page.js): reached from Home's Systems, never on the bar.
+export const SYSTEM = { page: "system", route: "#/system", icon: "mdi:server-outline" };
 const HOME = Object.freeze({ page: "home" });
+export const SETTINGS_PANELS = ["comfort", "about"];
 
 export function parseRoute(hash) {
   const text = typeof hash === "string" ? hash : "";
   if (!text.startsWith("#/")) return { ...HOME };
   const parts = text.slice(2).split("/");
   if (parts.length > 1 && parts[parts.length - 1] === "") parts.pop();
+  if (parts.length === 1 && parts[0] === "systems") return { page: "home", id: "systems" };
+  // Controls' second view, the status (pages/controls-page.js).
+  if (parts.length === 2 && parts[0] === "controls" && parts[1] === "status") return { page: "controls", id: "status" };
   if (parts.length === 1 && SINGLE.has(parts[0])) return { page: parts[0] };
+  // Settings' panels (pages/settings-page.js PANELS): another one is Settings itself.
+  if (parts.length === 2 && parts[0] === "settings") {
+    return SETTINGS_PANELS.includes(parts[1]) ? { page: "settings", id: parts[1] } : { page: "settings" };
+  }
   if (parts.length === 2 && ["area", "media", "floorplan"].includes(parts[0]) && parts[1]) {
     try {
       return { page: parts[0], id: decodeURIComponent(parts[1]) };
@@ -70,6 +84,7 @@ export function legacyRoute(hash) {
 // has no tab of its own for it (`tabs`: the bar's page ids).
 export function tabOf(page, tabs = []) {
   if (page === "floorplan") return tabs.includes("floorplan") ? "floorplan" : "areas";
+  if (page === "system") return "home";
   return page === "area" ? "areas" : page;
 }
 

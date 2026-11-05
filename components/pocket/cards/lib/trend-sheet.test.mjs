@@ -48,7 +48,7 @@ beforeEach(() => { document.body.innerHTML = ""; });
 test("trendSpec: a room's temperature, its comfort range as band and level", () => {
   const ctx = ctxOf();
   assert.deepEqual(trendSpec(ctx, room("living_room"), "temperature"), {
-    kind: "trend", entity: "sensor.living_room_temperature", reading: "temperature",
+    kind: "trend", entity: "sensor.living_room_temperature", reading: "temperature", area: "living_room",
     title: "Temperature", subtitle: "Living room",
     level: { kind: "range", low: "input_number.lr_temp_low", high: "input_number.lr_temp_high" },
     band: { low: "input_number.lr_temp_low", high: "input_number.lr_temp_high" },
