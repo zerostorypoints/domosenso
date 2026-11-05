@@ -22,7 +22,7 @@
    "page": true
   },
   "gate-remote": {
-   "page": false
+   "page": true
   },
   "lights": {
    "page": true
@@ -150,7 +150,7 @@
     }
    ],
    "name": "M5Stack Module CC1101 (868 MHz)",
-   "page": false
+   "page": true
   },
   {
    "id": "mi-flora",
