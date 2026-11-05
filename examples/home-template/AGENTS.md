@@ -19,6 +19,11 @@ home's own files; the components' sources live in the catalog.
   `<config path on the host>`, Home Assistant at `<production URL>`).
 - Both targets are declared in `domosenso.yaml`; their API tokens are in files **outside this
   repository** (`token_file` in the target).
+- ESPHome's `esphome/secrets.yaml` and any `esphome/*.code.yaml` (a gate's captured code) live in the
+  home's private folder `~/.config/domosenso/homes/<id>/` and are git-ignored links here (SPEC-035).
+  In a new clone or worktree run `domosenso private link` once: `status` prints
+  `private-link <path> missing` until then. Move a new secret there with `domosenso private adopt
+  <path>`. Never copy one into the repository, and never print one.
 
 ## Three ownership layers
 

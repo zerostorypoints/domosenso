@@ -17,7 +17,8 @@
         "lights",
         "awnings",
         "media",
-        "gate-remote"
+        "gate-remote",
+        "timers"
       ],
       "availability": "conditional",
       "condition": "Tap the tablet, or approach it with Controls on approach switched on; lights, covers and timers appear when configured. With actions in Ramka 0.16.0 or later, one-tap shortcuts to a button, script or scene, such as a gate remote's, sit under the awnings, each behind Home Assistant's confirmation unless it sets confirm: false.",

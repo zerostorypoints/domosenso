@@ -122,3 +122,66 @@ def test_missing_prerequisites_section_fails(catalog):
     (root/'README.md').write_text('# Sample\n')
     git('commit','-qam','no prerequisites'); pub['frameworkCommit']=git('rev-parse','HEAD')
     with pytest.raises(ValueError,match='Prerequisites'): exporter().agent_content(root,pub)
+
+
+# SPEC-036: source assets are wiring SVGs and enclosure PNG previews, read from the pinned commit.
+PNG = b'\x89PNG\r\n\x1a\n' + bytes(range(256))  # not valid UTF-8, so a text path would fail
+
+
+def source_asset(sha, **override):
+    return dict({'path': '/enclosures/box/closed.png', 'sourcePath': 'devices/enclosures/box/preview/closed.png',
+                 'sourceCommit': sha, 'alt': 'Closed box', 'kind': 'enclosure-preview', 'credit': 'DomoSenso',
+                 'license': 'Apache-2.0', 'scope': 'public-device-guide'}, **override)
+
+
+@pytest.fixture
+def enclosure(catalog):
+    root, publication, git = catalog
+    preview = root / 'devices/enclosures/box/preview'; preview.mkdir(parents=True)
+    (preview / 'closed.png').write_bytes(PNG)
+    (preview / 'text.png').write_text('not a picture')
+    (root / 'devices/wiring').mkdir(parents=True)
+    (root / 'devices/wiring/box-board.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    git('add', '.'); git('commit', '-qm', 'enclosure'); sha = git('rev-parse', 'HEAD')
+    publication['documentationCommit'] = sha
+    (preview / 'closed.png').write_bytes(PNG + b'uncommitted')  # the working tree must not be read
+    (root / 'website/content').mkdir(parents=True)
+    return root, publication, sha
+
+
+def export_assets(root, publication, assets, check=False):
+    from website_content import export_source_assets
+    (root / 'website/content/assets.json').write_text(json.dumps(assets))
+    export_source_assets(root, publication, check)
+
+
+def test_enclosure_preview_is_exported_byte_identical_from_the_commit(enclosure):
+    root, publication, sha = enclosure
+    wiring = source_asset(sha, path='/wiring/box-board.svg', sourcePath='devices/wiring/box-board.svg', kind='wiring')
+    export_assets(root, publication, [source_asset(sha), wiring])
+    assert (root / 'website/public/enclosures/box/closed.png').read_bytes() == PNG
+    assert (root / 'website/public/wiring/box-board.svg').read_text() == '<svg xmlns="http://www.w3.org/2000/svg"/>\n'
+    export_assets(root, publication, [source_asset(sha), wiring], check=True)
+    (root / 'website/public/enclosures/box/closed.png').write_bytes(PNG + b'stale')
+    with pytest.raises(ValueError, match='stale source asset'):
+        export_assets(root, publication, [source_asset(sha)], check=True)
+
+
+@pytest.mark.parametrize('override,message', [
+    ({'sourcePath': 'devices/enclosures/box/stl/base.stl'}, 'invalid source asset'),
+    ({'sourcePath': 'devices/enclosures/box/closed.png'}, 'invalid source asset'),
+    ({'sourcePath': 'devices/enclosures/../wiring/preview/closed.png'}, 'invalid source asset'),
+    ({'path': '/hardware/closed.png'}, 'invalid enclosure preview path'),
+    ({'path': '/enclosures/other/closed.png'}, 'invalid enclosure preview path'),
+    ({'path': '/enclosures/box/text.png', 'sourcePath': 'devices/enclosures/box/preview/text.png'}, 'not a PNG'),
+])
+def test_enclosure_preview_paths_and_bytes_are_checked(enclosure, override, message):
+    root, publication, sha = enclosure
+    with pytest.raises(ValueError, match=message):
+        export_assets(root, publication, [source_asset(sha, **override)])
+
+
+def test_enclosure_preview_from_another_commit_fails(enclosure):
+    root, publication, sha = enclosure
+    with pytest.raises(ValueError, match='asset source commit mismatch'):
+        export_assets(root, publication, [source_asset(publication['frameworkCommit'])])

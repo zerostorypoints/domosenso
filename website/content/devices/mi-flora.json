@@ -3,7 +3,7 @@
   "title": "Mi Flora plant sensor",
   "summary": "Soil and light readings for individual plants.",
   "sourcePath": "devices/mi-flora.yaml",
-  "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+  "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
   "components": [
     "plants"
   ],
