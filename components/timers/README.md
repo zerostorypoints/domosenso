@@ -1,11 +1,11 @@
 # Shared timers
 
-Development implementation of SPEC-031. Core Home Assistant timer helpers own the countdown;
+Implementation of SPEC-031. Core Home Assistant timer helpers own the countdown;
 Frame does not run a competing timer engine. Requires HA 2026.9.2 or newer.
 
 ## DomoSenso setup
 
-Install the `timers` component when a release tag is available. Inputs are a slug `prefix`
+Install the `timers` component with `domosenso add timers@<version>`. Inputs are a slug `prefix`
 (default `domosenso`) and 1–16 timers with unique slug `id`, plain `label`, and integer
 `duration_seconds` from 1 through 86400. The default is one General timer for five minutes.
 Managed helpers enable `restore: true` and carry `component: timers` metadata.
@@ -35,4 +35,4 @@ finish. A frame disconnected after an acknowledged start can alarm at the last c
 but cannot know about a later remote cancellation until reconnecting. New shared commands require
 connection. Android background alarm access is opt-in, otherwise sound is foreground-only.
 
-No component release or physical alarm reliability is implied by this development source.
+A release of this component does not imply physical alarm reliability.
