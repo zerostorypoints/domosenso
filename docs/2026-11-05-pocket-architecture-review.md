@@ -26,8 +26,9 @@ would drift: a room renamed in one, a comfort range changed in the other.
 |---|---|---|
 | **P1** shared home inputs | a home-level inputs file and its schema, read by any component that opts in | merged into `feature/pocket` |
 | **P2** thresholds in `climate-air` | comfort ranges and air limits as Home Assistant helpers, one definition for every screen | merged |
-| **Prototype, iteration 2, phone rounds** | the `pocket` component, built from feedback on a real phone | merged / last round open as a PR into `feature/pocket` |
-| **P3** Ramka migration | the Ramka reads its room lists from the home inputs and its colours from P2 | to plan |
+| **Prototype, iteration 2, phone rounds** | the `pocket` component, built from feedback on a real phone; phone sizes from compact Android to iPhone Pro Max, landscape and 130 % zoom (`tools/dev_home/phone_audit.mjs`) | merged |
+| **P3** Ramka migration | the Ramka reads its room lists from the home inputs (`uses_home: optional`, `templates/_home.jinja`) and, with `thresholds: climate-air`, its colours from P2; `domosenso thresholds` lists every difference before a home switches | merged; run on a real home (one conflict found and chosen, then `ok`) |
+| **Track A** (from the review of #219) | decision record, shared fixtures (run by Pocket, the Ramka and a Python reference), timers by role, home-inputs digest in the lock, covers / contacts / locks and labelled lights in the home inputs, the floor plan's room names and sensors | merged |
 | **P4** Pocket complete | the second-step use cases (security, notifications, current room first) and the final review | to plan |
 
 The order was deliberate: P1 and P2 first, a Pocket prototype on top of them, then P3 only once the
@@ -141,18 +142,34 @@ Two consequences worth checking in review:
 | a trend per reading | a trend per **sensor**, its measurements in a drop-down | a device measures several things |
 | Settings on one page | two levels: comfort ranges and About are panels | home-wide values a step away |
 
-## 6. P3: the Ramka on the shared model (to plan)
+## 6. P3: the Ramka on the shared model (done)
 
-- The Ramka declares `uses_home: true` and consumes P2's helpers.
-- Its inputs `lights`, `climate`, `outside`, `air`, `weather` move to the home inputs; it keeps the
-  wall's own (radar, screen, kiosk, photos, music details, status lists until the home inputs carry
-  them).
-- Its colours read P2's helpers instead of its own `ramka_air_*` and widget ranges; its settings
-  dashboard links to the shared ranges.
-- `UPGRADE.md` gives the move step by step; `render` refuses the old inputs with a pointer to it.
-- Acceptance: before/after snapshots of a home `compare` as `equivalent`.
+What was planned, and what was built instead:
 
-## 7. Questions for the reviewer
+- **Fallback, not a move.** The Ramka declares `uses_home: optional`; `templates/_home.jinja` builds
+  its effective inputs, and every Ramka template imports them as `inputs`, so none of its references
+  changed. An input the Ramka's own file gives wins unchanged (a test renders the demo byte for byte
+  the same with and without home inputs). Without it, lights, climate, outside, air (the first room
+  with air), weather, covers and the status contacts and locks come from the home's rooms. A home
+  moves by deleting its lists; `render` does not refuse the old ones.
+- **Labels.** A room's lights may be a list, each `{entity, name}`, so the wall's own label for a
+  light survives the move.
+- **Thresholds, opt-in.** `thresholds: climate-air` points the air limits, and each room's comfort
+  range (matched by its temperature sensor), at climate-air's helpers; the widget editor and the
+  settings page change those. The Ramka's own air helpers keep their ids and follow climate-air's
+  for one release, so snapshots compare without equivalence entries.
+- **Live values first.** `domosenso thresholds <target>` reads the running home and lists each pair
+  `equal` or `conflict`; a render never resolves one (seed-once does not overwrite).
+- **Acceptance on a real home:** 27 pairs equal and one conflict (CO2 "poor from" changed on the
+  wall). The household chose, the helper was set, then the deploy; the report ended `ok` and
+  `verify` passed.
+- **Parity:** the Ramka's `band()` and `level()` run the shared assessment cases.
+
+## 7. Questions for the reviewer (answered)
+
+The review of [#219](https://github.com/zerostorypoints/domosenso/pull/219) answered these. The answers
+are recorded in [the shared home decisions](2026-11-05-shared-home-decisions.md); the questions stay
+below for the record.
 
 1. **Home inputs scope.** Is "rooms + outside + weather, and per room lights, scenes, climate, air,
    media" the right first cut? Covers, contacts, locks and plants are discovered by area today;
