@@ -34,7 +34,7 @@ import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
 import {
-  GONE, el, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
+  GONE, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
@@ -65,7 +65,7 @@ const STYLE = `
   .home .chip .v.lv-poor { color: var(--bad); }
   .home .chip .v.lv-cold { color: var(--cold); }
   .home .chip .v.lv-warm { color: var(--warm); }
-  .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .quick-sec[hidden] { display: none; }
+  .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .art ha-icon[hidden], .home .quick-sec[hidden] { display: none; }
   .home .wx { box-sizing: border-box; width: 100%; min-height: 52px; margin: -4px 0 14px; padding: 10px 12px;
               display: flex; align-items: center; gap: 8px; text-align: left; font: inherit; color: var(--fg);
               background: var(--card); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; }
@@ -81,6 +81,8 @@ const STYLE = `
   .home .att .item { flex: 0 0 auto; display: flex; }
   .home .art { display: block; width: 52px; height: 52px; border-radius: 12px; flex: 0 0 auto; overflow: hidden; background: var(--chip); }
   .home .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .home .art ha-icon { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
+                       color: var(--mut); --mdc-icon-size: 26px; }
   .home .meta { flex: 1; min-width: 0; }
   .home .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .home .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow-wrap: anywhere; }
@@ -122,7 +124,7 @@ export function render(ctx) {
     <button class="wx" type="button" hidden><pocket-forecast mode="row"></pocket-forecast><span class="chev">›</span></button>
     <div class="now" hidden>
       <button class="open" type="button">
-        <span class="art"><img alt="" hidden></span>
+        <span class="art"><img alt="" hidden><ha-icon icon="mdi:music"></ha-icon></span>
         <span class="meta"><span class="t1"></span> <span class="t2"></span></span>
       </button>
       <button class="play" type="button"><ha-icon></ha-icon></button>
@@ -329,9 +331,8 @@ function updateNow(parts, ctx) {
   now.classList.toggle("muted", gone);
   setText(now.querySelector(".t1"), title);
   setText(now.querySelector(".t2"), a.media_artist || a.media_album_artist || room.name);
-  const img = now.querySelector(".art img");
-  if (a.entity_picture) setAttr(img, "src", a.entity_picture);
-  img.hidden = !a.entity_picture;
+  // A picture that fails to load (or none) shows the music icon, as Media and the area page do.
+  setArt(now.querySelector(".art img"), now.querySelector(".art ha-icon"), a.entity_picture);
   const play = now.querySelector(".play");
   const label = ctx.t(playing ? "card.pocket.home.pause" : "card.pocket.home.play");
   setAttr(play, "aria-label", label);

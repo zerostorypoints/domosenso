@@ -207,6 +207,27 @@ test("a missing media entity: no now-playing card", () => {
   assert.ok(el.querySelector(".now").hidden);
 });
 
+test("now playing: artwork that fails to load, or none, shows the music icon; a new picture is tried", () => {
+  const ctx = ctxOf();
+  const el = mount(ctx);
+  const img = el.querySelector(".now .art img");
+  const icon = el.querySelector(".now .art ha-icon");
+  assert.ok(!img.hidden && icon.hidden);
+  img.dispatchEvent(new Event("error"));
+  assert.ok(img.hidden && !icon.hidden);
+  home.update(el, ctx);
+  assert.ok(img.hidden, "the broken picture stays hidden on the next update");
+  const states = baseStates();
+  states["media_player.living_room_speaker"] = st("playing", { media_title: "B", entity_picture: "/api/media_player_proxy/y" });
+  ctx.hass = hassOf(states);
+  home.update(el, ctx);
+  assert.ok(!img.hidden && icon.hidden);
+  states["media_player.living_room_speaker"] = st("paused", { media_title: "B" });
+  ctx.hass = hassOf({ ...states });
+  home.update(el, ctx);
+  assert.ok(img.hidden && !icon.hidden, "no picture: the icon");
+});
+
 test("quick tiles: one light tile per room with lights, and All off", () => {
   const ctx = ctxOf();
   const el = mount(ctx);
