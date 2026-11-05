@@ -40,6 +40,7 @@ export const MAX_TABS = 5;
 
 const SINGLE = new Set(["areas", "climate", "media", "power", "plants", "settings", "floorplan"]);
 const HOME = Object.freeze({ page: "home" });
+export const SETTINGS_PANELS = ["comfort", "about"];
 
 export function parseRoute(hash) {
   const text = typeof hash === "string" ? hash : "";
@@ -47,6 +48,10 @@ export function parseRoute(hash) {
   const parts = text.slice(2).split("/");
   if (parts.length > 1 && parts[parts.length - 1] === "") parts.pop();
   if (parts.length === 1 && SINGLE.has(parts[0])) return { page: parts[0] };
+  // Settings' panels (pages/settings-page.js PANELS): another one is Settings itself.
+  if (parts.length === 2 && parts[0] === "settings") {
+    return SETTINGS_PANELS.includes(parts[1]) ? { page: "settings", id: parts[1] } : { page: "settings" };
+  }
   if (parts.length === 2 && ["area", "media", "floorplan"].includes(parts[0]) && parts[1]) {
     try {
       return { page: parts[0], id: decodeURIComponent(parts[1]) };

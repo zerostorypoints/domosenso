@@ -234,3 +234,30 @@ test("Bottom bar: the floor plan is a choice only in a home with the floorplan c
   await tick();
   assert.deepEqual(ctx.saves, [{ bar: ["home", "areas", "floorplan", "settings"] }]);
 });
+
+test("two levels: Settings holds Appearance, the bar and a row per panel; each panel is its own page with a Back", () => {
+  const top = mount(settingsCtx());
+  const shownGroups = (el) => [...el.querySelectorAll(".group")].filter((g) => !g.hidden).map((g) => g.classList[1]);
+  assert.deepEqual(shownGroups(top), ["appearance", "bar", "menu"], "the home's values are a step away");
+  assert.deepEqual(texts(top, ".menu .row .name"), ["Comfort ranges", "About"]);
+  assert.equal(text(top.querySelector(".menu [data-panel=comfort] small")), "2 areas · Air limits");
+  assert.match(text(top.querySelector(".menu [data-panel=about] small")), /^Pocket /);
+  assert.equal(top.querySelector(".back").hidden, true);
+  top.querySelector(".menu [data-panel=comfort]").click();
+  top.querySelector(".menu [data-panel=about]").click();
+  const ctx = settingsCtx({ routeId: "comfort" });
+  const comfort = mount(ctx);
+  assert.deepEqual(shownGroups(comfort), ["comfort"]);
+  assert.equal(comfort.querySelector(".top > b").hidden, true);
+  assert.equal(text(comfort.querySelector(".back")), "Comfort ranges");
+  assert.equal(comfort.querySelector(".back").getAttribute("aria-label"), "Back to Settings");
+  comfort.querySelector(".back").click();
+  assert.deepEqual(ctx.routes, ["#/settings"]);
+  assert.deepEqual(shownGroups(mount(settingsCtx({ routeId: "about" }))), ["about"]);
+});
+
+test("a home without comfort helpers has no Comfort ranges row", () => {
+  const el = mount(settingsCtx({ cfg: { ...config, thresholds: {} } }));
+  assert.equal(el.querySelector(".menu [data-panel=comfort]").hidden, true);
+  assert.equal(el.querySelector(".menu [data-panel=about]").hidden, false);
+});

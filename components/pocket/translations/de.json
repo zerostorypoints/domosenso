@@ -160,7 +160,8 @@
           "humidity": "Luftfeuchtigkeit",
           "low": "ab",
           "high": "bis",
-          "edit": "{area}, {reading} {side}: {value}"
+          "edit": "{area}, {reading} {side}: {value}",
+          "summary": "{count} Bereiche"
         },
         "air": {
           "title": "Luftgrenzwerte",
@@ -187,7 +188,8 @@
           "catalog": "Domosenso-Katalog",
           "repo": "Quellcode auf GitHub"
         },
-        "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut."
+        "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut.",
+        "back": "Zurück zu den Einstellungen"
       },
       "sheet": {
         "close": "Schliessen"

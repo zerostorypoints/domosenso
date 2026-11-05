@@ -160,7 +160,8 @@
           "humidity": "Humidity",
           "low": "from",
           "high": "to",
-          "edit": "{area}, {reading} {side}: {value}"
+          "edit": "{area}, {reading} {side}: {value}",
+          "summary": "{count} areas"
         },
         "air": {
           "title": "Air limits",
@@ -187,7 +188,8 @@
           "catalog": "Domosenso catalog",
           "repo": "Source on GitHub"
         },
-        "error": "The setting was not saved. Try again."
+        "error": "The setting was not saved. Try again.",
+        "back": "Back to Settings"
       },
       "sheet": {
         "close": "Close"

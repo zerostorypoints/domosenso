@@ -1,4 +1,7 @@
-// The Settings page, on the page contract of pages/index.js. Four groups:
+// The Settings page, on the page contract of pages/index.js, in two levels: #/settings holds what a
+// person sets for themselves (Appearance, Bottom bar) and a row per panel; a panel is a page of its
+// own (#/settings/comfort, #/settings/about: ctx.routeId), with a Back to Settings, so the home's
+// values are a deliberate step away and the first level stays short. The groups:
 //   - Appearance: System / Light / Dark (lib/settings.js theme; lib/theme.js paints it);
 //   - Bottom bar: a switch per page the bar can show besides Home and Settings (lib/router.js
 //     TABS), at most MAX_TABS - 2 on; while that many are on, the others are disabled with a hint;
@@ -14,7 +17,7 @@
 // comfort and area rows follow the config); update() patches text and state.
 
 import { areasOf, comfortOf } from "../lib/areas.js";
-import { FIXED_TABS, MAX_TABS, TABS, optionalPages } from "../lib/router.js";
+import { FIXED_TABS, MAX_TABS, SETTINGS_PANELS, TABS, optionalPages } from "../lib/router.js";
 import { MODES } from "../lib/theme.js";
 import { reportError } from "../lib/report.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
@@ -34,6 +37,18 @@ const SERVED = import.meta.url.match(/\/pocket\/(\d+\.\d+\.\d+[^/]*)\/cards\//)?
 
 const STYLE = `
   .settings .top { padding: 4px 4px 8px; }
+  .settings .top[hidden], .settings .back[hidden], .settings .menu .go[hidden] { display: none; }
+  .settings .back { min-height: 44px; margin: 0 0 0 -8px; padding: 0 8px 0 0; border: 0; background: none;
+                    color: var(--fg); font: inherit; display: flex; align-items: center; cursor: pointer; }
+  .settings .back ha-icon { --mdc-icon-size: 28px; flex: 0 0 auto; }
+  .settings .back b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
+  .settings.panel .group > h3 { display: none; }
+  .settings.panel .group { padding-top: 8px; }
+  .settings .menu button.row { box-sizing: border-box; width: 100%; margin: 0; padding: 6px 0; border: 0;
+                               border-top: 1px solid var(--line); background: none; color: var(--fg); font: inherit;
+                               font-size: 15px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .settings .menu button.row:first-of-type { border-top: 0; }
+  .settings .menu ha-icon { flex: 0 0 auto; color: var(--mut); --mdc-icon-size: 22px; }
   .settings .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .settings .group { margin: 0 0 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line);
                      border-radius: 18px; }
@@ -171,9 +186,13 @@ function airRows(parts, air) {
 export function render(ctx) {
   const root = el("section", "settings");
   root.innerHTML = `<style>${STYLE}</style>
-    <div class="top"><b></b></div>
+    <div class="top"><b></b><button class="back" type="button" hidden><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
     <div class="group appearance"><h3></h3><div class="seg" role="radiogroup"></div></div>
     <div class="group bar"><h3></h3><p class="hint fixed"></p><div class="rows"></div><p class="hint full"></p></div>
+    <div class="group menu">
+      <button class="row" type="button" data-panel="comfort"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+      <button class="row" type="button" data-panel="about"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+    </div>
     <div class="group comfort"><h3></h3><p class="hint"></p><div class="rows"></div></div>
     <div class="group about"><h3></h3>
       <p class="version"></p>
@@ -182,8 +201,14 @@ export function render(ctx) {
       <div class="links"><a class="catalog" target="_blank" rel="noopener"></a><a class="repo" target="_blank" rel="noopener"></a></div>
     </div>`;
   const $ = (sel) => root.querySelector(sel);
-  const parts = { ctx, pending: {}, tokens: {}, modes: [], switches: [], values: [], areaNames: [], readingLabels: [],
+  const panel = SETTINGS_PANELS.includes(ctx.routeId) ? ctx.routeId : null;
+  const parts = { ctx, panel, pending: {}, tokens: {}, modes: [], switches: [], values: [], areaNames: [], readingLabels: [],
     areaLinks: [], components: null };
+  root.classList.toggle("panel", !!panel);
+  for (const row of root.querySelectorAll(".menu .row")) {
+    row.addEventListener("click", () => parts.ctx.navigate?.(`#/settings/${row.dataset.panel}`));
+  }
+  $(".back").addEventListener("click", () => parts.ctx.navigate?.("#/settings"));
 
   for (const mode of MODES) {
     const button = el("button");
@@ -221,7 +246,14 @@ export function render(ctx) {
   }
   const air = ctx.config?.thresholds?.air;
   if (air && Object.keys(air).length) comfort.append(airRows(parts, air));
-  $(".comfort").hidden = parts.values.length === 0;
+  parts.hasComfort = parts.values.length > 0;
+  // One level shows its own groups only: the first Appearance, the bar and the panels' rows.
+  $(".appearance").hidden = !!panel;
+  $(".bar").hidden = !!panel;
+  $(".menu").hidden = !!panel;
+  $(".menu [data-panel=comfort]").hidden = !parts.hasComfort;
+  $(".comfort").hidden = panel !== "comfort" || !parts.hasComfort;
+  $(".about").hidden = panel !== "about";
 
   for (const area of areasOf(ctx.config)) {
     const link = el("a", "row", `<span class="label"><span class="name"></span><small></small></span><span class="go">›</span>`);
@@ -258,9 +290,11 @@ function updateComponents(parts, root, ctx) {
   const items = Array.isArray(list) ? list.filter((c) => c && typeof c.id === "string") : [];
   const own = items.find((c) => c.id === "pocket");
   const version = own?.version || SERVED;
-  setText(root.querySelector(".version"), ctx.t("card.pocket.settings.about.version", {
+  const line = ctx.t("card.pocket.settings.about.version", {
     version: version ? (own?.dev ? ctx.t("card.pocket.settings.about.dev", { version }) : version)
-      : ctx.t("card.pocket.format.none") }));
+      : ctx.t("card.pocket.format.none") });
+  setText(root.querySelector(".version"), line);
+  setText(root.querySelector(".menu [data-panel=about] small"), line);
   const missing = root.querySelector(".missing");
   missing.hidden = items.length > 0;
   setText(missing, ctx.t("card.pocket.settings.about.missing"));
@@ -284,7 +318,20 @@ export function update(root, ctx) {
   const offline = ctx.offline === true;
   const $ = (sel) => root.querySelector(sel);
 
-  setText($(".top b"), ctx.t("card.pocket.settings.title"));
+  const title = parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
+  const plain = $(".top > b");
+  plain.hidden = !!parts.panel;
+  setText(plain, title);
+  const back = $(".back");
+  back.hidden = !parts.panel;
+  setText(back.querySelector("b"), title);
+  setAttr(back, "aria-label", ctx.t("card.pocket.settings.back"));
+  const comfortRow = $(".menu [data-panel=comfort]");
+  setText(comfortRow.querySelector(".name"), ctx.t("card.pocket.settings.comfort.title"));
+  setText(comfortRow.querySelector("small"), ctx.t("card.pocket.settings.comfort.summary",
+    { count: parts.areaNames.length }) + (parts.airName ? ` · ${ctx.t("card.pocket.settings.air.title")}` : ""));
+  const aboutRow = $(".menu [data-panel=about]");
+  setText(aboutRow.querySelector(".name"), ctx.t("card.pocket.settings.about.title"));
   setText($(".appearance h3"), ctx.t("card.pocket.settings.appearance"));
   setAttr($(".seg"), "aria-label", ctx.t("card.pocket.settings.appearance"));
   for (const button of parts.modes) {

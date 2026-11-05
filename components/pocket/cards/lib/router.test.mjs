@@ -87,3 +87,9 @@ test("the default bar: Media without plants; with plants Plants in its place; Po
   assert.equal(barTabs(defaultBar({ plants: true })).length, MAX_TABS);
   assert.ok(!defaultBar({ plants: true }).includes("power"));
 });
+
+test("Settings' panels are routes of their own; an unknown panel is Settings", () => {
+  assert.deepEqual(parseRoute("#/settings/comfort"), { page: "settings", id: "comfort" });
+  assert.deepEqual(parseRoute("#/settings/about/"), { page: "settings", id: "about" });
+  assert.deepEqual(parseRoute("#/settings/nope"), { page: "settings" });
+});

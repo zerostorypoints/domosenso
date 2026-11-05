@@ -160,7 +160,8 @@
           "humidity": "Wilgotność",
           "low": "od",
           "high": "do",
-          "edit": "{area}, {reading} {side}: {value}"
+          "edit": "{area}, {reading} {side}: {value}",
+          "summary": "Obszary: {count}"
         },
         "air": {
           "title": "Progi powietrza",
@@ -187,7 +188,8 @@
           "catalog": "Katalog Domosenso",
           "repo": "Kod na GitHubie"
         },
-        "error": "Ustawienie nie zostało zapisane. Spróbuj ponownie."
+        "error": "Ustawienie nie zostało zapisane. Spróbuj ponownie.",
+        "back": "Wróć do ustawień"
       },
       "sheet": {
         "close": "Zamknij"
