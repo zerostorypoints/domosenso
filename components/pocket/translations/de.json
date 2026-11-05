@@ -612,16 +612,16 @@
           "open": "Offen",
           "closed": "Geschlossen",
           "opening": "Öffnet",
-          "closing": "Schließt",
+          "closing": "Schliesst",
           "position": "Offen {value} %"
         },
         "cover_act": {
           "open": "{name} öffnen",
           "stop": "{name} stoppen",
-          "close": "{name} schließen"
+          "close": "{name} schliessen"
         },
         "all_open": "Alle öffnen",
-        "all_close": "Alle schließen",
+        "all_close": "Alle schliessen",
         "timer": {
           "active": "Läuft",
           "paused": "Pausiert",

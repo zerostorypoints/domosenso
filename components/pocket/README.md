@@ -18,6 +18,12 @@ a pattern updates it.
   aspect the home has, on the bar or not (Areas, Climate, Media, Power, Plants, Scenes, Floor plan,
   System), each with a headline, a status and an amber or red dot when it is worth a look by the
   levels its page uses; a tap opens the page: from the high level down to the details.
+- **Controls** (`#/controls`, `#/controls/status`): the Ramka's controls and status for the phone, two
+  views under the title. Controls: music (the player that plays), covers by area (open / stop /
+  close, all open / all closed), timers (time left, start or pause, cancel), lights (a tile per room,
+  All off). Status: covers, doors and windows, lights per room and locks, read-only. Covers, timers,
+  contacts (binary sensors of class door, window, garage door or opening) and locks are found by
+  area through the registries; each section only when the home has some.
 - **Scenes** (`#/scenes`): the scenes a person keeps at hand, by area, one tap each; "Choose" lists
   every scene Home Assistant has (found by area through the registries) with a switch each. The
   choice is per person; until one is made, the scenes the home inputs name.
@@ -29,8 +35,8 @@ a pattern updates it.
   each row opening its trend; one sensor (Outside, Air) opens its trend, the sensor's other
   measurements a pick away. A sheet closes by a finger dragged down anywhere on it from the top of
   its content; the page behind never pulls to refresh while it is open.
-- **Back**: a page of Systems that is not on the person's bar has a back arrow to Systems beside
-  the menu button.
+- **Back**: every page opened from Systems has a back arrow to Systems beside the menu button (on
+  the bar or not); a page off the bar has it however it was reached.
 - **This device** (Settings): "Open Pocket when the app starts" moves the app's first dashboard of a
   session to the pocket on this phone or browser only (its local storage; HA's own default
   dashboard is per user). Off: HA opens as it would.
