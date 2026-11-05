@@ -42,7 +42,7 @@ import { trendNow } from "../lib/trend.js";
 import { airSpec } from "../lib/detail-sheets.js";
 import { areasOf, climateReadings as climateOf, climateValue } from "../lib/areas.js";
 import {
-  GONE, el, setArt, setText, setAttr, setArrow, coalesce, number, temperature, percent, pluralOf, lightsOf, membersOf,
+  GONE, operable, el, setArt, setText, setAttr, setArrow, coalesce, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
 import { trendSpec } from "../lib/trend-sheet.js";
@@ -254,7 +254,7 @@ export function render(ctx) {
   parts.media.querySelector(".play").addEventListener("click", () => {
     const { hass, offline, optimistic } = parts.ctx;
     const state = player ? hass?.states?.[player] : undefined;
-    if (offline || !state || GONE.has(state.state) || !hass.callService) return;
+    if (offline || !operable(state) || !hass.callService) return;
     optimistic.send(root, hass, { domain: "media_player", service: "media_play_pause", data: { entity_id: player },
       errorKey: "card.pocket.error.media",
       expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });

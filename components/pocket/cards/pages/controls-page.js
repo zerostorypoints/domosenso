@@ -19,7 +19,7 @@
 import { contactsOf, coverMoving, coversOf, groupedByArea, locksOf, timerLeft, timersOf } from "../lib/controls.js";
 import { can, playersOf } from "../lib/media.js";
 import { sensorSpec } from "../lib/sensor-list.js";
-import { GONE, el, lightsOf, lampsOf, number, setArt, setAttr, setText } from "../lib/page-kit.js";
+import { GONE, operable, el, lightsOf, lampsOf, number, setArt, setAttr, setText } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
 
 const VIEWS = ["controls", "status"];
@@ -123,7 +123,7 @@ export function render(ctx) {
   for (const key of root.querySelectorAll(".music .key")) key.addEventListener("click", () => musicKey(root, key.dataset.act));
   for (const button of root.querySelectorAll(".covers .all button")) {
     button.addEventListener("click", () => {
-      const ids = coversOf(parts.ctx.hass).filter((id) => !GONE.has(parts.ctx.hass.states[id].state));
+      const ids = coversOf(parts.ctx.hass).filter((id) => operable(parts.ctx.hass.states[id]));
       if (ids.length) coverCall(root, ids, button.dataset.all);
     });
   }
@@ -162,7 +162,7 @@ function send(root, call) {
 function musicKey(root, act) {
   const player = root._controls.player;
   const state = player ? root._controls.ctx.hass?.states?.[player.id] : null;
-  if (!state || GONE.has(state.state)) return;
+  if (!operable(state)) return;
   const id = player.id;
   const base = { domain: "media_player", data: { entity_id: id }, errorKey: "card.pocket.error.media" };
   const volume = Number(state.attributes?.volume_level);
@@ -252,9 +252,10 @@ function updateMusic(root, parts, ctx) {
   setAttr(play.querySelector("ha-icon"), "icon", playingNow ? "mdi:pause" : "mdi:play");
   setAttr(play, "aria-label", ctx.t(playingNow ? "card.pocket.home.pause" : "card.pocket.home.play"));
   const off = state.state === "off";
-  play.disabled = gone || off || !(can(state, "play") || can(state, "pause"));
-  key("previous").disabled = gone || off || !can(state, "previous");
-  key("next").disabled = gone || off || !can(state, "next");
+  const blocked = !operable(state);
+  play.disabled = blocked || off || !(can(state, "play") || can(state, "pause"));
+  key("previous").disabled = blocked || off || !can(state, "previous");
+  key("next").disabled = blocked || off || !can(state, "next");
   setAttr(key("previous"), "aria-label", ctx.t("card.pocket.media.previous"));
   setAttr(key("next"), "aria-label", ctx.t("card.pocket.media.next"));
   const volume = Number(a.volume_level);
@@ -312,7 +313,6 @@ function updateCovers(root, parts, ctx) {
   for (const row of section.querySelectorAll(".row")) {
     const state = hass.states[row.dataset.entity];
     const bits = features(state);
-    const gone = !state || GONE.has(state.state);
     // An awning moves sideways; a blind, a shutter or a garage door up and down.
     const sideways = state?.attributes?.device_class === "awning";
     setText(row.querySelector(".n"), state?.attributes?.friendly_name || row.dataset.entity);
@@ -321,7 +321,7 @@ function updateCovers(root, parts, ctx) {
       ["stop", COVER.stop, "mdi:stop"], ["close", COVER.close, sideways ? "mdi:arrow-collapse-horizontal" : "mdi:arrow-down"]]) {
       const button = row.querySelector(`[data-act="${act}"]`);
       button.hidden = !(bits & flag);
-      button.disabled = gone || !!ctx.offline;
+      button.disabled = !operable(state) || !!ctx.offline;
       setAttr(button.querySelector("ha-icon"), "icon", icon);
       setAttr(button, "aria-label", ctx.t(`card.pocket.controls.cover_act.${act}`, { name: row.querySelector(".n").textContent }));
     }
@@ -388,7 +388,7 @@ function updateTimers(root, parts, ctx) {
     const cancel = row.querySelector('[data-act="cancel"]');
     cancel.disabled = !!ctx.offline || state?.state === "idle";
     setAttr(cancel, "aria-label", ctx.t("card.pocket.controls.timer_cancel"));
-    toggle.disabled = !!ctx.offline || !state || GONE.has(state.state);
+    toggle.disabled = !!ctx.offline || !operable(state);
   }
   tick();
   // A running timer counts down on the screen; the ticker stops with it or with the page.

@@ -34,7 +34,7 @@ import { sourceSpec, sourcesOf } from "../lib/source-sheet.js";
 import { playerSpec } from "../lib/player-sheet.js";
 import { STYLE as SOUND_STYLE, renderSound } from "../lib/sound-panel.js";
 import { reportError } from "../lib/report.js";
-import { GONE, el, number, percent, setArt, setAttr, setLine, setText } from "../lib/page-kit.js";
+import { GONE, operable, el, number, percent, setArt, setAttr, setLine, setText } from "../lib/page-kit.js";
 
 const DIRECTION_PX = 8;   // movement before a gesture on the strip is a drag or a scroll
 const KEY_STEP = 5;       // percent per arrow key
@@ -286,7 +286,7 @@ function pickPlayer(root, id) {
 function live(parts, ctx = parts.ctx) {
   const id = playerOf(parts, ctx)?.id;
   const state = id ? ctx.hass?.states?.[id] : undefined;
-  if (ctx.offline || !state || GONE.has(state.state) || !ctx.hass?.callService) return undefined;
+  if (ctx.offline || !operable(state) || !ctx.hass?.callService) return undefined;
   return { id, state };
 }
 
@@ -403,7 +403,7 @@ function updatePlayer(parts, ctx, chosen) {
   const state = ctx.hass?.states?.[chosen.id];
   const gone = !state || GONE.has(state.state);
   const a = gone ? {} : state.attributes ?? {};
-  const disabled = gone || !!ctx.offline;
+  const disabled = !operable(state) || !!ctx.offline;
   parts.player.classList.toggle("muted", gone);
 
   setArt(parts.img, parts.art.querySelector("ha-icon"), a.entity_picture);

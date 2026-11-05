@@ -83,3 +83,21 @@ test("time left: an active timer's end, a paused one's remaining, an idle one's 
   assert.deepEqual(groupedByArea(controlsHass(), config, null, ["cover.bedroom_blind", "cover.terrace_awning"]).map((g) => g.name),
     ["Living room", "Bedroom"]);
 });
+
+// HA's `unknown` means "no value yet", not "cannot act": a cover whose position is not known after a
+// restart still takes open / close; only `unavailable` (HA cannot reach it) or a missing entity blocks.
+test("an unknown cover can be operated; an unavailable one cannot", () => {
+  const ctx = ctxOf({ hass: controlsHass({
+    "cover.terrace_awning": st("unknown", { friendly_name: "Terrace awning", device_class: "awning", supported_features: 1 | 2 | 8 }),
+    "cover.bedroom_blind": st("unavailable", { friendly_name: "Bedroom blind", supported_features: 1 | 2 | 4 | 8 }),
+  }) });
+  const el = mount(ctx);
+  const awning = el.querySelector('[data-entity="cover.terrace_awning"] [data-act="open"]');
+  assert.equal(awning.disabled, false);
+  assert.equal(el.querySelector('[data-entity="cover.bedroom_blind"] [data-act="open"]').disabled, true);
+  awning.click();
+  assert.deepEqual(ctx.raw.calls.at(-1), ["cover", "open_cover", { entity_id: "cover.terrace_awning" }]);
+  el.querySelector('.covers [data-all="close"]').click();
+  assert.deepEqual(ctx.raw.calls.at(-1), ["cover", "close_cover", { entity_id: "cover.terrace_awning" }]);
+  el.remove();
+});

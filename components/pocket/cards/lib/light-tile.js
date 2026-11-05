@@ -124,8 +124,9 @@ class PocketLightTile extends HTMLElement {
     return (this._config?.entities ?? []).map((id) => hass?.states?.[id]).filter(Boolean);
   }
 
+  // A tile acts while one of its lights can (unknown still takes a command; see page-kit operable).
   _available() {
-    return this._states().some((s) => !GONE.has(s.state));
+    return this._states().some((s) => s.state !== "unavailable");
   }
 
   _on() {
