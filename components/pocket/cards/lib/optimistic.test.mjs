@@ -223,3 +223,30 @@ test("a double tap: the first call's late report does not flash; the wait ends w
   assert.ok(!store.pending("light.a"));
   assert.deepEqual(reports, []);
 });
+
+test("a rejected call that holds nothing still toasts once: an empty expectation, a state already as expected", async () => {
+  const { store, reports } = storeOf({ timeoutMs: 10 });
+  const failing = hassOf({ "light.a": st("off") }, () => Promise.reject(new Error("no")));
+  send(store, failing, {});
+  await tick(20);
+  assert.deepEqual(reports, [["el", "card.pocket.error.light"]], "empty expectation");
+  send(store, failing, { "light.a": { state: "off" } });
+  assert.ok(!store.pending("light.a"), "already off: nothing held");
+  await tick(20);
+  assert.deepEqual(reports, [["el", "card.pocket.error.light"], ["el", "card.pocket.error.light"]]);
+});
+
+test("a rejected call taken over by a later one stays silent, also once the later call settled", async () => {
+  let rejectFirst;
+  const { store, reports } = storeOf();
+  const answers = [() => new Promise((_, no) => { rejectFirst = no; }), () => Promise.resolve()];
+  const hass = hassOf({ "light.a": st("off") }, () => answers.shift()());
+  send(store, hass, { "light.a": { state: "on" } }, { service: "turn_on" });
+  send(store, hass, { "light.a": { state: "off" } });
+  store.update(hassOf({ "light.a": st("on") }));
+  store.update(hassOf({ "light.a": st("off") }));
+  assert.ok(!store.pending("light.a"));
+  rejectFirst(new Error("no"));
+  await tick();
+  assert.deepEqual(reports, []);
+});

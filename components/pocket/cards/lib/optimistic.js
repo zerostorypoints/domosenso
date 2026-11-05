@@ -25,8 +25,9 @@
 // keeps waiting. A call that fails, or one whose entities are not all settled after timeoutMs,
 // rolls back what it still holds and reports errorKey once (report(el, key), by default the
 // pocket-error event of lib/report.js). A later send for the same entity takes it over: the
-// earlier call no longer rolls it back or reports for it; a call that holds nothing any more
-// reports nothing.
+// earlier call no longer rolls it back or reports for it. A rejected call reports unless a later
+// one took over one of its entities (even one that held nothing: a call to an entity already in
+// the expected state can still fail); a timeout reports only when it drops something still held.
 // A send whose expected state is already the reported one while an earlier call still holds the
 // entity (a second tap before the first one's report) keeps holding it quietly: the first call's
 // late report does not flash on screen. It settles on a new report of the expected state; when
@@ -73,6 +74,7 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
   let sends = 0;
   let version = 0;
   let cache = null;
+  const overtaken = new Set();   // sends a later send took an entity over from
 
   const changed = () => { version += 1; store.onChange?.(); };
 
@@ -114,6 +116,7 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
         const state = real?.states?.[id];
         const want = given.changed ? given : wantFor(state, given);
         const earlier = held.get(id);
+        if (earlier) overtaken.add(earlier.sendId);
         if (!state) { held.delete(id); continue; }
         if (!want.changed && matches(state, want)) {
           // Already reported as wanted: hold it only while an earlier call's report may still come.
@@ -123,10 +126,11 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
         held.set(id, { want, from: state.state, fromObject: state, sendId, quiet: false });
       }
       let reported = false;
-      const end = (options) => {
-        const { dropped, failed } = rollback(sendId, options);
+      const end = ({ timeout = false } = {}) => {
+        const { dropped, failed } = rollback(sendId, { timeout });
         if (dropped) changed();
-        if (failed && !reported) {
+        const tell = timeout ? failed : !overtaken.has(sendId);
+        if (tell && !reported) {
           reported = true;
           report(el, errorKey);
         }
@@ -138,7 +142,10 @@ export function createOptimistic({ timeoutMs = CONFIRM_MS, report = reportError 
         result = Promise.reject(err);
       }
       result?.catch?.(() => end());
-      const timer = setTimeout(() => end({ timeout: true }), store.timeoutMs);
+      const timer = setTimeout(() => {
+        end({ timeout: true });
+        overtaken.delete(sendId);
+      }, store.timeoutMs);
       timer?.unref?.();     // node (the tests): a pending check does not hold the process
       changed();
     },
