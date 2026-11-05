@@ -74,7 +74,7 @@ views:
         plants: true
 [%- endif %]
 [%- if inputs.timers | default([]) %]
-        # The timers Controls shows, as the Ramka's controls take them.
+        # The home's own list of timers; without it the card finds the user timers by their role.
         timers: [[ inputs.timers | list | yaml ]]
 [%- endif %]
 [%- if inputs.sound | default(false) %]

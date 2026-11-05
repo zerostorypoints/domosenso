@@ -7,8 +7,9 @@
 //   groupedByArea(hass, config, t, ids) -> [{key, name, ids}]   the pocket's areas in order (by
 //       their HA area), then HA's other areas by name, then no area (name ""); ids by name
 //   coversOf(hass), contactsOf(hass), locksOf(hass) -> [id]   the listed ones
-//   timersOf(hass, config) -> [id]   the timers the home names (config.timers, as the Ramka's controls
-//       take them) that Home Assistant has: never every timer.*, so a component's own stays out
+//   timersOf(hass, config) -> [id]   the timers a list in the inputs names (config.timers, legacy or
+//       manual) that Home Assistant has; without one, every listed timer.* the timers component marks
+//       timer_role: user_countdown, by name; never every timer.*, so a component's own stays out
 //   CONTACT_CLASSES                    the binary_sensor device classes that are a door or window
 //   timerLeft(state, now?) -> seconds | null   an active timer's time left (finishes_at), a paused
 //       one's `remaining`, an idle one's `duration`
@@ -29,8 +30,15 @@ const ofDomain = (hass, domain, extra = () => true) => Object.keys(hass?.states 
   .filter((id) => id.startsWith(`${domain}.`) && listed(hass, id) && extra(hass.states[id]));
 
 export const coversOf = (hass) => ofDomain(hass, "cover");
-export const timersOf = (hass, config) => [config?.timers ?? []].flat()
-  .filter((id) => typeof id === "string" && id.startsWith("timer.") && hass?.states?.[id]);
+// Decision D4 (docs/2026-11-05-shared-home-decisions.md): the timers component marks the timers it
+// makes for people (timer_role: user_countdown); a component's internal timer carries no role.
+export const USER_TIMER_ROLE = "user_countdown";
+export function timersOf(hass, config) {
+  const named = [config?.timers ?? []].flat().filter((id) => typeof id === "string" && id.startsWith("timer."));
+  if (named.length) return named.filter((id) => hass?.states?.[id]);
+  return ofDomain(hass, "timer", (state) => state.attributes?.timer_role === USER_TIMER_ROLE)
+    .sort((a, b) => nameOf(hass, a).localeCompare(nameOf(hass, b)) || (a < b ? -1 : 1));
+}
 export const locksOf = (hass) => ofDomain(hass, "lock");
 export const contactsOf = (hass) => ofDomain(hass, "binary_sensor",
   (state) => CONTACT_CLASSES.includes(state.attributes?.device_class));

@@ -203,11 +203,13 @@ class Demo:
         # Pocket, the phone view, beside the Ramka: it and the climate-air thresholds it reads take
         # the demo home's shared inputs (home.inputs.yaml), as a home's render gives them.
         home = yaml.safe_load((fixture / 'home.inputs.yaml').read_text())
-        for component, package in [('climate-air', 'climate_air.yaml'), ('pocket', None)]:
+        for component, package in [('timers', 'timers.yaml'), ('climate-air', 'climate_air.yaml'), ('pocket', None)]:
             rendered = self.path / f'rendered-{component}'
             shutil.rmtree(rendered, ignore_errors=True)
             component_inputs = yaml.safe_load((fixture / f'inputs/{component}.yaml').read_text()) or {}
-            render_component(self.root / 'components' / component, component_inputs, rendered, stamp=True, home=home)
+            uses_home = 'uses_home' in yaml.safe_load((self.root / 'components' / component / 'component.yaml').read_text())
+            render_component(self.root / 'components' / component, component_inputs, rendered, stamp=True,
+                             **({'home': home} if uses_home else {}))
             if package:
                 shutil.copyfile(rendered / 'package.yaml', self.config / 'packages' / package)
             for source in rendered.glob('dashboard.*.yaml'):
