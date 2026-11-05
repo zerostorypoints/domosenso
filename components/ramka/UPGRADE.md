@@ -17,11 +17,14 @@ helpers, the same thresholds Pocket reads:
   go in the next release.
 
 What a home does:
-1. Before switching, compare the Ramka's live limits with climate-air's (`domosenso snapshot`; the
-   migration report lists each pair as equal or conflicting) and set climate-air's to the values the
-   household chose.
+1. Before switching, run `domosenso thresholds <target>`. It reads the running home and lists each
+   limit and comfort range as `equal` or `conflict`, the Ramka's value beside climate-air's. Set
+   climate-air's helper to the value the household chose (Settings → Comfort ranges in Pocket, or
+   the helper itself), and run it again until it ends `ok`. A render never resolves a conflict:
+   seed-once does not overwrite a helper that exists.
 2. Set `thresholds: climate-air`, then `render`.
-3. `compare` a snapshot from before against one from after.
+3. `compare` a snapshot from before against one from after. The Ramka's air helpers keep their ids
+   (they now follow climate-air's), so the snapshots compare without new `equivalence.yaml` entries.
 
 `own` (the default) changes nothing.
 
