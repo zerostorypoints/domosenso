@@ -34,6 +34,7 @@
 //   floorplan: true          # optional: the home has the floorplan component (its card, floorplan-card,
 //                            # on the area pages and the floor plan view; the bar may offer the view)
 //   plants: true             # optional: the home has the plants component; Plants is on the default bar
+//   timers: [timer.x]        # optional: the timers Controls shows (pages/controls-page.js)
 //   sound: {level, offset?, averages?}   # optional: the home has audio-sensor; Media's Sound tab
 //                            # (lib/sound-panel.js, its card room-meter-card)
 

@@ -155,6 +155,8 @@ when the row has a level. A row that opens something is a `button`.
 - **Settings are per person** (HA frontend user data, `lib/settings.js`): theme, bar, climate view,
   media player, scenes. **Per device** only what must differ by phone (open at start, in local
   storage). Nothing per dashboard.
+- **Exceptions to discovery**: a domain whose entities are also a component's internals (timers) is
+  named in Pocket's inputs, as the Ramka names it.
 - **Charts** are Home Assistant's own cards (via `loadCardHelpers`), so they look as HA and the Ramka.
 
 ## 6. Levels and colour
@@ -221,3 +223,4 @@ when the row has a level. A row that opens something is a `button`.
 | Controls and Status as views of one page | the same things, to act on or to read; the Ramka's two screens |
 | Back from every page opened from Systems | a page on the bar opened from Systems still came from Systems |
 | A card that sizes itself is never put in a fixed-height box | the floor plan's map bar cut the plan |
+| Timers are named in the inputs, never every `timer.*` | components keep internal timers (the Ramka's controls timer); the Ramka takes a list too |

@@ -73,6 +73,10 @@ views:
         # plant.* itself; a home without the flag still has the page in Settings).
         plants: true
 [%- endif %]
+[%- if inputs.timers | default([]) %]
+        # The timers Controls shows, as the Ramka's controls take them.
+        timers: [[ inputs.timers | list | yaml ]]
+[%- endif %]
 [%- if inputs.sound | default(false) %]
         # audio-sensor's music level and offset on its own meter (its resource comes with that
         # component), the home's averages under it.

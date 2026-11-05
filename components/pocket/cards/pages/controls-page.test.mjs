@@ -30,7 +30,8 @@ const mount = (ctx) => {
 };
 
 test("Controls: music, covers by area, timers, lights — each a section when the home has it", () => {
-  const ctx = ctxOf({ hass: controlsHass() });
+  const ctx = ctxOf({ hass: controlsHass({ "timer.ramka_controls": st("active", { friendly_name: "Ramka controls" }) }),
+    cfg: { ...config, timers: ["timer.kitchen"] } });
   const el = mount(ctx);
   assert.deepEqual(texts(el, ".views button"), ["Controls", "Status"]);
   assert.deepEqual([...el.querySelectorAll(".controls-pane > section")].filter((s) => !s.hidden).map((s) => s.className),
@@ -43,6 +44,7 @@ test("Controls: music, covers by area, timers, lights — each a section when th
   el.querySelector('.covers [data-all="close"]').click();
   assert.deepEqual(ctx.raw.calls.at(-1)[1], "close_cover");
   assert.match(text(el.querySelector('[data-entity="timer.kitchen"] small')), /Running · 2:0[45]/);
+  assert.equal(el.querySelector('[data-entity="timer.ramka_controls"]'), null, "a timer the home does not name stays out");
   el.querySelector('[data-entity="timer.kitchen"] [data-act="toggle"]').click();
   assert.deepEqual(ctx.raw.calls.at(-1), ["timer", "pause", { entity_id: "timer.kitchen" }]);
   el.querySelector('.music [data-act="next"]').click();

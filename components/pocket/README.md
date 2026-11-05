@@ -20,7 +20,7 @@ a pattern updates it.
   levels its page uses; a tap opens the page: from the high level down to the details.
 - **Controls** (`#/controls`, `#/controls/status`): the Ramka's controls and status for the phone, two
   views under the title. Controls: music (the player that plays), covers by area (open / stop /
-  close, all open / all closed), timers (time left, start or pause, cancel), lights (a tile per room,
+  close, all open / all closed), timers (the input `timers`, as the Ramka's: time left, start or pause, cancel), lights (a tile per room,
   All off). Status: covers, doors and windows, lights per room and locks, read-only. Covers, timers,
   contacts (binary sensors of class door, window, garage door or opening) and locks are found by
   area through the registries; each section only when the home has some.

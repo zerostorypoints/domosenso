@@ -8,7 +8,7 @@
 //     - Covers: each cover (awnings, blinds) by area (lib/controls.js), its state or position, open /
 //       stop / close (44 px, each only when the cover supports it); all open / all closed with two
 //       or more;
-//     - Timers: each timer, its time left (ticking while active), start or pause, cancel;
+//     - Timers: each timer the home names (config.timers), its time left (ticking while active), start or pause, cancel;
 //     - Lights: a light tile per room with lights (as Quick) and All off.
 //   Status    read-only, as the Ramka's status page: covers, doors and windows, lights per room and
 //     locks, an equal tile each: icon, name, state; an active one (open, on, unlocked) in the accent.
@@ -344,7 +344,7 @@ const clockText = (secs) => {
 function updateTimers(root, parts, ctx) {
   const section = root.querySelector(".timers");
   const { hass } = ctx;
-  const ids = timersOf(hass);
+  const ids = timersOf(hass, ctx.config);
   section.hidden = ids.length === 0;
   if (!ids.length) {
     clearInterval(parts.ticker);

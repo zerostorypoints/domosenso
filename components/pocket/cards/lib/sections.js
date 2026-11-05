@@ -120,7 +120,7 @@ const SUMMARIES = {
   controls(ctx) {
     const { hass, config } = ctx;
     const covers = coversOf(hass);
-    const timers = timersOf(hass);
+    const timers = timersOf(hass, config);
     const lamps = (config.rooms ?? []).some((room) => [room.lights ?? []].flat().length);
     if (!covers.length && !timers.length && !lamps && !playersOf(config, hass).length) return null;
     const on = lightsOnIn(hass, config.rooms ?? []);
