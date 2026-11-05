@@ -8,12 +8,21 @@
 // button opens the gate when held for 1 s, so it sits at the bottom of a finger well.
 //
 // Design decisions:
-//   - Module pin face up on four pads whose pins enter its 3.1 mm corner holes. Its SMA jack
-//     leaves through a slot in the back wall; a tongue on the lid closes the slot above it.
+//   - Module pin face up on four pads under its corners. Underneath it is an open shell, so the
+//     pads' pins stand in the hollow below its 3.1 mm corner holes; the left wall and the SMA slot
+//     locate it. Its SMA jack leaves through a slot in the back wall; a tongue on the lid closes
+//     the slot above it.
+//   - Beside each corner hole, 3.3-3.8 mm towards the middle, an M2 socket screw holds the board to
+//     its frame; its head stands on the pin face (not in M5Stack's drawing; measured from M5Stack's
+//     product photo after the first fit test, 2026-11-05). The board model sweeps each head over
+//     that whole range, so the clash checks cover every position. The clamp's pins are thin and
+//     sit off the hole's centre, away from the screw; the clamp's bosses and the lid's tubes have
+//     notches over the heads.
 //   - The clamp, a bar with one slot per jumper, sits on the eight female housings. Two spring
 //     flaps cut into the lid press it down, so the housings stay on the pins and their length
 //     tolerance (dupont_tol) needs no adjustment. The flaps rise 0.5-2.5 mm above the lid's top
-//     face while they press (echoed as flap_rise_above_lid_mm). Pins on the clamp locate it.
+//     face while they press (echoed as flap_rise_above_lid_mm). Pins on the clamp locate it in the
+//     module's right-hand corner holes.
 //   - No screws: four latches on the lid snap into 45-degree V-grooves in the front and back
 //     walls. The lid presses on and pulls off by hand, starting at the notch in the left wall.
 //   - The latch tabs stand upright in print, so they bend across the layers, which the usual
@@ -44,8 +53,10 @@
 //   "USB opening"             -> usb_plug_w, usb_plug_h
 //   "wall ears"               -> base(ears = true), ear_len, ear_w, ear_hole_d
 //   "pry notch"               -> notch_w, notch_d
+//   "corner screws"           -> screw_dx, screw_y_tol, screw_head_d, screw_head_h, head_sweep()
 //
 // Common modifications:
+//   Other screws on the module -> screw_dx, screw_y_tol, screw_head_d, screw_head_h (notches and the pin follow)
 //   Other jumper pins          -> pins_used (M-Bus numbers; odd pins are the edge column)
 //   Thicker jumper wires       -> wire_d (slot = wire_d + 0.2 + hole_comp; ribs stay >= 0.6 mm, asserted)
 //   Other housing length       -> dupont_len (clamp height follows), dupont_tol (flap travel)
@@ -60,8 +71,10 @@
 // Coordinate system (assembled): X right, Y back (antenna side), Z up; origin at the base's
 //   front-left inner corner, z = 0 under the base. Printed parts are exported in print
 //   orientation on Z = 0: the base as assembled, the lid and the clamp turned over about X.
-// Board dimensions: M5Stack drawings, see README.md "Sources".
+// Board dimensions: M5Stack drawings; the corner screws from M5Stack's product photo. See
+//   README.md "Sources".
 // Final review: 2026-11-05, claude-fable-5-1 (after a Sonnet review; findings fixed)
+// Corner-screw fix: reviewed 2026-11-05, claude-sonnet-5-5; its findings fixed
 
 // === PRINT SETTINGS ===
 // Material: PETG (latches and spring flaps; forgiving if a first print fits tight). PLA works:
@@ -129,6 +142,16 @@ vents = true;
 // Slot width: too narrow for a finger
 vent_w = 2;
 vent_len = 12;
+
+/* [Module corner screws] */
+// Range of the head's centre, from its corner hole's centre towards the module's middle (measured)
+screw_dx = [3.3, 3.8];
+// The head's centre off the hole's line, either way (measured within 0.2)
+screw_y_tol = 0.2;
+// Head diameter, with margin (M2 socket cap 3.8; 3.8-4.0 measured)
+screw_head_d = 4.0;
+// Head height above the pin face, with margin (M2 socket cap 2.0; about 2.2 estimated from a side photo)
+screw_head_h = 2.4;
 
 /* [Wall mount, part base_wall] */
 ear_hole_d = 4.2;
@@ -236,8 +259,14 @@ sma_zz = mod_z0 + sma_z;
 outer = [inner_x + 2 * wall, inner_y + 2 * wall, z_lid + lid_t];
 
 // --- fixing without screws ---
-pin_d = 2.8;          // locating pins in the module's 3.1 mm corner holes
+pin_d = 2.8;          // the base's pins, standing in the hollow under the module's corner holes
 pin_taper = 0.5;
+clamp_pin_d = 2.2;    // the clamp's pins in the 3.1 mm corner holes, beside the screw heads
+clamp_pin_taper = 0.4;
+clamp_pin_shift = 0.25; // off the hole's centre, away from the screw
+head_clear = 0.3;     // above and around a screw head in its notch
+// notch over a head: the head's swept range plus head_clear, plus the printed-hole shrink
+head_notch_r = screw_head_d / 2 + head_clear + hole_comp / 2;
 base_pin_h = 2.5;     // from the pads, into the holes from below
 clamp_pin_h = 3.0;    // from the clamp's bosses, into the right-hand holes from above
 tube_gap = 0.4;       // lid tubes stop the module this far above it
@@ -293,6 +322,13 @@ function row_y(r) = mp([0, hdr_row1 + (r - 1) * pitch])[1];
 hole_xy = [for (h = mod_holes) mp(h)];
 left_holes = [hole_xy[0], hole_xy[2]];  // under the lid's stop tubes
 right_holes = [hole_xy[1], hole_xy[3]]; // under the clamp's bosses
+// the screw beside a hole lies towards the module's middle in X: +1 for the left-hand holes
+function screw_dir(h) = h[0] < mod_x0 + mod_w / 2 ? 1 : -1;
+// the clamp's pin sits clamp_pin_shift off the hole's centre, away from the screw
+function clamp_pin_of(h) = [h[0] - screw_dir(h) * clamp_pin_shift, h[1]];
+// notch tops: the lid sits fixed over the module; the clamp sinks dupont_tol on short housings
+tube_pocket_top = plateau_z + screw_head_h + head_clear;
+boss_pocket_top = plateau_z + screw_head_h + head_clear + dupont_tol;
 
 // flap centre lines: over the clamp bosses, kept clear of the lid's lip
 flap_y_min = lip_gap + lip_t + flap_slot + flap_w / 2 + 0.3;
@@ -326,6 +362,15 @@ flap_strain = 100 * 3 * flap_t * flap_defl_max / (2 * flap_len * flap_len);
 assert(atom_z0 - dupont_len - floor_t >= 5, "no room under the Atom for the jumper bends");
 assert(plateau_z + boss_gap - clamp_pin_h > mod_z0 + base_pin_h + 1, "clamp pin meets base pin");
 assert(boss_gap >= dupont_tol, "clamp boss would land on the module before short housings");
+// clamp pin against the nearest screw head, and inside its hole, at the ends of the measured range
+clamp_pin_in = clamp_pin_d / 2 - clamp_pin_shift;    // pin's edge on the screw side, from the hole's centre
+clamp_pin_out = clamp_pin_d / 2 + clamp_pin_shift;   // and on the far side
+head_near = screw_dx[0] - screw_head_d / 2;          // nearest head edge, from the hole's centre
+assert(head_near - clamp_pin_in >= 0.25, "clamp pin under 0.25 mm from a screw head");
+assert(mod_hole_d / 2 - clamp_pin_out >= 0.15, "clamp pin under 0.15 mm inside its hole");
+assert(screw_dx[0] - head_notch_r >= clamp_pin_in - fudge, "head notch cuts into the clamp pin");
+assert(boss_pocket_top + 3 * layer_height <= housing_top, "clamp boss notch leaves under three layers");
+assert(tube_pocket_top + 3 * layer_height <= z_lid, "lid tube notch reaches the lid plate");
 assert(latch_len / latch_t >= 10 - fudge, "latch L:T below 10");
 assert(latch_strain <= strain_limit, "latch strain over the limit");
 assert(flap_strain <= strain_limit, "flap strain over the limit");
@@ -359,6 +404,9 @@ echo(outer_mm = outer, base_wall_x = outer[0] + 2 * (ear_len / 2 + 0.5 + ear_w /
 echo(latch_strain_pct = latch_strain, latch_hold_N = latch_hold, flap_strain_pct = flap_strain,
      flap_force_max_N = flap_force_max, clamp_rib_mm = slot_rib,
      flap_rise_above_lid_mm = [flap_defl_min, flap_preload, flap_defl_max]);
+echo(clamp_pin_to_head_min_mm = head_near - clamp_pin_in, clamp_pin_in_hole_mm = mod_hole_d / 2 - clamp_pin_out,
+     head_notch_from_hole_mm = [screw_dx[0] - head_notch_r, screw_dx[1] + head_notch_r],
+     boss_notch_depth_mm = boss_pocket_top - plateau_z - boss_gap, tube_notch_depth_mm = tube_pocket_top - plateau_z - tube_gap);
 if (logo) echo(logo_mm = [logo_w, logo_h], logo_centre = logo_xy, logo_clear_mm = logo_clear, lid_vent_first = lid_vent_first);
 
 // ---------------------------------------------------------------- helpers
@@ -376,6 +424,13 @@ module cbox(size, r, cb = 0, ct = 0) {
     translate([0, 0, cb]) rbox([size[0], size[1], size[2] - cb - ct], r);
     translate([ct, ct, size[2] - fudge]) rbox([size[0] - 2 * ct, size[1] - 2 * ct, fudge], r - ct);
   }
+}
+
+// A screw head's whole range beside hole h: circles of radius r swept over screw_dx and
+// screw_y_tol, from z0 for hgt. The board model uses the head's radius, the notches head_notch_r.
+module head_sweep(h, r, z0, hgt) {
+  hull() for (dx = screw_dx, dy = [-screw_y_tol, screw_y_tol])
+    translate([h[0] + screw_dir(h) * dx, h[1] + dy, z0]) cylinder(r = r, h = hgt);
 }
 
 module ring(od, id, h) {
@@ -554,6 +609,8 @@ module lid_body() {
       }
       if (vents) for (r = lid_vent_rows, x = [lid_vent_first : vent_pitch : atom_x0 - lid_vent_end_gap])
         translate([x - vent_w / 2, r[0], z_lid - fudge]) cube([vent_w, r[1] - r[0], lid_t + 2 * fudge]);
+      // notches in the tubes over the left-hand screw heads
+      for (h = left_holes) head_sweep(h, head_notch_r, plateau_z + tube_gap - 1, tube_pocket_top - plateau_z - tube_gap + 1);
     }
     // nubs under the flaps press the clamp
     for (fy = flap_y) translate([nub_x, fy, clamp_top - preload_eff]) cylinder(d = nub_d, h = z_lid + lid_t - flap_t - clamp_top + preload_eff + fudge);
@@ -594,13 +651,17 @@ module clamp_body() {
           else
             translate([0, row15_face - tolerance - 100, 0]) cube([200, 100, 100]);
         }
-        translate([h[0], h[1], plateau_z + boss_gap - clamp_pin_h]) cylinder(d1 = pin_d - pin_taper, d2 = pin_d, h = clamp_pin_h + fudge);
+        let(p = clamp_pin_of(h))
+          translate([p[0], p[1], plateau_z + boss_gap - clamp_pin_h]) cylinder(d1 = clamp_pin_d - clamp_pin_taper, d2 = clamp_pin_d, h = clamp_pin_h + fudge);
       }
       // skirts on both long sides keep the housings upright
       for (x = [clamp_x0, edge_face + tolerance])
         translate([x, min(used_y) - pitch / 2 - 0.5, housing_top - skirt_h])
           cube([skirt_t, max(used_y) - min(used_y) + pitch + 1, skirt_h + fudge]);
     }
+    // notches in the bosses over the right-hand screw heads, from the boss's underside up; the
+    // pins below stay whole
+    for (h = right_holes) head_sweep(h, head_notch_r, plateau_z + boss_gap - fudge, boss_pocket_top - plateau_z - boss_gap + fudge);
     // one slot per jumper, open towards the Atom so the clamp slides over the wires
     for (p = pins_used) {
       xy = pin_xy(p);
@@ -626,6 +687,9 @@ module cc1101_model() {
     }
   }
   color("#e8e8e8") translate([mod_x0 + 6, mod_y0 + 8, plateau_z - fudge]) cube([32, 38, 0.05]);
+  // M2 socket screws beside the corner holes: each head at its largest size, swept over the
+  // measured range of positions, so the clash checks cover all of them
+  color("#b8bcc2") for (h = hole_xy) head_sweep(h, screw_head_d / 2, plateau_z - fudge, screw_head_h + fudge);
   color("#111") translate([mp([hdr_col[0], 0])[0] - pitch / 2, row_y(15) - pitch / 2, plateau_z - fudge])
     cube([2 * pitch, 15 * pitch, spacer_z - plateau_z + fudge]);
   color("#d4af37") for (r = [1 : 15], c = [0, 1]) {
