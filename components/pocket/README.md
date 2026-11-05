@@ -20,10 +20,21 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 - **System** (`#/system`, from Systems): the last automatic backup (amber after 8 days, red after
   30 or when the last attempt failed), the updates waiting (each opening HA's more-info), the
   devices that read nothing, and for an administrator a link to HA's settings.
+- **Widgets** (Overview): each opens a sheet, never a page. An aggregate (many sensors: Inside,
+  Lights on with every lamp to switch, Power with its meters, Plants with every plant) lists them,
+  each row opening its trend; one sensor (Outside, Air) opens its trend, the sensor's other
+  measurements a pick away. A sheet closes by a finger dragged down anywhere on it from the top of
+  its content; the page behind never pulls to refresh while it is open.
+- **Back**: a page of Systems that is not on the person's bar has a back arrow to Systems beside
+  the menu button.
+- **This device** (Settings): "Open Pocket when the app starts" moves the app's first dashboard of a
+  session to the pocket on this phone or browser only (its local storage; HA's own default
+  dashboard is per user). Off: HA opens as it would.
 - **The header on a phone**: the dashboard asks kiosk-mode (a HACS plugin, installed by hand; the
   Ramka uses it too) to hide Home Assistant's header up to 932 px wide; a menu button left of every
-  page's title opens HA's sidebar. Without kiosk-mode the header stays; on a wider screen HA's header
-  is as HA draws it.
+  page's title opens HA's sidebar, the only way it opens on this dashboard: the Companion app's
+  swipe from the left edge is ignored here, so it never fights the way back. Without kiosk-mode the
+  header stays; on a wider screen HA's header is as HA draws it (its menu button works).
 - **Climate & air** (`#/climate`): an advice card only while a limit is crossed now (a poor CO₂ or
   VOC: open a window; a poor air reading by name; a room too cold, warm, dry or humid), squares for
   Inside, Outside and Air, the weather forecast as a strip (today and the next four days, from

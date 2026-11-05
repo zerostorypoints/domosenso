@@ -198,7 +198,13 @@
           "repo": "Source on GitHub"
         },
         "error": "The setting was not saved. Try again.",
-        "back": "Back to Settings"
+        "back": "Back to Settings",
+        "device": {
+          "title": "This device",
+          "start": "Open Pocket when the app starts",
+          "start_on": "On this device the app opens here. Off: Home Assistant opens as usual.",
+          "start_off": "Only this phone or browser; others keep their own start page."
+        }
       },
       "sheet": {
         "close": "Close"

@@ -55,11 +55,20 @@ import * as sceneSheet from "./lib/scene-sheet.js";
 import { powerSheet } from "./pages/power-page.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
+import { redirectAtStart } from "./lib/start.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
 
 const translate = createT({ en, de, pl });
+
+// Every Lovelace dashboard loads this module (a dashboard resource): on a device set to open the
+// pocket at start (Settings → This device, lib/start.js), the app's first dashboard moves here.
+try {
+  redirectAtStart(window);
+} catch {
+  // never in the way of the dashboard that loads
+}
 const TOAST_MS = 3000;
 // The pages Home's Systems opens (lib/sections.js): off the bar, they get a way back to Systems.
 const SYSTEMS_PAGES = ["areas", "climate", "media", "power", "plants", "scenes", "floorplan", "system"];

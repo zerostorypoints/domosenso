@@ -198,7 +198,13 @@
           "repo": "Quellcode auf GitHub"
         },
         "error": "Die Einstellung wurde nicht gespeichert. Versuche es erneut.",
-        "back": "Zurück zu den Einstellungen"
+        "back": "Zurück zu den Einstellungen",
+        "device": {
+          "title": "Dieses Gerät",
+          "start": "Pocket beim Start der App öffnen",
+          "start_on": "Auf diesem Gerät öffnet die App hier. Aus: Home Assistant öffnet wie gewohnt.",
+          "start_off": "Nur dieses Telefon oder dieser Browser; andere behalten ihre eigene Startseite."
+        }
       },
       "sheet": {
         "close": "Schliessen"

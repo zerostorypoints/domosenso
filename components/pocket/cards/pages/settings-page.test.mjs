@@ -40,9 +40,9 @@ test("the shell's settings entry is this page", () => {
 test("the groups, translated", () => {
   const el = mount();
   assert.equal(text(el.querySelector(".top b")), "Settings");
-  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "Bottom bar", "Comfort ranges", "About"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "This device", "Bottom bar", "Comfort ranges", "About"]);
   settingsPage.update(el, settingsCtx({ lang: "pl" }));
-  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "Dolny pasek", "Zakresy komfortu", "O aplikacji"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "To urządzenie", "Dolny pasek", "Zakresy komfortu", "O aplikacji"]);
   settingsPage.update(el, settingsCtx({ lang: "de" }));
   assert.equal(text(el.querySelector(".top b")), "Einstellungen");
 });
@@ -238,7 +238,7 @@ test("Bottom bar: the floor plan is a choice only in a home with the floorplan c
 test("two levels: Settings holds Appearance, the bar and a row per panel; each panel is its own page with a Back", () => {
   const top = mount(settingsCtx());
   const shownGroups = (el) => [...el.querySelectorAll(".group")].filter((g) => !g.hidden).map((g) => g.classList[1]);
-  assert.deepEqual(shownGroups(top), ["appearance", "bar", "menu"], "the home's values are a step away");
+  assert.deepEqual(shownGroups(top), ["appearance", "device", "bar", "menu"], "the home's values are a step away");
   assert.deepEqual(texts(top, ".menu .row .name"), ["Comfort ranges", "About"]);
   assert.equal(text(top.querySelector(".menu [data-panel=comfort] small")), "2 areas · Air limits");
   assert.match(text(top.querySelector(".menu [data-panel=about] small")), /^Pocket /);
@@ -260,4 +260,18 @@ test("a home without comfort helpers has no Comfort ranges row", () => {
   const el = mount(settingsCtx({ cfg: { ...config, thresholds: {} } }));
   assert.equal(el.querySelector(".menu [data-panel=comfort]").hidden, true);
   assert.equal(el.querySelector(".menu [data-panel=about]").hidden, false);
+});
+
+test("This device: open Pocket at the app's start, here only; off again restores HA's start", () => {
+  window.history.replaceState(null, "", "/dashboard-pocket/home#/settings");
+  const el = mount();
+  const start = el.querySelector(".device .start");
+  assert.equal(start.getAttribute("aria-checked"), "false");
+  start.click();
+  assert.equal(window.localStorage.getItem("domosenso-pocket-start"), "/dashboard-pocket");
+  assert.equal(start.getAttribute("aria-checked"), "true");
+  assert.match(text(el.querySelector(".device small")), /opens here/);
+  start.click();
+  assert.equal(window.localStorage.getItem("domosenso-pocket-start"), null);
+  assert.equal(start.getAttribute("aria-checked"), "false");
 });

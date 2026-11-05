@@ -3,6 +3,8 @@
 // own (#/settings/comfort, #/settings/about: ctx.routeId), with a Back to Settings, so the home's
 // values are a deliberate step away and the first level stays short. The groups:
 //   - Appearance: System / Light / Dark (lib/settings.js theme; lib/theme.js paints it);
+//   - This device: "Open Pocket when the app starts", on this phone or browser only (lib/start.js:
+//     its local storage, so each device chooses; off, Home Assistant opens as it would);
 //   - Bottom bar: a switch per page the bar can show besides Home and Settings (lib/router.js
 //     TABS), at most MAX_TABS - 2 on; while that many are on, the others are disabled with a hint;
 //   - Comfort ranges: per area with comfort helpers (lib/areas.js comfortOf: the rooms, then the
@@ -20,6 +22,7 @@ import { areasOf, comfortOf } from "../lib/areas.js";
 import { FIXED_TABS, MAX_TABS, SETTINGS_PANELS, TABS, optionalPages } from "../lib/router.js";
 import { MODES } from "../lib/theme.js";
 import { reportError } from "../lib/report.js";
+import { setStartHere, startTarget } from "../lib/start.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
 
 export const INVENTORY = "sensor.domosenso_components";
@@ -188,6 +191,9 @@ export function render(ctx) {
   root.innerHTML = `<style>${STYLE}</style>
     <div class="top"><b></b><button class="back" type="button" hidden><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
     <div class="group appearance"><h3></h3><div class="seg" role="radiogroup"></div></div>
+    <div class="group device"><h3></h3>
+      <div class="row"><span class="label"><span class="name"></span><small></small></span><button class="switch start" type="button" role="switch"><i></i></button></div>
+    </div>
     <div class="group bar"><h3></h3><p class="hint fixed"></p><div class="rows"></div><p class="hint full"></p></div>
     <div class="group menu">
       <button class="row" type="button" data-panel="comfort"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
@@ -249,6 +255,11 @@ export function render(ctx) {
   parts.hasComfort = parts.values.length > 0;
   // One level shows its own groups only: the first Appearance, the bar and the panels' rows.
   $(".appearance").hidden = !!panel;
+  $(".device").hidden = !!panel;
+  $(".device .start").addEventListener("click", () => {
+    setStartHere(window, !startTarget(window));
+    update(root, parts.ctx);
+  });
   $(".bar").hidden = !!panel;
   $(".menu").hidden = !!panel;
   $(".menu [data-panel=comfort]").hidden = !parts.hasComfort;
@@ -340,6 +351,13 @@ export function update(root, ctx) {
     button.disabled = offline;
   }
 
+  setText($(".device h3"), ctx.t("card.pocket.settings.device.title"));
+  const start = $(".device .start");
+  const here = startTarget(window) === `/${window.location.pathname.split("/")[1]}`;
+  setText($(".device .name"), ctx.t("card.pocket.settings.device.start"));
+  setText($(".device small"), ctx.t(here ? "card.pocket.settings.device.start_on" : "card.pocket.settings.device.start_off"));
+  setAttr(start, "aria-checked", String(here));
+  setAttr(start, "aria-label", ctx.t("card.pocket.settings.device.start"));
   setText($(".bar h3"), ctx.t("card.pocket.settings.bar.title"));
   setText($(".bar .fixed"), ctx.t("card.pocket.settings.bar.fixed", { count: ROOM }));
   const chosen = chosenOf(settings, parts.choices);

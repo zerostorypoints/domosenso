@@ -198,7 +198,13 @@
           "repo": "Kod na GitHubie"
         },
         "error": "Ustawienie nie zostało zapisane. Spróbuj ponownie.",
-        "back": "Wróć do ustawień"
+        "back": "Wróć do ustawień",
+        "device": {
+          "title": "To urządzenie",
+          "start": "Otwieraj Pocket po uruchomieniu aplikacji",
+          "start_on": "Na tym urządzeniu aplikacja otwiera się tutaj. Wyłącz: Home Assistant otwiera się jak zwykle.",
+          "start_off": "Tylko ten telefon lub przeglądarka; inne zachowują własną stronę startową."
+        }
       },
       "sheet": {
         "close": "Zamknij"
