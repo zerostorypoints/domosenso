@@ -217,7 +217,52 @@
           "pm2_5": "PM2.5",
           "voc": "VOC",
           "nox": "NOx"
+        },
+        "direction": {
+          "rising": "Rising",
+          "falling": "Falling",
+          "steady": "Steady"
         }
+      },
+      "square": {
+        "air": {
+          "score": {
+            "good": "Air good",
+            "fair": "Air fair",
+            "poor": "Air poor"
+          },
+          "co2": {
+            "good": "CO₂ fine",
+            "fair": "CO₂ raised",
+            "poor": "CO₂ high"
+          },
+          "pm2_5": {
+            "good": "PM2.5 fine",
+            "fair": "PM2.5 raised",
+            "poor": "PM2.5 high"
+          },
+          "voc": {
+            "good": "VOC fine",
+            "fair": "VOC raised",
+            "poor": "VOC high"
+          },
+          "nox": {
+            "good": "NOx fine",
+            "fair": "NOx raised",
+            "poor": "NOx high"
+          }
+        }
+      },
+      "checks": {
+        "title": "What was checked",
+        "inside": "Temperature inside",
+        "no_limits": "No limits set",
+        "no_value": "No reading",
+        "empty": "Nothing to check"
+      },
+      "lights": {
+        "title": "Lights on",
+        "none": "No lights on"
       }
     }
   }

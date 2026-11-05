@@ -217,7 +217,52 @@
           "pm2_5": "PM2.5",
           "voc": "LZO",
           "nox": "NOx"
+        },
+        "direction": {
+          "rising": "Rośnie",
+          "falling": "Spada",
+          "steady": "Bez zmian"
         }
+      },
+      "square": {
+        "air": {
+          "score": {
+            "good": "Powietrze dobre",
+            "fair": "Powietrze średnie",
+            "poor": "Powietrze złe"
+          },
+          "co2": {
+            "good": "CO₂ w normie",
+            "fair": "CO₂ podwyższone",
+            "poor": "CO₂ wysokie"
+          },
+          "pm2_5": {
+            "good": "PM2.5 w normie",
+            "fair": "PM2.5 podwyższone",
+            "poor": "PM2.5 wysokie"
+          },
+          "voc": {
+            "good": "LZO w normie",
+            "fair": "LZO podwyższone",
+            "poor": "LZO wysokie"
+          },
+          "nox": {
+            "good": "NOx w normie",
+            "fair": "NOx podwyższone",
+            "poor": "NOx wysokie"
+          }
+        }
+      },
+      "checks": {
+        "title": "Co sprawdzono",
+        "inside": "Temperatura w domu",
+        "no_limits": "Brak progów",
+        "no_value": "Brak odczytu",
+        "empty": "Nie ma czego sprawdzać"
+      },
+      "lights": {
+        "title": "Włączone światła",
+        "none": "Nic nie świeci"
       }
     }
   }

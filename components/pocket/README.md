@@ -13,8 +13,15 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 - **Area page** (`#/area/<id>`): one room in detail, or the Outside's temperature and humidity
   (levels against climate-air's outside range); a horizontal swipe goes to the next or previous
   area. The first version's `#/rooms` and `#/room/<id>` links are redirected.
-- **Trend sheet**: Home's inside, outside and air chips and an area's Climate and Air squares
-  open a bottom sheet with that reading over 24 h (the recorder's history), 7 d (hourly
+- **Widgets**: an area's squares share one size (a lone square does not stretch); each shows a
+  title, one value in its level's colour (below a comfort range blue, above it red, the Outside
+  against climate-air's outside range) with a trend arrow from the last hour, and one short line
+  written to fit (no text is cut off). Every widget opens a sheet: "All good" and the attention
+  pills the checks (every reading of every area, the Outside included, problems first), the inside
+  chip the rooms' temperatures, the lights-on chip the lights that are on, the Air square every air
+  reading; each reading in them opens its trend sheet.
+- **Trend sheet**: Home's outside and air chips, an area's Climate square and every reading in a
+  detail sheet open a bottom sheet with that reading over 24 h (the recorder's history), 7 d (hourly
   long-term statistics) or 30 d (daily), one line over the shaded comfort band (climate-air's
   range or air limit); a sensor without statistics (no `state_class`) shows its history for 7 d
   and 30 d, as far back as the recorder keeps it. It closes by a drag down on its handle, the

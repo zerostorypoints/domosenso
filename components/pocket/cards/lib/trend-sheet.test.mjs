@@ -225,3 +225,25 @@ test("sizes: switch buttons at least 44 px, text at least 11.5 px", () => {
   assert.match(TREND_STYLE, /\.seg button \{[^}]*min-height: 44px/);
   for (const m of TREND_STYLE.matchAll(/font-size: ([\d.]+)px/g)) assert.ok(Number(m[1]) >= 11.5, m[0]);
 });
+
+test("a range whose fetch failed is fetched again when the person switches back to it", async () => {
+  const id = "sensor.living_room_temperature";
+  let down = true;
+  const hass = wsHass({
+    "history/history_during_period": (msg) => (down ? Promise.reject(new Error("down")) : history(id, [21, 22])(msg)),
+    "recorder/statistics_during_period": statistics(id, [21, 22]),
+  });
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx, trendSpec(ctx, room("living_room"), "temperature"));
+  await tick();
+  assert.equal(text(el.querySelector(".state")), "Could not load the history");
+  el.querySelector('[data-range="7d"]').click();
+  await tick();
+  down = false;
+  el.querySelector('[data-range="24h"]').click();
+  await tick();
+  await tick();
+  assert.equal(el.querySelector("svg").hidden, false, "the retry drew the line");
+  assert.equal(hass.ws.filter((m) => m.type === "history/history_during_period").length, 2);
+  assert.equal(el._trend.request, undefined, "no request counter");
+});

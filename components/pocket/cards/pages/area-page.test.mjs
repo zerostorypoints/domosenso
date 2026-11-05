@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import "../testing/dom-env.mjs";
 import * as room from "./area-page.js";
 import { pages } from "./index.js";
+import { clearHistoryCache } from "../lib/trend.js";
 import { config, st, baseStates, hassOf, ctxOf, text, texts, pointer } from "../testing/demo-home.mjs";
 
 function mount(ctx = ctxOf({ routeId: "living_room" })) {
@@ -111,7 +112,7 @@ test("climate and air squares: values in their level colour and a level text", (
   assert.equal(text(climate.querySelector(".lab")), "44 % · In range");
   assert.equal(text(air.querySelector(".big")), "81");
   assert.ok(air.querySelector(".big").classList.contains("lv-good"));
-  assert.equal(text(air.querySelector(".lab")), "CO₂ 768 · Good");
+  assert.equal(text(air.querySelector(".lab")), "CO₂ fine", "the worst other reading by name; no more values");
 });
 
 test("fair and poor: the worst reading's text, each value its own colour", () => {
@@ -120,12 +121,13 @@ test("fair and poor: the worst reading's text, each value its own colour", () =>
   const el = mount(ctxOf({ hass: hassOf(states), routeId: "living_room" }));
   const climate = el.querySelector(".sq.climate");
   const air = el.querySelector(".sq.air");
-  assert.ok(climate.querySelector(".big").classList.contains("lv-poor"));
+  assert.ok(climate.querySelector(".big").classList.contains("lv-cold"), "below the range: cold");
   assert.ok(climate.querySelector(".lab .v").classList.contains("lv-good"));
   assert.equal(text(climate.querySelector(".lab")), "44 % · Too cold");
+  assert.equal(climate.querySelector(".head i").className, "lv-cold");
   assert.ok(air.querySelector(".big").classList.contains("lv-fair"));
-  assert.ok(air.querySelector(".lab .v").classList.contains("lv-poor"));
-  assert.equal(text(air.querySelector(".lab")), "CO₂ 1300 · CO₂ high");
+  assert.equal(text(air.querySelector(".lab")), "CO₂ high");
+  assert.equal(air.querySelector(".head i").className, "lv-poor");
 });
 
 test("level colours are the theme's tokens", () => {
@@ -133,6 +135,8 @@ test("level colours are the theme's tokens", () => {
   assert.match(css, /\.lv-good\s*\{\s*color:\s*var\(--ok\)/);
   assert.match(css, /\.lv-fair\s*\{\s*color:\s*var\(--warn\)/);
   assert.match(css, /\.lv-poor\s*\{\s*color:\s*var\(--bad\)/);
+  assert.match(css, /\.lv-cold\s*\{\s*color:\s*var\(--cold\)/);
+  assert.match(css, /\.lv-warm\s*\{\s*color:\s*var\(--warm\)/);
 });
 
 test("no thresholds: values without a level, no level text", () => {
@@ -246,7 +250,7 @@ test("update patches in place and keeps the open member list", () => {
   room.update(el, { ...ctx, hass: hassOf(states) });
   assert.equal(el.querySelector(".sq.climate .big"), big);
   assert.equal(text(big), "24.6°");
-  assert.ok(big.classList.contains("lv-poor"));
+  assert.ok(big.classList.contains("lv-warm"), "above the range: warm");
   assert.equal(el.querySelector(".members pocket-light-tile"), tile);
   assert.ok(!el.querySelector(".members").hidden);
 });
@@ -292,14 +296,48 @@ test("the group tile takes on/off from the group's state: off with a brightness 
   assert.equal(button.querySelector(".bar i").style.width, "0%");
 });
 
-test("climate and air squares fit side by side: a minmax(0, 1fr) grid, children min-width 0", () => {
-  const css = mount().querySelector("style").textContent;
+test("one square size: two equal columns, a fixed aspect, a lone square does not stretch", () => {
+  const css = mount(ctxOf({ routeId: "bedroom" })).querySelector("style").textContent;
   assert.match(css, /\.squares\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.squares > \*\s*\{[^}]*min-width:\s*0/);
-  assert.match(css, /\.squares > :only-child\s*\{[^}]*grid-column:\s*1 \/ -1/);
+  assert.match(css, /\.room \.sq\s*\{[^}]*aspect-ratio:\s*1 \/ \.62/);
+  assert.doesNotMatch(css, /only-child|grid-column/, "no rule widens a lone square");
   assert.match(css, /\.sq \.value\s*\{[^}]*min-width:\s*0/);
-  assert.match(css, /\.lab\s*\{[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/);
-  assert.match(css, /\.big\s*\{[^}]*text-overflow:\s*ellipsis/);
+  const bedroom = mount(ctxOf({ routeId: "bedroom" }));
+  assert.equal(bedroom.querySelectorAll(".sq").length, 1);
+  assert.equal(bedroom.querySelector(".sq").getAttribute("style"), null, "no size of its own");
+});
+
+test("nothing is cut: no ellipsis or clipping on a square's lines; the line is built to fit", () => {
+  const css = mount().querySelector("style").textContent;
+  for (const sel of ["big", "lab"]) {
+    const rule = css.match(new RegExp(`\\.room \\.${sel}\\s*\\{([^}]*)\\}`))[1];
+    assert.doesNotMatch(rule, /ellipsis|overflow/, sel);
+  }
+  const el = mount();
+  assert.equal(el.querySelectorAll(".sq.air .lab .v").length, 0, "Air's line names one reading, no values");
+  assert.equal(el.querySelectorAll(".sq.climate .lab .v").length, 1, "Climate's line: humidity only");
+});
+
+test("every square line fits SHORT_LINE_CHARS in every language: the widest value and each level text", () => {
+  for (const lang of ["en", "pl", "de"]) {
+    const ctx = ctxOf({ lang });
+    const widest = ctx.t("card.pocket.format.percent", { value: "100" });
+    for (const reading of ["temperature", "humidity"]) {
+      for (const result of [{ level: "good" }, { level: "poor", side: "low" }, { level: "poor", side: "high" },
+        { level: "fair", side: "low" }, { level: "fair", side: "high" }]) {
+        const line = `${widest} · ${room.shortLevel(ctx, "climate", { reading, result })}`;
+        assert.ok(line.length <= room.SHORT_LINE_CHARS, `${lang}: ${line}`);
+      }
+    }
+    for (const reading of ["score", "co2", "pm2_5", "voc", "nox"]) {
+      for (const level of ["good", "fair", "poor"]) {
+        const line = room.shortLevel(ctx, "air", { reading, result: { level } });
+        assert.ok(line && !line.startsWith("card."), `${lang}: ${reading} ${level} translated`);
+        assert.ok(line.length <= room.SHORT_LINE_CHARS, `${lang}: ${line}`);
+      }
+    }
+  }
 });
 
 test("every button of the room page is at least 44 x 44", () => {
@@ -338,7 +376,7 @@ test("the Outside: its name, last in the dots, only its Climate square, levels f
   assert.equal(el.querySelector(".empty"), null);
   const big = el.querySelector(".sq.climate .big");
   assert.equal(text(big), "4.5°");
-  assert.ok(big.classList.contains("lv-poor"), "below the outside range: cold");
+  assert.ok(big.classList.contains("lv-cold"), "below the outside range: cold blue");
   assert.match(text(el.querySelector(".sq.climate .lab")), /50 %.*Too cold/);
 });
 
@@ -403,7 +441,7 @@ test("snappy: a pressed scene is marked until it runs; silence rolls back with t
   assert.deepEqual(errors, ["card.pocket.error.scene", "card.pocket.error.media"]);
 });
 
-test("the Climate and Air squares open the trend of their first reading", () => {
+test("the Climate square opens its first reading's trend, the Air square the air sheet", () => {
   const ctx = ctxOf({ routeId: "living_room" });
   const el = mount(ctx);
   const climate = el.querySelector(".sq.climate");
@@ -411,10 +449,45 @@ test("the Climate and Air squares open the trend of their first reading", () => 
   assert.equal(climate.tagName, "BUTTON");
   climate.click();
   air.click();
-  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.title, s.subtitle]), [
+  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity ?? s.area, s.title, s.subtitle]), [
     ["trend", "sensor.living_room_temperature", "Temperature", "Living room"],
-    ["trend", "sensor.living_room_air_quality_score", "Air score", "Living room"],
+    ["air", "living_room", "Air", "Living room"],
   ]);
+});
+
+// A hass whose websocket answers the last hour's history of each sensor from canned values,
+// spread over the hour (oldest first).
+function trendHass(series, states = baseStates()) {
+  const hass = hassOf(states);
+  hass.ws = [];
+  hass.callWS = (msg) => {
+    hass.ws.push(msg);
+    const id = msg.entity_ids[0];
+    const start = Date.parse(msg.start_time);
+    const values = series[id] ?? [];
+    const step = (Date.parse(msg.end_time) - start) / Math.max(1, values.length);
+    return Promise.resolve({ [id]: values.map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 })) });
+  };
+  return hass;
+}
+
+test("trend arrows from the last hour, fetched once, not on every hass update", async () => {
+  clearHistoryCache();
+  const hass = trendHass({ "sensor.living_room_temperature": [21.0, 21.2, 21.7],
+    "sensor.living_room_air_quality_score": [90, 85, 81] });
+  const ctx = ctxOf({ hass, routeId: "living_room" });
+  const el = mount(ctx);
+  const climate = el.querySelector(".sq.climate .arrow");
+  assert.ok(climate.hidden, "unknown until the history lands");
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(climate.textContent, "↑");
+  assert.equal(climate.getAttribute("aria-label"), "Rising");
+  assert.equal(el.querySelector(".sq.air .arrow").textContent, "↓");
+  const asked = hass.ws.length;
+  assert.equal(asked, 2);
+  for (let i = 0; i < 5; i += 1) room.update(el, ctx);
+  assert.equal(hass.ws.length, asked, "updates fetch nothing");
+  clearHistoryCache();
 });
 
 test("a swipe that ends on a square opens no sheet", () => {

@@ -6,7 +6,11 @@
 //   sheet.open(content, label)            shows content (an element) under a grab handle and a
 //                                         close button; label names the dialog for screen readers
 //   sheet.close()                         closes it as the person would (Back's history entry too)
-//   sheet.dismiss()                       closes it without touching history (the route changed)
+//   sheet.dismiss()                       closes it without going back (the route changed); a
+//                                         sheet's state left on the current entry is replaced away
+//   sheet.ownsEntry()                     whether the current history entry is the open sheet's
+//   sheet.clearStale()                    with no sheet open, replaces a sheet's state left on the
+//                                         current entry (a reload, a return to the dashboard)
 //   sheet.isOpen, sheet.content           whether a sheet shows, and its content element
 //   sheet.onClose                         called after every close
 //
@@ -102,6 +106,16 @@ export function createSheet(host, { t } = {}) {
     },
     dismiss() {
       if (sheet.isOpen) hide();
+      sheet.clearStale();
+    },
+    ownsEntry() {
+      return sheet.isOpen && window.history.state?.[STATE_KEY] === sheet.token;
+    },
+    clearStale() {
+      if (sheet.isOpen || !window.history.state?.[STATE_KEY]) return;
+      try {
+        window.history.replaceState(null, "", window.location.href);
+      } catch { /* nothing to clear */ }
     },
   };
 

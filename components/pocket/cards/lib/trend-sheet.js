@@ -110,7 +110,7 @@ export function render(ctx, spec) {
     </div>
     <div class="axis"><span class="from"></span><span class="to"></span></div>`;
   const parts = {
-    spec, ctx, range: DEFAULT_RANGE, data: {}, request: 0, chartKey: null,
+    spec, ctx, range: DEFAULT_RANGE, data: {}, chartKey: null,
     title: root.querySelector(".title"), where: root.querySelector(".where"),
     big: root.querySelector(".big"), note: root.querySelector(".note"),
     seg: root.querySelector(".seg"), buttons: [...root.querySelectorAll(".seg button")],
@@ -131,12 +131,13 @@ export function render(ctx, spec) {
   return root;
 }
 
-// Fetches the current range once per sheet; a switch back shows what was fetched. An answer
+// Fetches the current range once per sheet; a switch back shows what was fetched, and tries again
+// a range whose fetch failed (offline, an error) or found no websocket. An answer
 // that lands after the sheet closed is dropped with it; one for a range the person has left is
 // kept for a switch back, and the redraw shows the range that is current.
 function load(root, parts) {
   const range = parts.range;
-  if (parts.data[range]) return;
+  if (parts.data[range] && parts.data[range].status !== "error") return;
   const hass = parts.ctx.hass;
   if (typeof hass?.callWS !== "function") {
     parts.data[range] = { status: "error" };
@@ -145,7 +146,6 @@ function load(root, parts) {
   const now = Date.now();
   parts.data[range] = { status: "loading" };
   const entry = parts.data[range];
-  parts.request += 1;
   seriesOf(hass, parts.spec.entity, range, now).then(
     (points) => Object.assign(entry, { status: "ready", points, start: now - RANGES[range].span, end: now }),
     () => Object.assign(entry, { status: "error" }))

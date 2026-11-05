@@ -1,6 +1,8 @@
 // Small helpers the pages share: patching the DOM without rebuilding it, numbers in the
 // dashboard's language, and the facts about a room both pages show (its lights, how many are on, whether it plays).
 
+import { trendArrow } from "./trend.js";
+
 const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
 const formats = new Map();     // one Intl.NumberFormat per language and number of digits
 const pluralRules = new Map();
@@ -40,6 +42,28 @@ export function temperature(ctx, value) {
 export function percent(ctx, value) {
   return value == null ? ctx.t("card.pocket.format.none")
     : ctx.t("card.pocket.format.percent", { value: number(ctx, value, 0) });
+}
+
+const READING_DIGITS = { temperature: 1, humidity: 0 };
+
+// A reading's value in words, as a widget or a sheet's row shows it: temperature and humidity as
+// everywhere in the pocket, the others as a whole number with their entity's unit when it has one.
+export function readingText(ctx, reading, value, unit) {
+  if (value == null) return ctx.t("card.pocket.format.none");
+  if (reading === "temperature") return temperature(ctx, value);
+  if (reading === "humidity") return percent(ctx, value);
+  const text = number(ctx, value, READING_DIGITS[reading] ?? 0, { grouping: false });
+  return unit ? ctx.t("card.pocket.trend.value", { value: text, unit }) : text;
+}
+
+// The trend arrow next to a value (lib/trend.js): its glyph, its direction in words for a screen
+// reader, nothing while the direction is not known.
+export function setArrow(node, ctx, direction) {
+  setText(node, trendArrow(direction));
+  node.hidden = !direction;
+  if (direction) setAttr(node, "aria-label", ctx.t(`card.pocket.trend.direction.${direction}`));
+  else node.removeAttribute("aria-label");
+  setAttr(node, "role", "img");
 }
 
 // The plural category of a count in the dashboard's language (one, few, many, other), as

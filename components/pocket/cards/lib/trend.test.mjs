@@ -1,6 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { trendOf, trendArrow, recentHistory, peekHistory, clearHistoryCache, REFRESH_MS } from "./trend.js";
+import { trendOf, trendArrow, trendNow, recentHistory, peekHistory, clearHistoryCache, REFRESH_MS } from "./trend.js";
 
 const NOW = Date.parse("2026-11-05T12:00:00Z");
 const MIN = 60 * 1000;
@@ -82,4 +82,23 @@ test("recentHistory: a failed fetch gives null and is not retried before 5 minut
 test("recentHistory: no entity or no websocket gives null without a call", async () => {
   assert.equal(await recentHistory({}, "sensor.t", NOW), null);
   assert.equal(await recentHistory(fakeHass(), undefined, NOW), null);
+});
+
+test("trendNow: the cached direction; one fetch, each waiting widget told once when it lands", async () => {
+  const hass = fakeHass(() => ({ "sensor.t": [{ s: "21", lu: (NOW - 50 * MIN) / 1000 }, { s: "21.6", lu: (NOW - 5 * MIN) / 1000 }] }));
+  const heard = [];
+  const a = () => heard.push("a");
+  const b = () => heard.push("b");
+  assert.equal(trendNow(hass, "sensor.t", "temperature", a, NOW), null, "nothing yet");
+  trendNow(hass, "sensor.t", "temperature", a, NOW);
+  trendNow(hass, "sensor.t", "temperature", b, NOW);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(heard.sort(), ["a", "b"]);
+  assert.equal(hass.calls.length, 1);
+  assert.equal(trendNow(hass, "sensor.t", "temperature", a, NOW + MIN), "rising");
+  assert.equal(hass.calls.length, 1, "within REFRESH_MS: no fetch");
+  trendNow(hass, "sensor.t", "temperature", a, NOW + REFRESH_MS);
+  assert.equal(hass.calls.length, 2, "stale: fetched again");
+  assert.equal(trendNow(hass, undefined, "temperature", a, NOW), null);
+  assert.equal(trendNow({}, "sensor.none", "temperature", a, NOW), null, "no websocket: no direction");
 });

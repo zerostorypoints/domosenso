@@ -105,7 +105,7 @@ test("nothing to report: one all-good pill", () => {
   assert.ok(el.querySelector(".att .pill .dot.good"));
 });
 
-test("attention pills: translated reading, level and side, poor first; a tap opens the room", () => {
+test("attention pills: translated reading, level and side, poor first; a tap opens the checks sheet", () => {
   const states = { ...baseStates(), "sensor.living_room_co2": st(1250), "sensor.bedroom_temperature": st(23),
     "sensor.living_room_air_quality_score": st(70) };
   const ctx = ctxOf({ hass: hassOf(states) });
@@ -114,7 +114,17 @@ test("attention pills: translated reading, level and side, poor first; a tap ope
   assert.ok(el.querySelector(".att .pill .dot.poor"));
   assert.ok(el.querySelector(".att .pill .dot.fair"));
   el.querySelectorAll(".att .pill")[1].click();
-  assert.deepEqual(ctx.routes, ["#/area/bedroom"]);
+  assert.deepEqual(ctx.routes, []);
+  assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }]);
+});
+
+test("All good is a button: it opens the checks sheet", () => {
+  const ctx = ctxOf();
+  const el = mount(ctx);
+  const pill = el.querySelector(".att .pill");
+  assert.equal(pill.tagName, "BUTTON");
+  pill.click();
+  assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }]);
 });
 
 test("pills in Polish and German come from the translations", () => {
@@ -360,21 +370,70 @@ test("snappy: play/pause flips at once; a failed call flips it back with the toa
   assert.deepEqual(errors, ["card.pocket.error.media"]);
 });
 
-test("the inside, outside and air chips open the trend of their main reading; lights on opens nothing", () => {
+test("every chip opens its sheet: inside the temperature checks, outside and air their trend, lights on the lights", () => {
   const ctx = ctxOf();
   const el = home.render(ctx);
   document.body.appendChild(el);
   const chip = (name) => el.querySelector(`.chip[data-chip="${name}"]`);
-  for (const name of ["inside", "outside", "air"]) {
+  for (const name of ["inside", "outside", "air", "lights_on"]) {
     assert.equal(chip(name).tagName, "BUTTON", name);
     chip(name).click();
   }
   assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.subtitle]), [
-    ["trend", "sensor.living_room_temperature", "Living room"],
+    ["checks", undefined, undefined],
     ["trend", "sensor.outside_temperature", "Outside"],
     ["trend", "sensor.living_room_air_quality_score", "Living room"],
+    ["lights", undefined, undefined],
   ]);
-  assert.equal(chip("lights_on").tagName, "DIV");
+  assert.deepEqual(ctx.sheets[0], { kind: "checks", title: "Temperature inside", readings: ["temperature"], inside: true });
   const css = el.querySelector("style").textContent;
   assert.match(css, /button\.chip \{[^}]*min-height: 44px/);
+});
+
+const withOutsideRange = { ...config, thresholds: { ...config.thresholds, outside: {
+  temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } } };
+const outsideRangeStates = (temp) => ({ ...baseStates(), "sensor.outside_temperature": st(temp),
+  "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24) });
+
+test("side colours: outside below its range is cold blue, above it warm; inside the worst room; air its level", () => {
+  const cold = mount(ctxOf({ hass: hassOf(outsideRangeStates(5)), cfg: withOutsideRange }));
+  assert.equal(cold.querySelector('[data-chip="outside"] .v').className, "v lv-cold");
+  const warm = mount(ctxOf({ hass: hassOf(outsideRangeStates(30)), cfg: withOutsideRange }));
+  assert.equal(warm.querySelector('[data-chip="outside"] .v').className, "v lv-warm");
+  const states = { ...baseStates(), "sensor.bedroom_temperature": st(23), "sensor.living_room_air_quality_score": st(70) };
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  assert.equal(el.querySelector('[data-chip="inside"] .v').className, "v lv-warm", "the bedroom is above its range");
+  assert.equal(el.querySelector('[data-chip="air"] .v').className, "v lv-fair");
+  assert.equal(el.querySelector('[data-chip="outside"] .v').className, "v", "no outside range: no level");
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /\.v\.lv-cold\s*\{\s*color:\s*var\(--cold\)/);
+  assert.match(css, /\.v\.lv-warm\s*\{\s*color:\s*var\(--warm\)/);
+});
+
+test("trend arrows on the outside and air chips from the last hour; none on inside and lights", async () => {
+  const { clearHistoryCache } = await import("../lib/trend.js");
+  clearHistoryCache();
+  const hass = hassOf();
+  hass.ws = [];
+  const series = { "sensor.outside_temperature": [7, 6, 5.5], "sensor.living_room_air_quality_score": [81, 81, 81] };
+  hass.callWS = (msg) => {
+    hass.ws.push(msg.entity_ids[0]);
+    const id = msg.entity_ids[0];
+    const start = Date.parse(msg.start_time);
+    const step = (Date.parse(msg.end_time) - start) / 3;
+    return Promise.resolve({ [id]: (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * step) / 1000 })) });
+  };
+  const ctx = ctxOf({ hass });
+  const el = mount(ctx);
+  await new Promise((r) => setTimeout(r, 0));
+  const arrow = (name) => el.querySelector(`[data-chip="${name}"] .arrow`);
+  assert.equal(arrow("outside").textContent, "↓");
+  assert.equal(arrow("outside").getAttribute("aria-label"), "Falling");
+  assert.equal(arrow("air").textContent, "→");
+  assert.ok(arrow("inside").hidden && arrow("lights_on").hidden);
+  assert.deepEqual(hass.ws.sort(), ["sensor.living_room_air_quality_score", "sensor.outside_temperature"]);
+  home.update(el, ctx);
+  home.update(el, ctx);
+  assert.equal(hass.ws.length, 2, "updates fetch nothing");
+  clearHistoryCache();
 });

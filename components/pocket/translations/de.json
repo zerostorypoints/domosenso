@@ -217,7 +217,52 @@
           "pm2_5": "PM2.5",
           "voc": "VOC",
           "nox": "NOx"
+        },
+        "direction": {
+          "rising": "Steigend",
+          "falling": "Fallend",
+          "steady": "Gleichbleibend"
         }
+      },
+      "square": {
+        "air": {
+          "score": {
+            "good": "Luft gut",
+            "fair": "Luft mässig",
+            "poor": "Luft schlecht"
+          },
+          "co2": {
+            "good": "CO₂ gut",
+            "fair": "CO₂ erhöht",
+            "poor": "CO₂ hoch"
+          },
+          "pm2_5": {
+            "good": "PM2.5 gut",
+            "fair": "PM2.5 erhöht",
+            "poor": "PM2.5 hoch"
+          },
+          "voc": {
+            "good": "VOC gut",
+            "fair": "VOC erhöht",
+            "poor": "VOC hoch"
+          },
+          "nox": {
+            "good": "NOx gut",
+            "fair": "NOx erhöht",
+            "poor": "NOx hoch"
+          }
+        }
+      },
+      "checks": {
+        "title": "Was geprüft wurde",
+        "inside": "Temperatur innen",
+        "no_limits": "Keine Grenzen gesetzt",
+        "no_value": "Kein Messwert",
+        "empty": "Nichts zu prüfen"
+      },
+      "lights": {
+        "title": "Lichter an",
+        "none": "Keine an"
       }
     }
   }

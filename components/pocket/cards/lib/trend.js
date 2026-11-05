@@ -11,6 +11,10 @@
 //       every widget that asks (null when the fetch failed: tried again after REFRESH_MS)
 //   peekHistory(entityId) -> points | null   what recentHistory last fetched, without fetching
 //   trendArrow(direction) -> the arrow glyph of a direction, "" for none
+//   trendNow(hass, entityId, kind, onReady?, now?) -> direction | null   for a widget's update():
+//       the direction of what was fetched; when nothing fresh is cached it asks recentHistory once
+//       and calls onReady when the answer lands (the widget then patches its arrow). A hass update
+//       inside REFRESH_MS fetches nothing.
 //
 // Steps per kind (a reading's name in the card config); power and anything else are a share of
 // the hour's mean value, as their scale differs from one meter to the next.
@@ -51,18 +55,31 @@ export function trendArrow(direction) {
   return ARROWS[direction] ?? "";
 }
 
-const cache = new Map();       // entity id -> {at, promise, points}
+const cache = new Map();       // entity id -> {at, promise, points, done}
 
 export function recentHistory(hass, entityId, now = Date.now()) {
   if (!entityId || typeof hass?.callWS !== "function") return Promise.resolve(null);
   const hit = cache.get(entityId);
   if (hit && now - hit.at < REFRESH_MS) return hit.promise;
-  const entry = { at: now, points: hit?.points ?? null };
+  const entry = { at: now, points: hit?.points ?? null, done: false };
   entry.promise = historyPoints(hass, entityId, now - HOUR, now).then(
-    (points) => { entry.points = points; return points; },
-    () => { entry.points = null; return null; });
+    (points) => { entry.points = points; entry.done = true; return points; },
+    () => { entry.points = null; entry.done = true; return null; });
   cache.set(entityId, entry);
   return entry.promise;
+}
+
+export function trendNow(hass, entityId, kind, onReady, now = Date.now()) {
+  if (!entityId) return null;
+  const hit = cache.get(entityId);
+  if ((!hit || now - hit.at >= REFRESH_MS) && typeof hass?.callWS === "function") recentHistory(hass, entityId, now);
+  const entry = cache.get(entityId);
+  // While a fetch runs, each widget that asks hears once when it lands.
+  if (entry && !entry.done && onReady && !entry.waiting?.has(onReady)) {
+    (entry.waiting ??= new Set()).add(onReady);
+    entry.promise.then(() => onReady());
+  }
+  return trendOf(entry?.points ?? null, kind, now);
 }
 
 export function peekHistory(entityId) {

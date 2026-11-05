@@ -15,8 +15,11 @@
 //     with the states their controls expect over the reported ones (ctx.hass) and the store
 //     (ctx.optimistic); a send or a rollback redraws the page, each hass drops what it reports;
 //   - one bottom sheet over the page and the bar (lib/sheet.js): a page opens it with
-//     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js);
-//     the content is updated with the page, and a new route closes it. Back closes it first.
+//     ctx.openSheet(spec), its content chosen by spec.kind (SHEETS: "trend", lib/trend-sheet.js;
+//     "checks", "air", "lights", lib/detail-sheets.js); the content is updated with the page, and a
+//     new route closes it. Back closes it first. A route taken while a sheet is open takes the
+//     place of the sheet's history entry, and a sheet's entry left behind (a reload, a return to
+//     the dashboard) is cleared, so Back never stops at a sheet that is no longer there.
 // Navigation sets location.hash: no reload, and the browser's back button returns.
 //
 //   type: custom:pocket-app
@@ -35,6 +38,7 @@ import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
+import { checks, air, lights } from "./lib/detail-sheets.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -45,7 +49,7 @@ const TOAST_MS = 3000;
 
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
-const SHEETS = { trend: trendSheet };
+const SHEETS = { trend: trendSheet, checks, air, lights };
 
 const STYLE = `
   :host { display: block; }
@@ -166,6 +170,7 @@ class PocketApp extends HTMLElement {
     window.addEventListener("popstate", this._onPop);
     this._scheme = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
     this._scheme?.addEventListener?.("change", this._onScheme);
+    this._sheet?.clearStale();
     if (this._root) this._paint();
     if (this._root) this._route();   // the hash may have changed while the card was away
   }
@@ -234,6 +239,7 @@ class PocketApp extends HTMLElement {
     this._nav = this._root.querySelector("nav");
     this._app.addEventListener("pocket-error", (e) => this._showToast(e.detail?.key));
     this._sheet = createSheet(this._app, { t: (key, vars) => this._t(key, vars) });
+    this._sheet.clearStale();   // a reload while a sheet was open
     this._tabs = [];
   }
 
@@ -247,6 +253,8 @@ class PocketApp extends HTMLElement {
   _navigate(route, { replace = false } = {}) {
     route = legacyRoute(route) ?? route;
     if (this._unknownArea(parseRoute(route))) route = "#/areas";
+    // From an open sheet: the route takes the sheet's entry, so Back goes to the page under it.
+    if (this._sheet?.ownsEntry()) replace = true;
     if (replace && window.location.hash !== route) {
       window.history.replaceState(window.history.state, "", route);
       this._route();

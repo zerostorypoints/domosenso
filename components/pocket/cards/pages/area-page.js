@@ -9,9 +9,14 @@
 //     strip, the scene row (it scrolls). The page is at least as tall as the screen above the bar,
 //     so a swipe below a short page's content is the page's too. Vertical moves are the browser's
 //     scroll (touch-action: pan-y);
-//   - Climate and Air squares when the room has those readings: each value in its level's colour
-//     (lib/level.js through attention.js's roomLevels: good --ok, fair --warn, poor --bad) and the
-//     worst reading's level text; values without limits have no level;
+//   - Climate and Air squares when the room has those readings, one size for every square on
+//     every area page (a fixed aspect in a two-column grid; a lone square keeps it, it does not
+//     stretch). A square shows its title, one big value in its level's colour (lib/level.js
+//     through attention.js's roomLevels: good --ok, fair --warn, poor --bad; below a comfort range
+//     --cold, above it --warm) with its trend arrow (lib/trend.js, the last hour), and one short
+//     line built to fit (SHORT_LINE_CHARS): Climate the humidity and the worst level ("44 % · In
+//     range"), Air the worst air reading and its level ("CO₂ fine"). Nothing is cut: the rest is in
+//     the square's sheet. Values without limits have no level;
 //   - the room's lights as one <pocket-light-tile>, and "N lights ›" opening a tile per lamp (the
 //     group's entity_id attribute);
 //   - its scenes as a sideways row of buttons (scene.turn_on), a pressed one marked until Home
@@ -19,16 +24,20 @@
 //   - its player: artwork, title, artist, play/pause;
 // Every control sends through ctx.optimistic (lib/optimistic.js): its new state shows at once.
 //   - a room with none of these: its name and "nothing to show here".
-// A square opens the trend sheet (ctx.openSheet, lib/trend-sheet.js) of its first reading when the
-// area names an entity for it (the Outside's weather attribute has none: that square opens nothing).
+// The Climate square opens the trend sheet (ctx.openSheet, lib/trend-sheet.js) of its first
+// reading when the area names an entity for it (the Outside's weather attribute has none: that
+// square opens nothing); the Air square opens the air sheet (lib/detail-sheets.js): every air
+// reading with its value, level and arrow, each opening its trend.
 // render() builds every element
 // once; update() patches text and classes, and rebuilds the lamp tiles only when the members change.
 
 import { roomLevels } from "../lib/attention.js";
-import { numberOf } from "../lib/level.js";
+import { numberOf, toneOf, levelKey } from "../lib/level.js";
+import { trendNow } from "../lib/trend.js";
+import { airSpec } from "../lib/detail-sheets.js";
 import { areasOf, climateReadings as climateOf, climateValue } from "../lib/areas.js";
 import {
-  GONE, el, setText, setAttr, number, temperature, percent, pluralOf, lightsOf, membersOf,
+  GONE, el, setText, setAttr, setArrow, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
 import { trendSpec } from "../lib/trend-sheet.js";
@@ -39,6 +48,9 @@ const SWIPE_PX = 60;         // a swipe shorter than this does nothing
 const SWIPE_RATIO = 1.5;     // a swipe at least this many times wider than tall (a thumb's arc)
 const AIR = ["score", "co2", "pm2_5", "voc", "nox"];
 const RANK = { good: 0, fair: 1, poor: 2 };
+// The longest a square's short line may be, in characters, in every language: what fits beside
+// nothing else at 11.5 px in half of a 360 px phone. A test holds every translation to it.
+export const SHORT_LINE_CHARS = 22;
 
 const STYLE = `
   /* As tall as the screen between HA's header and the bar (main's padding: 12 px over, 16 px under). */
@@ -58,7 +70,6 @@ const STYLE = `
   .room .dots i.a { width: 16px; background: var(--fg); }
   .room .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .room .squares > * { min-width: 0; }
-  .room .squares > :only-child { grid-column: 1 / -1; }
   .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; min-height: 88px; padding: 12px;
               display: flex; flex-direction: column; justify-content: space-between;
               background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
@@ -68,15 +79,21 @@ const STYLE = `
   .room .sq .head i.lv-good { background: var(--ok); }
   .room .sq .head i.lv-fair { background: var(--warn); }
   .room .sq .head i.lv-poor { background: var(--bad); }
+  .room .sq .head i.lv-cold { background: var(--cold); }
+  .room .sq .head i.lv-warm { background: var(--warm); }
   .room .sq .value { min-width: 0; }
-  .room .big { display: block; font-size: 24px; font-weight: 600; letter-spacing: -.5px;
-               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .room .big { display: flex; align-items: baseline; gap: 4px; font-size: 24px; font-weight: 600;
+               letter-spacing: -.5px; white-space: nowrap; }
+  .room .big .arrow { font-size: 16px; font-weight: 400; color: var(--mut); letter-spacing: 0; }
+  .room .big .arrow[hidden] { display: none; }
   .room .lab { display: block; min-height: 15px; font-size: 11.5px; color: var(--mut); margin-top: 2px;
-               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+               white-space: nowrap; }
   .room .sq .muted { opacity: .55; }
   .room .lv-good { color: var(--ok); }
   .room .lv-fair { color: var(--warn); }
   .room .lv-poor { color: var(--bad); }
+  .room .lv-cold { color: var(--cold); }
+  .room .lv-warm { color: var(--warm); }
   .room .sec { font-size: 12.5px; font-weight: 600; margin: 18px 4px 8px; color: var(--mut);
                text-transform: uppercase; letter-spacing: .5px; }
   .room .sec[hidden], .room .media[hidden], .room .members[hidden], .room .members-toggle[hidden],
@@ -109,25 +126,28 @@ const STYLE = `
   .room button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 `;
 
-// A square of readings: the first one big, the others on the line under it, each value in a
-// span of its own so it carries its level's colour.
+// A square: the first reading big with its arrow; Climate's other readings on the line under it,
+// each value in a span of its own so it carries its level's colour, then the level text.
 function square(kind, readings, opens) {
   const sq = el(opens ? "button" : "div", `sq ${kind}`,
     `<span class="head"><span class="title"></span><i></i></span>
-     <span class="value"><span class="big"></span><span class="lab"></span></span>`);
+     <span class="value"><span class="big"><span class="num"></span><span class="arrow" hidden></span></span><span class="lab"></span></span>`);
   if (opens) sq.type = "button";
   const lab = sq.querySelector(".lab");
-  const cells = readings.map((reading, i) => {
-    if (i === 0) return { reading, value: sq.querySelector(".big") };
+  const big = sq.querySelector(".big");
+  const lineReadings = kind === "climate" ? readings : readings.slice(0, 1);
+  const cells = lineReadings.map((reading, i) => {
+    if (i === 0) return { reading, value: big, num: big.querySelector(".num") };
     if (i > 1) lab.append(el("span", "sep", " · "));
     const value = el("span", "v");
     lab.append(value);
-    return { reading, value };
+    return { reading, value, num: value };
   });
   const sep = el("span", "sep");
   const text = el("span", "lvt");
   lab.append(sep, text);
-  return { kind, sq, cells, sep, text, title: sq.querySelector(".title"), dot: sq.querySelector(".head i") };
+  return { kind, sq, readings, cells, sep, text, arrow: big.querySelector(".arrow"),
+    title: sq.querySelector(".title"), dot: sq.querySelector(".head i") };
 }
 
 export function render(ctx) {
@@ -151,11 +171,13 @@ export function render(ctx) {
 
   if (climateReadings.length || airReadings.length) {
     const box = el("div", "squares");
+    // Climate opens its first reading's trend; Air its sheet of every air reading.
+    const sheetOf = (kind, c) => (kind === "air" ? airSpec(c, room) : trendSpec(c, room, climateReadings[0]));
     const add = (kind, readings) => {
-      const s = square(kind, readings, !!trendSpec(ctx, room, readings[0]));
+      const s = square(kind, readings, !!sheetOf(kind, ctx));
       if (s.sq.tagName === "BUTTON") {
         s.sq.addEventListener("click", () => {
-          const spec = trendSpec(parts.ctx, room, readings[0]);
+          const spec = sheetOf(kind, parts.ctx);
           if (spec) parts.ctx.openSheet?.(spec);
         });
       }
@@ -228,6 +250,8 @@ export function render(ctx) {
   }
 
   swipeBetweenRooms(root, parts);
+  // Stable: lib/trend.js calls each waiting widget once, when the last hour's history lands.
+  parts.onTrend = () => { if (root.isConnected) update(root, parts.ctx); };
   root._room = parts;
   update(root, ctx);
   return root;
@@ -339,26 +363,37 @@ function updateSquares(parts, ctx) {
     .filter(({ result }) => result).map(({ reading, result }) => [reading, result]));
   for (const s of parts.squares) {
     const source = s.kind === "climate" ? room.climate : room.air;
-    let worst = null;
-    s.cells.forEach(({ reading, value }, i) => {
-      const lv = levels[reading];
-      const n = s.kind === "climate" ? climateValue(hass, room, reading) : numberOf(hass, source[reading]);
-      setClass(value, i === 0 ? "big" : "v", lv?.level, n == null);
-      setText(value, formatted(ctx, reading, n));
-      if (lv && (!worst || RANK[lv.level] > RANK[worst.result.level])) worst = { reading, result: lv };
+    const valueOf = (reading) => (s.kind === "climate" ? climateValue(hass, room, reading) : numberOf(hass, source[reading]));
+    s.cells.forEach(({ reading, value, num }, i) => {
+      const n = valueOf(reading);
+      setClass(value, i === 0 ? "big" : "v", toneOf(levels[reading]), n == null);
+      setText(num, formatted(ctx, reading, n));
     });
-    let text = "";
-    if (worst) {
-      const { level, side } = worst.result;
-      text = level === "good" ? ctx.t(`card.pocket.reading.${worst.reading}.good`)
-        : ctx.t(`card.pocket.reading.${worst.reading}.${side ? `${level}_${side}` : level}`);
+    // The worst level among the square's readings (Air: every air reading, not only the big one;
+    // on a tie the line names another reading than the big one, which shows its own colour).
+    let worst = null;
+    const order = s.kind === "air" ? [...s.readings.slice(1), s.readings[0]] : s.readings;
+    for (const reading of order) {
+      const lv = levels[reading];
+      if (lv && (!worst || RANK[lv.level] > RANK[worst.result.level])) worst = { reading, result: lv };
     }
-    // No values on the line (a square of one reading): no separator before the level text.
-    setText(s.sep, text && s.cells.length > 1 ? " · " : "");
-    setText(s.text, text);
+    const first = s.readings[0];
+    setArrow(s.arrow, ctx, trendNow(hass, source?.[first], first, parts.onTrend));
+    setText(s.text, shortLevel(ctx, s.kind, worst));
+    // No values on the line (a square of one reading, Air): no separator before the level text.
+    setText(s.sep, s.text.textContent && s.cells.length > 1 ? " · " : "");
     setText(s.title, ctx.t(`card.pocket.area.${s.kind}`));
-    setClass(s.dot, "", worst?.result.level);
+    setClass(s.dot, "", toneOf(worst?.result));
   }
+}
+
+// The level part of a square's short line: Climate the worst reading's level ("In range", "Too
+// cold"), Air the worst air reading by name and level ("CO₂ fine", "PM2.5 high").
+export function shortLevel(ctx, kind, worst) {
+  if (!worst) return "";
+  const { reading, result } = worst;
+  if (kind === "air") return ctx.t(`card.pocket.square.air.${reading}.${result.level}`);
+  return ctx.t(`card.pocket.reading.${reading}.${result.level === "good" ? "good" : levelKey(result)}`);
 }
 
 function updateMembers(parts, ctx) {

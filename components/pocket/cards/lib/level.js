@@ -37,3 +37,17 @@ export function numberOf(hass, entityId) {
   const n = Number(state);
   return Number.isFinite(n) ? n : null;
 }
+
+// The colour a level is shown in, as the class suffix lv-<tone>: good, fair, poor, and for a
+// reading outside a comfort range cold (below it) or warm (above it), as the Ramka shows them.
+export function toneOf(result) {
+  if (!result) return null;
+  if (result.side === "low") return "cold";
+  if (result.side === "high") return "warm";
+  return result.level;
+}
+
+// The translation suffix of a level: good, fair, poor, or <level>_<side> for a comfort range.
+export function levelKey(result) {
+  return result.side ? `${result.level}_${result.side}` : result.level;
+}

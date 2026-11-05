@@ -629,17 +629,19 @@ test("a square opens the trend sheet over the page and the bar; hass updates pat
   const { card, ws, hassWith } = mountTrend();
   const layer = $(card, ".sheet-layer");
   assert.equal(layer.hidden, true);
+  await tick();
+  const before = ws.length;   // the square's trend arrow may have asked for the last hour
   $(card, ".sq.climate").click();
   assert.equal(layer.hidden, false);
   assert.equal($(card, ".sheet").getAttribute("aria-label"), "Temperature");
   await tick();
-  assert.equal(ws.length, 1);
+  assert.equal(ws.length, before + 1);
   assert.equal($(card, ".sheet .big").textContent, "20.5°");
   const big = $(card, ".sheet .big");
   card.hass = hassWith(21.2);
   assert.equal($(card, ".sheet .big"), big, "patched, not rebuilt");
   assert.equal(big.textContent, "21.2°");
-  assert.equal(ws.length, 1);
+  assert.equal(ws.length, before + 1);
 });
 
 test("Back closes the sheet and leaves the page where it was; a new route closes it too", async () => {
@@ -663,4 +665,47 @@ test("an unknown sheet kind opens nothing", async () => {
   const { card } = mountTrend();
   assert.equal(card._ctx().openSheet({ kind: "nope" }), false);
   assert.equal($(card, ".sheet-layer").hidden, true);
+});
+
+test("the detail sheets are the shell's: checks, air and lights open through ctx.openSheet", async () => {
+  await goTo("#/area/kitchen");
+  const { card } = mountTrend();
+  for (const [spec, sel] of [[{ kind: "checks", title: "What was checked" }, ".detail.checks"],
+    [{ kind: "air", area: "kitchen", title: "Air" }, ".detail.air"],
+    [{ kind: "lights", title: "Lights on" }, ".detail.lights"]]) {
+    assert.equal(card._ctx().openSheet(spec), true, spec.kind);
+    assert.ok($(card, `.sheet ${sel}`), spec.kind);
+    assert.equal($(card, ".sheet").getAttribute("aria-label"), spec.title);
+  }
+  // The checks sheet lists the kitchen's temperature; its row opens the trend in its place.
+  card._ctx().openSheet({ kind: "checks", title: "What was checked" });
+  $(card, ".sheet .drow").click();
+  assert.ok($(card, ".sheet .trend"), "the row's trend sheet");
+  assert.equal($(card, ".sheet .title").textContent, "Temperature");
+});
+
+test("a route taken from an open sheet takes the sheet's history entry: Back goes to the page under it", async () => {
+  await goTo("#/area/kitchen");
+  const { card } = mountTrend();
+  const length = window.history.length;
+  $(card, ".sq.climate").click();
+  assert.ok(window.history.state?.pocketSheet);
+  assert.equal(window.history.length, length + 1);
+  card._ctx().navigate("#/areas");
+  assert.equal(window.location.hash, "#/areas");
+  assert.equal($(card, ".sheet-layer").hidden, true);
+  assert.equal(window.history.length, length + 1, "no entry added: the sheet's became the route");
+  assert.equal(window.history.state?.pocketSheet, undefined, "no sheet state left behind");
+});
+
+test("a sheet's state left on the entry (a reload, a return to the dashboard) is cleared", async () => {
+  await goTo("#/area/kitchen");
+  window.history.replaceState({ pocketSheet: "s999" }, "", window.location.href);
+  const { card } = mountTrend();
+  assert.equal(window.history.state?.pocketSheet, undefined, "cleared when the card is built");
+  card.remove();
+  window.history.replaceState({ pocketSheet: "s998" }, "", window.location.href);
+  document.body.append(card);
+  assert.equal(window.history.state?.pocketSheet, undefined, "cleared when the card comes back");
+  assert.equal(window.location.hash, "#/area/kitchen");
 });

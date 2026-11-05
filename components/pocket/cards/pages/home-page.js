@@ -1,12 +1,15 @@
 // The Home page (spec 6.2, mockup home-a-themes.html), on the page contract of pages/index.js:
 //   - the title and today's date;
-//   - attention pills (lib/attention.js), poor first; a pill opens its room; one green "all good"
-//     pill when nothing is fair or poor;
+//   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
+//     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
+//     reading that was checked, per area, the Outside included, problems first;
 //   - metric chips: inside (the range of the rooms' temperatures), outside, the air score of the
 //     first room that has one, the number of lights on; a chip whose entity the config does not
-//     name is left out, one whose reading is unavailable shows a dash; inside, outside and air
-//     open the trend sheet (ctx.openSheet, lib/trend-sheet.js) of their main reading: the first
-//     room's temperature, the outside temperature, the air score shown;
+//     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
+//     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
+//     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
+//     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
+//     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
 //     a tap elsewhere opens Media; no card while the player is missing from Home Assistant;
 //   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
@@ -17,13 +20,15 @@
 // reports them. render() builds every element once; update() only patches text and attributes (the pills are
 // rebuilt only when the list of items changes), so a scroll or a drag survives hass updates.
 
-import { attention } from "../lib/attention.js";
-import { numberOf } from "../lib/level.js";
+import { attention, roomLevels } from "../lib/attention.js";
+import { numberOf, toneOf } from "../lib/level.js";
+import { trendNow } from "../lib/trend.js";
+import { checksSpec, lightsSpec } from "../lib/detail-sheets.js";
 import { formatDate } from "../lib/i18n.js";
 import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import {
-  GONE, el, setText, setAttr, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
+  GONE, el, setText, setAttr, setArrow, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
@@ -47,6 +52,13 @@ const STYLE = `
   .home button.chip { box-sizing: border-box; min-height: 44px; margin: 0; font-family: inherit; line-height: inherit;
                        color: var(--fg); text-align: left; cursor: pointer; }
   .home .chip small { display: block; font-size: 11.5px; color: var(--mut); font-weight: 400; margin-top: 1px; }
+  .home .chip .arrow { margin-left: 3px; font-size: 13px; font-weight: 400; color: var(--mut); }
+  .home .chip .arrow[hidden] { display: none; }
+  .home .chip .v.lv-good { color: var(--ok); }
+  .home .chip .v.lv-fair { color: var(--warn); }
+  .home .chip .v.lv-poor { color: var(--bad); }
+  .home .chip .v.lv-cold { color: var(--cold); }
+  .home .chip .v.lv-warm { color: var(--warm); }
   .home .chip[hidden], .home .now[hidden], .home .art img[hidden], .home .quick-sec[hidden] { display: none; }
   .home .now { display: flex; align-items: center; gap: 12px; padding: 12px;
                background: var(--card); border: 1px solid var(--line); border-radius: 20px; }
@@ -94,10 +106,7 @@ export function render(ctx) {
     <div class="top"><b></b> <span class="date"></span></div>
     <div class="att" role="list"></div>
     <div class="chips">
-      <button class="chip" type="button" data-chip="inside"><span class="v"></span> <small></small></button>
-      <button class="chip" type="button" data-chip="outside"><span class="v"></span> <small></small></button>
-      <button class="chip" type="button" data-chip="air"><span class="v"></span> <small></small></button>
-      <div class="chip" data-chip="lights_on"><span class="v"></span> <small></small></div>
+      ${["inside", "outside", "air", "lights_on"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
     </div>
     <div class="now" hidden>
       <button class="open" type="button">
@@ -130,12 +139,13 @@ export function render(ctx) {
   };
 
   for (const [name, chip] of Object.entries(parts.chips)) {
-    if (chip.tagName !== "BUTTON") continue;
     chip.addEventListener("click", () => {
-      const spec = chipTrend(parts.ctx, name);
+      const spec = chipSheet(parts.ctx, name);
       if (spec) parts.ctx.openSheet?.(spec);
     });
   }
+  // Stable: lib/trend.js calls each waiting widget once, when the last hour's history lands.
+  parts.onTrend = () => { if (root.isConnected) updateChips(parts, parts.ctx); };
 
   const now = parts.now;
   now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
@@ -210,19 +220,18 @@ function updatePills(parts, ctx) {
   const key = JSON.stringify([ctx.t("card.pocket.home.all_good"), pills.map((p) => [p.level, p.text, p.target])]);
   if (key === parts.pillsKey) return;
   parts.pillsKey = key;
+  const pill = (level, text) => {
+    const button = el("button", "pill", `<i class="dot ${level}"></i><span></span>`);
+    button.type = "button";
+    button.lastChild.textContent = text;
+    button.addEventListener("click", () => parts.ctx.openSheet?.(checksSpec(parts.ctx)));
+    return listItem(button);
+  };
   if (pills.length === 0) {
-    const pill = el("span", "pill", `<i class="dot good"></i><span></span>`);
-    pill.lastChild.textContent = ctx.t("card.pocket.home.all_good");
-    parts.att.replaceChildren(listItem(pill));
+    parts.att.replaceChildren(pill("good", ctx.t("card.pocket.home.all_good")));
     return;
   }
-  parts.att.replaceChildren(...pills.map((item) => {
-    const pill = el("button", "pill", `<i class="dot ${item.level}"></i><span></span>`);
-    pill.type = "button";
-    pill.lastChild.textContent = item.text;
-    pill.addEventListener("click", () => parts.ctx.navigate(item.target));
-    return listItem(pill);
-  }));
+  parts.att.replaceChildren(...pills.map((item) => pill(item.level, item.text)));
 }
 
 // A list item around a pill: the button keeps its own role.
@@ -235,40 +244,56 @@ function listItem(pill) {
 
 function updateChips(parts, ctx) {
   const { hass, config } = ctx;
-  const set = (name, shown, value) => {
+  const set = (name, shown, value, { result, entity, reading } = {}) => {
     const chip = parts.chips[name];
     chip.hidden = !shown;
     if (!shown) return;
-    setText(chip.querySelector(".v"), value);
+    const v = chip.querySelector(".v");
+    setText(v, value);
+    const tone = toneOf(result);
+    const className = tone ? `v lv-${tone}` : "v";
+    if (v.className !== className) v.className = className;
+    setArrow(chip.querySelector(".arrow"), ctx, entity ? trendNow(hass, entity, reading, parts.onTrend) : null);
     setText(chip.querySelector("small"), ctx.t(`card.pocket.home.chip.${name}`));
   };
+  const levelIn = (area, reading) =>
+    area ? roomLevels(hass, area, config.thresholds).find((found) => found.reading === reading)?.result : null;
 
-  const sensors = config.rooms.map((room) => room.climate?.temperature).filter(Boolean);
-  const temps = sensors.map((id) => numberOf(hass, id)).filter((v) => v != null);
+  const withTemp = config.rooms.filter((room) => room.climate?.temperature);
+  const temps = withTemp.map((room) => numberOf(hass, room.climate.temperature)).filter((v) => v != null);
   let inside = ctx.t("card.pocket.format.none");
   if (temps.length) {
     const [min, max] = [Math.min(...temps), Math.max(...temps)];
     inside = number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
       : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
   }
-  set("inside", sensors.length > 0, inside);
+  // The colour of the worst room: poor before fair before good, the home's order within.
+  const RANK = { poor: 0, fair: 1, good: 2 };
+  const worst = withTemp.map((room) => levelIn(room, "temperature")).filter(Boolean)
+    .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
+  set("inside", withTemp.length > 0, inside, { result: worst });
 
-  const outside = config.outside?.temperature;
-  set("outside", !!outside, temperature(ctx, numberOf(hass, outside)));
+  const outsideId = config.outside?.temperature;
+  set("outside", !!outsideId, temperature(ctx, numberOf(hass, outsideId)), {
+    result: levelIn(outsideArea(config), "temperature"), entity: outsideId, reading: "temperature" });
 
-  const scoreId = config.rooms.find((room) => room.air?.score)?.air.score;
+  const airRoom = config.rooms.find((room) => room.air?.score);
+  const scoreId = airRoom?.air.score;
   const score = numberOf(hass, scoreId);
-  set("air", !!scoreId, score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0));
+  set("air", !!scoreId, score == null ? ctx.t("card.pocket.format.none") : number(ctx, score, 0), {
+    result: levelIn(airRoom, "score"), entity: scoreId, reading: "score" });
 
   set("lights_on", allLights(config).length > 0, String(lightsOnIn(hass, config.rooms)));
 }
 
-// The main reading of a chip, as a trend sheet's spec (null: nothing to show).
-function chipTrend(ctx, name) {
+// The sheet behind a chip (null: nothing to show): inside the checks of the rooms' temperatures,
+// outside and air the trend of their reading, lights on the lights that are on.
+function chipSheet(ctx, name) {
   const { rooms } = ctx.config;
-  if (name === "inside") return trendSpec(ctx, rooms.find((room) => room.climate?.temperature), "temperature");
+  if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
   if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
   if (name === "air") return trendSpec(ctx, rooms.find((room) => room.air?.score), "score");
+  if (name === "lights_on") return lightsSpec(ctx);
   return null;
 }
 
