@@ -1,6 +1,6 @@
 # SPEC-035: a home's private folder outside its repository
 
-- Status: draft 2026-11-05.
+- Status: approved 2026-11-05 by the maintainer, as written; location `~/.config/domosenso/homes/<id>/` (open question 1).
 - Source: maintainer request, 2026-11-05: a user-level folder for this kind of data, "because it
   disappears when we remove the worktree". It followed the first home's gate-remote rollout
   (SPEC-034). There, the captured gate code and the ESPHome `secrets.yaml` existed only as
@@ -224,11 +224,13 @@ No component `UPGRADE.md` entry is needed. gate-remote's README changes in its n
 4. A keychain backend later.
 5. Windows, via hard links or junctions.
 
-## Tasks
+## Tasks (coordinator: the session that wrote this spec; feature branch `feature/home-private-folder`)
 
-1. Tool: `id` in the schema and `init`, `private link` / `private adopt`, the `status` lines, the
+Status per task: waiting, in progress, in review, merged into the feature branch.
+
+1. (in progress) Tool: `id` in the schema and `init`, `private link` / `private adopt`, the `status` lines, the
    `*.code.yaml` fix, `docs/COMPATIBILITY.md`, tests. One pull request.
-2. Template and docs: home template, getting started, gate-remote README in gate-remote 0.1.1
+2. (waiting) Template and docs: home template, getting started, gate-remote README in gate-remote 0.1.1
    together with the `provides` fix. One pull request.
-3. First home: add `id` and replace the hand-made links with `private link`. The folder already
+3. (waiting) First home: add `id` and replace the hand-made links with `private link`. The folder already
    exists. This is done in that home's repository.
