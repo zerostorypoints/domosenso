@@ -21,7 +21,9 @@
         "power": "Power",
         "plants": "Plants",
         "floorplan": "Floor plan",
-        "settings": "Settings"
+        "settings": "Settings",
+        "scenes": "Scenes",
+        "system": "System"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
       "home": {
@@ -32,7 +34,9 @@
           "inside": "Inside",
           "outside": "Outside",
           "air": "Air",
-          "lights_on": "Lights on"
+          "lights_on": "Lights on",
+          "power": "Power",
+          "plants": "Plants"
         },
         "quick": "Quick",
         "all_off": "All off",
@@ -44,7 +48,12 @@
         "playing": "♪",
         "nothing_playing": "Nothing playing",
         "play": "Play",
-        "pause": "Pause"
+        "pause": "Pause",
+        "view": {
+          "overview": "Overview",
+          "systems": "Systems",
+          "label": "Home view"
+        }
       },
       "light": {
         "off": "Off",
@@ -493,7 +502,64 @@
         "floorplan": {
           "head": "Whole home",
           "status": "Every area on one plan"
+        },
+        "scenes": {
+          "shown": {
+            "one": "{count} scene",
+            "few": "{count} scenes",
+            "many": "{count} scenes",
+            "other": "{count} scenes"
+          },
+          "none": "None chosen yet",
+          "all": {
+            "one": "{count} in Home Assistant",
+            "few": "{count} in Home Assistant",
+            "many": "{count} in Home Assistant",
+            "other": "{count} in Home Assistant"
+          }
+        },
+        "system": {
+          "updates": {
+            "one": "{count} update",
+            "few": "{count} updates",
+            "many": "{count} updates",
+            "other": "{count} updates"
+          },
+          "up_to_date": "Up to date",
+          "backup": "Backup {when}",
+          "backup_failed": "Last backup failed",
+          "no_backup": "No backup yet"
         }
+      },
+      "scenes": {
+        "title": "Scenes",
+        "choose": "Choose",
+        "choose_label": "Choose the scenes shown here",
+        "no_area": "No area",
+        "activate": "Activate {name}",
+        "empty": "No scenes chosen yet. Choose the ones you use from every scene Home Assistant has.",
+        "pick_title": "Scenes on this page",
+        "pick_hint": "Switch on the scenes to keep at hand. Your choice; others choose their own."
+      },
+      "system": {
+        "title": "System",
+        "backup": "Backup",
+        "last_backup": "Last automatic backup",
+        "failed": "Failed",
+        "manager": "Now",
+        "state": {
+          "idle": "Idle",
+          "create_backup": "Creating a backup",
+          "receive_backup": "Receiving a backup",
+          "restore_backup": "Restoring",
+          "blocked": "Blocked"
+        },
+        "updates": "Updates",
+        "version": "{from} → {to}",
+        "up_to_date": "Everything is up to date.",
+        "silent": "Devices not reading",
+        "all_reading": "Every device reads.",
+        "open_settings": "Home Assistant settings"
       }
     }
   }

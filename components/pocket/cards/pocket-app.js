@@ -51,6 +51,7 @@ import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
 import * as sourceSheet from "./lib/source-sheet.js";
+import * as sceneSheet from "./lib/scene-sheet.js";
 import { powerSheet } from "./pages/power-page.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
@@ -64,7 +65,7 @@ const TOAST_MS = 3000;
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
-  players: playerSheet, power: powerSheet, sources: sourceSheet };
+  players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet };
 
 const STYLE = `
   :host { display: block; }

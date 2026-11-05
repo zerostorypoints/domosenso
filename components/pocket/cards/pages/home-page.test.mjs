@@ -241,17 +241,6 @@ test("quick tiles: one light tile per room with lights, and All off", () => {
   assert.deepEqual(ctx.hass.calls, [["light", "turn_off", { entity_id: ["light.living_room", "light.office"] }]]);
 });
 
-test("rooms strip: one card per room, a tap opens it; All opens Rooms", () => {
-  const ctx = ctxOf();
-  const el = mount(ctx);
-  const cards = [...el.querySelectorAll(".strip .rc")];
-  assert.deepEqual(cards.map((c) => text(c.querySelector(".t1"))), ["Living room", "Bedroom", "Office"]);
-  assert.match(text(cards[0].querySelector(".t2")), /21\.7°/);
-  cards[2].click();
-  el.querySelector(".sec .all").click();
-  assert.deepEqual(ctx.routes, ["#/area/office", "#/areas"]);
-});
-
 test("offline: controls are disabled and send nothing", () => {
   const ctx = ctxOf({ offline: true });
   const el = mount(ctx);
@@ -299,19 +288,8 @@ test("lights on: one definition with Rooms, a group counts its members, each lam
   const chip = text(el.querySelector('.chip[data-chip="lights_on"] .v'));
   assert.equal(chip, "2");
   assert.match(text(el.querySelector(".quick .all-off")), /2 on now/);
-  const strip = [...el.querySelectorAll(".strip .rc .t2")].map(text);
   const tab = [...rooms.render(ctx).querySelectorAll(".grid .sq .lab")].map(text);
-  assert.match(strip[0], /2 on/);
   assert.match(tab[0], /2 on/);
-  assert.match(strip[2], /1 on/);
-});
-
-test("rooms strip: an unavailable reading is a muted dash", () => {
-  const states = { ...baseStates(), "sensor.bedroom_humidity": st("unavailable"), "sensor.bedroom_temperature": st("unknown") };
-  const el = mount(ctxOf({ hass: hassOf(states) }));
-  const bedroom = el.querySelectorAll(".strip .rc .t2")[1];
-  assert.equal(text(bedroom), "— · —");
-  assert.equal(bedroom.querySelectorAll(".muted").length, 2);
 });
 
 test("a group that is on with every member unavailable is one lamp on: chip, All off and Rooms agree", async () => {

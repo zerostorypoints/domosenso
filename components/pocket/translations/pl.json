@@ -21,7 +21,9 @@
         "power": "Energia",
         "plants": "Rośliny",
         "floorplan": "Rzut",
-        "settings": "Ustawienia"
+        "settings": "Ustawienia",
+        "scenes": "Sceny",
+        "system": "System"
       },
       "offline": "Brak połączenia z Home Assistant. Sterowanie wróci, gdy połączenie zostanie przywrócone.",
       "home": {
@@ -32,7 +34,9 @@
           "inside": "W domu",
           "outside": "Na zewnątrz",
           "air": "Powietrze",
-          "lights_on": "Włączone światła"
+          "lights_on": "Włączone światła",
+          "power": "Prąd",
+          "plants": "Rośliny"
         },
         "quick": "Szybkie",
         "all_off": "Wyłącz wszystko",
@@ -44,7 +48,12 @@
         "playing": "♪",
         "nothing_playing": "Nic nie gra",
         "play": "Odtwórz",
-        "pause": "Pauza"
+        "pause": "Pauza",
+        "view": {
+          "overview": "Przegląd",
+          "systems": "Systemy",
+          "label": "Widok domu"
+        }
       },
       "light": {
         "off": "Wył.",
@@ -493,7 +502,64 @@
         "floorplan": {
           "head": "Cały dom",
           "status": "Wszystkie obszary na jednym planie"
+        },
+        "scenes": {
+          "shown": {
+            "one": "{count} scena",
+            "few": "{count} sceny",
+            "many": "{count} scen",
+            "other": "{count} sceny"
+          },
+          "none": "Jeszcze nie wybrano",
+          "all": {
+            "one": "W Home Assistant: {count}",
+            "few": "W Home Assistant: {count}",
+            "many": "W Home Assistant: {count}",
+            "other": "W Home Assistant: {count}"
+          }
+        },
+        "system": {
+          "updates": {
+            "one": "{count} aktualizacja",
+            "few": "{count} aktualizacje",
+            "many": "{count} aktualizacji",
+            "other": "{count} aktualizacji"
+          },
+          "up_to_date": "Wszystko aktualne",
+          "backup": "Kopia {when}",
+          "backup_failed": "Ostatnia kopia nieudana",
+          "no_backup": "Brak kopii"
         }
+      },
+      "scenes": {
+        "title": "Sceny",
+        "choose": "Wybierz",
+        "choose_label": "Wybierz sceny widoczne tutaj",
+        "no_area": "Bez obszaru",
+        "activate": "Włącz {name}",
+        "empty": "Nie wybrano jeszcze scen. Wybierz te, których używasz, spośród wszystkich scen w Home Assistant.",
+        "pick_title": "Sceny na tej stronie",
+        "pick_hint": "Włącz sceny, które chcesz mieć pod ręką. To Twój wybór; inni wybierają własne."
+      },
+      "system": {
+        "title": "System",
+        "backup": "Kopia zapasowa",
+        "last_backup": "Ostatnia automatyczna kopia",
+        "failed": "Nieudana",
+        "manager": "Teraz",
+        "state": {
+          "idle": "Bezczynny",
+          "create_backup": "Tworzenie kopii",
+          "receive_backup": "Odbieranie kopii",
+          "restore_backup": "Przywracanie",
+          "blocked": "Zablokowany"
+        },
+        "updates": "Aktualizacje",
+        "version": "{from} → {to}",
+        "up_to_date": "Wszystko jest aktualne.",
+        "silent": "Urządzenia bez odczytu",
+        "all_reading": "Każde urządzenie odpowiada.",
+        "open_settings": "Ustawienia Home Assistant"
       }
     }
   }

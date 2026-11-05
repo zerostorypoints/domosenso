@@ -3,7 +3,7 @@
 // worth a look, so every page is a tap from Home whatever the bar holds. Each summary reads what
 // its page reads, with the levels it already uses; nothing of its own. Plain ES module: no DOM.
 //
-//   sectionsOf(ctx, {today?}) -> [{page, route, icon, head, status, tone}]
+//   sectionsOf(ctx, {today?, pages?}) -> [{page, route, icon, head, status, tone}]   pages: only these
 //       tone "poor" | "fair" (a dot in that colour, the tile's border too) | null (nothing to see);
 //       today: the Power page's energy today (lib/energy.js todayNow), when the caller has it.
 //   A page whose component or devices this home lacks has no tile: the floor plan without the
@@ -21,7 +21,9 @@
 //              (fair: a meter that reads nothing is worth a look)
 //   Plants     all fine, or how many plants need something (lib/plants.js); the worst one's name and
 //              reason; poor for a thirsty or a too wet plant, fair for any other reason
+//   Scenes     how many scenes the person shows, else none chosen; how many the home has
 //   Floor plan the whole home on one plan
+//   System     the updates waiting, else up to date; the last backup's age (lib/system.js: its tone)
 
 import { TABS, optionalPages } from "./router.js";
 import { areasOf } from "./areas.js";
@@ -31,18 +33,22 @@ import { powerSensors, powerNow, watts } from "./power.js";
 import { plantsOf } from "./plants.js";
 import { lightsOnIn, number, pluralOf } from "./page-kit.js";
 import { wattsText } from "../pages/power-page.js";
+import { SYSTEM } from "./router.js";
+import { allScenes, chosenScenes } from "./scenes.js";
+import { ago, systemOf } from "./system.js";
 
 const GONE = new Set(["unavailable", "unknown"]);
-const PAGES = TABS.map((tab) => tab.page).filter((page) => page !== "home" && page !== "settings");
+const PAGES = [...TABS.map((tab) => tab.page).filter((page) => page !== "home" && page !== "settings"), SYSTEM.page];
+const TAB_OF = Object.fromEntries([...TABS, SYSTEM].map((tab) => [tab.page, tab]));
 
-export function sectionsOf(ctx, { today = null } = {}) {
+export function sectionsOf(ctx, { today = null, pages = PAGES } = {}) {
   const hidden = optionalPages(ctx.config);
   const out = [];
   for (const page of PAGES) {
-    if (hidden.includes(page)) continue;
+    if (hidden.includes(page) || !pages.includes(page)) continue;
     const summary = SUMMARIES[page](ctx, { today });
     if (!summary) continue;
-    const tab = TABS.find((t) => t.page === page);
+    const tab = TAB_OF[page];
     out.push({ page, route: tab.route, icon: tab.icon, tone: null, ...summary });
   }
   return out;
@@ -107,6 +113,28 @@ const SUMMARIES = {
     return { head: ctx.t(`card.pocket.sections.plants.need.${pluralOf(ctx, need.length)}`, { count: need.length }),
       status: `${worst.name} · ${ctx.t(`card.pocket.plants.reason.${worst.reasons[0]}`)}`,
       tone: worst.rank <= 1 ? "poor" : "fair" };
+  },
+
+  scenes(ctx) {
+    const all = allScenes(ctx.hass, ctx.config, ctx.t).reduce((sum, g) => sum + g.scenes.length, 0);
+    if (!all) return null;
+    const shown = chosenScenes(ctx.settings, ctx.config).filter((id) => ctx.hass?.states?.[id]).length;
+    return { head: shown ? ctx.t(`card.pocket.sections.scenes.shown.${pluralOf(ctx, shown)}`, { count: shown })
+      : ctx.t("card.pocket.sections.scenes.none"),
+    status: ctx.t(`card.pocket.sections.scenes.all.${pluralOf(ctx, all)}`, { count: all }) };
+  },
+
+  system(ctx) {
+    const sys = systemOf(ctx.hass);
+    if (!sys.backup && !sys.updates.length && !Object.keys(ctx.hass?.states ?? {}).some((id) => id.startsWith("update."))) return null;
+    const head = sys.updates.length
+      ? ctx.t(`card.pocket.sections.system.updates.${pluralOf(ctx, sys.updates.length)}`, { count: sys.updates.length })
+      : ctx.t("card.pocket.sections.system.up_to_date");
+    let status = "";
+    if (sys.backup?.failed) status = ctx.t("card.pocket.sections.system.backup_failed");
+    else if (sys.backup?.age != null) status = ctx.t("card.pocket.sections.system.backup", { when: ago(ctx.lang, sys.backup.age) });
+    else if (sys.backup) status = ctx.t("card.pocket.sections.system.no_backup");
+    return { head, status, tone: sys.tone };
   },
 
   floorplan(ctx) {

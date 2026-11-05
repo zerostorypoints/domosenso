@@ -10,7 +10,7 @@ const pick = (list, page) => list.find((s) => s.page === page);
 
 test("a tile per page this home has, in the bar's order; none for what it lacks", () => {
   const list = sectionsOf(ctxOf());
-  assert.deepEqual(list.map((s) => s.page), ["areas", "climate", "media"], "no power sensor, no plant, no floorplan component");
+  assert.deepEqual(list.map((s) => s.page), ["areas", "climate", "media", "scenes"], "no power sensor, no plant, no floorplan component, no system entities");
   assert.deepEqual(sectionsOf(ctxOf({ cfg: { ...config, floorplan: true } })).map((s) => s.page).at(-1), "floorplan");
   assert.equal(pick(list, "areas").route, "#/areas");
   assert.equal(pick(list, "areas").head, "4 areas");
@@ -54,13 +54,15 @@ test("Plants: how many need care and the worst; poor for a thirsty plant", () =>
 });
 
 test("on Home: under the readings, each tile opens its page, a tone colours its dot and border", () => {
-  const ctx = ctxOf({ hass: hassOf({ ...baseStates(), "sensor.living_room_co2": st(1300) }) });
+  const ctx = ctxOf({ hass: hassOf({ ...baseStates(), "sensor.living_room_co2": st(1300) }), routeId: "systems" });
   const el = home.render(ctx);
   document.body.append(el);
   const host = el.querySelector(".sections");
   assert.equal(host.previousElementSibling.className, "chips");
+  assert.equal(el.querySelector(".chips").hidden, true, "Systems shows the tiles, Overview the widgets");
+  assert.equal(el.querySelector(".quick-sec").hidden, true);
   const tiles = [...host.querySelectorAll(".sect")];
-  assert.deepEqual(tiles.map((t) => t.dataset.page), ["areas", "climate", "media"]);
+  assert.deepEqual(tiles.map((t) => t.dataset.page), ["areas", "climate", "media", "scenes"]);
   const climate = tiles[1];
   assert.equal(text(climate.querySelector(".n")), "Climate");
   assert.equal(climate.className, "sect poor");

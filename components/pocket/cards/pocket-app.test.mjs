@@ -133,7 +133,7 @@ test("the page gets the contract's ctx", async () => {
 
 test("every page follows the contract; each one is built", async () => {
   assert.deepEqual(Object.keys(pages).sort(),
-    ["area", "areas", "climate", "floorplan", "home", "media", "plants", "power", "settings"]);
+    ["area", "areas", "climate", "floorplan", "home", "media", "plants", "power", "scenes", "settings", "system"]);
   for (const [id, page] of Object.entries(pages)) {
     assert.equal(typeof page.render, "function", id);
     assert.equal(typeof page.update, "function", id);

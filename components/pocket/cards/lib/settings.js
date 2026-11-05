@@ -13,6 +13,9 @@
 //   theme   the Appearance: "system" (the phone's), "light" or "dark" (lib/theme.js MODES)
 //   climateView   the reading the Climate page shows: "temperature", "humidity" or "air"
 //                 (lib/climate.js VIEWS), the switch's last choice
+//   scenes        the scenes the Scenes page shows (scene entity ids, in the order chosen), the
+//                 person's pick from every scene Home Assistant has; absent until they pick, when
+//                 the page shows the scenes the home inputs name (lib/scenes.js chosenScenes)
 //   mediaPlayer   the media player the Media page shows (an entity id of an area's `media`), the
 //                 picker's last choice; absent until one is picked
 //
@@ -41,6 +44,8 @@ export function withDefaults(stored, bar = DEFAULTS.bar) {
   if (!THEMES.includes(value.theme)) result.theme = DEFAULTS.theme;
   if (!VIEWS.includes(value.climateView)) result.climateView = DEFAULTS.climateView;
   if (typeof value.mediaPlayer !== "string") delete result.mediaPlayer;
+  if (Array.isArray(value.scenes) && value.scenes.every((id) => typeof id === "string")) result.scenes = [...value.scenes];
+  else delete result.scenes;
   return result;
 }
 
