@@ -13,6 +13,7 @@
   out says which input adds it, without a frame; a screen its page switch has taken out shows a
   banner over the frame while the switch is off.
 #]
+[%- from '_home.jinja' import merged as inputs with context -%]
 [%- extends 'dashboard.lang.yaml.j2' -%]
 [%- set preview = true -%]
 [%- from 'music-source.j2' import music_notice, bad_path -%]

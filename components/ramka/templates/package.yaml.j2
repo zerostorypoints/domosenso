@@ -4,6 +4,7 @@
   by tools/domosenso_render.py; double square brackets are the renderer's, {{ }} / {% %} stay for Home
   Assistant. Inputs: component.yaml `inputs:`.
 #]
+[%- from '_home.jinja' import merged as inputs with context -%]
 [%- set p = inputs.prefix -%]
 [%- set name = inputs.name | default(p | replace('_', ' ') | title) -%]
 [%- set notify = inputs.tablet_device.notify -%]

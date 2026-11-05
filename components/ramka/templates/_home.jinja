@@ -1,0 +1,54 @@
+[#- The Ramka's inputs with the shared home inputs behind them (P3, docs/2026-11-05-shared-home-decisions.md).
+   Each template imports `merged` as `inputs`:   [%- from '_home.jinja' import merged as inputs with context -%]
+   An input the Ramka's own file gives wins, unchanged. Without it, and with home inputs, it comes from
+   the home's rooms:
+     lights   each room's lights (a light, a group, or a list; a listed {entity, name} keeps its name),
+              labelled with the room's name, room = the room's id
+     climate  each room with climate: {label: the room's name, temperature, humidity?, room}
+     outside  the home's outside {temperature, humidity?}
+     air      the first room with air (the Air page shows one set)
+     weather  the home's weather
+     covers   each room's listed covers: {entity, label: its name, else the room's, room}
+     status   contacts and locks from the rooms' lists, {entity, label}, beside the Ramka's own status
+              keys (a key the Ramka gives wins)
+   Colours, the wall's layout and every other input stay the Ramka's own. -#]
+[%- set merged = dict(inputs) -%]
+[%- if home is defined and home -%]
+[%- macro _name(item, room) -%][[ room_name(item) if item is mapping and item.name is defined else room_name(room) ]][%- endmacro -%]
+[%- set ns = namespace(lights=[], climate=[], covers=[], contacts=[], locks=[], air=none) -%]
+[%- for room in home.rooms -%]
+  [%- if room.lights is defined -%]
+    [%- for item in ([room.lights] if room.lights is string else room.lights) -%]
+      [%- set ns.lights = ns.lights + [{'entity': item if item is string else item.entity, 'label': _name(item, room), 'room': room.id}] -%]
+    [%- endfor -%]
+  [%- endif -%]
+  [%- if room.climate is defined -%]
+    [%- set row = {'label': room_name(room), 'temperature': room.climate.temperature, 'room': room.id} -%]
+    [%- if room.climate.humidity is defined %][% set _ = row.update({'humidity': room.climate.humidity}) %][% endif -%]
+    [%- set ns.climate = ns.climate + [row] -%]
+  [%- endif -%]
+  [%- if room.air is defined and ns.air is none %][% set ns.air = room.air %][% endif -%]
+  [%- for kind in ('covers', 'contacts', 'locks') if room[kind] is defined -%]
+    [%- for item in room[kind] -%]
+      [%- set row = {'entity': item if item is string else item.entity, 'label': _name(item, room)} -%]
+      [%- if kind == 'covers' %][% set _ = row.update({'room': room.id}) %][% set ns.covers = ns.covers + [row] -%]
+      [%- elif kind == 'contacts' %][% set ns.contacts = ns.contacts + [row] -%]
+      [%- else %][% set ns.locks = ns.locks + [row] %][% endif -%]
+    [%- endfor -%]
+  [%- endfor -%]
+[%- endfor -%]
+[%- if inputs.lights is not defined and ns.lights %][% set _ = merged.update({'lights': ns.lights}) %][% endif -%]
+[%- if inputs.climate is not defined and ns.climate %][% set _ = merged.update({'climate': ns.climate}) %][% endif -%]
+[%- if inputs.covers is not defined and ns.covers %][% set _ = merged.update({'covers': ns.covers}) %][% endif -%]
+[%- if inputs.air is not defined and ns.air %][% set _ = merged.update({'air': ns.air}) %][% endif -%]
+[%- if inputs.weather is not defined and home.weather is defined %][% set _ = merged.update({'weather': home.weather}) %][% endif -%]
+[%- if inputs.outside is not defined and home.outside is defined -%]
+  [%- set out = {'temperature': home.outside.temperature} -%]
+  [%- if home.outside.humidity is defined %][% set _ = out.update({'humidity': home.outside.humidity}) %][% endif -%]
+  [%- set _ = merged.update({'outside': out}) -%]
+[%- endif -%]
+[%- set status = dict(inputs.status) if inputs.status is defined and inputs.status else {} -%]
+[%- if status.contacts is not defined and ns.contacts %][% set _ = status.update({'contacts': ns.contacts}) %][% endif -%]
+[%- if status.locks is not defined and ns.locks %][% set _ = status.update({'locks': ns.locks}) %][% endif -%]
+[%- if status %][% set _ = merged.update({'status': status}) %][% endif -%]
+[%- endif -%]

@@ -3,6 +3,29 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased (P3): rooms from the shared home inputs
+
+The Ramka declares `uses_home: optional`. When the home has shared inputs (`home_inputs:` in
+`domosenso.yaml`), each of these inputs falls back to them if the Ramka's own file leaves it out:
+- `lights`: each room's lights, labelled with the room's name or the light's own name;
+- `climate`: each room with climate, labelled with the room's name;
+- `outside` and `weather`;
+- `air`: the first room with air;
+- `covers`: each room's listed covers;
+- `status` contacts and locks: each room's listed ones.
+
+An input the Ramka's file gives wins, unchanged, so a home that keeps its lists sees nothing
+change. Colours and the wall's layout stay the Ramka's.
+
+What a home does: nothing now. To move:
+1. Make sure `home.inputs.yaml` names the same entities.
+2. Remove the Ramka's own `lights`, `climate`, `outside`, `air` and `weather` one at a time, running
+   `domosenso render` after each.
+3. Before deploying, `domosenso compare` a snapshot from before against one from after.
+
+The labels then come from the room's name, so a light or widget whose label differed from its
+room's name needs `{entity, name}` in the home inputs.
+
 ## 0.16.0 (unreleased)
 
 ### Shortcuts on the controls

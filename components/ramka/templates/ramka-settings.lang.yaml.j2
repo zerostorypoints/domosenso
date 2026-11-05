@@ -9,6 +9,7 @@
   The standing rule: a new Ramka setting gets its row here, on its view's page, in the same change
   (tests/test_ramka_render.py::test_every_setting_is_on_a_page_and_reset).
 #]
+[%- from '_home.jinja' import merged as inputs with context -%]
 [%- set p = inputs.prefix -%]
 [%- set music_visual = inputs.music_visual | default(none) -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
