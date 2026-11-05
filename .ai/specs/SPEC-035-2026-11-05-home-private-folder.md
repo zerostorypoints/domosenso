@@ -232,5 +232,6 @@ Status per task: waiting, in progress, in review, merged into the feature branch
    `*.code.yaml` fix, `docs/COMPATIBILITY.md`, tests. One pull request.
 2. (merged into the feature branch, #228) Template and docs: home template, getting started, gate-remote README in gate-remote 0.1.1
    together with the `provides` fix. One pull request.
-3. (waiting for the feature branch in `main`: `id` in `domosenso.yaml` fails the schema of the command on `main`) First home: add `id` and replace the hand-made links with `private link`. The folder already
-   exists. This is done in that home's repository.
+3. (done 2026-11-05, after #234 reached `main`) First home: add `id` and replace the hand-made links with `private link`. The folder already
+   exists. This is done in that home's repository. `private link` printed `linked` for both files,
+   and `status` printed the `private` line and no `private-link`, `private-file` or `private-mode` line.
