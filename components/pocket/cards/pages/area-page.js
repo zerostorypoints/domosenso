@@ -3,17 +3,21 @@
 // of them: the shell sends an unknown id to Areas). The Outside has only its Climate square.
 //   - a back button to Areas with the area's name, and dots for the area's place in the home;
 //   - a horizontal swipe (>= 60 px, mostly horizontal, decided after 8 px as the light tile does)
-//     goes to the next room (swipe left) or the previous one, in the home's order; the first and
-//     the last room stay (no wrap). A swipe that starts on a light tile is the tile's brightness
-//     drag, one on the scene row scrolls the row: neither changes the room. Vertical moves are
-//     the browser's scroll (touch-action: pan-y);
+//     goes to the next area (swipe left) or the previous one, in the home's order; the first and
+//     the last area stay (no wrap). It starts anywhere on the page, a light tile's body too, but
+//     on an element marked data-drag, which keeps its sideways moves: a light tile's brightness
+//     strip, the scene row (it scrolls). The page is at least as tall as the screen above the bar,
+//     so a swipe below a short page's content is the page's too. Vertical moves are the browser's
+//     scroll (touch-action: pan-y);
 //   - Climate and Air squares when the room has those readings: each value in its level's colour
 //     (lib/level.js through attention.js's roomLevels: good --ok, fair --warn, poor --bad) and the
 //     worst reading's level text; values without limits have no level;
 //   - the room's lights as one <pocket-light-tile>, and "N lights ›" opening a tile per lamp (the
 //     group's entity_id attribute);
-//   - its scenes as a sideways row of buttons (scene.turn_on);
+//   - its scenes as a sideways row of buttons (scene.turn_on), a pressed one marked until Home
+//     Assistant reports that it ran;
 //   - its player: artwork, title, artist, play/pause;
+// Every control sends through ctx.optimistic (lib/optimistic.js): its new state shows at once.
 //   - a room with none of these: its name and "nothing to show here".
 // The squares open nothing yet (the trend sheet is not built). render() builds every element
 // once; update() patches text and classes, and rebuilds the lamp tiles only when the members change.
@@ -22,18 +26,23 @@ import { roomLevels } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
 import { areasOf, climateReadings as climateOf, climateValue } from "../lib/areas.js";
 import {
-  GONE, el, setText, setAttr, number, temperature, percent, pluralOf, call, lightsOf, membersOf,
+  GONE, el, setText, setAttr, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
 
 const DIRECTION_PX = 8;      // movement before a gesture is a swipe or a scroll
 const SWIPE_PX = 60;         // a swipe shorter than this does nothing
+const SWIPE_RATIO = 1.5;     // a swipe at least this many times wider than tall (a thumb's arc)
 const AIR = ["score", "co2", "pm2_5", "voc", "nox"];
 const RANK = { good: 0, fair: 1, poor: 2 };
 
 const STYLE = `
-  .room { touch-action: pan-y; }
+  /* As tall as the screen between HA's header and the bar (main's padding: 12 px over, 16 px under). */
+  .room { touch-action: pan-y; box-sizing: border-box;
+          min-height: calc(100vh - var(--header-height, 56px) - var(--bar, 64px) - 28px);
+          min-height: calc(100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px)
+                           - var(--bar, 64px) - var(--safe, 0px) - 28px); }
   .room .top { display: flex; align-items: center; margin: -4px 0 2px; }
   .room .back { min-height: 44px; margin: 0 0 0 -8px; padding: 0 8px 0 0; border: 0; background: none;
                 display: flex; align-items: center; gap: 2px; font: inherit; color: var(--fg); cursor: pointer;
@@ -77,6 +86,7 @@ const STYLE = `
   .room .scn { flex: 0 0 auto; min-width: 44px; min-height: 44px; margin: 0; padding: 10px 14px; font: inherit; font-size: 13px;
                color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 14px;
                cursor: pointer; }
+  .room .scn.sent { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, var(--card)); }
   .room .scn:disabled, .room .play:disabled { opacity: .55; cursor: default; }
   .room .media { display: flex; align-items: center; gap: 12px; padding: 12px;
                  background: var(--card); border: 1px solid var(--line); border-radius: 20px; }
@@ -150,6 +160,7 @@ export function render(ctx) {
     const group = el("div", "group");
     const tile = document.createElement("pocket-light-tile");
     tile.t = ctx.t;
+    tile.optimistic = ctx.optimistic;
     parts.groupTile = tile;
     parts.tiles.push(tile);
     group.append(tile);
@@ -164,13 +175,15 @@ export function render(ctx) {
   }
   if (scenes.length) {
     const row = el("div", "scenes");
+    row.dataset.drag = "";
     for (const scene of scenes) {
       const button = el("button", "scn");
       button.type = "button";
       button.addEventListener("click", () => {
-        const { hass, offline } = parts.ctx;
+        const { hass, offline, optimistic } = parts.ctx;
         if (offline || !hass?.callService) return;
-        call(root, hass, "scene", "turn_on", { entity_id: scene }, "card.pocket.error.scene");
+        optimistic.send(root, hass, { domain: "scene", service: "turn_on", data: { entity_id: scene },
+          errorKey: "card.pocket.error.scene", expect: { [scene]: { changed: true } } });
       });
       parts.scenes.push({ scene, button });
       row.append(button);
@@ -185,10 +198,12 @@ export function render(ctx) {
      <button class="play" type="button"><ha-icon></ha-icon></button>`);
   parts.player = player;
   parts.media.querySelector(".play").addEventListener("click", () => {
-    const { hass, offline } = parts.ctx;
+    const { hass, offline, optimistic } = parts.ctx;
     const state = player ? hass?.states?.[player] : undefined;
     if (offline || !state || GONE.has(state.state) || !hass.callService) return;
-    call(root, hass, "media_player", "media_play_pause", { entity_id: player }, "card.pocket.error.media");
+    optimistic.send(root, hass, { domain: "media_player", service: "media_play_pause", data: { entity_id: player },
+      errorKey: "card.pocket.error.media",
+      expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });
   });
   root.append(parts.musicSec, parts.media);
 
@@ -203,9 +218,11 @@ export function render(ctx) {
   return root;
 }
 
-// The room swipe: a horizontal move of the finger anywhere on the page but a light tile or the
-// scene row. A swipe ends with the next page, or (first / last room) with nothing; either way the
-// click the browser may fire after it is dropped.
+// The area swipe: a horizontal move of the finger anywhere on the page but an element marked
+// data-drag (looked for along the event's composed path: a tile's strip is inside its shadow
+// root). A swipe ends with the next page, or (first / last area) with nothing; either way the
+// click the browser may fire after it is dropped. The next page is a new element with listeners
+// of its own (the shell renders it on the replaced route).
 function swipeBetweenRooms(root, parts) {
   let swipe = null;
   let swallow = false;
@@ -213,7 +230,7 @@ function swipeBetweenRooms(root, parts) {
     swallow = false;
     swipe = null;
     if (e.button != null && e.button !== 0) return;
-    if (e.target?.closest?.("pocket-light-tile, .scenes")) return;
+    if (ownsDrag(e, root)) return;
     swipe = { x: e.clientX, y: e.clientY, mode: "pending" };
   });
   root.addEventListener("pointermove", (e) => {
@@ -229,7 +246,7 @@ function swipeBetweenRooms(root, parts) {
     if (!g || g.mode === "scroll") return;
     const dx = e.clientX - g.x;
     const dy = Math.abs(e.clientY - g.y);
-    if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < 2 * dy) return;
+    if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < SWIPE_RATIO * dy) return;
     swallow = true;
     const next = parts.rooms[parts.index + (dx < 0 ? 1 : -1)];
     // At the first or last room there is no next page, yet swallow stays set: the click the
@@ -244,6 +261,15 @@ function swipeBetweenRooms(root, parts) {
     e.stopPropagation();
     e.preventDefault();
   }, true);
+}
+
+// Whether the gesture starts on an element that keeps its sideways moves (data-drag).
+function ownsDrag(e, root) {
+  for (const node of e.composedPath?.() ?? []) {
+    if (node === root) return false;
+    if (node.hasAttribute?.("data-drag")) return true;
+  }
+  return false;
 }
 
 export function update(root, ctx) {
@@ -264,11 +290,15 @@ export function update(root, ctx) {
   }
   for (const tile of parts.tiles) {
     tile.t = ctx.t;
+    tile.optimistic = ctx.optimistic;
     tile.offline = ctx.offline;
     tile.hass = ctx.hass;
   }
   for (const { scene, button } of parts.scenes) {
     setText(button, shortName(ctx.hass, scene, room));
+    const sent = !!ctx.optimistic?.pending(scene);
+    button.classList.toggle("sent", sent);
+    setAttr(button, "aria-busy", String(sent));
     button.disabled = !!ctx.offline;
   }
   updateMedia(parts, ctx);
@@ -329,6 +359,7 @@ function updateMembers(parts, ctx) {
       const tile = document.createElement("pocket-light-tile");
       tile.t = ctx.t;
       tile.offline = ctx.offline;
+      tile.optimistic = ctx.optimistic;
       tile.config = { name: names[i], entities: [id] };
       tile.hass = hass;
       return tile;

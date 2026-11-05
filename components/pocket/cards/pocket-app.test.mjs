@@ -463,3 +463,74 @@ test("a read that fails while connected is not retried on every update", async (
   await tick();
   assert.equal(reads, 1);
 });
+
+// The area swipe on a real home, through the shell: each swipe replaces the page (a new element
+// with its own listeners), and the next swipe must work on it, wherever it starts.
+import { config as demoConfig, hassOf as demoHass, baseStates as demoStates } from "./testing/demo-home.mjs";
+
+function swipeOn(target, [x0, y0], [x1, y1]) {
+  const fire = (type, x, y) => target.dispatchEvent(new window.PointerEvent(type,
+    { clientX: x, clientY: y, pointerId: 1, bubbles: true, composed: true }));
+  fire("pointerdown", x0, y0);
+  fire("pointermove", (x0 + x1) / 2, (y0 + y1) / 2);
+  fire("pointermove", x1, y1);
+  fire("pointerup", x1, y1);
+}
+
+function mountDemo(hash, cfg = demoConfig) {
+  window.history.replaceState(null, "", hash);
+  const card = document.createElement("pocket-app");
+  card.setConfig({ ...cfg, type: "custom:pocket-app" });
+  document.body.appendChild(card);
+  card.hass = demoHass(demoStates());
+  return card;
+}
+
+const page = (card) => card.shadowRoot.querySelector("main > section");
+
+test("area swipes work both ways after a swipe, also when they start on a light tile's body", () => {
+  const card = mountDemo("#/area/living_room");
+  const left = [[300, 200], [150, 205]];
+  const right = [[100, 200], [250, 205]];
+  swipeOn(page(card).querySelector(".squares"), ...left);
+  assert.equal(window.location.hash, "#/area/bedroom");
+  swipeOn(page(card).querySelector(".squares"), ...left);
+  assert.equal(window.location.hash, "#/area/office", "a second swipe on the new page works");
+  // The office is mostly its light tile: the swipe back starts on the tile's body. The page sees
+  // the event on the tile itself (a browser retargets events out of a shadow root).
+  const tile = page(card).querySelector("pocket-light-tile");
+  swipeOn(tile, ...right);
+  assert.equal(window.location.hash, "#/area/bedroom", "back from a page that is mostly a light tile");
+  assert.deepEqual(card.hass.calls, [], "the swipe changed no light");
+  swipeOn(page(card), ...right);
+  assert.equal(window.location.hash, "#/area/living_room");
+  swipeOn(page(card), ...right);
+  assert.equal(window.location.hash, "#/area/living_room", "the first area stays: no wrap");
+});
+
+test("a swipe from inside a light tile's shadow root is the page's too; one on its strip is the tile's", () => {
+  const card = mountDemo("#/area/office");
+  const tile = () => page(card).querySelector("pocket-light-tile");
+  swipeOn(tile().shadowRoot.querySelector(".t1"), [100, 200], [250, 205]);
+  assert.equal(window.location.hash, "#/area/bedroom");
+  swipeOn(page(card), [300, 200], [150, 205]);
+  assert.equal(window.location.hash, "#/area/office");
+  swipeOn(tile().shadowRoot.querySelector(".bar"), [100, 200], [250, 205]);
+  assert.equal(window.location.hash, "#/area/office", "the strip's drag stays on the page");
+  assert.equal(card.hass.calls.length, 1, "and sets the brightness");
+});
+
+test("snappy through the shell: a tap shows at once on every page's control, the report confirms it", () => {
+  const card = mountDemo("#/");
+  const officeTile = () => [...page(card).querySelectorAll(".quick pocket-light-tile")]
+    .find((tile) => tile.config.entities[0] === "light.office");
+  const lit = (tile) => tile.shadowRoot.querySelector(".tile").classList.contains("on");
+  officeTile().click();
+  assert.ok(lit(officeTile()), "on before Home Assistant answers");
+  assert.equal(page(card).querySelector('[data-chip="lights_on"] .v').textContent, "2", "the chip agrees");
+  assert.deepEqual(card.hass.calls, [["light", "turn_on", { entity_id: "light.office" }]]);
+  const states = { ...card.hass.states, "light.office": { state: "on", attributes: { brightness: 255 } } };
+  card.hass = { ...card.hass, states };
+  assert.ok(lit(officeTile()));
+  assert.ok(!card._optimistic.pending("light.office"));
+});

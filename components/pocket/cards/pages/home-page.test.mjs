@@ -4,6 +4,7 @@ import "../testing/dom-env.mjs";
 import * as home from "./home-page.js";
 import { pages } from "./index.js";
 import { createT } from "../lib/i18n.js";
+import { createOptimistic } from "../lib/optimistic.js";
 import en from "../../translations/en.json" with { type: "json" };
 import de from "../../translations/de.json" with { type: "json" };
 import pl from "../../translations/pl.json" with { type: "json" };
@@ -61,11 +62,18 @@ function hassOf(states = baseStates()) {
     callService: (d, s, data) => { calls.push([d, s, data]); return Promise.resolve(); } };
 }
 
-function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false } = {}) {
+// As the shell's: ctx.hass is the optimistic store's view of the raw hass; ctx.redraw (set by a
+// test) runs on each send or rollback.
+function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, timeoutMs } = {}) {
   const routes = [];
-  return { routes, hass, config: cfg, lang, offline, routeId: undefined,
+  const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});
+  const ctx = { routes, raw: hass, optimistic, config: cfg, lang, offline, routeId: undefined,
+    get hass() { return optimistic.view(ctx.raw); },
+    set hass(value) { ctx.raw = value; optimistic.update(value); },
     t: (key, vars) => translate({ locale: { language: lang } }, key, vars),
     navigate: (route) => routes.push(route) };
+  optimistic.onChange = () => ctx.redraw?.();
+  return ctx;
 }
 
 function mount(ctx = ctxOf()) {
@@ -315,4 +323,37 @@ test("every link and button of Home is at least 44 x 44", () => {
   }
   assert.match(rule(".home .play"), /width:\s*44px;\s*height:\s*44px/);
   assert.match(rule(".home .all-off, .home .rc"), /min-height:\s*64px/);
+});
+
+test("snappy: All off shows every light off at once (the tiles and the chip), confirmed by Home Assistant", () => {
+  const ctx = ctxOf();
+  const el = mount(ctx);
+  ctx.redraw = () => home.update(el, ctx);
+  const tiles = [...el.querySelectorAll(".quick pocket-light-tile")];
+  assert.ok(tiles[0].shadowRoot.querySelector(".tile").classList.contains("on"));
+  el.querySelector(".quick .all-off").click();
+  assert.ok(tiles.every((tile) => !tile.shadowRoot.querySelector(".tile").classList.contains("on")), "off at once");
+  assert.equal(text(el.querySelector('[data-chip="lights_on"] .v')), "0");
+  assert.match(text(el.querySelector(".quick .all-off")), /None on/);
+  const states = Object.fromEntries(Object.entries(ctx.raw.states).map(([id, s]) =>
+    [id, id.startsWith("light.") ? { ...s, state: "off" } : s]));
+  ctx.hass = { ...ctx.raw, states };
+  home.update(el, ctx);
+  assert.ok(!ctx.optimistic.pending("light.living_room"));
+  assert.equal(text(el.querySelector('[data-chip="lights_on"] .v')), "0");
+});
+
+test("snappy: play/pause flips at once; a failed call flips it back with the toast", async () => {
+  const ctx = ctxOf();
+  ctx.raw.callService = () => Promise.reject(new Error("no"));
+  const el = mount(ctx);
+  ctx.redraw = () => home.update(el, ctx);
+  const errors = [];
+  el.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
+  const play = el.querySelector(".now button.play");
+  play.click();
+  assert.equal(play.getAttribute("aria-label"), "Play");
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(play.getAttribute("aria-label"), "Pause");
+  assert.deepEqual(errors, ["card.pocket.error.media"]);
 });

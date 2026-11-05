@@ -63,15 +63,38 @@ test("first and last room: no wrap, the page stays", () => {
   assert.deepEqual(last.routes, []);
 });
 
-test("a drag on a light tile is the tile's: no room change", () => {
+test("a swipe on a light tile's body changes the area and no light; its strip and the scene row keep theirs", () => {
   const ctx = ctxOf();
   const el = mount(ctx);
   const tile = el.querySelector("pocket-light-tile");
-  swipe(el, [300, 200], [150, 200], tile);
-  assert.deepEqual(ctx.routes, []);
-  const scenes = el.querySelector(".scenes");
-  swipe(el, [300, 200], [150, 200], scenes.querySelector("button"));
-  assert.deepEqual(ctx.routes, []);
+  tile.shadowRoot.querySelector(".bar").getBoundingClientRect = () => ({ left: 0, width: 200 });
+  swipe(el, [300, 200], [150, 200], tile.shadowRoot.querySelector(".t1"));
+  assert.deepEqual(ctx.routes, ["#/area/bedroom"], "the body's sideways move is the page's");
+  assert.deepEqual(ctx.raw.calls, [], "no light changed");
+  swipe(el, [180, 200], [60, 200], tile.shadowRoot.querySelector(".bar"));
+  assert.deepEqual(ctx.routes, ["#/area/bedroom"], "the strip's drag is the tile's");
+  assert.deepEqual(ctx.raw.calls, [["light", "turn_on", { entity_id: "light.living_room", brightness_pct: 30 }]]);
+  swipe(el, [300, 200], [150, 200], el.querySelector(".scenes button"));
+  assert.deepEqual(ctx.routes, ["#/area/bedroom"], "the scene row scrolls");
+});
+
+test("swipes work in both directions on every area, the Outside included, with no wrap", () => {
+  const cfg = outsideConfig();
+  const ids = ["living_room", "bedroom", "office", "hall", "outside"];
+  ids.forEach((id, i) => {
+    const ctx = ctxOf({ cfg, routeId: id });
+    const el = mount(ctx);
+    swipe(el, [300, 200], [150, 230]);      // a thumb's arc: 150 wide, 30 tall
+    swipe(el, [100, 200], [250, 180]);
+    const want = [ids[i + 1], ids[i - 1]].filter(Boolean).map((next) => `#/area/${next}`);
+    assert.deepEqual(ctx.routes, want, id);
+  });
+});
+
+test("the page fills the screen above the bar: a swipe below short content is the page's", () => {
+  const css = mount().querySelector("style").textContent;
+  assert.match(css, /\.room \{[^}]*min-height: calc\(100vh - var\(--header-height, 56px\) - var\(--bar, 64px\) - 28px\)/);
+  assert.match(css, /\.room \{[^}]*min-height: calc\(100dvh - var\(--header-height, 56px\)[^}]*var\(--safe, 0px\) - 28px\)/);
 });
 
 test("the page leaves vertical scroll to the browser", () => {
@@ -330,4 +353,52 @@ test("the Outside's readings in range are good; the Outside is the last swipe st
   const hallEl = room.render(hallCtx);
   swipe(hallEl, [300, 200], [200, 210]);
   assert.deepEqual(hallCtx.routes, ["#/area/outside"]);
+});
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test("snappy: play/pause and the group tile show their new state at once, before Home Assistant reports it", () => {
+  const ctx = ctxOf({ routeId: "living_room" });
+  const el = mount(ctx);
+  ctx.redraw = () => room.update(el, ctx);
+  const play = el.querySelector(".media .play");
+  play.click();
+  assert.equal(play.getAttribute("aria-label"), "Play", "paused at once");
+  const tile = el.querySelector(".group pocket-light-tile");
+  tile.click();
+  assert.ok(!tile.shadowRoot.querySelector(".tile").classList.contains("on"), "the lights show off at once");
+  el.querySelector(".members-toggle").click();
+  const members = [...el.querySelectorAll(".members pocket-light-tile")];
+  assert.ok(members.every((m) => !m.shadowRoot.querySelector(".tile").classList.contains("on")), "its members follow");
+  // Home Assistant reports the new states: they stay, now as reported.
+  const states = { ...ctx.raw.states,
+    "media_player.living_room_speaker": st("paused", ctx.raw.states["media_player.living_room_speaker"].attributes),
+    "light.living_room": st("off", { entity_id: ["light.living_room_ceiling", "light.living_room_lamp"] }),
+    "light.living_room_ceiling": st("off") };
+  ctx.hass = { ...ctx.raw, states };
+  room.update(el, ctx);
+  assert.ok(!ctx.optimistic.pending("media_player.living_room_speaker"));
+  assert.ok(!ctx.optimistic.pending("light.living_room"));
+  assert.equal(play.getAttribute("aria-label"), "Play");
+});
+
+test("snappy: a pressed scene is marked until it runs; silence rolls back with the toast", async () => {
+  const ctx = ctxOf({ routeId: "living_room", timeoutMs: 30 });
+  const el = mount(ctx);
+  ctx.redraw = () => room.update(el, ctx);
+  const errors = [];
+  el.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
+  const [relax, bright] = el.querySelectorAll(".scenes button");
+  relax.click();
+  bright.click();
+  assert.ok(relax.classList.contains("sent") && bright.classList.contains("sent"));
+  assert.equal(relax.getAttribute("aria-busy"), "true");
+  ctx.hass = { ...ctx.raw, states: { ...ctx.raw.states, "scene.living_room_relax": st("2026-11-05T20:00:00") } };
+  room.update(el, ctx);
+  assert.ok(!relax.classList.contains("sent"), "Home Assistant reported that it ran");
+  el.querySelector(".media .play").click();
+  await wait(50);
+  assert.ok(!bright.classList.contains("sent"));
+  assert.equal(el.querySelector(".media .play").getAttribute("aria-label"), "Pause", "no report: back as it was");
+  assert.deepEqual(errors, ["card.pocket.error.scene", "card.pocket.error.media"]);
 });

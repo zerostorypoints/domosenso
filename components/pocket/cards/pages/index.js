@@ -3,8 +3,11 @@
 // The page contract: a page module exports
 //   render(ctx) -> HTMLElement   builds the page once, when its route is entered
 //   update(el, ctx)              refreshes that element on every hass update
-// with ctx = {hass, config, t, navigate, lang, offline, routeId, settings, saveSettings}:
-//   hass      Home Assistant's object as the card gets it
+// with ctx = {hass, optimistic, config, t, navigate, lang, offline, routeId, settings, saveSettings}:
+//   hass      Home Assistant's object, with the states the controls just sent shown over the
+//             reported ones (lib/optimistic.js view)
+//   optimistic  the store every control sends through: store.send(el, ctx.hass, {domain,
+//             service, data, errorKey, expect}); store.pending(id)
 //   config    the card config (rooms, outside, weather, thresholds)
 //   t(key, vars)   the translation of card.pocket.* in the dashboard's language
 //   navigate(route)  goes to a route ("#/areas", "#/area/<id>") without a reload

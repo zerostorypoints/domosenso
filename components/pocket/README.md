@@ -29,12 +29,17 @@ the cards from the states and climate-air's limits; the messages are translation
 
 ### Gestures
 
-- A tap toggles a light. A tile for several lights switches all of them off when any is on, else
-  all on.
-- A horizontal drag sets its brightness. It never turns a light off: it floors at 1 %.
-- A long press opens Home Assistant's details for the light.
-- A horizontal swipe on an area page goes to the next or previous area, replacing the history
-  entry: Back returns to Areas, not through every area.
+- A tap on a light tile switches the light: off when it shows on, else on. A tile for several
+  lights switches all of them off when any is on, else all on.
+- The brightness strip under the tile (44 px tall) is a slider: a horizontal drag or a tap sets
+  the brightness. It never turns a light off: it floors at 1 %. A light without a dimmer has none.
+- A long press on a light tile opens Home Assistant's details for the light.
+- A horizontal swipe on an area page goes to the next or previous area (no wrap), replacing the
+  history entry: Back returns to Areas, not through every area. It starts anywhere on the page, a
+  light tile too, but on a brightness strip or the scene row.
+- Every control (lights, All off, scenes, play/pause) shows its new state at once and keeps it
+  until Home Assistant reports it; a call that fails, or no report within 4 s, puts the last
+  reported state back with a short message.
 - Nothing in the pocket scrolls sideways and the bar takes no drags, so neither a sideways drag
   nor iOS's rubber band moves the bar or the page; HA's pull to refresh from the top stays.
 

@@ -1,8 +1,5 @@
-// Small helpers the Rooms tab and the room page share: patching the DOM without rebuilding it,
-// numbers in the dashboard's language, a service call whose failure becomes the shell's toast,
-// and the facts about a room both pages show (its lights, how many are on, whether it plays).
-
-import { reportError } from "./report.js";
+// Small helpers the pages share: patching the DOM without rebuilding it, numbers in the
+// dashboard's language, and the facts about a room both pages show (its lights, how many are on, whether it plays).
 
 const NUMBER_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
 const formats = new Map();     // one Intl.NumberFormat per language and number of digits
@@ -52,17 +49,6 @@ export function pluralOf(ctx, count) {
   const locale = NUMBER_LOCALES[ctx.lang] ?? "en-GB";
   if (!pluralRules.has(locale)) pluralRules.set(locale, new Intl.PluralRules(locale));
   return pluralRules.get(locale).select(count);
-}
-
-// A service call whose failure becomes the shell's toast (lib/report.js).
-export function call(root, hass, domain, service, data, errorKey) {
-  let result;
-  try {
-    result = hass.callService(domain, service, data);
-  } catch (err) {
-    result = Promise.reject(err);
-  }
-  result?.catch?.(() => reportError(root, errorKey));
 }
 
 export const lightsOf = (room) => [room.lights ?? []].flat().filter(Boolean);

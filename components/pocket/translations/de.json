@@ -49,7 +49,8 @@
         "pause": "Pause"
       },
       "light": {
-        "off": "Aus"
+        "off": "Aus",
+        "brightness": "Helligkeit {name}"
       },
       "format": {
         "temperature": "{value}°",

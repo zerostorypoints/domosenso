@@ -10,14 +10,16 @@
 //   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
 //     an All off tile;
 //   - a sideways strip of the rooms, each opening its room page.
-// render() builds every element once; update() only patches text and attributes (the pills are
+// Every control sends through ctx.optimistic (lib/optimistic.js): All off shows every light off at
+// once (the tiles and the lights-on chip too), play/pause its new state, before Home Assistant
+// reports them. render() builds every element once; update() only patches text and attributes (the pills are
 // rebuilt only when the list of items changes), so a scroll or a drag survives hass updates.
 
 import { attention } from "../lib/attention.js";
 import { numberOf } from "../lib/level.js";
 import { formatDate } from "../lib/i18n.js";
 import {
-  GONE, el, setText, setAttr, setLine, number, temperature, percent, call, lightsOf, lightsOn, lightsOnIn,
+  GONE, el, setText, setAttr, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
@@ -124,16 +126,20 @@ export function render(ctx) {
   const now = parts.now;
   now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
   now.querySelector(".play").addEventListener("click", () => {
-    const { hass, offline } = parts.ctx;
+    const { hass, offline, optimistic } = parts.ctx;
     const player = parts.player;
-    if (offline || !player || !hass?.states?.[player] || GONE.has(hass.states[player].state)) return;
-    call(root, hass, "media_player", "media_play_pause", { entity_id: player }, "card.pocket.error.media");
+    const state = player ? hass?.states?.[player] : undefined;
+    if (offline || !state || GONE.has(state.state)) return;
+    optimistic.send(root, hass, { domain: "media_player", service: "media_play_pause", data: { entity_id: player },
+      errorKey: "card.pocket.error.media",
+      expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });
   });
 
   const quick = root.querySelector(".quick");
   for (const room of withLights) {
     const tile = document.createElement("pocket-light-tile");
     tile.t = ctx.t;
+    tile.optimistic = ctx.optimistic;
     tile.config = { name: room.name, entities: lightsOf(room) };
     parts.tiles.push(tile);
     quick.append(tile);
@@ -142,9 +148,11 @@ export function render(ctx) {
     `<span class="ic"><ha-icon icon="mdi:lightbulb-off-outline"></ha-icon></span><span class="t1"></span> <span class="t2"></span>`);
   allOff.type = "button";
   allOff.addEventListener("click", () => {
-    const { hass, offline, config } = parts.ctx;
+    const { hass, offline, config, optimistic } = parts.ctx;
     if (offline || !hass?.callService) return;
-    call(root, hass, "light", "turn_off", { entity_id: allLights(config) }, "card.pocket.error.light");
+    const lights = allLights(config);
+    optimistic.send(root, hass, { domain: "light", service: "turn_off", data: { entity_id: lights },
+      errorKey: "card.pocket.error.light", expect: Object.fromEntries(lights.map((id) => [id, { state: "off" }])) });
   });
   parts.allOff = allOff;
   quick.append(allOff);
@@ -272,6 +280,7 @@ function updateQuick(parts, ctx) {
   setText(parts.quickTitle, ctx.t("card.pocket.home.quick"));
   for (const tile of parts.tiles) {
     tile.t = ctx.t;
+    tile.optimistic = ctx.optimistic;
     tile.offline = ctx.offline;
     tile.hass = ctx.hass;
   }

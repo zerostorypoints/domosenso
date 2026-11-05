@@ -1,6 +1,7 @@
 // The demo home's rooms (examples/demo-home/home.inputs.yaml) as the dashboard template passes
 // them, its states, and a ctx on the page contract (pages/index.js): shared by the page tests.
 import { createT } from "../lib/i18n.js";
+import { createOptimistic } from "../lib/optimistic.js";
 import en from "../../translations/en.json" with { type: "json" };
 import de from "../../translations/de.json" with { type: "json" };
 import pl from "../../translations/pl.json" with { type: "json" };
@@ -63,12 +64,19 @@ export function hassOf(states = baseStates()) {
     callService: (d, s, data) => { calls.push([d, s, data]); return Promise.resolve(); } };
 }
 
-export function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, routeId } = {}) {
+// As the shell's: ctx.hass is the store's view of the raw hass (ctx.raw), and ctx.redraw (set by
+// a test) runs on each send or rollback.
+export function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, routeId, timeoutMs } = {}) {
   const routes = [];
   const options = [];
-  return { routes, options, hass, config: cfg, lang, offline, routeId,
+  const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});
+  const ctx = { routes, options, raw: hass, optimistic, config: cfg, lang, offline, routeId,
+    get hass() { return optimistic.view(ctx.raw); },
+    set hass(value) { ctx.raw = value; optimistic.update(value); },
     t: (key, vars) => translate({ locale: { language: lang } }, key, vars),
     navigate: (route, opts) => { routes.push(route); if (opts) options.push(opts); } };
+  optimistic.onChange = () => ctx.redraw?.();
+  return ctx;
 }
 
 export const text = (el) => el.textContent.replace(/\s+/g, " ").trim();

@@ -8,7 +8,10 @@
 //     Settings, at most five;
 //   - a thin banner while Home Assistant is not connected (pages then get ctx.offline = true);
 //   - a short toast above the bar when an action fails: a page or tile fires pocket-error with a
-//     translation key (lib/report.js), the shell shows its text for TOAST_MS.
+//     translation key (lib/report.js), the shell shows its text for TOAST_MS;
+//   - snappy controls: one optimistic store (lib/optimistic.js) for every page; pages get hass
+//     with the states their controls expect over the reported ones (ctx.hass) and the store
+//     (ctx.optimistic); a send or a rollback redraws the page, each hass drops what it reports.
 // Navigation sets location.hash: no reload, and the browser's back button returns.
 //
 //   type: custom:pocket-app
@@ -24,6 +27,7 @@ import { areasOf } from "./lib/areas.js";
 import { DEFAULTS, readSettings, saveSettings, withDefaults } from "./lib/settings.js";
 import { setText } from "./lib/page-kit.js";
 import { applyTheme } from "./lib/theme.js";
+import { createOptimistic } from "./lib/optimistic.js";
 import { pages } from "./pages/index.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -89,6 +93,9 @@ class PocketApp extends HTMLElement {
     this._settings = withDefaults({});
     this._saveQueue = Promise.resolve();
     this._savesApplied = 0;
+    // A failure or a silence after the page that sent it has gone: the toast still shows.
+    this._optimistic = createOptimistic({ report: (_el, key) => this._showToast(key) });
+    this._optimistic.onChange = () => this._route();
   }
 
   setConfig(config) {
@@ -102,6 +109,7 @@ class PocketApp extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._optimistic.update(hass);
     if (!this._root) this._build();
     const retry = this._settingsRetry && hass?.connected !== false;
     if (!this._settingsAsked || retry) this._loadSettings(hass);
@@ -160,7 +168,8 @@ class PocketApp extends HTMLElement {
   // The page contract's ctx (pages/index.js), built fresh for each render and update.
   _ctx() {
     return {
-      hass: this._hass,
+      hass: this._optimistic.view(this._hass),
+      optimistic: this._optimistic,
       config: this._config,
       t: (key, vars) => this._t(key, vars),
       navigate: (route, options) => this._navigate(route, options),
