@@ -29,20 +29,24 @@ Principles, in order when they conflict:
 ## 2. Navigation model
 
 - **Routes in the hash** (`lib/router.js`): `#/`, `#/systems`, `#/areas`, `#/area/<id>`,
+  `#/controls[/status]`,
   `#/climate`, `#/media[/<id>]`, `#/power`, `#/plants`, `#/scenes`, `#/system`, `#/floorplan[/<id>]`,
   `#/settings[/<panel>]`. Back and deep links work; nothing reloads.
 - **Levels:**
   - Level 0: **Home**, in two views switched under the title: **Overview** (what is happening now and
     quick actions) and **Systems** (one tile per aspect, the way into every page).
-  - Level 1: a **page** per aspect (Areas, Climate, Media, Power, Plants, Scenes, System, Floor plan,
-    Settings).
+  - Level 1: a **page** per aspect (Areas, Controls, Climate, Media, Power, Plants, Scenes, System,
+    Floor plan, Settings). A page with two faces of the same aspect has views switched under its
+    title, never two pages: Home (Overview | Systems), Controls (Controls | Status).
   - Level 2: an **area** page or a **panel** (Settings → Comfort ranges, About), with a back button
     in its title row.
   - Level 3: a **sheet** over the page (details, pickers); sheets may stack (Back returns).
 - **The bar** (bottom, fixed): Home and Settings always, up to three pages the person picks. It is a
   quick switch, not the map of the app: every page is also reached from Systems.
 - **Back:**
-  - A page reached from Systems that is not on the person's bar has a back arrow to Systems.
+  - **Every page opened from Systems** has a back arrow to Systems beside ☰, on the bar or not; it
+    goes back through history, so the phone's own back agrees. A page off the bar has it however
+    it was reached. A page opened from its bar tab has none (the bar is the way).
   - An area, a panel, a floor plan opened from an area have their own back in the title row.
   - The phone's Back closes the open sheet first.
   - A switch between Home's two views replaces the history entry (Back leaves Home).
@@ -119,7 +123,18 @@ Pickers are sheets too (player, input, layers, scenes): rows of 48 px with a swi
 Rows of at least 48 px (52 in detail sheets), name left (wraps), value right, a level dot first
 when the row has a level. A row that opens something is a `button`.
 
-### 4.6 Controls
+### 4.6 Controls page (the Ramka's controls and status)
+
+- **Controls** view: Music (the player that plays: compact, previous / play-pause / next, volume
+  down / up, power), Covers by area (open / stop / close, each only when supported; all open / all
+  closed), Timers (time left ticking, start or pause, cancel), Lights (a tile per room, All off).
+  Each section only when the home has something for it.
+- **Status** view: read-only equal tiles of covers, doors and windows, lights per room, locks; an
+  active one (open, on, unlocked) in the accent. A tile of something Controls acts on switches to
+  Controls; a door or window opens its timeline.
+- What the Ramka has for a wall only (calendar button, near toggle, Exit) is not on the phone.
+
+### 4.7 Controls (elements)
 
 - Light tile (`<pocket-light-tile>`): tap toggles, drag sets brightness; a group counts its members.
 - Segmented control: Home's views, Media | Sound, trend periods, Appearance. Not a drop-down when
@@ -203,3 +218,6 @@ when the row has a level. A row that opens something is a `button`.
 | HA's header hidden on a phone, ☰ by the title, no edge swipe for the menu | space on the screen, and the edge is the way back |
 | Open at start is per device | HA's default dashboard is per user; a phone should not change the desktop |
 | Scenes chosen per person from every HA scene; no reset | HA scenes have no "off"; a reset was not wanted for now |
+| Controls and Status as views of one page | the same things, to act on or to read; the Ramka's two screens |
+| Back from every page opened from Systems | a page on the bar opened from Systems still came from Systems |
+| A card that sizes itself is never put in a fixed-height box | the floor plan's map bar cut the plan |

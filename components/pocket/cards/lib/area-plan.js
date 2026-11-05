@@ -29,7 +29,9 @@ export const PLAN_STYLE = `
   .area-plan .layers[hidden] { display: none; }
   .area-plan .open, .area-plan .layers { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; border: 0; background: none;
                      font: inherit; font-size: 13px; color: var(--acc); cursor: pointer; }
-  .area-plan .box { height: 280px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+  /* The card sizes itself: its plan at least 280 px (floorplan lib/style.js) and, with a map shown, its
+     bar of map choices and the scale above it; a fixed height would cut the plan. */
+  .area-plan .box { min-height: 280px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
   .area-plan .open:focus-visible, .area-plan .layers:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 `;
 
