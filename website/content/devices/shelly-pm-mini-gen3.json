@@ -3,7 +3,7 @@
   "title": "Shelly PM Mini Gen3",
   "summary": "A small in-wall power meter behind the player's socket, read locally.",
   "sourcePath": "devices/shelly-pm-mini-gen3.md",
-  "sourceCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00",
+  "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
   "components": [
     "media"
   ],

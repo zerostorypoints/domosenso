@@ -65,6 +65,17 @@
       ]
     },
     {
+      "id": "gate-remote",
+      "version": "0.1.0",
+      "tag": "gate-remote/0.1.0",
+      "commit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home.",
+        "Fixed-code handsets only: two presses of a rolling-code handset give different frames, and the node cannot send them.",
+        "Tested in one home with an 868.3 MHz handset, using that home’s own firmware, the precursor of these packages; the released ESPHome packages are config- and compile-checked only. 433 MHz with the CC1101 (E07-M1101D) module is untested."
+      ]
+    },
+    {
       "id": "lights",
       "version": "0.3.0",
       "tag": "lights/0.3.0",
@@ -147,5 +158,5 @@
       "title": "Ramka photo slideshow"
     }
   ],
-  "documentationCommit": "1578932c0a7013b73016b110ca10acc5eda2dc00"
+  "documentationCommit": "10364b429c878830af61f3da2256fff98d0dcf84"
 }

@@ -564,6 +564,73 @@
       "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/floorplan/UPGRADE.md"
     },
     {
+      "id": "gate-remote",
+      "version": "0.1.0",
+      "sourceTag": "gate-remote/0.1.0",
+      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "summary": "A garage door or gate opened from Home Assistant by sending its own handset's fixed code from an ESP32 and a CC1101",
+      "requirements": [
+        {
+          "kind": "gate-handset",
+          "protocol": "fixed code, ASK/OOK, 300-928 MHz",
+          "note": "the handset the home already uses; captured once, never changed; rolling codes are out of scope"
+        },
+        {
+          "kind": "esp32-board",
+          "recommend": [
+            "m5stack-atom-lite"
+          ],
+          "count": "1 per node"
+        },
+        {
+          "kind": "radio-transceiver",
+          "recommend": [
+            "m5stack-module-cc1101",
+            "cc1101"
+          ],
+          "note": "the module's band has to match the handset: m5stack-module-cc1101 for 868 MHz (tested), cc1101 (E07-M1101D) for 433 MHz (inference)"
+        }
+      ],
+      "integrations": [
+        {
+          "name": "esphome",
+          "source": "core",
+          "setup": "flash the capture factory image over USB, capture the handset, then flash the home's device file and adopt the node in Settings → Devices & services"
+        }
+      ],
+      "optionalRequirements": [],
+      "installationRole": "installs",
+      "testedHa": [
+        "2026.9.2"
+      ],
+      "testedEspHome": [
+        "2026.9.1"
+      ],
+      "testedHomes": 1,
+      "host": {
+        "installs": [
+          "container",
+          "haos"
+        ],
+        "ha_min": "2026.9"
+      },
+      "localOnly": true,
+      "limitations": [
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home.",
+        "Fixed-code handsets only: two presses of a rolling-code handset give different frames, and the node cannot send them.",
+        "Tested in one home with an 868.3 MHz handset, using that home’s own firmware, the precursor of these packages; the released ESPHome packages are config- and compile-checked only. 433 MHz with the CC1101 (E07-M1101D) module is untested."
+      ],
+      "inputs": [
+        {
+          "name": "nodes",
+          "type": "list[{name: slug, friendly_name?: string, area?: area_name, frequency: frequency, gates: list[{slug, label}], repeat?: int, gap_us?: int}]",
+          "required": true
+        }
+      ],
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/10364b429c878830af61f3da2256fff98d0dcf84/components/gate-remote",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/components/gate-remote/UPGRADE.md"
+    },
+    {
       "id": "lights",
       "version": "0.3.0",
       "sourceTag": "lights/0.3.0",
