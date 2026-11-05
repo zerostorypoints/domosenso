@@ -143,8 +143,8 @@
         "Verify open, stop and close, handset behavior and existing wind protection before using automations."
       ],
       "id": "awnings",
-      "version": "0.3.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.4.0",
+      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "evidencePaths": [
         "components/awnings/component.yaml"
       ],
@@ -826,8 +826,8 @@
         "Verify group state and brightness; configure Ramka lights inputs for tablet controls."
       ],
       "id": "lights",
-      "version": "0.3.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.4.0",
+      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "evidencePaths": [
         "components/lights/component.yaml"
       ],
@@ -1465,7 +1465,7 @@
       "compatibility": [
         {
           "id": "awnings",
-          "version": "0.3.0"
+          "version": "0.4.0"
         }
       ],
       "body": "# CC1101 radio module: wiring and setup\n\nA CC1101 433 MHz transceiver, the Ebyte **E07-M1101D** with an SMA antenna socket, on an M5Stack\nAtom Lite that runs ESPSomfy-RTS: the `awnings` component's node, which sends and hears Somfy RTS.\nDevice file: [cc1101.yaml](https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/cc1101.yaml).\n\n## Wiring\n\n![E07-M1101D on an M5Stack Atom Lite: eight wires from G, 3V3, G22, G21, G33, G23, G19, G25 to module pins 1 to 8, and a 433 MHz antenna on the SMA socket](/wiring/cc1101-atom-lite.svg)\n\n| E07-M1101D pin | signal | Atom Lite (bottom header) | wire | ESPSomfy-RTS, Radio page |\n|---|---|---|---|---|\n| 1 | GND | G | black | |\n| 2 | VCC | 3V3 (**never 5V**) | red | |\n| 3 | GDO0 | G22 | purple | TX 22 |\n| 4 | CSN | G21 | orange | CSN 21 |\n| 5 | SCK | G33 | yellow | SCLK 33 |\n| 6 | MOSI | G23 | blue | MOSI 23 |\n| 7 | MISO | G19 | green | MISO 19 |\n| 8 | GDO2 | G25 | white | RX 25 |\n\nPin 1 has the square pad. The pinout is the one the ESPSomfy-RTS wiki gives for this module; it is\nthe wiring of the first home's node. The Atom's 5V and the Grove port stay free. Another CC1101\nboard (a different maker) can number its pins differently: go by the signal names printed on it,\nnot by the numbers.\n\n## The antenna\n\n- Screw a **433 MHz** antenna onto the SMA socket before the node transmits. A CC1101 sending into\n  an open socket can damage its output stage (general radio practice, not seen here).\n- The antenna decides what the node hears. One home's wind sensor reached the node at −83 to\n  −86 dBm and only part of its reports arrived, with gaps of hours (`components/awnings/README.md`).\n  Stand the antenna upright and move the node, or the antenna on a short cable, towards the\n  sensor and the awnings; keep it clear of metal.\n\n## Firmware and first start\n\nESPSomfy-RTS is a release binary flashed over USB with `esptool`, then set up in its own web\npage: the network, then on the Radio page the pins of the right-hand column above, then MQTT and a\nvirtual remote per awning. The commands and steps: `components/awnings/README.md`, \"Flashing the\nnode\". The radio answers when `GET http://<node>/controller` shows\n`transceiver.config.radioInit: true`; `false` means the CC1101 did not answer on SPI with these pins\n(a wire on the wrong socket, or VCC missing).\n\n## When it does not work\n\n| what you see | likely cause |\n|---|---|\n| `radioInit: false` | a wire on the wrong socket, the pins in ESPSomfy's Radio page not matching the wiring, or VCC not on 3V3 |\n| awnings do not move, the node logs sending | no antenna, or the virtual remote not paired with the awning |\n| the node hears the handsets only sometimes | reception: antenna position and distance |\n\nThe second and third rows are inference from how RTS works, apart from reception, which the first\nhome saw.",
@@ -1527,7 +1527,7 @@
       "compatibility": [
         {
           "id": "lights",
-          "version": "0.3.0"
+          "version": "0.4.0"
         }
       ],
       "body": "## Connect existing lighting\n\nSet up the bridge and pair the bulbs using the manufacturer’s setup process. Organize lights into room groups, then add the Hue integration in Home Assistant.\n\n## Verify the group\n\nCheck that the expected room entity responds to on/off and brightness changes before mapping it into DomoSenso. Ramka can show controls for configured light entities. No additional circuit wiring is specified by this component.\n\n## Setup references\n\n- [Philips Hue setup and room groups — Home Assistant](https://www.home-assistant.io/integrations/hue/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
@@ -1574,7 +1574,7 @@
         },
         {
           "id": "awnings",
-          "version": "0.3.0"
+          "version": "0.4.0"
         },
         {
           "id": "climate-air",
