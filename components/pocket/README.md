@@ -6,11 +6,24 @@ threshold helpers. One YAML dashboard per language with one `panel` view holding
 
 ## The 0.1.0 prototype
 
-- **Home**: attention pills, readings (inside and outside, with the air score and a lights-on
-  chip), Sections (a tile per page the home has, on the bar or not: Areas, Climate, Media, Power,
-  Plants, Floor plan, each with a headline, a status and an amber or red dot when it is worth a
-  look by the levels its page uses; a tap opens the page), the weather in one row (with a `weather` entity: the condition now, today's high / low
-  and chance of rain, opening the forecast sheet), now playing, quick light tiles and a rooms strip.
+- **Home** in two views, switched under the title: **Overview** (`#/`): attention pills, widgets
+  (inside and outside, the air score, lights on, power now and plants, each opening its details or
+  page), the weather in one row (with a `weather` entity: the condition now, today's high / low and
+  chance of rain, opening the forecast sheet), now playing (whatever plays anywhere, else the first
+  area's player) and quick light tiles. **Systems** (`#/systems`): the same pills and a tile per
+  aspect the home has, on the bar or not (Areas, Climate, Media, Power, Plants, Scenes, Floor plan,
+  System), each with a headline, a status and an amber or red dot when it is worth a look by the
+  levels its page uses; a tap opens the page: from the high level down to the details.
+- **Scenes** (`#/scenes`): the scenes a person keeps at hand, by area, one tap each; "Choose" lists
+  every scene Home Assistant has (found by area through the registries) with a switch each. The
+  choice is per person; until one is made, the scenes the home inputs name.
+- **System** (`#/system`, from Systems): the last automatic backup (amber after 8 days, red after
+  30 or when the last attempt failed), the updates waiting (each opening HA's more-info), the
+  devices that read nothing, and for an administrator a link to HA's settings.
+- **The header on a phone**: the dashboard asks kiosk-mode (a HACS plugin, installed by hand; the
+  Ramka uses it too) to hide Home Assistant's header up to 932 px wide; a menu button left of every
+  page's title opens HA's sidebar. Without kiosk-mode the header stays; on a wider screen HA's header
+  is as HA draws it.
 - **Climate & air** (`#/climate`): an advice card only while a limit is crossed now (a poor CO₂ or
   VOC: open a window; a poor air reading by name; a room too cold, warm, dry or humid), squares for
   Inside, Outside and Air, the weather forecast as a strip (today and the next four days, from
