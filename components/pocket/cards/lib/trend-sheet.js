@@ -27,11 +27,18 @@
 // statesOf; statistics hold numbers only, so 24 h and 7 d alone), "on" in the accent, any other
 // state muted, unavailable or unknown left empty; the value is the state as Home Assistant words
 // it, and the note how long it was on in the period.
+//
+// In a dashboard (Home Assistant's card helpers, lib/ha-chart.js) the chart itself is Home
+// Assistant's own card, as on the Ramka: history-graph, or statistics-graph with the mean and its
+// min / max for 7 d and 30 d of a sensor with statistics; one card per range, made when the range is
+// first shown. The SVG line and timeline below are the fallback without the helpers (and what the
+// tests draw); the value, the band and the span stay Pocket's either way.
 
 import { level, numberOf } from "./level.js";
 import { comfortOf } from "./areas.js";
 import { RANGES, STATE_RANGES, seriesOf, statesOf } from "./history.js";
 import { sensorValue } from "./sensors.js";
+import { haChartConfig, haCharts, mountHaChart } from "./ha-chart.js";
 import { formatDate } from "./i18n.js";
 import { el, setAttr, setText, number, temperature, percent } from "./page-kit.js";
 
@@ -67,6 +74,10 @@ export const TREND_STYLE = `
                                             box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
   .trend .seg button:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
   .trend .chart { position: relative; height: 170px; }
+  .trend .chart[hidden], .trend .axis[hidden], .trend .ha-chart[hidden] { display: none; }
+  /* Home Assistant's chart card, flat in the sheet: no card frame of its own. */
+  .trend .ha-chart { min-height: 220px; margin: 0 -8px; --ha-card-background: transparent; --ha-card-border-width: 0;
+                     --ha-card-box-shadow: none; --ha-card-border-radius: 0; }
   .trend svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .trend svg[hidden], .trend .band[hidden], .trend .state[hidden] { display: none; }
   .trend .band { fill: var(--ok); opacity: .12; }
@@ -120,7 +131,8 @@ export function render(ctx, spec) {
       </svg>
       <p class="state" role="status"></p>
     </div>
-    <div class="axis"><span class="from"></span><span class="to"></span></div>`;
+    <div class="axis"><span class="from"></span><span class="to"></span></div>
+    <div class="ha-chart" hidden></div>`;
   const parts = {
     spec, ctx, range: DEFAULT_RANGE, data: {}, chartKey: null,
     title: root.querySelector(".title"), where: root.querySelector(".where"),
@@ -137,6 +149,12 @@ export function render(ctx, spec) {
       load(root, parts);
       update(root, parts.ctx);
     });
+  }
+  if (haCharts()) {
+    parts.ha = { host: root.querySelector(".ha-chart"), charts: {} };
+    root.querySelector(".chart").hidden = true;
+    root.querySelector(".axis").hidden = true;
+    parts.ha.host.hidden = false;
   }
   root._trend = parts;
   load(root, parts);
@@ -178,6 +196,7 @@ export function update(root, ctx) {
     setAttr(button, "aria-pressed", String(button.dataset.range === parts.range));
   }
 
+  syncHaChart(parts, ctx);
   if (spec.timeline) {
     updateTimeline(parts, ctx);
     return;
@@ -203,6 +222,23 @@ export function update(root, ctx) {
   }
   setText(parts.note, notes.join(" · "));
   drawChart(parts, ctx, data, band);
+}
+
+// Home Assistant's chart for the range shown: made once per range, in its own box under the host,
+// the others' boxes hidden; each is handed hass on every update.
+function syncHaChart(parts, ctx) {
+  const ha = parts.ha;
+  if (!ha) return;
+  if (!ha.charts[parts.range]) {
+    const box = document.createElement("div");
+    ha.host.append(box);
+    const config = haChartConfig(parts.spec, parts.range, ctx.hass?.states?.[parts.spec.entity]);
+    ha.charts[parts.range] = { box, chart: mountHaChart(box, config, ctx.hass), config };
+  }
+  for (const [range, entry] of Object.entries(ha.charts)) {
+    entry.box.hidden = range !== parts.range;
+    if (range === parts.range) entry.chart.update(ctx.hass);
+  }
 }
 
 // A reading's value in words: temperature and humidity as everywhere in the pocket, anything else
