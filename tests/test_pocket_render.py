@@ -200,3 +200,10 @@ def test_listed_covers_contacts_locks_pass_with_names_in_the_language(tmp_path):
     assert living["locks"] == [{"entity": "lock.front_door", "name": "Front door"}]
     assert "contacts" not in living
     assert "covers" not in card["rooms"][1]
+
+
+def test_a_room_with_several_lights_passes_them_as_a_list(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["rooms"][0]["lights"] = ["light.ceiling", "light.reading_lamp"]
+    card = _card(_dashboard(tmp_path, home))
+    assert card["rooms"][0]["lights"] == ["light.ceiling", "light.reading_lamp"]
