@@ -35,6 +35,8 @@
 // rebuilt only when the list of items changes), so a scroll or a drag survives hass updates.
 
 import { attention, roomLevels } from "../lib/attention.js";
+import { issuesOf } from "../lib/safety.js";
+import { labelOf } from "../lib/controls.js";
 import { numberOf, toneOf } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
 import { checksSpec, lightsSpec, plantsSpec } from "../lib/detail-sheets.js";
@@ -289,21 +291,27 @@ function updatePills(parts, ctx) {
     const message = ctx.t(`card.pocket.reading.${item.reading}.${key}`);
     return { ...item, text: ctx.t("card.pocket.home.pill", { room: names[item.room], message }) };
   });
+  // Safety's issues (lib/safety.js) come first: an alarm, a siren, an open door, an unlocked lock
+  // matter before a reading. Each opens the Safety page.
+  const safety = issuesOf(ctx.hass, ctx.config).map((issue) => ({ level: "poor", safety: true, target: "#/safety",
+    text: ctx.t(`card.pocket.safety.issue.${issue.kind}`, { name: labelOf(ctx.hass, ctx.config, issue.id) }) }));
+  pills.unshift(...safety);
   const key = JSON.stringify([ctx.t("card.pocket.home.all_good"), pills.map((p) => [p.level, p.text, p.target])]);
   if (key === parts.pillsKey) return;
   parts.pillsKey = key;
-  const pill = (level, text) => {
+  const pill = (level, text, safety = false) => {
     const button = el("button", "pill", `<i class="dot ${level}"></i><span></span>`);
     button.type = "button";
     button.lastChild.textContent = text;
-    button.addEventListener("click", () => parts.ctx.openSheet?.(checksSpec(parts.ctx)));
+    button.addEventListener("click", () => (safety ? parts.ctx.navigate("#/safety")
+      : parts.ctx.openSheet?.(checksSpec(parts.ctx))));
     return listItem(button);
   };
   if (pills.length === 0) {
     parts.att.replaceChildren(pill("good", ctx.t("card.pocket.home.all_good")));
     return;
   }
-  parts.att.replaceChildren(...pills.map((item) => pill(item.level, item.text)));
+  parts.att.replaceChildren(...pills.map((item) => pill(item.level, item.text, item.safety)));
 }
 
 // A list item around a pill: the button keeps its own role.

@@ -24,7 +24,8 @@
         "settings": "Settings",
         "scenes": "Scenes",
         "system": "System",
-        "controls": "Controls"
+        "controls": "Controls",
+        "safety": "Safety"
       },
       "offline": "Not connected to Home Assistant. Controls are paused until it is back.",
       "home": {
@@ -112,7 +113,8 @@
         "media": "The player did not respond. Try again.",
         "scene": "The scene did not start. Try again.",
         "cover": "The cover did not move. Try again.",
-        "timer": "The timer did not follow. Try again."
+        "timer": "The timer did not follow. Try again.",
+        "safety": "The safety action did not go through."
       },
       "areas": {
         "title": "Areas",
@@ -561,6 +563,16 @@
             "other": "{count} timers running"
           },
           "quiet": "Nothing running"
+        },
+        "safety": {
+          "quiet": "All quiet",
+          "quiet_status": "Doors, alarms and who is home",
+          "issues": {
+            "one": "{count} to look at",
+            "few": "{count} to look at",
+            "many": "{count} to look at",
+            "other": "{count} to look at"
+          }
         }
       },
       "scenes": {
@@ -655,6 +667,45 @@
           "opening": "Opening"
         },
         "none": "Nothing to control in this home yet."
+      },
+      "safety": {
+        "quiet": "All quiet",
+        "none": "Nothing to watch here yet: no doors, windows, locks, covers, alarms, sirens or people in Home Assistant.",
+        "section": {
+          "alarms": "Alarms",
+          "contacts": "Doors and windows",
+          "locks": "Locks",
+          "covers": "Covers",
+          "siren": "Siren",
+          "presence": "Who is home"
+        },
+        "issue": {
+          "alarm": "{name}: alarm",
+          "siren": "{name} is sounding",
+          "open": "{name} open",
+          "unlocked": "{name} unlocked",
+          "cover": "{name} open"
+        },
+        "alarm": {
+          "detected": "Detected",
+          "clear": "Clear"
+        },
+        "siren": {
+          "on": "Sounding",
+          "off": "Quiet"
+        },
+        "not_reporting": "Not reporting",
+        "home": "Home",
+        "away": "Away",
+        "someone_in": "Someone in",
+        "lock": "Lock",
+        "unlock": "Unlock",
+        "confirm_unlock": "Tap again to unlock",
+        "close_all": "Close all",
+        "confirm_close_all": "Tap again to close all",
+        "test": "Test",
+        "confirm_test": "Tap again to sound it",
+        "stop": "Stop"
       }
     }
   }

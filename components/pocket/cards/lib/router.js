@@ -17,6 +17,7 @@ export const TABS = [
   { page: "power", route: "#/power", icon: "mdi:flash-outline" },
   { page: "plants", route: "#/plants", icon: "mdi:sprout-outline" },
   { page: "scenes", route: "#/scenes", icon: "mdi:palette-outline" },
+  { page: "safety", route: "#/safety", icon: "mdi:shield-home-outline" },
   { page: "floorplan", route: "#/floorplan", icon: "mdi:floor-plan" },
   { page: "settings", route: "#/settings", icon: "mdi:cog-outline" },
 ];
@@ -40,7 +41,7 @@ export function defaultBar(config) {
 export const FIXED_TABS = ["home", "settings"];
 export const MAX_TABS = 5;
 
-const SINGLE = new Set(["areas", "controls", "climate", "media", "power", "plants", "scenes", "system", "settings", "floorplan"]);
+const SINGLE = new Set(["areas", "controls", "climate", "media", "power", "plants", "scenes", "safety", "system", "settings", "floorplan"]);
 // Home's second view (pages/home-page.js): #/systems, the tiles per aspect.
 export const HOME_VIEWS = ["overview", "systems"];
 // The System page (pages/system-page.js): reached from Home's Systems, never on the bar.

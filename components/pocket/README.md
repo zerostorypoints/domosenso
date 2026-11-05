@@ -24,6 +24,15 @@ a pattern updates it.
   All off). Status: covers, doors and windows, lights per room and locks, read-only. Covers, timers,
   contacts (binary sensors of class door, window, garage door or opening) and locks are found by
   area through the registries; each section only when the home has some.
+- **Safety** (`#/safety`; a Systems tile, a bar choice): one answer at the top ("All quiet", or what
+  needs a look), then alarms (smoke, gas, carbon monoxide, water leak, tamper; one that is not
+  reporting says so), doors and windows, locks (lock at once, unlock after a second tap), covers
+  (Close all after a second tap), the siren (Test after a second tap, a short sound when it takes a
+  duration; Stop) and who is home (HA's people, and the rooms whose occupancy sensors sense someone).
+  Each section only when the home has some. Every open door or window, unlocked lock, open cover,
+  alarm or sounding siren is also a red pill first on Home, opening Safety. A component's own
+  computed flag (`attributes.component`), an entity only restored by HA and a drive's health
+  (`safety` class) are not alarms.
 - **Scenes** (`#/scenes`): the scenes a person keeps at hand, by area, one tap each; "Choose" lists
   every scene Home Assistant has (found by area through the registries) with a switch each. The
   choice is per person; until one is made, the scenes the home inputs name.

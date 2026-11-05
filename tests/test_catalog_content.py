@@ -339,6 +339,8 @@ ENTITY_OWNER = {
     "sensor.outside_temperature": "weather", "sensor.outside_humidity": "weather", "weather.forecast_home": "weather",
     "plant.monstera": "plants", "plant.ficus": "plants", "plant.basil": "plants",
     "binary_sensor.balcony_door_contact": None, "lock.front_door": None,
+    "binary_sensor.kitchen_smoke": None, "binary_sensor.bathroom_leak": None, "siren.hall_siren": None,
+    "person.alex": None, "person.sam": None,
     "calendar.family": "calendar",
 }
 DEVICE_ENTITIES = {

@@ -77,10 +77,10 @@ test("a failed save puts back what was shown and toasts", async () => {
 test("Bottom bar: a switch per page besides Home and Settings; at most three on, the others disabled with a hint", async () => {
   const ctx = settingsCtx();
   const el = mount(ctx);
-  assert.deepEqual(switches(el).map((b) => b.dataset.page), ["areas", "controls", "climate", "media", "power", "plants", "scenes"]);
-  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Controls", "Climate", "Media", "Power", "Plants", "Scenes"]);
-  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "true", "true", "false", "false", "false"]);
-  assert.deepEqual(switches(el).map((b) => b.disabled), [false, true, false, false, true, true, true]);
+  assert.deepEqual(switches(el).map((b) => b.dataset.page), ["areas", "controls", "climate", "media", "power", "plants", "scenes", "safety"]);
+  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Controls", "Climate", "Media", "Power", "Plants", "Scenes", "Safety"]);
+  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "true", "true", "false", "false", "false", "false"]);
+  assert.deepEqual(switches(el).map((b) => b.disabled), [false, true, false, false, true, true, true, true]);
   assert.equal(el.querySelector(".bar .full").hidden, false);
   assert.match(text(el.querySelector(".bar .full")), /3 pages are on the bar/);
   switches(el)[4].click();      // Power: off and disabled
@@ -89,12 +89,12 @@ test("Bottom bar: a switch per page besides Home and Settings; at most three on,
 
   switches(el)[2].click();      // Climate off
   assert.equal(el.querySelector(".bar .full").hidden, true);
-  assert.deepEqual(switches(el).map((b) => b.disabled), [false, false, false, false, false, false, false]);
+  assert.deepEqual(switches(el).map((b) => b.disabled), [false, false, false, false, false, false, false, false]);
   switches(el)[5].click();      // Plants on, before the first save has landed
   await tick();
   assert.deepEqual(ctx.saves, [{ bar: ["home", "areas", "media", "settings"] },
     { bar: ["home", "areas", "media", "plants", "settings"] }]);
-  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "false", "true", "false", "true", "false"]);
+  assert.deepEqual(switches(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "false", "true", "false", "true", "false", "false"]);
 });
 
 test("controls are disabled while offline", () => {
@@ -227,7 +227,7 @@ test("Bottom bar: the floor plan is a choice only in a home with the floorplan c
   assert.ok(!texts(mount(), ".bar .row .label").includes("Floor plan"));
   const ctx = settingsCtx({ cfg: { ...config, floorplan: true }, settings: { bar: ["home", "areas", "settings"], theme: "system" } });
   const el = mount(ctx);
-  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Controls", "Climate", "Media", "Power", "Plants", "Scenes", "Floor plan"]);
+  assert.deepEqual(texts(el, ".bar .row .label"), ["Areas", "Controls", "Climate", "Media", "Power", "Plants", "Scenes", "Safety", "Floor plan"]);
   const plan = switches(el).find((s) => s.dataset.page === "floorplan");
   assert.equal(plan.getAttribute("aria-checked"), "false");
   plan.click();

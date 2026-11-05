@@ -37,7 +37,8 @@ import { wattsText } from "../pages/power-page.js";
 import { SYSTEM } from "./router.js";
 import { allScenes, chosenScenes } from "./scenes.js";
 import { ago, systemOf } from "./system.js";
-import { coversOf, timersOf } from "./controls.js";
+import { contactsOf, coversOf, labelOf, locksOf, timersOf } from "./controls.js";
+import { alarmsOf, issuesOf, peopleOf, sirensOf } from "./safety.js";
 
 const GONE = new Set(["unavailable", "unknown"]);
 const PAGES = [...TABS.map((tab) => tab.page).filter((page) => page !== "home" && page !== "settings"), SYSTEM.page];
@@ -133,6 +134,18 @@ const SUMMARIES = {
     const running = timers.filter((id) => hass.states[id]?.state === "active").length;
     if (running) bits.push(ctx.t(`card.pocket.sections.controls.running.${pluralOf(ctx, running)}`, { count: running }));
     return { head, status: bits.join(" · ") || ctx.t("card.pocket.sections.controls.quiet") };
+  },
+
+  // Safety (pages/safety-page.js): "All quiet" or how many need a look, the first of them named;
+  // a home with none of its kinds has no tile.
+  safety(ctx) {
+    const { hass, config, t } = ctx;
+    const kinds = [alarmsOf(hass), contactsOf(hass, config), locksOf(hass, config), coversOf(hass, config), sirensOf(hass), peopleOf(hass)];
+    if (!kinds.some((list) => list.length)) return null;
+    const issues = issuesOf(hass, config);
+    if (!issues.length) return { head: t("card.pocket.sections.safety.quiet"), status: t("card.pocket.sections.safety.quiet_status") };
+    const first = t(`card.pocket.safety.issue.${issues[0].kind}`, { name: labelOf(hass, config, issues[0].id) });
+    return { head: t(`card.pocket.sections.safety.issues.${pluralOf(ctx, issues.length)}`, { count: issues.length }), status: first, tone: "poor" };
   },
 
   scenes(ctx) {
