@@ -78,11 +78,16 @@ export function membersOf(hass, room) {
 }
 
 // The one definition of "lights on" (Home's chip, All off, the room strip, the Rooms tab): the
-// lamps of a room are its group's members, else the lights it names; a lamp is counted once
-// however many rooms name it.
+// lamps of a room are its group's members that are available, else the lights it names; a lamp
+// is counted once however many rooms name it. A group none of whose members is available (a Hue
+// room group can report on while its bulbs are unreachable) is one lamp itself, so the count
+// agrees with the group's own tile.
 export function lampsOf(hass, room) {
-  const members = membersOf(hass, room);
-  return members.length ? members : lightsOf(room);
+  const available = membersOf(hass, room).filter((id) => {
+    const state = hass?.states?.[id]?.state;
+    return state != null && !GONE.has(state);
+  });
+  return available.length ? available : lightsOf(room);
 }
 
 export const lightsOn = (hass, room) => lightsOnIn(hass, [room]);

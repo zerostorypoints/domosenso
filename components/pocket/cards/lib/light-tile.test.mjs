@@ -200,3 +200,26 @@ test("a click that does not follow the gesture is not swallowed (keyboard Enter)
   tile.click();
   assert.equal(hass.calls.length, 1, "the later click toggles");
 });
+
+test("a group that is off with a brightness attribute: off, no percent, unlit, empty bar", () => {
+  const tile = mount(hassOf({ "light.group": light("off", 107) }), { entities: ["light.group"] });
+  const button = tile.shadowRoot.querySelector(".tile");
+  assert.equal(text(tile), "Desk Off");
+  assert.doesNotMatch(text(tile), /%/);
+  assert.ok(!button.classList.contains("on"), "the icon is not lit");
+  assert.equal(button.getAttribute("aria-pressed"), "false");
+  assert.equal(fill(tile), "0%");
+});
+
+test("after a drag, a reported state that is not on drops the preview: the tile follows the state", () => {
+  const hass = hassOf({ "light.group": light("off") });
+  const tile = mount(hass, { entities: ["light.group"] });
+  drag(tile, 0, 84);
+  assert.equal(fill(tile), "42%");
+  // Home Assistant takes the brightness (42 % = 107) and the group stays off.
+  tile.hass = hassOf({ "light.group": light("off", 107) });
+  const button = tile.shadowRoot.querySelector(".tile");
+  assert.equal(text(tile), "Desk Off");
+  assert.ok(!button.classList.contains("on"));
+  assert.equal(fill(tile), "0%");
+});

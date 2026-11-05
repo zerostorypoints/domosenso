@@ -11,7 +11,8 @@
 //   - a vertical move cancels: the page scrolls (touch-action: pan-y) and no light changes;
 //   - a 600 ms press opens Home Assistant's more-info dialog (the hass-more-info event).
 // After a drag the sent brightness stays shown until Home Assistant reports it, for at most
-// confirmMs; a failed call drops it at once and fires pocket-error (lib/report.js), so the shell
+// confirmMs; a new state that is not on drops it (on/off comes from the state, and a brightness
+// is shown only while on: a group can keep a brightness attribute while off); a failed call drops it at once and fires pocket-error (lib/report.js), so the shell
 // shows a short message and the tile is back on the last known state.
 // Unavailable (every light missing, unavailable or unknown): muted, a dash, no service call.
 // Offline: the button is disabled, no service call.
@@ -74,9 +75,13 @@ class PocketLightTile extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // A sent brightness is shown until Home Assistant reports it (within a percent: 0-255 rounding).
-    if (this._preview != null && !this._gesture && Math.abs((this._brightness() ?? -10) - this._preview) <= 1) {
-      this._dropPreview();
+    // A sent brightness is shown until Home Assistant reports it (within a percent: 0-255 rounding),
+    // or until Home Assistant reports a new state that is not on: the light did not come on (a
+    // group whose members are unreachable takes the brightness and stays off), and the tile
+    // follows the state, not the preview.
+    if (this._preview != null && !this._gesture) {
+      const reported = Math.abs((this._brightness() ?? -10) - this._preview) <= 1;
+      if (reported || (this._stateChanged() && !this._on())) this._dropPreview();
     }
     this._patch();
   }
@@ -101,6 +106,13 @@ class PocketLightTile extends HTMLElement {
 
   _states() {
     return (this._config?.entities ?? []).map((id) => this._hass?.states?.[id]).filter(Boolean);
+  }
+
+  // Whether a light's state object differs from the one it had when the brightness was sent
+  // (Home Assistant replaces an entity's state object on every change).
+  _stateChanged() {
+    const sent = this._sentStates ?? [];
+    return (this._config?.entities ?? []).some((id, i) => this._hass?.states?.[id] !== sent[i]);
   }
 
   _available() {
@@ -226,6 +238,7 @@ class PocketLightTile extends HTMLElement {
       this._preview = this._percentAt(e.clientX);
       clearTimeout(this._confirmTimer);
       this._confirmTimer = setTimeout(() => this._dropPreview(), this.confirmMs);
+      this._sentStates = this._config.entities.map((id) => this._hass?.states?.[id]);
       this._call("turn_on", { brightness_pct: this._preview });
       this._patch();
     }

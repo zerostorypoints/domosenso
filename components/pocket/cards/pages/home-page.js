@@ -29,7 +29,7 @@ const STYLE = `
   .home .att, .home .chips, .home .strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
                                            margin: 4px -16px 14px; padding: 0 16px; }
   .home .att::-webkit-scrollbar, .home .chips::-webkit-scrollbar, .home .strip::-webkit-scrollbar { display: none; }
-  .home .pill { flex: 0 0 auto; box-sizing: border-box; min-height: 44px; margin: 0; padding: 8px 12px;
+  .home .pill { flex: 0 0 auto; box-sizing: border-box; min-width: 44px; min-height: 44px; margin: 0; padding: 8px 12px;
                 display: flex; gap: 7px; align-items: center; font: inherit; font-size: 12.5px; color: var(--fg);
                 background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
   .home button.pill { cursor: pointer; }
@@ -59,7 +59,7 @@ const STYLE = `
   .home .play:disabled, .home .all-off:disabled { opacity: .55; cursor: default; }
   .home .sec { display: flex; justify-content: space-between; align-items: center; margin: 18px 4px 8px;
                font-size: 13px; font-weight: 600; }
-  .home .sec .all { min-height: 44px; margin: -12px -4px; padding: 0 4px; border: 0; background: none;
+  .home .sec .all { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; text-align: right; border: 0; background: none;
                     font: inherit; font-size: 13px; font-weight: 400; color: var(--mut); cursor: pointer; }
   .home .quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .home .all-off, .home .rc { box-sizing: border-box; min-height: 64px; margin: 0; padding: 12px; text-align: left;

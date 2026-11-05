@@ -59,7 +59,7 @@ const STYLE = `
         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
         border-top: 1px solid var(--line); }
   .tab { flex: 1 1 0; min-width: 44px; min-height: 44px; margin: 0; padding: 6px 0 4px;
-         border: 0; background: none; color: var(--mut); font: inherit; font-size: 11px;
+         border: 0; background: none; color: var(--mut); font: inherit; font-size: 11.5px;
          display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
          cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .tab ha-icon { --mdc-icon-size: 24px; }
