@@ -1,6 +1,6 @@
 # SPEC-034: gate-remote, a fixed-code gate handset replayed from an ESP32 + CC1101, and gate buttons on the Ramka
 
-- Status: draft 2026-11-05.
+- Status: approved 2026-11-05 by the maintainer, as written.
 - Source: maintainer request after a working prototype in his home: capture a gate handset's code,
   send it from Home Assistant, put the button on the Ramka's controls. The prototype is that home's
   own firmware (not in this repository); everything below that is marked tested was tested there on
