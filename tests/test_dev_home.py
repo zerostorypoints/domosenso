@@ -95,7 +95,14 @@ def test_render_uses_real_components_and_only_demo_inputs(tmp_path):
     assert not (d.config / '.storage').exists()
     assert 'shell_command:' in (d.config / 'packages/ramka.yaml').read_text()
     # The settings dashboard (SPEC-021) is a dashboard, not a second package over packages/ramka.yaml.
-    assert sorted(p.name for p in (d.config / 'packages').glob('*.yaml')) == ['ramka.yaml']
+    assert sorted(p.name for p in (d.config / 'packages').glob('*.yaml')) == ['climate_air.yaml', 'ramka.yaml']
+    # Pocket (the phone view) beside the Ramka, from the demo home's shared inputs, with the
+    # climate-air thresholds it reads: a dashboard per language and its card as a resource.
+    assert (d.config / 'packages/climate_air.yaml').read_text().startswith('# Rendered by Domosenso')
+    assert 'input_number:' in (d.config / 'packages/climate_air.yaml').read_text()
+    assert (d.config / 'dashboards/pocket.pl.yaml').read_text().startswith('# Rendered by Domosenso')
+    assert 'dashboard-pocket-en:' in config and 'filename: dashboards/pocket.en.yaml' in config
+    assert '/local/domosenso/pocket/' in config
     assert (d.config / 'dashboards/ramka-settings.pl.yaml').read_text().startswith('# Rendered by Domosenso')
     assert 'filename: dashboards/ramka-settings.pl.yaml' in config
     # preview_dashboard defaults to true, so the demo renders the preview and registers it.
