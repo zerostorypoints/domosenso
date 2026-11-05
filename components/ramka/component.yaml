@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.15.0
+version: 0.16.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -100,6 +100,10 @@ inputs:
   lights_all_off:               # a scene for "all off"; absent: light.turn_off on every room
     type: entity_id
     default: null
+  actions:                      # 0.16.0 (SPEC-034): one-tap buttons on the controls, under the awnings (or a column of
+    type: "list[{entity: button.* | input_button.* | script.* | scene.*, label, icon?, confirm?: bool, room?}]"  # their own without covers);
+    default: []                 # each asks HA's confirmation first unless confirm: false (a gate on a family room's wall)
+    example: [{entity: button.gate_remote_garage, label: Garage, icon: mdi:garage-variant}]
   climate:                      # the climate page's rooms and its 7-day charts; absent: no climate page (0.2.0)
     type: "list[{label, temperature, humidity?, color?, room?}]"   # color: theme series 1..n, default the position
     default: null

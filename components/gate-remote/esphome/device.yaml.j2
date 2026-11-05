@@ -1,0 +1,51 @@
+[# One device file per item of the `nodes` input, written once by `domosenso add` into the home's
+   esphome_dir as <name>.yaml (SPEC-034). The home owns it afterwards. Each gate's code file
+   <name>-<slug>.code.yaml sits next to it: one captured frame, never committed. -#]
+# [[ item.name ]]: a gate remote at [[ item.frequency ]]. Written once by `domosenso add` from [[ component.id ]] [[ component.version ]],
+# this home's file from now on; the package is the catalog's at that tag.
+#
+# Each gate's code is one captured frame in the file named in its button below, next to this file:
+# capture it with the capture firmware (the component's README, "Capture"), paste the list, and
+# keep the file out of git (`*.code.yaml` in this directory's .gitignore): it opens the gate.
+substitutions:
+  name: [[ item.name | yaml ]]
+  friendly_name: [[ item.friendly_name | default(item.name) | yaml ]]
+  frequency: [[ item.frequency | yaml ]]
+[%- if item.repeat is defined %]
+  repeat: "[[ item.repeat ]]"
+[%- endif %]
+[%- if item.gap_us is defined %]
+  gap: [[ item.gap_us ]]us
+[%- endif %]
+[%- if item.area is defined %]
+
+esphome:
+  area: [[ item.area | yaml ]]
+[%- endif %]
+
+packages:
+  gate: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/transmit.yaml@[[ component.id ]]/[[ component.version ]]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:  # uploads authenticated with the API key
+
+button:
+[%- for gate in item.gates %]
+  - platform: template
+    id: [% if loop.first %]gate_primary[% else %]gate_[[ gate.slug | replace('-', '_') ]][% endif %]
+    name: [[ gate.label | yaml ]]
+    icon: mdi:garage-variant
+    on_press:
+      - script.execute:
+          id: gate_send
+          code: !include [[ item.name ]]-[[ gate.slug ]].code.yaml
+[%- endfor %]

@@ -107,6 +107,7 @@ and a manifest that says what it needs and which versions it was tested on.
 - **bermuda-presence** — which room each phone, tablet and watch is in, from Bluetooth through ESPHome proxies and Bermuda. Tested in 1 home.
 - **plants** — soil moisture, conductivity, light and temperature of houseplants (Mi Flora). Tested in 1 home.
 - **awnings** — Somfy RTS awnings through an ESPSomfy-RTS radio node, with the wind sensor. Tested in 1 home.
+- **gate-remote** — a garage door or gate opened from Home Assistant by sending its own handset's fixed code from an ESP32 and a CC1101 transceiver. Tested in 1 home.
 - **lights** — Philips Hue lights per room, from the bridge's rooms. Tested in 1 home.
 - **media** — a network audio player as a media player; tested with a Hegel H400. Tested in 1 home.
 - **calendar** — events from a CalDAV server such as iCloud. Tested in 1 home.
