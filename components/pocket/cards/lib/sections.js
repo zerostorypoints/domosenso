@@ -12,8 +12,9 @@
 //
 // What each says:
 //   Areas      the number of areas (the Outside included); the lights on
-//   Climate    "All in range" or how many readings need a look (lib/checks.js: the comfort ranges
-//              and air limits, the Outside's too); the areas they are in; poor / fair by the worst
+//   Climate    "All in range" or how many readings need a look (lib/checks.js: the rooms' comfort
+//              ranges and air limits, as the attention pills: not the Outside); the rooms they are
+//              in; poor / fair by the worst
 //   Media      what plays (the first player playing, lib/media.js playersOf), else nothing playing;
 //              the player's name, else the number of players
 //   Power      power now (lib/power.js powerNow); energy today, or how many meters are unavailable
@@ -57,13 +58,15 @@ const SUMMARIES = {
   },
 
   climate(ctx) {
-    const groups = checksOf(ctx.hass, ctx.config);
+    // The rooms only, as the attention pills: the Outside out of the comfort range (cold in winter)
+    // is weather, not something to act on; the Outside chip colours it.
+    const groups = checksOf(ctx.hass, ctx.config, { inside: true });
     const rows = groups.flatMap((g) => g.rows.map((row) => ({ ...row, area: g.area })));
     const judged = rows.filter((row) => row.result);
     if (!judged.length) return null;
     const bad = judged.filter((row) => row.result.level === "poor" || row.result.level === "fair");
     if (!bad.length) return { head: ctx.t("card.pocket.sections.climate.fine"), status: ctx.t(`card.pocket.sections.climate.checked.${pluralOf(ctx, judged.length)}`, { count: judged.length }) };
-    const names = [...new Set(bad.map((row) => (row.area.outside ? ctx.t("card.pocket.area.outside") : row.area.name)))];
+    const names = [...new Set(bad.map((row) => row.area.name))];
     return { head: ctx.t(`card.pocket.sections.climate.look.${pluralOf(ctx, bad.length)}`, { count: bad.length }), status: names.join(", "),
       tone: bad.some((row) => row.result.level === "poor") ? "poor" : "fair" };
   },

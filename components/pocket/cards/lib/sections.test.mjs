@@ -26,6 +26,10 @@ test("Climate: all in range, or how many need a look, where, and the worst tone"
   assert.equal(bad.head, "2 need a look");
   assert.equal(bad.status, "Living room, Bedroom");
   assert.equal(bad.tone, "poor");
+  const cold = { ...config, outside: { temperature: "sensor.out_t" },
+    thresholds: { ...config.thresholds, outside: { temp_low: "input_number.lr_temp_low", temp_high: "input_number.lr_temp_high" } } };
+  const winter = pick(sectionsOf(ctxOf({ cfg: cold, hass: hassOf({ ...baseStates(), "sensor.out_t": st(2) }) })), "climate");
+  assert.equal(winter.head, "All in range", "a cold Outside is weather, as for the attention pills");
 });
 
 test("Media: what plays and on which player; nothing playing otherwise", () => {
