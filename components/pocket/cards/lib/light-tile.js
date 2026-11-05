@@ -44,7 +44,7 @@ const STYLE = `
         display: flex; align-items: center; justify-content: center; color: var(--mut); }
   .ic ha-icon { --mdc-icon-size: 18px; }
   .tile.on .ic { background: color-mix(in srgb, var(--lamp) 35%, var(--card)); color: var(--fg); }
-  .t1 { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; }
   /* The brightness strip: a slider a thumb can hold, with a grip line at the level. */
   .bar { position: relative; box-sizing: border-box; display: block; height: 44px; margin: 0 8px 8px;

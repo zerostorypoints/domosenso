@@ -17,8 +17,10 @@
 //   routeId   the <id> of #/area/<id> (a room's id or "outside", lib/areas.js), else undefined
 //   settings  the person's settings (lib/settings.js), the defaults until they are read
 //   saveSettings(patch) -> Promise  saves a change of them; the shell then shows it (the bar)
-//   openSheet(spec)  opens the shell's bottom sheet (lib/sheet.js) of spec.kind, over the page:
-//             {kind: "trend", entity, title, ...} (lib/trend-sheet.js trendSpec builds one)
+//   openSheet(spec, {stack?})  opens the shell's bottom sheet (lib/sheet.js) of spec.kind, over
+//             the page: {kind: "trend", entity, title, ...} (lib/trend-sheet.js trendSpec builds
+//             one), "checks", "air", "lights" (lib/detail-sheets.js); stack: on top of the open
+//             sheet, Back returns to it
 // The shell keeps the page's element until the route changes, so a page may hold its own state
 // in it between updates.
 

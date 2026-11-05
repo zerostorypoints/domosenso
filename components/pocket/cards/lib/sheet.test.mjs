@@ -139,3 +139,68 @@ test("one sheet at a time: a second open replaces the first and its history entr
   assert.equal(window.history.length, before + 1, "one Back closes it");
   assert.equal(window.history.state.pocketSheet, sheet.token);
 });
+
+// A list sheet with a row button, and a second sheet stacked from that row.
+function stacked() {
+  const s = setup();
+  const list = document.createElement("div");
+  const row = document.createElement("button");
+  row.textContent = "Row";
+  list.append(row);
+  s.sheet.open(list, "List");
+  const listState = window.history.state;
+  row.focus();
+  const before = window.history.length;
+  const restored = [];
+  s.sheet.onRestore = (content) => restored.push(content);
+  s.sheet.open(s.content, "Trend", { stack: true });
+  return { ...s, list, row, listState, before, restored };
+}
+
+test("stack: a sheet opened on top keeps the one under it, with an entry of its own", () => {
+  const { sheet, content, layer, before } = stacked();
+  assert.equal(sheet.content, content);
+  assert.equal(layer.querySelector(".sheet").getAttribute("aria-label"), "Trend");
+  assert.equal(window.history.length, before + 1, "pushed, not replaced");
+  assert.ok(sheet.ownsEntry());
+});
+
+test("stack: Back returns to the list as it was, focus on its row; Back again closes", () => {
+  const { sheet, list, row, listState, layer, restored, closed, content } = stacked();
+  window.history.replaceState(listState, "", "#/");      // the browser is back on the list's entry
+  sheet.onPopState();
+  assert.equal(sheet.isOpen, true);
+  assert.equal(sheet.content, list);
+  assert.equal(list.firstChild, row, "the same elements");
+  assert.equal(layer.querySelector(".sheet").getAttribute("aria-label"), "List");
+  assert.equal(document.activeElement, row);
+  assert.deepEqual(restored, [list]);
+  assert.deepEqual(closed, [content]);
+  assert.ok(sheet.ownsEntry());
+  window.history.replaceState(null, "", "#/");
+  sheet.onPopState();
+  assert.equal(sheet.isOpen, false);
+});
+
+test("stack: the close button closes the top only and goes back once", () => {
+  const { sheet, list, row, layer } = stacked();
+  let backs = 0;
+  const back = window.history.back;
+  window.history.back = () => { backs += 1; };
+  try {
+    layer.querySelector(".close").click();
+  } finally {
+    window.history.back = back;
+  }
+  assert.equal(sheet.content, list);
+  assert.equal(document.activeElement, row);
+  assert.equal(backs, 1);
+});
+
+test("stack: dismiss closes every sheet", () => {
+  const { sheet, layer } = stacked();
+  sheet.dismiss();
+  assert.equal(sheet.isOpen, false);
+  assert.equal(layer.hidden, true);
+  assert.equal(sheet.content, null);
+});

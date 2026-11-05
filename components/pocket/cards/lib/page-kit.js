@@ -66,6 +66,19 @@ export function setArrow(node, ctx, direction) {
   setAttr(node, "role", "img");
 }
 
+// A stable function that runs fn once on the next animation frame however often it is called
+// before then: many trend answers landing together redraw a widget or a sheet once.
+export function coalesce(fn) {
+  let queued = false;
+  const frame = typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+    ? (f) => window.requestAnimationFrame(f) : (f) => setTimeout(f, 0);
+  return () => {
+    if (queued) return;
+    queued = true;
+    frame(() => { queued = false; fn(); });
+  };
+}
+
 // The plural category of a count in the dashboard's language (one, few, many, other), as
 // Intl.PluralRules names them: a counted text is a group of keys, one per category, and the page
 // looks up t(`<group>.${pluralOf(ctx, n)}`) (a literal group key would not be a text).

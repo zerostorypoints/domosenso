@@ -5,7 +5,7 @@ import { checks, air, lights, checksSpec, airSpec, lightsSpec, DETAIL_STYLE } fr
 import { clearHistoryCache } from "./trend.js";
 import { config, st, baseStates, hassOf, ctxOf, text, texts } from "../testing/demo-home.mjs";
 
-const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const frame = () => new Promise((resolve) => setTimeout(resolve, 30));   // past the next animation frame
 
 const withOutside = { ...config,
   outside: { temperature: "sensor.outside_temperature" },
@@ -104,7 +104,7 @@ test("arrows from the last hour's history, each row its own, fetched once", asyn
   };
   const ctx = ctxOf({ hass });
   const el = mount(air, ctx, airSpec(ctx, config.rooms[0]));
-  await tick();
+  await frame();
   assert.deepEqual(texts(el, ".drow .r"), ["Air score", "CO₂"]);
   const arrows = [...el.querySelectorAll(".drow .arrow")];
   assert.equal(arrows[1].textContent, "↓");
@@ -159,4 +159,31 @@ test("sizes: rows at least 44 px tall, text at least 11.5 px, level colours from
   for (const [tone, token] of [["good", "ok"], ["fair", "warn"], ["poor", "bad"], ["cold", "cold"], ["warm", "warm"]]) {
     assert.match(DETAIL_STYLE, new RegExp(`\\.num\\.lv-${tone} \\{ color: var\\(--${token}\\)`), tone);
   }
+});
+
+test("checks: every reading's trend fetched at once, the answers drawn in one or two redraws", async () => {
+  const hass = hassOf(states());
+  hass.ws = [];
+  hass.callWS = (msg) => {
+    const id = msg.entity_ids[0];
+    hass.ws.push(id);
+    const start = Date.parse(msg.start_time);
+    return Promise.resolve({ [id]: [20, 21].map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 })) });
+  };
+  const ctx = ctxOf({ cfg: withOutside, hass });
+  const el = mount(checks, ctx, checksSpec(ctx));
+  const rows = el.querySelectorAll(".drow").length;
+  assert.equal(hass.ws.length, rows, "one fetch per reading");
+  await frame();
+  assert.ok(el._detail.redraws >= 1 && el._detail.redraws <= 2, `redraws: ${el._detail.redraws} for ${rows} answers`);
+  assert.ok([...el.querySelectorAll(".drow .arrow")].every((a) => !a.hidden));
+});
+
+test("a row's trend opens stacked on the sheet", () => {
+  const ctx = ctxOf({ cfg: withOutside, hass: hassOf(states()) });
+  const calls = [];
+  ctx.openSheet = (spec, options) => { calls.push([spec.kind, options]); return true; };
+  const el = mount(checks, ctx, checksSpec(ctx));
+  el.querySelector(".drow").click();
+  assert.deepEqual(calls, [["trend", { stack: true }]]);
 });

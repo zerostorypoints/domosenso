@@ -204,7 +204,7 @@ class PocketApp extends HTMLElement {
       routeId: this._current?.id,
       settings: this._settings,
       saveSettings: (patch) => this._saveSettings(patch),
-      openSheet: (spec) => this._openSheet(spec),
+      openSheet: (spec, options) => this._openSheet(spec, options),
     };
   }
 
@@ -240,6 +240,7 @@ class PocketApp extends HTMLElement {
     this._app.addEventListener("pocket-error", (e) => this._showToast(e.detail?.key));
     this._sheet = createSheet(this._app, { t: (key, vars) => this._t(key, vars) });
     this._sheet.clearStale();   // a reload while a sheet was open
+    this._sheet.onRestore = (content) => this._updateSheet(content);
     this._tabs = [];
   }
 
@@ -293,17 +294,23 @@ class PocketApp extends HTMLElement {
     if (this._barLang !== this._lang()) this._renderBar();
     const ctx = this._ctx();
     this._page.update(this._pageEl, ctx);
-    if (this._sheet.isOpen) this._sheetKind.update(this._sheet.content, ctx);
+    if (this._sheet.isOpen) this._updateSheet(this._sheet.content, ctx);
   }
 
-  // A page's ctx.openSheet(spec): the sheet of spec.kind, in place of any open one. False for a
-  // kind the shell does not know.
-  _openSheet(spec) {
+  // A page's ctx.openSheet(spec, {stack?}): the sheet of spec.kind, in place of any open one, or
+  // with stack on top of it (Back returns to it). False for a kind the shell does not know.
+  _openSheet(spec, { stack = false } = {}) {
     const kind = SHEETS[spec?.kind];
     if (!kind || !this._sheet) return false;
-    this._sheetKind = kind;
-    this._sheet.open(kind.render(this._ctx(), spec), spec.title);
+    const content = kind.render(this._ctx(), spec);
+    content._sheetKind = kind;
+    this._sheet.open(content, spec.title, { stack });
     return true;
+  }
+
+  // The shown sheet's content, patched by its own kind (a stacked sheet that comes back too).
+  _updateSheet(content, ctx = this._ctx()) {
+    content?._sheetKind?.update(content, ctx);
   }
 
   // The bar's buttons are rebuilt only when the person's choice of pages changes.

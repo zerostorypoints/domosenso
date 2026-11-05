@@ -677,11 +677,23 @@ test("the detail sheets are the shell's: checks, air and lights open through ctx
     assert.ok($(card, `.sheet ${sel}`), spec.kind);
     assert.equal($(card, ".sheet").getAttribute("aria-label"), spec.title);
   }
-  // The checks sheet lists the kitchen's temperature; its row opens the trend in its place.
+  // The checks sheet lists the kitchen's temperature; its row opens the trend on top of it.
   card._ctx().openSheet({ kind: "checks", title: "What was checked" });
-  $(card, ".sheet .drow").click();
+  const row = $(card, ".sheet .drow");
+  const listState = window.history.state;
+  row.click();
   assert.ok($(card, ".sheet .trend"), "the row's trend sheet");
   assert.equal($(card, ".sheet .title").textContent, "Temperature");
+  // Back: the list again, the same row, patched by the shell; Back again closes.
+  window.history.replaceState(listState, "", window.location.hash);
+  window.dispatchEvent(new window.PopStateEvent("popstate", { state: listState }));
+  assert.equal($(card, ".sheet .drow"), row);
+  assert.equal($(card, ".sheet").getAttribute("aria-label"), "What was checked");
+  card.hass = card.hass;
+  assert.equal($(card, ".sheet .drow .num").textContent, "20.5°");
+  window.history.replaceState(null, "", window.location.hash);
+  window.dispatchEvent(new window.PopStateEvent("popstate", { state: null }));
+  assert.equal($(card, ".sheet-layer").hidden, true);
 });
 
 test("a route taken from an open sheet takes the sheet's history entry: Back goes to the page under it", async () => {

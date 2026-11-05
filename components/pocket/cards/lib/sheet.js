@@ -1,11 +1,16 @@
-// The bottom sheet: one at a time, owned by the shell (pocket-app.js), which puts it over the page
+// The bottom sheet: one shown at a time (others may wait under it), owned by the shell (pocket-app.js), which puts it over the page
 // and the bar. A page opens one through ctx.openSheet(spec); the shell picks the sheet's content by
 // spec.kind (lib/trend-sheet.js for "trend") and hands it here.
 //
 //   createSheet(host, {t}) -> sheet       builds the layer once, inside host (the shell's .app)
-//   sheet.open(content, label)            shows content (an element) under a grab handle and a
-//                                         close button; label names the dialog for screen readers
-//   sheet.close()                         closes it as the person would (Back's history entry too)
+//   sheet.open(content, label, {stack?}) shows content (an element) under a grab handle and a
+//                                         close button; label names the dialog for screen readers.
+//                                         stack: on top of the open sheet (a detail sheet's row
+//                                         opening its trend): a close or Back comes back to the one
+//                                         under it, its content as it was, focus on what opened
+//                                         the top one; without, in place of the open sheet
+//   sheet.close()                         closes the top sheet as the person would (Back's history
+//                                         entry too)
 //   sheet.dismiss()                       closes it without going back (the route changed); a
 //                                         sheet's state left on the current entry is replaced away
 //   sheet.ownsEntry()                     whether the current history entry is the open sheet's
@@ -13,6 +18,8 @@
 //                                         current entry (a reload, a return to the dashboard)
 //   sheet.isOpen, sheet.content           whether a sheet shows, and its content element
 //   sheet.onClose                         called after every close
+//   sheet.onRestore                       called with the content shown again when a stacked sheet
+//                                         closes (the shell patches it with the current state)
 //
 // It closes by
 //   - a drag down on the grab handle of at least CLOSE_PX (shorter ones spring back),
@@ -75,33 +82,26 @@ export function createSheet(host, { t } = {}) {
     onClose: null,
     token: null,
     t,
-    open(content, label) {
+    open(content, label, { stack = false } = {}) {
+      // On top of the open sheet: it is kept, with its history entry, under a new one.
+      if (stack && sheet.isOpen) {
+        layers.push({ content: sheet.content, label: panel.getAttribute("aria-label") ?? "", token: sheet.token,
+          focus: activeIn(host) });
+        show(content, label, false);
+        return;
+      }
       // A sheet in place of an open one takes over its history entry: one Back still closes it.
       const replace = sheet.isOpen && window.history.state?.[STATE_KEY] === sheet.token;
       if (sheet.isOpen) hide();
       sheet.opener = activeIn(host);
-      sheet.isOpen = true;
-      sheet.content = content;
-      sheet.token = `s${++serial}`;
-      body.replaceChildren(content);
-      panel.setAttribute("aria-label", label ?? "");
-      closeButton.setAttribute("aria-label", sheet.t ? sheet.t("card.pocket.sheet.close") : "");
-      panel.style.transform = "";
-      layer.hidden = false;
-      // A state of its own, not a copy of the current one: Home Assistant reads a "dialog" key in
-      // history states, and a copied one would open that dialog again on Back.
-      try {
-        const state = { [STATE_KEY]: sheet.token };
-        if (replace) window.history.replaceState(state, "", window.location.href);
-        else window.history.pushState(state, "", window.location.href);
-      } catch { /* a history without pushState: Back simply leaves the page */ }
-      closeButton.focus?.();
+      show(content, label, replace);
     },
     close() {
       if (!sheet.isOpen) return;
       const ours = window.history.state?.[STATE_KEY] === sheet.token;
-      hide();
-      // The popstate this fires finds the sheet closed and does nothing.
+      if (layers.length) pop();
+      else hide();
+      // The popstate this fires finds the sheet under it (its own entry) or none, and does nothing.
       if (ours) window.history.back();
     },
     dismiss() {
@@ -119,7 +119,43 @@ export function createSheet(host, { t } = {}) {
     },
   };
 
+  const layers = [];          // the sheets under the top one: {content, label, token, focus}
+
+  function show(content, label, replace) {
+    sheet.isOpen = true;
+    sheet.content = content;
+    sheet.token = `s${++serial}`;
+    body.replaceChildren(content);
+    panel.setAttribute("aria-label", label ?? "");
+    closeButton.setAttribute("aria-label", sheet.t ? sheet.t("card.pocket.sheet.close") : "");
+    panel.style.transform = "";
+    layer.hidden = false;
+    // A state of its own, not a copy of the current one: Home Assistant reads a "dialog" key in
+    // history states, and a copied one would open that dialog again on Back.
+    try {
+      const state = { [STATE_KEY]: sheet.token };
+      if (replace) window.history.replaceState(state, "", window.location.href);
+      else window.history.pushState(state, "", window.location.href);
+    } catch { /* a history without pushState: Back simply leaves the page */ }
+    closeButton.focus?.();
+  }
+
+  // The sheet under the top one comes back as it was; focus returns to the row that opened the top.
+  function pop() {
+    const layer = layers.pop();
+    const top = sheet.content;
+    sheet.content = layer.content;
+    sheet.token = layer.token;
+    body.replaceChildren(layer.content);
+    panel.setAttribute("aria-label", layer.label);
+    panel.style.transform = "";
+    sheet.onClose?.(top);
+    sheet.onRestore?.(layer.content);
+    (layer.focus?.isConnected ? layer.focus : closeButton).focus?.();
+  }
+
   function hide() {
+    layers.length = 0;
     sheet.isOpen = false;
     sheet.token = null;
     layer.hidden = true;
@@ -134,8 +170,18 @@ export function createSheet(host, { t } = {}) {
   closeButton.addEventListener("click", () => sheet.close());
   layer.querySelector(".scrim").addEventListener("click", () => sheet.close());
   layer.addEventListener("keydown", (e) => { if (e.key === "Escape") sheet.close(); });
+  // Back: to the stacked sheet whose entry it lands on, else closed.
   sheet.onPopState = () => {
-    if (sheet.isOpen && window.history.state?.[STATE_KEY] !== sheet.token) hide();
+    if (!sheet.isOpen) return;
+    const token = window.history.state?.[STATE_KEY];
+    if (token === sheet.token) return;
+    const at = layers.findIndex((layer) => layer.token === token);
+    if (at === -1) {
+      hide();
+      return;
+    }
+    layers.length = at + 1;
+    pop();
   };
 
   // The drag down: the sheet follows the finger, never above where it opened.

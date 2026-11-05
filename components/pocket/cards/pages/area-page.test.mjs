@@ -308,11 +308,20 @@ test("one square size: two equal columns, a fixed aspect, a lone square does not
   assert.equal(bedroom.querySelector(".sq").getAttribute("style"), null, "no size of its own");
 });
 
+test("the big value shrinks with its square (16-24 px) and wraps; the short line wraps if it must", () => {
+  const css = mount().querySelector("style").textContent;
+  assert.match(css, /\.room \.sq \{[^}]*container-type: inline-size/);
+  assert.match(css, /\.room \.big \{[^}]*flex-wrap: wrap[^}]*font-size: clamp\(16px, 15cqi, 24px\)/);
+  assert.match(css, /\.room \.lab \{[^}]*overflow-wrap: anywhere/);
+  assert.match(css, /\.room \.squares \{[^}]*grid-auto-rows: 1fr/, "equal rows: the tallest square's height");
+  assert.match(css, /\.room \.sq \{[^}]*align-self: stretch/);
+});
+
 test("nothing is cut: no ellipsis or clipping on a square's lines; the line is built to fit", () => {
   const css = mount().querySelector("style").textContent;
   for (const sel of ["big", "lab"]) {
     const rule = css.match(new RegExp(`\\.room \\.${sel}\\s*\\{([^}]*)\\}`))[1];
-    assert.doesNotMatch(rule, /ellipsis|overflow/, sel);
+    assert.doesNotMatch(rule, /ellipsis|nowrap|overflow:\s*hidden/, sel);
   }
   const el = mount();
   assert.equal(el.querySelectorAll(".sq.air .lab .v").length, 0, "Air's line names one reading, no values");

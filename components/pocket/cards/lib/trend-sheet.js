@@ -41,7 +41,7 @@ export const TREND_STYLE = `
   .trend .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   .trend .title { font-size: 17px; font-weight: 600; }
   .trend .where, .trend .note, .trend .axis { font-size: 12.5px; color: var(--mut); }
-  .trend .where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trend .where { text-align: right; overflow-wrap: anywhere; }
   .trend .now { margin-top: 6px; }
   .trend .big { font-size: 28px; font-weight: 600; letter-spacing: -.5px; }
   .trend .note { text-align: right; }

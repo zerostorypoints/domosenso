@@ -4,7 +4,7 @@
 //   checks  {kind: "checks", title, readings?, inside?}   every reading that was checked, per area
 //           (the Outside included unless inside), problems first (lib/checks.js): its name, its
 //           level in words and as a dot, its value in the level's colour and its trend arrow; a row
-//           opens that reading's trend sheet. Behind Home's "All good", its attention pills and (only
+//           opens that reading's trend sheet on top of the list (Back or close returns to it). Behind Home's "All good", its attention pills and (only
 //           temperature, rooms only) its inside chip.
 //   air     {kind: "air", title, subtitle, area}           every air reading of one area, the same
 //           rows, in the home's order; behind the area page's Air square.
@@ -16,14 +16,14 @@
 //
 // render() builds the rows once; update() patches them, and rebuilds the list only when its rows
 // or their order change. Trend arrows come from lib/trend.js trendNow: fetched once per reading
-// and REFRESH_MS, the row patched when the answer lands.
+// and REFRESH_MS; the answers that land before the next frame are drawn in one redraw.
 
 import { toneOf, levelKey } from "./level.js";
 import { areasOf } from "./areas.js";
 import { checksOf, areaRows, AIR_READINGS } from "./checks.js";
 import { trendNow } from "./trend.js";
 import { trendSpec } from "./trend-sheet.js";
-import { el, setText, setArrow, readingText, lampsOf, isOn, shortName } from "./page-kit.js";
+import { el, setText, setArrow, readingText, lampsOf, isOn, shortName, coalesce } from "./page-kit.js";
 import "./light-tile.js";
 
 export const DETAIL_STYLE = `
@@ -59,7 +59,7 @@ export const DETAIL_STYLE = `
   .detail .dot.lv-poor { background: var(--bad); }
   .detail .dot.lv-cold { background: var(--cold); }
   .detail .dot.lv-warm { background: var(--warm); }
-  .detail .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .detail .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
 `;
 
 const areaName = (ctx, area) => (area.outside ? ctx.t("card.pocket.area.outside") : area.name);
@@ -103,7 +103,8 @@ function readingRow(parts, area, row) {
     node.type = "button";
     node.addEventListener("click", () => {
       const spec = trendSpec(parts.ctx, area, row.reading);
-      if (spec) parts.ctx.openSheet?.(spec);
+      // On top of this sheet: Back or close comes back to the list, at this row.
+      if (spec) parts.ctx.openSheet?.(spec, { stack: true });
     });
   }
   node.dataset.reading = row.reading;
@@ -167,8 +168,14 @@ function renderReadings(ctx, spec, draw) {
   const parts = frame(spec);
   parts.ctx = ctx;
   parts.draw = draw;
-  // Stable: lib/trend.js calls each waiting widget once.
-  parts.onReady = () => { if (parts.root.isConnected) update(parts.root, parts.ctx); };
+  // Stable (lib/trend.js calls each waiting widget once); every row's answer that lands before
+  // the next frame is drawn in one redraw (parts.redraws counts them).
+  parts.redraws = 0;
+  parts.onReady = coalesce(() => {
+    if (!parts.root.isConnected) return;
+    parts.redraws += 1;
+    update(parts.root, parts.ctx);
+  });
   parts.root._detail = parts;
   update(parts.root, ctx);
   return parts.root;

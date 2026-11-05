@@ -37,7 +37,7 @@ import { trendNow } from "../lib/trend.js";
 import { airSpec } from "../lib/detail-sheets.js";
 import { areasOf, climateReadings as climateOf, climateValue } from "../lib/areas.js";
 import {
-  GONE, el, setText, setAttr, setArrow, number, temperature, percent, pluralOf, lightsOf, membersOf,
+  GONE, el, setText, setAttr, setArrow, coalesce, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
 import { trendSpec } from "../lib/trend-sheet.js";
@@ -63,14 +63,16 @@ const STYLE = `
                 display: flex; align-items: center; gap: 2px; font: inherit; color: var(--fg); cursor: pointer;
                 min-width: 44px; -webkit-tap-highlight-color: transparent; }
   .room .back ha-icon { --mdc-icon-size: 28px; flex: 0 0 auto; }
-  .room .back .name { font-size: 24px; font-weight: 650; letter-spacing: -.4px;
-                      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .room .back .name { font-size: 24px; font-weight: 650; letter-spacing: -.4px; text-align: left; overflow-wrap: anywhere; }
   .room .dots { display: flex; gap: 5px; justify-content: center; margin: 2px 0 12px; }
   .room .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--line); }
   .room .dots i.a { width: 16px; background: var(--fg); }
-  .room .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  /* One size for every square: equal columns, equal rows (the tallest square's height, so text
+     that has to wrap makes them all grow alike), a fixed aspect otherwise. */
+  .room .squares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .room .squares > * { min-width: 0; }
-  .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; min-height: 88px; padding: 12px;
+  .room .sq { box-sizing: border-box; aspect-ratio: 1 / .62; align-self: stretch; min-height: 88px; padding: 12px;
+              container-type: inline-size;
               display: flex; flex-direction: column; justify-content: space-between;
               background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
   .room button.sq { width: 100%; margin: 0; font: inherit; color: var(--fg); text-align: left; cursor: pointer; }
@@ -82,12 +84,12 @@ const STYLE = `
   .room .sq .head i.lv-cold { background: var(--cold); }
   .room .sq .head i.lv-warm { background: var(--warm); }
   .room .sq .value { min-width: 0; }
-  .room .big { display: flex; align-items: baseline; gap: 4px; font-size: 24px; font-weight: 600;
-               letter-spacing: -.5px; white-space: nowrap; }
+  /* The big value shrinks with its square (16-24 px) and wraps rather than spill out of it. */
+  .room .big { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; font-size: 24px;
+               font-size: clamp(16px, 15cqi, 24px); font-weight: 600; letter-spacing: -.5px; overflow-wrap: anywhere; }
   .room .big .arrow { font-size: 16px; font-weight: 400; color: var(--mut); letter-spacing: 0; }
   .room .big .arrow[hidden] { display: none; }
-  .room .lab { display: block; min-height: 15px; font-size: 11.5px; color: var(--mut); margin-top: 2px;
-               white-space: nowrap; }
+  .room .lab { display: block; min-height: 15px; font-size: 11.5px; color: var(--mut); margin-top: 2px; overflow-wrap: anywhere; }
   .room .sq .muted { opacity: .55; }
   .room .lv-good { color: var(--ok); }
   .room .lv-fair { color: var(--warn); }
@@ -100,7 +102,7 @@ const STYLE = `
   .room .art img[hidden] { display: none; }
   .room .members-toggle { display: block; min-width: 44px; min-height: 44px; margin: 4px 0 0 auto; padding: 0 4px; border: 0;
                           background: none; font: inherit; font-size: 13px; color: var(--mut); cursor: pointer; }
-  .room .members { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+  .room .members { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; margin-top: 4px; }
   .room .scenes { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y;
                   margin: 10px -16px 0; padding: 0 16px; }
   .room .scenes::-webkit-scrollbar { display: none; }
@@ -116,9 +118,8 @@ const STYLE = `
                background: var(--chip); }
   .room .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .room .meta { flex: 1; min-width: 0; }
-  .room .t1 { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .room .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow: hidden;
-              text-overflow: ellipsis; white-space: nowrap; }
+  .room .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .room .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow-wrap: anywhere; }
   .room .play { width: 44px; height: 44px; flex: 0 0 auto; margin: 0; padding: 0; border: 0; border-radius: 50%;
                 background: var(--chip); color: var(--fg); display: flex; align-items: center; justify-content: center;
                 cursor: pointer; }
@@ -250,8 +251,8 @@ export function render(ctx) {
   }
 
   swipeBetweenRooms(root, parts);
-  // Stable: lib/trend.js calls each waiting widget once, when the last hour's history lands.
-  parts.onTrend = () => { if (root.isConnected) update(root, parts.ctx); };
+  // Stable (lib/trend.js calls each waiting widget once); one redraw per frame for all answers.
+  parts.onTrend = coalesce(() => { if (root.isConnected) update(root, parts.ctx); });
   root._room = parts;
   update(root, ctx);
   return root;

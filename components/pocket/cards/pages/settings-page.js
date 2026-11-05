@@ -48,7 +48,7 @@ const STYLE = `
   .settings .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px;
                    border-top: 1px solid var(--line); font-size: 15px; }
   .settings .row:first-of-type { border-top: 0; }
-  .settings .row .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .settings .row .label { min-width: 0; overflow-wrap: anywhere; }
   .settings .row .label small { display: block; font-size: 12.5px; color: var(--mut); }
   .settings .switch { box-sizing: border-box; flex: 0 0 auto; width: 56px; min-height: 44px; margin: 0; padding: 0 4px;
                       border: 0; background: none; cursor: pointer; display: flex; align-items: center; }

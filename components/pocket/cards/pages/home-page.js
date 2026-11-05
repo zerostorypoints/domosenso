@@ -28,7 +28,7 @@ import { formatDate } from "../lib/i18n.js";
 import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import {
-  GONE, el, setText, setAttr, setArrow, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
+  GONE, el, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
@@ -70,9 +70,8 @@ const STYLE = `
   .home .art { display: block; width: 52px; height: 52px; border-radius: 12px; flex: 0 0 auto; overflow: hidden; background: var(--chip); }
   .home .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .home .meta { flex: 1; min-width: 0; }
-  .home .t1 { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow: hidden;
-              text-overflow: ellipsis; white-space: nowrap; }
+  .home .t1 { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .home .t2 { display: block; font-size: 12.5px; color: var(--mut); margin-top: 2px; overflow-wrap: anywhere; }
   .home .play { width: 44px; height: 44px; flex: 0 0 auto; margin: 0; padding: 0; border: 0; border-radius: 50%;
                 background: var(--chip); color: var(--fg); display: flex; align-items: center; justify-content: center;
                 cursor: pointer; }
@@ -81,7 +80,7 @@ const STYLE = `
                font-size: 13px; font-weight: 600; }
   .home .sec .all { min-width: 44px; min-height: 44px; margin: -12px -4px; padding: 0 4px; text-align: right; border: 0; background: none;
                     font: inherit; font-size: 13px; font-weight: 400; color: var(--mut); cursor: pointer; }
-  .home .quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .home .quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10px; }
   .home .all-off, .home .rc { box-sizing: border-box; min-height: 64px; margin: 0; padding: 12px; text-align: left;
                               font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
                               border-radius: 18px; cursor: pointer; }
@@ -144,8 +143,8 @@ export function render(ctx) {
       if (spec) parts.ctx.openSheet?.(spec);
     });
   }
-  // Stable: lib/trend.js calls each waiting widget once, when the last hour's history lands.
-  parts.onTrend = () => { if (root.isConnected) updateChips(parts, parts.ctx); };
+  // Stable (lib/trend.js calls each waiting widget once); one redraw per frame for all answers.
+  parts.onTrend = coalesce(() => { if (root.isConnected) updateChips(parts, parts.ctx); });
 
   const now = parts.now;
   now.querySelector(".open").addEventListener("click", () => parts.ctx.navigate("#/media"));
