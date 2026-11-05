@@ -102,7 +102,7 @@ test('catalog sections lead from components to hardware and back from a guide',a
 
 test('how-to guides: index, branch table, agent prompt, structured data and drafts kept off production',async({page})=>{
  await page.goto('/how-to/');
- await expect(page.locator('.howto-card')).toHaveCount(5);
+ await expect(page.locator('.howto-card')).toHaveCount(6);
  const response=await page.goto('/how-to/automate-old-awnings/');expect(response?.status()).toBe(200);
  await expect(page.locator('h1')).toHaveCount(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
