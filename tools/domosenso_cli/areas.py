@@ -7,6 +7,7 @@ home: Home Assistant's area, floor, device and entity registries, the states, an
     main <id> <kind> <entity> [<entity> ...] (<source>)
     candidates <id> <kind> <n>: choose one
     warn inputs room <room id>: no HA area <area>
+    warn inputs outside: no area (Pocket shows it only with an HA area: set outside.area)
     fail inputs <entity>: no such entity
     quick <item> (<inputs|default>)
 
@@ -36,6 +37,7 @@ import json
 from pathlib import Path
 
 from domosenso_cli.build import load_inputs
+from domosenso_cli.errors import DomosensoError
 from domosenso_cli.ha_api import HA
 from domosenso_cli.home import HomeConfig
 from domosenso_cli.home_inputs import load_home_inputs
@@ -108,6 +110,7 @@ def report(registry: dict, store: dict | None, home: dict | None, quick_inputs: 
     store = store or {}
     stored_areas = store.get("areas") or {}
     picked = store.get("picked") or {}
+    auto = store.get("auto") or {}
 
     by_area: dict[str, list[dict]] = {}
     for reg in registry.get("entities", []):
@@ -132,6 +135,9 @@ def report(registry: dict, store: dict | None, home: dict | None, quick_inputs: 
         if area not in area_ids:
             lines.append(("warn", "inputs", "room", f"{room.get('id')}:", "no", "HA", "area", str(area)))
     outside = home.get("outside") or {}
+    if (outside.get("temperature") or outside.get("humidity")) and not outside.get("area") and areas:
+        lines.append(("warn", "inputs", "outside:", "no", "area", "(Pocket", "shows", "it", "only", "with", "an", "HA",
+                      "area:", "set", "outside.area)"))
     if outside.get("area"):
         room = defaults.setdefault(outside["area"], {"id": outside["area"]})
         room.setdefault("type", "outside")
@@ -143,6 +149,10 @@ def report(registry: dict, store: dict | None, home: dict | None, quick_inputs: 
     for room in defaults.values():
         for field in READING_KINDS:
             named += [e for e in (room.get(field) or {}).values() if isinstance(e, str)]
+        for light in [room.get("lights") or []] if isinstance(room.get("lights"), str) else (room.get("lights") or []):
+            entity = light.get("entity") if isinstance(light, dict) else light
+            if isinstance(entity, str):
+                named.append(entity)
     for entity in dict.fromkeys(named):
         if entity not in states:
             lines.append(("fail", "inputs", f"{entity}:", "no", "such", "entity"))
@@ -174,14 +184,18 @@ def report(registry: dict, store: dict | None, home: dict | None, quick_inputs: 
                  "type_source": type_source, "checked": checked, "checked_source": checked_source, "kinds": {}}
         for kind in kinds:
             candidates = _candidates(kind, aid, by_area.get(aid, []), states)
-            choice, source = _resolve(kind, area, given, stored, aid in picked and kind["id"] in picked[aid], candidates)
+            choice, source = _resolve(kind, area, given, stored, aid in picked and kind["id"] in picked[aid], candidates,
+                                      aid in auto and kind["id"] in auto[aid])
             if choice:
                 lines.append(("main", aid, kind["id"], *choice, f"({source})"))
             elif source is None and len(candidates) > 1:
                 lines.append(("candidates", aid, kind["id"], f"{len(candidates)}:", "choose", "one"))
             entry["kinds"][kind["id"]] = {"choice": list(choice), "source": source, "candidates": [
                 {"id": c["id"], **_device_facts(devices.get(c["id"])),
-                 "readings": {r: {"entity": e, "name": _name(states, entities, e)} for r, e in c["readings"].items()}}
+                 "readings": {r: {"entity": e, "name": _name(states, entities, e)} for r, e in c["readings"].items()},
+                 # What a reading HA does not classify is picked from (an air score, an index, §3.4).
+                 "unclassified": [{"entity": e, "name": _name(states, entities, e)}
+                                  for e in _unclassified(c["id"], registry, states)]}
                 for c in candidates]}
         if data is not None:
             data.append(entry)
@@ -231,7 +245,22 @@ def _has_lights(area_id: str, given: dict, registry: dict, devices: dict) -> boo
                for r in registry.get("entities", []))
 
 
-def _resolve(kind: dict, area: dict, given: dict, stored: dict, was_picked: bool, candidates: list[dict]):
+def _unclassified(device_id: str, registry: dict, states: dict) -> list[str]:
+    """A device's shown measurement sensors with no device class (Pocket's kinds.js unclassifiedOf)."""
+    if not device_id or device_id.startswith("entity:"):
+        return []
+    out = []
+    for reg in registry.get("entities", []):
+        eid = reg.get("entity_id", "")
+        attrs = (states.get(eid) or {}).get("attributes", {})
+        if (reg.get("device_id") == device_id and eid.startswith("sensor.") and _shown(reg)
+                and not attrs.get("device_class") and attrs.get("state_class") == "measurement"):
+            out.append(eid)
+    return out
+
+
+def _resolve(kind: dict, area: dict, given: dict, stored: dict, was_picked: bool, candidates: list[dict],
+             is_auto: bool = False):
     """(entities, source) of the area's main sensor of a kind, as Pocket resolves it; ((), source)
     for a choice of None, ((), None) when nothing chose."""
     value = stored.get(kind["id"])
@@ -245,7 +274,7 @@ def _resolve(kind: dict, area: dict, given: dict, stored: dict, was_picked: bool
         found = next((c for c in candidates if c["id"] == value), None)
         readings = dict(found["readings"]) if found else {}
         readings.update({k: v for k, v in (stored.get(f"{kind['id']}_readings") or {}).items() if v})
-        return (tuple(readings.values()) or (value,)), "pocket"
+        return (tuple(readings.values()) or (value,)), "auto" if is_auto else "pocket"
     default = given.get(kind["id"])
     if isinstance(default, dict) and any(default.values()):
         return tuple(v for v in default.values() if v), "inputs"
@@ -271,7 +300,10 @@ async def _read(target) -> tuple[dict, dict | None]:
             "entities": await ha.call("config/entity_registry/list"),
             "states": await ha.call("get_states"),
         }
-        stored = await ha.call("frontend/get_system_data", key=STORE_KEY)
+        try:
+            stored = await ha.call("frontend/get_system_data", key=STORE_KEY)
+        except Exception as exc:  # noqa: BLE001 - an HA without the store, a refusal: say so, end FAIL
+            raise DomosensoError(f"cannot read Pocket's home store (frontend/get_system_data): {exc}") from exc
     return registry, (stored or {}).get("value")
 
 

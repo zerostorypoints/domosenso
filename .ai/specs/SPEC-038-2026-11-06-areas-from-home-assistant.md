@@ -156,14 +156,15 @@ discovered by area:
 | field of a room | becomes |
 |---|---|
 | `id`, `area` | which HA area the defaults are for (`area`, else `id`) |
-| `type` (**new**, optional: `inside` \| `outside`) | the area's default type |
+| `type` (**new**, optional: `inside` \| `outside` \| `none`) | the area's default type (absent: Inside) |
+| `checked` (**new**, optional bool) | whether the area is in the checks (absent: yes) |
 | `climate`, `air` | the default main sensors (an air reading without a device class included) |
 | `lights`, `media`, `scenes`, `covers`, `contacts`, `locks` | an override; without it Pocket shows every light, player and scene HA places in the area (a light group stands for its members), and the covers, contacts and locks as today |
 | `name` | the name the Ramka shows; Pocket uses the HA area's name |
 | `outside: {temperature, humidity, area}` | kept for the Ramka; Pocket reads it as the default type `outside` and the default climate of its `area` |
 
 Pocket declares `uses_home: optional`: a home without home inputs renders it, and the card shows
-Home Assistant's areas with no defaults. The schema gains one optional field (`type`); `climate-air` and
+Home Assistant's areas with no defaults. The schema gains two optional fields (`type`, `checked`); `climate-air` and
 the Ramka read the inputs as before.
 
 ### 3.8 `domosenso areas <target>`: the read-only check
@@ -176,6 +177,8 @@ area living_room "Living room" floor ground type inside (pocket)
 main living_room climate sensor.living_room_temperature sensor.living_room_humidity (home-assistant)
 main living_room air <device "Air monitor"> (inputs)
 candidates bedroom climate 2: choose one
+unchecked garden (pocket)
+quick area:living_room (default)
 warn inputs room cellar: no HA area cellar
 fail inputs sensor.attic_temperature: no such entity
 ```
@@ -293,6 +296,7 @@ needs it, never widened silently.
 | an area's only candidate is its main sensor, recorded once | `lib/home-model.js` | the kind's picker (§3.5) |
 | without a list, Quick is each area's lights, then All off | `lib/quick.js` | Quick actions (§3.11) |
 | a light group stands for its members among an area's lights | `lib/home-model.js` | the inputs' `lights` (no Pocket setting yet) |
+| with no HA areas at all, the home inputs' rooms stand in (an `outside` without `area` too) | `lib/home-model.js` | creating HA areas |
 | a device's first sensor of a class stands for that reading | `lib/kinds.js` | open |
 | the home's air score is the lowest of the checked areas' | `lib/climate.js` | open |
 | now playing: what plays anywhere, else the first area's player | `lib/media.js` | the Media page's player pick, for Media only |

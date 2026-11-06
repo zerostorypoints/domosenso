@@ -288,7 +288,10 @@
           "co2": "CO₂",
           "pm2_5": "PM2.5",
           "voc": "VOC",
-          "nox": "NOx"
+          "nox": "NOx",
+          "illuminance": "Light level",
+          "sound": "Sound level",
+          "pressure": "Air pressure"
         },
         "direction": {
           "rising": "Rising",

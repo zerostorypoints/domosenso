@@ -990,3 +990,18 @@ test("a back arrow returns where its page was opened from; opened directly, it g
   await tick();
   assert.equal(window.location.hash, "#/settings/areas");
 });
+
+test("back after a swipe goes back to where the area was opened from, not to a new Areas entry", async () => {
+  const card = mount({ hass: haHome() });
+  await goTo("#/");
+  card._ctx().navigate("#/area/living_room");
+  await tick();
+  card._ctx().navigate("#/area/bedroom", { replace: true });   // the swipe
+  await tick();
+  assert.equal(window.location.hash, "#/area/bedroom");
+  const length = window.history.length;
+  card._ctx().back("#/areas");
+  await tick(); await tick();
+  assert.equal(window.location.hash, "#/", "back to Home, where the area was opened");
+  assert.ok(window.history.length <= length, "no new entry pushed");
+});

@@ -45,7 +45,7 @@ import {
   GONE, operable, el, setArt, setText, setAttr, setArrow, coalesce, number, temperature, percent, pluralOf, lightsOf, membersOf,
   playerOf, shortName,
 } from "../lib/page-kit.js";
-import { trendSpec } from "../lib/trend-sheet.js";
+import { trendSpec, readingSpec } from "../lib/trend-sheet.js";
 import { SENSOR_STYLE, renderSensors } from "../lib/sensor-list.js";
 import { PLAN_STYLE, renderAreaPlan } from "../lib/area-plan.js";
 import "../lib/light-tile.js";
@@ -191,7 +191,10 @@ export function render(ctx) {
   root.querySelector(".top .aset").addEventListener("click", () =>
     parts.ctx.navigate(`#/settings/areas/${encodeURIComponent(parts.room?.id ?? parts.ctx.routeId)}`));
 
-  if (climateReadings.length || airReadings.length) {
+  // The other main sensors the area's settings chose (lib/kinds.json: light level, sound, pressure):
+  // one square each, its value with Home Assistant's unit, opening its trend.
+  const indicators = Object.entries(room.indicators ?? {}).filter(([, entity]) => entity);
+  if (climateReadings.length || airReadings.length || indicators.length) {
     const box = el("div", "squares");
     // Climate opens its first reading's trend; Air its sheet of every air reading.
     const sheetOf = (kind, c) => (kind === "air" ? airSpec(c, room) : trendSpec(c, room, climateReadings[0]));
@@ -207,6 +210,16 @@ export function render(ctx) {
     };
     if (climateReadings.length) add("climate", climateReadings);
     if (airReadings.length) add("air", airReadings);
+    for (const [kind, entity] of indicators) {
+      const s = square("indicator", [kind], true);
+      s.entity = entity;
+      s.sq.dataset.kind = kind;
+      s.sq.addEventListener("click", () => {
+        const spec = readingSpec(parts.ctx, parts.room, kind, entity);
+        if (spec) parts.ctx.openSheet?.(spec);
+      });
+      parts.squares.push(s);
+    }
     box.append(...parts.squares.map((s) => s.sq));
     root.append(box);
   }
@@ -398,6 +411,18 @@ function updateSquares(parts, ctx) {
   const levels = Object.fromEntries(roomLevels(hass, room, ctx.config.thresholds)
     .filter(({ result }) => result).map(({ reading, result }) => [reading, result]));
   for (const s of parts.squares) {
+    if (s.kind === "indicator") {
+      const reading = s.readings[0];
+      const n = numberOf(hass, s.entity);
+      const unit = hass?.states?.[s.entity]?.attributes?.unit_of_measurement;
+      setClass(s.cells[0].value, "big", null, n == null);
+      setText(s.cells[0].num, n == null ? ctx.t("card.pocket.format.none") : `${number(ctx, n, 0, { grouping: false })}${unit ? ` ${unit}` : ""}`);
+      setArrow(s.arrow, ctx, trendNow(hass, s.entity, reading, parts.onTrend));
+      setText(s.title, ctx.t(`card.pocket.areas.kind.${reading}`));
+      setText(s.text, "");
+      setText(s.sep, "");
+      continue;
+    }
     const source = s.kind === "climate" ? room.climate : room.air;
     const valueOf = (reading) => (s.kind === "climate" ? climateValue(hass, room, reading) : numberOf(hass, source[reading]));
     s.cells.forEach(({ reading, value, num }, i) => {

@@ -325,6 +325,7 @@ it, or it does not go in.
 | an area's only candidate is its main sensor, recorded once | `lib/home-model.js` | the kind's picker |
 | without a list, Quick is each area's lights, then All off | `lib/quick.js` | Quick actions |
 | a light group stands for its members among an area's lights | `lib/home-model.js` | the inputs' `lights` |
+| with no HA areas at all, the home inputs' rooms stand in (an `outside` without `area` too) | `lib/home-model.js` | creating HA areas |
 | a device's first sensor of a class stands for that reading | `lib/kinds.js` | open |
 | the home's air score is the lowest of the checked areas' | `lib/climate.js` | open |
 | now playing: what plays anywhere, else the first area's player | `lib/media.js` | Media's player pick (Media only) |

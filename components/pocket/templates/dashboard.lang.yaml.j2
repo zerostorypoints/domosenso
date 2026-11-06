@@ -4,8 +4,8 @@
   by tools/domosenso_render.py. The card's config is the home inputs as given: the defaults per
   Home Assistant area (SPEC-038; the card takes the areas themselves from HA), room names in this
   language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
-  helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
-  `outside`, reserved) from `outside` and `weather`. With the input `floorplan` the card shows the
+  helpers; it reads their states at run time. `outside` gives its `area` the type Outside (with no
+  HA areas, an `outside` without `area` is an Outside area of its own); `weather` feeds the forecast. With the input `floorplan` the card shows the
   floorplan component's card (consumed as the element floorplan-card). With the input `sound` Media
   gets its Sound tab: audio-sensor's music aliases on its meter (the element room-meter-card) and
   the home's averages (the input `sound_averages`, read only with `sound`). With the input `plants`

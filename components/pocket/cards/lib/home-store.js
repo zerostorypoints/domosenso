@@ -9,20 +9,23 @@
 //       failed subscription gives EMPTY once and is not retried until watchHome is called again
 //   saveArea(hass, areaId, patch) -> Promise<value>   merges patch into areas.<areaId> (a field set
 //       to undefined is removed) and writes the whole value (frontend/set_system_data, admin only);
-//       a kind set this way is a person's choice from then on: its one-time mark is dropped, so it
-//       shows as set in Pocket, not found automatically; rejects when the call fails, and writes
-//       nothing then
+//       a kind set this way is a person's choice from then on: its `auto` mark is dropped, so it
+//       shows as set in Pocket, not found automatically (its `picked` mark stays: the one-time pick is
+//       never made again); rejects when the call fails, and writes nothing then
 //   markPicked(hass, areaId, kind, choice?) -> Promise<value>   records that the one-time automatic
 //       choice of kind was made for the area (§3.5), with the choice itself for a store kind
-//   normalize(value) -> {areas: {}, picked: {}}
+//   Both run one after another (a queue in this page), each on the value stored at its turn.
+//   normalize(value) -> {areas: {}, picked: {}, auto: {}}
 //
-// Shape: {areas: {<area id>: {type?: "inside"|"outside"|"none", checked?: boolean, <kind>?: <device or entity id>|"none",
+// Shape: {picked: {<area id>: [kind]} the one-time picks made (never again), auto: {<area id>: [kind]}
+//        those whose value is still the automatic one,
+//        areas: {<area id>: {type?: "inside"|"outside"|"none", checked?: boolean, <kind>?: <device or entity id>|"none",
 //         air_readings?: {<reading>: entity id}}}, picked: {<area id>: [kind]}}
 
 export const KEY = "domosenso-pocket-home";
 // "none": Not assigned, hidden from Pocket's views; no type stored: Inside, the default.
 export const TYPES = Object.freeze(["inside", "outside", "none"]);
-export const EMPTY = Object.freeze({ areas: Object.freeze({}), picked: Object.freeze({}) });
+export const EMPTY = Object.freeze({ areas: Object.freeze({}), picked: Object.freeze({}), auto: Object.freeze({}) });
 
 const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
 
@@ -36,11 +39,14 @@ export function normalize(value) {
     if (typeof copy.checked !== "boolean") delete copy.checked;
     areas[id] = copy;
   }
-  const picked = {};
-  for (const [id, kinds] of Object.entries(isObject(v.picked) ? v.picked : {})) {
-    if (Array.isArray(kinds)) picked[id] = kinds.filter((k) => typeof k === "string");
-  }
-  return { areas, picked };
+  const lists = (raw) => {
+    const out = {};
+    for (const [id, kinds] of Object.entries(isObject(raw) ? raw : {})) {
+      if (Array.isArray(kinds)) out[id] = kinds.filter((k) => typeof k === "string");
+    }
+    return out;
+  };
+  return { areas, picked: lists(v.picked), auto: lists(v.auto) };
 }
 
 export function watchHome(hass, listener) {
@@ -67,7 +73,25 @@ async function write(hass, value) {
   return value;
 }
 
-export async function saveArea(hass, areaId, patch) {
+// Every write reads the stored value, changes it and writes it whole: one at a time, in order, so two
+// writes from this page (a type, then the checks switch; the one-time picks of several areas) never
+// read the same value and lose each other's change. A failed write rejects and the next one runs.
+let queue = Promise.resolve();
+function queued(run) {
+  const next = queue.then(run);
+  queue = next.catch(() => {});
+  return next;
+}
+
+export function saveArea(hass, areaId, patch) {
+  return queued(() => saveAreaNow(hass, areaId, patch));
+}
+
+export function markPicked(hass, areaId, kind, choice) {
+  return queued(() => markPickedNow(hass, areaId, kind, choice));
+}
+
+async function saveAreaNow(hass, areaId, patch) {
   if (typeof hass?.callWS !== "function") throw new Error("pocket home store: no connection");
   const value = await current(hass);
   const area = { ...(value.areas[areaId] ?? {}) };
@@ -76,19 +100,20 @@ export async function saveArea(hass, areaId, patch) {
     else area[key] = field;
   }
   value.areas[areaId] = area;
-  const left = (value.picked[areaId] ?? []).filter((kind) => !(kind in (patch ?? {})));
-  if (left.length) value.picked[areaId] = left;
-  else delete value.picked[areaId];
+  const left = (value.auto[areaId] ?? []).filter((kind) => !(kind in (patch ?? {})));
+  if (left.length) value.auto[areaId] = left;
+  else delete value.auto[areaId];
   return write(hass, value);
 }
 
-export async function markPicked(hass, areaId, kind, choice) {
+async function markPickedNow(hass, areaId, kind, choice) {
   if (typeof hass?.callWS !== "function") throw new Error("pocket home store: no connection");
   const value = await current(hass);
   const kinds = new Set(value.picked[areaId] ?? []);
   if (kinds.has(kind)) return value;
   kinds.add(kind);
   value.picked[areaId] = [...kinds];
+  value.auto[areaId] = [...new Set([...(value.auto[areaId] ?? []), kind])];
   if (choice !== undefined) value.areas[areaId] = { ...(value.areas[areaId] ?? {}), [kind]: choice };
   return write(hass, value);
 }

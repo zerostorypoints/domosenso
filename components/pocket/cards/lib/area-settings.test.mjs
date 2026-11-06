@@ -148,9 +148,10 @@ test("the home store: read, merged per area, written whole; a recorded pick once
   assert.deepEqual(value.picked, { garden: ["illuminance"] });
   assert.equal(value.areas.garden.illuminance, "sensor.lux", "the second is not recorded");
   await saveArea(hass, "garden", { illuminance: "sensor.other" });
-  assert.deepEqual(value.picked, {}, "a person's change drops the one-time mark");
+  assert.deepEqual(value.picked, { garden: ["illuminance"] }, "picked once stays: never picked again");
+  assert.deepEqual(value.auto, {}, "a person's change: no longer the automatic value");
   assert.equal(KEY, "domosenso-pocket-home");
-  assert.deepEqual(normalize({ areas: { x: { type: "attic" } }, picked: { x: "no" } }), { areas: { x: {} }, picked: {} });
+  assert.deepEqual(normalize({ areas: { x: { type: "attic" } }, picked: { x: "no" } }), { areas: { x: {} }, picked: {}, auto: {} });
   await assert.rejects(saveArea({}, "x", {}));
 });
 

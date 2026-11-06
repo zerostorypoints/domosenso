@@ -311,9 +311,16 @@ class PocketApp extends HTMLElement {
       const kind = kindOf(change.kind);
       if (kind?.ha) {
         const readings = change.readings ?? {};
-        await hass.callWS({ type: "config/area_registry/update", area_id: areaId,
-          ...Object.fromEntries(Object.entries(kind.fields).map(([reading, field]) => [field, readings[reading] ?? null])) });
-        await saveArea(hass, areaId, { [kind.id]: change.choice === null ? "none" : undefined });
+        const fields = Object.fromEntries(Object.entries(kind.fields).map(([reading, field]) => [field, readings[reading] ?? null]));
+        // None: the mark first, so a failed second write never lets a later pick undo it; a choice:
+        // HA's field first, then the mark goes.
+        if (change.choice === null) {
+          await saveArea(hass, areaId, { [kind.id]: "none" });
+          await hass.callWS({ type: "config/area_registry/update", area_id: areaId, ...fields });
+        } else {
+          await hass.callWS({ type: "config/area_registry/update", area_id: areaId, ...fields });
+          await saveArea(hass, areaId, { [kind.id]: undefined });
+        }
         return;
       }
       const patch = { [kind.id]: change.choice === null ? "none" : change.choice };
@@ -513,7 +520,8 @@ class PocketApp extends HTMLElement {
   // Settings → Areas for an area's settings; null when the route is fine. Before the first hass,
   // no area is unknown yet.
   _unknownArea(route) {
-    if (!this._hass) return null;
+    // Before the first hass, or while Home Assistant has given no areas yet, nothing is unknown.
+    if (!this._hass || (this._hass.areas && !Object.keys(this._hass.areas).length && !this._config?.rooms?.length)) return null;
     const id = route.page === "area" ? route.id : route.page === "settings" && route.id === "areas" ? route.item : undefined;
     if (id === undefined) return null;
     const known = route.page === "area" ? areasOf(this._areasConfig()) : this._model().rooms;
@@ -531,10 +539,12 @@ class PocketApp extends HTMLElement {
     // From an open sheet: the route takes the sheet's entry, so Back goes to the page under it.
     if (this._sheet?.ownsEntry()) replace = true;
     if (replace && window.location.hash !== route) {
+      // The entry now shows another page: the trail's last step leads there instead (compared with
+      // the hash before it is replaced, so a swipe or a route from a sheet keeps the way back).
+      const before = window.location.hash;
       window.history.replaceState(window.history.state, "", route);
-      // The entry now shows another page: the trail's last step leads there instead.
       const last = this._trail.at(-1);
-      if (last && last.to === window.location.hash) last.to = route;
+      if (last && last.to === before) last.to = route;
       this._route();
       return;
     }
@@ -587,6 +597,7 @@ class PocketApp extends HTMLElement {
     this._current = route;
     if (key !== this._key) {
       this._key = key;
+      this._rebuildPage = false;   // a new page is built anyway: a pending rebuild is done
       this._page = pages[route.page];
       this._pageEl = this._page.render(this._ctx());
       this._sheet.dismiss();

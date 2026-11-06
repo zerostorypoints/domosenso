@@ -523,3 +523,15 @@ test("a swipe that ends on a square opens no sheet", () => {
   assert.deepEqual(ctx.sheets, []);
 });
 
+
+test("the area's other main sensors: a square each, its value with HA's unit, opening its trend", () => {
+  const states = { ...baseStates(), "sensor.lr_lux": st(312.4, { unit_of_measurement: "lx" }) };
+  const cfg = { ...config, rooms: config.rooms.map((r) => (r.id === "living_room" ? { ...r, indicators: { illuminance: "sensor.lr_lux" } } : r)) };
+  const ctx = ctxOf({ routeId: "living_room", cfg, hass: hassOf(states) });
+  const el = mount(ctx);
+  const sq = el.querySelector('.sq.indicator[data-kind="illuminance"]');
+  assert.equal(text(sq.querySelector(".title")), "Light level");
+  assert.equal(text(sq.querySelector(".num")), "312 lx");
+  sq.click();
+  assert.deepEqual([ctx.sheets.at(-1).kind, ctx.sheets.at(-1).entity, ctx.sheets.at(-1).title], ["trend", "sensor.lr_lux", "Light level"]);
+});

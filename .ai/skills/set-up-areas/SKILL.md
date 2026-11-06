@@ -35,8 +35,10 @@ domosenso areas production --json
 The kinds and their device classes are in `<catalog>/components/pocket/cards/lib/kinds.json`: read it
 to name each kind to the owner ("temperature and humidity", "air quality", "light level", ...).
 
-Lines (SPEC-038 §3.8): `area <id> "<name>" floor <f> type <t> (<source>)`, `main <id> <kind> <entities>
-(<source>)`, `candidates <id> <kind> <n>: choose one`, `warn ...`, `fail ...`. A `fail` (an input that
+Lines (SPEC-038 §3.8): `area <id> "<name>" floor <f> type <t> (<source>)`, `unchecked <id> (<source>)`,
+`main <id> <kind> <entities> (<source>)`, `candidates <id> <kind> <n>: choose one`, `quick <item>
+(<source>)`, `warn ...`, `fail ...`. In `--json`, each candidate carries its device's name, maker,
+model, readings and `unclassified` sensors. A `fail` (an input that
 names an entity HA does not have) is fixed first: show it and ask what the input should name, or remove
 it.
 
@@ -62,8 +64,8 @@ suggestion and its reason in a few words. Then ask once: "Is this right? Tell me
    - a kind nobody needs here (a light level in a hallway) can stay unset: suggest unset when no
      candidate is clearly the room's.
 3. **Readings HA does not classify.** For an air device whose score, VOC or NOx index has no device
-   class (its candidate lists fewer readings than the device has), suggest the matching sensor of that
-   device by its name and ask to confirm.
+   class, suggest the matching one of the candidate's `unclassified` sensors by its name and ask to
+   confirm.
 4. **Quick actions** (`data[-1].quick`): suggest a short list for Home, in this order: each lived-in
    area's lights (`areas`), the scenes the household runs often (ask which, from `scenes`; suggest none
    rather than all), then All off. Keep it under eight. Say that each person can change their own list
@@ -92,12 +94,16 @@ and the Quick actions into `domosenso/pocket.inputs.yaml`:
 quick_actions: [area:living_room, scene.evening, all_off]   # the home's default; each person may change theirs
 ```
 
+Before writing, tell the owner that a room entry in the home inputs is read by the Ramka and climate-air
+too (their room lists, climate-air's comfort helpers per room): a new room entry may add helpers there.
+
 Then `domosenso render`, `deploy <target> --plan`, and the deploy only after the owner's yes (the
 usual flow: `snapshot` before, `verify` after).
 
 If the owner wants the answers live at once without a deploy, show them the store value (key
 `domosenso-pocket-home`, SPEC-038 §3.6) and write it with `frontend/set_system_data` only on their typed
-yes; for a climate choice, Home Assistant's own area fields (`config/area_registry/update`,
+yes: read the current value first (`frontend/get_system_data`) and merge your change into it, because a
+set replaces the whole value; for a climate choice, Home Assistant's own area fields (`config/area_registry/update`,
 `temperature_entity_id`, `humidity_entity_id`) instead. Either way, tell them every choice is in
 Pocket's Settings → Areas, where they can change it.
 

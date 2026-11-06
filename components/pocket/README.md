@@ -160,13 +160,13 @@ a pattern updates it.
 - **Widgets**: squares in a grid (an area's, the Areas tab's) share one size: equal columns and
   rows, a fixed aspect (a lone square does not stretch); no text is ellipsized anywhere, a long
   name wraps and a big value shrinks with its square. Each shows a
-  title, one value in its level's colour (below a comfort range blue, above it red, the Outside
-  against climate-air's outside range) with a trend arrow from the last hour, and one short line
-  written to fit (no text is cut off). Every widget opens a sheet: "All good" and the attention
-  pills the checks (every reading of every area, the Outside included, problems first), the inside
-  chip the rooms' temperatures, the lights-on chip the lights that are on, the Air square every air
-  reading; each reading in them opens its trend sheet on top (Back returns to the list).
-- **Trend sheet**: Home's outside and air chips, an area's Climate square and every reading in a
+  title, one value in its level's colour (below a comfort range blue, above it red) with a trend
+  arrow from the last hour, and one short line written to fit (no text is cut off). An area's light
+  level, sound or pressure sensor (its settings) is a square of its own. Every widget opens a sheet:
+  "All good" and the attention pills the checks (every reading of every area in the checks, problems
+  first), Inside and Outside the areas of their type, the lights-on chip the lights, the Air square
+  every air reading; each reading in them opens its trend sheet on top (Back returns to the list).
+- **Trend sheet**: Home's air chip, an area's Climate and other squares and every reading in a
   detail sheet open a bottom sheet with that reading over 24 h (the recorder's history), 7 d (hourly
   long-term statistics) or 30 d (daily), one line over the shaded comfort band (climate-air's
   range or air limit); a sensor without statistics (no `state_class`) shows its history for 7 d

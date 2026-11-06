@@ -22,7 +22,7 @@
 import { roomLevels } from "../lib/attention.js";
 import { numberOf, toneOf, levelKey } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
-import { areasOf, typed } from "../lib/areas.js";
+import { areasOf, typed, isJudged } from "../lib/areas.js";
 import { AIR_READINGS, readingsOf, entityOf, valueOf } from "../lib/checks.js";
 import { adviceOf, homeAir, readingBand, VIEWS } from "../lib/climate.js";
 import { typedSpec } from "../lib/detail-sheets.js";
@@ -275,7 +275,8 @@ function updateSquares(parts, ctx) {
         : number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
           : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
     }
-    const results = group.measured.map(({ area }) => resultIn(ctx, area, "temperature")).filter(Boolean);
+    // Only the areas the home checks colour the square and count as out of range.
+    const results = group.measured.filter(({ area }) => isJudged(area)).map(({ area }) => resultIn(ctx, area, "temperature")).filter(Boolean);
     const worst = [...results].sort((a, b) => RANK[a.level] - RANK[b.level])[0] ?? null;
     const line = [];
     if (type === "inside" && results.length) {

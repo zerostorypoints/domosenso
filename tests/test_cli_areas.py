@@ -111,3 +111,25 @@ def test_an_area_left_out_of_the_checks_is_a_line_of_its_own():
     assert "unchecked garden (inputs)" in text and "unchecked office (pocket)" in text
     assert not any(t.startswith("unchecked bedroom") for t in text), "on by default"
     assert next(d for d in data if d.get("area") == "bedroom")["checked"] is True
+
+
+def test_json_lists_a_devices_unclassified_sensors_and_the_auto_source():
+    registry = {**REGISTRY,
+                "entities": [*REGISTRY["entities"], {"entity_id": "sensor.living_room_score", "device_id": "air"}],
+                "states": [*REGISTRY["states"], {"entity_id": "sensor.living_room_score", "state": "80",
+                                                 "attributes": {"state_class": "measurement"}}]}
+    data: list = []
+    store = {"areas": {"living_room": {"air": "air"}}, "picked": {"living_room": ["air"]}, "auto": {"living_room": ["air"]}}
+    lines, _ = report(registry, store, None, None, data)
+    air = next(d for d in data if d.get("area") == "living_room")["kinds"]["air"]
+    assert air["candidates"][0]["unclassified"] == [{"entity": "sensor.living_room_score", "name": "sensor.living_room_score"}]
+    assert air["source"] == "auto"
+    assert "main living_room air sensor.living_room_co2 (auto)" in [" ".join(l) for l in lines]
+
+
+def test_an_outside_without_an_area_and_a_missing_light_are_reported():
+    home = {"rooms": [{"id": "office", "lights": "light.gone"}], "outside": {"temperature": "sensor.outside_temperature"}}
+    lines, fails = report(REGISTRY, None, home)
+    text = [" ".join(line) for line in lines]
+    assert any(t.startswith("warn inputs outside: no area") for t in text)
+    assert "fail inputs light.gone: no such entity" in text and fails == 1

@@ -1,5 +1,5 @@
 {
-  "_comment": "The kinds of main sensor an area can have (SPEC-038 \u00a73.3). One declaration, read by Pocket (lib/kinds.js) and by `domosenso areas`; a new kind is a new entry here.",
+  "_comment": "The kinds of main sensor an area can have (SPEC-038 \u00a73.3). One declaration, read by Pocket (lib/kinds.js) and by `domosenso areas`; a new kind is a new entry here. Air's nox is matched by nitrogen_dioxide (an NO2 concentration); a sensor that reports a NOx index has no device class and is picked as an unclassified reading.",
   "kinds": [
     {
       "id": "climate",

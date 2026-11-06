@@ -30,6 +30,10 @@
 import { KINDS, candidatesOf, deviceName, entityName } from "./kinds.js";
 import { EMPTY, TYPES } from "./home-store.js";
 
+// The id an inputs' `outside` without an area takes when Home Assistant has no areas (the room id
+// `outside` is reserved for it in the home inputs).
+const OUTSIDE_ID = "outside";
+
 export const SOURCES = Object.freeze(["pocket", "home-assistant", "inputs", "auto", "default"]);
 
 const shown = (reg) => reg && !reg.hidden && !reg.hidden_by && !reg.disabled_by && !reg.entity_category;
@@ -40,13 +44,25 @@ function areaOfEntity(hass, reg) {
   return reg?.area_id || device?.area_id || null;
 }
 
-// HA's areas in floor order. Without hass.areas (a frontend that does not give them, a test), the
-// home inputs' rooms stand in for them, by their room id and name, as Pocket showed them before.
+// HA's areas in floor order. Without any (a frontend that does not give hass.areas, a Home Assistant
+// with no areas yet, a test), the home inputs' rooms stand in for them, by their room id and name, as
+// Pocket showed them before, and an `outside` with sensors but no area is an Outside area of its own
+// (SPEC-038 §3.13, a built-in rule).
 export function orderedAreas(hass, config) {
-  if (!hass?.areas) {
-    return (Array.isArray(config?.rooms) ? config.rooms : []).filter((room) => room?.id)
+  if (!hass?.areas || !Object.keys(hass.areas).length) {
+    const rooms = (Array.isArray(config?.rooms) ? config.rooms : []).filter((room) => room?.id)
       .map((room) => ({ area_id: room.id, name: typeof room.name === "string" ? room.name : room.name?.en ?? room.id,
         floor_id: null, fallback: room }));
+    const outside = config?.outside;
+    if (outside && !outside.area && (outside.temperature || outside.humidity)
+      && !rooms.some((r) => r.area_id === OUTSIDE_ID)) {
+      const climate = {};
+      if (outside.temperature) climate.temperature = outside.temperature;
+      if (outside.humidity) climate.humidity = outside.humidity;
+      rooms.push({ area_id: OUTSIDE_ID, name: "Outside", floor_id: null,
+        fallback: { id: OUTSIDE_ID, type: "outside", climate, fromOutside: true } });
+    }
+    return rooms;
   }
   const areas = Object.values(hass.areas);
   const floors = hass?.floors ?? {};
@@ -127,7 +143,7 @@ function climateOf(hass, areaId, haArea, extra, defaults, stored, picked, candid
   return { source: null, choice: null, readings: {}, candidates };
 }
 
-function deviceKindOf(hass, kind, areaId, defaults, storedArea, picked, candidates) {
+function deviceKindOf(hass, kind, areaId, defaults, storedArea, picked, candidates, auto) {
   const stored = storedArea?.[kind.id];
   const overrides = storedArea?.[`${kind.id}_readings`] ?? {};
   const fromCandidate = (candidate, source) => {
@@ -140,7 +156,7 @@ function deviceKindOf(hass, kind, areaId, defaults, storedArea, picked, candidat
     return { source, choice: candidate.id, name: candidate.name, readings, candidates };
   };
   // A value recorded by the one-time pick, not changed since, is still "found automatically".
-  const source = picked ? "auto" : "pocket";
+  const source = auto ? "auto" : "pocket";
   if (stored === "none") return { source: "pocket", choice: null, readings: {}, candidates };
   if (typeof stored === "string" && stored) {
     const candidate = candidates.find((c) => c.id === stored);
@@ -162,11 +178,11 @@ function deviceKindOf(hass, kind, areaId, defaults, storedArea, picked, candidat
   return { source: null, choice: null, readings: {}, candidates };
 }
 
-function entityKindOf(hass, kind, defaults, storedArea, picked, candidates) {
+function entityKindOf(hass, kind, defaults, storedArea, picked, candidates, auto) {
   const stored = storedArea?.[kind.id];
   const one = (id, source) => ({ source, choice: id, name: entityName(hass, id), readings: { [kind.id]: id }, candidates });
   if (stored === "none") return { source: "pocket", choice: null, readings: {}, candidates };
-  if (typeof stored === "string" && stored) return one(stored, picked ? "auto" : "pocket");
+  if (typeof stored === "string" && stored) return one(stored, auto ? "auto" : "pocket");
   if (typeof defaults?.[kind.id] === "string") return one(defaults[kind.id], "inputs");
   if (picked) return { source: "pocket", choice: null, readings: {}, candidates };
   if (candidates.length === 1) return { ...one(candidates[0].id, "auto"), pending: true };
@@ -188,6 +204,7 @@ export function homeModel(hass, config, store = EMPTY, extra = {}) {
     const given = haArea.fallback ?? defaults.get(id);
     const storedArea = store?.areas?.[id] ?? {};
     const picked = new Set(store?.picked?.[id] ?? []);
+    const auto = new Set(store?.auto?.[id] ?? []);
     const room = { id, area: id, name: haArea.name || given?.name || id, floor: haArea.floor_id ?? null,
       icon: haArea.icon ?? null, indicators: {}, main: {} };
     // Every area is Inside until someone says otherwise; Not assigned ("none") hides it from Pocket's
@@ -204,8 +221,8 @@ export function homeModel(hass, config, store = EMPTY, extra = {}) {
       const candidates = candidatesOf(hass, kind, id);
       let main;
       if (kind.id === "climate") main = climateOf(hass, id, haArea, extra, given, storedArea.climate, picked.has("climate"), candidates);
-      else if (kind.pick === "device") main = deviceKindOf(hass, kind, id, given, storedArea, picked.has(kind.id), candidates);
-      else main = entityKindOf(hass, kind, given, storedArea, picked.has(kind.id), candidates);
+      else if (kind.pick === "device") main = deviceKindOf(hass, kind, id, given, storedArea, picked.has(kind.id), candidates, auto.has(kind.id));
+      else main = entityKindOf(hass, kind, given, storedArea, picked.has(kind.id), candidates, auto.has(kind.id));
       room.main[kind.id] = main;
       if (main.pending) pending.push({ area: id, kind: kind.id, choice: main.choice, readings: main.readings });
       const readings = Object.fromEntries(Object.entries(main.readings ?? {}).filter(([, entity]) => entity));
@@ -228,10 +245,12 @@ export function homeModel(hass, config, store = EMPTY, extra = {}) {
   const thresholds = { ...(config?.thresholds ?? {}) };
   const byRoom = config?.thresholds?.rooms ?? {};
   const rekeyed = {};
+  const fallback = !hass?.areas || !Object.keys(hass.areas).length;
   for (const [areaId, room] of defaults) {
     const ids = byRoom[room.id] ?? (room.fromOutside ? config?.thresholds?.outside : undefined);
-    if (ids) rekeyed[hass?.areas ? areaId : room.id] = ids;
+    if (ids) rekeyed[fallback ? room.id : areaId] = ids;
   }
+  if (fallback && config?.outside && !config.outside.area && config?.thresholds?.outside) rekeyed[OUTSIDE_ID] = config.thresholds.outside;
   thresholds.rooms = rekeyed;
   return { rooms, thresholds, pending };
 }

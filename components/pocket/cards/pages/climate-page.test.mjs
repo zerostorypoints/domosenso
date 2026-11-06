@@ -96,8 +96,8 @@ test("squares: inside the range in the worst room's colour, outside cold blue be
   assert.equal(sq("inside").querySelector(".big").className, "big lv-warm");
   assert.equal(text(sq("inside").querySelector(".lab")), "1 out of range");
   assert.equal(text(sq("outside").querySelector(".num")), "5.5°");
-  assert.equal(sq("outside").querySelector(".big").className, "big lv-cold");
-  assert.equal(text(sq("outside").querySelector(".lab")), "82 % · Too cold");
+  assert.equal(sq("outside").querySelector(".big").className, "big", "switched out of the checks here: not coloured");
+  assert.equal(text(sq("outside").querySelector(".lab")), "82 %");
   assert.equal(text(sq("air").querySelector(".num")), "81");
   assert.equal(sq("air").querySelector(".big").className, "big lv-good");
   assert.equal(text(sq("air").querySelector(".lab")), "Air good");
@@ -254,4 +254,12 @@ test("advice for every checked area: a cold outside area too, until the home swi
   assert.ok(texts(el, ".advice .tip .t1").includes("Outside: Too cold"), texts(el, ".advice .tip .t1").join(" | "));
   const off = mount(ctxWith({ changes: freezing }));
   assert.ok(!texts(off, ".advice .tip .t1").some((t) => t.startsWith("Outside")), "switched off: no advice");
+});
+
+test("an area switched out of the checks never colours Inside nor counts as out of range", () => {
+  const rooms = demo.rooms.map((room) => ({ ...room, type: "inside", ...(room.id === "bedroom" ? { checked: false } : {}) }));
+  const el = mount(ctxWith({ cfg: { ...demo, rooms }, changes: { "sensor.bedroom_temperature": st(30) } }));
+  const sq = el.querySelector('[data-square="inside"]');
+  assert.equal(sq.querySelector(".big").className, "big lv-good", "the bedroom at 30° is not checked");
+  assert.equal(text(sq.querySelector(".lab")), "All in range");
 });

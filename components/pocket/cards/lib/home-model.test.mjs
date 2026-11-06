@@ -159,9 +159,9 @@ test("a room of the inputs with no HA area is not an area; without hass.areas th
 });
 
 test("a pick recorded automatically still says so; once a person changes it, it is theirs", () => {
-  const auto = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: { living_room: ["air"] } });
+  const auto = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: { living_room: ["air"] }, auto: { living_room: ["air"] } });
   assert.equal(roomOf(auto, "living_room").main.air.source, "auto");
-  const theirs = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: {} });
+  const theirs = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: { living_room: ["air"] } });
   assert.equal(roomOf(theirs, "living_room").main.air.source, "pocket");
 });
 
@@ -173,4 +173,15 @@ test("checked: on for every area, an outside one too; the store, then the inputs
   assert.deepEqual([roomOf(inputs, "garden").checked, roomOf(inputs, "garden").checkedSource], [false, "inputs"]);
   const store = homeModel(hassOf(), { rooms: [{ id: "garden", checked: false }] }, { areas: { garden: { checked: true } }, picked: {} });
   assert.deepEqual([roomOf(store, "garden").checked, roomOf(store, "garden").checkedSource], [true, "pocket"]);
+});
+
+test("a Home Assistant with no areas yet: the inputs' rooms stand in, an outside without an area is Outside", () => {
+  const config = { rooms: [{ id: "lounge", name: "Lounge", climate: { temperature: "sensor.lr_t" } }],
+    outside: { temperature: "sensor.garden_t" }, thresholds: { rooms: {}, outside: { temp_low: "o" } } };
+  const model = homeModel({ ...hassOf(), areas: {} }, config);
+  assert.deepEqual(model.rooms.map((r) => [r.id, r.type, r.climate]),
+    [["lounge", "inside", { temperature: "sensor.lr_t" }], ["outside", "outside", { temperature: "sensor.garden_t" }]]);
+  assert.deepEqual(model.thresholds.rooms, { outside: { temp_low: "o" } });
+  const withAreas = homeModel(hassOf(), config);
+  assert.equal(withAreas.rooms.some((r) => r.id === "outside"), false, "with HA's areas, an outside needs its area");
 });

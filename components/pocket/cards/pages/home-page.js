@@ -49,7 +49,7 @@ import { trendNow } from "../lib/trend.js";
 import { checksSpec, lightsSpec, plantsSpec, typedSpec } from "../lib/detail-sheets.js";
 import { powerSpec } from "./power-page.js";
 import { formatDate } from "../lib/i18n.js";
-import { typed } from "../lib/areas.js";
+import { typed, isJudged } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
@@ -350,7 +350,8 @@ function updateChips(parts, ctx) {
         : number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
           : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
     }
-    const worst = group.measured.map(({ area }) => levelIn(area, "temperature")).filter(Boolean)
+    // The colour of the worst area the home checks (an area switched out of the checks never colours).
+    const worst = group.measured.filter(({ area }) => isJudged(area)).map(({ area }) => levelIn(area, "temperature")).filter(Boolean)
       .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
     set(type, true, value, { result: worst, entity: group.entity, reading: "temperature" });
     parts.chips[type].classList.toggle("note", !group.measured.length);
