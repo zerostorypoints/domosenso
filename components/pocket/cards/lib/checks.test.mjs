@@ -13,14 +13,13 @@ const states = (extra = {}) => ({ ...baseStates(), "sensor.outside_temperature":
 const shape = (groups) => groups.map(({ area, rows }) =>
   [area.id, rows.map((r) => [r.reading, r.value, r.result ? r.result.level + (r.result.side ? `_${r.result.side}` : "") : null])]);
 
-test("every reading of every area, an outside one included, problems first", () => {
+test("every reading of every judged area, problems first; an outside area, cold as it is, is never one", () => {
   const groups = checksOf(hassOf(states({ "sensor.living_room_co2": st(900) })), withOutside);
   assert.deepEqual(shape(groups), [
-    ["outside", [["temperature", 5, "poor_low"]]],
     ["living_room", [["co2", 900, "fair"], ["temperature", 21.7, "good"], ["humidity", 44, "good"], ["score", 81, "good"]]],
     ["bedroom", [["temperature", 21.9, "good"], ["humidity", 44, "good"]]],
   ]);
-  assert.equal(groups[1].rows[0].entity, "sensor.living_room_co2");
+  assert.equal(groups[0].rows[0].entity, "sensor.living_room_co2");
 });
 
 test("a reading without limits or without a number is listed last, without a level", () => {
@@ -48,4 +47,12 @@ test("readingsOf, entityOf, valueOf: climate then air, from the area's sensors",
   const bare = { id: "hall", climate: {} };
   assert.deepEqual(readingsOf(bare), []);
   assert.equal(valueOf(hassOf(), bare, "temperature"), null);
+});
+
+test("contract: the pills and the list behind them agree; with no pill, no row of the list is fair or poor", async () => {
+  const { attention } = await import("./attention.js");
+  const hass = hassOf(states());   // the outside area at 5°, below its range
+  assert.deepEqual(attention(hass, withOutside), []);
+  const levels = checksOf(hass, withOutside).flatMap((g) => g.rows).map((r) => r.result?.level).filter(Boolean);
+  assert.ok(levels.every((level) => level === "good"), levels.join(" "));
 });

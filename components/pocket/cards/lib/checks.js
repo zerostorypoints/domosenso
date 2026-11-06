@@ -7,8 +7,9 @@
 //       row = {reading, entity, value, result}   entity: the sensor the trend sheet reads (none for
 //       the Outside's weather attribute), value: a number or null, result: level() or null (no
 //       limits, or no number)
-//       readings: only these readings (Home's inside chip: ["temperature"]); inside: without the
-//       areas of type outside (weather, never judged)
+//       readings: only these readings (Home's inside chip: ["temperature"]). An area of type outside
+//       is never in it: it is weather, never judged (DESIGN.md §6), so "All good" and the list behind
+//       it always agree; `inside` is kept for callers and changes nothing
 //   Problems first: rows poor, fair, good, then without a level (the home's order within each);
 //   areas by their worst row, in the home's order within the same.
 //   readingsOf(area) -> the readings an area has, in order (climate, then air)
@@ -45,7 +46,8 @@ export function areaRows(hass, area, thresholds, readings) {
 }
 
 export function checksOf(hass, config, { readings, inside = false } = {}) {
-  const areas = areasOf(config).filter((area) => !inside || isJudged(area));
+  void inside;
+  const areas = areasOf(config).filter(isJudged);
   const groups = areas.map((area) => {
     const rows = areaRows(hass, area, config?.thresholds, readings);
     // Array.prototype.sort is stable: within a level the home's order stays.
