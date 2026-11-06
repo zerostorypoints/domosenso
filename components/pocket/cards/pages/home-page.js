@@ -8,22 +8,22 @@
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
 //     reading that was checked, per area, the Outside included, problems first;
-//   - metric chips: climate, the home's air score (lib/climate.js homeAir: the lowest room's), the
-//     number of lights on, the power now and the plants. Climate, power and plants say what their
-//     Systems tiles say (lib/sections.js), in their tone: climate "All in range" or "2 need a
-//     look", so the Overview needs no split of the areas into inside and outside (the outside is
-//     weather, in the weather row). Every widget opens a sheet, never a page
-//     (lib/detail-sheets.js: an aggregate list or one sensor's trend): climate the checks of the
-//     rooms' readings, power the meters behind the sum, plants every plant, air the trend sheet
-//     (lib/trend-sheet.js) of its reading, with its trend arrow (lib/trend.js), lights on the
-//     lights that are on. A chip with nothing behind it is left out, one whose reading is
-//     unavailable shows a dash;
+//   - metric chips: inside (the range of the rooms' temperatures), outside, the home's air score
+//     (lib/climate.js homeAir: the lowest room's), the number of lights on, the power now and the
+//     plants (their Systems summary, lib/sections.js). Every widget opens a sheet, never a page
+//     (lib/detail-sheets.js: an aggregate list or one sensor's trend): power the meters behind
+//     the sum, plants every plant; a chip whose entity the config does not
+//     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
+//     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
+//     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
+//     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
+//     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
 //   - Systems (lib/sections.js): a tile per page this home has, the bar's or not, each with its
 //     headline, its status and a dot when it is worth a look (fair or poor, its border too); a tap
 //     opens the page, so every page is reachable from Home while the bar is a quick switch;
 //   - the weather, when the config names a weather entity (lib/weather.js): one row under the
-//     chips, the temperature outside now (the home's outside sensor, else the weather entity's),
-//     the current condition, today's high / low and chance of rain, opening the forecast sheet;
+//     chips, the current condition with today's high / low and chance of rain, opening the
+//     forecast sheet;
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
 //     a tap elsewhere opens Media with that room's player (#/media/<room id>); no card while the
 //     player is missing from Home Assistant;
@@ -34,14 +34,15 @@
 // reports them. render() builds every element once; update() only patches text and attributes (the pills are
 // rebuilt only when the list of items changes), so a scroll or a drag survives hass updates.
 
-import { attention } from "../lib/attention.js";
+import { attention, roomLevels } from "../lib/attention.js";
 import { issuesOf } from "../lib/safety.js";
 import { labelOf } from "../lib/controls.js";
-import { toneOf } from "../lib/level.js";
+import { numberOf, toneOf } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
 import { checksSpec, lightsSpec, plantsSpec } from "../lib/detail-sheets.js";
 import { powerSpec } from "./power-page.js";
 import { formatDate } from "../lib/i18n.js";
+import { outsideArea } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
@@ -50,7 +51,7 @@ import { todayNow } from "../lib/energy.js";
 import { HOME_VIEWS } from "../lib/router.js";
 import { playersOf } from "../lib/media.js";
 import {
-  GONE, operable, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, percent, lightsOf, lightsOn, lightsOnIn,
+  GONE, operable, el, setArt, setText, setAttr, setArrow, coalesce, setLine, number, temperature, percent, lightsOf, lightsOn, lightsOnIn,
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
@@ -155,7 +156,7 @@ export function render(ctx) {
     <div class="views" role="tablist">${HOME_VIEWS.map((view) => `<button type="button" role="tab" data-view="${view}"></button>`).join("")}</div>
     <div class="att" role="list"></div>
     <div class="chips">
-      ${["climate", "air", "lights_on", "power", "plants"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
+      ${["inside", "outside", "air", "lights_on", "power", "plants"].map((name) => `<button class="chip" type="button" data-chip="${name}"><span class="v"></span><span class="arrow" hidden></span> <small></small></button>`).join("\n      ")}
     </div>
     <div class="sections"></div>
     <button class="wx" type="button" hidden><pocket-forecast mode="row"></pocket-forecast><span class="chev">›</span></button>
@@ -335,25 +336,47 @@ function updateChips(parts, ctx) {
     setArrow(chip.querySelector(".arrow"), ctx, entity ? trendNow(hass, entity, reading, parts.onTrend) : null);
     setText(chip.querySelector("small"), ctx.t(`card.pocket.home.chip.${name}`));
   };
+  const levelIn = (area, reading) =>
+    area ? roomLevels(hass, area, config.thresholds).find((found) => found.reading === reading)?.result : null;
+
+  const withTemp = config.rooms.filter((room) => room.climate?.temperature);
+  const temps = withTemp.map((room) => numberOf(hass, room.climate.temperature)).filter((v) => v != null);
+  let inside = ctx.t("card.pocket.format.none");
+  if (temps.length) {
+    const [min, max] = [Math.min(...temps), Math.max(...temps)];
+    inside = number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
+      : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
+  }
+  // The colour of the worst room: poor before fair before good, the home's order within.
+  const RANK = { poor: 0, fair: 1, good: 2 };
+  const worst = withTemp.map((room) => levelIn(room, "temperature")).filter(Boolean)
+    .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
+  set("inside", withTemp.length > 0, inside, { result: worst });
+
+  const outsideId = config.outside?.temperature;
+  set("outside", !!outsideId, temperature(ctx, numberOf(hass, outsideId)), {
+    result: levelIn(outsideArea(config), "temperature"), entity: outsideId, reading: "temperature" });
+
   const air = homeAir(hass, config);
   set("air", !!air, air?.value == null ? ctx.t("card.pocket.format.none") : number(ctx, air.value, 0), {
     result: air?.result, entity: air?.entity, reading: "score" });
 
   set("lights_on", allLights(config).length > 0, String(lightsOnIn(hass, config.rooms)));
 
-  // Climate, power and plants say what their Systems tiles say, in their tone.
+  // Power and plants say what their Systems tiles say, in their tone.
   if (parts.view === "systems") return;
-  const sections = Object.fromEntries(sectionsOf(ctx, { pages: ["climate", "power", "plants"] }).map((section) => [section.page, section]));
-  for (const name of ["climate", "power", "plants"]) {
+  const sections = Object.fromEntries(sectionsOf(ctx, { pages: ["power", "plants"] }).map((section) => [section.page, section]));
+  for (const name of ["power", "plants"]) {
     const section = sections[name];
     set(name, !!section, section?.head ?? "", { result: section?.tone ? { level: section.tone } : null });
   }
 }
 
-// The sheet behind a chip (null: nothing to show): climate the checks of the rooms' readings, air
-// the trend of its reading, lights on the lights that are on.
+// The sheet behind a chip (null: nothing to show): inside the checks of the rooms' temperatures,
+// outside and air the trend of their reading, lights on the lights that are on.
 function chipSheet(ctx, name) {
-  if (name === "climate") return checksSpec(ctx, { inside: true });
+  if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
+  if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
   if (name === "power") return powerSpec(ctx);

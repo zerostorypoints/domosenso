@@ -21,11 +21,8 @@
 //       Assistant's weather conditions
 //   <pocket-forecast mode="row|strip|list">   the widget: el.ctx = ctx (page contract) draws it;
 //       it watches the forecast while it is connected and stops when it leaves the page or the
-//       sheet. row: the temperature outside now (nowTemperature), the current condition, today's
-//       high / low and its chance of rain; strip:
+//       sheet. row: the current condition with today's high / low and its chance of rain; strip:
 //       today and the next days in columns; list: one line per day the forecast has.
-//   nowTemperature(ctx) -> number | null   the temperature outside now: the home's outside sensor
-//       (config.outside.temperature), else the weather entity's own; null without either
 //   forecastSpec(ctx) -> spec   the sheet behind Home's weather row and the Climate strip
 //   forecastSheet = {render(ctx, spec), update(el, ctx)}   that sheet's content (kind "forecast")
 //
@@ -33,19 +30,9 @@
 // Nothing is guessed: a value the forecast does not give is left out.
 
 import { formatDate } from "./i18n.js";
-import { el, setText, number, temperature } from "./page-kit.js";
-import { numberOf } from "./level.js";
+import { el, setText, number } from "./page-kit.js";
 
 export const NEXT_DAYS = 4;
-
-// The sensor the home names for the outside is what the person sees out of the window; the
-// weather entity's value is the provider's estimate for the location, so it comes second.
-export function nowTemperature(ctx) {
-  const sensor = numberOf(ctx.hass, ctx.config?.outside?.temperature);
-  if (sensor != null) return sensor;
-  const value = Number(ctx.hass?.states?.[ctx.config?.weather]?.attributes?.temperature);
-  return Number.isFinite(value) ? value : null;
-}
 
 const ICONS = {
   "clear-night": "mdi:weather-night", cloudy: "mdi:weather-cloudy", fog: "mdi:weather-fog",
@@ -235,8 +222,6 @@ const STYLE = `
   .rain[hidden] { display: none; }
   .row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; row-gap: 2px; }
   .row > ha-icon { --mdc-icon-size: 28px; }
-  .row .t { font-size: 20px; font-weight: 600; }
-  .row .t[hidden] { display: none; }
   .row .cond { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .row .hl { font-size: 15px; }
   .strip { display: grid; grid-template-columns: repeat(var(--days, 5), minmax(0, 1fr)); gap: 4px; text-align: center; }
@@ -312,21 +297,17 @@ class PocketForecast extends HTMLElement {
       timeZoneOf(ctx.hass));
     const days = [today, ...next].filter(Boolean);
     const current = state && !GONE.has(state.state) ? state.state : today?.condition;
-    const now = mode === "row" ? nowTemperature(ctx) : null;
-    const key = JSON.stringify([mode, ctx.lang, current, now, days, ctx.t("card.pocket.weather.today")]);
+    const key = JSON.stringify([mode, ctx.lang, current, days, ctx.t("card.pocket.weather.today")]);
     if (key === this._drawn) return;
     this._drawn = key;
-    if (mode === "row") this._row(box, ctx, current, today, now);
+    if (mode === "row") this._row(box, ctx, current, today);
     else this._days(box, ctx, mode, days, today);
   }
 
-  _row(box, ctx, current, today, now) {
+  _row(box, ctx, current, today) {
     box.className = "row";
-    box.innerHTML = `<ha-icon></ha-icon><span class="t" hidden></span><span class="cond"></span><span class="hl"></span>${rainHtml}`;
+    box.innerHTML = `<ha-icon></ha-icon><span class="cond"></span><span class="hl"></span>${rainHtml}`;
     box.querySelector("ha-icon").setAttribute("icon", iconOf(current));
-    const t = box.querySelector(".t");
-    t.hidden = now == null;
-    if (now != null) setText(t, temperature(ctx, now));
     setText(box.querySelector(".cond"), conditionName(ctx, current));
     setText(box.querySelector(".hl"), highLow(ctx, today));
     fillRain(box.querySelector(".rain"), ctx, rainOf(today));

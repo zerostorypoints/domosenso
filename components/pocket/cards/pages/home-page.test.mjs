@@ -137,20 +137,18 @@ test("pills in Polish and German come from the translations", () => {
   }
 });
 
-test("metric chips: climate as its Systems tile says it, air score, lights on", () => {
+test("metric chips: inside range, outside, air score, lights on", () => {
   const el = mount();
-  assert.deepEqual(texts(el, ".chips .chip:not([hidden])"), ["All in range Climate", "81 Air", "1 Lights on"]);
-  assert.equal(el.querySelector('[data-chip="outside"]'), null, "the outside is weather: in the weather row");
-  assert.equal(el.querySelector('[data-chip="inside"]'), null, "no range of temperatures to group areas for");
+  assert.deepEqual(texts(el, ".chips .chip:not([hidden])"),
+    ["21.7–21.9° Inside", "5.5° Outside", "81 Air", "1 Lights on"]);
 });
 
-test("a chip whose reading is unavailable shows a dash; a chip with nothing behind it is left out", () => {
-  const states = { ...baseStates(), "sensor.living_room_air_quality_score": st("unavailable") };
-  const el = mount(ctxOf({ hass: hassOf(states) }));
-  assert.ok(texts(el, ".chips .chip:not([hidden])").includes("— Air"));
-  const rooms = config.rooms.map(({ climate, air, ...room }) => room);
-  const bare = mount(ctxOf({ cfg: { ...config, rooms, thresholds: {} } }));
-  assert.deepEqual(texts(bare, ".chips .chip:not([hidden])").map((s) => s.split(" ").slice(1).join(" ")), ["Lights on"]);
+test("a chip whose reading is unavailable shows a dash; a chip without its entity is left out", () => {
+  const states = { ...baseStates(), "sensor.outside_temperature": st("unavailable") };
+  const el = mount(ctxOf({ hass: hassOf(states), cfg: { ...config, outside: undefined } }));
+  assert.deepEqual(texts(el, ".chips .chip:not([hidden])").map((s) => s.split(" ")[1]), ["Inside", "Air", "Lights"]);
+  const el2 = mount(ctxOf({ hass: hassOf(states) }));
+  assert.ok(texts(el2, ".chips .chip:not([hidden])").includes("— Outside"));
 });
 
 test("now playing: art, title, artist; play/pause in place, elsewhere to Media", () => {
@@ -371,21 +369,22 @@ test("snappy: play/pause flips at once; a failed call flips it back with the toa
   assert.deepEqual(errors, ["card.pocket.error.media"]);
 });
 
-test("every chip opens its sheet: climate the checks of the rooms, air its trend, lights on the lights", () => {
+test("every chip opens its sheet: inside the temperature checks, outside and air their trend, lights on the lights", () => {
   const ctx = ctxOf();
   const el = home.render(ctx);
   document.body.appendChild(el);
   const chip = (name) => el.querySelector(`.chip[data-chip="${name}"]`);
-  for (const name of ["climate", "air", "lights_on"]) {
+  for (const name of ["inside", "outside", "air", "lights_on"]) {
     assert.equal(chip(name).tagName, "BUTTON", name);
     chip(name).click();
   }
   assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.subtitle]), [
     ["checks", undefined, undefined],
+    ["trend", "sensor.outside_temperature", "Outside"],
     ["trend", "sensor.living_room_air_quality_score", "Living room"],
     ["lights", undefined, undefined],
   ]);
-  assert.deepEqual(ctx.sheets[0], { kind: "checks", title: "What was checked", inside: true });
+  assert.deepEqual(ctx.sheets[0], { kind: "checks", title: "Temperature inside", readings: ["temperature"], inside: true });
   const css = el.querySelector("style").textContent;
   assert.match(css, /button\.chip \{[^}]*min-height: 44px/);
 });
@@ -395,23 +394,27 @@ const withOutsideRange = { ...config, thresholds: { ...config.thresholds, outsid
 const outsideRangeStates = (temp) => ({ ...baseStates(), "sensor.outside_temperature": st(temp),
   "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24) });
 
-test("climate takes the tone of its tile: a room out of range; the outside, however cold, never", () => {
-  const cold = mount(ctxOf({ hass: hassOf(outsideRangeStates(-8)), cfg: withOutsideRange }));
-  assert.equal(text(cold.querySelector('[data-chip="climate"]')), "All in range Climate");
-  assert.equal(cold.querySelector('[data-chip="climate"] .v').className, "v");
+test("side colours: outside below its range is cold blue, above it warm; inside the worst room; air its level", () => {
+  const cold = mount(ctxOf({ hass: hassOf(outsideRangeStates(5)), cfg: withOutsideRange }));
+  assert.equal(cold.querySelector('[data-chip="outside"] .v').className, "v lv-cold");
+  const warm = mount(ctxOf({ hass: hassOf(outsideRangeStates(30)), cfg: withOutsideRange }));
+  assert.equal(warm.querySelector('[data-chip="outside"] .v').className, "v lv-warm");
   const states = { ...baseStates(), "sensor.bedroom_temperature": st(23), "sensor.living_room_air_quality_score": st(70) };
   const el = mount(ctxOf({ hass: hassOf(states) }));
-  assert.match(text(el.querySelector('[data-chip="climate"]')), /^2 need a look Climate$/);
-  assert.match(el.querySelector('[data-chip="climate"] .v').className, /^v lv-(fair|poor)$/, "the bedroom above its range, the air fair");
+  assert.equal(el.querySelector('[data-chip="inside"] .v').className, "v lv-warm", "the bedroom is above its range");
   assert.equal(el.querySelector('[data-chip="air"] .v').className, "v lv-fair");
+  assert.equal(el.querySelector('[data-chip="outside"] .v').className, "v", "no outside range: no level");
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /\.v\.lv-cold\s*\{\s*color:\s*var\(--cold\)/);
+  assert.match(css, /\.v\.lv-warm\s*\{\s*color:\s*var\(--warm\)/);
 });
 
-test("a trend arrow on the air chip from the last hour; none on climate and lights", async () => {
+test("trend arrows on the outside and air chips from the last hour; none on inside and lights", async () => {
   const { clearHistoryCache } = await import("../lib/trend.js");
   clearHistoryCache();
   const hass = hassOf();
   hass.ws = [];
-  const series = { "sensor.living_room_air_quality_score": [95, 88, 81] };
+  const series = { "sensor.outside_temperature": [7, 6, 5.5], "sensor.living_room_air_quality_score": [81, 81, 81] };
   hass.callWS = (msg) => {
     hass.ws.push(...msg.entity_ids);
     const start = Date.parse(msg.start_time);
@@ -423,12 +426,14 @@ test("a trend arrow on the air chip from the last hour; none on climate and ligh
   const el = mount(ctx);
   await new Promise((r) => setTimeout(r, 0));
   const arrow = (name) => el.querySelector(`[data-chip="${name}"] .arrow`);
-  assert.equal(arrow("air").textContent, "↓");
-  assert.ok(arrow("climate").hidden && arrow("lights_on").hidden);
-  assert.deepEqual(hass.ws, ["sensor.living_room_air_quality_score"]);
+  assert.equal(arrow("outside").textContent, "↓");
+  assert.equal(arrow("outside").getAttribute("aria-label"), "Falling");
+  assert.equal(arrow("air").textContent, "→");
+  assert.ok(arrow("inside").hidden && arrow("lights_on").hidden);
+  assert.deepEqual(hass.ws.sort(), ["sensor.living_room_air_quality_score", "sensor.outside_temperature"]);
   home.update(el, ctx);
   home.update(el, ctx);
-  assert.equal(hass.ws.length, 1, "updates fetch nothing");
+  assert.equal(hass.ws.length, 2, "updates fetch nothing");
   clearHistoryCache();
 });
 
@@ -456,7 +461,6 @@ test("weather: one row under the chips from the daily forecast subscription, ope
     precipitation_probability: 30 }] });
   const row = wx.querySelector("pocket-forecast").shadowRoot;
   assert.equal(row.querySelector("ha-icon").getAttribute("icon"), "mdi:weather-sunny", "the condition now");
-  assert.equal(text(row.querySelector(".t")), "5.5°", "the home's outside sensor, before the weather's own 7°");
   assert.equal(text(row.querySelector(".cond")), "Sunny");
   assert.equal(text(row.querySelector(".hl")), "9° / 2°");
   assert.equal(text(row.querySelector(".rain")), "30 %");
@@ -471,15 +475,4 @@ test("weather: no row without a weather entity", () => {
   const { weather, ...cfg } = config;
   const el = mount(ctxOf({ cfg }));
   assert.equal(el.querySelector(".wx").hidden, true);
-});
-
-test("weather: without an outside sensor the row shows the weather entity's temperature", async () => {
-  const { clearForecasts } = await import("../lib/weather.js");
-  clearForecasts();
-  const hass = hassOf({ ...baseStates(), "weather.forecast_home": st("cloudy", { temperature: 7 }) });
-  const el = mount(ctxOf({ hass, cfg: { ...config, outside: undefined } }));
-  const row = el.querySelector(".wx pocket-forecast").shadowRoot;
-  assert.equal(text(row.querySelector(".t")), "7.0°");
-  assert.equal(row.querySelector(".t").hidden, false);
-  el.remove();
 });

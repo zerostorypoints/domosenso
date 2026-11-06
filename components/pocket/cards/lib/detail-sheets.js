@@ -76,10 +76,7 @@ export const DETAIL_STYLE = `
 const areaName = (ctx, area) => (area.outside ? ctx.t("card.pocket.area.outside") : area.name);
 
 export function checksSpec(ctx, { readings, inside } = {}) {
-  // "Temperature inside" only for the rooms' temperatures; every reading of the rooms (Home's
-  // Climate chip) is what was checked.
-  const narrow = inside && readings?.length === 1 && readings[0] === "temperature";
-  const spec = { kind: "checks", title: ctx.t(narrow ? "card.pocket.checks.inside" : "card.pocket.checks.title") };
+  const spec = { kind: "checks", title: ctx.t(inside ? "card.pocket.checks.inside" : "card.pocket.checks.title") };
   if (readings) spec.readings = readings;
   if (inside) spec.inside = true;
   return spec;

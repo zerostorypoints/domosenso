@@ -82,18 +82,10 @@ Every widget opens a **sheet**, never a page. Two kinds only:
 
 | kind | when | its sheet |
 |---|---|---|
-| **aggregate** | the widget sums or ranges many sensors (Home's Climate, Lights on, Power, Plants; the Climate page's Inside) | a list by area, each row its name, level dot and value; a row opens that sensor's trend sheet, stacked |
-| **single sensor** | one sensor (Air; the Climate page's Outside) | that sensor's trend sheet |
+| **aggregate** | the widget sums or ranges many sensors (Inside, Lights on, Power, Plants) | a list by area, each row its name, level dot and value; a row opens that sensor's trend sheet, stacked |
+| **single sensor** | one sensor (Outside, Air) | that sensor's trend sheet |
 
 A new widget picks one of the two. If it wants a page, it is a Systems tile instead.
-
-**Home's Overview needs no grouping of areas.** Its chips are Climate, Air, Lights on, Power and
-Plants; Climate, Power and Plants say what their Systems tiles say ("All in range", "2 need a
-look"), in their tone. There is no Inside range and no Outside chip: a range over every area would
-mix a balcony with the bedroom unless someone first marked which areas are inside, and a home
-should not need that step to see its Overview. The outside is weather: the weather row starts with
-the temperature now (the home's outside sensor, else the weather entity's own), never coloured
-against a comfort range.
 
 ### 4.2 Tile (Home → Systems)
 
@@ -157,7 +149,7 @@ when the row has a level. A row that opens something is a `button`.
 - Light tile (`<pocket-light-tile>`): tap toggles, drag sets brightness; a group counts its members.
 - Segmented control: Home's views, Media | Sound, trend periods, Appearance. Not a drop-down when
   there are two or three choices; a native `<select>` when the list is long or open-ended
-  (measurements, Language).
+  (measurements).
 - Media: transport (64 px play), a 44 px volume strip, mute, power when supported, the input chip
   beside what plays when the player can select a source.
 - Risky acts confirm in place (`lib/confirm.js`), never with a dialog: the first tap turns the button
@@ -177,8 +169,8 @@ when the row has a level. A row that opens something is a `button`.
   scenes, meters, update entities).
 - **Thresholds** are climate-air's helpers (comfort ranges per area, air limits fair/poor), one
   shared definition the Ramka reads too. Pocket shows and links them; HA's more-info changes them.
-- **Settings are per person** (HA frontend user data, `lib/settings.js`): theme, language, bar,
-  climate view, media player, scenes. **Per device** only what must differ by phone (open at start, in local
+- **Settings are per person** (HA frontend user data, `lib/settings.js`): theme, bar, climate view,
+  media player, scenes. **Per device** only what must differ by phone (open at start, in local
   storage). Nothing per dashboard.
 - **Exceptions to discovery**: a domain whose entities are also a component's internals (timers) is
   named in Pocket's inputs, as the Ramka names it.
@@ -197,7 +189,7 @@ The level keys and their boundaries are the shared contract
   `--acc` accent and on-states; `--mut` secondary text; `--card`, `--chip`, `--line`, `--bg`, `--fg`.
   Never a literal colour in a page.
 - The worst level wins a summary (poor before fair before good, the home's order within).
-- Attention (pills, Climate tile and chip) counts the rooms; the Outside is weather, coloured but never a
+- Attention (pills, Climate tile) counts the rooms; the Outside is weather, coloured but never a
   problem.
 
 ## 7. Gestures
@@ -263,8 +255,6 @@ Then, for any feature:
 |---|---|
 | Areas, not Rooms; the Outside is an area | the balcony and the outside belong with the rooms |
 | Home has Overview and Systems | a single Home mixed status and navigation and was hard to read |
-| Home's Overview has a Climate chip, not Inside and Outside; the outside temperature is in the weather row | a range of inside temperatures needs every area marked inside or outside first; the count of rooms out of range and the weather need nothing a home has not already set up |
-| The language is a person's setting, Automatic by default; one dashboard holds the names in every language | a dashboard per language made the choice an admin's, and a person could not switch without a second dashboard in the sidebar |
 | Widgets open sheets, tiles open pages | one rule for "tap for details" vs "go to the aspect" |
 | The trend sheet is per sensor with a measurement drop-down | a device measures several things; the entry point is only where you came from |
 | Settings in two levels | home-wide values are a step away, not changed by accident |
