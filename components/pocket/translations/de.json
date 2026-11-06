@@ -33,8 +33,7 @@
         "all_good": "Alles in Ordnung",
         "pill": "{room}: {message}",
         "chip": {
-          "inside": "Innen",
-          "outside": "Aussen",
+          "climate": "Klima",
           "air": "Luft",
           "lights_on": "Lichter an",
           "power": "Strom",
@@ -161,6 +160,12 @@
           "system": "System",
           "light": "Hell",
           "dark": "Dunkel"
+        },
+        "language": {
+          "title": "Sprache",
+          "auto": "Automatisch",
+          "auto_hint": "Die Sprache von Home Assistant, wie in deinem Profil eingestellt.",
+          "chosen_hint": "Nur für Pocket, auf jedem Gerät, auf dem du dich anmeldest."
         },
         "bar": {
           "title": "Untere Leiste",

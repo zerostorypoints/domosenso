@@ -275,3 +275,17 @@ test("This device: open Pocket at the app's start, here only; off again restores
   assert.equal(window.localStorage.getItem("domosenso-pocket-start"), null);
   assert.equal(start.getAttribute("aria-checked"), "false");
 });
+
+test("Language: Automatic, then each language by its own name; a pick saves it; Automatic when unset", async () => {
+  const ctx = settingsCtx({ settings: { bar: ["home", "settings"], theme: "system", language: "auto" } });
+  const el = mount(ctx);
+  const select = el.querySelector(".appearance .lang select");
+  assert.deepEqual([...select.options].map((o) => [o.value, o.textContent]),
+    [["auto", "Automatic"], ["en", "English"], ["de", "Deutsch"], ["pl", "Polski"]]);
+  assert.equal(select.value, "auto");
+  assert.equal(el.querySelector(".lang .name").textContent, "Language");
+  select.value = "pl";
+  select.dispatchEvent(new Event("change"));
+  await tick();
+  assert.deepEqual(ctx.saves, [{ language: "pl" }]);
+});

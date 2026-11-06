@@ -521,7 +521,7 @@ test("two saves at once run one after the other: both fields are kept", async ()
   const ctx = card._ctx();
   await Promise.all([ctx.saveSettings({ bar: ["areas"] }), ctx.saveSettings({ theme: "dark" })]);
   assert.deepEqual(stored(), { bar: ["areas"], theme: "dark" });
-  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark", climateView: "temperature" });
+  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark", language: "auto", climateView: "temperature" });
 });
 
 test("a failed save does not stop the next one", async () => {

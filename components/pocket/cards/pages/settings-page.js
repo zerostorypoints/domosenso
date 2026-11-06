@@ -2,7 +2,9 @@
 // person sets for themselves (Appearance, Bottom bar) and a row per panel; a panel is a page of its
 // own (#/settings/comfort, #/settings/about: ctx.routeId), with a Back to Settings, so the home's
 // values are a deliberate step away and the first level stays short. The groups:
-//   - Appearance: System / Light / Dark (lib/settings.js theme; lib/theme.js paints it);
+//   - Appearance: System / Light / Dark (lib/settings.js theme; lib/theme.js paints it), and the
+//     Language: Automatic (the dashboard's, else Home Assistant's) or one the pocket speaks, each
+//     named in its own language (lib/settings.js language), a native drop-down;
 //   - This device: "Open Pocket when the app starts", on this phone or browser only (lib/start.js:
 //     its local storage, so each device chooses; off, Home Assistant opens as it would);
 //   - Bottom bar: a switch per page the bar can show besides Home and Settings (lib/router.js
@@ -21,6 +23,7 @@
 import { areasOf, comfortOf } from "../lib/areas.js";
 import { FIXED_TABS, MAX_TABS, SETTINGS_PANELS, TABS, optionalPages } from "../lib/router.js";
 import { MODES } from "../lib/theme.js";
+import { LANGUAGES } from "../lib/settings.js";
 import { reportError } from "../lib/report.js";
 import { setStartHere, startTarget } from "../lib/start.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
@@ -33,6 +36,9 @@ const AREA_URL = "/config/areas/area/";
 const CHOICES = TABS.map((tab) => tab.page).filter((page) => !FIXED_TABS.includes(page));
 const ROOM = MAX_TABS - FIXED_TABS.length;
 const COMFORT = [["temperature", "temp_low", "temp_high"], ["humidity", "humidity_low", "humidity_high"]];
+
+// Each language by its own name, as a person looks for it whatever language the page is in.
+const ENDONYMS = { en: "English", de: "Deutsch", pl: "Polski" };
 
 // The version this file is served from (/local/domosenso/pocket/<version>/cards/pages/...), for a
 // home whose inventory does not list the pocket.
@@ -68,6 +74,9 @@ const STYLE = `
   .settings .row:first-of-type { border-top: 0; }
   .settings .row .label { flex: 1 1 7em; min-width: 0; overflow-wrap: break-word; }
   .settings .row .label small { display: block; font-size: 12.5px; color: var(--mut); }
+  .settings .lang { border-top: 0; }
+  .settings .lang select { min-height: 44px; max-width: 100%; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--fg); font: inherit; }
   .settings .switch { box-sizing: border-box; flex: 0 0 auto; width: 56px; min-height: 44px; margin: 0; padding: 0 4px;
                       border: 0; background: none; cursor: pointer; display: flex; align-items: center; }
   .settings .switch i { position: relative; display: block; width: 46px; height: 28px; border-radius: 14px; background: var(--line); }
@@ -190,7 +199,9 @@ export function render(ctx) {
   const root = el("section", "settings");
   root.innerHTML = `<style>${STYLE}</style>
     <div class="top"><b></b><button class="back" type="button" hidden><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
-    <div class="group appearance"><h3></h3><div class="seg" role="radiogroup"></div></div>
+    <div class="group appearance"><h3></h3><div class="seg" role="radiogroup"></div>
+      <label class="row lang"><span class="label"><span class="name"></span><small></small></span><select></select></label>
+    </div>
     <div class="group device"><h3></h3>
       <div class="row"><span class="label"><span class="name"></span><small></small></span><button class="switch start" type="button" role="switch"><i></i></button></div>
     </div>
@@ -225,6 +236,15 @@ export function render(ctx) {
     parts.modes.push(button);
     $(".seg").append(button);
   }
+
+  const lang = $(".lang select");
+  for (const code of LANGUAGES) {
+    const option = el("option");
+    option.value = code;
+    if (code !== "auto") option.textContent = ENDONYMS[code] ?? code;
+    lang.append(option);
+  }
+  lang.addEventListener("change", () => { if (shown(parts).language !== lang.value) change(root, { language: lang.value }); });
 
   parts.choices = choicesOf(ctx.config);
   for (const page of parts.choices) {
@@ -350,6 +370,13 @@ export function update(root, ctx) {
     setAttr(button, "aria-checked", String(settings.theme === button.dataset.mode));
     button.disabled = offline;
   }
+
+  const lang = $(".lang select");
+  setText($(".lang .name"), ctx.t("card.pocket.settings.language.title"));
+  setText($(".lang small"), ctx.t(settings.language === "auto" ? "card.pocket.settings.language.auto_hint" : "card.pocket.settings.language.chosen_hint"));
+  setText(lang.querySelector('option[value="auto"]'), ctx.t("card.pocket.settings.language.auto"));
+  if (lang.value !== settings.language) lang.value = settings.language;
+  lang.disabled = offline;
 
   setText($(".device h3"), ctx.t("card.pocket.settings.device.title"));
   const start = $(".device .start");

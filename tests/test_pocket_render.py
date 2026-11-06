@@ -56,12 +56,15 @@ def test_outside_and_weather(tmp_path):
 
 
 def test_room_names_per_language(tmp_path):
+    # Every language's name goes to the card, which picks the person's (lib/names.js): one
+    # dashboard can serve every language.
     home = copy.deepcopy(HOME)
-    home["rooms"][1]["name"] = {"en": "Bedroom", "pl": "Pokoj sypialny", "de": "Schlafraum"}
-    assert _card(_dashboard(tmp_path / "en", home))["rooms"][1]["name"] == "Bedroom"
+    names = {"en": "Bedroom", "pl": "Pokoj sypialny", "de": "Schlafraum"}
+    home["rooms"][1]["name"] = names
+    assert _card(_dashboard(tmp_path / "en", home))["rooms"][1]["name"] == names
     pl = _card(_dashboard(tmp_path / "pl", home, "pl"))
-    assert pl["lang"] == "pl" and pl["rooms"][1]["name"] == "Pokoj sypialny"
-    assert _card(_dashboard(tmp_path / "de", home, "de"))["rooms"][1]["name"] == "Schlafraum"
+    assert pl["lang"] == "pl" and pl["rooms"][1]["name"] == names
+    assert _card(_dashboard(tmp_path / "en2", HOME))["rooms"][2]["name"] == "Office", "a plain name stays one"
 
 
 def test_thresholds_name_the_climate_air_helpers(tmp_path):
@@ -189,14 +192,16 @@ def test_plants_flag_only_with_the_input(tmp_path):
     assert {"component": "plants", "id": "plant.<plant>"} in manifest["consumes"]
 
 
-def test_listed_covers_contacts_locks_pass_with_names_in_the_language(tmp_path):
+def test_listed_covers_contacts_locks_pass_with_their_names(tmp_path):
     home = copy.deepcopy(HOME)
     home["rooms"][0]["covers"] = ["cover.living_room_blind",
                                   {"entity": "cover.awning_living_room", "name": {"en": "Awning", "de": "Markise"}}]
     home["rooms"][0]["locks"] = [{"entity": "lock.front_door", "name": "Front door"}]
     card = _card(_dashboard(tmp_path / "de", home, lang="de"))
     living = card["rooms"][0]
-    assert living["covers"] == ["cover.living_room_blind", {"entity": "cover.awning_living_room", "name": "Markise"}]
+    # Every language's name: the card picks the person's (lib/names.js).
+    assert living["covers"] == ["cover.living_room_blind",
+                                {"entity": "cover.awning_living_room", "name": {"en": "Awning", "de": "Markise"}}]
     assert living["locks"] == [{"entity": "lock.front_door", "name": "Front door"}]
     assert "contacts" not in living
     assert "covers" not in card["rooms"][1]

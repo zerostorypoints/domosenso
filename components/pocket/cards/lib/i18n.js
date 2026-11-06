@@ -2,7 +2,7 @@
 // `en` is the source language; a missing key falls back to `en`, and to the
 // key itself only when `en` lacks it too.
 
-const SUPPORTED = ["en", "de", "pl"];
+export const SUPPORTED = ["en", "de", "pl"];
 const DATE_LOCALES = { en: "en-GB", de: "de-CH", pl: "pl-PL" };
 
 export function language(hass) {

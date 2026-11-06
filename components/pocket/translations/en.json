@@ -33,8 +33,7 @@
         "all_good": "All good",
         "pill": "{room}: {message}",
         "chip": {
-          "inside": "Inside",
-          "outside": "Outside",
+          "climate": "Climate",
           "air": "Air",
           "lights_on": "Lights on",
           "power": "Power",
@@ -161,6 +160,12 @@
           "system": "System",
           "light": "Light",
           "dark": "Dark"
+        },
+        "language": {
+          "title": "Language",
+          "auto": "Automatic",
+          "auto_hint": "Home Assistant's language, as set in your profile.",
+          "chosen_hint": "Only for Pocket, on every device you sign in on."
         },
         "bar": {
           "title": "Bottom bar",

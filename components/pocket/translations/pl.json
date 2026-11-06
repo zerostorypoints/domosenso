@@ -33,8 +33,7 @@
         "all_good": "Wszystko w porządku",
         "pill": "{room}: {message}",
         "chip": {
-          "inside": "W domu",
-          "outside": "Na zewnątrz",
+          "climate": "Klimat",
           "air": "Powietrze",
           "lights_on": "Włączone światła",
           "power": "Prąd",
@@ -161,6 +160,12 @@
           "system": "Systemowy",
           "light": "Jasny",
           "dark": "Ciemny"
+        },
+        "language": {
+          "title": "Język",
+          "auto": "Automatyczny",
+          "auto_hint": "Język Home Assistanta, ustawiony w Twoim profilu.",
+          "chosen_hint": "Tylko dla Pocket, na każdym urządzeniu, na którym się logujesz."
         },
         "bar": {
           "title": "Dolny pasek",

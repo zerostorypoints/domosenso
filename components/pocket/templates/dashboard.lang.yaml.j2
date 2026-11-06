@@ -1,9 +1,9 @@
 [#
   The pocket dashboard: one panel view holding one custom:pocket-app card, which draws every screen
   itself (Home, Areas, an area, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
-  by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
-  language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
-  helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
+  by tools/domosenso_render.py. The card's config is the home inputs as given (room names in every
+  language they are given in, the card picking the person's (lib/names.js); each room's HA area:
+  its `area`, else its id) and the ids of climate-air's threshold helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
   `outside`, reserved) from `outside` and `weather`. With the input `floorplan` the card shows the
   floorplan component's card (consumed as the element floorplan-card). With the input `sound` Media
   gets its Sound tab: audio-sensor's music aliases on its meter (the element room-meter-card) and
@@ -51,18 +51,18 @@ views:
         rooms:
 [%- for room in home.rooms %]
           - id: [[ room.id | yaml ]]
-            name: [[ room_name(room) | yaml ]]
+            name: [[ room.name | yaml ]]
             area: [[ room.area | default(room.id) | yaml ]]
 [%- for field in fields if room[field] is defined %]
             [[ field ]]: [[ room[field] | yaml ]]
 [%- endfor %]
 [#- Covers, contacts and locks the room lists first (decision record of #219): an entity, or an
-    entity with its name in this language. -#]
+    entity with its name, in every language given. -#]
 [%- for kind in ('covers', 'contacts', 'locks') if room[kind] is defined %]
             [[ kind ]]:
 [%- for item in room[kind] %]
 [%- if item is mapping %]
-              - {entity: [[ item.entity | yaml ]], name: [[ room_name(item) | yaml ]]}
+              - {entity: [[ item.entity | yaml ]], name: [[ item.name | yaml ]]}
 [%- else %]
               - [[ item | yaml ]]
 [%- endif %]

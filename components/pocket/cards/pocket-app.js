@@ -26,7 +26,9 @@
 // Navigation sets location.hash: no reload, and the browser's back button returns.
 //
 //   type: custom:pocket-app
-//   lang: en                 # the dashboard's language; Home Assistant's when missing
+//   lang: en                 # the dashboard's language; Home Assistant's when missing; the
+//                            # person's choice in Settings (lib/settings.js language) wins
+//   (any `name` may be a map per language, {en: ..., pl: ...}: lib/names.js picks one)
 //   rooms: [{id, name, area, lights?, scenes?, climate?, air?, media?}]
 //   outside: ...             # optional; with weather, the Outside pseudo-area (lib/areas.js)
 //   weather: weather.home    # optional
@@ -45,6 +47,7 @@ import { barTabs, defaultBar, legacyRoute, optionalPages, parseRoute, tabOf } fr
 import { areasOf } from "./lib/areas.js";
 import { readSettings, saveSettings, withDefaults } from "./lib/settings.js";
 import { setText } from "./lib/page-kit.js";
+import { localize } from "./lib/names.js";
 import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
@@ -175,6 +178,7 @@ class PocketApp extends HTMLElement {
   setConfig(config) {
     if (!config || typeof config !== "object") throw new Error("pocket-app: a config is required");
     this._config = { ...config, rooms: Array.isArray(config.rooms) ? config.rooms : [] };
+    this._local = null;
     // Until the person's settings are read, the home's default bar (Plants with plants).
     if (!this._settingsRead) this._settings = withDefaults({}, defaultBar(this._config));
     if (this._root) {
@@ -317,9 +321,22 @@ class PocketApp extends HTMLElement {
     }
   }
 
-  // The language of every word: the dashboard's (config.lang), else Home Assistant's.
+  // The language of every word: the person's choice in Settings, else the dashboard's
+  // (config.lang), else Home Assistant's.
   _lang() {
+    const chosen = this._settings?.language;
+    if (chosen && chosen !== "auto") return chosen;
     return this._config?.lang || language(this._hass);
+  }
+
+  // The config with its names in the current language, made again only when the language or
+  // the config changes, so pages compare the same objects between updates.
+  _localConfig() {
+    const lang = this._lang();
+    if (this._local?.lang !== lang || this._local.source !== this._config) {
+      this._local = { lang, source: this._config, config: localize(this._config, lang) };
+    }
+    return this._local.config;
   }
 
   _t(key, vars) {
@@ -331,7 +348,7 @@ class PocketApp extends HTMLElement {
     return {
       hass: this._optimistic.view(this._hass),
       optimistic: this._optimistic,
-      config: this._config,
+      config: this._localConfig(),
       t: (key, vars) => this._t(key, vars),
       navigate: (route, options) => this._navigate(route, options),
       lang: this._lang(),
@@ -346,7 +363,15 @@ class PocketApp extends HTMLElement {
 
   // The person's settings, read or just saved: the bar follows them.
   _applySettings(settings) {
+    const lang = this._lang();
     this._settings = settings;
+    // Another language: every page builds some words once, so the page is built anew.
+    if (this._root && this._lang() !== lang) {
+      this._paint();
+      this._key = null;
+      this._route();
+      return settings;
+    }
     if (this._root) {
       this._paint();
       this._renderBar();

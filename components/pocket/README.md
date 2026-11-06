@@ -39,13 +39,19 @@ a pattern updates it.
 - **System** (`#/system`, from Systems): the last automatic backup (amber after 8 days, red after
   30 or when the last attempt failed), the updates waiting (each opening HA's more-info), the
   devices that read nothing, and for an administrator a link to HA's settings.
-- **Widgets** (Overview): each opens a sheet, never a page. An aggregate (many sensors: Inside,
-  Lights on with every lamp to switch, Power with its meters, Plants with every plant) lists them,
-  each row opening its trend; one sensor (Outside, Air) opens its trend, the sensor's other
+- **Widgets** (Overview): Climate (what the Climate tile says: all in range, or how many readings
+  need a look), Air, Lights on, Power and Plants, then the weather row, which starts with the
+  temperature outside now (the outside sensor, else the weather entity's). Each opens a sheet, never
+  a page. An aggregate (many sensors: Climate with every room's readings, Lights on with every lamp
+  to switch, Power with its meters, Plants with every plant) lists them, each row opening its
+  trend; one sensor (Air) opens its trend, the sensor's other
   measurements a pick away. A sheet closes by a finger dragged down anywhere on it from the top of
   its content; the page behind never pulls to refresh while it is open.
 - **Back**: every page opened from Systems has a back arrow to Systems beside the menu button (on
   the bar or not); a page off the bar has it however it was reached.
+- **Language** (Settings → Appearance): Automatic (the dashboard's `lang`, else the person's Home
+  Assistant language) or English, Deutsch, Polski, kept per person like the theme. Names given per
+  language in the home inputs come to the card whole, and it shows the chosen language's.
 - **This device** (Settings): "Open Pocket when the app starts" moves the app's first dashboard of a
   session to the pocket on this phone or browser only (its local storage; HA's own default
   dashboard is per user). Off: HA opens as it would.
@@ -143,10 +149,10 @@ a pattern updates it.
   title, one value in its level's colour (below a comfort range blue, above it red, the Outside
   against climate-air's outside range) with a trend arrow from the last hour, and one short line
   written to fit (no text is cut off). Every widget opens a sheet: "All good" and the attention
-  pills the checks (every reading of every area, the Outside included, problems first), the inside
-  chip the rooms' temperatures, the lights-on chip the lights that are on, the Air square every air
+  pills the checks (every reading of every area, the Outside included, problems first), Home's
+  Climate chip every reading of the rooms, the Climate page's Inside square the rooms' temperatures, the lights-on chip the lights that are on, the Air square every air
   reading; each reading in them opens its trend sheet on top (Back returns to the list).
-- **Trend sheet**: Home's outside and air chips, an area's Climate square and every reading in a
+- **Trend sheet**: Home's air chip, the Climate page's Outside and Air squares, an area's Climate square and every reading in a
   detail sheet open a bottom sheet with that reading over 24 h (the recorder's history), 7 d (hourly
   long-term statistics) or 30 d (daily), one line over the shaded comfort band (climate-air's
   range or air limit); a sensor without statistics (no `state_class`) shows its history for 7 d
@@ -240,7 +246,7 @@ Rendered from the home inputs; nothing in it is a state.
 | key | holds |
 |---|---|
 | `lang` | the dashboard's language |
-| `rooms` | per room in the home's order: `id`, `name` (in this language), `area` (its HA area: the room's `area`, else its id), and `lights`, `scenes`, `climate`, `air`, `media` as the home gives them |
+| `rooms` | per room in the home's order: `id`, `name` (a string, or one per language: the card shows the person's), `area` (its HA area: the room's `area`, else its id), and `lights`, `scenes`, `climate`, `air`, `media` as the home gives them |
 | `outside`, `weather` | as the home gives them (`outside` with its `area` when named); absent when it does not. The cards build the **Outside** pseudo-area (id `outside`, which no room may take) from them, listed after the rooms |
 | `thresholds.rooms` | per room with climate: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with a humidity sensor), each a climate-air `input_number` id |
 | `thresholds.outside` | with `outside`: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with outside humidity), climate-air's outside helpers; absent without `outside` |

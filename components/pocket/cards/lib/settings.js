@@ -11,6 +11,9 @@
 // Fields:
 //   bar     the page ids on the bottom bar (lib/router.js barTabs: Home and Settings always)
 //   theme   the Appearance: "system" (the phone's), "light" or "dark" (lib/theme.js MODES)
+//   language  the pocket's language: "auto" (the dashboard's `lang`, else Home Assistant's, as
+//           before the setting existed) or one of lib/i18n.js SUPPORTED; one pocket dashboard
+//           serves every language
 //   climateView   the reading the Climate page shows: "temperature", "humidity" or "air"
 //                 (lib/climate.js VIEWS), the switch's last choice
 //   scenes        the scenes the Scenes page shows (scene entity ids, in the order chosen), the
@@ -23,16 +26,19 @@
 // defaults on load (readSettings rejects instead); on save it rejects and writes nothing.
 
 import { VIEWS } from "./climate.js";
+import { SUPPORTED } from "./i18n.js";
 
 export const KEY = "domosenso-pocket";
 
 export const DEFAULTS = Object.freeze({
   bar: Object.freeze(["home", "areas", "climate", "media", "settings"]),
   theme: "system",
+  language: "auto",
   climateView: "temperature",
 });
 
 const THEMES = ["system", "light", "dark"];
+export const LANGUAGES = ["auto", ...SUPPORTED];
 
 const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
 
@@ -42,6 +48,7 @@ export function withDefaults(stored, bar = DEFAULTS.bar) {
   const result = { ...DEFAULTS, ...value, bar: [...bar] };
   if (Array.isArray(value.bar) && value.bar.every((id) => typeof id === "string")) result.bar = [...value.bar];
   if (!THEMES.includes(value.theme)) result.theme = DEFAULTS.theme;
+  if (!LANGUAGES.includes(value.language)) result.language = DEFAULTS.language;
   if (!VIEWS.includes(value.climateView)) result.climateView = DEFAULTS.climateView;
   if (typeof value.mediaPlayer !== "string") delete result.mediaPlayer;
   if (Array.isArray(value.scenes) && value.scenes.every((id) => typeof id === "string")) result.scenes = [...value.scenes];

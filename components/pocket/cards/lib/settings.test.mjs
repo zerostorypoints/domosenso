@@ -24,13 +24,13 @@ test("the defaults: Home, Areas, Climate, Media, Settings on the bar", () => {
 
 test("nothing stored: the defaults; the read asks for the pocket's key", async () => {
   const hass = hassWith();
-  assert.deepEqual(await loadSettings(hass), { bar: ["home", "areas", "climate", "media", "settings"], theme: "system", climateView: "temperature" });
+  assert.deepEqual(await loadSettings(hass), { bar: ["home", "areas", "climate", "media", "settings"], theme: "system", language: "auto", climateView: "temperature" });
   assert.deepEqual(hass.calls, [{ type: "frontend/get_user_data", key: "domosenso-pocket" }]);
 });
 
 test("a stored bar wins; other stored fields are kept", async () => {
   const hass = hassWith({ "domosenso-pocket": { bar: ["home", "power"], theme: "dark" } });
-  assert.deepEqual(await loadSettings(hass), { bar: ["home", "power"], theme: "dark", climateView: "temperature" });
+  assert.deepEqual(await loadSettings(hass), { bar: ["home", "power"], theme: "dark", language: "auto", climateView: "temperature" });
 });
 
 test("a failing call, no callWS, or a value of the wrong shape: the defaults", async () => {
@@ -52,7 +52,7 @@ test("the defaults are not shared: a change to a loaded value leaves them", asyn
 test("save merges the patch into what is stored and returns the merged settings", async () => {
   const hass = hassWith({ "domosenso-pocket": { theme: "dark" } });
   const saved = await saveSettings(hass, { bar: ["home", "plants", "settings"] });
-  assert.deepEqual(saved, { bar: ["home", "plants", "settings"], theme: "dark", climateView: "temperature" });
+  assert.deepEqual(saved, { bar: ["home", "plants", "settings"], theme: "dark", language: "auto", climateView: "temperature" });
   assert.deepEqual(hass.store["domosenso-pocket"], { theme: "dark", bar: ["home", "plants", "settings"] });
   assert.deepEqual(hass.calls.at(-1),
     { type: "frontend/set_user_data", key: "domosenso-pocket", value: { theme: "dark", bar: ["home", "plants", "settings"] } });
@@ -78,7 +78,7 @@ test("save with nothing stored yet ({value: null}) starts from the patch, defaul
   const hass = hassWith();
   const saved = await saveSettings(hass, { theme: "dark" });
   assert.deepEqual(hass.store["domosenso-pocket"], { theme: "dark" });
-  assert.deepEqual(saved, { bar: [...DEFAULTS.bar], theme: "dark", climateView: "temperature" });
+  assert.deepEqual(saved, { bar: [...DEFAULTS.bar], theme: "dark", language: "auto", climateView: "temperature" });
 });
 
 test("readSettings rejects on a failed call; nothing stored or no callWS: the defaults", async () => {
@@ -123,4 +123,12 @@ test("a home's default bar is used while nothing is stored, never over a stored 
   assert.deepEqual(withDefaults({ bar: ["power"] }, bar).bar, ["power"]);
   assert.deepEqual((await loadSettings(undefined, bar)).bar, bar);
   assert.deepEqual((await readSettings(hassWith(), bar)).bar, bar);
+});
+
+test("language: Automatic by default; a language the pocket speaks is kept, any other ignored", () => {
+  assert.equal(withDefaults({}).language, "auto");
+  assert.equal(withDefaults({ language: "pl" }).language, "pl");
+  assert.equal(withDefaults({ language: "de" }).language, "de");
+  assert.equal(withDefaults({ language: "fr" }).language, "auto");
+  assert.equal(withDefaults({ language: 3 }).language, "auto");
 });
