@@ -268,7 +268,9 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   centre to centre, 7.5 mm from the underside to the board's top face; the drawing gives 54, 44
   and 7.6 mm. The antenna jack's thread measured 32 and 37 mm from the module's left
   edge, so its axis is 34.5 mm from it, against the drawing's 34; the two edges span 5 mm of a
-  6.35 mm thread, so the ruler reading is good to about ±0.5 mm.
+  6.35 mm thread, so the ruler reading is good to about ±0.5 mm. Laid open side down on a flat table, the module rests
+  level on its rim: the screw posts, the corner bosses and the bus socket inside it stay within
+  the rim, so on the pads it stands at the modelled height.
 - Atom Lite: [product page](https://docs.m5stack.com/en/core/ATOM%20Lite) (24.0 × 24.0 × 9.5 mm),
   [model-size drawing](https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg)
   and [Atom-Lite.stl](https://github.com/m5stack/M5_Hardware/tree/master/Products/C008_Atom-Lite/Structures).
