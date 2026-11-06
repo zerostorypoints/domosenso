@@ -153,7 +153,7 @@ test("every square line fits SHORT_LINE_CHARS in every language: the widest humi
 const withOutside = (extra = {}) => ({ ...config, outside: { temperature: "sensor.outside_temperature",
   humidity: "sensor.outside_humidity" }, ...extra });
 
-test("the Outside comes after the rooms, with its temperature and humidity; a tap opens it", () => {
+test("an outside area is an area like any other, by its Home Assistant name; a tap opens it", () => {
   const states = { ...baseStates(), "sensor.outside_temperature": st(4.5), "sensor.outside_humidity": st(81) };
   const ctx = ctxOf({ cfg: withOutside(), hass: hassOf(states) });
   const el = mount(ctx);
@@ -167,20 +167,12 @@ test("the Outside comes after the rooms, with its temperature and humidity; a ta
   outside.click();
   assert.deepEqual(ctx.routes, ["#/area/outside"]);
   rooms.update(el, ctxOf({ cfg: withOutside(), lang: "pl", hass: hassOf(states) }));
-  assert.equal(text(outside.querySelector(".name")), "Na zewnątrz");
+  assert.equal(text(outside.querySelector(".name")), "Outside", "names are not translated");
 });
 
-test("a home with only a weather entity: the Outside reads it", () => {
-  const states = { ...baseStates(), "weather.home": st("cloudy", { temperature: 7, humidity: 90 }) };
-  const el = mount(ctxOf({ cfg: { ...config, weather: "weather.home" }, hass: hassOf(states) }));
-  const outside = [...el.querySelectorAll(".grid .sq")].at(-1);
-  assert.equal(text(outside.querySelector(".name")), "Outside");
-  assert.equal(text(outside.querySelector(".big")), "7.0°");
-  assert.equal(text(outside.querySelector(".lab")), "90 %");
-});
-
-test("no outside and no weather: no Outside", () => {
+test("a weather entity alone makes no area", () => {
   assert.equal(mount().querySelectorAll(".grid .sq").length, 4);
+  assert.equal(mount(ctxOf({ cfg: { ...config, weather: "weather.home" } })).querySelectorAll(".grid .sq").length, 4);
 });
 
 test("squares have a definite width, so Safari takes their height from the aspect ratio", () => {

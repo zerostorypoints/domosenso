@@ -523,10 +523,3 @@ test("a swipe that ends on a square opens no sheet", () => {
   assert.deepEqual(ctx.sheets, []);
 });
 
-test("the Outside's square from the weather alone opens nothing", () => {
-  const cfg = { ...config, weather: "weather.home" };
-  const ctx = ctxOf({ routeId: "outside", cfg });
-  const el = mount(ctx);
-  const sq = el.querySelector(".sq.climate");
-  assert.equal(sq.tagName, "DIV");
-});

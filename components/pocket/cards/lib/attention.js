@@ -11,7 +11,7 @@
 // config.rooms, readings as above). A reading or a limit without a number gives no item.
 
 import { level, numberOf } from "./level.js";
-import { climateReadings, climateValue, comfortOf } from "./areas.js";
+import { climateReadings, climateValue, comfortOf, isJudged } from "./areas.js";
 
 const COMFORT = [
   { reading: "temperature", low: "temp_low", high: "temp_high" },
@@ -28,7 +28,7 @@ const RANK = { poor: 0, fair: 1 };
 
 // The level of every reading of one room that has an entity and limits: [{reading, result}],
 // result as level() gives it (null when a value or limit has no number). The area page uses it
-// too, for a room or the Outside (lib/areas.js: its comfort range is thresholds.outside).
+// too, for any area (lib/areas.js comfortOf: its comfort range, keyed by HA area).
 export function roomLevels(hass, room, thresholds) {
   const found = [];
   const comfort = comfortOf(thresholds, room);
@@ -52,6 +52,8 @@ export function attention(hass, config) {
   if (!hass?.states || !Array.isArray(config?.rooms)) return [];
   const items = [];
   for (const room of config.rooms) {
+    // An outside area is weather: coloured on its page, never a problem.
+    if (!isJudged(room)) continue;
     for (const { reading, result } of roomLevels(hass, room, config.thresholds)) {
       if (!result || !(result.level in RANK)) continue;
       const item = { room: room.id, reading, level: result.level };

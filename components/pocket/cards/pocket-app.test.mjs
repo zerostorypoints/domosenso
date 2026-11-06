@@ -357,19 +357,78 @@ test("a link of the first version lands on its new route, in place of the old en
   assert.ok(window.history.length <= length + 3, "only the entries the test set");
 });
 
-test("the Outside is an area when the home has one; a route to it without one goes to Areas", async () => {
-  mount();
-  await goTo("#/area/outside");
-  assert.equal(window.location.hash, "#/areas");
-  document.body.innerHTML = "";
+// Home Assistant's registries as the frontend gives them (hass.areas, hass.floors, hass.devices,
+// hass.entities), for the area model (SPEC-038).
+const st = (state, attributes = {}) => ({ state: String(state), attributes });
+function haHome(extra = {}) {
+  return hassOf({
+    floors: { ground: { floor_id: "ground", name: "Ground", level: 0 }, up: { floor_id: "up", name: "Up", level: 1 } },
+    areas: {
+      bedroom: { area_id: "bedroom", name: "Bedroom", floor_id: "up" },
+      living_room: { area_id: "living_room", name: "Living Room", floor_id: "ground", temperature_entity_id: null },
+      garden: { area_id: "garden", name: "Garden", floor_id: null },
+      study: { area_id: "study", name: "Study", floor_id: "up" },
+    },
+    devices: { d1: { id: "d1", name: "Study sensor", area_id: "study" } },
+    entities: { "sensor.study_t": { entity_id: "sensor.study_t", device_id: "d1" } },
+    states: { "sensor.study_t": st(20, { device_class: "temperature", state_class: "measurement" }),
+      "sensor.outside_temperature": st(5, { device_class: "temperature" }) },
+    ...extra,
+  });
+}
+
+test("the areas are Home Assistant's, in floor order; the inputs' outside gives its area the type Outside", async () => {
   const card = document.createElement("pocket-app");
-  card.setConfig({ ...config(), outside: { temperature: "sensor.outside_temperature" } });
+  card.setConfig({ ...config(), outside: { temperature: "sensor.outside_temperature", area: "garden" } });
   document.body.appendChild(card);
-  card.hass = hassOf();
+  card.hass = haHome();
+  const rooms = card._ctx().config.rooms;
+  assert.deepEqual(rooms.map((r) => [r.id, r.name, r.type]),
+    [["living_room", "Living Room", null], ["bedroom", "Bedroom", null], ["study", "Study", null], ["garden", "Garden", "outside"]]);
+  assert.deepEqual(rooms.find((r) => r.id === "garden").climate, { temperature: "sensor.outside_temperature" });
+  assert.equal(card._ctx().config.outside, undefined, "no Outside of the card's own");
+  await goTo("#/area/garden");
+  assert.equal(window.location.hash, "#/area/garden");
   await goTo("#/area/outside");
-  assert.equal(window.location.hash, "#/area/outside");
-  assert.equal(card._ctx().routeId, "outside");
-  assert.deepEqual(active(card), ["areas"]);
+  assert.equal(window.location.hash, "#/areas", "an area Home Assistant does not have goes to Areas");
+});
+
+test("an administrator's Pocket records the only candidate once: climate into HA's area fields", async () => {
+  const calls = [];
+  const store = { value: null };
+  const hass = haHome({
+    user: { is_admin: true },
+    callWS: (msg) => {
+      calls.push(msg);
+      if (msg.type === "frontend/get_system_data") return Promise.resolve({ value: store.value });
+      if (msg.type === "frontend/set_system_data") { store.value = msg.value; return Promise.resolve(null); }
+      return Promise.resolve(null);
+    },
+    connection: { subscribeMessage: (callback) => { callback({ value: store.value }); return Promise.resolve(() => {}); } },
+  });
+  const card = mount({ hass });
+  await tick();
+  const study = card._ctx().config.rooms.find((r) => r.id === "study");
+  assert.deepEqual(study.climate, { temperature: "sensor.study_t" });
+  assert.equal(study.main.climate.source, "auto");
+  const update = calls.filter((m) => m.type === "config/area_registry/update");
+  assert.deepEqual(update, [{ type: "config/area_registry/update", area_id: "study",
+    temperature_entity_id: "sensor.study_t", humidity_entity_id: null }]);
+  assert.deepEqual(store.value.picked, { study: ["climate"] });
+  card.hass = { ...hass };
+  await tick();
+  assert.equal(calls.filter((m) => m.type === "config/area_registry/update").length, 1, "once");
+});
+
+test("someone who is not an administrator records nothing; the only candidate still shows", async () => {
+  const calls = [];
+  const hass = haHome({ user: { is_admin: false }, callWS: (msg) => { calls.push(msg); return Promise.resolve(null); },
+    connection: { subscribeMessage: (callback) => { callback({ value: null }); return Promise.resolve(() => {}); } } });
+  const card = mount({ hass });
+  await tick();
+  assert.deepEqual(card._ctx().config.rooms.find((r) => r.id === "study").climate, { temperature: "sensor.study_t" });
+  assert.deepEqual(calls.filter((m) => m.type !== "frontend/get_user_data"), []);
+  await assert.rejects(card._ctx().home.set("study", { type: "inside" }));
 });
 
 test("Power and Plants with nothing in Home Assistant: their empty states", async () => {

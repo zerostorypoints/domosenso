@@ -72,11 +72,12 @@ test("trendSpec: no entity gives null; a reading without limits has no band", ()
   assert.equal(trendSpec(ctx, undefined, "temperature"), null);
   const cfg = { ...config, outside: { temperature: "sensor.outside_temperature" }, weather: "weather.home",
     thresholds: { ...config.thresholds, outside: { temp_low: "input_number.out_low", temp_high: "input_number.out_high" } } };
-  const out = areasOf(cfg, ctxOf().t).find((a) => a.outside);
-  const spec = trendSpec(ctxOf({ cfg }), out, "temperature");
+  const areas = ctxOf({ cfg });
+  const out = areasOf(areas.config).find((a) => a.type === "outside");
+  const spec = trendSpec(areas, out, "temperature");
   assert.equal(spec.subtitle, "Outside");
   assert.deepEqual(spec.band, { low: "input_number.out_low", high: "input_number.out_high" });
-  assert.equal(trendSpec(ctxOf({ cfg }), out, "humidity"), null, "the weather's attribute has no history");
+  assert.equal(trendSpec(areas, out, "humidity"), null, "no humidity sensor: no trend");
   const bare = { ...config, thresholds: {} };
   assert.equal(trendSpec(ctxOf({ cfg: bare }), room("living_room"), "temperature").band, undefined);
 });

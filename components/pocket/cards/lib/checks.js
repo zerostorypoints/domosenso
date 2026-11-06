@@ -1,21 +1,21 @@
 // What the pocket checks, reading by reading, for the detail sheets behind Home's "All good" and
-// its attention pills (lib/detail-sheets.js): every reading of every area (lib/areas.js: the rooms
-// and the Outside), its value and its level (lib/attention.js roomLevels: the comfort range of the
-// area, thresholds.outside for the Outside, the home's air limits). Plain ES module: no DOM.
+// its attention pills (lib/detail-sheets.js): every reading of every area (lib/areas.js: Home
+// Assistant's areas), its value and its level (lib/attention.js roomLevels: the comfort range of the
+// area, the home's air limits). Plain ES module: no DOM.
 //
 //   checksOf(hass, config, {readings?, inside?}) -> [{area, rows: [row]}]
 //       row = {reading, entity, value, result}   entity: the sensor the trend sheet reads (none for
 //       the Outside's weather attribute), value: a number or null, result: level() or null (no
 //       limits, or no number)
-//       readings: only these readings (Home's inside chip: ["temperature"]); inside: the rooms
-//       only, without the Outside
+//       readings: only these readings (Home's inside chip: ["temperature"]); inside: without the
+//       areas of type outside (weather, never judged)
 //   Problems first: rows poor, fair, good, then without a level (the home's order within each);
 //   areas by their worst row, in the home's order within the same.
 //   readingsOf(area) -> the readings an area has, in order (climate, then air)
 //   entityOf(area, reading), valueOf(hass, area, reading)
 
 import { numberOf } from "./level.js";
-import { areasOf, climateReadings, climateValue } from "./areas.js";
+import { areasOf, climateReadings, climateValue, isJudged } from "./areas.js";
 import { roomLevels } from "./attention.js";
 
 export const AIR_READINGS = ["score", "co2", "pm2_5", "voc", "nox"];
@@ -45,7 +45,7 @@ export function areaRows(hass, area, thresholds, readings) {
 }
 
 export function checksOf(hass, config, { readings, inside = false } = {}) {
-  const areas = areasOf(config).filter((area) => !(inside && area.outside));
+  const areas = areasOf(config).filter((area) => !inside || isJudged(area));
   const groups = areas.map((area) => {
     const rows = areaRows(hass, area, config?.thresholds, readings);
     // Array.prototype.sort is stable: within a level the home's order stays.

@@ -36,6 +36,7 @@ COMMANDS: dict[str, str | None] = {
     "floorplan": "domosenso_cli.floorplan",
     "private": "domosenso_cli.private",
     "thresholds": "domosenso_cli.thresholds",
+    "areas": "domosenso_cli.areas",
 }
 
 SUMMARIES = {
@@ -57,6 +58,7 @@ SUMMARIES = {
     "floorplan": "move the floor plan between Home Assistant and the home repository",
     "private": "link the home's private files from its folder outside the repository",
     "thresholds": "the Ramka's limits and comfort ranges beside climate-air's, before sharing them",
+    "areas": "the home's areas, their type and main sensors as Pocket sees them",
 }
 
 

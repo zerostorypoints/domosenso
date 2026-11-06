@@ -9,6 +9,9 @@
 //     its local storage, so each device chooses; off, Home Assistant opens as it would);
 //   - Bottom bar: a switch per page the bar can show besides Home and Settings (lib/router.js
 //     TABS), at most MAX_TABS - 2 on; while that many are on, the others are disabled with a hint;
+//   - Areas (#/settings/areas, SPEC-038 §3.9): every Home Assistant area with its type and its main
+//     temperature sensor (or "Main sensor not set") in one line; a row opens the area settings sheet
+//     (lib/area-settings.js), the same as the area page's;
 //   - Comfort ranges: per area with comfort helpers (lib/areas.js comfortOf: the rooms, then the
 //     Outside), then the air limits; each value is a button that opens Home Assistant's more-info
 //     of its helper (the hass-more-info event), so HA's own dialog changes it;
@@ -207,9 +210,11 @@ export function render(ctx) {
     </div>
     <div class="group bar"><h3></h3><p class="hint fixed"></p><div class="rows"></div><p class="hint full"></p></div>
     <div class="group menu">
+      <button class="row" type="button" data-panel="areas"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
       <button class="row" type="button" data-panel="comfort"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
       <button class="row" type="button" data-panel="about"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
     </div>
+    <div class="group areas"><h3></h3><p class="hint"></p><div class="rows"></div></div>
     <div class="group comfort"><h3></h3><p class="hint"></p><div class="rows"></div></div>
     <div class="group about"><h3></h3>
       <p class="version"></p>
@@ -265,6 +270,16 @@ export function render(ctx) {
     $(".bar .rows").append(row);
   }
 
+  parts.areaRows = areasOf(ctx.config).map((area) => {
+    const row = el("button", "row", `<span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon>`);
+    row.type = "button";
+    row.dataset.area = area.id;
+    row.addEventListener("click", () => parts.ctx.openSheet?.({ kind: "area-settings", area: area.id,
+      title: parts.ctx.t("card.pocket.areas.settings") }));
+    $(".areas .rows").append(row);
+    return { id: area.id, row };
+  });
+
   const comfort = $(".comfort .rows");
   for (const area of areasOf(ctx.config)) {
     const ids = comfortOf(ctx.config?.thresholds, area);
@@ -285,6 +300,7 @@ export function render(ctx) {
   $(".menu [data-panel=comfort]").hidden = !parts.hasComfort;
   $(".comfort").hidden = panel !== "comfort" || !parts.hasComfort;
   $(".about").hidden = panel !== "about";
+  $(".areas").hidden = panel !== "areas";
 
   for (const area of areasOf(ctx.config)) {
     const link = el("a", "row", `<span class="label"><span class="name"></span><small></small></span><span class="go">›</span>`);
@@ -361,6 +377,21 @@ export function update(root, ctx) {
   setText(comfortRow.querySelector(".name"), ctx.t("card.pocket.settings.comfort.title"));
   setText(comfortRow.querySelector("small"), ctx.t("card.pocket.settings.comfort.summary",
     { count: parts.areaNames.length }) + (parts.airName ? ` · ${ctx.t("card.pocket.settings.air.title")}` : ""));
+  const rooms = areasOf(ctx.config);
+  const areasRow = $(".menu [data-panel=areas]");
+  setText(areasRow.querySelector(".name"), ctx.t("card.pocket.areas.title"));
+  setText(areasRow.querySelector("small"), ctx.t("card.pocket.areas.summary",
+    { count: rooms.length, unassigned: rooms.filter((r) => !r.type).length }));
+  setText($(".areas h3"), ctx.t("card.pocket.areas.title"));
+  setText($(".areas .hint"), ctx.t(ctx.home?.admin === false ? "card.pocket.areas.admin_only" : "card.pocket.areas.hint"));
+  for (const { id, row } of parts.areaRows) {
+    const room = rooms.find((r) => r.id === id);
+    if (!room) continue;
+    setText(row.querySelector(".name"), room.name);
+    const climate = room.main?.climate;
+    const sensor = climate?.choice ? climate.name : ctx.t("card.pocket.areas.sensor_not_set");
+    setText(row.querySelector("small"), `${ctx.t(`card.pocket.areas.types.${room.type ?? "none"}`)} · ${sensor}`);
+  }
   const aboutRow = $(".menu [data-panel=about]");
   setText(aboutRow.querySelector(".name"), ctx.t("card.pocket.settings.about.title"));
   setText($(".appearance h3"), ctx.t("card.pocket.settings.appearance"));

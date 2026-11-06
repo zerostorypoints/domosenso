@@ -8,16 +8,19 @@
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
 //     reading that was checked, per area, the Outside included, problems first;
-//   - metric chips: inside (the range of the rooms' temperatures), outside, the home's air score
+//   - metric chips: inside and outside (SPEC-038 §3.9: the areas of that type, lib/areas.js typed:
+//     the range of their main temperatures; "No areas assigned" when no area has the type, opening
+//     Settings → Areas; "Main sensor not set" when none of its areas has one), the home's air score
 //     (lib/climate.js homeAir: the lowest room's), the number of lights on, the power now and the
 //     plants (their Systems summary, lib/sections.js). Every widget opens a sheet, never a page
 //     (lib/detail-sheets.js: an aggregate list or one sensor's trend): power the meters behind
 //     the sum, plants every plant; a chip whose entity the config does not
 //     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
-//     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
-//     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
-//     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
-//     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
+//     colour (inside and outside the worst of their areas against each one's comfort range: below
+//     it --cold, above it --warm), a trend arrow on inside or outside when one sensor makes it, and on
+//     air (lib/trend.js). Inside and outside open the sheet of their areas (lib/detail-sheets.js
+//     typed), air the trend sheet (ctx.openSheet, lib/trend-sheet.js) of its reading, lights on the
+//     sheet of the lights that are on;
 //   - Systems (lib/sections.js): a tile per page this home has, the bar's or not, each with its
 //     headline, its status and a dot when it is worth a look (fair or poor, its border too); a tap
 //     opens the page, so every page is reachable from Home while the bar is a quick switch;
@@ -37,12 +40,12 @@
 import { attention, roomLevels } from "../lib/attention.js";
 import { issuesOf } from "../lib/safety.js";
 import { labelOf } from "../lib/controls.js";
-import { numberOf, toneOf } from "../lib/level.js";
+import { toneOf } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
-import { checksSpec, lightsSpec, plantsSpec } from "../lib/detail-sheets.js";
+import { checksSpec, lightsSpec, plantsSpec, typedSpec } from "../lib/detail-sheets.js";
 import { powerSpec } from "./power-page.js";
 import { formatDate } from "../lib/i18n.js";
-import { outsideArea } from "../lib/areas.js";
+import { typed } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
@@ -76,6 +79,7 @@ const STYLE = `
                 background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
   .home button.chip { box-sizing: border-box; min-height: 44px; margin: 0; font-family: inherit; line-height: inherit;
                        color: var(--fg); text-align: left; cursor: pointer; }
+  .home .chip.note .v { font-size: 14px; font-weight: 600; color: var(--mut); }
   .home .chip small { display: block; font-size: 11.5px; color: var(--mut); font-weight: 400; margin-top: 1px; }
   .home .chip .arrow { margin-left: 3px; font-size: 13px; font-weight: 400; color: var(--mut); }
   .home .chip .arrow[hidden] { display: none; }
@@ -201,7 +205,11 @@ export function render(ctx) {
 
   for (const [name, chip] of Object.entries(parts.chips)) {
     chip.addEventListener("click", () => {
-
+      // No area of that type yet: where areas get their type.
+      if ((name === "inside" || name === "outside") && !typed(parts.ctx.hass, parts.ctx.config, name).areas.length) {
+        parts.ctx.navigate("#/settings/areas", { from: "home" });
+        return;
+      }
       const spec = chipSheet(parts.ctx, name);
       if (spec) parts.ctx.openSheet?.(spec);
     });
@@ -339,23 +347,23 @@ function updateChips(parts, ctx) {
   const levelIn = (area, reading) =>
     area ? roomLevels(hass, area, config.thresholds).find((found) => found.reading === reading)?.result : null;
 
-  const withTemp = config.rooms.filter((room) => room.climate?.temperature);
-  const temps = withTemp.map((room) => numberOf(hass, room.climate.temperature)).filter((v) => v != null);
-  let inside = ctx.t("card.pocket.format.none");
-  if (temps.length) {
-    const [min, max] = [Math.min(...temps), Math.max(...temps)];
-    inside = number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
-      : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
-  }
-  // The colour of the worst room: poor before fair before good, the home's order within.
+  // Inside and outside: the areas of that type (SPEC-038 §3.9), in the colour of the worst one.
   const RANK = { poor: 0, fair: 1, good: 2 };
-  const worst = withTemp.map((room) => levelIn(room, "temperature")).filter(Boolean)
-    .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
-  set("inside", withTemp.length > 0, inside, { result: worst });
-
-  const outsideId = config.outside?.temperature;
-  set("outside", !!outsideId, temperature(ctx, numberOf(hass, outsideId)), {
-    result: levelIn(outsideArea(config), "temperature"), entity: outsideId, reading: "temperature" });
+  for (const type of ["inside", "outside"]) {
+    const group = typed(hass, config, type);
+    let value = ctx.t("card.pocket.areas.none_assigned");
+    if (group.areas.length && !group.measured.length) value = ctx.t("card.pocket.areas.sensor_not_set");
+    else if (group.measured.length) {
+      const { min, max } = group;
+      value = min == null ? ctx.t("card.pocket.format.none")
+        : number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
+          : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
+    }
+    const worst = group.measured.map(({ area }) => levelIn(area, "temperature")).filter(Boolean)
+      .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
+    set(type, true, value, { result: worst, entity: group.entity, reading: "temperature" });
+    parts.chips[type].classList.toggle("note", !group.measured.length);
+  }
 
   const air = homeAir(hass, config);
   set("air", !!air, air?.value == null ? ctx.t("card.pocket.format.none") : number(ctx, air.value, 0), {
@@ -372,11 +380,10 @@ function updateChips(parts, ctx) {
   }
 }
 
-// The sheet behind a chip (null: nothing to show): inside the checks of the rooms' temperatures,
-// outside and air the trend of their reading, lights on the lights that are on.
+// The sheet behind a chip (null: nothing to show): inside and outside the areas of their type (with
+// no such area, Settings → Areas instead), air the trend of its reading, lights on the lights.
 function chipSheet(ctx, name) {
-  if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
-  if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
+  if (name === "inside" || name === "outside") return typedSpec(ctx, name);
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
   if (name === "power") return powerSpec(ctx);

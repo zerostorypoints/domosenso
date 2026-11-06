@@ -1,18 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { checksOf, readingsOf, entityOf, valueOf } from "./checks.js";
-import { config, st, baseStates, hassOf } from "../testing/demo-home.mjs";
+import { config, st, baseStates, hassOf, asAreas } from "../testing/demo-home.mjs";
 
-const withOutside = { ...config,
+// The outside as an area of type outside (SPEC-038), with a range: coloured, never in the inside filter.
+const withOutside = asAreas({ ...config,
   outside: { temperature: "sensor.outside_temperature" },
-  thresholds: { ...config.thresholds, outside: { temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } } };
+  thresholds: { ...config.thresholds, outside: { temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } } });
 const states = (extra = {}) => ({ ...baseStates(), "sensor.outside_temperature": st(5),
   "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24), ...extra });
 
 const shape = (groups) => groups.map(({ area, rows }) =>
   [area.id, rows.map((r) => [r.reading, r.value, r.result ? r.result.level + (r.result.side ? `_${r.result.side}` : "") : null])]);
 
-test("every reading of every area, the Outside included, problems first", () => {
+test("every reading of every area, an outside one included, problems first", () => {
   const groups = checksOf(hassOf(states({ "sensor.living_room_co2": st(900) })), withOutside);
   assert.deepEqual(shape(groups), [
     ["outside", [["temperature", 5, "poor_low"]]],
@@ -39,13 +40,12 @@ test("the inside filter: rooms only, the readings asked for", () => {
   ]);
 });
 
-test("readingsOf, entityOf, valueOf: climate then air, the Outside's weather attribute has no entity", () => {
+test("readingsOf, entityOf, valueOf: climate then air, from the area's sensors", () => {
   const room = config.rooms[0];
   assert.deepEqual(readingsOf(room), ["temperature", "humidity", "score", "co2"]);
   assert.equal(entityOf(room, "co2"), "sensor.living_room_co2");
   assert.equal(valueOf(hassOf(), room, "co2"), 768);
-  const outside = { id: "outside", outside: true, climate: {}, weather: "weather.home" };
-  const hass = hassOf({ "weather.home": st("sunny", { temperature: 4, humidity: 80 }) });
-  assert.equal(entityOf(outside, "temperature"), undefined);
-  assert.equal(valueOf(hass, outside, "temperature"), 4);
+  const bare = { id: "hall", climate: {} };
+  assert.deepEqual(readingsOf(bare), []);
+  assert.equal(valueOf(hassOf(), bare, "temperature"), null);
 });

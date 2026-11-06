@@ -23,7 +23,7 @@
 //   VIEWS   the Climate page's switch: temperature, humidity, air (lib/settings.js climateView)
 
 import { numberOf } from "./level.js";
-import { comfortOf } from "./areas.js";
+import { comfortOf, isJudged } from "./areas.js";
 import { roomLevels } from "./attention.js";
 import { valueOf } from "./checks.js";
 
@@ -38,7 +38,7 @@ const AIR_KIND = { score: "falling", co2: "rising", pm2_5: "rising", voc: "risin
 const isNumber = (x) => typeof x === "number" && Number.isFinite(x);
 
 export function homeAir(hass, config) {
-  const rooms = (Array.isArray(config?.rooms) ? config.rooms : []).filter((room) => room.air?.score);
+  const rooms = (Array.isArray(config?.rooms) ? config.rooms : []).filter((room) => room.air?.score && isJudged(room));
   if (!rooms.length) return null;
   let room = rooms[0];
   let value = numberOf(hass, room.air.score);
@@ -55,6 +55,8 @@ export function adviceOf(hass, config) {
   const air = [];
   const comfort = [];
   for (const area of config.rooms) {
+    // An outside area is weather: no advice to act on.
+    if (!isJudged(area)) continue;
     const poor = new Map(roomLevels(hass, area, config.thresholds)
       .filter(({ result }) => result?.level === "poor").map(({ reading, result }) => [reading, result]));
     const window = WINDOW.find((reading) => poor.has(reading));

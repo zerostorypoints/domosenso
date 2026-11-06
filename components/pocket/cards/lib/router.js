@@ -49,7 +49,7 @@ export const HOME_VIEWS = ["overview", "systems"];
 export const SYSTEM = { page: "system", route: "#/system", icon: "mdi:server-outline" };
 const SINGLE = new Set([...TABS, SYSTEM].map((tab) => tab.page).filter((page) => page !== "home"));
 const HOME = Object.freeze({ page: "home" });
-export const SETTINGS_PANELS = ["comfort", "about"];
+export const SETTINGS_PANELS = ["areas", "comfort", "about"];
 
 export function parseRoute(hash) {
   const text = typeof hash === "string" ? hash : "";

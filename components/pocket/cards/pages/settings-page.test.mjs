@@ -40,9 +40,9 @@ test("the shell's settings entry is this page", () => {
 test("the groups, translated", () => {
   const el = mount();
   assert.equal(text(el.querySelector(".top b")), "Settings");
-  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "This device", "Bottom bar", "Comfort ranges", "About"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "This device", "Bottom bar", "Areas", "Comfort ranges", "About"]);
   settingsPage.update(el, settingsCtx({ lang: "pl" }));
-  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "To urządzenie", "Dolny pasek", "Zakresy komfortu", "O aplikacji"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "To urządzenie", "Dolny pasek", "Obszary", "Zakresy komfortu", "O aplikacji"]);
   settingsPage.update(el, settingsCtx({ lang: "de" }));
   assert.equal(text(el.querySelector(".top b")), "Einstellungen");
 });
@@ -168,12 +168,12 @@ test("About: the HA area each area reads, linked to HA's area page; the catalog'
     study: { area_id: "study", name: "Study" } } };
   const el = mount(settingsCtx({ cfg, hass }));
   const links = [...el.querySelectorAll(".about .area-map a")];
-  assert.deepEqual(links.map((a) => text(a.querySelector(".name"))), ["Living room", "Bedroom", "Office", "Hall", "Outside"]);
+  assert.deepEqual(links.map((a) => text(a.querySelector(".name"))), ["Living room", "Bedroom", "Office", "Hall"],
+    "a weather entity makes no area");
   assert.deepEqual(links.map((a) => text(a.querySelector("small"))), [
     "Home Assistant area: Lounge", "Home Assistant area bedroom: not found", "Home Assistant area: Study",
-    "Home Assistant area hall: not found", "From the outside sensors and the weather"]);
+    "Home Assistant area hall: not found"]);
   assert.equal(links[2].getAttribute("href"), "/config/areas/area/study");
-  assert.equal(links[4].hasAttribute("href"), false);
   assert.equal(el.querySelector(".about .catalog").getAttribute("href"), "https://domosenso.org/");
   assert.equal(text(el.querySelector(".about .catalog")), "Domosenso catalog");
   assert.match(el.querySelector(".about .repo").getAttribute("href"), /^https:\/\/github\.com\//);
@@ -239,7 +239,7 @@ test("two levels: Settings holds Appearance, the bar and a row per panel; each p
   const top = mount(settingsCtx());
   const shownGroups = (el) => [...el.querySelectorAll(".group")].filter((g) => !g.hidden).map((g) => g.classList[1]);
   assert.deepEqual(shownGroups(top), ["appearance", "device", "bar", "menu"], "the home's values are a step away");
-  assert.deepEqual(texts(top, ".menu .row .name"), ["Comfort ranges", "About"]);
+  assert.deepEqual(texts(top, ".menu .row .name"), ["Areas", "Comfort ranges", "About"]);
   assert.equal(text(top.querySelector(".menu [data-panel=comfort] small")), "2 areas · Air limits");
   assert.match(text(top.querySelector(".menu [data-panel=about] small")), /^Pocket /);
   assert.equal(top.querySelector(".back").hidden, true);

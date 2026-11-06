@@ -66,6 +66,8 @@ const STYLE = `
           min-height: calc(100dvh - var(--kiosk-header-height, var(--header-height, 56px)) - env(safe-area-inset-top, 0px)
                            - var(--bar, 64px) - var(--safe, 0px) - 28px); }
   .room .top { display: flex; align-items: center; margin: -4px 0 2px; }
+  .room .top .aset { margin-left: auto; min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; background: none;
+    color: var(--mut); display: inline-flex; align-items: center; justify-content: center; }
   .room .back { min-height: 44px; margin: 0 0 0 -8px; padding: 0 8px 0 0; border: 0; background: none;
                 display: flex; align-items: center; gap: 2px; font: inherit; color: var(--fg); cursor: pointer;
                 min-width: 44px; -webkit-tap-highlight-color: transparent; }
@@ -177,12 +179,15 @@ export function render(ctx) {
   const player = playerOf(room);
 
   root.innerHTML = `<style>${STYLE}${SENSOR_STYLE}${PLAN_STYLE}</style>
-    <div class="top"><button class="back" type="button"><ha-icon icon="mdi:chevron-left"></ha-icon><span class="name"></span></button></div>
+    <div class="top"><button class="back" type="button"><ha-icon icon="mdi:chevron-left"></ha-icon><span class="name"></span></button><button class="aset" type="button"><ha-icon icon="mdi:tune-variant"></ha-icon></button></div>
     <div class="dots" role="img">${rooms.map((r, i) => `<i${i === index ? ' class="a"' : ""}></i>`).join("")}</div>`;
 
   const parts = { room, rooms, index, ctx, squares: [], scenes: [], tiles: [], memberTiles: [], membersKey: null,
     back: root.querySelector(".back"), name: root.querySelector(".top .name"), dots: root.querySelector(".dots") };
   parts.back.addEventListener("click", () => parts.ctx.navigate("#/areas"));
+  // The area's settings (SPEC-038 §3.9): its type and main sensors, in a sheet.
+  root.querySelector(".top .aset").addEventListener("click", () => parts.ctx.openSheet?.({ kind: "area-settings",
+    area: parts.room?.id ?? parts.ctx.routeId, title: parts.ctx.t("card.pocket.areas.settings") }));
 
   if (climateReadings.length || airReadings.length) {
     const box = el("div", "squares");
@@ -340,6 +345,7 @@ export function update(root, ctx) {
   const { rooms } = parts;
   setText(parts.name, room.outside ? ctx.t("card.pocket.area.outside") : room.name);
   setAttr(parts.back, "aria-label", ctx.t("card.pocket.area.back"));
+  setAttr(root.querySelector(".top .aset"), "aria-label", ctx.t("card.pocket.areas.settings"));
   setAttr(parts.dots, "aria-label", ctx.t("card.pocket.area.position", { index: parts.index + 1, count: rooms.length }));
   updateSquares(parts, ctx);
   if (parts.lightsSec) {

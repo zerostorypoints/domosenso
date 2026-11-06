@@ -1,7 +1,8 @@
 [#
   The pocket dashboard: one panel view holding one custom:pocket-app card, which draws every screen
   itself (Home, Areas, an area, Media, Settings). Rendered once per language (dashboard.<lang>.yaml)
-  by tools/domosenso_render.py. The card's config is the home inputs as given (room names in this
+  by tools/domosenso_render.py. The card's config is the home inputs as given: the defaults per
+  Home Assistant area (SPEC-038; the card takes the areas themselves from HA), room names in this
   language, each room's HA area: its `area`, else its id) and the ids of climate-air's threshold
   helpers; it reads their states at run time. The cards build the Outside pseudo-area (id
   `outside`, reserved) from `outside` and `weather`. With the input `floorplan` the card shows the
@@ -15,7 +16,10 @@
     outside: {temp_low, temp_high[, humidity_low, humidity_high]}   with the home's outside
     air: {<reading>: {fair, poor}}   per air reading any room names, in climate-air's order
 #]
-[%- set fields = ('lights', 'scenes', 'climate', 'air', 'media') -%]
+[#- Without home inputs (uses_home: optional) the card has no defaults: it shows HA's areas. -#]
+[%- set home = home or {} -%]
+[%- set home_rooms = home.rooms | default([]) -%]
+[%- set fields = ('type', 'lights', 'scenes', 'climate', 'air', 'media') -%]
 [%- set readings = ('score', 'co2', 'pm2_5', 'voc', 'nox') -%]
 [#- The comfort helpers' ids per group: each room with climate, then outside. -#]
 [%- macro helper_ids(id, humid) -%]
@@ -25,11 +29,11 @@
 [[ ids | yaml ]]
 [%- endmacro -%]
 [%- set comfort = {} -%]
-[%- for room in home.rooms if room.climate is defined -%]
+[%- for room in home_rooms if room.climate is defined -%]
 [%- set _ = comfort.update({room.id: (room.climate.humidity is defined)}) -%]
 [%- endfor -%]
 [%- set air = {} -%]
-[%- for reading in readings if home.rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list -%]
+[%- for reading in readings if home_rooms | selectattr('air', 'defined') | selectattr('air.' ~ reading, 'defined') | list -%]
 [%- set _ = air.update({reading: {'fair': 'input_number.climate_air_' ~ reading ~ '_fair', 'poor': 'input_number.climate_air_' ~ reading ~ '_poor'}}) -%]
 [%- endfor -%]
 title: [[ inputs.title | default('Home') | yaml ]]
@@ -48,8 +52,8 @@ views:
     cards:
       - type: custom:pocket-app
         lang: [[ lang ]]
-        rooms:
-[%- for room in home.rooms %]
+        rooms:[% if not home_rooms %] [][% endif %]
+[%- for room in home_rooms %]
           - id: [[ room.id | yaml ]]
             name: [[ room_name(room) | yaml ]]
             area: [[ room.area | default(room.id) | yaml ]]

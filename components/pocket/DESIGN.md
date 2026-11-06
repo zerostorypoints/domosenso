@@ -38,7 +38,7 @@ Principles, in order when they conflict:
   - Level 1: a **page** per aspect (Areas, Controls, Climate, Media, Power, Plants, Scenes, Safety,
     System, Floor plan, Settings). A page with two faces of the same aspect has views switched under its
     title, never two pages: Home (Overview | Systems), Controls (Controls | Status).
-  - Level 2: an **area** page or a **panel** (Settings → Comfort ranges, About), with a back button
+  - Level 2: an **area** page or a **panel** (Settings → Areas, Comfort ranges, About), with a back button
     in its title row.
   - Level 3: a **sheet** over the page (details, pickers); sheets may stack (Back returns).
 - **The bar** (bottom, fixed): Home and Settings always, up to three pages the person picks. It is a
@@ -82,10 +82,15 @@ Every widget opens a **sheet**, never a page. Two kinds only:
 
 | kind | when | its sheet |
 |---|---|---|
-| **aggregate** | the widget sums or ranges many sensors (Inside, Lights on, Power, Plants) | a list by area, each row its name, level dot and value; a row opens that sensor's trend sheet, stacked |
-| **single sensor** | one sensor (Outside, Air) | that sensor's trend sheet |
+| **aggregate** | the widget sums or ranges many sensors (Inside, Outside, Lights on, Power, Plants) | a list by area, each row its name, level dot and value; a row opens that sensor's trend sheet, stacked |
+| **single sensor** | one sensor (Air) | that sensor's trend sheet |
 
 A new widget picks one of the two. If it wants a page, it is a Systems tile instead.
+
+**Inside and Outside** (Home, Climate) aggregate the areas of that type: the range of their main
+temperatures in the worst one's colour. With no area of the type: "No areas assigned", opening Settings
+→ Areas. With areas but no main sensor in any: "Main sensor not set". Their sheet lists the areas,
+those without a main sensor last, each opening its area settings.
 
 ### 4.2 Tile (Home → Systems)
 
@@ -149,7 +154,7 @@ when the row has a level. A row that opens something is a `button`.
 - Light tile (`<pocket-light-tile>`): tap toggles, drag sets brightness; a group counts its members.
 - Segmented control: Home's views, Media | Sound, trend periods, Appearance. Not a drop-down when
   there are two or three choices; a native `<select>` when the list is long or open-ended
-  (measurements).
+  (measurements, Language, a main sensor).
 - Media: transport (64 px play), a 44 px volume strip, mute, power when supported, the input chip
   beside what plays when the player can select a source.
 - Risky acts confirm in place (`lib/confirm.js`), never with a dialog: the first tap turns the button
@@ -162,15 +167,21 @@ when the row has a level. A row that opens something is a `button`.
 
 ## 5. Data: where things come from
 
+- **The areas are Home Assistant's** (SPEC-038, `lib/home-model.js`): every HA area by its HA name (not
+  translated), in floor order. Each has a **type** (Inside, Outside, Not assigned) and a **main sensor
+  per kind** (`lib/kinds.json`: climate, air, light level, sound, pressure), resolved in this order: set
+  in Pocket (the home store; climate in HA's own area fields), HA's area setting, the home inputs'
+  defaults, the only candidate (recorded once by an administrator's Pocket, never redone).
 - **No list of Pocket's own.** Entities are found the way the floor plan finds them: Home Assistant's
   registries by HA area (an entity's area, else its device's), hidden / disabled / diagnostic left
-  out (`lib/sensors.js`). The home inputs (`home.inputs.yaml`, shared with the Ramka) name the rooms
-  and what each room's readings are; the registries supply everything else (other players, sensors,
-  scenes, meters, update entities).
+  out (`lib/sensors.js`). The home inputs (`home.inputs.yaml`, shared with the Ramka) give only
+  defaults per area; lights and scenes come from the area when the inputs name none, and the
+  registries supply everything else (other players, sensors, meters, update entities).
 - **Thresholds** are climate-air's helpers (comfort ranges per area, air limits fair/poor), one
   shared definition the Ramka reads too. Pocket shows and links them; HA's more-info changes them.
-- **Settings are per person** (HA frontend user data, `lib/settings.js`): theme, bar, climate view,
-  media player, scenes. **Per device** only what must differ by phone (open at start, in local
+- **Settings are per person** (HA frontend user data, `lib/settings.js`): theme, language, bar,
+  climate view, media player, scenes. **The home's settings** (area types, main sensors) are the home
+  store's (HA frontend system data: everyone reads, administrators write) or HA's own fields. **Per device** only what must differ by phone (open at start, in local
   storage). Nothing per dashboard.
 - **Exceptions to discovery**: a domain whose entities are also a component's internals (timers) is
   named in Pocket's inputs, as the Ramka names it.
@@ -189,7 +200,8 @@ The level keys and their boundaries are the shared contract
   `--acc` accent and on-states; `--mut` secondary text; `--card`, `--chip`, `--line`, `--bg`, `--fg`.
   Never a literal colour in a page.
 - The worst level wins a summary (poor before fair before good, the home's order within).
-- Attention (pills, Climate tile) counts the rooms; the Outside is weather, coloured but never a
+- Attention (pills, Climate tile, advice, the home's air) counts the areas that are not Outside; an
+  Outside area is weather, coloured but never a
   problem.
 
 ## 7. Gestures
@@ -219,6 +231,28 @@ The level keys and their boundaries are the shared contract
 
 ## 10. Adding a page or a feature: the contract
 
+### 10.1 A setting of the home: AI first, visible in Settings (SPEC-038 §3.10)
+
+Domosenso is set up by an AI first; what a home customizes is little, and every bit of it is visible
+to the person. A setting of the home (an area's type, a main sensor, anything a future feature lets a
+home choose) is:
+
+1. **declared once, as data** (`cards/lib/kinds.json` for the main sensors), never a page's own list;
+2. **given to the AI**: its question in the skill that sets it up (`set-up-areas`) and its line in a
+   read-only `domosenso` command that shows the value and its source (`domosenso areas`);
+3. **visible and changeable in the global Settings** (Settings → Areas), with its source, by an
+   administrator, through **generic controls per type of input** driven by the declaration: an enum is
+   a segmented control, a device a device picker, a sensor a sensor picker (`lib/area-settings.js`);
+   a non-administrator sees it read-only;
+4. **stored in Home Assistant**: HA's own field when one exists (an area's Related sensors), else
+   Pocket's home store (`lib/home-store.js`, frontend system data);
+5. **discovered** from Home Assistant when nobody chose (area and device class, never a name), with a
+   home-inputs default only for what HA cannot know.
+
+A second way to the same setting somewhere else (the area page's settings button) is **not** a default
+of this design system: the feature's developer decides it from a UX/UI analysis and records it in the
+decisions log (section 11).
+
 A page is registered in **one place**, `TABS` in `lib/router.js` (or `SYSTEM`); everything else that
 lists pages is derived from it, and a contract test fails when a derived part is missing. Never keep
 a second list of pages.
@@ -240,7 +274,8 @@ Then, for any feature:
 2. How does a person get back from it? Level 2 and the sheets have their own back (section 2); a
    new kind of place needs its back defined here before it is built.
 3. Where does its data come from? The registries by area, the home inputs, or a component's
-   provided entities; never a new list in Pocket's inputs without a reason.
+   provided entities; never a new list in Pocket's inputs without a reason. Does it let the home
+   choose something? Then 10.1 applies, in the same pull request.
 4. What makes it "worth a look"? Its level rule, or none. Does it add pills on Home?
 5. Is every target 44 px, every word translated, every value uncut, every control optimistic, every
    risky act confirmed in place (section 4.7)?
@@ -253,7 +288,10 @@ Then, for any feature:
 
 | decision | why |
 |---|---|
-| Areas, not Rooms; the Outside is an area | the balcony and the outside belong with the rooms |
+| Areas, not Rooms; the areas are Home Assistant's, each Inside, Outside or Not assigned | a list of rooms in a file missed every area added later; whether an area is inside is the home's choice, made once, never guessed |
+| Settings → Areas holds every area's type and main sensors; the area page has a settings button to the same sheet | Settings is the required place (10.1); the button is this feature's UX choice: a person looking at one area changes it there |
+| Climate's main sensor is HA's own area field (Related sensors) | one place for what HA configures (principle 4) |
+| The language is a person's setting, Automatic by default; names are not translated | a person picks their language without a second dashboard; area names are HA's |
 | Home has Overview and Systems | a single Home mixed status and navigation and was hard to read |
 | Widgets open sheets, tiles open pages | one rule for "tap for details" vs "go to the aspect" |
 | The trend sheet is per sensor with a measurement drop-down | a device measures several things; the entry point is only where you came from |

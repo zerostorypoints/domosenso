@@ -28,9 +28,12 @@
 //   type: custom:pocket-app
 //   lang: en                 # the dashboard's language; Home Assistant's when missing; the
 //                            # person's choice in Settings (lib/settings.js language) wins
-//   (any `name` may be a map per language, {en: ..., pl: ...}: lib/names.js picks one)
-//   rooms: [{id, name, area, lights?, scenes?, climate?, air?, media?}]
-//   outside: ...             # optional; with weather, the Outside pseudo-area (lib/areas.js)
+//   rooms: [{id, name, area, type?, lights?, scenes?, climate?, air?, media?}]
+//                            # the home inputs' defaults per HA area; the areas themselves are Home
+//                            # Assistant's (lib/home-model.js), each with its type and main sensors
+//                            # from the home store (lib/home-store.js), HA's area fields, these
+//                            # defaults and the only candidate (SPEC-038)
+//   outside: {temperature, humidity?, area?}   # optional; the defaults of its area: type outside
 //   weather: weather.home    # optional
 //   thresholds: {rooms: {<id>: {temp_low, temp_high, ...}}, outside: {...}, air: {<reading>: {fair, poor}}}
 //   floorplan: true          # optional: the home has the floorplan component (its card, floorplan-card,
@@ -46,13 +49,16 @@ import { createT, language } from "./lib/i18n.js";
 import { barTabs, defaultBar, legacyRoute, optionalPages, parseRoute, tabOf } from "./lib/router.js";
 import { areasOf } from "./lib/areas.js";
 import { readSettings, saveSettings, withDefaults } from "./lib/settings.js";
+import { EMPTY, markPicked, saveArea, watchHome } from "./lib/home-store.js";
+import { homeModel } from "./lib/home-model.js";
+import { kindOf } from "./lib/kinds.js";
 import { setText } from "./lib/page-kit.js";
-import { localize } from "./lib/names.js";
 import { applyTheme } from "./lib/theme.js";
 import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
-import { checks, air, lights, plants as plantsSheet } from "./lib/detail-sheets.js";
+import { checks, air, lights, plants as plantsSheet, typedSheet } from "./lib/detail-sheets.js";
+import { areaSettingsSheet } from "./lib/area-settings.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
@@ -80,7 +86,8 @@ const TOAST_MS = 3000;
 // The sheets a page can open, by spec.kind; each on the page contract with the spec as well:
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
-  players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet, plants: plantsSheet };
+  players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet, plants: plantsSheet,
+  typed: typedSheet, "area-settings": areaSettingsSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -178,7 +185,6 @@ class PocketApp extends HTMLElement {
   setConfig(config) {
     if (!config || typeof config !== "object") throw new Error("pocket-app: a config is required");
     this._config = { ...config, rooms: Array.isArray(config.rooms) ? config.rooms : [] };
-    this._local = null;
     // Until the person's settings are read, the home's default bar (Plants with plants).
     if (!this._settingsRead) this._settings = withDefaults({}, defaultBar(this._config));
     if (this._root) {
@@ -189,6 +195,7 @@ class PocketApp extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._watchHome(hass);
     // Offline: the floor plan is read again after the reconnect (lib/plan-cache.js).
     if (hass?.connected === false) forgetPlan();
     this._optimistic.update(hass);
@@ -227,6 +234,94 @@ class PocketApp extends HTMLElement {
 
   get hass() {
     return this._hass;
+  }
+
+  // The home store, watched from the first hass on (a new connection watches again), and the
+  // area registry's sensor fields when the frontend's hass.areas does not carry them.
+  _watchHome(hass) {
+    if (!hass || this._homeConn === hass.connection) return;
+    this._homeConn = hass.connection;
+    this._stopHome?.();
+    this._stopHome = watchHome(hass, (value) => {
+      this._home = value;
+      this._modelKey = null;
+      if (this._root) this._refresh();
+    });
+  }
+
+  _areaFields(hass) {
+    if (!hass?.areas || this._fieldsFor === hass.areas) return;
+    this._fieldsFor = hass.areas;
+    const carries = Object.values(hass.areas).some((area) => "temperature_entity_id" in area);
+    if (carries || typeof hass.callWS !== "function") return;
+    hass.callWS({ type: "config/area_registry/list" }).then((list) => {
+      this._fields = Object.fromEntries((list ?? []).map((a) => [a.area_id,
+        { temperature_entity_id: a.temperature_entity_id ?? null, humidity_entity_id: a.humidity_entity_id ?? null }]));
+      this._modelKey = null;
+      if (this._root) this._refresh();
+    }, () => {});
+  }
+
+  // The areas (lib/home-model.js), made again only when what they are made of changes: the
+  // registries, the store, the config, the set of states (a new sensor's device class).
+  _model() {
+    const hass = this._hass;
+    this._areaFields(hass);
+    const key = [hass?.areas, hass?.floors, hass?.entities, hass?.devices, this._home, this._config, this._fields,
+      Object.keys(hass?.states ?? {}).length];
+    if (this._modelKey && key.every((part, i) => part === this._modelKey[i])) return this._modelValue;
+    this._modelKey = key;
+    this._modelValue = homeModel(hass, this._config, this._home ?? EMPTY, { areaFields: this._fields });
+    // The pages build their layout from the areas once: a change of what an area has (another
+    // main sensor, a type, a new area) builds the page again, under any open sheet.
+    const shape = JSON.stringify(this._modelValue.rooms.map((r) => [r.id, r.name, r.type, r.climate, r.air, r.indicators,
+      r.lights, r.scenes]));
+    if (this._modelShape !== undefined && shape !== this._modelShape) this._rebuildPage = true;
+    this._modelShape = shape;
+    this._recordPicks(this._modelValue.pending);
+    return this._modelValue;
+  }
+
+  // The one-time automatic choices (SPEC-038 §3.5), recorded by an administrator's Pocket only, each
+  // once per page load: climate into Home Assistant's own area fields, the others into the store.
+  _recordPicks(pending) {
+    const hass = this._hass;
+    if (hass?.user?.is_admin !== true || !this._home || typeof hass.callWS !== "function") return;
+    this._recorded ??= new Set();
+    for (const item of pending) {
+      const key = `${item.area}/${item.kind}`;
+      if (this._recorded.has(key)) continue;
+      this._recorded.add(key);
+      const kind = kindOf(item.kind);
+      const run = kind?.ha
+        ? hass.callWS({ type: "config/area_registry/update", area_id: item.area,
+          ...Object.fromEntries(Object.entries(kind.fields).map(([reading, field]) => [field, item.readings?.[reading] ?? null])) })
+          .then(() => markPicked(hass, item.area, item.kind))
+        : markPicked(hass, item.area, item.kind, item.choice);
+      run.catch(() => {});
+    }
+  }
+
+  // An area setting chosen in Pocket (an administrator): climate into Home Assistant's area fields
+  // (and "none" into the store), every other kind and the type into the store.
+  async _setArea(areaId, change) {
+    const hass = this._hass;
+    if (hass?.user?.is_admin !== true) throw new Error("pocket: only an administrator changes area settings");
+    if (change.kind) {
+      const kind = kindOf(change.kind);
+      if (kind?.ha) {
+        const readings = change.readings ?? {};
+        await hass.callWS({ type: "config/area_registry/update", area_id: areaId,
+          ...Object.fromEntries(Object.entries(kind.fields).map(([reading, field]) => [field, readings[reading] ?? null])) });
+        await saveArea(hass, areaId, { [kind.id]: change.choice === null ? "none" : undefined });
+        return;
+      }
+      const patch = { [kind.id]: change.choice === null ? "none" : change.choice };
+      if (change.readings !== undefined) patch[`${kind.id}_readings`] = change.readings;
+      await saveArea(hass, areaId, patch);
+      return;
+    }
+    if ("type" in change) await saveArea(hass, areaId, { type: change.type ?? undefined });
   }
 
   getCardSize() {
@@ -329,18 +424,20 @@ class PocketApp extends HTMLElement {
     return this._config?.lang || language(this._hass);
   }
 
-  // The config with its names in the current language, made again only when the language or
-  // the config changes, so pages compare the same objects between updates.
-  _localConfig() {
-    const lang = this._lang();
-    if (this._local?.lang !== lang || this._local.source !== this._config) {
-      this._local = { lang, source: this._config, config: localize(this._config, lang) };
-    }
-    return this._local.config;
-  }
 
   _t(key, vars) {
     return translate({ locale: { language: this._lang() } }, key, vars);
+  }
+
+  // The card config as the pages read it: the rooms are the home's areas (lib/home-model.js) and
+  // the comfort ranges keyed by HA area; there is no Outside of the card's own any more.
+  _areasConfig() {
+    const model = this._model();
+    if (this._areasFor === model) return this._areasValue;
+    this._areasFor = model;
+    const { outside, ...config } = this._config ?? {};
+    this._areasValue = { ...config, rooms: model.rooms, thresholds: model.thresholds };
+    return this._areasValue;
   }
 
   // The page contract's ctx (pages/index.js), built fresh for each render and update.
@@ -348,7 +445,9 @@ class PocketApp extends HTMLElement {
     return {
       hass: this._optimistic.view(this._hass),
       optimistic: this._optimistic,
-      config: this._localConfig(),
+      config: this._areasConfig(),
+      home: { model: this._model(), admin: this._hass?.user?.is_admin === true, loaded: !!this._home,
+        set: (areaId, change) => this._setArea(areaId, change) },
       t: (key, vars) => this._t(key, vars),
       navigate: (route, options) => this._navigate(route, options),
       lang: this._lang(),
@@ -407,7 +506,9 @@ class PocketApp extends HTMLElement {
 
   // A #/area/<id> whose id is none of the areas (lib/areas.js: the rooms and the Outside).
   _unknownArea(route) {
-    return route.page === "area" && !areasOf(this._config).some((area) => area.id === route.id);
+    // Before the first hass, no area is unknown yet.
+    if (route.page !== "area" || !this._hass) return false;
+    return !areasOf(this._areasConfig()).some((area) => area.id === route.id);
   }
 
   // options.replace: the route takes the place of the current history entry (area-to-area swipes,
@@ -461,6 +562,14 @@ class PocketApp extends HTMLElement {
     }
     if (this._barLang !== this._lang()) this._renderBar();
     const ctx = this._ctx();
+    if (this._rebuildPage) {
+      this._rebuildPage = false;
+      this._pageEl = this._page.render(ctx);
+      this._main.replaceChildren(this._pageEl);
+      this._addMenu(this._pageEl);
+      if (this._sheet.isOpen) this._updateSheet(this._sheet.content, ctx);
+      return;
+    }
     this._page.update(this._pageEl, ctx);
     if (this._sheet.isOpen) this._updateSheet(this._sheet.content, ctx);
   }

@@ -1,0 +1,88 @@
+{
+  "_comment": "The kinds of main sensor an area can have (SPEC-038 \u00a73.3). One declaration, read by Pocket (lib/kinds.js) and by `domosenso areas`; a new kind is a new entry here.",
+  "kinds": [
+    {
+      "id": "climate",
+      "pick": "device",
+      "ha": true,
+      "readings": [
+        {
+          "id": "temperature",
+          "classes": [
+            "temperature"
+          ],
+          "required": true
+        },
+        {
+          "id": "humidity",
+          "classes": [
+            "humidity"
+          ]
+        }
+      ],
+      "fields": {
+        "temperature": "temperature_entity_id",
+        "humidity": "humidity_entity_id"
+      }
+    },
+    {
+      "id": "air",
+      "pick": "device",
+      "readings": [
+        {
+          "id": "score",
+          "classes": [
+            "aqi"
+          ]
+        },
+        {
+          "id": "co2",
+          "classes": [
+            "carbon_dioxide"
+          ]
+        },
+        {
+          "id": "pm2_5",
+          "classes": [
+            "pm25"
+          ]
+        },
+        {
+          "id": "voc",
+          "classes": [
+            "volatile_organic_compounds",
+            "volatile_organic_compounds_parts"
+          ]
+        },
+        {
+          "id": "nox",
+          "classes": [
+            "nitrogen_dioxide"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "illuminance",
+      "pick": "entity",
+      "classes": [
+        "illuminance"
+      ]
+    },
+    {
+      "id": "sound",
+      "pick": "entity",
+      "classes": [
+        "sound_pressure"
+      ]
+    },
+    {
+      "id": "pressure",
+      "pick": "entity",
+      "classes": [
+        "atmospheric_pressure",
+        "pressure"
+      ]
+    }
+  ]
+}

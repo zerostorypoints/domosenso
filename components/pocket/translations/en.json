@@ -33,7 +33,8 @@
         "all_good": "All good",
         "pill": "{room}: {message}",
         "chip": {
-          "climate": "Climate",
+          "inside": "Inside",
+          "outside": "Outside",
           "air": "Air",
           "lights_on": "Lights on",
           "power": "Power",
@@ -126,7 +127,40 @@
         "lights_on": "{count} on",
         "all_off": "All off",
         "air": "Air {value}",
-        "attention": "Needs attention"
+        "attention": "Needs attention",
+        "summary": "{count} areas · {unassigned} not assigned",
+        "hint": "From Home Assistant. Give each area its type and main sensors; a new area shows here as Not assigned.",
+        "settings": "Area settings",
+        "type": "Type",
+        "none": "None",
+        "admin_only": "Only an administrator can change these.",
+        "assign": "Assign areas in Settings",
+        "none_assigned": "No areas assigned",
+        "sensor_not_set": "Main sensor not set",
+        "kind": {
+          "climate": "Temperature and humidity",
+          "air": "Air quality",
+          "illuminance": "Light level",
+          "sound": "Sound level",
+          "pressure": "Air pressure"
+        },
+        "reading_pick": "{reading}: choose a sensor",
+        "choose": "{count} sensors here: choose the main one",
+        "no_candidates": "No sensor of this kind in this area",
+        "missing": "no longer in this area",
+        "save_error": "The area setting could not be saved",
+        "source": {
+          "pocket": "Set in Pocket",
+          "home_assistant": "Set in Home Assistant (the area's Related sensors)",
+          "inputs": "From the home's setup",
+          "auto": "Found automatically: the only one here",
+          "none": "Not set"
+        },
+        "types": {
+          "inside": "Inside",
+          "outside": "Outside",
+          "none": "Not assigned"
+        }
       },
       "area": {
         "back": "Back to areas",
@@ -214,6 +248,9 @@
           "start": "Open Pocket when the app starts",
           "start_on": "On this device the app opens here. Off: Home Assistant opens as usual.",
           "start_off": "Only this phone or browser; others keep their own start page."
+        },
+        "areas": {
+          "title": "Areas"
         }
       },
       "sheet": {

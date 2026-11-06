@@ -33,7 +33,8 @@
         "all_good": "Wszystko w porządku",
         "pill": "{room}: {message}",
         "chip": {
-          "climate": "Klimat",
+          "inside": "W domu",
+          "outside": "Na zewnątrz",
           "air": "Powietrze",
           "lights_on": "Włączone światła",
           "power": "Prąd",
@@ -126,7 +127,40 @@
         "lights_on": "{count} wł.",
         "all_off": "Wszystko wył.",
         "air": "Powietrze {value}",
-        "attention": "Wymaga uwagi"
+        "attention": "Wymaga uwagi",
+        "summary": "Obszary: {count} · bez typu: {unassigned}",
+        "hint": "Z Home Assistanta. Nadaj każdemu obszarowi typ i główne czujniki; nowy obszar pojawi się tu jako nieprzypisany.",
+        "settings": "Ustawienia obszaru",
+        "type": "Typ",
+        "none": "Brak",
+        "admin_only": "Tylko administrator może to zmienić.",
+        "assign": "Przypisz obszary w Ustawieniach",
+        "none_assigned": "Brak przypisanych obszarów",
+        "sensor_not_set": "Nie wybrano głównego czujnika",
+        "kind": {
+          "climate": "Temperatura i wilgotność",
+          "air": "Jakość powietrza",
+          "illuminance": "Natężenie światła",
+          "sound": "Poziom dźwięku",
+          "pressure": "Ciśnienie"
+        },
+        "reading_pick": "{reading}: wybierz czujnik",
+        "choose": "Czujniki tutaj: {count}, wybierz główny",
+        "no_candidates": "Brak czujnika tego rodzaju w tym obszarze",
+        "missing": "już nie w tym obszarze",
+        "save_error": "Nie udało się zapisać ustawienia obszaru",
+        "source": {
+          "pocket": "Ustawione w Pocket",
+          "home_assistant": "Ustawione w Home Assistancie (powiązane czujniki obszaru)",
+          "inputs": "Z konfiguracji domu",
+          "auto": "Wybrany automatycznie: jedyny tutaj",
+          "none": "Nie ustawiono"
+        },
+        "types": {
+          "inside": "Wewnątrz",
+          "outside": "Na zewnątrz",
+          "none": "Nieprzypisany"
+        }
       },
       "area": {
         "back": "Wróć do obszarów",
@@ -214,6 +248,9 @@
           "start": "Otwieraj Pocket po uruchomieniu aplikacji",
           "start_on": "Na tym urządzeniu aplikacja otwiera się tutaj. Wyłącz: Home Assistant otwiera się jak zwykle.",
           "start_off": "Tylko ten telefon lub przeglądarka; inne zachowują własną stronę startową."
+        },
+        "areas": {
+          "title": "Obszary"
         }
       },
       "sheet": {

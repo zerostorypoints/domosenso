@@ -66,7 +66,27 @@ export function hassOf(states = baseStates()) {
 
 // As the shell's: ctx.hass is the store's view of the raw hass (ctx.raw), and ctx.redraw (set by
 // a test) runs on each send or rollback.
+// What the shell gives pages since SPEC-038 (lib/home-model.js): the home's areas, each with a type.
+// A config of the old shape becomes that: its rooms typed inside, its `outside` sensors an area
+// "outside" of type outside, named Outside, its range under thresholds.rooms.outside.
+export function asAreas(cfg) {
+  if (!cfg || !Array.isArray(cfg.rooms) || cfg.rooms.some((r) => "type" in r) || cfg.asAreas) return cfg;
+  const { outside, ...rest } = cfg;
+  const rooms = cfg.rooms.map((room) => ({ type: "inside", ...room }));
+  const thresholds = { ...(cfg.thresholds ?? {}), rooms: { ...(cfg.thresholds?.rooms ?? {}) } };
+  delete thresholds.outside;
+  if (outside?.temperature || outside?.humidity) {
+    const climate = {};
+    if (outside.temperature) climate.temperature = outside.temperature;
+    if (outside.humidity) climate.humidity = outside.humidity;
+    rooms.push({ id: "outside", name: "Outside", area: outside.area ?? "outside", type: "outside", climate });
+    if (cfg.thresholds?.outside) thresholds.rooms.outside = cfg.thresholds.outside;
+  }
+  return { ...rest, rooms, thresholds, asAreas: true };
+}
+
 export function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, routeId, timeoutMs } = {}) {
+  cfg = asAreas(cfg);
   const routes = [];
   const options = [];
   const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});

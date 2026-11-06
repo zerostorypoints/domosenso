@@ -92,9 +92,21 @@ def test_title_from_the_inputs(tmp_path):
     assert dashboard["title"] == "Flat"
 
 
-def test_render_without_home_inputs_fails(tmp_path):
-    with pytest.raises(RenderError, match="pocket: uses_home is true but no home inputs were given"):
-        render_component(COMPONENT, INPUTS, tmp_path, ["en"])
+def test_render_without_home_inputs_gives_no_defaults(tmp_path):
+    # uses_home: optional (SPEC-038): the card takes the areas from Home Assistant; no defaults.
+    written = render_component(COMPONENT, INPUTS, tmp_path, ["en"])
+    dashboard = next(p for p in written if p.name == "dashboard.en.yaml")
+    card = yaml.safe_load(dashboard.read_text(encoding="utf-8"))["views"][0]["cards"][0]
+    assert card["rooms"] == []
+    assert "outside" not in card and "weather" not in card
+
+
+def test_a_rooms_type_passes_to_the_card(tmp_path):
+    home = copy.deepcopy(HOME)
+    home["rooms"][0]["type"] = "inside"
+    card = _card(_dashboard(tmp_path, home))
+    assert card["rooms"][0]["type"] == "inside"
+    assert "type" not in card["rooms"][1]
 
 
 def test_component_check_passes():

@@ -1,48 +1,52 @@
-// The home's areas as the pocket shows them: the rooms of the card config in the home's order,
-// then the Outside pseudo-area when the home names `outside` or `weather`. Plain ES module: no DOM.
+// The home's areas as the pocket shows them: the card config's rooms, which the shell makes from
+// Home Assistant's areas (lib/home-model.js, SPEC-038): every HA area in floor order, each with its
+// type (inside, outside or not assigned) and its main sensors. Plain ES module: no DOM.
 //
-//   areasOf(config, t?) -> [area]      an area is a room of config.rooms, or the Outside:
-//       {id: "outside", name: t("card.pocket.area.outside"), outside: true,
-//        climate: {temperature?, humidity?}, weather?}
-//   comfortOf(thresholds, area)        the area's comfort range ids: thresholds.rooms.<id>, or
-//                                      thresholds.outside for the Outside
+//   areasOf(config) -> [area]          config.rooms
+//   comfortOf(thresholds, area)        the area's comfort range ids: thresholds.rooms.<area id>
 //   climateReadings(area)              the climate readings the area can show, in order
 //   climateValue(hass, area, reading)  a climate reading as a number, or null
-//
-// The Outside's readings come from config.outside's sensors; one it does not name comes from the
-// weather entity's attribute of the same name (temperature, humidity), as weather entities give them.
+//   typed(hass, config, type) -> {areas, measured, unset, min, max, entity}
+//       the areas of one type (Home's and Climate's Inside and Outside, SPEC-038 §3.9): all of
+//       them, those with a main temperature (measured: [{area, value}], a value null when the
+//       sensor reads nothing), those without (unset), the range of the values, and the one sensor
+//       when there is exactly one (for its trend)
+//   isJudged(area)                     whether an area's comfort is judged (not an outside one)
 
 import { numberOf } from "./level.js";
 
-export const OUTSIDE = "outside";
 const CLIMATE = ["temperature", "humidity"];
 
-export function outsideArea(config, t) {
-  if (!config?.outside && !config?.weather) return null;
-  const climate = {};
-  for (const reading of CLIMATE) if (config.outside?.[reading]) climate[reading] = config.outside[reading];
-  const area = { id: OUTSIDE, name: t ? t("card.pocket.area.outside") : "", outside: true, climate };
-  if (config.weather) area.weather = config.weather;
-  return area;
-}
-
-export function areasOf(config, t) {
-  const rooms = Array.isArray(config?.rooms) ? config.rooms : [];
-  const outside = outsideArea(config, t);
-  return outside ? [...rooms, outside] : rooms;
+export function areasOf(config) {
+  return Array.isArray(config?.rooms) ? config.rooms : [];
 }
 
 export function comfortOf(thresholds, area) {
-  return area?.outside ? thresholds?.outside : thresholds?.rooms?.[area?.id];
+  return thresholds?.rooms?.[area?.id];
 }
 
 export function climateReadings(area) {
-  return CLIMATE.filter((reading) => area?.climate?.[reading] || area?.weather);
+  return CLIMATE.filter((reading) => area?.climate?.[reading]);
 }
 
 export function climateValue(hass, area, reading) {
   const entity = area?.climate?.[reading];
-  if (entity) return numberOf(hass, entity);
-  const value = area?.weather ? hass?.states?.[area.weather]?.attributes?.[reading] : undefined;
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return entity ? numberOf(hass, entity) : null;
+}
+
+// The outside is weather: never something to act on (DESIGN.md §6).
+export const isJudged = (area) => area?.type !== "outside";
+
+export function typed(hass, config, type) {
+  const areas = areasOf(config).filter((area) => area.type === type);
+  const measured = [];
+  const unset = [];
+  for (const area of areas) {
+    if (area.climate?.temperature) measured.push({ area, value: numberOf(hass, area.climate.temperature) });
+    else unset.push(area);
+  }
+  const values = measured.map((m) => m.value).filter((v) => v != null);
+  return { areas, measured, unset, min: values.length ? Math.min(...values) : null,
+    max: values.length ? Math.max(...values) : null,
+    entity: measured.length === 1 ? measured[0].area.climate.temperature : null };
 }

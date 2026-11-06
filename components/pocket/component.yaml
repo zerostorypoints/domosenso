@@ -8,7 +8,7 @@ version: 0.1.0
 summary: A phone dashboard for the home's rooms, lights, climate and air
 description_key: meta.description
 photo: null
-uses_home: true               # the rooms, outside and weather come from the home inputs
+uses_home: optional           # the home inputs give defaults per HA area (SPEC-038); without them Pocket shows HA's areas
 
 devices:
   requires: []

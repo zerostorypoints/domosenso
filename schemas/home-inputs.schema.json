@@ -84,6 +84,13 @@
         "area": {
           "$ref": "#/$defs/area"
         },
+        "type": {
+          "description": "The area's default type in Pocket (SPEC-038): inside or outside; absent, not assigned. Pocket's settings override it.",
+          "enum": [
+            "inside",
+            "outside"
+          ]
+        },
         "lights": {
           "description": "The room's lights: a light group (its members read at run time), or several lights or groups, each an entity or {entity, name} (as the Ramka lists them with labels).",
           "oneOf": [

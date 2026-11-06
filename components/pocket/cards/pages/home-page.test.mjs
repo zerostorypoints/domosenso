@@ -5,6 +5,7 @@ import * as home from "./home-page.js";
 import { pages } from "./index.js";
 import { createT } from "../lib/i18n.js";
 import { createOptimistic } from "../lib/optimistic.js";
+import { asAreas } from "../testing/demo-home.mjs";
 import en from "../../translations/en.json" with { type: "json" };
 import de from "../../translations/de.json" with { type: "json" };
 import pl from "../../translations/pl.json" with { type: "json" };
@@ -68,7 +69,7 @@ function ctxOf({ hass = hassOf(), lang = "en", cfg = config, offline = false, ti
   const routes = [];
   const optimistic = createOptimistic(timeoutMs ? { timeoutMs } : {});
   const sheets = [];
-  const ctx = { routes, sheets, raw: hass, optimistic, config: cfg, lang, offline, routeId: undefined,
+  const ctx = { routes, sheets, raw: hass, optimistic, config: asAreas(cfg), lang, offline, routeId: undefined,
     openSheet: (spec) => sheets.push(spec),
     get hass() { return optimistic.view(ctx.raw); },
     set hass(value) { ctx.raw = value; optimistic.update(value); },
@@ -143,12 +144,28 @@ test("metric chips: inside range, outside, air score, lights on", () => {
     ["21.7–21.9° Inside", "5.5° Outside", "81 Air", "1 Lights on"]);
 });
 
-test("a chip whose reading is unavailable shows a dash; a chip without its entity is left out", () => {
+test("Inside and Outside: an unreadable sensor a dash; no area of the type says so and opens Settings → Areas", () => {
   const states = { ...baseStates(), "sensor.outside_temperature": st("unavailable") };
-  const el = mount(ctxOf({ hass: hassOf(states), cfg: { ...config, outside: undefined } }));
-  assert.deepEqual(texts(el, ".chips .chip:not([hidden])").map((s) => s.split(" ")[1]), ["Inside", "Air", "Lights"]);
-  const el2 = mount(ctxOf({ hass: hassOf(states) }));
-  assert.ok(texts(el2, ".chips .chip:not([hidden])").includes("— Outside"));
+  const el = mount(ctxOf({ hass: hassOf(states) }));
+  assert.ok(texts(el, ".chips .chip:not([hidden])").includes("— Outside"));
+  const ctx = ctxOf({ hass: hassOf(states), cfg: { ...config, outside: undefined } });
+  const none = mount(ctx);
+  const outside = none.querySelector('[data-chip="outside"]');
+  assert.equal(text(outside), "No areas assigned Outside");
+  assert.ok(outside.classList.contains("note"));
+  outside.click();
+  assert.deepEqual(ctx.routes, ["#/settings/areas"]);
+  assert.equal(ctx.sheets.length, 0);
+});
+
+test("Inside with its areas but no main sensor in any: Main sensor not set, opening the list of its areas", () => {
+  const rooms = config.rooms.map(({ climate, ...room }) => ({ ...room, type: "inside" }));
+  const ctx = ctxOf({ cfg: { ...config, rooms, outside: undefined } });
+  const el = mount(ctx);
+  const inside = el.querySelector('[data-chip="inside"]');
+  assert.equal(text(inside), "Main sensor not set Inside");
+  inside.click();
+  assert.deepEqual(ctx.sheets.at(-1), { kind: "typed", type: "inside", title: "Inside" });
 });
 
 test("now playing: art, title, artist; play/pause in place, elsewhere to Media", () => {
@@ -369,7 +386,7 @@ test("snappy: play/pause flips at once; a failed call flips it back with the toa
   assert.deepEqual(errors, ["card.pocket.error.media"]);
 });
 
-test("every chip opens its sheet: inside the temperature checks, outside and air their trend, lights on the lights", () => {
+test("every chip opens its sheet: inside and outside the areas of their type, air its trend, lights on the lights", () => {
   const ctx = ctxOf();
   const el = home.render(ctx);
   document.body.appendChild(el);
@@ -378,13 +395,12 @@ test("every chip opens its sheet: inside the temperature checks, outside and air
     assert.equal(chip(name).tagName, "BUTTON", name);
     chip(name).click();
   }
-  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.subtitle]), [
-    ["checks", undefined, undefined],
-    ["trend", "sensor.outside_temperature", "Outside"],
-    ["trend", "sensor.living_room_air_quality_score", "Living room"],
-    ["lights", undefined, undefined],
+  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.type ?? s.entity]), [
+    ["typed", "inside"],
+    ["typed", "outside"],
+    ["trend", "sensor.living_room_air_quality_score"],
+    ["lights", undefined],
   ]);
-  assert.deepEqual(ctx.sheets[0], { kind: "checks", title: "Temperature inside", readings: ["temperature"], inside: true });
   const css = el.querySelector("style").textContent;
   assert.match(css, /button\.chip \{[^}]*min-height: 44px/);
 });

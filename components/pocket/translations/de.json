@@ -33,7 +33,8 @@
         "all_good": "Alles in Ordnung",
         "pill": "{room}: {message}",
         "chip": {
-          "climate": "Klima",
+          "inside": "Innen",
+          "outside": "Aussen",
           "air": "Luft",
           "lights_on": "Lichter an",
           "power": "Strom",
@@ -126,7 +127,40 @@
         "lights_on": "{count} an",
         "all_off": "Alle aus",
         "air": "Luft {value}",
-        "attention": "Braucht Aufmerksamkeit"
+        "attention": "Braucht Aufmerksamkeit",
+        "summary": "{count} Bereiche · {unassigned} ohne Typ",
+        "hint": "Aus Home Assistant. Gib jedem Bereich seinen Typ und seine Hauptsensoren; ein neuer Bereich erscheint hier als nicht zugeordnet.",
+        "settings": "Bereichseinstellungen",
+        "type": "Typ",
+        "none": "Keiner",
+        "admin_only": "Nur ein Administrator kann das ändern.",
+        "assign": "Bereiche in den Einstellungen zuordnen",
+        "none_assigned": "Keine Bereiche zugeordnet",
+        "sensor_not_set": "Hauptsensor nicht gewählt",
+        "kind": {
+          "climate": "Temperatur und Feuchtigkeit",
+          "air": "Luftqualität",
+          "illuminance": "Helligkeit",
+          "sound": "Lautstärke",
+          "pressure": "Luftdruck"
+        },
+        "reading_pick": "{reading}: Sensor wählen",
+        "choose": "{count} Sensoren hier: den Hauptsensor wählen",
+        "no_candidates": "Kein Sensor dieser Art in diesem Bereich",
+        "missing": "nicht mehr in diesem Bereich",
+        "save_error": "Die Bereichseinstellung konnte nicht gespeichert werden",
+        "source": {
+          "pocket": "In Pocket gewählt",
+          "home_assistant": "In Home Assistant gewählt (zugehörige Sensoren des Bereichs)",
+          "inputs": "Aus der Einrichtung des Hauses",
+          "auto": "Automatisch: der einzige hier",
+          "none": "Nicht gewählt"
+        },
+        "types": {
+          "inside": "Innen",
+          "outside": "Aussen",
+          "none": "Nicht zugeordnet"
+        }
       },
       "area": {
         "back": "Zurück zu den Bereichen",
@@ -214,6 +248,9 @@
           "start": "Pocket beim Start der App öffnen",
           "start_on": "Auf diesem Gerät öffnet die App hier. Aus: Home Assistant öffnet wie gewohnt.",
           "start_off": "Nur dieses Telefon oder dieser Browser; andere behalten ihre eigene Startseite."
+        },
+        "areas": {
+          "title": "Bereiche"
         }
       },
       "sheet": {
