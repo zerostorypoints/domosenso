@@ -266,7 +266,9 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   underneath: the corner holes go through the board, the screws into posts of the frame.
   Measured with a ruler on one module (6 November 2026): 54 mm each side, corner holes 44 mm apart
   centre to centre, 7.5 mm from the underside to the board's top face; the drawing gives 54, 44
-  and 7.6 mm.
+  and 7.6 mm. The antenna jack's thread measured 32 and 37 mm from the module's left
+  edge, so its axis is 34.5 mm from it, against the drawing's 34; the two edges span 5 mm of a
+  6.35 mm thread, so the ruler reading is good to about ±0.5 mm.
 - Atom Lite: [product page](https://docs.m5stack.com/en/core/ATOM%20Lite) (24.0 × 24.0 × 9.5 mm),
   [model-size drawing](https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg)
   and [Atom-Lite.stl](https://github.com/m5stack/M5_Hardware/tree/master/Products/C008_Atom-Lite/Structures).
@@ -325,6 +327,11 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   pins are gone; two stops on its right side (8 mm wide, 4 mm up its side) hold it against the
   left wall with 0.3 mm of play. Not printed yet. In a base printed earlier, cut the pins off
   flush with the pads; double-sided tape on the pads then holds the module.
+- The module's place across the box: the left wall leaves it 0.5 mm, the stops 0.3 mm, and the
+  jack in its slot about ±0.2 mm around the drawing's position. Shifted 0.4 mm left or 0.5 mm
+  right, the lid's tubes still clear the corner screws (checked by moving the module in the
+  model); against the left wall, 0.5 mm left, they touch them. That happens only if the jack sits
+  0.3 mm or more further right on the module than drawn, which the ruler reading allows.
 - The Atom's stop on the module side stood alone in the first base, a 1.35 mm plate 26 mm tall
   held only by the floor; a web now joins it to the pedestal. Not printed yet.
 - The screw positions come from a photo. Over the whole measured range, with a head of up to
