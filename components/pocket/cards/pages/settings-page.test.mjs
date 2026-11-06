@@ -29,7 +29,8 @@ function mount(ctx = settingsCtx()) {
 }
 
 const switches = (el) => [...el.querySelectorAll(".bar .switch")];
-const modes = (el) => [...el.querySelectorAll(".seg button")];
+const themeSelect = (el) => el.querySelector(".appearance .theme select");
+const pick = (select, value) => { select.value = value; select.dispatchEvent(new Event("change")); };
 
 beforeEach(() => { document.body.innerHTML = ""; });
 
@@ -40,24 +41,25 @@ test("the shell's settings entry is this page", () => {
 test("the groups, translated", () => {
   const el = mount();
   assert.equal(text(el.querySelector(".top b")), "Settings");
-  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "This device", "Bottom bar", "Comfort ranges", "About"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Appearance", "This device", "Bottom bar", "Areas", "Comfort ranges", "About"]);
   settingsPage.update(el, settingsCtx({ lang: "pl" }));
-  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "To urządzenie", "Dolny pasek", "Zakresy komfortu", "O aplikacji"]);
+  assert.deepEqual(texts(el, ".group h3"), ["Wygląd", "To urządzenie", "Dolny pasek", "Obszary", "Zakresy komfortu", "O aplikacji"]);
   settingsPage.update(el, settingsCtx({ lang: "de" }));
   assert.equal(text(el.querySelector(".top b")), "Einstellungen");
 });
 
-test("Appearance: three choices, the person's checked; a tap saves it and shows it at once", async () => {
+test("Appearance: the theme is a row with a drop-down of three, the person's chosen; a pick saves it", async () => {
   const ctx = settingsCtx();
   const el = mount(ctx);
-  assert.deepEqual(modes(el).map(text), ["System", "Light", "Dark"]);
-  assert.deepEqual(modes(el).map((b) => b.getAttribute("aria-checked")), ["true", "false", "false"]);
-  modes(el)[2].click();
-  assert.deepEqual(modes(el).map((b) => b.getAttribute("aria-checked")), ["false", "false", "true"]);
+  const select = themeSelect(el);
+  assert.equal(text(el.querySelector(".appearance .theme .name")), "Theme");
+  assert.deepEqual([...select.options].map((o) => [o.value, o.textContent]), [["system", "System"], ["light", "Light"], ["dark", "Dark"]]);
+  assert.equal(select.value, "system");
+  pick(select, "dark");
+  assert.equal(select.value, "dark");
   await tick();
   assert.deepEqual(ctx.saves, [{ theme: "dark" }]);
-  assert.equal(modes(el)[2].getAttribute("aria-checked"), "true");
-  modes(el)[2].click();
+  pick(select, "dark");
   await tick();
   assert.equal(ctx.saves.length, 1, "the chosen one again saves nothing");
 });
@@ -67,10 +69,10 @@ test("a failed save puts back what was shown and toasts", async () => {
   const el = mount(ctx);
   const errors = [];
   document.body.addEventListener("pocket-error", (e) => errors.push(e.detail.key));
-  modes(el)[1].click();
-  assert.equal(modes(el)[1].getAttribute("aria-checked"), "true");
+  pick(themeSelect(el), "light");
+  assert.equal(themeSelect(el).value, "light");
   await tick();
-  assert.equal(modes(el)[0].getAttribute("aria-checked"), "true");
+  assert.equal(themeSelect(el).value, "system");
   assert.deepEqual(errors, ["card.pocket.settings.error"]);
 });
 
@@ -99,7 +101,7 @@ test("Bottom bar: a switch per page besides Home and Settings; at most three on,
 
 test("controls are disabled while offline", () => {
   const el = mount(settingsCtx({ offline: true, settings: { bar: ["home", "settings"], theme: "system" } }));
-  assert.ok(modes(el).every((b) => b.disabled));
+  assert.ok([...el.querySelectorAll(".appearance select")].every((s) => s.disabled));
   assert.ok(switches(el).every((b) => b.disabled));
 });
 
@@ -168,12 +170,12 @@ test("About: the HA area each area reads, linked to HA's area page; the catalog'
     study: { area_id: "study", name: "Study" } } };
   const el = mount(settingsCtx({ cfg, hass }));
   const links = [...el.querySelectorAll(".about .area-map a")];
-  assert.deepEqual(links.map((a) => text(a.querySelector(".name"))), ["Living room", "Bedroom", "Office", "Hall", "Outside"]);
+  assert.deepEqual(links.map((a) => text(a.querySelector(".name"))), ["Living room", "Bedroom", "Office", "Hall"],
+    "a weather entity makes no area");
   assert.deepEqual(links.map((a) => text(a.querySelector("small"))), [
     "Home Assistant area: Lounge", "Home Assistant area bedroom: not found", "Home Assistant area: Study",
-    "Home Assistant area hall: not found", "From the outside sensors and the weather"]);
+    "Home Assistant area hall: not found"]);
   assert.equal(links[2].getAttribute("href"), "/config/areas/area/study");
-  assert.equal(links[4].hasAttribute("href"), false);
   assert.equal(el.querySelector(".about .catalog").getAttribute("href"), "https://domosenso.org/");
   assert.equal(text(el.querySelector(".about .catalog")), "Domosenso catalog");
   assert.match(el.querySelector(".about .repo").getAttribute("href"), /^https:\/\/github\.com\//);
@@ -181,7 +183,7 @@ test("About: the HA area each area reads, linked to HA's area page; the catalog'
 
 test("tap targets of at least 44 px, text of at least 11.5 px", () => {
   const css = mount().querySelector("style").textContent;
-  for (const sel of [".seg button", ".switch", ".value", ".links a"]) {
+  for (const sel of [".pick select", ".switch", ".value", ".links a"]) {
     assert.match(css, new RegExp(`\\.settings ${sel.replace(".", "\\.")} \\{[^}]*min-height: 44px`), sel);
   }
   for (const m of css.matchAll(/font-size: ([\d.]+)px/g)) assert.ok(Number(m[1]) >= 11.5, m[0]);
@@ -239,7 +241,7 @@ test("two levels: Settings holds Appearance, the bar and a row per panel; each p
   const top = mount(settingsCtx());
   const shownGroups = (el) => [...el.querySelectorAll(".group")].filter((g) => !g.hidden).map((g) => g.classList[1]);
   assert.deepEqual(shownGroups(top), ["appearance", "device", "bar", "menu"], "the home's values are a step away");
-  assert.deepEqual(texts(top, ".menu .row .name"), ["Comfort ranges", "About"]);
+  assert.deepEqual(texts(top, ".menu .row .name"), ["Areas", "Quick actions", "Comfort ranges", "About"]);
   assert.equal(text(top.querySelector(".menu [data-panel=comfort] small")), "2 areas · Air limits");
   assert.match(text(top.querySelector(".menu [data-panel=about] small")), /^Pocket /);
   assert.equal(top.querySelector(".back").hidden, true);
@@ -274,4 +276,42 @@ test("This device: open Pocket at the app's start, here only; off again restores
   start.click();
   assert.equal(window.localStorage.getItem("domosenso-pocket-start"), null);
   assert.equal(start.getAttribute("aria-checked"), "false");
+});
+
+test("Language: Automatic, then each language by its own name; a pick saves it; Automatic when unset", async () => {
+  const ctx = settingsCtx({ settings: { bar: ["home", "settings"], theme: "system", language: "auto" } });
+  const el = mount(ctx);
+  const select = el.querySelector(".appearance .lang select");
+  assert.deepEqual([...select.options].map((o) => [o.value, o.textContent]),
+    [["auto", "Automatic"], ["en", "English"], ["de", "Deutsch"], ["pl", "Polski"]]);
+  assert.equal(select.value, "auto");
+  assert.equal(el.querySelector(".lang .name").textContent, "Language");
+  select.value = "pl";
+  select.dispatchEvent(new Event("change"));
+  await tick();
+  assert.deepEqual(ctx.saves, [{ language: "pl" }]);
+});
+
+test("Areas: every area a row like the menu's; a row drills down to its own page with a back to the list", () => {
+  const ctx = settingsCtx();
+  ctx.routeId = "areas";
+  const el = mount(ctx);
+  const rows = [...el.querySelectorAll(".areas button.row")];
+  assert.deepEqual(rows.map((r) => text(r.querySelector(".name"))), ["Living room", "Bedroom", "Office", "Hall"]);
+  assert.equal(text(rows[0].querySelector("small")), "Inside · Main sensor not set");
+  rows[1].click();
+  assert.deepEqual(ctx.routes, ["#/settings/areas/bedroom"]);
+  const css = el.querySelector("style").textContent;
+  assert.match(css, /\.settings \.areas button\.row \{[^}]*background: none/, "not a browser's default button");
+
+  const page = settingsCtx();
+  page.routeId = "areas";
+  page.routeItem = "bedroom";
+  page.home = { model: { rooms: page.config.rooms }, admin: true, set: () => Promise.resolve() };
+  const drill = mount(page);
+  assert.equal(drill.querySelector(".areas").hidden, true);
+  assert.equal(text(drill.querySelector(".back b")), "Bedroom");
+  assert.equal(drill.querySelector(".area-settings .type-row select").value, "inside");
+  drill.querySelector(".back").click();
+  assert.deepEqual(page.routes, ["#/settings/areas"]);
 });

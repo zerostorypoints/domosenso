@@ -114,7 +114,8 @@
         "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen.",
         "cover": "Die Abdeckung hat sich nicht bewegt. Bitte erneut versuchen.",
         "timer": "Der Timer hat nicht reagiert. Bitte erneut versuchen.",
-        "safety": "Die Sicherheitsaktion ist nicht durchgegangen."
+        "safety": "Die Sicherheitsaktion ist nicht durchgegangen.",
+        "action": "Die Aktion ging nicht durch. Versuch es noch einmal."
       },
       "areas": {
         "title": "Bereiche",
@@ -127,7 +128,45 @@
         "lights_on": "{count} an",
         "all_off": "Alle aus",
         "air": "Luft {value}",
-        "attention": "Braucht Aufmerksamkeit"
+        "attention": "Braucht Aufmerksamkeit",
+        "summary": "{count} Bereiche · {unassigned} ohne Typ",
+        "hint": "Aus Home Assistant. Ein neuer Bereich ist innen, bis du es änderst; nicht zugeordnet blendet einen Bereich in Pocket aus, hier bleibt er.",
+        "settings": "Bereichseinstellungen",
+        "type": "Typ",
+        "none": "Keiner",
+        "admin_only": "Nur ein Administrator kann das ändern.",
+        "assign": "Bereiche in den Einstellungen zuordnen",
+        "none_assigned": "Keine Bereiche zugeordnet",
+        "sensor_not_set": "Hauptsensor nicht gewählt",
+        "kind": {
+          "climate": "Temperatur und Feuchtigkeit",
+          "air": "Luftqualität",
+          "illuminance": "Helligkeit",
+          "sound": "Lautstärke",
+          "pressure": "Luftdruck"
+        },
+        "choose": "{count} Sensoren hier: den Hauptsensor wählen",
+        "no_candidates": "Kein Sensor dieser Art in diesem Bereich",
+        "missing": "nicht mehr in diesem Bereich",
+        "save_error": "Die Bereichseinstellung konnte nicht gespeichert werden",
+        "source": {
+          "pocket": "In Pocket gewählt",
+          "home_assistant": "In Home Assistant gewählt (zugehörige Sensoren des Bereichs)",
+          "inputs": "Aus der Einrichtung des Hauses",
+          "auto": "Automatisch: der einzige hier",
+          "none": "Nicht gewählt",
+          "default": "Standard: jeder Bereich ist innen, bis du es änderst"
+        },
+        "types": {
+          "inside": "Innen",
+          "outside": "Aussen",
+          "none": "Nicht zugeordnet"
+        },
+        "main_sensors": "Hauptsensoren",
+        "reading_of": "Ein Sensor von {device}",
+        "back": "Zurück zu den Bereichen",
+        "checked": "In die Prüfung einbeziehen",
+        "checked_hint": "Seine Werte zählen für Alles gut, die Hinweise und die Ratschläge. Aus: sichtbar, nie eine Warnung."
       },
       "area": {
         "back": "Zurück zu den Bereichen",
@@ -157,10 +196,17 @@
       "settings": {
         "title": "Einstellungen",
         "appearance": "Darstellung",
+        "theme_label": "Farbmodus",
         "theme": {
           "system": "System",
           "light": "Hell",
           "dark": "Dunkel"
+        },
+        "language": {
+          "title": "Sprache",
+          "auto": "Automatisch",
+          "auto_hint": "Die Sprache von Home Assistant, wie in deinem Profil eingestellt.",
+          "chosen_hint": "Nur für Pocket, auf jedem Gerät, auf dem du dich anmeldest."
         },
         "bar": {
           "title": "Untere Leiste",
@@ -209,6 +255,12 @@
           "start": "Pocket beim Start der App öffnen",
           "start_on": "Auf diesem Gerät öffnet die App hier. Aus: Home Assistant öffnet wie gewohnt.",
           "start_off": "Nur dieses Telefon oder dieser Browser; andere behalten ihre eigene Startseite."
+        },
+        "areas": {
+          "title": "Bereiche"
+        },
+        "quick": {
+          "title": "Schnellaktionen"
         }
       },
       "sheet": {
@@ -236,7 +288,10 @@
           "co2": "CO₂",
           "pm2_5": "PM2.5",
           "voc": "VOC",
-          "nox": "NOx"
+          "nox": "NOx",
+          "illuminance": "Helligkeit",
+          "sound": "Lautstärke",
+          "pressure": "Luftdruck"
         },
         "direction": {
           "rising": "Steigend",
@@ -706,6 +761,38 @@
         "test": "Testen",
         "confirm_test": "Nochmals tippen zum Auslösen",
         "stop": "Stopp"
+      },
+      "quick": {
+        "title": "Schnellaktionen",
+        "edit": "Bearbeiten",
+        "edit_label": "Schnellaktionen bearbeiten",
+        "all_off": "Alle Lichter aus",
+        "on": "An",
+        "off": "Aus",
+        "summary": {
+          "person": "Deine Liste · {count}",
+          "inputs": "Standard des Hauses · {count}",
+          "default": "Lichter der Bereiche · {count}"
+        },
+        "hint": "Was Home unter Schnell zeigt, in dieser Reihenfolge. Nur für dich, auf jedem Gerät, auf dem du angemeldet bist.",
+        "add": "Aktion hinzufügen",
+        "add_title": "Aktion hinzufügen",
+        "reset": "Standard des Hauses verwenden",
+        "reset_hint": "Deine Liste wird durch die des Hauses ersetzt.",
+        "up": "{name} nach oben",
+        "down": "{name} nach unten",
+        "remove": "{name} entfernen",
+        "empty": "Nichts unter Schnell. Füge eine Aktion hinzu.",
+        "area_lights": "Lichter des Bereichs",
+        "none_left": "Alles ist schon in deiner Liste.",
+        "groups": {
+          "areas": "Lichter der Bereiche",
+          "lights": "Lichter",
+          "scenes": "Szenen",
+          "scripts": "Skripte",
+          "switches": "Schalter",
+          "buttons": "Tasten"
+        }
       }
     }
   }

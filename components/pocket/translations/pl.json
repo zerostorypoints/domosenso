@@ -114,7 +114,8 @@
         "scene": "Scena nie odpowiedziała. Spróbuj ponownie.",
         "cover": "Osłona się nie poruszyła. Spróbuj ponownie.",
         "timer": "Minutnik nie zareagował. Spróbuj ponownie.",
-        "safety": "Akcja bezpieczeństwa się nie powiodła."
+        "safety": "Akcja bezpieczeństwa się nie powiodła.",
+        "action": "Akcja się nie powiodła. Spróbuj ponownie."
       },
       "areas": {
         "title": "Obszary",
@@ -127,7 +128,45 @@
         "lights_on": "{count} wł.",
         "all_off": "Wszystko wył.",
         "air": "Powietrze {value}",
-        "attention": "Wymaga uwagi"
+        "attention": "Wymaga uwagi",
+        "summary": "Obszary: {count} · bez typu: {unassigned}",
+        "hint": "Z Home Assistanta. Nowy obszar jest wewnątrz, dopóki tego nie zmienisz; nieprzypisany obszar znika z Pocket, ale zostaje tutaj.",
+        "settings": "Ustawienia obszaru",
+        "type": "Typ",
+        "none": "Brak",
+        "admin_only": "Tylko administrator może to zmienić.",
+        "assign": "Przypisz obszary w Ustawieniach",
+        "none_assigned": "Brak przypisanych obszarów",
+        "sensor_not_set": "Nie wybrano głównego czujnika",
+        "kind": {
+          "climate": "Temperatura i wilgotność",
+          "air": "Jakość powietrza",
+          "illuminance": "Natężenie światła",
+          "sound": "Poziom dźwięku",
+          "pressure": "Ciśnienie"
+        },
+        "choose": "Czujniki tutaj: {count}, wybierz główny",
+        "no_candidates": "Brak czujnika tego rodzaju w tym obszarze",
+        "missing": "już nie w tym obszarze",
+        "save_error": "Nie udało się zapisać ustawienia obszaru",
+        "source": {
+          "pocket": "Ustawione w Pocket",
+          "home_assistant": "Ustawione w Home Assistancie (powiązane czujniki obszaru)",
+          "inputs": "Z konfiguracji domu",
+          "auto": "Wybrany automatycznie: jedyny tutaj",
+          "none": "Nie ustawiono",
+          "default": "Domyślnie: każdy obszar jest wewnątrz, dopóki tego nie zmienisz"
+        },
+        "types": {
+          "inside": "Wewnątrz",
+          "outside": "Na zewnątrz",
+          "none": "Nieprzypisany"
+        },
+        "main_sensors": "Główne czujniki",
+        "reading_of": "Czujnik urządzenia {device}",
+        "back": "Wróć do obszarów",
+        "checked": "Uwzględniaj w kontrolach",
+        "checked_hint": "Jego odczyty liczą się do „Wszystko dobrze”, alertów i porad. Wyłączone: widoczne, nigdy jako ostrzeżenie."
       },
       "area": {
         "back": "Wróć do obszarów",
@@ -157,10 +196,17 @@
       "settings": {
         "title": "Ustawienia",
         "appearance": "Wygląd",
+        "theme_label": "Motyw",
         "theme": {
           "system": "Systemowy",
           "light": "Jasny",
           "dark": "Ciemny"
+        },
+        "language": {
+          "title": "Język",
+          "auto": "Automatyczny",
+          "auto_hint": "Język Home Assistanta, ustawiony w Twoim profilu.",
+          "chosen_hint": "Tylko dla Pocket, na każdym urządzeniu, na którym się logujesz."
         },
         "bar": {
           "title": "Dolny pasek",
@@ -209,6 +255,12 @@
           "start": "Otwieraj Pocket po uruchomieniu aplikacji",
           "start_on": "Na tym urządzeniu aplikacja otwiera się tutaj. Wyłącz: Home Assistant otwiera się jak zwykle.",
           "start_off": "Tylko ten telefon lub przeglądarka; inne zachowują własną stronę startową."
+        },
+        "areas": {
+          "title": "Obszary"
+        },
+        "quick": {
+          "title": "Szybkie akcje"
         }
       },
       "sheet": {
@@ -236,7 +288,10 @@
           "co2": "CO₂",
           "pm2_5": "PM2.5",
           "voc": "LZO",
-          "nox": "NOx"
+          "nox": "NOx",
+          "illuminance": "Natężenie światła",
+          "sound": "Poziom dźwięku",
+          "pressure": "Ciśnienie"
         },
         "direction": {
           "rising": "Rośnie",
@@ -706,6 +761,38 @@
         "test": "Test",
         "confirm_test": "Stuknij ponownie, aby włączyć",
         "stop": "Zatrzymaj"
+      },
+      "quick": {
+        "title": "Szybkie akcje",
+        "edit": "Edytuj",
+        "edit_label": "Edytuj szybkie akcje",
+        "all_off": "Wyłącz wszystkie światła",
+        "on": "Włączone",
+        "off": "Wyłączone",
+        "summary": {
+          "person": "Twoja lista · {count}",
+          "inputs": "Domyślne dla domu · {count}",
+          "default": "Światła obszarów · {count}"
+        },
+        "hint": "To, co Strona główna pokazuje w sekcji Szybkie, w tej kolejności. Tylko dla Ciebie, na każdym urządzeniu.",
+        "add": "Dodaj akcję",
+        "add_title": "Dodaj akcję",
+        "reset": "Użyj domyślnych dla domu",
+        "reset_hint": "Twoja lista zostanie zastąpiona listą domu.",
+        "up": "Przesuń {name} w górę",
+        "down": "Przesuń {name} w dół",
+        "remove": "Usuń {name}",
+        "empty": "Brak szybkich akcji. Dodaj akcję.",
+        "area_lights": "Światła obszaru",
+        "none_left": "Wszystko jest już na Twojej liście.",
+        "groups": {
+          "areas": "Światła obszarów",
+          "lights": "Światła",
+          "scenes": "Sceny",
+          "scripts": "Skrypty",
+          "switches": "Przełączniki",
+          "buttons": "Przyciski"
+        }
       }
     }
   }

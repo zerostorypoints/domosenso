@@ -146,6 +146,14 @@ show them in the conversation only.
    needs an adapter or ESPHome proxies; cloud-only integrations are never discovered.
 5. After they add some, run step 2 again so the new devices count.
 
+### 3.0 The areas
+
+The rooms have to exist as Home Assistant areas (Settings → Areas, labels & zones), on floors when the
+home has several: Pocket and the floor plan read them, nothing else lists rooms. Create them with the
+owner in Home Assistant's UI (their typed yes for each write if you do it through the API). Once
+components that read areas are added (`uses_home`: Pocket, climate-air), run the skill `set-up-areas`;
+with no sensors yet it only asks each area's type.
+
 ### 3.1 The floor plan (optional)
 
 Offer it once, after the integrations: a plan of the home with the sensors and plants where they

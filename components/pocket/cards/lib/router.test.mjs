@@ -92,6 +92,9 @@ test("Settings' panels are routes of their own; an unknown panel is Settings", (
   assert.deepEqual(parseRoute("#/settings/comfort"), { page: "settings", id: "comfort" });
   assert.deepEqual(parseRoute("#/settings/about/"), { page: "settings", id: "about" });
   assert.deepEqual(parseRoute("#/settings/nope"), { page: "settings" });
+  assert.deepEqual(parseRoute("#/settings/areas"), { page: "settings", id: "areas" });
+  assert.deepEqual(parseRoute("#/settings/areas/living_room"), { page: "settings", id: "areas", item: "living_room" });
+  assert.deepEqual(parseRoute("#/settings/areas/%E0"), { page: "settings", id: "areas" }, "a bad escape: the list");
 });
 
 test("Home's Systems view and the System page are routes; the System page belongs to Home", () => {

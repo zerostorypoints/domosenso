@@ -114,7 +114,8 @@
         "scene": "The scene did not start. Try again.",
         "cover": "The cover did not move. Try again.",
         "timer": "The timer did not follow. Try again.",
-        "safety": "The safety action did not go through."
+        "safety": "The safety action did not go through.",
+        "action": "The action did not go through. Try again."
       },
       "areas": {
         "title": "Areas",
@@ -127,7 +128,45 @@
         "lights_on": "{count} on",
         "all_off": "All off",
         "air": "Air {value}",
-        "attention": "Needs attention"
+        "attention": "Needs attention",
+        "summary": "{count} areas · {unassigned} not assigned",
+        "hint": "From Home Assistant. A new area is Inside until you change it; Not assigned hides an area from Pocket, it stays here.",
+        "settings": "Area settings",
+        "type": "Type",
+        "none": "None",
+        "admin_only": "Only an administrator can change these.",
+        "assign": "Assign areas in Settings",
+        "none_assigned": "No areas assigned",
+        "sensor_not_set": "Main sensor not set",
+        "kind": {
+          "climate": "Temperature and humidity",
+          "air": "Air quality",
+          "illuminance": "Light level",
+          "sound": "Sound level",
+          "pressure": "Air pressure"
+        },
+        "choose": "{count} sensors here: choose the main one",
+        "no_candidates": "No sensor of this kind in this area",
+        "missing": "no longer in this area",
+        "save_error": "The area setting could not be saved",
+        "source": {
+          "pocket": "Set in Pocket",
+          "home_assistant": "Set in Home Assistant (the area's Related sensors)",
+          "inputs": "From the home's setup",
+          "auto": "Found automatically: the only one here",
+          "none": "Not set",
+          "default": "Default: every area is Inside until set otherwise"
+        },
+        "types": {
+          "inside": "Inside",
+          "outside": "Outside",
+          "none": "Not assigned"
+        },
+        "main_sensors": "Main sensors",
+        "reading_of": "A sensor of {device}",
+        "back": "Back to Areas",
+        "checked": "Include in checks",
+        "checked_hint": "Its readings count for All good, the pills and the advice. Off: shown, never a warning."
       },
       "area": {
         "back": "Back to areas",
@@ -157,10 +196,17 @@
       "settings": {
         "title": "Settings",
         "appearance": "Appearance",
+        "theme_label": "Theme",
         "theme": {
           "system": "System",
           "light": "Light",
           "dark": "Dark"
+        },
+        "language": {
+          "title": "Language",
+          "auto": "Automatic",
+          "auto_hint": "Home Assistant's language, as set in your profile.",
+          "chosen_hint": "Only for Pocket, on every device you sign in on."
         },
         "bar": {
           "title": "Bottom bar",
@@ -209,6 +255,12 @@
           "start": "Open Pocket when the app starts",
           "start_on": "On this device the app opens here. Off: Home Assistant opens as usual.",
           "start_off": "Only this phone or browser; others keep their own start page."
+        },
+        "areas": {
+          "title": "Areas"
+        },
+        "quick": {
+          "title": "Quick actions"
         }
       },
       "sheet": {
@@ -236,7 +288,10 @@
           "co2": "CO₂",
           "pm2_5": "PM2.5",
           "voc": "VOC",
-          "nox": "NOx"
+          "nox": "NOx",
+          "illuminance": "Light level",
+          "sound": "Sound level",
+          "pressure": "Air pressure"
         },
         "direction": {
           "rising": "Rising",
@@ -706,6 +761,38 @@
         "test": "Test",
         "confirm_test": "Tap again to sound it",
         "stop": "Stop"
+      },
+      "quick": {
+        "title": "Quick actions",
+        "edit": "Edit",
+        "edit_label": "Edit Quick actions",
+        "all_off": "All lights off",
+        "on": "On",
+        "off": "Off",
+        "summary": {
+          "person": "Your own list · {count}",
+          "inputs": "The home's default · {count}",
+          "default": "Each area's lights · {count}"
+        },
+        "hint": "What Home shows under Quick, in this order. Only for you, on every device you sign in on.",
+        "add": "Add an action",
+        "add_title": "Add an action",
+        "reset": "Use the home's default",
+        "reset_hint": "Your list is replaced by the home's.",
+        "up": "Move {name} up",
+        "down": "Move {name} down",
+        "remove": "Remove {name}",
+        "empty": "Nothing under Quick. Add an action.",
+        "area_lights": "The area's lights",
+        "none_left": "Everything is already in your list.",
+        "groups": {
+          "areas": "Areas' lights",
+          "lights": "Lights",
+          "scenes": "Scenes",
+          "scripts": "Scripts",
+          "switches": "Switches",
+          "buttons": "Buttons"
+        }
       }
     }
   }

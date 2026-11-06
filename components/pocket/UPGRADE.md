@@ -2,6 +2,33 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
+## 0.1.0 (unreleased): areas from Home Assistant, area settings, Quick actions (SPEC-038)
+
+- **The areas are Home Assistant's**, by their HA names (not translated), in floor order. Links use
+  the HA area id: an old `#/area/<room id>` whose id is not an HA area goes to Areas. A room of the
+  home inputs is now the defaults of its HA area (`area`, else `id`). With no HA areas at all, the
+  inputs' rooms still stand in (and an `outside` with sensors but no `area` is an Outside area).
+- **No Outside of the card's own.** The Outside pseudo-area and its weather-entity fallback are gone:
+  an outside is an HA area of type Outside. `outside: {temperature, humidity, area}` gives its `area`
+  the type Outside and those sensors; an `outside` without `area` shows only while HA has no areas
+  (`domosenso areas` warns).
+- **Every area is Inside and checked** until set otherwise: Settings → Areas → an area: Type (Inside,
+  Outside, Not assigned to hide it) and Include in checks. An outside area is checked like any other;
+  a home that does not want its balcony's cold reported switches it off.
+- **Main sensors per kind** (climate, air, light level, sound, pressure) in the same page; an area's
+  only candidate becomes its main sensor once, the first time an administrator opens Pocket. Climate
+  is Home Assistant's own area setting (Related sensors): Pocket writes it there. The home's other
+  choices live in HA's frontend system data (`domosenso-pocket-home`).
+- **Quick actions** on Home are a person's own list (Settings → Quick actions), else the new input
+  `quick_actions`, else each area's lights and All off, as before.
+- **Language** is a person's setting (Settings → Appearance), Automatic by default.
+- New in the home inputs: a room's `type` (`inside`, `outside`, `none`) and `checked` (bool); new in
+  the pocket's inputs: `quick_actions`. Pocket's inputs are optional now (`uses_home: optional`).
+- **What a home does:** run `domosenso areas <target>`; fix each `fail` line, and set `outside.area`
+  if it warns. Then the skill `set-up-areas` suggests the rest (which areas are outside, which to
+  leave out of the checks or hide, the main sensors, the Quick actions) for the owner to confirm. A
+  home that does nothing still works: all its HA areas show, Inside, with the sensors its inputs name.
+
 ## 0.1.0 (unreleased): Media and its Sound tab
 
 - **Media** (`#/media`) is built: artwork, progress, transport, volume, mute, source line and a

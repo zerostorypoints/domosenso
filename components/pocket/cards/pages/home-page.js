@@ -7,17 +7,21 @@
 //   - the title and today's date;
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
-//     reading that was checked, per area, the Outside included, problems first;
-//   - metric chips: inside (the range of the rooms' temperatures), outside, the home's air score
+//     reading that was checked, per area (every area but those the home left out of the checks, as
+//     in the pills), problems first;
+//   - metric chips: inside and outside (SPEC-038 §3.9: the areas of that type, lib/areas.js typed:
+//     the range of their main temperatures; "No areas assigned" when no area has the type, opening
+//     Settings → Areas; "Main sensor not set" when none of its areas has one), the home's air score
 //     (lib/climate.js homeAir: the lowest room's), the number of lights on, the power now and the
 //     plants (their Systems summary, lib/sections.js). Every widget opens a sheet, never a page
 //     (lib/detail-sheets.js: an aggregate list or one sensor's trend): power the meters behind
 //     the sum, plants every plant; a chip whose entity the config does not
 //     name is left out, one whose reading is unavailable shows a dash. Each value in its level's
-//     colour (the outside against thresholds.outside: below it --cold, above it --warm; inside the
-//     worst room's), outside and air with their trend arrow (lib/trend.js). Inside opens the checks
-//     sheet of the rooms' temperatures, outside and air the trend sheet (ctx.openSheet,
-//     lib/trend-sheet.js) of their reading, lights on the sheet of the lights that are on;
+//     colour (inside and outside the worst of their areas against each one's comfort range: below
+//     it --cold, above it --warm), a trend arrow on inside or outside when one sensor makes it, and on
+//     air (lib/trend.js). Inside and outside open the sheet of their areas (lib/detail-sheets.js
+//     typed), air the trend sheet (ctx.openSheet, lib/trend-sheet.js) of its reading, lights on the
+//     sheet of the lights that are on;
 //   - Systems (lib/sections.js): a tile per page this home has, the bar's or not, each with its
 //     headline, its status and a dot when it is worth a look (fair or poor, its border too); a tap
 //     opens the page, so every page is reachable from Home while the bar is a quick switch;
@@ -27,8 +31,11 @@
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
 //     a tap elsewhere opens Media with that room's player (#/media/<room id>); no card while the
 //     player is missing from Home Assistant;
-//   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
-//     an All off tile.
+//   - Quick (SPEC-038 §3.11, lib/quick.js): the person's own Quick actions, else the home's default
+//     (Pocket's input quick_actions), else each area's lights and All off, in that order. A light or
+//     an area's lights is a <pocket-light-tile>; a switch, fan or toggle helper a tile that toggles;
+//     a scene, script or button a tile that runs it; All off turns every light off. "Edit" beside the
+//     title opens Settings → Quick actions (this feature's UX choice, DESIGN.md decisions log).
 // Every control sends through ctx.optimistic (lib/optimistic.js): All off shows every light off at
 // once (the tiles and the lights-on chip too), play/pause its new state, before Home Assistant
 // reports them. render() builds every element once; update() only patches text and attributes (the pills are
@@ -37,12 +44,12 @@
 import { attention, roomLevels } from "../lib/attention.js";
 import { issuesOf } from "../lib/safety.js";
 import { labelOf } from "../lib/controls.js";
-import { numberOf, toneOf } from "../lib/level.js";
+import { toneOf } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
-import { checksSpec, lightsSpec, plantsSpec } from "../lib/detail-sheets.js";
+import { checksSpec, lightsSpec, plantsSpec, typedSpec } from "../lib/detail-sheets.js";
 import { powerSpec } from "./power-page.js";
 import { formatDate } from "../lib/i18n.js";
-import { outsideArea } from "../lib/areas.js";
+import { typed, isJudged } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { homeAir } from "../lib/climate.js";
@@ -55,6 +62,7 @@ import {
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
+import { quickOf, itemOf, nameOf, areaNameOf } from "../lib/quick.js";
 
 const STYLE = `
   .home .top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 4px; }
@@ -76,6 +84,7 @@ const STYLE = `
                 background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
   .home button.chip { box-sizing: border-box; min-height: 44px; margin: 0; font-family: inherit; line-height: inherit;
                        color: var(--fg); text-align: left; cursor: pointer; }
+  .home .chip.note .v { font-size: 14px; font-weight: 600; color: var(--mut); }
   .home .chip small { display: block; font-size: 11.5px; color: var(--mut); font-weight: 400; margin-top: 1px; }
   .home .chip .arrow { margin-left: 3px; font-size: 13px; font-weight: 400; color: var(--mut); }
   .home .chip .arrow[hidden] { display: none; }
@@ -134,6 +143,11 @@ const STYLE = `
   .home .all-off, .home .rc { box-sizing: border-box; min-height: 64px; margin: 0; padding: 12px; text-align: left;
                               font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
                               border-radius: 18px; cursor: pointer; }
+  .home .act.on, .home .act.done { border-color: var(--acc); }
+  .home .act.on .ic, .home .act.done .ic { color: var(--acc); }
+  .home .act .t1 { overflow-wrap: break-word; }
+  .home .quick-edit { min-height: 44px; margin: 0 0 0 auto; padding: 0 4px; border: 0; background: none; color: var(--acc);
+                      font: inherit; font-size: 13px; cursor: pointer; }
   .home .all-off .ic { width: 30px; height: 30px; border-radius: 50%; background: var(--chip); margin-bottom: 8px;
                        display: flex; align-items: center; justify-content: center; color: var(--mut);
                        --mdc-icon-size: 18px; }
@@ -149,7 +163,6 @@ const allLights = (config) => [...new Set(config.rooms.flatMap(lightsOf))];
 export function render(ctx) {
   const root = el("section", "home");
   const rooms = ctx.config.rooms;
-  const withLights = rooms.filter((room) => lightsOf(room).length > 0);
   root.innerHTML = `
     <style>${STYLE}</style>
     <div class="top"><b></b> <span class="date"></span></div>
@@ -168,7 +181,7 @@ export function render(ctx) {
       <button class="play" type="button"><ha-icon></ha-icon></button>
     </div>
     <div class="quick-sec">
-      <div class="sec"><span class="quick-title"></span></div>
+      <div class="sec"><span class="quick-title"></span><button class="quick-edit" type="button"></button></div>
       <div class="quick"></div>
     </div>
 `;
@@ -201,7 +214,11 @@ export function render(ctx) {
 
   for (const [name, chip] of Object.entries(parts.chips)) {
     chip.addEventListener("click", () => {
-
+      // No area of that type yet: where areas get their type.
+      if ((name === "inside" || name === "outside") && !typed(parts.ctx.hass, parts.ctx.config, name).areas.length) {
+        parts.ctx.navigate("#/settings/areas", { from: "home" });
+        return;
+      }
       const spec = chipSheet(parts.ctx, name);
       if (spec) parts.ctx.openSheet?.(spec);
     });
@@ -224,30 +241,12 @@ export function render(ctx) {
       expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });
   });
 
-  const quick = root.querySelector(".quick");
-  for (const room of withLights) {
-    const tile = document.createElement("pocket-light-tile");
-    tile.t = ctx.t;
-    tile.optimistic = ctx.optimistic;
-    tile.config = { name: room.name, entities: lightsOf(room) };
-    parts.tiles.push(tile);
-    quick.append(tile);
-  }
-  const allOff = el("button", "all-off",
-    `<span class="ic"><ha-icon icon="mdi:lightbulb-off-outline"></ha-icon></span><span class="t1"></span> <span class="t2"></span>`);
-  allOff.type = "button";
-  allOff.addEventListener("click", () => {
-    const { hass, offline, config, optimistic } = parts.ctx;
-    if (offline || !hass?.callService) return;
-    const lights = allLights(config);
-    optimistic.send(root, hass, { domain: "light", service: "turn_off", data: { entity_id: lights },
-      errorKey: "card.pocket.error.light", expect: Object.fromEntries(lights.map((id) => [id, { state: "off" }])) });
-  });
-  parts.allOff = allOff;
-  quick.append(allOff);
-  parts.quickSec.hidden = withLights.length === 0 || parts.view === "systems";
+  parts.quick = root.querySelector(".quick");
+  parts.quickKey = null;
+  root.querySelector(".quick-edit").addEventListener("click", () => parts.ctx.navigate("#/settings/quick"));
 
 
+  parts.root = root;
   root._home = parts;
   update(root, ctx);
   return root;
@@ -339,23 +338,24 @@ function updateChips(parts, ctx) {
   const levelIn = (area, reading) =>
     area ? roomLevels(hass, area, config.thresholds).find((found) => found.reading === reading)?.result : null;
 
-  const withTemp = config.rooms.filter((room) => room.climate?.temperature);
-  const temps = withTemp.map((room) => numberOf(hass, room.climate.temperature)).filter((v) => v != null);
-  let inside = ctx.t("card.pocket.format.none");
-  if (temps.length) {
-    const [min, max] = [Math.min(...temps), Math.max(...temps)];
-    inside = number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
-      : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
-  }
-  // The colour of the worst room: poor before fair before good, the home's order within.
+  // Inside and outside: the areas of that type (SPEC-038 §3.9), in the colour of the worst one.
   const RANK = { poor: 0, fair: 1, good: 2 };
-  const worst = withTemp.map((room) => levelIn(room, "temperature")).filter(Boolean)
-    .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
-  set("inside", withTemp.length > 0, inside, { result: worst });
-
-  const outsideId = config.outside?.temperature;
-  set("outside", !!outsideId, temperature(ctx, numberOf(hass, outsideId)), {
-    result: levelIn(outsideArea(config), "temperature"), entity: outsideId, reading: "temperature" });
+  for (const type of ["inside", "outside"]) {
+    const group = typed(hass, config, type);
+    let value = ctx.t("card.pocket.areas.none_assigned");
+    if (group.areas.length && !group.measured.length) value = ctx.t("card.pocket.areas.sensor_not_set");
+    else if (group.measured.length) {
+      const { min, max } = group;
+      value = min == null ? ctx.t("card.pocket.format.none")
+        : number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
+          : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
+    }
+    // The colour of the worst area the home checks (an area switched out of the checks never colours).
+    const worst = group.measured.filter(({ area }) => isJudged(area)).map(({ area }) => levelIn(area, "temperature")).filter(Boolean)
+      .sort((a, b) => RANK[a.level] - RANK[b.level])[0];
+    set(type, true, value, { result: worst, entity: group.entity, reading: "temperature" });
+    parts.chips[type].classList.toggle("note", !group.measured.length);
+  }
 
   const air = homeAir(hass, config);
   set("air", !!air, air?.value == null ? ctx.t("card.pocket.format.none") : number(ctx, air.value, 0), {
@@ -372,11 +372,10 @@ function updateChips(parts, ctx) {
   }
 }
 
-// The sheet behind a chip (null: nothing to show): inside the checks of the rooms' temperatures,
-// outside and air the trend of their reading, lights on the lights that are on.
+// The sheet behind a chip (null: nothing to show): inside and outside the areas of their type (with
+// no such area, Settings → Areas instead), air the trend of its reading, lights on the lights.
 function chipSheet(ctx, name) {
-  if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
-  if (name === "outside") return trendSpec(ctx, outsideArea(ctx.config, ctx.t), "temperature");
+  if (name === "inside" || name === "outside") return typedSpec(ctx, name);
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   if (name === "lights_on") return lightsSpec(ctx);
   if (name === "power") return powerSpec(ctx);
@@ -454,8 +453,67 @@ function updateNow(parts, ctx) {
   setAttr(now.querySelector(".open"), "aria-label", title);
 }
 
+const RUN_ICONS = { scene: "mdi:palette-outline", script: "mdi:script-text-outline", button: "mdi:gesture-tap-button" };
+const TOGGLE_ICONS = { switch: "mdi:toggle-switch-outline", fan: "mdi:fan", input_boolean: "mdi:toggle-switch-outline" };
+const DONE_MS = 1500;
+
+// One tile of Quick, built once per item.
+function quickTile(parts, id) {
+  const ctx = parts.ctx;
+  const item = itemOf(id, ctx.config, ctx.hass);
+  if (!item) return null;
+  if (item.control === "light") {
+    const tile = document.createElement("pocket-light-tile");
+    tile.t = ctx.t;
+    tile.optimistic = ctx.optimistic;
+    tile.config = { name: nameOf(id, ctx.config, ctx.hass, ctx.t), entities: item.entities };
+    parts.tiles.push(tile);
+    return tile;
+  }
+  const button = el("button", `all-off act ${item.control}`,
+    `<span class="ic"><ha-icon></ha-icon></span><span class="t1"></span> <span class="t2"></span>`);
+  button.type = "button";
+  button.dataset.id = id;
+  const icon = item.control === "all_off" ? "mdi:lightbulb-off-outline"
+    : item.control === "run" ? RUN_ICONS[item.domain] : TOGGLE_ICONS[item.domain];
+  button.querySelector("ha-icon").setAttribute("icon", icon ?? "mdi:gesture-tap");
+  button.addEventListener("click", () => {
+    const { hass, offline, config, optimistic } = parts.ctx;
+    if (offline || !hass?.callService) return;
+    if (item.control === "all_off") {
+      const lights = allLights(config);
+      optimistic.send(parts.root, hass, { domain: "light", service: "turn_off", data: { entity_id: lights },
+        errorKey: "card.pocket.error.light", expect: Object.fromEntries(lights.map((l) => [l, { state: "off" }])) });
+      return;
+    }
+    if (item.control === "toggle") {
+      const on = hass.states?.[id]?.state === "on";
+      optimistic.send(parts.root, hass, { domain: item.domain, service: "toggle", data: { entity_id: id },
+        errorKey: "card.pocket.error.action", expect: { [id]: { state: on ? "off" : "on" } } });
+      return;
+    }
+    optimistic.send(parts.root, hass, { domain: item.domain, service: item.service, data: { entity_id: id },
+      errorKey: "card.pocket.error.action", expect: { [id]: { changed: true } } });
+    button.classList.add("done");
+    clearTimeout(button._done);
+    button._done = setTimeout(() => button.classList.remove("done"), DONE_MS);
+  });
+  return button;
+}
+
 function updateQuick(parts, ctx) {
   setText(parts.quickTitle, ctx.t("card.pocket.home.quick"));
+  const edit = parts.quickSec.querySelector(".quick-edit");
+  setText(edit, ctx.t("card.pocket.quick.edit"));
+  setAttr(edit, "aria-label", ctx.t("card.pocket.quick.edit_label"));
+  const { ids } = quickOf(ctx.settings, ctx.config, ctx.hass);
+  const key = ids.join(" ");
+  if (key !== parts.quickKey) {
+    parts.quickKey = key;
+    parts.tiles = [];
+    parts.quick.replaceChildren(...ids.map((id) => quickTile(parts, id)).filter(Boolean));
+  }
+  parts.quickSec.hidden = ids.length === 0 || parts.view === "systems";
   for (const tile of parts.tiles) {
     tile.t = ctx.t;
     tile.optimistic = ctx.optimistic;
@@ -463,8 +521,21 @@ function updateQuick(parts, ctx) {
     tile.hass = ctx.hass;
   }
   const on = lightsOnIn(ctx.hass, ctx.config.rooms);
-  setText(parts.allOff.querySelector(".t1"), ctx.t("card.pocket.home.all_off"));
-  setText(parts.allOff.querySelector(".t2"),
-    on > 0 ? ctx.t("card.pocket.home.on_now", { count: on }) : ctx.t("card.pocket.home.none_on"));
-  parts.allOff.disabled = !!ctx.offline;
+  for (const button of parts.quick.querySelectorAll("button.act")) {
+    const id = button.dataset.id;
+    const t1 = button.querySelector(".t1");
+    const t2 = button.querySelector(".t2");
+    if (id === "all_off") {
+      setText(t1, ctx.t("card.pocket.home.all_off"));
+      setText(t2, on > 0 ? ctx.t("card.pocket.home.on_now", { count: on }) : ctx.t("card.pocket.home.none_on"));
+    } else {
+      setText(t1, nameOf(id, ctx.config, ctx.hass, ctx.t));
+      const state = ctx.hass?.states?.[id]?.state;
+      const toggle = button.classList.contains("toggle");
+      setText(t2, toggle ? ctx.t(state === "on" ? "card.pocket.quick.on" : "card.pocket.quick.off")
+        : areaNameOf(id, ctx.config, ctx.hass) ?? "");
+      button.classList.toggle("on", toggle && state === "on");
+    }
+    button.disabled = !!ctx.offline;
+  }
 }

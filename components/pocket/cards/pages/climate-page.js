@@ -3,29 +3,29 @@
 //   - advice cards, only while a limit is crossed now (lib/climate.js adviceOf: "open a window" for
 //     a poor CO2 or VOC, a poor air reading by name, too cold / warm / dry / humid per side), each
 //     opening the trend of its reading; nothing about what might come;
-//   - summary squares, one size in a two-column grid as every widget grid: Inside (the range of the
-//     rooms' temperatures, in the worst room's colour, and how many rooms are out of range),
-//     Outside (its temperature in its tone, below its range --cold, above it --warm, with its trend
-//     arrow; the humidity and the level on the line), Air (the home's air score, lib/climate.js
-//     homeAir, with its level and arrow). Inside opens the checks of the rooms' temperatures,
-//     Outside and Air their trend;
+//   - summary squares, one size in a two-column grid as every widget grid: Inside and Outside (the
+//     areas of that type, SPEC-038 §3.9, lib/areas.js typed: the range of their main temperatures
+//     in the worst one's colour; Inside's line how many are out of range, Outside's the humidity
+//     when one sensor makes it; "No areas assigned" or "Main sensor not set" in place of a value),
+//     each opening the sheet of its areas (or Settings → Areas when none has the type); Air (the
+//     home's air score, lib/climate.js homeAir, with its level and arrow), opening its trend;
 //   - the weather (lib/weather.js): today and the next days as a strip, opening the forecast sheet;
 //     only when the config names a weather entity;
 //   - a Temp / Humidity / Air switch, remembered per person (settings field climateView);
-//   - every area (the Outside included) with the chosen reading: its value in its level's colour
+//   - every area with the chosen reading: its value in its level's colour
 //     with its trend arrow, on a bar of its band (lib/climate.js readingBand: the comfort range
 //     shaded, or the air's good / fair / poor with their marks) and a marker at the value. A row
-//     opens its trend; the Outside's weather attribute has no entity and opens nothing.
+//     opens its trend.
 // render() builds the parts once; update() patches them, and rebuilds the advice or the list only
 // when what they hold changes (another view, an advice coming or going).
 
 import { roomLevels } from "../lib/attention.js";
 import { numberOf, toneOf, levelKey } from "../lib/level.js";
 import { trendNow } from "../lib/trend.js";
-import { areasOf } from "../lib/areas.js";
+import { areasOf, typed, isJudged } from "../lib/areas.js";
 import { AIR_READINGS, readingsOf, entityOf, valueOf } from "../lib/checks.js";
 import { adviceOf, homeAir, readingBand, VIEWS } from "../lib/climate.js";
-import { checksSpec } from "../lib/detail-sheets.js";
+import { typedSpec } from "../lib/detail-sheets.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
 import { reportError } from "../lib/report.js";
@@ -70,6 +70,7 @@ const STYLE = `
                  font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
                  border-radius: 18px; cursor: pointer; }
   .climate .sq .head { font-size: 11.5px; color: var(--mut); }
+  .climate .sq.note .num { font-size: 15px; font-weight: 600; color: var(--mut); }
   .climate .big { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; font-size: 24px;
                   font-size: clamp(16px, 15cqi, 24px); font-weight: 600; letter-spacing: -.5px; overflow-wrap: anywhere; }
   .climate .arrow { font-size: 16px; font-weight: 400; color: var(--mut); letter-spacing: 0; }
@@ -154,6 +155,10 @@ export function render(ctx) {
   };
   for (const [name, sq] of Object.entries(parts.squares)) {
     sq.addEventListener("click", () => {
+      if ((name === "inside" || name === "outside") && !typed(parts.ctx.hass, parts.ctx.config, name).areas.length) {
+        parts.ctx.navigate("#/settings/areas", { from: "climate" });
+        return;
+      }
       const spec = squareSheet(parts.ctx, name);
       if (spec) parts.ctx.openSheet?.(spec);
     });
@@ -236,11 +241,8 @@ function updateAdvice(parts, ctx) {
 const resultIn = (ctx, area, reading) =>
   area ? roomLevels(ctx.hass, area, ctx.config.thresholds).find((found) => found.reading === reading)?.result ?? null : null;
 
-const outsideOf = (ctx) => areasOf(ctx.config, ctx.t).find((area) => area.outside) ?? null;
-
 function squareSheet(ctx, name) {
-  if (name === "inside") return checksSpec(ctx, { readings: ["temperature"], inside: true });
-  if (name === "outside") return trendSpec(ctx, outsideOf(ctx), "temperature");
+  if (name === "inside" || name === "outside") return typedSpec(ctx, name);
   if (name === "air") return trendSpec(ctx, homeAir(ctx.hass, ctx.config)?.room, "score");
   return null;
 }
@@ -263,33 +265,34 @@ function setSquare(parts, ctx, name, { shown, value, muted, result, entity, read
 
 function updateSquares(parts, ctx) {
   const { hass, config } = ctx;
-  const withTemp = config.rooms.filter((room) => room.climate?.temperature);
-  const temps = withTemp.map((room) => numberOf(hass, room.climate.temperature)).filter((v) => v != null);
-  let inside = ctx.t("card.pocket.format.none");
-  if (temps.length) {
-    const [min, max] = [Math.min(...temps), Math.max(...temps)];
-    inside = number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
-      : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
+  for (const type of ["inside", "outside"]) {
+    const group = typed(hass, config, type);
+    let value = ctx.t("card.pocket.areas.none_assigned");
+    if (group.areas.length && !group.measured.length) value = ctx.t("card.pocket.areas.sensor_not_set");
+    else if (group.measured.length) {
+      const { min, max } = group;
+      value = min == null ? ctx.t("card.pocket.format.none")
+        : number(ctx, min, 1) === number(ctx, max, 1) ? temperature(ctx, min)
+          : ctx.t("card.pocket.format.temperature_range", { min: number(ctx, min, 1), max: number(ctx, max, 1) });
+    }
+    // Only the areas the home checks colour the square and count as out of range.
+    const results = group.measured.filter(({ area }) => isJudged(area)).map(({ area }) => resultIn(ctx, area, "temperature")).filter(Boolean);
+    const worst = [...results].sort((a, b) => RANK[a.level] - RANK[b.level])[0] ?? null;
+    const line = [];
+    if (type === "inside" && results.length) {
+      const out = results.filter((result) => result.level !== "good").length;
+      line.push({ text: out ? ctx.t(`card.pocket.climate.out_of_range.${pluralOf(ctx, out)}`, { count: out })
+        : ctx.t("card.pocket.climate.all_in_range") });
+    }
+    if (type === "outside" && group.measured.length === 1) {
+      const humidity = valueOf(hass, group.measured[0].area, "humidity");
+      if (humidity != null) line.push({ text: percent(ctx, humidity) });
+      if (worst) line.push({ text: ctx.t(`card.pocket.reading.temperature.${levelKey(worst)}`) });
+    }
+    setSquare(parts, ctx, type, { shown: true, value, muted: group.min == null, result: worst,
+      entity: group.entity, reading: "temperature", line });
+    parts.squares[type].classList.toggle("note", !group.measured.length);
   }
-  const results = withTemp.map((room) => resultIn(ctx, room, "temperature")).filter(Boolean);
-  const worst = [...results].sort((a, b) => RANK[a.level] - RANK[b.level])[0] ?? null;
-  const out = results.filter((result) => result.level !== "good").length;
-  const insideLine = !results.length ? []
-    : [{ text: out ? ctx.t(`card.pocket.climate.out_of_range.${pluralOf(ctx, out)}`, { count: out })
-      : ctx.t("card.pocket.climate.all_in_range") }];
-  setSquare(parts, ctx, "inside", { shown: withTemp.length > 0, value: inside, muted: !temps.length, result: worst,
-    line: insideLine });
-
-  const outside = outsideOf(ctx);
-  const outTemp = outside ? valueOf(hass, outside, "temperature") : null;
-  const outResult = resultIn(ctx, outside, "temperature");
-  const outLine = [];
-  const humidity = outside ? valueOf(hass, outside, "humidity") : null;
-  if (humidity != null) outLine.push({ text: percent(ctx, humidity) });
-  if (outResult) outLine.push({ text: ctx.t(`card.pocket.reading.temperature.${levelKey(outResult)}`) });
-  setSquare(parts, ctx, "outside", { shown: !!outside && readingsOf(outside).includes("temperature"),
-    value: temperature(ctx, outTemp), muted: outTemp == null, result: outResult,
-    entity: outside?.climate?.temperature, reading: "temperature", line: outLine });
 
   const air = homeAir(hass, config);
   const airResult = air?.result ?? null;
