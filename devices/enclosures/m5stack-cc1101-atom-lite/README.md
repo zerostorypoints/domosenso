@@ -19,9 +19,9 @@ snaps on.
 
 Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ears.
 
-- **Module.** It lies pin face up on four pads under its corners; the left wall and the SMA slot
-  locate it. Underneath it is an open shell, so the pads' short pins stand in the hollow below its
-  corner holes and touch nothing. Its SMA jack passes through a slot in the back wall, and the
+- **Module.** It lies pin face up on four pads under its corners; the left wall, two low stops on
+  its right side and the SMA slot locate it. Underneath it is an open shell, and each pad carries
+  a corner of its rim. Its SMA jack passes through a slot in the back wall, and the
   antenna is bent upright on its hinge. The two screws of the jack's flange stand 1.1 mm into
   the wall; a groove in its inner face, open to the top, takes their heads down as the module
   drops in, and the wall stays closed outside it (0.75 mm). A tongue on the lid fills the slot
@@ -264,6 +264,9 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
   Photos of the module itself, from above and below, show the same screws and an open shell
   underneath: the corner holes go through the board, the screws into posts of the frame.
+  Measured with a ruler on one module (6 November 2026): 54 mm each side, corner holes 44 mm apart
+  centre to centre, 7.5 mm from the underside to the board's top face; the drawing gives 54, 44
+  and 7.6 mm.
 - Atom Lite: [product page](https://docs.m5stack.com/en/core/ATOM%20Lite) (24.0 × 24.0 × 9.5 mm),
   [model-size drawing](https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg)
   and [Atom-Lite.stl](https://github.com/m5stack/M5_Hardware/tree/master/Products/C008_Atom-Lite/Structures).
@@ -317,6 +320,11 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   ground out from the inside, or cut through the wall, which is easier by hand and leaves an
   opening each side of the lid's tongue. Either way 1.1 mm of wall stays beside the left latch's
   groove.
+- In the first base, pins on the pads (Ø2.8 mm, 2.5 mm tall, into the 3.1 mm corner holes from
+  below) kept the module from sitting down, and nothing stood on its right side to hold it. The
+  pins are gone; two stops on its right side (8 mm wide, 4 mm up its side) hold it against the
+  left wall with 0.3 mm of play. Not printed yet. In a base printed earlier, cut the pins off
+  flush with the pads; double-sided tape on the pads then holds the module.
 - The Atom's stop on the module side stood alone in the first base, a 1.35 mm plate 26 mm tall
   held only by the floor; a web now joins it to the pedestal. Not printed yet.
 - The screw positions come from a photo. Over the whole measured range, with a head of up to

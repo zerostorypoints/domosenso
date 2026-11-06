@@ -8,9 +8,11 @@
 // button opens the gate when held for 1 s, so it sits at the bottom of a finger well.
 //
 // Design decisions:
-//   - Module pin face up on four pads under its corners. Underneath it is an open shell, so the
-//     pads' pins stand in the hollow below its 3.1 mm corner holes; the left wall and the SMA slot
-//     locate it. Its SMA jack leaves through a slot in the back wall; a tongue on the lid closes
+//   - Module pin face up on four pads under its corners; underneath it is an open shell (walls
+//     1.5-2 mm, measured), and each pad carries a corner of its rim. The left wall, two stops on its
+//     right side and the SMA slot locate it. The first base had pins on the pads, 2.8 mm into the
+//     3.1 mm corner holes from below, and no stops: the pins kept the module from sitting down,
+//     and without them nothing held it, so the pins went and the stops came. Its SMA jack leaves through a slot in the back wall; a tongue on the lid closes
 //     the slot above it. The two screws of the jack's flange (not in M5Stack's drawing; measured
 //     on the module, 2026-11-06) stand 1.1 mm into the wall; a groove in its inner face, open to
 //     the top, takes their heads down as the module drops in (clash_sma_heads_path) and leaves
@@ -46,6 +48,7 @@
 //
 // Terminology -> code:
 //   "the base", "the box"     -> base(), wall, floor_t, inner_x, inner_y, pad_h
+//   "module stops"            -> mod_stop_t, mod_stop_w, mod_stop_rise, mod_stop_v
 //   "the lid"                 -> lid_body(), lid_t, lip_h, lip_t
 //   "latches", "snaps"        -> latch_tab(), v_wedge(), latch_x, latch_len, latch_t, latch_bump
 //   "the clamp", "comb"       -> clamp_body(), pins_used, wire_d, slot_w, skirt_h, clamp_housing_len
@@ -83,7 +86,7 @@
 //   README.md "Sources".
 // Final review: 2026-11-05, claude-fable-5-1 (after a Sonnet review; findings fixed)
 // Corner-screw fix: reviewed 2026-11-05, claude-sonnet-5-5; its findings fixed
-// Flange-screw groove and the Atom stop's web: 2026-11-06, lightweight check (gate; without the
+// Flange-screw groove, the Atom stop's web, the module stops: 2026-11-06, lightweight check (gate; without the
 //   groove both clash_base_boards and clash_sma_heads_path fail)
 // Clamp for shorter housings (clamp_housing_len, clamp_12mm): reviewed 2026-11-06, claude-sonnet-5-5;
 //   no blocker, documentation findings fixed. The Atom's male plugs stay modelled at dupont_len.
@@ -261,6 +264,12 @@ bay = 9;          // jumper channel between module and Atom
 atom_gap = tolerance;
 pad_h = 3;        // module stands on four pads; the room under the Atom follows from it
 pad_d = 9;
+// two stops on the module's right side: with the left wall they keep it from sliding into the
+// jumper bay
+mod_stop_t = 4 * extrusion_width;  // 1.8
+mod_stop_w = 8;
+mod_stop_rise = 4;                 // above the module's underside, on its 6.6 mm side
+mod_stop_v = [12, 42];             // centres along the module's right side, from its front edge
 
 inner_x = gap + mod_w + bay + atom + atom_gap;
 inner_y = gap + mod_w + gap_back;
@@ -288,15 +297,12 @@ sma_head_groove_d = sma_flange[1] + sma_head[1] + sma_head_clear - gap_back; // 
 outer = [inner_x + 2 * wall, inner_y + 2 * wall, z_lid + lid_t];
 
 // --- fixing without screws ---
-pin_d = 2.8;          // the base's pins, standing in the hollow under the module's corner holes
-pin_taper = 0.5;
 clamp_pin_d = 2.2;    // the clamp's pins in the 3.1 mm corner holes, beside the screw heads
 clamp_pin_taper = 0.4;
 clamp_pin_shift = 0.25; // off the hole's centre, away from the screw
 head_clear = 0.3;     // above and around a screw head in its notch
 // notch over a head: the head's swept range plus head_clear, plus the printed-hole shrink
 head_notch_r = screw_head_d / 2 + head_clear + hole_comp / 2;
-base_pin_h = 2.5;     // from the pads, into the holes from below
 clamp_pin_h = 3.0;    // from the clamp's bosses, into the right-hand holes from above
 tube_gap = 0.4;       // lid tubes stop the module this far above it
 boss_gap = 1.5;       // clamp boss above the module: room for shorter housings
@@ -389,7 +395,6 @@ flap_force_max = flap_k * flap_defl_max;
 flap_strain = 100 * 3 * flap_t * flap_defl_max / (2 * flap_len * flap_len);
 
 assert(atom_z0 - dupont_len - floor_t >= 5, "no room under the Atom for the jumper bends");
-assert(plateau_z + boss_gap - clamp_pin_h > mod_z0 + base_pin_h + 1, "clamp pin meets base pin");
 assert(boss_gap >= dupont_tol, "clamp boss would land on the module before short housings");
 // clamp pin against the nearest screw head, and inside its hole, at the ends of the measured range
 clamp_pin_in = clamp_pin_d / 2 - clamp_pin_shift;    // pin's edge on the screw side, from the hole's centre
@@ -412,6 +417,9 @@ assert(well_depth + atom_usb_dz - usb_plug_h / 2 >= 1.2, "lid left over the USB 
 assert((sma_slot_w - hole_comp - tongue_w) / 2 >= 0.1, "lid tongue binds in the printed SMA slot");
 assert(wall - sma_head_groove_d >= 0.7, "back wall over the flange screws' groove under 0.7 mm");
 assert(gap_back > sma_flange[1] + 0.2, "SMA flange touches the back wall");
+assert(min(mod_stop_v) - mod_stop_w / 2 >= mod_r && max(mod_stop_v) + mod_stop_w / 2 <= mod_w - mod_r, "module stops reach its rounded corners");
+assert(bay - tolerance - mod_stop_t >= 6, "module stops leave under 6 mm of jumper bay");
+assert(mod_stop_rise < mod_rim_t, "module stops stand above the module's side");
 assert(stop_v[0] >= pedestal_uv[1] && stop_v[0] + stop_v[1] <= pedestal_uv[1] + pedestal_size[1], "Atom stop wider than the pedestal it is joined to");
 assert(gap_back + wall >= sma_flange[1] + sma_head[1], "SMA flange screw heads stick out past the back wall");
 assert(sma_zz + sma_d / 2 + 0.3 >= sma_zz + sma_head[0] / 2 + 0.5, "lid tongue comes down onto the flange screw heads");
@@ -535,8 +543,10 @@ module base(ears = false) {
       }
       for (h = hole_xy) translate([h[0], h[1], floor_t - fudge]) {
         cylinder(d = pad_d, h = pad_h + fudge);
-        translate([0, 0, pad_h]) cylinder(d1 = pin_d, d2 = pin_d - pin_taper, h = base_pin_h + fudge);
       }
+      // stops on the module's right side
+      for (v = mod_stop_v) translate([mod_x0 + mod_w + tolerance, mod_y0 + v - mod_stop_w / 2, floor_t - fudge])
+        cube([mod_stop_t, mod_stop_w, pad_h + mod_stop_rise + fudge]);
       // Atom pedestal, between the two rows of plugs under the Atom
       translate([atom_x0 + pedestal_uv[0], atom_y0 + pedestal_uv[1], floor_t - fudge]) cube([pedestal_size[0], pedestal_size[1], atom_z0 - floor_t + fudge]);
       // stop on the module side of the Atom, joined to the pedestal by a web up to the Atom's
