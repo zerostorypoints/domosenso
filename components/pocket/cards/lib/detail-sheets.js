@@ -9,7 +9,7 @@
 //   typed   {kind: "typed", title, type}               the areas of one type (SPEC-038 §3.9), behind
 //           Home's and Climate's Inside and Outside: each area with a main temperature as a reading
 //           row (opening its trend), then those without one, each "Main sensor not set" opening its
-//           area settings; with none of that type, "No areas assigned" and a way to Settings → Areas.
+//           area's settings page (#/settings/areas/<id>); with none of that type, "No areas assigned" and a way to Settings → Areas.
 //   air     {kind: "air", title, subtitle, area}           every air reading of one area, the same
 //           rows, in the home's order; behind the area page's Air square.
 //   lights  {kind: "lights", title}                         every lamp, per room, each a
@@ -232,8 +232,10 @@ function drawUnset(parts, ctx, unset, none) {
       const node = el("button", "drow", `<i class="dot"></i><span class="dname"><span class="r"></span><span class="lt"></span></span><span class="dval">›</span>`);
       node.type = "button";
       node.dataset.area = area.id;
-      node.addEventListener("click", () => parts.ctx.openSheet?.({ kind: "area-settings", area: area.id,
-        title: ctx.t("card.pocket.areas.settings") }, { stack: true }));
+      node.addEventListener("click", () => {
+        parts.ctx.closeSheet?.();
+        parts.ctx.navigate?.(`#/settings/areas/${encodeURIComponent(area.id)}`);
+      });
       return { node, area };
     });
     parts.extra.replaceChildren(...parts.unsetRows.map((r) => r.node));

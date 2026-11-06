@@ -718,7 +718,7 @@ test("a save updates the Settings page in place: the same element, the new choic
   assert.ok(page);
   await card._ctx().saveSettings({ theme: "dark" });
   assert.equal($(card, "main > section.settings"), page);
-  assert.equal(page.querySelector('.seg button[data-mode="dark"]').getAttribute("aria-checked"), "true");
+  assert.equal(page.querySelector(".appearance .theme select").value, "dark");
   await card._ctx().saveSettings({ bar: ["home", "power", "settings"] });
   assert.equal($(card, "main > section.settings"), page);
   assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "power", "settings"]);

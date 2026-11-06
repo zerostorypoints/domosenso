@@ -144,7 +144,6 @@
           "sound": "Lautstärke",
           "pressure": "Luftdruck"
         },
-        "reading_pick": "{reading}: Sensor wählen",
         "choose": "{count} Sensoren hier: den Hauptsensor wählen",
         "no_candidates": "Kein Sensor dieser Art in diesem Bereich",
         "missing": "nicht mehr in diesem Bereich",
@@ -160,7 +159,10 @@
           "inside": "Innen",
           "outside": "Aussen",
           "none": "Nicht zugeordnet"
-        }
+        },
+        "main_sensors": "Hauptsensoren",
+        "reading_of": "Ein Sensor von {device}",
+        "back": "Zurück zu den Bereichen"
       },
       "area": {
         "back": "Zurück zu den Bereichen",
@@ -190,6 +192,7 @@
       "settings": {
         "title": "Einstellungen",
         "appearance": "Darstellung",
+        "theme_label": "Farbmodus",
         "theme": {
           "system": "System",
           "light": "Hell",

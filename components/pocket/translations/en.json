@@ -144,7 +144,6 @@
           "sound": "Sound level",
           "pressure": "Air pressure"
         },
-        "reading_pick": "{reading}: choose a sensor",
         "choose": "{count} sensors here: choose the main one",
         "no_candidates": "No sensor of this kind in this area",
         "missing": "no longer in this area",
@@ -160,7 +159,10 @@
           "inside": "Inside",
           "outside": "Outside",
           "none": "Not assigned"
-        }
+        },
+        "main_sensors": "Main sensors",
+        "reading_of": "A sensor of {device}",
+        "back": "Back to Areas"
       },
       "area": {
         "back": "Back to areas",
@@ -190,6 +192,7 @@
       "settings": {
         "title": "Settings",
         "appearance": "Appearance",
+        "theme_label": "Theme",
         "theme": {
           "system": "System",
           "light": "Light",

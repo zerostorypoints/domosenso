@@ -39,7 +39,8 @@ Principles, in order when they conflict:
     System, Floor plan, Settings). A page with two faces of the same aspect has views switched under its
     title, never two pages: Home (Overview | Systems), Controls (Controls | Status).
   - Level 2: an **area** page or a **panel** (Settings → Areas, Comfort ranges, About), with a back button
-    in its title row.
+    in its title row; an item of a panel's list (one area's settings) drills down to a page of its own,
+    with its back to the list.
   - Level 3: a **sheet** over the page (details, pickers); sheets may stack (Back returns).
 - **The bar** (bottom, fixed): Home and Settings always, up to three pages the person picks. It is a
   quick switch, not the map of the app: every page is also reached from Systems.
@@ -90,7 +91,7 @@ A new widget picks one of the two. If it wants a page, it is a Systems tile inst
 **Inside and Outside** (Home, Climate) aggregate the areas of that type: the range of their main
 temperatures in the worst one's colour. With no area of the type: "No areas assigned", opening Settings
 → Areas. With areas but no main sensor in any: "Main sensor not set". Their sheet lists the areas,
-those without a main sensor last, each opening its area settings.
+those without a main sensor last, each opening its settings page.
 
 ### 4.2 Tile (Home → Systems)
 
@@ -152,9 +153,14 @@ when the row has a level. A row that opens something is a `button`.
 ### 4.7 Controls (elements)
 
 - Light tile (`<pocket-light-tile>`): tap toggles, drag sets brightness; a group counts its members.
-- Segmented control: Home's views, Media | Sound, trend periods, Appearance. Not a drop-down when
-  there are two or three choices; a native `<select>` when the list is long or open-ended
-  (measurements, Language, a main sensor).
+- Segmented control: Home's views, Media | Sound, trend periods: switching what a page shows. Not a
+  drop-down when there are two or three choices; a native `<select>` when the list is long or
+  open-ended (measurements).
+- **In Settings, every choice among fixed options is a drop-down row** (the theme, the language, an
+  area's type, a main sensor): a row of at least 48 px, its name on the left with what it means or
+  where its value came from in a small grey line under it, the value on the right as a native
+  `<select>` (grey, right-aligned, a chevron); tapping the name opens it too (the row is a `label`).
+  A long value wraps under the name, whole, never cut. On/off is a switch.
 - Media: transport (64 px play), a 44 px volume strip, mute, power when supported, the input chip
   beside what plays when the player can select a source.
 - Risky acts confirm in place (`lib/confirm.js`), never with a dialog: the first tap turns the button
@@ -241,8 +247,10 @@ home choose) is:
 2. **given to the AI**: its question in the skill that sets it up (`set-up-areas`) and its line in a
    read-only `domosenso` command that shows the value and its source (`domosenso areas`);
 3. **visible and changeable in the global Settings** (Settings → Areas), with its source, by an
-   administrator, through **generic controls per type of input** driven by the declaration: an enum is
-   a segmented control, a device a device picker, a sensor a sensor picker (`lib/area-settings.js`);
+   administrator, through **generic controls per type of input** driven by the declaration (4.7): an
+   enum, a device and a sensor are each a drop-down row of their options or candidates
+   (`lib/area-settings.js` `pickRow`); what belongs to one item of a list (one area) is a drill-down
+   page of that list, full screen with its back to the list (`#/settings/areas/<id>`), never a sheet;
    a non-administrator sees it read-only;
 4. **stored in Home Assistant**: HA's own field when one exists (an area's Related sensors), else
    Pocket's home store (`lib/home-store.js`, frontend system data);
@@ -289,7 +297,8 @@ Then, for any feature:
 | decision | why |
 |---|---|
 | Areas, not Rooms; the areas are Home Assistant's, each Inside, Outside or Not assigned | a list of rooms in a file missed every area added later; whether an area is inside is the home's choice, made once, never guessed |
-| Settings → Areas holds every area's type and main sensors; the area page has a settings button to the same sheet | Settings is the required place (10.1); the button is this feature's UX choice: a person looking at one area changes it there |
+| Settings → Areas holds every area's type and main sensors, each area a drill-down page; the area page has a settings button to the same page | Settings is the required place (10.1); a bottom sheet of selectors read badly on a phone; the button is this feature's UX choice: a person looking at one area changes it there |
+| In Settings every choice among fixed options is a drop-down row, the theme included | one pattern for every setting, readable on a phone: name and source left, value right |
 | Climate's main sensor is HA's own area field (Related sensors) | one place for what HA configures (principle 4) |
 | The language is a person's setting, Automatic by default; names are not translated | a person picks their language without a second dashboard; area names are HA's |
 | Home has Overview and Systems | a single Home mixed status and navigation and was hard to read |

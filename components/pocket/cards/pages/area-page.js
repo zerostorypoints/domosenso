@@ -185,9 +185,10 @@ export function render(ctx) {
   const parts = { room, rooms, index, ctx, squares: [], scenes: [], tiles: [], memberTiles: [], membersKey: null,
     back: root.querySelector(".back"), name: root.querySelector(".top .name"), dots: root.querySelector(".dots") };
   parts.back.addEventListener("click", () => parts.ctx.navigate("#/areas"));
-  // The area's settings (SPEC-038 §3.9): its type and main sensors, in a sheet.
-  root.querySelector(".top .aset").addEventListener("click", () => parts.ctx.openSheet?.({ kind: "area-settings",
-    area: parts.room?.id ?? parts.ctx.routeId, title: parts.ctx.t("card.pocket.areas.settings") }));
+  // The area's settings (SPEC-038 §3.9): its page under Settings → Areas. This second way in is this
+  // feature's UX choice (DESIGN.md 10.1, decisions log), not a default of the design system.
+  root.querySelector(".top .aset").addEventListener("click", () =>
+    parts.ctx.navigate(`#/settings/areas/${encodeURIComponent(parts.room?.id ?? parts.ctx.routeId)}`));
 
   if (climateReadings.length || airReadings.length) {
     const box = el("div", "squares");

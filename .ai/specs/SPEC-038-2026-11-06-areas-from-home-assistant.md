@@ -182,14 +182,16 @@ and no choice) never fail it: an empty new home passes. `--json` prints the same
   (Inside only), the trend arrow for a single sensor. With no area of that type: the widget shows "No
   areas assigned" and opens Settings → Areas. With areas of that type but none with a main sensor:
   "Main sensor not set". The sheet behind it lists every area of the type, each with its value or "Main
-  sensor not set", a row opening that area's trend or its settings.
+  sensor not set", a row opening that area's trend or its settings page.
 - **Climate page**: the same Inside and Outside squares; the list of every area with a climate
   sensor.
 - **Settings → Areas** (`#/settings/areas`), the required place (§3.10): every area with its type
-  and main sensor in one line; a row opens the **area settings** sheet: Type (Inside / Outside / Not
-  assigned), then one picker per kind of §3.3 (each candidate by its device's name, then None), the
-  unclassified readings of §3.4, and each choice's source.
-- **An area page**: a settings button in its title row opens the same sheet. This second way in is a
+  and main sensor in one line; a row drills down to that **area's settings page**
+  (`#/settings/areas/<area id>`, full screen, its back to the list): a Type row (Inside / Outside / Not
+  assigned), then a Main sensors group with a row per kind of §3.3 (each candidate by its device's name,
+  then None) and the unclassified readings of §3.4 under their kind. Every row is Settings' drop-down
+  row: the name and its source on the left, the value on the right.
+- **An area page**: a settings button in its title row opens the same page. This second way in is a
   UX decision of this feature (a person looking at one area should not have to go through Settings),
   not a rule of the design system: §3.10.
 - **Areas page**: every HA area.
@@ -205,9 +207,11 @@ So everything about the home that Pocket lets a home choose is:
    for it, and `domosenso` has a read-only command that shows its current value and source (here
    `domosenso areas`); a new setting adds its question to the skill and its line to the command;
 3. **visible in Pocket's global Settings**, with its source, and changeable there by an administrator,
-   through **generic controls, one per type of input**, all driven by the declaration: an enum (a type)
-   is a segmented control, a device is a device picker of the candidates, a sensor is a sensor picker of
-   the candidates; a new setting of a known input type needs no new control;
+   through **generic controls, one per type of input**, all driven by the declaration: an enum (a type),
+   a device and a sensor are each a drop-down row of their options or candidates (name and source left,
+   value right; every choice among fixed options in Settings is a drop-down); what belongs to one item
+   of a list is a full-screen drill-down page of that list, never a bottom sheet; a new setting of a
+   known input type needs no new control;
 4. **stored in Home Assistant**: its own registry field when one exists, else Pocket's home store;
 5. **discovered from Home Assistant** when nobody chose (by area and device class, never by name), with a
    default in the home inputs only for what HA cannot know.
@@ -284,7 +288,7 @@ Areas (§3.10).
 - Pocket's tests (node --test): the area list from `hass.areas` and `hass.floors` in floor order; the
   precedence of §3.5 for each source; the one-time pick recorded once and never redone; candidates by
   device class only (a sensor named "temperature" without the class is not one); the unclassified
-  reading picker; the Inside and Outside widgets in their three states; the area settings sheet and
+  reading picker; the Inside and Outside widgets in their three states; the area settings page and
   Settings → Areas reading one kinds table; read-only for a non-administrator.
 - The render tests: a room's `type` passes to the card; a home inputs file without `rooms` renders
   Pocket.

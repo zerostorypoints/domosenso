@@ -58,7 +58,6 @@ import { createOptimistic } from "./lib/optimistic.js";
 import { SHEET_STYLE, createSheet } from "./lib/sheet.js";
 import * as trendSheet from "./lib/trend-sheet.js";
 import { checks, air, lights, plants as plantsSheet, typedSheet } from "./lib/detail-sheets.js";
-import { areaSettingsSheet } from "./lib/area-settings.js";
 import { forecastSheet } from "./lib/weather.js";
 import * as layerSheet from "./lib/layer-sheet.js";
 import * as playerSheet from "./lib/player-sheet.js";
@@ -87,7 +86,7 @@ const TOAST_MS = 3000;
 // render(ctx, spec) -> HTMLElement, update(el, ctx).
 const SHEETS = { trend: trendSheet, checks, air, lights, forecast: forecastSheet, layers: layerSheet,
   players: playerSheet, power: powerSheet, sources: sourceSheet, scenes: sceneSheet, plants: plantsSheet,
-  typed: typedSheet, "area-settings": areaSettingsSheet };
+  typed: typedSheet };
 
 const STYLE = `
   :host { display: block; }
@@ -453,6 +452,7 @@ class PocketApp extends HTMLElement {
       lang: this._lang(),
       offline: this._hass?.connected === false,
       routeId: this._current?.id,
+      routeItem: this._current?.item,
       settings: this._settings,
       saveSettings: (patch) => this._saveSettings(patch),
       openSheet: (spec, options) => this._openSheet(spec, options),
@@ -505,10 +505,15 @@ class PocketApp extends HTMLElement {
   }
 
   // A #/area/<id> whose id is none of the areas (lib/areas.js: the rooms and the Outside).
+  // The page to show instead of a route to an area this home does not have: Areas for an area page,
+  // Settings → Areas for an area's settings; null when the route is fine. Before the first hass,
+  // no area is unknown yet.
   _unknownArea(route) {
-    // Before the first hass, no area is unknown yet.
-    if (route.page !== "area" || !this._hass) return false;
-    return !areasOf(this._areasConfig()).some((area) => area.id === route.id);
+    if (!this._hass) return null;
+    const id = route.page === "area" ? route.id : route.page === "settings" ? route.item : undefined;
+    if (id === undefined) return null;
+    if (areasOf(this._areasConfig()).some((area) => area.id === id)) return null;
+    return route.page === "area" ? "#/areas" : "#/settings/areas";
   }
 
   // options.replace: the route takes the place of the current history entry (area-to-area swipes,
@@ -517,7 +522,7 @@ class PocketApp extends HTMLElement {
     route = legacyRoute(route) ?? route;
     // Where the page about to open was opened from: Systems gives it a back arrow (_addMenu).
     this._pendingFrom = from;
-    if (this._unknownArea(parseRoute(route))) route = "#/areas";
+    route = this._unknownArea(parseRoute(route)) ?? route;
     // From an open sheet: the route takes the sheet's entry, so Back goes to the page under it.
     if (this._sheet?.ownsEntry()) replace = true;
     if (replace && window.location.hash !== route) {
@@ -538,13 +543,15 @@ class PocketApp extends HTMLElement {
     const legacy = legacyRoute(window.location.hash);
     if (legacy) window.history.replaceState(window.history.state, "", legacy);
     let route = parseRoute(window.location.hash);
-    if (this._unknownArea(route)) {
-      // An area this dashboard does not have (an old link, a removed room): Areas instead, in place
-      // of the bad entry so back does not return to it. Pages never see an unknown routeId.
-      window.history.replaceState(window.history.state, "", "#/areas");
-      route = parseRoute("#/areas");
+    const instead = this._unknownArea(route);
+    if (instead) {
+      // An area this dashboard does not have (an old link, a removed room): Areas (or Settings →
+      // Areas) instead, in place of the bad entry so back does not return to it. Pages never see an
+      // unknown routeId.
+      window.history.replaceState(window.history.state, "", instead);
+      route = parseRoute(instead);
     }
-    const key = `${route.page}/${route.id ?? ""}`;
+    const key = `${route.page}/${route.id ?? ""}/${route.item ?? ""}`;
     // Opened from Systems, it keeps its way back while it stays the same page (a switch of its
     // own views is still that page); another page forgets it.
     if (route.page !== this._current?.page) this._fromSystems = this._pendingFrom === "systems";

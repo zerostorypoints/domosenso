@@ -47,7 +47,8 @@ a pattern updates it.
 - **The areas** are Home Assistant's, by their HA names, in floor order; a new area appears as Not
   assigned. **Settings → Areas** lists every area with its type (Inside, Outside, Not assigned) and its
   main sensors (climate, air quality, light level, sound, pressure: `cards/lib/kinds.json`); a row, or
-  the settings button on an area page, opens the area settings sheet. An administrator changes them
+  the settings button on an area page, opens that area's settings page (`#/settings/areas/<id>`),
+  where each setting is a row with a drop-down. An administrator changes them
   there (climate into HA's own Related sensors, the rest into Pocket's home store, HA's frontend system
   data); anyone else sees them read-only, each with where it came from. An area's only candidate becomes
   its main sensor once, the first time an administrator opens Pocket. The skill `set-up-areas` asks the

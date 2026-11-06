@@ -144,7 +144,6 @@
           "sound": "Poziom dźwięku",
           "pressure": "Ciśnienie"
         },
-        "reading_pick": "{reading}: wybierz czujnik",
         "choose": "Czujniki tutaj: {count}, wybierz główny",
         "no_candidates": "Brak czujnika tego rodzaju w tym obszarze",
         "missing": "już nie w tym obszarze",
@@ -160,7 +159,10 @@
           "inside": "Wewnątrz",
           "outside": "Na zewnątrz",
           "none": "Nieprzypisany"
-        }
+        },
+        "main_sensors": "Główne czujniki",
+        "reading_of": "Czujnik urządzenia {device}",
+        "back": "Wróć do obszarów"
       },
       "area": {
         "back": "Wróć do obszarów",
@@ -190,6 +192,7 @@
       "settings": {
         "title": "Ustawienia",
         "appearance": "Wygląd",
+        "theme_label": "Motyw",
         "theme": {
           "system": "Systemowy",
           "light": "Jasny",

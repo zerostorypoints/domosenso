@@ -2,16 +2,18 @@
 // person sets for themselves (Appearance, Bottom bar) and a row per panel; a panel is a page of its
 // own (#/settings/comfort, #/settings/about: ctx.routeId), with a Back to Settings, so the home's
 // values are a deliberate step away and the first level stays short. The groups:
-//   - Appearance: System / Light / Dark (lib/settings.js theme; lib/theme.js paints it), and the
-//     Language: Automatic (the dashboard's, else Home Assistant's) or one the pocket speaks, each
-//     named in its own language (lib/settings.js language), a native drop-down;
+//   - Appearance: the theme, System / Light / Dark (lib/settings.js theme; lib/theme.js paints it), and
+//     the Language: Automatic (the dashboard's, else Home Assistant's) or one the pocket speaks, each
+//     named in its own language (lib/settings.js language). Like every choice among fixed options in
+//     Settings, each is a row with a native drop-down on its right (DESIGN.md 4.7);
 //   - This device: "Open Pocket when the app starts", on this phone or browser only (lib/start.js:
 //     its local storage, so each device chooses; off, Home Assistant opens as it would);
 //   - Bottom bar: a switch per page the bar can show besides Home and Settings (lib/router.js
 //     TABS), at most MAX_TABS - 2 on; while that many are on, the others are disabled with a hint;
 //   - Areas (#/settings/areas, SPEC-038 §3.9): every Home Assistant area with its type and its main
-//     temperature sensor (or "Main sensor not set") in one line; a row opens the area settings sheet
-//     (lib/area-settings.js), the same as the area page's;
+//     temperature sensor (or "Main sensor not set") in one line; a row drills down to that area's
+//     settings, a page of its own (#/settings/areas/<area id>, ctx.routeItem, lib/area-settings.js)
+//     whose back returns to the list;
 //   - Comfort ranges: per area with comfort helpers (lib/areas.js comfortOf: the rooms, then the
 //     Outside), then the air limits; each value is a button that opens Home Assistant's more-info
 //     of its helper (the hass-more-info event), so HA's own dialog changes it;
@@ -29,6 +31,7 @@ import { MODES } from "../lib/theme.js";
 import { LANGUAGES } from "../lib/settings.js";
 import { reportError } from "../lib/report.js";
 import { setStartHere, startTarget } from "../lib/start.js";
+import { pickRow, renderAreaSettings, updateAreaSettings } from "../lib/area-settings.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
 
 export const INVENTORY = "sensor.domosenso_components";
@@ -56,11 +59,11 @@ const STYLE = `
   .settings .back b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .settings.panel .group > h3 { display: none; }
   .settings.panel .group { padding-top: 8px; }
-  .settings .menu button.row { box-sizing: border-box; width: 100%; margin: 0; padding: 6px 0; border: 0;
+  .settings .menu button.row, .settings .areas button.row { box-sizing: border-box; width: 100%; margin: 0; padding: 6px 0; border: 0;
                                border-top: 1px solid var(--line); background: none; color: var(--fg); font: inherit;
                                font-size: 15px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .settings .menu button.row:first-of-type { border-top: 0; }
-  .settings .menu ha-icon { flex: 0 0 auto; color: var(--mut); --mdc-icon-size: 22px; }
+  .settings .menu button.row:first-of-type, .settings .areas button.row:first-of-type { border-top: 0; }
+  .settings .menu ha-icon, .settings .areas button.row ha-icon { flex: 0 0 auto; color: var(--mut); --mdc-icon-size: 22px; }
   .settings .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .settings .group { margin: 0 0 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line);
                      border-radius: 18px; }
@@ -68,18 +71,24 @@ const STYLE = `
   .settings h4 { margin: 10px 0 2px; font-size: 15px; font-weight: 600; }
   .settings .hint { margin: 2px 0 10px; font-size: 12.5px; line-height: 1.35; color: var(--mut); }
   .settings .hint[hidden], .settings .row[hidden], .settings .group[hidden] { display: none; }
-  .settings .seg { display: flex; gap: 4px; margin: 6px 0 12px; padding: 4px; background: var(--chip); border-radius: 14px; }
-  .settings .seg button { flex: 1 1 0; min-height: 44px; margin: 0; border: 0; border-radius: 10px; background: none;
-                          font: inherit; font-size: 15px; color: var(--fg); cursor: pointer; }
-  .settings .seg button[aria-checked="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
   .settings .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; min-height: 48px;
                    border-top: 1px solid var(--line); font-size: 15px; }
   .settings .row:first-of-type { border-top: 0; }
   .settings .row .label { flex: 1 1 7em; min-width: 0; overflow-wrap: break-word; }
   .settings .row .label small { display: block; font-size: 12.5px; color: var(--mut); }
-  .settings .lang { border-top: 0; }
-  .settings .lang select { min-height: 44px; max-width: 100%; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px;
-    background: var(--card); color: var(--fg); font: inherit; }
+  /* A choice among fixed options (DESIGN.md 4.7): the name left, the value right as a native
+     drop-down; a long value wraps under the name, whole, rather than being cut. */
+  .settings .pick select { flex: 0 1 auto; max-width: 100%; min-height: 44px; margin: 0 0 0 auto; padding: 0 26px 0 8px;
+    border: 0; border-radius: 10px; background: transparent; color: var(--mut); font: inherit; font-size: 15px;
+    text-align: right; text-align-last: right; -webkit-appearance: none; appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--mut) 50%), linear-gradient(135deg, var(--mut) 50%, transparent 50%);
+    background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  .settings .pick select:disabled { opacity: .6; cursor: default; }
+  .settings .pick select:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .settings .pick.sub { padding-left: 14px; }
+  .settings .gh { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--mut); }
+  .settings.panel .group > h3.gh { display: block; }
+  .settings .area-settings .admin { margin: 0 4px 12px; }
   .settings .switch { box-sizing: border-box; flex: 0 0 auto; width: 56px; min-height: 44px; margin: 0; padding: 0 4px;
                       border: 0; background: none; cursor: pointer; display: flex; align-items: center; }
   .settings .switch i { position: relative; display: block; width: 46px; height: 28px; border-radius: 14px; background: var(--line); }
@@ -202,9 +211,7 @@ export function render(ctx) {
   const root = el("section", "settings");
   root.innerHTML = `<style>${STYLE}</style>
     <div class="top"><b></b><button class="back" type="button" hidden><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
-    <div class="group appearance"><h3></h3><div class="seg" role="radiogroup"></div>
-      <label class="row lang"><span class="label"><span class="name"></span><small></small></span><select></select></label>
-    </div>
+    <div class="group appearance"><h3></h3></div>
     <div class="group device"><h3></h3>
       <div class="row"><span class="label"><span class="name"></span><small></small></span><button class="switch start" type="button" role="switch"><i></i></button></div>
     </div>
@@ -224,32 +231,36 @@ export function render(ctx) {
     </div>`;
   const $ = (sel) => root.querySelector(sel);
   const panel = SETTINGS_PANELS.includes(ctx.routeId) ? ctx.routeId : null;
-  const parts = { ctx, panel, pending: {}, tokens: {}, modes: [], switches: [], values: [], areaNames: [], readingLabels: [],
+  // One area's settings: a drill-down of the Areas panel.
+  const item = panel === "areas" && ctx.routeItem ? ctx.routeItem : null;
+  const parts = { ctx, panel, item, pending: {}, tokens: {}, switches: [], values: [], areaNames: [], readingLabels: [],
     areaLinks: [], components: null };
   root.classList.toggle("panel", !!panel);
   for (const row of root.querySelectorAll(".menu .row")) {
     row.addEventListener("click", () => parts.ctx.navigate?.(`#/settings/${row.dataset.panel}`));
   }
-  $(".back").addEventListener("click", () => parts.ctx.navigate?.("#/settings"));
+  $(".back").addEventListener("click", () => parts.ctx.navigate?.(parts.item ? "#/settings/areas" : "#/settings"));
 
+  parts.theme = pickRow("theme");
   for (const mode of MODES) {
-    const button = el("button");
-    button.type = "button";
-    setAttr(button, "role", "radio");
-    button.dataset.mode = mode;
-    button.addEventListener("click", () => { if (shown(parts).theme !== mode) change(root, { theme: mode }); });
-    parts.modes.push(button);
-    $(".seg").append(button);
+    const option = el("option");
+    option.value = mode;
+    parts.theme.select.append(option);
   }
-
-  const lang = $(".lang select");
+  parts.theme.select.addEventListener("change", () => {
+    if (shown(parts).theme !== parts.theme.select.value) change(root, { theme: parts.theme.select.value });
+  });
+  parts.lang = pickRow("lang");
   for (const code of LANGUAGES) {
     const option = el("option");
     option.value = code;
     if (code !== "auto") option.textContent = ENDONYMS[code] ?? code;
-    lang.append(option);
+    parts.lang.select.append(option);
   }
-  lang.addEventListener("change", () => { if (shown(parts).language !== lang.value) change(root, { language: lang.value }); });
+  parts.lang.select.addEventListener("change", () => {
+    if (shown(parts).language !== parts.lang.select.value) change(root, { language: parts.lang.select.value });
+  });
+  $(".appearance").append(parts.theme.row, parts.lang.row);
 
   parts.choices = choicesOf(ctx.config);
   for (const page of parts.choices) {
@@ -274,8 +285,7 @@ export function render(ctx) {
     const row = el("button", "row", `<span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon>`);
     row.type = "button";
     row.dataset.area = area.id;
-    row.addEventListener("click", () => parts.ctx.openSheet?.({ kind: "area-settings", area: area.id,
-      title: parts.ctx.t("card.pocket.areas.settings") }));
+    row.addEventListener("click", () => parts.ctx.navigate?.(`#/settings/areas/${encodeURIComponent(area.id)}`));
     $(".areas .rows").append(row);
     return { id: area.id, row };
   });
@@ -300,7 +310,11 @@ export function render(ctx) {
   $(".menu [data-panel=comfort]").hidden = !parts.hasComfort;
   $(".comfort").hidden = panel !== "comfort" || !parts.hasComfort;
   $(".about").hidden = panel !== "about";
-  $(".areas").hidden = panel !== "areas";
+  $(".areas").hidden = panel !== "areas" || !!item;
+  if (item) {
+    parts.areaSettings = renderAreaSettings(ctx, item);
+    $(".areas").after(parts.areaSettings);
+  }
 
   for (const area of areasOf(ctx.config)) {
     const link = el("a", "row", `<span class="label"><span class="name"></span><small></small></span><span class="go">›</span>`);
@@ -365,14 +379,17 @@ export function update(root, ctx) {
   const offline = ctx.offline === true;
   const $ = (sel) => root.querySelector(sel);
 
-  const title = parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
+  const itemRoom = parts.item ? areasOf(ctx.config).find((r) => r.id === parts.item) : null;
+  const title = itemRoom ? itemRoom.name
+    : parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
   const plain = $(".top > b");
   plain.hidden = !!parts.panel;
   setText(plain, title);
   const back = $(".back");
   back.hidden = !parts.panel;
   setText(back.querySelector("b"), title);
-  setAttr(back, "aria-label", ctx.t("card.pocket.settings.back"));
+  setAttr(back, "aria-label", ctx.t(parts.item ? "card.pocket.areas.back" : "card.pocket.settings.back"));
+  if (parts.areaSettings) updateAreaSettings(parts.areaSettings, ctx);
   const comfortRow = $(".menu [data-panel=comfort]");
   setText(comfortRow.querySelector(".name"), ctx.t("card.pocket.settings.comfort.title"));
   setText(comfortRow.querySelector("small"), ctx.t("card.pocket.settings.comfort.summary",
@@ -395,19 +412,19 @@ export function update(root, ctx) {
   const aboutRow = $(".menu [data-panel=about]");
   setText(aboutRow.querySelector(".name"), ctx.t("card.pocket.settings.about.title"));
   setText($(".appearance h3"), ctx.t("card.pocket.settings.appearance"));
-  setAttr($(".seg"), "aria-label", ctx.t("card.pocket.settings.appearance"));
-  for (const button of parts.modes) {
-    setText(button, ctx.t(`card.pocket.settings.theme.${button.dataset.mode}`));
-    setAttr(button, "aria-checked", String(settings.theme === button.dataset.mode));
-    button.disabled = offline;
-  }
+  const theme = parts.theme;
+  setText(theme.name, ctx.t("card.pocket.settings.theme_label"));
+  setText(theme.small, "");
+  for (const option of theme.select.options) setText(option, ctx.t(`card.pocket.settings.theme.${option.value}`));
+  if (theme.select.value !== settings.theme) theme.select.value = settings.theme;
+  theme.select.disabled = offline;
 
-  const lang = $(".lang select");
-  setText($(".lang .name"), ctx.t("card.pocket.settings.language.title"));
-  setText($(".lang small"), ctx.t(settings.language === "auto" ? "card.pocket.settings.language.auto_hint" : "card.pocket.settings.language.chosen_hint"));
-  setText(lang.querySelector('option[value="auto"]'), ctx.t("card.pocket.settings.language.auto"));
-  if (lang.value !== settings.language) lang.value = settings.language;
-  lang.disabled = offline;
+  const lang = parts.lang;
+  setText(lang.name, ctx.t("card.pocket.settings.language.title"));
+  setText(lang.small, ctx.t(settings.language === "auto" ? "card.pocket.settings.language.auto_hint" : "card.pocket.settings.language.chosen_hint"));
+  setText(lang.select.querySelector('option[value="auto"]'), ctx.t("card.pocket.settings.language.auto"));
+  if (lang.select.value !== settings.language) lang.select.value = settings.language;
+  lang.select.disabled = offline;
 
   setText($(".device h3"), ctx.t("card.pocket.settings.device.title"));
   const start = $(".device .start");

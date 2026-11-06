@@ -64,6 +64,14 @@ export function parseRoute(hash) {
   if (parts.length === 2 && parts[0] === "settings") {
     return SETTINGS_PANELS.includes(parts[1]) ? { page: "settings", id: parts[1] } : { page: "settings" };
   }
+  // One area's settings, a drill-down of Settings → Areas (SPEC-038 §3.9).
+  if (parts.length === 3 && parts[0] === "settings" && parts[1] === "areas" && parts[2]) {
+    try {
+      return { page: "settings", id: "areas", item: decodeURIComponent(parts[2]) };
+    } catch {
+      return { page: "settings", id: "areas" };
+    }
+  }
   if (parts.length === 2 && ["area", "media", "floorplan"].includes(parts[0]) && parts[1]) {
     try {
       return { page: parts[0], id: decodeURIComponent(parts[1]) };
