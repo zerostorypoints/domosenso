@@ -81,7 +81,8 @@ test("Settings → Quick actions: rows with up, down, remove; Add; Use the home'
   rows[0].querySelector(".down").click();
   rows[1].querySelector(".remove").click();
   assert.deepEqual(saves, [{ quick: ["all_off", "scene.evening"] }, { quick: ["scene.evening"] }]);
-  assert.match(text(el.querySelector(".source")), /^Your own list · 2\./);
+  assert.equal(text(el.querySelector(".source")), "Your own list · 2");
+  assert.match(text(el.querySelector(".about")), /^What Home shows under Quick/);
   assert.equal(el.querySelector(".reset").hidden, false);
   el.querySelector(".reset").click();
   assert.deepEqual(saves.at(-1), { quick: undefined });

@@ -105,6 +105,8 @@ const STYLE = `
   .settings .gh { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--mut); }
   .settings.panel .group > h3.gh { display: block; }
   .settings .area-settings .admin { margin: 0 4px 12px; }
+  .settings .area-settings .checked-row { border-top: 1px solid var(--line); }
+  .settings .quick-settings .source { margin: 10px 0 0; font-size: 15px; font-weight: 600; color: var(--fg); }
   .settings .switch { box-sizing: border-box; flex: 0 0 auto; width: 56px; min-height: 44px; margin: 0; padding: 0 4px;
                       border: 0; background: none; cursor: pointer; display: flex; align-items: center; }
   .settings .switch i { position: relative; display: block; width: 46px; height: 28px; border-radius: 14px; background: var(--line); }

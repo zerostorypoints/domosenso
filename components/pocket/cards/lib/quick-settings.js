@@ -24,7 +24,7 @@ export function renderQuickSettings(ctx, { add = false, settings, save }) {
   const root = el("div", "quick-settings");
   root.innerHTML = add
     ? `<div class="groups"></div><p class="hint none-left" hidden></p>`
-    : `<div class="group list"><p class="hint source"></p><div class="rows"></div><p class="hint empty" hidden></p></div>
+    : `<div class="group list"><p class="hint source"></p><p class="hint about"></p><div class="rows"></div><p class="hint empty" hidden></p></div>
        <div class="group menu more">
          <button class="row add" type="button"><span class="label"><span class="name"></span></span>${icon("mdi:chevron-right")}</button>
          <button class="row reset" type="button"><span class="label"><span class="name"></span><small></small></span></button>
@@ -67,7 +67,8 @@ export function updateQuickSettings(root, ctx) {
   if (parts.add) return updateAdd(root, parts, ctx, offline);
 
   const { ids, source } = current(parts);
-  setText(root.querySelector(".source"), `${ctx.t(`card.pocket.quick.summary.${source}`, { count: ids.length })}. ${ctx.t("card.pocket.quick.hint")}`);
+  setText(root.querySelector(".source"), ctx.t(`card.pocket.quick.summary.${source}`, { count: ids.length }));
+  setText(root.querySelector(".about"), ctx.t("card.pocket.quick.hint"));
   const key = JSON.stringify([ids, ctx.lang]);
   if (key !== parts.key) {
     parts.key = key;
