@@ -196,7 +196,8 @@ lip_h = 2.5;                    // locating lip under the lid
 lip_t = 3 * extrusion_width;    // 1.35
 lip_gap = tolerance;
 clamp_t = 10 * layer_height;    // 2.0
-wire_clear = 3.9;               // above the clamp, where the jumpers bend over
+wire_clear = 4.9;               // above the clamp, where the jumpers bend over; 3.9 lifted the lid
+                                // a little in the first assembly (6 Nov 2026)
 pocket_wall = 4 * extrusion_width;
 pocket_wall_rise = 6;           // pocket side walls stand this far above the Atom's underside
 pedestal_uv = [1.5, 8];         // pedestal under the Atom: start in u and v (Atom coordinates)

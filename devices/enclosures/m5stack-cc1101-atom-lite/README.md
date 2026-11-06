@@ -17,7 +17,7 @@ snaps on.
 | **From above, with the logo** | **Print plate** |
 | ![Top](preview/top.png) | ![Plate](preview/plate.png) |
 
-Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ears.
+Outside 92.3 × 61.2 × 38 mm; the wall-mount base is 120.3 mm wide with its ears.
 
 - **Module.** It lies pin face up on four pads under its corners; the left wall, two low stops on
   its right side and the SMA slot locate it. Underneath it is an open shell, and each pad carries
@@ -305,7 +305,7 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
 ## Not verified
 
-- Only the clamp has been printed, twice, in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
+- The clamp has been printed twice in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
   clean). The first, on 5 November 2026, did not seat on the module: its bosses caught on the
   corner screws. The second seats on the module the right way round (checked on 6 November 2026
   without the box; turned round it does not, as step 4 says). With 12 mm housings under it, it
@@ -313,8 +313,7 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   has not been printed. Still to check:
   - the clamp on its pins and housings inside the box, with the lid's flaps pressing it;
   - the module on its pads;
-  - the lid closing over the left-hand screw heads, the latch click and how hard the lid pulls off;
-  - the USB-C plug in its opening.
+  - the latch click and how hard the lid pulls off.
 - The first base, printed on 6 November 2026 in PETG-CF (39.8 g, about 1 h 25 min), did not
   take the module: the drawing has no flange screws, so their heads stood on the back wall's inner
   face. The back wall now has a groove on its inside, 17.8 mm wide and 1.5 mm deep, from 6.35 mm
@@ -324,6 +323,12 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   ground out from the inside, or cut through the wall, which is easier by hand and leaves an
   opening each side of the lid's tongue. Either way 1.1 mm of wall stays beside the left latch's
   groove.
+- First assembly, 6 November 2026: the first base cut by hand as above, and the first lid, in PETG
+  with the white inlay. The node runs inside, and the lid closes and sits nearly level. The
+  jumpers bent over the clamp pushed the lid up a little, so the room above the clamp
+  (`wire_clear`) went from 3.9 to 4.9 mm and the box is 1 mm taller; how the wires are laid
+  matters as much. The USB-C cable went in only with the Atom held down from above (see the Atom's
+  stop below). The base and lid with these changes are not printed yet.
 - In the first base, pins on the pads (Ø2.8 mm, 2.5 mm tall, into the 3.1 mm corner holes from
   below) kept the module from sitting down, and nothing stood on its right side to hold it. The
   pins are gone; two stops on its right side (8 mm wide, 4 mm up its side) hold it against the
@@ -335,7 +340,8 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   model); against the left wall, 0.5 mm left, they touch them. That happens only if the jack sits
   0.3 mm or more further right on the module than drawn, which the ruler reading allows.
 - The Atom's stop on the module side stood alone in the first base, a 1.35 mm plate 26 mm tall
-  held only by the floor; a web now joins it to the pedestal. Not printed yet.
+  held only by the floor, and it bent back as the USB-C cable went in. A web now joins it to the
+  pedestal up to the Atom's underside, leaving 4 mm of it free. Not printed yet.
 - The screw positions come from a photo. Over the whole measured range, with a head of up to
   4.0 × 2.4 mm, the notches leave 0.3 mm (0.45 mm as modelled, before the printed-hole shrink),
   also with the clamp 1 mm lower on short housings; the clamp's pins pass at least 0.45 mm from a
