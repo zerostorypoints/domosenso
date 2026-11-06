@@ -1030,6 +1030,13 @@ script:
           data:
             package_name: [[ wake_package | yaml ]]
 [% endif %]
+      # A busy single-mode script or an unmet client guard returns without sending a policy.
+      # Startup callers need this explicit receipt, not just a normal service return.
+      - variables:
+          screen_policy_response:
+            sent: true
+      - stop: "Screen policy sent"
+        response_variable: screen_policy_response
   # Show the controls, or keep them up: the near automation and a tap on the screen (the
   # corner-taps card's tap option) both land here. The hold timer counts from leaving the near
   # zone, not from the last trigger, so while someone is within near_cm there is no timer at all;
@@ -1966,8 +1973,11 @@ automation:
   # 2b. After a start (#52). 1 and 2 fire on changes of presence, and a restart hides one: the radar
   #    restores its state before the automations load, so a frame restored `off` stays dark in a
   #    used room and one restored lit stays lit in an empty one. Once presence is known (a radar
-  #    integration may come up after the start), the same conditions and actions as 1 and 2 run;
-  #    the sleep waits off_delay_s from the start, as if presence had dropped then.
+  #    integration may come up after the start), reapply the Android screen policy even when
+  #    the restored helper already matches it: the OS can retain a different timeout across a
+  #    power loss. Keep an active view; only an off view resumes ambient. Sleep waits off_delay_s
+  #    from the start, as if presence had dropped then; an arrival interrupts that wait so a
+  #    restored lit helper cannot hide a physically sleeping screen during startup.
   - id: [[ p ]]_reconcile_after_start
     alias: [[ named(' reconcile after start') ]]
     description: "After a Home Assistant start: wake or sleep the screen for the presence the radar restored."
@@ -1979,38 +1989,72 @@ automation:
       - wait_template: "{{ states('[[ radar.presence ]]') in ['on', 'off'] }}"
         timeout: "00:02:00"
         continue_on_timeout: false
+      - if:
+          - condition: state
+            entity_id: [[ radar.presence ]]
+            state: "off"
+        then:
+          - wait_template: "{{ is_state('[[ radar.presence ]]', 'on') }}"
+            timeout:
+              seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
+            continue_on_timeout: true
       - choose:
           - conditions:
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "on"
-              - condition: state
-                entity_id: input_select.[[ p ]]_mode
-                state: "off"
             sequence:
-              - action: input_select.select_option
-                target:
-                  entity_id: input_select.[[ p ]]_mode
-                data:
-                  option: ambient
-              - action: script.[[ p ]]_screen_on
+              - if:
+                  - condition: state
+                    entity_id: input_select.[[ p ]]_mode
+                    state: "off"
+                then:
+                  - action: input_select.select_option
+                    target:
+                      entity_id: input_select.[[ p ]]_mode
+                    data:
+                      option: ambient
+              # Registration can restore before Companion's local push socket reconnects.
+              # Retry only this startup delivery, ending at the first successful policy send.
+              - variables:
+                  screen_policy_delivered: false
+              - repeat:
+                  sequence:
+                    - if:
+                        - condition: state
+                          entity_id: [[ radar.presence ]]
+                          state: "on"
+                      then:
+                        - sequence:
+                            - action: script.[[ p ]]_screen_on
+                              response_variable: screen_policy_result
+                            - variables:
+                                screen_policy_delivered: "{{ screen_policy_result is mapping and screen_policy_result.get('sent', false) }}"
+                          continue_on_error: true
+                    - if:
+                        - condition: template
+                          value_template: "{{ not screen_policy_delivered }}"
+                      then:
+                        - delay: "00:00:05"
+                  until:
+                    - condition: template
+                      value_template: "{{ screen_policy_delivered or repeat.index >= 24 }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ not screen_policy_delivered and is_state('[[ radar.presence ]]', 'on') }}"
+                then:
+                  - stop: "The screen client did not accept the startup policy after 24 attempts"
+                    error: true
           - conditions:
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "off"
             sequence:
-              - delay:
-                  seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "off"
                 for:
                   seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
-              - condition: not
-                conditions:
-                  - condition: state
-                    entity_id: input_select.[[ p ]]_mode
-                    state: "off"
               - action: timer.cancel
                 target:
                   entity_id: timer.[[ p ]]_controls

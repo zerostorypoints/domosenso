@@ -63,7 +63,8 @@
       "not_home": "Poza domem"
     },
     "tap_button": {
-      "hint": "Dotknij dwa razy"
+      "hint": "Dotknij dwa razy",
+      "unavailable": "brak łączności"
     },
     "plants": {
       "gauge": {

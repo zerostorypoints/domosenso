@@ -63,7 +63,8 @@
       "not_home": "Unterwegs"
     },
     "tap_button": {
-      "hint": "Zweimal tippen"
+      "hint": "Zweimal tippen",
+      "unavailable": "nicht erreichbar"
     },
     "plants": {
       "gauge": {

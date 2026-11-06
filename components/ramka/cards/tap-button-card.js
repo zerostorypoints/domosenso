@@ -47,6 +47,37 @@ class TapButtonCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._syncAvailability();
+  }
+
+  _targetUnavailable() {
+    if (this._config.navigate) return false;
+    const target = this._config.target?.entity_id ?? this._config.data?.entity_id;
+    // Area/device targets and HA's special all/none selectors are resolved by HA itself.
+    if (target == null || target === "all" || target === "none") return false;
+    const ids = Array.isArray(target) ? target : target.split(",").map((id) => id.trim());
+    return !ids.length || ids.some((id) => {
+      const state = this._hass?.states?.[id];
+      // A scene exists before its first activation, when its timestamp is still unknown.
+      return !state || state.state === "unavailable" || (state.state === "unknown" && !id.startsWith("scene."));
+    });
+  }
+
+  _syncAvailability() {
+    if (!this._card) return;
+    const blocked = this._targetUnavailable();
+    this._card.setAttribute("aria-disabled", String(blocked));
+    this._card.classList.toggle("disabled", blocked);
+    if (blocked) {
+      clearTimeout(this._loneTimer);
+      clearTimeout(this._hintTimer);
+      this._firstTap = 0;
+      this._name.classList.remove("hint");
+      this._name.textContent = `${this._config.name || ""} (${t(this._hass, "card.tap_button.unavailable")})`;
+    } else if (this._blocked) {
+      this._showName();
+    }
+    this._blocked = blocked;
   }
 
   getCardSize() {
@@ -71,6 +102,9 @@ class TapButtonCard extends HTMLElement {
           transition: background-color 150ms;
         }
         ha-card.pressed { background-color: var(--secondary-background-color); }
+        ha-card.disabled { cursor: default; opacity: 0.5; }
+        .disabled ha-icon { --mdc-icon-size: ${tall ? 48 : 28}px; }
+        .disabled .name { white-space: normal; text-align: center; overflow-wrap: anywhere; font-size: ${tall ? 14 : 15}px; }
         ha-icon { --mdc-icon-size: ${tall ? 64 : 28}px; color: var(--state-icon-color, var(--primary-color)); }
         .name { font-size: ${tall ? 16 : 15}px; font-weight: 500; color: var(--primary-text-color); white-space: nowrap; }
         .name.hint { color: var(--warning-color, #ffa600); }
@@ -94,6 +128,7 @@ class TapButtonCard extends HTMLElement {
       this._card.addEventListener("pointerdown", () => this._holdStart());
       for (const type of ["pointerup", "pointercancel", "pointerleave"]) this._card.addEventListener(type, () => clearTimeout(this._holdTimer));
     }
+    this._syncAvailability();
   }
 
   _holdStart() {
@@ -108,6 +143,7 @@ class TapButtonCard extends HTMLElement {
   }
 
   _fire() {
+    if (this._targetUnavailable()) return;
     if (this._config.navigate) return this._go(this._config.navigate);
     const [domain, service] = this._config.action.split(".");
     this._hass.callService(domain, service, this._config.data || {}, this._config.target);
@@ -136,6 +172,7 @@ class TapButtonCard extends HTMLElement {
     // The click that ends a long press: the hold has already gone to its page.
     if (this._held) { this._held = false; return; }
     if (!this._hass) return;
+    if (this._targetUnavailable()) return;
     if (this._config.taps === 1) return this._fire();
     const now = Date.now();
     if (now - (this._firstTap || 0) < DOUBLE_MS) {

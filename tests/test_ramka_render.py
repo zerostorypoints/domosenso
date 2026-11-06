@@ -242,7 +242,7 @@ def test_loops_follow_the_inputs(demo):
     inputs = demo_inputs()
     dashboard = demo["dashboard.en.yaml"]
     light_tiles = [n for n in walk(dashboard) if n.get("type") == "tile" and str(n.get("entity")).startswith("light.")]
-    assert [t["entity"] for t in light_tiles[::2]] == [light["entity"] for light in inputs["lights"]]
+    assert [t["entity"] for t in light_tiles] == [light["entity"] for light in inputs["lights"]]
     rooms = next(n for n in walk(dashboard) if n.get("type") == "custom:rooms-card")["rooms"]
     assert [r["name"] for r in rooms] == [c["label"] for c in inputs["climate"]]
     awnings = [n["target"]["entity_id"] for n in walk(dashboard)
@@ -1916,6 +1916,55 @@ def visible(conditions, states, missing="unknown") -> bool:
         state = states.get(c["entity"], missing)
         return state in as_list(c["state"]) if "state" in c else state not in as_list(c["state_not"])
     return all(holds(c) for c in conditions or [])
+
+
+@pytest.mark.parametrize("bad", [None, "unknown", "unavailable"])
+def test_controls_missing_dependencies_have_inert_labelled_fallbacks(demo, bad):
+    """Absent bindings must not instantiate native entity cards or leave actions visible."""
+    inputs = demo_inputs()
+    targets = [inputs["media_player"], inputs["calendar"],
+               *(x["entity"] for x in inputs["covers"]), *(x["entity"] for x in inputs["lights"])]
+    states = {"input_select.ramka_mode": "controls", "input_boolean.ramka_controls_plan": "off",
+              "input_boolean.ramka_page_calendar": "on"}
+    if bad is not None:
+        states.update({e: bad for e in targets})
+    for lang in LANGS:
+        cards = [c for s in sections(demo[f"dashboard.{lang}.yaml"])
+                 if visible(s.get("visibility"), states)
+                 for c in s.get("cards", []) if visible(c.get("visibility"), states)]
+        assert not [c for c in cards if c.get("entity") in targets], (lang, bad)
+        labels = [c.get("name", "") for c in cards if c.get("type") == "button"]
+        suffix = translations(lang)["ui.common.unreachable"]
+        for label in [translations(lang)["ui.media.player"], translations(lang)["ui.calendar.button"],
+                      *(x["label"] for x in inputs["covers"]), *(x["label"] for x in inputs["lights"])]:
+            assert f"{label} ({suffix})" in labels, (lang, bad, label)
+        for c in cards:
+            if c.get("type") == "button" and suffix in c.get("name", ""):
+                assert not c.get("entity")
+                for key in ["tap_action", "hold_action", "double_tap_action"]:
+                    assert c[key] == {"action": "none"}
+        # Per-device actions must disappear; aggregate tap buttons enforce actual targets at runtime.
+        assert not [c for c in cards if c.get("action", "").startswith("media_player.")]
+        assert not [c for c in cards if c.get("action", "").startswith("cover.")
+                    and isinstance(c.get("target", {}).get("entity_id"), str)]
+
+
+def test_controls_available_dependencies_keep_native_cards_and_commands(demo):
+    inputs = demo_inputs()
+    targets = [inputs["media_player"], inputs["calendar"],
+               *(x["entity"] for x in inputs["covers"]), *(x["entity"] for x in inputs["lights"])]
+    states = {e: "on" for e in targets}
+    states.update({inputs["media_player"]: "playing", "input_select.ramka_mode": "controls",
+                   "input_boolean.ramka_controls_plan": "off", "input_boolean.ramka_page_calendar": "on"})
+    for lang in LANGS:
+        cards = [c for s in sections(demo[f"dashboard.{lang}.yaml"])
+                 if visible(s.get("visibility"), states)
+                 for c in s.get("cards", []) if visible(c.get("visibility"), states)]
+        assert set(targets) <= {c.get("entity") for c in cards}
+        assert any(c.get("action") == "media_player.media_pause" for c in cards)
+        assert any(c.get("action") == "cover.open_cover" for c in cards)
+        assert any(c.get("action") == "scene.turn_on" for c in cards)
+        assert not [c for c in cards if translations(lang)["ui.common.unreachable"] in c.get("name", "")]
 
 
 def shown_with(view, states, missing="unknown") -> set[str]:
@@ -4331,34 +4380,90 @@ def test_floorplan_not_in_the_preview(tmp_path):
 def test_reconcile_after_start_wakes_or_sleeps_the_restored_frame(demo):
     """#52: wake and sleep fire on changes of presence, which a restart hides (the state restores
     before the automations load). One automation re-checks the room once Home Assistant has
-    started, with the same conditions and the same actions as presence_on and presence_off."""
+    started. Screen actuation must also repair a stale helper/Android timeout mismatch."""
     package = demo["package.yaml"]
     presence = demo_inputs()["radar"]["presence"]
     reconcile = automation(package, "reconcile_after_start")
     assert reconcile["triggers"] == [{"trigger": "homeassistant", "event": "start"}]
     assert reconcile["mode"] == "restart"
 
-    wait, choose = reconcile["actions"]
+    wait, absence_wait, choose = reconcile["actions"]
     assert presence in wait["wait_template"] and "'on', 'off'" in wait["wait_template"]
     assert wait["continue_on_timeout"] is False
 
     wake, sleep = choose["choose"]
     on, off = automation(package, "presence_on"), automation(package, "presence_off")
     assert {"condition": "state", "entity_id": presence, "state": "on"} in wake["conditions"]
-    assert all(c in wake["conditions"] for c in on["conditions"])
-    assert wake["sequence"] == on["actions"]
+    assert wake["conditions"] == [{"condition": "state", "entity_id": presence, "state": "on"}]
+    resume = wake["sequence"][0]
+    assert resume["if"] == on["conditions"], "only an off view switches to ambient"
+    assert resume["then"] == on["actions"][:-1], "preserve controls/calendar when already active"
+    assert any(n.get("action") == on["actions"][-1]["action"] for n in walk(wake["sequence"])), "always repair the Android screen policy"
 
-    delay, held, *actions = sleep["sequence"]
+    held, *actions = sleep["sequence"]
     assert sleep["conditions"] == [{"condition": "state", "entity_id": presence, "state": "off"}]
-    assert delay["delay"] == off["triggers"][0]["for"], "off_delay_s, counted from the start"
+    assert absence_wait["if"] == sleep["conditions"]
+    assert absence_wait["then"][0]["timeout"] == off["triggers"][0]["for"], "off_delay_s, counted from the start"
     assert held == {"condition": "state", "entity_id": presence, "state": "off", "for": off["triggers"][0]["for"]}
-    assert actions[0] == off["conditions"][0]
-    assert actions[1:] == off["actions"]
+    assert actions == off["actions"], "an off helper does not prove the physical screen is asleep"
+
+
+@pytest.mark.parametrize("restored_mode", ["ambient", "controls", "calendar"])
+def test_start_wakes_present_room_despite_restored_lit_mode(demo, restored_mode):
+    """Android can retain a short screen timeout while HA restores an older lit helper."""
+    presence = demo_inputs()["radar"]["presence"]
+    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
+    states = {presence: "on", "input_select.ramka_mode": restored_mode}
+    assert all(states[c["entity_id"]] == c["state"] for c in wake["conditions"])
+    assert any(s.get("action") == "script.ramka_screen_on" for s in walk(wake["sequence"]))
+
+
+def test_start_sleeps_absent_room_despite_restored_off_mode(demo):
+    """A restored off helper does not prove that Android's actual screen is asleep."""
+    sleep = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][1]
+    held, *actuation = sleep["sequence"]
+    assert held["state"] == "off" and "for" in held
+    assert not any("condition" in step for step in actuation)
+    assert actuation[-1]["action"] == "script.ramka_screen_off"
+
+
+def test_start_absence_wait_is_interrupted_by_arrival(demo):
+    """A sleeping OS and restored ambient helper must wake on an arrival during startup delay."""
+    presence = demo_inputs()["radar"]["presence"]
+    actions = automation(demo["package.yaml"], "reconcile_after_start")["actions"]
+    arrival_waits = [node for node in walk(actions) if presence in node.get("wait_template", "")
+                     and "'on'" in node["wait_template"] and "'off'" not in node["wait_template"]]
+    assert arrival_waits, "a fixed delay misses arrivals while the restored helper already says ambient"
+    wait = arrival_waits[0]
+    assert wait["timeout"] == automation(demo["package.yaml"], "presence_off")["triggers"][0]["for"]
+    assert wait["continue_on_timeout"] is True, "continuous absence still reaches the sleep branch"
+
+
+def test_start_retries_screen_delivery_until_the_local_client_connects(demo):
+    """A registered mobile client can still have no push socket at the HA started event."""
+    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
+    repeats = [node["repeat"] for node in wake["sequence"] if "repeat" in node]
+    assert repeats, "startup must retry a failed screen command instead of leaving Android asleep"
+    retry = repeats[0]
+    attempts = [node for node in walk(retry) if node.get("continue_on_error") is True]
+    assert attempts and any(node.get("action") == "script.ramka_screen_on" for node in walk(attempts))
+    assert "screen_policy_delivered" in retry["until"][0]["value_template"]
+    assert "24" in retry["until"][0]["value_template"], "bounded startup retry, not a foreground watchdog"
+    assert wake["sequence"][-1]["then"][0]["error"] is True, "exhaustion must not look successful"
 
 
 def test_reconcile_after_start_is_listed_as_provided():
     provided = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["provides"]["automations"]
     assert "reconcile_after_start" in provided
+
+
+def test_start_requires_an_explicit_screen_policy_receipt(demo):
+    wake = automation(demo["package.yaml"], "reconcile_after_start")["actions"][-1]["choose"][0]
+    call = next(n for n in walk(wake) if n.get("action") == "script.ramka_screen_on")
+    assert call.get("response_variable") == "screen_policy_result", "a busy single script returns without sending"
+    finish = demo["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-2:]
+    assert finish[0]["variables"]["screen_policy_response"] == {"sent": True}
+    assert finish[1]["response_variable"] == "screen_policy_response"
 
 
 # ---- 0.13.0: the way out is a button on the controls, not the top corners --------------------------
@@ -4393,7 +4498,7 @@ def test_wake_package_default_preserves_companion_condition(tmp_path, demo, targ
     inputs["tablet_wake_package"] = target
     actual = render(tmp_path, inputs)
     assert actual == demo
-    wake = actual["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1]
+    wake = actual["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-3]
     assert wake["then"][0]["data"]["data"]["package_name"] == "io.homeassistant.companion.android"
     assert wake["if"][0]["conditions"][0]["state"] == ["foreground", "top_sleeping"]
 
@@ -4403,7 +4508,7 @@ def test_wake_package_launches_selected_app_without_companion_importance(tmp_pat
     inputs["tablet_wake_package"] = "com.domosenso.frame"
     actual = render(tmp_path, inputs)
     expected = copy.deepcopy(demo)
-    expected["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-1] = {
+    expected["package.yaml"]["script"]["ramka_screen_on"]["sequence"][-3] = {
         "action": inputs["tablet_device"]["notify"],
         "data": {"message": "command_launch_app", "data": {"package_name": "com.domosenso.frame"}},
     }
