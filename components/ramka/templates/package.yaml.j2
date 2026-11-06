@@ -46,7 +46,10 @@
 [%- endfor -%]
 [%- if not pages -%][[ fail('ramka: status_page: false leaves no ambient page; give climate, air, plants or photo_dir') ]][%- endif -%]
 [#- The now-playing card's music visual (0.4.0): spectrum or level, chosen on the tablet. -#]
-[%- set music_visual = inputs.music_visual | default(none) -%]
+[%- set mp = inputs.media_player | default(none) -%]
+[%- set calendar_input = inputs.calendar | default([]) -%]
+[%- set calendars = ([calendar_input] if calendar_input is string else calendar_input) if calendar_input else [] -%]
+[%- set music_visual = (inputs.music_visual | default(none)) if mp else none -%]
 [%- if music_visual is not none and music_visual not in ['spectrum', 'level'] -%][[ fail("ramka: music_visual must be spectrum or level, not '" ~ music_visual ~ "'") ]][%- endif -%]
 [%- set other_visual = 'level' if music_visual == 'spectrum' else 'spectrum' -%]
 [#- ---- Live settings (0.4.0, SPEC-021) ----------------------------------------------------------
@@ -821,7 +824,11 @@ template:
         icon: mdi:play-circle
         delay_off:
           seconds: 5
-        state: "{{ is_state('[[ inputs.media_player ]]', 'playing') }}"
+        [%- if mp %]
+        state: "{{ is_state('[[ mp ]]', 'playing') }}"
+        [%- else %]
+        state: "{{ false }}"
+        [%- endif %]
       # Ambient shows the now-playing card: the player plays, the music face is chosen and the
       # music view is switched on (input_boolean.[[ p ]]_page_music; off, ambient keeps the
       # rotation). Every view condition and the loop's start/stop read this one sensor. The marker
@@ -1023,6 +1030,13 @@ script:
           data:
             package_name: [[ wake_package | yaml ]]
 [% endif %]
+      # A busy single-mode script or an unmet client guard returns without sending a policy.
+      # Startup callers need this explicit receipt, not just a normal service return.
+      - variables:
+          screen_policy_response:
+            sent: true
+      - stop: "Screen policy sent"
+        response_variable: screen_policy_response
   # Show the controls, or keep them up: the near automation and a tap on the screen (the
   # corner-taps card's tap option) both land here. The hold timer counts from leaving the near
   # zone, not from the last trigger, so while someone is within near_cm there is no timer at all;
@@ -1300,6 +1314,7 @@ script:
         timeout: 5
         continue_on_timeout: true
 [%- endif %]
+[%- if calendars %]
   # The calendar screen, from the calendar button on the controls. Same hold rules as the
   # controls: no timer while someone is within near_cm, controls_hold_s after leaving. Not while the
   # calendar view is switched off (its buttons hide then too).
@@ -1330,6 +1345,7 @@ script:
               entity_id: timer.[[ p ]]_controls
             data:
               duration: "{{ states('input_number.[[ p ]]_controls_hold_s') | int([[ d.controls_hold_s ]]) }}"
+[%- endif %]
 [%- if inputs.floorplan | default(false) %]
 
   # A sideways swipe on the controls: the plan instead of the controls, and back (SPEC-028).
@@ -1957,8 +1973,11 @@ automation:
   # 2b. After a start (#52). 1 and 2 fire on changes of presence, and a restart hides one: the radar
   #    restores its state before the automations load, so a frame restored `off` stays dark in a
   #    used room and one restored lit stays lit in an empty one. Once presence is known (a radar
-  #    integration may come up after the start), the same conditions and actions as 1 and 2 run;
-  #    the sleep waits off_delay_s from the start, as if presence had dropped then.
+  #    integration may come up after the start), reapply the Android screen policy even when
+  #    the restored helper already matches it: the OS can retain a different timeout across a
+  #    power loss. Keep an active view; only an off view resumes ambient. Sleep waits off_delay_s
+  #    from the start, as if presence had dropped then; an arrival interrupts that wait so a
+  #    restored lit helper cannot hide a physically sleeping screen during startup.
   - id: [[ p ]]_reconcile_after_start
     alias: [[ named(' reconcile after start') ]]
     description: "After a Home Assistant start: wake or sleep the screen for the presence the radar restored."
@@ -1970,38 +1989,72 @@ automation:
       - wait_template: "{{ states('[[ radar.presence ]]') in ['on', 'off'] }}"
         timeout: "00:02:00"
         continue_on_timeout: false
+      - if:
+          - condition: state
+            entity_id: [[ radar.presence ]]
+            state: "off"
+        then:
+          - wait_template: "{{ is_state('[[ radar.presence ]]', 'on') }}"
+            timeout:
+              seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
+            continue_on_timeout: true
       - choose:
           - conditions:
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "on"
-              - condition: state
-                entity_id: input_select.[[ p ]]_mode
-                state: "off"
             sequence:
-              - action: input_select.select_option
-                target:
-                  entity_id: input_select.[[ p ]]_mode
-                data:
-                  option: ambient
-              - action: script.[[ p ]]_screen_on
+              - if:
+                  - condition: state
+                    entity_id: input_select.[[ p ]]_mode
+                    state: "off"
+                then:
+                  - action: input_select.select_option
+                    target:
+                      entity_id: input_select.[[ p ]]_mode
+                    data:
+                      option: ambient
+              # Registration can restore before Companion's local push socket reconnects.
+              # Retry only this startup delivery, ending at the first successful policy send.
+              - variables:
+                  screen_policy_delivered: false
+              - repeat:
+                  sequence:
+                    - if:
+                        - condition: state
+                          entity_id: [[ radar.presence ]]
+                          state: "on"
+                      then:
+                        - sequence:
+                            - action: script.[[ p ]]_screen_on
+                              response_variable: screen_policy_result
+                            - variables:
+                                screen_policy_delivered: "{{ screen_policy_result is mapping and screen_policy_result.get('sent', false) }}"
+                          continue_on_error: true
+                    - if:
+                        - condition: template
+                          value_template: "{{ not screen_policy_delivered }}"
+                      then:
+                        - delay: "00:00:05"
+                  until:
+                    - condition: template
+                      value_template: "{{ screen_policy_delivered or repeat.index >= 24 }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ not screen_policy_delivered and is_state('[[ radar.presence ]]', 'on') }}"
+                then:
+                  - stop: "The screen client did not accept the startup policy after 24 attempts"
+                    error: true
           - conditions:
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "off"
             sequence:
-              - delay:
-                  seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
               - condition: state
                 entity_id: [[ radar.presence ]]
                 state: "off"
                 for:
                   seconds: "{{ states('input_number.[[ p ]]_off_delay_s') | int([[ d.off_delay_s ]]) }}"
-              - condition: not
-                conditions:
-                  - condition: state
-                    entity_id: input_select.[[ p ]]_mode
-                    state: "off"
               - action: timer.cancel
                 target:
                   entity_id: timer.[[ p ]]_controls
@@ -2236,6 +2289,7 @@ automation:
       - action: script.turn_on
         target:
           entity_id: script.[[ p ]]_ambient_loop
+[%- if mp %]
   - id: [[ p ]]_music_back
     alias: [[ named(' music back') ]]
     description: "The media player starts playing from silence: ambient shows the music again."
@@ -2246,13 +2300,14 @@ automation:
       # playing when an amplifier wakes from standby), so the trigger takes the step out of
       # silence into buffering too; with `to: playing` alone it can miss every start.
       - trigger: state
-        entity_id: [[ inputs.media_player ]]
+        entity_id: [[ mp ]]
         from: ["off", "on", "idle", "unavailable"]
         to: [buffering, playing]
     actions:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_ambient_music
+[%- endif %]
 [%- if music_visual %]
   # audio-sensor sends its fast data only while someone can see it: the watching flag is on while
   # this Ramka's music view is, or another Ramka's (one flag per home, never toggled). The grace

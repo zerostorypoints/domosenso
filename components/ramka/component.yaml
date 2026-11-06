@@ -63,8 +63,9 @@ inputs:
   radar:                        # required
     type: "{presence: binary_sensor, distance: sensor}"
     example: {presence: binary_sensor.dining_ble_proxy_dining_presence, distance: sensor.dining_ble_proxy_dining_detection_distance}
-  media_player:                 # required: any media_player (see media_player_contract below)
+  media_player:                 # optional: absent or empty leaves out music and player controls
     type: entity_id
+    default: null
     example: media_player.living_room_speaker
   media_label:                  # the player's name on the "unreachable" tile
     type: string
@@ -147,7 +148,7 @@ inputs:
     default: [climate, plants]
     example: [plants, climate, security, light]
   weather: {type: entity_id, example: weather.forecast_home}   # required unless the home inputs name it
-  calendar: {type: "entity_id | list[entity_id]", required: true, example: calendar.family}
+  calendar: {type: "entity_id | list[entity_id]", default: [], example: calendar.family}
   photo_dir:                    # under /config/www (served as /local/...); absent: no photos page, no photo
     type: path                  # entities, shell commands or index automation (0.2.0)
     default: null

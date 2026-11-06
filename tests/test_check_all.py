@@ -33,7 +33,7 @@ def checks(tmp_path):
     docker.write_text('#!/bin/sh\necho "docker $*" >> "$CHECK_TRACE"\n'
                       'case "$1 $2" in "image inspect") [ -n "$CHECK_IMAGE" ];; *) exit 0;; esac\n')
     docker.chmod(0o755)
-    for name in ('ha-check.sh', 'esphome-check.sh'):
+    for name in ('ha-check.sh', 'esphome-check.sh', 'check-ramka-startup.sh'):
         script = tools / name
         script.write_text(f'#!/bin/sh\necho "{name} $*" >> "$CHECK_TRACE"\n')
         script.chmod(0o755)
@@ -51,6 +51,7 @@ def test_local_runs_fast_checks_and_explicitly_reports_partial(checks):
     assert result.returncode == 0
     assert 'pytest -q' in calls and 'catalog_check.py --strict' in calls
     assert 'ha-check.sh' not in calls and 'esphome-check.sh' not in calls
+    assert 'check-ramka-startup.sh' not in calls
     assert 'dev_home/ci.py' not in calls
     assert result.stdout.rstrip().endswith('partial checks passed (HA/ESPHome not run)')
     assert 'all checks passed' not in result.stdout
@@ -62,6 +63,7 @@ def test_default_keeps_catalog_gate_without_duplicate_demo(checks):
     assert 'ha-check.sh radio' in calls and 'esphome-check.sh radio' in calls
     assert 'dev_home/ci.py' not in calls
     assert 'home-staging-check.py' in calls
+    assert 'check-ramka-startup.sh' in calls
     assert 'skip demo acceptance (opt-in: run-demo PR label or explicit local demo command)' in result.stdout
     assert result.stdout.rstrip().endswith('all checks passed')
 
@@ -90,7 +92,7 @@ def test_parallel_checks_report_in_order_as_whole_blocks(checks):
     result, calls = checks()
     assert result.returncode == 0
     assert 'pytest -q -n auto' in calls
-    labels = ['home staging runtime', 'ha-check radio', 'esphome-check radio',
+    labels = ['home staging runtime', 'Ramka startup screen runtime', 'ha-check radio', 'esphome-check radio',
               'ha-check ramka (pages left out)', 'ha-check ramka (plants discover)']
     blocks = [result.stdout.index(f'==> {label}\n') for label in labels]
     assert blocks == sorted(blocks)
@@ -105,6 +107,15 @@ def test_a_failed_parallel_check_blocks_the_pass(checks, tmp_path):
     block = result.stdout.split('==> esphome-check radio\n', 1)[1]
     assert block.startswith('no network\nFAIL esphome-check radio\n')
     assert 'failed: esphome-check radio' in result.stdout
+
+
+def test_screen_startup_runtime_failure_blocks_full_pass(checks, tmp_path):
+    (tmp_path / 'tools/check-ramka-startup.sh').write_text('#!/bin/sh\necho "fixture startup failed"; exit 1\n')
+    result, _ = checks()
+    assert result.returncode == 1
+    assert 'fixture startup failed\nFAIL Ramka startup screen runtime' in result.stdout
+    assert 'failed: Ramka startup screen runtime' in result.stdout
+    assert 'all checks passed' not in result.stdout
 
 
 def test_check_jobs_limits_how_many_run_at_once(checks, tmp_path):

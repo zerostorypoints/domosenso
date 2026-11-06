@@ -94,6 +94,7 @@ first deploy. It reads Home Assistant freely and writes nothing to it until you 
 | A home owner with a NAS, no Home Assistant yet | the same prompt; it installs Home Assistant with you, or use your NAS's steps (Prerequisites) |
 | Someone who wants it done for them | [domosenso.com](https://domosenso.com) · [domosenso.ch](https://domosenso.ch) |
 | A contributor with a device the catalog lacks | [Integrate a device](docs/integrate-a-device.md), with the Hegel amplifier as the worked example |
+| Preparing a Frame for another home or adapting it to another device | [Frame installation and adaptation guide](docs/FRAME_INSTALLATION.md); Android pilot and unverified adaptation paths |
 | An AI agent | the note above, then [AGENTS.md](AGENTS.md) |
 
 ## What's in the box

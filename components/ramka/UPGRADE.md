@@ -3,6 +3,19 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: panels without a player or calendars
+
+`media_player` is optional. Omit it or use null/empty text to leave out music cards and player
+commands; the shared media-state helpers stay, with media-playing false. Without a player,
+`music_visual` is inactive; the `music_back` player-start trigger and music-watching automation
+are omitted. The helper-only `music_default` policy remains.
+
+`calendar` is optional and accepts an empty list, null or empty text. Without calendars there is
+no agenda, calendar control or `show_calendar` script. Settings/preview explain the missing
+binding. A player without calendars and calendars without a player both work. Existing
+configured homes need no input changes and retain the same rendered output. Weather remains
+required through the Ramka inputs or the shared home inputs.
+
 ## Unreleased: the kiosk user's person is marked
 
 With `kiosk_user`, the package marks `person.<the kiosk user as a slug>` with `person_role: kiosk`
@@ -67,6 +80,33 @@ The new optional `actions` input puts one-tap buttons on the controls: a `button
 asks Home Assistant's own confirmation before it acts, unless the item sets `confirm: false`; a
 greyed twin shows while the entity is unavailable. Nothing to do: without `actions` the dashboard
 renders as before (SPEC-034).
+
+## Unreleased: startup screen policy and safe unavailable controls
+
+After Home Assistant starts, radar reconciliation reapplies the actual Android screen policy
+even when the restored mode helper already says the frame is on or off. Android's saved screen
+timeout can disagree with HA's last persisted helper after an interrupted shutdown. Presence
+wakes the screen while preserving an active controls/calendar view; absence still waits the
+configured delay before sleeping it. No new inputs or migration are required. Render and verify
+a restart from a short Android screen timeout with presence detected, including an arrival
+during the initial absence delay. That arrival now interrupts the startup wait and wakes the
+screen immediately rather than leaving the OS asleep behind a restored ambient helper.
+If Companion's local push connection is still reconnecting, startup retries delivery every
+five seconds, for up to 24 attempts. It stops at the first successful send, does not send wake
+commands while presence is absent, and reports an error if a present room exhausts the bound.
+The wake script returns a receipt only after its notification sequence completes. Busy or
+guard-skipped calls therefore cannot prematurely end startup retries. Existing callers can
+continue ignoring the optional response.
+`tools/check-ramka-startup.sh`, included in the full checks, exercises the rendered actions in
+the pinned HA script engine with a late, permanently unavailable and returning test client.
+
+Controls now show labelled inert buttons when a configured media player, calendar, cover or
+light is absent, unknown or unavailable, instead of native missing-entity warnings. Associated
+per-device actions hide until that dependency returns. Service tap buttons also reject missing
+or unavailable explicit entity targets, including an incomplete group, and update when states
+recover. A present scene with an unknown first-activation timestamp remains usable. Aggregate
+light commands use the same target-aware tap button. No integration or device is added by this
+fallback: missing bindings still need their actual integration before controls work.
 
 ## 0.15.0 (unreleased)
 
