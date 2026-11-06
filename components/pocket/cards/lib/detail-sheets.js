@@ -2,7 +2,7 @@
 // ctx.openSheet(spec), each on the page contract (render(ctx, spec), update(el, ctx)):
 //
 //   checks  {kind: "checks", title, readings?, inside?}   every reading that was checked, per area
-//           (never an outside area: it is weather, not checked), problems first (lib/checks.js): its name, its
+//           (but the areas the home left out of the checks), problems first (lib/checks.js): its name, its
 //           level in words and as a dot, its value in the level's colour and its trend arrow; a row
 //           opens that reading's trend sheet on top of the list (Back or close returns to it). Behind Home's "All good", its attention pills and (only
 //           temperature, rooms only) its inside chip.

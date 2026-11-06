@@ -8,6 +8,7 @@
 //   homeModel(hass, config, store, extra?) -> {rooms, thresholds, pending}
 //     rooms: [room] in floor order (floor level, then Home Assistant's order; areas on no floor last):
 //       {id, area, name, floor, icon, type: "inside"|"outside"|"none", typeSource,
+//        checked: boolean, checkedSource (whether the area is in the checks: on unless set off),
 //        climate?: {temperature, humidity?}, air?: {score?, co2?, pm2_5?, voc?, nox?},
 //        indicators: {<entity kind>: entity id},
 //        main: {<kind>: {source, choice, name, readings, candidates}},
@@ -194,6 +195,10 @@ export function homeModel(hass, config, store = EMPTY, extra = {}) {
     if (storedArea.type) { room.type = storedArea.type; room.typeSource = "pocket"; }
     else if (TYPES.includes(given?.type)) { room.type = given.type; room.typeSource = "inputs"; }
     else { room.type = "inside"; room.typeSource = "default"; }
+    // Every area is in the checks unless the home leaves it out (SPEC-038 §3.2); its type never does.
+    if (typeof storedArea.checked === "boolean") { room.checked = storedArea.checked; room.checkedSource = "pocket"; }
+    else if (typeof given?.checked === "boolean") { room.checked = given.checked; room.checkedSource = "inputs"; }
+    else { room.checked = true; room.checkedSource = "default"; }
 
     for (const kind of KINDS) {
       const candidates = candidatesOf(hass, kind, id);

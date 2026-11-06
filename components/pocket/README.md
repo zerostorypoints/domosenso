@@ -55,6 +55,9 @@ a pattern updates it.
   its main sensor once, the first time an administrator opens Pocket. The skill `set-up-areas` asks the
   rest during onboarding and writes it as defaults into the home inputs; `domosenso areas <target>` shows
   it all from the running home.
+- **Include in checks** (an area's settings): every area, an outside one too, counts for All good, the
+  pills, the Climate tile and the advice until it is switched off there (or `checked: false` in the home
+  inputs). Pocket's other built-in rules, and which have a setting, are in DESIGN.md 10.2.
 - **Quick actions** (Home → Quick, Settings → Quick actions): a person's own list of actions, in order
   (an area's lights, a light, a switch, fan or toggle helper, a scene, script or button, All lights off:
   `cards/lib/quick-actions.json`), with up, down, remove and an Add page; until they change it, the

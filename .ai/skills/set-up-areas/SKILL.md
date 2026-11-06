@@ -48,7 +48,9 @@ suggestion and its reason in a few words. Then ask once: "Is this right? Tell me
 1. **Types.** Every area is Inside unless set otherwise (`type inside (default)`). Suggest Outside only
    for an area that has an outside sensor in the inputs (`(inputs)`) or that the owner named; for the
    rest ask, in the same message: "Which of these are outside, and which should not show in Pocket at
-   all (a garage, a technical room)?" (`outside`, `none`).
+   all (a garage, a technical room)?" (`outside`, `none`). Then: "Every area is checked against its
+   comfort range, an outside one too: should any be left out of the checks (a balcony whose cold you do
+   not want reported)?" (`checked: false`). Suggest nothing here: it is the owner's call.
 2. **Main sensors.** For each area and kind (`data[].kinds.<kind>`):
    - a choice from `(home-assistant)` or `(pocket)` stays; say what it is;
    - one candidate: Pocket takes it (`(auto)`, recorded once); say which;
@@ -79,6 +81,7 @@ rooms:
   - id: living_room          # the HA area id (or `area:` when the id differs)
     name: Living room        # the Ramka's name; Pocket uses the HA area's
     type: outside            # inside (the default) | outside | none (hidden from Pocket)
+    checked: false           # leave it out of the checks (on by default, whatever the type)
     climate: {temperature: sensor.x, humidity: sensor.y}
     air: {score: sensor.z, co2: sensor.w}
 ```

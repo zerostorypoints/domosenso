@@ -164,7 +164,9 @@
         },
         "main_sensors": "Main sensors",
         "reading_of": "A sensor of {device}",
-        "back": "Back to Areas"
+        "back": "Back to Areas",
+        "checked": "Include in checks",
+        "checked_hint": "Its readings count for All good, the pills and the advice. Off: shown, never a warning."
       },
       "area": {
         "back": "Back to areas",

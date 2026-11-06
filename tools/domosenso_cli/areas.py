@@ -3,6 +3,7 @@ home: Home Assistant's area, floor, device and entity registries, the states, an
 (frontend system data `domosenso-pocket-home`). Reads only. One line per finding:
 
     area <id> "<name>" floor <floor|-> type <inside|outside|none> (<source>)
+    unchecked <id> (<source>)     the area is left out of the checks (its setting; on by default)
     main <id> <kind> <entity> [<entity> ...] (<source>)
     candidates <id> <kind> <n>: choose one
     warn inputs room <room id>: no HA area <area>
@@ -160,8 +161,17 @@ def report(registry: dict, store: dict | None, home: dict | None, quick_inputs: 
         floor = area.get("floor_id") or "-"
         lines.append(("area", aid, json.dumps(area.get("name") or aid, ensure_ascii=False), "floor", floor, "type",
                       area_type, f"({type_source})"))
+        # In the checks unless the home switched it off (SPEC-038 §3.2); the type never decides.
+        if isinstance(stored.get("checked"), bool):
+            checked, checked_source = stored["checked"], "pocket"
+        elif isinstance(given.get("checked"), bool):
+            checked, checked_source = given["checked"], "inputs"
+        else:
+            checked, checked_source = True, "default"
+        if not checked:
+            lines.append(("unchecked", aid, f"({checked_source})"))
         entry = {"area": aid, "name": area.get("name") or aid, "floor": area.get("floor_id"), "type": area_type,
-                 "type_source": type_source, "kinds": {}}
+                 "type_source": type_source, "checked": checked, "checked_source": checked_source, "kinds": {}}
         for kind in kinds:
             candidates = _candidates(kind, aid, by_area.get(aid, []), states)
             choice, source = _resolve(kind, area, given, stored, aid in picked and kind["id"] in picked[aid], candidates)

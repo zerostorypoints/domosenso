@@ -164,7 +164,9 @@
         },
         "main_sensors": "Główne czujniki",
         "reading_of": "Czujnik urządzenia {device}",
-        "back": "Wróć do obszarów"
+        "back": "Wróć do obszarów",
+        "checked": "Uwzględniaj w kontrolach",
+        "checked_hint": "Jego odczyty liczą się do „Wszystko dobrze”, alertów i porad. Wyłączone: widoczne, nigdy jako ostrzeżenie."
       },
       "area": {
         "back": "Wróć do obszarów",

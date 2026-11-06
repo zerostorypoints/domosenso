@@ -16,7 +16,7 @@
 //       choice of kind was made for the area (§3.5), with the choice itself for a store kind
 //   normalize(value) -> {areas: {}, picked: {}}
 //
-// Shape: {areas: {<area id>: {type?: "inside"|"outside"|"none", <kind>?: <device or entity id>|"none",
+// Shape: {areas: {<area id>: {type?: "inside"|"outside"|"none", checked?: boolean, <kind>?: <device or entity id>|"none",
 //         air_readings?: {<reading>: entity id}}}, picked: {<area id>: [kind]}}
 
 export const KEY = "domosenso-pocket-home";
@@ -33,6 +33,7 @@ export function normalize(value) {
     if (!isObject(area)) continue;
     const copy = { ...area };
     if (!TYPES.includes(copy.type)) delete copy.type;
+    if (typeof copy.checked !== "boolean") delete copy.checked;
     areas[id] = copy;
   }
   const picked = {};

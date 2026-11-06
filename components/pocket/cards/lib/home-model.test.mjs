@@ -164,3 +164,13 @@ test("a pick recorded automatically still says so; once a person changes it, it 
   const theirs = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: {} });
   assert.equal(roomOf(theirs, "living_room").main.air.source, "pocket");
 });
+
+test("checked: on for every area, an outside one too; the store, then the inputs, can switch it off", () => {
+  const plain = homeModel(hassOf(), { outside: { temperature: "sensor.garden_t", area: "garden" } });
+  assert.deepEqual([roomOf(plain, "garden").type, roomOf(plain, "garden").checked, roomOf(plain, "garden").checkedSource],
+    ["outside", true, "default"], "the type never decides it");
+  const inputs = homeModel(hassOf(), { rooms: [{ id: "garden", checked: false }] });
+  assert.deepEqual([roomOf(inputs, "garden").checked, roomOf(inputs, "garden").checkedSource], [false, "inputs"]);
+  const store = homeModel(hassOf(), { rooms: [{ id: "garden", checked: false }] }, { areas: { garden: { checked: true } }, picked: {} });
+  assert.deepEqual([roomOf(store, "garden").checked, roomOf(store, "garden").checkedSource], [true, "pocket"]);
+});

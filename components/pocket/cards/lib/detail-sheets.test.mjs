@@ -7,8 +7,9 @@ import { config, st, baseStates, hassOf, ctxOf, text, texts } from "../testing/d
 
 const frame = () => new Promise((resolve) => setTimeout(resolve, 30));   // past the next animation frame
 
+// The outside switched out of the checks by the home (SPEC-038 §3.2): these tests are about the rooms.
 const withOutside = { ...config,
-  outside: { temperature: "sensor.outside_temperature" },
+  outside: { temperature: "sensor.outside_temperature", checked: false },
   thresholds: { ...config.thresholds, outside: { temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } } };
 const states = (extra = {}) => ({ ...baseStates(), "sensor.outside_temperature": st(5),
   "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24), ...extra });
@@ -33,12 +34,16 @@ test("specs: titles from the translations", () => {
   assert.deepEqual(lightsSpec(ctx), { kind: "lights", title: "Lights" });
 });
 
-test("checks: what All good counted, nothing more; an outside area out of its range is not a problem here", () => {
+test("checks: what All good counted, nothing more; an area switched out of the checks is not in it", () => {
   const ctx = ctxOf({ cfg: withOutside, hass: hassOf(states()) });
   const el = mount(checks, ctx, checksSpec(ctx));
   assert.equal(text(el.querySelector(".dtitle b")), "What was checked");
-  assert.deepEqual(texts(el, ".gname"), ["Living room", "Bedroom"], "the outside area (5°, below its range) is left out");
-  assert.ok(!el.querySelector(".lv-cold"), "no Too cold for the weather");
+  assert.deepEqual(texts(el, ".gname"), ["Living room", "Bedroom"], "the outside area (5°, below its range) is switched off");
+  assert.ok(!el.querySelector(".lv-cold"));
+  const on = ctxOf({ cfg: { ...withOutside, outside: { temperature: "sensor.outside_temperature" } }, hass: hassOf(states()) });
+  const all = mount(checks, on, checksSpec(on));
+  assert.deepEqual(texts(all, ".gname"), ["Outside", "Living room", "Bedroom"], "by default it is checked, the problem first");
+  assert.equal(text(all.querySelector(".drow .lt")), "Too cold");
   assert.deepEqual(texts(el, ".grp:nth-child(1) .drow .r"), ["Temperature", "Humidity", "Air score", "CO₂"]);
   assert.deepEqual(texts(el, ".grp:nth-child(1) .drow .lt"), ["In range", "In range", "Good", "Good"]);
   assert.ok(el.querySelector(".empty").hidden);

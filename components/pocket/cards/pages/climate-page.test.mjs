@@ -10,7 +10,8 @@ import { clearHistoryCache } from "../lib/trend.js";
 // The demo home with an outside area (its sensors, its comfort range) and a weather entity.
 const config = {
   ...demo,
-  outside: { temperature: "sensor.outside_temperature", humidity: "sensor.outside_humidity" },
+  // Switched out of the checks by the home: these tests are about the rooms' advice (SPEC-038 §3.2).
+  outside: { temperature: "sensor.outside_temperature", humidity: "sensor.outside_humidity", checked: false },
   weather: "weather.home",
   thresholds: { ...demo.thresholds,
     outside: { temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } },
@@ -244,4 +245,13 @@ test("squares grow with their content: a fixed aspect, no min-height (it would d
     assert.match(rule, /aspect-ratio:/, file);
     assert.doesNotMatch(rule, /min-height|(?<!-)height:|overflow/, file);
   }
+});
+
+test("advice for every checked area: a cold outside area too, until the home switches it out of the checks", () => {
+  const on = { ...config, outside: { temperature: "sensor.outside_temperature", humidity: "sensor.outside_humidity" } };
+  const freezing = { "sensor.outside_temperature": st(-5) };
+  const el = mount(ctxWith({ cfg: on, changes: freezing }));
+  assert.ok(texts(el, ".advice .tip .t1").includes("Outside: Too cold"), texts(el, ".advice .tip .t1").join(" | "));
+  const off = mount(ctxWith({ changes: freezing }));
+  assert.ok(!texts(off, ".advice .tip .t1").some((t) => t.startsWith("Outside")), "switched off: no advice");
 });

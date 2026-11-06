@@ -11,7 +11,8 @@
 //       them, those with a main temperature (measured: [{area, value}], a value null when the
 //       sensor reads nothing), those without (unset), the range of the values, and the one sensor
 //       when there is exactly one (for its trend)
-//   isJudged(area)                     whether an area's comfort is judged (not an outside one)
+//   isJudged(area)                     whether an area is in the checks: its own setting (`checked`,
+//                                      on unless the home switched it off), never its type
 
 import { numberOf } from "./level.js";
 
@@ -34,8 +35,8 @@ export function climateValue(hass, area, reading) {
   return entity ? numberOf(hass, entity) : null;
 }
 
-// The outside is weather: never something to act on (DESIGN.md §6).
-export const isJudged = (area) => area?.type !== "outside";
+// Every area is checked; a home leaves one out with its setting (SPEC-038 §3.2), nothing else decides.
+export const isJudged = (area) => area?.checked !== false;
 
 export function typed(hass, config, type) {
   const areas = areasOf(config).filter((area) => area.type === type);

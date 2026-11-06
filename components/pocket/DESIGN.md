@@ -211,8 +211,9 @@ The level keys and their boundaries are the shared contract
   `--acc` accent and on-states; `--mut` secondary text; `--card`, `--chip`, `--line`, `--bg`, `--fg`.
   Never a literal colour in a page.
 - The worst level wins a summary (poor before fair before good, the home's order within).
-- Attention (pills, Climate tile, advice, the home's air) counts the areas that are not Outside; an
-  Outside area is weather, coloured but never a
+- Attention (pills, What was checked, Climate tile, advice, the home's air) counts every area the home
+  has not switched out of the checks (its setting Include in checks, on by default, an outside area
+  too); the type never decides it. An area switched off is coloured on its page but never a
   problem.
 
 ## 7. Gestures
@@ -274,6 +275,7 @@ places filled.
 | setting | declared in | detected by | suggested by | in Settings | stored |
 |---|---|---|---|---|---|
 | an area's type | Inside, Outside, Not assigned (`lib/home-store.js` TYPES) | `domosenso areas` (`area` lines) | `set-up-areas` 2.1 | Areas → area → Type | the home store; inputs default `type` |
+| an area in the checks | Include in checks (on by default; `lib/areas.js` isJudged) | `domosenso areas` (`unchecked` lines, `--json` checked) | `set-up-areas` 2.1 | Areas → area → Include in checks | the home store; inputs default `checked` |
 | an area's main sensor per kind | `cards/lib/kinds.json` | `domosenso areas` (`main`, `candidates`, `--json` candidates) | `set-up-areas` 2.2, 2.3 | Areas → area → Main sensors | climate: HA's area fields; others: the home store; inputs defaults `climate`, `air` |
 | Quick actions | `cards/lib/quick-actions.json` | `domosenso areas` (`quick` lines, `--json` quick) | `set-up-areas` 2.4 | Quick actions (+ Add) | the person's user data `quick`; home default: Pocket's input `quick_actions` |
 
@@ -308,6 +310,27 @@ Then, for any feature:
    request show it (screenshots from the demo, `docs/LOCAL_DEVELOPMENT.md`)?
 8. Update this file (sections 2 and 3 for a page) and the decisions log when it brings a new pattern.
 
+### 10.2 Built-in rules
+
+Pocket follows Home Assistant's configuration and the settings of 10.1, without heuristics of its own.
+Where it still decides something itself, the rule is listed here (and in SPEC-038 §3.13) with its
+setting; a rule marked open has none yet and becomes a setting, a line of `domosenso areas` and a
+question of the skill when a home needs it. A new rule is added here in the pull request that brings
+it, or it does not go in.
+
+| rule | where | setting |
+|---|---|---|
+| every area is Inside until set otherwise | `lib/home-model.js` | Type |
+| every area is checked until switched off | `lib/home-model.js` | Include in checks |
+| an area's only candidate is its main sensor, recorded once | `lib/home-model.js` | the kind's picker |
+| without a list, Quick is each area's lights, then All off | `lib/quick.js` | Quick actions |
+| a light group stands for its members among an area's lights | `lib/home-model.js` | the inputs' `lights` |
+| a device's first sensor of a class stands for that reading | `lib/kinds.js` | open |
+| the home's air score is the lowest of the checked areas' | `lib/climate.js` | open |
+| now playing: what plays anywhere, else the first area's player | `lib/media.js` | Media's player pick (Media only) |
+| a backup is fair after 8 days, poor after 30 | `lib/system.js` | open |
+| a plant's battery is low under 15 % | `lib/plants.js` | open |
+
 ## 11. Decisions log
 
 | decision | why |
@@ -315,6 +338,7 @@ Then, for any feature:
 | Areas, not Rooms; the areas are Home Assistant's, each Inside (the default), Outside or Not assigned (hidden) | a list of rooms in a file missed every area added later; a new home sees all its rooms at once and only marks the outside and what it leaves out, never guessed |
 | A back arrow returns to the page it was opened from inside Pocket (the shell's ctx.back), else goes up | a person assigning area after area goes area → settings → back to the area, as the phone's Back does |
 | Settings → Areas holds every area's type and main sensors, each area a drill-down page; the area page has a settings button to the same page | Settings is the required place (10.1); a bottom sheet of selectors read badly on a phone; the button is this feature's UX choice: a person looking at one area changes it there |
+| An area's checks are its own setting (Include in checks, on by default); an outside area is checked like any other | Pocket does not decide that the outside is weather; a home that does not want its balcony reported switches it off (10.2: no heuristics of Pocket's own) |
 | Quick actions are a person's list with the home's default under it; Home's Quick has an "Edit" link to Settings → Quick actions | Quick is personal like the bar; the link is this feature's UX choice: the list is edited where it is missed |
 | In Settings every choice among fixed options is a drop-down row, the theme included | one pattern for every setting, readable on a phone: name and source left, value right |
 | Climate's main sensor is HA's own area field (Related sensors) | one place for what HA configures (principle 4) |

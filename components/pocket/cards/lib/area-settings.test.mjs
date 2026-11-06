@@ -153,3 +153,18 @@ test("the home store: read, merged per area, written whole; a recorded pick once
   assert.deepEqual(normalize({ areas: { x: { type: "attic" } }, picked: { x: "no" } }), { areas: { x: {} }, picked: {} });
   await assert.rejects(saveArea({}, "x", {}));
 });
+
+test("Include in checks: a switch, on by default whatever the type; a tap saves it, shown at once", async () => {
+  const ctx = ctxOf({ store: { areas: { living_room: { type: "outside" } }, picked: {} } });
+  const el = render(ctx, "living_room");
+  document.body.append(el);
+  const sw = el.querySelector(".checked-row .switch");
+  assert.equal(text(el.querySelector(".checked-row .name")), "Include in checks");
+  assert.equal(sw.getAttribute("aria-checked"), "true", "an outside area is checked too");
+  sw.click();
+  assert.equal(sw.getAttribute("aria-checked"), "false");
+  await tick();
+  assert.deepEqual(ctx.sets.at(-1), ["living_room", { checked: false }]);
+  const reader = render(ctxOf({ admin: false }), "living_room");
+  assert.ok(reader.querySelector(".checked-row .switch").disabled);
+});

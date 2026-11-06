@@ -164,7 +164,9 @@
         },
         "main_sensors": "Hauptsensoren",
         "reading_of": "Ein Sensor von {device}",
-        "back": "Zurück zu den Bereichen"
+        "back": "Zurück zu den Bereichen",
+        "checked": "In die Prüfung einbeziehen",
+        "checked_hint": "Seine Werte zählen für Alles gut, die Hinweise und die Ratschläge. Aus: sichtbar, nie eine Warnung."
       },
       "area": {
         "back": "Zurück zu den Bereichen",

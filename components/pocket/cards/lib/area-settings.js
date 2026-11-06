@@ -7,6 +7,9 @@
 // drop-down (a choice among fixed options is always a drop-down in Settings); a long value wraps under
 // the name rather than being cut.
 //   - Type: Inside (every area's default) / Outside / Not assigned (hidden from Pocket's views);
+//   - Include in checks: a switch, on for every area until the home switches it off; an area off is in
+//     no pill, no "What was checked", no advice and not in the home's air (SPEC-038 §3.2). Its type
+//     never decides this;
 //   - Main sensors: one row per kind of lib/kinds.json, in its order, of its candidates
 //     (lib/kinds.js candidatesOf: each device or sensor by its name) and None; under a device kind
 //     whose chosen device lacks a reading HA does not classify (an air score or index, §3.4), one row
@@ -76,7 +79,15 @@ export function renderAreaSettings(ctx, areaId) {
   root._aset = parts;
 
   parts.type = pickRow("type-row");
-  root.querySelector(".type").append(parts.type.row);
+  parts.checked = el("div", "row checked-row", `<span class="label"><span class="name"></span><small></small></span><button class="switch" type="button" role="switch"><i></i></button>`);
+  root.querySelector(".type").append(parts.type.row, parts.checked);
+  parts.checked.querySelector(".switch").addEventListener("click", () => {
+    const room = roomOf(parts.ctx, parts.area);
+    if (!room || parts.ctx.home?.admin !== true) return;
+    parts.shownChecked = !(parts.shownChecked ?? room.checked !== false);
+    updateAreaSettings(root, parts.ctx);
+    save(root, { checked: parts.shownChecked });
+  });
   parts.type.select.addEventListener("change", () => {
     const type = parts.type.select.value;
     if (roomOf(parts.ctx, parts.area)?.type === type) return;
@@ -122,6 +133,17 @@ export function updateAreaSettings(root, ctx) {
   if (type.select.value !== shown) type.select.value = shown;
   type.select.disabled = !admin;
   setText(type.small, room.typeSource ? ctx.t(sourceKey(room.typeSource)) : "");
+
+  // A switched value shows at once; the store's answer takes over when it arrives.
+  if (parts.shownChecked !== undefined && (room.checked !== false) === parts.shownChecked) parts.shownChecked = undefined;
+  const checked = parts.shownChecked ?? room.checked !== false;
+  const sw = parts.checked.querySelector(".switch");
+  setText(parts.checked.querySelector(".name"), ctx.t("card.pocket.areas.checked"));
+  setText(parts.checked.querySelector("small"), room.checkedSource === "default"
+    ? ctx.t("card.pocket.areas.checked_hint") : ctx.t(sourceKey(room.checkedSource)));
+  setAttr(sw, "aria-checked", String(checked));
+  setAttr(sw, "aria-label", ctx.t("card.pocket.areas.checked"));
+  sw.disabled = !admin;
 
   for (const entry of parts.kinds) drawKind(root, parts, entry, room, ctx, admin);
 }

@@ -19,7 +19,7 @@
 [#- Without home inputs (uses_home: optional) the card has no defaults: it shows HA's areas. -#]
 [%- set home = home or {} -%]
 [%- set home_rooms = home.rooms | default([]) -%]
-[%- set fields = ('type', 'lights', 'scenes', 'climate', 'air', 'media') -%]
+[%- set fields = ('type', 'checked', 'lights', 'scenes', 'climate', 'air', 'media') -%]
 [%- set readings = ('score', 'co2', 'pm2_5', 'voc', 'nox') -%]
 [#- The comfort helpers' ids per group: each room with climate, then outside. -#]
 [%- macro helper_ids(id, humid) -%]

@@ -49,9 +49,10 @@ test("typed: the areas of one type, those with a main temperature, the range and
   assert.deepEqual([none.areas.length, none.min], [0, null], "a not assigned area is in neither");
 });
 
-test("an outside area is never judged; its level still colours its own page", () => {
-  assert.equal(isJudged(rooms[3]), false);
-  assert.equal(isJudged(rooms[4]), true, "not assigned is judged when it has a range");
+test("every area is checked, an outside one too, unless the home switched it off; its type never decides", () => {
+  assert.equal(isJudged(rooms[3]), true, "outside: checked like any other");
+  assert.equal(isJudged({ ...rooms[3], checked: false }), false, "only its own setting leaves it out");
+  assert.equal(isJudged({ ...rooms[0], checked: false }), false);
   const thresholds = { rooms: { garden: { temp_low: "input_number.lo", temp_high: "input_number.hi" } } };
   const hass = { states: { "sensor.g_t": st(30), "input_number.lo": st(20), "input_number.hi": st(24) } };
   assert.deepEqual(roomLevels(hass, rooms[3], thresholds), [{ reading: "temperature", result: { level: "poor", side: "high" } }]);

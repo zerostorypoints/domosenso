@@ -274,7 +274,7 @@ class PocketApp extends HTMLElement {
     this._modelValue = homeModel(hass, this._config, this._home ?? EMPTY, { areaFields: this._fields });
     // The pages build their layout from the areas once: a change of what an area has (another
     // main sensor, a type, a new area) builds the page again, under any open sheet.
-    const shape = JSON.stringify(this._modelValue.rooms.map((r) => [r.id, r.name, r.type, r.climate, r.air, r.indicators,
+    const shape = JSON.stringify(this._modelValue.rooms.map((r) => [r.id, r.name, r.type, r.checked, r.climate, r.air, r.indicators,
       r.lights, r.scenes]));
     if (this._modelShape !== undefined && shape !== this._modelShape) this._rebuildPage = true;
     this._modelShape = shape;
@@ -322,6 +322,7 @@ class PocketApp extends HTMLElement {
       return;
     }
     if ("type" in change) await saveArea(hass, areaId, { type: change.type ?? undefined });   // null: back to the default
+    if ("checked" in change) await saveArea(hass, areaId, { checked: change.checked === true });
   }
 
   getCardSize() {

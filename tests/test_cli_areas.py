@@ -101,3 +101,13 @@ def test_json_data_gives_the_ai_each_candidates_device_and_the_quick_actions():
     assert quick["candidates"]["areas"] == [{"id": "area:bedroom"}]
     assert quick["candidates"]["scenes"] == [{"id": "scene.evening", "name": "Evening", "area": "living_room"}]
     assert [" ".join(l) for l in lines if l[0] == "quick"] == ["quick scene.evening (inputs)", "quick all_off (inputs)"]
+
+
+def test_an_area_left_out_of_the_checks_is_a_line_of_its_own():
+    home = {"rooms": [{"id": "garden", "checked": False}]}
+    data: list = []
+    lines, _ = report(REGISTRY, {"areas": {"office": {"checked": False}}}, home, None, data)
+    text = [" ".join(line) for line in lines]
+    assert "unchecked garden (inputs)" in text and "unchecked office (pocket)" in text
+    assert not any(t.startswith("unchecked bedroom") for t in text), "on by default"
+    assert next(d for d in data if d.get("area") == "bedroom")["checked"] is True

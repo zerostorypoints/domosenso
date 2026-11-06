@@ -55,7 +55,7 @@ export function adviceOf(hass, config) {
   const air = [];
   const comfort = [];
   for (const area of config.rooms) {
-    // An outside area is weather: no advice to act on.
+    // An area the home left out of the checks gives no advice.
     if (!isJudged(area)) continue;
     const poor = new Map(roomLevels(hass, area, config.thresholds)
       .filter(({ result }) => result?.level === "poor").map(({ reading, result }) => [reading, result]));

@@ -67,9 +67,14 @@ type decides:
 |---|---|---|---|
 | in Pocket's views (Areas, its area page, Home, Climate, attention, controls by area) | yes | yes | **no**: hidden |
 | in Home's **Inside** / **Outside** widgets and the Climate page's squares | Inside | Outside | neither |
-| its temperature and humidity judged against a comfort range (attention pills, Climate tile) | yes, when climate-air has a range for it | never: it is weather | no |
-| its air judged against the air limits | yes | no | no |
 | listed in Settings → Areas, its settings page reachable | yes | yes | yes, to bring it back |
+
+The type decides nothing else. Whether an area's readings are **checked** (judged against its comfort
+range and the air limits: the attention pills, "What was checked", the Climate tile, the advice, the
+home's air score) is a setting of its own, **Include in checks**, on for every area, an outside one
+too, until the home switches it off (the store's `checked: false`, the inputs' `checked: false`, the
+skill's question). Pocket never assumes that an outside area is weather and leaves it out: a home
+that does not want its balcony's cold reported says so.
 
 Not assigned is how a home leaves an area out of Pocket (a technical room, a garage). Every area is
 Inside until someone says otherwise, so a new home sees all its rooms at once; Outside is the one
@@ -274,6 +279,26 @@ few scenes for Quick), shown to the owner as one table and confirmed or changed 
 what the owner confirms is written. The code never matches names (D4); the AI may read them to suggest,
 because a person checks every suggestion.
 
+### 3.13 Built-in rules
+
+Pocket's behaviour follows Home Assistant's configuration and the settings above. Where it still has to
+decide something itself, the rule is listed here and in `components/pocket/DESIGN.md` 10.2, with its
+setting; a rule without one is open, to be made a setting (and a question of the skill) when a home
+needs it, never widened silently.
+
+| rule | where | setting |
+|---|---|---|
+| every area is Inside until set otherwise | `lib/home-model.js` | Type (§3.2) |
+| every area is checked until switched off | `lib/home-model.js` | Include in checks (§3.2) |
+| an area's only candidate is its main sensor, recorded once | `lib/home-model.js` | the kind's picker (§3.5) |
+| without a list, Quick is each area's lights, then All off | `lib/quick.js` | Quick actions (§3.11) |
+| a light group stands for its members among an area's lights | `lib/home-model.js` | the inputs' `lights` (no Pocket setting yet) |
+| a device's first sensor of a class stands for that reading | `lib/kinds.js` | open |
+| the home's air score is the lowest of the checked areas' | `lib/climate.js` | open |
+| now playing: what plays anywhere, else the first area's player | `lib/media.js` | the Media page's player pick, for Media only |
+| a backup is fair after 8 days, poor after 30 | `lib/system.js` | open |
+| a plant's battery is low under 15 % | `lib/plants.js` | open |
+
 ## 4. The three moments
 
 ### A. Onboarding (possibly with no sensor yet)
@@ -311,7 +336,9 @@ AI-led, against the running HA, reads free and writes only on a typed yes (the r
 
 1. Run `domosenso areas <target> --json`.
 2. List the areas, all Inside by default, and ask which of them are outside and which should not show
-   in Pocket at all (one question); the answers become `outside` and `none`.
+   in Pocket at all (one question); the answers become `outside` and `none`. Then ask whether any area
+   should be left out of the checks (every area, an outside one too, is checked until switched off);
+   the answer becomes `checked: false`.
 3. For every area and kind with several candidates and no choice, name the candidates by their device
    names and ask which one stands for the area.
 4. For an air device with readings HA does not classify, name its unclassified sensors and ask which

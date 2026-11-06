@@ -7,8 +7,8 @@
 //   - the title and today's date;
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
-//     reading that was checked, per area (an outside area is weather and never in it, as in the
-//     pills), problems first;
+//     reading that was checked, per area (every area but those the home left out of the checks, as
+//     in the pills), problems first;
 //   - metric chips: inside and outside (SPEC-038 §3.9: the areas of that type, lib/areas.js typed:
 //     the range of their main temperatures; "No areas assigned" when no area has the type, opening
 //     Settings → Areas; "Main sensor not set" when none of its areas has one), the home's air score

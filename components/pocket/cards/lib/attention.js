@@ -52,7 +52,7 @@ export function attention(hass, config) {
   if (!hass?.states || !Array.isArray(config?.rooms)) return [];
   const items = [];
   for (const room of config.rooms) {
-    // An outside area is weather: coloured on its page, never a problem.
+    // An area the home left out of the checks (its setting) gives no pill.
     if (!isJudged(room)) continue;
     for (const { reading, result } of roomLevels(hass, room, config.thresholds)) {
       if (!result || !(result.level in RANK)) continue;

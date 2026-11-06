@@ -79,7 +79,10 @@ export function asAreas(cfg) {
     const climate = {};
     if (outside.temperature) climate.temperature = outside.temperature;
     if (outside.humidity) climate.humidity = outside.humidity;
-    rooms.push({ id: "outside", name: "Outside", area: outside.area ?? "outside", type: "outside", climate });
+    const room = { id: "outside", name: "Outside", area: outside.area ?? "outside", type: "outside", climate };
+    // A test's way to say the home switched this area out of the checks (SPEC-038 §3.2).
+    if (outside.checked === false) room.checked = false;
+    rooms.push(room);
     if (cfg.thresholds?.outside) thresholds.rooms.outside = cfg.thresholds.outside;
   }
   return { ...rest, rooms, thresholds, asAreas: true };
