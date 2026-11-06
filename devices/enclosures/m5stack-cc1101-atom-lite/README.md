@@ -34,8 +34,8 @@ Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ear
   per jumper. It slides over the wires from the Atom's side and sits on the eight housings, and
   its two pins locate it in the module's holes. Two spring flaps cut into the lid press it down,
   so the housings stay on the spacer. The flaps take up ±1 mm of housing length without
-  adjustment. While they press, they stand 0.5–2.5 mm proud of the lid's top (1.5 mm with 14 mm
-  housings). Skirts on both sides of the clamp keep the housings upright.
+  adjustment. While they press, they stand 0.5–2.5 mm proud of the lid's top (1.5 mm with housings of the
+  clamp's nominal length, 14 mm for `clamp` and 12 mm for `clamp_12mm`). Skirts on both sides of the clamp keep the housings upright.
 - **Atom.** It stands on a pedestal between its two rows of plugs, button up, with USB-C through
   the right wall. Pads on the lid hold its corners down.
 - **Button.** It sits at the bottom of a Ø15 mm well, 3.4 mm below the lid. A deliberate press
@@ -61,11 +61,13 @@ Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ear
 | `3mf/base_wall.3mf`, `stl/base_wall.stl` | base with two wall-mount ears | open side up |
 | `3mf/lid.3mf`, `stl/lid.stl` | lid | top face down |
 | `stl/lid_inlay_parts.stl` | ring around the button well and the logo, second filament (optional) | with the lid |
-| `3mf/clamp.3mf`, `stl/clamp.stl` | jumper clamp | flat face down |
+| `3mf/clamp.3mf`, `stl/clamp.stl` | jumper clamp, for 14 mm female housings | flat face down |
+| `3mf/clamp_12mm.3mf`, `stl/clamp_12mm.stl` | the same clamp for 12 mm female housings, 2 mm thicker; fits the same base and lid | flat face down |
 | `enclosure.scad` | parametric source (OpenSCAD) | |
 | `build.py` | exports `stl/` and `preview/` | |
 
-Print one base (shelf or wall), one lid and one clamp. The `.3mf` files are Bambu Studio projects
+Print one base (shelf or wall), one lid and one clamp: `clamp` or `clamp_12mm`, as your jumpers'
+female housings measure ([Before the first print](#before-the-first-print)). The `.3mf` files are Bambu Studio projects
 for the P2S with the settings below applied; open those first. The STLs are for other slicers.
 
 ## Hardware
@@ -152,7 +154,8 @@ The parameters at the top of `enclosure.scad` show in OpenSCAD's Customizer, or 
 |---|---|---|
 | `pins_used` | `[1, 7, 8, 9, 11, 20, 22, 28]` | module M-Bus pins with a jumper; the clamp gets one slot per pin |
 | `wire_d` | 1.4 | jumper wire diameter |
-| `dupont_len`, `dupont_tol` | 14.0, 1.0 | Dupont housing length and the variation the flaps take up |
+| `dupont_len`, `dupont_tol` | 14.0, 1.0 | Dupont housing length the box is made for, and the variation the flaps take up |
+| `clamp_housing_len` | `dupont_len` | female housing length under the clamp; shorter, the clamp's bar grows down and the box stays (`clamp_12mm` is 12). Its default is an expression, so set it with `-D` or in the file; the Customizer does not list it |
 | `well_d`, `well_depth` | 15, 3.4 | button well; the depth also leaves 1.3 mm of lid over the USB opening |
 | `accent`, `accent_od`, `accent_t` | true, 21, 0.6 | ring around the well |
 | `usb_plug_w`, `usb_plug_h` | 13, 8.5 | opening for the USB-C plug body |
@@ -191,6 +194,13 @@ python3 <skill-dir>/verify-model.py enclosure.scad --build-volume 256x256x256
 python3 <skill-dir>/make-bambu-3mf.py --scad enclosure.scad -D 'part="lid"' --printer P2S --layer-height 0.2 --walls 5 --infill 15 --infill-pattern gyroid --supports off --scatter off --out 3mf/lid.3mf
 ```
 
+The clamp for 12 mm housings is the clamp part with its own value (`build.py` exports its STL
+when it runs without `-D`):
+
+```bash
+python3 <skill-dir>/make-bambu-3mf.py --scad enclosure.scad -D 'part="clamp"' -D clamp_housing_len=12 --printer P2S --layer-height 0.2 --walls 5 --infill 15 --infill-pattern gyroid --supports off --scatter off --out 3mf/clamp_12mm.3mf
+```
+
 Two design reviews by separate agents followed the skill's brief, first on Sonnet, then a final
 one on Fable (claude-fable-5-1). Neither found a blocker, and the fixes from both are in:
 - the flap preload covers short housings;
@@ -206,6 +216,13 @@ plate with no overhang past 45°, and all seven `clash_*` checks are empty: lid 
 and lid, clamp and base, each printed part against the boards, and the inlays in their recesses.
 The logo, added after the reviews, had a lightweight check only (gate and the outline comparison
 below), no new design review.
+
+`clamp_12mm` (6 November 2026): the gate with `-D clamp_housing_len=12` on the clamp, its three
+`clash_*` checks and the views passed 8 of 8, with the female housings modelled at 12 mm. Sunk
+1 mm (11 mm housings), the clamp clears the module and the screw heads (0.3 mm under the notch
+ceilings, the designed `head_clear`) and meets the lid only at the flap nubs, 0.5 mm deep: the
+designed spring contact. The default `clamp.stl` is byte-identical to the one before. A Sonnet
+design review (claude-sonnet-5-5) found no blocker; its documentation findings are in.
 
 The corner-screw fix had its own review on Sonnet (claude-sonnet-5-5). It found that the first
 version cleared the heads only at the middle of the measured range; the heads are now swept over
@@ -244,7 +261,8 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   - header sockets on the underside, 4.5 mm from the side edges;
   - socket rows 9.5 to 19.6 mm from the face opposite the USB-C;
   - the USB-C axis 2.15 mm below the top face.
-- Dupont housing 14 mm and wire 1.4 mm: common values, not measured on the jumpers used.
+- Dupont housing 14 mm and wire 1.4 mm: common values. The jumpers of the first build measured
+  12 mm (ruler, 6 November 2026), hence `clamp_12mm`; the wire was not measured.
 - Logo: the DomoSenso brand book 1.0 (5 November 2026,
   [`branding/brand-book.md`](../../../branding/brand-book.md)): on a casing only the symbol, about 20 mm, one structural width (12 of
   52 units, 4.6 mm) of clear space, no rotation or stretching. The model builds the outline from
@@ -257,6 +275,9 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
 ## Before the first print
 
+- Measure the black plastic of one female jumper end. About 14 mm: print `clamp`; about 12 mm:
+  print `clamp_12mm`. The base and the lid are the same for both. Each clamp takes 1 mm either
+  way; for another length set `clamp_housing_len` (up to `dupont_len`) and rebuild the clamp.
 - Measure a jumper's wire across its insulation. The clamp's slots are `wire_d + 0.3` wide and
   print at about the wire's diameter, with `wire_d = 1.4`. Set `wire_d` to the measured value
   and rebuild. Above 1.44 mm the ribs between neighbouring slots get too thin, and the model
@@ -269,8 +290,10 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
 - Only the clamp has been printed, twice, in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
   clean). The first, on 5 November 2026, did not seat on the module: its bosses caught on the
-  corner screws. The second, this version, seats on the module the right way round (checked on
-  6 November 2026 without the box; turned round it does not, as step 4 says). Still to check:
+  corner screws. The second seats on the module the right way round (checked on 6 November 2026
+  without the box; turned round it does not, as step 4 says). With 12 mm housings under it, it
+  rested on its bosses: nothing would have pressed the housings. `clamp_12mm` is for those; it
+  has not been printed. Still to check:
   - the clamp on its pins and housings inside the box, with the lid's flaps pressing it;
   - the module on its pads;
   - the lid closing over the left-hand screw heads, the latch click and how hard the lid pulls off;

@@ -67,18 +67,20 @@ stands upright out of the back wall.
 - Bambu Studio projects (P2S, settings applied): [base](enclosures/m5stack-cc1101-atom-lite/3mf/base.3mf),
   [base with wall ears](enclosures/m5stack-cc1101-atom-lite/3mf/base_wall.3mf),
   [lid](enclosures/m5stack-cc1101-atom-lite/3mf/lid.3mf),
-  [clamp](enclosures/m5stack-cc1101-atom-lite/3mf/clamp.3mf).
+  [clamp](enclosures/m5stack-cc1101-atom-lite/3mf/clamp.3mf), [clamp for 12 mm housings](enclosures/m5stack-cc1101-atom-lite/3mf/clamp_12mm.3mf).
 - STL for other slicers: [base](enclosures/m5stack-cc1101-atom-lite/stl/base.stl),
   [base with wall ears](enclosures/m5stack-cc1101-atom-lite/stl/base_wall.stl),
   [lid](enclosures/m5stack-cc1101-atom-lite/stl/lid.stl),
   [clamp](enclosures/m5stack-cc1101-atom-lite/stl/clamp.stl),
+  [clamp for 12 mm housings](enclosures/m5stack-cc1101-atom-lite/stl/clamp_12mm.stl),
   [ring and logo inlay](enclosures/m5stack-cc1101-atom-lite/stl/lid_inlay_parts.stl) (optional,
   second filament).
 - [Parametric source](enclosures/m5stack-cc1101-atom-lite/enclosure.scad) (OpenSCAD).
 
 The first printed clamp found four screws beside the module's corner holes that M5Stack's drawing
-does not show; the model now leaves room for them, and the second clamp seats on the module. The
-base and the lid have not been printed yet: the dimensions come from M5Stack's drawings and
+does not show; the model now leaves room for them, and the second clamp seats on the module.
+That build's jumpers have 12 mm female housings, so there is a clamp for those too (not printed
+yet); measure yours and print the clamp that matches. The base and the lid have not been printed yet: the dimensions come from M5Stack's drawings and
 product photo, and the model checks its own fits and strains.
 
 ## The antenna

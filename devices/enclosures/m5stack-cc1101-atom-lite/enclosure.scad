@@ -22,7 +22,9 @@
 //     flaps cut into the lid press it down, so the housings stay on the pins and their length
 //     tolerance (dupont_tol) needs no adjustment. The flaps rise 0.5-2.5 mm above the lid's top
 //     face while they press (echoed as flap_rise_above_lid_mm). Pins on the clamp locate it in the
-//     module's right-hand corner holes.
+//     module's right-hand corner holes. For housings shorter than dupont_len the clamp's bar grows
+//     down (clamp_housing_len) and the box stays as it is: clamp_12mm takes 12 mm housings in the
+//     box made for 14 mm, with the same flap pressure.
 //   - No screws: four latches on the lid snap into 45-degree V-grooves in the front and back
 //     walls. The lid presses on and pulls off by hand, starting at the notch in the left wall.
 //   - The latch tabs stand upright in print, so they bend across the layers, which the usual
@@ -43,7 +45,7 @@
 //   "the base", "the box"     -> base(), wall, floor_t, inner_x, inner_y, pad_h
 //   "the lid"                 -> lid_body(), lid_t, lip_h, lip_t
 //   "latches", "snaps"        -> latch_tab(), v_wedge(), latch_x, latch_len, latch_t, latch_bump
-//   "the clamp", "comb"       -> clamp_body(), pins_used, wire_d, slot_w, skirt_h
+//   "the clamp", "comb"       -> clamp_body(), pins_used, wire_d, slot_w, skirt_h, clamp_housing_len
 //   "spring flaps", "nubs"    -> flap_w, flap_t, flap_hinge_x, flap_preload, nub_d
 //   "button well"             -> well_d, well_depth, accent, accent_od, accent_t
 //   "logo", "symbol"          -> logo, logo_h, logo_depth, logo_2d(), logo_xy
@@ -60,6 +62,7 @@
 //   Other jumper pins          -> pins_used (M-Bus numbers; odd pins are the edge column)
 //   Thicker jumper wires       -> wire_d (slot = wire_d + 0.2 + hole_comp; ribs stay >= 0.6 mm, asserted)
 //   Other housing length       -> dupont_len (clamp height follows), dupont_tol (flap travel)
+//   Shorter housings, same box -> clamp_housing_len (only the clamp changes; build.py exports clamp_12mm)
 //   Firmer or softer lid       -> latch_bump (holding force), latch_t (latch_len follows at 10:1)
 //   Deeper button well         -> well_depth (lowers the Atom; room for the plug bends is asserted)
 //   Bulky USB-C plug           -> usb_plug_w, usb_plug_h
@@ -75,6 +78,8 @@
 //   README.md "Sources".
 // Final review: 2026-11-05, claude-fable-5-1 (after a Sonnet review; findings fixed)
 // Corner-screw fix: reviewed 2026-11-05, claude-sonnet-5-5; its findings fixed
+// Clamp for shorter housings (clamp_housing_len, clamp_12mm): reviewed 2026-11-06, claude-sonnet-5-5;
+//   no blocker, documentation findings fixed. The Atom's male plugs stay modelled at dupont_len.
 
 // === PRINT SETTINGS ===
 // Material: PETG (latches and spring flaps; forgiving if a first print fits tight). PLA works:
@@ -88,7 +93,7 @@
 // Notes: PETG about 240 C nozzle, 70-80 C bed, dried filament. No brim.
 
 /* [Output] */
-// Printed: base, base_wall, lid, lid_inlay_parts, clamp. Views: assembly, assembly_open, explode, section, plate_all. Checks: clash_*.
+// Printed: base, base_wall, lid, lid_inlay_parts, clamp (clamp_12mm: clamp with clamp_housing_len = 12). Views: assembly, assembly_open, explode, section, plate_all. Checks: clash_*.
 part = "assembly"; // [assembly, assembly_open, explode, section, plate_all, base, base_wall, lid, lid_inlay_parts, clamp, clash_lid_base, clash_clamp_lid, clash_clamp_base, clash_base_boards, clash_lid_boards, clash_clamp_boards, clash_inlay_lid]
 
 /* [Printer] */
@@ -111,6 +116,10 @@ wire_d = 1.4;
 dupont_len = 14.0;
 // Housing length variation the clamp's spring flaps take up
 dupont_tol = 1.0;
+// Length of the female housings under this clamp. Shorter than dupont_len, the clamp's bar grows
+// down to meet them and the box stays as it is: clamp_housing_len = 12 is clamp_12mm, for
+// 12 mm housings in the box made for 14 mm
+clamp_housing_len = dupont_len;
 
 /* [Button well] */
 // Diameter of the finger well above the Atom's button
@@ -246,6 +255,8 @@ plateau_z = mod_z0 + mod_t;
 spacer_z = mod_z0 + hdr_spacer_top;
 housing_top = spacer_z + dupont_len;
 clamp_top = housing_top + clamp_t;
+clamp_under = spacer_z + clamp_housing_len;  // the bar's underside, on the female housings
+clamp_drop = housing_top - clamp_under;      // how far the bar grows down for shorter housings
 z_lid = clamp_top + wire_clear;     // underside of the lid plate = top of the base walls
 atom_top = z_lid + lid_t - well_depth;
 atom_z0 = atom_top - atom_h;
@@ -369,7 +380,9 @@ head_near = screw_dx[0] - screw_head_d / 2;          // nearest head edge, from 
 assert(head_near - clamp_pin_in >= 0.25, "clamp pin under 0.25 mm from a screw head");
 assert(mod_hole_d / 2 - clamp_pin_out >= 0.15, "clamp pin under 0.15 mm inside its hole");
 assert(screw_dx[0] - head_notch_r >= clamp_pin_in - fudge, "head notch cuts into the clamp pin");
-assert(boss_pocket_top + 3 * layer_height <= housing_top, "clamp boss notch leaves under three layers");
+assert(boss_pocket_top + 3 * layer_height <= clamp_under, "clamp boss notch leaves under three layers");
+assert(clamp_drop >= 0, "clamp_housing_len longer than dupont_len: the box is too low for these housings");
+assert(clamp_under - skirt_h > mod_z0 + hdr_pin_top, "clamp skirts reach down to the header pins' tips");
 assert(tube_pocket_top + 3 * layer_height <= z_lid, "lid tube notch reaches the lid plate");
 assert(latch_len / latch_t >= 10 - fudge, "latch L:T below 10");
 assert(latch_strain <= strain_limit, "latch strain over the limit");
@@ -403,7 +416,8 @@ for (i = [0 : 2]) assert(outer[i] <= build_xyz[i], "part larger than the build v
 echo(outer_mm = outer, base_wall_x = outer[0] + 2 * (ear_len / 2 + 0.5 + ear_w / 2));
 echo(latch_strain_pct = latch_strain, latch_hold_N = latch_hold, flap_strain_pct = flap_strain,
      flap_force_max_N = flap_force_max, clamp_rib_mm = slot_rib,
-     flap_rise_above_lid_mm = [flap_defl_min, flap_preload, flap_defl_max]);
+     flap_rise_above_lid_mm = [flap_defl_min, flap_preload, flap_defl_max],
+     clamp_housing_mm = [clamp_housing_len - dupont_tol, clamp_housing_len + dupont_tol], clamp_bar_mm = clamp_t + clamp_drop);
 echo(clamp_pin_to_head_min_mm = head_near - clamp_pin_in, clamp_pin_in_hole_mm = mod_hole_d / 2 - clamp_pin_out,
      head_notch_from_hole_mm = [screw_dx[0] - head_notch_r, screw_dx[1] + head_notch_r],
      boss_notch_depth_mm = boss_pocket_top - plateau_z - boss_gap, tube_notch_depth_mm = tube_pocket_top - plateau_z - tube_gap);
@@ -641,10 +655,10 @@ row15_face = row_y(15) - pitch / 2;
 module clamp_body() {
   difference() {
     union() {
-      translate([clamp_x0, clamp_y0, housing_top]) cbox([clamp_x1 - clamp_x0, clamp_y1 - clamp_y0, clamp_t], 1.5, ct = ef_chamfer);
+      translate([clamp_x0, clamp_y0, clamp_under]) cbox([clamp_x1 - clamp_x0, clamp_y1 - clamp_y0, clamp_t + clamp_drop], 1.5, ct = ef_chamfer);
       for (h = right_holes) {
         intersection() {
-          translate([h[0], h[1], plateau_z + boss_gap]) cylinder(d = boss_d, h = housing_top - plateau_z - boss_gap + fudge);
+          translate([h[0], h[1], plateau_z + boss_gap]) cylinder(d = boss_d, h = clamp_under - plateau_z - boss_gap + fudge);
           // flat side towards the header
           if (h[1] > mod_y0 + mod_w / 2)
             translate([0, row1_face + tolerance, 0]) cube([200, 100, 100]);
@@ -656,7 +670,7 @@ module clamp_body() {
       }
       // skirts on both long sides keep the housings upright
       for (x = [clamp_x0, edge_face + tolerance])
-        translate([x, min(used_y) - pitch / 2 - 0.5, housing_top - skirt_h])
+        translate([x, min(used_y) - pitch / 2 - 0.5, clamp_under - skirt_h])
           cube([skirt_t, max(used_y) - min(used_y) + pitch + 1, skirt_h + fudge]);
     }
     // notches in the bosses over the right-hand screw heads, from the boss's underside up; the
@@ -666,8 +680,8 @@ module clamp_body() {
     for (p = pins_used) {
       xy = pin_xy(p);
       hull() {
-        translate([xy[0], xy[1], housing_top - skirt_h - 1]) cylinder(d = slot_w, h = skirt_h + clamp_t + 2);
-        translate([clamp_x1 + 1, xy[1] - slot_w / 2, housing_top - skirt_h - 1]) cube([1, slot_w, skirt_h + clamp_t + 2]);
+        translate([xy[0], xy[1], clamp_under - skirt_h - 1]) cylinder(d = slot_w, h = skirt_h + clamp_t + clamp_drop + 2);
+        translate([clamp_x1 + 1, xy[1] - slot_w / 2, clamp_under - skirt_h - 1]) cube([1, slot_w, skirt_h + clamp_t + clamp_drop + 2]);
       }
     }
   }
@@ -728,7 +742,7 @@ module atom_model() {
 module housings() {
   color("#111") for (p = pins_used) {
     xy = pin_xy(p);
-    translate([xy[0] - 1.25, xy[1] - 1.25, spacer_z]) cube([2.5, 2.5, dupont_len]);
+    translate([xy[0] - 1.25, xy[1] - 1.25, spacer_z]) cube([2.5, 2.5, clamp_housing_len]);
   }
 }
 
@@ -752,7 +766,7 @@ module wires() {
     zr = housing_top + clamp_t + 1.3 + (i % 3) * 0.6;
     zf = floor_t + 1.2 + l[2] * 1.5;
     wire([
-      [a[0], a[1], housing_top],
+      [a[0], a[1], clamp_under],
       [a[0], a[1], zr - 0.6],
       [a[0] + 2, a[1], zr],
       [mod_x0 + mod_w + 1.5 + i * 0.5, a[1] + (b[1] - a[1]) * 0.35, zr - 1],
