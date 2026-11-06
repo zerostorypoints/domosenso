@@ -45,11 +45,13 @@ const row = (el, kind) => el.querySelector(`[data-kind="${kind}"]`);
 test("the page: a Type row, then a row per kind; each a drop-down on the right, its source under the name", () => {
   const el = render(ctxOf(), "living_room");
   document.body.append(el);
-  assert.deepEqual([...el.querySelectorAll(".gh")].map(text), ["Type", "Main sensors"]);
+  assert.deepEqual([...el.querySelectorAll(".gh")].map(text), ["Main sensors"], "the Type row needs no heading of its own");
   const type = el.querySelector(".type-row select");
   assert.deepEqual([...type.options].map((o) => [o.value, o.textContent]),
     [["inside", "Inside"], ["outside", "Outside"], ["none", "Not assigned"]]);
   assert.equal(type.value, "none");
+  assert.ok([...el.querySelectorAll(".kinds .pick")].every((r) => r.classList.contains("stack")), "device and sensor rows: three lines");
+  assert.equal(el.querySelector(".type-row").classList.contains("stack"), false, "a short choice: one line");
   assert.deepEqual([...el.querySelectorAll(".kinds > .pick .name")].map(text),
     ["Temperature and humidity", "Air quality", "Light level", "Sound level", "Air pressure"]);
   const climate = row(el, "climate").querySelector("select");
@@ -82,6 +84,10 @@ test("a reading the device has no class for is a row under its kind, of the devi
   assert.equal(text(rows[0].querySelector("small")), "A sensor of Air monitor");
   const score = rows[0].querySelector("select");
   assert.deepEqual([...score.options].map((o) => o.value), ["", "sensor.air_score"]);
+  ctx.hass.states["sensor.air_score"].attributes.friendly_name = "Air monitor Indoor air quality score";
+  const again = render(ctx, "living_room");
+  assert.equal(again.querySelector('.pick.sub[data-reading="score"] select').options[1].textContent, "Indoor air quality score",
+    "the device's name is not repeated");
   pick(score, "sensor.air_score");
   await tick();
   assert.deepEqual(ctx.sets.at(-1), ["living_room", { kind: "air", choice: "air",
@@ -140,6 +146,8 @@ test("the home store: read, merged per area, written whole; a recorded pick once
   await markPicked(hass, "garden", "illuminance", "sensor.other");
   assert.deepEqual(value.picked, { garden: ["illuminance"] });
   assert.equal(value.areas.garden.illuminance, "sensor.lux", "the second is not recorded");
+  await saveArea(hass, "garden", { illuminance: "sensor.other" });
+  assert.deepEqual(value.picked, {}, "a person's change drops the one-time mark");
   assert.equal(KEY, "domosenso-pocket-home");
   assert.deepEqual(normalize({ areas: { x: { type: "attic" } }, picked: { x: "no" } }), { areas: { x: {} }, picked: {} });
   await assert.rejects(saveArea({}, "x", {}));

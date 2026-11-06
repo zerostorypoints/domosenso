@@ -86,6 +86,11 @@ const STYLE = `
   .settings .pick select:disabled { opacity: .6; cursor: default; }
   .settings .pick select:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
   .settings .pick.sub { padding-left: 14px; }
+  .settings .pick.stack { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 8px 0; }
+  .settings .pick.stack .name { overflow-wrap: break-word; }
+  .settings .pick.stack select { width: 100%; min-height: 40px; margin: 0; padding: 0 26px 0 0; color: var(--fg);
+    text-align: left; text-align-last: left; background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%; }
+  .settings .pick.stack small { display: block; font-size: 12.5px; color: var(--mut); }
   .settings .gh { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--mut); }
   .settings.panel .group > h3.gh { display: block; }
   .settings .area-settings .admin { margin: 0 4px 12px; }

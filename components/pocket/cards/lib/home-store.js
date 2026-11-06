@@ -9,7 +9,9 @@
 //       failed subscription gives EMPTY once and is not retried until watchHome is called again
 //   saveArea(hass, areaId, patch) -> Promise<value>   merges patch into areas.<areaId> (a field set
 //       to undefined is removed) and writes the whole value (frontend/set_system_data, admin only);
-//       rejects when the call fails, and writes nothing then
+//       a kind set this way is a person's choice from then on: its one-time mark is dropped, so it
+//       shows as set in Pocket, not found automatically; rejects when the call fails, and writes
+//       nothing then
 //   markPicked(hass, areaId, kind, choice?) -> Promise<value>   records that the one-time automatic
 //       choice of kind was made for the area (§3.5), with the choice itself for a store kind
 //   normalize(value) -> {areas: {}, picked: {}}
@@ -72,6 +74,9 @@ export async function saveArea(hass, areaId, patch) {
     else area[key] = field;
   }
   value.areas[areaId] = area;
+  const left = (value.picked[areaId] ?? []).filter((kind) => !(kind in (patch ?? {})));
+  if (left.length) value.picked[areaId] = left;
+  else delete value.picked[areaId];
   return write(hass, value);
 }
 

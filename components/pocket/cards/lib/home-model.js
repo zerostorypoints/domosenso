@@ -138,12 +138,14 @@ function deviceKindOf(hass, kind, areaId, defaults, storedArea, picked, candidat
     for (const [reading, entity] of Object.entries(overrides)) if (entity) readings[reading] = entity;
     return { source, choice: candidate.id, name: candidate.name, readings, candidates };
   };
+  // A value recorded by the one-time pick, not changed since, is still "found automatically".
+  const source = picked ? "auto" : "pocket";
   if (stored === "none") return { source: "pocket", choice: null, readings: {}, candidates };
   if (typeof stored === "string" && stored) {
     const candidate = candidates.find((c) => c.id === stored);
-    if (candidate) return fromCandidate(candidate, "pocket");
+    if (candidate) return fromCandidate(candidate, source);
     // Chosen once, no longer in the area: kept as the choice, with no readings.
-    return { source: "pocket", choice: stored, name: deviceName(hass, stored), readings: {}, candidates, missing: true };
+    return { source, choice: stored, name: deviceName(hass, stored), readings: {}, candidates, missing: true };
   }
   const given = defaults?.[kind.id];
   if (given && Object.values(given).some(Boolean)) {
@@ -163,7 +165,7 @@ function entityKindOf(hass, kind, defaults, storedArea, picked, candidates) {
   const stored = storedArea?.[kind.id];
   const one = (id, source) => ({ source, choice: id, name: entityName(hass, id), readings: { [kind.id]: id }, candidates });
   if (stored === "none") return { source: "pocket", choice: null, readings: {}, candidates };
-  if (typeof stored === "string" && stored) return one(stored, "pocket");
+  if (typeof stored === "string" && stored) return one(stored, picked ? "auto" : "pocket");
   if (typeof defaults?.[kind.id] === "string") return one(defaults[kind.id], "inputs");
   if (picked) return { source: "pocket", choice: null, readings: {}, candidates };
   if (candidates.length === 1) return { ...one(candidates[0].id, "auto"), pending: true };

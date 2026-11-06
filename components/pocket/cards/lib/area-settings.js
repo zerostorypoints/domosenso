@@ -43,10 +43,22 @@ function option(value, text) {
   return node;
 }
 
-// A setting row: the name and its source on the left, the drop-down on the right.
-export function pickRow(className = "") {
-  const row = el("label", `row pick ${className}`.trim(), `<span class="label"><span class="name"></span><small></small></span><select></select>`);
+// A setting row (DESIGN.md 4.7). A short choice (a type, the theme, the language): the name and its
+// source on the left, the drop-down on the right, one line. A choice of a device or a sensor
+// (`stack`), whose names are long: the name, the chosen one under it, the source under that, the same
+// three lines in every row, so nothing zig-zags or is cut.
+export function pickRow(className = "", { stack = false } = {}) {
+  const row = stack
+    ? el("label", `row pick stack ${className}`.trim(), `<span class="name"></span><select></select><small></small>`)
+    : el("label", `row pick ${className}`.trim(), `<span class="label"><span class="name"></span><small></small></span><select></select>`);
   return { row, name: row.querySelector(".name"), small: row.querySelector("small"), select: row.querySelector("select") };
+}
+
+// A sensor's name without its device's name in front (Home Assistant's own lists do the same):
+// "Indoor air quality score" under the device "Air monitor", not "Air monitor Indoor air quality score".
+function shortName(hass, id, deviceName) {
+  const name = entityName(hass, id);
+  return deviceName && name.startsWith(`${deviceName} `) ? name.slice(deviceName.length + 1) : name;
 }
 
 function fill(select, options, key, holder) {
@@ -58,7 +70,7 @@ function fill(select, options, key, holder) {
 export function renderAreaSettings(ctx, areaId) {
   const root = el("div", "area-settings");
   root.innerHTML = `<p class="hint admin" hidden></p>
-    <div class="group type"><h3 class="gh"></h3></div>
+    <div class="group type"></div>
     <div class="group kinds"><h3 class="gh"></h3></div>`;
   const parts = { ctx, area: areaId, kinds: [] };
   root._aset = parts;
@@ -73,7 +85,7 @@ export function renderAreaSettings(ctx, areaId) {
   });
 
   for (const kind of KINDS) {
-    const entry = { kind, main: pickRow(), readings: [], readingsKey: null };
+    const entry = { kind, main: pickRow("", { stack: true }), readings: [], readingsKey: null };
     entry.main.row.dataset.kind = kind.id;
     entry.main.select.addEventListener("change", () => {
       const main = roomOf(parts.ctx, parts.area)?.main?.[kind.id];
@@ -100,7 +112,6 @@ export function updateAreaSettings(root, ctx) {
   setText(hint, ctx.t("card.pocket.areas.admin_only"));
   if (!room) return;
 
-  setText(root.querySelector(".type .gh"), ctx.t("card.pocket.areas.type"));
   setText(root.querySelector(".kinds .gh"), ctx.t("card.pocket.areas.main_sensors"));
   const type = parts.type;
   setText(type.name, ctx.t("card.pocket.areas.type"));
@@ -144,9 +155,9 @@ function drawKind(root, parts, entry, room, ctx, admin) {
   if (key !== entry.readingsKey) {
     entry.readingsKey = key;
     entry.readings = shown.map((reading) => {
-      const pick = pickRow("sub");
+      const pick = pickRow("sub", { stack: true });
       pick.row.dataset.reading = reading.id;
-      fill(pick.select, [["", ctx.t("card.pocket.areas.none")], ...pickable.map((id) => [id, entityName(ctx.hass, id)])], key, pick);
+      fill(pick.select, [["", ctx.t("card.pocket.areas.none")], ...pickable.map((id) => [id, shortName(ctx.hass, id, main.name)])], key, pick);
       pick.select.addEventListener("change", () => {
         const current = roomOf(parts.ctx, parts.area)?.main?.[kind.id];
         const readings = { ...(current?.readings ?? {}) };

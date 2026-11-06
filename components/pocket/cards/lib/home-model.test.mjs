@@ -155,3 +155,10 @@ test("a room of the inputs with no HA area is not an area; without hass.areas th
   const fallback = homeModel({ states: {} }, { rooms: [{ id: "cellar", name: "Cellar", type: "inside" }] });
   assert.deepEqual(fallback.rooms.map((r) => [r.id, r.name, r.type]), [["cellar", "Cellar", "inside"]]);
 });
+
+test("a pick recorded automatically still says so; once a person changes it, it is theirs", () => {
+  const auto = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: { living_room: ["air"] } });
+  assert.equal(roomOf(auto, "living_room").main.air.source, "auto");
+  const theirs = homeModel(hassOf(), {}, { areas: { living_room: { air: "lr_air" } }, picked: {} });
+  assert.equal(roomOf(theirs, "living_room").main.air.source, "pocket");
+});
