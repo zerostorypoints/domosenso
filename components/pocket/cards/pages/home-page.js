@@ -30,8 +30,11 @@
 //   - now playing, for the first room with media: artwork, title, artist, play/pause in place,
 //     a tap elsewhere opens Media with that room's player (#/media/<room id>); no card while the
 //     player is missing from Home Assistant;
-//   - Quick: a <pocket-light-tile> per room with lights (the prototype has no favourites yet) and
-//     an All off tile.
+//   - Quick (SPEC-038 §3.11, lib/quick.js): the person's own Quick actions, else the home's default
+//     (Pocket's input quick_actions), else each area's lights and All off, in that order. A light or
+//     an area's lights is a <pocket-light-tile>; a switch, fan or toggle helper a tile that toggles;
+//     a scene, script or button a tile that runs it; All off turns every light off. "Edit" beside the
+//     title opens Settings → Quick actions (this feature's UX choice, DESIGN.md decisions log).
 // Every control sends through ctx.optimistic (lib/optimistic.js): All off shows every light off at
 // once (the tiles and the lights-on chip too), play/pause its new state, before Home Assistant
 // reports them. render() builds every element once; update() only patches text and attributes (the pills are
@@ -58,6 +61,7 @@ import {
   playing,
 } from "../lib/page-kit.js";
 import "../lib/light-tile.js";
+import { quickOf, itemOf, nameOf, areaNameOf } from "../lib/quick.js";
 
 const STYLE = `
   .home .top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 4px; }
@@ -138,6 +142,11 @@ const STYLE = `
   .home .all-off, .home .rc { box-sizing: border-box; min-height: 64px; margin: 0; padding: 12px; text-align: left;
                               font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
                               border-radius: 18px; cursor: pointer; }
+  .home .act.on, .home .act.done { border-color: var(--acc); }
+  .home .act.on .ic, .home .act.done .ic { color: var(--acc); }
+  .home .act .t1 { overflow-wrap: break-word; }
+  .home .quick-edit { min-height: 44px; margin: 0 0 0 auto; padding: 0 4px; border: 0; background: none; color: var(--acc);
+                      font: inherit; font-size: 13px; cursor: pointer; }
   .home .all-off .ic { width: 30px; height: 30px; border-radius: 50%; background: var(--chip); margin-bottom: 8px;
                        display: flex; align-items: center; justify-content: center; color: var(--mut);
                        --mdc-icon-size: 18px; }
@@ -153,7 +162,6 @@ const allLights = (config) => [...new Set(config.rooms.flatMap(lightsOf))];
 export function render(ctx) {
   const root = el("section", "home");
   const rooms = ctx.config.rooms;
-  const withLights = rooms.filter((room) => lightsOf(room).length > 0);
   root.innerHTML = `
     <style>${STYLE}</style>
     <div class="top"><b></b> <span class="date"></span></div>
@@ -172,7 +180,7 @@ export function render(ctx) {
       <button class="play" type="button"><ha-icon></ha-icon></button>
     </div>
     <div class="quick-sec">
-      <div class="sec"><span class="quick-title"></span></div>
+      <div class="sec"><span class="quick-title"></span><button class="quick-edit" type="button"></button></div>
       <div class="quick"></div>
     </div>
 `;
@@ -232,30 +240,12 @@ export function render(ctx) {
       expect: { [player]: { state: state.state === "playing" ? "paused" : "playing" } } });
   });
 
-  const quick = root.querySelector(".quick");
-  for (const room of withLights) {
-    const tile = document.createElement("pocket-light-tile");
-    tile.t = ctx.t;
-    tile.optimistic = ctx.optimistic;
-    tile.config = { name: room.name, entities: lightsOf(room) };
-    parts.tiles.push(tile);
-    quick.append(tile);
-  }
-  const allOff = el("button", "all-off",
-    `<span class="ic"><ha-icon icon="mdi:lightbulb-off-outline"></ha-icon></span><span class="t1"></span> <span class="t2"></span>`);
-  allOff.type = "button";
-  allOff.addEventListener("click", () => {
-    const { hass, offline, config, optimistic } = parts.ctx;
-    if (offline || !hass?.callService) return;
-    const lights = allLights(config);
-    optimistic.send(root, hass, { domain: "light", service: "turn_off", data: { entity_id: lights },
-      errorKey: "card.pocket.error.light", expect: Object.fromEntries(lights.map((id) => [id, { state: "off" }])) });
-  });
-  parts.allOff = allOff;
-  quick.append(allOff);
-  parts.quickSec.hidden = withLights.length === 0 || parts.view === "systems";
+  parts.quick = root.querySelector(".quick");
+  parts.quickKey = null;
+  root.querySelector(".quick-edit").addEventListener("click", () => parts.ctx.navigate("#/settings/quick"));
 
 
+  parts.root = root;
   root._home = parts;
   update(root, ctx);
   return root;
@@ -461,8 +451,67 @@ function updateNow(parts, ctx) {
   setAttr(now.querySelector(".open"), "aria-label", title);
 }
 
+const RUN_ICONS = { scene: "mdi:palette-outline", script: "mdi:script-text-outline", button: "mdi:gesture-tap-button" };
+const TOGGLE_ICONS = { switch: "mdi:toggle-switch-outline", fan: "mdi:fan", input_boolean: "mdi:toggle-switch-outline" };
+const DONE_MS = 1500;
+
+// One tile of Quick, built once per item.
+function quickTile(parts, id) {
+  const ctx = parts.ctx;
+  const item = itemOf(id, ctx.config, ctx.hass);
+  if (!item) return null;
+  if (item.control === "light") {
+    const tile = document.createElement("pocket-light-tile");
+    tile.t = ctx.t;
+    tile.optimistic = ctx.optimistic;
+    tile.config = { name: nameOf(id, ctx.config, ctx.hass, ctx.t), entities: item.entities };
+    parts.tiles.push(tile);
+    return tile;
+  }
+  const button = el("button", `all-off act ${item.control}`,
+    `<span class="ic"><ha-icon></ha-icon></span><span class="t1"></span> <span class="t2"></span>`);
+  button.type = "button";
+  button.dataset.id = id;
+  const icon = item.control === "all_off" ? "mdi:lightbulb-off-outline"
+    : item.control === "run" ? RUN_ICONS[item.domain] : TOGGLE_ICONS[item.domain];
+  button.querySelector("ha-icon").setAttribute("icon", icon ?? "mdi:gesture-tap");
+  button.addEventListener("click", () => {
+    const { hass, offline, config, optimistic } = parts.ctx;
+    if (offline || !hass?.callService) return;
+    if (item.control === "all_off") {
+      const lights = allLights(config);
+      optimistic.send(parts.root, hass, { domain: "light", service: "turn_off", data: { entity_id: lights },
+        errorKey: "card.pocket.error.light", expect: Object.fromEntries(lights.map((l) => [l, { state: "off" }])) });
+      return;
+    }
+    if (item.control === "toggle") {
+      const on = hass.states?.[id]?.state === "on";
+      optimistic.send(parts.root, hass, { domain: item.domain, service: "toggle", data: { entity_id: id },
+        errorKey: "card.pocket.error.action", expect: { [id]: { state: on ? "off" : "on" } } });
+      return;
+    }
+    optimistic.send(parts.root, hass, { domain: item.domain, service: item.service, data: { entity_id: id },
+      errorKey: "card.pocket.error.action", expect: { [id]: { changed: true } } });
+    button.classList.add("done");
+    clearTimeout(button._done);
+    button._done = setTimeout(() => button.classList.remove("done"), DONE_MS);
+  });
+  return button;
+}
+
 function updateQuick(parts, ctx) {
   setText(parts.quickTitle, ctx.t("card.pocket.home.quick"));
+  const edit = parts.quickSec.querySelector(".quick-edit");
+  setText(edit, ctx.t("card.pocket.quick.edit"));
+  setAttr(edit, "aria-label", ctx.t("card.pocket.quick.edit_label"));
+  const { ids } = quickOf(ctx.settings, ctx.config, ctx.hass);
+  const key = ids.join(" ");
+  if (key !== parts.quickKey) {
+    parts.quickKey = key;
+    parts.tiles = [];
+    parts.quick.replaceChildren(...ids.map((id) => quickTile(parts, id)).filter(Boolean));
+  }
+  parts.quickSec.hidden = ids.length === 0 || parts.view === "systems";
   for (const tile of parts.tiles) {
     tile.t = ctx.t;
     tile.optimistic = ctx.optimistic;
@@ -470,8 +519,21 @@ function updateQuick(parts, ctx) {
     tile.hass = ctx.hass;
   }
   const on = lightsOnIn(ctx.hass, ctx.config.rooms);
-  setText(parts.allOff.querySelector(".t1"), ctx.t("card.pocket.home.all_off"));
-  setText(parts.allOff.querySelector(".t2"),
-    on > 0 ? ctx.t("card.pocket.home.on_now", { count: on }) : ctx.t("card.pocket.home.none_on"));
-  parts.allOff.disabled = !!ctx.offline;
+  for (const button of parts.quick.querySelectorAll("button.act")) {
+    const id = button.dataset.id;
+    const t1 = button.querySelector(".t1");
+    const t2 = button.querySelector(".t2");
+    if (id === "all_off") {
+      setText(t1, ctx.t("card.pocket.home.all_off"));
+      setText(t2, on > 0 ? ctx.t("card.pocket.home.on_now", { count: on }) : ctx.t("card.pocket.home.none_on"));
+    } else {
+      setText(t1, nameOf(id, ctx.config, ctx.hass, ctx.t));
+      const state = ctx.hass?.states?.[id]?.state;
+      const toggle = button.classList.contains("toggle");
+      setText(t2, toggle ? ctx.t(state === "on" ? "card.pocket.quick.on" : "card.pocket.quick.off")
+        : areaNameOf(id, ctx.config, ctx.hass) ?? "");
+      button.classList.toggle("on", toggle && state === "on");
+    }
+    button.disabled = !!ctx.offline;
+  }
 }

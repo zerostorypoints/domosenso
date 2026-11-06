@@ -60,6 +60,7 @@ def test_lines_in_floor_order_with_sources_and_choices():
         "candidates bedroom climate 2: choose one",
         'area garden "Garden" floor - type outside (inputs)',
         "main garden climate sensor.outside_temperature (inputs)",
+        "quick all_off (default)",
     ]
     assert fails == 0
 
@@ -77,5 +78,26 @@ def test_an_input_naming_a_missing_entity_fails_a_none_is_kept_a_pick_not_redone
 
 def test_an_empty_new_home_passes():
     lines, fails = report({"areas": [{"area_id": "hall", "name": "Hall"}]}, None, None)
-    assert [" ".join(line) for line in lines] == ['area hall "Hall" floor - type inside (default)']
+    assert [" ".join(line) for line in lines] == ['area hall "Hall" floor - type inside (default)', "quick all_off (default)"]
     assert fails == 0
+
+
+def test_json_data_gives_the_ai_each_candidates_device_and_the_quick_actions():
+    registry = {**REGISTRY,
+                "devices": [*REGISTRY["devices"][:2], {"id": "b", "area_id": "bedroom", "name": "Bedside sensor",
+                                                      "manufacturer": "Acme", "model": "TH-1"}, *REGISTRY["devices"][3:]],
+                "entities": [*REGISTRY["entities"], {"entity_id": "light.bedroom", "area_id": "bedroom"},
+                             {"entity_id": "scene.evening", "area_id": "living_room"}],
+                "states": [*REGISTRY["states"], {"entity_id": "light.bedroom", "state": "off", "attributes": {}},
+                           {"entity_id": "scene.evening", "state": "x", "attributes": {"friendly_name": "Evening"}}]}
+    data: list = []
+    lines, _ = report(registry, None, None, ["scene.evening", "all_off"], data)
+    bedroom = next(d for d in data if d.get("area") == "bedroom")
+    candidates = bedroom["kinds"]["climate"]["candidates"]
+    assert {c["id"]: (c["device"], c.get("model")) for c in candidates}["b"] == ("Bedside sensor", "TH-1")
+    assert candidates[0]["readings"]["temperature"]["entity"].startswith("sensor.bedroom_")
+    quick = data[-1]["quick"]
+    assert quick["default"] == ["scene.evening", "all_off"] and quick["source"] == "inputs"
+    assert quick["candidates"]["areas"] == [{"id": "area:bedroom"}]
+    assert quick["candidates"]["scenes"] == [{"id": "scene.evening", "name": "Evening", "area": "living_room"}]
+    assert [" ".join(l) for l in lines if l[0] == "quick"] == ["quick scene.evening (inputs)", "quick all_off (inputs)"]

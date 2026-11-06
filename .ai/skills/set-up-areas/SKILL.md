@@ -1,14 +1,15 @@
 ---
 name: set-up-areas
-description: Give a home's Home Assistant areas their type (inside by default, outside, or not assigned to hide one) and their main sensors (climate, air quality, light level, sound, pressure) the way Pocket reads them (SPEC-038) - read the running home with domosenso areas, ask the owner only what Home Assistant cannot tell, write the answers as defaults into the home inputs, and check again. Use during onboarding, when adding Pocket or climate-air, when areas or sensors were added, or when Pocket shows "No areas assigned" or "Main sensor not set".
+description: Set up Pocket's home settings from the running Home Assistant (SPEC-038) - each area's type (inside by default, outside, or not assigned to hide one), its main sensors (climate, air quality, light level, sound, pressure) and Home's Quick actions. Read the home with domosenso areas --json, suggest a choice for everything with the reason, let the owner confirm or change it, write the answers as defaults into the home's inputs, and check again. Use during onboarding, when adding Pocket or climate-air, when areas or sensors were added, or when Pocket shows "No areas assigned" or "Main sensor not set".
 ---
 
 # set-up-areas
 
-Pocket takes the areas from Home Assistant and lets a home choose each area's **type** and **main
-sensor per kind** (SPEC-038). This skill is the first way to make those choices (the system is set up
-by an AI first); Pocket's **Settings → Areas** shows every one of them and lets an administrator change
-it later on the phone. Talk to the owner in their language; files in the catalog stay English.
+Pocket takes the areas from Home Assistant and lets a home choose each area's **type**, its **main
+sensor per kind** and the **Quick actions** on Home (SPEC-038). Domosenso is set up by an AI first:
+this skill **detects** what the home has, **suggests** a choice for each setting with the reason, and
+the owner confirms or changes it. Pocket's Settings is where the owner fine-tunes afterwards (Settings →
+Areas for the areas, Settings → Quick actions for their own list). Talk to the owner in their language; files in the catalog stay English.
 
 ## Rules
 
@@ -16,9 +17,10 @@ it later on the phone. Talk to the owner in their language; files in the catalog
   `snapshot`, `deploy --plan` read. Writing the home inputs is a change in the home repository (allowed);
   writing Pocket's home store or Home Assistant's area fields on the running home needs the owner's
   typed yes, each time.
-- **Nothing is guessed.** No area becomes inside or outside because of its name, floor or sensors; no
-  sensor is a candidate because of its name. Candidates come from `domosenso areas` (HA area and device
-  class only). Ask.
+- **Suggest, never decide.** Candidates come from `domosenso areas` (HA area and device class only;
+  the code never matches names). Your suggestion may use what a person would read (device names,
+  makers, models), but it is a suggestion with its reason, and nothing is written until the owner
+  confirms it. No area is suggested as outside or hidden from its name alone: ask.
 - **What HA already says stays HA's.** An area whose climate comes from `(home-assistant)` (the area's
   Related sensors) needs no question.
 - **The household stays in the home repository**: area names, device names and entity ids never go
@@ -38,22 +40,34 @@ Lines (SPEC-038 §3.8): `area <id> "<name>" floor <f> type <t> (<source>)`, `mai
 names an entity HA does not have) is fixed first: show it and ask what the input should name, or remove
 it.
 
-## 2. Ask, one question at a time
+## 2. Suggest, then ask once
 
-1. **Types.** Every area is Inside unless set otherwise (`type inside (default)`). List the areas and
-   ask, in one question: "Which of these are outside, and which should not show in Pocket at all (a
-   garage, a technical room)?". Write `outside` or `none` for those; the rest stay Inside. An Inside
-   area without sensors shows as "Main sensor not set" until it has one.
-2. **Main sensors with a choice.** For each `candidates <id> <kind> <n>`, name the candidates by their
-   device names (from `domosenso recommend --json` → `scan.devices`, or the registry) and ask which one
-   stands for the area. "Leave it unset" is an answer.
+Build one proposal from the `--json` document and show it as a short table per area, each line the
+suggestion and its reason in a few words. Then ask once: "Is this right? Tell me what to change."
+
+1. **Types.** Every area is Inside unless set otherwise (`type inside (default)`). Suggest Outside only
+   for an area that has an outside sensor in the inputs (`(inputs)`) or that the owner named; for the
+   rest ask, in the same message: "Which of these are outside, and which should not show in Pocket at
+   all (a garage, a technical room)?" (`outside`, `none`).
+2. **Main sensors.** For each area and kind (`data[].kinds.<kind>`):
+   - a choice from `(home-assistant)` or `(pocket)` stays; say what it is;
+   - one candidate: Pocket takes it (`(auto)`, recorded once); say which;
+   - several: suggest one, preferring, in this order: the one Home Assistant's area already names; a
+     device with all the kind's readings (temperature and humidity); a device that measures the room,
+     not a thing in it (a name or model saying rack, vent, fridge, oven, server, NAS, tablet, hub or a
+     battery's temperature measures equipment, not the room: say so as the reason); a dedicated air
+     monitor for air. When two are equally good, ask instead of suggesting.
+   - a kind nobody needs here (a light level in a hallway) can stay unset: suggest unset when no
+     candidate is clearly the room's.
 3. **Readings HA does not classify.** For an air device whose score, VOC or NOx index has no device
-   class (`main <id> air` lists fewer readings than the device has), name its measurement sensors without
-   a class and ask which is which.
-4. **The only candidate** (`(auto)`) needs no question; say which one Pocket will use, and that it stays
-   so when sensors are added later.
+   class (its candidate lists fewer readings than the device has), suggest the matching sensor of that
+   device by its name and ask to confirm.
+4. **Quick actions** (`data[-1].quick`): suggest a short list for Home, in this order: each lived-in
+   area's lights (`areas`), the scenes the household runs often (ask which, from `scenes`; suggest none
+   rather than all), then All off. Keep it under eight. Say that each person can change their own list
+   in Pocket's Settings → Quick actions.
 
-Skip any question the owner has already answered in Pocket (source `(pocket)`).
+Skip any setting the owner already chose in Pocket (source `(pocket)`).
 
 ## 3. Write
 
@@ -69,6 +83,12 @@ rooms:
     air: {score: sensor.z, co2: sensor.w}
 ```
 
+and the Quick actions into `domosenso/pocket.inputs.yaml`:
+
+```yaml
+quick_actions: [area:living_room, scene.evening, all_off]   # the home's default; each person may change theirs
+```
+
 Then `domosenso render`, `deploy <target> --plan`, and the deploy only after the owner's yes (the
 usual flow: `snapshot` before, `verify` after).
 
@@ -80,5 +100,5 @@ Pocket's Settings → Areas, where they can change it.
 
 ## 4. Check
 
-Run `domosenso areas production` again: it ends `ok` (no `fail`), and the `warn` lines left are the
-ones the owner chose to leave.
+Run `domosenso areas production` again: it ends `ok` (no `fail`), the `main` and `quick` lines are what
+the owner confirmed, and the `warn` and `candidates` lines left are the ones the owner chose to leave.

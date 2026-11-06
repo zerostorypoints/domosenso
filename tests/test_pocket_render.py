@@ -219,3 +219,10 @@ def test_a_room_with_several_lights_passes_them_as_a_list(tmp_path):
     home["rooms"][0]["lights"] = ["light.ceiling", "light.reading_lamp"]
     card = _card(_dashboard(tmp_path, home))
     assert card["rooms"][0]["lights"] == ["light.ceiling", "light.reading_lamp"]
+
+
+def test_quick_actions_pass_as_the_homes_default(tmp_path):
+    # SPEC-038 §3.11: the home's default Quick actions; a person's own list in Settings wins.
+    inputs = {**INPUTS, "quick_actions": ["area:living_room", "scene.all_lights_off", "all_off"]}
+    assert _card(_dashboard(tmp_path, inputs=inputs))["quick"] == ["area:living_room", "scene.all_lights_off", "all_off"]
+    assert "quick" not in _card(_dashboard(tmp_path / "none"))

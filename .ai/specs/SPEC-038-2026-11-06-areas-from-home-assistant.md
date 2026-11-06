@@ -5,7 +5,7 @@
 - Date: 2026-11-06.
 - Builds on SPEC-037 (shared home metadata), `docs/2026-11-05-shared-home-decisions.md` (D1–D7) and
   the home inputs of track A (`schemas/home-inputs.schema.json`).
-- Touches: `pocket` (its area model, its settings, its Home and Climate widgets), the home-inputs
+- Touches: `pocket` (its area model, its settings, its Home and Climate widgets, Quick actions), the home-inputs
   schema (one optional field), the skills `onboard-home` and `add-component` and a new skill
   `set-up-areas`, and the `domosenso` command (one new read-only command, `areas`). The Ramka and
   `climate-air` keep reading the home inputs as they do; they can follow later.
@@ -208,16 +208,21 @@ What a home customizes should be little, and every bit of it must also be visibl
 So everything about the home that Pocket lets a home choose is:
 
 1. **declared once**, as data (a table such as `kinds.json`), never as a page's own list;
-2. **given to the AI**: the skill that sets it up (here `set-up-areas`) reads that declaration and asks
-   for it, and `domosenso` has a read-only command that shows its current value and source (here
-   `domosenso areas`); a new setting adds its question to the skill and its line to the command;
-3. **visible in Pocket's global Settings**, with its source, and changeable there by an administrator,
+2. **detected and suggested by the AI**: a read-only `domosenso` command shows its current value, its
+   source and what Home Assistant offers for it (here `domosenso areas`, with `--json` details); the skill
+   that sets it up (here `set-up-areas`) suggests a value from that, with its reason, and writes only
+   what the owner confirms (§3.12); a new setting adds its line to the command and its suggestion to the
+   skill;
+3. **visible in Pocket's global Settings**, with its source, and changeable there (by an administrator
+   for a setting of the home, by each person for their own, such as Quick actions); Settings is for
+   fine-tuning and quick changes, the AI setup for the first values;
    through **generic controls, one per type of input**, all driven by the declaration: an enum (a type),
    a device and a sensor are each a drop-down row of their options or candidates (name and source left,
    value right; every choice among fixed options in Settings is a drop-down); what belongs to one item
    of a list is a full-screen drill-down page of that list, never a bottom sheet; a new setting of a
    known input type needs no new control;
-4. **stored in Home Assistant**: its own registry field when one exists, else Pocket's home store;
+4. **stored in Home Assistant**: its own registry field when one exists, else Pocket's home store for
+   the home, a person's frontend user data for a person (the home's default then in the inputs);
 5. **discovered from Home Assistant** when nobody chose (by area and device class, never by name), with a
    default in the home inputs only for what HA cannot know.
 
@@ -227,6 +232,47 @@ analysis of that feature, and records the decision in `components/pocket/DESIGN.
 
 A feature that adds a setting does 1 to 5 in the same pull request. `components/pocket/DESIGN.md`
 carries this rule.
+
+### 3.11 Quick actions
+
+Home's Quick section is a list of actions, in order. What an action can be is declared once in
+`cards/lib/quick-actions.json`, read by Pocket and `domosenso areas`:
+
+| item | Home's tile |
+|---|---|
+| `area:<area id>` | that area's lights, one light tile (tap toggles, drag dims) |
+| `light.*` | one light, a light tile |
+| `switch.*`, `fan.*`, `input_boolean.*` | toggles, showing On or Off |
+| `scene.*`, `script.*` (turn_on), `button.*` (press) | runs it |
+| `all_off` | every light off |
+
+The list Home shows, the first that has one:
+
+1. **the person's own** (their frontend user data, `quick`, set in Settings → Quick actions): Quick is
+   theirs, as the bottom bar and the Scenes page are; an empty list is a choice (no Quick section);
+2. **the home's default**: Pocket's input `quick_actions` (the instance layer), written by the skill
+   `set-up-areas` after the owner confirms its suggestion;
+3. **each area with lights, then All off**: what Quick showed before this spec.
+
+An item that no longer resolves (a removed entity, a hidden area) is left out. **Settings → Quick
+actions** (`#/settings/quick`) lists the person's actions with up, down and remove (44 px each), "Add an
+action" (a drill-down page, `#/settings/quick/add`, of everything not yet in the list, by group), and,
+while the list is theirs, "Use the home's default". "Edit" beside Quick's title on Home opens it: this
+feature's second way in (§3.10).
+
+`domosenso areas` prints the home's default as `quick <item> (<inputs|default>)` lines.
+
+### 3.12 Detect, suggest, confirm
+
+The AI setup does not ask open questions about things Home Assistant can show. `domosenso areas --json`
+gives, per area and kind, every candidate with its device's name, manufacturer, model and readings, and
+for Quick actions the default and every action that could be added, with names and areas. The skill
+`set-up-areas` turns that into one proposal: a suggestion for every setting with its reason (a device
+with all the kind's readings over one with some; a device named or modelled as the room's sensor over
+one that measures equipment, such as a rack, a vent or a tablet's battery; the area's own lights and a
+few scenes for Quick), shown to the owner as one table and confirmed or changed in one answer. Only
+what the owner confirms is written. The code never matches names (D4); the AI may read them to suggest,
+because a person checks every suggestion.
 
 ## 4. The three moments
 

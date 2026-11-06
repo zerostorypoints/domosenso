@@ -114,7 +114,8 @@
         "scene": "The scene did not start. Try again.",
         "cover": "The cover did not move. Try again.",
         "timer": "The timer did not follow. Try again.",
-        "safety": "The safety action did not go through."
+        "safety": "The safety action did not go through.",
+        "action": "The action did not go through. Try again."
       },
       "areas": {
         "title": "Areas",
@@ -255,6 +256,9 @@
         },
         "areas": {
           "title": "Areas"
+        },
+        "quick": {
+          "title": "Quick actions"
         }
       },
       "sheet": {
@@ -752,6 +756,38 @@
         "test": "Test",
         "confirm_test": "Tap again to sound it",
         "stop": "Stop"
+      },
+      "quick": {
+        "title": "Quick actions",
+        "edit": "Edit",
+        "edit_label": "Edit Quick actions",
+        "all_off": "All lights off",
+        "on": "On",
+        "off": "Off",
+        "summary": {
+          "person": "Your own list · {count}",
+          "inputs": "The home's default · {count}",
+          "default": "Each area's lights · {count}"
+        },
+        "hint": "What Home shows under Quick, in this order. Only for you, on every device you sign in on.",
+        "add": "Add an action",
+        "add_title": "Add an action",
+        "reset": "Use the home's default",
+        "reset_hint": "Your list is replaced by the home's.",
+        "up": "Move {name} up",
+        "down": "Move {name} down",
+        "remove": "Remove {name}",
+        "empty": "Nothing under Quick. Add an action.",
+        "area_lights": "The area's lights",
+        "none_left": "Everything is already in your list.",
+        "groups": {
+          "areas": "Areas' lights",
+          "lights": "Lights",
+          "scenes": "Scenes",
+          "scripts": "Scripts",
+          "switches": "Switches",
+          "buttons": "Buttons"
+        }
       }
     }
   }

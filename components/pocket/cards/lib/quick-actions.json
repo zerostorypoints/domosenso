@@ -1,0 +1,51 @@
+{
+  "_comment": "What a Quick action on Home can be (SPEC-038 \u00a73.11), declared once: Pocket (lib/quick.js) and `domosenso areas` read it. A domain's control: light (tap toggles, drag dims), toggle (tap toggles), run (tap calls the service). Special items: an area's lights (area:<id>) and all_off.",
+  "domains": [
+    {
+      "domain": "light",
+      "control": "light",
+      "group": "lights"
+    },
+    {
+      "domain": "switch",
+      "control": "toggle",
+      "group": "switches"
+    },
+    {
+      "domain": "fan",
+      "control": "toggle",
+      "group": "switches"
+    },
+    {
+      "domain": "input_boolean",
+      "control": "toggle",
+      "group": "switches"
+    },
+    {
+      "domain": "scene",
+      "control": "run",
+      "service": "turn_on",
+      "group": "scenes"
+    },
+    {
+      "domain": "script",
+      "control": "run",
+      "service": "turn_on",
+      "group": "scripts"
+    },
+    {
+      "domain": "button",
+      "control": "run",
+      "service": "press",
+      "group": "buttons"
+    }
+  ],
+  "groups": [
+    "areas",
+    "lights",
+    "scenes",
+    "scripts",
+    "switches",
+    "buttons"
+  ]
+}

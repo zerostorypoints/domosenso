@@ -114,7 +114,8 @@
         "scene": "Die Szene hat nicht reagiert. Bitte erneut versuchen.",
         "cover": "Die Abdeckung hat sich nicht bewegt. Bitte erneut versuchen.",
         "timer": "Der Timer hat nicht reagiert. Bitte erneut versuchen.",
-        "safety": "Die Sicherheitsaktion ist nicht durchgegangen."
+        "safety": "Die Sicherheitsaktion ist nicht durchgegangen.",
+        "action": "Die Aktion ging nicht durch. Versuch es noch einmal."
       },
       "areas": {
         "title": "Bereiche",
@@ -255,6 +256,9 @@
         },
         "areas": {
           "title": "Bereiche"
+        },
+        "quick": {
+          "title": "Schnellaktionen"
         }
       },
       "sheet": {
@@ -752,6 +756,38 @@
         "test": "Testen",
         "confirm_test": "Nochmals tippen zum Auslösen",
         "stop": "Stopp"
+      },
+      "quick": {
+        "title": "Schnellaktionen",
+        "edit": "Bearbeiten",
+        "edit_label": "Schnellaktionen bearbeiten",
+        "all_off": "Alle Lichter aus",
+        "on": "An",
+        "off": "Aus",
+        "summary": {
+          "person": "Deine Liste · {count}",
+          "inputs": "Standard des Hauses · {count}",
+          "default": "Lichter der Bereiche · {count}"
+        },
+        "hint": "Was Home unter Schnell zeigt, in dieser Reihenfolge. Nur für dich, auf jedem Gerät, auf dem du angemeldet bist.",
+        "add": "Aktion hinzufügen",
+        "add_title": "Aktion hinzufügen",
+        "reset": "Standard des Hauses verwenden",
+        "reset_hint": "Deine Liste wird durch die des Hauses ersetzt.",
+        "up": "{name} nach oben",
+        "down": "{name} nach unten",
+        "remove": "{name} entfernen",
+        "empty": "Nichts unter Schnell. Füge eine Aktion hinzu.",
+        "area_lights": "Lichter des Bereichs",
+        "none_left": "Alles ist schon in deiner Liste.",
+        "groups": {
+          "areas": "Lichter der Bereiche",
+          "lights": "Lichter",
+          "scenes": "Szenen",
+          "scripts": "Skripte",
+          "switches": "Schalter",
+          "buttons": "Tasten"
+        }
       }
     }
   }

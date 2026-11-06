@@ -266,6 +266,17 @@ A second way to the same setting somewhere else (the area page's settings button
 of this design system: the feature's developer decides it from a UX/UI analysis and records it in the
 decisions log (section 11).
 
+**The AI suggests, Settings fine-tunes.** The AI setup detects what Home Assistant has, suggests a value
+for each setting with its reason and writes what the owner confirms; Settings is where a person changes
+it later. So every setting is also in the register below, and a new one is added there with all five
+places filled.
+
+| setting | declared in | detected by | suggested by | in Settings | stored |
+|---|---|---|---|---|---|
+| an area's type | Inside, Outside, Not assigned (`lib/home-store.js` TYPES) | `domosenso areas` (`area` lines) | `set-up-areas` 2.1 | Areas → area → Type | the home store; inputs default `type` |
+| an area's main sensor per kind | `cards/lib/kinds.json` | `domosenso areas` (`main`, `candidates`, `--json` candidates) | `set-up-areas` 2.2, 2.3 | Areas → area → Main sensors | climate: HA's area fields; others: the home store; inputs defaults `climate`, `air` |
+| Quick actions | `cards/lib/quick-actions.json` | `domosenso areas` (`quick` lines, `--json` quick) | `set-up-areas` 2.4 | Quick actions (+ Add) | the person's user data `quick`; home default: Pocket's input `quick_actions` |
+
 A page is registered in **one place**, `TABS` in `lib/router.js` (or `SYSTEM`); everything else that
 lists pages is derived from it, and a contract test fails when a derived part is missing. Never keep
 a second list of pages.
@@ -304,6 +315,7 @@ Then, for any feature:
 | Areas, not Rooms; the areas are Home Assistant's, each Inside (the default), Outside or Not assigned (hidden) | a list of rooms in a file missed every area added later; a new home sees all its rooms at once and only marks the outside and what it leaves out, never guessed |
 | A back arrow returns to the page it was opened from inside Pocket (the shell's ctx.back), else goes up | a person assigning area after area goes area → settings → back to the area, as the phone's Back does |
 | Settings → Areas holds every area's type and main sensors, each area a drill-down page; the area page has a settings button to the same page | Settings is the required place (10.1); a bottom sheet of selectors read badly on a phone; the button is this feature's UX choice: a person looking at one area changes it there |
+| Quick actions are a person's list with the home's default under it; Home's Quick has an "Edit" link to Settings → Quick actions | Quick is personal like the bar; the link is this feature's UX choice: the list is edited where it is missed |
 | In Settings every choice among fixed options is a drop-down row, the theme included | one pattern for every setting, readable on a phone: name and source left, value right |
 | Climate's main sensor is HA's own area field (Related sensors) | one place for what HA configures (principle 4) |
 | The language is a person's setting, Automatic by default; names are not translated | a person picks their language without a second dashboard; area names are HA's |

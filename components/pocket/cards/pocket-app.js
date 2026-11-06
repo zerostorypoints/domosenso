@@ -513,7 +513,7 @@ class PocketApp extends HTMLElement {
   // no area is unknown yet.
   _unknownArea(route) {
     if (!this._hass) return null;
-    const id = route.page === "area" ? route.id : route.page === "settings" ? route.item : undefined;
+    const id = route.page === "area" ? route.id : route.page === "settings" && route.id === "areas" ? route.item : undefined;
     if (id === undefined) return null;
     const known = route.page === "area" ? areasOf(this._areasConfig()) : this._model().rooms;
     if (known.some((area) => area.id === id)) return null;

@@ -114,7 +114,8 @@
         "scene": "Scena nie odpowiedziała. Spróbuj ponownie.",
         "cover": "Osłona się nie poruszyła. Spróbuj ponownie.",
         "timer": "Minutnik nie zareagował. Spróbuj ponownie.",
-        "safety": "Akcja bezpieczeństwa się nie powiodła."
+        "safety": "Akcja bezpieczeństwa się nie powiodła.",
+        "action": "Akcja się nie powiodła. Spróbuj ponownie."
       },
       "areas": {
         "title": "Obszary",
@@ -255,6 +256,9 @@
         },
         "areas": {
           "title": "Obszary"
+        },
+        "quick": {
+          "title": "Szybkie akcje"
         }
       },
       "sheet": {
@@ -752,6 +756,38 @@
         "test": "Test",
         "confirm_test": "Stuknij ponownie, aby włączyć",
         "stop": "Zatrzymaj"
+      },
+      "quick": {
+        "title": "Szybkie akcje",
+        "edit": "Edytuj",
+        "edit_label": "Edytuj szybkie akcje",
+        "all_off": "Wyłącz wszystkie światła",
+        "on": "Włączone",
+        "off": "Wyłączone",
+        "summary": {
+          "person": "Twoja lista · {count}",
+          "inputs": "Domyślne dla domu · {count}",
+          "default": "Światła obszarów · {count}"
+        },
+        "hint": "To, co Strona główna pokazuje w sekcji Szybkie, w tej kolejności. Tylko dla Ciebie, na każdym urządzeniu.",
+        "add": "Dodaj akcję",
+        "add_title": "Dodaj akcję",
+        "reset": "Użyj domyślnych dla domu",
+        "reset_hint": "Twoja lista zostanie zastąpiona listą domu.",
+        "up": "Przesuń {name} w górę",
+        "down": "Przesuń {name} w dół",
+        "remove": "Usuń {name}",
+        "empty": "Brak szybkich akcji. Dodaj akcję.",
+        "area_lights": "Światła obszaru",
+        "none_left": "Wszystko jest już na Twojej liście.",
+        "groups": {
+          "areas": "Światła obszarów",
+          "lights": "Światła",
+          "scenes": "Sceny",
+          "scripts": "Skrypty",
+          "switches": "Przełączniki",
+          "buttons": "Przyciski"
+        }
       }
     }
   }

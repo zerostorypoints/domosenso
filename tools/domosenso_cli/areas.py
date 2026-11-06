@@ -7,6 +7,16 @@ home: Home Assistant's area, floor, device and entity registries, the states, an
     candidates <id> <kind> <n>: choose one
     warn inputs room <room id>: no HA area <area>
     fail inputs <entity>: no such entity
+    quick <item> (<inputs|default>)
+
+`quick` lines are the home's default Quick actions on Home (SPEC-038 §3.11): Pocket's input
+quick_actions, else each area with lights and All off; a person's own list lives in their own
+settings and is not read here.
+
+With `--json` the document's `data` has, per area, every kind's candidates with their device's name,
+manufacturer, model and readings (entity and name), the choice and its source; and `quick`: the
+default and every action that could be added, by group, with names and areas. That is what the skill
+`set-up-areas` reads to suggest a main sensor and a list of Quick actions, for the owner to confirm.
 
 A source is `pocket`, `home-assistant`, `inputs`, `auto` (the only candidate, recorded by an
 administrator's Pocket the first time it sees it) or `default` (every area is Inside until set
@@ -24,6 +34,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from domosenso_cli.build import load_inputs
 from domosenso_cli.ha_api import HA
 from domosenso_cli.home import HomeConfig
 from domosenso_cli.home_inputs import load_home_inputs
@@ -31,6 +42,7 @@ from domosenso_cli.report import Reporter
 from domosenso_cli.snapshot import pick_target
 
 KINDS_FILE = Path(__file__).resolve().parents[2] / "components" / "pocket" / "cards" / "lib" / "kinds.json"
+QUICK_FILE = KINDS_FILE.with_name("quick-actions.json")
 STORE_KEY = "domosenso-pocket-home"
 READING_KINDS = ("climate", "air")
 TYPES = ("inside", "outside", "none")
@@ -75,9 +87,17 @@ def _candidates(kind: dict, area_id: str, sensors: list[dict], states: dict) -> 
     return [g for g in groups.values() if all(r in g["readings"] for r in required)]
 
 
-def report(registry: dict, store: dict | None, home: dict | None) -> tuple[list[tuple[str, ...]], int]:
+def _name(states: dict, entities: dict, entity: str) -> str:
+    reg = entities.get(entity) or {}
+    return ((states.get(entity) or {}).get("attributes", {}).get("friendly_name") or reg.get("name")
+            or reg.get("original_name") or entity)
+
+
+def report(registry: dict, store: dict | None, home: dict | None, quick_inputs: list | None = None,
+           data: list | None = None) -> tuple[list[tuple[str, ...]], int]:
     """The lines and how many `fail` lines, from the registries ({areas, floors, devices, entities,
-    states}), the home store's value and the home inputs."""
+    states}), the home store's value, the home inputs and Pocket's input quick_actions. `data`, when
+    given, receives the structured details (per area, then one `quick` entry) for `--json`."""
     kinds = load_kinds()
     states = {s["entity_id"]: s for s in registry.get("states", [])}
     devices = {d["id"]: d for d in registry.get("devices", [])}
@@ -99,6 +119,8 @@ def report(registry: dict, store: dict | None, home: dict | None) -> tuple[list[
         if area:
             by_area.setdefault(area, []).append(reg)
 
+    entities = {e["entity_id"]: e for e in registry.get("entities", []) if e.get("entity_id")}
+    lit: list[str] = []
     defaults: dict[str, dict] = {}
     lines: list[tuple[str, ...]] = []
     fails = 0
@@ -138,6 +160,8 @@ def report(registry: dict, store: dict | None, home: dict | None) -> tuple[list[
         floor = area.get("floor_id") or "-"
         lines.append(("area", aid, json.dumps(area.get("name") or aid, ensure_ascii=False), "floor", floor, "type",
                       area_type, f"({type_source})"))
+        entry = {"area": aid, "name": area.get("name") or aid, "floor": area.get("floor_id"), "type": area_type,
+                 "type_source": type_source, "kinds": {}}
         for kind in kinds:
             candidates = _candidates(kind, aid, by_area.get(aid, []), states)
             choice, source = _resolve(kind, area, given, stored, aid in picked and kind["id"] in picked[aid], candidates)
@@ -145,7 +169,56 @@ def report(registry: dict, store: dict | None, home: dict | None) -> tuple[list[
                 lines.append(("main", aid, kind["id"], *choice, f"({source})"))
             elif source is None and len(candidates) > 1:
                 lines.append(("candidates", aid, kind["id"], f"{len(candidates)}:", "choose", "one"))
+            entry["kinds"][kind["id"]] = {"choice": list(choice), "source": source, "candidates": [
+                {"id": c["id"], **_device_facts(devices.get(c["id"])),
+                 "readings": {r: {"entity": e, "name": _name(states, entities, e)} for r, e in c["readings"].items()}}
+                for c in candidates]}
+        if data is not None:
+            data.append(entry)
+        if area_type != "none" and _has_lights(aid, given, registry, devices):
+            lit.append(aid)
+
+    # Quick actions: the home's default, and everything that could be added (for the skill).
+    table = json.loads(QUICK_FILE.read_text(encoding="utf-8"))
+    defaults_quick = list(quick_inputs or [])
+    quick_source = "inputs" if defaults_quick else "default"
+    if not defaults_quick:
+        defaults_quick = [f"area:{a}" for a in lit] + ["all_off"]
+    for item in defaults_quick:
+        lines.append(("quick", item, f"({quick_source})"))
+    if data is not None:
+        domains = {d["domain"]: d["group"] for d in table["domains"]}
+        groups: dict[str, list[dict]] = {g: [] for g in table["groups"]}
+        groups["areas"] = [{"id": f"area:{a}"} for a in lit]
+        for entity in sorted(states):
+            group = domains.get(entity.split(".")[0])
+            reg = entities.get(entity)
+            if group and (reg is None or _shown(reg)):
+                groups[group].append({"id": entity, "name": _name(states, entities, entity), "area": _area_of(reg, devices)})
+        data.append({"quick": {"default": defaults_quick, "source": quick_source,
+                               "candidates": {g: items for g, items in groups.items() if items}}})
     return lines, fails
+
+
+def _device_facts(device: dict | None) -> dict:
+    if not device:
+        return {"device": None}
+    return {"device": device.get("name_by_user") or device.get("name"), "manufacturer": device.get("manufacturer"),
+            "model": device.get("model")}
+
+
+def _area_of(reg: dict | None, devices: dict) -> str | None:
+    if not reg:
+        return None
+    return reg.get("area_id") or (devices.get(reg.get("device_id")) or {}).get("area_id")
+
+
+def _has_lights(area_id: str, given: dict, registry: dict, devices: dict) -> bool:
+    """Pocket's default Quick tile for an area: it has lights (the inputs', else a shown light in it)."""
+    if given.get("lights"):
+        return True
+    return any(r.get("entity_id", "").startswith("light.") and _shown(r) and _area_of(r, devices) == area_id
+               for r in registry.get("entities", []))
 
 
 def _resolve(kind: dict, area: dict, given: dict, stored: dict, was_picked: bool, candidates: list[dict]):
@@ -196,7 +269,9 @@ def run(args: argparse.Namespace, rep: Reporter) -> int:
     home = HomeConfig.load(args.home)
     target = pick_target(home, args.target)
     registry, store = asyncio.run(_read(target))
-    lines, fails = report(registry, store, load_home_inputs(home))
+    entry = home.components.get("pocket")
+    quick_inputs = (load_inputs(entry).get("quick_actions") if entry else None) or []
+    lines, fails = report(registry, store, load_home_inputs(home), quick_inputs, rep.data)
     for line in lines:
         rep.line(*line)
     return rep.fail(f"{fails} to resolve") if fails else rep.ok()

@@ -19,6 +19,8 @@
 //   scenes        the scenes the Scenes page shows (scene entity ids, in the order chosen), the
 //                 person's pick from every scene Home Assistant has; absent until they pick, when
 //                 the page shows the scenes the home inputs name (lib/scenes.js chosenScenes)
+//   quick         Home's Quick actions, in order (lib/quick.js: entity ids, area:<id>, all_off), the
+//                 person's own list; absent until they change it, when Home shows the home's default
 //   mediaPlayer   the media player the Media page shows (an entity id of an area's `media`), the
 //                 picker's last choice; absent until one is picked
 //
@@ -53,6 +55,8 @@ export function withDefaults(stored, bar = DEFAULTS.bar) {
   if (typeof value.mediaPlayer !== "string") delete result.mediaPlayer;
   if (Array.isArray(value.scenes) && value.scenes.every((id) => typeof id === "string")) result.scenes = [...value.scenes];
   else delete result.scenes;
+  if (Array.isArray(value.quick) && value.quick.every((id) => typeof id === "string")) result.quick = [...value.quick];
+  else delete result.quick;
   return result;
 }
 

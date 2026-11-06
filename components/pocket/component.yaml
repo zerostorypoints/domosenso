@@ -40,6 +40,10 @@ inputs:
     type: bool                  # room-meter-card on the music aliases sensor.music_level and
     default: false              # sensor.music_spl_offset). Needs the audio-sensor component added
     example: true
+  quick_actions:                # the home's default Quick actions on Home, in order (SPEC-038 §3.11): an entity
+    type: "list[string]"        # (light, switch, fan, input_boolean, scene, script, button), `area:<HA area id>`
+    default: []                 # (that area's lights) or `all_off`. Empty: each area's lights, then All off. A
+    example: [area:living_room, scene.evening, all_off]   # person's own list in Settings wins; the skill set-up-areas suggests it
   timers:                       # the timers Controls shows, when the home wants its own list (legacy or manual).
     type: "list[entity_id]"     # Empty: the timers the timers component makes for people, found by their
     default: []                 # timer_role user_countdown; a component's own (the Ramka's controls timer) has none

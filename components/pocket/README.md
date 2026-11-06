@@ -55,6 +55,11 @@ a pattern updates it.
   its main sensor once, the first time an administrator opens Pocket. The skill `set-up-areas` asks the
   rest during onboarding and writes it as defaults into the home inputs; `domosenso areas <target>` shows
   it all from the running home.
+- **Quick actions** (Home → Quick, Settings → Quick actions): a person's own list of actions, in order
+  (an area's lights, a light, a switch, fan or toggle helper, a scene, script or button, All lights off:
+  `cards/lib/quick-actions.json`), with up, down, remove and an Add page; until they change it, the
+  home's default (the input `quick_actions`, which the skill `set-up-areas` suggests), else each area's
+  lights and All off. "Edit" beside Quick's title opens the list.
 - **Language** (Settings → Appearance): Automatic (the dashboard's `lang`, else the person's Home
   Assistant language) or English, Deutsch, Polski, per person. Area names are not translated. A sheet closes by a finger dragged down anywhere on it from the top of
   its content; the page behind never pulls to refresh while it is open.

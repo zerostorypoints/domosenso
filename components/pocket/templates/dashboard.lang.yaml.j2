@@ -89,6 +89,10 @@ views:
         # plant.* itself; a home without the flag still has the page in Settings).
         plants: true
 [%- endif %]
+[%- if inputs.quick_actions | default([]) %]
+        # The home's default Quick actions (a person's own list in Settings wins).
+        quick: [[ inputs.quick_actions | list | yaml ]]
+[%- endif %]
 [%- if inputs.timers | default([]) %]
         # The home's own list of timers; without it the card finds the user timers by their role.
         timers: [[ inputs.timers | list | yaml ]]

@@ -14,6 +14,8 @@
 //     temperature sensor (or "Main sensor not set") in one line; a row drills down to that area's
 //     settings, a page of its own (#/settings/areas/<area id>, ctx.routeItem, lib/area-settings.js)
 //     whose back returns to the list;
+//   - Quick actions (#/settings/quick, SPEC-038 §3.11, lib/quick-settings.js): the person's list of
+//     Home's Quick actions, in order, with up / down / remove, and its Add page (#/settings/quick/add);
 //   - Comfort ranges: per area with comfort helpers (lib/areas.js comfortOf: the rooms, then the
 //     Outside), then the air limits; each value is a button that opens Home Assistant's more-info
 //     of its helper (the hass-more-info event), so HA's own dialog changes it;
@@ -32,6 +34,8 @@ import { LANGUAGES } from "../lib/settings.js";
 import { reportError } from "../lib/report.js";
 import { setStartHere, startTarget } from "../lib/start.js";
 import { pickRow, renderAreaSettings, updateAreaSettings } from "../lib/area-settings.js";
+import { renderQuickSettings, updateQuickSettings } from "../lib/quick-settings.js";
+import { quickOf } from "../lib/quick.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
 
 export const INVENTORY = "sensor.domosenso_components";
@@ -86,6 +90,11 @@ const STYLE = `
   .settings .pick select:disabled { opacity: .6; cursor: default; }
   .settings .pick select:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
   .settings .pick.sub { padding-left: 14px; }
+  .settings .tools { display: flex; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+  .settings .tool { min-width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 10px; background: none;
+    color: var(--mut); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; --mdc-icon-size: 20px; }
+  .settings .tool:disabled { opacity: .35; cursor: default; }
+  .settings .quick-settings .row.reset[hidden] { display: none; }
   .settings .pick.stack { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 8px 0; }
   .settings .pick.stack .name { overflow-wrap: break-word; }
   .settings .pick.stack select { width: 100%; min-height: 40px; margin: 0; padding: 0 26px 0 0; color: var(--fg);
@@ -225,6 +234,7 @@ export function render(ctx) {
     <div class="group bar"><h3></h3><p class="hint fixed"></p><div class="rows"></div><p class="hint full"></p></div>
     <div class="group menu">
       <button class="row" type="button" data-panel="areas"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+      <button class="row" type="button" data-panel="quick"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
       <button class="row" type="button" data-panel="comfort"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
       <button class="row" type="button" data-panel="about"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
     </div>
@@ -238,8 +248,8 @@ export function render(ctx) {
     </div>`;
   const $ = (sel) => root.querySelector(sel);
   const panel = SETTINGS_PANELS.includes(ctx.routeId) ? ctx.routeId : null;
-  // One area's settings: a drill-down of the Areas panel.
-  const item = panel === "areas" && ctx.routeItem ? ctx.routeItem : null;
+  // A drill-down of a panel: one area's settings, Quick actions' Add page.
+  const item = (panel === "areas" || panel === "quick") && ctx.routeItem ? ctx.routeItem : null;
   const parts = { ctx, panel, item, pending: {}, tokens: {}, switches: [], values: [], areaNames: [], readingLabels: [],
     areaLinks: [], components: null };
   root.classList.toggle("panel", !!panel);
@@ -249,7 +259,7 @@ export function render(ctx) {
   // Back to where it was opened from (an area's page, Home), else up: an area's settings to the list,
   // a panel to Settings (the shell's ctx.back).
   $(".back").addEventListener("click", () => {
-    const up = parts.item ? "#/settings/areas" : "#/settings";
+    const up = parts.item ? `#/settings/${parts.panel}` : "#/settings";
     if (parts.ctx.back) parts.ctx.back(up);
     else parts.ctx.navigate?.(up);
   });
@@ -327,9 +337,14 @@ export function render(ctx) {
   $(".comfort").hidden = panel !== "comfort" || !parts.hasComfort;
   $(".about").hidden = panel !== "about";
   $(".areas").hidden = panel !== "areas" || !!item;
-  if (item) {
+  if (panel === "areas" && item) {
     parts.areaSettings = renderAreaSettings(ctx, item);
     $(".areas").after(parts.areaSettings);
+  }
+  if (panel === "quick") {
+    parts.quickSettings = renderQuickSettings(ctx, { add: item === "add", settings: () => shown(parts),
+      save: (patch) => change(root, patch) });
+    $(".areas").after(parts.quickSettings);
   }
 
   for (const area of areasOf(ctx.config)) {
@@ -395,8 +410,9 @@ export function update(root, ctx) {
   const offline = ctx.offline === true;
   const $ = (sel) => root.querySelector(sel);
 
-  const itemRoom = parts.item ? parts.allAreas(ctx).find((r) => r.id === parts.item) : null;
+  const itemRoom = parts.panel === "areas" && parts.item ? parts.allAreas(ctx).find((r) => r.id === parts.item) : null;
   const title = itemRoom ? itemRoom.name
+    : parts.panel === "quick" && parts.item ? ctx.t("card.pocket.quick.add_title")
     : parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
   const plain = $(".top > b");
   plain.hidden = !!parts.panel;
@@ -404,8 +420,13 @@ export function update(root, ctx) {
   const back = $(".back");
   back.hidden = !parts.panel;
   setText(back.querySelector("b"), title);
-  setAttr(back, "aria-label", ctx.t(parts.item ? "card.pocket.areas.back" : "card.pocket.settings.back"));
+  setAttr(back, "aria-label", ctx.t(parts.panel === "areas" && parts.item ? "card.pocket.areas.back" : "card.pocket.settings.back"));
   if (parts.areaSettings) updateAreaSettings(parts.areaSettings, ctx);
+  if (parts.quickSettings) updateQuickSettings(parts.quickSettings, ctx);
+  const quickRow = $(".menu [data-panel=quick]");
+  const quick = quickOf(settings, ctx.config, ctx.hass);
+  setText(quickRow.querySelector(".name"), ctx.t("card.pocket.quick.title"));
+  setText(quickRow.querySelector("small"), ctx.t(`card.pocket.quick.summary.${quick.source}`, { count: quick.ids.length }));
   const comfortRow = $(".menu [data-panel=comfort]");
   setText(comfortRow.querySelector(".name"), ctx.t("card.pocket.settings.comfort.title"));
   setText(comfortRow.querySelector("small"), ctx.t("card.pocket.settings.comfort.summary",

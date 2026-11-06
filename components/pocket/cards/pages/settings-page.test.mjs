@@ -241,7 +241,7 @@ test("two levels: Settings holds Appearance, the bar and a row per panel; each p
   const top = mount(settingsCtx());
   const shownGroups = (el) => [...el.querySelectorAll(".group")].filter((g) => !g.hidden).map((g) => g.classList[1]);
   assert.deepEqual(shownGroups(top), ["appearance", "device", "bar", "menu"], "the home's values are a step away");
-  assert.deepEqual(texts(top, ".menu .row .name"), ["Areas", "Comfort ranges", "About"]);
+  assert.deepEqual(texts(top, ".menu .row .name"), ["Areas", "Quick actions", "Comfort ranges", "About"]);
   assert.equal(text(top.querySelector(".menu [data-panel=comfort] small")), "2 areas · Air limits");
   assert.match(text(top.querySelector(".menu [data-panel=about] small")), /^Pocket /);
   assert.equal(top.querySelector(".back").hidden, true);
