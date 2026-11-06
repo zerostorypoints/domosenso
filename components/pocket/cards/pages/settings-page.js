@@ -91,6 +91,8 @@ const STYLE = `
   .settings .pick.stack select { width: 100%; min-height: 40px; margin: 0; padding: 0 26px 0 0; color: var(--fg);
     text-align: left; text-align-last: left; background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%; }
   .settings .pick.stack small { display: block; font-size: 12.5px; color: var(--mut); }
+  /* A reading of the kind above it: indented, so it reads as part of that choice. */
+  .settings .pick.stack.sub { padding-left: 16px; border-top: 0; }
   .settings .gh { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--mut); }
   .settings.panel .group > h3.gh { display: block; }
   .settings .area-settings .admin { margin: 0 4px 12px; }
