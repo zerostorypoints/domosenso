@@ -82,8 +82,8 @@ does not show; the model now leaves room for them, and the second clamp seats on
 That build's jumpers have 12 mm female housings, so there is a clamp for those too (not printed
 yet); measure yours and print the clamp that matches. The first base did not take the module:
 the two screws of the antenna jack's flange, also missing from the drawing, stood on the back
-wall. The antenna slot is now wide enough for their heads; a base printed earlier can be cut to
-the same slot (the enclosure's README gives the dimensions). The widened base and the lid have
+wall. A groove inside the back wall now takes their heads; a base printed earlier can be given
+the same groove (the enclosure's README gives the dimensions). The new base and the lid have
 not been printed yet: the dimensions come from M5Stack's drawings, its product photo and
 measurements on the module, and the model checks its own fits and strains.
 
