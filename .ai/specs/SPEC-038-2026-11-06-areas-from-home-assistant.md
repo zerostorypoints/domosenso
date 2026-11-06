@@ -60,16 +60,22 @@ The home inputs' `rooms` stop being the list. A room entry is now **the defaults
 
 ### 3.2 An area's type: Inside, Outside or Not assigned
 
-Every area has a type: **Inside**, **Outside** or **Not assigned** (the default). The type decides:
+Every area has a type: **Inside** (the default for every area), **Outside** or **Not assigned**. The
+type decides:
 
 | | Inside | Outside | Not assigned |
 |---|---|---|---|
+| in Pocket's views (Areas, its area page, Home, Climate, attention, controls by area) | yes | yes | **no**: hidden |
 | in Home's **Inside** / **Outside** widgets and the Climate page's squares | Inside | Outside | neither |
-| its temperature and humidity judged against a comfort range (attention pills, Climate tile) | yes, when climate-air has a range for it | never: it is weather | yes, when climate-air has a range for it |
-| its air judged against the air limits | yes | no | yes |
-| shown in Areas, its area page, Climate's list | yes | yes | yes |
+| its temperature and humidity judged against a comfort range (attention pills, Climate tile) | yes, when climate-air has a range for it | never: it is weather | no |
+| its air judged against the air limits | yes | no | no |
+| listed in Settings → Areas, its settings page reachable | yes | yes | yes, to bring it back |
 
-Nothing is inferred: no area becomes Inside or Outside because of its name, floor or sensors.
+Not assigned is how a home leaves an area out of Pocket (a technical room, a garage). Every area is
+Inside until someone says otherwise, so a new home sees all its rooms at once; Outside is the one
+choice a home has to make. Nothing is inferred: no area becomes Outside or Not assigned because of its
+name, floor or sensors. The store keeps `none` for Not assigned; no type stored is Inside, the default
+(source `default`).
 
 ### 3.3 Main sensors, per kind
 
@@ -165,7 +171,6 @@ area living_room "Living room" floor ground type inside (pocket)
 main living_room climate sensor.living_room_temperature sensor.living_room_humidity (home-assistant)
 main living_room air <device "Air monitor"> (inputs)
 candidates bedroom climate 2: choose one
-warn office type not assigned
 warn inputs room cellar: no HA area cellar
 fail inputs sensor.attic_temperature: no such entity
 ```
@@ -246,8 +251,9 @@ carries this rule.
 
 ### C. Adding something later
 
-- **A new area** in HA: it appears in Pocket's list as Not assigned; its only sensor, if it has one,
-  becomes its main one when an administrator opens Pocket.
+- **A new area** in HA: it appears in Pocket as Inside; its only sensor, if it has one, becomes its
+  main one when an administrator opens Pocket. If it is outside or should not show, an administrator
+  says so in Settings → Areas.
 - **A new sensor** in an area that has a main one: nothing changes; it is offered in the picker.
 - **A new sensor** in an area with none: it becomes the main one (the only candidate).
 - No render, deploy or restart for any of these.
@@ -258,8 +264,8 @@ AI-led, against the running HA, reads free and writes only on a typed yes (the r
 `onboard-home`):
 
 1. Run `domosenso areas <target> --json`.
-2. For every area without a type, ask "Is <area> inside, outside, or neither?" (one question, the
-   areas listed; "neither" stays Not assigned).
+2. List the areas, all Inside by default, and ask which of them are outside and which should not show
+   in Pocket at all (one question); the answers become `outside` and `none`.
 3. For every area and kind with several candidates and no choice, name the candidates by their device
    names and ask which one stands for the area.
 4. For an air device with readings HA does not classify, name its unclassified sensors and ask which
@@ -277,7 +283,7 @@ Areas (§3.10).
 
 | who | what changes |
 |---|---|
-| a home whose inputs name rooms | the same sensors show (they are the defaults); areas the inputs did not list appear too, Not assigned; Pocket's names become the HA areas' names |
+| a home whose inputs name rooms | the same sensors show (they are the defaults); areas the inputs did not list appear too, as Inside; Pocket's names become the HA areas' names |
 | the inputs' `outside:` | its area defaults to Outside; Pocket no longer builds an "Outside" of its own |
 | room ids that differ from their HA area (`room id: lukasz_office, area: office`) | Pocket's links use the HA area id; an old `#/area/<room id>` goes to Areas |
 | climate-air, the Ramka | unchanged |
@@ -309,4 +315,5 @@ Areas (§3.10).
 1. Should the one-time automatic choice write HA's own area fields (as here) or only Pocket's store?
 2. Is `frontend/system_data` the store we want, or a component-owned storage file behind a small
    integration?
-3. Should Not assigned areas be judged against a comfort range when climate-air has one?
+3. Should the default type be configurable per home (Not assigned instead of Inside for homes with
+   many technical areas)?

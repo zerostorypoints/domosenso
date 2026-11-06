@@ -129,7 +129,7 @@
         "air": "Air {value}",
         "attention": "Needs attention",
         "summary": "{count} areas · {unassigned} not assigned",
-        "hint": "From Home Assistant. Give each area its type and main sensors; a new area shows here as Not assigned.",
+        "hint": "From Home Assistant. A new area is Inside until you change it; Not assigned hides an area from Pocket, it stays here.",
         "settings": "Area settings",
         "type": "Type",
         "none": "None",
@@ -153,7 +153,8 @@
           "home_assistant": "Set in Home Assistant (the area's Related sensors)",
           "inputs": "From the home's setup",
           "auto": "Found automatically: the only one here",
-          "none": "Not set"
+          "none": "Not set",
+          "default": "Default: every area is Inside until set otherwise"
         },
         "types": {
           "inside": "Inside",

@@ -44,8 +44,9 @@ a pattern updates it.
   Plants with every plant) lists them, each row opening its trend; one sensor (Air) opens its trend,
   the sensor's other measurements a pick away. Inside and Outside show the range of their areas' main
   temperatures; "No areas assigned" (opening Settings → Areas) or "Main sensor not set" otherwise.
-- **The areas** are Home Assistant's, by their HA names, in floor order; a new area appears as Not
-  assigned. **Settings → Areas** lists every area with its type (Inside, Outside, Not assigned) and its
+- **The areas** are Home Assistant's, by their HA names, in floor order; a new area appears as
+  Inside. **Settings → Areas** lists every area with its type (Inside, the default; Outside; Not
+  assigned, which hides it from Pocket's views, not from this list) and its
   main sensors (climate, air quality, light level, sound, pressure: `cards/lib/kinds.json`); a row, or
   the settings button on an area page, opens that area's settings page (`#/settings/areas/<id>`),
   where each setting is a row with a drop-down. An administrator changes them

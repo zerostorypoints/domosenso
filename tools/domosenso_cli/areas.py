@@ -2,15 +2,15 @@
 home: Home Assistant's area, floor, device and entity registries, the states, and Pocket's home store
 (frontend system data `domosenso-pocket-home`). Reads only. One line per finding:
 
-    area <id> "<name>" floor <floor|-> type <inside|outside|-> (<source>)
+    area <id> "<name>" floor <floor|-> type <inside|outside|none> (<source>)
     main <id> <kind> <entity> [<entity> ...] (<source>)
     candidates <id> <kind> <n>: choose one
-    warn <id> type not assigned
     warn inputs room <room id>: no HA area <area>
     fail inputs <entity>: no such entity
 
-A source is `pocket`, `home-assistant`, `inputs` or `auto` (the only candidate, recorded by an
-administrator's Pocket the first time it sees it). It ends `ok`, or `FAIL <n> to resolve` when an input
+A source is `pocket`, `home-assistant`, `inputs`, `auto` (the only candidate, recorded by an
+administrator's Pocket the first time it sees it) or `default` (every area is Inside until set
+otherwise; `none`, Not assigned, hides it from Pocket's views). It ends `ok`, or `FAIL <n> to resolve` when an input
 names an entity Home Assistant does not have. `warn` lines never fail it: an empty new home passes.
 
 The kinds come from Pocket's own declaration (components/pocket/cards/lib/kinds.json), so this
@@ -33,6 +33,7 @@ from domosenso_cli.snapshot import pick_target
 KINDS_FILE = Path(__file__).resolve().parents[2] / "components" / "pocket" / "cards" / "lib" / "kinds.json"
 STORE_KEY = "domosenso-pocket-home"
 READING_KINDS = ("climate", "air")
+TYPES = ("inside", "outside", "none")
 
 
 def load_kinds() -> list[dict]:
@@ -128,15 +129,15 @@ def report(registry: dict, store: dict | None, home: dict | None) -> tuple[list[
         aid = area["area_id"]
         given = defaults.get(aid, {})
         stored = stored_areas.get(aid) or {}
-        if stored.get("type") in ("inside", "outside"):
+        if stored.get("type") in TYPES:
             area_type, type_source = stored["type"], "pocket"
-        elif given.get("type") in ("inside", "outside"):
+        elif given.get("type") in TYPES:
             area_type, type_source = given["type"], "inputs"
         else:
-            area_type, type_source = None, None
+            area_type, type_source = "inside", "default"
         floor = area.get("floor_id") or "-"
         lines.append(("area", aid, json.dumps(area.get("name") or aid, ensure_ascii=False), "floor", floor, "type",
-                      area_type or "-", f"({type_source or '-'})"))
+                      area_type, f"({type_source})"))
         for kind in kinds:
             candidates = _candidates(kind, aid, by_area.get(aid, []), states)
             choice, source = _resolve(kind, area, given, stored, aid in picked and kind["id"] in picked[aid], candidates)
@@ -144,8 +145,6 @@ def report(registry: dict, store: dict | None, home: dict | None) -> tuple[list[
                 lines.append(("main", aid, kind["id"], *choice, f"({source})"))
             elif source is None and len(candidates) > 1:
                 lines.append(("candidates", aid, kind["id"], f"{len(candidates)}:", "choose", "one"))
-        if area_type is None:
-            lines.append(("warn", aid, "type", "not", "assigned"))
     return lines, fails
 
 

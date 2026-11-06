@@ -48,7 +48,11 @@ Principles, in order when they conflict:
   - **Every page opened from Systems** has a back arrow to Systems beside ☰, on the bar or not; it
     goes back through history, so the phone's own back agrees. A page off the bar has it however
     it was reached. A page opened from its bar tab has none (the bar is the way).
-  - An area, a panel, a floor plan opened from an area have their own back in the title row.
+  - An area, a panel, a floor plan opened from an area have their own back in the title row. It
+    returns to the page it was opened from inside Pocket, through history (an area's settings opened
+    from the area go back to the area, not to Settings); a page reached from a link or a reload goes
+    up instead (an area's settings to Settings → Areas, a panel to Settings, an area to Areas). The
+    shell's `ctx.back(up)` does both.
   - The phone's Back closes the open sheet first.
   - A switch between Home's two views replaces the history entry (Back leaves Home).
 - **Home Assistant's menu** opens only from the ☰ button left of every page title (and HA's own in
@@ -174,7 +178,8 @@ when the row has a level. A row that opens something is a `button`.
 ## 5. Data: where things come from
 
 - **The areas are Home Assistant's** (SPEC-038, `lib/home-model.js`): every HA area by its HA name (not
-  translated), in floor order. Each has a **type** (Inside, Outside, Not assigned) and a **main sensor
+  translated), in floor order. Each has a **type** (Inside by default; Outside; Not assigned, which hides it from every view but
+  Settings → Areas) and a **main sensor
   per kind** (`lib/kinds.json`: climate, air, light level, sound, pressure), resolved in this order: set
   in Pocket (the home store; climate in HA's own area fields), HA's area setting, the home inputs'
   defaults, the only candidate (recorded once by an administrator's Pocket, never redone).
@@ -296,7 +301,8 @@ Then, for any feature:
 
 | decision | why |
 |---|---|
-| Areas, not Rooms; the areas are Home Assistant's, each Inside, Outside or Not assigned | a list of rooms in a file missed every area added later; whether an area is inside is the home's choice, made once, never guessed |
+| Areas, not Rooms; the areas are Home Assistant's, each Inside (the default), Outside or Not assigned (hidden) | a list of rooms in a file missed every area added later; a new home sees all its rooms at once and only marks the outside and what it leaves out, never guessed |
+| A back arrow returns to the page it was opened from inside Pocket (the shell's ctx.back), else goes up | a person assigning area after area goes area → settings → back to the area, as the phone's Back does |
 | Settings → Areas holds every area's type and main sensors, each area a drill-down page; the area page has a settings button to the same page | Settings is the required place (10.1); a bottom sheet of selectors read badly on a phone; the button is this feature's UX choice: a person looking at one area changes it there |
 | In Settings every choice among fixed options is a drop-down row, the theme included | one pattern for every setting, readable on a phone: name and source left, value right |
 | Climate's main sensor is HA's own area field (Related sensors) | one place for what HA configures (principle 4) |

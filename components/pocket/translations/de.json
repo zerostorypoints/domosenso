@@ -129,7 +129,7 @@
         "air": "Luft {value}",
         "attention": "Braucht Aufmerksamkeit",
         "summary": "{count} Bereiche · {unassigned} ohne Typ",
-        "hint": "Aus Home Assistant. Gib jedem Bereich seinen Typ und seine Hauptsensoren; ein neuer Bereich erscheint hier als nicht zugeordnet.",
+        "hint": "Aus Home Assistant. Ein neuer Bereich ist innen, bis du es änderst; nicht zugeordnet blendet einen Bereich in Pocket aus, hier bleibt er.",
         "settings": "Bereichseinstellungen",
         "type": "Typ",
         "none": "Keiner",
@@ -153,7 +153,8 @@
           "home_assistant": "In Home Assistant gewählt (zugehörige Sensoren des Bereichs)",
           "inputs": "Aus der Einrichtung des Hauses",
           "auto": "Automatisch: der einzige hier",
-          "none": "Nicht gewählt"
+          "none": "Nicht gewählt",
+          "default": "Standard: jeder Bereich ist innen, bis du es änderst"
         },
         "types": {
           "inside": "Innen",

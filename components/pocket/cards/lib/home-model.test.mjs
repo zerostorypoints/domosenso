@@ -63,7 +63,9 @@ test("the areas are Home Assistant's, by floor level then HA's order, areas on n
   assert.deepEqual(orderedAreas(hassOf()).map((a) => a.area_id), ["living_room", "hall", "bedroom", "garden"]);
   const model = homeModel(hassOf(), {});
   assert.deepEqual(model.rooms.map((r) => [r.id, r.name, r.type]),
-    [["living_room", "Living room", null], ["hall", "Hall", null], ["bedroom", "Bedroom", null], ["garden", "Garden", null]]);
+    [["living_room", "Living room", "inside"], ["hall", "Hall", "inside"], ["bedroom", "Bedroom", "inside"], ["garden", "Garden", "inside"]],
+    "every area is Inside by default");
+  assert.equal(model.rooms[0].typeSource, "default");
 });
 
 test("candidates by area and device class only: diagnostic, hidden and unclassified sensors are not", () => {

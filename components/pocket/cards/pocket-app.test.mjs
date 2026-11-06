@@ -384,7 +384,7 @@ test("the areas are Home Assistant's, in floor order; the inputs' outside gives 
   card.hass = haHome();
   const rooms = card._ctx().config.rooms;
   assert.deepEqual(rooms.map((r) => [r.id, r.name, r.type]),
-    [["living_room", "Living Room", null], ["bedroom", "Bedroom", null], ["study", "Study", null], ["garden", "Garden", "outside"]]);
+    [["living_room", "Living Room", "inside"], ["bedroom", "Bedroom", "inside"], ["study", "Study", "inside"], ["garden", "Garden", "outside"]]);
   assert.deepEqual(rooms.find((r) => r.id === "garden").climate, { temperature: "sensor.outside_temperature" });
   assert.equal(card._ctx().config.outside, undefined, "no Outside of the card's own");
   await goTo("#/area/garden");
@@ -956,4 +956,37 @@ test("contract: every page Systems opens has the way back from Systems, none fro
   }
   app.remove();
   window.history.replaceState(null, "", "#/");
+});
+
+test("a Not assigned area is not in Pocket's views; Settings → Areas still has it", async () => {
+  const hass = haHome({ connection: { subscribeMessage: (callback) => {
+    callback({ value: { areas: { study: { type: "none" } }, picked: {} } });
+    return Promise.resolve(() => {});
+  } } });
+  const card = mount({ hass });
+  await tick();
+  assert.deepEqual(card._ctx().config.rooms.map((r) => r.id), ["living_room", "bedroom", "garden"]);
+  assert.ok(card._ctx().home.model.rooms.some((r) => r.id === "study" && r.type === "none"));
+  await goTo("#/area/study");
+  assert.equal(window.location.hash, "#/areas", "its page is not shown");
+  await goTo("#/settings/areas/study");
+  assert.equal(window.location.hash, "#/settings/areas/study", "its settings are, to bring it back");
+});
+
+test("a back arrow returns where its page was opened from; opened directly, it goes up", async () => {
+  const card = mount({ hass: haHome() });
+  await goTo("#/area/bedroom");
+  card._ctx().navigate("#/settings/areas/bedroom");
+  await tick();
+  assert.equal(window.location.hash, "#/settings/areas/bedroom");
+  card._ctx().back("#/settings/areas");
+  await tick(); await tick();
+  assert.equal(window.location.hash, "#/area/bedroom", "back to the area, not to Settings");
+  document.body.innerHTML = "";
+  const direct = mount({ hass: haHome() });
+  await goTo("#/settings/areas/study");
+  direct._trail.length = 0;   // as after a reload: no step inside Pocket
+  direct._ctx().back("#/settings/areas");
+  await tick();
+  assert.equal(window.location.hash, "#/settings/areas");
 });

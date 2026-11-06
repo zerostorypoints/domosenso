@@ -1,6 +1,6 @@
 ---
 name: set-up-areas
-description: Give a home's Home Assistant areas their type (inside, outside or not assigned) and their main sensors (climate, air quality, light level, sound, pressure) the way Pocket reads them (SPEC-038) - read the running home with domosenso areas, ask the owner only what Home Assistant cannot tell, write the answers as defaults into the home inputs, and check again. Use during onboarding, when adding Pocket or climate-air, when areas or sensors were added, or when Pocket shows "No areas assigned" or "Main sensor not set".
+description: Give a home's Home Assistant areas their type (inside by default, outside, or not assigned to hide one) and their main sensors (climate, air quality, light level, sound, pressure) the way Pocket reads them (SPEC-038) - read the running home with domosenso areas, ask the owner only what Home Assistant cannot tell, write the answers as defaults into the home inputs, and check again. Use during onboarding, when adding Pocket or climate-air, when areas or sensors were added, or when Pocket shows "No areas assigned" or "Main sensor not set".
 ---
 
 # set-up-areas
@@ -40,10 +40,10 @@ it.
 
 ## 2. Ask, one question at a time
 
-1. **Types.** For the areas with `warn <id> type not assigned`, one question listing them: "Which of
-   these areas are inside, which outside, and which neither (a garage, a technical room)?". Neither
-   stays not assigned. An area without sensors still gets its type: it shows as "Main sensor not set"
-   until it has one.
+1. **Types.** Every area is Inside unless set otherwise (`type inside (default)`). List the areas and
+   ask, in one question: "Which of these are outside, and which should not show in Pocket at all (a
+   garage, a technical room)?". Write `outside` or `none` for those; the rest stay Inside. An Inside
+   area without sensors shows as "Main sensor not set" until it has one.
 2. **Main sensors with a choice.** For each `candidates <id> <kind> <n>`, name the candidates by their
    device names (from `domosenso recommend --json` → `scan.devices`, or the registry) and ask which one
    stands for the area. "Leave it unset" is an answer.
@@ -64,7 +64,7 @@ one room entry per area that has an answer:
 rooms:
   - id: living_room          # the HA area id (or `area:` when the id differs)
     name: Living room        # the Ramka's name; Pocket uses the HA area's
-    type: inside             # inside | outside
+    type: outside            # inside (the default) | outside | none (hidden from Pocket)
     climate: {temperature: sensor.x, humidity: sensor.y}
     air: {score: sensor.z, co2: sensor.w}
 ```

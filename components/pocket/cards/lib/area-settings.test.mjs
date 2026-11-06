@@ -49,7 +49,8 @@ test("the page: a Type row, then a row per kind; each a drop-down on the right, 
   const type = el.querySelector(".type-row select");
   assert.deepEqual([...type.options].map((o) => [o.value, o.textContent]),
     [["inside", "Inside"], ["outside", "Outside"], ["none", "Not assigned"]]);
-  assert.equal(type.value, "none");
+  assert.equal(type.value, "inside", "Inside by default");
+  assert.equal(text(el.querySelector(".type-row small")), "Default: every area is Inside until set otherwise");
   assert.ok([...el.querySelectorAll(".kinds .pick")].every((r) => r.classList.contains("stack")), "device and sensor rows: three lines");
   assert.equal(el.querySelector(".type-row").classList.contains("stack"), false, "a short choice: one line");
   assert.deepEqual([...el.querySelectorAll(".kinds > .pick .name")].map(text),
@@ -67,11 +68,11 @@ test("a pick and a type are saved through ctx.home.set, the readings of the chos
   const el = render(ctx, "living_room");
   document.body.append(el);
   pick(row(el, "climate").querySelector("select"), "b");
-  pick(el.querySelector(".type-row select"), "inside");
-  assert.equal(el.querySelector(".type-row select").value, "inside", "shown at once");
+  pick(el.querySelector(".type-row select"), "none");
+  assert.equal(el.querySelector(".type-row select").value, "none", "shown at once");
   await tick();
   assert.deepEqual(ctx.sets, [["living_room", { kind: "climate", choice: "b", readings: { temperature: "sensor.b_t" } }],
-    ["living_room", { type: "inside" }]]);
+    ["living_room", { type: "none" }]]);
 });
 
 test("a reading the device has no class for is a row under its kind, of the device's unclassified sensors", async () => {
@@ -110,8 +111,8 @@ test("a source shows where a choice came from; the page follows the model on upd
   assert.equal(el.querySelector(".type-row select").value, "outside");
   assert.equal(row(el, "climate").querySelector("select").value, "");
   update(el, ctxOf());
-  assert.equal(text(el.querySelector(".type-row small")), "");
-  assert.equal(el.querySelector(".type-row select").value, "none");
+  assert.equal(text(el.querySelector(".type-row small")), "Default: every area is Inside until set otherwise");
+  assert.equal(el.querySelector(".type-row select").value, "inside");
 });
 
 test("the areas of a type: each with its reading, then those without a main sensor; none, a way to Settings", () => {

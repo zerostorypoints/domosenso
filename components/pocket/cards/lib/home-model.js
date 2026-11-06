@@ -7,7 +7,7 @@
 //
 //   homeModel(hass, config, store, extra?) -> {rooms, thresholds, pending}
 //     rooms: [room] in floor order (floor level, then Home Assistant's order; areas on no floor last):
-//       {id, area, name, floor, icon, type: "inside"|"outside"|null, typeSource,
+//       {id, area, name, floor, icon, type: "inside"|"outside"|"none", typeSource,
 //        climate?: {temperature, humidity?}, air?: {score?, co2?, pm2_5?, voc?, nox?},
 //        indicators: {<entity kind>: entity id},
 //        main: {<kind>: {source, choice, name, readings, candidates}},
@@ -27,9 +27,9 @@
 // pages find the rest by area themselves (lib/media.js, lib/controls.js).
 
 import { KINDS, candidatesOf, deviceName, entityName } from "./kinds.js";
-import { EMPTY } from "./home-store.js";
+import { EMPTY, TYPES } from "./home-store.js";
 
-export const SOURCES = Object.freeze(["pocket", "home-assistant", "inputs", "auto"]);
+export const SOURCES = Object.freeze(["pocket", "home-assistant", "inputs", "auto", "default"]);
 
 const shown = (reg) => reg && !reg.hidden && !reg.hidden_by && !reg.disabled_by && !reg.entity_category;
 
@@ -189,9 +189,11 @@ export function homeModel(hass, config, store = EMPTY, extra = {}) {
     const picked = new Set(store?.picked?.[id] ?? []);
     const room = { id, area: id, name: haArea.name || given?.name || id, floor: haArea.floor_id ?? null,
       icon: haArea.icon ?? null, indicators: {}, main: {} };
+    // Every area is Inside until someone says otherwise; Not assigned ("none") hides it from Pocket's
+    // views (SPEC-038 §3.2), Settings → Areas still lists it.
     if (storedArea.type) { room.type = storedArea.type; room.typeSource = "pocket"; }
-    else if (given?.type === "inside" || given?.type === "outside") { room.type = given.type; room.typeSource = "inputs"; }
-    else { room.type = null; room.typeSource = null; }
+    else if (TYPES.includes(given?.type)) { room.type = given.type; room.typeSource = "inputs"; }
+    else { room.type = "inside"; room.typeSource = "default"; }
 
     for (const kind of KINDS) {
       const candidates = candidatesOf(hass, kind, id);

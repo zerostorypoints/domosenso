@@ -129,7 +129,7 @@
         "air": "Powietrze {value}",
         "attention": "Wymaga uwagi",
         "summary": "Obszary: {count} · bez typu: {unassigned}",
-        "hint": "Z Home Assistanta. Nadaj każdemu obszarowi typ i główne czujniki; nowy obszar pojawi się tu jako nieprzypisany.",
+        "hint": "Z Home Assistanta. Nowy obszar jest wewnątrz, dopóki tego nie zmienisz; nieprzypisany obszar znika z Pocket, ale zostaje tutaj.",
         "settings": "Ustawienia obszaru",
         "type": "Typ",
         "none": "Brak",
@@ -153,7 +153,8 @@
           "home_assistant": "Ustawione w Home Assistancie (powiązane czujniki obszaru)",
           "inputs": "Z konfiguracji domu",
           "auto": "Wybrany automatycznie: jedyny tutaj",
-          "none": "Nie ustawiono"
+          "none": "Nie ustawiono",
+          "default": "Domyślnie: każdy obszar jest wewnątrz, dopóki tego nie zmienisz"
         },
         "types": {
           "inside": "Wewnątrz",

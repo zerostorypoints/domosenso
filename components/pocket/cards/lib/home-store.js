@@ -16,11 +16,12 @@
 //       choice of kind was made for the area (§3.5), with the choice itself for a store kind
 //   normalize(value) -> {areas: {}, picked: {}}
 //
-// Shape: {areas: {<area id>: {type?: "inside"|"outside", <kind>?: <device or entity id>|"none",
+// Shape: {areas: {<area id>: {type?: "inside"|"outside"|"none", <kind>?: <device or entity id>|"none",
 //         air_readings?: {<reading>: entity id}}}, picked: {<area id>: [kind]}}
 
 export const KEY = "domosenso-pocket-home";
-export const TYPES = Object.freeze(["inside", "outside"]);
+// "none": Not assigned, hidden from Pocket's views; no type stored: Inside, the default.
+export const TYPES = Object.freeze(["inside", "outside", "none"]);
 export const EMPTY = Object.freeze({ areas: Object.freeze({}), picked: Object.freeze({}) });
 
 const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x);

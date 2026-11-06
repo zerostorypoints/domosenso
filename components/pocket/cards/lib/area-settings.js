@@ -6,7 +6,7 @@
 // its name on the left with where its value came from under it, its value on the right as a native
 // drop-down (a choice among fixed options is always a drop-down in Settings); a long value wraps under
 // the name rather than being cut.
-//   - Type: Inside / Outside / Not assigned;
+//   - Type: Inside (every area's default) / Outside / Not assigned (hidden from Pocket's views);
 //   - Main sensors: one row per kind of lib/kinds.json, in its order, of its candidates
 //     (lib/kinds.js candidatesOf: each device or sensor by its name) and None; under a device kind
 //     whose chosen device lacks a reading HA does not classify (an air score or index, §3.4), one row
@@ -78,8 +78,8 @@ export function renderAreaSettings(ctx, areaId) {
   parts.type = pickRow("type-row");
   root.querySelector(".type").append(parts.type.row);
   parts.type.select.addEventListener("change", () => {
-    const type = parts.type.select.value === "none" ? null : parts.type.select.value;
-    if ((roomOf(parts.ctx, parts.area)?.type ?? null) === type) return;
+    const type = parts.type.select.value;
+    if (roomOf(parts.ctx, parts.area)?.type === type) return;
     parts.shownType = type;
     save(root, { type });
   });
@@ -117,8 +117,8 @@ export function updateAreaSettings(root, ctx) {
   setText(type.name, ctx.t("card.pocket.areas.type"));
   fill(type.select, TYPES.map((t) => [t, ctx.t(`card.pocket.areas.types.${t}`)]), ctx.lang, type);
   // A picked type shows at once; the store's answer takes over when it arrives.
-  if (parts.shownType !== undefined && (room.type ?? null) === parts.shownType) parts.shownType = undefined;
-  const shown = (parts.shownType !== undefined ? parts.shownType : room.type) ?? "none";
+  if (parts.shownType !== undefined && room.type === parts.shownType) parts.shownType = undefined;
+  const shown = (parts.shownType !== undefined ? parts.shownType : room.type) ?? "inside";
   if (type.select.value !== shown) type.select.value = shown;
   type.select.disabled = !admin;
   setText(type.small, room.typeSource ? ctx.t(sourceKey(room.typeSource)) : "");

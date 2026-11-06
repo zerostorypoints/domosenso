@@ -56,9 +56,8 @@ def test_lines_in_floor_order_with_sources_and_choices():
         "main living_room air sensor.living_room_co2 (auto)",
         'area office "Office" floor ground type inside (pocket)',
         "main office climate sensor.office_temperature (auto)",
-        'area bedroom "Bedroom" floor up type - (-)',
+        'area bedroom "Bedroom" floor up type inside (default)',
         "candidates bedroom climate 2: choose one",
-        "warn bedroom type not assigned",
         'area garden "Garden" floor - type outside (inputs)',
         "main garden climate sensor.outside_temperature (inputs)",
     ]
@@ -78,5 +77,5 @@ def test_an_input_naming_a_missing_entity_fails_a_none_is_kept_a_pick_not_redone
 
 def test_an_empty_new_home_passes():
     lines, fails = report({"areas": [{"area_id": "hall", "name": "Hall"}]}, None, None)
-    assert [" ".join(line) for line in lines] == ['area hall "Hall" floor - type - (-)', "warn hall type not assigned"]
+    assert [" ".join(line) for line in lines] == ['area hall "Hall" floor - type inside (default)']
     assert fails == 0

@@ -246,7 +246,13 @@ export function render(ctx) {
   for (const row of root.querySelectorAll(".menu .row")) {
     row.addEventListener("click", () => parts.ctx.navigate?.(`#/settings/${row.dataset.panel}`));
   }
-  $(".back").addEventListener("click", () => parts.ctx.navigate?.(parts.item ? "#/settings/areas" : "#/settings"));
+  // Back to where it was opened from (an area's page, Home), else up: an area's settings to the list,
+  // a panel to Settings (the shell's ctx.back).
+  $(".back").addEventListener("click", () => {
+    const up = parts.item ? "#/settings/areas" : "#/settings";
+    if (parts.ctx.back) parts.ctx.back(up);
+    else parts.ctx.navigate?.(up);
+  });
 
   parts.theme = pickRow("theme");
   for (const mode of MODES) {
@@ -288,7 +294,10 @@ export function render(ctx) {
     $(".bar .rows").append(row);
   }
 
-  parts.areaRows = areasOf(ctx.config).map((area) => {
+  // Every area, the Not assigned ones too (ctx.home.model): this is where an area is brought back.
+  const allAreas = (c) => c.home?.model?.rooms ?? areasOf(c.config);
+  parts.allAreas = allAreas;
+  parts.areaRows = allAreas(ctx).map((area) => {
     const row = el("button", "row", `<span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon>`);
     row.type = "button";
     row.dataset.area = area.id;
@@ -386,7 +395,7 @@ export function update(root, ctx) {
   const offline = ctx.offline === true;
   const $ = (sel) => root.querySelector(sel);
 
-  const itemRoom = parts.item ? areasOf(ctx.config).find((r) => r.id === parts.item) : null;
+  const itemRoom = parts.item ? parts.allAreas(ctx).find((r) => r.id === parts.item) : null;
   const title = itemRoom ? itemRoom.name
     : parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
   const plain = $(".top > b");
@@ -401,11 +410,11 @@ export function update(root, ctx) {
   setText(comfortRow.querySelector(".name"), ctx.t("card.pocket.settings.comfort.title"));
   setText(comfortRow.querySelector("small"), ctx.t("card.pocket.settings.comfort.summary",
     { count: parts.areaNames.length }) + (parts.airName ? ` · ${ctx.t("card.pocket.settings.air.title")}` : ""));
-  const rooms = areasOf(ctx.config);
+  const rooms = parts.allAreas(ctx);
   const areasRow = $(".menu [data-panel=areas]");
   setText(areasRow.querySelector(".name"), ctx.t("card.pocket.areas.title"));
   setText(areasRow.querySelector("small"), ctx.t("card.pocket.areas.summary",
-    { count: rooms.length, unassigned: rooms.filter((r) => !r.type).length }));
+    { count: rooms.length, unassigned: rooms.filter((r) => r.type === "none").length }));
   setText($(".areas h3"), ctx.t("card.pocket.areas.title"));
   setText($(".areas .hint"), ctx.t(ctx.home?.admin === false ? "card.pocket.areas.admin_only" : "card.pocket.areas.hint"));
   for (const { id, row } of parts.areaRows) {
@@ -414,7 +423,7 @@ export function update(root, ctx) {
     setText(row.querySelector(".name"), room.name);
     const climate = room.main?.climate;
     const sensor = climate?.choice ? climate.name : ctx.t("card.pocket.areas.sensor_not_set");
-    setText(row.querySelector("small"), `${ctx.t(`card.pocket.areas.types.${room.type ?? "none"}`)} · ${sensor}`);
+    setText(row.querySelector("small"), `${ctx.t(`card.pocket.areas.types.${room.type ?? "inside"}`)} · ${sensor}`);
   }
   const aboutRow = $(".menu [data-panel=about]");
   setText(aboutRow.querySelector(".name"), ctx.t("card.pocket.settings.about.title"));

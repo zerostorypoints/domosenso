@@ -160,7 +160,7 @@ ${SHEET_STYLE}
 class PocketApp extends HTMLElement {
   constructor() {
     super();
-    this._onHash = () => this._route();
+    this._onHash = () => { this._trimTrail(); this._route(); };
     this._onScheme = () => this._paint();
     this._onPop = () => this._sheet?.onPopState();
     // Home Assistant's sidebar opens only from a menu button (the pocket's, or HA's own in its
@@ -175,6 +175,7 @@ class PocketApp extends HTMLElement {
     this.toastMs = TOAST_MS;
     this._settings = withDefaults({});
     this._saveQueue = Promise.resolve();
+    this._trail = [];   // the in-app steps of this page load, for the back arrows (_back)
     this._savesApplied = 0;
     // A failure or a silence after the page that sent it has gone: the toast still shows.
     this._optimistic = createOptimistic({ report: (_el, key) => this._showToast(key) });
@@ -320,7 +321,7 @@ class PocketApp extends HTMLElement {
       await saveArea(hass, areaId, patch);
       return;
     }
-    if ("type" in change) await saveArea(hass, areaId, { type: change.type ?? undefined });
+    if ("type" in change) await saveArea(hass, areaId, { type: change.type ?? undefined });   // null: back to the default
   }
 
   getCardSize() {
@@ -435,7 +436,8 @@ class PocketApp extends HTMLElement {
     if (this._areasFor === model) return this._areasValue;
     this._areasFor = model;
     const { outside, ...config } = this._config ?? {};
-    this._areasValue = { ...config, rooms: model.rooms, thresholds: model.thresholds };
+    // A Not assigned area is not in Pocket's views; Settings → Areas reads ctx.home.model, all of them.
+    this._areasValue = { ...config, rooms: model.rooms.filter((room) => room.type !== "none"), thresholds: model.thresholds };
     return this._areasValue;
   }
 
@@ -449,6 +451,7 @@ class PocketApp extends HTMLElement {
         set: (areaId, change) => this._setArea(areaId, change) },
       t: (key, vars) => this._t(key, vars),
       navigate: (route, options) => this._navigate(route, options),
+      back: (fallback) => this._back(fallback),
       lang: this._lang(),
       offline: this._hass?.connected === false,
       routeId: this._current?.id,
@@ -512,7 +515,8 @@ class PocketApp extends HTMLElement {
     if (!this._hass) return null;
     const id = route.page === "area" ? route.id : route.page === "settings" ? route.item : undefined;
     if (id === undefined) return null;
-    if (areasOf(this._areasConfig()).some((area) => area.id === id)) return null;
+    const known = route.page === "area" ? areasOf(this._areasConfig()) : this._model().rooms;
+    if (known.some((area) => area.id === id)) return null;
     return route.page === "area" ? "#/areas" : "#/settings/areas";
   }
 
@@ -527,13 +531,36 @@ class PocketApp extends HTMLElement {
     if (this._sheet?.ownsEntry()) replace = true;
     if (replace && window.location.hash !== route) {
       window.history.replaceState(window.history.state, "", route);
+      // The entry now shows another page: the trail's last step leads there instead.
+      const last = this._trail.at(-1);
+      if (last && last.to === window.location.hash) last.to = route;
       this._route();
       return;
     }
+    if (window.location.hash !== route) this._trail.push({ from: window.location.hash, to: route });
     // Setting the hash fires hashchange later; routing now keeps the tap instant, and the later
     // event finds the page already in place (an update, not a new page).
     if (window.location.hash !== route) window.location.hash = route;
     this._route();
+  }
+
+  // The way a page's back arrow goes (ctx.back): to the page it was opened from inside Pocket, by the
+  // history, as the phone's own Back would; a page opened from a link or a reload has no such page
+  // and goes to `fallback` (its list, its parent). The trail is the in-app steps of this page load;
+  // a hash change that is not its last step (the phone's Back, a link) trims it to the steps still
+  // standing.
+  _back(fallback) {
+    const last = this._trail.at(-1);
+    if (last && last.to === window.location.hash && last.from !== last.to) {
+      this._trail.pop();
+      window.history.back();
+      return;
+    }
+    this._navigate(fallback);
+  }
+
+  _trimTrail() {
+    while (this._trail.length && this._trail.at(-1).to !== window.location.hash) this._trail.pop();
   }
 
   // Shows the page of location.hash: a new element when the route changed, else an update.
