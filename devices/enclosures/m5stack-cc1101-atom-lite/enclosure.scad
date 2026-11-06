@@ -11,7 +11,9 @@
 //   - Module pin face up on four pads under its corners. Underneath it is an open shell, so the
 //     pads' pins stand in the hollow below its 3.1 mm corner holes; the left wall and the SMA slot
 //     locate it. Its SMA jack leaves through a slot in the back wall; a tongue on the lid closes
-//     the slot above it.
+//     the slot above it. Above the heads' underside the slot is as wide as the two screws of the
+//     jack's flange (not in M5Stack's drawing; measured on the module, 2026-11-06), so the heads go
+//     down through the wall as the module drops in (clash_sma_heads_path).
 //   - Beside each corner hole, 3.3-3.8 mm towards the middle, an M2 socket screw holds the board to
 //     its frame; its head stands on the pin face (not in M5Stack's drawing; measured from M5Stack's
 //     product photo after the first fit test, 2026-11-05). The board model sweeps each head over
@@ -51,13 +53,15 @@
 //   "logo", "symbol"          -> logo, logo_h, logo_depth, logo_2d(), logo_xy
 //   "inlay", "second colour"  -> lid_inlay_body() (accent ring and logo), part lid_inlay_parts
 //   "vents"                   -> vents, vent_w, vent_len, lid_vent_rows
-//   "antenna slot", "tongue"  -> sma_slot_w, the tongue in lid_body()
+//   "antenna slot", "tongue"  -> sma_slot_w, sma_head_slot_w, the tongue in lid_body()
+//   "antenna screws"          -> sma_screw_dx, sma_head, sma_head_clear, sma_heads()
 //   "USB opening"             -> usb_plug_w, usb_plug_h
 //   "wall ears"               -> base(ears = true), ear_len, ear_w, ear_hole_d
 //   "pry notch"               -> notch_w, notch_d
 //   "corner screws"           -> screw_dx, screw_y_tol, screw_head_d, screw_head_h, head_sweep()
 //
 // Common modifications:
+//   Other flange screws        -> sma_screw_dx (both spacings swept), sma_head (slot and tongue follow)
 //   Other screws on the module -> screw_dx, screw_y_tol, screw_head_d, screw_head_h (notches and the pin follow)
 //   Other jumper pins          -> pins_used (M-Bus numbers; odd pins are the edge column)
 //   Thicker jumper wires       -> wire_d (slot = wire_d + 0.2 + hole_comp; ribs stay >= 0.6 mm, asserted)
@@ -78,6 +82,7 @@
 //   README.md "Sources".
 // Final review: 2026-11-05, claude-fable-5-1 (after a Sonnet review; findings fixed)
 // Corner-screw fix: reviewed 2026-11-05, claude-sonnet-5-5; its findings fixed
+// Flange-screw slot: 2026-11-06, lightweight check (gate, and the old slot fails both clash checks)
 // Clamp for shorter housings (clamp_housing_len, clamp_12mm): reviewed 2026-11-06, claude-sonnet-5-5;
 //   no blocker, documentation findings fixed. The Atom's male plugs stay modelled at dupont_len.
 
@@ -94,7 +99,7 @@
 
 /* [Output] */
 // Printed: base, base_wall, lid, lid_inlay_parts, clamp (clamp_12mm: clamp with clamp_housing_len = 12). Views: assembly, assembly_open, explode, section, plate_all. Checks: clash_*.
-part = "assembly"; // [assembly, assembly_open, explode, section, plate_all, base, base_wall, lid, lid_inlay_parts, clamp, clash_lid_base, clash_clamp_lid, clash_clamp_base, clash_base_boards, clash_lid_boards, clash_clamp_boards, clash_inlay_lid]
+part = "assembly"; // [assembly, assembly_open, explode, section, plate_all, base, base_wall, lid, lid_inlay_parts, clamp, clash_lid_base, clash_clamp_lid, clash_clamp_base, clash_base_boards, clash_lid_boards, clash_clamp_boards, clash_inlay_lid, clash_sma_heads_path]
 
 /* [Printer] */
 nozzle_diameter = 0.4;
@@ -225,8 +230,16 @@ sma_z = 3.75;              // jack axis above the module's underside
 sma_len = 9.6;             // jack beyond the body edge
 sma_d = 6.35;              // 1/4-36 UNS thread
 sma_flange = [14, 1.8, 5.7];
-sma_slot_w = 7.0;
-tongue_w = sma_slot_w - 2 * tolerance; // lid tongue in the slot: 0.3 mm per side, the printed slot narrows
+// two screws hold the flange to the module's frame, their heads towards the back wall; measured
+// with a ruler on one module (2026-11-06): 12 mm apart, 4 mm heads standing 1.5 mm proud of the
+// flange. 12.7 mm (1/2 in) is the usual spacing of a two-hole SMA flange, so the slot takes both
+sma_screw_dx = [12, 12.7];   // centre to centre: measured, usual
+sma_head = [4, 1.5];         // head diameter, height above the flange
+sma_head_clear = 0.4;        // per side, around the heads
+sma_slot_w = 7.0;            // round bottom under the jack's thread
+// above the heads' underside the slot is as wide as both heads, so they pass through the wall
+sma_head_slot_w = max(sma_screw_dx) + sma_head[0] + 2 * sma_head_clear + hole_comp;
+tongue_w = sma_head_slot_w - 2 * tolerance; // lid tongue in the slot: 0.3 mm per side, the printed slot narrows
 
 // --- M5Stack Atom Lite, model-size drawing and Atom-Lite.stl ---
 // Atom coordinates, top face up: u from the face opposite the USB-C, v across.
@@ -267,6 +280,7 @@ usb_y = atom_y0 + atom / 2;
 well_xy = [atom_x0 + atom_well_uv[0], atom_y0 + atom_well_uv[1]];
 sma_x = mod_x0 + sma_dx;
 sma_zz = mod_z0 + sma_z;
+sma_head_slot_z = sma_zz - sma_head[0] / 2 - sma_head_clear; // floor of the slot's wide part
 outer = [inner_x + 2 * wall, inner_y + 2 * wall, z_lid + lid_t];
 
 // --- fixing without screws ---
@@ -391,7 +405,12 @@ assert(4 * latch_hold >= 3 * 2 * flap_force_max, "latches hold less than 3x the 
 assert(groove_d < wall - 2 * extrusion_width, "latch groove leaves under two lines of wall");
 assert(slot_rib >= 2 * extrusion_width - 0.1, "clamp ribs between neighbouring slots under two lines");
 assert(well_depth + atom_usb_dz - usb_plug_h / 2 >= 1.2, "lid left over the USB opening under 1.2 mm");
-assert((sma_slot_w - hole_comp - tongue_w) / 2 >= 0.1, "lid tongue binds in the printed SMA slot");
+assert((sma_head_slot_w - hole_comp - tongue_w) / 2 >= 0.1, "lid tongue binds in the printed SMA slot");
+assert(gap_back > sma_flange[1] + 0.2, "SMA flange touches the back wall");
+assert(gap_back + wall >= sma_flange[1] + sma_head[1], "SMA flange screw heads stick out past the back wall");
+assert(sma_zz + sma_d / 2 + 0.3 >= sma_zz + sma_head[0] / 2 + 0.5, "lid tongue comes down onto the flange screw heads");
+assert(sma_x - sma_head_slot_w / 2 - (latch_x[0] + latch_w / 2 + latch_side_gap) >= 2 * extrusion_width,
+  "wide SMA slot leaves under two lines of wall beside the latch groove");
 assert(flap_defl_min >= 0.4, "flaps stop pressing the clamp with the shortest housings");
 assert(abs(lid_t - flap_t - flap_ramp) < 1e-6, "flap ramp is not 45 degrees");
 assert(min(flap_y) - flap_w / 2 - flap_slot > lip_gap + lip_t, "front flap cuts into the lip");
@@ -414,6 +433,11 @@ if (logo) {
 for (i = [0 : 2]) assert(outer[i] <= build_xyz[i], "part larger than the build volume");
 
 echo(outer_mm = outer, base_wall_x = outer[0] + 2 * (ear_len / 2 + 0.5 + ear_w / 2));
+// the wide SMA slot measured from the outside of the left wall and the base's underside (for
+// widening a base printed before the flange screws were modelled)
+echo(sma_head_slot_from_left_mm = [wall + sma_x - sma_head_slot_w / 2, wall + sma_x + sma_head_slot_w / 2],
+  sma_head_slot_floor_mm = sma_head_slot_z, sma_head_slot_w_mm = sma_head_slot_w,
+  wall_beside_latch_mm = sma_x - sma_head_slot_w / 2 - (latch_x[0] + latch_w / 2 + latch_side_gap));
 echo(latch_strain_pct = latch_strain, latch_hold_N = latch_hold, flap_strain_pct = flap_strain,
      flap_force_max_N = flap_force_max, clamp_rib_mm = slot_rib,
      flap_rise_above_lid_mm = [flap_defl_min, flap_preload, flap_defl_max],
@@ -520,6 +544,8 @@ module base(ears = false) {
       translate([sma_x, inner_y - fudge, sma_zz]) rotate([-90, 0, 0]) cylinder(d = sma_slot_w, h = wall + 2 * fudge);
       translate([sma_x - sma_slot_w / 2, inner_y - fudge, sma_zz]) cube([sma_slot_w, wall + 2 * fudge, z_lid]);
     }
+    // the flange screws' heads go down through the wall as the module drops in
+    translate([sma_x - sma_head_slot_w / 2, inner_y - fudge, sma_head_slot_z]) cube([sma_head_slot_w, wall + 2 * fudge, z_lid]);
     // USB-C plug, open to the top; the lid closes it
     translate([inner_x - fudge, usb_y - usb_plug_w / 2, usb_z - usb_plug_h / 2])
       cube([wall + 2 * fudge, usb_plug_w, z_lid]);
@@ -596,7 +622,7 @@ module lid_body() {
         // 45-degree gusset under the web stiffens the tongue's root
         hull() {
           translate([sma_x - tongue_w / 2, inner_y - lip_gap - lip_t, z_lid - lip_h - fudge]) cube([tongue_w, lip_gap + lip_t + fudge, fudge]);
-          translate([sma_x - tongue_w / 2, inner_y - fudge, z_lid - lip_h - lip_gap - lip_t]) cube([sma_slot_w - tolerance, 2 * fudge, fudge]);
+          translate([sma_x - tongue_w / 2, inner_y - fudge, z_lid - lip_h - lip_gap - lip_t]) cube([tongue_w, 2 * fudge, fudge]);
         }
         // tubes over the module's left-hand holes keep it down
         for (h = left_holes) translate([h[0], h[1], plateau_z + tube_gap]) cylinder(d = tube_d, h = z_lid - plateau_z - tube_gap + fudge);
@@ -714,6 +740,14 @@ module cc1101_model() {
     translate([sma_x - sma_flange[0] / 2, mod_y0 + mod_w - fudge, mod_z0 + 0.9]) cube([sma_flange[0], sma_flange[1], sma_flange[2]]);
     translate([sma_x, mod_y0 + mod_w - fudge, sma_zz]) rotate([-90, 0, 0]) cylinder(d = sma_d, h = sma_len);
   }
+  color("#b8bcc2") sma_heads();
+}
+
+// the flange screws' heads, each swept over both spacings
+module sma_heads(dz = 0) {
+  for (s = [-1, 1]) hull() for (dx = sma_screw_dx)
+    translate([sma_x + s * dx / 2, mod_y0 + mod_w + sma_flange[1] - fudge, sma_zz + dz]) rotate([-90, 0, 0])
+      cylinder(d = sma_head[0], h = sma_head[1] + fudge);
 }
 
 module antenna_model() {
@@ -842,6 +876,7 @@ else if (part == "clash_clamp_base") intersection() { clamp_body(); base(); }
 else if (part == "clash_base_boards") intersection() { base(); translate(up) boards_fit(); }
 else if (part == "clash_lid_boards") intersection() { lid_body(); boards_fit(); }
 else if (part == "clash_clamp_boards") intersection() { translate(up) clamp_body(); boards_fit(); }
+else if (part == "clash_sma_heads_path") intersection() { base(); hull() { sma_heads(); sma_heads(z_lid); } }
 else if (part == "clash_inlay_lid") intersection() { lid_body(); translate(up) lid_inlay_body(); }
 else if (part == "assembly_open") { shell_colours(show_lid = false); boards_view(); }
 else if (part == "explode") { shell_colours(lid_dz = 55, clamp_dz = 22); boards_view(); }

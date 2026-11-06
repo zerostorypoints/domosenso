@@ -22,7 +22,9 @@ Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ear
 - **Module.** It lies pin face up on four pads under its corners; the left wall and the SMA slot
   locate it. Underneath it is an open shell, so the pads' short pins stand in the hollow below its
   corner holes and touch nothing. Its SMA jack passes through a slot in the back wall, and the
-  antenna is bent upright on its hinge. A tongue on the lid fills the slot above the jack.
+  antenna is bent upright on its hinge. The slot is as wide as the two screws of the jack's
+  flange, so their heads go down through the wall as the module drops in. A tongue on the lid
+  fills the slot above the jack.
 - **Corner screws.** Beside each corner hole, 3.3–3.8 mm towards the middle, an M2 socket screw
   holds the board to its frame, its head about 2 mm proud of the pin face. M5Stack's drawing does
   not show them; the first printed clamp caught on them. The clamp's pins (Ø2.2 mm) sit 0.25 mm
@@ -207,13 +209,14 @@ one on Fable (claude-fable-5-1). Neither found a blocker, and the fixes from bot
 - the flap hinges and the latch roots have 45° ramps and gussets;
 - the groove sits lower, so the lid cannot float;
 - the clamp ribs are wider and its skirts shorter;
-- the lid's tongue has 0.3 mm of play per side in the antenna slot;
+- the lid's tongue has 0.3 mm of play per side in the antenna slot (since widened with the slot);
 - the lid over the USB opening is 1.3 mm thick;
 - the flap slots are 1.2 mm wide.
 
-Last gate run: `GATE: PASS (17 of 17 parts pass)`. Every printed part is one manifold body on the
-plate with no overhang past 45°, and all seven `clash_*` checks are empty: lid and base, clamp
-and lid, clamp and base, each printed part against the boards, and the inlays in their recesses.
+Last gate run: `GATE: PASS (18 of 18 parts pass)`. Every printed part is one manifold body on the
+plate with no overhang past 45°, and all eight `clash_*` checks are empty: lid and base, clamp
+and lid, clamp and base, each printed part against the boards, the inlays in their recesses, and
+the jack's flange screws on their way down through the back wall.
 The logo, added after the reviews, had a lightweight check only (gate and the outline comparison
 below), no new design review.
 
@@ -242,6 +245,11 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   - corner holes Ø3.1 mm, 5 mm from the edges;
   - SMA axis 34 mm from the left edge and 3.75 mm above the underside, protruding 9.6 mm, with a
     flange 14 × 1.8 × 5.7 mm.
+
+  The drawing leaves out the two screws that hold the flange to the frame. Measured with a ruler
+  on one module (6 November 2026): heads Ø4 mm, standing 1.5 mm proud of the flange, 12 mm apart
+  centre to centre. The usual spacing of a two-hole SMA flange is 12.7 mm (½ in); the slot takes
+  heads anywhere from 12 to 12.7 mm apart.
 
   The drawing spaces the header pins 2.50 mm apart. The model uses the M-Bus pitch of 2.54 mm.
 - Corner screws: not in the drawing. The first printed clamp (5 November 2026) caught on them.
@@ -298,6 +306,13 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   - the module on its pads;
   - the lid closing over the left-hand screw heads, the latch click and how hard the lid pulls off;
   - the USB-C plug in its opening.
+- The first base, printed on 6 November 2026 in PETG-CF, did not take the module: the drawing has
+  no flange screws, so their heads stood on the back wall's inner face. The slot is now 17.8 mm
+  wide from 6.35 mm above the base's underside to the rim (`clash_sma_heads_path` checks the way
+  down); this base is not printed yet. A base printed before the change can be cut to the same
+  slot: 27.85 to 45.65 mm from the outside of the left wall (the wall with the pry notch), down to
+  6.35 mm above the underside. That leaves 1.1 mm of wall beside the left latch's groove. Its
+  lid's narrow tongue then leaves an opening each side of the jack, which changes nothing else.
 - The screw positions come from a photo. Over the whole measured range, with a head of up to
   4.0 × 2.4 mm, the notches leave 0.3 mm (0.45 mm as modelled, before the printed-hole shrink),
   also with the clamp 1 mm lower on short housings; the clamp's pins pass at least 0.45 mm from a
