@@ -188,8 +188,8 @@ and no choice) never fail it: an empty new home passes. `--json` prints the same
 ### 3.9 Pocket's screens
 
 - **Home → Overview**: an **Inside** and an **Outside** widget again, each aggregating the areas of
-  its type: the range of their main temperatures ("21.0–22.4°"), coloured by the worst judged area
-  (Inside only), the trend arrow for a single sensor. With no area of that type: the widget shows "No
+  its type: the range of their main temperatures ("21.0–22.4°"), coloured by the worst checked area
+  of the type, the trend arrow for a single sensor. With no area of that type: the widget shows "No
   areas assigned" and opens Settings → Areas. With areas of that type but none with a main sensor:
   "Main sensor not set". The sheet behind it lists every area of the type, each with its value or "Main
   sensor not set", a row opening that area's trend or its settings page.
