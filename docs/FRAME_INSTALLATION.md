@@ -95,6 +95,30 @@ background, settings and overlay permissions as required by the selected path. W
 may be unavailable after a reboot; resolve its current endpoint and verify the model before
 commands. Application recovery must work without an attached debugger or USB.
 
+### Minimal panel and startup acceptance
+
+The current unreleased source supports absent `media_player` and `calendar` bindings. Omit the
+player or use null/empty text; omit calendars or use null/empty text/an empty list. This removes
+their controls and external triggers without invented unavailable entities. Stable shared helpers
+remain. Weather still needs a real binding or the existing shared-home inheritance; an explicitly
+weather-free profile is [tracked separately](https://github.com/zerostorypoints/domosenso/issues/265).
+Select a released tag containing this change before promising the behavior to another installer.
+
+Reproduce setup in a fresh fictional instance with its own photo album subdirectory, no accounts,
+registry, recorder, NAS bridge or copied household backup. Render and inspect HA validation logs:
+an exit code alone can miss disabled integrations. Static bindings do not prove live sensor data,
+outdoor suitability or E27 command compatibility. Ongoing authenticated local album delivery is
+[design work](https://github.com/zerostorypoints/domosenso/issues/266), distinct from indexing files
+already present. Cloud photo sources remain separate.
+
+A branded Frame startup can show a cached account language before HA replies and expose diagnostic
+Details without covering required sign-in. During authorized maintenance check offline branding,
+expired-session intervention, automatic authorization recovery and actual reading/photo rotation.
+Record controlled ambient preparation separately when an empty room correctly sleeps the screen.
+Wait for local Server shutdown completion before Start; an immediate Start during asynchronous
+Stop can be ignored. Restore real presence-driven policy after testing. A successful service restart
+does not substitute for current-artifact full boot/SIGKILL, manual accessibility or long idle tests.
+
 ### Native Android BLE development path
 
 HA Server's `examples/android-ble` now supplies an optional native advertisement collector and
