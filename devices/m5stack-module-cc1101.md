@@ -77,9 +77,9 @@ stands upright out of the back wall.
 - [Parametric source](enclosures/m5stack-cc1101-atom-lite/enclosure.scad) (OpenSCAD).
 
 The first printed clamp found four screws beside the module's corner holes that M5Stack's drawing
-does not show; the model now leaves room for them. The rest has not been printed yet: the
-dimensions come from M5Stack's drawings and product photo, and the model checks its own fits and
-strains.
+does not show; the model now leaves room for them, and the second clamp seats on the module. The
+base and the lid have not been printed yet: the dimensions come from M5Stack's drawings and
+product photo, and the model checks its own fits and strains.
 
 ## The antenna
 

@@ -134,7 +134,9 @@ The clamp's slots follow `pins_used` (`[1, 7, 8, 9, 11, 20, 22, 28]`), the eight
 4. Hold the clamp about 3 mm above the housings and slide it in from the right, one wire per
    slot. Lower it onto the housings so that its two pins drop into the module's right-hand corner
    holes, with the notches of its bosses over the screw heads beside them. Then bend the wires over
-   towards the Atom.
+   towards the Atom. The clamp fits one way round only: the open ends of its slots face the Atom,
+   and the notches at the foot of its bosses face the module's middle. Turned round, its bosses
+   stand on the screw heads.
 5. Put the lid on: tongue into the slot above the jack, well over the button. Press until the
    four latches click.
 6. Screw the antenna onto the jack and bend it upright.
@@ -265,12 +267,12 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
 ## Not verified
 
-- Only the clamp has been printed (5 November 2026, eSun PETG-CF on a Bambu Lab P2S, 20 minutes,
-  clean). On the module it did not seat: its bosses caught on the corner screws, which this
-  version clears. Not printed since the fix. Still to check:
-  - the clamp seated with its pins in the holes and its notches over the screw heads;
+- Only the clamp has been printed, twice, in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
+  clean). The first, on 5 November 2026, did not seat on the module: its bosses caught on the
+  corner screws. The second, this version, seats on the module the right way round (checked on
+  6 November 2026 without the box; turned round it does not, as step 4 says). Still to check:
+  - the clamp on its pins and housings inside the box, with the lid's flaps pressing it;
   - the module on its pads;
-  - the clamp on the housings;
   - the lid closing over the left-hand screw heads, the latch click and how hard the lid pulls off;
   - the USB-C plug in its opening.
 - The screw positions come from a photo. Over the whole measured range, with a head of up to
