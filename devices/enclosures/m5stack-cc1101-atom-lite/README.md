@@ -19,9 +19,16 @@ snaps on.
 
 Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ears.
 
-- **Module.** It lies pin face up on four pads whose pins locate it by its corner holes. Its SMA
-  jack passes through a slot in the back wall, and the antenna is bent upright on its hinge. A
-  tongue on the lid fills the slot above the jack.
+- **Module.** It lies pin face up on four pads under its corners; the left wall and the SMA slot
+  locate it. Underneath it is an open shell, so the pads' short pins stand in the hollow below its
+  corner holes and touch nothing. Its SMA jack passes through a slot in the back wall, and the
+  antenna is bent upright on its hinge. A tongue on the lid fills the slot above the jack.
+- **Corner screws.** Beside each corner hole, 3.3–3.8 mm towards the middle, an M2 socket screw
+  holds the board to its frame, its head about 2 mm proud of the pin face. M5Stack's drawing does
+  not show them; the first printed clamp caught on them. The clamp's pins (Ø2.2 mm) sit 0.25 mm
+  off the holes' centres, away from the screws, and the clamp's bosses and the lid's tubes have
+  notches over the heads. The model sweeps each head over its measured range of positions, so its
+  clash checks cover every one of them.
 - **Jumpers.** The module's header pins stand only 3.0 mm above their plastic spacer, so a
   female Dupont housing grips them shallowly and works loose. The clamp is a bar with one slot
   per jumper. It slides over the wires from the Atom's side and sits on the eight housings, and
@@ -118,15 +125,18 @@ The clamp's slots follow `pins_used` (`[1, 7, 8, 9, 11, 20, 22, 28]`), the eight
 
 ## Assembly
 
-1. Put the module in the base, pin face up, with the SMA jack down in the slot of the back wall.
-   The pins on the four pads go into its corner holes.
+1. Put the module in the base, pin face up, with the SMA jack down in the slot of the back wall,
+   on the four pads and against the left wall.
 2. Plug the female ends onto the module's pins and the male ends into the Atom's sockets, as
    [Wiring](#wiring) says. Push every female housing down until it sits on the black spacer.
 3. Set the Atom on its pedestal, button up, with USB-C facing the opening in the right wall. The
    jumpers run down the channel beside the module and under the Atom.
 4. Hold the clamp about 3 mm above the housings and slide it in from the right, one wire per
    slot. Lower it onto the housings so that its two pins drop into the module's right-hand corner
-   holes. Then bend the wires over towards the Atom.
+   holes, with the notches of its bosses over the screw heads beside them. Then bend the wires over
+   towards the Atom. The clamp fits one way round only: the open ends of its slots face the Atom,
+   and the notches at the foot of its bosses face the module's middle. Turned round, its bosses
+   stand on the screw heads.
 5. Put the lid on: tongue into the slot above the jack, well over the button. Press until the
    four latches click.
 6. Screw the antenna onto the jack and bend it upright.
@@ -150,10 +160,13 @@ The parameters at the top of `enclosure.scad` show in OpenSCAD's Customizer, or 
 | `logo`, `logo_h`, `logo_depth` | true, 20, 0.6 | DomoSenso.org symbol on the lid; `logo = false` gives the lid its full grid of vents back |
 | `e_modulus`, `strain_limit` | 2100, 1.2 | material for the latch and flap checks (PLA: 3500) |
 | `ear_hole_d`, `ear_head_d` | 4.2, 8.5 | wall-mount screw hole and countersink |
+| `screw_dx`, `screw_y_tol`, `screw_head_d`, `screw_head_h` | [3.3, 3.8], 0.2, 4.0, 2.4 | the module's corner screws: range of the head's centre from the hole's centre towards the middle, its offset across, and the largest head the notches clear |
 
 The file asserts its functional claims: room for the plug bends under the Atom, latch and flap
 strain, latch hold against the flaps, the clamp's rib width, the latch grooves leaving at least
-two lines of wall, and the logo's clear space, whole-layer depth and the lid left under it. A change that breaks one stops the render with a message.
+two lines of wall, the clamp pins' clearance to the nearest screw head and to their holes, the
+notches staying clear of the pins, the material left above the notches, and the logo's clear
+space, whole-layer depth and the lid left under it. A change that breaks one stops the render with a message.
 
 Rebuild the STLs and previews with:
 
@@ -194,6 +207,11 @@ and lid, clamp and base, each printed part against the boards, and the inlays in
 The logo, added after the reviews, had a lightweight check only (gate and the outline comparison
 below), no new design review.
 
+The corner-screw fix had its own review on Sonnet (claude-sonnet-5-5). It found that the first
+version cleared the heads only at the middle of the measured range; the heads are now swept over
+the whole range, and the clamp's pins are thinner and off-centre. Without the notches, the clash
+checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at the lid.
+
 ## Sources
 
 - Module CC1101: [product page](https://docs.m5stack.com/en/module/Module_CC1101) (54.0 × 63.6 ×
@@ -209,6 +227,16 @@ below), no new design review.
     flange 14 × 1.8 × 5.7 mm.
 
   The drawing spaces the header pins 2.50 mm apart. The model uses the M-Bus pitch of 2.54 mm.
+- Corner screws: not in the drawing. The first printed clamp (5 November 2026) caught on them.
+  Measured on M5Stack's top-view product photo of the module, scaled by its 54 mm width (595 px):
+  - corner holes 5.0 and 49.0 mm from the left edge, as drawn;
+  - four M2 socket screws, heads Ø3.8–4.0 mm, centres 3.3–3.8 mm from the hole centres towards
+    the middle and within 0.2 mm of the holes' line;
+  - head height not measured: 2.0 mm for an M2 socket cap, about 2.2 mm in a side photo of the
+    module.
+
+  Photos of the module itself, from above and below, show the same screws and an open shell
+  underneath: the corner holes go through the board, the screws into posts of the frame.
 - Atom Lite: [product page](https://docs.m5stack.com/en/core/ATOM%20Lite) (24.0 × 24.0 × 9.5 mm),
   [model-size drawing](https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg)
   and [Atom-Lite.stl](https://github.com/m5stack/M5_Hardware/tree/master/Products/C008_Atom-Lite/Structures).
@@ -239,11 +267,19 @@ below), no new design review.
 
 ## Not verified
 
-- Nothing has been printed yet. On the first print, check:
-  - the module on its pads and pins;
-  - the clamp on the housings;
-  - the latch click and how hard the lid pulls off;
+- Only the clamp has been printed, twice, in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
+  clean). The first, on 5 November 2026, did not seat on the module: its bosses caught on the
+  corner screws. The second, this version, seats on the module the right way round (checked on
+  6 November 2026 without the box; turned round it does not, as step 4 says). Still to check:
+  - the clamp on its pins and housings inside the box, with the lid's flaps pressing it;
+  - the module on its pads;
+  - the lid closing over the left-hand screw heads, the latch click and how hard the lid pulls off;
   - the USB-C plug in its opening.
+- The screw positions come from a photo. Over the whole measured range, with a head of up to
+  4.0 × 2.4 mm, the notches leave 0.3 mm (0.45 mm as modelled, before the printed-hole shrink),
+  also with the clamp 1 mm lower on short housings; the clamp's pins pass at least 0.45 mm from a
+  head and sit 0.2 mm inside their holes. A head outside that range, or taller than 2.4 mm, needs
+  new `screw_*` values. Checked by inflating the modelled heads: 0.44 mm clears, 0.6 mm collides.
 - The latch tabs stand upright in print, so they bend across the layers. Their strain (0.9 %) is
   low for PETG and under PLA's limit, but layer bonding varies between printers.
 - Jumper length: the routes in the model need 6–7 cm of wire plus bends. Jumpers sold as 10 cm
