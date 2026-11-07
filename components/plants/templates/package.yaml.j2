@@ -8,7 +8,8 @@
 [%- set notify_until = inputs.notify_until | default('21:00:00') -%]
 [%- set dry_for = inputs.dry_for | default('01:00:00') -%]
 [%- set silent_hours = inputs.silent_hours | default(6) -%]
-[%- from '_plant-rows.jinja' import rows, bands with context -%]
+[%- from '_plant-rows.jinja' import rows, bands, reading_keys with context -%]
+[%- from '_plant-source.jinja' import source_templates with context -%]
 [%- set watered = rows | selectattr('limits.min_moisture', 'defined') | list -%]
 [%- set watered_list = watered | map(attribute='sensors.moisture') | list | tojson | replace('"', "'") -%]
 [%- set thresholds = watered | map(attribute='limits.min_moisture') | unique | list -%]
@@ -18,7 +19,8 @@
 {[% for row in items %]'[[ row.sensors.moisture ]]': [[ value(row) ]][% if not loop.last %], [% endif %][% endfor %]}
 [%- endmacro -%]
 [%- set silent_for = '%02d:00:00' % silent_hours -%]
-[%- set known_list = rows | map(attribute='sensors.moisture') | list | tojson | replace('"', "'") -%]
+[%- set known_list = rows | map(attribute='sensors.moisture') | list -%]
+[%- set known_list = (known_list + (rows | sum(attribute='source_moisture', start=[]))) | tojson | replace('"', "'") -%]
 [#- The Xiaomi BLE moisture sensors no plant uses that read more than 0 %: a sensor out of its pot
     reads 0 %, so one appearing here was just pushed into soil (SPEC-022). -#]
 [%- macro unplaced() -%]
@@ -33,8 +35,7 @@
 # Houseplants, from the Domosenso catalog (component plants). Edit the inputs and render again
 # rather than editing this file.
 #
-# Mi Flora sensors reach Home Assistant through the Bluetooth proxies; Xiaomi BLE discovers them on
-# its own. The brightness threshold is compared with the brightest reading of the last check_days,
+# The brightness threshold is compared with the brightest reading of the last check_days,
 # not the current one.
 
 homeassistant:
@@ -47,6 +48,12 @@ homeassistant:
       domosenso_plant: true
       domosenso_room: [[ row.label | yaml ]]
       domosenso_bands: [[ row.limits | yaml ]]
+[%- if row.source %]
+      domosenso_reading_status: sensor.[[ row.id ]]_reading_status
+[%- endif %]
+[%- if row.legacy %]
+      domosenso_legacy_moisture_history: [[ row.legacy | yaml ]]
+[%- endif %]
 [%- if row.names %]
       domosenso_names: [[ row.names | yaml ]]
 [%- endif %]
@@ -115,7 +122,9 @@ sensor:
 [%- endfor %]
 
 template:
-[%- for row in rows %]
+[%- for row in rows if row.source %]
+[[ source_templates(row, reading_keys, silent_hours) ]]
+[%- endfor %][%- for row in rows %]
   # Watered: a rise of 10 points between two readings (a watering shows within a minute), or 10
   # points above the 3-hour minimum for one that soaks in slowly, at most once in 3 hours. The first
   # reading after a start comes from nothing or from unavailable, which is_number(f) refuses. No
@@ -135,6 +144,15 @@ template:
           {% set soak = is_number(f) and is_number(t) and has_value('sensor.[[ row.id ]]_moisture_min_3h')
              and (t | float - states('sensor.[[ row.id ]]_moisture_min_3h') | float) >= 10
              and (last is none or now() - last > timedelta(hours=3)) %}
+[%- if row.source %]
+          {% set previous = trigger.from_state.attributes.source_entity if trigger.from_state else none %}
+          {% set current = trigger.to_state.attributes.source_entity if trigger.to_state else none %}
+          {% set report = (state_attr('sensor.[[ row.id ]]_reading_status', 'readings') or {}).get('moisture', {}) %}
+          {% set since = as_datetime(report.get('source_since'), none) %}
+          {% set same = previous == current and current is not none %}
+          {% set rise = rise and same %}
+          {% set soak = soak and same and report.get('source') == current and since is not none and now() - since >= timedelta(hours=3) %}
+[%- endif %]
           {{ now().isoformat() if rise or soak else (last.isoformat() if last is not none else none) }}
 [%- endfor %]
   - sensor:

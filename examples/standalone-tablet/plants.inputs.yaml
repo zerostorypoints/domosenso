@@ -1,0 +1,57 @@
+# Fictional source bindings. Substitute the entity IDs discovered by this tablet.
+notify: persistent_notification.create
+plants:
+  - entity: plant.fern
+    label: Fern
+    active_source: tablet
+    sources:
+      tablet:
+        moisture: sensor.plant_sensor_ee01_moisture
+        conductivity: sensor.plant_sensor_ee01_conductivity
+        brightness: sensor.plant_sensor_ee01_illuminance
+        temperature: sensor.plant_sensor_ee01_temperature
+  - entity: plant.basil
+    label: Basil
+    active_source: tablet
+    sources:
+      tablet:
+        moisture: sensor.plant_sensor_ee02_moisture
+        conductivity: sensor.plant_sensor_ee02_conductivity
+        brightness: sensor.plant_sensor_ee02_illuminance
+        temperature: sensor.plant_sensor_ee02_temperature
+  - entity: plant.monstera
+    label: Monstera
+    active_source: tablet
+    sources:
+      tablet:
+        moisture: sensor.plant_sensor_ee03_moisture
+        conductivity: sensor.plant_sensor_ee03_conductivity
+        brightness: sensor.plant_sensor_ee03_illuminance
+        temperature: sensor.plant_sensor_ee03_temperature
+  - entity: plant.ficus
+    label: Ficus
+    active_source: tablet
+    sources:
+      tablet:
+        moisture: sensor.plant_sensor_ee04_moisture
+        conductivity: sensor.plant_sensor_ee04_conductivity
+        brightness: sensor.plant_sensor_ee04_illuminance
+        temperature: sensor.plant_sensor_ee04_temperature
+  - entity: plant.mint
+    label: Mint
+    active_source: tablet
+    sources:
+      tablet:
+        moisture: sensor.plant_sensor_ee05_moisture
+        conductivity: sensor.plant_sensor_ee05_conductivity
+        brightness: sensor.plant_sensor_ee05_illuminance
+        temperature: sensor.plant_sensor_ee05_temperature
+  - entity: plant.orchid
+    label: Orchid
+    active_source: tablet
+    sources:
+      tablet:
+        moisture: sensor.plant_sensor_ee06_moisture
+        conductivity: sensor.plant_sensor_ee06_conductivity
+        brightness: sensor.plant_sensor_ee06_illuminance
+        temperature: sensor.plant_sensor_ee06_temperature

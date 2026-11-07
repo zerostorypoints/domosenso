@@ -395,3 +395,48 @@ test("a row without a photo keeps its leaf; the moisture line goes to the line c
   assert.ok(!card.shadowRoot.querySelector(".list .head"));  // .head is the tiles' name block
   delete globalThis.localStorage;
 });
+
+test("reading age is visible on tiles and stale moisture never asks for water", () => {
+  const old = new Date(Date.now() - 7 * 3600000).toISOString();
+  const card = discoverCard({ lang: "en", plants: [plant("Fern", { moisture: 5 })], states: {
+    "sensor.d0_reading_status": { state: "ready", attributes: {
+      stale_hours: 6, readings: { moisture: { value: 5, at: old, available: false } } } },
+  } });
+  assert.match(shadowText(card), /7 h/);
+  assert.match(shadowText(card), /stale/i);
+  assert.equal(card.shadowRoot.querySelector(".plant").dataset.state, "neutral");
+  assert.doesNotMatch(action(card), /^Water$/);
+});
+
+test("the moisture chart uses legacy hours before adoption and stable hours afterwards", () => {
+  const before = "2026-11-07T12:20:00Z";
+  const card = discoverCard({ lang: "en", plants: [plant("Fern", {
+    sensors: { moisture: "sensor.fern_reading_moisture" },
+    domosenso_legacy_moisture_history: { statistic_id: "sensor.fern_old", before },
+  })] });
+  const at = (h) => Date.parse(`2026-11-07T${h}:00:00Z`);
+  card._stats = {
+    "sensor.fern_old": [{ start: at(11), mean: 38 }, { start: at(12), mean: 39 }, { start: at(13), mean: 100 }],
+    "sensor.fern_reading_moisture": [{ start: at(12), mean: 42 }, { start: at(13), mean: 43 }],
+  };
+  assert.deepEqual(card._moistureRows({ entity: "plant.d0" }).map((x) => x.mean), [38, 42, 43]);
+});
+
+test("the list shows moisture age and exposes the other reading ages with values", () => {
+  const at = new Date(Date.now() - 5 * 60000).toISOString();
+  const card = discoverCard({ lang: "en", plants: ["Fern", "Ivy", "Basil", "Mint", "Aloe"].map((name) => plant(name)),
+    config: { page: "input_number.page", per_page: 6 }, states: {
+      "input_number.page": { state: "1", attributes: {} },
+      "sensor.d0_reading_status": { state: "ready", attributes: { readings: {
+        moisture: { value: 42, at, available: true }, temperature: { value: 24, at, available: true },
+      } } },
+    },
+  });
+  const age = card.shadowRoot.querySelector(".list .reading-age");
+  assert.match(age.textContent, /42 % · 5 min/);
+  age.click();
+  const dialog = card.shadowRoot.querySelector("dialog");
+  assert.match(dialog.textContent, /Temperature · 24 °C · 5 min/);
+  dialog.querySelector("button").click();
+  assert.equal(card.shadowRoot.querySelector("dialog"), null);
+});

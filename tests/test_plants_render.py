@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from domosenso_render import render_component
+from domosenso_render import RenderError, render_component
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -143,3 +143,70 @@ def test_new_sensor_message_renders_with_plain_jinja(demo):
            {"entity": "sensor.plant_sensor_ab12_moisture", "device": "Plant Sensor AB12", "value": 7.0}]
     text = jinja2.Environment().from_string(automation["variables"]["text"]).render(new=new).strip()
     assert text == "Plant Sensor 9C2D: 11.0 %, Plant Sensor AB12: 7.0 %"
+
+
+def test_source_switch_keeps_plant_and_history_ids(tmp_path):
+    plant = {"entity": "plant.fern", "label": "Fern",
+             "sources": {name: {key: f"sensor.{name}_{key}" for key in
+                                 ("moisture", "conductivity", "brightness", "temperature")}
+                         for name in ("tablet", "receiver")},
+             "legacy_moisture_history": {"statistic_id": "sensor.old_fern",
+                                        "before": "2026-11-07T12:00:00Z"}}
+    for source in ("tablet", "receiver"):
+        render_component(REPO / "components/plants",
+                         {"plants": [{**plant, "active_source": source}], "notify": "notify.fixture"},
+                         tmp_path, ["en"])
+        package = yaml.safe_load((tmp_path / "package.yaml").read_text())
+        assert package["plant"]["fern"]["sensors"]["moisture"] == "sensor.fern_reading_moisture"
+        sensors = template_sensors(package)
+        assert sensors["fern_reading_moisture"][1]["default_entity_id"] == "sensor.fern_reading_moisture"
+        assert f"sensor.{source}_moisture" in sensors["fern_reading_moisture"][1]["state"]
+        assert sensors["fern_reading_status"][1]["attributes"]["readings"]
+        assert package["homeassistant"]["customize"]["plant.fern"]["domosenso_legacy_moisture_history"] == plant["legacy_moisture_history"]
+
+
+@pytest.mark.parametrize("source", [
+    {},
+    {"moisture": "sensor.fern_reading_moisture", "conductivity": "sensor.fern_raw_conductivity",
+     "brightness": "sensor.fern_raw_light", "temperature": "sensor.fern_raw_temperature"},
+])
+def test_invalid_plant_source_fails_render(tmp_path, source):
+    with pytest.raises(RenderError, match=r"plant\.fern.*sources"):
+        render_component(REPO / "components/plants",
+                         {"plants": [{"entity": "plant.fern", "label": "Fern",
+                                      "active_source": "tablet", "sources": {"tablet": source}}],
+                          "notify": "notify.fixture"}, tmp_path, ["en"])
+
+
+@pytest.mark.parametrize(("change", "error"), [
+    ({"moisture": "sensor.fern_moisture_min_3h"}, "managed plant"),
+    ({1: "sensor.malformed"}, "supply moisture"),
+])
+def test_source_rejects_circular_or_malformed_binding(tmp_path, change, error):
+    binding = {key: f"sensor.fixture_{key}" for key in ("moisture", "conductivity", "brightness", "temperature")}
+    with pytest.raises(RenderError, match=error):
+        render_component(REPO / "components/plants", {"plants": [
+            {"entity": "plant.fern", "label": "Fern", "active_source": "tablet",
+             "sources": {"tablet": {**binding, **change}}},
+        ], "notify": "notify.fixture"}, tmp_path, ["en"])
+
+
+@pytest.mark.parametrize(("before", "valid"), [
+    ("2026-11-07T12:00:00.123Z", True),
+    ("2026-11-07T12:00:00", False),
+    ("abcdefghijT12345678Z", False),
+    ("2026-02-31T12:00:00Z", False),
+    ("2026-11-07T12:00:00+01:60", False),
+])
+def test_history_cutoff_requires_a_real_zoned_timestamp(tmp_path, before, valid):
+    inputs = {"plants": [{
+        "entity": "plant.fern", "label": "Fern", "active_source": "tablet",
+        "sources": {"tablet": {key: f"sensor.fixture_{key}" for key in
+                               ("moisture", "conductivity", "brightness", "temperature")}},
+        "legacy_moisture_history": {"statistic_id": "sensor.old_fern", "before": before},
+    }], "notify": "notify.fixture"}
+    if valid:
+        render_component(REPO / "components/plants", inputs, tmp_path, ["en"])
+    else:
+        with pytest.raises(RenderError, match=r"plant\.fern\.legacy_moisture_history.*ISO 8601"):
+            render_component(REPO / "components/plants", inputs, tmp_path, ["en"])
