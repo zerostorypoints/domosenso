@@ -434,8 +434,10 @@ test("the list shows moisture age and exposes the other reading ages with values
   });
   const age = card.shadowRoot.querySelector(".list .reading-age");
   assert.match(age.textContent, /42 % · 5 min/);
+  assert.equal(age.hasAttribute("data-own-tap"), true);
   age.click();
   const dialog = card.shadowRoot.querySelector("dialog");
+  assert.equal(dialog.hasAttribute("data-own-tap"), true);
   assert.match(dialog.textContent, /Temperature · 24 °C · 5 min/);
   dialog.querySelector("button").click();
   assert.equal(card.shadowRoot.querySelector("dialog"), null);

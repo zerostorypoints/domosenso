@@ -241,6 +241,7 @@ class PlantsCard extends HTMLElement {
     this._readingDialog?.remove();
     const dialog = document.createElement("dialog");
     dialog.className = "reading-details";
+    dialog.setAttribute("data-own-tap", "");
     const title = document.createElement("h2");
     title.id = "plant-reading-details-title";
     title.textContent = this._name(p, this._hass.states[p.entity]?.attributes || {});
@@ -377,6 +378,7 @@ class PlantsCard extends HTMLElement {
         .band { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: rgba(91,227,122,0.25); }
         .dot { position: absolute; top: 50%; border-radius: 50%; transform: translate(-50%, -50%); background: currentColor; }
         .chart { display: block; width: 100%; overflow: visible; }
+        .body > .chart { min-height: 0; }
         .action { font-weight: 600; line-height: 1.15; min-height: 1.15em; color: var(--c);
                   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .strip { display: flex; align-items: center; gap: 1.2em; font-size: calc(3.2 * var(--u));
@@ -486,7 +488,7 @@ class PlantsCard extends HTMLElement {
           <svg class="chart" style="height: ${u(10)}" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
           <div><div class="action" style="font-size: ${u(4.2)}"></div>
             <div class="meta" style="font-size: ${u(3.2)}"></div>
-            <button type="button" class="meta reading-age" style="font-size: ${u(3.2)}" aria-haspopup="dialog"></button></div>
+            <button type="button" class="meta reading-age" style="font-size: ${u(3.2)}" data-own-tap aria-haspopup="dialog"></button></div>
         </div></div>`).join("");
     this._els = Array.from(el.querySelectorAll(".plant"));
   }
@@ -504,7 +506,7 @@ class PlantsCard extends HTMLElement {
     const gauge = (g) => `<div class="g" data-k="${g.key}"><span class="gl"></span>
         <span class="bar" style="display: block; height: calc(1.8 * var(--u))"><span class="band"></span>
         <span class="dot" style="width: calc(3 * var(--u)); height: calc(3 * var(--u))"></span></span>
-        ${g.key === "moisture" ? '<button type="button" class="rm reading-age" aria-haspopup="dialog"></button>' : ""}</div>`;
+        ${g.key === "moisture" ? '<button type="button" class="rm reading-age" data-own-tap aria-haspopup="dialog"></button>' : ""}</div>`;
     el.innerHTML = `<div class="row top"><span></span>${head.map(() => "<span></span>").join("")}</div>` +
       rows.map(() => `<div class="row"><div class="photo"></div>
         <div class="rowname"><span class="name"></span><span class="rm"></span><span class="what"></span></div>
