@@ -28,6 +28,8 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | Device ids (`devices/<id>.yaml`) | STABLE |
 | Printable enclosures `devices/enclosures/<id>/` with `README.md`, `stl/`, `3mf/`, `preview/` ([SPEC-036](../.ai/specs/SPEC-036-2026-11-05-printable-enclosures.md)) | ADDITIVE-ONLY |
 | Served enclosure previews `/enclosures/<id>/<name>.png` on domosenso.org, from `devices/enclosures/<id>/preview/<name>.png` ([SPEC-036](../.ai/specs/SPEC-036-2026-11-05-printable-enclosures.md)) | STABLE |
+| Device dimensions: the field `dimensions` in `devices/<id>.yaml` (`drawing`, `items` with `key`, `label`, `value`, `unit`, `tolerance`, `approximate`, `source`, `ref`, `checked`, `note`) and the drawings `devices/dimensions/<id>.svg`; a published key letter keeps its meaning, the values are data ([SPEC-040](../.ai/specs/SPEC-040-2026-11-07-device-dimensions.md)) | ADDITIVE-ONLY |
+| Served dimension drawings `/dimensions/<id>.svg` on domosenso.org, from `devices/dimensions/<id>.svg` ([SPEC-040](../.ai/specs/SPEC-040-2026-11-07-device-dimensions.md)) | STABLE |
 | ESPHome `project:` name `domosenso.<component>` (`domosenso.bermuda-presence`, `domosenso.audio-sensor`) | STABLE |
 | Card install path `www/domosenso/<id>/<version>/`, served as `/local/domosenso/<id>/<version>/` | FROZEN |
 

@@ -418,6 +418,42 @@ def check_device(path: Path, catalog: Path | None = None) -> list[str]:
                         errors.append(f"{path}: {field} '{data[field]}' is not in the component's en.json")
     if data.get("photo") and catalog is not None and not (catalog / data["photo"]).exists():
         errors.append(f"{path}: photo: path does not exist: {data['photo']}")
+    if "dimensions" in data:
+        errors += check_dimensions(path, data, catalog)
+    return errors
+
+
+# SPEC-040: a letter on a drawing is a single-character <text> element.
+DRAWING_KEY = re.compile(r"<text\b[^>]*>\s*([A-Z])\s*</text>")
+
+
+def check_dimensions(path: Path, data: dict, catalog: Path | None) -> list[str]:
+    """Keys unique, `checked` not in the future, and (with `catalog`) the drawing names exactly the keys."""
+    import datetime
+
+    errors = []
+    dims = data["dimensions"]
+    keys = [item["key"] for item in dims["items"]]
+    if len(set(keys)) != len(keys):
+        errors.append(f"{path}: dimensions: duplicate key")
+    today = datetime.date.today()
+    for item in dims["items"]:
+        try:
+            if datetime.date.fromisoformat(item["checked"]) > today:
+                errors.append(f"{path}: dimensions.{item['key']}: checked {item['checked']} is in the future")
+        except ValueError:
+            errors.append(f"{path}: dimensions.{item['key']}: checked is not a date")
+    expected = f"devices/dimensions/{data['id']}.svg"
+    if dims["drawing"] != expected:
+        errors.append(f"{path}: dimensions.drawing: expected {expected}")
+    elif catalog is not None:
+        drawing = Path(catalog) / dims["drawing"]
+        if not drawing.is_file():
+            errors.append(f"{path}: dimensions.drawing: path does not exist: {dims['drawing']}")
+        else:
+            drawn = DRAWING_KEY.findall(drawing.read_text(encoding="utf-8"))
+            if sorted(drawn) != sorted(keys):
+                errors.append(f"{path}: dimensions: drawing letters {sorted(drawn)} differ from keys {sorted(keys)}")
     return errors
 
 

@@ -185,3 +185,58 @@ def test_enclosure_preview_from_another_commit_fails(enclosure):
     root, publication, sha = enclosure
     with pytest.raises(ValueError, match='asset source commit mismatch'):
         export_assets(root, publication, [source_asset(publication['frameworkCommit'])])
+
+
+# SPEC-040: a device's dimensions drawing and its dimensions, read from the pinned commit.
+DRAWING = '<svg xmlns="http://www.w3.org/2000/svg"><text>A</text></svg>'
+DIMS = {'drawing': 'devices/dimensions/board.svg',
+        'items': [{'key': 'A', 'label': 'Body', 'value': [24, 24, 9.5], 'source': 'caliper', 'checked': '2026-11-07'}]}
+
+
+@pytest.fixture
+def dimensions(catalog):
+    root, publication, git = catalog
+    (root / 'devices/dimensions').mkdir(parents=True)
+    (root / 'devices/dimensions/board.svg').write_text(DRAWING)
+    (root / 'devices/board.yaml').write_text(yaml.safe_dump({'id': 'board', 'dimensions': DIMS}))
+    git('add', '.'); git('commit', '-qm', 'dimensions'); sha = git('rev-parse', 'HEAD')
+    publication['documentationCommit'] = sha
+    changed = dict(DIMS, items=[dict(DIMS['items'][0], value=[99])])
+    (root / 'devices/board.yaml').write_text(yaml.safe_dump({'id': 'board', 'dimensions': changed}))  # not committed
+    (root / 'website/content').mkdir(parents=True)
+    return root, publication, sha
+
+
+def drawing_asset(sha, **override):
+    return source_asset(sha, **dict({'path': '/dimensions/board.svg', 'sourcePath': 'devices/dimensions/board.svg',
+                                     'kind': 'dimensions', 'alt': 'Dimensions of the board'}, **override))
+
+
+def test_dimensions_drawing_is_exported_from_the_commit(dimensions):
+    root, publication, sha = dimensions
+    export_assets(root, publication, [drawing_asset(sha)])
+    assert (root / 'website/public/dimensions/board.svg').read_text() == DRAWING + '\n'
+    export_assets(root, publication, [drawing_asset(sha)], check=True)
+
+
+@pytest.mark.parametrize('override,message', [
+    ({'path': '/wiring/board.svg'}, 'invalid dimensions drawing path'),
+    ({'path': '/dimensions/other.svg'}, 'invalid dimensions drawing path'),
+    ({'kind': 'wiring'}, 'invalid dimensions drawing path'),
+    ({'sourcePath': 'devices/dimensions/board.png'}, 'invalid source asset'),
+])
+def test_dimensions_drawing_paths_are_checked(dimensions, override, message):
+    root, publication, sha = dimensions
+    with pytest.raises(ValueError, match=message):
+        export_assets(root, publication, [drawing_asset(sha, **override)])
+
+
+def test_device_dimensions_come_from_the_commit_and_need_their_drawing(dimensions):
+    from website_content import device_dimensions
+    root, publication, sha = dimensions
+    item = {'id': 'board', 'sourceCommit': sha}
+    items, drawing = device_dimensions(root, item, [drawing_asset(sha)])
+    assert items == DIMS['items'] and drawing == '/dimensions/board.svg'
+    with pytest.raises(ValueError, match='dimensions drawing not in assets.json'):
+        device_dimensions(root, item, [])
+    assert device_dimensions(root, {'id': 'missing', 'sourceCommit': sha}, []) == ([], None)

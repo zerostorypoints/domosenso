@@ -19,3 +19,44 @@ match:
   - integration: [mqtt, espsomfy_rts]
     manufacturer: "rstrouse*"
     model: "*M5Stack Atom Lite*"
+# SPEC-040: lettered as on the drawing; one value per dimension, the source it was read from.
+dimensions:
+  drawing: devices/dimensions/m5stack-atom-lite.svg
+  items:
+    - key: A
+      label: Body, width × depth × height
+      value: [24, 24, 9.5]
+      source: manufacturer
+      ref: https://docs.m5stack.com/en/core/ATOM%20Lite
+      checked: "2026-11-07"
+      note: "Caliper, 2026-11-07: 9 to 10 mm high. Official model: https://github.com/m5stack/M5_Hardware/tree/master/Products/C008_Atom-Lite (not measured from)."
+    - key: B
+      label: USB-C axis below the button face
+      value: [2.15]
+      tolerance: 0.2
+      source: manufacturer
+      ref: https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg
+      checked: "2026-11-05"
+      note: Measured from the pixels of M5Stack's raster model-size drawing.
+    - key: C
+      label: Header socket centres from the side edges
+      value: [4.5]
+      tolerance: 0.2
+      source: manufacturer
+      ref: https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg
+      checked: "2026-11-05"
+      note: Measured from the pixels of M5Stack's raster model-size drawing.
+    - key: D
+      label: Header socket rows from the face opposite the USB-C, first × last
+      value: [9.5, 19.6]
+      tolerance: 0.2
+      source: manufacturer
+      ref: https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg
+      checked: "2026-11-05"
+      note: Measured from the pixels of M5Stack's raster model-size drawing; rows at a 2.54 mm pitch.
+    - key: E
+      label: Button cap, square
+      value: [13]
+      approximate: true
+      source: caliper
+      checked: "2026-11-07"

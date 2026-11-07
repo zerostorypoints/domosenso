@@ -278,6 +278,9 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   - header sockets on the underside, 4.5 mm from the side edges;
   - socket rows 9.5 to 19.6 mm from the face opposite the USB-C;
   - the USB-C axis 2.15 mm below the top face.
+  These values, with their sources, are kept in the device file
+  [`m5stack-atom-lite.yaml`](../../m5stack-atom-lite.yaml) (SPEC-040), drawn in
+  [`m5stack-atom-lite.svg`](../../dimensions/m5stack-atom-lite.svg).
 - Dupont housing 14 mm and wire 1.4 mm: common values. The jumpers of the first build measured
   12 mm (ruler, 6 November 2026), hence `clamp_12mm`; the wire was not measured.
 - Logo: the DomoSenso brand book 1.0 (5 November 2026,
