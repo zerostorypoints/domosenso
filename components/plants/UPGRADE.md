@@ -3,6 +3,37 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.5.0 (unreleased): choose a source and retain plant history
+
+The existing `sensors` binding still works. To opt in, add named `sources`
+with all four entity IDs and set `active_source`. Keep the same `plant.*` ID
+and remove the old `sensors` key for that plant. Back up HA and render with
+the updated catalog. Each new `sensor.<plant>_reading_*` ID must be free
+before adoption. Verify the sensors use those IDs after the HA restart.
+Leave those IDs in place when changing providers or reverting a selection.
+
+For an existing Ramka chart, record the original moisture statistics ID
+and the time the stable series takes over. Add this optional input to the
+plant, with the timestamp quoted and an explicit zone:
+
+```yaml
+legacy_moisture_history:
+  statistic_id: sensor.fern_soil_moisture
+  before: "2026-11-07T18:00:00Z"
+```
+
+Ramka 0.18.0 includes the older hourly points before the cutoff and the
+stable series after it. The old raw histories stay in Recorder under their
+original IDs and retention. Do not purge the original entities' history.
+The derived watering statistics use the new stable series, so their
+initial adoption needs new samples. Subsequent source changes keep the
+same series. Check freshness, units and the plant's watering limits after
+a source switch. To revert a switch, select the previous source and render
+again. To revert the opt-in entirely, restore the old input and retain the
+stable series in Recorder for later use.
+
+See the [standalone tablet example](../../examples/standalone-tablet/).
+
 ## 0.4.0 (unreleased): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
