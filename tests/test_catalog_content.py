@@ -510,3 +510,37 @@ def test_enclosure_links_resolve():
     guides = [g for g in sorted((REPO / "devices").glob("*.md")) if "enclosures/" in g.read_text(encoding="utf-8")]
     assert guides, "no device guide links an enclosure"
     assert [b for doc in readmes + guides for b in broken_links(doc)] == []
+
+
+# SPEC-040: dimensions with a drawing
+def test_dimensions_drawings_belong_to_devices_and_name_their_keys():
+    drawings = sorted((REPO / "devices" / "dimensions").glob("*.svg"))
+    assert drawings, "no drawing under devices/dimensions/"
+    for drawing in drawings:
+        device = REPO / "devices" / f"{drawing.stem}.yaml"
+        assert device.is_file(), f"{drawing.name}: no devices/{drawing.stem}.yaml"
+        data = yaml.safe_load(device.read_text(encoding="utf-8"))
+        assert data.get("dimensions", {}).get("drawing") == f"devices/dimensions/{drawing.name}", drawing.name
+        assert cc.check_device(device, REPO) == []
+
+
+def test_dimension_checks_fail_on_a_mismatch(tmp_path):
+    (tmp_path / "devices" / "dimensions").mkdir(parents=True)
+    source = yaml.safe_load((REPO / "devices" / "m5stack-atom-lite.yaml").read_text(encoding="utf-8"))
+    (tmp_path / "devices" / "dimensions" / "m5stack-atom-lite.svg").write_text(
+        "<svg><text>A</text><text>B</text></svg>", encoding="utf-8")
+    device = tmp_path / "m5stack-atom-lite.yaml"
+    device.write_text(yaml.safe_dump(source), encoding="utf-8")
+    assert any("drawing letters" in e for e in cc.check_dimensions(device, source, tmp_path))
+    source["dimensions"]["items"][1]["key"] = "A"
+    assert any("duplicate key" in e for e in cc.check_dimensions(device, source, tmp_path))
+    source["dimensions"]["items"][0]["checked"] = "2999-01-01"
+    assert any("in the future" in e for e in cc.check_dimensions(device, source, None))
+
+
+def test_dimension_schema_needs_a_reference_for_a_manufacturer_value():
+    data = yaml.safe_load((REPO / "devices" / "m5stack-atom-lite.yaml").read_text(encoding="utf-8"))
+    del data["dimensions"]["items"][0]["ref"]
+    assert cc._schema_errors("device", data, "x")
+    data["dimensions"]["items"][0]["source"] = "caliper"
+    assert not cc._schema_errors("device", data, "x")

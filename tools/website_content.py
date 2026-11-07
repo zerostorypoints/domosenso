@@ -85,6 +85,7 @@ def build_content(root, publication):
                 device_routes[asset['sourcePath']] = asset['path']
         item['body'] = rewrite_links(body, item['sourcePath'], device_routes, item['sourceCommit']) if item['sourcePath'].endswith('.md') else body
         item['sourceUrl'] = f"{REPOSITORY}/blob/{item['sourceCommit']}/{item['sourcePath']}"
+        item['dimensions'], item['dimensionsDrawing'] = device_dimensions(root, item, assets)
         devices.append(item)
     require(len({d['id'] for d in devices}) == len(devices), 'duplicate device id')
     for component in components:
@@ -149,9 +150,26 @@ def build_content(root, publication):
     return {'components':components, 'devices':devices, 'articles':sorted(articles,key=lambda a:(a['date'],a['slug']),reverse=True), 'howTos':sorted(howtos,key=lambda h:h['slug']), 'assets':assets}
 
 
+def device_dimensions(root, item, assets):
+    """SPEC-040: the dimensions in devices/<id>.yaml at the record's commit, and their served drawing."""
+    path = f"devices/{item['id']}.yaml"
+    shown = subprocess.run(['git', '-C', str(root), 'show', f"{item['sourceCommit']}:{path}"], capture_output=True, text=True)
+    if shown.returncode != 0:
+        return [], None
+    dims = (yaml.safe_load(shown.stdout) or {}).get('dimensions')
+    if not dims:
+        return [], None
+    drawing = next((a for a in assets if a.get('sourcePath') == dims['drawing'] and a.get('kind') == 'dimensions'), None)
+    require(drawing is not None, f"dimensions drawing not in assets.json: {dims['drawing']}")
+    items = [{k: (str(v) if k == 'checked' else v) for k, v in d.items()} for d in dims['items']]
+    return items, drawing['path']
+
+
 MARKDOWN_IMAGE = re.compile(r'!\[[^\]]*\]\(\s*<?([^)\s>]+)')
 WIRING_SOURCE = re.compile(r'devices/wiring/[a-z0-9-]+\.svg')
 # SPEC-036: an enclosure's previews, each served at exactly /enclosures/<id>/<name>.png
+# SPEC-040: a device's dimensions drawing, served at exactly /dimensions/<id>.svg
+DIMENSIONS_DRAWING = re.compile(r'devices/dimensions/([a-z0-9]+(?:-[a-z0-9]+)*)\.svg')
 ENCLOSURE_PREVIEW = re.compile(r'devices/enclosures/([a-z0-9]+(?:-[a-z0-9]+)*)/preview/([a-z0-9]+(?:-[a-z0-9]+)*)\.png')
 PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 
@@ -163,14 +181,16 @@ def read_bytes(root, commit, path):
 
 
 def export_source_assets(root, publication, check):
-    """Copy only explicit, immutable public sources (wiring diagrams, enclosure previews); verify bytes in CI."""
+    """Copy only explicit, immutable public sources (wiring diagrams, dimension drawings, enclosure previews); verify bytes in CI."""
     root = Path(root)
     for asset in json.loads((root/'website/content/assets.json').read_text()):
         if 'sourcePath' not in asset:
             continue
         path = asset['sourcePath']; sha = asset['sourceCommit']
-        preview = ENCLOSURE_PREVIEW.fullmatch(path)
-        require((preview or WIRING_SOURCE.fullmatch(path)) and safe_public_path(asset['path']), 'invalid source asset')
+        preview = ENCLOSURE_PREVIEW.fullmatch(path); drawing = DIMENSIONS_DRAWING.fullmatch(path)
+        require((preview or drawing or WIRING_SOURCE.fullmatch(path)) and safe_public_path(asset['path']), 'invalid source asset')
+        if drawing:
+            require(asset['path'] == f'/dimensions/{drawing[1]}.svg' and asset.get('kind') == 'dimensions', 'invalid dimensions drawing path')
         require(COMMIT.fullmatch(sha) and sha == publication.get('documentationCommit', publication['frameworkCommit']), 'asset source commit mismatch')
         if preview:
             require(asset['path'] == f'/enclosures/{preview[1]}/{preview[2]}.png', 'invalid enclosure preview path')
