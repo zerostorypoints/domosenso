@@ -358,7 +358,8 @@ class PlantsCard extends HTMLElement {
         .row .reading-age { font-size: calc(2.9 * var(--u)); }
         .reading-age[hidden] { display: none; }
         button.reading-age { border: 0; padding: 0; max-width: 100%; background: none;
-                             font-family: inherit; text-align: left; cursor: pointer; }
+                             font-family: inherit; text-align: left; white-space: normal;
+                             overflow-wrap: anywhere; cursor: pointer; }
         .reading-details { color: var(--primary-text-color); background: var(--card-background-color);
                            border: 1px solid var(--divider-color); border-radius: 0.8rem;
                            padding: 1rem 1.5rem; font-size: clamp(1rem, 2.4vw, 1.8rem); }
