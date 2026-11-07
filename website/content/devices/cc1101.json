@@ -3,7 +3,7 @@
   "title": "CC1101 radio module",
   "summary": "A radio link to Somfy RTS awnings.",
   "sourcePath": "devices/cc1101.md",
-  "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+  "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
   "components": [
     "awnings"
   ],
