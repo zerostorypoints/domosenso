@@ -1,7 +1,7 @@
 # pocket: field notes
 
-A phone dashboard for the Companion app, built on the shared home inputs and climate-air's
-threshold helpers. One YAML dashboard per language with one `panel` view holding one card,
+A phone dashboard for the Companion app, built on Home Assistant's areas (SPEC-038), the shared home
+inputs as defaults, and climate-air's threshold helpers. One YAML dashboard per language with one `panel` view holding one card,
 `custom:pocket-app`, which draws every screen itself.
 
 The design system (navigation, widgets, tiles, sheets, levels, data sources, the checklist for a
@@ -39,10 +39,32 @@ a pattern updates it.
 - **System** (`#/system`, from Systems): the last automatic backup (amber after 8 days, red after
   30 or when the last attempt failed), the updates waiting (each opening HA's more-info), the
   devices that read nothing, and for an administrator a link to HA's settings.
-- **Widgets** (Overview): each opens a sheet, never a page. An aggregate (many sensors: Inside,
-  Lights on with every lamp to switch, Power with its meters, Plants with every plant) lists them,
-  each row opening its trend; one sensor (Outside, Air) opens its trend, the sensor's other
-  measurements a pick away. A sheet closes by a finger dragged down anywhere on it from the top of
+- **Widgets** (Overview): each opens a sheet, never a page. An aggregate (many sensors: Inside and
+  Outside with the areas of that type, Lights on with every lamp to switch, Power with its meters,
+  Plants with every plant) lists them, each row opening its trend; one sensor (Air) opens its trend,
+  the sensor's other measurements a pick away. Inside and Outside show the range of their areas' main
+  temperatures; "No areas assigned" (opening Settings → Areas) or "Main sensor not set" otherwise.
+- **The areas** are Home Assistant's, by their HA names, in floor order; a new area appears as
+  Inside. **Settings → Areas** lists every area with its type (Inside, the default; Outside; Not
+  assigned, which hides it from Pocket's views, not from this list) and its
+  main sensors (climate, air quality, light level, sound, pressure: `cards/lib/kinds.json`); a row, or
+  the settings button on an area page, opens that area's settings page (`#/settings/areas/<id>`),
+  where each setting is a row with a drop-down. An administrator changes them
+  there (climate into HA's own Related sensors, the rest into Pocket's home store, HA's frontend system
+  data); anyone else sees them read-only, each with where it came from. An area's only candidate becomes
+  its main sensor once, the first time an administrator opens Pocket. The skill `set-up-areas` asks the
+  rest during onboarding and writes it as defaults into the home inputs; `domosenso areas <target>` shows
+  it all from the running home.
+- **Include in checks** (an area's settings): every area, an outside one too, counts for All good, the
+  pills, the Climate tile and the advice until it is switched off there (or `checked: false` in the home
+  inputs). Pocket's other built-in rules, and which have a setting, are in DESIGN.md 10.2.
+- **Quick actions** (Home → Quick, Settings → Quick actions): a person's own list of actions, in order
+  (an area's lights, a light, a switch, fan or toggle helper, a scene, script or button, All lights off:
+  `cards/lib/quick-actions.json`), with up, down, remove and an Add page; until they change it, the
+  home's default (the input `quick_actions`, which the skill `set-up-areas` suggests), else each area's
+  lights and All off. "Edit" beside Quick's title opens the list.
+- **Language** (Settings → Appearance): Automatic (the dashboard's `lang`, else the person's Home
+  Assistant language) or English, Deutsch, Polski, per person. Area names are not translated. A sheet closes by a finger dragged down anywhere on it from the top of
   its content; the page behind never pulls to refresh while it is open.
 - **Back**: every page opened from Systems has a back arrow to Systems beside the menu button (on
   the bar or not); a page off the bar has it however it was reached.
@@ -56,15 +78,13 @@ a pattern updates it.
   header stays; on a wider screen HA's header is as HA draws it (its menu button works).
 - **Climate & air** (`#/climate`): an advice card only while a limit is crossed now (a poor CO₂ or
   VOC: open a window; a poor air reading by name; a room too cold, warm, dry or humid), squares for
-  Inside, Outside and Air, the weather forecast as a strip (today and the next four days, from
+  Inside, Outside (the areas of each type) and Air, the weather forecast as a strip (today and the next four days, from
   Home Assistant's daily `weather/subscribe_forecast`, else the entity's `forecast` attribute),
-  and a Temp / Humidity / Air switch (remembered per person) over every area, the Outside
-  included: each value on a bar of its comfort range, or the air's good / fair / poor with marks at
+  and a Temp / Humidity / Air switch (remembered per person) over every area with that reading: each value on a bar of its comfort range, or the air's good / fair / poor with marks at
   climate-air's limits. Every card, square and row opens its trend.
-- **Areas** tab (`#/areas`): every room with its lights and readings, then the **Outside** when
-  the home has `outside` or `weather`.
-- **Area page** (`#/area/<id>`): one room in detail, or the Outside's temperature and humidity
-  (levels against climate-air's outside range); a horizontal swipe goes to the next or previous
+- **Areas** tab (`#/areas`): every Home Assistant area with its lights and readings.
+- **Area page** (`#/area/<id>`, the HA area id): one area in detail, with a settings button for its
+  type and main sensors; a horizontal swipe goes to the next or previous
   area. The first version's `#/rooms` and `#/room/<id>` links are redirected. Below its controls:
   - **its part of the floor plan** (with the input `floorplan`): the floorplan component's own
     card with `area` set to the area's HA area, so it draws that room alone with its sensors and
@@ -140,13 +160,13 @@ a pattern updates it.
 - **Widgets**: squares in a grid (an area's, the Areas tab's) share one size: equal columns and
   rows, a fixed aspect (a lone square does not stretch); no text is ellipsized anywhere, a long
   name wraps and a big value shrinks with its square. Each shows a
-  title, one value in its level's colour (below a comfort range blue, above it red, the Outside
-  against climate-air's outside range) with a trend arrow from the last hour, and one short line
-  written to fit (no text is cut off). Every widget opens a sheet: "All good" and the attention
-  pills the checks (every reading of every area, the Outside included, problems first), the inside
-  chip the rooms' temperatures, the lights-on chip the lights that are on, the Air square every air
-  reading; each reading in them opens its trend sheet on top (Back returns to the list).
-- **Trend sheet**: Home's outside and air chips, an area's Climate square and every reading in a
+  title, one value in its level's colour (below a comfort range blue, above it red) with a trend
+  arrow from the last hour, and one short line written to fit (no text is cut off). An area's light
+  level, sound or pressure sensor (its settings) is a square of its own. Every widget opens a sheet:
+  "All good" and the attention pills the checks (every reading of every area in the checks, problems
+  first), Inside and Outside the areas of their type, the lights-on chip the lights, the Air square
+  every air reading; each reading in them opens its trend sheet on top (Back returns to the list).
+- **Trend sheet**: Home's air chip, an area's Climate and other squares and every reading in a
   detail sheet open a bottom sheet with that reading over 24 h (the recorder's history), 7 d (hourly
   long-term statistics) or 30 d (daily), one line over the shaded comfort band (climate-air's
   range or air limit); a sensor without statistics (no `state_class`) shows its history for 7 d
@@ -216,8 +236,9 @@ default dashboard in the user's profile).
 
 ## What a home needs
 
-- The **home inputs** (`uses_home: true`): the rooms with their lights, scenes, climate, air and
-  media, `outside` and `weather`. Without them the render fails.
+- The **home inputs** (`uses_home: optional`): defaults per HA area (a room's `type`, `climate`, `air`,
+  and `lights`, `scenes`, `media` to override what the area has), `outside` (its area's default:
+  Outside) and `weather`. Without them Pocket shows Home Assistant's areas with no defaults.
 - **floorplan** (optional, with the input `floorplan: true`): its card on the area pages and the
   floor plan view; its Lovelace resource comes with that component and its plan with `domosenso
   floorplan push`. Needs the floorplan version that has the card's `area`, `zoom` and `chips`
@@ -240,8 +261,8 @@ Rendered from the home inputs; nothing in it is a state.
 | key | holds |
 |---|---|
 | `lang` | the dashboard's language |
-| `rooms` | per room in the home's order: `id`, `name` (in this language), `area` (its HA area: the room's `area`, else its id), and `lights`, `scenes`, `climate`, `air`, `media` as the home gives them |
-| `outside`, `weather` | as the home gives them (`outside` with its `area` when named); absent when it does not. The cards build the **Outside** pseudo-area (id `outside`, which no room may take) from them, listed after the rooms |
+| `rooms` | the defaults per HA area, in the home's order: `id`, `name` (in this language, for a frontend without `hass.areas`), `area` (its HA area: the room's `area`, else its id), and `type`, `lights`, `scenes`, `climate`, `air`, `media` as the home gives them; `[]` without home inputs. The areas themselves are HA's |
+| `outside`, `weather` | as the home gives them; `outside.area` is that area's default (type Outside, its climate) |
 | `thresholds.rooms` | per room with climate: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with a humidity sensor), each a climate-air `input_number` id |
 | `thresholds.outside` | with `outside`: `temp_low`, `temp_high` (and `humidity_low`, `humidity_high` with outside humidity), climate-air's outside helpers; absent without `outside` |
 | `thresholds.air` | per air reading any room names (score, co2, pm2_5, voc, nox): `fair`, `poor` ids |

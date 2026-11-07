@@ -2,10 +2,14 @@
 // ctx.openSheet(spec), each on the page contract (render(ctx, spec), update(el, ctx)):
 //
 //   checks  {kind: "checks", title, readings?, inside?}   every reading that was checked, per area
-//           (the Outside included unless inside), problems first (lib/checks.js): its name, its
+//           (but the areas the home left out of the checks), problems first (lib/checks.js): its name, its
 //           level in words and as a dot, its value in the level's colour and its trend arrow; a row
 //           opens that reading's trend sheet on top of the list (Back or close returns to it). Behind Home's "All good", its attention pills and (only
 //           temperature, rooms only) its inside chip.
+//   typed   {kind: "typed", title, type}               the areas of one type (SPEC-038 §3.9), behind
+//           Home's and Climate's Inside and Outside: each area with a main temperature as a reading
+//           row (opening its trend), then those without one, each "Main sensor not set" opening its
+//           area's settings page (#/settings/areas/<id>); with none of that type, "No areas assigned" and a way to Settings → Areas.
 //   air     {kind: "air", title, subtitle, area}           every air reading of one area, the same
 //           rows, in the home's order; behind the area page's Air square.
 //   lights  {kind: "lights", title}                         every lamp, per room, each a
@@ -28,7 +32,7 @@
 // and REFRESH_MS; the answers that land before the next frame are drawn in one redraw.
 
 import { toneOf, levelKey } from "./level.js";
-import { areasOf } from "./areas.js";
+import { areasOf, typed as typedAreas } from "./areas.js";
 import { checksOf, areaRows, AIR_READINGS } from "./checks.js";
 import { trendNow } from "./trend.js";
 import { trendSpec } from "./trend-sheet.js";
@@ -80,6 +84,10 @@ export function checksSpec(ctx, { readings, inside } = {}) {
   if (readings) spec.readings = readings;
   if (inside) spec.inside = true;
   return spec;
+}
+
+export function typedSpec(ctx, type) {
+  return { kind: "typed", type, title: ctx.t(`card.pocket.home.chip.${type}`) };
 }
 
 export function airSpec(ctx, area) {
@@ -203,6 +211,53 @@ export const checks = {
     drawReadings(parts, c, groups);
     parts.empty.hidden = groups.length > 0;
     setText(parts.empty, groups.length ? "" : c.t("card.pocket.checks.empty"));
+  }),
+  update: (root, ctx) => update(root, ctx),
+};
+
+// The areas of a type without a main temperature: one row each, opening the area's settings; and
+// the way to Settings → Areas when the type has no area at all.
+function drawUnset(parts, ctx, unset, none) {
+  if (!parts.extra) {
+    parts.extra = el("div", "rows unset");
+    parts.assign = el("button", "drow assign", `<span class="dname"><span class="r"></span></span><span class="dval">›</span>`);
+    parts.assign.type = "button";
+    parts.assign.addEventListener("click", () => { parts.ctx.closeSheet?.(); parts.ctx.navigate?.("#/settings/areas"); });
+    parts.list.after(parts.extra, parts.assign);
+  }
+  const key = unset.map((a) => a.id).join(" ");
+  if (key !== parts.unsetKey) {
+    parts.unsetKey = key;
+    parts.unsetRows = unset.map((area) => {
+      const node = el("button", "drow", `<i class="dot"></i><span class="dname"><span class="r"></span><span class="lt"></span></span><span class="dval">›</span>`);
+      node.type = "button";
+      node.dataset.area = area.id;
+      node.addEventListener("click", () => {
+        parts.ctx.closeSheet?.();
+        parts.ctx.navigate?.(`#/settings/areas/${encodeURIComponent(area.id)}`);
+      });
+      return { node, area };
+    });
+    parts.extra.replaceChildren(...parts.unsetRows.map((r) => r.node));
+  }
+  for (const { node, area } of parts.unsetRows) {
+    setText(node.querySelector(".r"), area.name);
+    setText(node.querySelector(".lt"), ctx.t("card.pocket.areas.sensor_not_set"));
+  }
+  parts.extra.hidden = unset.length === 0;
+  parts.assign.hidden = !none;
+  setText(parts.assign.querySelector(".r"), ctx.t("card.pocket.areas.assign"));
+}
+
+export const typedSheet = {
+  render: (ctx, spec) => renderReadings(ctx, spec, (parts, c) => {
+    const group = typedAreas(c.hass, c.config, spec.type);
+    const groups = group.measured.map(({ area }) => ({ area, named: true,
+      rows: areaRows(c.hass, area, c.config?.thresholds, ["temperature"]) })).filter((g) => g.rows.length);
+    drawReadings(parts, c, groups);
+    drawUnset(parts, c, group.unset, group.areas.length === 0);
+    parts.empty.hidden = group.areas.length > 0;
+    setText(parts.empty, c.t("card.pocket.areas.none_assigned"));
   }),
   update: (root, ctx) => update(root, ctx),
 };

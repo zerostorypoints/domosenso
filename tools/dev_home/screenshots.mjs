@@ -4,6 +4,8 @@
 //
 //   node tools/dev_home/screenshots.mjs --name <demo name> --out <dir> [--dashboard dashboard-pocket-en/home]
 //        [--routes name:#/hash,...] [--click <exact text>] [--dark] [--width 390 --height 844]
+//        [--wait <ms before the first screen, default 4000; a card that loads more slowly shows HA's
+//        "Configuration error" placeholder until it is defined>]
 //
 // Each route is opened in the same page (hash routes, nothing reloads) and saved as <out>/<name>.png;
 // with --click the element with that text is tapped first (a sheet, a menu). Logs in with the demo's
@@ -22,6 +24,7 @@ const { values: o } = parseArgs({ options: {
   routes: { type: "string", default: "home:#/" },
   click: { type: "string" }, dark: { type: "boolean", default: false },
   width: { type: "string", default: "390" }, height: { type: "string", default: "844" },
+  wait: { type: "string", default: "4000" },
 } });
 if (!o.name || !o.out) throw new Error("--name and --out are required");
 
@@ -45,7 +48,7 @@ let first = true;
 for (const [name, hash] of o.routes.split(",").map((s) => s.split(/:(.*)/s))) {
   if (first) await page.goto(`${base}/${o.dashboard}${hash}`, { waitUntil: "networkidle" });
   else await page.evaluate((h) => { location.hash = h; }, hash);
-  await page.waitForTimeout(first ? 4000 : 2500);
+  await page.waitForTimeout(first ? Number(o.wait) : 2500);
   first = false;
   if (o.click) {
     await page.getByText(o.click, { exact: true }).first().click();

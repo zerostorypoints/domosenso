@@ -357,19 +357,78 @@ test("a link of the first version lands on its new route, in place of the old en
   assert.ok(window.history.length <= length + 3, "only the entries the test set");
 });
 
-test("the Outside is an area when the home has one; a route to it without one goes to Areas", async () => {
-  mount();
-  await goTo("#/area/outside");
-  assert.equal(window.location.hash, "#/areas");
-  document.body.innerHTML = "";
+// Home Assistant's registries as the frontend gives them (hass.areas, hass.floors, hass.devices,
+// hass.entities), for the area model (SPEC-038).
+const st = (state, attributes = {}) => ({ state: String(state), attributes });
+function haHome(extra = {}) {
+  return hassOf({
+    floors: { ground: { floor_id: "ground", name: "Ground", level: 0 }, up: { floor_id: "up", name: "Up", level: 1 } },
+    areas: {
+      bedroom: { area_id: "bedroom", name: "Bedroom", floor_id: "up" },
+      living_room: { area_id: "living_room", name: "Living Room", floor_id: "ground", temperature_entity_id: null },
+      garden: { area_id: "garden", name: "Garden", floor_id: null },
+      study: { area_id: "study", name: "Study", floor_id: "up" },
+    },
+    devices: { d1: { id: "d1", name: "Study sensor", area_id: "study" } },
+    entities: { "sensor.study_t": { entity_id: "sensor.study_t", device_id: "d1" } },
+    states: { "sensor.study_t": st(20, { device_class: "temperature", state_class: "measurement" }),
+      "sensor.outside_temperature": st(5, { device_class: "temperature" }) },
+    ...extra,
+  });
+}
+
+test("the areas are Home Assistant's, in floor order; the inputs' outside gives its area the type Outside", async () => {
   const card = document.createElement("pocket-app");
-  card.setConfig({ ...config(), outside: { temperature: "sensor.outside_temperature" } });
+  card.setConfig({ ...config(), outside: { temperature: "sensor.outside_temperature", area: "garden" } });
   document.body.appendChild(card);
-  card.hass = hassOf();
+  card.hass = haHome();
+  const rooms = card._ctx().config.rooms;
+  assert.deepEqual(rooms.map((r) => [r.id, r.name, r.type]),
+    [["living_room", "Living Room", "inside"], ["bedroom", "Bedroom", "inside"], ["study", "Study", "inside"], ["garden", "Garden", "outside"]]);
+  assert.deepEqual(rooms.find((r) => r.id === "garden").climate, { temperature: "sensor.outside_temperature" });
+  assert.equal(card._ctx().config.outside, undefined, "no Outside of the card's own");
+  await goTo("#/area/garden");
+  assert.equal(window.location.hash, "#/area/garden");
   await goTo("#/area/outside");
-  assert.equal(window.location.hash, "#/area/outside");
-  assert.equal(card._ctx().routeId, "outside");
-  assert.deepEqual(active(card), ["areas"]);
+  assert.equal(window.location.hash, "#/areas", "an area Home Assistant does not have goes to Areas");
+});
+
+test("an administrator's Pocket records the only candidate once: climate into HA's area fields", async () => {
+  const calls = [];
+  const store = { value: null };
+  const hass = haHome({
+    user: { is_admin: true },
+    callWS: (msg) => {
+      calls.push(msg);
+      if (msg.type === "frontend/get_system_data") return Promise.resolve({ value: store.value });
+      if (msg.type === "frontend/set_system_data") { store.value = msg.value; return Promise.resolve(null); }
+      return Promise.resolve(null);
+    },
+    connection: { subscribeMessage: (callback) => { callback({ value: store.value }); return Promise.resolve(() => {}); } },
+  });
+  const card = mount({ hass });
+  await tick();
+  const study = card._ctx().config.rooms.find((r) => r.id === "study");
+  assert.deepEqual(study.climate, { temperature: "sensor.study_t" });
+  assert.equal(study.main.climate.source, "auto");
+  const update = calls.filter((m) => m.type === "config/area_registry/update");
+  assert.deepEqual(update, [{ type: "config/area_registry/update", area_id: "study",
+    temperature_entity_id: "sensor.study_t", humidity_entity_id: null }]);
+  assert.deepEqual(store.value.picked, { study: ["climate"] });
+  card.hass = { ...hass };
+  await tick();
+  assert.equal(calls.filter((m) => m.type === "config/area_registry/update").length, 1, "once");
+});
+
+test("someone who is not an administrator records nothing; the only candidate still shows", async () => {
+  const calls = [];
+  const hass = haHome({ user: { is_admin: false }, callWS: (msg) => { calls.push(msg); return Promise.resolve(null); },
+    connection: { subscribeMessage: (callback) => { callback({ value: null }); return Promise.resolve(() => {}); } } });
+  const card = mount({ hass });
+  await tick();
+  assert.deepEqual(card._ctx().config.rooms.find((r) => r.id === "study").climate, { temperature: "sensor.study_t" });
+  assert.deepEqual(calls.filter((m) => m.type !== "frontend/get_user_data"), []);
+  await assert.rejects(card._ctx().home.set("study", { type: "inside" }));
 });
 
 test("Power and Plants with nothing in Home Assistant: their empty states", async () => {
@@ -521,7 +580,7 @@ test("two saves at once run one after the other: both fields are kept", async ()
   const ctx = card._ctx();
   await Promise.all([ctx.saveSettings({ bar: ["areas"] }), ctx.saveSettings({ theme: "dark" })]);
   assert.deepEqual(stored(), { bar: ["areas"], theme: "dark" });
-  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark", climateView: "temperature" });
+  assert.deepEqual(card._ctx().settings, { bar: ["areas"], theme: "dark", language: "auto", climateView: "temperature" });
 });
 
 test("a failed save does not stop the next one", async () => {
@@ -659,7 +718,7 @@ test("a save updates the Settings page in place: the same element, the new choic
   assert.ok(page);
   await card._ctx().saveSettings({ theme: "dark" });
   assert.equal($(card, "main > section.settings"), page);
-  assert.equal(page.querySelector('.seg button[data-mode="dark"]').getAttribute("aria-checked"), "true");
+  assert.equal(page.querySelector(".appearance .theme select").value, "dark");
   await card._ctx().saveSettings({ bar: ["home", "power", "settings"] });
   assert.equal($(card, "main > section.settings"), page);
   assert.deepEqual($$(card, "nav .tab").map((el) => el.dataset.page), ["home", "power", "settings"]);
@@ -897,4 +956,52 @@ test("contract: every page Systems opens has the way back from Systems, none fro
   }
   app.remove();
   window.history.replaceState(null, "", "#/");
+});
+
+test("a Not assigned area is not in Pocket's views; Settings → Areas still has it", async () => {
+  const hass = haHome({ connection: { subscribeMessage: (callback) => {
+    callback({ value: { areas: { study: { type: "none" } }, picked: {} } });
+    return Promise.resolve(() => {});
+  } } });
+  const card = mount({ hass });
+  await tick();
+  assert.deepEqual(card._ctx().config.rooms.map((r) => r.id), ["living_room", "bedroom", "garden"]);
+  assert.ok(card._ctx().home.model.rooms.some((r) => r.id === "study" && r.type === "none"));
+  await goTo("#/area/study");
+  assert.equal(window.location.hash, "#/areas", "its page is not shown");
+  await goTo("#/settings/areas/study");
+  assert.equal(window.location.hash, "#/settings/areas/study", "its settings are, to bring it back");
+});
+
+test("a back arrow returns where its page was opened from; opened directly, it goes up", async () => {
+  const card = mount({ hass: haHome() });
+  await goTo("#/area/bedroom");
+  card._ctx().navigate("#/settings/areas/bedroom");
+  await tick();
+  assert.equal(window.location.hash, "#/settings/areas/bedroom");
+  card._ctx().back("#/settings/areas");
+  await tick(); await tick();
+  assert.equal(window.location.hash, "#/area/bedroom", "back to the area, not to Settings");
+  document.body.innerHTML = "";
+  const direct = mount({ hass: haHome() });
+  await goTo("#/settings/areas/study");
+  direct._trail.length = 0;   // as after a reload: no step inside Pocket
+  direct._ctx().back("#/settings/areas");
+  await tick();
+  assert.equal(window.location.hash, "#/settings/areas");
+});
+
+test("back after a swipe goes back to where the area was opened from, not to a new Areas entry", async () => {
+  const card = mount({ hass: haHome() });
+  await goTo("#/");
+  card._ctx().navigate("#/area/living_room");
+  await tick();
+  card._ctx().navigate("#/area/bedroom", { replace: true });   // the swipe
+  await tick();
+  assert.equal(window.location.hash, "#/area/bedroom");
+  const length = window.history.length;
+  card._ctx().back("#/areas");
+  await tick(); await tick();
+  assert.equal(window.location.hash, "#/", "back to Home, where the area was opened");
+  assert.ok(window.history.length <= length, "no new entry pushed");
 });

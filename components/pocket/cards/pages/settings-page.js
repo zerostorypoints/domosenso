@@ -2,11 +2,20 @@
 // person sets for themselves (Appearance, Bottom bar) and a row per panel; a panel is a page of its
 // own (#/settings/comfort, #/settings/about: ctx.routeId), with a Back to Settings, so the home's
 // values are a deliberate step away and the first level stays short. The groups:
-//   - Appearance: System / Light / Dark (lib/settings.js theme; lib/theme.js paints it);
+//   - Appearance: the theme, System / Light / Dark (lib/settings.js theme; lib/theme.js paints it), and
+//     the Language: Automatic (the dashboard's, else Home Assistant's) or one the pocket speaks, each
+//     named in its own language (lib/settings.js language). Like every choice among fixed options in
+//     Settings, each is a row with a native drop-down on its right (DESIGN.md 4.7);
 //   - This device: "Open Pocket when the app starts", on this phone or browser only (lib/start.js:
 //     its local storage, so each device chooses; off, Home Assistant opens as it would);
 //   - Bottom bar: a switch per page the bar can show besides Home and Settings (lib/router.js
 //     TABS), at most MAX_TABS - 2 on; while that many are on, the others are disabled with a hint;
+//   - Areas (#/settings/areas, SPEC-038 §3.9): every Home Assistant area with its type and its main
+//     temperature sensor (or "Main sensor not set") in one line; a row drills down to that area's
+//     settings, a page of its own (#/settings/areas/<area id>, ctx.routeItem, lib/area-settings.js)
+//     whose back returns to the list;
+//   - Quick actions (#/settings/quick, SPEC-038 §3.11, lib/quick-settings.js): the person's list of
+//     Home's Quick actions, in order, with up / down / remove, and its Add page (#/settings/quick/add);
 //   - Comfort ranges: per area with comfort helpers (lib/areas.js comfortOf: the rooms, then the
 //     Outside), then the air limits; each value is a button that opens Home Assistant's more-info
 //     of its helper (the hass-more-info event), so HA's own dialog changes it;
@@ -21,8 +30,12 @@
 import { areasOf, comfortOf } from "../lib/areas.js";
 import { FIXED_TABS, MAX_TABS, SETTINGS_PANELS, TABS, optionalPages } from "../lib/router.js";
 import { MODES } from "../lib/theme.js";
+import { LANGUAGES } from "../lib/settings.js";
 import { reportError } from "../lib/report.js";
 import { setStartHere, startTarget } from "../lib/start.js";
+import { pickRow, renderAreaSettings, updateAreaSettings } from "../lib/area-settings.js";
+import { renderQuickSettings, updateQuickSettings } from "../lib/quick-settings.js";
+import { quickOf } from "../lib/quick.js";
 import { GONE, el, setText, setAttr, number, temperature, percent } from "../lib/page-kit.js";
 
 export const INVENTORY = "sensor.domosenso_components";
@@ -33,6 +46,9 @@ const AREA_URL = "/config/areas/area/";
 const CHOICES = TABS.map((tab) => tab.page).filter((page) => !FIXED_TABS.includes(page));
 const ROOM = MAX_TABS - FIXED_TABS.length;
 const COMFORT = [["temperature", "temp_low", "temp_high"], ["humidity", "humidity_low", "humidity_high"]];
+
+// Each language by its own name, as a person looks for it whatever language the page is in.
+const ENDONYMS = { en: "English", de: "Deutsch", pl: "Polski" };
 
 // The version this file is served from (/local/domosenso/pocket/<version>/cards/pages/...), for a
 // home whose inventory does not list the pocket.
@@ -47,11 +63,11 @@ const STYLE = `
   .settings .back b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .settings.panel .group > h3 { display: none; }
   .settings.panel .group { padding-top: 8px; }
-  .settings .menu button.row { box-sizing: border-box; width: 100%; margin: 0; padding: 6px 0; border: 0;
+  .settings .menu button.row, .settings .areas button.row { box-sizing: border-box; width: 100%; margin: 0; padding: 6px 0; border: 0;
                                border-top: 1px solid var(--line); background: none; color: var(--fg); font: inherit;
                                font-size: 15px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .settings .menu button.row:first-of-type { border-top: 0; }
-  .settings .menu ha-icon { flex: 0 0 auto; color: var(--mut); --mdc-icon-size: 22px; }
+  .settings .menu button.row:first-of-type, .settings .areas button.row:first-of-type { border-top: 0; }
+  .settings .menu ha-icon, .settings .areas button.row ha-icon { flex: 0 0 auto; color: var(--mut); --mdc-icon-size: 22px; }
   .settings .top b { font-size: 24px; font-weight: 650; letter-spacing: -.4px; }
   .settings .group { margin: 0 0 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line);
                      border-radius: 18px; }
@@ -59,15 +75,38 @@ const STYLE = `
   .settings h4 { margin: 10px 0 2px; font-size: 15px; font-weight: 600; }
   .settings .hint { margin: 2px 0 10px; font-size: 12.5px; line-height: 1.35; color: var(--mut); }
   .settings .hint[hidden], .settings .row[hidden], .settings .group[hidden] { display: none; }
-  .settings .seg { display: flex; gap: 4px; margin: 6px 0 12px; padding: 4px; background: var(--chip); border-radius: 14px; }
-  .settings .seg button { flex: 1 1 0; min-height: 44px; margin: 0; border: 0; border-radius: 10px; background: none;
-                          font: inherit; font-size: 15px; color: var(--fg); cursor: pointer; }
-  .settings .seg button[aria-checked="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
   .settings .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; min-height: 48px;
                    border-top: 1px solid var(--line); font-size: 15px; }
   .settings .row:first-of-type { border-top: 0; }
   .settings .row .label { flex: 1 1 7em; min-width: 0; overflow-wrap: break-word; }
   .settings .row .label small { display: block; font-size: 12.5px; color: var(--mut); }
+  /* A choice among fixed options (DESIGN.md 4.7): the name left, the value right as a native
+     drop-down; a long value wraps under the name, whole, rather than being cut. */
+  .settings .pick select { flex: 0 1 auto; max-width: 100%; min-height: 44px; margin: 0 0 0 auto; padding: 0 26px 0 8px;
+    border: 0; border-radius: 10px; background: transparent; color: var(--mut); font: inherit; font-size: 15px;
+    text-align: right; text-align-last: right; -webkit-appearance: none; appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--mut) 50%), linear-gradient(135deg, var(--mut) 50%, transparent 50%);
+    background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  .settings .pick select:disabled { opacity: .6; cursor: default; }
+  .settings .pick select:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .settings .pick.sub { padding-left: 14px; }
+  .settings .tools { display: flex; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+  .settings .tool { min-width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 10px; background: none;
+    color: var(--mut); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; --mdc-icon-size: 20px; }
+  .settings .tool:disabled { opacity: .35; cursor: default; }
+  .settings .quick-settings .row.reset[hidden] { display: none; }
+  .settings .pick.stack { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 8px 0; }
+  .settings .pick.stack .name { overflow-wrap: break-word; }
+  .settings .pick.stack select { width: 100%; min-height: 40px; margin: 0; padding: 0 26px 0 0; color: var(--fg);
+    text-align: left; text-align-last: left; background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%; }
+  .settings .pick.stack small { display: block; font-size: 12.5px; color: var(--mut); }
+  /* A reading of the kind above it: indented, so it reads as part of that choice. */
+  .settings .pick.stack.sub { padding-left: 16px; border-top: 0; }
+  .settings .gh { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--mut); }
+  .settings.panel .group > h3.gh { display: block; }
+  .settings .area-settings .admin { margin: 0 4px 12px; }
+  .settings .area-settings .checked-row { border-top: 1px solid var(--line); }
+  .settings .quick-settings .source { margin: 10px 0 0; font-size: 15px; font-weight: 600; color: var(--fg); }
   .settings .switch { box-sizing: border-box; flex: 0 0 auto; width: 56px; min-height: 44px; margin: 0; padding: 0 4px;
                       border: 0; background: none; cursor: pointer; display: flex; align-items: center; }
   .settings .switch i { position: relative; display: block; width: 46px; height: 28px; border-radius: 14px; background: var(--line); }
@@ -190,15 +229,18 @@ export function render(ctx) {
   const root = el("section", "settings");
   root.innerHTML = `<style>${STYLE}</style>
     <div class="top"><b></b><button class="back" type="button" hidden><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
-    <div class="group appearance"><h3></h3><div class="seg" role="radiogroup"></div></div>
+    <div class="group appearance"><h3></h3></div>
     <div class="group device"><h3></h3>
       <div class="row"><span class="label"><span class="name"></span><small></small></span><button class="switch start" type="button" role="switch"><i></i></button></div>
     </div>
     <div class="group bar"><h3></h3><p class="hint fixed"></p><div class="rows"></div><p class="hint full"></p></div>
     <div class="group menu">
+      <button class="row" type="button" data-panel="areas"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+      <button class="row" type="button" data-panel="quick"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
       <button class="row" type="button" data-panel="comfort"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
       <button class="row" type="button" data-panel="about"><span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>
     </div>
+    <div class="group areas"><h3></h3><p class="hint"></p><div class="rows"></div></div>
     <div class="group comfort"><h3></h3><p class="hint"></p><div class="rows"></div></div>
     <div class="group about"><h3></h3>
       <p class="version"></p>
@@ -208,23 +250,42 @@ export function render(ctx) {
     </div>`;
   const $ = (sel) => root.querySelector(sel);
   const panel = SETTINGS_PANELS.includes(ctx.routeId) ? ctx.routeId : null;
-  const parts = { ctx, panel, pending: {}, tokens: {}, modes: [], switches: [], values: [], areaNames: [], readingLabels: [],
+  // A drill-down of a panel: one area's settings, Quick actions' Add page.
+  const item = (panel === "areas" || panel === "quick") && ctx.routeItem ? ctx.routeItem : null;
+  const parts = { ctx, panel, item, pending: {}, tokens: {}, switches: [], values: [], areaNames: [], readingLabels: [],
     areaLinks: [], components: null };
   root.classList.toggle("panel", !!panel);
   for (const row of root.querySelectorAll(".menu .row")) {
     row.addEventListener("click", () => parts.ctx.navigate?.(`#/settings/${row.dataset.panel}`));
   }
-  $(".back").addEventListener("click", () => parts.ctx.navigate?.("#/settings"));
+  // Back to where it was opened from (an area's page, Home), else up: an area's settings to the list,
+  // a panel to Settings (the shell's ctx.back).
+  $(".back").addEventListener("click", () => {
+    const up = parts.item ? `#/settings/${parts.panel}` : "#/settings";
+    if (parts.ctx.back) parts.ctx.back(up);
+    else parts.ctx.navigate?.(up);
+  });
 
+  parts.theme = pickRow("theme");
   for (const mode of MODES) {
-    const button = el("button");
-    button.type = "button";
-    setAttr(button, "role", "radio");
-    button.dataset.mode = mode;
-    button.addEventListener("click", () => { if (shown(parts).theme !== mode) change(root, { theme: mode }); });
-    parts.modes.push(button);
-    $(".seg").append(button);
+    const option = el("option");
+    option.value = mode;
+    parts.theme.select.append(option);
   }
+  parts.theme.select.addEventListener("change", () => {
+    if (shown(parts).theme !== parts.theme.select.value) change(root, { theme: parts.theme.select.value });
+  });
+  parts.lang = pickRow("lang");
+  for (const code of LANGUAGES) {
+    const option = el("option");
+    option.value = code;
+    if (code !== "auto") option.textContent = ENDONYMS[code] ?? code;
+    parts.lang.select.append(option);
+  }
+  parts.lang.select.addEventListener("change", () => {
+    if (shown(parts).language !== parts.lang.select.value) change(root, { language: parts.lang.select.value });
+  });
+  $(".appearance").append(parts.theme.row, parts.lang.row);
 
   parts.choices = choicesOf(ctx.config);
   for (const page of parts.choices) {
@@ -244,6 +305,18 @@ export function render(ctx) {
     parts.switches.push({ page, row, button });
     $(".bar .rows").append(row);
   }
+
+  // Every area, the Not assigned ones too (ctx.home.model): this is where an area is brought back.
+  const allAreas = (c) => c.home?.model?.rooms ?? areasOf(c.config);
+  parts.allAreas = allAreas;
+  parts.areaRows = allAreas(ctx).map((area) => {
+    const row = el("button", "row", `<span class="label"><span class="name"></span><small></small></span><ha-icon icon="mdi:chevron-right"></ha-icon>`);
+    row.type = "button";
+    row.dataset.area = area.id;
+    row.addEventListener("click", () => parts.ctx.navigate?.(`#/settings/areas/${encodeURIComponent(area.id)}`));
+    $(".areas .rows").append(row);
+    return { id: area.id, row };
+  });
 
   const comfort = $(".comfort .rows");
   for (const area of areasOf(ctx.config)) {
@@ -265,6 +338,16 @@ export function render(ctx) {
   $(".menu [data-panel=comfort]").hidden = !parts.hasComfort;
   $(".comfort").hidden = panel !== "comfort" || !parts.hasComfort;
   $(".about").hidden = panel !== "about";
+  $(".areas").hidden = panel !== "areas" || !!item;
+  if (panel === "areas" && item) {
+    parts.areaSettings = renderAreaSettings(ctx, item);
+    $(".areas").after(parts.areaSettings);
+  }
+  if (panel === "quick") {
+    parts.quickSettings = renderQuickSettings(ctx, { add: item === "add", settings: () => shown(parts),
+      save: (patch) => change(root, patch) });
+    $(".areas").after(parts.quickSettings);
+  }
 
   for (const area of areasOf(ctx.config)) {
     const link = el("a", "row", `<span class="label"><span class="name"></span><small></small></span><span class="go">›</span>`);
@@ -329,27 +412,58 @@ export function update(root, ctx) {
   const offline = ctx.offline === true;
   const $ = (sel) => root.querySelector(sel);
 
-  const title = parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
+  const itemRoom = parts.panel === "areas" && parts.item ? parts.allAreas(ctx).find((r) => r.id === parts.item) : null;
+  const title = itemRoom ? itemRoom.name
+    : parts.panel === "quick" && parts.item ? ctx.t("card.pocket.quick.add_title")
+    : parts.panel ? ctx.t(`card.pocket.settings.${parts.panel}.title`) : ctx.t("card.pocket.settings.title");
   const plain = $(".top > b");
   plain.hidden = !!parts.panel;
   setText(plain, title);
   const back = $(".back");
   back.hidden = !parts.panel;
   setText(back.querySelector("b"), title);
-  setAttr(back, "aria-label", ctx.t("card.pocket.settings.back"));
+  setAttr(back, "aria-label", ctx.t(parts.panel === "areas" && parts.item ? "card.pocket.areas.back" : "card.pocket.settings.back"));
+  if (parts.areaSettings) updateAreaSettings(parts.areaSettings, ctx);
+  if (parts.quickSettings) updateQuickSettings(parts.quickSettings, ctx);
+  const quickRow = $(".menu [data-panel=quick]");
+  const quick = quickOf(settings, ctx.config, ctx.hass);
+  setText(quickRow.querySelector(".name"), ctx.t("card.pocket.quick.title"));
+  setText(quickRow.querySelector("small"), ctx.t(`card.pocket.quick.summary.${quick.source}`, { count: quick.ids.length }));
   const comfortRow = $(".menu [data-panel=comfort]");
   setText(comfortRow.querySelector(".name"), ctx.t("card.pocket.settings.comfort.title"));
   setText(comfortRow.querySelector("small"), ctx.t("card.pocket.settings.comfort.summary",
     { count: parts.areaNames.length }) + (parts.airName ? ` · ${ctx.t("card.pocket.settings.air.title")}` : ""));
+  const rooms = parts.allAreas(ctx);
+  const areasRow = $(".menu [data-panel=areas]");
+  setText(areasRow.querySelector(".name"), ctx.t("card.pocket.areas.title"));
+  setText(areasRow.querySelector("small"), ctx.t("card.pocket.areas.summary",
+    { count: rooms.length, unassigned: rooms.filter((r) => r.type === "none").length }));
+  setText($(".areas h3"), ctx.t("card.pocket.areas.title"));
+  setText($(".areas .hint"), ctx.t(ctx.home?.admin === false ? "card.pocket.areas.admin_only" : "card.pocket.areas.hint"));
+  for (const { id, row } of parts.areaRows) {
+    const room = rooms.find((r) => r.id === id);
+    if (!room) continue;
+    setText(row.querySelector(".name"), room.name);
+    const climate = room.main?.climate;
+    const sensor = climate?.choice ? climate.name : ctx.t("card.pocket.areas.sensor_not_set");
+    setText(row.querySelector("small"), `${ctx.t(`card.pocket.areas.types.${room.type ?? "inside"}`)} · ${sensor}`);
+  }
   const aboutRow = $(".menu [data-panel=about]");
   setText(aboutRow.querySelector(".name"), ctx.t("card.pocket.settings.about.title"));
   setText($(".appearance h3"), ctx.t("card.pocket.settings.appearance"));
-  setAttr($(".seg"), "aria-label", ctx.t("card.pocket.settings.appearance"));
-  for (const button of parts.modes) {
-    setText(button, ctx.t(`card.pocket.settings.theme.${button.dataset.mode}`));
-    setAttr(button, "aria-checked", String(settings.theme === button.dataset.mode));
-    button.disabled = offline;
-  }
+  const theme = parts.theme;
+  setText(theme.name, ctx.t("card.pocket.settings.theme_label"));
+  setText(theme.small, "");
+  for (const option of theme.select.options) setText(option, ctx.t(`card.pocket.settings.theme.${option.value}`));
+  if (theme.select.value !== settings.theme) theme.select.value = settings.theme;
+  theme.select.disabled = offline;
+
+  const lang = parts.lang;
+  setText(lang.name, ctx.t("card.pocket.settings.language.title"));
+  setText(lang.small, ctx.t(settings.language === "auto" ? "card.pocket.settings.language.auto_hint" : "card.pocket.settings.language.chosen_hint"));
+  setText(lang.select.querySelector('option[value="auto"]'), ctx.t("card.pocket.settings.language.auto"));
+  if (lang.select.value !== settings.language) lang.select.value = settings.language;
+  lang.select.disabled = offline;
 
   setText($(".device h3"), ctx.t("card.pocket.settings.device.title"));
   const start = $(".device .start");

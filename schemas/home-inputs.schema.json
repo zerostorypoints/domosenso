@@ -84,6 +84,18 @@
         "area": {
           "$ref": "#/$defs/area"
         },
+        "type": {
+          "description": "The area's default type in Pocket (SPEC-038): inside (also when absent), outside, or none (Not assigned: hidden from Pocket's views). Pocket's settings override it.",
+          "enum": [
+            "inside",
+            "outside",
+            "none"
+          ]
+        },
+        "checked": {
+          "description": "Pocket (SPEC-038 §3.2): false leaves the area out of the checks (attention pills, What was checked, the advice, the home's air); absent or true: checked. Its type never decides this. Pocket's settings override it.",
+          "type": "boolean"
+        },
         "lights": {
           "description": "The room's lights: a light group (its members read at run time), or several lights or groups, each an entity or {entity, name} (as the Ramka lists them with labels).",
           "oneOf": [

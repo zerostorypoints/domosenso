@@ -53,6 +53,10 @@ entity ids, notify actions: read-only API calls) or asked; say where each came f
 is generated from the inputs: fix an input and `add` again only before the first commit, else edit
 the file, which is the home's.
 
+A component whose manifest declares `uses_home` (Pocket, climate-air) reads the home's areas: run the
+skill `set-up-areas` now. It asks only what Home Assistant cannot tell (each area's type, which sensor
+stands for an area with several) and writes the answers as defaults into `domosenso/home.inputs.yaml`.
+
 ## 3. Inside Home Assistant: integrations
 
 For each entry of `integrations`, by `discover`'s answer:

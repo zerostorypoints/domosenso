@@ -7,8 +7,9 @@ import { config, st, baseStates, hassOf, ctxOf, text, texts } from "../testing/d
 
 const frame = () => new Promise((resolve) => setTimeout(resolve, 30));   // past the next animation frame
 
+// The outside switched out of the checks by the home (SPEC-038 §3.2): these tests are about the rooms.
 const withOutside = { ...config,
-  outside: { temperature: "sensor.outside_temperature" },
+  outside: { temperature: "sensor.outside_temperature", checked: false },
   thresholds: { ...config.thresholds, outside: { temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } } };
 const states = (extra = {}) => ({ ...baseStates(), "sensor.outside_temperature": st(5),
   "input_number.out_temp_low": st(20), "input_number.out_temp_high": st(24), ...extra });
@@ -33,26 +34,25 @@ test("specs: titles from the translations", () => {
   assert.deepEqual(lightsSpec(ctx), { kind: "lights", title: "Lights" });
 });
 
-test("checks: every reading per area, the Outside first when it is the problem, cold in blue", () => {
+test("checks: what All good counted, nothing more; an area switched out of the checks is not in it", () => {
   const ctx = ctxOf({ cfg: withOutside, hass: hassOf(states()) });
   const el = mount(checks, ctx, checksSpec(ctx));
   assert.equal(text(el.querySelector(".dtitle b")), "What was checked");
-  assert.deepEqual(texts(el, ".gname"), ["Outside", "Living room", "Bedroom"]);
-  const first = el.querySelector(".drow");
-  assert.equal(text(first.querySelector(".r")), "Temperature");
-  assert.equal(text(first.querySelector(".lt")), "Too cold");
-  assert.equal(text(first.querySelector(".num")), "5.0°");
-  assert.equal(first.querySelector(".num").className, "num lv-cold");
-  assert.equal(first.querySelector(".dot").className, "dot lv-cold");
-  assert.deepEqual(texts(el, ".grp:nth-child(2) .drow .r"), ["Temperature", "Humidity", "Air score", "CO₂"]);
-  assert.deepEqual(texts(el, ".grp:nth-child(2) .drow .lt"), ["In range", "In range", "Good", "Good"]);
+  assert.deepEqual(texts(el, ".gname"), ["Living room", "Bedroom"], "the outside area (5°, below its range) is switched off");
+  assert.ok(!el.querySelector(".lv-cold"));
+  const on = ctxOf({ cfg: { ...withOutside, outside: { temperature: "sensor.outside_temperature" } }, hass: hassOf(states()) });
+  const all = mount(checks, on, checksSpec(on));
+  assert.deepEqual(texts(all, ".gname"), ["Outside", "Living room", "Bedroom"], "by default it is checked, the problem first");
+  assert.equal(text(all.querySelector(".drow .lt")), "Too cold");
+  assert.deepEqual(texts(el, ".grp:nth-child(1) .drow .r"), ["Temperature", "Humidity", "Air score", "CO₂"]);
+  assert.deepEqual(texts(el, ".grp:nth-child(1) .drow .lt"), ["In range", "In range", "Good", "Good"]);
   assert.ok(el.querySelector(".empty").hidden);
 });
 
 test("checks: a row opens its reading's trend sheet", () => {
   const ctx = ctxOf({ cfg: withOutside, hass: hassOf(states()) });
   const el = mount(checks, ctx, checksSpec(ctx));
-  el.querySelectorAll(".drow")[1].click();
+  el.querySelectorAll(".drow")[0].click();
   assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity, s.subtitle]),
     [["trend", "sensor.living_room_temperature", "Living room"]]);
 });
@@ -81,14 +81,14 @@ test("checks: no limits and no reading say so; nothing at all says so", () => {
 test("checks: update patches in place, and reorders only when a level moves a row", () => {
   const ctx = ctxOf({ cfg: withOutside, hass: hassOf(states()) });
   const el = mount(checks, ctx, checksSpec(ctx));
-  const row = el.querySelectorAll(".drow")[1];
+  const row = el.querySelectorAll(".drow")[0];
   ctx.hass = hassOf(states({ "sensor.living_room_temperature": st(21.9) }));
   checks.update(el, ctx);
-  assert.equal(el.querySelectorAll(".drow")[1], row, "patched");
+  assert.equal(el.querySelectorAll(".drow")[0], row, "patched");
   assert.equal(text(row.querySelector(".num")), "21.9°");
   ctx.hass = hassOf(states({ "sensor.living_room_co2": st(1300) }));
   checks.update(el, ctx);
-  assert.deepEqual(texts(el, ".gname"), ["Living room", "Outside", "Bedroom"], "poor too: the home's order");
+  assert.deepEqual(texts(el, ".gname"), ["Living room", "Bedroom"]);
   assert.equal(text(el.querySelector(".drow .r")), "CO₂", "the poor CO₂ moves up");
 });
 

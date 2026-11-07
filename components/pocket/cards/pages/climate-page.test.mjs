@@ -7,10 +7,11 @@ import { config as demo, baseStates, st, hassOf, ctxOf, text, texts } from "../t
 import { clearForecasts } from "../lib/weather.js";
 import { clearHistoryCache } from "../lib/trend.js";
 
-// The demo home with an outside sensor, its comfort range and a weather entity.
+// The demo home with an outside area (its sensors, its comfort range) and a weather entity.
 const config = {
   ...demo,
-  outside: { temperature: "sensor.outside_temperature" },
+  // Switched out of the checks by the home: these tests are about the rooms' advice (SPEC-038 §3.2).
+  outside: { temperature: "sensor.outside_temperature", humidity: "sensor.outside_humidity", checked: false },
   weather: "weather.home",
   thresholds: { ...demo.thresholds,
     outside: { temp_low: "input_number.out_temp_low", temp_high: "input_number.out_temp_high" } },
@@ -18,7 +19,7 @@ const config = {
 const states = (changes = {}) => ({
   ...baseStates(),
   "input_number.out_temp_low": st(10), "input_number.out_temp_high": st(25),
-  "sensor.outside_temperature": st(5.5),
+  "sensor.outside_temperature": st(5.5), "sensor.outside_humidity": st(82),
   "weather.home": st("cloudy", { temperature: 5.5, humidity: 82 }),
   ...changes,
 });
@@ -95,28 +96,42 @@ test("squares: inside the range in the worst room's colour, outside cold blue be
   assert.equal(sq("inside").querySelector(".big").className, "big lv-warm");
   assert.equal(text(sq("inside").querySelector(".lab")), "1 out of range");
   assert.equal(text(sq("outside").querySelector(".num")), "5.5°");
-  assert.equal(sq("outside").querySelector(".big").className, "big lv-cold");
-  assert.equal(text(sq("outside").querySelector(".lab")), "82 % · Too cold");
+  assert.equal(sq("outside").querySelector(".big").className, "big", "switched out of the checks here: not coloured");
+  assert.equal(text(sq("outside").querySelector(".lab")), "82 %");
   assert.equal(text(sq("air").querySelector(".num")), "81");
   assert.equal(sq("air").querySelector(".big").className, "big lv-good");
   assert.equal(text(sq("air").querySelector(".lab")), "Air good");
 });
 
-test("squares open their sheets: inside the checks, outside and air their trend", () => {
+test("squares open their sheets: inside and outside the areas of their type, air its trend", () => {
   const ctx = ctxWith();
   const el = mount(ctx);
   for (const name of ["inside", "outside", "air"]) el.querySelector(`[data-square="${name}"]`).click();
-  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.entity]),
-    [["checks", undefined], ["trend", "sensor.outside_temperature"], ["trend", "sensor.living_room_air_quality_score"]]);
+  assert.deepEqual(ctx.sheets.map((s) => [s.kind, s.type ?? s.entity]),
+    [["typed", "inside"], ["typed", "outside"], ["trend", "sensor.living_room_air_quality_score"]]);
 });
 
-test("a home without outside, weather or air: those squares and the weather are hidden", () => {
+test("a home with no outside area and no air: Outside says so and opens Settings → Areas; no Air, no weather", () => {
   const cfg = { ...demo, rooms: demo.rooms.map(({ air, ...room }) => room) };
-  const el = mount(ctxWith({ cfg }));
-  assert.equal(el.querySelector('[data-square="outside"]').hidden, true);
+  const ctx = ctxWith({ cfg });
+  const el = mount(ctx);
+  const outside = el.querySelector('[data-square="outside"]');
+  assert.equal(outside.hidden, false);
+  assert.equal(text(outside.querySelector(".num")), "No areas assigned");
+  outside.click();
+  assert.deepEqual(ctx.routes, ["#/settings/areas"]);
   assert.equal(el.querySelector('[data-square="air"]').hidden, true);
   assert.equal(el.querySelector('[data-square="inside"]').hidden, false);
   assert.equal(el.querySelector(".weather").hidden, true);
+});
+
+test("an inside area without a main sensor: Inside still shows the others; with none at all, Main sensor not set", () => {
+  const rooms = demo.rooms.map((room) => ({ ...room, type: "inside" }));
+  const el = mount(ctxWith({ cfg: { ...demo, rooms } }));
+  assert.equal(text(el.querySelector('[data-square="inside"] .num')), "21.7–21.9°");
+  const bare = rooms.map(({ climate, ...room }) => room);
+  const el2 = mount(ctxWith({ cfg: { ...demo, rooms: bare } }));
+  assert.equal(text(el2.querySelector('[data-square="inside"] .num')), "Main sensor not set");
 });
 
 test("the temperature view: every area with a temperature, the Outside last, on its comfort band", () => {
@@ -164,15 +179,17 @@ test("the person's stored view is the one shown; a failed save keeps the view an
   assert.deepEqual(errors, ["card.pocket.settings.error"]);
 });
 
-test("a row opens its trend; the Outside's weather humidity has no entity and opens nothing", () => {
+test("every row opens its sensor's trend, the outside area's too", () => {
   const ctx = ctxWith({ settings: { climateView: "humidity" } });
   const el = mount(ctx);
   const rows = el.querySelectorAll(".rows .row");
   assert.equal(rows[0].tagName, "BUTTON");
   rows[0].click();
   assert.equal(ctx.sheets.at(-1).entity, "sensor.living_room_humidity");
-  assert.equal(rows[2].tagName, "DIV");
+  assert.equal(rows[2].tagName, "BUTTON");
   assert.equal(text(rows[2].querySelector(".num")), "82 %");
+  rows[2].click();
+  assert.equal(ctx.sheets.at(-1).entity, "sensor.outside_humidity");
 });
 
 test("the weather strip: shown with a weather entity, opening the forecast sheet", () => {
@@ -228,4 +245,21 @@ test("squares grow with their content: a fixed aspect, no min-height (it would d
     assert.match(rule, /aspect-ratio:/, file);
     assert.doesNotMatch(rule, /min-height|(?<!-)height:|overflow/, file);
   }
+});
+
+test("advice for every checked area: a cold outside area too, until the home switches it out of the checks", () => {
+  const on = { ...config, outside: { temperature: "sensor.outside_temperature", humidity: "sensor.outside_humidity" } };
+  const freezing = { "sensor.outside_temperature": st(-5) };
+  const el = mount(ctxWith({ cfg: on, changes: freezing }));
+  assert.ok(texts(el, ".advice .tip .t1").includes("Outside: Too cold"), texts(el, ".advice .tip .t1").join(" | "));
+  const off = mount(ctxWith({ changes: freezing }));
+  assert.ok(!texts(off, ".advice .tip .t1").some((t) => t.startsWith("Outside")), "switched off: no advice");
+});
+
+test("an area switched out of the checks never colours Inside nor counts as out of range", () => {
+  const rooms = demo.rooms.map((room) => ({ ...room, type: "inside", ...(room.id === "bedroom" ? { checked: false } : {}) }));
+  const el = mount(ctxWith({ cfg: { ...demo, rooms }, changes: { "sensor.bedroom_temperature": st(30) } }));
+  const sq = el.querySelector('[data-square="inside"]');
+  assert.equal(sq.querySelector(".big").className, "big lv-good", "the bedroom at 30° is not checked");
+  assert.equal(text(sq.querySelector(".lab")), "All in range");
 });
