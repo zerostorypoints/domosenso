@@ -3,27 +3,32 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## Unreleased: panels without a player or calendars
+## 0.17.0 (2026-11-07): rooms from the home inputs, panels without a player or calendars, the screen after a restart
 
-`media_player` is optional. Omit it or use null/empty text to leave out music cards and player
-commands; the shared media-state helpers stay, with media-playing false. Without a player,
-`music_visual` is inactive; the `music_back` player-start trigger and music-watching automation
-are omitted. The helper-only `music_default` policy remains.
+### Rooms from the shared home inputs
 
-`calendar` is optional and accepts an empty list, null or empty text. Without calendars there is
-no agenda, calendar control or `show_calendar` script. Settings/preview explain the missing
-binding. A player without calendars and calendars without a player both work. Existing
-configured homes need no input changes and retain the same rendered output. Weather remains
-required through the Ramka inputs or the shared home inputs.
+The Ramka declares `uses_home: optional`. When the home has shared inputs (`home_inputs:` in
+`domosenso.yaml`), each of these inputs falls back to them if the Ramka's own file leaves it out:
+- `lights`: each room's lights, labelled with the room's name or the light's own name;
+- `climate`: each room with climate, labelled with the room's name;
+- `outside` and `weather`;
+- `air`: the first room with air;
+- `covers`: each room's listed covers;
+- `status` contacts and locks: each room's listed ones.
 
-## Unreleased: the kiosk user's person is marked
+An input the Ramka's file gives wins, unchanged, so a home that keeps its lists sees nothing
+change. Colours and the wall's layout stay the Ramka's.
 
-With `kiosk_user`, the package marks `person.<the kiosk user as a slug>` with `person_role: kiosk`
-(`homeassistant: customize`), so Pocket's Safety leaves the wall tablet's account out of "Who is
-home". Nothing to do; a kiosk user named with characters beyond letters, digits, spaces and hyphens
-may not match its person, which is then simply not marked.
+What a home does: nothing now. To move:
+1. Make sure `home.inputs.yaml` names the same entities.
+2. Remove the Ramka's own `lights`, `climate`, `outside`, `air` and `weather` one at a time, running
+   `domosenso render` after each.
+3. Before deploying, `domosenso compare` a snapshot from before against one from after.
 
-## Unreleased (P3): thresholds from climate-air (`thresholds: climate-air`, optional)
+The labels then come from the room's name, so a light or widget whose label differed from its
+room's name needs `{entity, name}` in the home inputs.
+
+### Thresholds from climate-air (`thresholds: climate-air`, optional)
 
 With `thresholds: climate-air` (and the climate-air component installed), the wall reads climate-air's
 helpers, the same thresholds Pocket reads:
@@ -48,40 +53,27 @@ What a home does:
 
 `own` (the default) changes nothing.
 
-## Unreleased (P3): rooms from the shared home inputs
+### Panels without a player or calendars
 
-The Ramka declares `uses_home: optional`. When the home has shared inputs (`home_inputs:` in
-`domosenso.yaml`), each of these inputs falls back to them if the Ramka's own file leaves it out:
-- `lights`: each room's lights, labelled with the room's name or the light's own name;
-- `climate`: each room with climate, labelled with the room's name;
-- `outside` and `weather`;
-- `air`: the first room with air;
-- `covers`: each room's listed covers;
-- `status` contacts and locks: each room's listed ones.
+`media_player` is optional. Omit it or use null/empty text to leave out music cards and player
+commands; the shared media-state helpers stay, with media-playing false. Without a player,
+`music_visual` is inactive; the `music_back` player-start trigger and music-watching automation
+are omitted. The helper-only `music_default` policy remains.
 
-An input the Ramka's file gives wins, unchanged, so a home that keeps its lists sees nothing
-change. Colours and the wall's layout stay the Ramka's.
+`calendar` is optional and accepts an empty list, null or empty text. Without calendars there is
+no agenda, calendar control or `show_calendar` script. Settings/preview explain the missing
+binding. A player without calendars and calendars without a player both work. Existing
+configured homes need no input changes and retain the same rendered output. Weather remains
+required through the Ramka inputs or the shared home inputs.
 
-What a home does: nothing now. To move:
-1. Make sure `home.inputs.yaml` names the same entities.
-2. Remove the Ramka's own `lights`, `climate`, `outside`, `air` and `weather` one at a time, running
-   `domosenso render` after each.
-3. Before deploying, `domosenso compare` a snapshot from before against one from after.
+### The kiosk user's person is marked
 
-The labels then come from the room's name, so a light or widget whose label differed from its
-room's name needs `{entity, name}` in the home inputs.
+With `kiosk_user`, the package marks `person.<the kiosk user as a slug>` with `person_role: kiosk`
+(`homeassistant: customize`), so Pocket's Safety leaves the wall tablet's account out of "Who is
+home". Nothing to do; a kiosk user named with characters beyond letters, digits, spaces and hyphens
+may not match its person, which is then simply not marked.
 
-## 0.16.0 (unreleased)
-
-### Shortcuts on the controls
-
-The new optional `actions` input puts one-tap buttons on the controls: a `button`, `input_button`,
-`script` or `scene` each, under the awnings (or in a column of their own without `covers`). Each
-asks Home Assistant's own confirmation before it acts, unless the item sets `confirm: false`; a
-greyed twin shows while the entity is unavailable. Nothing to do: without `actions` the dashboard
-renders as before (SPEC-034).
-
-## Unreleased: startup screen policy and safe unavailable controls
+### Startup screen policy and safe unavailable controls
 
 After Home Assistant starts, radar reconciliation reapplies the actual Android screen policy
 even when the restored mode helper already says the frame is on or off. Android's saved screen
@@ -108,7 +100,17 @@ recover. A present scene with an unknown first-activation timestamp remains usab
 light commands use the same target-aware tap button. No integration or device is added by this
 fallback: missing bindings still need their actual integration before controls work.
 
-## 0.15.0 (unreleased)
+## 0.16.0 (2026-11-05)
+
+### Shortcuts on the controls
+
+The new optional `actions` input puts one-tap buttons on the controls: a `button`, `input_button`,
+`script` or `scene` each, under the awnings (or in a column of their own without `covers`). Each
+asks Home Assistant's own confirmation before it acts, unless the item sets `confirm: false`; a
+greyed twin shows while the entity is unavailable. Nothing to do: without `actions` the dashboard
+renders as before (SPEC-034).
+
+## 0.15.0 (2026-11-04)
 
 ### Optional shared timers
 
@@ -145,7 +147,7 @@ The selected application must already be installed. Companion still handles the 
 No pairing, mappings, helper preferences, brightness or radar delays are reset. Validate an actual
 sleep/wake cycle on the tablet; short-cycle tests do not prove recovery from long Doze/process death.
 
-## 0.13.0 (unreleased): an Exit button instead of the top corners
+## 0.13.0 (2026-11-02): an Exit button instead of the top corners
 
 The two invisible targets in the top corners are gone: they sat over the floor plan's bar (its
 layer chips and zoom) and nobody found them without being told. The way out is an **Exit**
