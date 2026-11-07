@@ -53,6 +53,36 @@ def test_unreachable_site_keeps_polling():
     tool().wait_for_commit('abc', fetch=fetch, sleep=lambda s: None)
 
 
+LATER = 'b' * 40
+OTHER = 'c' * 40
+
+
+def served(*commits):
+    answers = iter(commits)
+    return lambda url: json.dumps({'commit': next(answers)})
+
+
+def test_later_deploy_containing_the_commit_counts_as_served(capsys):
+    # SPEC-039: a back-to-back merge deployed first; its build contains this commit.
+    asked = []
+    tool().wait_for_commit('abc', fetch=served(LATER), sleep=lambda s: None,
+                           contains=lambda sha, s: asked.append((sha, s)) or True)
+    assert asked == [('abc', LATER)] and f'serves {LATER}, which contains abc' in capsys.readouterr().out
+
+
+def test_unrelated_commit_keeps_waiting_and_asks_git_once_per_commit():
+    asked = []
+    tool().wait_for_commit('abc', fetch=served(OTHER, OTHER, 'abc'), sleep=lambda s: None,
+                           contains=lambda sha, s: asked.append(s) or False)
+    assert asked == [OTHER]
+
+
+def test_short_or_missing_commit_does_not_ask_git():
+    def contains(sha, s):
+        raise AssertionError('git must not be asked about ' + repr(s))
+    tool().wait_for_commit('abc', fetch=served('old', None, 'abc'), sleep=lambda s: None, contains=contains)
+
+
 def test_submit_posts_payload_and_returns_status():
     seen = []
 
@@ -116,15 +146,26 @@ def test_workflow_shape():
     on = wf.get('on', wf.get(True))
     assert on == {'push': {'branches': ['main']}}
     assert wf['permissions'] == {'contents': 'read'}
+    assert wf['concurrency'] == {'group': 'search-engines', 'cancel-in-progress': False}
     steps = wf['jobs']['indexnow']['steps']
     checkout = next(s for s in steps if s.get('uses', '').startswith('actions/checkout@v4'))
     assert checkout['with'] == {'fetch-depth': 0, 'persist-credentials': False}
     assert any(s.get('uses', '').startswith('astral-sh/setup-uv@v6') for s in steps)
-    run_step = next(s for s in steps if 'indexnow.py' in s.get('run', ''))
-    assert '${{' not in run_step['run'] and 'secrets' not in text
-    assert run_step['env'] == {'BEFORE': '${{ github.event.before }}', 'SHA': '${{ github.sha }}'}
-    assert run_step['run'].index('set -o pipefail') < run_step['run'].index('website_changes.py')
-    assert 'website_changes.py' in run_step['run'] and '--format urls' in run_step['run'] and 'HEAD~1' in run_step['run']
+    urls = next(s for s in steps if 'website_changes.py' in s.get('run', ''))
+    assert urls['id'] == 'urls' and '${{' not in urls['run']
+    assert urls['env'] == {'BEFORE': '${{ github.event.before }}', 'SHA': '${{ github.sha }}'}
+    assert urls['run'].index('set -o pipefail') < urls['run'].index('website_changes.py')
+    assert '--format urls' in urls['run'] and 'HEAD~1' in urls['run'] and 'GITHUB_OUTPUT' in urls['run']
+    indexnow = next(s for s in steps if 'indexnow.py' in s.get('run', ''))
+    assert indexnow['if'] == "steps.urls.outputs.any == 'true'" and '${{' not in indexnow['run']
+    assert indexnow['env'] == {'SHA': '${{ github.sha }}'} and '--urls-file' in indexnow['run']
+    # The sitemap step also runs after an IndexNow failure (SPEC-039); only it reads secrets.
+    sitemap = next(s for s in steps if 'submit_sitemap.py' in s.get('run', ''))
+    assert sitemap['if'] == "always() && steps.urls.outputs.any == 'true'"
+    assert sitemap['env'] == {
+        'BING_WEBMASTER_API_KEY': '${{ secrets.BING_WEBMASTER_API_KEY }}',
+        'GOOGLE_SEARCH_CONSOLE_CREDENTIALS': '${{ secrets.GOOGLE_SEARCH_CONSOLE_CREDENTIALS }}'}
+    assert all('secrets' not in str(s) for s in steps if s is not sitemap)
 
 
 class Response:

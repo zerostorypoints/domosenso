@@ -1,9 +1,14 @@
-name: IndexNow
+name: Search engines
 on:
   push:
     branches: [main]
 permissions:
   contents: read
+# Back-to-back merges queue instead of racing; tools/indexnow.py also accepts a later deploy that
+# contains the commit (SPEC-039).
+concurrency:
+  group: search-engines
+  cancel-in-progress: false
 jobs:
   indexnow:
     runs-on: ubuntu-latest
@@ -14,7 +19,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@v6
-      - name: Submit the changed pages once the site serves this commit
+      - name: List the changed pages
+        id: urls
         env:
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
@@ -24,4 +30,19 @@ jobs:
           if [ "$base" = "0000000000000000000000000000000000000000" ]; then
             base="HEAD~1"
           fi
-          uv run tools/website_changes.py --base "$base" --format urls | uv run tools/indexnow.py --sha "$SHA"
+          uv run tools/website_changes.py --base "$base" --format urls | tee "$RUNNER_TEMP/urls.txt"
+          if grep -q '^https://' "$RUNNER_TEMP/urls.txt"; then any=true; else any=false; fi
+          echo "any=$any" >> "$GITHUB_OUTPUT"
+      - name: Submit the changed pages to IndexNow once the site serves this commit
+        if: steps.urls.outputs.any == 'true'
+        env:
+          SHA: ${{ github.sha }}
+        run: uv run tools/indexnow.py --sha "$SHA" --urls-file "$RUNNER_TEMP/urls.txt"
+      # Also after an IndexNow failure: the sitemap is the fallback for what IndexNow missed.
+      # Each engine without its secret prints `skip` (forks, or before the maintainer's setup).
+      - name: Resubmit the sitemap to Google Search Console and Bing Webmaster
+        if: always() && steps.urls.outputs.any == 'true'
+        env:
+          BING_WEBMASTER_API_KEY: ${{ secrets.BING_WEBMASTER_API_KEY }}
+          GOOGLE_SEARCH_CONSOLE_CREDENTIALS: ${{ secrets.GOOGLE_SEARCH_CONSOLE_CREDENTIALS }}
+        run: uv run tools/submit_sitemap.py

@@ -1,6 +1,6 @@
 # SPEC-039: Search engines hear about a website change from CI, not from an agent
 
-- Status: **draft**, 2026-11-07, for the maintainer's approval.
+- Status: **approved 2026-11-07** by the maintainer.
 - Source: the maintainer, 2026-11-07, after the ramka 0.17.0 website release (#273). He wants the
   submissions to search engines to happen as part of the workflow. Until now a session had to
   resubmit the sitemap by hand.
@@ -169,8 +169,7 @@ Inference, to confirm while implementing:
 
 - **Google:** retired its anonymous sitemap "ping" in 2023, so the Search Console API with a service
   account is the way left.
-- **Bing:** the sitemap submission endpoint and its JSON body (`SubmitFeed` with `siteUrl` and
-  `feedUrl`) are taken from Bing's API reference, to read again before coding.
+- **Bing** (read since approval in the source of the `bing` MCP server used on 2026-11-07): `POST https://ssl.bing.com/webmaster/api.svc/json/SubmitFeed?apikey=<key>` with the JSON body `{siteUrl, feedUrl}`.
 - **Service account permission:** which permission level `sitemaps.submit` requires.
 
 Open:
