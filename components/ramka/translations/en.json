@@ -474,6 +474,7 @@
       "photo_s": "Time per photo",
       "plants_per_page": "Plants per page",
       "plants_page_s": "Time per plants page",
+      "air_page_s": "Time per room",
       "plants_discover": "found by the plants component",
       "climate_rooms": "Widgets",
       "climate_rooms_how": "One row per widget (Number of widgets, in Advanced). Its type, in the row's dropdown: Temperature (a temperature and a humidity sensor), Air quality (CO₂ and PM2.5), Custom (any two sensors with a unit) or Empty (an empty tile on the Ramka, so the others sit where you want them; empty rows at the end are left out). Settings, in each row: a Temperature widget's comfort ranges, an Air quality widget's limits (the Air page's), a Custom widget's colour. Drag a row by its handle, or use the arrows, to change the order. The n-th widget with a reading is the n-th tile and the n-th line of the charts, in the colour of its dot. An empty name becomes the sensor's area.",

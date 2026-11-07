@@ -241,6 +241,13 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
+[#- 0.18.0: with more than one room in the air input, a page per room (_home.jinja), each for
+    air_page_s; input_number.<prefix>_air_page is the page on screen, turned by the loop's air stage and
+    the sideways swipes, as the plant pages are. -#]
+[%- set air_rooms = inputs.air_rooms | default([]) -%]
+[%- set air_many = air_rooms | length > 1 -%]
+[%- set air_page_s_default = 15 -%]
+[%- if air_many -%][%- set _ = settings.append(('input_number', 'air_page_s', 'air', 'air', air_page_s_default)) -%][%- endif -%]
 [%- set air_colours = {'good': 'green', 'fair': 'amber', 'poor': 'red'} -%]
 [%- if inputs.air is defined -%]
 [%- for key, colour in air_colours.items() -%][%- set _ = settings.append(('input_select', 'air_color_' ~ key, 'air', 'air', colour)) -%][%- endfor -%]
@@ -293,6 +300,8 @@
 [%- endmacro -%]
 [#- The plant page after the one on screen, round (SPEC-026). -#]
 [%- macro plant_page_turn(step) -%]{{ ((states('input_number.[[ p ]]_plants_page') | int(0)) + [[ step ]]) % ([pages, 1] | max) }}[%- endmacro -%]
+[#- The air room after the one on screen, round (0.18.0). -#]
+[%- macro air_page_turn(step) -%]{{ ((states('input_number.[[ p ]]_air_page') | int(0)) + [[ step ]]) % [[ air_rooms | length ]] }}[%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
 # inputs and render again rather than editing this file.
@@ -639,6 +648,25 @@ input_number:
     step: 1
     mode: slider
   [%- endif %]
+  [%- if air_many %]
+  [[ p ]]_air_page_s:
+    name: [[ named(' time per air page (s)') ]]
+    icon: mdi:timer-outline
+    min: 5
+    max: 30
+    step: 1
+    unit_of_measurement: s
+    mode: slider
+  # The air room on screen, 0-based (0.18.0): turned by the loop's air stage and by the sideways
+  # swipes, back to the first room when the page is left. State, not a setting.
+  [[ p ]]_air_page:
+    name: [[ named(' air page') ]]
+    icon: mdi:book-open-page-variant-outline
+    min: 0
+    max: [[ air_rooms | length - 1 ]]
+    step: 1
+    mode: box
+  [%- endif %]
   # The air-card's limits, read live; an unusable state keeps the card's literal default.
   [%- for reading in air_readings %]
   [%- set l = air_limits[reading] %]
@@ -730,6 +758,10 @@ recorder:
 [%- if inputs.plants is defined %]
       # Turns every plants_page_s while the plants show; nothing reads its history.
       - input_number.[[ p ]]_plants_page
+[%- endif %]
+[%- if air_many %]
+      # Turns every air_page_s while the air rooms show; nothing reads its history.
+      - input_number.[[ p ]]_air_page
 [%- endif %]
 [%- if inputs.photo_dir is defined %]
       # A new series with every visit of the photos page, a new index with every photo.
@@ -1200,8 +1232,30 @@ script:
       - condition: state
         entity_id: binary_sensor.[[ p ]]_music_view
         state: "off"
-[%- if 'plants' in pages or 'photos' in pages %]
+[%- if 'plants' in pages or 'photos' in pages or ('air' in pages and air_many) %]
       - choose:
+[%- if 'air' in pages and air_many %]
+          - conditions:
+              - condition: state
+                entity_id: input_select.[[ p ]]_ambient
+                state: air
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.[[ p ]]_air_page
+                data:
+                  value: >-
+                    {% set step = step | int(1) %}[[ air_page_turn('step') ]]
+              # Running: the room starts again with its full time; paused, it stays.
+              - if:
+                  - condition: state
+                    entity_id: input_boolean.[[ p ]]_paused
+                    state: "off"
+                then:
+                  - action: script.turn_on
+                    target:
+                      entity_id: script.[[ p ]]_ambient_loop
+[%- endif %]
 [%- if 'plants' in pages %]
           - conditions:
               - condition: state
@@ -1507,14 +1561,29 @@ script:
                       [[ after('climate') ]]
 [%- endif %]
 [%- if 'air' in pages %]
-            # 2. Air quality, 15 s: a handful of numbers, read at a glance.
+            # 2. Air quality, 15 s: a handful of numbers, read at a glance. With several rooms (0.18.0)
+            #    each room's page for air_page_s, from the one on screen to the last, then back to
+            #    the first for the next pass (the air_page helper; the dashboard shows it).
             - if:
                 - condition: state
                   entity_id: input_select.[[ p ]]_ambient
                   state: air
               then:
+[%- if air_many %]
+                - repeat:
+                    count: "{{ [[ air_rooms | length ]] - (states('input_number.[[ p ]]_air_page') | int(0)) % [[ air_rooms | length ]] }}"
+                    sequence:
+                      - delay:
+                          seconds: "{{ states('input_number.[[ p ]]_air_page_s') | int([[ air_page_s_default ]]) }}"
+                      - action: input_number.set_value
+                        target:
+                          entity_id: input_number.[[ p ]]_air_page
+                        data:
+                          value: "[[ air_page_turn(1) ]]"
+[%- else %]
                 - delay:
                     seconds: 15
+[%- endif %]
                 - action: input_select.select_option
                   target:
                     entity_id: input_select.[[ p ]]_ambient

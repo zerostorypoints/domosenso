@@ -4637,3 +4637,105 @@ def test_minimal_panel_has_only_bound_optional_controls(tmp_path):
     sensors = [s for t in package['template'] for s in t.get('binary_sensor', [])]
     media = next(s for s in sensors if s.get('default_entity_id') == 'binary_sensor.ramka_media_playing')
     assert dr.Environment().from_string(str(media['state'])).render().lower() == 'false'
+
+
+# 0.18.0: the air input as a list of rooms, a page each, turned like the plant pages.
+def two_air_rooms() -> dict:
+    inputs = demo_inputs()
+    inputs["air"] = [{"label": "Dining", **inputs["air"]},
+                     {"label": "Bedroom", "room": "bedroom", "co2": "sensor.bedroom_co2"}]
+    return inputs
+
+
+def air_grids(dashboard) -> list[dict]:
+    """The ambient grids that hold an air-card or the air charts, in their order."""
+    found = []
+    for node in walk(dashboard):
+        if node.get("type") != "grid":
+            continue
+        kinds = {c.get("type") for c in node.get("cards", [])}
+        entities = {e["entity"] for c in node.get("cards", []) for e in c.get("entities", []) if isinstance(e, dict)}
+        if "custom:air-card" in kinds or (kinds == {"statistics-graph"} and any("co2" in e or "pm2_5" in e for e in entities)):
+            found.append(node)
+    return found
+
+
+def air_stage(package) -> list:
+    [stage] = [s["then"] for s in loop_stages(package)
+               if "if" in s and s["if"] and s["if"][0].get("entity_id") == "input_select.ramka_ambient"
+               and s["if"][0].get("state") == "air"]
+    return stage
+
+
+def test_one_air_room_has_no_air_pages(demo):
+    package, dashboard = demo["package.yaml"], demo["dashboard.en.yaml"]
+    assert not any("air_page" in key for key in package["input_number"])
+    cards = [n for n in walk(dashboard) if n.get("type") == "custom:air-card"]
+    assert len(cards) == 1 and "title" not in cards[0]
+    assert [n["delay"]["seconds"] for n in walk(air_stage(package)) if isinstance(n.get("delay"), dict)] == [15]
+
+
+def test_two_air_rooms_get_a_page_each(tmp_path):
+    out = render(tmp_path, two_air_rooms())
+    dashboard = out["dashboard.en.yaml"]
+    grids = air_grids(dashboard)
+    pages = [[(c["above"], c["below"]) for c in g["visibility"] if c.get("condition") == "numeric_state"] for g in grids]
+    assert pages == [[(-0.5, 0.5)], [(-0.5, 0.5)], [(0.5, 1.5)], [(0.5, 1.5)]]
+    for grid in grids:
+        page = [c for c in grid["visibility"] if c.get("condition") == "numeric_state"][0]
+        assert page["entity"] == "input_number.ramka_air_page"
+        assert {"condition": "state", "entity": "input_select.ramka_ambient", "state": "air"} in grid["visibility"]
+    dining, bedroom = [c for g in grids for c in g["cards"] if c["type"] == "custom:air-card"]
+    assert (dining["title"], bedroom["title"]) == ("Dining", "Bedroom")
+    assert "score" in dining and "score" not in bedroom
+    assert [t["entity"] for t in bedroom["tiles"]] == ["sensor.bedroom_co2"]
+    # Each room's chart draws only its own readings.
+    bedroom_chart = grids[3]["cards"]
+    assert [e["entity"] for c in bedroom_chart for e in c["entities"]] == ["sensor.bedroom_co2"]
+    # The rooms share the switches and the limits: one set of helpers.
+    numbers = out["package.yaml"]["input_number"]
+    assert numbers["ramka_air_page"]["max"] == 1
+    assert (numbers["ramka_air_page_s"]["min"], numbers["ramka_air_page_s"]["max"]) == (5, 30)
+    assert "ramka_air_co2_raised" in numbers
+    assert "input_number.ramka_air_page" in out["package.yaml"]["recorder"]["exclude"]["entities"]
+
+
+def test_air_stage_shows_every_room_then_starts_again(tmp_path):
+    package = render(tmp_path, two_air_rooms())["package.yaml"]
+    [repeat] = [a["repeat"] for a in air_stage(package) if "repeat" in a]
+    page = lambda n: {"input_number.ramka_air_page": n}
+    # From the first room both, from the second (after a swipe) the rest; the pass ends on the first.
+    assert [ha(repeat["count"], states=page(n)) for n in ("0.0", "1.0")] == ["2", "1"]
+    [delay] = [n["delay"]["seconds"] for n in walk(repeat["sequence"]) if isinstance(n.get("delay"), dict)]
+    assert ha(delay) == "15" and ha(delay, states={"input_number.ramka_air_page_s": "8"}) == "8"
+    [turn] = [n for n in repeat["sequence"] if n.get("action") == "input_number.set_value"]
+    assert [ha(turn["data"]["value"], states=page(n)) for n in ("0.0", "1.0")] == ["1", "0"]
+
+
+def test_view_step_turns_air_rooms_round(tmp_path):
+    package = render(tmp_path, two_air_rooms())["package.yaml"]
+    [choose] = [s["choose"] for s in package["script"]["ramka_view_step"]["sequence"] if "choose" in s]
+    by_page = {c["conditions"][0]["state"]: c["sequence"] for c in choose}
+    assert set(by_page) == {"air", "plants", "photos"}
+    value = by_page["air"][0]["data"]["value"]
+    page = lambda n: {"input_number.ramka_air_page": n}
+    assert [ha(value, states=page("0.0"), step=s) for s in (1, -1)] == ["1", "1"]
+    assert ha(value, states=page("1.0"), step=1) == "0"
+    assert by_page["air"][-1]["if"] == [PAUSED_OFF]
+
+
+def test_air_rooms_on_the_settings_page(tmp_path):
+    out = texts(tmp_path, two_air_rooms())
+    settings = out["ramka-settings.en.yaml"]
+    assert "input_number.ramka_air_page_s" in settings
+    assert "| CO₂ | Dining, Bedroom |" in settings
+
+
+@pytest.mark.parametrize("rooms, message", [
+    ([{"label": "Dining", "co2": "sensor.a"}, {"label": "Bedroom"}], "every room needs a reading"),
+    ([{"label": "Dining", "co2": "sensor.a"}, {"co2": "sensor.b"}], "every room needs a label"),
+])
+def test_air_rooms_are_checked(tmp_path, rooms, message):
+    inputs = {**demo_inputs(), "air": rooms}
+    with pytest.raises(Exception, match=message):
+        render(tmp_path, inputs)

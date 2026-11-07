@@ -31,6 +31,7 @@
 // falls back to en); a label written out is shown as it is.
 // A tile whose entity is missing or unavailable is left out, so a room's sensor can be listed
 // before it is installed.
+// A lone tile (a room with one reading, ramka 0.18.0) takes both rows, as large as the score.
 //
 // Live settings (Ramka's settings dashboard): `show:` on the score or a tile names an
 // input_boolean; while it is `off` the tile is left out and the others share its room (any other
@@ -117,10 +118,10 @@ class AirCard extends HTMLElement {
         .title { grid-column: 1 / -1; font-size: calc(6 * var(--u)); color: var(--secondary-text-color); }
         .tile { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0;
                 border-radius: calc(2 * var(--u)); background: var(--secondary-background-color); }
-        .score { grid-row: span 2; }
+        .score, .single { grid-row: span 2; }
         .name { font-size: calc(6 * var(--u)); color: var(--secondary-text-color); white-space: nowrap; }
         .value { font-size: calc(15 * var(--u)); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .score .value { font-size: calc(30 * var(--u)); }
+        .score .value, .single .value { font-size: calc(30 * var(--u)); }
         .unit { font-size: 0.4em; font-weight: 400; margin-left: 0.15em; }
         .label { font-size: calc(5.5 * var(--u)); white-space: nowrap; }
         .score .label { font-size: calc(8 * var(--u)); }
@@ -128,7 +129,7 @@ class AirCard extends HTMLElement {
       <ha-card>
         ${this._config.title ? `<div class="title"></div>` : ""}
         ${score ? `<div class="tile score" data-i="score"><div class="name"></div><div class="value"></div><div class="label"></div></div>` : ""}
-        ${tiles.map((_, i) => `<div class="tile" data-i="${i}"><div class="name"></div><div class="value"></div><div class="label"></div></div>`).join("")}
+        ${tiles.map((_, i) => `<div class="tile${tiles.length === 1 ? " single" : ""}" data-i="${i}"><div class="name"></div><div class="value"></div><div class="label"></div></div>`).join("")}
       </ha-card>`;
     if (this._config.height) this.style.height = this._config.height;
     if (this._config.title) root.querySelector(".title").textContent = this._config.title;

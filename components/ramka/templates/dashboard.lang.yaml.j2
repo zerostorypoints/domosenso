@@ -56,6 +56,11 @@
 [%- set timers = inputs.timers | default([]) -%]
 [%- set status = inputs.status | default({}) -%]
 [%- set air = inputs.air | default(none) -%]
+[#- 0.18.0: a page per room of the air input (_home.jinja); with more than one, each room's cards show
+    while input_number.<prefix>_air_page holds its index, which the ambient loop and the sideways swipes
+    turn as with the plant pages. One room renders as before. -#]
+[%- set air_rooms = inputs.air_rooms | default([]) -%]
+[%- set air_many = air_rooms | length > 1 -%]
 [%- set exit_right = '/' ~ inputs.dashboard_path | default('dashboard-ramka') ~ '/ramka?disable_km' -%]
 [%- set clock_columns = 20 if inputs.mains is defined else 36 -%]
 [#- The now-playing card's music visual (0.4.0): audio-sensor's ambient-wave-card in the wave strip,
@@ -490,11 +495,13 @@ views:
       # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means. The settings
       # dashboard's Air page switches each tile (show:) and moves its two limits, read live; the
       # literal is the default, kept while a helper is unusable (SPEC-021 amendment 1).
-      # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown.
+      # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown. With several rooms (0.18.0) the two
+      # grids repeat per room, titled with the room's label, each shown on its own page.
+[%- for air in air_rooms %]
       - type: grid
         column_span: 3
         [%- if not preview %]
-        visibility: &air
+        visibility:[% if not air_many %] &air[% endif %]
           - condition: state
             entity: input_select.[[ p ]]_mode
             state: ambient
@@ -504,10 +511,19 @@ views:
           - condition: state
             entity: input_select.[[ p ]]_ambient
             state: air
+          [%- if air_many %]
+          - condition: numeric_state
+            entity: input_number.[[ p ]]_air_page
+            above: [[ loop.index0 - 0.5 ]]
+            below: [[ loop.index0 + 0.5 ]]
+          [%- endif %]
         [%- endif %]
         cards:
           - type: custom:air-card
             height: calc([[ vh ]] - 272px)
+            [%- if air_many %]
+            title: [[ air.label | yaml ]]
+            [%- endif %]
             colors: {good: input_select.[[ p ]]_air_color_good, fair: input_select.[[ p ]]_air_color_fair, poor: input_select.[[ p ]]_air_color_poor}
             [%- if air.score is defined %]
             score:
@@ -565,13 +581,30 @@ views:
       [%- if air.co2 is defined or air.pm2_5 is defined %]
       - type: grid
         column_span: 3
-        [%- if not preview %]
+        [%- if not preview and not air_many %]
         visibility: *air
+        [%- elif not preview %]
+        visibility:
+          - condition: state
+            entity: input_select.[[ p ]]_mode
+            state: ambient
+          - condition: state
+            entity: binary_sensor.[[ p ]]_music_view
+            state: "off"
+          - condition: state
+            entity: input_select.[[ p ]]_ambient
+            state: air
+          - condition: numeric_state
+            entity: input_number.[[ p ]]_air_page
+            above: [[ loop.index0 - 0.5 ]]
+            below: [[ loop.index0 + 0.5 ]]
         [%- endif %]
         cards:
           # Five-minute means from the long-term statistics, not the raw history: a sensor that
           # reports every second draws a saw.
-          [%- for key, label in [('co2', 'CO₂'), ('pm2_5', 'PM2.5')] if air[key] is defined %]
+          [%- set charts = [('co2', 'CO₂'), ('pm2_5', 'PM2.5')] | selectattr(0, 'in', air) | list %]
+          [%- set chart_columns = 18 if charts | length > 1 else 36 %]
+          [%- for key, label in charts %]
           - type: statistics-graph
             entities:
               - entity: [[ air[key] ]]
@@ -581,9 +614,12 @@ views:
             days_to_show: 1
             chart_type: line
             hide_legend: true
-            grid_options: {columns: 18, rows: 4}
+            grid_options:
+              columns: [[ chart_columns ]]
+              rows: 4
           [%- endfor %]
       [%- endif %]
+[%- endfor %]
 [%- endif %]
 [%- endblock %]
 [%- block plants %]
