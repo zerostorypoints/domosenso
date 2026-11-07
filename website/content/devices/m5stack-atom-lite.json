@@ -3,7 +3,7 @@
   "title": "M5Stack Atom Lite",
   "summary": "A compact board with three distinct installation roles.",
   "sourcePath": "devices/m5stack-atom-lite.yaml",
-  "sourceCommit": "b6e14f963a161b097976f66491d5b239e69f9739",
+  "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
   "components": [
     "bermuda-presence",
     "awnings",
@@ -31,7 +31,7 @@
     },
     {
       "id": "ramka",
-      "version": "0.16.0"
+      "version": "0.17.0"
     },
     {
       "id": "gate-remote",

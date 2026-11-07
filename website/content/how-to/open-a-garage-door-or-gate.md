@@ -9,10 +9,10 @@ devices:
 - m5stack-atom-lite
 - m5stack-module-cc1101
 status: published
-updated: '2026-11-05'
+updated: '2026-11-07'
 sources:
 - https://github.com/zerostorypoints/domosenso/tree/10364b429c878830af61f3da2256fff98d0dcf84/components/gate-remote
-- https://github.com/zerostorypoints/domosenso/blob/10364b429c878830af61f3da2256fff98d0dcf84/devices/m5stack-module-cc1101.md
+- https://github.com/zerostorypoints/domosenso/blob/e83edec6bcd9f7bf740e9f902d743592a80d05ac/devices/m5stack-module-cc1101.md
 branches:
 - situation: A fixed-code handset at 868 MHz
   needs: An M5Stack Atom Lite with the M5Stack Module CC1101 (868 MHz) and its antenna, running the gate-remote component's ESPHome firmware.
@@ -173,8 +173,11 @@ The antenna stands upright out of the back wall, and a variant of the base has e
 
 The files are in the [module's guide](/devices/m5stack-module-cc1101/), under Enclosure: Bambu
 Studio projects with the settings applied, STLs for other slicers, the OpenSCAD source, and how to
-print and assemble it. The pictures are renders of the model. It has not been printed yet: the
-dimensions come from M5Stack's drawings, and the model checks its own fits.
+print and assemble it. Jumpers come with 12 or 14 mm female housings: measure yours and print the
+clamp that matches. The pictures are renders of the model. A first printed base and lid hold a
+working node, after the base was cut by hand for the two screws of the antenna jack's flange, which
+M5Stack's drawing leaves out. The model now has a groove for them; a base and lid with that and the
+later fixes have not been printed yet.
 
 ## Hints from real installations
 

@@ -19,11 +19,11 @@
         "climate-air"
       ],
       "availability": "conditional",
-      "condition": "Provide climate inputs to Ramka; on the Ramka settings dashboard pick up to twenty widgets (temperature, air quality, custom or empty), in any order.",
+      "condition": "Provide climate inputs to Ramka, or with Ramka 0.17.0 or later leave them to the home's shared inputs (home_inputs); on the Ramka settings dashboard pick up to twenty widgets (temperature, air quality, custom or empty), in any order. With thresholds: climate-air and the shared inputs, each room's comfort range comes from climate-air's helpers.",
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -34,11 +34,11 @@
         "climate-air"
       ],
       "availability": "conditional",
-      "condition": "Provide air inputs and compatible air-quality readings to Ramka; each reading and its limits can be changed on the Ramka settings dashboard.",
+      "condition": "Provide air inputs (or, with Ramka 0.17.0 or later, the home's shared inputs) and compatible air-quality readings to Ramka; each reading and its limits can be changed on the Ramka settings dashboard. With thresholds: climate-air in Ramka 0.17.0 or later, those limits are climate-air's helpers.",
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -53,7 +53,7 @@
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -68,7 +68,7 @@
       "preview": "/previews/photos.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -83,7 +83,7 @@
       "preview": "/previews/status.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -102,7 +102,7 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -117,7 +117,7 @@
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -133,7 +133,7 @@
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -148,7 +148,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -159,24 +159,24 @@
         "weather"
       ],
       "availability": "conditional",
-      "condition": "Provide the weather entity to Ramka. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+      "condition": "Provide the weather entity to Ramka, or with Ramka 0.17.0 or later name it in the home's shared inputs. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
   "setup": [
     "Set up the tablet and Companion app using the tablet guide.",
     "Install the radar through Room presence and map its presence and distance entities.",
-    "Choose the optional page inputs, render the dashboard and check each configured page before deployment.",
+    "Choose the optional page inputs, render the dashboard and check each configured page before deployment. From 0.17.0, what the Ramka's file leaves out (lights, climate, outside, air, weather, covers, status contacts and locks) comes from the home's shared inputs, and a panel works without a media player or calendars.",
     "Add the lovelace entries of the Ramka settings dashboard and the Ramka preview dashboard (one tab per screen); pages, presence, controls, display, photos, air limits and colours, climate widgets, plants per page and the music visual are tuned on the settings dashboard live, without a render.",
     "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
   ],
   "id": "ramka",
-  "version": "0.16.0",
-  "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+  "version": "0.17.0",
+  "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
   "evidencePaths": [
     "components/ramka/component.yaml"
   ],
