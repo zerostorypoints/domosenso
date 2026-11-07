@@ -80,18 +80,26 @@ Agent files: `/llms.txt` lists every published how-to and component, and a chang
 
 ### Tell the search engines
 
+CI does this after every merge to `main` that changes the website (SPEC-039). The `Search engines`
+workflow (`.github/workflows/indexnow.yml`) does three things:
+
+- it waits until https://domosenso.org/build.json serves the merge commit, or a later commit that
+  contains it;
+- it posts the changed pages to IndexNow;
+- it resubmits `https://domosenso.org/sitemap.xml` to the Search Console property
+  `sc-domain:domosenso.org` and to the Bing Webmaster site `https://domosenso.org/`.
+
 After merge, once the live routes are checked:
 
-1. Wait until https://domosenso.org/build.json shows the merge commit.
-2. Confirm the `IndexNow` workflow run for the merge commit succeeded.
-3. Resubmit `https://domosenso.org/sitemap.xml` to the Search Console property
-   `sc-domain:domosenso.org` and to the Bing Webmaster site `https://domosenso.org/`, with the
-   session's connected Search Console and Bing Webmaster tools.
-4. Record both results in the audit note. Report a failure; do not retry in a loop.
+1. Read the `Search engines` run for the merge commit. IndexNow prints `submitted <n> urls (<status>)`.
+   The sitemap step prints one line per engine: `ok`, `skip` (no secret), or `FAIL`.
+2. Record the lines in the audit note.
+3. Only after a `FAIL`, a `skip` or a timed-out run: a maintainer resubmits the sitemap by hand with
+   the session's connected Search Console and Bing Webmaster tools. Record that too. Report a failure
+   and do not retry in a loop.
 
-These accounts belong to a maintainer. A contributor without them leaves this step to a maintainer.
-A later CI job could do it: a Google service account added as a property user, its key in a secret
-available only to `main` workflows.
+The secrets `BING_WEBMASTER_API_KEY` and `GOOGLE_SEARCH_CONSOLE_CREDENTIALS` belong to a maintainer
+(`website/README.md`). Forks leave them unset, and the step skips.
 
 Run repository-required checks before committing. If deployment is authorized, independently
 check live changed routes, versions, source links and sitemap/feed after deployment. Report

@@ -175,8 +175,20 @@ Done once in the provider panels; nothing here is provisioned by the repository.
   `CLOUDFLARE_ACCOUNT_ID`. The preview-cleanup workflow skips until both are set.
 - On the first preview, verify the `noindex` metadata and the `X-Robots-Tag` header once.
 - IndexNow: the key file is `website/public/<key>.txt`; nothing else is needed.
-- Sitemap resubmission to Search Console and Bing after a merge is an agent step in the
-  `domosenso-website-audit` skill.
+- Sitemap resubmission (SPEC-039). After each merge that changes the website, the `Search engines`
+  workflow runs `tools/submit_sitemap.py`. It resubmits `sitemap.xml` to Google Search Console and
+  Bing Webmaster. An engine without its secret prints `skip` and the run stays green, which is
+  what forks get. The production site sets two repository secrets:
+  - `BING_WEBMASTER_API_KEY`: the API key from Bing Webmaster Tools (Settings → API access). One
+    key covers every site in that Bing account.
+  - `GOOGLE_SEARCH_CONSOLE_CREDENTIALS`: a service account's JSON key, the whole file. Set it up
+    once:
+    1. In a Google Cloud project with the Search Console API enabled, create the service account
+       and a JSON key.
+    2. In Search Console, add the account's e-mail as a user of the property
+       (`sc-domain:domosenso.org`), Settings → Users and permissions.
+    3. Choose the permission that lets it submit sitemaps; Full is expected to be enough, so confirm
+       it on the first run.
 
 ## Optional analytics and webmaster verification
 

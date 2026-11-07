@@ -3,16 +3,17 @@
 
   uv run tools/website_changes.py --base <ref> --format urls | uv run tools/indexnow.py --sha <sha>
 
-Waits for https://domosenso.org/build.json to report <sha>, then submits the URLs read from stdin
-(or --urls-file). `no website changes` and an empty input both mean nothing to submit.
-Back-to-back merges can make an earlier job time out: its URLs are then not submitted, and the
-maintainer's post-merge sitemap resubmission (website-audit skill) covers them.
+Waits for https://domosenso.org/build.json to report <sha>, or a later commit of main that
+contains it (a back-to-back merge whose deploy overtook this one), then submits the URLs read from
+stdin (or --urls-file). `no website changes` and an empty input both mean nothing to submit.
+The workflow then resubmits the sitemap (tools/submit_sitemap.py, SPEC-039).
 The key is public by design: IndexNow checks it against website/public/<key>.txt.
 """
 import argparse
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 import time
 import urllib.request
@@ -43,13 +44,31 @@ def http_post(url, payload):
         return error.code
 
 
-def wait_for_commit(sha, url=BUILD_URL, timeout=900, interval=30, fetch=http_get, sleep=time.sleep):
-    """Poll `url` until it reports `sha`; raise TimeoutError after `timeout` seconds."""
-    waited, last_error = 0, None
+FULL_SHA = re.compile(r'[0-9a-f]{40}')
+
+
+def git_contains(sha, served):
+    """True when `served`, a commit of origin/main, contains `sha` (SPEC-039)."""
+    subprocess.run(['git', 'fetch', '--quiet', 'origin', 'main'], cwd=ROOT, capture_output=True)
+    ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', sha, served], cwd=ROOT, capture_output=True)
+    return ancestor.returncode == 0
+
+
+def wait_for_commit(sha, url=BUILD_URL, timeout=900, interval=30, fetch=http_get, sleep=time.sleep,
+                    contains=git_contains):
+    """Poll `url` until it serves `sha` or a later commit containing it; TimeoutError after `timeout` s."""
+    waited, last_error, checked = 0, None, set()
     while True:
         try:
-            if json.loads(fetch(url)).get('commit') == sha:
+            served = json.loads(fetch(url)).get('commit')
+            if served == sha:
                 return
+            # A later merge deployed first: its build contains this commit, so the pages are live.
+            if isinstance(served, str) and FULL_SHA.fullmatch(served) and served not in checked:
+                checked.add(served)
+                if contains(sha, served):
+                    print(f'{url} serves {served}, which contains {sha}', flush=True)
+                    return
         except (OSError, ValueError, AttributeError) as error:
             last_error = error  # not deployed yet, or briefly unreachable: keep polling
         if waited >= timeout:
