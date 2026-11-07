@@ -16,7 +16,7 @@
         "weather"
       ],
       "availability": "conditional",
-      "condition": "Provide the weather entity to Ramka. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+      "condition": "Provide the weather entity to Ramka, or with Ramka 0.17.0 or later name it in the home's shared inputs. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",

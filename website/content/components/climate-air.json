@@ -19,7 +19,7 @@
         "climate-air"
       ],
       "availability": "conditional",
-      "condition": "Provide climate inputs to Ramka; on the Ramka settings dashboard pick up to twenty widgets (temperature, air quality, custom or empty), in any order.",
+      "condition": "Provide climate inputs to Ramka, or with Ramka 0.17.0 or later leave them to the home's shared inputs (home_inputs); on the Ramka settings dashboard pick up to twenty widgets (temperature, air quality, custom or empty), in any order. With thresholds: climate-air and the shared inputs, each room's comfort range comes from climate-air's helpers.",
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
@@ -34,7 +34,7 @@
         "climate-air"
       ],
       "availability": "conditional",
-      "condition": "Provide air inputs and compatible air-quality readings to Ramka; each reading and its limits can be changed on the Ramka settings dashboard.",
+      "condition": "Provide air inputs (or, with Ramka 0.17.0 or later, the home's shared inputs) and compatible air-quality readings to Ramka; each reading and its limits can be changed on the Ramka settings dashboard. With thresholds: climate-air in Ramka 0.17.0 or later, those limits are climate-air's helpers.",
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
