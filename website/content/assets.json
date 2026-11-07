@@ -74,7 +74,7 @@
   {
     "path": "/wiring/hlk-ld2410c-atom-lite.svg",
     "sourcePath": "devices/wiring/hlk-ld2410c-atom-lite.svg",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "Wiring diagram: hlk ld2410c atom lite",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -84,7 +84,7 @@
   {
     "path": "/wiring/cc1101-atom-lite.svg",
     "sourcePath": "devices/wiring/cc1101-atom-lite.svg",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "Wiring diagram: cc1101 atom lite",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -94,7 +94,7 @@
   {
     "path": "/wiring/shelly-pm-mini-gen3-socket.svg",
     "sourcePath": "devices/wiring/shelly-pm-mini-gen3-socket.svg",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "Wiring diagram: Shelly PM Mini Gen3 behind a socket",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -104,7 +104,7 @@
   {
     "path": "/wiring/m5stack-cc1101-atom-lite.svg",
     "sourcePath": "devices/wiring/m5stack-cc1101-atom-lite.svg",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "Wiring diagram: M5Stack Module CC1101 on an M5Stack Atom Lite",
     "kind": "wiring",
     "credit": "DomoSenso",
@@ -286,7 +286,7 @@
   {
     "path": "/enclosures/m5stack-cc1101-atom-lite/closed.png",
     "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/closed.png",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "The closed enclosure for the M5Stack Module CC1101 and the Atom Lite",
     "kind": "enclosure-preview",
     "credit": "DomoSenso",
@@ -296,7 +296,7 @@
   {
     "path": "/enclosures/m5stack-cc1101-atom-lite/back.png",
     "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/back.png",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "The enclosure from the antenna side, with the antenna upright out of the back wall",
     "kind": "enclosure-preview",
     "credit": "DomoSenso",
@@ -306,7 +306,7 @@
   {
     "path": "/enclosures/m5stack-cc1101-atom-lite/open.png",
     "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/open.png",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "The open enclosure: the CC1101 module lying flat, the orange jumper clamp over the eight housings, and the Atom Lite on its pedestal",
     "kind": "enclosure-preview",
     "credit": "DomoSenso",
@@ -316,7 +316,7 @@
   {
     "path": "/enclosures/m5stack-cc1101-atom-lite/exploded.png",
     "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/exploded.png",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "The enclosure exploded: the lid with its spring flaps, the jumper clamp, and the base with the module and the Atom wired inside",
     "kind": "enclosure-preview",
     "credit": "DomoSenso",
@@ -326,7 +326,7 @@
   {
     "path": "/enclosures/m5stack-cc1101-atom-lite/section.png",
     "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/section.png",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "A cut through the enclosure at the clamp: the module at the bottom left, the jumpers running from the housings under the clamp to the Atom under the lid on the right",
     "kind": "enclosure-preview",
     "credit": "DomoSenso",
@@ -336,9 +336,19 @@
   {
     "path": "/enclosures/m5stack-cc1101-atom-lite/plate.png",
     "sourcePath": "devices/enclosures/m5stack-cc1101-atom-lite/preview/plate.png",
-    "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
     "alt": "The print plate: base, lid and jumper clamp laid out flat for printing",
     "kind": "enclosure-preview",
+    "credit": "DomoSenso",
+    "license": "Apache-2.0",
+    "scope": "public-device-guide"
+  },
+  {
+    "path": "/dimensions/m5stack-atom-lite.svg",
+    "sourcePath": "devices/dimensions/m5stack-atom-lite.svg",
+    "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
+    "alt": "Dimension drawing of the M5Stack Atom Lite: top, USB-C side and underside, lettered A to E",
+    "kind": "dimensions",
     "credit": "DomoSenso",
     "license": "Apache-2.0",
     "scope": "public-device-guide"

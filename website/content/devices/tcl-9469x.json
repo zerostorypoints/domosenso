@@ -3,7 +3,7 @@
   "title": "TCL wall tablet",
   "summary": "Companion app, screen behavior and the tested landscape layout.",
   "sourcePath": "docs/tablet-setup.md",
-  "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+  "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
   "components": [
     "ramka"
   ],
