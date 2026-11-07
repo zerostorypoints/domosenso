@@ -98,15 +98,32 @@ of racing.
 
 ## 4. What the maintainer sets up once (manual, credentials stay his)
 
-1. **Bing Webmaster Tools:** Settings → API access → generate an API key. Store it as the repository
-   secret `BING_WEBMASTER_API_KEY`.
-2. **Google Cloud:**
-   - a project (or an existing one), with the **Google Search Console API** enabled;
-   - a service account with a JSON key, stored whole as the repository secret
-     `GOOGLE_SEARCH_CONSOLE_CREDENTIALS`.
-3. **Search Console:** Settings → Users and permissions on `sc-domain:domosenso.org`. Add the service
-   account's e-mail with the permission `sitemaps.submit` needs (Full is expected to be enough;
-   confirm at setup).
+Checked on 2026-11-07, names only, no values read. The maintainer's machine already reaches both
+services for HiFiSync, through MCP servers in the user configuration:
+
+- **Bing:** an API key in the `bing` server's environment (`BING_WEBMASTER_API_KEY`). One Bing
+  account holds both sites, so the same key covers domosenso.org.
+- **Google:** an OAuth client of type "installed app" (`~/.config/gsc/client_secrets.json`, used by
+  `mcp-search-console`) acting as the maintainer's own account. Its Google Cloud project therefore
+  has the Search Console API enabled already. There is no service account.
+
+None of the HiFiSync repositories, nor this one, holds such a secret on GitHub. HiFiSync submits from
+a session, not from CI.
+
+1. **Bing:** copy the existing key into this repository's secret `BING_WEBMASTER_API_KEY`. The
+   maintainer runs one command that reads it from his configuration without printing it. An agent
+   does not enter credentials.
+2. **Google:** in the same Cloud project:
+   - create a service account with a JSON key, stored whole as the secret
+     `GOOGLE_SEARCH_CONSOLE_CREDENTIALS`;
+   - in Search Console, add the account's e-mail to `sc-domain:domosenso.org` (Settings → Users and
+     permissions) with the permission `sitemaps.submit` needs. Full is expected to be enough;
+     confirm at setup.
+
+   Rejected: putting the maintainer's own OAuth refresh token into CI. It acts as his personal
+   account, and a client whose consent screen is still in "Testing" gets refresh tokens that expire
+   after seven days, so the job would fail silently a week later. Inference: the client's consent
+   screen status was not checked.
 
 Until these exist, the sitemap step prints `skip` for both and the workflow passes.
 
