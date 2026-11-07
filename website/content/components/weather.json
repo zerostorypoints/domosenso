@@ -20,7 +20,7 @@
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "10364b429c878830af61f3da2256fff98d0dcf84",
+      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
