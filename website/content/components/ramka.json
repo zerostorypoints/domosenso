@@ -23,7 +23,7 @@
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -53,7 +53,7 @@
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -68,7 +68,7 @@
       "preview": "/previews/photos.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -83,7 +83,7 @@
       "preview": "/previews/status.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -102,7 +102,7 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -117,7 +117,7 @@
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -133,7 +133,7 @@
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -148,7 +148,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -163,7 +163,7 @@
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -175,8 +175,8 @@
     "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
   ],
   "id": "ramka",
-  "version": "0.17.0",
-  "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+  "version": "0.18.0",
+  "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
   "evidencePaths": [
     "components/ramka/component.yaml"
   ],
