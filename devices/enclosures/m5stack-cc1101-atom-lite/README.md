@@ -328,7 +328,8 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   jumpers bent over the clamp pushed the lid up a little, so the room above the clamp
   (`wire_clear`) went from 3.9 to 4.9 mm and the box is 1 mm taller; how the wires are laid
   matters as much. The USB-C cable went in only with the Atom held down from above (see the Atom's
-  stop below). The base and lid with these changes are not printed yet.
+  stop below). The next day, with the wires settled, the lid sat well, and this first build stays
+  in use. The base and lid with these changes are not printed yet.
 - In the first base, pins on the pads (Ø2.8 mm, 2.5 mm tall, into the 3.1 mm corner holes from
   below) kept the module from sitting down, and nothing stood on its right side to hold it. The
   pins are gone; two stops on its right side (8 mm wide, 4 mm up its side) hold it against the
