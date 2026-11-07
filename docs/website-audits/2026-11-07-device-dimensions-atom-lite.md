@@ -3,8 +3,7 @@
 Source range: main from `e83edec` (the previous `documentationCommit`) to `87acd5f` (#278, the
 merge of `claude/hardware-dimensions`: the `dimensions` field of device files, the Atom Lite's
 dimensions and drawing, the exporter serving `/dimensions/<id>.svg`, the device page's Dimensions
-section; SPEC-040). No tag selected or moved. Status: prepared on
-`claude/website-dimensions-atom-lite`; not merged.
+section; SPEC-040). No tag selected or moved. Status: merged as `2ec90f8` (#279) on 2026-11-07, live.
 
 | Surface | Result and evidence |
 | --- | --- |
@@ -25,6 +24,18 @@ the served drawing is byte-identical to the source.
 
 Demo: skip — website content only, no Home Assistant runtime change.
 
-Still to do after merge: the live route `/devices/m5stack-atom-lite/` and
-`/dimensions/m5stack-atom-lite.svg`, `build.json`, the IndexNow run and the sitemap resubmission
-(skill `domosenso-website-audit`, "Tell the search engines").
+Live, checked 2026-11-07 after the merge:
+
+- `https://domosenso.org/build.json` serves `2ec90f81534db2e54b5ac364dac79416d4aef41b`; the merge
+  commit's workflows `Framework checks`, `Framework website`, `Release`, `Release reminder` and
+  `Search engines` completed with success.
+- `/devices/m5stack-atom-lite/` shows the Dimensions section, its source link pinned to `87acd5f`;
+  `/devices/m5stack-atom-lite/index.md` carries the table and the drawing link.
+- `/dimensions/m5stack-atom-lite.svg` answers 200 `image/svg+xml`, byte-identical to
+  `devices/dimensions/m5stack-atom-lite.svg`.
+- `Search engines` run for `2ec90f8`: IndexNow `submitted 28 urls (200)`; sitemap
+  `skip google: no credentials`, `ok bing: https://domosenso.org/sitemap.xml`.
+- After the Google skip, the sitemap was resubmitted by hand to the Search Console property
+  `sc-domain:domosenso.org` at 19:56 UTC (status "Pending processing"). The repository secret
+  `GOOGLE_SEARCH_CONSOLE_CREDENTIALS` is missing; setting it is a maintainer's task
+  (`website/README.md`).
