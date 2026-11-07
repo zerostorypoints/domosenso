@@ -4639,7 +4639,7 @@ def test_minimal_panel_has_only_bound_optional_controls(tmp_path):
     assert dr.Environment().from_string(str(media['state'])).render().lower() == 'false'
 
 
-# 0.18.0: the air input as a list of rooms, a page each, turned like the plant pages.
+# 0.19.0: the air input as a list of rooms, a page each, turned like the plant pages.
 def two_air_rooms() -> dict:
     inputs = demo_inputs()
     inputs["air"] = [{"label": "Dining", **inputs["air"]},

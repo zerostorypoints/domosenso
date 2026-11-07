@@ -241,7 +241,7 @@
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[0], 'air', 'air', l[2])) -%]
 [%- set _ = settings.append(('input_number', 'air_' ~ reading ~ '_' ~ l[1], 'air', 'air', l[3])) -%]
 [%- endfor -%]
-[#- 0.18.0: with more than one room in the air input, a page per room (_home.jinja), each for
+[#- 0.19.0: with more than one room in the air input, a page per room (_home.jinja), each for
     air_page_s; input_number.<prefix>_air_page is the page on screen, turned by the loop's air stage and
     the sideways swipes, as the plant pages are. -#]
 [%- set air_rooms = inputs.air_rooms | default([]) -%]
@@ -300,7 +300,7 @@
 [%- endmacro -%]
 [#- The plant page after the one on screen, round (SPEC-026). -#]
 [%- macro plant_page_turn(step) -%]{{ ((states('input_number.[[ p ]]_plants_page') | int(0)) + [[ step ]]) % ([pages, 1] | max) }}[%- endmacro -%]
-[#- The air room after the one on screen, round (0.18.0). -#]
+[#- The air room after the one on screen, round (0.19.0). -#]
 [%- macro air_page_turn(step) -%]{{ ((states('input_number.[[ p ]]_air_page') | int(0)) + [[ step ]]) % [[ air_rooms | length ]] }}[%- endmacro -%]
 [%- macro named(suffix) -%][%- set full = name ~ suffix -%][[ full | yaml ]][%- endmacro -%]
 # Rendered from the Domosenso catalog, component ramka (templates/package.yaml.j2). Edit the
@@ -657,7 +657,7 @@ input_number:
     step: 1
     unit_of_measurement: s
     mode: slider
-  # The air room on screen, 0-based (0.18.0): turned by the loop's air stage and by the sideways
+  # The air room on screen, 0-based (0.19.0): turned by the loop's air stage and by the sideways
   # swipes, back to the first room when the page is left. State, not a setting.
   [[ p ]]_air_page:
     name: [[ named(' air page') ]]
@@ -1561,7 +1561,7 @@ script:
                       [[ after('climate') ]]
 [%- endif %]
 [%- if 'air' in pages %]
-            # 2. Air quality, 15 s: a handful of numbers, read at a glance. With several rooms (0.18.0)
+            # 2. Air quality, 15 s: a handful of numbers, read at a glance. With several rooms (0.19.0)
             #    each room's page for air_page_s, from the one on screen to the last, then back to
             #    the first for the next pass (the air_page helper; the dashboard shows it).
             - if:

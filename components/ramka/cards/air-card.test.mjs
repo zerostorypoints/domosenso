@@ -133,7 +133,7 @@ test("the levels' colours are the colour selects' named colours, green, amber an
                    ["var(--graph-color-9, #5be37a)", "var(--graph-color-2, #f5c542)", "var(--graph-color-3, #ff7a5c)"]);
 });
 
-test("a lone tile takes both rows (a room with one reading, 0.18.0)", () => {
+test("a lone tile takes both rows (a room with one reading, 0.19.0)", () => {
   const one = { tiles: [{ name: "CO₂", entity: "sensor.co2", unit: "ppm", levels: [[800], [1200], [null]] }] };
   const card = makeCard({ states: { "sensor.co2": sensor("755") }, config: one });
   assert.deepEqual([...card.shadowRoot.querySelectorAll(".tile")].map((e) => e.className), ["tile single"]);

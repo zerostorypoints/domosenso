@@ -1,0 +1,63 @@
+[#- Shared validity and unit conversion for numeric readings and report metadata.
+    The numeric sensor only records its value and source identity, not each report time. -#]
+[%- set metrics = {
+  'moisture': ('moisture', '%', ['%']),
+  'conductivity': ('conductivity', 'µS/cm', ['µS/cm', 'μS/cm', 'uS/cm']),
+  'brightness': ('illuminance', 'lx', ['lx']),
+  'temperature': ('temperature', '°C', ['°C', '°F'])
+} -%]
+[%- macro valid(entity, units) -%]
+is_number(states([[ entity | tojson ]])) and state_attr([[ entity | tojson ]], 'unit_of_measurement') in [[ units | tojson ]] and state_attr([[ entity | tojson ]], 'restored') != true
+[%- endmacro -%]
+[%- macro value(entity, key) -%]
+(states([[ entity | tojson ]]) | float
+[%- if key == 'temperature' %] if state_attr([[ entity | tojson ]], 'unit_of_measurement') == '°C' else ((states([[ entity | tojson ]]) | float - 32) * 5 / 9) | round(3)[%- endif %])
+[%- endmacro -%]
+[%- macro source_templates(row, keys, silent_hours) %]
+  - sensor:
+[%- for key, suffix in keys.items() %]
+    [%- set entity = row.source[key] %]
+    [%- set device_class, unit, units = metrics[key] %]
+      - name: [[ (row.name ~ ' reading ' ~ suffix) | yaml ]]
+        default_entity_id: [[ row.sensors[key] ]]
+        unique_id: [[ row.id ]]_reading_[[ suffix ]]
+        device_class: [[ device_class ]]
+        state_class: measurement
+        unit_of_measurement: [[ unit | yaml ]]
+        availability: >-
+          {{ [[ valid(entity, units) ]] }}
+        state: >-
+          {{ [[ value(entity, key) ]] if [[ valid(entity, units) ]] else none }}
+        attributes:
+          source_entity: "[[ entity ]]"
+[%- endfor %]
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: state
+        entity_id: [[ row.source.values() | unique | list | tojson ]]
+    sensor:
+      - name: [[ (row.name ~ ' reading status') | yaml ]]
+        default_entity_id: sensor.[[ row.id ]]_reading_status
+        unique_id: [[ row.id ]]_reading_status
+        state: "ready"
+        attributes:
+          stale_hours: [[ silent_hours ]]
+          readings: >-
+            {% set previous = this.attributes.get('readings', {}) if this is defined else {} %}
+            {% set out = namespace(values={}) %}
+[%- for key, entity in row.source.items() %]
+    [%- set _, _, units = metrics[key] %]
+            {% set source = [[ entity | tojson ]] %}
+            {% set old = previous.get([[ key | tojson ]], {}) %}
+            {% set same = old.get('source') == source %}
+            {% set since = old.get('source_since') if same else now().isoformat() %}
+            {% set available = [[ valid(entity, units) ]] %}
+            {% set at = states[source].last_reported.isoformat() if available else (old.get('at') if same else none) %}
+            {% set val = [[ value(entity, key) ]] if available else (old.get('value') if same else none) %}
+            {% set out.values = dict(out.values, [[ key ]]=dict(at=at, value=val, available=available, source=source, source_since=since)) %}
+[%- endfor %]
+            {{ out.values }}
+[%- endmacro -%]

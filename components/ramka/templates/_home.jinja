@@ -6,7 +6,7 @@
               labelled with the room's name, room = the room's id
      climate  each room with climate: {label: the room's name, temperature, humidity?, room}
      outside  the home's outside {temperature, humidity?}
-     air      every room with air: {label: the room's name, room, its readings}, a page each (0.18.0)
+     air      every room with air: {label: the room's name, room, its readings}, a page each (0.19.0)
      weather  the home's weather
      covers   each room's listed covers: {entity, label: its name, else the room's, room}
      status   contacts and locks from the rooms' lists, {entity, label}, beside the Ramka's own status
@@ -73,7 +73,7 @@
 [%- if status.locks is not defined and ns.locks %][% set _ = status.update({'locks': ns.locks}) %][% endif -%]
 [%- if status %][% set _ = merged.update({'status': status}) %][% endif -%]
 [%- endif -%]
-[#- 0.18.0: `air` is one set of readings (a mapping, as before) or a list of rooms, each
+[#- 0.19.0: `air` is one set of readings (a mapping, as before) or a list of rooms, each
     {label, room?, score?, co2?, pm2_5?, voc?, nox?}: the Air page gets a page per room. The templates
     read `air_rooms` (the list, one item for a mapping) for the pages and `air` (every reading any room
     has, the first room's entity for each) for the helpers, switches and limits, which all rooms share. -#]

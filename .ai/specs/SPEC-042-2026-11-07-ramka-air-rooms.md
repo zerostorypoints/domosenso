@@ -1,8 +1,8 @@
-# SPEC-041: the Ramka's Air page for more than one room
+# SPEC-042: the Ramka's Air page for more than one room
 
 - Status: approved 2026-11-07 by the maintainer, in the design session that preceded this change
   (one page per room, turned on a timer and by the sideways swipes as the plant pages are; no
-  average across rooms). Implemented in ramka 0.18.0.
+  average across rooms). Implemented in ramka 0.19.0.
 - Source: a home added a second air sensor, a CO₂-only one in a bedroom, next to a full air-quality
   station in the living area. The Ramka's `air` input takes one set of readings, so the second room
   could not reach the wall.

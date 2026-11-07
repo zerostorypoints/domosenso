@@ -103,7 +103,7 @@ background "ha-check ramka (pages left out)" env INPUTS="$ROOT/tests/fixtures/ra
 background "ha-check ramka (plants discover)" env INPUTS="$ROOT/tests/fixtures/ramka-plants-discover.yaml" tools/ha-check.sh ramka
 background "ha-check ramka (rooms from the home inputs)" env INPUTS="$ROOT/tests/fixtures/ramka-from-home.yaml" tools/ha-check.sh ramka
 background "ha-check ramka (shared thresholds)" env INPUTS="$ROOT/tests/fixtures/ramka-shared-thresholds.yaml" tools/ha-check.sh ramka
-# ramka 0.18.0: the air input as two rooms, a page each (SPEC-041).
+# ramka 0.19.0: the air input as two rooms, a page each (SPEC-042).
 background "ha-check ramka (air rooms)" env INPUTS="$ROOT/tests/fixtures/ramka-air-rooms.yaml" tools/ha-check.sh ramka
 collect
 fi

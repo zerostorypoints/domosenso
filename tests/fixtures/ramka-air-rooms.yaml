@@ -1,4 +1,4 @@
-# The demo home's Ramka inputs with the air input as two rooms (SPEC-041, ramka 0.18.0): an Air page
+# The demo home's Ramka inputs with the air input as two rooms (SPEC-042, ramka 0.19.0): an Air page
 # per room, turned by input_number.ramka_air_page. For `INPUTS=tests/fixtures/ramka-air-rooms.yaml
 # tools/ha-check.sh ramka` (tools/check-all.sh).
 prefix: ramka

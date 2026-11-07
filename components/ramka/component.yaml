@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.18.0
+version: 0.19.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -118,7 +118,7 @@ inputs:
     type: "own | climate-air"   # inputs, each room's comfort range come from climate-air's helpers, one definition
     default: own                # for the wall and Pocket; the Ramka's air helpers follow them for one release (P3)
   rooms_columns: {type: int, default: 5}
-  air:                          # at least one tile: the air page; absent: no air page (0.2.0). A list (0.18.0): a page
+  air:                          # at least one tile: the air page; absent: no air page (0.2.0). A list (0.19.0): a page
     type: "{score?, co2?, pm2_5?, voc?, nox?} | list[{label, room?, score?, co2?, pm2_5?, voc?, nox?}]"   # per room, each
     default: null               # with at least one reading, titled with its label; the switches and limits are shared
     example: [{label: Dining, score: sensor.dining_air_quality_score, co2: sensor.dining_air_carbon_dioxide}, {label: Bedroom, co2: sensor.bedroom_co2}]
@@ -310,8 +310,8 @@ provides:                       # <prefix> from inputs
     - {id: "input_number.<prefix>_{photo_count,photo_s}", stability: stable, note: "with photo_dir (SPEC-021 amendment 1)"}
     - {id: "input_number.<prefix>_{plants_per_page,plants_page_s}", stability: stable, note: "with plants (SPEC-022): 1-12 default 6, 5-30 s default 10"}
     - {id: "input_number.<prefix>_plants_page", stability: stable, note: "with plants: the plant page on screen, 0-based, shown modulo the page count; turned by the loop and the sideways swipes, state not a setting (SPEC-026, 0.9.0)"}
-    - {id: "input_number.<prefix>_air_page_s", stability: stable, note: "with more than one air room (0.18.0): 5-30 s default 15, the time per room on the Air page; Air, Advanced"}
-    - {id: "input_number.<prefix>_air_page", stability: stable, note: "with more than one air room (0.18.0): the room on screen, 0-based; turned by the loop and the sideways swipes, back to the first when the page is left; state, not a setting"}
+    - {id: "input_number.<prefix>_air_page_s", stability: stable, note: "with more than one air room (0.19.0): 5-30 s default 15, the time per room on the Air page; Air, Advanced"}
+    - {id: "input_number.<prefix>_air_page", stability: stable, note: "with more than one air room (0.19.0): the room on screen, 0-based; turned by the loop and the sideways swipes, back to the first when the page is left; state, not a setting"}
     - {id: "input_boolean.<prefix>_air_{score,co2,pm2_5,voc,nox}", stability: stable, note: "one per reading the air input names (SPEC-021 amendment 1)"}
     - {id: "input_number.<prefix>_air_{score_fair,score_poor,co2_raised,co2_high,pm2_5_raised,pm2_5_high,voc_raised,voc_high,nox_raised,nox_high}", stability: stable, note: "the limits of the readings the air input names (SPEC-021 amendment 1); a reading's raised and high are named fair from and poor from (0.9.0), the ids unchanged"}
     - {id: "input_select.<prefix>_air_color_{good,fair,poor}", stability: stable, note: "with air (0.9.0): the Air page's good (the neutral one), fair and poor colours, named colours as the climate neutral colour, defaults green, amber, red, Air, Advanced, group air; the air-card's levels and the Climate page's Air quality widgets; on the settings page a custom:ramka-colour-select-row each"}
@@ -330,6 +330,8 @@ provides:                       # <prefix> from inputs
   automations: "<prefix>_{about_discover,presence_on,presence_off,reconcile_after_start,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,music_default,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
+  - {component: plants, id: "sensor.<plant>_reading_status"}
+  - {component: plants, id: "plant.<plant> attributes domosenso_reading_status and domosenso_legacy_moisture_history"}
   - {component: audio-sensor, id: sensor.music_spectrum}       # Ramka cannot read audio-sensor's inputs: without
   - {component: audio-sensor, id: sensor.music_spl_offset}     # the aliases the card falls back to the classic wave
   - {component: audio-sensor, id: sensor.music_level}

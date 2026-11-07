@@ -96,6 +96,13 @@ Each entry in a manifest's `provides.entities` carries its own `stability:` (`fr
 - An `additive-only` sensor may gain state values (`sensor.<player>_audio_quality`); consumers must
   treat an unknown value as "other".
 
+For opted-in plants ([SPEC-041](../.ai/specs/SPEC-041-2026-11-07-plant-reading-sources.md)),
+`sensor.<plant>_reading_{moisture,conductivity,illuminance,temperature}` are stable recorder identities.
+`domosenso_reading_status` on the plant identifies its report metadata entity. Its `readings` map
+uses the plant measurement keys and carries the last valid `at` timestamp, numeric `value` and
+current `available` flag. `domosenso_legacy_moisture_history` optionally gives the earlier
+`statistic_id` and `before` cutover time. Existing sensor bindings retain their behaviour.
+
 ### Cards (Lovelace resources)
 
 | surface | level |
@@ -120,7 +127,7 @@ Each entry in a manifest's `provides.entities` carries its own `stability:` (`fr
 | surface | level |
 |---|---|
 | Renderer delimiters `[[ ]]`, `[% %]`, `[# #]`; Home Assistant's own `{{ }}` / `{% %}` passed through byte-identical | FROZEN |
-| Renderer inputs: globals `t(key)`, `inputs`, `lang`, `fail(message)` (ends the render with that message; SPEC-011), `component` (`id`, `version` from the manifest; [SPEC-023](../.ai/specs/SPEC-023-2026-10-30-component-inventory-and-ramka-about.md)); filter `yaml`; `*.lang.yaml.j2` → `<name>.<lang>.yaml`, which `domosenso render` puts in a home at `dashboards/<id>.<lang>.yaml` for `dashboard` and at `dashboards/<name>.<lang>.yaml` for any other name ([SPEC-021](../.ai/specs/SPEC-021-2026-10-29-ramka-live-settings.md), amended 2026-10-30: the name has no component prefix, so a component names the template after itself; a clash fails `owned by <id>: <path>`); a template whose output is only whitespace writes no file (ramka's preview dashboard, 2026-10-31); an input set to `null` counts as absent | STABLE |
+| Renderer inputs: globals `t(key)`, `inputs`, `lang`, `fail(message)` (ends the render with that message; SPEC-011), `component` (`id`, `version` from the manifest; [SPEC-023](../.ai/specs/SPEC-023-2026-10-30-component-inventory-and-ramka-about.md)); filter `yaml`; test `iso_timestamp` for zoned ISO 8601 timestamps; `*.lang.yaml.j2` → `<name>.<lang>.yaml`, which `domosenso render` puts in a home at `dashboards/<id>.<lang>.yaml` for `dashboard` and at `dashboards/<name>.<lang>.yaml` for any other name ([SPEC-021](../.ai/specs/SPEC-021-2026-10-29-ramka-live-settings.md), amended 2026-10-30: the name has no component prefix, so a component names the template after itself; a clash fails `owned by <id>: <path>`); a template whose output is only whitespace writes no file (ramka's preview dashboard, 2026-10-31); an input set to `null` counts as absent | STABLE |
 | First line of a rendered file: `# Rendered by Domosenso from <component>/<version> (<commit>) — do not edit` (`<commit>-dirty` when the catalog had uncommitted changes), written by `domosenso render`; the old form `# Rendered by Domosenso from <component>@<commit> — do not edit` (`domosenso_render.py --stamp`) is read as well, until the next minor version | STABLE |
 | Command lines of `domosenso_render.py` (`--home-inputs <file>`), `domosenso_install.py`, `catalog_check.py`, `ha-check.sh` (and its `INPUTS=<file>` and `HOME_INPUTS=<file>` overrides), `esphome-check.sh`, `check-all.sh`, `agents_check.py`, `install_skills.py` | STABLE |
 | Output lines agents parse: `fresh: N errors`, `config ok` / `config FAIL`, `ok` / `FAIL <step>`, `all checks passed`, `ERROR` / `WARNING` prefixes | STABLE |

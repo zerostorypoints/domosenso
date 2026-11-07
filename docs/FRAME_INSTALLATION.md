@@ -128,6 +128,11 @@ for supported advertisement measurements within radio range. It requires Android
 newer and an explicit installation-owned sensor address allowlist. Hardware, permissions,
 coverage and screen-off reception still require acceptance on the selected device.
 
+The [standalone plants example](../examples/standalone-tablet/) shows how
+to bind six plants to a tablet's locally discovered Xiaomi BLE sensors,
+preserve their history on a later source switch and show the age of each
+reading. Its independent HA check uses fictional radio frames.
+
 The first stage is non-connectable: no GATT, pairing or sensor writes. Mi Flora measurements
 can arrive as advertisements, but its GATT battery read is outside this stage. A dedicated
 ESPHome receiver remains an alternative for coverage, active connections or other hosts. Do not

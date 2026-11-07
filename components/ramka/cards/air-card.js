@@ -31,7 +31,7 @@
 // falls back to en); a label written out is shown as it is.
 // A tile whose entity is missing or unavailable is left out, so a room's sensor can be listed
 // before it is installed.
-// A lone tile (a room with one reading, ramka 0.18.0) takes both rows, as large as the score.
+// A lone tile (a room with one reading, ramka 0.19.0) takes both rows, as large as the score.
 //
 // Live settings (Ramka's settings dashboard): `show:` on the score or a tile names an
 // input_boolean; while it is `off` the tile is left out and the others share its room (any other

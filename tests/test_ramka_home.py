@@ -112,7 +112,7 @@ def test_own_thresholds_are_the_default(tmp_path):
 
 
 def test_every_home_room_with_air_gets_an_air_page(tmp_path):
-    """0.18.0: each room with air is a page of its own, labelled with the room's name."""
+    """0.19.0: each room with air is a page of its own, labelled with the room's name."""
     inputs = _inputs()
     inputs.pop("air", None)
     home = _home()

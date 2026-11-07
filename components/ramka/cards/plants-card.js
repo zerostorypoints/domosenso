@@ -50,7 +50,8 @@ const GAUGES = [
 ];
 const STATE_ORDER = { need: 0, neutral: 1, good: 2 };
 const PAGE_KEY = "domosenso.ramka.plants.page";
-const DAY = 86400000;
+const HOUR = 3600000;
+const DAY = 24 * HOUR;
 const LEAF = `<svg class="leaf" viewBox="0 0 24 24"><path fill="currentColor" d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/></svg>`;
 
 // The page index survives a new card element; without localStorage (a private window, tests) it
@@ -96,7 +97,7 @@ class PlantsCard extends HTMLElement {
   _watched(hass) {
     const ids = [this._config.per_page, this._config.page_s, this._config.page].filter((v) => typeof v === "string");
     for (const id of Object.keys(hass.states)) {
-      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days)$/.test(id)) ids.push(id);
+      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days|reading_status)$/.test(id)) ids.push(id);
     }
     return ids.map((id) => hass.states[id]);
   }
@@ -107,19 +108,31 @@ class PlantsCard extends HTMLElement {
     this._hass = hass;
     this._seen = watched;
     if (same) return;
+    this._scheduleAge();
     if (!this._built) this._build();
     this._update();
-    const ids = this._plants().map((p) => this._moistureId(p)).filter(Boolean).join(",");
+    const ids = [...new Set(this._plants().flatMap((p) => [this._moistureId(p), this._legacy(p)?.statistic_id]).filter(Boolean))].join(",");
     if (ids !== this._statIds || Date.now() - (this._statsAt || 0) > 30 * 60 * 1000) this._fetch(ids);
   }
 
   connectedCallback() {
-    this._schedule();
+    if (this._config) this._schedule();
+    this._scheduleAge();
   }
 
   disconnectedCallback() {
     clearTimeout(this._timer);
     this._timer = null;
+    clearInterval(this._ageTimer);
+    this._ageTimer = null;
+    this._readingDialog?.remove();
+    this._readingDialog = null;
+  }
+
+  _scheduleAge() {
+    if (this.isConnected && this._hass && !this._ageTimer && this._plants().some((p) => this._readingStatus(p))) {
+      this._ageTimer = setInterval(() => this._update(), 30000);
+    }
   }
 
   _schedule() {
@@ -159,11 +172,14 @@ class PlantsCard extends HTMLElement {
     if (!ids) return;
     const days = this._config.days || 7;
     try {
-      this._stats = await this._hass.callWS({
+      const stats = await this._hass.callWS({
         type: "recorder/statistics_during_period", period: "hour", types: ["mean"], statistic_ids: ids.split(","),
         start_time: new Date(Date.now() - days * DAY).toISOString() });
+      if (this._statIds !== ids) return;
+      this._stats = stats;
       this._update();
     } catch (e) {
+      if (this._statIds !== ids) return;
       this._statsAt = Date.now() - 25 * 60 * 1000;  // try again in five minutes
     }
   }
@@ -171,6 +187,92 @@ class PlantsCard extends HTMLElement {
   _moistureId(p) {
     const s = this._hass.states[p.entity];
     return p.moisture || (s && s.attributes.sensors && s.attributes.sensors.moisture);
+  }
+
+  _legacy(p) {
+    const legacy = this._hass.states[p.entity]?.attributes?.domosenso_legacy_moisture_history;
+    return legacy && typeof legacy.statistic_id === "string" && Number.isFinite(Date.parse(legacy.before)) ? legacy : null;
+  }
+
+  _moistureRows(p) {
+    const current = this._stats?.[this._moistureId(p)] || [];
+    const legacy = this._legacy(p);
+    if (!legacy) return current;
+    const before = Date.parse(legacy.before);
+    const hour = Math.floor(before / HOUR) * HOUR;
+    const old = this._stats?.[legacy.statistic_id] || [];
+    const points = new Map(old.filter((x) => x.start < before && x.mean != null).map((x) => [x.start, x]));
+    for (const row of current) if (row.start >= hour && row.mean != null) points.set(row.start, row);
+    return [...points.values()].sort((a, b) => a.start - b.start);
+  }
+
+  _readingStatus(p) {
+    const declared = this._hass.states[p.entity]?.attributes?.domosenso_reading_status;
+    const status = this._hass.states[declared || `sensor.${objectId(p.entity)}_reading_status`]?.attributes;
+    return status || (declared ? {} : null);
+  }
+
+  _readingAge(report, limit) {
+    const at = Date.parse(report?.at);
+    if (!Number.isFinite(at) || at > Date.now()) return { stale: true, text: t(this._hass, "card.plants.noReading") };
+    const minutes = Math.floor((Date.now() - at) / 60000);
+    const stale = report.available !== true || minutes >= limit * 60;
+    const key = minutes < 1 ? "ageNow" : minutes < 60 ? "ageMinutes" : minutes < 1440 ? "ageHours" : "ageDays";
+    const count = minutes < 60 ? minutes : Math.floor(minutes / (minutes < 1440 ? 60 : 1440));
+    const age = t(this._hass, `card.plants.${key}`, { count });
+    return { stale, text: stale ? t(this._hass, "card.plants.staleReading", { age }) : age };
+  }
+
+  _readingLabels(p) {
+    const status = this._readingStatus(p);
+    if (!status) return null;
+    const { readings = {}, stale_hours: limit = 6 } = status;
+    const labels = { temperature: ["card.plants.readingTemperature", "°C"], moisture: ["card.plants.gauge.water", "%"],
+      brightness: ["card.plants.gauge.sun", "lx"], conductivity: ["card.plants.gauge.fertiliser", "µS/cm"] };
+    return Object.fromEntries(Object.entries(labels).map(([key, [label, unit]]) => {
+      const report = readings[key];
+      const age = this._readingAge(report, limit);
+      const reading = Number.isFinite(report?.value) ? `${report.value.toLocaleString(language(this._hass), { maximumFractionDigits: 2 })} ${unit} · ` : "";
+      return [key, { ...age, value: report?.value, summary: `${reading}${age.text}`, detail: `${t(this._hass, label)} · ${reading}${age.text}` }];
+    }));
+  }
+
+  _showReadings(p) {
+    this._readingDialog?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.className = "reading-details";
+    dialog.setAttribute("data-own-tap", "");
+    const title = document.createElement("h2");
+    title.id = "plant-reading-details-title";
+    title.textContent = this._name(p, this._hass.states[p.entity]?.attributes || {});
+    dialog.setAttribute("aria-labelledby", title.id);
+    const list = document.createElement("ul");
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = t(this._hass, "card.plants.closeReadings");
+    const dismiss = () => {
+      dialog.remove();
+      this._readingDialog = null;
+    };
+    close.addEventListener("click", dismiss);
+    dialog.addEventListener("cancel", dismiss);
+    dialog.append(title, list, close);
+    this.shadowRoot.append(dialog);
+    this._readingDialog = dialog;
+    this._readingPlant = p;
+    this._refreshReadingDetails();
+    if (dialog.showModal) dialog.showModal();
+    else dialog.open = true;
+  }
+
+  _refreshReadingDetails() {
+    if (!this._readingDialog) return;
+    const labels = this._readingLabels(this._readingPlant) || {};
+    this._readingDialog.querySelector("ul").replaceChildren(...Object.values(labels).map(({ detail }) => {
+      const item = document.createElement("li");
+      item.textContent = detail;
+      return item;
+    }));
   }
 
   // A smooth SVG path through the points (Catmull-Rom as cubic Béziers), after a 9-hour moving
@@ -194,7 +296,7 @@ class PlantsCard extends HTMLElement {
   // line) and always takes in the watering threshold, drawn dashed.
   _chart(el, p, r) {
     const svg = el.querySelector("svg.chart");
-    const rows = (this._stats && this._stats[this._moistureId(p)]) || [];
+    const rows = this._moistureRows(p);
     const pts = rows.filter((x) => x.mean != null).map((x) => [x.start, x.mean]);
     if (pts.length < 2) { svg.innerHTML = ""; return; }
     const W = 100, H = 30, b = r.b.moisture;
@@ -203,12 +305,18 @@ class PlantsCard extends HTMLElement {
     const lo = Math.max(0, Math.min(...vals, b.lo) - 3), hi = Math.max(...vals, b.lo) + 3;
     const x = (ts) => ((ts - t0) / (t1 - t0)) * W;
     const y = (v) => H - ((Math.min(Math.max(v, lo), hi) - lo) / (hi - lo)) * H;
-    const xy = pts.map(([ts, v]) => [x(ts), y(v)]);
+    const segments = [[]];
+    const stitched = this._legacy(p);
+    pts.forEach(([ts, v], i) => {
+      if (stitched && i > 0 && ts - pts[i - 1][0] > HOUR) segments.push([]);
+      segments.at(-1).push([x(ts), y(v)]);
+    });
+    const path = segments.map((xy) => this._path(xy)).join(" ");
     const now = r.v.moisture;
     const color = now >= b.lo && now <= b.hi ? "var(--good)" : "var(--act)";
     svg.innerHTML = `<line x1="0" x2="${W}" y1="${y(b.lo).toFixed(1)}" y2="${y(b.lo).toFixed(1)}" stroke="var(--act)"
         stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" opacity="0.7"/>
-      <path d="${this._path(xy)}" fill="none" stroke="${color}" stroke-width="2.2"
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="2.2"
         vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
 
@@ -248,6 +356,18 @@ class PlantsCard extends HTMLElement {
         .what.act { color: var(--c); font-weight: 600; }
         .row .g { display: block; }
         .row .gl { display: none; }
+        .row .reading-age { font-size: calc(2.9 * var(--u)); }
+        .reading-age[hidden] { display: none; }
+        button.reading-age { border: 0; padding: 0; max-width: 100%; background: none;
+                             font-family: inherit; text-align: left; white-space: normal;
+                             overflow-wrap: anywhere; cursor: pointer; }
+        .reading-details { color: var(--primary-text-color); background: var(--card-background-color);
+                           border: 1px solid var(--divider-color); border-radius: 0.8rem;
+                           padding: 1rem 1.5rem; font-size: clamp(1rem, 2.4vw, 1.8rem); }
+        .reading-details::backdrop { background: rgba(0,0,0,0.5); }
+        .reading-details h2 { margin: 0; font-size: 1.15em; }
+        .reading-details li { margin-block: 0.5em; }
+        .reading-details button { font: inherit; padding: 0.4em 0.7em; }
         .body { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; min-height: 0; }
         .head { display: flex; flex-direction: column; min-width: 0; }
         .name, .room, .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -258,6 +378,7 @@ class PlantsCard extends HTMLElement {
         .band { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: rgba(91,227,122,0.25); }
         .dot { position: absolute; top: 50%; border-radius: 50%; transform: translate(-50%, -50%); background: currentColor; }
         .chart { display: block; width: 100%; overflow: visible; }
+        .body > .chart { min-height: 0; }
         .action { font-weight: 600; line-height: 1.15; min-height: 1.15em; color: var(--c);
                   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .strip { display: flex; align-items: center; gap: 1.2em; font-size: calc(3.2 * var(--u));
@@ -320,22 +441,29 @@ class PlantsCard extends HTMLElement {
     const b = this._bands(p);
     const v = Object.fromEntries(GAUGES.map((g) => [g.key, parseFloat(g.value(a))]));
     const m = this._meta(p);
+    const readings = this._readingLabels(p);
+    if (readings) {
+      for (const g of GAUGES) {
+        if (readings[g.key].stale || !Number.isFinite(v[g.key])) v[g.key] = readings[g.key].value;
+      }
+      if (readings.moisture.stale) return { a, b, v, m: { text: "" }, readings, rank: 4, state: "neutral", text: "" };
+    }
     if (!Number.isFinite(v.moisture)) {
-      return { a, b, v, m, rank: 4, state: "neutral", text: t(this._hass, "card.plants.noReading") };
+      return { a, b, v, m, readings, rank: 4, state: "neutral", text: t(this._hass, "card.plants.noReading") };
     }
     const acts = [];
     let rank = 3;
     if (v.moisture < b.moisture.lo) { acts.push(t(this._hass, "card.plants.water")); rank = 0; }
     else if (v.moisture > b.moisture.hi) { acts.push(t(this._hass, "card.plants.dontWater")); rank = 1; }
-    if (Number.isFinite(v.brightness) && v.brightness < b.brightness.lo) acts.push(t(this._hass, "card.plants.moreLight"));
-    if (Number.isFinite(v.conductivity) && v.conductivity < b.conductivity.lo) acts.push(t(this._hass, "card.plants.fertilise"));
-    else if (Number.isFinite(v.conductivity) && v.conductivity > b.conductivity.hi) acts.push(t(this._hass, "card.plants.flush"));
+    if (!readings?.brightness.stale && Number.isFinite(v.brightness) && v.brightness < b.brightness.lo) acts.push(t(this._hass, "card.plants.moreLight"));
+    if (!readings?.conductivity.stale && Number.isFinite(v.conductivity) && v.conductivity < b.conductivity.lo) acts.push(t(this._hass, "card.plants.fertilise"));
+    else if (!readings?.conductivity.stale && Number.isFinite(v.conductivity) && v.conductivity > b.conductivity.hi) acts.push(t(this._hass, "card.plants.flush"));
     const temp = String(a.problem || "");
-    if (temp.includes("temperature low")) acts.push(t(this._hass, "card.plants.tooCold"));
-    if (temp.includes("temperature high")) acts.push(t(this._hass, "card.plants.tooWarm"));
+    if (!readings?.temperature.stale && temp.includes("temperature low")) acts.push(t(this._hass, "card.plants.tooCold"));
+    if (!readings?.temperature.stale && temp.includes("temperature high")) acts.push(t(this._hass, "card.plants.tooWarm"));
     if (acts.length && rank === 3) rank = 2;
     const state = rank < 3 ? "need" : m.inDays != null && m.inDays <= 3 ? "neutral" : "good";
-    return { a, b, v, m, rank, state, text: acts.join(" · ") };
+    return { a, b, v, m, readings, rank, state, text: acts.join(" · ") };
   }
 
   // The tiles of one page; built again only when the plants on it change.
@@ -359,7 +487,8 @@ class PlantsCard extends HTMLElement {
           ${bars ? `<div class="gauges" style="font-size: ${u(3.4)}">${GAUGES.map(gauge).join("")}</div>` : ""}
           <svg class="chart" style="height: ${u(10)}" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
           <div><div class="action" style="font-size: ${u(4.2)}"></div>
-            <div class="meta" style="font-size: ${u(3.2)}"></div></div>
+            <div class="meta" style="font-size: ${u(3.2)}"></div>
+            <button type="button" class="meta reading-age" style="font-size: ${u(3.2)}" data-own-tap aria-haspopup="dialog"></button></div>
         </div></div>`).join("");
     this._els = Array.from(el.querySelectorAll(".plant"));
   }
@@ -376,7 +505,8 @@ class PlantsCard extends HTMLElement {
       t(this._hass, "card.plants.list.days", { count: this._config.days || 7 })];
     const gauge = (g) => `<div class="g" data-k="${g.key}"><span class="gl"></span>
         <span class="bar" style="display: block; height: calc(1.8 * var(--u))"><span class="band"></span>
-        <span class="dot" style="width: calc(3 * var(--u)); height: calc(3 * var(--u))"></span></span></div>`;
+        <span class="dot" style="width: calc(3 * var(--u)); height: calc(3 * var(--u))"></span></span>
+        ${g.key === "moisture" ? '<button type="button" class="rm reading-age" data-own-tap aria-haspopup="dialog"></button>' : ""}</div>`;
     el.innerHTML = `<div class="row top"><span></span>${head.map(() => "<span></span>").join("")}</div>` +
       rows.map(() => `<div class="row"><div class="photo"></div>
         <div class="rowname"><span class="name"></span><span class="rm"></span><span class="what"></span></div>
@@ -393,6 +523,7 @@ class PlantsCard extends HTMLElement {
       const b = r.b[g.key], val = r.v[g.key];
       const row = el.querySelector(`[data-k="${g.key}"]`);
       row.querySelector(".gl").textContent = t(this._hass, g.label);
+      row.title = r.readings?.[g.key].detail || "";
       const band = row.querySelector(".band");
       const lo = this._pos(b, b.lo), hi = b.hi === Infinity ? 100 : this._pos(b, b.hi);
       band.style.left = `${lo}%`;
@@ -524,6 +655,14 @@ class PlantsCard extends HTMLElement {
       this._photo(el, p, r.a);
       if (bars) this._gauges(el, r);
       this._chart(el, p, r);
+      const age = el.querySelector(".reading-age");
+      age.textContent = (list ? r.readings?.moisture.summary : r.readings?.moisture.detail) || "";
+      age.hidden = !r.readings;
+      age.title = r.readings ? Object.values(r.readings).map((x) => x.detail).join("\n") : "";
+      age.onclick = r.readings ? (event) => {
+        event.stopPropagation();
+        this._showReadings(p);
+      } : null;
       if (list) {
         // The room always (with many plants it is how to find the pot), then what to do.
         const what = el.querySelector(".what");
@@ -537,6 +676,7 @@ class PlantsCard extends HTMLElement {
       el.querySelector(".meta").textContent = r.m.text;
     });
     this._strip(rows, this._page, pages, new Set(shown.map((x) => x.p.entity)));
+    this._refreshReadingDetails();
   }
 }
 

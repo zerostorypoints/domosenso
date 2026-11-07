@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## 0.18.0 (2026-11-07): an Air page per room (SPEC-041)
+## 0.19.0 (2026-11-07): an Air page per room (SPEC-042)
 
 The `air` input may now be a list of rooms, each `{label, room?, score?, co2?, pm2_5?, voc?, nox?}`
 with at least one reading. With more than one room, the Air page gets a page per room, titled with
@@ -26,7 +26,16 @@ Then `domosenso render ramka` and deploy. Two helpers appear: `input_number.<pre
 `input_number.<prefix>_air_page`.
 
 For every home: a lone reading on the air-card now takes both rows, as large as the score, and a lone
-24-hour chart below it the full width (SPEC-041).
+24-hour chart below it the full width (SPEC-042).
+
+## 0.18.0 (unreleased): reading age for managed plant sources
+
+Plants with the new opt-in measurement bindings show the age of the last
+valid report and mark stale readings on tiles and lists. The visible age
+prioritizes soil moisture. The reading label exposes the other values and
+ages in its details. The moisture chart can include the previous Recorder
+series before the plant's migration cutoff. Existing plants work without
+changes. See the [plants upgrade notes](../plants/UPGRADE.md).
 
 ## 0.17.0 (2026-11-07): rooms from the home inputs, panels without a player or calendars, the screen after a restart
 
@@ -37,7 +46,7 @@ The Ramka declares `uses_home: optional`. When the home has shared inputs (`home
 - `lights`: each room's lights, labelled with the room's name or the light's own name;
 - `climate`: each room with climate, labelled with the room's name;
 - `outside` and `weather`;
-- `air`: the first room with air (every room with air since 0.18.0);
+- `air`: the first room with air (every room with air since 0.19.0);
 - `covers`: each room's listed covers;
 - `status` contacts and locks: each room's listed ones.
 

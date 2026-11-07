@@ -56,7 +56,7 @@
 [%- set timers = inputs.timers | default([]) -%]
 [%- set status = inputs.status | default({}) -%]
 [%- set air = inputs.air | default(none) -%]
-[#- 0.18.0: a page per room of the air input (_home.jinja); with more than one, each room's cards show
+[#- 0.19.0: a page per room of the air input (_home.jinja); with more than one, each room's cards show
     while input_number.<prefix>_air_page holds its index, which the ambient loop and the sideways swipes
     turn as with the plant pages. One room renders as before. -#]
 [%- set air_rooms = inputs.air_rooms | default([]) -%]
@@ -495,7 +495,7 @@ views:
       # room's normal). Below them the last 24 h of CO₂ and PM2.5, 5-minute means. The settings
       # dashboard's Air page switches each tile (show:) and moves its two limits, read live; the
       # literal is the default, kept while a helper is unusable (SPEC-021 amendment 1).
-      # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown. With several rooms (0.18.0) the two
+      # 8 + air + 8 + 248 + 8 = 100dvh less the header, if shown. With several rooms (0.19.0) the two
       # grids repeat per room, titled with the room's label, each shown on its own page.
 [%- for air in air_rooms %]
       - type: grid
