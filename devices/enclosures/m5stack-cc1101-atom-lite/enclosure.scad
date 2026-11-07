@@ -8,10 +8,15 @@
 // button opens the gate when held for 1 s, so it sits at the bottom of a finger well.
 //
 // Design decisions:
-//   - Module pin face up on four pads under its corners. Underneath it is an open shell, so the
-//     pads' pins stand in the hollow below its 3.1 mm corner holes; the left wall and the SMA slot
-//     locate it. Its SMA jack leaves through a slot in the back wall; a tongue on the lid closes
-//     the slot above it.
+//   - Module pin face up on four pads under its corners; underneath it is an open shell (walls
+//     1.5-2 mm, measured), and each pad carries a corner of its rim. The left wall, two stops on its
+//     right side and the SMA slot locate it. The first base had pins on the pads, 2.8 mm into the
+//     3.1 mm corner holes from below, and no stops: the pins kept the module from sitting down,
+//     and without them nothing held it, so the pins went and the stops came. Its SMA jack leaves through a slot in the back wall; a tongue on the lid closes
+//     the slot above it. The two screws of the jack's flange (not in M5Stack's drawing; measured
+//     on the module, 2026-11-06) stand 1.1 mm into the wall; a groove in its inner face, open to
+//     the top, takes their heads down as the module drops in (clash_sma_heads_path) and leaves
+//     0.75 mm of wall outside them, so the back stays closed.
 //   - Beside each corner hole, 3.3-3.8 mm towards the middle, an M2 socket screw holds the board to
 //     its frame; its head stands on the pin face (not in M5Stack's drawing; measured from M5Stack's
 //     product photo after the first fit test, 2026-11-05). The board model sweeps each head over
@@ -22,7 +27,9 @@
 //     flaps cut into the lid press it down, so the housings stay on the pins and their length
 //     tolerance (dupont_tol) needs no adjustment. The flaps rise 0.5-2.5 mm above the lid's top
 //     face while they press (echoed as flap_rise_above_lid_mm). Pins on the clamp locate it in the
-//     module's right-hand corner holes.
+//     module's right-hand corner holes. For housings shorter than dupont_len the clamp's bar grows
+//     down (clamp_housing_len) and the box stays as it is: clamp_12mm takes 12 mm housings in the
+//     box made for 14 mm, with the same flap pressure.
 //   - No screws: four latches on the lid snap into 45-degree V-grooves in the front and back
 //     walls. The lid presses on and pulls off by hand, starting at the notch in the left wall.
 //   - The latch tabs stand upright in print, so they bend across the layers, which the usual
@@ -41,25 +48,29 @@
 //
 // Terminology -> code:
 //   "the base", "the box"     -> base(), wall, floor_t, inner_x, inner_y, pad_h
+//   "module stops"            -> mod_stop_t, mod_stop_w, mod_stop_rise, mod_stop_v
 //   "the lid"                 -> lid_body(), lid_t, lip_h, lip_t
 //   "latches", "snaps"        -> latch_tab(), v_wedge(), latch_x, latch_len, latch_t, latch_bump
-//   "the clamp", "comb"       -> clamp_body(), pins_used, wire_d, slot_w, skirt_h
+//   "the clamp", "comb"       -> clamp_body(), pins_used, wire_d, slot_w, skirt_h, clamp_housing_len
 //   "spring flaps", "nubs"    -> flap_w, flap_t, flap_hinge_x, flap_preload, nub_d
 //   "button well"             -> well_d, well_depth, accent, accent_od, accent_t
 //   "logo", "symbol"          -> logo, logo_h, logo_depth, logo_2d(), logo_xy
 //   "inlay", "second colour"  -> lid_inlay_body() (accent ring and logo), part lid_inlay_parts
 //   "vents"                   -> vents, vent_w, vent_len, lid_vent_rows
 //   "antenna slot", "tongue"  -> sma_slot_w, the tongue in lid_body()
+//   "antenna screws", groove  -> sma_screw_dx, sma_head, sma_head_clear, sma_heads(), sma_head_slot_w, sma_head_groove_d
 //   "USB opening"             -> usb_plug_w, usb_plug_h
 //   "wall ears"               -> base(ears = true), ear_len, ear_w, ear_hole_d
 //   "pry notch"               -> notch_w, notch_d
 //   "corner screws"           -> screw_dx, screw_y_tol, screw_head_d, screw_head_h, head_sweep()
 //
 // Common modifications:
+//   Other flange screws        -> sma_screw_dx (both spacings swept), sma_head (the groove follows; asserted >= 0.7 mm of wall)
 //   Other screws on the module -> screw_dx, screw_y_tol, screw_head_d, screw_head_h (notches and the pin follow)
 //   Other jumper pins          -> pins_used (M-Bus numbers; odd pins are the edge column)
 //   Thicker jumper wires       -> wire_d (slot = wire_d + 0.2 + hole_comp; ribs stay >= 0.6 mm, asserted)
 //   Other housing length       -> dupont_len (clamp height follows), dupont_tol (flap travel)
+//   Shorter housings, same box -> clamp_housing_len (only the clamp changes; build.py exports clamp_12mm)
 //   Firmer or softer lid       -> latch_bump (holding force), latch_t (latch_len follows at 10:1)
 //   Deeper button well         -> well_depth (lowers the Atom; room for the plug bends is asserted)
 //   Bulky USB-C plug           -> usb_plug_w, usb_plug_h
@@ -75,6 +86,10 @@
 //   README.md "Sources".
 // Final review: 2026-11-05, claude-fable-5-1 (after a Sonnet review; findings fixed)
 // Corner-screw fix: reviewed 2026-11-05, claude-sonnet-5-5; its findings fixed
+// Flange-screw groove, the Atom stop's web, the module stops: 2026-11-06, lightweight check (gate; without the
+//   groove both clash_base_boards and clash_sma_heads_path fail)
+// Clamp for shorter housings (clamp_housing_len, clamp_12mm): reviewed 2026-11-06, claude-sonnet-5-5;
+//   no blocker, documentation findings fixed. The Atom's male plugs stay modelled at dupont_len.
 
 // === PRINT SETTINGS ===
 // Material: PETG (latches and spring flaps; forgiving if a first print fits tight). PLA works:
@@ -88,8 +103,8 @@
 // Notes: PETG about 240 C nozzle, 70-80 C bed, dried filament. No brim.
 
 /* [Output] */
-// Printed: base, base_wall, lid, lid_inlay_parts, clamp. Views: assembly, assembly_open, explode, section, plate_all. Checks: clash_*.
-part = "assembly"; // [assembly, assembly_open, explode, section, plate_all, base, base_wall, lid, lid_inlay_parts, clamp, clash_lid_base, clash_clamp_lid, clash_clamp_base, clash_base_boards, clash_lid_boards, clash_clamp_boards, clash_inlay_lid]
+// Printed: base, base_wall, lid, lid_inlay_parts, clamp (clamp_12mm: clamp with clamp_housing_len = 12). Views: assembly, assembly_open, explode, section, plate_all. Checks: clash_*.
+part = "assembly"; // [assembly, assembly_open, explode, section, plate_all, base, base_wall, lid, lid_inlay_parts, clamp, clash_lid_base, clash_clamp_lid, clash_clamp_base, clash_base_boards, clash_lid_boards, clash_clamp_boards, clash_inlay_lid, clash_sma_heads_path]
 
 /* [Printer] */
 nozzle_diameter = 0.4;
@@ -111,6 +126,10 @@ wire_d = 1.4;
 dupont_len = 14.0;
 // Housing length variation the clamp's spring flaps take up
 dupont_tol = 1.0;
+// Length of the female housings under this clamp. Shorter than dupont_len, the clamp's bar grows
+// down to meet them and the box stays as it is: clamp_housing_len = 12 is clamp_12mm, for
+// 12 mm housings in the box made for 14 mm
+clamp_housing_len = dupont_len;
 
 /* [Button well] */
 // Diameter of the finger well above the Atom's button
@@ -177,7 +196,8 @@ lip_h = 2.5;                    // locating lip under the lid
 lip_t = 3 * extrusion_width;    // 1.35
 lip_gap = tolerance;
 clamp_t = 10 * layer_height;    // 2.0
-wire_clear = 3.9;               // above the clamp, where the jumpers bend over
+wire_clear = 4.9;               // above the clamp, where the jumpers bend over; 3.9 lifted the lid
+                                // a little in the first assembly (6 Nov 2026)
 pocket_wall = 4 * extrusion_width;
 pocket_wall_rise = 6;           // pocket side walls stand this far above the Atom's underside
 pedestal_uv = [1.5, 8];         // pedestal under the Atom: start in u and v (Atom coordinates)
@@ -216,7 +236,16 @@ sma_z = 3.75;              // jack axis above the module's underside
 sma_len = 9.6;             // jack beyond the body edge
 sma_d = 6.35;              // 1/4-36 UNS thread
 sma_flange = [14, 1.8, 5.7];
-sma_slot_w = 7.0;
+// two screws hold the flange to the module's frame, their heads towards the back wall; measured
+// with a ruler on one module (2026-11-06): 12 mm apart, 4 mm heads standing 1.5 mm proud of the
+// flange. 12.7 mm (1/2 in) is the usual spacing of a two-hole SMA flange, so the slot takes both
+sma_screw_dx = [12, 12.7];   // centre to centre: measured, usual
+sma_head = [4, 1.5];         // head diameter, height above the flange
+sma_head_clear = 0.4;        // per side, around the heads
+sma_slot_w = 7.0;            // the jack's thread
+// a groove in the back wall's inner face, as wide as both heads, takes them down to their place;
+// the wall stays closed outside it
+sma_head_slot_w = max(sma_screw_dx) + sma_head[0] + 2 * sma_head_clear + hole_comp;
 tongue_w = sma_slot_w - 2 * tolerance; // lid tongue in the slot: 0.3 mm per side, the printed slot narrows
 
 // --- M5Stack Atom Lite, model-size drawing and Atom-Lite.stl ---
@@ -236,6 +265,12 @@ bay = 9;          // jumper channel between module and Atom
 atom_gap = tolerance;
 pad_h = 3;        // module stands on four pads; the room under the Atom follows from it
 pad_d = 9;
+// two stops on the module's right side: with the left wall they keep it from sliding into the
+// jumper bay
+mod_stop_t = 4 * extrusion_width;  // 1.8
+mod_stop_w = 8;
+mod_stop_rise = 4;                 // above the module's underside, on its 6.6 mm side
+mod_stop_v = [12, 42];             // centres along the module's right side, from its front edge
 
 inner_x = gap + mod_w + bay + atom + atom_gap;
 inner_y = gap + mod_w + gap_back;
@@ -246,6 +281,8 @@ plateau_z = mod_z0 + mod_t;
 spacer_z = mod_z0 + hdr_spacer_top;
 housing_top = spacer_z + dupont_len;
 clamp_top = housing_top + clamp_t;
+clamp_under = spacer_z + clamp_housing_len;  // the bar's underside, on the female housings
+clamp_drop = housing_top - clamp_under;      // how far the bar grows down for shorter housings
 z_lid = clamp_top + wire_clear;     // underside of the lid plate = top of the base walls
 atom_top = z_lid + lid_t - well_depth;
 atom_z0 = atom_top - atom_h;
@@ -256,18 +293,17 @@ usb_y = atom_y0 + atom / 2;
 well_xy = [atom_x0 + atom_well_uv[0], atom_y0 + atom_well_uv[1]];
 sma_x = mod_x0 + sma_dx;
 sma_zz = mod_z0 + sma_z;
+sma_head_slot_z = sma_zz - sma_head[0] / 2 - sma_head_clear; // floor of the groove
+sma_head_groove_d = sma_flange[1] + sma_head[1] + sma_head_clear - gap_back; // into the wall's inner face
 outer = [inner_x + 2 * wall, inner_y + 2 * wall, z_lid + lid_t];
 
 // --- fixing without screws ---
-pin_d = 2.8;          // the base's pins, standing in the hollow under the module's corner holes
-pin_taper = 0.5;
 clamp_pin_d = 2.2;    // the clamp's pins in the 3.1 mm corner holes, beside the screw heads
 clamp_pin_taper = 0.4;
 clamp_pin_shift = 0.25; // off the hole's centre, away from the screw
 head_clear = 0.3;     // above and around a screw head in its notch
 // notch over a head: the head's swept range plus head_clear, plus the printed-hole shrink
 head_notch_r = screw_head_d / 2 + head_clear + hole_comp / 2;
-base_pin_h = 2.5;     // from the pads, into the holes from below
 clamp_pin_h = 3.0;    // from the clamp's bosses, into the right-hand holes from above
 tube_gap = 0.4;       // lid tubes stop the module this far above it
 boss_gap = 1.5;       // clamp boss above the module: room for shorter housings
@@ -360,7 +396,6 @@ flap_force_max = flap_k * flap_defl_max;
 flap_strain = 100 * 3 * flap_t * flap_defl_max / (2 * flap_len * flap_len);
 
 assert(atom_z0 - dupont_len - floor_t >= 5, "no room under the Atom for the jumper bends");
-assert(plateau_z + boss_gap - clamp_pin_h > mod_z0 + base_pin_h + 1, "clamp pin meets base pin");
 assert(boss_gap >= dupont_tol, "clamp boss would land on the module before short housings");
 // clamp pin against the nearest screw head, and inside its hole, at the ends of the measured range
 clamp_pin_in = clamp_pin_d / 2 - clamp_pin_shift;    // pin's edge on the screw side, from the hole's centre
@@ -369,7 +404,9 @@ head_near = screw_dx[0] - screw_head_d / 2;          // nearest head edge, from 
 assert(head_near - clamp_pin_in >= 0.25, "clamp pin under 0.25 mm from a screw head");
 assert(mod_hole_d / 2 - clamp_pin_out >= 0.15, "clamp pin under 0.15 mm inside its hole");
 assert(screw_dx[0] - head_notch_r >= clamp_pin_in - fudge, "head notch cuts into the clamp pin");
-assert(boss_pocket_top + 3 * layer_height <= housing_top, "clamp boss notch leaves under three layers");
+assert(boss_pocket_top + 3 * layer_height <= clamp_under, "clamp boss notch leaves under three layers");
+assert(clamp_drop >= 0, "clamp_housing_len longer than dupont_len: the box is too low for these housings");
+assert(clamp_under - skirt_h > mod_z0 + hdr_pin_top, "clamp skirts reach down to the header pins' tips");
 assert(tube_pocket_top + 3 * layer_height <= z_lid, "lid tube notch reaches the lid plate");
 assert(latch_len / latch_t >= 10 - fudge, "latch L:T below 10");
 assert(latch_strain <= strain_limit, "latch strain over the limit");
@@ -379,6 +416,16 @@ assert(groove_d < wall - 2 * extrusion_width, "latch groove leaves under two lin
 assert(slot_rib >= 2 * extrusion_width - 0.1, "clamp ribs between neighbouring slots under two lines");
 assert(well_depth + atom_usb_dz - usb_plug_h / 2 >= 1.2, "lid left over the USB opening under 1.2 mm");
 assert((sma_slot_w - hole_comp - tongue_w) / 2 >= 0.1, "lid tongue binds in the printed SMA slot");
+assert(wall - sma_head_groove_d >= 0.7, "back wall over the flange screws' groove under 0.7 mm");
+assert(gap_back > sma_flange[1] + 0.2, "SMA flange touches the back wall");
+assert(min(mod_stop_v) - mod_stop_w / 2 >= mod_r && max(mod_stop_v) + mod_stop_w / 2 <= mod_w - mod_r, "module stops reach its rounded corners");
+assert(bay - tolerance - mod_stop_t >= 6, "module stops leave under 6 mm of jumper bay");
+assert(mod_stop_rise < mod_rim_t, "module stops stand above the module's side");
+assert(stop_v[0] >= pedestal_uv[1] && stop_v[0] + stop_v[1] <= pedestal_uv[1] + pedestal_size[1], "Atom stop wider than the pedestal it is joined to");
+assert(gap_back + wall >= sma_flange[1] + sma_head[1], "SMA flange screw heads stick out past the back wall");
+assert(sma_zz + sma_d / 2 + 0.3 >= sma_zz + sma_head[0] / 2 + 0.5, "lid tongue comes down onto the flange screw heads");
+assert(sma_x - sma_head_slot_w / 2 - (latch_x[0] + latch_w / 2 + latch_side_gap) >= 2 * extrusion_width,
+  "flange screws' groove leaves under two lines of wall beside the latch groove");
 assert(flap_defl_min >= 0.4, "flaps stop pressing the clamp with the shortest housings");
 assert(abs(lid_t - flap_t - flap_ramp) < 1e-6, "flap ramp is not 45 degrees");
 assert(min(flap_y) - flap_w / 2 - flap_slot > lip_gap + lip_t, "front flap cuts into the lip");
@@ -401,9 +448,16 @@ if (logo) {
 for (i = [0 : 2]) assert(outer[i] <= build_xyz[i], "part larger than the build volume");
 
 echo(outer_mm = outer, base_wall_x = outer[0] + 2 * (ear_len / 2 + 0.5 + ear_w / 2));
+// the flange screws' groove measured from the outside of the left wall and the base's underside
+// (for cutting it into a base printed before the screws were modelled)
+echo(sma_head_groove_from_left_mm = [wall + sma_x - sma_head_slot_w / 2, wall + sma_x + sma_head_slot_w / 2],
+  sma_head_groove_floor_mm = sma_head_slot_z, sma_head_groove_w_mm = sma_head_slot_w,
+  sma_head_groove_d_mm = sma_head_groove_d, back_wall_over_groove_mm = wall - sma_head_groove_d,
+  wall_beside_latch_mm = sma_x - sma_head_slot_w / 2 - (latch_x[0] + latch_w / 2 + latch_side_gap));
 echo(latch_strain_pct = latch_strain, latch_hold_N = latch_hold, flap_strain_pct = flap_strain,
      flap_force_max_N = flap_force_max, clamp_rib_mm = slot_rib,
-     flap_rise_above_lid_mm = [flap_defl_min, flap_preload, flap_defl_max]);
+     flap_rise_above_lid_mm = [flap_defl_min, flap_preload, flap_defl_max],
+     clamp_housing_mm = [clamp_housing_len - dupont_tol, clamp_housing_len + dupont_tol], clamp_bar_mm = clamp_t + clamp_drop);
 echo(clamp_pin_to_head_min_mm = head_near - clamp_pin_in, clamp_pin_in_hole_mm = mod_hole_d / 2 - clamp_pin_out,
      head_notch_from_hole_mm = [screw_dx[0] - head_notch_r, screw_dx[1] + head_notch_r],
      boss_notch_depth_mm = boss_pocket_top - plateau_z - boss_gap, tube_notch_depth_mm = tube_pocket_top - plateau_z - tube_gap);
@@ -490,12 +544,18 @@ module base(ears = false) {
       }
       for (h = hole_xy) translate([h[0], h[1], floor_t - fudge]) {
         cylinder(d = pad_d, h = pad_h + fudge);
-        translate([0, 0, pad_h]) cylinder(d1 = pin_d, d2 = pin_d - pin_taper, h = base_pin_h + fudge);
       }
+      // stops on the module's right side
+      for (v = mod_stop_v) translate([mod_x0 + mod_w + tolerance, mod_y0 + v - mod_stop_w / 2, floor_t - fudge])
+        cube([mod_stop_t, mod_stop_w, pad_h + mod_stop_rise + fudge]);
       // Atom pedestal, between the two rows of plugs under the Atom
       translate([atom_x0 + pedestal_uv[0], atom_y0 + pedestal_uv[1], floor_t - fudge]) cube([pedestal_size[0], pedestal_size[1], atom_z0 - floor_t + fudge]);
-      // stop on the module side of the Atom
-      translate([atom_x0 - atom_gap - stop_t, atom_y0 + stop_v[0], floor_t - fudge]) cube([stop_t + fudge, stop_v[1], atom_z0 + stop_rise - floor_t]);
+      // stop on the module side of the Atom, joined to the pedestal by a web up to the Atom's
+      // underside: standing alone it was a 1.35 mm plate 26 mm tall, held only by the floor
+      translate([atom_x0 - atom_gap - stop_t, atom_y0 + stop_v[0], floor_t - fudge]) {
+        cube([stop_t + fudge, stop_v[1], atom_z0 + stop_rise - floor_t]);
+        cube([stop_t + atom_gap + pedestal_uv[0] + fudge, stop_v[1], atom_z0 - floor_t + fudge]);
+      }
       // side walls of the Atom pocket
       for (y = [atom_y0 - atom_gap - pocket_wall, atom_y0 + atom + atom_gap])
         translate([atom_x0 - atom_gap, y, floor_t - fudge]) cube([inner_x - atom_x0 + atom_gap + fudge, pocket_wall, atom_z0 + pocket_wall_rise - floor_t]);
@@ -506,6 +566,8 @@ module base(ears = false) {
       translate([sma_x, inner_y - fudge, sma_zz]) rotate([-90, 0, 0]) cylinder(d = sma_slot_w, h = wall + 2 * fudge);
       translate([sma_x - sma_slot_w / 2, inner_y - fudge, sma_zz]) cube([sma_slot_w, wall + 2 * fudge, z_lid]);
     }
+    // the flange screws' heads go down this groove as the module drops in
+    translate([sma_x - sma_head_slot_w / 2, inner_y - fudge, sma_head_slot_z]) cube([sma_head_slot_w, sma_head_groove_d + fudge, z_lid]);
     // USB-C plug, open to the top; the lid closes it
     translate([inner_x - fudge, usb_y - usb_plug_w / 2, usb_z - usb_plug_h / 2])
       cube([wall + 2 * fudge, usb_plug_w, z_lid]);
@@ -582,7 +644,7 @@ module lid_body() {
         // 45-degree gusset under the web stiffens the tongue's root
         hull() {
           translate([sma_x - tongue_w / 2, inner_y - lip_gap - lip_t, z_lid - lip_h - fudge]) cube([tongue_w, lip_gap + lip_t + fudge, fudge]);
-          translate([sma_x - tongue_w / 2, inner_y - fudge, z_lid - lip_h - lip_gap - lip_t]) cube([sma_slot_w - tolerance, 2 * fudge, fudge]);
+          translate([sma_x - tongue_w / 2, inner_y - fudge, z_lid - lip_h - lip_gap - lip_t]) cube([tongue_w, 2 * fudge, fudge]);
         }
         // tubes over the module's left-hand holes keep it down
         for (h = left_holes) translate([h[0], h[1], plateau_z + tube_gap]) cylinder(d = tube_d, h = z_lid - plateau_z - tube_gap + fudge);
@@ -641,10 +703,10 @@ row15_face = row_y(15) - pitch / 2;
 module clamp_body() {
   difference() {
     union() {
-      translate([clamp_x0, clamp_y0, housing_top]) cbox([clamp_x1 - clamp_x0, clamp_y1 - clamp_y0, clamp_t], 1.5, ct = ef_chamfer);
+      translate([clamp_x0, clamp_y0, clamp_under]) cbox([clamp_x1 - clamp_x0, clamp_y1 - clamp_y0, clamp_t + clamp_drop], 1.5, ct = ef_chamfer);
       for (h = right_holes) {
         intersection() {
-          translate([h[0], h[1], plateau_z + boss_gap]) cylinder(d = boss_d, h = housing_top - plateau_z - boss_gap + fudge);
+          translate([h[0], h[1], plateau_z + boss_gap]) cylinder(d = boss_d, h = clamp_under - plateau_z - boss_gap + fudge);
           // flat side towards the header
           if (h[1] > mod_y0 + mod_w / 2)
             translate([0, row1_face + tolerance, 0]) cube([200, 100, 100]);
@@ -656,7 +718,7 @@ module clamp_body() {
       }
       // skirts on both long sides keep the housings upright
       for (x = [clamp_x0, edge_face + tolerance])
-        translate([x, min(used_y) - pitch / 2 - 0.5, housing_top - skirt_h])
+        translate([x, min(used_y) - pitch / 2 - 0.5, clamp_under - skirt_h])
           cube([skirt_t, max(used_y) - min(used_y) + pitch + 1, skirt_h + fudge]);
     }
     // notches in the bosses over the right-hand screw heads, from the boss's underside up; the
@@ -666,8 +728,8 @@ module clamp_body() {
     for (p = pins_used) {
       xy = pin_xy(p);
       hull() {
-        translate([xy[0], xy[1], housing_top - skirt_h - 1]) cylinder(d = slot_w, h = skirt_h + clamp_t + 2);
-        translate([clamp_x1 + 1, xy[1] - slot_w / 2, housing_top - skirt_h - 1]) cube([1, slot_w, skirt_h + clamp_t + 2]);
+        translate([xy[0], xy[1], clamp_under - skirt_h - 1]) cylinder(d = slot_w, h = skirt_h + clamp_t + clamp_drop + 2);
+        translate([clamp_x1 + 1, xy[1] - slot_w / 2, clamp_under - skirt_h - 1]) cube([1, slot_w, skirt_h + clamp_t + clamp_drop + 2]);
       }
     }
   }
@@ -700,6 +762,14 @@ module cc1101_model() {
     translate([sma_x - sma_flange[0] / 2, mod_y0 + mod_w - fudge, mod_z0 + 0.9]) cube([sma_flange[0], sma_flange[1], sma_flange[2]]);
     translate([sma_x, mod_y0 + mod_w - fudge, sma_zz]) rotate([-90, 0, 0]) cylinder(d = sma_d, h = sma_len);
   }
+  color("#b8bcc2") sma_heads();
+}
+
+// the flange screws' heads, each swept over both spacings
+module sma_heads(dz = 0) {
+  for (s = [-1, 1]) hull() for (dx = sma_screw_dx)
+    translate([sma_x + s * dx / 2, mod_y0 + mod_w + sma_flange[1] - fudge, sma_zz + dz]) rotate([-90, 0, 0])
+      cylinder(d = sma_head[0], h = sma_head[1] + fudge);
 }
 
 module antenna_model() {
@@ -728,7 +798,7 @@ module atom_model() {
 module housings() {
   color("#111") for (p = pins_used) {
     xy = pin_xy(p);
-    translate([xy[0] - 1.25, xy[1] - 1.25, spacer_z]) cube([2.5, 2.5, dupont_len]);
+    translate([xy[0] - 1.25, xy[1] - 1.25, spacer_z]) cube([2.5, 2.5, clamp_housing_len]);
   }
 }
 
@@ -752,7 +822,7 @@ module wires() {
     zr = housing_top + clamp_t + 1.3 + (i % 3) * 0.6;
     zf = floor_t + 1.2 + l[2] * 1.5;
     wire([
-      [a[0], a[1], housing_top],
+      [a[0], a[1], clamp_under],
       [a[0], a[1], zr - 0.6],
       [a[0] + 2, a[1], zr],
       [mod_x0 + mod_w + 1.5 + i * 0.5, a[1] + (b[1] - a[1]) * 0.35, zr - 1],
@@ -828,6 +898,7 @@ else if (part == "clash_clamp_base") intersection() { clamp_body(); base(); }
 else if (part == "clash_base_boards") intersection() { base(); translate(up) boards_fit(); }
 else if (part == "clash_lid_boards") intersection() { lid_body(); boards_fit(); }
 else if (part == "clash_clamp_boards") intersection() { translate(up) clamp_body(); boards_fit(); }
+else if (part == "clash_sma_heads_path") intersection() { base(); hull() { sma_heads(); sma_heads(z_lid); } }
 else if (part == "clash_inlay_lid") intersection() { lid_body(); translate(up) lid_inlay_body(); }
 else if (part == "assembly_open") { shell_colours(show_lid = false); boards_view(); }
 else if (part == "explode") { shell_colours(lid_dz = 55, clamp_dz = 22); boards_view(); }

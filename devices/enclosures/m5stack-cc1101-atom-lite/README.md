@@ -17,12 +17,15 @@ snaps on.
 | **From above, with the logo** | **Print plate** |
 | ![Top](preview/top.png) | ![Plate](preview/plate.png) |
 
-Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ears.
+Outside 92.3 × 61.2 × 38 mm; the wall-mount base is 120.3 mm wide with its ears.
 
-- **Module.** It lies pin face up on four pads under its corners; the left wall and the SMA slot
-  locate it. Underneath it is an open shell, so the pads' short pins stand in the hollow below its
-  corner holes and touch nothing. Its SMA jack passes through a slot in the back wall, and the
-  antenna is bent upright on its hinge. A tongue on the lid fills the slot above the jack.
+- **Module.** It lies pin face up on four pads under its corners; the left wall, two low stops on
+  its right side and the SMA slot locate it. Underneath it is an open shell, and each pad carries
+  a corner of its rim. Its SMA jack passes through a slot in the back wall, and the
+  antenna is bent upright on its hinge. The two screws of the jack's flange stand 1.1 mm into
+  the wall; a groove in its inner face, open to the top, takes their heads down as the module
+  drops in, and the wall stays closed outside it (0.75 mm). A tongue on the lid fills the slot
+  above the jack.
 - **Corner screws.** Beside each corner hole, 3.3–3.8 mm towards the middle, an M2 socket screw
   holds the board to its frame, its head about 2 mm proud of the pin face. M5Stack's drawing does
   not show them; the first printed clamp caught on them. The clamp's pins (Ø2.2 mm) sit 0.25 mm
@@ -34,10 +37,11 @@ Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ear
   per jumper. It slides over the wires from the Atom's side and sits on the eight housings, and
   its two pins locate it in the module's holes. Two spring flaps cut into the lid press it down,
   so the housings stay on the spacer. The flaps take up ±1 mm of housing length without
-  adjustment. While they press, they stand 0.5–2.5 mm proud of the lid's top (1.5 mm with 14 mm
-  housings). Skirts on both sides of the clamp keep the housings upright.
+  adjustment. While they press, they stand 0.5–2.5 mm proud of the lid's top (1.5 mm with housings of the
+  clamp's nominal length, 14 mm for `clamp` and 12 mm for `clamp_12mm`). Skirts on both sides of the clamp keep the housings upright.
 - **Atom.** It stands on a pedestal between its two rows of plugs, button up, with USB-C through
-  the right wall. Pads on the lid hold its corners down.
+  the right wall. A stop on the module side, joined to the pedestal, keeps it off the jumpers.
+  Pads on the lid hold its corners down.
 - **Button.** It sits at the bottom of a Ø15 mm well, 3.4 mm below the lid. A deliberate press
   with a fingertip reaches it; a hand resting on the box or an object set on it does not. The
   well does not stop a child. The LED shows through the well. An optional ring around the well
@@ -61,11 +65,13 @@ Outside 92.3 × 61.2 × 37 mm; the wall-mount base is 120.3 mm wide with its ear
 | `3mf/base_wall.3mf`, `stl/base_wall.stl` | base with two wall-mount ears | open side up |
 | `3mf/lid.3mf`, `stl/lid.stl` | lid | top face down |
 | `stl/lid_inlay_parts.stl` | ring around the button well and the logo, second filament (optional) | with the lid |
-| `3mf/clamp.3mf`, `stl/clamp.stl` | jumper clamp | flat face down |
+| `3mf/clamp.3mf`, `stl/clamp.stl` | jumper clamp, for 14 mm female housings | flat face down |
+| `3mf/clamp_12mm.3mf`, `stl/clamp_12mm.stl` | the same clamp for 12 mm female housings, 2 mm thicker; fits the same base and lid | flat face down |
 | `enclosure.scad` | parametric source (OpenSCAD) | |
 | `build.py` | exports `stl/` and `preview/` | |
 
-Print one base (shelf or wall), one lid and one clamp. The `.3mf` files are Bambu Studio projects
+Print one base (shelf or wall), one lid and one clamp: `clamp` or `clamp_12mm`, as your jumpers'
+female housings measure ([Before the first print](#before-the-first-print)). The `.3mf` files are Bambu Studio projects
 for the P2S with the settings below applied; open those first. The STLs are for other slicers.
 
 ## Hardware
@@ -152,7 +158,8 @@ The parameters at the top of `enclosure.scad` show in OpenSCAD's Customizer, or 
 |---|---|---|
 | `pins_used` | `[1, 7, 8, 9, 11, 20, 22, 28]` | module M-Bus pins with a jumper; the clamp gets one slot per pin |
 | `wire_d` | 1.4 | jumper wire diameter |
-| `dupont_len`, `dupont_tol` | 14.0, 1.0 | Dupont housing length and the variation the flaps take up |
+| `dupont_len`, `dupont_tol` | 14.0, 1.0 | Dupont housing length the box is made for, and the variation the flaps take up |
+| `clamp_housing_len` | `dupont_len` | female housing length under the clamp; shorter, the clamp's bar grows down and the box stays (`clamp_12mm` is 12). Its default is an expression, so set it with `-D` or in the file; the Customizer does not list it |
 | `well_d`, `well_depth` | 15, 3.4 | button well; the depth also leaves 1.3 mm of lid over the USB opening |
 | `accent`, `accent_od`, `accent_t` | true, 21, 0.6 | ring around the well |
 | `usb_plug_w`, `usb_plug_h` | 13, 8.5 | opening for the USB-C plug body |
@@ -191,6 +198,13 @@ python3 <skill-dir>/verify-model.py enclosure.scad --build-volume 256x256x256
 python3 <skill-dir>/make-bambu-3mf.py --scad enclosure.scad -D 'part="lid"' --printer P2S --layer-height 0.2 --walls 5 --infill 15 --infill-pattern gyroid --supports off --scatter off --out 3mf/lid.3mf
 ```
 
+The clamp for 12 mm housings is the clamp part with its own value (`build.py` exports its STL
+when it runs without `-D`):
+
+```bash
+python3 <skill-dir>/make-bambu-3mf.py --scad enclosure.scad -D 'part="clamp"' -D clamp_housing_len=12 --printer P2S --layer-height 0.2 --walls 5 --infill 15 --infill-pattern gyroid --supports off --scatter off --out 3mf/clamp_12mm.3mf
+```
+
 Two design reviews by separate agents followed the skill's brief, first on Sonnet, then a final
 one on Fable (claude-fable-5-1). Neither found a blocker, and the fixes from both are in:
 - the flap preload covers short housings;
@@ -201,11 +215,19 @@ one on Fable (claude-fable-5-1). Neither found a blocker, and the fixes from bot
 - the lid over the USB opening is 1.3 mm thick;
 - the flap slots are 1.2 mm wide.
 
-Last gate run: `GATE: PASS (17 of 17 parts pass)`. Every printed part is one manifold body on the
-plate with no overhang past 45°, and all seven `clash_*` checks are empty: lid and base, clamp
-and lid, clamp and base, each printed part against the boards, and the inlays in their recesses.
+Last gate run: `GATE: PASS (18 of 18 parts pass)`. Every printed part is one manifold body on the
+plate with no overhang past 45°, and all eight `clash_*` checks are empty: lid and base, clamp
+and lid, clamp and base, each printed part against the boards, the inlays in their recesses, and
+the jack's flange screws on their way down the back wall's groove.
 The logo, added after the reviews, had a lightweight check only (gate and the outline comparison
 below), no new design review.
+
+`clamp_12mm` (6 November 2026): the gate with `-D clamp_housing_len=12` on the clamp, its three
+`clash_*` checks and the views passed 8 of 8, with the female housings modelled at 12 mm. Sunk
+1 mm (11 mm housings), the clamp clears the module and the screw heads (0.3 mm under the notch
+ceilings, the designed `head_clear`) and meets the lid only at the flap nubs, 0.5 mm deep: the
+designed spring contact. The default `clamp.stl` is byte-identical to the one before. A Sonnet
+design review (claude-sonnet-5-5) found no blocker; its documentation findings are in.
 
 The corner-screw fix had its own review on Sonnet (claude-sonnet-5-5). It found that the first
 version cleared the heads only at the middle of the measured range; the heads are now swept over
@@ -226,6 +248,11 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   - SMA axis 34 mm from the left edge and 3.75 mm above the underside, protruding 9.6 mm, with a
     flange 14 × 1.8 × 5.7 mm.
 
+  The drawing leaves out the two screws that hold the flange to the frame. Measured with a ruler
+  on one module (6 November 2026): heads Ø4 mm, standing 1.5 mm proud of the flange, 12 mm apart
+  centre to centre. The usual spacing of a two-hole SMA flange is 12.7 mm (½ in); the slot takes
+  heads anywhere from 12 to 12.7 mm apart.
+
   The drawing spaces the header pins 2.50 mm apart. The model uses the M-Bus pitch of 2.54 mm.
 - Corner screws: not in the drawing. The first printed clamp (5 November 2026) caught on them.
   Measured on M5Stack's top-view product photo of the module, scaled by its 54 mm width (595 px):
@@ -237,6 +264,13 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
   Photos of the module itself, from above and below, show the same screws and an open shell
   underneath: the corner holes go through the board, the screws into posts of the frame.
+  Measured with a ruler on one module (6 November 2026): 54 mm each side, corner holes 44 mm apart
+  centre to centre, 7.5 mm from the underside to the board's top face; the drawing gives 54, 44
+  and 7.6 mm. The antenna jack's thread measured 32 and 37 mm from the module's left
+  edge, so its axis is 34.5 mm from it, against the drawing's 34; the two edges span 5 mm of a
+  6.35 mm thread, so the ruler reading is good to about ±0.5 mm. Laid open side down on a flat table, the module rests
+  level on its rim: the screw posts, the corner bosses and the bus socket inside it stay within
+  the rim, so on the pads it stands at the modelled height.
 - Atom Lite: [product page](https://docs.m5stack.com/en/core/ATOM%20Lite) (24.0 × 24.0 × 9.5 mm),
   [model-size drawing](https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/core/ATOM%20Lite/model%20size.jpg)
   and [Atom-Lite.stl](https://github.com/m5stack/M5_Hardware/tree/master/Products/C008_Atom-Lite/Structures).
@@ -244,7 +278,8 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
   - header sockets on the underside, 4.5 mm from the side edges;
   - socket rows 9.5 to 19.6 mm from the face opposite the USB-C;
   - the USB-C axis 2.15 mm below the top face.
-- Dupont housing 14 mm and wire 1.4 mm: common values, not measured on the jumpers used.
+- Dupont housing 14 mm and wire 1.4 mm: common values. The jumpers of the first build measured
+  12 mm (ruler, 6 November 2026), hence `clamp_12mm`; the wire was not measured.
 - Logo: the DomoSenso brand book 1.0 (5 November 2026,
   [`branding/brand-book.md`](../../../branding/brand-book.md)): on a casing only the symbol, about 20 mm, one structural width (12 of
   52 units, 4.6 mm) of clear space, no rotation or stretching. The model builds the outline from
@@ -257,6 +292,9 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
 ## Before the first print
 
+- Measure the black plastic of one female jumper end. About 14 mm: print `clamp`; about 12 mm:
+  print `clamp_12mm`. The base and the lid are the same for both. Each clamp takes 1 mm either
+  way; for another length set `clamp_housing_len` (up to `dupont_len`) and rebuild the clamp.
 - Measure a jumper's wire across its insulation. The clamp's slots are `wire_d + 0.3` wide and
   print at about the wire's diameter, with `wire_d = 1.4`. Set `wire_d` to the measured value
   and rebuild. Above 1.44 mm the ribs between neighbouring slots get too thin, and the model
@@ -267,14 +305,44 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 
 ## Not verified
 
-- Only the clamp has been printed, twice, in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
+- The clamp has been printed twice in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
   clean). The first, on 5 November 2026, did not seat on the module: its bosses caught on the
-  corner screws. The second, this version, seats on the module the right way round (checked on
-  6 November 2026 without the box; turned round it does not, as step 4 says). Still to check:
+  corner screws. The second seats on the module the right way round (checked on 6 November 2026
+  without the box; turned round it does not, as step 4 says). With 12 mm housings under it, it
+  rested on its bosses: nothing would have pressed the housings. `clamp_12mm` is for those; it
+  has not been printed. Still to check:
   - the clamp on its pins and housings inside the box, with the lid's flaps pressing it;
   - the module on its pads;
-  - the lid closing over the left-hand screw heads, the latch click and how hard the lid pulls off;
-  - the USB-C plug in its opening.
+  - the latch click and how hard the lid pulls off.
+- The first base, printed on 6 November 2026 in PETG-CF (39.8 g, about 1 h 25 min), did not
+  take the module: the drawing has no flange screws, so their heads stood on the back wall's inner
+  face. The back wall now has a groove on its inside, 17.8 mm wide and 1.5 mm deep, from 6.35 mm
+  above the base's underside to the rim (`clash_sma_heads_path` checks the way down); 0.75 mm of
+  wall stays outside it. This base is not printed yet. A base printed before the change takes the
+  same groove, 27.85 to 45.65 mm from the outside of the left wall (the wall with the pry notch):
+  ground out from the inside, or cut through the wall, which is easier by hand and leaves an
+  opening each side of the lid's tongue. Either way 1.1 mm of wall stays beside the left latch's
+  groove.
+- First assembly, 6 November 2026: the first base cut by hand as above, and the first lid, in PETG
+  with the white inlay. The node runs inside, and the lid closes and sits nearly level. The
+  jumpers bent over the clamp pushed the lid up a little, so the room above the clamp
+  (`wire_clear`) went from 3.9 to 4.9 mm and the box is 1 mm taller; how the wires are laid
+  matters as much. The USB-C cable went in only with the Atom held down from above (see the Atom's
+  stop below). The next day, with the wires settled, the lid sat well, and this first build stays
+  in use. The base and lid with these changes are not printed yet.
+- In the first base, pins on the pads (Ø2.8 mm, 2.5 mm tall, into the 3.1 mm corner holes from
+  below) kept the module from sitting down, and nothing stood on its right side to hold it. The
+  pins are gone; two stops on its right side (8 mm wide, 4 mm up its side) hold it against the
+  left wall with 0.3 mm of play. Not printed yet. In a base printed earlier, cut the pins off
+  flush with the pads; double-sided tape on the pads then holds the module.
+- The module's place across the box: the left wall leaves it 0.5 mm, the stops 0.3 mm, and the
+  jack in its slot about ±0.2 mm around the drawing's position. Shifted 0.4 mm left or 0.5 mm
+  right, the lid's tubes still clear the corner screws (checked by moving the module in the
+  model); against the left wall, 0.5 mm left, they touch them. That happens only if the jack sits
+  0.3 mm or more further right on the module than drawn, which the ruler reading allows.
+- The Atom's stop on the module side stood alone in the first base, a 1.35 mm plate 26 mm tall
+  held only by the floor, and it bent back as the USB-C cable went in. A web now joins it to the
+  pedestal up to the Atom's underside, leaving 4 mm of it free. Not printed yet.
 - The screw positions come from a photo. Over the whole measured range, with a head of up to
   4.0 × 2.4 mm, the notches leave 0.3 mm (0.45 mm as modelled, before the printed-hole shrink),
   also with the clamp 1 mm lower on short housings; the clamp's pins pass at least 0.45 mm from a

@@ -5,6 +5,7 @@
 
 Usage: uv run build.py [-D name=value ...]
 Every -D is passed on to OpenSCAD, e.g. -D 'pins_used=[1,7,8,9,11,20,22,28]'.
+The variants (clamp_12mm) are exported only without -D: they belong to the default box.
 OpenSCAD is found through $OPENSCAD, then PATH, then the macOS app bundle.
 """
 
@@ -18,6 +19,9 @@ HERE = Path(__file__).resolve().parent
 SCAD = HERE / "enclosure.scad"
 
 PARTS = ["base", "base_wall", "lid", "lid_inlay_parts", "clamp"]
+
+# name: (part, its own -D values); the same box, a clamp for shorter female housings
+VARIANTS = {"clamp_12mm": ("clamp", ["clamp_housing_len=12"])}
 
 # name: (part, camera eye x,y,z, centre x,y,z)
 VIEWS = {
@@ -64,6 +68,9 @@ def main() -> None:
             sys.exit(__doc__)
     for part in PARTS:
         run(exe, HERE / "stl" / f"{part}.stl", part, defines, ["--export-format", "binstl"])
+    for name, (part, own) in (VARIANTS.items() if not defines else []):
+        own_defines = [arg for value in own for arg in ("-D", value)]
+        run(exe, HERE / "stl" / f"{name}.stl", part, defines + own_defines, ["--export-format", "binstl"])
     for name, (part, camera) in VIEWS.items():
         run(
             exe,
