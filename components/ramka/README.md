@@ -472,6 +472,12 @@ lovelace:
   rows follow its ability sensors, which a home without audio-sensor does not have (a missing
   entity reads unknown or unavailable in a visibility condition: hidden either way). No reset
   touches the calibration: a measurement is not a preference.
+- **Music strip** (SPEC-043, the music sensor's sub-view, with audio-sensor's `strip` ability):
+  `light.music_strip` (on/off, brightness and style in Home Assistant's more-info), **Strip uses the
+  Ramka palette** (`input_boolean.<prefix>_music_strip_palette_sync`, off by default: on, every
+  change of the music palette goes to the strip through `script.audio_sensor_music_strip_palette`)
+  and a link to the board's device page for the strip's other settings, which the Ramka does not
+  rebuild. Hidden while the selected sensor has no strip; the sub-view's Reset turns the sync off.
 - **Option values** (`dune`, `series`, `dark`) read as they are: helper options are English, and a
   YAML `input_select` has no translated labels.
 - **The standing rule, for implementers:** every Ramka extension updates the settings dashboard in

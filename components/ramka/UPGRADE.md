@@ -3,6 +3,13 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased: the music strip's palette (SPEC-043)
+
+With `music_visual`, the music sensor sub-view shows audio-sensor's music strip while the selected
+sensor has one, and `input_boolean.<prefix>_music_strip_palette_sync` (off) pushes the music palette
+to it. A home without a strip sees no change. Update audio-sensor with it: the rows read its
+`binary_sensor.music_source_strip`.
+
 ## 0.18.0 (unreleased): reading age for managed plant sources
 
 Plants with the new opt-in measurement bindings show the age of the last
