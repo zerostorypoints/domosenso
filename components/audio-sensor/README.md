@@ -361,7 +361,7 @@ Configuration:
 
 | entity | values (default) | what it does |
 |---|---|---|
-| Music strip | light: on/off, brightness, colour, effect | the strip; its brightness is the overall dimmer (it scales the light after the strip's own gamma, so the colours stay as they are); the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
+| Music strip | light: on/off, brightness, colour, effect | the strip; its brightness is the overall dimmer: the eye sees the square of the slider (50 % looks about half as bright), applied after the strip's own gamma, so the colours stay as they are; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
 | Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple, Heat (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
 | Strip palette | spectrum, warm, cool, single, custom, pastel (spectrum) | the colours the styles use; pastel is soft blue, mint, cream, peach and rose |
 | Strip custom palette | 2–5 `#rrggbb` stops (`#ff3000,#ffb000,#2050ff`) | the custom palette; a typo keeps the last good one |
@@ -393,7 +393,7 @@ microphone has no left or right, and the strip sits between two speakers.
 | Centre meter | a level meter from the centre to both ends, a falling peak dot | front |
 | Spectrum | 8 bands mirrored from the centre, bass at the centre or the ends | front |
 | Ripple | a beat sends a wave from the centre to both ends | front, wall |
-| Heat | the bands laid along the strip; each part's colour is its band's level through the palette (quiet: the first colour, loud: the last), the brightness steady | front; with bass position start or end, bass to treble across the strip |
+| Heat | the bands laid along the strip; each part's colour is its band's level through the palette (quiet: the first colour, loud: the last); with Strip intensity its brightness follows the level too, so at 100 % a quiet band fades out (with the single palette: one colour, dark where quiet), at 0 % it is steady | front; with bass position start or end, bass to treble across the strip |
 
 A beat is the low end (40–250 Hz) jumping well above its own mean over the last second: a kick
 confined to the bass counts, the same at any volume and at any amount of bass at the board's spot.

@@ -351,6 +351,7 @@ int main() {
       Renderer r;
       RenderSettings s = settings(Style::HEAT, n);
       s.bass = bass;
+      s.intensity = 0.0f;  // steady brightness: these checks are about the colours
       for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
       return leds;
     };
@@ -430,6 +431,42 @@ int main() {
     bool soft = p.count == 5;
     for (uint8_t i = 0; i < p.count; i++) soft = soft && std::min(p.stops[i].r, std::min(p.stops[i].g, p.stops[i].b)) >= 150;
     check(soft, "pastel palette: five soft stops");
+  }
+
+  {
+    // Heat with intensity: each band's brightness follows its own level, so the quietest band fades
+    // out entirely at 100 % (with the single palette: one colour, dark where quiet).
+    Features rising = loud(0.8f);
+    for (size_t b = 0; b < NUM_BANDS; b++) rising.bands[b] = (float) b / (float) (NUM_BANDS - 1);
+    const size_t n = 40;
+    std::vector<Rgb> leds(n);
+    Renderer r;
+    RenderSettings s = settings(Style::HEAT, n);
+    s.bass = BassPosition::START;
+    s.intensity = 1.0f;
+    for (int i = 0; i < 50; i++) r.render(rising, s, 0.0107f, leds.data(), n);
+    check(!lit(leds[0]) && lit(leds[39]) && brightest(leds[10]) < brightest(leds[30]), "heat intensity 100: quiet bands fade out");
+  }
+
+  {
+    // The light's brightness reaches the eye as its square (50 % gives a quarter of the light),
+    // applied to the frame before rounding; ESPHome scales by the brightness once more, linearly.
+    auto draw = [](uint8_t brightness) {
+      const size_t n = 30;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(Style::SPECTRUM, n);
+      s.intensity = 0.0f;
+      s.brightness = brightness;
+      Features f = loud(0.8f);
+      for (size_t b = 0; b < NUM_BANDS; b++) f.bands[b] = 1.0f;
+      for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
+      return r.last_ma() - IDLE_MA * (float) n;
+    };
+    const float full = draw(255), half = draw(128);
+    char msg[64];
+    std::snprintf(msg, sizeof msg, "full %.0f mA, half %.0f mA", full, half);
+    check(half > 0.2f * full && half < 0.3f * full, "brightness 50 % gives a quarter of the light", msg);
   }
 
   return failures ? 1 : 0;

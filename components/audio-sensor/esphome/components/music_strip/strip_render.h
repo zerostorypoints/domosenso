@@ -261,9 +261,14 @@ class Renderer {
       // Pastel: toward white at the LED's own brightness; then the strip's gamma, in float, so the
       // light's brightness can dim the result without rounding the weaker channels away first.
       const float top = std::max(rgb[0], std::max(rgb[1], rgb[2]));
+      // The light's brightness once here, in float, and once more by ESPHome on the way out: the
+      // eye sees the square of the slider (50 % looks half as bright), and the colours keep their
+      // proportions until the last rounding.
+      const float dim = (float) s.brightness / 255.0f;
       for (int c = 0; c < 3; c++) {
         rgb[c] += (top - rgb[c]) * clamp01(s.pastel);
         if (s.colour_gamma != 1.0f) rgb[c] = std::pow(rgb[c], s.colour_gamma);
+        rgb[c] *= dim;
       }
       leds[i] = Rgb{byte(rgb[0]), byte(rgb[1]), byte(rgb[2])};
     }
@@ -383,15 +388,14 @@ class Renderer {
       }
       case Style::HEAT: {
         // The bands laid along the window, blended between neighbours; the colour is the band's
-        // level through the palette, the brightness steady (it fades only as the music stops).
+        // level through the palette, and with intensity the brightness follows it too, so a quiet
+        // band fades out (at 0 % the brightness is steady and fades only as the music stops).
         const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
         const float pos = x * (float) (NUM_BANDS - 1);
         const size_t b0 = std::min(NUM_BANDS - 1, (size_t) pos);
         const size_t b1 = std::min(NUM_BANDS - 1, b0 + 1);
         const float level = f.bands[b0] + (f.bands[b1] - f.bands[b0]) * (pos - (float) b0);
-        float loudest = 0.0f;
-        for (size_t b = 0; b < NUM_BANDS; b++) loudest = std::max(loudest, f.bands[b]);
-        put(s, out, palette_at(s.palette, clamp01(level)), 4.0f * loudest);
+        put(s, out, palette_at(s.palette, clamp01(level)), level);
         break;
       }
       case Style::RIPPLE: {
