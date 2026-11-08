@@ -668,7 +668,25 @@ views:
                   perform_action: script.audio_sensor_apply_calibration
                   confirmation:
                     text: [[ t('ui.settings.calibration_apply_confirm') | yaml ]]
-      # The Reset: the update rate only, with `rate`.[[ reset('music_sensor', 'ui.settings.music_sensor_reset', rate_on) ]]
+      # SPEC-043: audio-sensor's music strip, while the selected sensor has one: its light (on/off,
+      # brightness, style in Home Assistant's own more-info), the palette sync, and the way to the
+      # board's device page for every other strip setting (the Ramka does not rebuild those).
+      - type: grid
+        visibility: [ [[ has_ability('strip') ]] ]
+        cards:[[ heading('music_strip', 'mdi:led-strip-variant', has_ability('strip')) ]]
+          - type: entities
+            visibility: [ [[ has_ability('strip') ]] ]
+            entities:
+              - entity: light.music_strip
+                name: [[ t('ui.settings.music_strip') | yaml ]]
+              - entity: input_boolean.[[ p ]]_music_strip_palette_sync
+                name: [[ t('ui.settings.music_strip_palette_sync') | yaml ]]
+[%- set strip_link = '[' ~ t('ui.settings.music_strip_device') ~ '](/config/devices/device/{{ device }})' %]
+          - type: markdown
+            visibility: [ [[ has_ability('strip') ]] ]
+            content: |-
+              {% set light = state_attr('binary_sensor.music_source_strip', 'light') %}{% set device = device_id(light) if light else none %}{% if device %}[[ strip_link ]]{% endif %}
+      # The Reset: the update rate (with `rate`) and the strip's palette sync.[[ reset('music_sensor', 'ui.settings.music_sensor_reset', rate_on) ]]
 [%- endif %]
 
   # ---- About: Domosenso, every component the home runs, what they use (SPEC-023) ---------------

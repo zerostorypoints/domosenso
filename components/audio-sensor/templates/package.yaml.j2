@@ -436,6 +436,9 @@ template:
           [[ ability('strip') ]]{{ strip }}
         attributes:
           component: audio-sensor
+          # The selected board's strip light, for a link to its device page (empty without a strip).
+          light: >-
+            {{ [[ lookup('strip_light') ]] }}
 [%- endif %]
 [%- endif %]
 [%- if strips %]

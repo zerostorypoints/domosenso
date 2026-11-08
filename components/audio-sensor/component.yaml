@@ -157,7 +157,7 @@ provides:                                 # contract surface; placeholders in <>
     # SPEC-043: the music strip, rendered only when a board has `strip:`. A home without a strip
     # gets none of these.
     - {id: "light.music_strip", stability: stable, note: "SPEC-043; the selected board's strip light: on/off, brightness, effect; unavailable while that board has no strip"}
-    - {id: "binary_sensor.music_source_strip", stability: stable, note: "SPEC-043; on while the selected board has a strip light; never unavailable; sensor.music_source's capabilities then end with strip (additive)"}
+    - {id: "binary_sensor.music_source_strip", stability: stable, note: "SPEC-043; on while the selected board has a strip light; never unavailable; attribute light: that board's strip light id (empty without one); sensor.music_source's capabilities then end with strip (additive)"}
     - {id: "script.audio_sensor_music_strip_palette", stability: stable, note: "SPEC-043; field stops (2 to 5 #rrggbb): writes them to the selected board's custom palette and selects custom; changes nothing for other stops or a board without a strip"}
     - {id: "input_boolean.<id_prefix>_strip_follow_music", stability: stable, note: "SPEC-043, with strip.follow; on: the strip turns on while the follow entity plays (media player) or is on; no initial:"}
     - {id: "input_number.<id_prefix>_strip_follow_off_delay", stability: stable, note: "SPEC-043, with strip.follow; 0-600 s, step 5; the delay before the strip turns off; no initial:"}

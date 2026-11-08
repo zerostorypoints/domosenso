@@ -271,6 +271,7 @@ provides:                       # <prefix> from inputs
     - {id: "input_select.<prefix>_ambient", stability: frozen, options: [climate, air, plants, photos, status]}
     - {id: "input_select.<prefix>_music_visual", stability: stable, options: [spectrum, level], note: "with music_visual; the input's visual first; classic is no option, it is input_boolean.<prefix>_music_live off (SPEC-025 amendment 1, 0.9.0)"}
     - {id: "input_boolean.<prefix>_music_live", stability: stable, note: "with music_visual; Live visualization: on, the now-playing card draws the select's visual; off (the default), its classic wave (SPEC-025 amendment 1, 0.9.0)"}
+    - {id: "input_boolean.<prefix>_music_strip_palette_sync", stability: stable, note: "with music_visual; SPEC-043; on: the music palette goes to audio-sensor's music strip (script.audio_sensor_music_strip_palette) while the selected sensor has one; off (the default); on the music sensor sub-view, reset there"}
     - {id: "input_boolean.<prefix>_music_loudness", stability: stable, note: "with music_visual; on, the visual shows sensor.music_level in dB in the strip's top right corner, in the palette's colour; off (the default), no number (0.15.0)"}
     - {id: "input_select.<prefix>_theme_mode", stability: stable, options: [dark, light], note: "the default first; options additive-only (0.4.0)"}
     - {id: "input_select.<prefix>_music_palette", stability: stable, note: "with music_visual; the card's palettes, the default first; options additive-only (0.4.0)"}
@@ -325,7 +326,7 @@ provides:                       # <prefix> from inputs
   dashboards:
     - {file: "ramka-settings.<lang>.yaml", stability: stable, note: "the admins' live settings: pages general, climate, air, plants, photos, status, calendar, controls (the near settings, 0.9.0), music, about; each but about starts with a header (what its view shows and when), with preview_dashboard linking to the preview's tab of the same path (general: the first); the colour selects (air_color_{good,fair,poor}, climate_color_neutral) are custom:ramka-colour-select-row rows, each choice with its colour's dot (0.9.0); the Photos page's albums are its second section, the right column next to Basic (0.9.0)"}
     - {file: "ramka-preview.<lang>.yaml", stability: stable, note: "with preview_dashboard (default true): one view per screen the component has, always, paths climate, air, plants, photos, status, calendar, controls, music; a screen the render has is a custom:screen-frame-card with the Ramka dashboard's sections of that screen (a banner over it while its page switch is off), one it left out a note naming the input that adds it; each links to the settings page of the same path"}
-  automations: "<prefix>_{about_discover,presence_on,presence_off,reconcile_after_start,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,music_default,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching and <prefix>_music_eq_load, with alert_notify also <prefix>_{charger_failed,battery_hot}"
+  automations: "<prefix>_{about_discover,presence_on,presence_off,reconcile_after_start,near,near_left,controls_timeout,ambient_watchdog,auto_brightness,photo_index,ambient_start,ambient_stop,pause_end,music_back,music_default,settings_seed,theme_mode}, with floorplan also <prefix>_controls_plan_reset, with music_visual also <prefix>_music_watching, <prefix>_music_eq_load and <prefix>_music_strip_palette_sync, with alert_notify also <prefix>_{charger_failed,battery_hot}"
 
 consumes:                       # with music_visual (0.4.0): audio-sensor's music aliases and its card.
   - {component: plants, id: "sensor.<plant>_reading_status"}
@@ -355,6 +356,11 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   - {component: audio-sensor, id: binary_sensor.music_source_level}
   - {component: audio-sensor, id: binary_sensor.music_source_rate}
   - {component: audio-sensor, id: binary_sensor.music_source_calibration}
+  # SPEC-043: the music strip, its ability (with its `light` attribute, for the device page link) and
+  # the palette script. In a home without a strip none exists and the sub-view hides its rows.
+  - {component: audio-sensor, id: light.music_strip}
+  - {component: audio-sensor, id: binary_sensor.music_source_strip}
+  - {component: audio-sensor, id: script.audio_sensor_music_strip_palette}
   # With floorplan: the plan on the controls (SPEC-028). The card's resource comes with the component.
   - {component: floorplan, id: "dashboard url path floorplan"}
   - {component: floorplan, element: floorplan-card}
