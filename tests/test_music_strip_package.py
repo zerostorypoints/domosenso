@@ -77,3 +77,18 @@ def test_bass_position_offers_start_and_end():
         assert "BassPosition::START" in text and "BassPosition::END" in text
     boot = yaml.safe_dump(package()["esphome"]["on_boot"])
     assert "BassPosition::START" in boot and "BassPosition::END" in boot
+
+
+def test_style_select_and_light_do_not_call_each_other_forever():
+    # The light's on_state sets the select, and the select's action switches the light; the select
+    # publishes only after its action, so an action that always called the light recursed until the
+    # board ran out of stack and restarted (seen on the prototype on every style change in the dialog).
+    action = yaml.safe_dump(style_select()["set_action"])
+    assert "get_effect_name" in action and "!=" in action
+
+
+def test_settings_are_written_to_flash_within_seconds():
+    # ESPHome writes restored values to flash once a minute by default: a restart in that minute lost
+    # the last changes. A write happens only when a value changed.
+    interval = package()["preferences"]["flash_write_interval"]
+    assert interval.endswith("s") and not interval.endswith("ms") and int(interval[:-1]) <= 10

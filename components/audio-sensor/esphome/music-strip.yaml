@@ -16,6 +16,11 @@
 # Pins: M5Stack's Atom EchoS3R page (docs.m5stack.com/en/core/Atom_VoiceS3R, SKU C126-ECHO), HY2.0-4P
 # "PORT.CUSTOM": black GND, red 5V, yellow G2, white G1. The sensor firmware uses neither.
 
+# Settings reach flash within seconds, not ESPHome's default minute: a restart in that minute lost
+# the last changes. Flash is written only when a value changed.
+preferences:
+  flash_write_interval: 5s
+
 substitutions:
   strip_pin: GPIO2
   strip_leds: "120"
@@ -94,10 +99,14 @@ select:
     initial_option: Pulse
     optimistic: true
     restore_value: true
+    # Only when the light shows another style: the light's on_state sets this select back, and the
+    # select publishes after this action, so calling the light every time recursed until a restart.
     set_action:
       - if:
           condition:
-            lambda: return id(strip_light).current_values.is_on();
+            lambda: |-
+              const auto name = id(strip_light).get_effect_name();
+              return id(strip_light).current_values.is_on() && std::string(name.c_str(), name.size()) != x;
           then:
             - light.turn_on:
                 id: strip_light
