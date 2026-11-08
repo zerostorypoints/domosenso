@@ -141,8 +141,8 @@ static bool all_sane(const Features &f) {
 }
 
 // A kick every 500 ms over -40 dBFS pink noise, each a 30 ms burst. Absolute: 60 Hz at burst_db dBFS.
-// Relative: partials at 60, 250 and 500 Hz (the first three bands a kick and its body fill), each
-// burst_db dB above the bed's own power in that band, as a kick sits in a mix.
+// Relative: one 80 Hz partial burst_db dB above the bed's own power in 40-250 Hz (bins 1-5), as a
+// bass-only kick sits in a mix.
 static std::vector<float> kick_train(float seconds, std::vector<size_t> &starts, float burst_db = -12.0f,
                                      bool relative = false, float gain_db = 0) {
   struct Partial {
@@ -153,7 +153,7 @@ static std::vector<float> kick_train(float seconds, std::vector<size_t> &starts,
   std::vector<float> x = pink((size_t) (seconds * SR), -40.0f);
   std::vector<Partial> partials = {{60.0f, 1, 4, burst_db}};
   if (relative) {
-    partials = {{60.0f, 1, 4, 0}, {250.0f, 4, 9, 0}, {500.0f, 9, 18, 0}};
+    partials = {{80.0f, 1, 6, 0}};
     static const Dft dft;
     std::vector<float> p;
     std::vector<double> acc(partials.size(), 0.0);
@@ -176,6 +176,12 @@ static std::vector<float> kick_train(float seconds, std::vector<size_t> &starts,
   return x;
 }
 
+// A beat counts for a kick when its hop ends within 3 hops (32 ms) of the kick's start: the 21 ms
+// window fills, and the beat test averages two hops.
+#ifndef LATE_HOPS
+#define LATE_HOPS 3
+#endif
+
 // Beats after 2 s: kicks found (of those starting after 2 s) and beats outside every kick's window.
 static void score_kicks(const std::vector<float> &x, const std::vector<size_t> &starts, int &hit, int &expected,
                         int &stray) {
@@ -185,7 +191,7 @@ static void score_kicks(const std::vector<float> &x, const std::vector<size_t> &
     if (end < (size_t) (2 * SR) || !f.beat) return;
     bool matched = false;
     for (size_t i = 0; i < starts.size(); i++)
-      if (end >= starts[i] && end <= starts[i] + 2 * HOP) {
+      if (end >= starts[i] && end <= starts[i] + LATE_HOPS * HOP) {
         found[i] = true;
         matched = true;
       }
@@ -227,15 +233,34 @@ int main() {
   }
 
   {
-    // Kicks in mixed music sit a few dB over their band, not 28 dB.
+    // A kick in mixed music sits a few dB over the low end, and often only there: a bass-only hit 8 dB
+    // over the bed's 40-250 Hz power must be a beat.
     std::vector<size_t> starts;
-    const std::vector<float> x = kick_train(10.0f, starts, 10.0f, true);
+    const std::vector<float> x = kick_train(10.0f, starts, 8.0f, true);
     int hit, expected, stray;
     score_kicks(x, starts, hit, expected, stray);
     char msg[96];
-    std::snprintf(msg, sizeof msg, "found %d of %d kicks 10 dB over the bed, %d beats between", hit, expected, stray);
+    std::snprintf(msg, sizeof msg, "found %d of %d bass kicks 8 dB over the bed, %d beats between", hit, expected, stray);
     // A kick missed in its window and found a hop late shows as a stray beat; that is no false beat.
-    check(expected == 16 && hit >= 15 && stray <= expected - hit, "kick train, 10 dB hits", msg);
+    check(expected == 16 && hit >= 15 && stray <= expected - hit, "kick train, 8 dB bass hits", msg);
+  }
+
+  {
+    // Beat sensitivity: more sensitive never finds fewer beats in the same signal.
+    std::vector<size_t> starts;
+    const std::vector<float> x = kick_train(10.0f, starts, 5.0f, true);
+    int found[3] = {0, 0, 0};
+    const float sens[3] = {0.0f, 50.0f, 100.0f};
+    for (int i = 0; i < 3; i++) {
+      FeatureSettings s;
+      s.beat_sensitivity = sens[i];
+      run(x, s, [&](size_t, size_t end, const Features &f) {
+        if (end >= (size_t) (2 * SR) && f.beat) found[i]++;
+      });
+    }
+    char msg[96];
+    std::snprintf(msg, sizeof msg, "beats at sensitivity 0/50/100: %d/%d/%d", found[0], found[1], found[2]);
+    check(found[0] <= found[1] && found[1] <= found[2] && found[2] > found[0], "beat sensitivity", msg);
   }
 
   {

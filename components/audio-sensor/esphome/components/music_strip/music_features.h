@@ -25,6 +25,7 @@ struct FeatureSettings {
   float sensitivity_db = 0;
   float attack_ms = 20;
   float release_ms = 300;
+  float beat_sensitivity = 50;  // 0-100: how far above its usual swing the low end must jump
 };
 
 class FeatureExtractor {
@@ -44,6 +45,12 @@ class FeatureExtractor {
       this->edge_[b] = std::max<size_t>(this->edge_[b], b == 0 ? 1 : this->edge_[b - 1] + 1);
     }
     this->edge_[NUM_BANDS] = std::max(this->edge_[NUM_BANDS], this->edge_[NUM_BANDS - 1] + 1);
+    // The kick's range: below the low end of most room microphones' useful bass, a kick lives in its
+    // body and punch, 40 to 250 Hz; DC (bin 0) stays out.
+    this->low_lo_ = std::max<size_t>(1, (size_t) std::ceil(BEAT_LOW_HZ / df));
+    this->low_hi_ = std::min(this->bins_ - 1, std::max(this->low_lo_, (size_t) std::floor(BEAT_HIGH_HZ / df)));
+    const float sens = std::min(100.0f, std::max(0.0f, s.beat_sensitivity));
+    this->beat_k_ = BEAT_K_LEAST - (BEAT_K_LEAST - BEAT_K_MOST) * sens / 100.0f;
     const double hop_s = (double) hop / (double) sample_rate;
     this->alpha_attack_ = smoothing(hop_s, s.attack_ms);
     this->alpha_release_ = smoothing(hop_s, s.release_ms);
@@ -51,7 +58,7 @@ class FeatureExtractor {
     this->peak_decay_ = (float) std::pow(0.5, hop_s / PEAK_HALF_LIFE_S);
     this->flux_.assign(std::max<size_t>(8, (size_t) std::lround(FLUX_WINDOW_S / hop_s)), 0.0f);
     this->min_history_ = this->flux_.size() / 2;
-    this->refractory_hops_ = (size_t) std::lround(REFRACTORY_S / hop_s);
+    this->refractory_hops_ = (size_t) std::ceil(REFRACTORY_S / hop_s);
     this->reset();
   }
 
@@ -71,7 +78,7 @@ class FeatureExtractor {
     }
     if (!this->gate_open_) {
       // Below the gate nothing is music: level and bands fall away, the flux history keeps running.
-      this->push_flux(0.0f);
+      this->push_flux(1.0f);  // neutral: the low end at its own mean
       this->smooth(0.0f, f);
       this->have_prev_ = false;
       this->since_beat_++;
@@ -86,47 +93,45 @@ class FeatureExtractor {
     const float low_db = this->settings_.auto_gain ? GATE_CLOSE_DB : ref_db - RANGE_DB;
     f.envelope = unit((db(rms) - low_db) / std::max(ref_db - low_db, 1.0f));
 
-    float level[NUM_BANDS];
     float target[NUM_BANDS];
-    float flux = 0, top_rise = 0;
     for (size_t b = 0; b < NUM_BANDS; b++) {
       double sum = 0;
       for (size_t k = this->edge_[b]; k < this->edge_[b + 1] && k < this->bins_; k++) sum += power[k];
-      const float band_p = (float) sum * this->power_scale_;
-      const float band_db = db_power(band_p);
-      // The brief's band energies, normalised per band: the flux sees each band against its own
-      // recent mean. A steady bed then sits near 1 whatever its colour, and a one- or two-bin band
-      // that jitters by several dB no longer outweighs a real hit.
-      if (!this->have_prev_) this->band_mean_[b] = band_p;
-      level[b] = band_p / std::max(this->band_mean_[b], 1e-9f);
-      this->band_mean_[b] += this->mean_alpha_ * (band_p - this->band_mean_[b]);
-      target[b] = unit((band_db - ref_db + RANGE_DB) / RANGE_DB);
-      // The first frame after silence has no earlier one to rise from.
-      if (this->have_prev_) {
-        const float rise = std::max(0.0f, level[b] - this->prev_level_[b]);
-        flux += rise;
-        top_rise = std::max(top_rise, rise);
-      }
-      // A short peak hold: a dip in a noisy band must not count as the next hop's rise.
-      this->prev_level_[b] = std::max(level[b], this->prev_level_[b] * HOLD_DECAY);
+      target[b] = unit((db_power((float) sum * this->power_scale_) - ref_db + RANGE_DB) / RANGE_DB);
     }
-    // A hit lifts neighbouring bands together; one band alone jumping is noise in a thin low band.
-    flux -= top_rise;
 
+    // Beat: the low end against its own 1 s mean, so the test is the same at any volume and with any
+    // amount of bass at the microphone's spot. A jump counts when it clears the ratio's usual swing
+    // by the sensitivity's factor; a kick confined to the low end is a beat on its own.
+    double low_sum = 0;
+    for (size_t k = this->low_lo_; k <= this->low_hi_; k++) low_sum += power[k];
+    const float now_low = (float) low_sum * this->power_scale_;
+    if (!this->have_prev_) this->low_mean_ = this->prev_low_ = now_low;
+    // Two hops (21 ms, shorter than a kick): a handful of bass bins swings by several dB from one
+    // frame to the next in steady noise, and the mean of two takes much of that out.
+    const float low = 0.5f * (now_low + this->prev_low_);
+    this->prev_low_ = now_low;
+    const float ratio = std::isfinite(low) ? low / std::max(this->low_mean_, 1e-12f) : 1.0f;
+    if (std::isfinite(low)) this->low_mean_ += this->mean_alpha_ * (low - this->low_mean_);
     this->have_prev_ = true;
     const bool ready = this->count_ >= this->min_history_;
-    float mean = 0, sd = 0;
+    float centre = 1.0f, spread = 0;
     if (ready) {
-      for (float v : this->flux_) mean += v;
-      mean /= (float) this->flux_.size();
-      for (float v : this->flux_) sd += (v - mean) * (v - mean);
-      sd = std::sqrt(sd / (float) this->flux_.size());
+      // Median and median absolute deviation, not mean and deviation: the beats themselves are in
+      // the window, two a second at 120 BPM, and must not raise the bar they are measured against.
+      this->sorted_ = this->flux_;
+      centre = median(this->sorted_);
+      for (float &v : this->sorted_) v = std::fabs(v - centre);
+      spread = MAD_TO_SD * median(this->sorted_);
     }
     this->since_beat_++;
-    f.beat = ready && flux > mean + BEAT_SIGMA * std::max(sd, MIN_SD) && this->since_beat_ >= this->refractory_hops_;
+    // Only on the way up: a kick that rings past the refractory time is still one beat.
+    const bool above = ready && ratio > centre + this->beat_k_ * std::max(spread, MIN_SD);
+    f.beat = above && !this->was_above_ && this->since_beat_ >= this->refractory_hops_;
+    this->was_above_ = above;
     if (f.beat) this->since_beat_ = 0;
-    this->push_flux(flux);
-    f.onset = unit(std::log10(1.0f + flux) / ONSET_DECADES);
+    this->push_flux(ratio);
+    f.onset = unit((ratio - 1.0f) / (ONSET_FULL_RATIO - 1.0f));
 
     this->smooth_bands(f.envelope, target, f);
     return f;
@@ -144,23 +149,32 @@ class FeatureExtractor {
   static constexpr double BAND_MEAN_S = 1.0;
   static constexpr double FLUX_WINDOW_S = 1.0;
   static constexpr double REFRACTORY_S = 0.12;
-  static constexpr float BEAT_SIGMA = 1.5f;
-  // Floor on the flux spread, so a steady bed (spread near 0) cannot beat on its own jitter. The flux
-  // is in units of each band's own mean, so the floor does not depend on loudness or on how big a hit is.
-  static constexpr float MIN_SD = 4.5f;
-  static constexpr float HOLD_DECAY = 0.8f;
-  static constexpr float ONSET_DECADES = 2.0f;  // a flux of 100 band means is a full-strength onset
+  static constexpr double BEAT_LOW_HZ = 40.0;
+  static constexpr double BEAT_HIGH_HZ = 250.0;
+  // Sensitivity 0 needs a jump of 10 times the ratio's usual swing, 50 needs 8, 100 needs 6.
+  static constexpr float BEAT_K_LEAST = 10.0f;
+  static constexpr float BEAT_K_MOST = 6.0f;
+  // Floor on the swing, so a near-constant low end (a held synth bass) cannot beat on rounding.
+  static constexpr float MIN_SD = 0.25f;
+  static constexpr float MAD_TO_SD = 1.4826f;  // a normal distribution's deviation from its MAD
+  static constexpr float ONSET_FULL_RATIO = 10.0f;  // the low end at 10x its mean is a full onset
 
   static float smoothing(double hop_s, float tau_ms) {
     return tau_ms <= 0 ? 1.0f : (float) (1.0 - std::exp(-hop_s * 1000.0 / (double) tau_ms));
   }
   static float db(float amplitude) { return 20.0f * std::log10(std::max(amplitude, 1e-9f)); }
   static float db_power(float power) { return 10.0f * std::log10(std::max(power, 1e-12f)); }
+  static float median(std::vector<float> &v) {
+    const size_t mid = v.size() / 2;
+    std::nth_element(v.begin(), v.begin() + mid, v.end());
+    return v[mid];
+  }
   static float unit(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
 
   void reset() {
     std::fill(this->flux_.begin(), this->flux_.end(), 0.0f);
     this->have_prev_ = false;
+    this->was_above_ = false;
     this->gate_open_ = false;
     std::fill(this->smooth_bands_, this->smooth_bands_ + NUM_BANDS, 0.0f);
     this->smooth_env_ = 0;
@@ -206,10 +220,11 @@ class FeatureExtractor {
   float power_scale_ = 1;
   size_t edge_[NUM_BANDS + 1] = {};
   float alpha_attack_ = 1, alpha_release_ = 1, peak_decay_ = 1;
-  std::vector<float> flux_;
+  std::vector<float> flux_, sorted_;
   size_t flux_pos_ = 0, count_ = 0, min_history_ = 0, refractory_hops_ = 0, since_beat_ = 0;
-  float prev_level_[NUM_BANDS] = {};
-  float band_mean_[NUM_BANDS] = {};
+  size_t low_lo_ = 1, low_hi_ = 1;
+  float low_mean_ = 0, prev_low_ = 0, beat_k_ = 6.0f;
+  bool was_above_ = false;
   float mean_alpha_ = 0.01f;
   bool have_prev_ = false, gate_open_ = false;
   float smooth_bands_[NUM_BANDS] = {};
