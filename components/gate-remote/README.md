@@ -64,6 +64,26 @@ and the same evening a press from Home Assistant through this component's transm
 opened it too, with the node in a room of the flat. A 4.2 ms pulse once a second from some other transmitter showed up in that home's capture
 log and was harmless.
 
+## From the phone and the car
+
+The gate's button is a plain `button` with no entity category, so the Home Assistant app on iOS
+offers it everywhere it offers buttons. It presses blind: the transmission is one-way, and nothing
+tells Home Assistant whether the gate moved.
+
+- **CarPlay.** In the app, Settings → Companion app → CarPlay → Add item → Entity, or in the car
+  Quick access → Add item → Areas (the node's area) or Control → Button. Turn on **Require
+  confirmation** for the item: without it one touch opens the gate, and CarPlay does not ask for
+  buttons by default. A press from the Areas or Control tabs runs at once, whatever that setting.
+- **Control Center** (iOS 18 and later): add the Home Assistant app's button control and pick the
+  gate's button. It presses with no confirmation; keep it off the Lock Screen if that matters.
+- **A dashboard tile** whose tap presses the button (with a `confirmation:`) never opens the entity
+  dialog, and the dialog's ⋮ menu is where the app's "Add to" (CarPlay, Apple Watch) lives. Give such
+  a tile `hold_action: {action: more-info}`. The dialog's own press button does not ask first.
+
+If the app's entity list lacks the button, search for the friendly name ("<friendly name> <label>"),
+not the entity id. Used in one home on 2026-11-08 from CarPlay and Control Center with the Home
+Assistant iOS app over a remote connection.
+
 ## Why the radio never listens in the transmit firmware
 
 The CC1101's GDO0 is the data input while it transmits and a data output in receive mode. With the
