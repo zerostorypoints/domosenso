@@ -111,6 +111,9 @@ struct RenderSettings {
   uint16_t first;
   uint16_t count;
   float power_limit_ma;
+  // The light's gamma and brightness: the limit works on what the LEDs draw after them.
+  float gamma = 1.0f;
+  uint8_t brightness = 255;
 };
 
 // SK6812 figures: 20 mA per channel at full, 1 mA for each LED's own controller.
@@ -163,6 +166,49 @@ inline uint8_t solid_max_brightness(Rgb colour, float gamma, size_t n, float lim
   return 0;
 }
 
+// What each raw channel value draws after the light's brightness and gamma, for one brightness.
+struct OutputCurve {
+  float gamma{-1.0f};
+  uint8_t brightness{0};
+  float out[256];
+  void build(float g, uint8_t b) {
+    if (g == this->gamma && b == this->brightness) return;
+    this->gamma = g;
+    this->brightness = b;
+    for (int v = 0; v < 256; v++) this->out[v] = solid_channel_out((uint8_t) v, b, g);
+  }
+};
+
+inline float output_ma(const Rgb *leds, size_t n, const OutputCurve &c) {
+  float sum = 0;
+  for (size_t i = 0; i < n; i++) sum += c.out[leds[i].r] + c.out[leds[i].g] + c.out[leds[i].b];
+  return sum * MA_PER_CHANNEL / 255.0f + IDLE_MA * (float) n;
+}
+
+// Scales the frame so what the LEDs draw after brightness and gamma stays within the limit; the
+// scale is found by bisection (gamma makes it non-linear). A limit at or below what the LEDs draw
+// dark leaves the frame black. Returns the draw after.
+inline float limit_power(Rgb *leds, size_t n, float limit_ma, const OutputCurve &c) {
+  const float est = output_ma(leds, n, c);
+  if (est <= limit_ma) return est;
+  const float idle = IDLE_MA * (float) n;
+  auto scaled = [](uint8_t v, float s) { return (uint8_t) std::floor((float) v * s); };
+  float lo = 0.0f;
+  if (limit_ma > idle) {
+    float hi = 1.0f;
+    for (int i = 0; i < 16; i++) {
+      const float mid = 0.5f * (lo + hi);
+      float sum = 0;
+      for (size_t k = 0; k < n; k++)
+        sum += c.out[scaled(leds[k].r, mid)] + c.out[scaled(leds[k].g, mid)] + c.out[scaled(leds[k].b, mid)];
+      if (sum * MA_PER_CHANNEL / 255.0f + idle <= limit_ma) lo = mid; else hi = mid;
+    }
+  }
+  for (size_t k = 0; k < n; k++)
+    leds[k] = Rgb{scaled(leds[k].r, lo), scaled(leds[k].g, lo), scaled(leds[k].b, lo)};
+  return output_ma(leds, n, c);
+}
+
 class Renderer {
  public:
   void render(const Features &f, const RenderSettings &s, float dt_s, Rgb *leds, size_t n) {
@@ -172,6 +218,7 @@ class Renderer {
     this->advance(f, s, dt_s);
     if (hi <= lo) {
       this->smooth_.assign(this->smooth_.size(), 0.0f);
+      this->last_ma_ = IDLE_MA * (float) n;
       return;
     }
     const size_t len = hi - lo;
@@ -201,8 +248,12 @@ class Renderer {
       }
       leds[i] = Rgb{byte(rgb[0]), byte(rgb[1]), byte(rgb[2])};
     }
-    limit_power(leds, n, s.power_limit_ma);
+    this->curve_.build(s.gamma, s.brightness);
+    this->last_ma_ = limit_power(leds, n, s.power_limit_ma, this->curve_);
   }
+
+  // What the last frame draws after the light's brightness and gamma, mA.
+  float last_ma() const { return this->last_ma_; }
 
  private:
   struct Ripple {
@@ -326,6 +377,8 @@ class Renderer {
   bool glow_started_ = false;
   std::vector<Ripple> ripples_;
   std::vector<float> smooth_;
+  OutputCurve curve_;
+  float last_ma_{0};
 };
 
 }  // namespace music_strip

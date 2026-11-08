@@ -32,13 +32,18 @@ class MusicStripEffect : public light::AddressableLightEffect {
     this->last_ms_ = now;
     ms::RenderSettings s = this->parent_->render_settings(ms::Rgb{current_color.r, current_color.g, current_color.b});
     s.style = this->style_;
+    // The limit works on what the LEDs draw: after the light's brightness and gamma, which ESPHome's
+    // colour correction applies to the frame on its way out.
+    const light::LightColorValues &v = this->state_->current_values;
+    s.gamma = this->state_->get_gamma_correct();
+    s.brightness = to_uint8_scale(v.get_brightness() * v.get_state());
     const size_t n = (size_t) it.size();
     this->frame_.resize(n);
     this->renderer_.render(f, s, dt, this->frame_.data(), n);
     for (size_t i = 0; i < n; i++)
       it[(int32_t) i] = Color(this->frame_[i].r, this->frame_[i].g, this->frame_[i].b);
     it.schedule_show();
-    this->parent_->report_frame_ma(ms::estimate_ma(this->frame_.data(), n));
+    this->parent_->report_frame_ma(this->renderer_.last_ma());
   }
 
  protected:

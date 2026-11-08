@@ -256,5 +256,55 @@ int main() {
           "solid draw at full equals the frame estimate");
   }
 
+  {
+    // The limit works on what the LEDs draw after the light's brightness and gamma (ESPHome's colour
+    // correction), not on the frame's raw values: a frame that is mid-level before gamma draws a
+    // fraction of its raw estimate and is left alone.
+    const size_t n = 30;
+    OutputCurve curve;
+    curve.build(2.8f, 255);
+    std::vector<Rgb> mid(n, Rgb{100, 100, 100});
+    char msg[96];
+    std::snprintf(msg, sizeof msg, "raw %.0f, output %.0f", estimate_ma(mid.data(), n), output_ma(mid.data(), n, curve));
+    check(estimate_ma(mid.data(), n) > 500.0f && output_ma(mid.data(), n, curve) < 200.0f, "output draw after gamma", msg);
+    limit_power(mid.data(), n, 500.0f, curve);
+    check(same(mid[0], Rgb{100, 100, 100}), "a frame under the limit after gamma is untouched");
+
+    std::vector<Rgb> white(120, Rgb{255, 255, 255});
+    const float after = limit_power(white.data(), 120, 500.0f, curve);
+    check(after <= 500.0f && output_ma(white.data(), 120, curve) <= 500.0f && lit(white[0]) && after > 400.0f,
+          "white capped at 500 mA after gamma, not far below");
+
+    OutputCurve half;
+    half.build(2.8f, 128);
+    std::vector<Rgb> full(n, Rgb{255, 255, 255});
+    check(output_ma(full.data(), n, half) < 0.5f * output_ma(full.data(), n, curve), "brightness lowers the draw");
+
+    OutputCurve linear;
+    linear.build(1.0f, 255);
+    check(std::fabs(output_ma(full.data(), n, linear) - estimate_ma(full.data(), n)) < 1.0f,
+          "gamma 1 at full brightness equals the raw estimate");
+  }
+
+  {
+    // Intensity shows: at the default 500 mA on 30 LEDs, a lower intensity draws visibly less.
+    auto draw = [](float intensity) {
+      const size_t n = 30;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(Style::GLOW, n);
+      s.intensity = intensity;
+      s.power_limit_ma = 500.0f;
+      s.gamma = 2.8f;
+      s.brightness = 255;
+      for (int i = 0; i < 300; i++) r.render(loud(0.9f), s, 0.0107f, leds.data(), n);
+      return r.last_ma();
+    };
+    const float low = draw(0.2f), high = draw(1.0f);
+    char msg[64];
+    std::snprintf(msg, sizeof msg, "intensity 20 %%: %.0f mA, 100 %%: %.0f mA", low, high);
+    check(high > 1.5f * low && high <= 500.0f, "intensity changes the draw under the limit", msg);
+  }
+
   return failures ? 1 : 0;
 }

@@ -330,7 +330,8 @@ The strip draws up to about 60 mA per LED at full white (20 mA per colour), so 1
 | From the board: the Grove cable's 5 V and ground | up to about 30 (cut at a marked line) | 500 mA, the default |
 | Own 5 V supply (3–5 A): its 5 V and ground to the strip, ground shared with the board; on 2 m feed 5 V at both ends | the whole strip | the supply's rating |
 
-The power limit scales every frame down to the limit before it is sent, and caps a plain colour
+The power limit works on what the LEDs draw after the light's brightness and gamma (Strip current
+reports that estimate). It scales every frame down to the limit before it is sent, and caps a plain colour
 (the light with the effect None) through the light's maximum brightness; it trusts the number you
 give it, so set it to what the supply can deliver.
 
