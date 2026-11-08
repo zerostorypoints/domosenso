@@ -875,9 +875,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.18.0",
-      "sourceTag": "ramka/0.18.0",
-      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
+      "version": "0.19.0",
+      "sourceTag": "ramka/0.19.0",
+      "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1068,7 +1068,7 @@
         },
         {
           "name": "air",
-          "type": "{score?, co2?, pm2_5?, voc?, nox?}",
+          "type": "{score?, co2?, pm2_5?, voc?, nox?} | list[{label, room?, score?, co2?, pm2_5?, voc?, nox?}]",
           "required": false
         },
         {
@@ -1212,8 +1212,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/968de694187054ab8c372f5640516a5c7877767b/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/968de694187054ab8c372f5640516a5c7877767b/components/ramka/UPGRADE.md"
     },
     {
       "id": "timers",
