@@ -372,7 +372,7 @@ Configuration:
 | Strip attack, release | 0–200 ms (20), 50–2000 ms (300) | how fast the level rises and falls |
 | Strip beat strength | 0–100 % (50) | how bright a beat's flash or ripple is |
 | Strip beat sensitivity | 0–100 % (50) | how readily a jump in the low end counts as a beat; raise it if beats are missed, lower it if the strip flashes without one |
-| Strip bass position | centre, ends (centre) | where Bands and Spectrum put the bass |
+| Strip bass position | centre, ends, start, end (centre) | centre and ends mirror the music about the strip's centre, the bass in the middle or at both ends; start and end lay it out once along the strip, the bass at its beginning (the data end) or at its end, so a strip whose beginning is on the right reads bass to treble left to right with end. Centre meter grows and Ripple travels from where the bass is |
 | Strip LEDs in use, first LED | 1 to `strip_leds`, 0 | a window on the strip; LEDs outside it stay dark |
 | Strip power limit | 100–5000 mA (500) | the current the strip may draw |
 | Strip current | mA, every 10 s | the estimated draw of the last frames |
@@ -380,7 +380,7 @@ Configuration:
 
 ### Styles
 
-The styles are the light's effects. Every style is mirrored about the strip's centre: one
+The styles are the light's effects. With Strip bass position centre or ends, every style is mirrored about the strip's centre: one
 microphone has no left or right, and the strip sits between two speakers.
 
 | style | what it draws | suits |

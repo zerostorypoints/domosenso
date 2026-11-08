@@ -306,5 +306,44 @@ int main() {
     check(high > 1.5f * low && high <= 500.0f, "intensity changes the draw under the limit", msg);
   }
 
+  {
+    // Start and end: one run from the strip's beginning to its end, no mirror; the bass at the
+    // beginning (start) or at the end (end).
+    auto bass_only = []() {
+      Features f = loud(0.8f);
+      for (size_t b = 0; b < NUM_BANDS; b++) f.bands[b] = 0.0f;
+      f.bands[0] = 1.0f;
+      return f;
+    };
+    auto frame = [&](Style style, BassPosition bass, const Features &f) {
+      const size_t n = 40;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(style, n);
+      s.bass = bass;
+      for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
+      return leds;
+    };
+    const auto start = frame(Style::SPECTRUM, BassPosition::START, bass_only());
+    check(lit(start[0]) && !lit(start[39]) && !lit(start[20]), "spectrum start: bass at the beginning only");
+    const auto end = frame(Style::SPECTRUM, BassPosition::END, bass_only());
+    check(lit(end[39]) && !lit(end[0]) && !lit(end[20]), "spectrum end: bass at the end only");
+    const auto centre = frame(Style::SPECTRUM, BassPosition::CENTRE, bass_only());
+    check(lit(centre[19]) && lit(centre[20]) && !lit(centre[0]) && !lit(centre[39]), "spectrum centre unchanged");
+
+    // A treble-only signal lands at the other end.
+    Features treble = loud(0.8f);
+    for (size_t b = 0; b < NUM_BANDS; b++) treble.bands[b] = 0.0f;
+    treble.bands[NUM_BANDS - 1] = 1.0f;
+    const auto high = frame(Style::SPECTRUM, BassPosition::START, treble);
+    check(lit(high[39]) && !lit(high[0]), "spectrum start: treble at the end");
+
+    // The meter grows from the beginning at half level: the first half lit, the far end dark.
+    const auto meter = frame(Style::CENTRE_METER, BassPosition::START, loud(0.5f));
+    check(lit(meter[0]) && lit(meter[15]) && !lit(meter[35]), "meter start grows from the beginning");
+    const auto meter_end = frame(Style::CENTRE_METER, BassPosition::END, loud(0.5f));
+    check(lit(meter_end[39]) && !lit(meter_end[4]), "meter end grows from the end");
+  }
+
   return failures ? 1 : 0;
 }

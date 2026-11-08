@@ -20,7 +20,9 @@ struct Rgb {
 enum class Style { PULSE, GLOW, BANDS, CENTRE_METER, SPECTRUM, RIPPLE };
 enum class PaletteKind { SPECTRUM, WARM, COOL, SINGLE, CUSTOM };
 enum class Mounting { FRONT, WALL, FLOOR };
-enum class BassPosition { CENTRE, ENDS };
+// Centre and ends mirror the music about the window's centre; start and end lay it out once from
+// the window's beginning to its end, the bass first (start) or last (end).
+enum class BassPosition { CENTRE, ENDS, START, END };
 
 constexpr size_t MAX_STOPS = 5;
 
@@ -228,8 +230,12 @@ class Renderer {
     const float half = (float) len / 2.0f;
     const float centre = ((float) len - 1.0f) / 2.0f;
     float frame[3];
+    const bool linear = s.bass == BassPosition::START || s.bass == BassPosition::END;
     for (size_t k = 0; k < len; k++) {
-      const float d = std::min(1.0f, std::fabs((float) k - centre) / half);  // 0 at the centre, ~1 at the ends
+      // Where the LED sits in the music, 0 to 1: from the centre out (mirrored), or along the window.
+      float d = linear ? (len > 1 ? (float) k / (float) (len - 1) : 0.0f)
+                       : std::min(1.0f, std::fabs((float) k - centre) / half);
+      if (s.bass == BassPosition::END) d = 1.0f - d;
       this->shade(s, d, frame);
       for (int c = 0; c < 3; c++) this->smooth_[3 * (lo + k) + c] = this->settle(this->smooth_[3 * (lo + k) + c], frame[c] * gain, s, dt_s);
     }
@@ -319,7 +325,8 @@ class Renderer {
     out[2] = (float) c.b / 255.0f * level;
   }
 
-  // One LED's colour (0..1 per channel) at distance d from the window's centre.
+  // One LED's colour (0..1 per channel) at position d: from the window's centre out, or from the
+  // window's beginning (start) or end (end) along it.
   void shade(const RenderSettings &s, float d, float out[3]) const {
     const Features &f = this->f_;
     out[0] = out[1] = out[2] = 0.0f;
@@ -335,7 +342,7 @@ class Renderer {
         const float low = (f.bands[0] + f.bands[1] + f.bands[2]) / 3.0f;
         const float mid = (f.bands[3] + f.bands[4]) / 2.0f;
         const float high = (f.bands[5] + f.bands[6] + f.bands[7]) / 3.0f;
-        const float x = s.bass == BassPosition::CENTRE ? d : 1.0f - d;
+        const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
         const float level = x < 0.5f ? low + (mid - low) * (x / 0.5f) : mid + (high - mid) * ((x - 0.5f) / 0.5f);
         put(out, palette_at(s.palette, x), level + 0.5f * this->flash_);
         break;
@@ -349,7 +356,7 @@ class Renderer {
         break;
       }
       case Style::SPECTRUM: {
-        const float x = s.bass == BassPosition::CENTRE ? d : 1.0f - d;
+        const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
         const size_t b = std::min(NUM_BANDS - 1, (size_t) (x * (float) NUM_BANDS));
         put(out, palette_at(s.palette, (float) b / (float) (NUM_BANDS - 1)), f.bands[b]);
         break;

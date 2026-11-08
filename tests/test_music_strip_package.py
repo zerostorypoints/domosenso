@@ -39,7 +39,10 @@ def test_a_plain_turn_on_restarts_the_chosen_style():
     light = strip_light()
     text = yaml.safe_dump(light["on_turn_on"])
     assert "get_effect_name" in text and "None" in text and "strip_style" in text
-    assert "strip_style" in yaml.safe_dump(light["on_state"])
+    on_state = yaml.safe_dump(light["on_state"])
+    # Through the select's own call, so a style chosen in the light's dialog is saved over a restart
+    # too (a bare publish_state shows it but does not save it).
+    assert "strip_style" in on_state and "select.set" in on_state and "publish_state" not in on_state
     assert "globals" not in package() or not any(g["id"] == "strip_last_effect" for g in package()["globals"])
     # The fade from off keeps the frames before the style takes over near dark.
     assert light.get("default_transition_length", "1s") not in ("0s", "0ms", 0)
@@ -61,3 +64,16 @@ def test_the_strip_component_watches_the_light():
     # Without a style the light shows a plain colour, which the frame limiter never sees: the
     # component caps it through the light's maximum brightness.
     assert package()["music_strip"]["light_id"] == "strip_light"
+
+
+def test_bass_position_offers_start_and_end():
+    # Start and end lay the music out once from the strip's beginning to its end (bass first, or
+    # last), for a strip whose beginning is on the left or on the right.
+    bass = next(s for s in package()["select"] if s["id"] == "strip_bass")
+    assert bass["options"] == ["centre", "ends", "start", "end"]
+    assert bass.get("entity_category") is None
+    for where in ("set_action", ):
+        text = yaml.safe_dump(bass[where])
+        assert "BassPosition::START" in text and "BassPosition::END" in text
+    boot = yaml.safe_dump(package()["esphome"]["on_boot"])
+    assert "BassPosition::START" in boot and "BassPosition::END" in boot

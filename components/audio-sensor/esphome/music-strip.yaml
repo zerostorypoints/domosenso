@@ -62,11 +62,19 @@ light:
                 id: strip_light
                 effect: !lambda return id(strip_style).current_option();
     # A style chosen in the light's own dialog shows in Strip style too.
+    # Through the select's own call, so it is saved for the next boot as well.
     on_state:
-      - lambda: |-
-          const auto name = id(strip_light).get_effect_name();
-          if (name != "None" && id(strip_style).current_option() != std::string(name.c_str(), name.size()))
-            id(strip_style).publish_state(std::string(name.c_str(), name.size()));
+      - if:
+          condition:
+            lambda: |-
+              const auto name = id(strip_light).get_effect_name();
+              return name != "None" && id(strip_style).current_option() != std::string(name.c_str(), name.size());
+          then:
+            - select.set:
+                id: strip_style
+                option: !lambda |-
+                  const auto name = id(strip_light).get_effect_name();
+                  return std::string(name.c_str(), name.size());
     effects:
       - music_strip: {name: Pulse, style: pulse}
       - music_strip: {name: Glow, style: glow}
@@ -124,14 +132,15 @@ select:
     id: strip_bass
     name: Strip bass position
     icon: mdi:arrow-expand-horizontal
-    entity_category: config
-    options: [centre, ends]
+    options: [centre, ends, start, end]
     initial_option: centre
     optimistic: true
     restore_value: true
     set_action:
       - lambda: &bass |-
-          id(music).set_bass(x == "ends" ? ::music_strip::BassPosition::ENDS : ::music_strip::BassPosition::CENTRE);
+          using ::music_strip::BassPosition;
+          id(music).set_bass(x == "ends" ? BassPosition::ENDS : x == "start" ? BassPosition::START :
+                             x == "end" ? BassPosition::END : BassPosition::CENTRE);
 
 text:
   - platform: template
@@ -324,7 +333,9 @@ esphome:
                               PaletteKind::SPECTRUM);
           const std::string mt = id(strip_mounting).current_option();
           m->set_mounting(mt == "wall" ? Mounting::WALL : mt == "floor" ? Mounting::FLOOR : Mounting::FRONT);
-          m->set_bass(id(strip_bass).current_option() == std::string("ends") ? BassPosition::ENDS : BassPosition::CENTRE);
+          const std::string bp = id(strip_bass).current_option();
+          m->set_bass(bp == "ends" ? BassPosition::ENDS : bp == "start" ? BassPosition::START :
+                      bp == "end" ? BassPosition::END : BassPosition::CENTRE);
           m->set_custom_palette(id(strip_custom_palette).state);
           m->set_intensity(id(strip_intensity).state);
           m->set_sensitivity_db(id(strip_sensitivity).state);
