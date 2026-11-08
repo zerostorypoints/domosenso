@@ -1,6 +1,7 @@
 // Host test for strip_render.h; prints "ok <name>" or "FAIL <name>: ..." per check.
 #include "strip_render.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -233,6 +234,26 @@ int main() {
     char msg[64];
     std::snprintf(msg, sizeof msg, "front %d frames, floor %d", front, floor);
     check(floor > front, "mounting floor slower than front", msg);
+  }
+
+  {
+    // A plain colour (no style) is capped through the light's maximum brightness: the largest
+    // maximum whose draw, after ESPHome's gamma, stays within the limit.
+    const Rgb white{255, 255, 255};
+    const uint8_t m = solid_max_brightness(white, 2.8f, 120, 500.0f);
+    char msg[96];
+    std::snprintf(msg, sizeof msg, "max %u, draw %.0f, next %.0f", m, solid_ma(white, m, 2.8f, 120),
+                  solid_ma(white, (uint8_t) (m + 1), 2.8f, 120));
+    check(m > 0 && m < 255 && solid_ma(white, m, 2.8f, 120) <= 500.0f &&
+              solid_ma(white, (uint8_t) (m + 1), 2.8f, 120) > 500.0f,
+          "solid white 120 LEDs capped at 500 mA", msg);
+    check(solid_max_brightness(Rgb{40, 0, 0}, 2.8f, 30, 500.0f) == 255, "a dim solid colour is not capped");
+    check(solid_max_brightness(white, 2.8f, 120, 100.0f) == 0, "a limit below idle gives a dark solid colour");
+    // Linear (gamma 1): 30 LEDs draw 1 + 60 m / 255 mA each; 500 mA allows m = 66.
+    std::snprintf(msg, sizeof msg, "got %u", solid_max_brightness(white, 1.0f, 30, 500.0f));
+    check(solid_max_brightness(white, 1.0f, 30, 500.0f) == 66, "solid cap linear", msg);
+    check(std::fabs(solid_ma(white, 255, 2.8f, 120) - estimate_ma(std::vector<Rgb>(120, white).data(), 120)) < 1.0f,
+          "solid draw at full equals the frame estimate");
   }
 
   return failures ? 1 : 0;

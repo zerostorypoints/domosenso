@@ -153,6 +153,7 @@ bool MusicStripComponent::latest(ms::Features &out) {
 }
 
 void MusicStripComponent::loop() {
+  this->cap_solid_();
   const uint32_t now = millis();
   if (now - this->last_current_ms_ < CURRENT_INTERVAL_MS)
     return;
@@ -161,9 +162,58 @@ void MusicStripComponent::loop() {
     return;
   // No frames: the strip is off or shows no music effect; its LEDs draw their idle current only
   // while powered, which the board cannot see, so report 0.
-  this->current_sensor_->publish_state(this->ma_frames_ ? (float) (this->ma_sum_ / this->ma_frames_) : 0.0f);
+  this->current_sensor_->publish_state(this->ma_frames_ ? (float) (this->ma_sum_ / this->ma_frames_) : this->solid_ma_);
   this->ma_sum_ = 0;
   this->ma_frames_ = 0;
+}
+
+// A style limits its own frames (limit_power). Without one the light shows a plain colour on every
+// LED, which no frame passes through: cap it through the light's maximum brightness, computed from
+// the colour it is heading to (brightness folded in, as during a fade), so a fade never overshoots.
+void MusicStripComponent::cap_solid_() {
+  if (this->light_ == nullptr)
+    return;
+  auto *out = static_cast<light::AddressableLight *>(this->light_->get_output());
+  const light::LightColorValues &target = this->light_->remote_values;
+  uint8_t cap = 255;
+  if (target.is_on() && !out->is_effect_active()) {
+    const Color c = light::color_from_light_color_values(target);
+    const uint8_t b = to_uint8_scale(target.get_brightness());
+    const ms::Rgb colour{(uint8_t) ((c.r * (1u + b)) >> 8), (uint8_t) ((c.g * (1u + b)) >> 8),
+                         (uint8_t) ((c.b * (1u + b)) >> 8)};
+    float limit;
+    {
+      std::lock_guard<std::mutex> lock(this->settings_mutex_);
+      limit = this->render_.power_limit_ma;
+    }
+    const size_t n = (size_t) out->size();
+    if (colour.r != this->solid_colour_.r || colour.g != this->solid_colour_.g || colour.b != this->solid_colour_.b ||
+        limit != this->solid_limit_ || n != this->solid_n_ || this->solid_ma_ == 0) {
+      const float gamma = this->light_->get_gamma_correct();
+      this->solid_colour_ = colour;
+      this->solid_limit_ = limit;
+      this->solid_n_ = n;
+      const uint8_t m = ms::solid_max_brightness(colour, gamma, n, limit);
+      this->solid_ma_ = ms::solid_ma(colour, m, gamma, n);
+      if (m < 255)
+        ESP_LOGD(TAG, "Plain colour capped at %u/255 for %.0f mA", m, limit);
+      this->solid_cap_ = m;
+    }
+    cap = this->solid_cap_;
+  } else {
+    this->solid_ma_ = 0;
+  }
+  if (cap == this->solid_max_)
+    return;
+  this->solid_max_ = cap;
+  const float f = (float) cap / 255.0f;
+  out->set_correction(f, f, f);
+  // The LEDs hold the colour corrected when it was written: write it again under the new maximum,
+  // unless a fade is writing every step anyway or a style draws the frames.
+  if (!out->is_effect_active() && !this->light_->is_transformer_active()) {
+    out->all() = light::color_from_light_color_values(this->light_->current_values);
+    out->schedule_show();
+  }
 }
 
 void MusicStripComponent::report_frame_ma(float ma) {

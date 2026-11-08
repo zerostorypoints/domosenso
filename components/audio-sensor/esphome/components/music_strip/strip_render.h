@@ -139,6 +139,30 @@ inline float limit_power(Rgb *leds, size_t n, float limit_ma) {
   return estimate_ma(leds, n);
 }
 
+// A plain colour (the light without a style) bypasses limit_power; it is capped through the light's
+// maximum brightness instead. These follow ESPHome's colour correction: the channel scaled by the
+// maximum (esp_scale8_twice, with the brightness already in the colour, as during a fade), then gamma.
+inline float solid_channel_out(uint8_t value, uint8_t max_brightness, float gamma) {
+  const uint32_t scaled = ((uint32_t) value * (1u + max_brightness) * 256u) >> 16;
+  return 255.0f * std::pow((float) scaled / 255.0f, gamma);
+}
+
+// The strip's draw with every LED in this colour at this maximum brightness.
+inline float solid_ma(Rgb colour, uint8_t max_brightness, float gamma, size_t n) {
+  const float out = solid_channel_out(colour.r, max_brightness, gamma) +
+                    solid_channel_out(colour.g, max_brightness, gamma) +
+                    solid_channel_out(colour.b, max_brightness, gamma);
+  return (float) n * (IDLE_MA + out * MA_PER_CHANNEL / 255.0f);
+}
+
+// The largest maximum brightness whose draw stays within the limit; 0 when even dark is over it.
+inline uint8_t solid_max_brightness(Rgb colour, float gamma, size_t n, float limit_ma) {
+  for (int m = 255; m >= 0; m--) {
+    if (solid_ma(colour, (uint8_t) m, gamma, n) <= limit_ma) return (uint8_t) m;
+  }
+  return 0;
+}
+
 class Renderer {
  public:
   void render(const Features &f, const RenderSettings &s, float dt_s, Rgb *leds, size_t n) {

@@ -330,7 +330,8 @@ The strip draws up to about 60 mA per LED at full white (20 mA per colour), so 1
 | From the board: the Grove cable's 5 V and ground | up to about 30 (cut at a marked line) | 500 mA, the default |
 | Own 5 V supply (3–5 A): its 5 V and ground to the strip, ground shared with the board; on 2 m feed 5 V at both ends | the whole strip | the supply's rating |
 
-The power limit scales every frame down to the limit before it is sent; it trusts the number you
+The power limit scales every frame down to the limit before it is sent, and caps a plain colour
+(the light with the effect None) through the light's maximum brightness; it trusts the number you
 give it, so set it to what the supply can deliver.
 
 The board's 5 V rail also feeds the microphone, and the README's placement notes already show
@@ -359,7 +360,8 @@ Configuration:
 
 | entity | values (default) | what it does |
 |---|---|---|
-| Music strip | light: on/off, brightness, colour, effect | the strip; the effect is the style; the colour is the Single palette's |
+| Music strip | light: on/off, brightness, colour, effect | the strip; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
+| Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
 | Strip palette | spectrum, warm, cool, single, custom (spectrum) | the colours the styles use |
 | Strip custom palette | 2–5 `#rrggbb` stops (`#ff3000,#ffb000,#2050ff`) | the custom palette; a typo keeps the last good one |
 | Strip intensity | 0–100 % (60) | how much of the music reaches the strip: a calm glow at 0, full flashes at 100 |
@@ -397,7 +399,7 @@ A quiet room is not silent. The strip learns the room's floor (the quietest mome
 light it.
 
 After a boot the strip is off, and a turn-on without a style (Home Assistant's `keep`, a tap on the
-light) starts the last style: only a style runs the power limit.
+light) starts the one in Strip style.
 
 ### In Home Assistant
 

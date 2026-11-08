@@ -25,15 +25,39 @@ def test_strip_is_off_after_a_boot():
     assert strip_light()["restore_mode"] == "ALWAYS_OFF"
 
 
-def test_a_plain_turn_on_restarts_the_last_music_style():
-    # Only a music style runs the power limiter. ESPHome drops the effect on every turn-off, so a
-    # turn-on without one (the follow automation's `keep`, a tap on the light) would light the strip
-    # in its plain colour at full current; the package puts the last style back instead.
+EFFECTS = ["Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple"]
+
+
+def style_select():
+    return next(s for s in package()["select"] if s["id"] == "strip_style")
+
+
+def test_a_plain_turn_on_restarts_the_chosen_style():
+    # ESPHome drops the effect on every turn-off: a turn-on without one (the follow automation's
+    # `keep`, a tap on the light) would light the strip in a plain colour; the package starts the
+    # style of the Strip style select instead.
     light = strip_light()
     text = yaml.safe_dump(light["on_turn_on"])
-    assert "get_effect_name" in text and "None" in text and "strip_last_effect" in text
-    assert "strip_last_effect" in yaml.safe_dump(light["on_state"])
-    last = next(g for g in package()["globals"] if g["id"] == "strip_last_effect")
-    assert last["initial_value"].strip('"') == "Pulse"
+    assert "get_effect_name" in text and "None" in text and "strip_style" in text
+    assert "strip_style" in yaml.safe_dump(light["on_state"])
+    assert "globals" not in package() or not any(g["id"] == "strip_last_effect" for g in package()["globals"])
     # The fade from off keeps the frames before the style takes over near dark.
     assert light.get("default_transition_length", "1s") not in ("0s", "0ms", 0)
+
+
+def test_style_select_offers_the_light_effects():
+    # Home Assistant tucks a light's effect into a small button of its dialog; the select puts the
+    # style on the device page next to intensity and palette, and is what automations set.
+    select = style_select()
+    assert [next(iter(e.values()))["name"] for e in strip_light()["effects"]] == EFFECTS
+    assert select["options"] == EFFECTS
+    assert select["initial_option"] == "Pulse"
+    assert select["restore_value"] is True and select.get("entity_category") is None
+    action = yaml.safe_dump(select["set_action"])
+    assert "strip_light" in action and "light.turn_on" in action and "is_on" in action
+
+
+def test_the_strip_component_watches_the_light():
+    # Without a style the light shows a plain colour, which the frame limiter never sees: the
+    # component caps it through the light's maximum brightness.
+    assert package()["music_strip"]["light_id"] == "strip_light"

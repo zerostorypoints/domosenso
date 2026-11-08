@@ -29,15 +29,11 @@ external_components:
       path: components/audio-sensor/esphome/components
     components: [music_strip]
 
-# The style a plain turn-on starts (see the light's on_turn_on); the first style after a boot.
-globals:
-  - id: strip_last_effect
-    type: std::string
-    initial_value: '"Pulse"'
-
 music_strip:
   id: music
   microphone: mic
+  # Without a style the light shows a plain colour on every LED; the component caps it at the power limit.
+  light_id: strip_light
   current:
     name: Strip current
 
@@ -53,9 +49,10 @@ light:
     # Off after every boot: a strip that comes back on draws its full current before anyone chose it,
     # and on the board's own 5 V that can brown the board out into a boot loop.
     restore_mode: ALWAYS_OFF
-    # Only a music style runs the power limiter, and ESPHome drops the effect on every turn-off: a
-    # turn-on without a style (Home Assistant's `keep`, a tap on the light) puts the last one back.
-    # The default 1 s fade from off keeps the frames before it near dark.
+    # ESPHome drops the effect on every turn-off: a turn-on without a style (Home Assistant's `keep`,
+    # a tap on the light) starts the one in Strip style. Choosing None later shows a plain colour,
+    # which the music strip component caps at the power limit. The default 1 s fade from off keeps
+    # the frames before the style near dark.
     on_turn_on:
       - if:
           condition:
@@ -63,11 +60,13 @@ light:
           then:
             - light.turn_on:
                 id: strip_light
-                effect: !lambda return id(strip_last_effect);
+                effect: !lambda return id(strip_style).current_option();
+    # A style chosen in the light's own dialog shows in Strip style too.
     on_state:
       - lambda: |-
           const auto name = id(strip_light).get_effect_name();
-          if (name != "None") id(strip_last_effect) = std::string(name.c_str(), name.size());
+          if (name != "None" && id(strip_style).current_option() != std::string(name.c_str(), name.size()))
+            id(strip_style).publish_state(std::string(name.c_str(), name.size()));
     effects:
       - music_strip: {name: Pulse, style: pulse}
       - music_strip: {name: Glow, style: glow}
@@ -77,6 +76,24 @@ light:
       - music_strip: {name: Ripple, style: ripple}
 
 select:
+  # The style, on the device page (Home Assistant tucks a light's effect into a small button of its
+  # dialog) and for automations: switches a lit strip at once, and is what the next turn-on starts.
+  - platform: template
+    id: strip_style
+    name: Strip style
+    icon: mdi:animation-play
+    options: [Pulse, Glow, Bands, Centre meter, Spectrum, Ripple]
+    initial_option: Pulse
+    optimistic: true
+    restore_value: true
+    set_action:
+      - if:
+          condition:
+            lambda: return id(strip_light).current_values.is_on();
+          then:
+            - light.turn_on:
+                id: strip_light
+                effect: !lambda return x;
   - platform: template
     id: strip_palette
     name: Strip palette
@@ -275,6 +292,7 @@ button:
     icon: mdi:restore
     entity_category: config
     on_press:
+      - select.set: {id: strip_style, option: Pulse}
       - select.set: {id: strip_palette, option: spectrum}
       - select.set: {id: strip_mounting, option: front}
       - select.set: {id: strip_bass, option: centre}

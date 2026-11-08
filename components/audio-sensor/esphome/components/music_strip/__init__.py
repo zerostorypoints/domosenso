@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 from esphome.components import esp32, microphone, sensor
 from esphome.components.light.effects import register_addressable_effect
-from esphome.components.light.types import AddressableLightEffect
+from esphome.components.light.types import AddressableLightEffect, AddressableLightState
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_ID,
@@ -16,6 +16,7 @@ DEPENDENCIES = ["microphone"]
 AUTO_LOAD = ["sensor", "ring_buffer", "light"]
 
 CONF_CURRENT = "current"
+CONF_LIGHT_ID = "light_id"
 CONF_STRIP_ID = "strip_id"
 CONF_STYLE = "style"
 
@@ -53,6 +54,8 @@ CONFIG_SCHEMA = cv.All(
                 min_bits_per_sample=16,
                 max_bits_per_sample=16,
             ),
+            # The strip's light: without a style it shows a plain colour, capped here.
+            cv.Optional(CONF_LIGHT_ID): cv.use_id(AddressableLightState),
             cv.Optional(CONF_CURRENT): sensor.sensor_schema(
                 unit_of_measurement=UNIT_MILLIAMPERE,
                 accuracy_decimals=0,
@@ -89,6 +92,8 @@ async def to_code(config):
     if current_config := config.get(CONF_CURRENT):
         sens = await sensor.new_sensor(current_config)
         cg.add(var.set_current_sensor(sens))
+    if CONF_LIGHT_ID in config:
+        cg.add(var.set_light(await cg.get_variable(config[CONF_LIGHT_ID])))
     esp32.add_idf_component(name="espressif/esp-dsp", ref=ESP_DSP_VERSION)
 
 

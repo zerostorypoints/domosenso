@@ -5,6 +5,8 @@
 #include "music_features.h"
 #include "strip_render.h"
 
+#include "esphome/components/light/addressable_light.h"
+#include "esphome/components/light/light_state.h"
 #include "esphome/components/microphone/microphone_source.h"
 #include "esphome/components/ring_buffer/ring_buffer.h"
 #include "esphome/components/sensor/sensor.h"
@@ -34,6 +36,7 @@ class MusicStripComponent : public Component {
 
   void set_microphone_source(microphone::MicrophoneSource *source) { this->microphone_source_ = source; }
   void set_current_sensor(sensor::Sensor *sensor) { this->current_sensor_ = sensor; }
+  void set_light(light::LightState *light) { this->light_ = light; }
 
   // The newest features; true only when they are newer than the last call returned.
   bool latest(ms::Features &out);
@@ -64,9 +67,19 @@ class MusicStripComponent : public Component {
   void worker_loop_();
   void process_hop_();
   void update_feature_settings_();
+  void cap_solid_();
 
   microphone::MicrophoneSource *microphone_source_{nullptr};
   sensor::Sensor *current_sensor_{nullptr};
+  light::LightState *light_{nullptr};
+  // The light's maximum brightness as last set, and what a plain colour draws at it (0 with a style).
+  uint8_t solid_max_{255};
+  float solid_ma_{0};
+  // The plain colour's inputs at the last calculation: the cap is recalculated only when they change.
+  ms::Rgb solid_colour_{};
+  float solid_limit_{-1};
+  size_t solid_n_{0};
+  uint8_t solid_cap_{255};
   std::unique_ptr<ring_buffer::RingBuffer> ring_buffer_;
   TaskHandle_t worker_handle_{nullptr};
 
