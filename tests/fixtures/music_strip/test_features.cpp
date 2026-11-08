@@ -326,16 +326,35 @@ int main() {
   }
 
   {
-    // Room noise just above the gate must not chatter between 0 and a visible level.
-    float top = 0;
-    bool toggled = false;
-    run(white((size_t) (10 * SR), -68.0f), defaults, [&](size_t, size_t, const Features &f) {
-      top = std::fmax(top, f.envelope);
-      if (f.envelope > 0.3f) toggled = true;
+    // A quiet room is not silent: a living room's floor is near -60 dBFS at this microphone. Steady
+    // room noise at -60 or -55 dBFS, with auto gain on, must leave the strip dark (after its first
+    // second), not lift the noise to a visible level.
+    for (float noise_db : {-60.0f, -55.0f}) {
+      float top = 0, top_band = 0;
+      run(white((size_t) (10 * SR), noise_db), defaults, [&](size_t, size_t end, const Features &f) {
+        if (end < (size_t) SR) return;
+        top = std::fmax(top, f.envelope);
+        for (float b : f.bands) top_band = std::fmax(top_band, b);
+      });
+      char msg[80];
+      std::snprintf(msg, sizeof msg, "%.0f dBFS: envelope peaked at %.2f, bands at %.2f", noise_db, top, top_band);
+      check(top <= 0.15f && top_band <= 0.15f, noise_db < -57 ? "room noise -60 dBFS" : "room noise -55 dBFS", msg);
+    }
+  }
+
+  {
+    // Music over that floor still moves the strip: the kick train over -60 dBFS room noise.
+    std::vector<size_t> starts;
+    std::vector<float> x = kick_train(10.0f, starts);
+    const std::vector<float> room = white(x.size(), -60.0f);
+    for (size_t i = 0; i < x.size(); i++) x[i] += room[i];
+    float peak = 0;
+    run(x, defaults, [&](size_t, size_t end, const Features &f) {
+      if (end >= (size_t) (2 * SR)) peak = std::fmax(peak, f.envelope);
     });
     char msg[64];
-    std::snprintf(msg, sizeof msg, "envelope peaked at %.2f", top);
-    check(top <= 0.15f && !toggled, "noise near the gate", msg);
+    std::snprintf(msg, sizeof msg, "envelope peaked at %.2f", peak);
+    check(peak >= 0.8f, "music over room noise", msg);
   }
 
   {

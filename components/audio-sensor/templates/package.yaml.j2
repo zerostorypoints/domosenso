@@ -672,15 +672,17 @@ automation:
               {{ {'effect': effect} if effect not in ['keep', 'unknown', 'unavailable', ''] else {} }}
         else:
           - delay:
-              seconds: "{{ states('input_number.[[ b.prefix ]]_strip_follow_off_delay') | int(30) }}"
+              # A new helper reads 0 (its minimum): until the home sets a delay, 30 s.
+              seconds: "{% set d = states('input_number.[[ b.prefix ]]_strip_follow_off_delay') | int(0) %}{{ d if d > 0 else 30 }}"
           - action: light.turn_off
             target:
               entity_id: [[ b.strip_light ]]
 [%- endfor %]
 [%- for b in ambients %]
 
-  # SPEC-043: the strip's brightness follows [[ b.strip.ambient_light ]] while the strip is on: on a
-  # change of more than 10 %, at most once every 10 s (single mode and the closing delay).
+  # SPEC-043: the strip's brightness follows [[ b.strip.ambient_light ]] while the strip is on: on
+  # every reading (a dusk moves in small steps) and when the strip turns on, set only when the curve's
+  # brightness is 2 points or more from the light's, at most every 10 s (single mode and the delay).
   - id: [[ b.prefix ]]_strip_ambient
     alias: [[ jstr(b.area ~ ' strip brightness follows the room') ]]
     description: Set the music strip's brightness from the room's light level.
@@ -690,6 +692,9 @@ automation:
       - trigger: state
         entity_id: [[ b.strip.ambient_light ]]
         to: null
+      - trigger: state
+        entity_id: [[ b.strip_light ]]
+        to: "on"
     conditions:
       - condition: state
         entity_id: input_boolean.[[ b.prefix ]]_strip_ambient
@@ -699,11 +704,7 @@ automation:
         state: "on"
       - condition: template
         value_template: >-
-          {% set new = trigger.to_state.state if trigger.to_state is not none else 'unavailable' %}
-          {% set old = trigger.from_state.state if trigger.from_state is not none else 'unavailable' %}
-          {% if new in ['unavailable', 'unknown'] or not new | is_number %}false
-          {% elif old in ['unavailable', 'unknown'] or not old | is_number %}true
-          {% else %}{{ (new | float - old | float) | abs > 0.1 * ([old | float, 1] | max) }}{% endif %}
+          {{ states('[[ b.strip.ambient_light ]]') not in ['unavailable', 'unknown'] and states('[[ b.strip.ambient_light ]]') | is_number }}
     actions:
       - variables:
           brightness_pct: >-
@@ -717,6 +718,9 @@ automation:
             {% set t = ((lux | log(10)) - (dark | log(10))) / ((bright | log(10)) - (dark | log(10))) %}
             {% set t = [t, 0] | max %}{% set t = [t, 1] | min %}
             {{ (low + (high - low) * t) | round(0) }}
+      - condition: template
+        value_template: >-
+          {% set now = (state_attr('[[ b.strip_light ]]', 'brightness') | int(0)) * 100 / 255 %}{{ (brightness_pct | float(0) - now) | abs >= 2 }}
       - action: light.turn_on
         target:
           entity_id: [[ b.strip_light ]]

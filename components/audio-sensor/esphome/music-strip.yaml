@@ -29,6 +29,12 @@ external_components:
       path: components/audio-sensor/esphome/components
     components: [music_strip]
 
+# The style a plain turn-on starts (see the light's on_turn_on); the first style after a boot.
+globals:
+  - id: strip_last_effect
+    type: std::string
+    initial_value: '"Pulse"'
+
 music_strip:
   id: music
   microphone: mic
@@ -44,7 +50,24 @@ light:
     num_leds: ${strip_leds}
     chipset: SK6812
     rgb_order: ${strip_order}
-    restore_mode: RESTORE_DEFAULT_OFF
+    # Off after every boot: a strip that comes back on draws its full current before anyone chose it,
+    # and on the board's own 5 V that can brown the board out into a boot loop.
+    restore_mode: ALWAYS_OFF
+    # Only a music style runs the power limiter, and ESPHome drops the effect on every turn-off: a
+    # turn-on without a style (Home Assistant's `keep`, a tap on the light) puts the last one back.
+    # The default 1 s fade from off keeps the frames before it near dark.
+    on_turn_on:
+      - if:
+          condition:
+            lambda: return id(strip_light).get_effect_name() == "None";
+          then:
+            - light.turn_on:
+                id: strip_light
+                effect: !lambda return id(strip_last_effect);
+    on_state:
+      - lambda: |-
+          const auto name = id(strip_light).get_effect_name();
+          if (name != "None") id(strip_last_effect) = std::string(name.c_str(), name.size());
     effects:
       - music_strip: {name: Pulse, style: pulse}
       - music_strip: {name: Glow, style: glow}

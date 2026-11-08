@@ -59,6 +59,7 @@ class FeatureExtractor {
     this->flux_.assign(std::max<size_t>(8, (size_t) std::lround(FLUX_WINDOW_S / hop_s)), 0.0f);
     this->min_history_ = this->flux_.size() / 2;
     this->refractory_hops_ = (size_t) std::ceil(REFRACTORY_S / hop_s);
+    this->floor_.assign(std::max<size_t>(1, (size_t) std::lround(FLOOR_WINDOW_S / hop_s)), 0.0f);
     this->reset();
   }
 
@@ -68,12 +69,24 @@ class FeatureExtractor {
     Features f{};
     this->seq_++;
     f.seq = this->seq_;
-    // The gate opens 3 dB above where it closes, so room noise at the edge does not chatter.
+    // The room's floor: the quietest hop of the last few seconds, never above FLOOR_CAP_DB so music
+    // that plays on and on cannot lift it. A quiet room is not silent (a living room sits near
+    // -60 dBFS at this microphone), so the gate follows the floor, and opens 3 dB above where it
+    // closes, so room noise at the edge does not chatter.
+    const float hop_db = std::isfinite(rms) ? db(rms) : -120.0f;
+    float floor_db = hop_db;
+    for (size_t i = 0; i < this->floor_count_; i++) floor_db = std::min(floor_db, this->floor_[i]);
+    floor_db = std::min(floor_db, FLOOR_CAP_DB);
+    this->floor_[this->floor_pos_] = hop_db;
+    this->floor_pos_ = (this->floor_pos_ + 1) % this->floor_.size();
+    this->floor_count_ = std::min(this->floor_count_ + 1, this->floor_.size());
+    const float close_db = std::max(GATE_CLOSE_DB, floor_db + FLOOR_CLOSE_DB);
+    const float open_db = std::max(GATE_OPEN_DB, floor_db + FLOOR_OPEN_DB);
     if (!std::isfinite(rms)) {
       this->gate_open_ = false;
-    } else if (rms >= GATE_OPEN_RMS) {
+    } else if (hop_db >= open_db) {
       this->gate_open_ = true;
-    } else if (rms < GATE_CLOSE_RMS) {
+    } else if (hop_db < close_db) {
       this->gate_open_ = false;
     }
     if (!this->gate_open_) {
@@ -90,7 +103,7 @@ class FeatureExtractor {
                          this->settings_.sensitivity_db;
     // Auto gain spreads the level between the gate (0) and the reference (1), so a hop just above the
     // gate is still near 0; a manual gain keeps the fixed 60 dB range under the reference.
-    const float low_db = this->settings_.auto_gain ? GATE_CLOSE_DB : ref_db - RANGE_DB;
+    const float low_db = this->settings_.auto_gain ? std::min(close_db, ref_db - 1.0f) : ref_db - RANGE_DB;
     f.envelope = unit((db(rms) - low_db) / std::max(ref_db - low_db, 1.0f));
 
     float target[NUM_BANDS];
@@ -142,8 +155,11 @@ class FeatureExtractor {
   static constexpr double HIGH_HZ = 16000.0;
   static constexpr float RANGE_DB = 60.0f;       // 0 at -60 dB below the reference, 1 at it
   static constexpr float GATE_CLOSE_DB = -70.0f;
-  static constexpr float GATE_CLOSE_RMS = 0.000316228f;  // -70 dBFS
-  static constexpr float GATE_OPEN_RMS = 0.000446684f;   // -67 dBFS
+  static constexpr float GATE_OPEN_DB = -67.0f;
+  static constexpr double FLOOR_WINDOW_S = 5.0;
+  static constexpr float FLOOR_CAP_DB = -50.0f;
+  static constexpr float FLOOR_OPEN_DB = 6.0f;   // the gate opens this far above the room's floor
+  static constexpr float FLOOR_CLOSE_DB = 3.0f;  // and closes this far above it
   static constexpr float AUTO_FLOOR_DB = -50.0f;
   static constexpr double PEAK_HALF_LIFE_S = 5.0;
   static constexpr double BAND_MEAN_S = 1.0;
@@ -175,6 +191,8 @@ class FeatureExtractor {
     std::fill(this->flux_.begin(), this->flux_.end(), 0.0f);
     this->have_prev_ = false;
     this->was_above_ = false;
+    this->floor_pos_ = 0;
+    this->floor_count_ = 0;
     this->gate_open_ = false;
     std::fill(this->smooth_bands_, this->smooth_bands_ + NUM_BANDS, 0.0f);
     this->smooth_env_ = 0;
@@ -221,6 +239,8 @@ class FeatureExtractor {
   size_t edge_[NUM_BANDS + 1] = {};
   float alpha_attack_ = 1, alpha_release_ = 1, peak_decay_ = 1;
   std::vector<float> flux_, sorted_;
+  std::vector<float> floor_;  // the last few seconds of hop levels, dBFS
+  size_t floor_pos_ = 0, floor_count_ = 0;
   size_t flux_pos_ = 0, count_ = 0, min_history_ = 0, refractory_hops_ = 0, since_beat_ = 0;
   size_t low_lo_ = 1, low_hi_ = 1;
   float low_mean_ = 0, prev_low_ = 0, beat_k_ = 6.0f;

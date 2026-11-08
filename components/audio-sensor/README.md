@@ -392,6 +392,13 @@ microphone has no left or right, and the strip sits between two speakers.
 A beat is the low end (40–250 Hz) jumping well above its own mean over the last second: a kick
 confined to the bass counts, the same at any volume and at any amount of bass at the board's spot.
 
+A quiet room is not silent. The strip learns the room's floor (the quietest moment of the last
+5 s, never above −50 dBFS) and stays dark until the sound is 6 dB above it, so room noise does not
+light it.
+
+After a boot the strip is off, and a turn-on without a style (Home Assistant's `keep`, a tap on the
+light) starts the last style: only a style runs the power limit.
+
 ### In Home Assistant
 
 The inputs item's `strip:` (`leds`, `pin`, `follow`, `ambient_light`, `entities`) renders, with
@@ -399,12 +406,13 @@ the board's other entities:
 
 - `follow`: an entity whose playing (a media player) or on state means music. With it,
   `input_boolean.<id_prefix>_strip_follow_music` (off when new) turns the strip on while it plays
-  and off `input_number.<id_prefix>_strip_follow_off_delay` seconds after it stops (30 s is a good
-  start); `input_select.<id_prefix>_strip_follow_effect` picks the style it turns on with (`keep`
+  and off `input_number.<id_prefix>_strip_follow_off_delay` seconds after it stops (0, a new
+  helper's value, means 30 s); `input_select.<id_prefix>_strip_follow_effect` picks the style it turns on with (`keep`
   leaves the last one).
 - `ambient_light`: an illuminance sensor anywhere in Home Assistant. With it,
   `input_boolean.<id_prefix>_strip_ambient` (off when new) sets the strip's brightness from the
-  room's light while the strip is on: `..._dark_lux` and `..._bright_lux` the ends of the curve,
+  room's light while the strip is on, on every reading and when the strip turns on, at most every
+  10 s and only when the brightness would move by 2 points or more: `..._dark_lux` and `..._bright_lux` the ends of the curve,
   `..._min_pct` and `..._max_pct` the brightness there, linear in log lux between. Until the curve
   is set (a new helper reads 0), 5 lx → 20 % and 300 lx → 100 % apply.
 - For other components: `light.music_strip` (the selected music board's strip: on/off, brightness,

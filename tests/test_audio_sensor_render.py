@@ -787,6 +787,18 @@ def test_follow_reads_on_for_a_non_media_player(tmp_path):
     assert "'on'" in playing and "'playing'" not in playing
 
 
+@pytest.mark.parametrize("value, seconds", [("0", "30"), ("45", "45"), ("unavailable", "30")])
+def test_follow_off_delay_reads_zero_as_the_default(tmp_path, value, seconds):
+    # A new input_number starts at its minimum, 0: until the home sets a delay, 30 s applies, so a
+    # track change does not blink the strip off.
+    automation = _automation(render(tmp_path, _with_follow()), "living_room_strip_follow_music")
+    delay = automation["actions"][1]["else"][0]["delay"]["seconds"]
+    env = jinja2.Environment()
+    env.filters["int"] = lambda v, d=0: int(v) if str(v).isdigit() else d
+    env.globals["states"] = lambda e: value if e == "input_number.living_room_strip_follow_off_delay" else "unavailable"
+    assert env.from_string(delay).render().strip() == seconds
+
+
 def test_follow_ignores_unavailable_and_unknown(tmp_path):
     automation = _automation(render(tmp_path, _with_follow()), "living_room_strip_follow_music")
     conditions = yaml.safe_dump(automation["conditions"])
@@ -869,17 +881,20 @@ def test_ambient_curve(tmp_path, lux, pct):
     assert abs(got - pct) <= 1, (lux, got)
 
 
-def test_ambient_rate_limit(tmp_path):
+def test_ambient_follows_slow_changes_and_the_turn_on(tmp_path):
     automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
     assert automation["mode"] == "single"
-    trigger = automation["triggers"][0]
-    assert trigger["entity_id"] == "sensor.living_room_illuminance"
-    text = yaml.safe_dump(automation)
-    assert "input_boolean.living_room_strip_ambient" in text
+    triggers = automation["triggers"]
+    # Every reading (a slow dusk moves in small steps) and the strip turning on.
+    assert {"trigger": "state", "entity_id": "sensor.living_room_illuminance", "to": None} in triggers
+    assert {"trigger": "state", "entity_id": STRIP_LIGHT, "to": "on"} in triggers
     assert {"condition": "state", "entity_id": STRIP_LIGHT, "state": "on"} in automation["conditions"]
     assert {"condition": "state", "entity_id": "input_boolean.living_room_strip_ambient", "state": "on"} in automation["conditions"]
-    assert "0.1" in text  # a change of more than 10 %
-    assert "unavailable" in text
+    assert "unavailable" in yaml.safe_dump(automation["conditions"])
+    # Changed only when the curve's brightness is 2 points or more from the light's.
+    gate = automation["actions"][1]["value_template"]
+    assert evaluate("{% set brightness_pct = 60 %}" + gate, {}, {STRIP_LIGHT: {"brightness": 153}}) == "False"  # 60 %
+    assert evaluate("{% set brightness_pct = 63 %}" + gate, {}, {STRIP_LIGHT: {"brightness": 153}}) == "True"
     assert automation["actions"][-1] == {"delay": {"seconds": 10}}
 
 
