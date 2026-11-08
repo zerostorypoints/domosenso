@@ -25,7 +25,7 @@ def test_strip_is_off_after_a_boot():
     assert strip_light()["restore_mode"] == "ALWAYS_OFF"
 
 
-EFFECTS = ["Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple"]
+EFFECTS = ["Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple", "Heat"]
 
 
 def style_select():

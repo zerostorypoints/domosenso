@@ -17,7 +17,7 @@ struct Rgb {
   uint8_t r, g, b;
 };
 
-enum class Style { PULSE, GLOW, BANDS, CENTRE_METER, SPECTRUM, RIPPLE };
+enum class Style { PULSE, GLOW, BANDS, CENTRE_METER, SPECTRUM, RIPPLE, HEAT };
 enum class PaletteKind { SPECTRUM, WARM, COOL, SINGLE, CUSTOM };
 enum class Mounting { FRONT, WALL, FLOOR };
 // Centre and ends mirror the music about the window's centre; start and end lay it out once from
@@ -359,6 +359,19 @@ class Renderer {
         const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
         const size_t b = std::min(NUM_BANDS - 1, (size_t) (x * (float) NUM_BANDS));
         put(out, palette_at(s.palette, (float) b / (float) (NUM_BANDS - 1)), f.bands[b]);
+        break;
+      }
+      case Style::HEAT: {
+        // The bands laid along the window, blended between neighbours; the colour is the band's
+        // level through the palette, the brightness steady (it fades only as the music stops).
+        const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
+        const float pos = x * (float) (NUM_BANDS - 1);
+        const size_t b0 = std::min(NUM_BANDS - 1, (size_t) pos);
+        const size_t b1 = std::min(NUM_BANDS - 1, b0 + 1);
+        const float level = f.bands[b0] + (f.bands[b1] - f.bands[b0]) * (pos - (float) b0);
+        float loudest = 0.0f;
+        for (size_t b = 0; b < NUM_BANDS; b++) loudest = std::max(loudest, f.bands[b]);
+        put(out, palette_at(s.palette, clamp01(level)), 4.0f * loudest);
         break;
       }
       case Style::RIPPLE: {

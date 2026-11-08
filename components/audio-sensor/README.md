@@ -362,7 +362,7 @@ Configuration:
 | entity | values (default) | what it does |
 |---|---|---|
 | Music strip | light: on/off, brightness, colour, effect | the strip; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
-| Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
+| Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple, Heat (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
 | Strip palette | spectrum, warm, cool, single, custom (spectrum) | the colours the styles use |
 | Strip custom palette | 2–5 `#rrggbb` stops (`#ff3000,#ffb000,#2050ff`) | the custom palette; a typo keeps the last good one |
 | Strip intensity | 0–100 % (60) | how much of the music reaches the strip: a calm glow at 0, full flashes at 100 |
@@ -391,6 +391,7 @@ microphone has no left or right, and the strip sits between two speakers.
 | Centre meter | a level meter from the centre to both ends, a falling peak dot | front |
 | Spectrum | 8 bands mirrored from the centre, bass at the centre or the ends | front |
 | Ripple | a beat sends a wave from the centre to both ends | front, wall |
+| Heat | the bands laid along the strip; each part's colour is its band's level through the palette (quiet: the first colour, loud: the last), the brightness steady | front; with bass position start or end, bass to treble across the strip |
 
 A beat is the low end (40–250 Hz) jumping well above its own mean over the last second: a kick
 confined to the bass counts, the same at any volume and at any amount of bass at the board's spot.
