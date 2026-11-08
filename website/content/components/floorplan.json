@@ -35,7 +35,7 @@
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],

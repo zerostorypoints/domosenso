@@ -22,7 +22,7 @@
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -32,8 +32,8 @@
     "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover."
   ],
   "id": "plants",
-  "version": "0.4.0",
-  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+  "version": "0.5.0",
+  "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
   "evidencePaths": [
     "components/plants/component.yaml"
   ],

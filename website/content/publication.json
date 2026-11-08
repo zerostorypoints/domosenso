@@ -95,18 +95,18 @@
     },
     {
       "id": "plants",
-      "version": "0.4.0",
-      "tag": "plants/0.4.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.5.0",
+      "tag": "plants/0.5.0",
+      "commit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
       "id": "ramka",
-      "version": "0.17.0",
-      "tag": "ramka/0.17.0",
-      "commit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "version": "0.18.0",
+      "tag": "ramka/0.18.0",
+      "commit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
