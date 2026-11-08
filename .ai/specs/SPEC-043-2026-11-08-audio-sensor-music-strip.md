@@ -1,6 +1,6 @@
 # SPEC-043: A music-reactive LED strip on the audio sensor (audio-sensor, ramka, unreleased)
 
-- Status: draft, 2026-11-08.
+- Status: approved 2026-11-08 (the maintainer, in the session that designed it).
 - Source: the maintainer, designed in conversation section by section (approach, layers, styles,
   settings, wiring, trial). The research behind it: Hue's own sync, third-party apps, LedFx, WLED,
   Hyperion and a direct Hue Entertainment client were compared for "light that follows the music in
