@@ -5,6 +5,7 @@ description: Use when setting up local Home Assistant staging for a home reposit
 
 # stage-home-update
 
+For a read-only review before choosing a release, use [check-home-upgrades](../check-home-upgrades/SKILL.md).
 Use the shared [home staging guide](../../../docs/HOME_STAGING.md). Read the home's AGENTS.md and
 CLAUDE.md first. The framework owns tools/components; the home owns inputs, lock and local files.
 This skill works in any home installed with `tools/install-home-workflow.py`; it contains no

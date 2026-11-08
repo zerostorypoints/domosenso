@@ -774,9 +774,9 @@
     },
     {
       "id": "plants",
-      "version": "0.4.0",
-      "sourceTag": "plants/0.4.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.5.0",
+      "sourceTag": "plants/0.5.0",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
       "requirements": [
         {
@@ -785,20 +785,13 @@
             "mi-flora"
           ],
           "count": "1 per plant"
-        },
-        {
-          "kind": "ble-proxy",
-          "recommend": [
-            "m5stack-atom-lite"
-          ],
-          "via": "bermuda-presence"
         }
       ],
       "integrations": [
         {
           "name": "xiaomi_ble",
           "source": "core",
-          "setup": "discovers the sensors on its own once a proxy hears them"
+          "setup": "discovers the sensors on its own once a host BLE receiver or proxy hears them"
         },
         {
           "name": "plant",
@@ -814,7 +807,15 @@
           "source": "core"
         }
       ],
-      "optionalRequirements": [],
+      "optionalRequirements": [
+        {
+          "kind": "ble-proxy",
+          "recommend": [
+            "m5stack-atom-lite"
+          ],
+          "via": "bermuda-presence"
+        }
+      ],
       "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
@@ -835,7 +836,7 @@
       "inputs": [
         {
           "name": "plants",
-          "type": "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
+          "type": "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, active_source?, sources?, legacy_moisture_history?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
           "required": true
         },
         {
@@ -869,14 +870,14 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/plants",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/plants/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/plants/UPGRADE.md"
     },
     {
       "id": "ramka",
-      "version": "0.17.0",
-      "sourceTag": "ramka/0.17.0",
-      "sourceCommit": "e83edec6bcd9f7bf740e9f902d743592a80d05ac",
+      "version": "0.18.0",
+      "sourceTag": "ramka/0.18.0",
+      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1211,8 +1212,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/e83edec6bcd9f7bf740e9f902d743592a80d05ac/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/e83edec6bcd9f7bf740e9f902d743592a80d05ac/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/ramka/UPGRADE.md"
     },
     {
       "id": "timers",

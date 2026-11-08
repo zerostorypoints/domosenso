@@ -13,6 +13,9 @@ def source(tmp_path):
     root = tmp_path / 'framework'
     (root / '.ai/skills/stage-home-update').mkdir(parents=True)
     (root / '.ai/skills/stage-home-update/SKILL.md').write_text('---\nname: stage-home-update\ndescription: Use when staging a home.\n---\nOne\n')
+    audit = root / '.ai/skills/check-home-upgrades/SKILL.md'
+    audit.parent.mkdir(parents=True)
+    audit.write_text('---\nname: check-home-upgrades\ndescription: Use when auditing home upgrades.\n---\nAudit\n')
     (root / 'docs').mkdir()
     (root / 'docs/HOME_STAGING.md').write_text('Guide one\n')
     return root
@@ -25,6 +28,12 @@ def test_fresh_install_and_repeat_preserve_other_agent_files(home, source):
     install_workflow(home, source)
     assert (home / '.agents/skills/stage-home-update/SKILL.md').read_text().endswith('One\n')
     assert (home / '.claude/skills/stage-home-update').is_symlink()
+    for client in ('.agents', '.claude'):
+        audit = home / client / 'skills/check-home-upgrades'
+        assert audit.is_symlink()
+        assert (audit / 'SKILL.md').read_bytes() == (
+            source / '.ai/skills/check-home-upgrades/SKILL.md'
+        ).read_bytes()
     assert install_workflow(home, source)['changed'] == []
     assert (home / 'AGENTS.md').read_text() == 'Owner instructions\n'
     assert (home / '.claude/settings.json').read_text() == '{"permissions":{}}\n'
@@ -36,6 +45,35 @@ def test_upgrade_replaces_only_unchanged_installed_files(home, source):
     (source / 'docs/HOME_STAGING.md').write_text('Guide two\n')
     install_workflow(home, source)
     assert (home / 'docs/HOME_STAGING.md').read_text() == 'Guide two\n'
+
+
+def test_existing_staging_install_gains_audit_skill_after_conflict_is_resolved(home, source):
+    install_workflow(home, source)
+    manifest = home / '.ai/home-workflow.json'
+    old = json.loads(manifest.read_text())
+    for path in list(old['files']):
+        if 'check-home-upgrades' in path:
+            (home / path).unlink()
+            del old['files'][path]
+    previous_manifest = json.dumps(old)
+    manifest.write_text(previous_manifest)
+    custom_skill = home / '.ai/skills/check-home-upgrades/SKILL.md'
+    custom_skill.write_text('Home-owned audit\n')
+    with pytest.raises(WorkflowError, match='check-home-upgrades'):
+        install_workflow(home, source)
+    assert manifest.read_text() == previous_manifest
+    assert custom_skill.read_text() == 'Home-owned audit\n'
+    assert not (home / '.agents/skills/check-home-upgrades').is_symlink()
+    assert not (home / '.claude/skills/check-home-upgrades').is_symlink()
+    custom_skill.unlink()
+
+    assert set(install_workflow(home, source)['changed']) == {
+        '.ai/skills/check-home-upgrades/SKILL.md',
+        '.agents/skills/check-home-upgrades',
+        '.claude/skills/check-home-upgrades',
+        '.ai/home-workflow.json',
+    }
+    assert install_workflow(home, source)['changed'] == []
 
 
 def test_customized_file_blocks_entire_upgrade(home, source):

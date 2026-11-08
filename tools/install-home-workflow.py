@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the shared home-staging skill and guide into a home worktree."""
+"""Install shared upgrade audit and staging guidance into a home worktree."""
 import argparse
 import json
 from pathlib import Path
