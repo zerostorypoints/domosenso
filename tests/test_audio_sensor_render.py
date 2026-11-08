@@ -122,7 +122,8 @@ def test_two_music_sensors_fail(tmp_path):
 
 def test_offset_helper_has_no_initial(demo):
     helpers = demo["input_number"]
-    assert set(helpers) == {"living_room_spl_offset", "kids_room_spl_offset", "audio_sensor_measured_offset"}
+    # The demo's strip adds its own helpers (SPEC-043); these are the calibration ones.
+    assert {h for h in helpers if "_strip_" not in h} == {"living_room_spl_offset", "kids_room_spl_offset", "audio_sensor_measured_offset"}
     for helper in (helpers["living_room_spl_offset"], helpers["kids_room_spl_offset"]):
         assert "initial" not in helper
         assert (helper["min"], helper["max"], helper["step"]) == (0, 140, 0.1)
@@ -209,7 +210,7 @@ def test_alias_templates_stay_cheap(demo):
 
 def test_entities_carry_the_component_and_boards_their_area(demo):
     found = templates(demo)
-    assert len(found) == 13
+    assert len(found) == 14  # the demo board's strip adds binary_sensor.music_source_strip (SPEC-043)
     for entity in found.values():
         assert entity["attributes"]["component"] == "audio-sensor"
     assert found["audio_sensor_kids_room_spl_offset"]["attributes"]["area"] == "Kids' room"
@@ -243,7 +244,7 @@ def test_no_music_board_renders_the_select_with_none_first(tmp_path):
     t = templates(package)["audio_sensor_music_level"]
     assert evaluate(t.get("availability", "true"), {SELECT: "unknown", LIVING_LEVEL: "-40"}) == "False"
     assert evaluate(t.get("availability", "true"), {SELECT: "Kids' room", KIDS_LEVEL: "-40"}) == "True"
-    assert set(package["input_number"]) == {
+    assert {h for h in package["input_number"] if "_strip_" not in h} == {
         "audio_sensor_measured_offset", "living_room_spl_offset", "kids_room_spl_offset"}
     # The per-board flag and note exist for every board.
     assert {"living_room_spl_calibrated", "kids_room_spl_calibrated"} <= set(package["input_boolean"])
@@ -665,7 +666,8 @@ def test_abilities_are_trigger_based_and_cheap(demo):
         for e in b.get("sensor", []))]
     assert len(blocks) == 1
     block = blocks[0]
-    assert {e["unique_id"] for e in block["binary_sensor"]} == set(ABILITY.values())
+    # The demo's living-room board has a strip (SPEC-043), which adds its ability.
+    assert {e["unique_id"] for e in block["binary_sensor"]} == set(ABILITY.values()) | {"audio_sensor_music_source_strip"}
     triggers = block["triggers"]
     assert {"trigger": "homeassistant", "event": "start"} in triggers
     assert {"trigger": "state", "entity_id": SELECT} in triggers
@@ -679,3 +681,250 @@ def test_gain_stays_listed_while_the_mic_gain_entity_is_unavailable(demo):
     states = {**FULL, GAIN: "unavailable"}
     caps = ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], states, RATE_ATTRS))
     assert "gain" in caps
+
+
+# SPEC-043: the strip input.
+def _device_files(sensors):
+    from domosenso_render import render_device_files
+
+    return dict(render_device_files(COMP, {"sensors": sensors}))
+
+
+def test_device_file_without_strip_is_unchanged():
+    committed = (REPO / "examples/demo-home/esphome/audio-sensor-kids-room.yaml").read_text(encoding="utf-8")
+    files = _device_files(demo_inputs()["sensors"])
+    assert files["audio-sensor-kids-room.yaml"] == committed
+    assert "strip" not in committed
+
+
+def test_device_file_with_strip_adds_package_and_substitutions():
+    version = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["version"]
+    files = _device_files([{"room": "den", "area": "Den", "strip": {"leds": 60}},
+                           {"room": "hall", "area": "Hall", "strip": {"pin": "GPIO1"}}])
+    den, hall = files["audio-sensor-den.yaml"], files["audio-sensor-hall.yaml"]
+    assert 'strip_leds: "60"' in den and "strip_pin" not in den
+    assert 'strip_leds: "120"' in hall and 'strip_pin: "GPIO1"' in hall
+    assert f"  strip: github://zerostorypoints/domosenso/components/audio-sensor/esphome/music-strip.yaml@audio-sensor/{version}" in den
+
+
+@pytest.mark.parametrize(
+    "strip, message",
+    [
+        ({"leds": 0}, "strip.leds must be 1 to 300: 0"),
+        ({"leds": 1000}, "strip.leds must be 1 to 300: 1000"),
+        ({"follow": "not an id"}, "strip.follow is not an entity id: not an id"),
+        ({"ambient_light": "sensor"}, "strip.ambient_light is not an entity id: sensor"),
+        ({"entities": {"volume": "number.x"}}, "unknown strip entity key: volume"),
+        ({"colour": "red"}, "unknown strip key: colour"),
+    ],
+)
+def test_strip_input_validation(tmp_path, strip, message):
+    inputs = copy.deepcopy(demo_inputs())
+    inputs["sensors"][0]["strip"] = strip
+    with pytest.raises(dr.RenderError, match=message):
+        render_text(tmp_path, inputs)
+
+
+# SPEC-043 stage A: follow the music, the strip alias, the palette script.
+STRIP_LIGHT = "light.living_room_audio_sensor_living_room_music_strip"
+STRIP_PALETTE = "select.living_room_audio_sensor_living_room_strip_palette"
+STRIP_CUSTOM = "text.living_room_audio_sensor_living_room_strip_custom_palette"
+
+
+def _without_strips():
+    inputs = copy.deepcopy(demo_inputs())
+    for s in inputs["sensors"]:
+        s.pop("strip", None)
+    return inputs
+
+
+def _with_follow(follow="media_player.living_room_speaker"):
+    inputs = copy.deepcopy(demo_inputs())
+    inputs["sensors"][0]["strip"] = {"leds": 60, "follow": follow}
+    return inputs
+
+
+def _automation(package, automation_id):
+    return next(a for a in package["automation"] if a["id"] == automation_id)
+
+
+def test_no_strip_renders_byte_identical(tmp_path):
+    # tests/fixtures/audio_sensor/package-without-strip.yaml is the package rendered before SPEC-043;
+    # regenerate it only for a change meant for homes without a strip too.
+    expected = (REPO / "tests/fixtures/audio_sensor/package-without-strip.yaml").read_text(encoding="utf-8")
+    assert render_text(tmp_path, _without_strips()) == expected
+
+
+def test_follow_helpers_and_automation_only_with_follow(tmp_path):
+    no_follow = copy.deepcopy(demo_inputs())
+    no_follow["sensors"][0]["strip"] = {"leds": 60}
+    plain = render(tmp_path / "a", no_follow)
+    assert "living_room_strip_follow_music" not in plain.get("input_boolean", {})
+    assert not any(a["id"] == "living_room_strip_follow_music" for a in plain["automation"])
+
+    package = render(tmp_path / "b", _with_follow())
+    assert package["input_boolean"]["living_room_strip_follow_music"].get("initial") is None
+    delay = package["input_number"]["living_room_strip_follow_off_delay"]
+    assert (delay["min"], delay["max"], delay["step"]) == (0, 600, 5) and "initial" not in delay
+    effects = package["input_select"]["living_room_strip_follow_effect"]
+    assert effects["options"] == ["keep", "Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple"]
+    assert "initial" not in effects
+
+    automation = _automation(package, "living_room_strip_follow_music")
+    trigger = automation["triggers"][0]
+    assert trigger["entity_id"] == "media_player.living_room_speaker" and trigger["to"] is None
+    assert automation["mode"] == "restart"
+    text = yaml.safe_dump(automation)
+    assert "input_boolean.living_room_strip_follow_music" in text
+    assert "input_number.living_room_strip_follow_off_delay" in text
+    assert STRIP_LIGHT in text
+    assert "'playing'" in text
+
+
+def test_follow_reads_on_for_a_non_media_player(tmp_path):
+    automation = _automation(render(tmp_path, _with_follow("binary_sensor.music_playing")), "living_room_strip_follow_music")
+    playing = automation["actions"][0]["variables"]["playing"]
+    assert "'on'" in playing and "'playing'" not in playing
+
+
+@pytest.mark.parametrize("value, seconds", [("0", "30"), ("45", "45"), ("unavailable", "30")])
+def test_follow_off_delay_reads_zero_as_the_default(tmp_path, value, seconds):
+    # A new input_number starts at its minimum, 0: until the home sets a delay, 30 s applies, so a
+    # track change does not blink the strip off.
+    automation = _automation(render(tmp_path, _with_follow()), "living_room_strip_follow_music")
+    delay = automation["actions"][1]["else"][0]["delay"]["seconds"]
+    env = jinja2.Environment()
+    env.filters["int"] = lambda v, d=0: int(v) if str(v).isdigit() else d
+    env.globals["states"] = lambda e: value if e == "input_number.living_room_strip_follow_off_delay" else "unavailable"
+    assert env.from_string(delay).render().strip() == seconds
+
+
+def test_follow_ignores_unavailable_and_unknown(tmp_path):
+    automation = _automation(render(tmp_path, _with_follow()), "living_room_strip_follow_music")
+    conditions = yaml.safe_dump(automation["conditions"])
+    assert "unavailable" in conditions and "unknown" in conditions
+
+
+def test_music_strip_alias_follows_the_selected_board(tmp_path):
+    package = render(tmp_path, demo_inputs())
+    light = next(l for block in package["template"] for l in block.get("light", []))
+    assert light["default_entity_id"] == "light.music_strip"
+    assert evaluate(light["availability"], {SELECT: "Living room", STRIP_LIGHT: "on"}) == "True"
+    assert evaluate(light["availability"], {SELECT: "Kids' room", STRIP_LIGHT: "on"}) == "False"
+    assert evaluate(light["state"], {SELECT: "Living room", STRIP_LIGHT: "on"}) == "True"
+
+    found = templates(package)
+    strip = found["audio_sensor_music_source_strip"]
+    assert strip["default_entity_id"] == "binary_sensor.music_source_strip"
+    assert evaluate(strip["state"], {SELECT: "Living room", STRIP_LIGHT: "off"}) == "True"
+    assert evaluate(strip["state"], {SELECT: "Kids' room", STRIP_LIGHT: "off"}) == "False"
+    assert evaluate(strip["state"], {SELECT: NONE}) == "False"
+    caps = found["audio_sensor_music_source"]["attributes"]["capabilities"]
+    assert evaluate(caps, {SELECT: "Living room", STRIP_LIGHT: "off"}).endswith("'strip']")
+
+
+def test_palette_script_writes_custom_and_selects_it(tmp_path):
+    script = render(tmp_path, demo_inputs())["script"]["audio_sensor_music_strip_palette"]
+    assert "stops" in script["fields"]
+    text = yaml.safe_dump(script)
+    assert "text.set_value" in text and "select.select_option" in text
+    assert STRIP_CUSTOM in text and STRIP_PALETTE in text and "custom" in text
+    guard = script["sequence"][0]["value_template"]
+    ok = "{% set stops = ['#ff3000', '#00ff00'] %}" + guard
+    bad_count = "{% set stops = ['#ff3000'] %}" + guard
+    bad_colour = "{% set stops = ['#ff3000', 'red'] %}" + guard
+    assert evaluate(ok, {}) == "True"
+    assert evaluate(bad_count, {}) == "False"
+    assert evaluate(bad_colour, {}) == "False"
+
+
+
+def test_palette_script_field_has_no_selector(tmp_path):
+    # HA 2026.9.2 refuses `object: {}` ("Only one type can be specified") and disables the whole
+    # script, seen on the prototype's deploy; the Ramka's scripts drop their selectors for the same reason.
+    script = render(tmp_path, demo_inputs())["script"]["audio_sensor_music_strip_palette"]
+    assert not any("selector" in field for field in script["fields"].values())
+
+
+def test_script_field_examples_are_strings(tmp_path):
+    # HA 2026.9.2 disables a script whose field example is not a string ("value should be a string
+    # at 'fields.stops.example'"), seen on the prototype's second deploy.
+    for name, script in render(tmp_path, demo_inputs())["script"].items():
+        for field, spec in (script.get("fields") or {}).items():
+            assert isinstance(spec.get("example", ""), str), (name, field)
+
+
+# SPEC-043 stage B: brightness from the room.
+def _with_ambient():
+    inputs = copy.deepcopy(demo_inputs())
+    inputs["sensors"][0]["strip"] = {"leds": 60, "ambient_light": "sensor.living_room_illuminance"}
+    return inputs
+
+
+def test_ambient_only_with_ambient_light(tmp_path):
+    no_ambient = copy.deepcopy(demo_inputs())
+    no_ambient["sensors"][0]["strip"] = {"leds": 60}
+    plain = render(tmp_path / "a", no_ambient)
+    assert not any("_strip_ambient" in h for h in plain["input_number"])
+    assert "living_room_strip_ambient" not in plain["input_boolean"]
+    package = render(tmp_path / "b", _with_ambient())
+    numbers = package["input_number"]
+    for key, (lo, hi) in {"dark_lux": (0, 10000), "bright_lux": (0, 10000), "min_pct": (0, 100), "max_pct": (0, 100)}.items():
+        helper = numbers[f"living_room_strip_ambient_{key}"]
+        assert (helper["min"], helper["max"]) == (lo, hi) and "initial" not in helper
+    assert "initial" not in package["input_boolean"]["living_room_strip_ambient"]
+
+
+AMBIENT_CURVE = {
+    "input_number.living_room_strip_ambient_dark_lux": "5",
+    "input_number.living_room_strip_ambient_bright_lux": "300",
+    "input_number.living_room_strip_ambient_min_pct": "20",
+    "input_number.living_room_strip_ambient_max_pct": "100",
+}
+
+
+@pytest.mark.parametrize("lux, pct", [(2, 20), (5, 20), (39, 60), (300, 100), (1000, 100)])
+def test_ambient_curve(tmp_path, lux, pct):
+    automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
+    template = automation["actions"][0]["variables"]["brightness_pct"]
+    states = {**AMBIENT_CURVE, "sensor.living_room_illuminance": str(lux)}
+    import math
+    env = jinja2.Environment()
+    env.filters["float"] = lambda v, d=0: float(v) if str(v).replace(".", "", 1).lstrip("-").isdigit() else d
+    env.filters["log"] = lambda v, base=math.e: math.log(v, base)
+    env.globals["states"] = lambda e: states.get(e, "unavailable")
+    got = float(env.from_string(template).render().strip())
+    assert abs(got - pct) <= 1, (lux, got)
+
+
+def test_ambient_follows_slow_changes_and_the_turn_on(tmp_path):
+    automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
+    assert automation["mode"] == "single"
+    triggers = automation["triggers"]
+    # Every reading (a slow dusk moves in small steps) and the strip turning on.
+    assert {"trigger": "state", "entity_id": "sensor.living_room_illuminance", "to": None} in triggers
+    assert {"trigger": "state", "entity_id": STRIP_LIGHT, "to": "on"} in triggers
+    assert {"condition": "state", "entity_id": STRIP_LIGHT, "state": "on"} in automation["conditions"]
+    assert {"condition": "state", "entity_id": "input_boolean.living_room_strip_ambient", "state": "on"} in automation["conditions"]
+    assert "unavailable" in yaml.safe_dump(automation["conditions"])
+    # Changed only when the curve's brightness is 2 points or more from the light's.
+    gate = automation["actions"][1]["value_template"]
+    assert evaluate("{% set brightness_pct = 60 %}" + gate, {}, {STRIP_LIGHT: {"brightness": 153}}) == "False"  # 60 %
+    assert evaluate("{% set brightness_pct = 63 %}" + gate, {}, {STRIP_LIGHT: {"brightness": 153}}) == "True"
+    assert automation["actions"][-1] == {"delay": {"seconds": 10}}
+
+
+def test_ambient_curve_falls_back_to_the_defaults_while_fresh(tmp_path):
+    # A new input_number starts at its minimum (0): until the home sets the curve, the spec's
+    # defaults apply, 5 lx -> 20 %, 300 lx -> 100 %, not a strip at 0 %.
+    automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
+    template = automation["actions"][0]["variables"]["brightness_pct"]
+    import math
+    env = jinja2.Environment()
+    env.filters["float"] = lambda v, d=0: float(v) if str(v).replace(".", "", 1).lstrip("-").isdigit() else d
+    env.filters["log"] = lambda v, base=math.e: math.log(v, base)
+    fresh = {k: "0" for k in AMBIENT_CURVE}
+    for lux, pct in [(39, 60), (2, 20), (1000, 100)]:
+        states = {**fresh, "sensor.living_room_illuminance": str(lux)}
+        env.globals["states"] = lambda e, states=states: states.get(e, "unavailable")
+        assert abs(float(env.from_string(template).render().strip()) - pct) <= 1, lux

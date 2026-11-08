@@ -16,12 +16,21 @@ substitutions:
 [%- if item.get('mic_gain') %]
   mic_gain: [[ item.mic_gain | yaml ]]
 [%- endif %]
+[%- if item.get('strip') is not none %]
+  strip_leds: "[[ item.strip.get('leds', 120) ]]"
+[%- if item.strip.get('pin') %]
+  strip_pin: [[ item.strip.pin | yaml ]]
+[%- endif %]
+[%- endif %]
 
 esphome:
   area: ${area}
 
 packages:
   sensor: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/audio-sensor.yaml@[[ component.id ]]/[[ component.version ]]
+[%- if item.get('strip') is not none %]
+  strip: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/music-strip.yaml@[[ component.id ]]/[[ component.version ]]
+[%- endif %]
 
 wifi:
   ssid: !secret wifi_ssid

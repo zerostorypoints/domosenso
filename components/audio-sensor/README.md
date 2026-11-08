@@ -303,6 +303,132 @@ live_level: sensor.living_room_audio_sensor_living_room_fast_sound_level
 live_peak: sensor.living_room_audio_sensor_living_room_fast_sound_peak
 ```
 
+## Music strip
+
+SPEC-043. An addressable LED strip on the board's Grove port that follows the music the board
+hears. The board itself listens, analyses and draws: nothing goes through Home Assistant or a
+server on the way, so the light lands about 25–35 ms after the sound for the level and the bands,
+and a beat about 35–45 ms after the hit (inference from the window and hop sizes; the trial below
+measures it). People start to notice a light that comes after its sound at about 45 ms (ITU-R
+BT.1359).
+
+### The strip
+
+Any 5 V SK6812 or WS2812B strip (GRB) works; the catalog's is M5Stack's Digital RGB LED Strip
+SK6812 (A093 family, 60 LEDs per metre, RGB, a Grove conversion cable). M5Stack's page for the
+board (docs.m5stack.com/en/core/Atom_VoiceS3R, SKU C126-ECHO) names the Grove port PORT.CUSTOM:
+black GND, red 5 V, yellow G2 (GPIO2), white G1 (GPIO1). The sensor firmware uses neither pin. The
+strip's data goes on GPIO2 by default; if the strip stays dark, set `strip.pin: GPIO1`.
+
+### Wiring and power
+
+The strip draws up to about 60 mA per LED at full white (20 mA per colour), so 120 LEDs can draw
+7 A. Two wirings, both handled by the firmware's power limit:
+
+| wiring | LEDs | power limit |
+|---|---|---|
+| From the board: the Grove cable's 5 V and ground | up to about 30 (cut at a marked line) | 500 mA, the default |
+| Own 5 V supply (3–5 A): its 5 V and ground to the strip, ground shared with the board; on 2 m feed 5 V at both ends | the whole strip | the supply's rating |
+
+The power limit works on what the LEDs draw after the light's brightness and gamma (Strip current
+reports that estimate). It scales every frame down to the limit before it is sent, and caps a plain colour
+(the light with the effect None) through the light's maximum brightness; it trusts the number you
+give it, so set it to what the supply can deliver.
+
+The board's 5 V rail also feeds the microphone, and the README's placement notes already show
+Wi-Fi pulses on it as noise. A strip pulsing with the music on the same rail can put the music back
+into the microphone. Check it once: in a quiet room, read Sound level with the strip off, then with
+the strip on Pulse at full power (play a loud track elsewhere, or let the strip run its last frame).
+If the quiet reading rises by more than 1 dB, use the own-supply wiring.
+
+### What the board gets
+
+The strip comes as a second ESPHome package, `esphome/music-strip.yaml`, which a board loads only
+when its inputs item has `strip:`; a board without it builds as before. `domosenso add` writes the
+lines into a new device file; an existing one adds them by hand (UPGRADE.md):
+
+```yaml
+substitutions:
+  strip_leds: "120"        # the LEDs on the strip
+  strip_pin: GPIO2         # only when not GPIO2
+packages:
+  strip: github://zerostorypoints/domosenso/components/audio-sensor/esphome/music-strip.yaml@audio-sensor/<version>
+```
+
+Every setting is an entity of the board, remembered on the board, so the strip works the same
+while Home Assistant is down. Everyday ones are in the device page's Controls, the rest under
+Configuration:
+
+| entity | values (default) | what it does |
+|---|---|---|
+| Music strip | light: on/off, brightness, colour, effect | the strip; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
+| Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
+| Strip palette | spectrum, warm, cool, single, custom (spectrum) | the colours the styles use |
+| Strip custom palette | 2–5 `#rrggbb` stops (`#ff3000,#ffb000,#2050ff`) | the custom palette; a typo keeps the last good one |
+| Strip intensity | 0–100 % (60) | how much of the music reaches the strip: a calm glow at 0, full flashes at 100 |
+| Strip mounting | front, wall, floor (front) | front: sharp; wall and floor: smoother and blurred into a wash |
+| Strip auto gain | on | follows the volume over about 10 s, so quiet listening still moves the strip |
+| Strip sensitivity | −20 to +20 dB (0) | the fixed gain while auto gain is off |
+| Strip attack, release | 0–200 ms (20), 50–2000 ms (300) | how fast the level rises and falls |
+| Strip beat strength | 0–100 % (50) | how bright a beat's flash or ripple is |
+| Strip beat sensitivity | 0–100 % (50) | how readily a jump in the low end counts as a beat; raise it if beats are missed, lower it if the strip flashes without one |
+| Strip bass position | centre, ends, start, end (centre) | centre and ends mirror the music about the strip's centre, the bass in the middle or at both ends; start and end lay it out once along the strip, the bass at its beginning (the data end) or at its end, so a strip whose beginning is on the right reads bass to treble left to right with end. Centre meter grows and Ripple travels from where the bass is |
+| Strip LEDs in use, first LED | 1 to `strip_leds`, 0 | a window on the strip; LEDs outside it stay dark |
+| Strip power limit | 100–5000 mA (500) | the current the strip may draw |
+| Strip current | mA, every 10 s | the estimated draw of the last frames |
+| Strip reset settings | button | every setting above back to its default; the light stays as it is |
+
+### Styles
+
+The styles are the light's effects. With Strip bass position centre or ends, every style is mirrored about the strip's centre: one
+microphone has no left or right, and the strip sits between two speakers.
+
+| style | what it draws | suits |
+|---|---|---|
+| Pulse | the whole strip one colour; brightness from the level, a flash on a beat | any mounting |
+| Glow | a colour from the music's balance (warm bass, cool treble), slow | wall, floor |
+| Bands | low, mid and high zones blending into each other, each its band's level | wall, floor |
+| Centre meter | a level meter from the centre to both ends, a falling peak dot | front |
+| Spectrum | 8 bands mirrored from the centre, bass at the centre or the ends | front |
+| Ripple | a beat sends a wave from the centre to both ends | front, wall |
+
+A beat is the low end (40–250 Hz) jumping well above its own mean over the last second: a kick
+confined to the bass counts, the same at any volume and at any amount of bass at the board's spot.
+
+A quiet room is not silent. The strip learns the room's floor (the quietest moment of the last
+5 s, never above −50 dBFS) and stays dark until the sound is 6 dB above it, so room noise does not
+light it.
+
+After a boot the strip is off, and a turn-on without a style (Home Assistant's `keep`, a tap on the
+light) starts the one in Strip style.
+
+### In Home Assistant
+
+The inputs item's `strip:` (`leds`, `pin`, `follow`, `ambient_light`, `entities`) renders, with
+the board's other entities:
+
+- `follow`: an entity whose playing (a media player) or on state means music. With it,
+  `input_boolean.<id_prefix>_strip_follow_music` (off when new) turns the strip on while it plays
+  and off `input_number.<id_prefix>_strip_follow_off_delay` seconds after it stops (0, a new
+  helper's value, means 30 s); `input_select.<id_prefix>_strip_follow_effect` picks the style it turns on with (`keep`
+  leaves the last one).
+- `ambient_light`: an illuminance sensor anywhere in Home Assistant. With it,
+  `input_boolean.<id_prefix>_strip_ambient` (off when new) sets the strip's brightness from the
+  room's light while the strip is on, on every reading and when the strip turns on, at most every
+  10 s and only when the brightness would move by 2 points or more: `..._dark_lux` and `..._bright_lux` the ends of the curve,
+  `..._min_pct` and `..._max_pct` the brightness there, linear in log lux between. Until the curve
+  is set (a new helper reads 0), 5 lx → 20 % and 300 lx → 100 % apply.
+- For other components: `light.music_strip` (the selected music board's strip: on/off, brightness,
+  style), `binary_sensor.music_source_strip` (attribute `light`, the board's strip light) and
+  `script.audio_sensor_music_strip_palette` (field `stops`), the Ramka's palette sync.
+
+### Trying it
+
+After the flash: Sound level, Spectrum and the Ramka's visual read as before; Spectrum load rises by
+the strip's analysis (expected under 10 % of a core); the quiet-room check above; then clap in
+front of the strip and film it at 240 fps: count the frames from the clap's first sound to the
+strip's change.
+
 ## Latency and update rate
 
 How late the visual follows a bass hit is the sum of these stages. The times are read from the

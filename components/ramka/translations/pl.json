@@ -566,7 +566,10 @@
       "about_found": "znaleziony w Home Assistant",
       "about_nav_website": "Strona",
       "about_nav_get_started": "Pierwsze kroki",
-      "about_discovery_how": "Listy poniżej pochodzą z niego; Odśwież znajduje nowe komponenty, urządzenia i wersje."
+      "about_discovery_how": "Listy poniżej pochodzą z niego; Odśwież znajduje nowe komponenty, urządzenia i wersje.",
+      "music_strip": "Taśma muzyczna",
+      "music_strip_palette_sync": "Taśma używa palety Ramki",
+      "music_strip_device": "Wszystkie ustawienia taśmy na stronie urządzenia"
     },
     "exit": {
       "button": "Wyjdź"

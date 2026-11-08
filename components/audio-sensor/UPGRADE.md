@@ -3,6 +3,22 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## Unreleased: the music strip (SPEC-043)
+
+An addressable LED strip on the board's Grove port follows the music the board hears: a second
+ESPHome package (`esphome/music-strip.yaml`), six styles, every setting an entity of the board;
+in Home Assistant an optional follow-the-music automation, an optional brightness-from-the-room
+automation, `light.music_strip`, `binary_sensor.music_source_strip` and
+`script.audio_sensor_music_strip_palette`. README, "Music strip".
+
+### What a home does
+
+- Nothing, without a strip: a board without `strip:` builds and renders as before.
+- With a strip: add `strip:` to the board's inputs item (`leds`, and `follow` / `ambient_light` if
+  wanted), render and deploy; add the strip package line and `strip_leds` (and `strip_pin` if not
+  GPIO2) to the board's device file (README, "What the board gets"), point both package lines at
+  the release, and flash once over the air. Then turn on the follow and ambient booleans you want.
+
 ## 0.4.0 (unreleased): component-backed assistant answers
 
 `ambient-wave-card` gains an optional `loudness: {entity, show}`: a level entity's value in dB in

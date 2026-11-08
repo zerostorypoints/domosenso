@@ -5,6 +5,10 @@
       "m5stack-atom-echos3r": {
         "description": "A palm-sized ESP32-S3 board with a microphone, a sound chip and Wi-Fi, powered over USB.",
         "does": "Runs ESPHome as a room sound sensor. Every second it reports the loudness and the loudest peak, five times a second a spectrum in 31 bands from deep bass to treble, and it can stream a faster reading on demand. It listens only: the speaker amplifier on the board stays off."
+      },
+      "m5stack-led-strip-sk6812": {
+        "description": "An addressable 5 V RGB LED strip, 60 LEDs per metre, that plugs into the board's Grove port.",
+        "does": "Lights up with the music the sound sensor hears: the board itself draws it, so there is no delay through a server. Six styles, a palette and an intensity are set from the board's own settings in Home Assistant."
       }
     },
     "assistant": {

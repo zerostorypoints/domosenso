@@ -774,6 +774,8 @@ PROFILE_DEFAULTS = {
 }
 MUSIC_LIVE = "input_boolean.ramka_music_live"
 MUSIC_LOUDNESS = "input_boolean.ramka_music_loudness"
+# SPEC-043: the music sensor sub-view's switch that pushes the palette to audio-sensor's music strip.
+STRIP_SYNC = "input_boolean.ramka_music_strip_palette_sync"
 MUSIC_DEFAULTS = {
     **LOOK_DEFAULTS, **PROFILE_DEFAULTS, MUSIC_LIVE: "off",
     "input_select.ramka_music_visual": "spectrum", "input_select.ramka_music_palette": "series",
@@ -782,7 +784,7 @@ MUSIC_DEFAULTS = {
     "input_number.ramka_music_line_width_px": 2.8, "input_boolean.ramka_music_tilt": "on",
     "input_number.ramka_music_spectrum_neutral_db": 30, "input_number.ramka_music_spectrum_hot_db": 70,
     "input_number.ramka_music_level_neutral_db": 30, "input_number.ramka_music_level_hot_db": 70,
-    "input_number.ramka_music_fps": 30, MUSIC_LOUDNESS: "off",
+    "input_number.ramka_music_fps": 30, MUSIC_LOUDNESS: "off", STRIP_SYNC: "off",
 }
 # Which page and group each setting belongs to (SPEC-021's table); ambient_music is state the swipes
 # flip, set only by the presence_display group and the global reset.
@@ -798,7 +800,7 @@ PAGE_OF = {
     **{f"input_boolean.ramka_page_{v}": v for v in PAGE_VIEWS},
     # The visual's settings are the Live visualization sub-view's (SPEC-025 amendment 1); its switch
     # is the Music page's.
-    **{e: "music_live" for e in MUSIC_DEFAULTS}, MUSIC_LIVE: "music",
+    **{e: "music_live" for e in MUSIC_DEFAULTS}, MUSIC_LIVE: "music", STRIP_SYNC: "music_sensor",
 }
 GROUP_OF = {
     **{e: "presence_display" for e in DEFAULTS},
@@ -958,8 +960,8 @@ def test_settings_helpers_stable_ids(plain, demo):
                                 re.split(r",\s*(?![^{]*\})", manifest["provides"]["automations"].split(", with")[0])))
     rendered = defined_entities(demo["package.yaml"])
     assert {e for e in rendered if not e.startswith("automation.")} <= provided
-    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching", "ramka_music_eq_load"} <= automations
-    assert "with music_visual also <prefix>_music_watching and <prefix>_music_eq_load," in manifest["provides"]["automations"]
+    assert {e.split(".", 1)[1] for e in rendered if e.startswith("automation.")} - {"ramka_charger_failed", "ramka_battery_hot", "ramka_music_watching", "ramka_music_eq_load", "ramka_music_strip_palette_sync"} <= automations
+    assert "with music_visual also <prefix>_music_watching, <prefix>_music_eq_load and <prefix>_music_strip_palette_sync," in manifest["provides"]["automations"]
     assert "audition" not in json.dumps(manifest["provides"]) and "audition" not in json.dumps(demo["package.yaml"])
 
 
@@ -2133,9 +2135,10 @@ def test_sensor_subview(demo):
 
 def test_reset_music_sensor_sets_only_the_rate(demo):
     package = demo["package.yaml"]
-    assert run_reset(package, page="music_sensor", states={SPECTRUM_RATE: "eco"}) == {SPECTRUM_RATE: "normal"}
-    # A home without audio-sensor: nothing to set.
-    assert run_reset(package, page="music_sensor") == {}
+    # The rate and the strip's palette sync (SPEC-043), the sub-view's only preferences.
+    assert run_reset(package, page="music_sensor", states={SPECTRUM_RATE: "eco"}) == {SPECTRUM_RATE: "normal", STRIP_SYNC: "off"}
+    # A home without audio-sensor: only the Ramka's own sync switch.
+    assert run_reset(package, page="music_sensor") == {STRIP_SYNC: "off"}
     # The rate is the sub-view's now: Music's Reset leaves it.
     assert SPECTRUM_RATE not in run_reset(package, page="music", states={SPECTRUM_RATE: "eco"})
 

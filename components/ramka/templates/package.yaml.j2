@@ -80,6 +80,14 @@
 [%- set flavours = {'spectrum': ['still', 'swell', 'dune', 'veil', 'voices', 'halo', 'afterglow', 'bars'],
     'level': ['still', 'tide', 'centre', 'timeline', 'clocks', 'ripples', 'tint', 'bars']} -%]
 [%- set palettes = ['zones', 'series', 'calm'] -%]
+[#- SPEC-043: each palette as 5 stops for audio-sensor's music strip, sampled at 0, 0.25, 0.5, 0.75 and 1
+    from the wave card's PALETTES (components/audio-sensor/cards/lib/palette.js; a test keeps them
+    equal). The strip never reads a card. -#]
+[%- set strip_stops = {
+  'zones': ['#03a9f4', '#51b47a', '#b2d460', '#ffb827', '#e53935'],
+  'series': ['#03a9f4', '#4fd1b5', '#f5c542', '#ff9952', '#e53935'],
+  'calm': ['#03a9f4', '#67c7fc', '#c2cca0', '#faa04f', '#e53935'],
+} -%]
 [#- The flavours the Live visualization sub-view offers (SPEC-025 amendment 1): a few of the
     registry's; a home's own music_visual_options flavour joins them when it is another (any of the
     registry's), so it stays selectable and valid. -#]
@@ -170,6 +178,8 @@
 [#- The level in dB in the strip's corner, the Live visualization sub-view's, off by default: a fresh
     boolean is off, and the seed cannot tell that from a home's choice. -#]
 [%- if music_visual is not none -%][%- set _ = settings.append(('input_boolean', 'music_loudness', 'music_live', 'music_visual', false)) -%][%- endif -%]
+[#- SPEC-043: the music sensor sub-view's palette sync, off by default (a fresh boolean is off). -#]
+[%- if music_visual is not none -%][%- set _ = settings.append(('input_boolean', 'music_strip_palette_sync', 'music_sensor', 'music_visual', false)) -%][%- endif -%]
 [%- for key, value in mv.items() -%]
 [%- set _ = settings.append(('input_boolean' if key == 'music_tilt' else 'input_select' if key in ['music_visual', 'music_palette', 'music_spectrum_flavour', 'music_level_flavour'] else 'input_number', key, 'music_live', 'music_visual', value)) -%]
 [%- endfor -%]
@@ -443,6 +453,11 @@ input_boolean:
   [[ p ]]_music_loudness:
     name: [[ named(' music loudness') ]]
     icon: mdi:volume-high
+  # SPEC-043: on, the music palette goes to audio-sensor's music strip. No `initial:`: a fresh
+  # helper is off.
+  [[ p ]]_music_strip_palette_sync:
+    name: [[ named(' music strip palette sync') ]]
+    icon: mdi:palette-swatch-variant
   [[ p ]]_music_tilt:
     name: [[ named(' music tilt') ]]
     icon: mdi:slope-uphill
@@ -1945,6 +1960,38 @@ script:
 
 # One automation per transition; none shares state with another, so no mode: restart races.
 automation:
+[%- if music_visual %]
+  # SPEC-043: the music palette to audio-sensor's music strip, through its script (the Ramka never
+  # writes a board's entity): on a change of the palette and when the sync turns on, while the
+  # selected music sensor has a strip.
+  - id: [[ p ]]_music_strip_palette_sync
+    alias: [[ named(' music strip palette sync') ]]
+    description: Push the Ramka's music palette to the music strip.
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_music_palette
+      - trigger: state
+        entity_id: input_boolean.[[ p ]]_music_strip_palette_sync
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_music_strip_palette_sync
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.music_source_strip
+        state: "on"
+    actions:
+      - variables:
+          stops_by_palette:
+[%- for name in palettes %]
+            [[ name ]]: [[ strip_stops[name] | tojson ]]
+[%- endfor %]
+      - action: script.audio_sensor_music_strip_palette
+        data:
+          stops: >-
+            {{ stops_by_palette.get(states('input_select.[[ p ]]_music_palette'), stops_by_palette.series) }}
+[%- endif %]
 [%- if inputs.shared_thresholds and air_readings %]
   # P3.3 (thresholds: climate-air): climate-air's air limits are the definition; the Ramka's own
   # helpers follow them, at start and on each change, for automations that still read them. They

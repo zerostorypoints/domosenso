@@ -1,0 +1,11 @@
+# SPEC-043. An addressable LED strip a board drives. A strip is not a Home Assistant device of its
+# own: it shows as a light on the board that drives it, here the audio-sensor firmware's Music strip.
+id: led-strip
+match:
+  - integration: esphome
+    manufacturer: domosenso
+    model: audio-sensor
+    entity_domain: light
+    entity_names: ["*Music strip*"]
+    certainty: found
+    note: inference (the light's name in the music-strip package)

@@ -3,12 +3,14 @@
 substitutions:
   room: "living-room"
   area: "Living room"
+  strip_leds: "60"
 
 esphome:
   area: ${area}
 
 packages:
   sensor: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/0.4.0
+  strip: github://zerostorypoints/domosenso/components/audio-sensor/esphome/music-strip.yaml@audio-sensor/0.4.0
 
 wifi:
   ssid: !secret wifi_ssid

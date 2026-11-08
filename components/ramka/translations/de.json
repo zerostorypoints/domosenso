@@ -566,7 +566,10 @@
       "about_found": "in Home Assistant gefunden",
       "about_nav_website": "Website",
       "about_nav_get_started": "Erste Schritte",
-      "about_discovery_how": "Die Listen unten stammen daraus; Aktualisieren findet neue Komponenten, Geräte und Versionen."
+      "about_discovery_how": "Die Listen unten stammen daraus; Aktualisieren findet neue Komponenten, Geräte und Versionen.",
+      "music_strip": "Musik-Streifen",
+      "music_strip_palette_sync": "Streifen übernimmt die Farben der Ramka",
+      "music_strip_device": "Alle Streifen-Einstellungen auf der Geräteseite"
     },
     "exit": {
       "button": "Verlassen"
