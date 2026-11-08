@@ -109,3 +109,27 @@ def test_own_thresholds_are_the_default(tmp_path):
     texts = _texts(tmp_path / "out", _inputs(), home=_home())
     assert "climate_air_" not in texts["dashboard.en.yaml"]
     assert "follow_climate_air" not in texts["package.yaml"]
+
+
+def test_every_home_room_with_air_gets_an_air_page(tmp_path):
+    """0.19.0: each room with air is a page of its own, labelled with the room's name."""
+    inputs = _inputs()
+    inputs.pop("air", None)
+    home = _home()
+    living, bedroom, _ = home["rooms"]
+    bedroom["air"] = {"co2": "sensor.bedroom_co2"}
+    dashboard = yaml.safe_load(_texts(tmp_path / "out", inputs, home=home)["dashboard.en.yaml"])
+    cards = []
+    stack = [dashboard]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            if node.get("type") == "custom:air-card":
+                cards.append(node)
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    titles = {card["title"]: [t["entity"] for t in card["tiles"]] for card in cards}
+    assert set(titles) == {"Living room", "Bedroom"}
+    assert titles["Bedroom"] == ["sensor.bedroom_co2"]
+    assert living["air"]["co2"] in titles["Living room"]

@@ -481,6 +481,7 @@
       "photo_s": "Zeit pro Foto",
       "plants_per_page": "Pflanzen pro Seite",
       "plants_page_s": "Zeit pro Pflanzenseite",
+      "air_page_s": "Zeit pro Raum",
       "plants_discover": "von der Pflanzen-Komponente gefunden",
       "climate_rooms": "Widgets",
       "climate_rooms_how": "Eine Zeile pro Widget (Zahl der Widgets, unter Erweitert). Seine Art, in der Auswahl der Zeile: Temperatur (ein Temperatur- und ein Feuchtigkeitssensor), Luftqualität (CO₂ und PM2.5), Eigenes (zwei beliebige Sensoren mit Einheit) oder Leer (eine leere Kachel auf der Ramka, so stehen die anderen, wo man sie haben will; leere Zeilen am Ende entfallen). Einstellungen, in jeder Zeile: die angenehmen Bereiche eines Temperatur-Widgets, die Grenzen eines Luftqualitäts-Widgets (die der Luft-Seite), die Farbe eines eigenen Widgets. Eine Zeile am Griff ziehen oder die Pfeile nutzen, um die Reihenfolge zu ändern. Das n-te Widget mit Messwert ist die n-te Kachel und die n-te Linie der Diagramme, in der Farbe seines Punkts. Ein leerer Name wird zum Bereich des Sensors.",
