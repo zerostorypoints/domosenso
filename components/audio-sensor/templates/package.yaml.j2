@@ -81,6 +81,7 @@
 [#- SPEC-043: the strip's entities render only when a board has a strip, so a home without one gets the package as before. -#]
 [%- set strips = ns.prepared | selectattr('strip') | list -%]
 [%- set follows = strips | selectattr('strip.follow') | list -%]
+[%- set ambients = strips | selectattr('strip.ambient_light') | list -%]
 [#- A Home Assistant dict literal from the select's area to one field of that board, and the lookup with the select's state. A state that is not an option (`unknown` at a first start, `unavailable` while the helper is missing) reads the `music: true` board; keep that fallback in the lookup. -#]
 [#- `—` maps to "" (no entity), so every alias reads nothing; a state that is no option reads the music board, or "" when there is none. -#]
 [%- macro board_map(field) -%]{[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b[field]) ]], [% endfor %][[ jstr(none_option) ]]: ""}[%- endmacro -%]
@@ -135,6 +136,39 @@ input_number:
     unit_of_measurement: dB
     icon: mdi:ear-hearing
 [%- endfor %]
+[%- for b in ambients %]
+  # SPEC-043: the room's light level to the strip's brightness, linear in log lux between dark and bright.
+  [[ b.prefix ]]_strip_ambient_dark_lux:
+    name: [[ jstr(b.area ~ ' strip dark at') ]]
+    min: 0
+    max: 10000
+    step: 1
+    mode: box
+    unit_of_measurement: lx
+    icon: mdi:weather-night
+  [[ b.prefix ]]_strip_ambient_bright_lux:
+    name: [[ jstr(b.area ~ ' strip bright at') ]]
+    min: 0
+    max: 10000
+    step: 1
+    mode: box
+    unit_of_measurement: lx
+    icon: mdi:weather-sunny
+  [[ b.prefix ]]_strip_ambient_min_pct:
+    name: [[ jstr(b.area ~ ' strip brightness in the dark') ]]
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:brightness-4
+  [[ b.prefix ]]_strip_ambient_max_pct:
+    name: [[ jstr(b.area ~ ' strip brightness in daylight') ]]
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:brightness-7
+[%- endfor %]
 [%- for b in follows %]
   [[ b.prefix ]]_strip_follow_off_delay:
     name: [[ jstr(b.area ~ ' strip off delay') ]]
@@ -152,6 +186,13 @@ input_boolean:
   [[ b.prefix ]]_spl_calibrated:
     name: [[ b.calibrated_label | yaml ]]
     icon: mdi:check-decagram
+[%- endfor %]
+[%- for b in ambients %]
+  # SPEC-043: on, the strip's brightness follows [[ b.strip.ambient_light ]]. No initial: a fresh
+  # helper starts off; the README says to turn it on and set the curve.
+  [[ b.prefix ]]_strip_ambient:
+    name: [[ jstr(b.area ~ ' strip follows room light') ]]
+    icon: mdi:brightness-auto
 [%- endfor %]
 [%- for b in follows %]
   # SPEC-043: on, the strip turns on while [[ b.strip.follow ]] plays and off after the delay.
@@ -632,4 +673,52 @@ automation:
           - action: light.turn_off
             target:
               entity_id: [[ b.strip_light ]]
+[%- endfor %]
+[%- for b in ambients %]
+
+  # SPEC-043: the strip's brightness follows [[ b.strip.ambient_light ]] while the strip is on: on a
+  # change of more than 10 %, at most once every 10 s (single mode and the closing delay).
+  - id: [[ b.prefix ]]_strip_ambient
+    alias: [[ jstr(b.area ~ ' strip brightness follows the room') ]]
+    description: Set the music strip's brightness from the room's light level.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: [[ b.strip.ambient_light ]]
+        to: null
+    conditions:
+      - condition: state
+        entity_id: input_boolean.[[ b.prefix ]]_strip_ambient
+        state: "on"
+      - condition: state
+        entity_id: [[ b.strip_light ]]
+        state: "on"
+      - condition: template
+        value_template: >-
+          {% set new = trigger.to_state.state if trigger.to_state is not none else 'unavailable' %}
+          {% set old = trigger.from_state.state if trigger.from_state is not none else 'unavailable' %}
+          {% if new in ['unavailable', 'unknown'] or not new | is_number %}false
+          {% elif old in ['unavailable', 'unknown'] or not old | is_number %}true
+          {% else %}{{ (new | float - old | float) | abs > 0.1 * ([old | float, 1] | max) }}{% endif %}
+    actions:
+      - variables:
+          brightness_pct: >-
+            {% set lux = [states('[[ b.strip.ambient_light ]]') | float(0), 0.1] | max %}
+            {# A fresh curve (every helper at its minimum, 0) means the home has not set one: the defaults. #}
+            {% set fresh = states('input_number.[[ b.prefix ]]_strip_ambient_max_pct') | float(0) <= 0 %}
+            {% set dark = [5 if fresh else states('input_number.[[ b.prefix ]]_strip_ambient_dark_lux') | float(5), 0.1] | max %}
+            {% set bright = [300 if fresh else states('input_number.[[ b.prefix ]]_strip_ambient_bright_lux') | float(300), dark * 1.01] | max %}
+            {% set low = 20 if fresh else states('input_number.[[ b.prefix ]]_strip_ambient_min_pct') | float(20) %}
+            {% set high = 100 if fresh else states('input_number.[[ b.prefix ]]_strip_ambient_max_pct') | float(100) %}
+            {% set t = ((lux | log(10)) - (dark | log(10))) / ((bright | log(10)) - (dark | log(10))) %}
+            {% set t = [t, 0] | max %}{% set t = [t, 1] | min %}
+            {{ (low + (high - low) * t) | round(0) }}
+      - action: light.turn_on
+        target:
+          entity_id: [[ b.strip_light ]]
+        data:
+          brightness_pct: "{{ brightness_pct }}"
+      - delay:
+          seconds: 10
 [%- endfor %]

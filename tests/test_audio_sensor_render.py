@@ -824,3 +824,76 @@ def test_palette_script_writes_custom_and_selects_it(tmp_path):
     assert evaluate(ok, {}) == "True"
     assert evaluate(bad_count, {}) == "False"
     assert evaluate(bad_colour, {}) == "False"
+
+
+# SPEC-043 stage B: brightness from the room.
+def _with_ambient():
+    inputs = copy.deepcopy(demo_inputs())
+    inputs["sensors"][0]["strip"] = {"leds": 60, "ambient_light": "sensor.living_room_illuminance"}
+    return inputs
+
+
+def test_ambient_only_with_ambient_light(tmp_path):
+    no_ambient = copy.deepcopy(demo_inputs())
+    no_ambient["sensors"][0]["strip"] = {"leds": 60}
+    plain = render(tmp_path / "a", no_ambient)
+    assert not any("_strip_ambient" in h for h in plain["input_number"])
+    assert "living_room_strip_ambient" not in plain["input_boolean"]
+    package = render(tmp_path / "b", _with_ambient())
+    numbers = package["input_number"]
+    for key, (lo, hi) in {"dark_lux": (0, 10000), "bright_lux": (0, 10000), "min_pct": (0, 100), "max_pct": (0, 100)}.items():
+        helper = numbers[f"living_room_strip_ambient_{key}"]
+        assert (helper["min"], helper["max"]) == (lo, hi) and "initial" not in helper
+    assert "initial" not in package["input_boolean"]["living_room_strip_ambient"]
+
+
+AMBIENT_CURVE = {
+    "input_number.living_room_strip_ambient_dark_lux": "5",
+    "input_number.living_room_strip_ambient_bright_lux": "300",
+    "input_number.living_room_strip_ambient_min_pct": "20",
+    "input_number.living_room_strip_ambient_max_pct": "100",
+}
+
+
+@pytest.mark.parametrize("lux, pct", [(2, 20), (5, 20), (39, 60), (300, 100), (1000, 100)])
+def test_ambient_curve(tmp_path, lux, pct):
+    automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
+    template = automation["actions"][0]["variables"]["brightness_pct"]
+    states = {**AMBIENT_CURVE, "sensor.living_room_illuminance": str(lux)}
+    import math
+    env = jinja2.Environment()
+    env.filters["float"] = lambda v, d=0: float(v) if str(v).replace(".", "", 1).lstrip("-").isdigit() else d
+    env.filters["log"] = lambda v, base=math.e: math.log(v, base)
+    env.globals["states"] = lambda e: states.get(e, "unavailable")
+    got = float(env.from_string(template).render().strip())
+    assert abs(got - pct) <= 1, (lux, got)
+
+
+def test_ambient_rate_limit(tmp_path):
+    automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
+    assert automation["mode"] == "single"
+    trigger = automation["triggers"][0]
+    assert trigger["entity_id"] == "sensor.living_room_illuminance"
+    text = yaml.safe_dump(automation)
+    assert "input_boolean.living_room_strip_ambient" in text
+    assert {"condition": "state", "entity_id": STRIP_LIGHT, "state": "on"} in automation["conditions"]
+    assert {"condition": "state", "entity_id": "input_boolean.living_room_strip_ambient", "state": "on"} in automation["conditions"]
+    assert "0.1" in text  # a change of more than 10 %
+    assert "unavailable" in text
+    assert automation["actions"][-1] == {"delay": {"seconds": 10}}
+
+
+def test_ambient_curve_falls_back_to_the_defaults_while_fresh(tmp_path):
+    # A new input_number starts at its minimum (0): until the home sets the curve, the spec's
+    # defaults apply, 5 lx -> 20 %, 300 lx -> 100 %, not a strip at 0 %.
+    automation = _automation(render(tmp_path, _with_ambient()), "living_room_strip_ambient")
+    template = automation["actions"][0]["variables"]["brightness_pct"]
+    import math
+    env = jinja2.Environment()
+    env.filters["float"] = lambda v, d=0: float(v) if str(v).replace(".", "", 1).lstrip("-").isdigit() else d
+    env.filters["log"] = lambda v, base=math.e: math.log(v, base)
+    fresh = {k: "0" for k in AMBIENT_CURVE}
+    for lux, pct in [(39, 60), (2, 20), (1000, 100)]:
+        states = {**fresh, "sensor.living_room_illuminance": str(lux)}
+        env.globals["states"] = lambda e, states=states: states.get(e, "unavailable")
+        assert abs(float(env.from_string(template).render().strip()) - pct) <= 1, lux

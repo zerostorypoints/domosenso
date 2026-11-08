@@ -163,6 +163,9 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "input_number.<id_prefix>_strip_follow_off_delay", stability: stable, note: "SPEC-043, with strip.follow; 0-600 s, step 5; the delay before the strip turns off; no initial:"}
     - {id: "input_select.<id_prefix>_strip_follow_effect", stability: stable, note: "SPEC-043, with strip.follow; keep, Pulse, Glow, Bands, Centre meter, Spectrum, Ripple; options additive-only"}
     - {id: "automation.<id_prefix>_strip_follow_music", unique_id: "<id_prefix>_strip_follow_music", stability: additive-only, note: "SPEC-043, with strip.follow; restart mode; ignores attribute changes and unavailable/unknown"}
+    - {id: "input_boolean.<id_prefix>_strip_ambient", stability: stable, note: "SPEC-043 stage B, with strip.ambient_light; on: the strip's brightness follows the light sensor while the strip is on; no initial: (off until the home turns it on)"}
+    - {id: "input_number.<id_prefix>_strip_ambient_{dark_lux,bright_lux,min_pct,max_pct}", stability: stable, note: "SPEC-043 stage B; the curve, linear in log lux; while max_pct is 0 (a fresh helper) the automation uses 5 lx -> 20 %, 300 lx -> 100 %"}
+    - {id: "automation.<id_prefix>_strip_ambient", unique_id: "<id_prefix>_strip_ambient", stability: additive-only, note: "SPEC-043 stage B; on a change of more than 10 %, at most every 10 s, only while the strip is on"}
 
   # The board's ESPHome entities. Home Assistant builds their ids from the device's area and names
   # when the board is adopted (a renamed device keeps its old ids), so they are declared, not
