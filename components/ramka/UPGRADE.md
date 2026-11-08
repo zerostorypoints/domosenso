@@ -10,6 +10,31 @@ sensor has one, and `input_boolean.<prefix>_music_strip_palette_sync` (off) push
 to it. A home without a strip sees no change. Update audio-sensor with it: the rows read its
 `binary_sensor.music_source_strip`.
 
+## 0.19.0 (2026-11-07): an Air page per room (SPEC-042)
+
+The `air` input may now be a list of rooms, each `{label, room?, score?, co2?, pm2_5?, voc?, nox?}`
+with at least one reading. With more than one room, the Air page gets a page per room, titled with
+its label and showing only that room's readings and charts. The ambient loop shows each room for
+`input_number.<prefix>_air_page_s` (5–30 s, default 15; Air, Advanced on the settings page) and the
+sideways swipes step through the rooms, as they do through the plant pages. The switches, the limits
+and the colours stay one set for all rooms. With the shared home inputs, every room with air now gets
+a page; before, only the first one did.
+
+What a home does: nothing, while `air` stays one set of readings: it renders as before. To add a
+room, turn `air` into a list:
+
+```yaml
+air:
+  - {label: Dining, score: sensor.dining_air_quality_score, co2: sensor.dining_air_carbon_dioxide}
+  - {label: Bedroom, co2: sensor.bedroom_co2}
+```
+
+Then `domosenso render ramka` and deploy. Two helpers appear: `input_number.<prefix>_air_page_s` and
+`input_number.<prefix>_air_page`.
+
+For every home: a lone reading on the air-card now takes both rows, as large as the score, and a lone
+24-hour chart below it the full width (SPEC-042).
+
 ## 0.18.0 (unreleased): reading age for managed plant sources
 
 Plants with the new opt-in measurement bindings show the age of the last
@@ -28,7 +53,7 @@ The Ramka declares `uses_home: optional`. When the home has shared inputs (`home
 - `lights`: each room's lights, labelled with the room's name or the light's own name;
 - `climate`: each room with climate, labelled with the room's name;
 - `outside` and `weather`;
-- `air`: the first room with air;
+- `air`: the first room with air (every room with air since 0.19.0);
 - `covers`: each room's listed covers;
 - `status` contacts and locks: each room's listed ones.
 

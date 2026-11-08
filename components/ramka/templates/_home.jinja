@@ -6,7 +6,7 @@
               labelled with the room's name, room = the room's id
      climate  each room with climate: {label: the room's name, temperature, humidity?, room}
      outside  the home's outside {temperature, humidity?}
-     air      the first room with air (the Air page shows one set)
+     air      every room with air: {label: the room's name, room, its readings}, a page each (0.19.0)
      weather  the home's weather
      covers   each room's listed covers: {entity, label: its name, else the room's, room}
      status   contacts and locks from the rooms' lists, {entity, label}, beside the Ramka's own status
@@ -27,7 +27,7 @@
 [%- set _ = merged.update({'air_limit_ids': limit_ids, 'shared_thresholds': shared}) -%]
 [%- if home is defined and home -%]
 [%- macro _name(item, room) -%][[ room_name(item) if item is mapping and item.name is defined else room_name(room) ]][%- endmacro -%]
-[%- set ns = namespace(lights=[], climate=[], covers=[], contacts=[], locks=[], air=none) -%]
+[%- set ns = namespace(lights=[], climate=[], covers=[], contacts=[], locks=[], air=[]) -%]
 [%- for room in home.rooms -%]
   [%- if room.lights is defined -%]
     [%- for item in ([room.lights] if room.lights is string else room.lights) -%]
@@ -39,7 +39,7 @@
     [%- if room.climate.humidity is defined %][% set _ = row.update({'humidity': room.climate.humidity}) %][% endif -%]
     [%- set ns.climate = ns.climate + [row] -%]
   [%- endif -%]
-  [%- if room.air is defined and ns.air is none %][% set ns.air = room.air %][% endif -%]
+  [%- if room.air is defined %][% set ns.air = ns.air + [dict(room.air, label=room_name(room), room=room.id)] %][% endif -%]
   [%- for kind in ('covers', 'contacts', 'locks') if room[kind] is defined -%]
     [%- for item in room[kind] -%]
       [%- set row = {'entity': item if item is string else item.entity, 'label': _name(item, room)} -%]
@@ -72,4 +72,21 @@
 [%- if status.contacts is not defined and ns.contacts %][% set _ = status.update({'contacts': ns.contacts}) %][% endif -%]
 [%- if status.locks is not defined and ns.locks %][% set _ = status.update({'locks': ns.locks}) %][% endif -%]
 [%- if status %][% set _ = merged.update({'status': status}) %][% endif -%]
+[%- endif -%]
+[#- 0.19.0: `air` is one set of readings (a mapping, as before) or a list of rooms, each
+    {label, room?, score?, co2?, pm2_5?, voc?, nox?}: the Air page gets a page per room. The templates
+    read `air_rooms` (the list, one item for a mapping) for the pages and `air` (every reading any room
+    has, the first room's entity for each) for the helpers, switches and limits, which all rooms share. -#]
+[%- set _air = merged.air if merged.air is defined else none -%]
+[%- if _air is mapping %][% set _rooms = [_air] %][% elif _air %][% set _rooms = _air | list %][% else %][% set _rooms = [] %][% endif -%]
+[%- for room in _rooms -%]
+  [%- if not (air_limits | select('in', room) | list) -%][[ fail('ramka: air: every room needs a reading (score, co2, pm2_5, voc or nox)') ]][%- endif -%]
+  [%- if _rooms | length > 1 and (room.label is not defined or not room.label) -%][[ fail('ramka: air: with more than one room every room needs a label') ]][%- endif -%]
+[%- endfor -%]
+[%- if _rooms -%]
+  [%- set union = {} -%]
+  [%- for room in _rooms -%]
+    [%- for reading in air_limits if room[reading] is defined and reading not in union %][% set _ = union.update({reading: room[reading]}) %][% endfor -%]
+  [%- endfor -%]
+  [%- set _ = merged.update({'air': union, 'air_rooms': _rooms}) -%]
 [%- endif -%]

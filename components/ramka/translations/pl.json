@@ -481,6 +481,7 @@
       "photo_s": "Czas na zdjęcie",
       "plants_per_page": "Roślin na stronę",
       "plants_page_s": "Czas na stronę roślin",
+      "air_page_s": "Czas na pokój",
       "plants_discover": "znalezione przez komponent roślin",
       "climate_rooms": "Widżety",
       "climate_rooms_how": "Jeden wiersz na widżet (Liczba widżetów, w Zaawansowanych). Jego rodzaj, z listy w wierszu: Temperatura (temperatura i wilgotność), Jakość powietrza (CO₂ i PM2.5), Własny (dowolne dwa czujniki z jednostką) albo Pusty (pusty kafelek na Ramce, dzięki czemu pozostałe stoją tam, gdzie chcesz; puste wiersze na końcu są pomijane). Ustawienia, w każdym wierszu: komfortowe zakresy widżetu Temperatura, progi widżetu Jakość powietrza (te ze strony Powietrze), kolor widżetu Własny. Przeciągnij wiersz za uchwyt albo użyj strzałek, aby zmienić kolejność. N-ty widżet z pomiarem to n-ty kafelek i n-ta linia wykresów, w kolorze jego kropki. Pusta nazwa staje się obszarem czujnika.",
