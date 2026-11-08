@@ -154,6 +154,16 @@ provides:                                 # contract surface; placeholders in <>
     - {id: "input_boolean.audio_sensor_music_watching", stability: stable, note: "always rendered; on while a view shows the music visual (the Ramka sets it); no initial:"}
     - {id: "automation.audio_sensor_music_spectrum_rate", unique_id: audio_sensor_music_spectrum_rate, stability: additive-only, note: "sets the selected board's Spectrum rate to the choice, fast only while watching is on (else normal, 10 s after watching turns off); re-applies on HA start, a source change and any change of the board's select, its 60 min timeout included; the board a source change leaves goes back to normal"}
 
+    # SPEC-043: the music strip, rendered only when a board has `strip:`. A home without a strip
+    # gets none of these.
+    - {id: "light.music_strip", stability: stable, note: "SPEC-043; the selected board's strip light: on/off, brightness, effect; unavailable while that board has no strip"}
+    - {id: "binary_sensor.music_source_strip", stability: stable, note: "SPEC-043; on while the selected board has a strip light; never unavailable; sensor.music_source's capabilities then end with strip (additive)"}
+    - {id: "script.audio_sensor_music_strip_palette", stability: stable, note: "SPEC-043; field stops (2 to 5 #rrggbb): writes them to the selected board's custom palette and selects custom; changes nothing for other stops or a board without a strip"}
+    - {id: "input_boolean.<id_prefix>_strip_follow_music", stability: stable, note: "SPEC-043, with strip.follow; on: the strip turns on while the follow entity plays (media player) or is on; no initial:"}
+    - {id: "input_number.<id_prefix>_strip_follow_off_delay", stability: stable, note: "SPEC-043, with strip.follow; 0-600 s, step 5; the delay before the strip turns off; no initial:"}
+    - {id: "input_select.<id_prefix>_strip_follow_effect", stability: stable, note: "SPEC-043, with strip.follow; keep, Pulse, Glow, Bands, Centre meter, Spectrum, Ripple; options additive-only"}
+    - {id: "automation.<id_prefix>_strip_follow_music", unique_id: "<id_prefix>_strip_follow_music", stability: additive-only, note: "SPEC-043, with strip.follow; restart mode; ignores attribute changes and unavailable/unknown"}
+
   # The board's ESPHome entities. Home Assistant builds their ids from the device's area and names
   # when the board is adopted (a renamed device keeps its old ids), so they are declared, not
   # promised (docs/COMPATIBILITY.md): the home's `entities` input maps each `entity_key` to its id.

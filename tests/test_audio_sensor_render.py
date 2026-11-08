@@ -122,7 +122,8 @@ def test_two_music_sensors_fail(tmp_path):
 
 def test_offset_helper_has_no_initial(demo):
     helpers = demo["input_number"]
-    assert set(helpers) == {"living_room_spl_offset", "kids_room_spl_offset", "audio_sensor_measured_offset"}
+    # The demo's strip adds its own helpers (SPEC-043); these are the calibration ones.
+    assert {h for h in helpers if "_strip_" not in h} == {"living_room_spl_offset", "kids_room_spl_offset", "audio_sensor_measured_offset"}
     for helper in (helpers["living_room_spl_offset"], helpers["kids_room_spl_offset"]):
         assert "initial" not in helper
         assert (helper["min"], helper["max"], helper["step"]) == (0, 140, 0.1)
@@ -209,7 +210,7 @@ def test_alias_templates_stay_cheap(demo):
 
 def test_entities_carry_the_component_and_boards_their_area(demo):
     found = templates(demo)
-    assert len(found) == 13
+    assert len(found) == 14  # the demo board's strip adds binary_sensor.music_source_strip (SPEC-043)
     for entity in found.values():
         assert entity["attributes"]["component"] == "audio-sensor"
     assert found["audio_sensor_kids_room_spl_offset"]["attributes"]["area"] == "Kids' room"
@@ -243,7 +244,7 @@ def test_no_music_board_renders_the_select_with_none_first(tmp_path):
     t = templates(package)["audio_sensor_music_level"]
     assert evaluate(t.get("availability", "true"), {SELECT: "unknown", LIVING_LEVEL: "-40"}) == "False"
     assert evaluate(t.get("availability", "true"), {SELECT: "Kids' room", KIDS_LEVEL: "-40"}) == "True"
-    assert set(package["input_number"]) == {
+    assert {h for h in package["input_number"] if "_strip_" not in h} == {
         "audio_sensor_measured_offset", "living_room_spl_offset", "kids_room_spl_offset"}
     # The per-board flag and note exist for every board.
     assert {"living_room_spl_calibrated", "kids_room_spl_calibrated"} <= set(package["input_boolean"])
@@ -665,7 +666,8 @@ def test_abilities_are_trigger_based_and_cheap(demo):
         for e in b.get("sensor", []))]
     assert len(blocks) == 1
     block = blocks[0]
-    assert {e["unique_id"] for e in block["binary_sensor"]} == set(ABILITY.values())
+    # The demo's living-room board has a strip (SPEC-043), which adds its ability.
+    assert {e["unique_id"] for e in block["binary_sensor"]} == set(ABILITY.values()) | {"audio_sensor_music_source_strip"}
     triggers = block["triggers"]
     assert {"trigger": "homeassistant", "event": "start"} in triggers
     assert {"trigger": "state", "entity_id": SELECT} in triggers
@@ -721,3 +723,104 @@ def test_strip_input_validation(tmp_path, strip, message):
     inputs["sensors"][0]["strip"] = strip
     with pytest.raises(dr.RenderError, match=message):
         render_text(tmp_path, inputs)
+
+
+# SPEC-043 stage A: follow the music, the strip alias, the palette script.
+STRIP_LIGHT = "light.living_room_audio_sensor_living_room_music_strip"
+STRIP_PALETTE = "select.living_room_audio_sensor_living_room_strip_palette"
+STRIP_CUSTOM = "text.living_room_audio_sensor_living_room_strip_custom_palette"
+
+
+def _without_strips():
+    inputs = copy.deepcopy(demo_inputs())
+    for s in inputs["sensors"]:
+        s.pop("strip", None)
+    return inputs
+
+
+def _with_follow(follow="media_player.living_room_speaker"):
+    inputs = copy.deepcopy(demo_inputs())
+    inputs["sensors"][0]["strip"] = {"leds": 60, "follow": follow}
+    return inputs
+
+
+def _automation(package, automation_id):
+    return next(a for a in package["automation"] if a["id"] == automation_id)
+
+
+def test_no_strip_renders_byte_identical(tmp_path):
+    # tests/fixtures/audio_sensor/package-without-strip.yaml is the package rendered before SPEC-043;
+    # regenerate it only for a change meant for homes without a strip too.
+    expected = (REPO / "tests/fixtures/audio_sensor/package-without-strip.yaml").read_text(encoding="utf-8")
+    assert render_text(tmp_path, _without_strips()) == expected
+
+
+def test_follow_helpers_and_automation_only_with_follow(tmp_path):
+    no_follow = copy.deepcopy(demo_inputs())
+    no_follow["sensors"][0]["strip"] = {"leds": 60}
+    plain = render(tmp_path / "a", no_follow)
+    assert "living_room_strip_follow_music" not in plain.get("input_boolean", {})
+    assert not any(a["id"] == "living_room_strip_follow_music" for a in plain["automation"])
+
+    package = render(tmp_path / "b", _with_follow())
+    assert package["input_boolean"]["living_room_strip_follow_music"].get("initial") is None
+    delay = package["input_number"]["living_room_strip_follow_off_delay"]
+    assert (delay["min"], delay["max"], delay["step"]) == (0, 600, 5) and "initial" not in delay
+    effects = package["input_select"]["living_room_strip_follow_effect"]
+    assert effects["options"] == ["keep", "Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple"]
+    assert "initial" not in effects
+
+    automation = _automation(package, "living_room_strip_follow_music")
+    trigger = automation["triggers"][0]
+    assert trigger["entity_id"] == "media_player.living_room_speaker" and trigger["to"] is None
+    assert automation["mode"] == "restart"
+    text = yaml.safe_dump(automation)
+    assert "input_boolean.living_room_strip_follow_music" in text
+    assert "input_number.living_room_strip_follow_off_delay" in text
+    assert STRIP_LIGHT in text
+    assert "'playing'" in text
+
+
+def test_follow_reads_on_for_a_non_media_player(tmp_path):
+    automation = _automation(render(tmp_path, _with_follow("binary_sensor.music_playing")), "living_room_strip_follow_music")
+    playing = automation["actions"][0]["variables"]["playing"]
+    assert "'on'" in playing and "'playing'" not in playing
+
+
+def test_follow_ignores_unavailable_and_unknown(tmp_path):
+    automation = _automation(render(tmp_path, _with_follow()), "living_room_strip_follow_music")
+    conditions = yaml.safe_dump(automation["conditions"])
+    assert "unavailable" in conditions and "unknown" in conditions
+
+
+def test_music_strip_alias_follows_the_selected_board(tmp_path):
+    package = render(tmp_path, demo_inputs())
+    light = next(l for block in package["template"] for l in block.get("light", []))
+    assert light["default_entity_id"] == "light.music_strip"
+    assert evaluate(light["availability"], {SELECT: "Living room", STRIP_LIGHT: "on"}) == "True"
+    assert evaluate(light["availability"], {SELECT: "Kids' room", STRIP_LIGHT: "on"}) == "False"
+    assert evaluate(light["state"], {SELECT: "Living room", STRIP_LIGHT: "on"}) == "True"
+
+    found = templates(package)
+    strip = found["audio_sensor_music_source_strip"]
+    assert strip["default_entity_id"] == "binary_sensor.music_source_strip"
+    assert evaluate(strip["state"], {SELECT: "Living room", STRIP_LIGHT: "off"}) == "True"
+    assert evaluate(strip["state"], {SELECT: "Kids' room", STRIP_LIGHT: "off"}) == "False"
+    assert evaluate(strip["state"], {SELECT: NONE}) == "False"
+    caps = found["audio_sensor_music_source"]["attributes"]["capabilities"]
+    assert evaluate(caps, {SELECT: "Living room", STRIP_LIGHT: "off"}).endswith("'strip']")
+
+
+def test_palette_script_writes_custom_and_selects_it(tmp_path):
+    script = render(tmp_path, demo_inputs())["script"]["audio_sensor_music_strip_palette"]
+    assert "stops" in script["fields"]
+    text = yaml.safe_dump(script)
+    assert "text.set_value" in text and "select.select_option" in text
+    assert STRIP_CUSTOM in text and STRIP_PALETTE in text and "custom" in text
+    guard = script["sequence"][0]["value_template"]
+    ok = "{% set stops = ['#ff3000', '#00ff00'] %}" + guard
+    bad_count = "{% set stops = ['#ff3000'] %}" + guard
+    bad_colour = "{% set stops = ['#ff3000', 'red'] %}" + guard
+    assert evaluate(ok, {}) == "True"
+    assert evaluate(bad_count, {}) == "False"
+    assert evaluate(bad_colour, {}) == "False"

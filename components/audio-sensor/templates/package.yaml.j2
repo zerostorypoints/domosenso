@@ -60,7 +60,10 @@
     'offset': 'input_number.' ~ prefix ~ '_spl_offset',
     'calibrated': 'input_boolean.' ~ prefix ~ '_spl_calibrated',
     'note': 'input_text.' ~ prefix ~ '_spl_note',
-    'strip': strip_item
+    'strip': strip_item,
+    'strip_light': strip_item.light if strip_item else '',
+    'strip_palette': strip_item.palette if strip_item else '',
+    'strip_custom': strip_item.custom_palette if strip_item else ''
   } -%]
   [%- set ns.prepared = ns.prepared + [item] -%]
   [%- if board.music | default(false) -%][%- set ns.music = ns.music + [item] -%][%- endif -%]
@@ -75,6 +78,9 @@
   [%- if b.area in seen.areas -%][[ fail('duplicate area: ' ~ b.area) ]][%- endif -%]
   [%- set seen.areas = seen.areas + [b.area] -%]
 [%- endfor -%]
+[#- SPEC-043: the strip's entities render only when a board has a strip, so a home without one gets the package as before. -#]
+[%- set strips = ns.prepared | selectattr('strip') | list -%]
+[%- set follows = strips | selectattr('strip.follow') | list -%]
 [#- A Home Assistant dict literal from the select's area to one field of that board, and the lookup with the select's state. A state that is not an option (`unknown` at a first start, `unavailable` while the helper is missing) reads the `music: true` board; keep that fallback in the lookup. -#]
 [#- `—` maps to "" (no entity), so every alias reads nothing; a state that is no option reads the music board, or "" when there is none. -#]
 [%- macro board_map(field) -%]{[% for b in ordered %][[ jstr(b.area) ]]: [[ jstr(b[field]) ]], [% endfor %][[ jstr(none_option) ]]: ""}[%- endmacro -%]
@@ -84,7 +90,7 @@
 [%- macro available(field) -%]{% set entity = [[ lookup(field) ]] %}{{ entity != '' and has_value(entity) }}[%- endmacro -%]
 [#- The abilities' expressions (SPEC-025): an ability is what the board can do, not whether it sends data now. An existing entity that is unavailable or unknown keeps its ability; a missing one, or no sensor (""), has none. `ability(kind)` sets a Home Assistant variable named `kind`. -#]
 [%- set gone = "['unavailable', 'unknown']" -%]
-[%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain'} -%]
+[%- set ability_field = {'spectrum': 'spectrum', 'level': 'level', 'calibration': 'level', 'rate': 'spectrum_rate', 'gain': 'mic_gain', 'strip': 'strip_light'} -%]
 [%- macro ability(kind) -%]
 {% set e = [[ lookup(ability_field[kind]) ]] %}{% set here = e != '' and expand(e) | count == 1 %}
 [%- if kind == 'spectrum' -%]
@@ -93,6 +99,8 @@
 {% set [[ kind ]] = here and (states(e) in [[ gone ]] or states(e) | is_number) %}
 [%- elif kind == 'rate' -%]
 {% set options = state_attr(e, 'options') %}{% set rate = here and ((options is none and states(e) in [[ gone ]]) or (options is not none and ['eco', 'normal', 'fast'] | reject('in', options) | list | count == 0)) %}
+[%- elif kind == 'strip' -%]
+{% set strip = here %}
 [%- else -%]
 {% set gain = here %}
 [%- endif -%]
@@ -127,6 +135,16 @@ input_number:
     unit_of_measurement: dB
     icon: mdi:ear-hearing
 [%- endfor %]
+[%- for b in follows %]
+  [[ b.prefix ]]_strip_follow_off_delay:
+    name: [[ jstr(b.area ~ ' strip off delay') ]]
+    min: 0
+    max: 600
+    step: 5
+    mode: box
+    unit_of_measurement: s
+    icon: mdi:timer-sand
+[%- endfor %]
 
 # Per board: whether the offset was measured (off = an estimate) and a note on how.
 input_boolean:
@@ -134,6 +152,12 @@ input_boolean:
   [[ b.prefix ]]_spl_calibrated:
     name: [[ b.calibrated_label | yaml ]]
     icon: mdi:check-decagram
+[%- endfor %]
+[%- for b in follows %]
+  # SPEC-043: on, the strip turns on while [[ b.strip.follow ]] plays and off after the delay.
+  [[ b.prefix ]]_strip_follow_music:
+    name: [[ jstr(b.area ~ ' strip follows music') ]]
+    icon: mdi:music-circle
 [%- endfor %]
 [%- if boards %]
   # On while some view shows the music visual (the Ramka sets it): the spectrum rate `fast` applies
@@ -186,6 +210,20 @@ input_select:
       - eco
       - fast
 [%- endif %]
+[%- for b in follows %]
+  # The style the strip turns on with; keep leaves the light's last effect.
+  [[ b.prefix ]]_strip_follow_effect:
+    name: [[ jstr(b.area ~ ' strip follow effect') ]]
+    icon: mdi:led-strip-variant
+    options:
+      - keep
+      - Pulse
+      - Glow
+      - Bands
+      - Centre meter
+      - Spectrum
+      - Ripple
+[%- endfor %]
 
 # The spectrum (31 values, five times a second) is only for the live wave, never for history.
 recorder:
@@ -318,7 +356,7 @@ template:
           component: audio-sensor
           interface: 1
           capabilities: >-
-            [[ ability('spectrum') ]][[ ability('level') ]][[ ability('rate') ]][[ ability('calibration') ]][[ ability('gain') ]]{{ (['spectrum'] if spectrum else []) + (['level'] if level else []) + (['rate'] if rate else []) + (['calibration'] if calibration else []) + (['gain'] if gain else []) }}
+            [[ ability('spectrum') ]][[ ability('level') ]][[ ability('rate') ]][[ ability('calibration') ]][[ ability('gain') ]][% if strips %][[ ability('strip') ]][% endif %]{{ (['spectrum'] if spectrum else []) + (['level'] if level else []) + (['rate'] if rate else []) + (['calibration'] if calibration else []) + (['gain'] if gain else [])[% if strips %] + (['strip'] if strip else [])[% endif %] }}
     binary_sensor:
       - name: Music source spectrum
         unique_id: audio_sensor_music_source_spectrum
@@ -348,6 +386,61 @@ template:
           [[ ability('calibration') ]]{{ calibration }}
         attributes:
           component: audio-sensor
+[%- if strips %]
+      # SPEC-043: on while the selected board has a music strip (its light exists).
+      - name: Music source strip
+        unique_id: audio_sensor_music_source_strip
+        default_entity_id: binary_sensor.music_source_strip
+        state: >-
+          [[ ability('strip') ]]{{ strip }}
+        attributes:
+          component: audio-sensor
+[%- endif %]
+[%- endif %]
+[%- if strips %]
+
+  # SPEC-043: the selected board's music strip under a name that does not depend on the room, for a
+  # consumer (the Ramka) that switches it or picks a style. Every other strip setting is on the
+  # board's own device page.
+  - light:
+      - name: Music strip
+        unique_id: audio_sensor_music_strip
+        default_entity_id: light.music_strip
+        icon: mdi:led-strip-variant
+        availability: >-
+          [[ available('strip_light') ]]
+        state: >-
+          {{ is_state([[ lookup('strip_light') ]], 'on') }}
+        level: >-
+          {{ state_attr([[ lookup('strip_light') ]], 'brightness') | int(0) }}
+        effect_list: >-
+          {{ state_attr([[ lookup('strip_light') ]], 'effect_list') or [] }}
+        effect: >-
+          {{ state_attr([[ lookup('strip_light') ]], 'effect') }}
+        turn_on:
+          - action: light.turn_on
+            target:
+              entity_id: >-
+                {{ [[ lookup('strip_light') ]] }}
+        turn_off:
+          - action: light.turn_off
+            target:
+              entity_id: >-
+                {{ [[ lookup('strip_light') ]] }}
+        set_level:
+          - action: light.turn_on
+            target:
+              entity_id: >-
+                {{ [[ lookup('strip_light') ]] }}
+            data:
+              brightness: "{{ brightness }}"
+        set_effect:
+          - action: light.turn_on
+            target:
+              entity_id: >-
+                {{ [[ lookup('strip_light') ]] }}
+            data:
+              effect: "{{ effect }}"
 [%- endif %]
 [%- if boards %]
 
@@ -385,6 +478,46 @@ script:
       - action: input_boolean.turn_on
         target:
           entity_id: "{{ 'input_boolean.' ~ board ~ '_spl_calibrated' }}"
+[%- endif %]
+[%- if strips %]
+
+  # SPEC-043: a palette for the selected board's strip, from anything that has one (the Ramka's
+  # palette sync): writes the stops into its custom palette and selects it. Stops that are not 2 to
+  # 5 #rrggbb colours, or a board without a strip, change nothing.
+  audio_sensor_music_strip_palette:
+    alias: Audio sensor music strip palette
+    icon: mdi:palette
+    mode: queued
+    fields:
+      stops:
+        name: Stops
+        description: 2 to 5 colours, each "#rrggbb".
+        required: true
+        example: ["#ff3000", "#ffb000", "#2050ff"]
+        selector:
+          object: {}
+    sequence:
+      - condition: template
+        value_template: >-
+          {% set ns = namespace(ok=stops is not string and stops is iterable and 2 <= stops | count <= 5) %}{% for s in stops if ns.ok %}{% set ns.ok = s is string and s | length == 7 and s[0] == '#' and (s[1:] | lower | list | reject('in', '0123456789abcdef') | list | count) == 0 %}{% endfor %}{{ ns.ok }}
+      - variables:
+          custom: >-
+            {{ [[ lookup('strip_custom') ]] }}
+          palette: >-
+            {{ [[ lookup('strip_palette') ]] }}
+      - condition: template
+        value_template: >-
+          {{ custom != '' and palette != '' and states(custom) not in ['unavailable', 'unknown'] }}
+      - action: text.set_value
+        target:
+          entity_id: "{{ custom }}"
+        data:
+          value: "{{ stops | join(',') }}"
+      - action: select.select_option
+        target:
+          entity_id: "{{ palette }}"
+        data:
+          option: custom
 [%- endif %]
 [%- if boards %]
 
@@ -459,3 +592,44 @@ automation:
         data:
           option: "{{ option }}"
 [%- endif %]
+[%- for b in follows %]
+
+  # SPEC-043: the strip follows [[ b.strip.follow ]]. Restart mode: playing again during the delay
+  # cancels the turn-off. Attribute changes (a player's position) do not trigger (`to: null`).
+  - id: [[ b.prefix ]]_strip_follow_music
+    alias: [[ jstr(b.area ~ ' strip follows the music') ]]
+    description: Turn the music strip on while the music plays and off after the delay.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [[ b.strip.follow ]]
+        to: null
+    conditions:
+      - condition: state
+        entity_id: input_boolean.[[ b.prefix ]]_strip_follow_music
+        state: "on"
+      - condition: template
+        value_template: >-
+          {{ trigger.to_state is not none and trigger.to_state.state not in ['unavailable', 'unknown'] }}
+    actions:
+      - variables:
+          playing: >-
+            {{ trigger.to_state.state == [[ b.strip.follow.startswith('media_player.') and "'playing'" or "'on'" ]] }}
+          effect: >-
+            {{ states('input_select.[[ b.prefix ]]_strip_follow_effect') }}
+      - if:
+          - condition: template
+            value_template: "{{ playing }}"
+        then:
+          - action: light.turn_on
+            target:
+              entity_id: [[ b.strip_light ]]
+            data: >-
+              {{ {'effect': effect} if effect not in ['keep', 'unknown', 'unavailable', ''] else {} }}
+        else:
+          - delay:
+              seconds: "{{ states('input_number.[[ b.prefix ]]_strip_follow_off_delay') | int(30) }}"
+          - action: light.turn_off
+            target:
+              entity_id: [[ b.strip_light ]]
+[%- endfor %]
