@@ -10,6 +10,8 @@
 [%- for removed in ['room_acoustics', 'playing'] -%]
   [%- if removed in inputs -%][[ fail('input ' ~ removed ~ ' was removed: room acoustics is not part of audio-sensor; delete it from the inputs file') ]][%- endif -%]
 [%- endfor -%]
+[%- set strip_keys = ['leds', 'pin', 'follow', 'ambient_light', 'entities'] -%]
+[%- set strip_guess = {'light': ('light', 'music_strip'), 'palette': ('select', 'strip_palette'), 'custom_palette': ('text', 'strip_custom_palette'), 'intensity': ('number', 'strip_intensity'), 'mounting': ('select', 'strip_mounting'), 'power_limit': ('number', 'strip_power_limit'), 'current': ('sensor', 'strip_current')} -%]
 [%- set known = ['spectrum', 'level', 'peak', 'fast_level', 'fast_peak', 'live_tracking', 'mic_gain', 'wifi_signal', 'uptime', 'bssid', 'restart', 'load', 'spectrum_rate'] -%]
 [#- A board's ids: the prefix of what this component creates, and the guessed ids of the ESPHome entities when `entities` does not name them (the area slug and the device name slug that Home Assistant builds them from). -#]
 [%- from '_audio-ids.jinja' import to_slug -%]
@@ -25,6 +27,27 @@
   [%- for key in (board.entities | default({})) -%]
     [%- if key not in known -%][[ fail('unknown entity key: ' ~ key) ]][%- endif -%]
   [%- endfor -%]
+  [#- SPEC-043: the strip on the board's Grove port. Its firmware entities' ids, like the others, are guessed when `strip.entities` does not name them. -#]
+  [%- set strip = board.strip if board.strip is defined and board.strip is not none else none -%]
+  [%- set strip_item = none -%]
+  [%- if strip is not none -%]
+    [%- for key in strip -%]
+      [%- if key not in strip_keys -%][[ fail('unknown strip key: ' ~ key) ]][%- endif -%]
+    [%- endfor -%]
+    [%- set leds = strip.leds | default(120) -%]
+    [%- if leds is not number or leds < 1 or leds > 300 -%][[ fail('strip.leds must be 1 to 300: ' ~ leds) ]][%- endif -%]
+    [%- for key in ['follow', 'ambient_light'] -%]
+      [%- if strip[key] is defined and strip[key] is not none and not (strip[key] is string and strip[key] == strip[key] | lower and ' ' not in strip[key] and (strip[key].split('.') | select | list | length) == 2 and (strip[key].split('.') | length) == 2) -%][[ fail('strip.' ~ key ~ ' is not an entity id: ' ~ strip[key]) ]][%- endif -%]
+    [%- endfor -%]
+    [%- set strip_entities = strip.entities | default({}) -%]
+    [%- for key in strip_entities -%]
+      [%- if key not in strip_guess -%][[ fail('unknown strip entity key: ' ~ key) ]][%- endif -%]
+    [%- endfor -%]
+    [%- set strip_item = {'follow': strip.follow | default(none), 'ambient_light': strip.ambient_light | default(none)} -%]
+    [%- for key, (domain, slug) in strip_guess.items() -%]
+      [%- set _ = strip_item.update({key: strip_entities[key] | default(guess(board, domain, slug))}) -%]
+    [%- endfor -%]
+  [%- endif -%]
   [%- set spectrum = (board.entities | default({})).spectrum | default(guess(board, 'sensor', 'spectrum')) -%]
   [%- set level = (board.entities | default({})).level | default(guess(board, 'sensor', 'sound_level')) -%]
   [%- set ns.rooms = ns.rooms + [board.room] -%]
@@ -36,7 +59,8 @@
     'spectrum_rate': (board.entities | default({})).spectrum_rate | default(guess(board, 'select', 'spectrum_rate')),
     'offset': 'input_number.' ~ prefix ~ '_spl_offset',
     'calibrated': 'input_boolean.' ~ prefix ~ '_spl_calibrated',
-    'note': 'input_text.' ~ prefix ~ '_spl_note'
+    'note': 'input_text.' ~ prefix ~ '_spl_note',
+    'strip': strip_item
   } -%]
   [%- set ns.prepared = ns.prepared + [item] -%]
   [%- if board.music | default(false) -%][%- set ns.music = ns.music + [item] -%][%- endif -%]

@@ -143,6 +143,12 @@
    "page": true
   },
   {
+   "id": "m5stack-led-strip-sk6812",
+   "match": [],
+   "name": "M5Stack Digital RGB LED Strip SK6812",
+   "page": false
+  },
+  {
    "id": "m5stack-module-cc1101",
    "match": [
     {

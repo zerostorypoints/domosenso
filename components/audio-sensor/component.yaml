@@ -15,6 +15,11 @@ devices:
       recommend: [m5stack-atom-echos3r]
       count: "1 or more"                  # one board per room; at most one of them marks `music: true`
       power: "5 V USB"
+  optional:
+    - kind: led-strip                     # SPEC-043: the music strip on a board's Grove port
+      recommend: [m5stack-led-strip-sk6812]
+      count: "0 or 1 per board"
+      power: "5 V: the board's Grove port up to about 30 LEDs, else its own supply"
 
 host:
   installs: [container, haos]             # container = no apps; nothing here needs a service
@@ -28,7 +33,7 @@ integrations:
 # Values the home supplies; `domosenso add` writes the inputs skeleton, the add-component skill fills it.
 inputs:
   sensors:                                # one item per board; one device file each
-    type: "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map, online?: entity_id}]"
+    type: "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map, online?: entity_id, strip?: map}]"
     example:
       - {room: living-room, area: Living room, music: true}
       - {room: kids-room, area: "Kids' room"}
@@ -41,6 +46,26 @@ inputs:
       friendly_name: {type: str, default: "Audio sensor <area>", note: "ESPHome substitution"}
       mic_gain: {type: str, default: 24DB, note: "ES8311 gain, 0DB to 42DB; changing it means calibrating again"}
       online: {type: entity_id, default: null, note: "Explicit optional availability sensor for assistant answers."}
+      strip:
+        type: "{leds?: int, pin?: str, follow?: entity_id, ambient_light?: entity_id, entities?: map}"
+        default: null
+        note: "SPEC-043: an addressable LED strip on the board's Grove port that follows the music; without it nothing of the strip is built or rendered"
+        fields:
+          leds: {type: int, default: 120, note: "LEDs on the strip, 1 to 300"}
+          pin: {type: str, default: GPIO2, note: "the Grove signal wire: GPIO2 yellow (G2), GPIO1 white (G1)"}
+          follow: {type: entity_id, default: null, note: "the strip turns on while this entity plays (a media player) or is on; none: nothing switches it"}
+          ambient_light: {type: entity_id, default: null, note: "an illuminance sensor the strip's brightness follows; none: no brightness automation"}
+          entities:
+            type: "map[key, entity_id]"
+            default: "<domain>.<area slug>_<name slug with _>_<key slug>"
+            keys:
+              light: light.<..>_music_strip
+              palette: select.<..>_strip_palette
+              custom_palette: text.<..>_strip_custom_palette
+              intensity: number.<..>_strip_intensity
+              mounting: select.<..>_strip_mounting
+              power_limit: number.<..>_strip_power_limit
+              current: sensor.<..>_strip_current
       entities:
         type: "map[key, entity_id]"
         # Home Assistant builds an ESPHome entity's id from the device's names and area when the board
@@ -72,6 +97,7 @@ artifacts:
   esphome:
     packages:                             # remote package, github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor.yaml@audio-sensor/<version>
       - {file: esphome/audio-sensor.yaml, project: domosenso.audio-sensor}
+      - {file: esphome/music-strip.yaml, project: domosenso.audio-sensor}   # SPEC-043, only a board with `strip:`
     factory: esphome/audio-sensor.factory.yaml   # Improv + dashboard_import, for boards nobody configured yet
     instance: examples/demo-home/esphome/audio-sensor-<room>.yaml   # the demo home's device files, as `devices` renders them from its inputs
     devices:                              # `domosenso add` writes one thin device file per `sensors` item, once; the home owns it

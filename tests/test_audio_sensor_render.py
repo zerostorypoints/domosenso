@@ -679,3 +679,45 @@ def test_gain_stays_listed_while_the_mic_gain_entity_is_unavailable(demo):
     states = {**FULL, GAIN: "unavailable"}
     caps = ast.literal_eval(evaluate(sensor["attributes"]["capabilities"], states, RATE_ATTRS))
     assert "gain" in caps
+
+
+# SPEC-043: the strip input.
+def _device_files(sensors):
+    from domosenso_render import render_device_files
+
+    return dict(render_device_files(COMP, {"sensors": sensors}))
+
+
+def test_device_file_without_strip_is_unchanged():
+    committed = (REPO / "examples/demo-home/esphome/audio-sensor-kids-room.yaml").read_text(encoding="utf-8")
+    files = _device_files(demo_inputs()["sensors"])
+    assert files["audio-sensor-kids-room.yaml"] == committed
+    assert "strip" not in committed
+
+
+def test_device_file_with_strip_adds_package_and_substitutions():
+    version = yaml.safe_load((COMP / "component.yaml").read_text(encoding="utf-8"))["version"]
+    files = _device_files([{"room": "den", "area": "Den", "strip": {"leds": 60}},
+                           {"room": "hall", "area": "Hall", "strip": {"pin": "GPIO1"}}])
+    den, hall = files["audio-sensor-den.yaml"], files["audio-sensor-hall.yaml"]
+    assert 'strip_leds: "60"' in den and "strip_pin" not in den
+    assert 'strip_leds: "120"' in hall and 'strip_pin: "GPIO1"' in hall
+    assert f"  strip: github://zerostorypoints/domosenso/components/audio-sensor/esphome/music-strip.yaml@audio-sensor/{version}" in den
+
+
+@pytest.mark.parametrize(
+    "strip, message",
+    [
+        ({"leds": 0}, "strip.leds must be 1 to 300: 0"),
+        ({"leds": 1000}, "strip.leds must be 1 to 300: 1000"),
+        ({"follow": "not an id"}, "strip.follow is not an entity id: not an id"),
+        ({"ambient_light": "sensor"}, "strip.ambient_light is not an entity id: sensor"),
+        ({"entities": {"volume": "number.x"}}, "unknown strip entity key: volume"),
+        ({"colour": "red"}, "unknown strip key: colour"),
+    ],
+)
+def test_strip_input_validation(tmp_path, strip, message):
+    inputs = copy.deepcopy(demo_inputs())
+    inputs["sensors"][0]["strip"] = strip
+    with pytest.raises(dr.RenderError, match=message):
+        render_text(tmp_path, inputs)

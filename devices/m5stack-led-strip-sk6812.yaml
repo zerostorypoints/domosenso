@@ -1,0 +1,10 @@
+id: m5stack-led-strip-sk6812
+names: {en: M5Stack Digital RGB LED Strip SK6812, de: M5Stack Digital RGB LED Strip SK6812, pl: M5Stack Digital RGB LED Strip SK6812}
+description_key: meta.devices.m5stack-led-strip-sk6812.description
+does_key: meta.devices.m5stack-led-strip-sk6812.does
+photo: null
+component: audio-sensor
+tested: {homes: 0, note: "SPEC-043: first tried as A093-C (120 LEDs, 2 m) on one board"}
+# SPEC-043. M5Stack's A093 family (A093-B, -C, -D: 0.5 m to 5 m), SK6812 RGB, 60 LEDs per metre,
+# 5 V, with a Grove conversion cable. No match rule: the strip appears in Home Assistant only as the
+# Music strip light of the board that drives it (kinds/led-strip.yaml).
