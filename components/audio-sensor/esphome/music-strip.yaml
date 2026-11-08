@@ -1,0 +1,296 @@
+# domosenso component audio-sensor: a music-reactive LED strip on the board's Grove port (SPEC-043).
+# Loaded next to audio-sensor.yaml, only by a board with a strip; a board without it builds as
+# before. The strip follows the board's own microphone, no server in the path. Every setting is an
+# entity of this device, so the strip works from Home Assistant's device page alone.
+#
+#   substitutions:
+#     strip_pin: GPIO2       # the Grove port's yellow wire (G2); GPIO1 is the white one (G1)
+#     strip_leds: "120"      # LEDs on the strip
+#   packages:
+#     strip: github://zerostorypoints/domosenso/components/audio-sensor/esphome/music-strip.yaml@audio-sensor/<version>
+#
+# Wiring and power (README, "Music strip"): data on the Grove signal wire, 5 V and ground from the
+# Grove port for up to about 30 LEDs with the power limit at 500 mA, or from the strip's own 5 V
+# supply (ground shared with the board) with the limit at the supply's rating.
+#
+# Pins: M5Stack's Atom EchoS3R page (docs.m5stack.com/en/core/Atom_VoiceS3R, SKU C126-ECHO), HY2.0-4P
+# "PORT.CUSTOM": black GND, red 5V, yellow G2, white G1. The sensor firmware uses neither.
+
+substitutions:
+  strip_pin: GPIO2
+  strip_leds: "120"
+  strip_order: GRB
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/zerostorypoints/domosenso
+      ref: audio-sensor/0.4.0
+      path: components/audio-sensor/esphome/components
+    components: [music_strip]
+
+music_strip:
+  id: music
+  microphone: mic
+  current:
+    name: Strip current
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: strip_light
+    name: Music strip
+    icon: mdi:led-strip-variant
+    pin: ${strip_pin}
+    num_leds: ${strip_leds}
+    chipset: SK6812
+    rgb_order: ${strip_order}
+    restore_mode: RESTORE_DEFAULT_OFF
+    effects:
+      - music_strip: {name: Pulse, style: pulse}
+      - music_strip: {name: Glow, style: glow}
+      - music_strip: {name: Bands, style: bands}
+      - music_strip: {name: Centre meter, style: centre_meter}
+      - music_strip: {name: Spectrum, style: spectrum}
+      - music_strip: {name: Ripple, style: ripple}
+
+select:
+  - platform: template
+    id: strip_palette
+    name: Strip palette
+    icon: mdi:palette
+    options: [spectrum, warm, cool, single, custom]
+    initial_option: spectrum
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: &palette_kind |-
+          using ::music_strip::PaletteKind;
+          id(music).set_palette_kind(x == "warm" ? PaletteKind::WARM : x == "cool" ? PaletteKind::COOL :
+                                     x == "single" ? PaletteKind::SINGLE : x == "custom" ? PaletteKind::CUSTOM :
+                                     PaletteKind::SPECTRUM);
+  - platform: template
+    id: strip_mounting
+    name: Strip mounting
+    icon: mdi:wall-sconce-flat-variant
+    options: [front, wall, floor]
+    initial_option: front
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: &mounting |-
+          using ::music_strip::Mounting;
+          id(music).set_mounting(x == "wall" ? Mounting::WALL : x == "floor" ? Mounting::FLOOR : Mounting::FRONT);
+  - platform: template
+    id: strip_bass
+    name: Strip bass position
+    icon: mdi:arrow-expand-horizontal
+    entity_category: config
+    options: [centre, ends]
+    initial_option: centre
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: &bass |-
+          id(music).set_bass(x == "ends" ? ::music_strip::BassPosition::ENDS : ::music_strip::BassPosition::CENTRE);
+
+text:
+  - platform: template
+    id: strip_custom_palette
+    name: Strip custom palette
+    icon: mdi:palette-swatch
+    mode: text
+    max_length: 64
+    initial_value: "#ff3000,#ffb000,#2050ff"
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_custom_palette(x);
+
+number:
+  - platform: template
+    id: strip_intensity
+    name: Strip intensity
+    icon: mdi:tune-vertical
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial_value: 60
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_intensity(x);
+  - platform: template
+    id: strip_sensitivity
+    name: Strip sensitivity
+    icon: mdi:microphone-plus
+    entity_category: config
+    min_value: -20
+    max_value: 20
+    step: 1
+    unit_of_measurement: dB
+    initial_value: 0
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_sensitivity_db(x);
+  - platform: template
+    id: strip_attack
+    name: Strip attack
+    icon: mdi:arrow-up-bold
+    entity_category: config
+    min_value: 0
+    max_value: 200
+    step: 5
+    unit_of_measurement: ms
+    initial_value: 20
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_attack_ms(x);
+  - platform: template
+    id: strip_release
+    name: Strip release
+    icon: mdi:arrow-down-bold
+    entity_category: config
+    min_value: 50
+    max_value: 2000
+    step: 10
+    unit_of_measurement: ms
+    initial_value: 300
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_release_ms(x);
+  - platform: template
+    id: strip_beat_strength
+    name: Strip beat strength
+    icon: mdi:flash
+    entity_category: config
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial_value: 50
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_beat_strength(x);
+  # Not in SPEC-043's table: how readily a jump in the low end counts as a beat, tuned with the
+  # room's own music (the implementation's ruling, ledger Task 1).
+  - platform: template
+    id: strip_beat_sensitivity
+    name: Strip beat sensitivity
+    icon: mdi:metronome
+    entity_category: config
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial_value: 50
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_beat_sensitivity(x);
+  - platform: template
+    id: strip_count
+    name: Strip LEDs in use
+    icon: mdi:counter
+    entity_category: config
+    min_value: 1
+    max_value: ${strip_leds}
+    step: 1
+    initial_value: ${strip_leds}
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_window((uint16_t) id(strip_first).state, (uint16_t) x);
+  - platform: template
+    id: strip_first
+    name: Strip first LED
+    icon: mdi:ray-start
+    entity_category: config
+    min_value: 0
+    max_value: ${strip_leds}
+    step: 1
+    initial_value: 0
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_window((uint16_t) x, (uint16_t) id(strip_count).state);
+  - platform: template
+    id: strip_power_limit
+    name: Strip power limit
+    icon: mdi:flash-alert
+    entity_category: config
+    min_value: 100
+    max_value: 5000
+    step: 50
+    unit_of_measurement: mA
+    initial_value: 500
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_power_limit_ma(x);
+
+switch:
+  - platform: template
+    id: strip_auto_gain
+    name: Strip auto gain
+    icon: mdi:tune-variant
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - lambda: id(music).set_auto_gain(true);
+    turn_off_action:
+      - lambda: id(music).set_auto_gain(false);
+
+button:
+  - platform: template
+    name: Strip reset settings
+    icon: mdi:restore
+    entity_category: config
+    on_press:
+      - select.set: {id: strip_palette, option: spectrum}
+      - select.set: {id: strip_mounting, option: front}
+      - select.set: {id: strip_bass, option: centre}
+      - text.set: {id: strip_custom_palette, value: "#ff3000,#ffb000,#2050ff"}
+      - number.set: {id: strip_intensity, value: 60}
+      - number.set: {id: strip_sensitivity, value: 0}
+      - number.set: {id: strip_attack, value: 20}
+      - number.set: {id: strip_release, value: 300}
+      - number.set: {id: strip_beat_strength, value: 50}
+      - number.set: {id: strip_beat_sensitivity, value: 50}
+      - number.set: {id: strip_first, value: 0}
+      - number.set:
+          id: strip_count
+          value: ${strip_leds}
+      - number.set: {id: strip_power_limit, value: 500}
+      - switch.turn_on: strip_auto_gain
+
+# A restored value does not run its set_action: hand every restored setting to the strip once.
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          using namespace ::music_strip;
+          auto *m = id(music);
+          const std::string p = id(strip_palette).current_option();
+          m->set_palette_kind(p == "warm" ? PaletteKind::WARM : p == "cool" ? PaletteKind::COOL :
+                              p == "single" ? PaletteKind::SINGLE : p == "custom" ? PaletteKind::CUSTOM :
+                              PaletteKind::SPECTRUM);
+          const std::string mt = id(strip_mounting).current_option();
+          m->set_mounting(mt == "wall" ? Mounting::WALL : mt == "floor" ? Mounting::FLOOR : Mounting::FRONT);
+          m->set_bass(id(strip_bass).current_option() == std::string("ends") ? BassPosition::ENDS : BassPosition::CENTRE);
+          m->set_custom_palette(id(strip_custom_palette).state);
+          m->set_intensity(id(strip_intensity).state);
+          m->set_sensitivity_db(id(strip_sensitivity).state);
+          m->set_attack_ms(id(strip_attack).state);
+          m->set_release_ms(id(strip_release).state);
+          m->set_beat_strength(id(strip_beat_strength).state);
+          m->set_beat_sensitivity(id(strip_beat_sensitivity).state);
+          m->set_window((uint16_t) id(strip_first).state, (uint16_t) id(strip_count).state);
+          m->set_power_limit_ma(id(strip_power_limit).state);
+          m->set_auto_gain(id(strip_auto_gain).state);
