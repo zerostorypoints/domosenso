@@ -237,6 +237,7 @@ FEATURE_SETTER(set_sensitivity_db, sensitivity_db, float)
 FEATURE_SETTER(set_attack_ms, attack_ms, float)
 FEATURE_SETTER(set_release_ms, release_ms, float)
 FEATURE_SETTER(set_beat_sensitivity, beat_sensitivity, float)
+FEATURE_SETTER(set_range_db, range_db, float)
 #undef FEATURE_SETTER
 
 void MusicStripComponent::set_palette_kind(ms::PaletteKind kind) {
@@ -258,6 +259,11 @@ bool MusicStripComponent::set_custom_palette(const std::string &text) {
 void MusicStripComponent::set_intensity(float pct) {
   std::lock_guard<std::mutex> lock(this->settings_mutex_);
   this->render_.intensity = pct / 100.0f;
+}
+
+void MusicStripComponent::set_pastel(float pct) {
+  std::lock_guard<std::mutex> lock(this->settings_mutex_);
+  this->render_.pastel = pct / 100.0f;
 }
 void MusicStripComponent::set_mounting(ms::Mounting mounting) {
   std::lock_guard<std::mutex> lock(this->settings_mutex_);

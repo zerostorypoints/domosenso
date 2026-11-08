@@ -361,14 +361,16 @@ Configuration:
 
 | entity | values (default) | what it does |
 |---|---|---|
-| Music strip | light: on/off, brightness, colour, effect | the strip; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
+| Music strip | light: on/off, brightness, colour, effect | the strip; its brightness is the overall dimmer (it scales the light after the strip's own gamma, so the colours stay as they are); the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
 | Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple, Heat (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
-| Strip palette | spectrum, warm, cool, single, custom (spectrum) | the colours the styles use |
+| Strip palette | spectrum, warm, cool, single, custom, pastel (spectrum) | the colours the styles use; pastel is soft blue, mint, cream, peach and rose |
 | Strip custom palette | 2–5 `#rrggbb` stops (`#ff3000,#ffb000,#2050ff`) | the custom palette; a typo keeps the last good one |
-| Strip intensity | 0–100 % (60) | how much of the music reaches the strip: a calm glow at 0, full flashes at 100 |
+| Strip intensity | 0–100 % (60) | how far the music moves the brightness: at 0 every lit part glows steadily and the music changes only colour and position; at 100 quiet parts go dark and loud parts light up fully |
+| Strip pastel | 0–100 % (0) | mixes every colour toward white at its own brightness: softer colours that blend with the room |
 | Strip mounting | front, wall, floor (front) | front: sharp; wall and floor: smoother and blurred into a wash |
 | Strip auto gain | on | follows the volume over about 10 s, so quiet listening still moves the strip |
-| Strip sensitivity | −20 to +20 dB (0) | the fixed gain while auto gain is off |
+| Strip sensitivity | −40 to +20 dB (0) | shifts every level: lower needs louder sound for the same brightness or colour, higher lights up sooner |
+| Strip range | 10–60 dB (30) | the dB between a band's quietest and loudest look (Heat's first and last colour; dark and full in Spectrum and Bands): smaller tells bands of similar loudness apart |
 | Strip attack, release | 0–200 ms (20), 50–2000 ms (300) | how fast the level rises and falls |
 | Strip beat strength | 0–100 % (50) | how bright a beat's flash or ripple is |
 | Strip beat sensitivity | 0–100 % (50) | how readily a jump in the low end counts as a beat; raise it if beats are missed, lower it if the strip flashes without one |

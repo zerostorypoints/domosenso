@@ -420,5 +420,26 @@ int main() {
     check(fall_ms >= 0 && std::fabs(fall_ms - 300.0f) <= hop_ms, "release time", msg);
   }
 
+  {
+    // Range: the dB from a band's 0 to its 1. Two tones 15 dB apart, in bands 4 and 6: halving the
+    // range doubles the gap between their levels (the louder band sits at the top of the scale, so
+    // the gap is a little under 15 dB's worth).
+    std::vector<float> x = sine((size_t) (3 * SR), 1000.0f, -20.0f);
+    const std::vector<float> quiet = sine((size_t) (3 * SR), 4000.0f, -35.0f);
+    for (size_t i = 0; i < x.size(); i++) x[i] += quiet[i];
+    auto gap = [&](float range) {
+      FeatureSettings s;
+      s.range_db = range;
+      float d = 0;
+      run(x, s, [&](size_t, size_t, const Features &f) { d = f.bands[4] - f.bands[6]; });
+      return d;
+    };
+    const float g30 = gap(30.0f), g60 = gap(60.0f);
+    char msg[64];
+    std::snprintf(msg, sizeof msg, "gap at 30 dB %.2f, at 60 dB %.2f", g30, g60);
+    check(g30 > 1.8f * g60 && g30 > 0.25f && g30 < 0.6f, "band range", msg);
+    check(FeatureSettings{}.range_db == 30.0f, "band range default 30 dB");
+  }
+
   return failures ? 1 : 0;
 }

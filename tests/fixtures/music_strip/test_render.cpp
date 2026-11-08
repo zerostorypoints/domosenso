@@ -171,21 +171,37 @@ int main() {
   }
 
   {
-    const size_t n = 60;
-    std::vector<Rgb> full(n), soft(n);
-    bool ok = true;
-    for (Style st : {Style::PULSE, Style::GLOW, Style::BANDS, Style::CENTRE_METER, Style::SPECTRUM, Style::RIPPLE, Style::HEAT}) {
-      Renderer a, b;
-      RenderSettings s = settings(st, n);
-      Features f = loud(0.8f);
-      f.beat = true;
-      a.render(f, s, 0.01f, full.data(), n);
-      s.intensity = 0.2f;
-      b.render(f, s, 0.01f, soft.data(), n);
-      for (size_t i = 0; i < n; i++)
-        ok = ok && soft[i].r <= full[i].r && soft[i].g <= full[i].g && soft[i].b <= full[i].b;
-    }
-    check(ok, "intensity never brighter when lower");
+    // Intensity is how far the music moves the brightness: at 0 every lit part is steady at full,
+    // at 100 % a quiet band is darker than a loud one.
+    Features f = loud(0.8f);
+    for (size_t b = 0; b < NUM_BANDS; b++) f.bands[b] = b < 4 ? 0.2f : 0.9f;
+    auto spectrum = [&](float intensity) {
+      const size_t n = 40;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(Style::SPECTRUM, n);
+      s.bass = BassPosition::START;
+      s.intensity = intensity;
+      for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
+      return leds;
+    };
+    const Palette pal = builtin_palette(PaletteKind::SPECTRUM, Rgb{255, 255, 255});
+    const auto steady = spectrum(0.0f);
+    check(brightest(steady[0]) == brightest(palette_at(pal, 0.0f)) &&
+              brightest(steady[39]) == brightest(palette_at(pal, 1.0f)),
+          "intensity 0: quiet and loud bands both at full");
+    const auto moving = spectrum(1.0f);
+    check(brightest(moving[0]) < brightest(moving[39]) / 2, "intensity 100: a quiet band darker");
+    Features silent{};
+    const size_t n = 40;
+    std::vector<Rgb> leds(n);
+    Renderer r;
+    RenderSettings s = settings(Style::SPECTRUM, n);
+    s.intensity = 0.0f;
+    for (int i = 0; i < 50; i++) r.render(silent, s, 0.0107f, leds.data(), n);
+    bool dark = true;
+    for (const Rgb &c : leds) dark = dark && !lit(c);
+    check(dark, "intensity 0: dark when the music stops");
   }
 
   {
@@ -286,25 +302,6 @@ int main() {
           "gamma 1 at full brightness equals the raw estimate");
   }
 
-  {
-    // Intensity shows: at the default 500 mA on 30 LEDs, a lower intensity draws visibly less.
-    auto draw = [](float intensity) {
-      const size_t n = 30;
-      std::vector<Rgb> leds(n);
-      Renderer r;
-      RenderSettings s = settings(Style::GLOW, n);
-      s.intensity = intensity;
-      s.power_limit_ma = 500.0f;
-      s.gamma = 2.8f;
-      s.brightness = 255;
-      for (int i = 0; i < 300; i++) r.render(loud(0.9f), s, 0.0107f, leds.data(), n);
-      return r.last_ma();
-    };
-    const float low = draw(0.2f), high = draw(1.0f);
-    char msg[64];
-    std::snprintf(msg, sizeof msg, "intensity 20 %%: %.0f mA, 100 %%: %.0f mA", low, high);
-    check(high > 1.5f * low && high <= 500.0f, "intensity changes the draw under the limit", msg);
-  }
 
   {
     // Start and end: one run from the strip's beginning to its end, no mirror; the bass at the
@@ -383,6 +380,56 @@ int main() {
     bool none = true;
     for (const Rgb &c : dark) none = none && !lit(c);
     check(none, "heat silence: dark");
+  }
+
+  {
+    // The strip's own gamma: a mid grey leaves as the LED value that looks mid grey (2.8: 37 of 255).
+    auto grey = [](float gamma) {
+      const size_t n = 10;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(Style::SPECTRUM, n);
+      parse_palette("#808080,#808080", s.palette);
+      s.colour_gamma = gamma;
+      Features f = loud(0.8f);
+      for (size_t b = 0; b < NUM_BANDS; b++) f.bands[b] = 1.0f;
+      for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
+      return leds[5];
+    };
+    char msg[64];
+    const Rgb g = grey(2.8f);
+    std::snprintf(msg, sizeof msg, "got %u", g.r);
+    check(g.r >= 36 && g.r <= 38 && g.r == g.g && g.g == g.b, "colour gamma 2.8 on a mid grey", msg);
+    check(same(grey(1.0f), Rgb{128, 128, 128}), "colour gamma 1 leaves the frame");
+  }
+
+  {
+    // Pastel mixes each LED toward white at its own brightness.
+    auto red = [](float pastel) {
+      const size_t n = 10;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(Style::SPECTRUM, n);
+      parse_palette("#ff2000,#ff2000", s.palette);
+      s.pastel = pastel;
+      Features f = loud(0.8f);
+      for (size_t b = 0; b < NUM_BANDS; b++) f.bands[b] = 1.0f;
+      for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
+      return leds[5];
+    };
+    check(same(red(0.0f), Rgb{255, 32, 0}), "pastel 0 leaves the colour");
+    const Rgb half = red(0.5f);
+    char msg[64];
+    std::snprintf(msg, sizeof msg, "got %u,%u,%u", half.r, half.g, half.b);
+    check(half.r == 255 && half.g >= 143 && half.g <= 144 && half.b >= 127 && half.b <= 128, "pastel 50 %", msg);
+    check(same(red(1.0f), Rgb{255, 255, 255}), "pastel 100 % is white at the colour's brightness");
+  }
+
+  {
+    const Palette p = builtin_palette(PaletteKind::PASTEL, Rgb{255, 255, 255});
+    bool soft = p.count == 5;
+    for (uint8_t i = 0; i < p.count; i++) soft = soft && std::min(p.stops[i].r, std::min(p.stops[i].g, p.stops[i].b)) >= 150;
+    check(soft, "pastel palette: five soft stops");
   }
 
   return failures ? 1 : 0;

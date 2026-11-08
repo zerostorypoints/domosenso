@@ -54,6 +54,9 @@ light:
     # Off after every boot: a strip that comes back on draws its full current before anyone chose it,
     # and on the board's own 5 V that can brown the board out into a boot loop.
     restore_mode: ALWAYS_OFF
+    # The strip applies gamma itself, before the brightness: with ESPHome's own gamma after it, 20 %
+    # brightness gave about 1 % of the light and the weaker colour channels rounded away first.
+    gamma_correct: 1.0
     # ESPHome drops the effect on every turn-off: a turn-on without a style (Home Assistant's `keep`,
     # a tap on the light) starts the one in Strip style. Choosing None later shows a plain colour,
     # which the music strip component caps at the power limit. The default 1 s fade from off keeps
@@ -116,7 +119,7 @@ select:
     id: strip_palette
     name: Strip palette
     icon: mdi:palette
-    options: [spectrum, warm, cool, single, custom]
+    options: [spectrum, warm, cool, single, custom, pastel]
     initial_option: spectrum
     optimistic: true
     restore_value: true
@@ -125,6 +128,7 @@ select:
           using ::music_strip::PaletteKind;
           id(music).set_palette_kind(x == "warm" ? PaletteKind::WARM : x == "cool" ? PaletteKind::COOL :
                                      x == "single" ? PaletteKind::SINGLE : x == "custom" ? PaletteKind::CUSTOM :
+                                     x == "pastel" ? PaletteKind::PASTEL :
                                      PaletteKind::SPECTRUM);
   - platform: template
     id: strip_mounting
@@ -184,7 +188,7 @@ number:
     name: Strip sensitivity
     icon: mdi:microphone-plus
     entity_category: config
-    min_value: -20
+    min_value: -40
     max_value: 20
     step: 1
     unit_of_measurement: dB
@@ -221,6 +225,35 @@ number:
     restore_value: true
     set_action:
       - lambda: id(music).set_release_ms(x);
+  # How much each colour is mixed toward white: softer colours that blend with the room.
+  - platform: template
+    id: strip_pastel
+    name: Strip pastel
+    icon: mdi:palette-outline
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial_value: 0
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_pastel(x);
+  # The dB between a band's quietest and loudest look: smaller tells bands of similar loudness apart.
+  - platform: template
+    id: strip_range
+    name: Strip range
+    icon: mdi:arrow-expand-vertical
+    entity_category: config
+    min_value: 10
+    max_value: 60
+    step: 1
+    unit_of_measurement: dB
+    initial_value: 30
+    optimistic: true
+    restore_value: true
+    set_action:
+      - lambda: id(music).set_range_db(x);
   - platform: template
     id: strip_beat_strength
     name: Strip beat strength
@@ -317,6 +350,8 @@ button:
       - select.set: {id: strip_bass, option: centre}
       - text.set: {id: strip_custom_palette, value: "#ff3000,#ffb000,#2050ff"}
       - number.set: {id: strip_intensity, value: 60}
+      - number.set: {id: strip_pastel, value: 0}
+      - number.set: {id: strip_range, value: 30}
       - number.set: {id: strip_sensitivity, value: 0}
       - number.set: {id: strip_attack, value: 20}
       - number.set: {id: strip_release, value: 300}
@@ -340,6 +375,7 @@ esphome:
           const std::string p = id(strip_palette).current_option();
           m->set_palette_kind(p == "warm" ? PaletteKind::WARM : p == "cool" ? PaletteKind::COOL :
                               p == "single" ? PaletteKind::SINGLE : p == "custom" ? PaletteKind::CUSTOM :
+                              p == "pastel" ? PaletteKind::PASTEL :
                               PaletteKind::SPECTRUM);
           const std::string mt = id(strip_mounting).current_option();
           m->set_mounting(mt == "wall" ? Mounting::WALL : mt == "floor" ? Mounting::FLOOR : Mounting::FRONT);
@@ -348,6 +384,8 @@ esphome:
                       bp == "end" ? BassPosition::END : BassPosition::CENTRE);
           m->set_custom_palette(id(strip_custom_palette).state);
           m->set_intensity(id(strip_intensity).state);
+          m->set_pastel(id(strip_pastel).state);
+          m->set_range_db(id(strip_range).state);
           m->set_sensitivity_db(id(strip_sensitivity).state);
           m->set_attack_ms(id(strip_attack).state);
           m->set_release_ms(id(strip_release).state);

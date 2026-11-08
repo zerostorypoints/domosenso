@@ -18,7 +18,7 @@ struct Rgb {
 };
 
 enum class Style { PULSE, GLOW, BANDS, CENTRE_METER, SPECTRUM, RIPPLE, HEAT };
-enum class PaletteKind { SPECTRUM, WARM, COOL, SINGLE, CUSTOM };
+enum class PaletteKind { SPECTRUM, WARM, COOL, SINGLE, CUSTOM, PASTEL };
 enum class Mounting { FRONT, WALL, FLOOR };
 // Centre and ends mirror the music about the window's centre; start and end lay it out once from
 // the window's beginning to its end, the bass first (start) or last (end).
@@ -88,6 +88,10 @@ inline Palette builtin_palette(PaletteKind kind, Rgb single) {
     case PaletteKind::COOL:
       text = "#2040ff,#20c0ff,#c0f0ff";
       break;
+    case PaletteKind::PASTEL:
+      // Soft blue, mint, cream, peach, rose: light colours that blend with a room rather than pop.
+      text = "#a8c8ff,#b8f0d8,#fff0c8,#ffc8a8,#ffb0c8";
+      break;
     case PaletteKind::SINGLE:
       p.count = 2;
       p.stops[0] = Rgb{0, 0, 0};
@@ -116,6 +120,10 @@ struct RenderSettings {
   // The light's gamma and brightness: the limit works on what the LEDs draw after them.
   float gamma = 1.0f;
   uint8_t brightness = 255;
+  // 0..1: each LED mixed toward white at its own brightness.
+  float pastel = 0.0f;
+  // The strip's own gamma, applied to the frame (the light's is 1, so its brightness dims linearly).
+  float colour_gamma = 1.0f;
 };
 
 // SK6812 figures: 20 mA per channel at full, 1 mA for each LED's own controller.
@@ -225,8 +233,6 @@ class Renderer {
     }
     const size_t len = hi - lo;
     if (this->smooth_.size() != 3 * n) this->smooth_.assign(3 * n, 0.0f);
-    // Intensity: how much of the music's movement reaches the strip; at 0 a calm glow is left.
-    const float gain = 0.25f + 0.75f * clamp01(s.intensity);
     const float half = (float) len / 2.0f;
     const float centre = ((float) len - 1.0f) / 2.0f;
     float frame[3];
@@ -237,7 +243,7 @@ class Renderer {
                        : std::min(1.0f, std::fabs((float) k - centre) / half);
       if (s.bass == BassPosition::END) d = 1.0f - d;
       this->shade(s, d, frame);
-      for (int c = 0; c < 3; c++) this->smooth_[3 * (lo + k) + c] = this->settle(this->smooth_[3 * (lo + k) + c], frame[c] * gain, s, dt_s);
+      for (int c = 0; c < 3; c++) this->smooth_[3 * (lo + k) + c] = this->settle(this->smooth_[3 * (lo + k) + c], frame[c], s, dt_s);
     }
     for (size_t k = 0; k < len; k++) {
       const size_t i = lo + k;
@@ -250,7 +256,14 @@ class Renderer {
           const float r = this->smooth_[3 * (k + 1 < len ? i + 1 : i) + c];
           v = 0.25f * l + 0.5f * v + 0.25f * r;
         }
-        rgb[c] = v;
+        rgb[c] = clamp01(v);
+      }
+      // Pastel: toward white at the LED's own brightness; then the strip's gamma, in float, so the
+      // light's brightness can dim the result without rounding the weaker channels away first.
+      const float top = std::max(rgb[0], std::max(rgb[1], rgb[2]));
+      for (int c = 0; c < 3; c++) {
+        rgb[c] += (top - rgb[c]) * clamp01(s.pastel);
+        if (s.colour_gamma != 1.0f) rgb[c] = std::pow(rgb[c], s.colour_gamma);
       }
       leds[i] = Rgb{byte(rgb[0]), byte(rgb[1]), byte(rgb[2])};
     }
@@ -299,6 +312,10 @@ class Renderer {
     this->flash_ *= decay(dt, FLASH_TAU_S);
     if (f.beat) this->flash_ = std::max(this->flash_, clamp01(s.beat_strength));
     this->peak_ = std::max(f.envelope, this->peak_ - PEAK_FALL_PER_S * dt);
+    // Whether there is music at all: the bands and the level fall to 0 once the gate closes.
+    float loudest = f.envelope;
+    for (size_t b = 0; b < NUM_BANDS; b++) loudest = std::max(loudest, f.bands[b]);
+    this->presence_ = clamp01(4.0f * loudest);
     const float k = 1.0f - decay(dt, GLOW_TAU_S);
     if (!this->glow_started_) {
       this->glow_balance_ = f.balance;
@@ -318,8 +335,11 @@ class Renderer {
       this->ripples_.push_back(Ripple{0.0f, std::max(0.3f, clamp01(s.beat_strength) * 2.0f), palette_at(s.palette, f.balance)});
   }
 
-  static void put(float out[3], const Rgb &c, float level) {
-    level = clamp01(level);
+  // Intensity: how far the music's level moves the brightness. At 0 every lit part is steady at
+  // full while there is music; at 1 the brightness is the level itself.
+  void put(const RenderSettings &s, float out[3], const Rgb &c, float level) const {
+    const float i = clamp01(s.intensity);
+    level = ((1.0f - i) + i * clamp01(level)) * this->presence_;
     out[0] = (float) c.r / 255.0f * level;
     out[1] = (float) c.g / 255.0f * level;
     out[2] = (float) c.b / 255.0f * level;
@@ -332,10 +352,10 @@ class Renderer {
     out[0] = out[1] = out[2] = 0.0f;
     switch (s.style) {
       case Style::PULSE:
-        put(out, palette_at(s.palette, f.balance), f.envelope + this->flash_);
+        put(s, out, palette_at(s.palette, f.balance), f.envelope + this->flash_);
         break;
       case Style::GLOW:
-        put(out, palette_at(s.palette, this->glow_balance_), this->glow_level_ > 0 ? 0.35f + 0.65f * this->glow_level_ : 0.0f);
+        put(s, out, palette_at(s.palette, this->glow_balance_), this->glow_level_ > 0 ? 0.35f + 0.65f * this->glow_level_ : 0.0f);
         break;
       case Style::BANDS: {
         // Low, mid and high zones from the centre out (or from the ends in), blended between.
@@ -344,21 +364,21 @@ class Renderer {
         const float high = (f.bands[5] + f.bands[6] + f.bands[7]) / 3.0f;
         const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
         const float level = x < 0.5f ? low + (mid - low) * (x / 0.5f) : mid + (high - mid) * ((x - 0.5f) / 0.5f);
-        put(out, palette_at(s.palette, x), level + 0.5f * this->flash_);
+        put(s, out, palette_at(s.palette, x), level + 0.5f * this->flash_);
         break;
       }
       case Style::CENTRE_METER: {
-        if (d <= f.envelope) put(out, palette_at(s.palette, d), 0.6f + 0.4f * f.envelope + this->flash_);
+        if (d <= f.envelope) put(s, out, palette_at(s.palette, d), 0.6f + 0.4f * f.envelope + this->flash_);
         // The falling peak dot, at the palette's far end.
         const float dot = 1.0f / 30.0f;
         // Just inside the peak, so the dot marks where the meter last reached and never beyond it.
-        if (this->peak_ > 0 && d <= this->peak_ && d > this->peak_ - dot) put(out, palette_at(s.palette, 1.0f), 1.0f);
+        if (this->peak_ > 0 && d <= this->peak_ && d > this->peak_ - dot) put(s, out, palette_at(s.palette, 1.0f), 1.0f);
         break;
       }
       case Style::SPECTRUM: {
         const float x = s.bass == BassPosition::ENDS ? 1.0f - d : d;
         const size_t b = std::min(NUM_BANDS - 1, (size_t) (x * (float) NUM_BANDS));
-        put(out, palette_at(s.palette, (float) b / (float) (NUM_BANDS - 1)), f.bands[b]);
+        put(s, out, palette_at(s.palette, (float) b / (float) (NUM_BANDS - 1)), f.bands[b]);
         break;
       }
       case Style::HEAT: {
@@ -371,7 +391,7 @@ class Renderer {
         const float level = f.bands[b0] + (f.bands[b1] - f.bands[b0]) * (pos - (float) b0);
         float loudest = 0.0f;
         for (size_t b = 0; b < NUM_BANDS; b++) loudest = std::max(loudest, f.bands[b]);
-        put(out, palette_at(s.palette, clamp01(level)), 4.0f * loudest);
+        put(s, out, palette_at(s.palette, clamp01(level)), 4.0f * loudest);
         break;
       }
       case Style::RIPPLE: {
@@ -384,7 +404,7 @@ class Renderer {
           rgb[1] += (float) r.colour.g / 255.0f * w;
           rgb[2] += (float) r.colour.b / 255.0f * w;
         }
-        put(out, palette_at(s.palette, f.balance), level);
+        put(s, out, palette_at(s.palette, f.balance), level);
         for (int c = 0; c < 3; c++) out[c] = clamp01(out[c] + rgb[c]);
         break;
       }
@@ -392,7 +412,7 @@ class Renderer {
   }
 
   Features f_{};
-  float flash_ = 0, peak_ = 0;
+  float flash_ = 0, peak_ = 0, presence_ = 0;
   float glow_balance_ = 0, glow_level_ = 0;
   bool glow_started_ = false;
   std::vector<Ripple> ripples_;

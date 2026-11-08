@@ -92,3 +92,32 @@ def test_settings_are_written_to_flash_within_seconds():
     # the last changes. A write happens only when a value changed.
     interval = package()["preferences"]["flash_write_interval"]
     assert interval.endswith("s") and not interval.endswith("ms") and int(interval[:-1]) <= 10
+
+
+def numbers():
+    return {n["id"]: n for n in package()["number"]}
+
+
+def test_brightness_dims_after_the_strips_own_gamma():
+    # ESPHome applies the light's brightness before its gamma, so 20 % gave about 1 % of the light
+    # and the weaker channels rounded away first. The strip applies gamma itself (2.8, in the
+    # renderer); the light's own gamma is 1, so its brightness dims what leaves the strip linearly.
+    assert float(strip_light()["gamma_correct"]) == 1.0
+
+
+def test_sensitivity_reaches_minus_40_db():
+    assert numbers()["strip_sensitivity"]["min_value"] == -40
+
+
+def test_pastel_and_range_settings():
+    pastel, rng = numbers()["strip_pastel"], numbers()["strip_range"]
+    assert (pastel["min_value"], pastel["max_value"], pastel["initial_value"]) == (0, 100, 0)
+    assert pastel["unit_of_measurement"] == "%" and pastel.get("entity_category") is None
+    assert (rng["min_value"], rng["max_value"], rng["initial_value"]) == (10, 60, 30)
+    assert rng["unit_of_measurement"] == "dB"
+    boot = yaml.safe_dump(package()["esphome"]["on_boot"])
+    assert "set_pastel" in boot and "set_range_db" in boot
+    reset = yaml.safe_dump(next(b for b in package()["button"] if b["name"] == "Strip reset settings"))
+    assert "strip_pastel" in reset and "strip_range" in reset
+    palette = next(s for s in package()["select"] if s["id"] == "strip_palette")
+    assert "pastel" in palette["options"]
