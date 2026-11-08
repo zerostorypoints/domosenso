@@ -41,6 +41,7 @@ STYLES = {
         "centre_meter": "CENTRE_METER",
         "spectrum": "SPECTRUM",
         "ripple": "RIPPLE",
+        "heat": "HEAT",
     }.items()
 }
 

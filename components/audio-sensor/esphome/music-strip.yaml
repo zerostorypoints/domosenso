@@ -87,6 +87,7 @@ light:
       - music_strip: {name: Centre meter, style: centre_meter}
       - music_strip: {name: Spectrum, style: spectrum}
       - music_strip: {name: Ripple, style: ripple}
+      - music_strip: {name: Heat, style: heat}
 
 select:
   # The style, on the device page (Home Assistant tucks a light's effect into a small button of its
@@ -95,7 +96,7 @@ select:
     id: strip_style
     name: Strip style
     icon: mdi:animation-play
-    options: [Pulse, Glow, Bands, Centre meter, Spectrum, Ripple]
+    options: [Pulse, Glow, Bands, Centre meter, Spectrum, Ripple, Heat]
     initial_option: Pulse
     optimistic: true
     restore_value: true
