@@ -6,6 +6,7 @@ import {devices,type Article} from './content';
 import {docs} from './docs';
 import {installCommands,starterPrompt,noHomeAssistant} from './install';
 import {origin} from './seo';
+import {dimensionsMarkdown,dimensionsOf} from './dimensions';
 export type Device=typeof devices[number];
 export type Doc=typeof docs[number];
 
@@ -61,7 +62,7 @@ export function componentMarkdown(c:Component):string{
 }
 export function deviceMarkdown(d:Device):string{
  // The body opens with its own H1; the page title already carries it.
- return markdownPage(`/devices/${d.id}/`,d.title,[d.summary,absolutize(d.body.replace(/^# .*\n+/,'').trim()),`Source: ${d.sourceUrl}`]);
+ return markdownPage(`/devices/${d.id}/`,d.title,[d.summary,absolutize(d.body.replace(/^# .*\n+/,'').trim()),absolutize(dimensionsMarkdown(dimensionsOf(d),d.dimensionsDrawing??null)),`Source: ${d.sourceUrl}`]);
 }
 export function docMarkdown(d:Doc):string{
  return markdownPage(`/docs/${d.slug}/`,d.title,[absolutize(d.body.replace(/^# .*\n+/,'').trim()),`Source: ${d.sourceUrl}`]);

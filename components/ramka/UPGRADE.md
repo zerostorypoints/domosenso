@@ -3,6 +3,15 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.18.0 (unreleased): reading age for managed plant sources
+
+Plants with the new opt-in measurement bindings show the age of the last
+valid report and mark stale readings on tiles and lists. The visible age
+prioritizes soil moisture. The reading label exposes the other values and
+ages in its details. The moisture chart can include the previous Recorder
+series before the plant's migration cutoff. Existing plants work without
+changes. See the [plants upgrade notes](../plants/UPGRADE.md).
+
 ## 0.17.0 (2026-11-07): rooms from the home inputs, panels without a player or calendars, the screen after a restart
 
 ### Rooms from the shared home inputs

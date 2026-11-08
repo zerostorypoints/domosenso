@@ -2,7 +2,7 @@
 # plant integration; from 0.2.0 a package with the plants, their light peak and two alerts (SPEC-006);
 # from 0.3.0 the photo and limits on the plant for the Ramka, last watered, water in, a new sensor in a pot (SPEC-022).
 id: plants
-version: 0.4.0
+version: 0.5.0
 summary: Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors
 description_key: meta.description
 photo: null
@@ -12,23 +12,24 @@ devices:
     - kind: plant-sensor
       recommend: [mi-flora]
       count: "1 per plant"
+  optional:
     - kind: ble-proxy
       recommend: [m5stack-atom-lite]
-      via: bermuda-presence         # a Mi Flora is Bluetooth LE; a proxy has to hear it (weak signals drop out)
+      via: bermuda-presence         # extend range where the host Bluetooth receiver cannot hear the plant
 
 host:
   installs: [container, haos]
   ha_min: "2026.9"
 
 integrations:
-  - {name: xiaomi_ble, source: core, setup: "discovers the sensors on its own once a proxy hears them"}
+  - {name: xiaomi_ble, source: core, setup: "discovers the sensors on its own once a host BLE receiver or proxy hears them"}
   - {name: plant, source: core, setup: "one plant entity per sensor, with the thresholds in YAML; a change needs a Home Assistant restart"}
   - {name: statistics, source: core}
   - {name: template, source: core}
 
 inputs:
   plants:                       # the Ramka's plants shape; name, sensors, the temperature band and check_days from 0.2.0; photo from 0.3.0
-    type: "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
+    type: "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, active_source?, sources?, legacy_moisture_history?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
     example: [{entity: plant.monstera, label: Living room, photo: /local/plants/monstera.jpg}]
   plant_defaults:               # a plant's own value wins, then this, then nothing (check_days: 3)
     type: map
@@ -66,6 +67,9 @@ provides:
   entities:
     - {id: "plant.<plant>", stability: stable, note: "state ok or problem; attributes moisture, conductivity, brightness, temperature, problem; from 0.3.0 domosenso_plant, domosenso_room, domosenso_bands, entity_picture (with photo)"}
     - {id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}", stability: stable}
+    - {id: "sensor.<plant>_reading_{moisture,conductivity,illuminance,temperature}", stability: stable, note: "Opt-in numeric measurement with a stable ID across provider changes"}
+    - {id: "sensor.<plant>_reading_status", stability: additive-only, note: "Opt-in metadata with readings by metric including last valid HA report at, value and availability"}
+    - {id: "plant.<plant> attributes domosenso_reading_status and domosenso_legacy_moisture_history", stability: additive-only}
     # From the package (0.2.0). <plant> is the object id of the plant's entity input.
     - {id: "sensor.<plant>_illuminance_max_24h", unique_id: "<plant>_illuminance_max_24h", stability: stable, note: "lx, brightest reading of the last 24 hours"}
     - {id: automation.plants_need_water, unique_id: plants_water_reminder, stability: stable}

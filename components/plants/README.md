@@ -1,9 +1,15 @@
 # plants: field notes
 
+Choose among native Bluetooth, a dedicated proxy, or decoded ESPHome
+measurements with per-plant `sources` and `active_source`. The stable
+measurements and reading age are opt-in. See the
+[standalone example](../../examples/standalone-tablet/) and
+[history migration](UPGRADE.md).
+
 What a home needs to know beyond `component.yaml`.
 
-- **Reach.** Mi Flora sensors talk Bluetooth through the proxies (core `xiaomi_ble`). Sensors heard
-  only at −92 to −100 dBm by a proxy two rooms away were unreliable; give the room its own proxy.
+- **Reach.** Mi Flora sensors use the host Bluetooth receiver or a proxy (core `xiaomi_ble`). Sensors heard
+  only at −92 to −100 dBm were unreliable. Check reception before deciding where a receiver is needed.
   An ESPSomfy-RTS board cannot be that proxy (see [awnings](../awnings/README.md)).
 - **Thresholds per species** come from the Flower Care app's plant database, or from how the plant
   is looked after; they go into the inputs (rendered into `plant:`), and a change needs a Home

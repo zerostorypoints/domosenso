@@ -33,6 +33,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -42,6 +43,19 @@ from catalog_check import flatten
 
 DEFAULT_LANGS = ["en", "de", "pl"]
 LANG_SUFFIX = ".lang.yaml.j2"
+
+
+def _is_iso_timestamp(value: object) -> bool:
+    """A quoted, zoned ISO timestamp accepted by both Python and the card."""
+    if not isinstance(value, str) or not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])",
+        value,
+    ):
+        return False
+    try:
+        return datetime.fromisoformat(value).tzinfo is not None
+    except ValueError:
+        return False
 
 
 class RenderError(Exception):
@@ -170,6 +184,7 @@ def _make_env(
         raise RenderError(message)
 
     env.filters["yaml"] = yaml_scalar
+    env.tests["iso_timestamp"] = _is_iso_timestamp
     env.globals.update(t=t, inputs=inputs, lang=lang, fail=fail)
     if home is not _NO_HOME:
         env.globals.update(home=home, room_name=lambda room: _room_name(room, lang))
