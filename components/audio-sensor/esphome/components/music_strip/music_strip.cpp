@@ -178,7 +178,7 @@ void MusicStripComponent::cap_solid_() {
   uint8_t cap = 255;
   if (target.is_on() && !out->is_effect_active()) {
     const Color c = light::color_from_light_color_values(target);
-    const uint8_t b = to_uint8_scale(target.get_brightness());
+    const uint8_t b = light::to_uint8_scale(target.get_brightness());
     const ms::Rgb colour{(uint8_t) ((c.r * (1u + b)) >> 8), (uint8_t) ((c.g * (1u + b)) >> 8),
                          (uint8_t) ((c.b * (1u + b)) >> 8)};
     float limit;
