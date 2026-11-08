@@ -108,6 +108,7 @@ artifacts:
   templates:                            # rendered per home by tools/domosenso_render.py
     - templates/assistant-bindings.yaml.j2
     - templates/package.yaml.j2         # -> package.yaml, the home's packages/: offsets, recorder exclusions, music aliases
+    - templates/music-strip.lang.yaml.j2   # -> music-strip.<lang>.yaml, the strip settings page with explanations (SPEC-043); none without a strip
   ha_packages: []
   # Where the cards go in the home's config, served as /local/domosenso/audio-sensor/<version>/:
   # cards/*.js, cards/lib/** and translations/ keep their paths from this directory (tests and

@@ -405,6 +405,25 @@ light it.
 After a boot the strip is off, and a turn-on without a style (Home Assistant's `keep`, a tap on the
 light) starts the one in Strip style.
 
+### Settings page
+
+Home Assistant shows no description for a device's settings, so audio-sensor renders a page that
+does: `music-strip.<lang>.yaml`, one view per board with a strip, its settings in groups (look,
+placement, sound, power, and the automatic ones when `follow` or `ambient_light` is set), each group
+explained above it in plain words. A home without a strip gets no page. Register it once in the home's
+`configuration.yaml`:
+
+```yaml
+lovelace:
+  dashboards:
+    music-strip:
+      mode: yaml
+      title: Music strip
+      icon: mdi:led-strip-variant
+      filename: dashboards/music-strip.en.yaml
+      require_admin: true
+```
+
 ### In Home Assistant
 
 The inputs item's `strip:` (`leds`, `pin`, `follow`, `ambient_light`, `entities`) renders, with

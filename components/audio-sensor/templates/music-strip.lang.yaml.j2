@@ -1,0 +1,81 @@
+[#
+  The Music strip settings page (SPEC-043): every strip setting of each board with a strip, in groups,
+  each group with a plain-language explanation above it. Home Assistant shows no description for a
+  device's entities, so this page is where they are explained; it is audio-sensor's, so it works
+  without the Ramka. Rendered once per language (music-strip.<lang>.yaml) by tools/domosenso_render.py,
+  and empty (no file) when no board has a strip. The home registers it under lovelace: (README,
+  "Music strip").
+
+  The standing rule: a new strip entity gets its row and its explanation here in the same change
+  (tests/test_audio_sensor_strip_page.py).
+#]
+[%- from '_audio-ids.jinja' import to_slug -%]
+[%- set ns = namespace(boards=[]) -%]
+[%- for board in inputs.sensors if board.strip is defined and board.strip is not none -%]
+  [%- set ns.boards = ns.boards + [board] -%]
+[%- endfor -%]
+[#- The firmware entities' ids, guessed as the package guesses them; `strip.entities` overrides the ones it names. -#]
+[%- set overridable = {'light': 'music_strip', 'palette': 'strip_palette', 'custom_palette': 'strip_custom_palette',
+    'intensity': 'strip_intensity', 'mounting': 'strip_mounting', 'power_limit': 'strip_power_limit', 'current': 'strip_current'} -%]
+[%- macro id(board, domain, slug) -%]
+  [%- set named = board.strip.entities | default({}) -%]
+  [%- set ns2 = namespace(found='') -%]
+  [%- for key, s in overridable.items() if s == slug and key in named -%][%- set ns2.found = named[key] -%][%- endfor -%]
+  [%- if ns2.found -%][[ ns2.found ]][%- else -%][[ domain ]].[[ to_slug(board.area) ]]_[[ to_slug(board.name | default('audio-sensor-' ~ board.room)) ]]_[[ slug ]][%- endif -%]
+[%- endmacro -%]
+[%- macro group(key, rows, light='') %]
+      - type: grid
+        cards:
+          - type: heading
+            heading: [[ t('ui.strip.' ~ key) | yaml ]]
+          - type: markdown
+            content: [[ t('ui.strip.' ~ key ~ '_help') | yaml ]]
+[%- if light %]
+          - type: tile
+            entity: [[ light ]]
+            features: [{type: light-brightness}]
+[%- endif %]
+          - type: entities
+            entities:
+[%- for row in rows %]
+              - [[ row ]]
+[%- endfor %]
+[%- endmacro -%]
+[%- if ns.boards %]
+title: [[ t('ui.strip.title') | yaml ]]
+views:
+[%- for b in ns.boards %]
+[%- set prefix = b.id_prefix | default(to_slug(b.room)) %]
+  - title: [[ b.area | yaml ]]
+    path: [[ prefix | replace('_', '-') ]]
+    icon: mdi:led-strip-variant
+    type: sections
+    max_columns: 2
+    sections:
+[%- set look = [id(b, 'select', 'strip_style'), id(b, 'select', 'strip_palette'), id(b, 'text', 'strip_custom_palette'),
+    id(b, 'number', 'strip_pastel'), id(b, 'number', 'strip_intensity')] %]
+[%- set layout = [id(b, 'select', 'strip_bass_position'), id(b, 'select', 'strip_mounting'),
+    id(b, 'number', 'strip_leds_in_use'), id(b, 'number', 'strip_first_led')] %]
+[%- set sound = [id(b, 'number', 'strip_sensitivity'), id(b, 'number', 'strip_range'), id(b, 'switch', 'strip_auto_gain'),
+    id(b, 'number', 'strip_attack'), id(b, 'number', 'strip_release'), id(b, 'number', 'strip_beat_strength'),
+    id(b, 'number', 'strip_beat_sensitivity')] %]
+[%- set power = [id(b, 'number', 'strip_power_limit'), id(b, 'sensor', 'strip_current'), id(b, 'button', 'strip_reset_settings')] %]
+[[ group('look', look, light=id(b, 'light', 'music_strip')) ]]
+[[ group('layout', layout) ]]
+[[ group('sound', sound) ]]
+[[ group('power', power) ]]
+[%- set helpers = [] %]
+[%- if b.strip.follow | default(none) %]
+[%- set helpers = helpers + ['input_boolean.' ~ prefix ~ '_strip_follow_music', 'input_number.' ~ prefix ~ '_strip_follow_off_delay',
+    'input_select.' ~ prefix ~ '_strip_follow_effect'] %]
+[%- endif %]
+[%- if b.strip.ambient_light | default(none) %]
+[%- set helpers = helpers + ['input_boolean.' ~ prefix ~ '_strip_ambient', 'input_number.' ~ prefix ~ '_strip_ambient_dark_lux',
+    'input_number.' ~ prefix ~ '_strip_ambient_bright_lux', 'input_number.' ~ prefix ~ '_strip_ambient_min_pct',
+    'input_number.' ~ prefix ~ '_strip_ambient_max_pct'] %]
+[%- endif %]
+[%- if helpers %]
+[[ group('automation', helpers) ]]
+[%- endif %]
+[%- endfor %]
+[%- endif %]
