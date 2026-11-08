@@ -28,3 +28,8 @@ def _build_and_run(tmp_path, source):
 @pytest.mark.skipif(shutil.which("c++") is None, reason="needs a C++ compiler")
 def test_features(tmp_path):
     _build_and_run(tmp_path, FIXTURES / "test_features.cpp")
+
+
+@pytest.mark.skipif(shutil.which("c++") is None, reason="needs a C++ compiler")
+def test_render(tmp_path):
+    _build_and_run(tmp_path, FIXTURES / "test_render.cpp")
