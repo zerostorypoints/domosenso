@@ -61,7 +61,15 @@ class FeatureExtractor {
     Features f{};
     this->seq_++;
     f.seq = this->seq_;
-    if (!std::isfinite(rms) || rms < GATE_RMS) {
+    // The gate opens 3 dB above where it closes, so room noise at the edge does not chatter.
+    if (!std::isfinite(rms)) {
+      this->gate_open_ = false;
+    } else if (rms >= GATE_OPEN_RMS) {
+      this->gate_open_ = true;
+    } else if (rms < GATE_CLOSE_RMS) {
+      this->gate_open_ = false;
+    }
+    if (!this->gate_open_) {
       // Below the gate nothing is music: level and bands fall away, the flux history keeps running.
       this->push_flux(0.0f);
       this->smooth(0.0f, f);
@@ -73,27 +81,37 @@ class FeatureExtractor {
     this->peak_ = std::max(rms, this->peak_ * this->peak_decay_);
     const float ref_db = (this->settings_.auto_gain ? std::max(db(this->peak_), AUTO_FLOOR_DB) : 0.0f) -
                          this->settings_.sensitivity_db;
-    f.envelope = unit((db(rms) - ref_db + RANGE_DB) / RANGE_DB);
+    // Auto gain spreads the level between the gate (0) and the reference (1), so a hop just above the
+    // gate is still near 0; a manual gain keeps the fixed 60 dB range under the reference.
+    const float low_db = this->settings_.auto_gain ? GATE_CLOSE_DB : ref_db - RANGE_DB;
+    f.envelope = unit((db(rms) - low_db) / std::max(ref_db - low_db, 1.0f));
 
     float level[NUM_BANDS];
     float target[NUM_BANDS];
-    float flux = 0;
+    float flux = 0, top_rise = 0;
     for (size_t b = 0; b < NUM_BANDS; b++) {
       double sum = 0;
       for (size_t k = this->edge_[b]; k < this->edge_[b + 1] && k < this->bins_; k++) sum += power[k];
       const float band_p = (float) sum * this->power_scale_;
       const float band_db = db_power(band_p);
-      // The flux sees each band against its own recent mean, so a steady noise bed jitters little
-      // and a hit stands out by orders of magnitude; the gain-free level would swing by many dB
-      // on a band that holds one or two bins.
+      // The brief's band energies, normalised per band: the flux sees each band against its own
+      // recent mean. A steady bed then sits near 1 whatever its colour, and a one- or two-bin band
+      // that jitters by several dB no longer outweighs a real hit.
       if (!this->have_prev_) this->band_mean_[b] = band_p;
-      level[b] = std::log10(1.0f + band_p / std::max(this->band_mean_[b], 1e-9f));
+      level[b] = band_p / std::max(this->band_mean_[b], 1e-9f);
       this->band_mean_[b] += this->mean_alpha_ * (band_p - this->band_mean_[b]);
       target[b] = unit((band_db - ref_db + RANGE_DB) / RANGE_DB);
       // The first frame after silence has no earlier one to rise from.
-      if (this->have_prev_) flux += std::max(0.0f, level[b] - this->prev_level_[b]);
-      this->prev_level_[b] = level[b];
+      if (this->have_prev_) {
+        const float rise = std::max(0.0f, level[b] - this->prev_level_[b]);
+        flux += rise;
+        top_rise = std::max(top_rise, rise);
+      }
+      // A short peak hold: a dip in a noisy band must not count as the next hop's rise.
+      this->prev_level_[b] = std::max(level[b], this->prev_level_[b] * HOLD_DECAY);
     }
+    // A hit lifts neighbouring bands together; one band alone jumping is noise in a thin low band.
+    flux -= top_rise;
 
     this->have_prev_ = true;
     const bool ready = this->count_ >= this->min_history_;
@@ -105,10 +123,10 @@ class FeatureExtractor {
       sd = std::sqrt(sd / (float) this->flux_.size());
     }
     this->since_beat_++;
-    f.beat = ready && flux > mean + BEAT_SIGMA * sd && flux > MIN_FLUX && this->since_beat_ >= this->refractory_hops_;
+    f.beat = ready && flux > mean + BEAT_SIGMA * std::max(sd, MIN_SD) && this->since_beat_ >= this->refractory_hops_;
     if (f.beat) this->since_beat_ = 0;
     this->push_flux(flux);
-    f.onset = unit(flux / FLUX_FULL);
+    f.onset = unit(std::log10(1.0f + flux) / ONSET_DECADES);
 
     this->smooth_bands(f.envelope, target, f);
     return f;
@@ -118,15 +136,20 @@ class FeatureExtractor {
   static constexpr double LOW_HZ = 40.0;
   static constexpr double HIGH_HZ = 16000.0;
   static constexpr float RANGE_DB = 60.0f;       // 0 at -60 dB below the reference, 1 at it
-  static constexpr float GATE_RMS = 0.000316228f;  // -70 dBFS
+  static constexpr float GATE_CLOSE_DB = -70.0f;
+  static constexpr float GATE_CLOSE_RMS = 0.000316228f;  // -70 dBFS
+  static constexpr float GATE_OPEN_RMS = 0.000446684f;   // -67 dBFS
   static constexpr float AUTO_FLOOR_DB = -50.0f;
   static constexpr double PEAK_HALF_LIFE_S = 5.0;
   static constexpr double BAND_MEAN_S = 1.0;
   static constexpr double FLUX_WINDOW_S = 1.0;
   static constexpr double REFRACTORY_S = 0.12;
   static constexpr float BEAT_SIGMA = 1.5f;
-  static constexpr float MIN_FLUX = 2.2f;
-  static constexpr float FLUX_FULL = 4.0f;
+  // Floor on the flux spread, so a steady bed (spread near 0) cannot beat on its own jitter. The flux
+  // is in units of each band's own mean, so the floor does not depend on loudness or on how big a hit is.
+  static constexpr float MIN_SD = 4.5f;
+  static constexpr float HOLD_DECAY = 0.8f;
+  static constexpr float ONSET_DECADES = 2.0f;  // a flux of 100 band means is a full-strength onset
 
   static float smoothing(double hop_s, float tau_ms) {
     return tau_ms <= 0 ? 1.0f : (float) (1.0 - std::exp(-hop_s * 1000.0 / (double) tau_ms));
@@ -138,6 +161,7 @@ class FeatureExtractor {
   void reset() {
     std::fill(this->flux_.begin(), this->flux_.end(), 0.0f);
     this->have_prev_ = false;
+    this->gate_open_ = false;
     std::fill(this->smooth_bands_, this->smooth_bands_ + NUM_BANDS, 0.0f);
     this->smooth_env_ = 0;
     this->peak_ = 0;
@@ -187,7 +211,7 @@ class FeatureExtractor {
   float prev_level_[NUM_BANDS] = {};
   float band_mean_[NUM_BANDS] = {};
   float mean_alpha_ = 0.01f;
-  bool have_prev_ = false;
+  bool have_prev_ = false, gate_open_ = false;
   float smooth_bands_[NUM_BANDS] = {};
   float smooth_env_ = 0, peak_ = 0;
   uint32_t seq_ = 0;

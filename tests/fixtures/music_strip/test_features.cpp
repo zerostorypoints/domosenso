@@ -140,16 +140,62 @@ static bool all_sane(const Features &f) {
   return good;
 }
 
-// A 60 Hz burst (30 ms, -12 dBFS) every 500 ms over -40 dBFS pink noise.
-static std::vector<float> kick_train(float seconds, std::vector<size_t> &starts, float gain_db = 0) {
+// A kick every 500 ms over -40 dBFS pink noise, each a 30 ms burst. Absolute: 60 Hz at burst_db dBFS.
+// Relative: partials at 60, 250 and 500 Hz (the first three bands a kick and its body fill), each
+// burst_db dB above the bed's own power in that band, as a kick sits in a mix.
+static std::vector<float> kick_train(float seconds, std::vector<size_t> &starts, float burst_db = -12.0f,
+                                     bool relative = false, float gain_db = 0) {
+  struct Partial {
+    float hz;
+    size_t lo, hi;  // the band's bins at 48 kHz / 1024
+    float db;
+  };
   std::vector<float> x = pink((size_t) (seconds * SR), -40.0f);
+  std::vector<Partial> partials = {{60.0f, 1, 4, burst_db}};
+  if (relative) {
+    partials = {{60.0f, 1, 4, 0}, {250.0f, 4, 9, 0}, {500.0f, 9, 18, 0}};
+    static const Dft dft;
+    std::vector<float> p;
+    std::vector<double> acc(partials.size(), 0.0);
+    size_t frames = 0;
+    for (size_t at = 0; at + N <= x.size(); at += HOP, frames++) {
+      dft.power(&x[at], p);
+      for (size_t i = 0; i < partials.size(); i++)
+        for (size_t k = partials[i].lo; k < partials[i].hi; k++) acc[i] += (double) p[k] * 16.0 / ((double) N * N);
+    }
+    // A sine of amplitude A puts about A^2 into its band's bins; its rms is A / sqrt(2).
+    for (size_t i = 0; i < partials.size(); i++)
+      partials[i].db = 10.0f * (float) std::log10(acc[i] / (double) frames / 2.0) + burst_db;
+  }
   for (float t = 0.25f; t + 0.03f < seconds; t += 0.5f) {
     const size_t at = (size_t) (t * SR);
     starts.push_back(at);
-    add_burst(x, 60.0f, -12.0f, at, (size_t) (0.03f * SR));
+    for (const Partial &pt : partials) add_burst(x, pt.hz, pt.db, at, (size_t) (0.03f * SR));
   }
   for (float &v : x) v *= db_amp(gain_db);
   return x;
+}
+
+// Beats after 2 s: kicks found (of those starting after 2 s) and beats outside every kick's window.
+static void score_kicks(const std::vector<float> &x, const std::vector<size_t> &starts, int &hit, int &expected,
+                        int &stray) {
+  std::vector<bool> found(starts.size(), false);
+  stray = expected = hit = 0;
+  run(x, FeatureSettings(), [&](size_t, size_t end, const Features &f) {
+    if (end < (size_t) (2 * SR) || !f.beat) return;
+    bool matched = false;
+    for (size_t i = 0; i < starts.size(); i++)
+      if (end >= starts[i] && end <= starts[i] + 2 * HOP) {
+        found[i] = true;
+        matched = true;
+      }
+    if (!matched) stray++;
+  });
+  for (size_t i = 0; i < starts.size(); i++) {
+    if (starts[i] < (size_t) (2 * SR)) continue;
+    expected++;
+    if (found[i]) hit++;
+  }
 }
 
 int main() {
@@ -173,35 +219,36 @@ int main() {
   {
     std::vector<size_t> starts;
     const std::vector<float> x = kick_train(10.0f, starts);
-    std::vector<bool> found(starts.size(), false);
-    int stray = 0, expected = 0;
-    run(x, defaults, [&](size_t, size_t end, const Features &f) {
-      if (end < (size_t) (2 * SR) || !f.beat) return;
-      bool matched = false;
-      for (size_t i = 0; i < starts.size(); i++)
-        if (end >= starts[i] && end <= starts[i] + 2 * HOP) {
-          found[i] = true;
-          matched = true;
-        }
-      if (!matched) stray++;
-    });
-    for (size_t i = 0; i < starts.size(); i++)
-      if (starts[i] >= (size_t) (2 * SR)) expected++;
-    int hit = 0;
-    for (size_t i = 0; i < starts.size(); i++)
-      if (starts[i] >= (size_t) (2 * SR) && found[i]) hit++;
+    int hit, expected, stray;
+    score_kicks(x, starts, hit, expected, stray);
     char msg[96];
     std::snprintf(msg, sizeof msg, "found %d of %d kicks, %d beats between", hit, expected, stray);
-    check(expected >= 16 && hit >= expected * 18 / 20 && stray == 0, "kick train", msg);
+    check(expected == 16 && hit >= 15 && stray == 0, "kick train", msg);
+  }
+
+  {
+    // Kicks in mixed music sit a few dB over their band, not 28 dB.
+    std::vector<size_t> starts;
+    const std::vector<float> x = kick_train(10.0f, starts, 10.0f, true);
+    int hit, expected, stray;
+    score_kicks(x, starts, hit, expected, stray);
+    char msg[96];
+    std::snprintf(msg, sizeof msg, "found %d of %d kicks 10 dB over the bed, %d beats between", hit, expected, stray);
+    // A kick missed in its window and found a hop late shows as a stray beat; that is no false beat.
+    check(expected == 16 && hit >= 15 && stray <= expected - hit, "kick train, 10 dB hits", msg);
   }
 
   {
     int beats = 0;
-    run(pink((size_t) (10 * SR), -20.0f), defaults, [&](size_t, size_t end, const Features &f) {
-      if (end >= (size_t) (2 * SR) && f.beat) beats++;
-    });
+    for (uint32_t seed : {12345u, 1u, 2u, 3u, 4u, 5u, 6u, 7u}) {
+      rng_state = seed;
+      run(pink((size_t) (10 * SR), -20.0f), defaults, [&](size_t, size_t end, const Features &f) {
+        if (end >= (size_t) (2 * SR) && f.beat) beats++;
+      });
+    }
+    rng_state = 12345;
     char msg[64];
-    std::snprintf(msg, sizeof msg, "%d beats in steady pink noise", beats);
+    std::snprintf(msg, sizeof msg, "%d beats in steady pink noise over 8 seeds", beats);
     check(beats == 0, "steady pink", msg);
   }
 
@@ -239,7 +286,7 @@ int main() {
 
   {
     std::vector<size_t> starts;
-    const std::vector<float> x = kick_train(12.0f, starts, -28.0f);  // bursts at -40 dBFS
+    const std::vector<float> x = kick_train(12.0f, starts, -12.0f, false, -28.0f);  // bursts at -40 dBFS
     float peak_auto = 0, peak_off = 0;
     run(x, defaults, [&](size_t, size_t end, const Features &f) {
       if (end <= (size_t) (10 * SR)) peak_auto = std::fmax(peak_auto, f.envelope);
@@ -251,6 +298,19 @@ int main() {
     std::snprintf(msg, sizeof msg, "auto peak %.2f, manual peak %.2f", peak_auto, peak_off);
     check(peak_auto >= 0.8f, "auto gain lifts a quiet signal", msg);
     check(peak_off <= 0.4f, "no auto gain leaves it low", msg);
+  }
+
+  {
+    // Room noise just above the gate must not chatter between 0 and a visible level.
+    float top = 0;
+    bool toggled = false;
+    run(white((size_t) (10 * SR), -68.0f), defaults, [&](size_t, size_t, const Features &f) {
+      top = std::fmax(top, f.envelope);
+      if (f.envelope > 0.3f) toggled = true;
+    });
+    char msg[64];
+    std::snprintf(msg, sizeof msg, "envelope peaked at %.2f", top);
+    check(top <= 0.15f && !toggled, "noise near the gate", msg);
   }
 
   {
