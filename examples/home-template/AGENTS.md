@@ -88,8 +88,8 @@ The lock is the deploy history together with `git log`: one commit per `update` 
 ## Reproducible local staging
 
 Use the framework's `tools/install-home-workflow.py --home <owned home worktree>` to install the
-shared `stage-home-update` skill for Codex and Claude plus `docs/HOME_STAGING.md`. Follow that
-playbook for staging setup and component updates. The framework's `tools/home-staging.py` creates
+shared `check-home-upgrades` and `stage-home-update` skills for Codex and Claude plus
+`docs/HOME_STAGING.md`. Audit available releases first and stage a selected update separately. The framework's `tools/home-staging.py` creates
 unique owned Docker resources per home worktree and outputs a local target fragment; never copy
 a different household's fixed-name staging script. Preserve existing targets and private inputs.
 The setup starts an isolated empty HA; home deployment, fixtures and acceptance are separate.

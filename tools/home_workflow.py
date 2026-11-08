@@ -1,4 +1,4 @@
-"""Install versioned staging guidance without overwriting a home's customization."""
+"""Install shared home workflows without overwriting a home's customization."""
 from __future__ import annotations
 
 import hashlib
@@ -8,9 +8,13 @@ from pathlib import Path
 from agent_workspace import workspace, WorkspaceError
 from domosenso_cli.home import HomeConfig
 
-FILES = ('.ai/skills/stage-home-update/SKILL.md', 'docs/HOME_STAGING.md')
-LINKS = {f'{client}/skills/stage-home-update': '../../.ai/skills/stage-home-update'
-         for client in ('.agents', '.claude')}
+SKILLS = ('check-home-upgrades', 'stage-home-update')
+FILES = (*(f'.ai/skills/{skill}/SKILL.md' for skill in SKILLS), 'docs/HOME_STAGING.md')
+LINKS = {
+    f'{client}/skills/{skill}': f'../../.ai/skills/{skill}'
+    for client in ('.agents', '.claude')
+    for skill in SKILLS
+}
 MANIFEST = '.ai/home-workflow.json'
 
 

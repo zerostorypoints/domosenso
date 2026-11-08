@@ -444,6 +444,6 @@ to the catalog as a pull request (spec first for anything new), without their ho
 ## Local staging before adoption
 
 For any new home, use the framework's `tools/install-home-workflow.py --home <home-worktree>`
-to install `stage-home-update` for both Codex and Claude. Follow `docs/HOME_STAGING.md` for
-prerequisites, an isolated local HA and a generated staging target. Preserve existing home
+to install `check-home-upgrades` and `stage-home-update` for Codex and Claude. Follow
+`docs/HOME_STAGING.md` for prerequisites, an isolated local HA and a generated staging target. Preserve existing home
 instructions and targets; a bootstrap is not a component acceptance test or production consent.
