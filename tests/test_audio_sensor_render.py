@@ -846,6 +846,14 @@ def test_palette_script_field_has_no_selector(tmp_path):
     assert not any("selector" in field for field in script["fields"].values())
 
 
+def test_script_field_examples_are_strings(tmp_path):
+    # HA 2026.9.2 disables a script whose field example is not a string ("value should be a string
+    # at 'fields.stops.example'"), seen on the prototype's second deploy.
+    for name, script in render(tmp_path, demo_inputs())["script"].items():
+        for field, spec in (script.get("fields") or {}).items():
+            assert isinstance(spec.get("example", ""), str), (name, field)
+
+
 # SPEC-043 stage B: brightness from the room.
 def _with_ambient():
     inputs = copy.deepcopy(demo_inputs())

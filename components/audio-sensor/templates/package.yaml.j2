@@ -537,8 +537,9 @@ script:
         name: Stops
         description: 2 to 5 colours, each "#rrggbb".
         required: true
-        # No selector: HA 2026.9.2 refused `object: {}` and disabled the script (as the Ramka's).
-        example: ["#ff3000", "#ffb000", "#2050ff"]
+        # No selector, and the example a string: HA 2026.9.2 refused `object: {}` and a list example
+        # and disabled the script (as the Ramka's).
+        example: '["#ff3000", "#ffb000", "#2050ff"]'
     sequence:
       - condition: template
         value_template: >-
