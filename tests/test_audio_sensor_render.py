@@ -838,6 +838,14 @@ def test_palette_script_writes_custom_and_selects_it(tmp_path):
     assert evaluate(bad_colour, {}) == "False"
 
 
+
+def test_palette_script_field_has_no_selector(tmp_path):
+    # HA 2026.9.2 refuses `object: {}` ("Only one type can be specified") and disables the whole
+    # script, seen on the prototype's deploy; the Ramka's scripts drop their selectors for the same reason.
+    script = render(tmp_path, demo_inputs())["script"]["audio_sensor_music_strip_palette"]
+    assert not any("selector" in field for field in script["fields"].values())
+
+
 # SPEC-043 stage B: brightness from the room.
 def _with_ambient():
     inputs = copy.deepcopy(demo_inputs())
