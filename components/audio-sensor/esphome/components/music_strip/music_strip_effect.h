@@ -36,7 +36,7 @@ class MusicStripEffect : public light::AddressableLightEffect {
     // colour correction applies to the frame on its way out.
     const light::LightColorValues &v = this->state_->current_values;
     s.gamma = this->state_->get_gamma_correct();
-    s.brightness = to_uint8_scale(v.get_brightness() * v.get_state());
+    s.brightness = light::to_uint8_scale(v.get_brightness() * v.get_state());
     const size_t n = (size_t) it.size();
     this->frame_.resize(n);
     this->renderer_.render(f, s, dt, this->frame_.data(), n);
