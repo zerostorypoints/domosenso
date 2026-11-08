@@ -16,11 +16,11 @@ and approving a production deployment remain separate decisions.
 ## Set up once per home
 
 Use a trusted framework checkout containing these tools and a private home repository created
-with the normal home onboarding workflow (the framework's `onboard-home` skill). Set up Docker,
-Git, uv and Python 3.11.4 or newer. Run `uv sync --frozen` in the framework checkout, then pull
-`homeassistant/home-assistant:2026.9.2` before starting the isolated runtime. Docker Desktop on
-macOS/Linux Docker are the initial supported environments; Windows requires a Linux environment
-with Git symlink support and Docker. Do not infer a native Windows acceptance test.
+with the normal home onboarding workflow (the framework's `onboard-home` skill). Set up Git, uv
+and Python 3.11.4 or newer. Run `uv sync --frozen` in the framework checkout. For staging, also set up
+Docker Desktop on macOS or Docker on Linux and pull `homeassistant/home-assistant:2026.9.2` before
+starting the isolated runtime. On Windows, use a Linux environment with Git symlink support and
+Docker.
 
 Create a named linked worktree for the task in **each** repository you work on. For an existing
 home, a setup example is `git worktree add -b codex/stage-update ../home-stage HEAD`, executed
@@ -35,10 +35,10 @@ HOME_WT=/absolute/path/to/home-worktree
 uv run --project "$CATALOG_WT" "$CATALOG_WT/tools/install-home-workflow.py" --home "$HOME_WT"
 ```
 
-This installs the shared `stage-home-update` skill, this guide, relative discovery links for
-Codex and Claude, and `.ai/home-workflow.json` with content hashes. Review and commit those files
-in the home. Existing AGENTS/CLAUDE, hooks and settings remain home-owned. Add a reference to the
-skill in the home's AGENTS.md and retain its CLAUDE import. The starter template already names it.
+This installs `check-home-upgrades`, `stage-home-update`, this guide, and discovery links for
+Codex and Claude, plus `.ai/home-workflow.json` with content hashes. Review and commit those files
+in the home. Existing AGENTS/CLAUDE, hooks and settings remain home-owned. Reference both skills
+in the home's AGENTS.md and retain its CLAUDE import. The starter template names both.
 Review client trust normally; filesystem installation does not prove a client's hook activation.
 
 Repeat the same installer with a newer trusted framework checkout to update the workflow. It
@@ -48,7 +48,31 @@ content; record the framework commit used for each task as well.
 
 Ensure `.gitignore` includes `.domosenso/` and none of that runtime directory is tracked. It holds
 private credentials, configuration and evidence. Never copy it into the framework or a public PR.
-The installer copies only the shared guide/skill, not a personal staging script or home settings.
+The installer copies shared guidance. Home-specific settings and staging scripts stay in the home.
+
+## Check what can be upgraded
+
+In the home project, ask “Use check-home-upgrades to review the released updates for this home.
+Explain what would change here and what needs staging.” The audit needs Git access to the home and
+catalog sources. Docker and a staging runtime are needed only when previewing an update.
+
+The [audit skill](../.ai/skills/check-home-upgrades/SKILL.md) compares the canonical home lock,
+dated deployment evidence and current catalog tags. An active worktree, the integration branch
+and the running home can differ. The report identifies which versions each source establishes,
+what is optional, what needs migration or a newer CLI, and what could not be confirmed. It reads
+the home without changing its checkout or runtime. If a prior rollout is missing from the
+integration branch, reconcile that baseline before using it to plan a candidate.
+
+| Request | Workflow |
+|---|---|
+| Review available upgrades and their impact on this home | `check-home-upgrades` |
+| Try a selected component release with private inputs | `stage-home-update` using the audited baseline and exact tag |
+| Install a component the home does not have | `add-component` in the framework |
+| Review a framework PR with fictional inputs | `preview-pr` in the framework |
+| Adopt a staged release on production | Follow the home's deployment and approval rules with a fresh plan |
+
+The audit is complete once the owner has the report. Selecting a candidate starts a separate
+staging task. Reviewing a candidate or accepting staging does not approve a production deploy.
 
 ## Start and inspect
 

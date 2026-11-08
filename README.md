@@ -184,9 +184,9 @@ From your home's folder: `uv run --project <path to the clone> domosenso <comman
 - [AGENTS.md](AGENTS.md) — the rules for coding agents.
 
 
-For a private installation, [set up local home staging](docs/HOME_STAGING.md) with the shared
-`stage-home-update` skill and framework tools. Each home/worktree gets its own isolated runtime;
-private inputs and local customizations remain in the home repository.
+For a private installation, [review available upgrades and set up local staging](docs/HOME_STAGING.md).
+Use `check-home-upgrades` for a read-only review and `stage-home-update` to try a selected release
+in an isolated runtime. Private inputs and local customizations stay in the home repository.
 
 ## Brand identity
 
