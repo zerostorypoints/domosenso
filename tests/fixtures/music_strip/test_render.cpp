@@ -84,7 +84,7 @@ int main() {
     const size_t n = 120;
     std::vector<Rgb> leds(n);
     bool ok = true;
-    for (Style st : {Style::PULSE, Style::GLOW, Style::BANDS, Style::CENTRE_METER, Style::SPECTRUM, Style::RIPPLE}) {
+    for (Style st : {Style::PULSE, Style::GLOW, Style::BANDS, Style::CENTRE_METER, Style::SPECTRUM, Style::RIPPLE, Style::HEAT}) {
       Renderer r;
       RenderSettings s = settings(st, n);
       s.first = 110;
@@ -174,7 +174,7 @@ int main() {
     const size_t n = 60;
     std::vector<Rgb> full(n), soft(n);
     bool ok = true;
-    for (Style st : {Style::PULSE, Style::GLOW, Style::BANDS, Style::CENTRE_METER, Style::SPECTRUM, Style::RIPPLE}) {
+    for (Style st : {Style::PULSE, Style::GLOW, Style::BANDS, Style::CENTRE_METER, Style::SPECTRUM, Style::RIPPLE, Style::HEAT}) {
       Renderer a, b;
       RenderSettings s = settings(st, n);
       Features f = loud(0.8f);
@@ -343,6 +343,46 @@ int main() {
     check(lit(meter[0]) && lit(meter[15]) && !lit(meter[35]), "meter start grows from the beginning");
     const auto meter_end = frame(Style::CENTRE_METER, BassPosition::END, loud(0.5f));
     check(lit(meter_end[39]) && !lit(meter_end[4]), "meter end grows from the end");
+  }
+
+  {
+    // Heat: the bands laid along the strip; each LED's colour is its band's level through the
+    // palette (quiet: the first stop, loud: the last), its brightness steady.
+    auto heat = [](BassPosition bass, const Features &f) {
+      const size_t n = 40;
+      std::vector<Rgb> leds(n);
+      Renderer r;
+      RenderSettings s = settings(Style::HEAT, n);
+      s.bass = bass;
+      for (int i = 0; i < 50; i++) r.render(f, s, 0.0107f, leds.data(), n);
+      return leds;
+    };
+    const Palette pal = builtin_palette(PaletteKind::SPECTRUM, Rgb{255, 255, 255});
+    Features rising = loud(0.8f);
+    for (size_t b = 0; b < NUM_BANDS; b++) rising.bands[b] = (float) b / (float) (NUM_BANDS - 1);
+    const auto up = heat(BassPosition::START, rising);
+    const Rgb quiet = palette_at(pal, 0.0f), loudest = palette_at(pal, 1.0f);
+    char msg[128];
+    std::snprintf(msg, sizeof msg, "first %u,%u,%u (quiet %u,%u,%u), last %u,%u,%u (loud %u,%u,%u)", up[0].r, up[0].g,
+                  up[0].b, quiet.r, quiet.g, quiet.b, up[39].r, up[39].g, up[39].b, loudest.r, loudest.g, loudest.b);
+    check(same(up[0], quiet) && same(up[39], loudest), "heat start: quiet bass, loud treble coloured by level", msg);
+    // Steady brightness: a middle LED is exactly the palette's colour for its level, not dimmed.
+    const float mid_level = (20.0f / 39.0f * (float) (NUM_BANDS - 1)) / (float) (NUM_BANDS - 1);
+    check(same(up[20], palette_at(pal, mid_level)), "heat brightness steady");
+    const auto down = heat(BassPosition::END, rising);
+    check(same(down[39], quiet) && same(down[0], loudest), "heat end: reversed");
+
+    Features even = loud(0.8f);
+    for (size_t b = 0; b < NUM_BANDS; b++) even.bands[b] = 0.5f;
+    const auto flat = heat(BassPosition::START, even);
+    check(same(flat[0], palette_at(pal, 0.5f)) && same(flat[0], flat[39]) && same(flat[0], flat[17]),
+          "heat equal bands: one colour");
+
+    Features silent{};
+    const auto dark = heat(BassPosition::START, silent);
+    bool none = true;
+    for (const Rgb &c : dark) none = none && !lit(c);
+    check(none, "heat silence: dark");
   }
 
   return failures ? 1 : 0;

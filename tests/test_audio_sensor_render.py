@@ -767,7 +767,7 @@ def test_follow_helpers_and_automation_only_with_follow(tmp_path):
     delay = package["input_number"]["living_room_strip_follow_off_delay"]
     assert (delay["min"], delay["max"], delay["step"]) == (0, 600, 5) and "initial" not in delay
     effects = package["input_select"]["living_room_strip_follow_effect"]
-    assert effects["options"] == ["keep", "Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple"]
+    assert effects["options"] == ["keep", "Pulse", "Glow", "Bands", "Centre meter", "Spectrum", "Ripple", "Heat"]
     assert "initial" not in effects
 
     automation = _automation(package, "living_room_strip_follow_music")
