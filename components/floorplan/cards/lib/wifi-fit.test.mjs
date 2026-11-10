@@ -129,3 +129,27 @@ test("the same input gives the same parameters", () => {
   assert.deepEqual(a.params, b.params);
   assert.deepEqual(a.residuals.map((x) => x.r), b.residuals.map((x) => x.r));
 });
+
+test("readings on a sparse band move only that band's transmit power, not n or the offsets", () => {
+  const doc = rowDoc();
+  const truth = clone(priors(doc));
+  truth.loss.brick["5"] = 12;
+  const rich = observe(doc, truth, inRow, "5");
+  const shifted = observe(doc, truth, [[1, 1], [5, 1], [9, 1], [10, 3]], "2.4").map((o) => ({ ...o, dbm: o.dbm + 10 }));
+  const alone = calibrate(ctxOf(doc), rich, table);
+  const both = calibrate(ctxOf(doc), [...rich, ...shifted], table);
+  near(both.params.n, alone.params.n, 1e-9);
+  for (const [k, v] of Object.entries(alone.params.device)) near(both.params.device[k], v, 1e-9);
+  near(both.params.loss.brick["5"], alone.params.loss.brick["5"], 1e-9);
+  assert.ok(both.params.tx.node["2.4"] > 22, `the sparse band's tx moved: ${both.params.tx.node["2.4"]}`);
+});
+
+test("a fitted loss never goes below 0 and n stays within [1.5, 4]", () => {
+  const doc = rowDoc();
+  const truth = clone(priors(doc));
+  truth.loss.brick["5"] = -10;                              // walls that add signal: data a fit must not follow
+  truth.n = 0.5;
+  const fit = calibrate(ctxOf(doc), observe(doc, truth, inRow, "5"), table);
+  assert.ok(fit.params.loss.brick["5"] >= 0, `brick ${fit.params.loss.brick["5"]}`);
+  assert.ok(fit.params.n >= 1.5 && fit.params.n <= 4, `n ${fit.params.n}`);
+});

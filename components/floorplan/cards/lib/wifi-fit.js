@@ -14,6 +14,7 @@ const OFFSET_SD = { device: 6, survey: 3, manual: 5 };
 const MIN_BAND_OBS = 5;                // fewer on a band: only that band's transmit powers move
 const MIN_ROOMS = 3;                   // fewer rooms observed: materials keep their priors
 const CROSS_BAND = 1 / 3;
+const N_RANGE = [1.5, 4];              // a fit outside this is the data's fault, not the building's
 
 // A device's offset is its own; survey and manual readings share one offset per source.
 const offsetKey = (o) => (o.source === "device" ? o.device ?? o.entity ?? "device" : o.source);
@@ -155,9 +156,12 @@ export function calibrate(ctx, observations, table) {
       const entries = [];
       const put = (key, v) => { if (key in index) entries.push([index[key], v * w]); };
       put(`tx|${c.key}|${band}`, 1);
-      put("n", -10 * c.terms.logd);
-      for (const [m, k] of Object.entries(lossTerms(c.terms))) put(`loss|${m}|${band}`, -k);
-      put(`off|${r.offset}`, 1);
+      // a sparse band's readings move only its transmit powers, not what other bands share
+      if (rich(band)) {
+        put("n", -10 * c.terms.logd);
+        for (const [m, k] of Object.entries(lossTerms(c.terms))) put(`loss|${m}|${band}`, -k);
+        put(`off|${r.offset}`, 1);
+      }
       add(entries, (pred - r.obs.dbm) * w);
     }
     keys.forEach((key, i) => {
@@ -166,6 +170,9 @@ export function calibrate(ctx, observations, table) {
     });
     const step = solve(A, g.map((v) => -v));
     keys.forEach((key, i) => spec[key].set(spec[key].get() + step[i]));
+    // A negative loss would draw a wall that adds signal; n beyond its range is no building.
+    for (const key of keys) if (key.startsWith("loss|")) spec[key].set(Math.max(0, spec[key].get()));
+    params.n = Math.min(N_RANGE[1], Math.max(N_RANGE[0], params.n));
     crossBand();
   }
 
