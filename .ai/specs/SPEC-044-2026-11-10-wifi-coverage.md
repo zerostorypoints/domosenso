@@ -354,10 +354,15 @@ and for a device its device id. Sources and their weights:
 
 ## Open questions
 
-- **macOS BSSID** (S3 spike): whether CoreWLAN gives the connected BSSID and a scan's per-BSSID
-  signal to a command-line tool once Location permission is granted. Verified only that
-  `system_profiler` redacts them. If not, the router tracker is the fallback (30 s polling: the
-  sample keeps the tracker's value at its time).
+- **macOS BSSID** (S3 spike, 2026-11-11, macOS 27.2): verified that without Location permission
+  CoreWLAN gives a command-line tool the connected link's signal, noise, channel and band at once
+  (no 5 s wait), and a scan with each network's signal and channel, but every SSID and BSSID is
+  nil; `system_profiler` redacts them too. Not verified: CoreWLAN with Location permission (a
+  command-line tool cannot ask for it; the terminal would have to be granted it by hand).
+  **Decision:** the macOS reader uses a small CoreWLAN helper compiled with `swiftc` on first use
+  when the Xcode command-line tools are there, else `system_profiler`; neither gives the BSSID, so
+  the serving access point comes from the router's client tracker (30 s polling: the sample keeps
+  the tracker's value at its time), else it is unknown.
 - **6 GHz BSSIDs:** `tplink_deco` does not expose them (verified); a 6 GHz observation's access point
   then comes from the client tracker only.
 - **Material values:** the coefficients are from a secondary reproduction of P.2040-3; S1 checks
