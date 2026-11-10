@@ -66,6 +66,12 @@ def test_parse_netsh():
     assert parse_netsh(fx("windows_netsh.txt")) == Link("5", 36, -58.0, None, "02:00:00:00:00:01")
 
 
+def test_parse_netsh_band_line():
+    six = parse_netsh(fx("windows_netsh_6ghz.txt"))
+    assert (six.band, six.channel) == ("6", 37)
+    assert parse_netsh(fx("windows_netsh_5ghz.txt")).band == "5"
+
+
 def test_parse_netsh_off():
     assert parse_netsh(fx("windows_netsh_off.txt")) is None
 
@@ -160,6 +166,17 @@ def test_read_link_macos_falls_back_when_compile_fails(monkeypatch, tmp_path):
     monkeypatch.setattr(wifi_link.shutil, "which", lambda name: "/usr/bin/" + name)
     assert read_link("Darwin", cache_dir=tmp_path).band == "6"
     assert calls == ["swiftc", "system_profiler"]
+
+
+def test_failed_compile_leaves_no_binary(monkeypatch, tmp_path):
+    def run(cmd, **kw):
+        Path(cmd[cmd.index("-o") + 1]).write_text("partial")
+        return completed("", 1)
+
+    monkeypatch.setattr(wifi_link.subprocess, "run", run)
+    monkeypatch.setattr(wifi_link.shutil, "which", lambda name: "/usr/bin/" + name)
+    assert wifi_link._helper_binary(tmp_path) is None
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_read_link_macos_helper_off_means_none(monkeypatch, tmp_path):

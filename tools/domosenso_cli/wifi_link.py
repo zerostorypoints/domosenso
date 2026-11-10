@@ -7,6 +7,7 @@ Location permission, so the survey takes the serving access point from the route
 from __future__ import annotations
 
 import hashlib
+import os
 import platform
 import re
 import shutil
@@ -112,12 +113,13 @@ def parse_netsh(text: str) -> Link | None:
         return m.group(1) if m else None
 
     state, bssid, channel, signal = field("State"), field("BSSID"), field("Channel"), field("Signal")
+    band = field("Band")  # Windows 11 only; Windows 10 has none, then the channel number decides
     if not state or state.lower() != "connected" or not (bssid and channel and signal):
         return None
     pct = re.match(r"(\d+)\s*%", signal)
     if not pct or not channel.isdigit():
         return None
-    return Link(band_of(int(channel), None), int(channel), int(pct.group(1)) / 2 - 100, None, bssid.lower())
+    return Link(band_of(int(channel), band), int(channel), int(pct.group(1)) / 2 - 100, None, bssid.lower())
 
 
 def _run(cmd: list[str], timeout: float = 15) -> str | None:
@@ -139,8 +141,17 @@ def _helper_binary(cache_dir: Path) -> Path | None:
     if binary.is_file():
         return binary
     cache_dir.mkdir(parents=True, exist_ok=True)
-    if _run(["swiftc", "-O", str(HELPER_SOURCE), "-o", str(binary)], timeout=180) is None or not binary.is_file():
+    # Compile to a temporary name and rename on success: a killed or timed-out compile must not leave a
+    # partial binary at the final path, where the next read would reuse it.
+    tmp = binary.with_name(binary.name + ".tmp")
+    try:
+        if _run(["swiftc", "-O", str(HELPER_SOURCE), "-o", str(tmp)], timeout=180) is None or not tmp.is_file():
+            return None
+        os.replace(tmp, binary)
+    except OSError:
         return None
+    finally:
+        tmp.unlink(missing_ok=True)
     return binary
 
 
