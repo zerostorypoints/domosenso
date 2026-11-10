@@ -57,3 +57,121 @@ test("normMac", () => {
   assert.equal(normMac(null), null);
   assert.equal(normMac(undefined), null);
 });
+
+// ---- device observations (Task 9) ----
+import { deviceObservations, signalEntities } from "./wifi-sources.js";
+
+const A = "02:00:00:00:00:0A"; // Alex's 2.4 GHz BSSID
+const B = "02:00:00:00:00:0B"; // Alex's 5 GHz BSSID
+const ent = (entity_id, device_id, platform) => ({ entity_id, device_id, platform });
+const dbm = { device_class: "signal_strength", unit_of_measurement: "dBm", state_class: "measurement" };
+const obsHass = {
+  devices: {
+    "dev-ap": { id: "dev-ap" },
+    "dev-ap2": { id: "dev-ap2" },
+    "dev-esp": { id: "dev-esp", connections: [["mac", "02:00:00:00:00:99"]] },
+    "dev-plug": { id: "dev-plug", connections: [["mac", "02:00:00:00:00:98"]] },
+    "dev-ruuvi": { id: "dev-ruuvi", connections: [["bluetooth", "02:00:00:00:00:97"]] },
+    "dev-tapo": { id: "dev-tapo" },
+  },
+  entities: {
+    "device_tracker.alex_deco": ent("device_tracker.alex_deco", "dev-ap", "tplink_deco"),
+    "sensor.alex_deco_bssid_2_4_ghz": ent("sensor.alex_deco_bssid_2_4_ghz", "dev-ap", "tplink_deco"),
+    "sensor.alex_deco_bssid_5_ghz": ent("sensor.alex_deco_bssid_5_ghz", "dev-ap", "tplink_deco"),
+    "device_tracker.sam_deco": ent("device_tracker.sam_deco", "dev-ap2", "tplink_deco"),
+    "sensor.sam_deco_bssid_2_4_ghz": ent("sensor.sam_deco_bssid_2_4_ghz", "dev-ap2", "tplink_deco"),
+    "sensor.esp_wi_fi_signal": ent("sensor.esp_wi_fi_signal", "dev-esp", "esphome"),
+    "sensor.esp_connected_ap_bssid": ent("sensor.esp_connected_ap_bssid", "dev-esp", "esphome"),
+    "sensor.plug_wi_fi_signal": ent("sensor.plug_wi_fi_signal", "dev-plug", "shelly"),
+    "device_tracker.plug": ent("device_tracker.plug", null, "tplink_deco"),
+    "sensor.ruuvi_signal_strength": ent("sensor.ruuvi_signal_strength", "dev-ruuvi", "bluetooth"),
+    "sensor.tapo_signal_level": ent("sensor.tapo_signal_level", "dev-tapo", "tplink"),
+  },
+  states: {
+    "device_tracker.alex_deco": { state: "home", attributes: { device_type: "deco", mac: "02-00-00-00-00-01" } },
+    "sensor.alex_deco_bssid_2_4_ghz": { state: A, attributes: {} },
+    "sensor.alex_deco_bssid_5_ghz": { state: B, attributes: {} },
+    "device_tracker.sam_deco": { state: "home", attributes: { device_type: "deco", mac: "02-00-00-00-00-02" } },
+    "sensor.sam_deco_bssid_2_4_ghz": { state: "02:00:00:00:00:1A", attributes: {} },
+    "sensor.esp_wi_fi_signal": { state: "-52.0", attributes: dbm },
+    "sensor.esp_connected_ap_bssid": { state: A, attributes: {} },
+    "sensor.plug_wi_fi_signal": { state: "-70", attributes: dbm },
+    "device_tracker.plug": { state: "home", attributes: { device_type: "client", mac: "02-00-00-00-00-98", deco_mac: "02-00-00-00-00-02", connection_type: "band5" } },
+    "sensor.ruuvi_signal_strength": { state: "-80", attributes: dbm },
+    "sensor.tapo_signal_level": { state: "2", attributes: {} },
+  },
+};
+const obsDoc = (points, aps = [{ device_id: "dev-ap" }, { device_id: "dev-ap2" }]) => ({
+  floors: [{ floor_id: "f1", points, access_points: aps }, { floor_id: "f2", points: [{ device_id: "dev-esp", x: 9, y: 9 }] }],
+});
+const espPt = { device_id: "dev-esp", x: 3, y: 4 };
+
+test("an ESPHome Wi-Fi sensor with a BSSID of a marked access point's 2.4 GHz", () => {
+  const out = deviceObservations(obsHass, obsDoc([espPt]), "f1", rules, {});
+  assert.deepEqual(out, [{ floorId: "f1", x: 3, y: 4, band: "2.4", ap: "dev-ap", dbm: -52, weight: 1, source: "device", device: "dev-esp", entity: "sensor.esp_wi_fi_signal" }]);
+});
+
+test("the BSSID matches in lower case or with dashes", () => {
+  for (const s of [A.toLowerCase(), A.replaceAll(":", "-")]) {
+    const h = { ...obsHass, states: { ...obsHass.states, "sensor.esp_connected_ap_bssid": { state: s, attributes: {} } } };
+    const [o] = deviceObservations(h, obsDoc([espPt]), "f1", rules, {});
+    assert.equal(o.ap, "dev-ap");
+  }
+});
+
+test("the 5 GHz BSSID gives band 5", () => {
+  const h = { ...obsHass, states: { ...obsHass.states, "sensor.esp_connected_ap_bssid": { state: B, attributes: {} } } };
+  assert.equal(deviceObservations(h, obsDoc([espPt]), "f1", rules, {})[0].band, "5");
+});
+
+test("values override the state; a missing value falls back to the state", () => {
+  const [o] = deviceObservations(obsHass, obsDoc([espPt]), "f1", rules, { "sensor.esp_wi_fi_signal": -61.5 });
+  assert.equal(o.dbm, -61.5);
+});
+
+test("without a BSSID the client tracker's mac (dashes) gives the access point by deco_mac and the band", () => {
+  const pt = { device_id: "dev-plug", x: 1, y: 2 };
+  const [o] = deviceObservations(obsHass, obsDoc([pt]), "f1", rules, {});
+  assert.equal(o.ap, "dev-ap2");
+  assert.equal(o.band, "5");
+  assert.equal(o.weight, 1);
+});
+
+test("a wired or undefined tracker, or an unmarked access point, falls through to unknown", () => {
+  const pt = { device_id: "dev-plug", x: 1, y: 2 };
+  for (const ct of ["wired", "undefined"]) {
+    const h = { ...obsHass, states: { ...obsHass.states, "device_tracker.plug": { state: "home", attributes: { ...obsHass.states["device_tracker.plug"].attributes, connection_type: ct } } } };
+    const [o] = deviceObservations(h, obsDoc([pt]), "f1", rules, {});
+    assert.deepEqual([o.ap, o.band, o.weight], [null, "2.4", 0.5]);
+  }
+  const [o] = deviceObservations(obsHass, obsDoc([pt], [{ device_id: "dev-ap" }]), "f1", rules, {});
+  assert.deepEqual([o.ap, o.weight], [null, 0.5]);
+});
+
+test("a BSSID of no marked access point falls through to the tracker, then unknown", () => {
+  const [o] = deviceObservations(obsHass, obsDoc([espPt], [{ device_id: "dev-ap2" }]), "f1", rules, {});
+  assert.deepEqual([o.ap, o.band, o.weight], [null, "2.4", 0.5]);
+});
+
+test("a marked access point on another floor counts", () => {
+  const doc = obsDoc([espPt], []);
+  doc.floors[1].access_points = [{ device_id: "dev-ap" }];
+  assert.equal(deviceObservations(obsHass, doc, "f1", rules, {})[0].ap, "dev-ap");
+});
+
+test("Bluetooth dBm, Tapo signal_level, unavailable and unplaced points give none", () => {
+  const pts = [{ device_id: "dev-ruuvi", x: 1, y: 1 }, { device_id: "dev-tapo", x: 1, y: 1 }];
+  assert.deepEqual(deviceObservations(obsHass, obsDoc(pts), "f1", rules, {}), []);
+  const h = { ...obsHass, states: { ...obsHass.states, "sensor.esp_wi_fi_signal": { state: "unavailable", attributes: dbm } } };
+  assert.deepEqual(deviceObservations(h, obsDoc([espPt]), "f1", rules, {}), []);
+  assert.deepEqual(deviceObservations(obsHass, obsDoc([{ ...espPt, placed: false }]), "f1", rules, {}), []);
+});
+
+test("floorId selects the floor whose points are read", () => {
+  const [o] = deviceObservations(obsHass, obsDoc([]), "f2", rules, {});
+  assert.deepEqual([o.floorId, o.x, o.y], ["f2", 9, 9]);
+});
+
+test("signalEntities lists the Wi-Fi dBm entities only", () => {
+  assert.deepEqual(signalEntities(obsHass, rules).sort(), ["sensor.esp_wi_fi_signal", "sensor.plug_wi_fi_signal"]);
+});

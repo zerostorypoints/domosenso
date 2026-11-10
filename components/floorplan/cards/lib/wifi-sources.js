@@ -1,4 +1,4 @@
-// Wi-Fi sources on the plan (SPEC-044): which devices are access points, later which entities report signal.
+// Wi-Fi sources on the plan (SPEC-044): which devices are access points and which entities report signal.
 // Pure functions of the frontend's `hass` registries and the rules in wifi-rules.json.
 
 // A comparable form of a MAC address: colons, lower case. Null stays null.
@@ -33,6 +33,125 @@ export function accessPointCandidates(hass, floor, rules) {
     const key = keyOf(point);
     if (!key || marked.has(key) || out.includes(key)) continue;
     if ((rules?.access_points || []).some((rule) => matchesRule(hass, key, rule))) out.push(key);
+  }
+  return out;
+}
+
+// ---- signal observations from devices (SPEC-044 S2) ----
+
+const BAND_OF_CONNECTION = { band2_4: "2.4", band5: "5", band6: "6" };
+const UNKNOWN_WEIGHT = 0.5;
+
+const deviceOf = (hass, entityId) => hass.entities?.[entityId]?.device_id ?? null;
+const entitiesOfDevice = (hass, deviceId) =>
+  Object.values(hass.entities || {}).filter((e) => e.device_id === deviceId).map((e) => e.entity_id);
+const objectId = (entityId) => entityId.slice(entityId.indexOf(".") + 1);
+const macsOf = (hass, deviceId) =>
+  (hass.devices?.[deviceId]?.connections || []).filter(([type]) => type === "mac").map(([, v]) => normMac(v));
+
+// A Wi-Fi signal entity: dBm signal strength, from an integration that reports Wi-Fi or named like it,
+// and not from a radio the rules exclude (Bluetooth, Zigbee).
+function isSignalEntity(hass, entityId, rules) {
+  const reg = hass.entities?.[entityId];
+  const attrs = hass.states?.[entityId]?.attributes;
+  if (!reg || !attrs || attrs.device_class !== "signal_strength" || attrs.unit_of_measurement !== "dBm") return false;
+  const exclude = rules?.exclude || {};
+  if ((exclude.integrations || []).includes(reg.platform)) return false;
+  const deviceId = reg.device_id;
+  const conns = deviceId ? hass.devices?.[deviceId]?.connections || [] : [];
+  if (conns.some(([type]) => (exclude.connections || []).includes(type))) return false;
+  const signal = rules?.signal || {};
+  return (signal.integrations || []).includes(reg.platform) || (signal.object_id || []).some((w) => objectId(entityId).includes(w));
+}
+
+// Entities whose 24 h means the card fetches.
+export function signalEntities(hass, rules) {
+  return Object.keys(hass.entities || {}).filter((id) => isSignalEntity(hass, id, rules));
+}
+
+// The BSSID entities of an access point: its band and the BSSID the integration reports for it.
+function apBssids(hass, apKey, rules) {
+  const deviceId = hass.entities?.[apKey] ? deviceOf(hass, apKey) : apKey;
+  const out = [];
+  if (!deviceId) return out;
+  for (const rule of rules?.access_points || []) {
+    for (const [band, suffix] of Object.entries(rule.bssid || {})) {
+      for (const id of entitiesOfDevice(hass, deviceId)) {
+        if (hass.entities[id].platform !== rule.integration || !id.endsWith(`_${suffix}`)) continue;
+        const mac = normMac(hass.states?.[id]?.state);
+        if (mac) out.push({ band, mac });
+      }
+    }
+  }
+  return out;
+}
+
+// The access point (by key) and band the device's own BSSID sensor points to, among the marked access points.
+function byBssid(hass, deviceId, aps, rules) {
+  const words = rules?.signal?.bssid_object_id || [];
+  const mine = entitiesOfDevice(hass, deviceId)
+    .filter((id) => words.some((w) => objectId(id).includes(w)))
+    .map((id) => normMac(hass.states?.[id]?.state))
+    .filter((m) => m && /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(m));
+  for (const mac of mine) {
+    for (const ap of aps) {
+      const hit = apBssids(hass, ap, rules).find((b) => b.mac === mac);
+      if (hit) return { ap, band: hit.band };
+    }
+  }
+  return null;
+}
+
+// The router's client tracker for one of the device's MACs: the access point is the node whose own
+// tracker has the client's `deco_mac`, the band comes from `connection_type`.
+function byTracker(hass, deviceId, aps, rules) {
+  const macs = macsOf(hass, deviceId);
+  if (!macs.length) return null;
+  for (const rule of rules?.access_points || []) {
+    for (const [id, reg] of Object.entries(hass.entities || {})) {
+      if (reg.platform !== rule.integration || !id.startsWith("device_tracker.")) continue;
+      const attrs = hass.states?.[id]?.attributes || {};
+      if (!macs.includes(normMac(attrs.mac))) continue;
+      const band = BAND_OF_CONNECTION[attrs.connection_type];
+      if (!band) continue; // wired / undefined: this tracker says nothing
+      const node = normMac(attrs.deco_mac);
+      const ap = node && aps.find((key) => nodeMacs(hass, key, rule).includes(node));
+      return { ap: ap ?? null, band };
+    }
+  }
+  return null;
+}
+
+function nodeMacs(hass, apKey, rule) {
+  const ids = hass.entities?.[apKey] ? [apKey] : entitiesOfDevice(hass, apKey);
+  return ids
+    .filter((id) => id.startsWith("device_tracker.") && hass.entities[id]?.platform === rule.integration)
+    .map((id) => normMac(hass.states?.[id]?.attributes?.mac))
+    .filter(Boolean);
+}
+
+// One observation per Wi-Fi signal entity of a placed point on `floorId`. `values` holds the entities'
+// 24 h means; an entity without one reports its state.
+export function deviceObservations(hass, doc, floorId, rules, values) {
+  const floor = (doc.floors || []).find((f) => f.floor_id === floorId);
+  if (!floor) return [];
+  const aps = (doc.floors || []).flatMap((f) => (f.access_points || []).map(keyOf));
+  const out = [];
+  for (const point of floor.points || []) {
+    if (point.placed === false || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+    const deviceId = point.device_id ?? deviceOf(hass, point.entity_id);
+    const ids = point.device_id ? entitiesOfDevice(hass, point.device_id) : [point.entity_id];
+    for (const id of ids.filter((i) => isSignalEntity(hass, i, rules))) {
+      const raw = values?.[id] ?? hass.states[id].state;
+      const dbm = typeof raw === "number" ? raw : raw === "" || raw == null ? NaN : Number(raw);
+      if (!Number.isFinite(dbm)) continue;
+      const found = (deviceId && (byBssid(hass, deviceId, aps, rules) || byTracker(hass, deviceId, aps, rules))) || null;
+      const ap = found?.ap ?? null;
+      out.push({
+        floorId, x: point.x, y: point.y, band: found?.band ?? "2.4", ap, dbm,
+        weight: ap ? 1 : UNKNOWN_WEIGHT, source: "device", ...(deviceId ? { device: deviceId } : {}), entity: id,
+      });
+    }
   }
   return out;
 }
