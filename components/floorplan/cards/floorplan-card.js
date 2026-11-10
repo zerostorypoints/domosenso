@@ -227,12 +227,16 @@ class FloorplanCard extends HTMLElement {
   // The page's server answers {link: {band, channel, dbm, noise, bssid} | null}; a failed read is no link.
   // Same origin, so the request carries the page's key cookie as its own reads do.
   async _pollLink() {
+    if (this._polling) return;     // a slow answer: the next tick waits for it, not a second request
+    this._polling = true;
     let link = null;
     try {
       const r = await fetch("survey/link");
       link = r.ok ? (await r.json())?.link ?? null : null;
     } catch {
       link = null;
+    } finally {
+      this._polling = false;
     }
     this._link = link;
     // The link line alone: the panel's buttons stay under a finger about to press them.
@@ -1153,12 +1157,13 @@ ${STYLE}
     }
   }
 
-  // Survey and manual samples, a small dot with its dBm: on the Confidence map, in edit mode and on the
-  // survey page. On the survey page also the next spots and the spot tapped; the reading tool's spot.
+  // Survey and manual samples, a small dot with its dBm: on the Confidence map and in edit mode only (the
+  // survey page's panel names the newest). On the survey page the next spots and the spot tapped; the
+  // reading tool's spot.
   _drawSamples(svg, px, editing, map) {
     if (!this._wifiOn) return;
     const survey = this._config.survey && !editing;
-    if (editing || survey || map?.cls === "confidence") {
+    if (editing || map?.cls === "confidence") {
       const g = el("g", {}, svg);
       for (const s of this._doc.wifi?.samples || []) {
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;

@@ -211,7 +211,7 @@
           "handover": "handover zone without a reading",
           "room": "room without a reading"
         },
-        "help": "Hold the laptop at chest height, lid open, on the home's own network. Start at an access point and walk room by room; stop about every 2 m and in every doorway. At each stop tap where you stand, press I'm here and stand still for 10 s."
+        "help": "Hold the laptop at chest height, lid open, on the home's own network. Start at an access point and walk room by room; stop about every 2 m and in every doorway. At each stop tap where you stand, press I'm here and stand still for 10 s. Visit the suggested spots, above all the handover zones between access points."
       }
     }
   }

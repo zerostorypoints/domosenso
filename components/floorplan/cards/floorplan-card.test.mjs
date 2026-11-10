@@ -2140,6 +2140,16 @@ test("survey: the panel shows the laptop's live link from /survey/link every 2 s
     const text = $(card, ".survey .survey-link").textContent;
     assert.equal(text, "5 GHz · channel 36 · −58 dBm · noise −92 dBm");
     assert.ok($(card, ".survey .survey-help").textContent.includes("10 s"));
+    // A poll still waiting for its answer is not doubled.
+    let release;
+    f.calls.length = 0;
+    const slow = surveyFetch({ "survey/link": () => new Promise((r) => { release = r; }) });
+    const first = card._pollLink();
+    await card._pollLink();
+    assert.equal(slow.calls.length, 1, "one request in flight at a time");
+    release({ link: null });
+    await first;
+    slow.restore();
     link = null;
     await card._pollLink();
     assert.equal($(card, ".survey-link").textContent, EN("card.floorplan.survey.no_link"));
@@ -2189,9 +2199,12 @@ test("survey: a tap marks the spot, I'm here posts it and waits 10 s, then the s
     assert.equal($(card, ".survey-progress"), null);
     assert.deepEqual(card._doc.wifi.samples, [SAMPLE]);
     assert.deepEqual(card._loaded.wifi.samples, [SAMPLE], "the file has it: a later save is not refused");
-    assert.equal(sampleDots(card).length, 1, "the new sample drawn");
-    assert.equal(sampleDots(card)[0].querySelector("text").textContent, "−58");
     assert.ok($(card, ".survey-note").textContent.includes("−58 dBm"), $(card, ".survey-note").textContent);
+    assert.ok($(card, '.bar [data-map="wifi_24"][aria-pressed="true"]'), "the survey page opens on a band map");
+    assert.equal(sampleDots(card).length, 0, "a band map shows no sample dots, on the survey page too");
+    click($(card, '.bar [data-map="confidence"]'));
+    assert.equal(sampleDots(card).length, 1, "the new sample on the Confidence map");
+    assert.equal(sampleDots(card)[0].querySelector("text").textContent, "−58");
     assert.equal($(card, "circle.survey-spot"), null, "the next stop is tapped again");
     tap(card, 3, 3);
     click(here());
@@ -2215,7 +2228,7 @@ test("survey: a tap marks the spot, I'm here posts it and waits 10 s, then the s
   }
 });
 
-test("survey: the next spots are drawn and listed, farthest from the readings first", async () => {
+test("survey: the next spots are drawn and listed: rooms without a reading before far cells", async () => {
   window.localStorage.clear();
   const f = surveyFetch({ "survey/link": () => ({ link: LINK }) });
   try {
@@ -2224,7 +2237,9 @@ test("survey: the next spots are drawn and listed, farthest from the readings fi
     assert.equal(card.shadowRoot.querySelectorAll("circle.next-spot").length, 3);
     const items = [...card.shadowRoot.querySelectorAll(".survey-next li")];
     assert.equal(items.length, 3);
-    assert.ok(items.every((li) => li.textContent.includes(EN("card.floorplan.survey.why.far"))), items.map((li) => li.textContent).join());
+    // No reading yet, one access point on 2.4 GHz (no handover): both rooms, then a far cell.
+    assert.deepEqual(items.map((li) => li.textContent), ["room", "room", "far"].map((w) => EN(`card.floorplan.survey.why.${w}`)));
+    assert.deepEqual([...card.shadowRoot.querySelectorAll("circle.next-spot")].map((c) => c.getAttribute("data-why")), ["room", "room", "far"]);
     card.remove();
   } finally {
     f.restore();

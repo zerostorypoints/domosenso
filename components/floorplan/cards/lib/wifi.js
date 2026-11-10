@@ -464,10 +464,11 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byXY = (a, b) => a.x - b.x || a.y - b.y;
 
 // Where to stand next: `cells` one floor's and band's (coverage(), x and y their centres), `observations`
-// that floor's and band's, `rooms` the floor's. First the cells farthest from any reading of their serving
-// access point (a reading without one counts for the access point serving its spot), beyond 2 m; then the
-// handover cells without a reading within 1 m; then the rooms without any reading, at their middle. A cell
-// within 2 m of a spot already chosen is passed over. At most n, ties by x, then y.
+// that floor's and band's, `rooms` the floor's. First the handover cells without a reading within 1 m; then
+// the rooms without any reading, at their middle (or the room's cell nearest it that keeps the spots apart);
+// then the cells farthest from a reading of their serving access point (a reading without one counts for the
+// access point serving its spot), beyond 2 m. Every spot at least 2 m from the others; at most n, ties by x,
+// then y.
 export function nextSpots(cells, observations, rooms, n = 3) {
   const nearest = (o) => {
     let best = null;
@@ -476,20 +477,25 @@ export function nextSpots(cells, observations, rooms, n = 3) {
   };
   const obs = (observations ?? []).map((o) => ({ x: o.x, y: o.y, ap: o.ap ?? nearest(o) }));
   const out = [];
-  const take = (c, why, apart = true) => {
-    if (out.length >= n || (apart && out.some((s) => dist(s, c) < APART_M))) return;
+  const free = (c) => !out.some((s) => dist(s, c) < APART_M);
+  const take = (c, why) => {
+    if (out.length >= n || !free(c)) return false;
     out.push({ x: c.x, y: c.y, why });
+    return true;
   };
+  const open = cells.filter((c) => isHandover(c) && !obs.some((o) => dist(o, c) < SAMPLED_M)).sort(byXY);
+  for (const c of open) take(c, "handover");
+  (rooms ?? []).forEach((room, i) => {
+    if (obs.some((o) => pointInPolygon([o.x, o.y], room.polygon))) return;
+    const { x, y } = widestRow(room.polygon);
+    const middle = { x, y };
+    if (take(middle, "room")) return;
+    const own = cells.filter((c) => c.room === i).sort((a, b) => dist(a, middle) - dist(b, middle) || byXY(a, b));
+    for (const c of own) if (take(c, "room")) return;
+  });
   const far = cells.map((c) => ({ c, d: Math.min(Infinity, ...obs.filter((o) => o.ap === c.ap).map((o) => dist(o, c))) }))
     .filter((e) => e.d > FAR_M)
     .sort((a, b) => b.d - a.d || byXY(a.c, b.c));
   for (const { c } of far) take(c, "far");
-  const open = cells.filter((c) => isHandover(c) && !obs.some((o) => dist(o, c) < SAMPLED_M)).sort(byXY);
-  for (const c of open) take(c, "handover");
-  for (const room of rooms ?? []) {
-    if (obs.some((o) => pointInPolygon([o.x, o.y], room.polygon))) continue;
-    const { x, y } = widestRow(room.polygon);
-    take({ x, y }, "room", false);
-  }
   return out;
 }

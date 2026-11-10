@@ -158,13 +158,13 @@ export function deviceObservations(hass, doc, floorId, rules, values) {
 
 // ---- survey and manual samples (SPEC-044 S3) ----
 
-// The floor's `wifi.samples` as observations: weight 1, source "manual" for a typed reading and "survey" for
+// The floor's `wifi.samples` as observations: weight 1 (half without an access point, as a device's), source "manual" for a typed reading and "survey" for
 // the laptop's (the fit gives each source its own offset, 0 ± 3 dB and 0 ± 5 dB), the access point or null.
 export function sampleObservations(doc, floorId) {
   const out = [];
   for (const s of doc?.wifi?.samples || []) {
     if (s.floor_id !== floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y) || !Number.isFinite(s.dbm)) continue;
-    out.push({ floorId, x: s.x, y: s.y, band: s.band, ap: s.ap ?? null, dbm: s.dbm, weight: 1,
+    out.push({ floorId, x: s.x, y: s.y, band: s.band, ap: s.ap ?? null, dbm: s.dbm, weight: s.ap ? 1 : UNKNOWN_WEIGHT,
       source: s.source === "manual" ? "manual" : "survey" });
   }
   return out;

@@ -208,7 +208,7 @@ test("disabled sources: only the plan's devices or entities when keys are given;
 
 // ---- survey and manual samples (SPEC-044 S3) ----
 
-test("sampleObservations: a floor's samples as observations, survey or manual, the access point or null", async () => {
+test("sampleObservations: a floor's samples as observations, survey or manual, the access point or null at half weight", async () => {
   const { sampleObservations } = await import("./wifi-sources.js");
   const doc = { schema: 1, floors: [{ floor_id: "ground" }, { floor_id: "upstairs" }], wifi: { samples: [
     { floor_id: "ground", x: 1, y: 2, t: "2026-11-11T19:30:00Z", band: "5", channel: 36, dbm: -58, noise: -92, ap: "dev-office",
@@ -219,8 +219,8 @@ test("sampleObservations: a floor's samples as observations, survey or manual, t
   ] } };
   assert.deepEqual(sampleObservations(doc, "ground"), [
     { floorId: "ground", x: 1, y: 2, band: "5", ap: "dev-office", dbm: -58, weight: 1, source: "survey" },
-    { floorId: "ground", x: 4, y: 1, band: "2.4", ap: null, dbm: -66, weight: 1, source: "manual" },
-    { floorId: "ground", x: 4, y: 1, band: "2.4", ap: null, dbm: -61, weight: 1, source: "survey" },
+    { floorId: "ground", x: 4, y: 1, band: "2.4", ap: null, dbm: -66, weight: 0.5, source: "manual" },
+    { floorId: "ground", x: 4, y: 1, band: "2.4", ap: null, dbm: -61, weight: 0.5, source: "survey" },
   ]);
   assert.deepEqual(sampleObservations(doc, "upstairs").map((o) => o.source), ["manual"]);
   assert.deepEqual(sampleObservations({ schema: 1, floors: [] }, "ground"), []);

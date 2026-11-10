@@ -211,7 +211,7 @@
           "handover": "strefa przełączania bez pomiaru",
           "room": "pomieszczenie bez pomiaru"
         },
-        "help": "Trzymaj laptopa na wysokości klatki piersiowej, z otwartą klapą, w domowej sieci. Zacznij przy punkcie dostępu i idź pokój po pokoju; zatrzymuj się mniej więcej co 2 m i w każdym przejściu. Na każdym postoju dotknij miejsca, w którym stoisz, naciśnij Jestem tutaj i stój nieruchomo 10 s."
+        "help": "Trzymaj laptopa na wysokości klatki piersiowej, z otwartą klapą, w domowej sieci. Zacznij przy punkcie dostępu i idź pokój po pokoju; zatrzymuj się mniej więcej co 2 m i w każdym przejściu. Na każdym postoju dotknij miejsca, w którym stoisz, naciśnij Jestem tutaj i stój nieruchomo 10 s. Odwiedź proponowane miejsca, przede wszystkim strefy przełączania między punktami dostępu."
       }
     }
   }
