@@ -470,3 +470,33 @@ def test_every_homogeneous_prior_is_at_least_its_slab_value():
   calibration for the pull request.
 - [ ] **Step 4:** Commit; pull request into `feature/wifi-coverage`; when S1–S3 are merged there, one pull
   request from the feature branch into `main` for the maintainer.
+
+---
+
+# Amendments 1 and 2 (outdoor rooms; wall types and defaults)
+
+### Task 18: Outdoor rooms, thin and thick concrete, glass walls
+
+**Spec:** SPEC-044 Amendments 1 and 2 (approved 2026-11-11).
+
+**Files:**
+- Modify: `components/floorplan/cards/lib/materials.json`, `tools/materials_table.py` (if it lists rows), `tests/test_materials_table.py`
+- Modify: `schemas/floorplan.schema.json`, `tools/domosenso_cli/floorplan_doc.py` (`wifi.outdoor` validation and diff), `tests/test_floorplan_schema.py`, `tests/test_cli_floorplan.py`, `docs/COMPATIBILITY.md`
+- Modify: `components/floorplan/cards/lib/wifi.js` (`wallSegments` classification and opening defaults; editor `setOutdoor`), `lib/wifi.test.mjs`
+- Modify: `components/floorplan/cards/floorplan-card.js` (Outdoors switches in the Walls tool's floor panel; wall picker lists glazing; door picker lists glazing), translations en/de/pl, `lib/style.js` if new classes, `floorplan-card.test.mjs`
+- Modify: `components/floorplan/README.md`
+
+**Interfaces:**
+- Produces: materials `concrete_thin` {2.4: 9, 5: 14, 6: 16, sd 4, for [wall]}, `concrete_thick` {20, 33, 37, sd 6, for [wall, slab]}; `glass`, `double`, `low_e`, `triple_low_e` gain `wall` and (the last three) `door` in `for`; `materials.defaults` interior `concrete_thin`, exterior `concrete_thick`.
+- Produces: `setOutdoor(doc, areaId, on) -> doc | null` (pure; removes `wifi.outdoor` when empty).
+- Produces: validation reasons `outdoor: <id> is not a room`, `outdoor: <id> twice`; `wifi change <floor>` when a floor's rooms' outdoor flags change.
+
+- [ ] **Step 1: Write the failing tests**
+  - materials: the two new rows exact; door set = {wood, glass, metal, double, low_e, triple_low_e}; wall set includes the four glazings and both concretes; defaults interior concrete_thin, exterior concrete_thick.
+  - wifi.js: unset walls with no `wifi.defaults` take concrete_thin inside and concrete_thick outside, so a ray through one outer wall at 5 GHz costs 33 dB; a wall shared with an outdoor room is exterior; an opening to an outdoor room without sensor or state is closed; a door to an outdoor room defaults to `double`; an unmarked room behaves as before; a balcony behind a closed `low_e` door pays 27 dB at 5 GHz.
+  - Python: both refusals; `wifi change` on an outdoor flag change; a plan without `wifi.outdoor` unchanged.
+  - Card: the Walls tool's floor panel shows an Outdoors switch per room; switching it on marks the room and the Wi-Fi map changes; the wall picker offers glazing; a door's picker offers glazing.
+- [ ] **Step 2: Run** the covering tests — Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** `npm test` and `uv run pytest -q -n auto` — Expected: PASS; then `tools/check-all.sh` (all ok).
+- [ ] **Step 5: README** (outdoor rooms; wall types and the defaults; that calibration validates them) and **Commit**.

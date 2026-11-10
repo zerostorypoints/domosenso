@@ -370,3 +370,48 @@ and for a device its device id. Sources and their weights:
   the measurements); the wide uncertainty is deliberate.
 - **Layer:** maps on `radio` (this spec) or a separate `wifi` layer chip. `radio` keeps the layer
   list short; a separate chip would show Wi-Fi devices without hubs.
+
+## Amendment 1 (outdoor rooms)
+
+- Status: approved 2026-11-11 by the maintainer ("yes"). Source: the maintainer, 2026-11-11: "Balcony in
+  the current setup is drawn as a room, so it must be included in the calculation and
+  visualisations. Typically, this is the most problematic place, depending on the type of glass /
+  wall and distance to the wifi station." A balcony drawn as a room was already computed, but its
+  wall to the home counted as interior, its glazed doors defaulted to wood (glazing was offered for
+  windows only) and a door between two rooms without a sensor defaulted to open.
+- Document: `wifi.outdoor` (optional): a list of area ids of rooms that are outdoors (balcony,
+  terrace, winter garden); each a room of some floor, once.
+- Prediction: a wall between an indoor and an outdoor room is exterior (its default is
+  `wifi.defaults.exterior`); an opening between an indoor and an outdoor room defaults to
+  `state: closed` like one to the outside; a door to an outdoor room defaults to material `double`.
+  An outdoor room's cells are computed and drawn like any room's; next spots include it.
+- Materials: `double`, `low_e`, `triple_low_e` are also door materials (a glazed door is glazing).
+- Card: the Walls tool's floor panel lists the floor's rooms with an **Outdoors** switch each.
+- Validation and `push --plan`: unknown or repeated area ids refused (`outdoor: <id> is not a room`,
+  `outdoor: <id> twice`); a change prints `wifi change <floor>` for the floors of the rooms concerned.
+- Tests: a balcony behind its wall with a closed low-E door loses the exterior wall's and low-E's
+  loss; marking it outdoors changes the shared wall's default; an unmarked room behaves as before.
+
+## Amendment 2 (wall types: thin and thick concrete, glass walls; defaults)
+
+- Status: approved 2026-11-11 by the maintainer. Source: the maintainer, 2026-11-11: "we may need to
+  include the type of wall, like concrete thin, concrete thick or glass (independently from
+  windows) with corresponding coefficients. In the pure simulation mode … we can assume that all
+  external / outer walls are thick and all internal ones - thin. Then in the survey, we will
+  validate the assumptions based on the measurements."
+- Materials (priors; P.2040-3 slabs as in the Materials section):
+
+  | id | what | 2.4 GHz | 5 GHz | 6 GHz | ± | basis |
+  |---|---|---|---|---|---|---|
+  | `concrete_thin` | concrete, about 10 cm | 9 | 14 | 16 | 4 | P.2040 8.1 / 13.9 / 15.7 |
+  | `concrete_thick` | reinforced concrete, about 25 cm | 20 | 33 | 37 | 6 | P.2040 18.0 / 32.7 / 37.1, plus rebar |
+
+  The glazing materials `glass`, `double`, `low_e`, `triple_low_e` are also wall materials (a glass
+  wall or facade, independent of windows).
+- Defaults: `wifi.defaults` absent means interior `concrete_thin` and exterior `concrete_thick`
+  (was `interior` and `exterior`, which stay selectable as "unknown"). A home sets its own defaults
+  in the Walls tool as before.
+- Calibration: unchanged; the wide uncertainties let device readings and survey samples move each
+  wall type's loss per band, and the Confidence map shows where they did.
+- Tests: the defaults; a thick exterior wall costs 20/33/37 dB per band before calibration; a glass
+  wall material on a wall; the materials table test pins the two new rows.
