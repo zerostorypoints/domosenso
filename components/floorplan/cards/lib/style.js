@@ -123,6 +123,12 @@ export const STYLE = `
   .opening .hit { stroke: transparent; stroke-width: 16; cursor: move; }
   .opening-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .opening-panel input { width: 5em; }
+  .wall-selected { stroke: var(--accent-color, #ff9800); stroke-width: 5; stroke-opacity: 0.6; stroke-linecap: round;
+    vector-effect: non-scaling-stroke; pointer-events: none; }
+  .wall-panel, .ap-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .wall-panel input, .point-panel input[type=number] { width: 5em; }
+  .wall-panel .floor-label { margin-left: 12px; }
+  .ap-check { display: inline-flex; align-items: center; gap: 4px; }
   .open-wall-mask { stroke: var(--card-background-color, #fff); stroke-width: 3; vector-effect: non-scaling-stroke;
                     pointer-events: none; }
   .open-wall { stroke: var(--secondary-text-color); stroke-width: 1.5; stroke-dasharray: 5 4;

@@ -32,7 +32,8 @@
         "split": "Podziel",
         "join": "Połącz",
         "open": "Otwarte",
-        "openings": "Drzwi i okna"
+        "openings": "Drzwi i okna",
+        "walls": "Ściany"
       },
       "hint": {
         "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
@@ -40,7 +41,8 @@
         "split": "Stuknij dwa punkty na ścianach jednego pomieszczenia.",
         "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar.",
         "open": "Stuknij dwa pomieszczenia otwarte na siebie, bez drzwi: ich mapy dzielą odczyty.",
-        "openings": "Dotknij ściany, aby dodać drzwi; dotknij drzwi lub okna, aby je zmienić, i przeciągnij wzdłuż ściany."
+        "openings": "Dotknij ściany, aby dodać drzwi; dotknij drzwi lub okna, aby je zmienić, i przeciągnij wzdłuż ściany.",
+        "walls": "Dotknij ściany, aby wybrać jej materiał. Poniżej: wysokość tego piętra i strop pod nim."
       },
       "area": {
         "label": "Obszar tego pomieszczenia",
@@ -128,7 +130,8 @@
         },
         "swap_hinge": "⇄ Lewe/prawe",
         "swap_side": "⇅ Druga strona",
-        "fill_wall": "Cała ściana"
+        "fill_wall": "Cała ściana",
+        "material": "Materiał"
       },
       "wifi": {
         "bands": "{bands} GHz",
@@ -137,7 +140,39 @@
         "dbm_legend": "najsilniejszy przewidywany sygnał w każdym miejscu; znaczniki przy {call} dBm (zwykła granica dla rozmów) i {weak} dBm",
         "hint": {
           "no_access_points": "Brak punktu dostępu Wi-Fi na planie: oznacz punkt jako punkt dostępu w trybie edycji"
-        }
+        },
+        "offer": "{name}: użyć jako punktu dostępu?",
+        "yes": "Tak",
+        "no": "Nie",
+        "access_point": "Punkt dostępu",
+        "tx": "Moc nadawania w paśmie {band} GHz (dBm)",
+        "mount": "Wysokość nad podłogą (m)"
+      },
+      "wall": {
+        "material": "Materiał ściany",
+        "default": {
+          "interior": "Dla wszystkich ścian wewnętrznych",
+          "exterior": "Dla wszystkich ścian zewnętrznych"
+        },
+        "floor": "To piętro:",
+        "height": "Wysokość (m)",
+        "slab": "Strop pod nim"
+      },
+      "material": {
+        "drywall": "Płyta gipsowo-kartonowa",
+        "wood": "Drewno",
+        "aerated_block": "Beton komórkowy",
+        "brick": "Cegła",
+        "concrete": "Beton",
+        "reinforced_concrete": "Żelbet",
+        "glass": "Szkło",
+        "double": "Szyba zespolona podwójna",
+        "low_e": "Szyba niskoemisyjna",
+        "triple_low_e": "Szyba potrójna niskoemisyjna",
+        "metal": "Metal",
+        "interior": "Ściana wewnętrzna (typowa)",
+        "exterior": "Ściana zewnętrzna (typowa)",
+        "slab": "Strop (typowy)"
       }
     }
   }

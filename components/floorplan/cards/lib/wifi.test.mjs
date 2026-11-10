@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BANDS, wallSegments, pathLoss, priorParams, predict, coverage, isHandover, contextFor, cacheKey } from "./wifi.js";
+import { BANDS, wallSegments, pathLoss, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
+  wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -222,4 +223,113 @@ test("same inputs give the same cache key and cells", () => {
   assert.notEqual(cacheKey(d1, "f0", "5", params, 0.15), cacheKey(d1, "f0", "2.4", params, 0.15));
   assert.notEqual(cacheKey(d1, "f0", "5", params, 0.15), cacheKey(d1, "f0", "5", params, 0.3));
   assert.deepEqual(coverage(ctxOf(d1), "5", 0.5), coverage(ctxOf(d2), "5", 0.5));
+});
+
+// ---- edits (SPEC-044 edit mode) ----
+
+const groundOf = (floor) => ({ schema: 1, floors: [{ floor_id: "ground", points: [], ...floor }] });
+const fl = (doc) => doc.floors[0];
+
+test("materialsFor lists the materials whose `for` has the class", () => {
+  assert.deepEqual(materialsFor("door"), ["wood", "glass", "metal"]);
+  assert.deepEqual(materialsFor("window"), ["glass", "double", "low_e", "triple_low_e"]);
+  assert.ok(materialsFor("wall").every((id) => table.materials[id].for.includes("wall")));
+  assert.deepEqual(materialsFor("slab"), ["reinforced_concrete", "slab"]);
+});
+
+test("wallSegmentAt: the whole stretch between corners, through any opening on it", () => {
+  const floor = { ...two(), openings: [{ kind: "door", rooms: ["alex", "sam"], at: [3, 1.5] }] };
+  const seg = wallSegmentAt(floor, undefined, [3.02, 0.4], 0.1);
+  assert.ok(onX(seg, 3) && Math.abs(len(seg) - 3) < 1e-9);
+  assert.equal(seg.shared, true);
+  assert.deepEqual(seg.at, [3, 1.5]);
+  assert.equal(seg.material, "interior");
+  assert.equal(wallSegmentAt(floor, undefined, [1.5, 1.5], 0.1), null);
+});
+
+test("setWallMaterial sets one wall; its class's default removes the entry", () => {
+  const doc = groundOf(two());
+  const brick = setWallMaterial(doc, "ground", [3, 1.5], "brick");
+  assert.deepEqual(fl(brick).walls, [{ at: [3, 1.5], material: "brick" }]);
+  assert.ok(!("walls" in fl(doc)), "a new doc");
+  const again = setWallMaterial(brick, "ground", [3, 0.5], "concrete");
+  assert.deepEqual(fl(again).walls, [{ at: [3, 0.5], material: "concrete" }], "one entry per stretch");
+  assert.ok(!("walls" in fl(setWallMaterial(brick, "ground", [3, 1.5], "interior"))), "interior wall back to its default");
+  const outer = setWallMaterial(doc, "ground", [0, 1.5], "interior");
+  assert.deepEqual(fl(outer).walls, [{ at: [0, 1.5], material: "interior" }], "interior material on an exterior wall is kept");
+  assert.ok(!("walls" in fl(setWallMaterial(outer, "ground", [0, 1.5], "exterior"))));
+  const custom = { ...doc, wifi: { defaults: { interior: "drywall" } } };
+  assert.ok(!("walls" in fl(setWallMaterial(custom, "ground", [3, 1.5], "drywall"))), "the plan's own default");
+  assert.equal(setWallMaterial(doc, "ground", [3, 1.5], "low_e"), null, "not a wall material");
+  assert.equal(setWallMaterial(doc, "ground", [1.5, 1.5], "brick"), null, "no wall there");
+  assert.equal(setWallMaterial(doc, "upstairs", [3, 1.5], "brick"), null);
+});
+
+test("setWifiDefault sets interior or exterior; the table's default removes it", () => {
+  const doc = groundOf(two());
+  const a = setWifiDefault(doc, "interior", "brick");
+  assert.deepEqual(a.wifi, { defaults: { interior: "brick" } });
+  assert.ok(!("wifi" in doc));
+  const b = setWifiDefault(a, "exterior", "concrete");
+  assert.deepEqual(b.wifi.defaults, { interior: "brick", exterior: "concrete" });
+  assert.ok(!("wifi" in setWifiDefault(a, "interior", "interior")));
+  const kept = setWifiDefault({ ...a, wifi: { ...a.wifi, samples: [] } }, "interior", "interior");
+  assert.deepEqual(kept.wifi, { samples: [] });
+  assert.equal(setWifiDefault(doc, "slab", "brick"), null);
+  assert.equal(setWifiDefault(doc, "interior", "glass"), null);
+});
+
+test("setOpeningMaterial fits the kind; the default or empty removes it; a doorway has none", () => {
+  const doc = groundOf({ ...two(), openings: [
+    { kind: "window", rooms: ["alex", null], at: [0, 1.5] },
+    { rooms: ["alex", "sam"], at: [3, 1.5] },
+    { kind: "opening", rooms: ["alex", null], at: [1.5, 0] },
+    { kind: "fixed", rooms: ["sam", null], at: [6, 1.5] },
+  ] });
+  const w = setOpeningMaterial(doc, "ground", 0, "low_e");
+  assert.equal(fl(w).openings[0].material, "low_e");
+  assert.ok(!("material" in fl(doc).openings[0]));
+  assert.ok(!("material" in fl(setOpeningMaterial(w, "ground", 0, "double")).openings[0]), "a window's default");
+  assert.ok(!("material" in fl(setOpeningMaterial(w, "ground", 0, null)).openings[0]));
+  assert.equal(setOpeningMaterial(doc, "ground", 0, "wood"), null, "wood is no window");
+  assert.equal(fl(setOpeningMaterial(doc, "ground", 1, "metal")).openings[1].material, "metal", "a door without a kind");
+  assert.ok(!("material" in fl(setOpeningMaterial(doc, "ground", 1, "wood")).openings[1]), "a door's default");
+  assert.equal(setOpeningMaterial(doc, "ground", 1, "low_e"), null);
+  assert.equal(setOpeningMaterial(doc, "ground", 2, "glass"), null, "a doorway");
+  assert.equal(fl(setOpeningMaterial(doc, "ground", 3, "triple_low_e")).openings[3].material, "triple_low_e");
+  assert.equal(setOpeningMaterial(doc, "ground", 9, "glass"), null);
+});
+
+test("setAccessPoint marks a point, patches bands, tx and mount, and unmarks it", () => {
+  const doc = groundOf({ ...two(), points: [{ device_id: "d_node", x: 1, y: 1 }, { entity_id: "device_tracker.sam_ap", x: 4, y: 1 }] });
+  const on = setAccessPoint(doc, "ground", "d_node", {});
+  assert.deepEqual(fl(on).access_points, [{ device_id: "d_node", bands: ["2.4", "5"] }]);
+  const ent = setAccessPoint(on, "ground", "device_tracker.sam_ap", { bands: ["6", "5", "6"] });
+  assert.deepEqual(fl(ent).access_points[1], { entity_id: "device_tracker.sam_ap", bands: ["5", "6"] }, "known bands once, in order");
+  const tx = setAccessPoint(on, "ground", "d_node", { tx: { "5": 20 }, mount: 2.2 });
+  assert.deepEqual(fl(tx).access_points, [{ device_id: "d_node", bands: ["2.4", "5"], tx: { "5": 20 }, mount: 2.2 }]);
+  const narrowed = setAccessPoint(tx, "ground", "d_node", { bands: ["2.4"] });
+  assert.deepEqual(fl(narrowed).access_points, [{ device_id: "d_node", bands: ["2.4"], mount: 2.2 }], "tx limited to its bands");
+  assert.equal(setAccessPoint(tx, "ground", "d_node", { tx: { "6": 20 } }), null, "tx on a band it does not serve");
+  assert.deepEqual(fl(setAccessPoint(tx, "ground", "d_node", { tx: { "5": null }, mount: null })).access_points,
+    [{ device_id: "d_node", bands: ["2.4", "5"] }], "empty values remove");
+  assert.equal(setAccessPoint(on, "ground", "d_node", { bands: [] }), null);
+  assert.equal(setAccessPoint(on, "ground", "d_node", { tx: { "5": 40 } }), null, "tx -10 to 36");
+  assert.equal(setAccessPoint(on, "ground", "d_node", { mount: 6 }), null, "mount 0 to 5");
+  assert.equal(setAccessPoint(doc, "ground", "d_gone", {}), null, "not a point of the floor");
+  const off = setAccessPoint(tx, "ground", "d_node", null);
+  assert.ok(!("access_points" in fl(off)), "unmarking removes it");
+  assert.equal(setAccessPoint(doc, "ground", "d_node", null), null, "nothing to unmark");
+});
+
+test("setFloorWifi sets height and slab within range; defaults remove them", () => {
+  const doc = groundOf(two());
+  const a = setFloorWifi(doc, "ground", { height: 3.1, slab: "reinforced_concrete" });
+  assert.equal(fl(a).height, 3.1);
+  assert.equal(fl(a).slab, "reinforced_concrete");
+  const b = setFloorWifi(a, "ground", { height: 2.7, slab: "slab" });
+  assert.ok(!("height" in fl(b)) && !("slab" in fl(b)));
+  assert.ok(!("height" in fl(setFloorWifi(a, "ground", { height: "" }))));
+  assert.equal(setFloorWifi(doc, "ground", { height: 12 }), null);
+  assert.equal(setFloorWifi(doc, "ground", { slab: "brick" }), null);
 });

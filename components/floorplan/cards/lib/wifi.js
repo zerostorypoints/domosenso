@@ -2,7 +2,7 @@
 // crossing them. Pure functions of the plan and hass; no DOM.
 
 import materials from "./materials.json" with { type: "json" };
-import { facingWalls } from "./plan.js";
+import { facingWalls, editFloor } from "./plan.js";
 import { pointInPolygon } from "./geometry.js";
 import { openingShape, openingState, kindOf, SHARED_M } from "./openings.js";
 
@@ -92,7 +92,8 @@ export function wallSegments(floor, wifi, hass) {
     return !facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M);
   }).map((s) => {
     const set = walls.find((w) => distToSegment(w.at, s.a, s.b) <= SHARED_M);
-    return { a: s.a, b: s.b, material: set?.material ?? (s.shared ? defaults.interior : defaults.exterior), open: false, kind: "wall" };
+    return { a: s.a, b: s.b, material: set?.material ?? (s.shared ? defaults.interior : defaults.exterior), open: false, kind: "wall",
+      shared: s.shared };
   });
 
   for (const o of floor.openings || []) {
@@ -115,6 +116,21 @@ export function wallSegments(floor, wifi, hass) {
   }
   return segs;
 }
+
+// The wall stretch nearest `pt` within `tol`, whole from corner to corner (an opening on it does not
+// cut it): {a, b, material, shared, at}, `at` its middle to the millimetre; null without a wall there.
+export function wallSegmentAt(floor, wifi, pt, tol) {
+  let best = null;
+  for (const s of wallSegments({ ...floor, openings: [] }, wifi, {})) {
+    const d = distToSegment(pt, s.a, s.b);
+    if (d <= tol && (!best || d < best.d)) best = { s, d };
+  }
+  if (!best) return null;
+  const { a, b, material, shared } = best.s;
+  return { a, b, material, shared, at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
+}
+
+const mm = (v) => Math.round(v * 1000) / 1000;
 
 // The loss in dB of the open segment p-q: the sum over the closed segments it crosses of
 // L(material, band) * min(1/cos(theta), 2), theta the angle to the wall's normal. A crossing at
@@ -144,8 +160,8 @@ export function pathLoss(segments, p, q, band, losses) {
 // ---- prediction (SPEC-044 S1) ----
 
 const CLIENT_M = 1.0;                  // m: a client's height above its floor
-const MOUNT_M = 1.0;                   // m: an access point's default height above its floor
-const FLOOR_HEIGHT_M = 2.7;
+export const MOUNT_M = 1.0;                   // m: an access point's default height above its floor
+export const FLOOR_HEIGHT_M = 2.7;
 const MIN_D = 0.5;                     // m: closer than this the formula stops falling
 const HANDOVER_DB = 6;
 
@@ -268,4 +284,125 @@ const stable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" &&
 // windows are hass state: the caller adds them).
 export function cacheKey(doc, floorId, band, params, step) {
   return stable({ doc, floorId, band, params, step });
+}
+
+// ---- edits (SPEC-044 edit mode): each returns a new plan, or null when refused ----
+
+const MAX_TX = 36;
+const MIN_TX = -10;
+const MAX_MOUNT = 5;
+const HEIGHT_RANGE = [2, 10];
+const AP_BANDS = ["2.4", "5"];         // a newly marked access point: what nearly every one serves
+const empty = (v) => v === null || v === undefined || v === "";
+
+// Material ids for a class (wall, window, door, slab), in the table's order.
+export const materialsFor = (cls) => Object.keys(materials.materials).filter((id) => materials.materials[id].for.includes(cls));
+
+// The default material of an opening's kind: a door's, a window's or fixed glass's; null for a doorway.
+const openingClass = (o) => ({ door: "door", window: "window", fixed: "window" })[kindOf(o)] ?? null;
+const wallDefault = (wifi, cls) => wifi?.defaults?.[cls] ?? materials.defaults[cls];
+
+const withList = (floor, key, list) => {
+  const { [key]: _, ...rest } = floor;
+  return list.length ? { ...rest, [key]: list } : rest;
+};
+
+// The wall stretch through `at` made of `material`; the default for its class (interior: shared by two
+// rooms, exterior: one room's alone) removes its entry instead.
+export function setWallMaterial(doc, floorId, at, material) {
+  if (!materialsFor("wall").includes(material)) return null;
+  return editFloor(doc, floorId, (floor) => {
+    const seg = wallSegmentAt(floor, doc.wifi, at, SHARED_M);
+    if (!seg) return null;
+    const walls = (floor.walls || []).filter((w) => distToSegment(w.at, seg.a, seg.b) > SHARED_M);
+    if (material !== wallDefault(doc.wifi, seg.shared ? "interior" : "exterior")) walls.push({ at: [mm(at[0]), mm(at[1])], material });
+    return withList(floor, "walls", walls);
+  });
+}
+
+// The plan's default for interior or exterior walls; the table's own default removes it.
+export function setWifiDefault(doc, which, material) {
+  if (!["interior", "exterior"].includes(which) || !materialsFor("wall").includes(material)) return null;
+  const defaults = { ...doc.wifi?.defaults };
+  if (material === materials.defaults[which]) delete defaults[which];
+  else defaults[which] = material;
+  const { defaults: _, ...wifi } = doc.wifi || {};
+  if (Object.keys(defaults).length) wifi.defaults = defaults;
+  const { wifi: __, ...rest } = doc;
+  return Object.keys(wifi).length ? { ...rest, wifi } : rest;
+}
+
+// Opening `index` of `material`, which must fit its kind; its kind's default or an empty value removes
+// it (any kind: a doorway that was a window sheds it so).
+export function setOpeningMaterial(doc, floorId, index, material) {
+  return editFloor(doc, floorId, (floor) => {
+    const list = floor.openings || [];
+    const o = list[index];
+    if (!o) return null;
+    const cls = openingClass(o);
+    const { material: _, ...next } = o;
+    if (!empty(material)) {
+      if (!cls || !materialsFor(cls).includes(material)) return null;
+      if (material !== materials.defaults[cls]) next.material = material;
+    }
+    return { ...floor, openings: list.map((x, i) => (i === index ? next : x)) };
+  });
+}
+
+// The point `key` (a device or entity id of the floor) as an access point with `patch` applied:
+// `bands` (known ones, non-empty), `tx` per band (an empty value removes one; kept only for its bands)
+// and `mount`; null unmarks it. A newly marked one serves 2.4 and 5 GHz.
+export function setAccessPoint(doc, floorId, key, patch) {
+  return editFloor(doc, floorId, (floor) => {
+    const list = floor.access_points || [];
+    const index = list.findIndex((ap) => apKeyOf(ap) === key);
+    if (patch === null) return index < 0 ? null : withList(floor, "access_points", list.filter((_, i) => i !== index));
+    let ap = list[index];
+    if (!ap) {
+      const point = (floor.points || []).find((p) => (p.device_id ?? p.entity_id) === key);
+      if (!point) return null;
+      ap = { [point.device_id === key ? "device_id" : "entity_id"]: key, bands: AP_BANDS };
+    }
+    const bands = patch.bands ? BANDS.filter((b) => patch.bands.includes(b)) : ap.bands;
+    if (!bands.length) return null;
+    const tx = { ...ap.tx };
+    for (const [band, v] of Object.entries(patch.tx || {})) {
+      if (empty(v)) { delete tx[band]; continue; }
+      if (!bands.includes(band) || !(Number.isFinite(v) && v >= MIN_TX && v <= MAX_TX)) return null;
+      tx[band] = v;
+    }
+    for (const band of Object.keys(tx)) if (!bands.includes(band)) delete tx[band];
+    let mount = ap.mount;
+    if ("mount" in patch) {
+      if (empty(patch.mount)) mount = undefined;
+      else if (Number.isFinite(patch.mount) && patch.mount >= 0 && patch.mount <= MAX_MOUNT) mount = patch.mount;
+      else return null;
+    }
+    const { tx: _t, mount: _m, bands: _b, ...id } = ap;
+    const next = { ...id, bands };
+    if (Object.keys(tx).length) next.tx = tx;
+    if (mount !== undefined) next.mount = mount;
+    return { ...floor, access_points: index < 0 ? [...list, next] : list.map((x, i) => (i === index ? next : x)) };
+  });
+}
+
+// The floor's `height` (metres, 2 to 10) and `slab` (the floor under it); an empty value or the
+// default (2.7 m, the table's slab) removes the key.
+export function setFloorWifi(doc, floorId, patch) {
+  return editFloor(doc, floorId, (floor) => {
+    const next = { ...floor };
+    if ("height" in patch) {
+      const v = patch.height;
+      if (empty(v) || v === FLOOR_HEIGHT_M) delete next.height;
+      else if (Number.isFinite(v) && v >= HEIGHT_RANGE[0] && v <= HEIGHT_RANGE[1]) next.height = v;
+      else return null;
+    }
+    if ("slab" in patch) {
+      const v = patch.slab;
+      if (empty(v) || v === materials.defaults.slab) delete next.slab;
+      else if (materialsFor("slab").includes(v)) next.slab = v;
+      else return null;
+    }
+    return next;
+  });
 }

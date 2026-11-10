@@ -54,7 +54,10 @@ import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour } from "./lib/maps.js";
-import { contextFor, coverage, isHandover, cacheKey, priorParams } from "./lib/wifi.js";
+import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
+  setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi } from "./lib/wifi.js";
+import { accessPointCandidates } from "./lib/wifi-sources.js";
+import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
@@ -74,6 +77,7 @@ const CHOSEN_KEY = "domosenso.floorplan.chosen";   // localStorage: the one laye
 const MAP_KEY = "domosenso.floorplan.map";         // localStorage: the map chosen per layer
 const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while the maps show the last 24 hours
 const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
+const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
 const HOUR_MS = 60 * 60 * 1000;
 const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
 const FILL_GAP_PX = 8;
@@ -165,6 +169,8 @@ class FloorplanCard extends HTMLElement {
     this._band = load(BAND_KEY, null);             // the Serving map's band, while some access point serves it
     this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
     this._wifiKey = null;          // the last cache key and what it was computed from
+    this._wall = null;             // walls tool: the middle of the selected wall stretch
+    this._offered = new Set(load(OFFER_KEY, []));   // points this browser asked "Use as access point?" about
     if (this._hass) this._load();
   }
 
@@ -527,7 +533,8 @@ ${STYLE}
     this._registry();
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
-    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml() : "";
+    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml()
+      || this._wallPanelHtml() || this._offerHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
     const floor = this._floor;
     const empty = ready && floor && !floor.rooms.length && !floor.points.length;
@@ -565,7 +572,7 @@ ${STYLE}
       html += `<select class="floor" aria-label="${esc(t(h, "card.floorplan.floor"))}">${this._doc.floors.map((f) =>
         `<option value="${esc(f.floor_id)}" ${f.floor_id === this._floorId ? "selected" : ""}>${esc(name(f.floor_id))}</option>`).join("")}</select>`;
     }
-    for (const tool of ["move", "split", "join", "open", "openings"]) {
+    for (const tool of ["move", "split", "join", "open", "openings", ...(this._wifiOn ? ["walls"] : [])]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
@@ -729,7 +736,66 @@ ${STYLE}
     return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
       + `<select class="category">${options}</select>`
       + (joined ? `<span class="joined-label">${esc(t(h, "card.floorplan.point.joined"))}</span>${joined}` : "")
+      + this._apFieldsHtml(point)
       + "</div>";
+  }
+
+  // `wifi` is on unless false: the Wi-Fi tools and fields with it.
+  get _wifiOn() {
+    return this._config.wifi !== false;
+  }
+
+  // A point's access point fields: on/off, then its bands, transmit power per band and mount height.
+  _apFieldsHtml(point) {
+    if (!this._wifiOn) return "";
+    const h = this._hass;
+    const ap = this._floor.access_points?.find((a) => (a.device_id ?? a.entity_id) === keyOf(point));
+    const box = (attrs, on, text) => `<label class="ap-check"><input type="checkbox" class="ap-field" ${attrs} ${on ? "checked" : ""}>${esc(text)}</label>`;
+    let html = box('data-field="ap"', !!ap, t(h, "card.floorplan.wifi.access_point"));
+    if (!ap) return html;
+    const ghz = (b) => t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) });
+    html += BANDS.map((b) => box(`data-field="ap_band" data-band="${b}"`, ap.bands.includes(b), ghz(b))).join("");
+    for (const b of ap.bands) {
+      html += `<label>${esc(t(h, "card.floorplan.wifi.tx", { band: this._bandNumber(b) }))}</label>`
+        + `<input type="number" class="ap-field" data-field="ap_tx" data-band="${b}" min="-10" max="36" step="1"`
+        + ` placeholder="${materials.bands[b].tx}" value="${esc(String(ap.tx?.[b] ?? ""))}">`;
+    }
+    return html + `<label>${esc(t(h, "card.floorplan.wifi.mount"))}</label>`
+      + `<input type="number" class="ap-field" data-field="ap_mount" min="0" max="5" step="0.1"`
+      + ` placeholder="${MOUNT_M}" value="${esc(String(ap.mount ?? ""))}">`;
+  }
+
+  // The walls tool: the selected wall's material and the buttons that make it the interior or
+  // exterior default, then this floor's height and the floor under it.
+  _wallPanelHtml() {
+    if (this._tool !== "walls" || !this._wifiOn || !this._floor) return "";
+    const h = this._hass;
+    const floor = this._floor;
+    const options = (cls, current) => materialsFor(cls).map((id) =>
+      `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(t(h, `card.floorplan.material.${id}`))}</option>`).join("");
+    const label = (key) => `<label>${esc(t(h, `card.floorplan.wall.${key}`))}</label>`;
+    let html = "";
+    const seg = this._wall && wallSegmentAt(floor, this._doc.wifi, this._wall, PICK_PX * this._px());
+    if (seg) {
+      html += label("material") + `<select class="wall-field" data-field="wall">${options("wall", seg.material)}</select>`
+        + ["interior", "exterior"].map((w) => `<button data-action="wall_default" data-which="${w}">`
+          + `${esc(t(h, `card.floorplan.wall.default.${w}`))}</button>`).join("");
+    }
+    html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.floor"))}</span>` + label("height")
+      + `<input type="number" class="wall-field" data-field="height" min="2" max="10" step="0.05" value="${esc(String(floor.height ?? FLOOR_HEIGHT_M))}">`
+      + label("slab") + `<select class="wall-field" data-field="slab">${options("slab", floor.slab ?? materials.defaults.slab)}</select>`;
+    return `<div class="wall-panel">${html}</div>`;
+  }
+
+  // "Use as access point?" for the first point of the floor the rules match, asked once per browser.
+  _offerHtml() {
+    if (!this._wifiOn || !this._floor) return "";
+    const key = accessPointCandidates(this._hass, this._floor, wifiRules).find((k) => !this._offered.has(k));
+    const point = key && this._floor.points.find((p) => keyOf(p) === key);
+    if (!point) return "";
+    const h = this._hass;
+    const answer = (a) => `<button data-action="ap_offer" data-key="${esc(key)}" data-answer="${a}">${esc(t(h, `card.floorplan.wifi.${a}`))}</button>`;
+    return `<div class="ap-offer"><span>${esc(t(h, "card.floorplan.wifi.offer", { name: pointName(h, point) }))}</span>${answer("yes")}${answer("no")}</div>`;
   }
 
   // The selected opening: its kind, width, state without a sensor and sensor; a door's
@@ -747,6 +813,11 @@ ${STYLE}
     if (kind === "door") {
       html += sel("sliding", "style", STYLES.map((v) => opt(v === "sliding" ? "true" : "", t(h, `card.floorplan.opening.styles.${v}`), v === styleOf(o))).join(""))
         + button("swap_hinge", "swap_hinge") + button("swap_side", "swap_side");
+    }
+    const cls = { door: "door", window: "window", fixed: "window" }[kind];
+    if (cls && this._wifiOn) {
+      const current = o.material ?? materials.defaults[cls];
+      html += sel("material", "material", materialsFor(cls).map((id) => opt(id, t(h, `card.floorplan.material.${id}`), id === current)).join(""));
     }
     html += `<label>${esc(t(h, "card.floorplan.opening.width"))}</label>`
       + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`
@@ -814,6 +885,7 @@ ${STYLE}
       el("line", { class: "open-wall", ...at }, svg);
     }
     this._drawOpenings(svg, floor, px, editing);
+    if (editing && this._tool === "walls" && this._wall) this._drawWall(svg, px);
     // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
     // readings keep clear of them; in view mode the readings are laid out first and a name they
     // would cover moves to a free corner of its room (placeNames, after the layout below).
@@ -978,6 +1050,13 @@ ${STYLE}
       const dragged = this._drag?.kind === "opening" && this._drag.index === i;
       if (tool && (this._opening === i || dragged)) this._drawSpan(svg, floor, shape, px);
     });
+  }
+
+  // The wall stretch the walls tool selected, corner to corner.
+  _drawWall(svg, px) {
+    const seg = wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * px);
+    if (!seg) return;
+    el("line", { class: "wall-selected", x1: fmt(seg.a[0]), y1: fmt(seg.a[1]), x2: fmt(seg.b[0]), y2: fmt(seg.b[1]) }, svg);
   }
 
   // Along the wall, 12 px off it on the side the opening opens into: the free wall from each end of
@@ -1281,6 +1360,17 @@ ${STYLE}
     } else if (action === "swap_hinge") this._edit(swapHinge(this._doc, this._floorId, this._opening));
     else if (action === "swap_side") this._edit(swapSide(this._doc, this._floorId, this._opening));
     else if (action === "fill_wall") this._edit(fillWall(this._doc, this._floorId, this._opening));
+    else if (action === "wall_default") {
+      // The selected wall's material for every wall of its kind without one of its own; its own entry goes.
+      const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
+      const next = seg && setWifiDefault(this._doc, button.getAttribute("data-which"), seg.material);
+      if (this._edit(next)) this._doc = setWallMaterial(next, this._floorId, seg.at, seg.material) ?? next;
+    } else if (action === "ap_offer") {
+      const key = button.getAttribute("data-key");
+      if (button.getAttribute("data-answer") === "yes") this._edit(setAccessPoint(this._doc, this._floorId, key, {}));
+      this._offered.add(key);
+      save(OFFER_KEY, [...this._offered]);
+    }
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
@@ -1314,14 +1404,48 @@ ${STYLE}
     } else if (e.target.matches?.(".opening-field") && this._opening != null) {
       const field = e.target.getAttribute("data-field");
       const raw = e.target.value;
-      const value = field === "width" ? Number(raw) || "" : field === "sliding" ? raw === "true" : raw;
-      this._edit(setOpening(this._doc, this._floorId, this._opening, { [field]: value }));
+      if (field === "material") this._edit(setOpeningMaterial(this._doc, this._floorId, this._opening, raw));
+      else {
+        const value = field === "width" ? Number(raw) || "" : field === "sliding" ? raw === "true" : raw;
+        const next = setOpening(this._doc, this._floorId, this._opening, { [field]: value });
+        // A new kind sheds a material it cannot have (low-E glass on a door, any on a doorway).
+        const o = next?.floors.find((f) => f.floor_id === this._floorId).openings[this._opening];
+        const fits = !o?.material || !!setOpeningMaterial(next, this._floorId, this._opening, o.material);
+        this._edit(fits ? next : setOpeningMaterial(next, this._floorId, this._opening, null));
+      }
+      this._render();
+    } else if (e.target.matches?.(".wall-field")) {
+      const field = e.target.getAttribute("data-field");
+      const raw = e.target.value;
+      if (field === "wall") {
+        const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
+        if (seg) this._edit(setWallMaterial(this._doc, this._floorId, seg.at, raw));
+      } else this._edit(setFloorWifi(this._doc, this._floorId, { [field]: field === "height" ? (raw === "" ? null : Number(raw)) : raw }));
+      this._render();
+    } else if (e.target.matches?.(".ap-field") && this._picked) {
+      this._edit(this._apChange(e.target));
       this._render();
     } else if (e.target.matches?.("select.category") && this._picked) {
       const own = this._cands?.get(this._picked)?.category ?? null;
       this._edit(setPointCategory(this._doc, this._floorId, this._picked, e.target.value, own));
       this._render();
     }
+  }
+
+  // The picked point's access point after a change of one of its fields; null when refused.
+  _apChange(input) {
+    const key = this._picked;
+    const field = input.getAttribute("data-field");
+    const band = input.getAttribute("data-band");
+    const num = (raw) => (raw === "" ? null : Number(raw));
+    if (field === "ap") return setAccessPoint(this._doc, this._floorId, key, input.checked ? {} : null);
+    const ap = this._floor.access_points?.find((a) => (a.device_id ?? a.entity_id) === key);
+    if (!ap) return null;
+    if (field === "ap_band") {
+      return setAccessPoint(this._doc, this._floorId, key, { bands: input.checked ? [...ap.bands, band] : ap.bands.filter((b) => b !== band) });
+    }
+    if (field === "ap_tx") return setAccessPoint(this._doc, this._floorId, key, { tx: { [band]: num(input.value) } });
+    return setAccessPoint(this._doc, this._floorId, key, { mount: num(input.value) });
   }
 
   _enterEdit() {
@@ -1344,6 +1468,7 @@ ${STYLE}
     this._openCluster = null;
     this._pendingSplit = null;
     this._opening = null;
+    this._wall = null;
   }
 
   // Apply a refusable edit: a refused one leaves the plan as it was and says so.
@@ -1730,6 +1855,8 @@ ${STYLE}
         this._edit(next);
         this._opening = this._floor.openings.length - 1;
       } else this._opening = null;
+    } else if (this._tool === "walls") {
+      this._wall = wallSegmentAt(this._floor, this._doc.wifi, pt, PICK_PX * this._px())?.at ?? null;
     } else if (this._tool === "split") {
       const wall = nearestWall(this._floor, pt, PICK_PX * this._px());
       if (!wall) return;

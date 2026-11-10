@@ -32,7 +32,8 @@
         "split": "Split",
         "join": "Join",
         "open": "Open",
-        "openings": "Doors & windows"
+        "openings": "Doors & windows",
+        "walls": "Walls"
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
@@ -40,7 +41,8 @@
         "split": "Tap two points on the walls of one room.",
         "join": "Tap two neighbouring rooms; the first keeps its area.",
         "open": "Tap two rooms open to each other without a door: their heat maps share readings.",
-        "openings": "Tap a wall to add a door; tap a door or window to change it, drag it along the walls."
+        "openings": "Tap a wall to add a door; tap a door or window to change it, drag it along the walls.",
+        "walls": "Tap a wall to set its material. Below: this floor's height and the floor under it."
       },
       "area": {
         "label": "Area of this room",
@@ -128,7 +130,8 @@
         },
         "swap_hinge": "⇄ Left/right",
         "swap_side": "⇅ Other side",
-        "fill_wall": "Whole wall"
+        "fill_wall": "Whole wall",
+        "material": "Material"
       },
       "wifi": {
         "bands": "{bands} GHz",
@@ -137,7 +140,39 @@
         "dbm_legend": "the strongest predicted signal per spot; marks at {call} dBm (the usual floor for calls) and {weak} dBm",
         "hint": {
           "no_access_points": "No Wi-Fi access point on the plan: mark a point as an access point in edit mode"
-        }
+        },
+        "offer": "{name}: use as access point?",
+        "yes": "Yes",
+        "no": "No",
+        "access_point": "Access point",
+        "tx": "Transmit power at {band} GHz (dBm)",
+        "mount": "Height above the floor (m)"
+      },
+      "wall": {
+        "material": "Wall material",
+        "default": {
+          "interior": "Use for all interior walls",
+          "exterior": "Use for all exterior walls"
+        },
+        "floor": "This floor:",
+        "height": "Height (m)",
+        "slab": "Floor below"
+      },
+      "material": {
+        "drywall": "Drywall",
+        "wood": "Wood",
+        "aerated_block": "Aerated concrete block",
+        "brick": "Brick",
+        "concrete": "Concrete",
+        "reinforced_concrete": "Reinforced concrete",
+        "glass": "Glass",
+        "double": "Double glazing",
+        "low_e": "Low-E glazing",
+        "triple_low_e": "Triple low-E glazing",
+        "metal": "Metal",
+        "interior": "Interior wall (typical)",
+        "exterior": "Exterior wall (typical)",
+        "slab": "Floor slab (typical)"
       }
     }
   }
