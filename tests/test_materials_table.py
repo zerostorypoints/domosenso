@@ -41,3 +41,9 @@ def test_every_homogeneous_prior_is_at_least_its_slab_value():
     for mid, (ref, d) in thin.items():
         for band, f in BAND_GHZ.items():
             assert t[mid]['loss'][band] >= slab_loss(ref, f, d) - 0.5, (mid, band)
+
+
+def test_door_and_window_material_sets_match_the_plan_document():
+    t = json.loads(MATERIALS.read_text())['materials']
+    assert {k for k, m in t.items() if 'door' in m['for']} == {'wood', 'glass', 'metal'}
+    assert {k for k, m in t.items() if 'window' in m['for']} == {'glass', 'double', 'low_e', 'triple_low_e'}
