@@ -3,6 +3,7 @@
 
 import materials from "./materials.json" with { type: "json" };
 import { facingWalls } from "./plan.js";
+import { pointInPolygon } from "./geometry.js";
 import { openingShape, openingState, kindOf, SHARED_M } from "./openings.js";
 
 export const BANDS = ["2.4", "5", "6"];
@@ -138,4 +139,133 @@ export function pathLoss(segments, p, q, band, losses) {
     total += loss * Math.min(1 / cos, OBLIQUE_CAP);
   }
   return total;
+}
+
+// ---- prediction (SPEC-044 S1) ----
+
+const CLIENT_M = 1.0;                  // m: a client's height above its floor
+const MOUNT_M = 1.0;                   // m: an access point's default height above its floor
+const FLOOR_HEIGHT_M = 2.7;
+const MIN_D = 0.5;                     // m: closer than this the formula stops falling
+const HANDOVER_DB = 6;
+
+export const apKeyOf = (ap) => ap.device_id ?? ap.entity_id;
+
+// The priors: transmit power per access point and band (its own, else the band's default), the
+// distance exponent, every material's loss per band, and per-device offsets (none before a fit).
+export function priorParams(table, aps) {
+  const tx = {};
+  for (const ap of aps ?? []) {
+    const key = apKeyOf(ap);
+    tx[key] = {};
+    for (const band of BANDS) tx[key][band] = ap.tx?.[band] ?? table.bands[band].tx;
+  }
+  const loss = {};
+  for (const [id, m] of Object.entries(table.materials)) loss[id] = { ...m.loss };
+  return { tx, n: 2, loss, device: {} };
+}
+
+// Floors in HA's level order (a missing level last, then by id) with the height they stand on.
+export function contextFor(doc, floorId, hass, table, params) {
+  const level = (f) => hass?.floors?.[f.floor_id]?.level;
+  const ordered = [...doc.floors].sort((a, b) => {
+    const [la, lb] = [level(a), level(b)];
+    const [na, nb] = [la === null || la === undefined, lb === null || lb === undefined];
+    if (na !== nb) return na ? 1 : -1;
+    if (!na && la !== lb) return la - lb;
+    return a.floor_id < b.floor_id ? -1 : a.floor_id > b.floor_id ? 1 : 0;
+  });
+  let z = 0;
+  const floors = ordered.map((f) => {
+    const out = { floor_id: f.floor_id, z, slab: f.slab ?? table.defaults.slab };
+    z += f.height ?? FLOOR_HEIGHT_M;
+    return out;
+  });
+  const segmentsByFloor = {};
+  const apPos = {};
+  const all = [];
+  for (const f of doc.floors) {
+    segmentsByFloor[f.floor_id] = wallSegments(f, doc.wifi, hass);
+    for (const ap of f.access_points ?? []) {
+      all.push(ap);
+      const key = apKeyOf(ap);
+      const point = (f.points ?? []).find((p) => p.placed !== false && (p.device_id ?? p.entity_id) === key);
+      if (point) apPos[key] = { floorId: f.floor_id, x: point.x, y: point.y, mount: ap.mount ?? MOUNT_M, bands: ap.bands };
+    }
+  }
+  return { doc, floorId, params: params ?? priorParams(table, all), segmentsByFloor, apPos, floors };
+}
+
+// What does not depend on the cell: the access point's place, height, the slabs a ray from this
+// floor pays to reach it. Slab i separates floor i-1 from floor i.
+function prepare(ctx, apKey, band) {
+  const pos = ctx.apPos[apKey];
+  const { params, floors } = ctx;
+  const here = floors.findIndex((f) => f.floor_id === ctx.floorId);
+  const there = floors.findIndex((f) => f.floor_id === pos.floorId);
+  let slabs = 0;
+  for (let i = Math.min(here, there) + 1; i <= Math.max(here, there); i++) slabs += params.loss[floors[i].slab]?.[band] ?? 0;
+  const bandInfo = BANDS.includes(band) ? materials.bands[band] : null;
+  return {
+    ap: [pos.x, pos.y],
+    dz: floors[there].z + pos.mount - (floors[here].z + CLIENT_M),
+    // everything constant per cell: T - L0 - slabs
+    base: (params.tx[apKey]?.[band] ?? bandInfo.tx) - bandInfo.l0 - slabs,
+    segs: ctx.segmentsByFloor[ctx.floorId] ?? [],
+    n10: 10 * params.n,
+    loss: params.loss,
+    band,
+  };
+}
+
+function level(pre, p) {
+  const dx = p[0] - pre.ap[0];
+  const dy = p[1] - pre.ap[1];
+  const d = Math.max(Math.sqrt(dx * dx + dy * dy + pre.dz * pre.dz), MIN_D);
+  // another floor's ray is charged the walls of the cell's own floor along its horizontal projection
+  return pre.base - pre.n10 * Math.log10(d) - pathLoss(pre.segs, p, pre.ap, pre.band, pre.loss);
+}
+
+// The signal in dBm of one access point on one band at point p of the context's floor.
+export function predict(ctx, apKey, band, p) {
+  return level(prepare(ctx, apKey, band), p);
+}
+
+export const isHandover = (cell, margin = HANDOVER_DB) => cell.second !== null && cell.dbm - cell.second <= margin;
+
+// The access points that serve the band and have a place, and the cells of the context's floor.
+export function coverage(ctx, band, step) {
+  const aps = Object.keys(ctx.apPos).filter((k) => !ctx.apPos[k].bands || ctx.apPos[k].bands.includes(band));
+  if (!aps.length) return { cells: [], aps: [], hint: "no_access_points" };
+  const pre = aps.map((k) => prepare(ctx, k, band));
+  const cells = [];
+  const c = [0, 0];
+  (ctx.doc.floors.find((f) => f.floor_id === ctx.floorId)?.rooms ?? []).forEach((r, room) => {
+    const poly = r.polygon;
+    let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const [px, py] of poly) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+    for (let x = x0; x < x1; x += step) {
+      for (let y = y0; y < y1; y += step) {
+        c[0] = x + step / 2;
+        c[1] = y + step / 2;
+        if (!pointInPolygon(c, poly)) continue;
+        let best = -Infinity, second = -Infinity, who = 0;
+        for (let i = 0; i < pre.length; i++) {
+          const v = level(pre[i], c);
+          if (v > best) { second = best; best = v; who = i; } else if (v > second) second = v;
+        }
+        cells.push({ x, y, room, dbm: best, ap: aps[who], second: second === -Infinity ? null : second });
+      }
+    }
+  });
+  return { cells, aps, hint: null };
+}
+
+const stable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x)
+  ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
+
+// Everything a map's cells depend on that the context does not carry live (open doors and
+// windows are hass state: the caller adds them).
+export function cacheKey(doc, floorId, band, params, step) {
+  return stable({ doc, floorId, band, params, step });
 }
