@@ -26,6 +26,9 @@ package-dir = {"" = "tools"}
 packages = ["domosenso_cli"]
 py-modules = ["catalog_check", "domosenso_render", "domosenso_install", "check_config_parse", "assistant_contract", "assistant_actions"]
 
+[tool.setuptools.package-data]
+domosenso_cli = ["*.swift"]
+
 [dependency-groups]
 dev = [
     "pytest",
