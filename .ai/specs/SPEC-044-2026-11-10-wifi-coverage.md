@@ -1,6 +1,6 @@
 # SPEC-044 — Wi-Fi coverage on the floor plan: predicted, checked by devices, refined by a survey walk
 
-**Status:** draft, 2026-11-10, for the maintainer's approval.
+**Status:** approved 2026-11-10 by the maintainer ("Approve, write plan").
 
 **Source:** the maintainer, 2026-11-10, while troubleshooting a mesh network in a real home (calls
 dropping when walking between rooms after a phone change): "can we somehow get the wifi coverage on
