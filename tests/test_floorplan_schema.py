@@ -279,3 +279,122 @@ def test_dashboard_config_carries_the_home_rooms():
     assert extract(dashboard_config(demo(), rooms)) == without_source(demo())
     assert "rooms" not in dashboard_config(demo())["views"][0]["cards"][0]
     assert card_rooms(None) == []
+
+
+# --- Wi-Fi keys (SPEC-044) ---------------------------------------------------------------------
+
+def wifi_demo() -> dict:
+    doc = demo()
+    floor = doc["floors"][0]
+    floor["height"] = 2.7
+    floor["slab"] = "slab"
+    floor["walls"] = [{"at": [5.4, 3.8], "material": "brick"}]
+    floor["openings"] = [{"kind": "window", "rooms": ["living_room", None], "at": [2.0, 0.0],
+                          "material": "low_e"}]
+    floor["access_points"] = [{"device_id": "dev1", "bands": ["2.4", "5"], "tx": {"5": 20}, "mount": 1.0}]
+    doc["wifi"] = {
+        "defaults": {"interior": "interior", "exterior": "exterior"},
+        "samples": [{"floor_id": "ground", "x": 3.4, "y": 2.1, "t": "2026-11-10T19:30:00Z",
+                     "band": "5", "channel": 36, "dbm": -58, "noise": -92,
+                     "ap": "dev1", "bssid": "02:00:00:00:00:01", "source": "survey"}],
+    }
+    return doc
+
+
+def test_a_plan_with_wifi_keys_validates():
+    validate(wifi_demo())
+
+
+def _edit(doc, fn):
+    fn(doc)
+    return doc
+
+
+def _ap(**kw):
+    return lambda d: d["floors"][0]["access_points"].__setitem__(0, {"device_id": "dev1", "bands": ["5"], **kw})
+
+
+REFUSALS = [
+    (lambda d: d["floors"][0]["walls"][0].update(at=[2.7, 2.0]),
+     "wall on floor ground: [2.7, 2.0] is not on a room edge"),
+    (lambda d: d["floors"][0]["walls"][0].update(material="mud"), "unknown material mud"),
+    (lambda d: d["floors"][0]["walls"][0].update(material="double"), "material double does not fit a wall"),
+    (lambda d: d["floors"][0].update(slab="mud"), "unknown material mud"),
+    (lambda d: d["floors"][0].update(slab="brick"), "material brick does not fit a slab"),
+    (lambda d: d["wifi"]["defaults"].update(interior="glass"), "material glass does not fit a wall"),
+    (lambda d: d["floors"][0]["openings"][0].update(material="wood"), "material wood does not fit a window"),
+    (lambda d: d["floors"][0]["openings"][0].update(kind="door", material="double"),
+     "material double does not fit a door"),
+    (lambda d: d["floors"][0]["openings"][0].update(kind="opening", material="wood"),
+     "material wood does not fit a doorway"),
+    (lambda d: d["floors"][0]["access_points"].__setitem__(0, {"device_id": "nope", "bands": ["5"]}),
+     "access point on floor ground: nope is not a point of the floor"),
+    (lambda d: d["floors"][0]["access_points"].append({"device_id": "dev1", "bands": ["5"]}),
+     "access point twice: dev1"),
+    (_ap(bands=[]), "access point dev1: bands empty or unknown"),
+    (_ap(bands=["7"]), "access point dev1: bands empty or unknown"),
+    (_ap(tx={"5": 40}), "access point dev1: tx 5 out of range"),
+    (_ap(tx={"6": 10}), "access point dev1: tx 6 out of range"),
+    (_ap(mount=6), "mount out of range"),
+    (lambda d: d["floors"][0].update(height=1), "height out of range"),
+    (lambda d: d["wifi"]["samples"][0].update(floor_id="attic"), "sample 0: floor attic not in the plan"),
+    (lambda d: d["wifi"]["samples"][0].update(dbm=5), "sample 0: dbm out of range"),
+    (lambda d: d["wifi"]["samples"][0].update(dbm=-120), "sample 0: dbm out of range"),
+    (lambda d: d["wifi"].update(samples=d["wifi"]["samples"] * 2001), "more than 2000 samples"),
+]
+
+
+@pytest.mark.parametrize("edit,reason", REFUSALS, ids=[r[1] for r in REFUSALS])
+def test_wifi_refusals(edit, reason):
+    doc = wifi_demo()
+    edit(doc)
+    with pytest.raises(DomosensoError) as exc:
+        validate(doc)
+    assert str(exc.value) == reason
+
+
+def test_a_doorway_takes_no_material_and_a_door_takes_wood():
+    doc = wifi_demo()
+    doc["floors"][0]["openings"] = [
+        {"kind": "opening", "rooms": ["living_room", "kitchen"], "at": [5.4, 2.0]},
+        {"rooms": ["living_room", "kitchen"], "at": [5.4, 3.0], "material": "wood"},
+    ]
+    validate(doc)
+
+
+def test_wifi_changes_are_diffed_per_floor_and_order_is_left_out():
+    old = wifi_demo()
+    new = copy.deepcopy(old)
+    assert diff(old, new) == []
+    new["floors"][0]["walls"][0]["material"] = "concrete"
+    assert diff(old, new) == [("wifi", "change", "ground")]
+    new = copy.deepcopy(old)
+    new["floors"][0]["walls"][0]["at"] = [5.4000001, 3.8]
+    new["floors"][0]["access_points"][0]["mount"] = 1
+    assert diff(old, new) == []
+    for key, value in (("height", 3), ("slab", "interior")):
+        new = copy.deepcopy(old)
+        new["floors"][0][key] = value
+        assert diff(old, new) == [("wifi", "change", "ground")]
+    new = copy.deepcopy(old)
+    new["floors"][0]["openings"][0]["material"] = "double"
+    assert ("wifi", "change", "ground") in diff(old, new)
+
+
+def test_wifi_samples_are_diffed_by_count_after_the_push():
+    old = wifi_demo()
+    new = copy.deepcopy(old)
+    new["wifi"]["samples"].append({**new["wifi"]["samples"][0], "dbm": -70})
+    assert diff(old, new) == [("wifi", "samples", "2")]
+    assert diff(new, old) == [("wifi", "samples", "1")]
+    reordered = copy.deepcopy(new)
+    reordered["wifi"]["samples"].reverse()
+    assert diff(new, reordered) == []
+    assert diff(demo(), demo()) == []
+
+
+def test_a_plan_without_wifi_keys_has_no_wifi_lines():
+    assert diff(demo(), demo()) == []
+    assert diff(None, demo()) == [(k, "add", "ground", n) for k, n in
+                                  [("room", "living_room"), ("room", "kitchen"),
+                                   ("point", "dev1"), ("point", "plant.monstera")]]

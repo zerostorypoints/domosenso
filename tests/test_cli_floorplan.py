@@ -370,3 +370,41 @@ def test_push_plan_openings_have_their_own_line_and_name_rooms_of_the_floor(home
         == "FAIL opening on floor ground: only a door has hinge"
     assert plan_with({**door, "opens": "outside"})[1][-1] \
         == "FAIL opening on floor ground: opens into outside, not one of its sides"
+
+
+def test_push_plan_prints_wifi_change_when_a_wall_material_changes(home, capsys):
+    root, box = home
+    wall = {"at": [4.0, 1.5], "material": "brick"}
+    old = {**PLAN, "floors": [{**PLAN["floors"][0], "walls": [wall]}]}
+    box["ha"] = Dashboards(old).ha
+    record(root, "staging", old)
+    new = {**PLAN, "floors": [{**PLAN["floors"][0], "walls": [{**wall, "material": "concrete"}]}]}
+    write_plan(root, new)
+    code = cli(root, "push", "staging", "--plan")
+    lines = out(capsys)
+    assert code == 0 and lines[0] == "wifi change ground", lines
+    write_plan(root, {**new, "floors": [{**new["floors"][0], "walls": [{"at": [2.0, 1.5], "material": "brick"}]}]})
+    assert cli(root, "push", "staging", "--plan") == 1
+    assert out(capsys)[-1] == "FAIL wall on floor ground: [2.0, 1.5] is not on a room edge"
+
+
+def test_push_plan_prints_wifi_samples_with_the_count_after_push(home, capsys):
+    root, box = home
+    box["ha"] = Dashboards(PLAN).ha
+    record(root, "staging", PLAN)
+    sample = {"floor_id": "ground", "x": 1.0, "y": 1.0, "band": "5", "dbm": -60}
+    write_plan(root, {**PLAN, "wifi": {"samples": [sample, {**sample, "x": 2.0}]}})
+    code = cli(root, "push", "staging", "--plan")
+    lines = out(capsys)
+    assert code == 0 and lines[0] == "wifi samples 2", lines
+
+
+def test_a_plan_without_wifi_keys_validates_and_pushes_unchanged(home, capsys):
+    root, box = home
+    box["ha"] = Dashboards(PLAN).ha
+    record(root, "staging", PLAN)
+    fd.validate(PLAN)
+    write_plan(root, PLAN)
+    assert cli(root, "push", "staging", "--plan") == 0
+    assert out(capsys) == ["nothing to push", "ok"]
+    assert fd.canonical(PLAN) == fd.canonical(json.loads(json.dumps(PLAN)))

@@ -8,9 +8,39 @@
   "properties": {
     "schema": {"type": "integer", "minimum": 1},
     "floors": {"type": "array", "items": {"$ref": "#/$defs/floor"}},
-    "source": {"$ref": "#/$defs/source"}
+    "source": {"$ref": "#/$defs/source"},
+    "wifi": {"$ref": "#/$defs/wifi"}
   },
   "$defs": {
+    "wifi": {
+      "type": "object", "additionalProperties": false,
+      "description": "Wi-Fi coverage (SPEC-044)",
+      "properties": {
+        "defaults": {
+          "type": "object", "additionalProperties": false,
+          "description": "Material ids for walls no `walls` entry covers: interior (two rooms share it) and exterior",
+          "properties": {"interior": {"type": "string", "minLength": 1}, "exterior": {"type": "string", "minLength": 1}}
+        },
+        "samples": {
+          "type": "array", "description": "Survey and manual readings, at most 2000",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["floor_id", "x", "y", "band", "dbm"],
+            "properties": {
+              "floor_id": {"type": ["string", "null"]},
+              "x": {"$ref": "#/$defs/number"}, "y": {"$ref": "#/$defs/number"},
+              "t": {"type": "string"},
+              "band": {"enum": ["2.4", "5", "6"]},
+              "channel": {"type": "integer"},
+              "dbm": {"type": "number", "description": "-110 to 0"},
+              "noise": {"type": "number"},
+              "ap": {"type": "string", "description": "Device id of an access point, or absent"},
+              "bssid": {"type": "string"},
+              "source": {"enum": ["survey", "manual"]}
+            }
+          }
+        }
+      }
+    },
     "floor": {
       "type": "object",
       "additionalProperties": false,
@@ -23,6 +53,35 @@
           "type": "array",
           "description": "Groups of rooms open to each other without doors (SPEC-028 Amendment 7): their heat maps share readings. Each area in one group at most; every area a room of the floor",
           "items": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
+        },
+        "height": {"type": "number", "description": "Metres, default 2.7; 2 to 10 (SPEC-044)"},
+        "slab": {"type": "string", "minLength": 1, "description": "The floor under this one: a material id of components/floorplan/cards/lib/materials.json (SPEC-044)"},
+        "walls": {
+          "type": "array", "description": "The material of the straight wall segment through `at`, within 0.05 m of a room edge (SPEC-044)",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["at", "material"],
+            "properties": {
+              "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}},
+              "material": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "access_points": {
+          "type": "array", "description": "Points of the floor that are Wi-Fi access points; the position is the point's (SPEC-044)",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["bands"],
+            "properties": {
+              "device_id": {"type": "string", "minLength": 1},
+              "entity_id": {"type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"},
+              "bands": {"type": "array", "items": {"type": "string"}, "description": "Bands it serves: 2.4, 5, 6"},
+              "tx": {"type": "object", "additionalProperties": {"type": "number"}, "description": "Per-band EIRP overrides in dBm, -10 to 36"},
+              "mount": {"type": "number", "description": "Metres above its floor, 0 to 5"}
+            },
+            "oneOf": [
+              {"required": ["device_id"], "not": {"required": ["entity_id"]}},
+              {"required": ["entity_id"], "not": {"required": ["device_id"]}}
+            ]
+          }
         },
         "openings": {
           "type": "array", "description": "Doors, windows and doorways in the rooms' walls (SPEC-028 Amendment 9): an opening joins two rooms of the floor, or one and the outside (null)",
@@ -37,7 +96,8 @@
               "entity": {"type": "string", "pattern": "^(binary_sensor|cover)\\.[a-z0-9_]+$", "description": "The opening's live state: a door, window or opening binary_sensor, or a cover"},
               "sliding": {"const": true, "description": "A door: slides along the wall instead of swinging"},
               "hinge": {"enum": ["left", "right"], "description": "A door: its hinge (a sliding door: where it slides to), seen from the side it opens into, facing it; default left"},
-              "opens": {"type": "string", "minLength": 1, "description": "A door: the room it opens into, one of its rooms, or outside; default its first room"}
+              "opens": {"type": "string", "minLength": 1, "description": "A door: the room it opens into, one of its rooms, or outside; default its first room"},
+              "material": {"type": "string", "minLength": 1, "description": "Window and fixed glass: glass, double, low_e, triple_low_e (default double); door: wood, glass, metal (default wood); none on a doorway (SPEC-044)"}
             }
           }
         }
