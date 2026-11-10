@@ -126,6 +126,8 @@ export const STYLE = `
   .wall-selected { stroke: var(--accent-color, #ff9800); stroke-width: 5; stroke-opacity: 0.6; stroke-linecap: round;
     vector-effect: non-scaling-stroke; pointer-events: none; }
   .wall-panel, .ap-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .wifi-disabled { font-size: 12px; color: var(--secondary-text-color); }
+  .wifi-disabled ul { margin: 4px 0 0; padding-left: 18px; }
   .wall-panel input, .point-panel input[type=number] { width: 5em; }
   .wall-panel .floor-label { margin-left: 12px; }
   .ap-check { display: inline-flex; align-items: center; gap: 4px; }

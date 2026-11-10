@@ -55,8 +55,15 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   - Without an access point on the plan there is no map; the bar says how to add one.
   - `wifi: false` turns the Wi-Fi maps off, and with them the Walls tool, the opening **Material**,
     the access point panel and the offer.
-  - **Calibration against your devices' Wi-Fi signals and the walk-around survey are not yet
-    available**; the maps are the prediction alone.
+  - **Confidence** shows how far to trust the map on the band chosen beside it: **high** within 2 m
+    of a device's reading of the access point serving that spot, **medium** where the readings
+    changed what that spot's signal depends on (its access point's power, a wall's material),
+    **low** where only the typical values apply.
+  - With devices on the plan that report their Wi-Fi signal (calibration, below), the band maps and
+    Serving get **Predicted / Calibrated** instead of Now / 24 h; **Calibrated** is the default and
+    the browser remembers the choice. Without such a device there is nothing to calibrate with and
+    the switch is not shown. Such a device's label reads "−52 dBm · 2.4 · <access point>" (`—` when
+    the access point is not known).
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
   share their readings on the maps instead of stopping at the line between them; the walls between
   them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
@@ -220,6 +227,38 @@ In edit mode (SPEC-044):
   slab material) are set in its panel; they decide how much a signal loses between floors.
 - A change to walls, materials, access points, height or slab shows on the maps at once; **Save**
   and `floorplan push` write it as for any other edit.
+
+### Wi-Fi calibration from your devices
+
+Devices on the plan that report their own Wi-Fi signal check the prediction where they stand
+(SPEC-044). The card uses each one's **mean over the last 24 hours** (the recorder's hourly
+statistics; a sensor without statistics gives its current state) and finds the access point and band
+it is on from its BSSID sensor, matched to an access point's BSSID sensors (`tplink_deco`), else from
+the router's client tracker for its MAC address, else not at all.
+
+- **Counted:** sensors with device class `signal_strength` in dBm from ESPHome (`wifi_signal`, with
+  `wifi_info`'s BSSID), Shelly, Tasmota, WLED, TP-Link Kasa/Tapo Wi-Fi devices and the Android
+  Companion app, or any such sensor whose entity id says `wi_fi` or `wifi`.
+- **Not counted:** Bluetooth devices' signal strength in dBm (a RuuviTag through the `bluetooth`
+  integration), the Tapo T310/T315 `signal_level` 0–3 (their sub-GHz link to the hub), Zigbee, and
+  any device with a Bluetooth or Zigbee connection. The rules are data:
+  `cards/lib/wifi-rules.json`.
+- **Switched-off sensors.** Many integrations ship their signal sensor disabled. In edit mode an
+  administrator's card lists the plan's switched-off Wi-Fi signal sensors; enable them in Settings →
+  Entities and they count from their first readings. (Only edit mode reads this list: it is an
+  administrator's call, so a wall tablet's or kiosk user's card never makes it.)
+- **What the fit changes.** Within the uncertainty of each typical value it moves each access
+  point's transmit power per band, how fast the signal falls with distance, the loss of each
+  material a reading's path crosses, and one offset per device (a device's antenna reads a few dB
+  high or low). Each is pulled back towards its typical value; what is left at each reading is
+  spread around it within 3 m, weaker behind each wall. The same plan and readings always give the
+  same map.
+- **Guards.** With fewer than 5 readings on a band, only that band's transmit powers move. With
+  readings in fewer than 3 rooms, the materials keep their typical losses. A reading whose access
+  point is unknown is compared with the strongest predicted one at half weight. A material's loss
+  fitted on one band moves its loss on the other bands by a third as much, in proportion (a
+  2.4 GHz-only device still says something about 5 GHz).
+- **Survey:** a walk-around with a laptop measuring as you tap the plan is not yet available.
 
 ## After editing in Home Assistant
 

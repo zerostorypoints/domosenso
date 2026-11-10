@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MAPS, SCALES, ruleOf, readingIds, labelClasses, figure, heat, colourAt, lampIndex, lampOf, formatValue, SPOT_M, areaSensorField,
-  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour } from "./maps.js";
+  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./maps.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 const rooms = [sq(0, 0, 3, 3), sq(3, 0, 3, 3)];
@@ -144,7 +144,7 @@ const wifiDoc = (aps, points) => ({ schema: 1, floors: [{ floor_id: "ground", ro
   points, access_points: aps }] });
 
 test("the radio layer's maps: a map per band, then Serving; none has a 24-hour figure", () => {
-  assert.deepEqual(MAPS.radio, [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null]]);
+  assert.deepEqual(MAPS.radio, [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null], ["confidence", null]]);
   assert.deepEqual(BAND_OF, { wifi_24: "2.4", wifi_5: "5", wifi_6: "6" });
   assert.deepEqual(SCALES.dbm.marks, [-67, -75]);
   assert.equal(SCALES.dbm.lo, -90);
@@ -159,7 +159,7 @@ test("only the bands a placed access point serves are offered; Serving with any"
     [{ device_id: "d1", x: 1, y: 1, placed: true }, { device_id: "d2", x: 2, y: 2, placed: false }]);
   assert.deepEqual(accessPoints(doc).map((a) => a.key), ["d1"], "an auto-placed point is not drawn");
   assert.deepEqual(offeredBands(doc), ["2.4", "5"], "in band order");
-  assert.deepEqual(radioMaps(offeredBands(doc)).map(([c]) => c), ["wifi_24", "wifi_5", "serving"]);
+  assert.deepEqual(radioMaps(offeredBands(doc)).map(([c]) => c), ["wifi_24", "wifi_5", "serving", "confidence"]);
   assert.deepEqual(radioMaps([]), [], "no access point: no map");
   const anyBand = wifiDoc([{ entity_id: "switch.ap" }], [{ entity_id: "switch.ap", x: 1, y: 1, placed: true }]);
   assert.deepEqual(offeredBands(anyBand), ["2.4", "5", "6"], "no bands listed: every band, as the prediction does");
@@ -170,4 +170,9 @@ test("an access point's bands as its label; serving colours differ", () => {
   assert.equal(bandsText(["2.4"], (b) => b.replace(".", ",")), "2,4");
   assert.notEqual(servingColour(0), servingColour(1));
   assert.equal(servingColour(0), servingColour(8), "the palette repeats");
+});
+
+test("the Confidence map's three levels have three distinct fills", () => {
+  assert.deepEqual(Object.keys(CONFIDENCE), ["high", "medium", "low"]);
+  assert.equal(new Set(Object.values(CONFIDENCE)).size, 3);
 });

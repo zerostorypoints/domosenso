@@ -105,7 +105,8 @@
         "wifi_24": "2,4 GHz",
         "wifi_5": "5 GHz",
         "wifi_6": "6 GHz",
-        "serving": "Obsługujący"
+        "serving": "Obsługujący",
+        "confidence": "Pewność"
       },
       "opening": {
         "kind": "Rodzaj",
@@ -146,7 +147,18 @@
         "no": "Nie",
         "access_point": "Punkt dostępu",
         "tx": "Moc nadawania w paśmie {band} GHz (dBm)",
-        "mount": "Wysokość nad podłogą (m)"
+        "mount": "Wysokość nad podłogą (m)",
+        "predicted": "Przewidywane",
+        "calibrated": "Skalibrowane",
+        "source": "{dbm} dBm · {band} · {ap}",
+        "dbm_calibrated_legend": "najsilniejszy sygnał w każdym miejscu, przewidywany i poprawiony na podstawie {count} odczytów twoich urządzeń; znaczniki przy {call} dBm (zwykła granica dla rozmów) i {weak} dBm",
+        "confidence": {
+          "high": "wysoka",
+          "medium": "średnia",
+          "low": "niska"
+        },
+        "confidence_legend": "na ile można ufać mapie w paśmie {bands} GHz: wysoka do 2 m od odczytu urządzenia z obsługującego punktu dostępu, średnia tam, gdzie odczyty przesunęły model, niska tam, gdzie obowiązują tylko typowe wartości",
+        "disabled": "Wyłączone czujniki sygnału Wi-Fi, które skalibrowałyby mapę; włącz je w Ustawienia → Encje:"
       },
       "wall": {
         "material": "Materiał ściany",

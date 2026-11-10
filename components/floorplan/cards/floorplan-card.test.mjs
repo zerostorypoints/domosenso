@@ -1640,8 +1640,8 @@ test("a door's panel swaps its hinge and side and makes it sliding; a selected o
 // ---- Wi-Fi maps on the radio layer (SPEC-044) --------------------------------------------------
 
 // Two mesh nodes: one in the kitchen on 2.4 and 5 GHz, one in the living room on 5 GHz only.
-function wifiHass() {
-  const hass = categoryHass();
+function wifiHass(opts) {
+  const hass = categoryHass(opts);
   hass.devices.d_mesh2 = { id: "d_mesh2", name: "Mesh satellite", area_id: "living_room", config_entries: ["e_mesh"] };
   hass.entities["switch.mesh2_led"] = { entity_id: "switch.mesh2_led", device_id: "d_mesh2", platform: "tplink_deco" };
   hass.states["switch.mesh2_led"] = { state: "on", attributes: {} };
@@ -1662,7 +1662,7 @@ test("wifi maps: the radio layer offers the bands its access points serve, then 
   window.localStorage.clear();
   const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
   await settle();
-  assert.deepEqual(mapChips(card), ["wifi_24", "wifi_5", "serving"], "nobody serves 6 GHz");
+  assert.deepEqual(mapChips(card), ["wifi_24", "wifi_5", "serving", "confidence"], "nobody serves 6 GHz");
   assert.equal($(card, '.bar [data-map="wifi_24"]').getAttribute("aria-pressed"), "true", "the first band by default");
   assert.equal($(card, '.bar [data-map="wifi_5"]').textContent, EN("card.floorplan.maps.wifi_5"));
   assert.ok(!$(card, ".bar [data-action=day]"), "no Now / 24 h on a radio map");
@@ -1925,5 +1925,181 @@ test("after an edit the Wi-Fi map shows the change", async () => {
   card._leaveEdit(card._doc);
   card._render();
   assert.ok(cellsOf(card).map((c) => c.getAttribute("data-dbm")).join() !== before, "a metal wall: other cells");
+  window.localStorage.clear();
+});
+
+// ---- Wi-Fi calibration from the devices' signal sensors (SPEC-044 S2) ---------------------------
+
+const DBM = { device_class: "signal_strength", unit_of_measurement: "dBm", state_class: "measurement" };
+const BSSID_24 = "02:00:00:00:00:01";
+const BSSID_5 = "02:00:00:00:00:02";
+// wifiHass, the kitchen node's BSSIDs, and an ESPHome sensor reporting its Wi-Fi signal and the BSSID it is on.
+function sourceHass({ dbm = "-52", bssid = BSSID_24, ...opts } = {}) {
+  const hass = wifiHass(opts);
+  hass.devices.d_atom = { id: "d_atom", name: "Alex's sensor", area_id: "kitchen" };
+  hass.devices.d_sam = { id: "d_sam", name: "Sam's sensor", area_id: "living_room" };
+  const add = (id, device_id, platform, state, attributes = {}) => {
+    hass.entities[id] = { entity_id: id, device_id, platform };
+    hass.states[id] = { state, attributes };
+  };
+  add("sensor.mesh_bssid_2_4_ghz", "d_mesh", "tplink_deco", BSSID_24);
+  add("sensor.mesh_bssid_5_ghz", "d_mesh", "tplink_deco", BSSID_5);
+  add("sensor.atom_wi_fi_signal", "d_atom", "esphome", dbm, DBM);
+  if (bssid) add("sensor.atom_connected_ap_bssid", "d_atom", "esphome", bssid);
+  return hass;
+}
+const ATOM = pt("d_atom", 7, 3.5);
+const sourcePlan = (extra = []) => {
+  const plan = wifiPlan();
+  plan.floors[0].points.push(ATOM, ...extra);
+  return plan;
+};
+const calibChips = (card) => [...card.shadowRoot.querySelectorAll(".bar [data-action=calib]")];
+const pressed = (card, sel) => $(card, sel)?.getAttribute("aria-pressed");
+const dbmNear = (card, x, y) => Number(cellsOf(card).find((c) => Math.abs(Number(c.getAttribute("x")) - x) < 0.1
+  && Math.abs(Number(c.getAttribute("y")) - y) < 0.1).getAttribute("data-dbm"));
+
+test("calibration: Predicted / Calibrated replaces nothing without observations; with one, Calibrated is the default and remembered", async () => {
+  window.localStorage.clear();
+  const plain = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(calibChips(plain), [], "nothing to calibrate with: no switch");
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ dbm: "-75" }));
+  await settle();
+  assert.deepEqual(calibChips(card).map((b) => b.getAttribute("data-calib")), ["predicted", "calibrated"]);
+  assert.equal(calibChips(card)[0].textContent, EN("card.floorplan.wifi.predicted"));
+  assert.equal(pressed(card, '.bar [data-calib="calibrated"]'), "true", "Calibrated by default");
+  assert.ok(!$(card, ".bar [data-action=day]"), "no Now / 24 h");
+  click($(card, '.bar [data-map="wifi_24"]'));     // drawn again at the card's width: 0.15 m cells
+  const calibrated = dbmNear(card, 6.9, 3.45);
+  click($(card, '.bar [data-calib="predicted"]'));
+  assert.equal(pressed(card, '.bar [data-calib="predicted"]'), "true");
+  const predicted = dbmNear(card, 6.9, 3.45);
+  assert.ok(Math.abs(calibrated + 75) < Math.abs(predicted + 75), `calibrated ${calibrated} nearer -75 dBm than predicted ${predicted}`);
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(calibChips(card).length, 2, "Serving has the switch too");
+  click($(card, '.bar [data-map="confidence"]'));
+  assert.deepEqual(calibChips(card), [], "Confidence has none");
+  const again = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass());
+  await settle();
+  click($(again, '.bar [data-map="wifi_24"]'));
+  assert.equal(pressed(again, '.bar [data-calib="predicted"]'), "true", "the choice is remembered");
+  window.localStorage.clear();
+});
+
+test("calibration: Confidence draws high, medium and low in three fills on the band chosen beside it, with a legend", async () => {
+  window.localStorage.clear();
+  // On the kitchen node's 5 GHz, some 30 dB below its prediction: high beside the reading, medium where that node
+  // serves, low where the living room's node serves.
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ dbm: "-60", bssid: BSSID_5 }));
+  await settle();
+  click($(card, '.bar [data-map="confidence"]'));
+  click($(card, '.bar [data-band="5"]'));
+  const cells = cellsOf(card);
+  const levels = new Map(cells.map((c) => [c.getAttribute("data-conf"), c.getAttribute("fill")]));
+  assert.deepEqual([...levels.keys()].sort(), ["high", "low", "medium"]);
+  assert.equal(new Set(levels.values()).size, 3, "three distinct fills");
+  const near = cells.find((c) => Math.abs(Number(c.getAttribute("x")) - 6.9) < 0.1 && Math.abs(Number(c.getAttribute("y")) - 3.45) < 0.1);
+  assert.equal(near.getAttribute("data-conf"), "high");
+  const legend = $(card, ".bar .legend");
+  for (const level of ["high", "medium", "low"]) {
+    assert.ok(legend.textContent.includes(EN(`card.floorplan.wifi.confidence.${level}`)), legend.textContent);
+  }
+  assert.equal(legend.querySelectorAll(".swatch").length, 3);
+  window.localStorage.clear();
+});
+
+test("calibration: the fit runs once per plan and readings, not per band nor on an unrelated update; a changed reading fits again", async () => {
+  window.localStorage.clear();
+  const hass = sourceHass();
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, hass);
+  await settle();
+  let fits = 0;
+  const run = card._runFit.bind(card);
+  card._runFit = (...args) => (fits++, run(...args));
+  card._wifiMemo.clear();
+  card._fitMemo = null;
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(fits, 1);
+  click($(card, '.bar [data-map="wifi_24"]'));
+  click($(card, '.bar [data-map="serving"]'));
+  click($(card, '.bar [data-map="confidence"]'));
+  assert.equal(fits, 1, "one fit for every band and map");
+  const setState = (id, state) => {
+    card.hass = { ...card._hass, states: { ...card._hass.states, [id]: { ...card._hass.states[id], state } } };
+  };
+  setState("switch.mesh_led", "off");
+  assert.equal(fits, 1, "another entity's state: no new fit");
+  setState("sensor.atom_wi_fi_signal", "-52.1");
+  assert.equal(fits, 1, "within 0.5 dB: the same fit");
+  setState("sensor.atom_wi_fi_signal", "-58");
+  assert.equal(fits, 2, "a changed reading: a new fit");
+  window.localStorage.clear();
+});
+
+test("calibration: a signal source's label shows its dBm, band and access point; its 24 h mean once the statistics arrive", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass());
+  await settle();
+  assert.deepEqual(lines(card, "d_atom"), [["−52 dBm · 2.4 · Mesh node", true]]);
+  assert.deepEqual(lines(card, "d_mesh"), [["2.4 · 5 GHz", true]], "an access point still lists its bands");
+  const unknown = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ bssid: null }));
+  await settle();
+  assert.deepEqual(lines(unknown, "d_atom"), [["−52 dBm · 2.4 · —", true]], "access point unknown");
+  const pl = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ language: "pl" }));
+  await settle();
+  assert.deepEqual(lines(pl, "d_atom"), [["−52 dBm · 2,4 · Mesh node", true]]);
+  const hass = sourceHass({ answers: { "recorder/statistics_during_period": { "sensor.atom_wi_fi_signal": [{ mean: -60 }, { mean: -62 }] } } });
+  const day = await make({ plan: sourcePlan(), layers: ["radio"] }, hass);
+  await settle();
+  const stats = hass.calls.find((c) => c.type === "recorder/statistics_during_period");
+  assert.ok(stats && stats.statistic_ids.includes("sensor.atom_wi_fi_signal") && stats.period === "hour", JSON.stringify(stats));
+  assert.ok(Date.now() - Date.parse(stats.start_time) - 24 * 3600 * 1000 < 60 * 1000, "the last 24 hours");
+  assert.deepEqual(lines(day, "d_atom"), [["−61 dBm · 2.4 · Mesh node", true]], "the mean of the hourly means");
+  window.localStorage.clear();
+});
+
+const registryCalls = (hass) => hass.calls.filter((c) => c.type === "config/entity_registry/list");
+const DISABLED = [
+  { entity_id: "sensor.sam_wi_fi_signal", device_id: "d_sam", platform: "esphome", disabled_by: "integration" },
+  { entity_id: "sensor.sam_uptime", device_id: "d_sam", platform: "esphome", disabled_by: "integration" },
+];
+
+test("disabled sources: in edit mode an admin's card lists the plan's switched-off Wi-Fi signal sensors, read once per edit session", async () => {
+  window.localStorage.clear();
+  const hass = sourceHass({ answers: { "config/entity_registry/list": DISABLED } });
+  const card = await make({ plan: sourcePlan([pt("d_sam", 2, 2)]), layers: ["radio"] }, hass);
+  await settle();
+  assert.equal(registryCalls(hass).length, 0, "view mode never asks");
+  click($(card, "[data-action=edit]"));
+  await settle();
+  const list = $(card, ".area-panel .wifi-disabled");
+  assert.ok(list, $(card, ".area-panel").innerHTML);
+  assert.ok(list.textContent.includes(EN("card.floorplan.wifi.disabled")), list.textContent);
+  assert.ok(list.textContent.includes("Sam's sensor") && list.textContent.includes("sensor.sam_wi_fi_signal"), list.textContent);
+  assert.ok(!list.textContent.includes("sensor.sam_uptime"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  card.hass = { ...card._hass, states: { ...card._hass.states } };
+  await settle();
+  assert.equal(registryCalls(hass).length, 1, "once per edit session");
+  click($(card, "[data-action=cancel]"));
+  click($(card, "[data-action=edit]"));
+  await settle();
+  assert.equal(registryCalls(hass).length, 2, "a new edit session reads it again");
+  window.localStorage.clear();
+});
+
+test("disabled sources: view mode and a non-admin (the kiosk user) never read the entity registry", async () => {
+  window.localStorage.clear();
+  for (const admin of [true, false]) {
+    const hass = sourceHass({ admin, answers: { "config/entity_registry/list": DISABLED } });
+    const card = await make({ plan: sourcePlan([pt("d_sam", 2, 2)]), layers: ["radio"] }, hass);
+    await settle();
+    for (const map of ["wifi_24", "serving", "confidence"]) click($(card, `.bar [data-map="${map}"]`));
+    card.hass = { ...card._hass, states: { ...card._hass.states } };
+    await settle();
+    assert.equal(registryCalls(hass).length, 0, `admin ${admin}`);
+    assert.equal($(card, ".wifi-disabled"), null);
+  }
   window.localStorage.clear();
 });

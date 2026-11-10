@@ -32,8 +32,9 @@
 // With one of the plants, climate or light layers shown (Amendment 7) the bar offers its maps: the
 // reading interpolated inside each room, or the lamps; and "now" or the map's figure over the last
 // 24 hours, from the recorder's hourly statistics. With the radio layer shown alone (SPEC-044) it
-// offers the predicted Wi-Fi signal per band its access points serve, and which access point serves
-// each spot.
+// offers the predicted Wi-Fi signal per band its access points serve, which access point serves
+// each spot, and how far to trust the map (Confidence). With devices reporting their Wi-Fi signal on
+// the plan, a Predicted / Calibrated switch: calibrated, the model is fitted to their 24-hour means.
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -53,10 +54,11 @@ import { KINDS, STYLES, opensInto, kindOf, widthOf, styleOf, openingState, openi
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
-  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour } from "./lib/maps.js";
+  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi } from "./lib/wifi.js";
-import { accessPointCandidates } from "./lib/wifi-sources.js";
+import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities } from "./lib/wifi-sources.js";
+import { calibrate, calibratedCoverage } from "./lib/wifi-fit.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
@@ -78,6 +80,7 @@ const MAP_KEY = "domosenso.floorplan.map";         // localStorage: the map chos
 const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while the maps show the last 24 hours
 const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
 const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
+const CALIB_KEY = "domosenso.floorplan.calibrated"; // localStorage: "predicted" or "calibrated" on the Wi-Fi maps
 const HOUR_MS = 60 * 60 * 1000;
 const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
 const FILL_GAP_PX = 8;
@@ -85,6 +88,7 @@ const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around a
 const NARROW_PX = 600;             // a card narrower than this (a phone) predicts Wi-Fi on coarser cells
 const NARROW_STEP_M = 0.3;
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
+const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -171,6 +175,11 @@ class FloorplanCard extends HTMLElement {
     this._wifiKey = null;          // the last cache key and what it was computed from
     this._wall = null;             // walls tool: the middle of the selected wall stretch
     this._offered = new Set(load(OFFER_KEY, []));   // points this browser asked "Use as access point?" about
+    this._calib = load(CALIB_KEY, null);           // "predicted" chosen; else calibrated once there are readings
+    this._obsMemo = null;          // the devices' observations and their digest, and what they came from
+    this._fitMemo = null;          // the last fit: {doc, states, digest, fit}
+    this._disabled = null;         // edit mode: the plan's switched-off Wi-Fi signal sensors
+    this._editSession = 0;
     if (this._hass) this._load();
   }
 
@@ -261,6 +270,7 @@ class FloorplanCard extends HTMLElement {
     this._catCache = new WeakMap();
     this._readCache = new WeakMap();
     this._lamps = lampIndex(h);
+    this._signalIds = signalEntities(h, wifiRules);
   }
 
   // A point's reading entities by device class (a plant's through its named sensors).
@@ -298,26 +308,39 @@ class FloorplanCard extends HTMLElement {
     const maps = radioMaps(bands);
     if (!maps.length) return { layer: "radio", cls: null, rule: null, maps, hint: "no_access_points" };
     const [cls] = maps.find(([c]) => c === this._maps.radio) ?? maps[0];
-    const band = cls === "serving" ? (bands.includes(this._band) ? this._band : bands[0]) : BAND_OF[cls];
-    return { layer: "radio", cls, rule: null, maps, band, bands };
+    const band = BAND_OF[cls] ?? (bands.includes(this._band) ? this._band : bands[0]);
+    // Confidence is always the calibrated model's; the other maps follow the switch once there are readings.
+    const observed = this._observations().list.length > 0;
+    const calibrated = cls === "confidence" || (observed && this._calib !== "predicted");
+    return { layer: "radio", cls, rule: null, maps, band, bands, observed, calibrated };
   }
 
-  // The prediction of the floor shown on one band, memoised by its cache key and the open or closed
-  // state of every opening with a sensor (live state the key leaves out). The key itself is worked
-  // out again only when the plan, the floor, the band, the cell or such a state changed.
-  _wifi(band, step) {
-    const doc = this._doc;
-    const states = doc.floors.flatMap((f) => (f.openings || []).filter((o) => o.entity)
+  // The open or closed state of every opening with a sensor: live state the cache keys leave out.
+  _openingStates() {
+    return this._doc.floors.flatMap((f) => (f.openings || []).filter((o) => o.entity)
       .map((o) => openingState(o, this._hass).open)).join();
-    const from = [doc, this._floorId, band, step, states];
+  }
+
+  // The prediction of the floor shown on one band, or the calibrated one, memoised by its cache key,
+  // the openings' states and (calibrated) the readings' digest. The key itself is worked out again
+  // only when the plan, the floor, the band, the cell, such a state or the digest changed.
+  _wifi(band, step, calibrated = false) {
+    const doc = this._doc;
+    const states = this._openingStates();
+    const digest = calibrated ? this._observations().digest : null;
+    const from = [doc, this._floorId, band, step, states, digest];
     if (!this._wifiKey || from.some((v, i) => v !== this._wifiKey.from[i])) {
       const params = priorParams(materials, doc.floors.flatMap((f) => f.access_points ?? []));
-      this._wifiKey = { from, params, key: `${cacheKey(doc, this._floorId, band, params, step)}|${states}` };
+      this._wifiKey = { from, params,
+        key: `${cacheKey(doc, this._floorId, band, params, step)}|${states}${calibrated ? `|calibrated|${digest}` : ""}` };
     }
     const { key, params } = this._wifiKey;
     let out = this._wifiMemo.get(key);
     if (!out) {
-      out = this._predict(contextFor(doc, this._floorId, this._hass, materials, params), band, step);
+      if (calibrated) {
+        const fit = this._calibration();
+        out = calibratedCoverage(contextFor(doc, this._floorId, this._hass, materials, fit.params), band, step, fit);
+      } else out = this._predict(contextFor(doc, this._floorId, this._hass, materials, params), band, step);
       this._wifiMemo.set(key, out);
       if (this._wifiMemo.size > WIFI_MEMO) this._wifiMemo.delete(this._wifiMemo.keys().next().value);
     }
@@ -327,6 +350,55 @@ class FloorplanCard extends HTMLElement {
   // The engine's coverage: a method of its own, so a test counts the computations.
   _predict(ctx, band, step) {
     return coverage(ctx, band, step);
+  }
+
+  // Every floor's device observations (the fit is home-wide), from the 24-hour means of their signal
+  // sensors (a sensor without statistics gives its state), and a digest of what the fit reads: the
+  // readings to OBS_DB, their places, access points and bands. Worked out again when the plan, a state
+  // or the statistics change; the fit only when the digest does.
+  _observations() {
+    const h = this._hass;
+    const from = [this._doc, h.states, h.entities, h.devices, this._stats];
+    if (this._obsMemo && from.every((v, i) => v === this._obsMemo.from[i])) return this._obsMemo;
+    const values = {};
+    for (const id of this._signalIds) {
+      const mean = figure(this._stats?.[id], "mean");
+      if (mean !== undefined) values[id] = mean;
+    }
+    const list = this._doc.floors.flatMap((f) => deviceObservations(h, this._doc, f.floor_id, wifiRules, values));
+    const digest = list.map((o) => [o.entity, o.floorId, o.x, o.y, o.ap, o.band, Math.round(o.dbm / OBS_DB) * OBS_DB].join("|")).join(";");
+    this._obsMemo = { from, list, digest };
+    return this._obsMemo;
+  }
+
+  // The fit of the whole home, once per plan, openings' states and readings' digest: every band and
+  // map shares it.
+  _calibration() {
+    const doc = this._doc;
+    const states = this._openingStates();
+    const { list, digest } = this._observations();
+    const m = this._fitMemo;
+    if (m && m.doc === doc && m.states === states && m.digest === digest) return m.fit;
+    const fit = this._runFit(contextFor(doc, this._floorId, this._hass, materials), list);
+    this._fitMemo = { doc, states, digest, fit };
+    return fit;
+  }
+
+  // The engine's fit: a method of its own, so a test counts the fits.
+  _runFit(ctx, observations) {
+    return calibrate(ctx, observations, materials);
+  }
+
+  // The shown floor's observations of one point: what its label reports on a radio map.
+  _sourceObs(point) {
+    return this._observations().list.filter((o) => o.floorId === this._floorId
+      && (point.device_id ? o.device === point.device_id : o.entity === point.entity_id));
+  }
+
+  // The signal sensors of the plan's devices and entities: the ones whose 24-hour means the fit reads.
+  _planSignalIds() {
+    const keys = new Set(this._doc.floors.flatMap((f) => (f.points || []).map(keyOf)));
+    return this._signalIds.filter((id) => keys.has(id) || keys.has(this._hass.entities?.[id]?.device_id)).sort();
   }
 
   // Per room of the floor, its own sensor of the map's reading, or null: the one the home inputs
@@ -347,14 +419,22 @@ class FloorplanCard extends HTMLElement {
 
   // The last 24 hours' statistics of every reading on the floor, while a reading map shows them:
   // fetched when the readings change and every STATS_MS.
+  // On a Wi-Fi map: the plan's Wi-Fi signal sensors, always (the calibration reads their means).
   _wantStats() {
     const map = this._map();
-    if (!this._day || !map || map.cls === "lamps" || map.layer === "radio") return;
-    // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out. And
-    // the rooms' own sensors, which give a room its value placed or not.
-    const own = this._roomSensors(map).filter(Boolean);
-    const ids = [...new Set([...this._floor.points.flatMap((p) => Object.values(this._readings(p))), ...own])]
-      .sort().join(",");
+    if (!map) return;
+    let ids;
+    if (map.layer === "radio") {
+      if (!map.cls) return;
+      ids = this._planSignalIds().join(",");
+    } else {
+      if (!this._day || map.cls === "lamps") return;
+      // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out. And
+      // the rooms' own sensors, which give a room its value placed or not.
+      const own = this._roomSensors(map).filter(Boolean);
+      ids = [...new Set([...this._floor.points.flatMap((p) => Object.values(this._readings(p))), ...own])]
+        .sort().join(",");
+    }
     if (!ids || (ids === this._statIds && Date.now() - this._statsAt < STATS_MS)) return;
     this._fetchStats(ids);
   }
@@ -534,7 +614,7 @@ ${STYLE}
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
     $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml()
-      || this._wallPanelHtml() || this._offerHtml() : "";
+      || this._wallPanelHtml() || this._offerHtml() + this._disabledHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
     const floor = this._floor;
     const empty = ready && floor && !floor.rooms.length && !floor.points.length;
@@ -583,7 +663,8 @@ ${STYLE}
   }
 
   // The shown layer's maps, then now or the last 24 hours (not for the lamps nor the radio maps),
-  // or beside Serving its band.
+  // beside Serving and Confidence the band, and on the other Wi-Fi maps Predicted / Calibrated once
+  // some device reports its signal.
   _mapsHtml() {
     const map = this._map();
     if (!map) return "";
@@ -592,9 +673,13 @@ ${STYLE}
     const chip = (attrs, on, text) => `<button ${attrs} aria-pressed="${on}" class="chip">${esc(text)}</button>`;
     let html = `<span class="maps">${map.maps.map(([cls]) =>
       chip(`data-action="map" data-map="${cls}"`, cls === map.cls, t(h, `card.floorplan.maps.${cls}`))).join("")}</span>`;
-    if (map.cls === "serving") {
+    if (map.cls === "serving" || map.cls === "confidence") {
       html += `<span class="maps">${map.bands.map((b) => chip(`data-action="band" data-band="${b}"`, b === map.band,
         t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) }))).join("")}</span>`;
+    }
+    if (map.layer === "radio" && map.observed && map.cls !== "confidence") {
+      html += `<span class="maps">${["predicted", "calibrated"].map((c) => chip(`data-action="calib" data-calib="${c}"`,
+        (c === "calibrated") === map.calibrated, t(h, `card.floorplan.wifi.${c}`))).join("")}</span>`;
     }
     if (map.rule) {
       html += `<span class="maps">${chip('data-action="day" data-day="0"', !this._day, t(h, "card.floorplan.maps.now"))}`
@@ -633,10 +718,18 @@ ${STYLE}
         `<span class="swatch" style="background: ${servingColour(i)}"></span><span>${esc(pointName(h, this._apPoint(ap.key) ?? { device_id: ap.key }))}</span>`).join("")}`
         + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.wifi.handover"))}</span></span>`;
     }
+    if (map.cls === "confidence") {
+      const title = t(h, "card.floorplan.wifi.confidence_legend", { bands: bandsText([map.band], (x) => this._bandNumber(x)) });
+      return `<span class="legend" title="${esc(`${name}, ${title}`)}">${Object.entries(CONFIDENCE).map(([level, fill]) =>
+        `<span class="swatch" style="background: ${fill}"></span><span>${esc(t(h, `card.floorplan.wifi.confidence.${level}`))}</span>`).join("")}</span>`;
+    }
     const s = SCALES.dbm;
     const at = (v) => fmt(((v - s.lo) / (s.hi - s.lo)) * 100);
     const [call, weak] = s.marks;
-    return `<span class="legend" title="${esc(`${name}, ${t(h, "card.floorplan.wifi.dbm_legend", { call, weak })}`)}">`
+    const count = this._observations().list.length;
+    const what = map.calibrated ? t(h, "card.floorplan.wifi.dbm_calibrated_legend", { count, call, weak })
+      : t(h, "card.floorplan.wifi.dbm_legend", { call, weak });
+    return `<span class="legend" title="${esc(`${name}, ${what}`)}">`
       + `<span>${esc(formatValue("dbm", s.lo))}</span>`
       + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})">${s.marks.map((m) =>
         `<span class="mark" data-mark="${m}" style="left: ${at(m)}%"></span>`).join("")}</span>`
@@ -785,6 +878,16 @@ ${STYLE}
       + `<input type="number" class="wall-field" data-field="height" min="2" max="10" step="0.05" value="${esc(String(floor.height ?? FLOOR_HEIGHT_M))}">`
       + label("slab") + `<select class="wall-field" data-field="slab">${options("slab", floor.slab ?? materials.defaults.slab)}</select>`;
     return `<div class="wall-panel">${html}</div>`;
+  }
+
+  // The plan's switched-off Wi-Fi signal sensors, read when edit mode started: enabling them calibrates
+  // the maps. (Edit mode has no maps, so the list stands in the panel, not in the Confidence legend.)
+  _disabledHtml() {
+    if (!this._wifiOn || !this._disabled?.length) return "";
+    const h = this._hass;
+    const name = (d) => pointName(h, d.device_id ? { device_id: d.device_id } : { entity_id: d.entity_id });
+    return `<div class="wifi-disabled"><span>${esc(t(h, "card.floorplan.wifi.disabled"))}</span><ul>${this._disabled.map((d) =>
+      `<li>${esc(name(d))}: <code>${esc(d.entity_id)}</code></li>`).join("")}</ul></div>`;
   }
 
   // "Use as access point?" for the first point of the floor the rules match, asked once per browser.
@@ -947,8 +1050,8 @@ ${STYLE}
     const clustered = new Set(inCluster.keys());
     // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too. A
     // reading map also shows every placed point that measures it, whatever its layer.
-    const measures = (p) => map && map.cls !== "lamps" && p.placed && this._readings(p)[map.cls]
-      && this._value(this._readings(p)[map.cls], map.cls, map.layer) !== undefined;
+    const measures = (p) => map && p.placed && (map.layer === "radio" ? this._sourceObs(p).length > 0
+      : map.cls !== "lamps" && this._readings(p)[map.cls] && this._value(this._readings(p)[map.cls], map.cls, map.layer) !== undefined);
     const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && (this._shown(this._cat(p)) || measures(p)));
     const labels = new Map(layoutLabels([
       ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._lines(p).map((l) => l.text) })),
@@ -1242,12 +1345,12 @@ ${STYLE}
     svg.appendChild(this._heatCache.g);
   }
 
-  // The predicted Wi-Fi of the floor's rooms, drawn like the heat: a band map in the dBm ramp, the
-  // Serving map in each access point's colour with handover cells hatched. Cells are 0.3 m on a
-  // narrow card. Kept while the prediction and the map are the same.
+  // The predicted (or calibrated) Wi-Fi of the floor's rooms, drawn like the heat: a band map in the
+  // dBm ramp, the Serving map in each access point's colour with handover cells hatched, Confidence
+  // in its three fills. Cells are 0.3 m on a narrow card. Kept while the prediction and the map are the same.
   _drawWifi(svg, floor, map) {
     const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
-    const { key, cells, aps } = this._wifi(map.band, step);
+    const { key, cells, aps } = this._wifi(map.band, step, map.calibrated);
     // The rooms drawn (one with `area`), by their index in the plan's floor, which the cells carry.
     const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId).rooms;
     const drawn = new Set(floor.rooms.map((r) => r.area_id));
@@ -1263,13 +1366,15 @@ ${STYLE}
         byRoom.set(i, el("g", { "clip-path": `url(#fp-room-${i})` }, g));
       });
       const serving = map.cls === "serving";
+      const confidence = map.cls === "confidence";
       const size = step + 0.01;
       for (const c of cells) {
         const parent = byRoom.get(c.room);
         if (!parent) continue;
         const at = { x: fmt(c.x), y: fmt(c.y), width: size, height: size };
+        const fill = confidence ? CONFIDENCE[c.conf] : serving ? servingColour(aps.indexOf(c.ap)) : colourAt("dbm", c.dbm);
         el("rect", { ...at, "data-dbm": Math.round(c.dbm), ...(serving ? { "data-ap": c.ap } : {}),
-          fill: serving ? servingColour(aps.indexOf(c.ap)) : colourAt("dbm", c.dbm) }, parent);
+          ...(confidence ? { "data-conf": c.conf } : {}), fill }, parent);
         if (serving && isHandover(c)) el("rect", { ...at, class: "handover" }, parent);
       }
       for (const room of floor.rooms) el("polygon", { class: "wall", points: room.polygon.map((p) => p.join(",")).join(" ") }, g);
@@ -1279,15 +1384,18 @@ ${STYLE}
   }
 
   // A marker's lines: its readings, or on a map the map's (the shown one first and marked main). On
-  // a radio map an access point lists its bands, any other point its readings.
+  // a radio map an access point lists its bands, a signal source what it reports ("−52 dBm · 2.4 · its
+  // access point", the 24-hour mean once the statistics are in), any other point its readings.
   _lines(point) {
     const map = this._mapNow;
     if (!map || !this._config.values) return this._values(point).map((text) => ({ text, main: false }));
     const h = this._hass;
     if (map.layer === "radio") {
       const ap = accessPoints(this._doc).find((a) => a.key === keyOf(point));
-      if (!ap) return this._values(point).map((text) => ({ text, main: false }));
-      return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
+      if (ap) return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
+      const own = this._sourceObs(point);
+      if (own.length) return own.map((o) => ({ text: this._sourceText(o), main: true }));
+      return this._values(point).map((text) => ({ text, main: false }));
     }
     if (map.cls === "lamps") {
       const lamp = point.device_id && lampOf(h, this._lamps, [point.device_id, ...(point.also || [])]);
@@ -1299,6 +1407,14 @@ ${STYLE}
       const value = ids[cls] && this._value(ids[cls], cls, map.layer);
       return value === undefined ? [] : [{ text: formatValue(cls, value), main: cls === map.cls }];
     });
+  }
+
+  // An observation as a label: its dBm with a true minus, its band, its access point's name (— unknown).
+  _sourceText(o) {
+    const h = this._hass;
+    const v = Math.round(o.dbm);
+    return t(h, "card.floorplan.wifi.source", { dbm: `${v < 0 ? "\u2212" : ""}${Math.abs(v)}`, band: this._bandNumber(o.band),
+      ap: o.ap ? pointName(h, this._apPoint(o.ap) ?? { device_id: o.ap }) : "\u2014" });
   }
 
   // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
@@ -1315,12 +1431,14 @@ ${STYLE}
     if (!floor || !this._hass) return "";
     const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._entities)) : [];
     for (const o of floor.openings || []) if (o.entity) ids.push(o.entity);
-    // A map also follows a plant's sensors and the lamps.
-    if (this._map()) {
+    // A map also follows a plant's sensors and the lamps; a Wi-Fi map the signal sensors.
+    const map = this._map();
+    if (map) {
       for (const p of floor.points) {
         ids.push(...Object.values(this._readings(p)));
         if (p.device_id && this._lamps.has(p.device_id)) ids.push(this._lamps.get(p.device_id));
       }
+      if (map.layer === "radio") ids.push(...this._observations().list.map((o) => o.entity));
     }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
@@ -1379,6 +1497,9 @@ ${STYLE}
     } else if (action === "band") {
       this._band = button.getAttribute("data-band");
       save(BAND_KEY, this._band);
+    } else if (action === "calib") {
+      this._calib = button.getAttribute("data-calib");
+      save(CALIB_KEY, this._calib);
     } else if (action === "day") {
       this._day = button.getAttribute("data-day") === "1";
       save(AGG_KEY, this._day);
@@ -1453,12 +1574,35 @@ ${STYLE}
     this._tool = "move";
     this._say(null);
     this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
+    this._loadDisabled();
   }
 
   _leaveEdit(doc) {
     this._mode = "view";
     this._doc = doc;
+    this._disabled = null;
+    this._editSession++;
     this._resetPicks();
+  }
+
+  // The plan's switched-off Wi-Fi signal sensors, read once per edit session: config/entity_registry/list
+  // is an admin call, so view mode and a kiosk user never make it.
+  async _loadDisabled() {
+    const h = this._hass;
+    this._disabled = null;
+    // Only a plan with an access point has Wi-Fi maps to calibrate.
+    if (!this._wifiOn || !h?.user?.is_admin || !this._doc.floors.some((f) => f.access_points?.length)) return;
+    const session = ++this._editSession;
+    let entries;
+    try {
+      entries = await h.callWS({ type: "config/entity_registry/list" });
+    } catch {
+      return;
+    }
+    if (session !== this._editSession || this._mode !== "edit") return;
+    const keys = new Set(this._doc.floors.flatMap((f) => (f.points || []).map(keyOf)));
+    this._disabled = disabledSignalEntities(this._hass, entries, wifiRules, keys);
+    if (this._disabled.length) this._render();
   }
 
   _resetPicks() {

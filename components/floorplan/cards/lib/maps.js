@@ -14,7 +14,7 @@ export const MAPS = {
   climate: [["temperature", "mean"], ["humidity", "mean"], ["carbon_dioxide", "max"]],
   light: [["illuminance", "max"], ["lamps", null]],
   // Predictions, with no 24-hour figure; only the bands some access point serves are offered.
-  radio: [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null]],
+  radio: [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null], ["confidence", null]],
 };
 
 // The band of a Wi-Fi map (a map id is a translation key: no dot in it).
@@ -234,10 +234,10 @@ export function accessPoints(doc) {
 
 export const offeredBands = (doc) => BANDS.filter((b) => accessPoints(doc).some((ap) => ap.bands.includes(b)));
 
-// The radio layer's maps for those bands: a map each, then Serving; none without a band.
+// The radio layer's maps for those bands: a map each, then Serving and Confidence; none without a band.
 export function radioMaps(bands) {
   if (!bands.length) return [];
-  return MAPS.radio.filter(([id]) => id === "serving" || bands.includes(BAND_OF[id]));
+  return MAPS.radio.filter(([id]) => !BAND_OF[id] || bands.includes(BAND_OF[id]));
 }
 
 // An access point's bands in band order, "2.4 · 5"; `number` formats each (a decimal comma).
@@ -246,3 +246,7 @@ export const bandsText = (bands, number = (b) => b) => BANDS.filter((b) => bands
 // The Serving map's colour of the i-th access point: categorical, so neighbours tell apart.
 const SERVING = ["#1f77b4", "#ff7f0e", "#9467bd", "#17becf", "#e377c2", "#8c564b", "#bcbd22", "#7f7f7f"];
 export const servingColour = (i) => SERVING[i % SERVING.length];
+
+// The Confidence map's fills (SPEC-044 S2): high beside a reading of the serving access point, medium
+// where the fit moved what the spot's path depends on, low where only priors apply.
+export const CONFIDENCE = { high: "#08519c", medium: "#6baed6", low: "#deebf7" };   // blues: not the dBm ramp

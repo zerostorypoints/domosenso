@@ -105,7 +105,8 @@
         "wifi_24": "2.4 GHz",
         "wifi_5": "5 GHz",
         "wifi_6": "6 GHz",
-        "serving": "Serving"
+        "serving": "Serving",
+        "confidence": "Confidence"
       },
       "opening": {
         "kind": "Kind",
@@ -146,7 +147,18 @@
         "no": "No",
         "access_point": "Access point",
         "tx": "Transmit power at {band} GHz (dBm)",
-        "mount": "Height above the floor (m)"
+        "mount": "Height above the floor (m)",
+        "predicted": "Predicted",
+        "calibrated": "Calibrated",
+        "source": "{dbm} dBm · {band} · {ap}",
+        "dbm_calibrated_legend": "the strongest signal per spot, predicted and corrected by {count} readings of your devices; marks at {call} dBm (the usual floor for calls) and {weak} dBm",
+        "confidence": {
+          "high": "high",
+          "medium": "medium",
+          "low": "low"
+        },
+        "confidence_legend": "how far to trust the {bands} GHz map: high within 2 m of a device's reading of the serving access point, medium where the readings moved the model, low where only the typical values apply",
+        "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:"
       },
       "wall": {
         "material": "Wall material",

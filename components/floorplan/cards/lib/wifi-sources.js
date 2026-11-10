@@ -155,3 +155,33 @@ export function deviceObservations(hass, doc, floorId, rules, values) {
   }
   return out;
 }
+
+// ---- disabled signal sources (SPEC-044 S2) ----
+
+// Registry entries (config/entity_registry/list, an admin call) of switched-off sensors the rules would
+// count as Wi-Fi signal: the owner can enable them. A disabled entity has no state, so its device class
+// and unit come from the entry where it carries them (original_device_class, unit_of_measurement,
+// capabilities); without either the integration and the object id decide alone, and then the object id
+// must name a Wi-Fi signal (wi_fi + signal), not an SSID or a BSSID. `keys` (optional): only these
+// devices' or entities' entries, the plan's points. [{entity_id, device_id}], sorted.
+export function disabledSignalEntities(hass, entries, rules, keys) {
+  const signal = rules?.signal || {};
+  const exclude = rules?.exclude || {};
+  const out = [];
+  for (const e of Array.isArray(entries) ? entries : []) {
+    if (!e?.disabled_by || !String(e.entity_id).startsWith("sensor.")) continue;
+    if (keys && !keys.has(e.entity_id) && !(e.device_id && keys.has(e.device_id))) continue;
+    if ((exclude.integrations || []).includes(e.platform)) continue;
+    const conns = e.device_id ? hass.devices?.[e.device_id]?.connections || [] : [];
+    if (conns.some(([type]) => (exclude.connections || []).includes(type))) continue;
+    const cls = e.original_device_class ?? e.device_class ?? null;
+    const unit = e.unit_of_measurement ?? e.capabilities?.unit_of_measurement ?? null;
+    if ((cls !== null && cls !== "signal_strength") || (unit !== null && unit !== "dBm")) continue;
+    const oid = objectId(e.entity_id);
+    const byIntegration = (signal.integrations || []).includes(e.platform);
+    const byWord = (signal.object_id || []).some((w) => oid.includes(w));
+    const counts = cls !== null || unit !== null ? byIntegration || byWord : byIntegration && byWord && oid.includes("signal");
+    if (counts) out.push({ entity_id: e.entity_id, device_id: e.device_id ?? null });
+  }
+  return out.sort((a, b) => (a.entity_id < b.entity_id ? -1 : a.entity_id > b.entity_id ? 1 : 0));
+}

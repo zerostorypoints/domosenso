@@ -175,3 +175,33 @@ test("floorId selects the floor whose points are read", () => {
 test("signalEntities lists the Wi-Fi dBm entities only", () => {
   assert.deepEqual(signalEntities(obsHass, rules).sort(), ["sensor.esp_wi_fi_signal", "sensor.plug_wi_fi_signal"]);
 });
+
+// ---- disabled signal sources (Task 12) ----
+import { disabledSignalEntities } from "./wifi-sources.js";
+
+const reg = (entity_id, device_id, platform, extra = {}) => ({ entity_id, device_id, platform, disabled_by: "integration", ...extra });
+
+test("disabled entities the rules would count: by the registry's device class and unit, else by integration and words", () => {
+  const entries = [
+    reg("sensor.esp2_wi_fi_signal", "dev-esp", "esphome"),                                         // no class: integration + words
+    reg("sensor.plug_rssi", "dev-plug", "shelly", { original_device_class: "signal_strength", unit_of_measurement: "dBm" }),
+    reg("sensor.esp2_wi_fi_ssid", "dev-esp", "esphome"),                                           // a Wi-Fi word, no signal
+    reg("sensor.esp2_wifi_signal_pct", "dev-esp", "esphome", { unit_of_measurement: "%" }),       // not dBm
+    reg("sensor.ruuvi_wifi_signal", "dev-ruuvi", "esphome", { original_device_class: "signal_strength" }),  // Bluetooth device
+    reg("sensor.ble_signal_strength", "dev-esp", "bluetooth", { original_device_class: "signal_strength", unit_of_measurement: "dBm" }),
+    reg("sensor.tapo_signal_level", "dev-tapo", "tplink"),                                         // no Wi-Fi word
+    reg("sensor.other_wifi_signal", "dev-other", "hue"),                                           // not a Wi-Fi integration, no class
+    { ...reg("sensor.esp_wi_fi_signal", "dev-esp", "esphome"), disabled_by: null },                // enabled
+    reg("switch.esp_wifi_signal", "dev-esp", "esphome"),                                           // not a sensor
+  ];
+  assert.deepEqual(disabledSignalEntities(obsHass, entries, rules).map((e) => e.entity_id),
+    ["sensor.esp2_wi_fi_signal", "sensor.plug_rssi"]);
+});
+
+test("disabled sources: only the plan's devices or entities when keys are given; no entries, none", () => {
+  const entries = [reg("sensor.esp2_wi_fi_signal", "dev-esp", "esphome"), reg("sensor.lone_wifi_signal", null, "esphome"),
+    reg("sensor.far_wifi_signal", "dev-far", "esphome")];
+  assert.deepEqual(disabledSignalEntities(obsHass, entries, rules, new Set(["dev-esp", "sensor.lone_wifi_signal"])),
+    [{ entity_id: "sensor.esp2_wi_fi_signal", device_id: "dev-esp" }, { entity_id: "sensor.lone_wifi_signal", device_id: null }]);
+  assert.deepEqual(disabledSignalEntities(obsHass, null, rules), []);
+});

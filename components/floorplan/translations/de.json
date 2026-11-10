@@ -105,7 +105,8 @@
         "wifi_24": "2,4 GHz",
         "wifi_5": "5 GHz",
         "wifi_6": "6 GHz",
-        "serving": "Zuständig"
+        "serving": "Zuständig",
+        "confidence": "Verlässlichkeit"
       },
       "opening": {
         "kind": "Art",
@@ -146,7 +147,18 @@
         "no": "Nein",
         "access_point": "Zugangspunkt",
         "tx": "Sendeleistung bei {band} GHz (dBm)",
-        "mount": "Höhe über dem Boden (m)"
+        "mount": "Höhe über dem Boden (m)",
+        "predicted": "Vorhergesagt",
+        "calibrated": "Kalibriert",
+        "source": "{dbm} dBm · {band} · {ap}",
+        "dbm_calibrated_legend": "das stärkste Signal pro Stelle, vorhergesagt und mit {count} Messungen Ihrer Geräte korrigiert; Marken bei {call} dBm (die übliche Grenze für Anrufe) und {weak} dBm",
+        "confidence": {
+          "high": "hoch",
+          "medium": "mittel",
+          "low": "tief"
+        },
+        "confidence_legend": "wie weit der Karte auf {bands} GHz zu trauen ist: hoch bis 2 m um die Messung eines Geräts am zuständigen Zugangspunkt, mittel wo die Messungen das Modell verschoben haben, tief wo nur die typischen Werte gelten",
+        "disabled": "Ausgeschaltete WLAN-Signalsensoren, die die Karte kalibrieren würden; aktivieren Sie sie unter Einstellungen → Entitäten:"
       },
       "wall": {
         "material": "Material der Wand",
