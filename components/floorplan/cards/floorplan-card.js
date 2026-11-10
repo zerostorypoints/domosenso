@@ -16,7 +16,8 @@
 //   values: true                       # false: points without their readings
 //   layers: [climate, plants]          # optional: only these categories, no layer chips
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
-//   maps: true                         # false: no maps on the plants, climate and light layers
+//   maps: true                         # false: no maps on the plants, climate, light and radio layers
+//   wifi: true                         # false: no Wi-Fi maps on the radio layer (SPEC-044)
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
 //   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
 //   context: true                      # with area: the floor's other rooms faded around it, for orientation
@@ -30,7 +31,9 @@
 //
 // With one of the plants, climate or light layers shown (Amendment 7) the bar offers its maps: the
 // reading interpolated inside each room, or the lamps; and "now" or the map's figure over the last
-// 24 hours, from the recorder's hourly statistics.
+// 24 hours, from the recorder's hourly statistics. With the radio layer shown alone (SPEC-044) it
+// offers the predicted Wi-Fi signal per band its access points serve, and which access point serves
+// each spot.
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -49,7 +52,10 @@ import { KINDS, STYLES, opensInto, kindOf, widthOf, styleOf, openingState, openi
   moveOpening, setOpening, swapHinge, swapSide, fillWall, removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
-import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf } from "./lib/maps.js";
+import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
+  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour } from "./lib/maps.js";
+import { contextFor, coverage, isHandover, cacheKey, priorParams } from "./lib/wifi.js";
+import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -67,10 +73,14 @@ const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers t
 const CHOSEN_KEY = "domosenso.floorplan.chosen";   // localStorage: the one layer shown (layer_choice: one)
 const MAP_KEY = "domosenso.floorplan.map";         // localStorage: the map chosen per layer
 const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while the maps show the last 24 hours
+const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
 const HOUR_MS = 60 * 60 * 1000;
 const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
 const FILL_GAP_PX = 8;
 const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around an area (context: true)
+const NARROW_PX = 600;             // a card narrower than this (a phone) predicts Wi-Fi on coarser cells
+const NARROW_STEP_M = 0.3;
+const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -152,6 +162,9 @@ class FloorplanCard extends HTMLElement {
     this._statIds = "";
     this._statsAt = 0;
     this._heatCache = null;
+    this._band = load(BAND_KEY, null);             // the Serving map's band, while some access point serves it
+    this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
+    this._wifiKey = null;          // the last cache key and what it was computed from
     if (this._hass) this._load();
   }
 
@@ -251,22 +264,63 @@ class FloorplanCard extends HTMLElement {
     return ids;
   }
 
-  // The layer whose maps the bar offers: the one shown of plants, climate and light, outside edit mode.
+  // The layer whose maps the bar offers: the one shown of plants, climate, light and (with `wifi`)
+  // radio, outside edit mode.
   _mapLayer() {
     if (!this._config.maps || this._mode === "edit" || this._status !== "ready" || !this._floor) return null;
     let ids;
     if (this._one) ids = [this._chosen];
     else if (this._config.layers) ids = this._config.layers;
     else ids = [...new Set(this._floor.points.flatMap((p) => this._cat(p).roles))].filter((id) => this._visible(id));
-    return ids.length === 1 && MAPS[ids[0]] ? ids[0] : null;
+    if (ids.length !== 1 || !MAPS[ids[0]]) return null;
+    // `wifi` is on unless false, and left out of the stored config: a host such as Pocket checks it.
+    return ids[0] === "radio" && this._config.wifi === false ? null : ids[0];
   }
 
-  // The map shown: {layer, cls, rule}; null without one.
+  // The map shown: {layer, cls, rule, maps (the layer's offered)}; null without one. On the radio
+  // layer also its band; without an access point no map (cls null) and the hint why.
   _map() {
     const layer = this._mapLayer();
     if (!layer) return null;
+    if (layer === "radio") return this._wifiMap();
     const [cls, rule] = MAPS[layer].find(([c]) => c === this._maps[layer]) ?? MAPS[layer][0];
-    return { layer, cls, rule };
+    return { layer, cls, rule, maps: MAPS[layer] };
+  }
+
+  _wifiMap() {
+    const bands = offeredBands(this._doc);
+    const maps = radioMaps(bands);
+    if (!maps.length) return { layer: "radio", cls: null, rule: null, maps, hint: "no_access_points" };
+    const [cls] = maps.find(([c]) => c === this._maps.radio) ?? maps[0];
+    const band = cls === "serving" ? (bands.includes(this._band) ? this._band : bands[0]) : BAND_OF[cls];
+    return { layer: "radio", cls, rule: null, maps, band, bands };
+  }
+
+  // The prediction of the floor shown on one band, memoised by its cache key and the open or closed
+  // state of every opening with a sensor (live state the key leaves out). The key itself is worked
+  // out again only when the plan, the floor, the band, the cell or such a state changed.
+  _wifi(band, step) {
+    const doc = this._doc;
+    const states = doc.floors.flatMap((f) => (f.openings || []).filter((o) => o.entity)
+      .map((o) => openingState(o, this._hass).open)).join();
+    const from = [doc, this._floorId, band, step, states];
+    if (!this._wifiKey || from.some((v, i) => v !== this._wifiKey.from[i])) {
+      const params = priorParams(materials, doc.floors.flatMap((f) => f.access_points ?? []));
+      this._wifiKey = { from, params, key: `${cacheKey(doc, this._floorId, band, params, step)}|${states}` };
+    }
+    const { key, params } = this._wifiKey;
+    let out = this._wifiMemo.get(key);
+    if (!out) {
+      out = this._predict(contextFor(doc, this._floorId, this._hass, materials, params), band, step);
+      this._wifiMemo.set(key, out);
+      if (this._wifiMemo.size > WIFI_MEMO) this._wifiMemo.delete(this._wifiMemo.keys().next().value);
+    }
+    return { key, ...out };
+  }
+
+  // The engine's coverage: a method of its own, so a test counts the computations.
+  _predict(ctx, band, step) {
+    return coverage(ctx, band, step);
   }
 
   // Per room of the floor, its own sensor of the map's reading, or null: the one the home inputs
@@ -289,7 +343,7 @@ class FloorplanCard extends HTMLElement {
   // fetched when the readings change and every STATS_MS.
   _wantStats() {
     const map = this._map();
-    if (!this._day || !map || map.cls === "lamps") return;
+    if (!this._day || !map || map.cls === "lamps" || map.layer === "radio") return;
     // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out. And
     // the rooms' own sensors, which give a room its value placed or not.
     const own = this._roomSensors(map).filter(Boolean);
@@ -521,14 +575,20 @@ ${STYLE}
     return html;
   }
 
-  // The shown layer's maps, then now or the last 24 hours (not for the lamps).
+  // The shown layer's maps, then now or the last 24 hours (not for the lamps nor the radio maps),
+  // or beside Serving its band.
   _mapsHtml() {
     const map = this._map();
     if (!map) return "";
     const h = this._hass;
+    if (map.hint) return `<span class="legend">${esc(t(h, `card.floorplan.wifi.hint.${map.hint}`))}</span>`;
     const chip = (attrs, on, text) => `<button ${attrs} aria-pressed="${on}" class="chip">${esc(text)}</button>`;
-    let html = `<span class="maps">${MAPS[map.layer].map(([cls]) =>
+    let html = `<span class="maps">${map.maps.map(([cls]) =>
       chip(`data-action="map" data-map="${cls}"`, cls === map.cls, t(h, `card.floorplan.maps.${cls}`))).join("")}</span>`;
+    if (map.cls === "serving") {
+      html += `<span class="maps">${map.bands.map((b) => chip(`data-action="band" data-band="${b}"`, b === map.band,
+        t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) }))).join("")}</span>`;
+    }
     if (map.rule) {
       html += `<span class="maps">${chip('data-action="day" data-day="0"', !this._day, t(h, "card.floorplan.maps.now"))}`
         + chip('data-action="day" data-day="1"', this._day, t(h, "card.floorplan.maps.day",
@@ -542,6 +602,7 @@ ${STYLE}
   // covered a room). The chips name the map and now or 24 h; the full sentence is its tooltip.
   _legendHtml(map) {
     const h = this._hass;
+    if (map.layer === "radio") return this._wifiLegendHtml(map);
     if (map.cls === "lamps") return `<span class="legend">${esc(t(h, "card.floorplan.maps.lamps_legend"))}</span>`;
     const s = SCALES[map.cls];
     const figureKey = map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`;
@@ -552,6 +613,41 @@ ${STYLE}
       + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})"></span>`
       + `<span>${esc(formatValue(map.cls, s.hi))}</span>`
       + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.maps.no_sensor"))}</span></span>`;
+  }
+
+  // A band map: the dBm scale with its marks; Serving: each access point's colour and the hatching.
+  _wifiLegendHtml(map) {
+    const h = this._hass;
+    const name = t(h, `card.floorplan.maps.${map.cls}`);
+    if (map.cls === "serving") {
+      const aps = accessPoints(this._doc).filter((ap) => ap.bands.includes(map.band));
+      const title = t(h, "card.floorplan.wifi.serving_legend", { bands: bandsText([map.band], (x) => this._bandNumber(x)) });
+      return `<span class="legend" title="${esc(`${name}, ${title}`)}">${aps.map((ap, i) =>
+        `<span class="swatch" style="background: ${servingColour(i)}"></span><span>${esc(pointName(h, this._apPoint(ap.key) ?? { device_id: ap.key }))}</span>`).join("")}`
+        + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.wifi.handover"))}</span></span>`;
+    }
+    const s = SCALES.dbm;
+    const at = (v) => fmt(((v - s.lo) / (s.hi - s.lo)) * 100);
+    const [call, weak] = s.marks;
+    return `<span class="legend" title="${esc(`${name}, ${t(h, "card.floorplan.wifi.dbm_legend", { call, weak })}`)}">`
+      + `<span>${esc(formatValue("dbm", s.lo))}</span>`
+      + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})">${s.marks.map((m) =>
+        `<span class="mark" data-mark="${m}" style="left: ${at(m)}%"></span>`).join("")}</span>`
+      + `<span>${esc(formatValue("dbm", s.hi))}</span></span>`;
+  }
+
+  // A band as this language writes the number: 2.4, or 2,4.
+  _bandNumber(band) {
+    return band.includes(".") ? numberText(this._hass, Number(band), 1) : band;
+  }
+
+  // The point an access point stands on, on any floor.
+  _apPoint(key) {
+    for (const f of this._doc.floors) {
+      const p = (f.points ?? []).find((q) => keyOf(q) === key);
+      if (p) return p;
+    }
+    return null;
   }
 
   _areaPanelHtml() {
@@ -708,7 +804,9 @@ ${STYLE}
         points: room.polygon.map((p) => p.join(",")).join(" ") }, svg);
     }
     if (map) this._defs(svg, px);
-    if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
+    if (map?.layer === "radio") {
+      if (map.cls) this._drawWifi(svg, floor, map);
+    } else if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
     // Walls between rooms of one open space: dashed and lighter, over the solid outline.
     for (const [a, b] of facingWalls(floor)) {
       const at = { x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) };
@@ -1065,11 +1163,53 @@ ${STYLE}
     svg.appendChild(this._heatCache.g);
   }
 
-  // A marker's lines: its readings, or on a map the map's (the shown one first and marked main).
+  // The predicted Wi-Fi of the floor's rooms, drawn like the heat: a band map in the dBm ramp, the
+  // Serving map in each access point's colour with handover cells hatched. Cells are 0.3 m on a
+  // narrow card. Kept while the prediction and the map are the same.
+  _drawWifi(svg, floor, map) {
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    const { key, cells, aps } = this._wifi(map.band, step);
+    // The rooms drawn (one with `area`), by their index in the plan's floor, which the cells carry.
+    const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId).rooms;
+    const drawn = new Set(floor.rooms.map((r) => r.area_id));
+    const cacheKey = `wifi|${key}|${map.cls}|${[...drawn].join()}`;
+    if (this._heatCache?.key !== cacheKey) {
+      const g = el("g", { class: "heat" });
+      const defs = el("defs", {}, g);
+      const byRoom = new Map();
+      rooms.forEach((room, i) => {
+        if (!drawn.has(room.area_id)) return;
+        const clip = el("clipPath", { id: `fp-room-${i}` }, defs);
+        el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+        byRoom.set(i, el("g", { "clip-path": `url(#fp-room-${i})` }, g));
+      });
+      const serving = map.cls === "serving";
+      const size = step + 0.01;
+      for (const c of cells) {
+        const parent = byRoom.get(c.room);
+        if (!parent) continue;
+        const at = { x: fmt(c.x), y: fmt(c.y), width: size, height: size };
+        el("rect", { ...at, "data-dbm": Math.round(c.dbm), ...(serving ? { "data-ap": c.ap } : {}),
+          fill: serving ? servingColour(aps.indexOf(c.ap)) : colourAt("dbm", c.dbm) }, parent);
+        if (serving && isHandover(c)) el("rect", { ...at, class: "handover" }, parent);
+      }
+      for (const room of floor.rooms) el("polygon", { class: "wall", points: room.polygon.map((p) => p.join(",")).join(" ") }, g);
+      this._heatCache = { key: cacheKey, floor, g };
+    }
+    svg.appendChild(this._heatCache.g);
+  }
+
+  // A marker's lines: its readings, or on a map the map's (the shown one first and marked main). On
+  // a radio map an access point lists its bands, any other point its readings.
   _lines(point) {
     const map = this._mapNow;
     if (!map || !this._config.values) return this._values(point).map((text) => ({ text, main: false }));
     const h = this._hass;
+    if (map.layer === "radio") {
+      const ap = accessPoints(this._doc).find((a) => a.key === keyOf(point));
+      if (!ap) return this._values(point).map((text) => ({ text, main: false }));
+      return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
+    }
     if (map.cls === "lamps") {
       const lamp = point.device_id && lampOf(h, this._lamps, [point.device_id, ...(point.also || [])]);
       return lamp ? [{ text: lamp.on ? `${lamp.brightness} %` : t(h, "card.floorplan.maps.off"), main: false }] : [];
@@ -1146,6 +1286,9 @@ ${STYLE}
     } else if (action === "map") {
       this._maps = { ...this._maps, [this._mapLayer()]: button.getAttribute("data-map") };
       save(MAP_KEY, this._maps);
+    } else if (action === "band") {
+      this._band = button.getAttribute("data-band");
+      save(BAND_KEY, this._band);
     } else if (action === "day") {
       this._day = button.getAttribute("data-day") === "1";
       save(AGG_KEY, this._day);

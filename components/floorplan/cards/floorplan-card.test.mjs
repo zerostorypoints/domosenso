@@ -1635,3 +1635,143 @@ test("a door's panel swaps its hinge and side and makes it sliding; a selected o
   assert.equal($(card, '.opening-panel [data-field="entity"]'), null, "fixed glass has no sensor");
   assert.equal($(card, "[data-action=swap_hinge]"), null);
 });
+
+// ---- Wi-Fi maps on the radio layer (SPEC-044) --------------------------------------------------
+
+// Two mesh nodes: one in the kitchen on 2.4 and 5 GHz, one in the living room on 5 GHz only.
+function wifiHass() {
+  const hass = categoryHass();
+  hass.devices.d_mesh2 = { id: "d_mesh2", name: "Mesh satellite", area_id: "living_room", config_entries: ["e_mesh"] };
+  hass.entities["switch.mesh2_led"] = { entity_id: "switch.mesh2_led", device_id: "d_mesh2", platform: "tplink_deco" };
+  hass.states["switch.mesh2_led"] = { state: "on", attributes: {} };
+  hass.states["binary_sensor.door"] = { state: "off", attributes: { device_class: "door" } };
+  return hass;
+}
+const APS = [{ device_id: "d_mesh", bands: ["2.4", "5"] }, { device_id: "d_mesh2", bands: ["5"] }];
+function wifiPlan(aps = APS) {
+  const plan = planOf([pt("d_mesh", 6.5, 2), pt("d_mesh2", 1, 2)]);
+  plan.floors[0].access_points = aps;
+  plan.floors[0].openings = [{ kind: "door", rooms: ["living_room", "kitchen"], at: [5, 2], entity: "binary_sensor.door" }];
+  return plan;
+}
+const mapChips = (card) => [...card.shadowRoot.querySelectorAll(".bar [data-action=map]")].map((b) => b.getAttribute("data-map"));
+const cellsOf = (card) => [...card.shadowRoot.querySelectorAll(".heat rect[data-dbm]")];
+
+test("wifi maps: the radio layer offers the bands its access points serve, then Serving, without Now / 24 h", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(mapChips(card), ["wifi_24", "wifi_5", "serving"], "nobody serves 6 GHz");
+  assert.equal($(card, '.bar [data-map="wifi_24"]').getAttribute("aria-pressed"), "true", "the first band by default");
+  assert.equal($(card, '.bar [data-map="wifi_5"]').textContent, EN("card.floorplan.maps.wifi_5"));
+  assert.ok(!$(card, ".bar [data-action=day]"), "no Now / 24 h on a radio map");
+  window.localStorage.clear();
+});
+
+test("wifi maps: 5 GHz draws cells with their dBm; the legend is -90 to -30 dBm with marks at -67 and -75", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="wifi_5"]'));
+  const cells = cellsOf(card);
+  assert.ok(cells.length > 0);
+  const dbm = (x, y) => Number(cells.find((c) => Math.abs(Number(c.getAttribute("x")) - x) < 0.1
+    && Math.abs(Number(c.getAttribute("y")) - y) < 0.1).getAttribute("data-dbm"));
+  assert.ok(dbm(1.05, 1.95) > dbm(3.45, 3.75), "stronger beside an access point");
+  assert.ok(cells.every((c) => c.getAttribute("fill").startsWith("rgb(")));
+  const legend = $(card, ".bar .legend");
+  assert.ok(legend.textContent.includes("-90 dBm") && legend.textContent.includes("-30 dBm"), legend.textContent);
+  assert.deepEqual([...legend.querySelectorAll(".mark")].map((m) => m.getAttribute("data-mark")), ["-67", "-75"]);
+  assert.ok(!legend.textContent.includes(EN("card.floorplan.maps.no_sensor")), "every room has a prediction");
+  window.localStorage.clear();
+});
+
+test("wifi maps: Serving colours each cell by its access point on the band chosen beside it and hatches handover", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="serving"]'));
+  const bands = [...card.shadowRoot.querySelectorAll(".bar [data-action=band]")];
+  assert.deepEqual(bands.map((b) => b.getAttribute("data-band")), ["2.4", "5"]);
+  assert.equal(bands[0].getAttribute("aria-pressed"), "true", "the first offered band by default");
+  const aps = () => new Set(cellsOf(card).map((c) => c.getAttribute("data-ap")));
+  assert.deepEqual([...aps()], ["d_mesh"], "2.4 GHz: one access point serves everything");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat .handover").length, 0);
+  click($(card, '.bar [data-band="5"]'));
+  assert.deepEqual([...aps()].sort(), ["d_mesh", "d_mesh2"]);
+  const fills = new Map(cellsOf(card).map((c) => [c.getAttribute("data-ap"), c.getAttribute("fill")]));
+  assert.notEqual(fills.get("d_mesh"), fills.get("d_mesh2"));
+  const handover = card.shadowRoot.querySelectorAll(".heat .handover").length;
+  assert.ok(handover > 0 && handover < cellsOf(card).length, "a zone between them, not everywhere");
+  const legend = $(card, ".bar .legend");
+  assert.ok(legend.textContent.includes("Mesh node") && legend.textContent.includes("Mesh satellite"), legend.textContent);
+  assert.ok(legend.textContent.includes(EN("card.floorplan.wifi.handover")));
+  const again = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal($(again, '.bar [data-band="5"]').getAttribute("aria-pressed"), "true", "the band is remembered");
+  window.localStorage.clear();
+});
+
+test("wifi maps: an access point's label lists its bands", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(lines(card, "d_mesh"), [["2.4 · 5 GHz", true]]);
+  assert.deepEqual(lines(card, "d_mesh2"), [["5 GHz", true]]);
+  const pl = await make({ plan: wifiPlan(), layers: ["radio"] }, Object.assign(wifiHass(), { language: "pl", locale: { language: "pl" } }));
+  await settle();
+  assert.deepEqual(lines(pl, "d_mesh"), [["2,4 · 5 GHz", true]]);
+  window.localStorage.clear();
+});
+
+test("wifi maps: wifi false offers none; without access points the bar says how to get one", async () => {
+  window.localStorage.clear();
+  const off = await make({ plan: wifiPlan(), layers: ["radio"], wifi: false }, wifiHass());
+  await settle();
+  assert.ok(!$(off, ".bar [data-action=map]") && !$(off, ".heat"));
+  assert.ok(!$(off, ".bar").textContent.includes(EN("card.floorplan.wifi.hint.no_access_points")));
+  const none = await make({ plan: wifiPlan([]), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.ok(!$(none, ".bar [data-action=map]") && !$(none, ".heat rect"));
+  assert.ok($(none, ".bar").textContent.includes(EN("card.floorplan.wifi.hint.no_access_points")));
+  window.localStorage.clear();
+});
+
+test("wifi maps: the coverage is computed once per cache key; a door opening computes it again", async () => {
+  window.localStorage.clear();
+  const hass = wifiHass();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  let runs = 0;
+  const predict = card._predict.bind(card);
+  card._predict = (...args) => (runs++, predict(...args));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(runs, 1);
+  pointer(markerOf(card, "d_mesh"), "pointerover", 10, 10);
+  card.hass = { ...hass, states: { ...hass.states, "switch.mesh_led": { state: "off", attributes: {} } } };
+  assert.equal(runs, 1, "a redraw, another state: the same cells");
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(runs, 2, "Serving on its first band, 2.4 GHz");
+  click($(card, '.bar [data-band="5"]'));
+  click($(card, '.bar [data-map="wifi_24"]'));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(runs, 2, "Serving on 5 GHz and both band maps: from the cache");
+  const before = cellsOf(card).map((c) => c.getAttribute("data-dbm")).join();
+  card.hass = { ...card._hass, states: { ...card._hass.states, "binary_sensor.door": { state: "on", attributes: { device_class: "door" } } } };
+  assert.equal(runs, 3, "an open door is a new prediction");
+  assert.notEqual(cellsOf(card).map((c) => c.getAttribute("data-dbm")).join(), before);
+  window.localStorage.clear();
+});
+
+test("wifi maps: a card narrower than 600 px draws 0.3 m cells", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  const width = () => Number(cellsOf(card)[0].getAttribute("width"));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.ok(Math.abs(width() - 0.16) < 1e-9, String(width()));
+  $(card, "svg").getBoundingClientRect = () => ({ ...RECT, width: 500, right: 500 });
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.ok(Math.abs(width() - 0.31) < 1e-9, String(width()));
+  window.localStorage.clear();
+});

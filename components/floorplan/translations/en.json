@@ -99,7 +99,11 @@
         "no_sensor": "no sensor in the room",
         "room_sensor": "Room sensor",
         "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
-        "off": "off"
+        "off": "off",
+        "wifi_24": "2.4 GHz",
+        "wifi_5": "5 GHz",
+        "wifi_6": "6 GHz",
+        "serving": "Serving"
       },
       "opening": {
         "kind": "Kind",
@@ -125,6 +129,15 @@
         "swap_hinge": "⇄ Left/right",
         "swap_side": "⇅ Other side",
         "fill_wall": "Whole wall"
+      },
+      "wifi": {
+        "bands": "{bands} GHz",
+        "handover": "handover zone",
+        "serving_legend": "the access point with the strongest predicted signal on {bands} GHz; hatched: a client moving through hands over between two",
+        "dbm_legend": "the strongest predicted signal per spot; marks at {call} dBm (the usual floor for calls) and {weak} dBm",
+        "hint": {
+          "no_access_points": "No Wi-Fi access point on the plan: mark a point as an access point in edit mode"
+        }
       }
     }
   }

@@ -99,7 +99,11 @@
         "no_sensor": "kein Sensor im Raum",
         "room_sensor": "Raumsensor",
         "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
-        "off": "aus"
+        "off": "aus",
+        "wifi_24": "2,4 GHz",
+        "wifi_5": "5 GHz",
+        "wifi_6": "6 GHz",
+        "serving": "Zuständig"
       },
       "opening": {
         "kind": "Art",
@@ -125,6 +129,15 @@
         "swap_hinge": "⇄ Links/rechts",
         "swap_side": "⇅ Andere Seite",
         "fill_wall": "Ganze Wand"
+      },
+      "wifi": {
+        "bands": "{bands} GHz",
+        "handover": "Übergabezone",
+        "serving_legend": "der Zugangspunkt mit dem stärksten vorhergesagten Signal auf {bands} GHz; schraffiert: ein Gerät in Bewegung wechselt hier zwischen zweien",
+        "dbm_legend": "das stärkste vorhergesagte Signal pro Stelle; Marken bei {call} dBm (die übliche Grenze für Anrufe) und {weak} dBm",
+        "hint": {
+          "no_access_points": "Kein WLAN-Zugangspunkt im Plan: im Bearbeitungsmodus einen Punkt als Zugangspunkt markieren"
+        }
       }
     }
   }

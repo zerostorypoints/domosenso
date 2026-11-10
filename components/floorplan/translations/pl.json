@@ -99,7 +99,11 @@
         "no_sensor": "brak czujnika w pokoju",
         "room_sensor": "Czujnik pokoju",
         "lamps_legend": "Lampy: włączona świeci według jasności, wyłączona szara",
-        "off": "wył."
+        "off": "wył.",
+        "wifi_24": "2,4 GHz",
+        "wifi_5": "5 GHz",
+        "wifi_6": "6 GHz",
+        "serving": "Obsługujący"
       },
       "opening": {
         "kind": "Rodzaj",
@@ -125,6 +129,15 @@
         "swap_hinge": "⇄ Lewe/prawe",
         "swap_side": "⇅ Druga strona",
         "fill_wall": "Cała ściana"
+      },
+      "wifi": {
+        "bands": "{bands} GHz",
+        "handover": "strefa przełączania",
+        "serving_legend": "punkt dostępu z najsilniejszym przewidywanym sygnałem w paśmie {bands} GHz; kreskowanie: urządzenie w ruchu przełącza się tu między dwoma",
+        "dbm_legend": "najsilniejszy przewidywany sygnał w każdym miejscu; znaczniki przy {call} dBm (zwykła granica dla rozmów) i {weak} dBm",
+        "hint": {
+          "no_access_points": "Brak punktu dostępu Wi-Fi na planie: oznacz punkt jako punkt dostępu w trybie edycji"
+        }
       }
     }
   }

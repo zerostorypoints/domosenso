@@ -1,8 +1,10 @@
-// The maps of the plants, climate and light layers (SPEC-028 Amendment 7): which maps a layer has,
-// each map's 24-hour figure, a point's reading entities, the heat drawn inside each room and the
-// lamps. Pure: no DOM, so `node --test` covers it directly.
+// The maps of the plants, climate and light layers (SPEC-028 Amendment 7) and the radio layer's
+// Wi-Fi maps (SPEC-044): which maps a layer has, each map's 24-hour figure, a point's reading
+// entities, the heat drawn inside each room and the lamps. Pure: no DOM, so `node --test` covers it
+// directly.
 
 import { pointInPolygon } from "./geometry.js";
+import { BANDS } from "./wifi.js";
 
 // Per layer its maps, the first the default, each with the figure "24 h" shows: a plant suffers
 // from its coldest hour and its driest soil and needs its brightest (light is zero every night); a
@@ -11,7 +13,12 @@ export const MAPS = {
   plants: [["illuminance", "max"], ["temperature", "min"], ["moisture", "min"]],
   climate: [["temperature", "mean"], ["humidity", "mean"], ["carbon_dioxide", "max"]],
   light: [["illuminance", "max"], ["lamps", null]],
+  // Predictions, with no 24-hour figure; only the bands some access point serves are offered.
+  radio: [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null]],
 };
+
+// The band of a Wi-Fi map (a map id is a translation key: no dot in it).
+export const BAND_OF = { wifi_24: "2.4", wifi_5: "5", wifi_6: "6" };
 
 // Fixed, so two days compare. Ramps run low to high.
 export const SCALES = {
@@ -20,6 +27,8 @@ export const SCALES = {
   moisture: { lo: 10, hi: 50, unit: "%", digits: 0, ramp: ["#8c510a", "#d8b365", "#f6e8c3", "#5ab4ac", "#01665e"] },
   carbon_dioxide: { lo: 400, hi: 1400, unit: "ppm", digits: 0, ramp: ["#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027"] },
   illuminance: { lo: 0, hi: 20000, unit: "lx", digits: 0, log: true, ramp: ["#1b1f3a", "#3b3f75", "#a07a2a", "#f2c14e", "#fff3b0"] },
+  // Marks: -67 dBm, the usual floor for calls, and -75 dBm.
+  dbm: { lo: -90, hi: -30, unit: "dBm", digits: 0, marks: [-67, -75], ramp: ["#d7191c", "#fdae61", "#ffffbf", "#a6d96a", "#1a9641"] },
 };
 
 // What a label lists, in this order before the shown map's reading moves to the front.
@@ -202,3 +211,38 @@ export function lampOf(hass, index, deviceIds) {
   }
   return null;
 }
+
+// ---- Wi-Fi maps (SPEC-044) ----
+
+// The access points the prediction draws, in its order: each floor's `access_points` whose point
+// stands on that floor at a position someone placed. {key, floorId, bands}; no `bands`: every band.
+const AP_CACHE = new WeakMap();     // plan -> its access points: an edit makes a new plan
+export function accessPoints(doc) {
+  if (doc && AP_CACHE.has(doc)) return AP_CACHE.get(doc);
+  const out = new Map();
+  for (const f of doc?.floors ?? []) {
+    for (const ap of f.access_points ?? []) {
+      const key = ap.device_id ?? ap.entity_id;
+      const placed = (f.points ?? []).some((p) => p.placed !== false && (p.device_id ?? p.entity_id) === key);
+      if (placed) out.set(key, { key, floorId: f.floor_id, bands: ap.bands ?? BANDS });
+    }
+  }
+  const list = [...out.values()];
+  if (doc) AP_CACHE.set(doc, list);
+  return list;
+}
+
+export const offeredBands = (doc) => BANDS.filter((b) => accessPoints(doc).some((ap) => ap.bands.includes(b)));
+
+// The radio layer's maps for those bands: a map each, then Serving; none without a band.
+export function radioMaps(bands) {
+  if (!bands.length) return [];
+  return MAPS.radio.filter(([id]) => id === "serving" || bands.includes(BAND_OF[id]));
+}
+
+// An access point's bands in band order, "2.4 · 5"; `number` formats each (a decimal comma).
+export const bandsText = (bands, number = (b) => b) => BANDS.filter((b) => bands.includes(b)).map(number).join(" · ");
+
+// The Serving map's colour of the i-th access point: categorical, so neighbours tell apart.
+const SERVING = ["#1f77b4", "#ff7f0e", "#9467bd", "#17becf", "#e377c2", "#8c564b", "#bcbd22", "#7f7f7f"];
+export const servingColour = (i) => SERVING[i % SERVING.length];

@@ -94,13 +94,16 @@ export const STYLE = `
   .tip-value { color: var(--secondary-text-color); }
   .maps { display: inline-flex; gap: 4px; margin-right: 8px; }
   .heat { pointer-events: none; opacity: 0.8; }
-  .heat .no-sensor { fill: url(#fp-hatch); }
+  .heat .no-sensor, .heat .handover { fill: url(#fp-hatch); }
   .heat .wall { fill: none; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .hatch-line { stroke: var(--divider-color, #888); }
   .marker .glow { fill: url(#fp-glow); stroke: none; pointer-events: none; }
   .marker text.value.main { font-weight: 600; }
   .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--secondary-text-color); }
-  .legend .scale { width: 90px; height: 8px; border-radius: 4px; }
+  .legend .scale { position: relative; width: 90px; height: 8px; border-radius: 4px; }
+  .legend .mark { position: absolute; top: -2px; width: 2px; height: 12px; margin-left: -1px;
+                  background: var(--primary-text-color); }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-left: 6px;
                    background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
   .opening line, .opening path { vector-effect: non-scaling-stroke; fill: none; }

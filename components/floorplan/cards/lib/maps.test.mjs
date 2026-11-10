@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAPS, ruleOf, readingIds, labelClasses, figure, heat, colourAt, lampIndex, lampOf, formatValue, SPOT_M, areaSensorField } from "./maps.js";
+import { MAPS, SCALES, ruleOf, readingIds, labelClasses, figure, heat, colourAt, lampIndex, lampOf, formatValue, SPOT_M, areaSensorField,
+  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour } from "./maps.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 const rooms = [sq(0, 0, 3, 3), sq(3, 0, 3, 3)];
@@ -135,4 +136,38 @@ test("only the climate layer's temperature and humidity maps use the area's sens
   assert.equal(areaSensorField("climate", "humidity"), "humidity_entity_id");
   assert.equal(areaSensorField("climate", "carbon_dioxide"), null);
   assert.equal(areaSensorField("plants", "temperature"), null);
+});
+
+// ---- Wi-Fi maps on the radio layer (SPEC-044) ----
+
+const wifiDoc = (aps, points) => ({ schema: 1, floors: [{ floor_id: "ground", rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }],
+  points, access_points: aps }] });
+
+test("the radio layer's maps: a map per band, then Serving; none has a 24-hour figure", () => {
+  assert.deepEqual(MAPS.radio, [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null]]);
+  assert.deepEqual(BAND_OF, { wifi_24: "2.4", wifi_5: "5", wifi_6: "6" });
+  assert.deepEqual(SCALES.dbm.marks, [-67, -75]);
+  assert.equal(SCALES.dbm.lo, -90);
+  assert.equal(SCALES.dbm.hi, -30);
+  assert.equal(formatValue("dbm", -67.4), "-67 dBm");
+  assert.equal(colourAt("dbm", -90), colourAt("dbm", -120), "clamped at the weak end");
+  assert.notEqual(colourAt("dbm", -90), colourAt("dbm", -30));
+});
+
+test("only the bands a placed access point serves are offered; Serving with any", () => {
+  const doc = wifiDoc([{ device_id: "d1", bands: ["5", "2.4"] }, { device_id: "d2", bands: ["6"] }],
+    [{ device_id: "d1", x: 1, y: 1, placed: true }, { device_id: "d2", x: 2, y: 2, placed: false }]);
+  assert.deepEqual(accessPoints(doc).map((a) => a.key), ["d1"], "an auto-placed point is not drawn");
+  assert.deepEqual(offeredBands(doc), ["2.4", "5"], "in band order");
+  assert.deepEqual(radioMaps(offeredBands(doc)).map(([c]) => c), ["wifi_24", "wifi_5", "serving"]);
+  assert.deepEqual(radioMaps([]), [], "no access point: no map");
+  const anyBand = wifiDoc([{ entity_id: "switch.ap" }], [{ entity_id: "switch.ap", x: 1, y: 1, placed: true }]);
+  assert.deepEqual(offeredBands(anyBand), ["2.4", "5", "6"], "no bands listed: every band, as the prediction does");
+});
+
+test("an access point's bands as its label; serving colours differ", () => {
+  assert.equal(bandsText(["5", "2.4"]), "2.4 · 5");
+  assert.equal(bandsText(["2.4"], (b) => b.replace(".", ",")), "2,4");
+  assert.notEqual(servingColour(0), servingColour(1));
+  assert.equal(servingColour(0), servingColour(8), "the palette repeats");
 });
