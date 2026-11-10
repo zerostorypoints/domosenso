@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BANDS, wallSegments, pathLoss, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
+import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
   wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 
@@ -130,6 +130,33 @@ test("a wall between costs its loss", () => {
   doc.floors[0].walls = [{ at: [3, 1.5], material: "brick" }];
   const ctx = ctxOf(doc);
   near(predict(ctx, "a", "5", [2, 1.5]) - predict(ctx, "a", "5", [4, 1.5]), 20 * Math.log10(3) + 10);
+});
+
+test("crossings: the closed segments a ray crosses with their oblique factor; pathLoss is their sum", () => {
+  const floor = { ...two(), walls: [{ at: [3, 1.5], material: "brick" }],
+    openings: [{ kind: "door", rooms: ["alex", "sam"], at: [3, 0.5], state: "open" }] };
+  const segs = wallSegments(floor, undefined, {});
+  const c = crossings(segs, [1.5, 1.5], [7, 4]);
+  assert.deepEqual(c.map((x) => x.material), ["brick", "exterior"]);
+  near(c[0].k, Math.hypot(5.5, 2.5) / 5.5);
+  assert.equal(pathLoss(segs, [1.5, 1.5], [7, 4], "5", L), c.reduce((t, x) => t + L[x.material][5] * x.k, 0));
+  assert.deepEqual(crossings(segs, [1.5, 0.5], [4.5, 0.5]), [], "an open door is no crossing");
+});
+
+test("rayTerms: the distance term, crossings and slabs predict depends on", () => {
+  const doc = docOf([
+    { floor_id: "f0", rooms: [room(0, 0, 3, 3), room(3, 0, 3, 3, "sam")], walls: [{ at: [3, 1.5], material: "brick" }],
+      points: [pt("a", 1, 1.5)], access_points: [ap("a")] },
+    { floor_id: "f1", rooms: [room(0, 0, 6, 3)] }]);
+  const ctx = ctxOf(doc, "f1");
+  const t = rayTerms(ctx, "a", "5", [4, 1.5]);
+  near(t.logd, Math.log10(Math.hypot(3, 2.7)));
+  assert.deepEqual(t.crossings, []);
+  assert.deepEqual(t.slabs, ["slab"]);
+  const t0 = rayTerms(ctxOf(doc, "f0"), "a", "5", [4, 1.5]);
+  assert.deepEqual(t0.crossings.map((x) => x.material), ["brick"]);
+  assert.deepEqual(t0.slabs, []);
+  near(predict(ctxOf(doc, "f0"), "a", "5", [4, 1.5]), 23 - 47.3 - 20 * t0.logd - 10);
 });
 
 test("a slab between floors costs the slab's loss", () => {

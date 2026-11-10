@@ -132,14 +132,13 @@ export function wallSegmentAt(floor, wifi, pt, tol) {
 
 const mm = (v) => Math.round(v * 1000) / 1000;
 
-// The loss in dB of the open segment p-q: the sum over the closed segments it crosses of
-// L(material, band) * min(1/cos(theta), 2), theta the angle to the wall's normal. A crossing at
-// a segment's start counts, at its end it does not: a corner is paid once.
-export function pathLoss(segments, p, q, band, losses) {
+// Calls fn(material, k) for each closed segment the open segment p-q crosses, k = min(1/cos(theta), 2),
+// theta the angle to the wall's normal. A crossing at a segment's start counts, at its end it does
+// not: a corner is paid once.
+function eachCrossing(segments, p, q, fn) {
   const d = sub(q, p);
   const dl = Math.hypot(...d);
-  if (dl < EPS) return 0;
-  let total = 0;
+  if (dl < EPS) return;
   for (const s of segments) {
     if (s.open) continue;
     const e = sub(s.b, s.a);
@@ -151,9 +150,21 @@ export function pathLoss(segments, p, q, band, losses) {
     const u = cross(w, d) / den;                                       // along the wall
     if (t <= EPS || t >= 1 - EPS || u < -EPS || u >= 1 - EPS) continue;
     const cos = Math.abs(cross(d, e)) / (dl * el);                    // |cos| to the normal = |sin| to the wall
-    const loss = losses?.[s.material]?.[band] ?? 0;
-    total += loss * Math.min(1 / cos, OBLIQUE_CAP);
+    fn(s.material, Math.min(1 / cos, OBLIQUE_CAP));
   }
+}
+
+// The closed segments p-q crosses, in segment order: [{material, k}] (the fit's Jacobian).
+export function crossings(segments, p, q) {
+  const out = [];
+  eachCrossing(segments, p, q, (material, k) => out.push({ material, k }));
+  return out;
+}
+
+// The loss in dB of the open segment p-q: the sum over its crossings of L(material, band) * k.
+export function pathLoss(segments, p, q, band, losses) {
+  let total = 0;
+  eachCrossing(segments, p, q, (material, k) => { total += (losses?.[material]?.[band] ?? 0) * k; });
   return total;
 }
 
@@ -245,6 +256,20 @@ function level(pre, p) {
 // The signal in dBm of one access point on one band at point p of the context's floor.
 export function predict(ctx, apKey, band, p) {
   return level(prepare(ctx, apKey, band), p);
+}
+
+// What predict's value at p depends on besides the parameters: log10 of the clamped 3D distance, the
+// walls crossed [{material, k}] and the slab materials between the floors (one entry per slab).
+export function rayTerms(ctx, apKey, band, p) {
+  const pos = ctx.apPos[apKey];
+  const { floors } = ctx;
+  const here = floors.findIndex((f) => f.floor_id === ctx.floorId);
+  const there = floors.findIndex((f) => f.floor_id === pos.floorId);
+  const slabs = [];
+  for (let i = Math.min(here, there) + 1; i <= Math.max(here, there); i++) slabs.push(floors[i].slab);
+  const dz = floors[there].z + pos.mount - (floors[here].z + CLIENT_M);
+  const d = Math.max(Math.sqrt((p[0] - pos.x) ** 2 + (p[1] - pos.y) ** 2 + dz * dz), MIN_D);
+  return { logd: Math.log10(d), crossings: crossings(ctx.segmentsByFloor[ctx.floorId] ?? [], p, [pos.x, pos.y]), slabs };
 }
 
 export const isHandover = (cell, margin = HANDOVER_DB) => cell.second !== null && cell.dbm - cell.second <= margin;
