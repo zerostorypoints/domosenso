@@ -82,7 +82,8 @@ function cutOf(a, b, gap) {
 // merged), edges inside an open space dropped, every opening cut out of its wall as a segment of
 // its own. `wifi` is the plan's `wifi` (its defaults), possibly undefined.
 export function wallSegments(floor, wifi, hass) {
-  const defaults = { ...materials.defaults, ...(wifi?.defaults || {}) };
+  const defaults = { ...materials.defaults };
+  for (const k of ["interior", "exterior"]) if (wifi?.defaults?.[k]) defaults[k] = wifi.defaults[k];
   const facing = facingWalls(floor);
   const walls = floor.walls || [];
   let segs = stretches(floor).filter((s) => {
