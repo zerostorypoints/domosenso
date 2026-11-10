@@ -119,6 +119,14 @@ class Preview:
         doc.write_plan_file(self.plan_file, plan)
         self.say(("wrote", self.shown))
 
+    def page(self) -> str:
+        return PAGE
+
+    def route(self, method: str, path: str, body: bytes) -> tuple[int, Any] | None:
+        """A further route of a subclass (the survey's): `(status, JSON value)`, or None for not mine.
+        Only reached with the key."""
+        return None
+
 
 def fetch_local(url: str) -> tuple[bytes, str] | None:
     """A file of the target's `www` folder (`/local/...`, e.g. a plant's photo): Home Assistant serves
@@ -154,6 +162,12 @@ def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
         def _json(self, value: Any, status: int = 200) -> None:
             self._send(status, json.dumps(value).encode(), "application/json")
 
+        def _answer(self, extra: tuple[int, Any]) -> None:
+            status, value = extra
+            if isinstance(value, str):
+                return self._send(status, value.encode(), "text/plain")
+            self._json(value, status)
+
         def do_GET(self) -> None:
             url = urlsplit(self.path)
             query = parse_qs(url.query)
@@ -161,7 +175,7 @@ def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
                 return self._send(403, b"forbidden", "text/plain")
             if url.path == "/":
                 cookie = f"{COOKIE}={preview.key}; Path=/; HttpOnly; SameSite=Strict"
-                return self._send(200, PAGE.encode(), "text/html; charset=utf-8", {"Set-Cookie": cookie})
+                return self._send(200, preview.page().encode(), "text/html; charset=utf-8", {"Set-Cookie": cookie})
             if url.path == "/data":
                 return self._json(preview.data())
             if url.path == "/plan":
@@ -175,6 +189,8 @@ def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
                 if got is None:
                     return self._send(404, b"not found", "text/plain")
                 return self._send(200, got[0], got[1])
+            if (extra := preview.route("GET", url.path, b"")) is not None:
+                return self._answer(extra)
             # The card's own files, never outside its directory.
             target = (preview.card / url.path.lstrip("/")).resolve()
             if preview.card.resolve() not in target.parents or not target.is_file():
@@ -198,6 +214,8 @@ def start_server(preview: Preview, port: int) -> ThreadingHTTPServer:
             if url.path == "/refused":
                 preview.say(("refused", (query.get("type") or ["?"])[0]))
                 return self._json(None)
+            if (extra := preview.route("POST", url.path, body)) is not None:
+                return self._answer(extra)
             self._send(404, b"not found", "text/plain")
 
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)

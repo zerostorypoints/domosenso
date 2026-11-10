@@ -1,6 +1,7 @@
-"""`domosenso floorplan pull | push | preview` (SPEC-028): the floor plan between the `floorplan`
-storage dashboard in Home Assistant and `domosenso/floorplan.json` in the home repository, and the
-editor against a home's real data (`preview`, Amendment 6: floorplan_preview.py).
+"""`domosenso floorplan pull | push | preview | survey` (SPEC-028): the floor plan between the `floorplan`
+storage dashboard in Home Assistant and `domosenso/floorplan.json` in the home repository, the
+editor against a home's real data (`preview`, Amendment 6: floorplan_preview.py) and the Wi-Fi survey
+walk (`survey`, SPEC-044: floorplan_survey.py).
 
 The editor in Home Assistant saves into the dashboard, so the repository file is a copy that `pull`
 refreshes. `push` writes it back, but never over a plan edited in Home Assistant since the last
@@ -16,7 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from domosenso_cli.home_inputs import load_home_inputs
-from domosenso_cli import cmd_deploy, floorplan_doc as doc, floorplan_preview as preview
+from domosenso_cli import cmd_deploy, floorplan_doc as doc, floorplan_preview as preview, floorplan_survey as survey
+from domosenso_cli import wifi_link
 from domosenso_cli.errors import DomosensoError
 from domosenso_cli.home import HomeConfig
 from domosenso_cli.lock import Lock
@@ -30,15 +32,16 @@ EMPTY = {"schema": doc.SCHEMA_VERSION, "floors": []}
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("action", choices=("pull", "push", "preview"))
+    parser.add_argument("action", choices=("pull", "push", "preview", "survey"))
     parser.add_argument("target", help="a target named in domosenso.yaml")
     parser.add_argument("--out", type=Path, metavar="<file>", help=f"pull: where to write (default {PLAN_FILE})")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--plan", action="store_true", help="push: show what would change; write nothing")
     mode.add_argument("--apply", action="store_true", help="push: back up and write the plan to Home Assistant")
     parser.add_argument("--confirm", metavar="HASH", help="push --apply: the hash of the plan, instead of typing 'production'")
-    parser.add_argument("--port", type=int, default=8130, help="preview: the port on 127.0.0.1 (default 8130)")
-    parser.add_argument("--no-open", action="store_true", help="preview: do not open the page in a browser")
+    parser.add_argument("--port", type=int, default=8130, help="preview, survey: the port on 127.0.0.1 (default 8130)")
+    parser.add_argument("--no-open", action="store_true", help="preview, survey: do not open the page in a browser")
+    parser.add_argument("--interface", metavar="<if>", help="survey: the Wi-Fi interface (default en0 on macOS, wlan0 on Linux)")
 
 
 def _shown(home: Path, path: Path) -> str:
@@ -162,6 +165,7 @@ async def _push(args: argparse.Namespace, rep: Reporter) -> int:
 
 
 async def _preview(args: argparse.Namespace, rep: Reporter) -> int:
+    """`preview`, and `survey` with the laptop's Wi-Fi reader: both serve the card read-only."""
     home = HomeConfig.load(args.home)
     target = pick_target(home, args.target)
     plan = doc.read_json(args.home / PLAN_FILE)
@@ -170,30 +174,61 @@ async def _preview(args: argparse.Namespace, rep: Reporter) -> int:
     doc.validate(plan)
     locked = Lock.load(args.home).components.get("floorplan")
     card = preview.card_dir(home.config_dir, locked.version if locked else None)
+    is_survey = args.action == "survey"
+    if is_survey:
+        survey.load_rules(card)  # before the target is read: a missing file needs a render, not a wait
+        # The helper's cache is the home's, wherever the command runs from.
+        cache = args.home / ".domosenso" / "wifi"
+
+        def reader():
+            return wifi_link.read_link(interface=args.interface, cache_dir=cache)
+
+        mac = wifi_link.mac_address(args.interface)
+        if mac is None:
+            raise DomosensoError("no Wi-Fi interface")
+        if reader() is None:
+            raise DomosensoError("Wi-Fi is off")
     async with cmd_deploy.connect(target) as ha:
         raw = await preview.read_home(ha)
         hass = preview.build_hass(raw)
         rep.line(f"read {args.target}:", "areas", str(len(hass["areas"])), "devices", str(len(hass["devices"])),
                  "entities", str(len(hass["entities"])), "states", str(len(hass["states"])))
-        page = preview.Preview(hass, preview.entries(raw), args.home / PLAN_FILE, card, lambda line: rep.line(*line),
-                               PLAN_FILE.as_posix(), target_url=target.url)
+        say = lambda line: rep.line(*line)  # noqa: E731
+        if is_survey:
+            loop = asyncio.get_running_loop()
+
+            def fetch_states():
+                # From the server's thread, on the command's loop: the client is used from one loop only.
+                return asyncio.run_coroutine_threadsafe(ha.rest_get("/api/states"), loop).result(timeout=60)
+
+            page = survey.Survey(hass, preview.entries(raw), args.home / PLAN_FILE, card, say, PLAN_FILE.as_posix(),
+                                 target_url=target.url, reader=reader, mac=mac, fetch_states=fetch_states)
+        else:
+            page = preview.Preview(hass, preview.entries(raw), args.home / PLAN_FILE, card, say,
+                                   PLAN_FILE.as_posix(), target_url=target.url)
         try:
             server = preview.start_server(page, args.port)
         except OSError as exc:
             raise DomosensoError(f"port {args.port} in use") from exc
+        if is_survey:
+            page.start()
         url = f"http://127.0.0.1:{server.server_address[1]}/?key={page.key}"
-        rep.line("preview", url)
+        rep.line(args.action, url)
         if not args.no_open:
             webbrowser.open(url)
         try:
             await preview.follow(ha, page)
         finally:
             server.shutdown()
+            if is_survey:
+                page.stop()
     return rep.ok()
 
 
 def run(args: argparse.Namespace, rep: Reporter) -> int:
-    if args.action == "preview":
+    if args.interface and args.action != "survey":
+        raise DomosensoError("--interface goes with survey")
+    if args.action in ("preview", "survey"):
         if args.plan or args.apply or args.confirm:
             raise DomosensoError("--plan, --apply and --confirm go with push")
         if args.out:
