@@ -258,7 +258,55 @@ the router's client tracker for its MAC address, else not at all.
   point is unknown is compared with the strongest predicted one at half weight. A material's loss
   fitted on one band moves its loss on the other bands by a third as much, in proportion (a
   2.4 GHz-only device still says something about 5 GHz).
-- **Survey:** a walk-around with a laptop measuring as you tap the plan is not yet available.
+- **Survey:** a walk-around with a laptop measuring as you tap the plan refines the same maps; see
+  *Survey walk* below. Survey and manual readings calibrate like device readings.
+
+## Survey walk
+
+`domosenso floorplan survey <target>` serves the card on this machine for a walk with a laptop
+(SPEC-044), as `preview` does and reading the target read-only.
+
+```bash
+domosenso floorplan survey production        # --port <n>, --no-open, --interface <if>
+```
+
+- It serves the home's rendered card on `127.0.0.1` behind a random key, with the Wi-Fi maps and a
+  **Survey** panel. The panel shows the live link: band, channel, signal (dBm) and noise.
+- Tap the plan where you stand, press **I'm here**: 5 readings over about 10 s are averaged into
+  one sample (the band most readings agree on). With fewer than 3 usable readings the sample is
+  skipped and the panel says why.
+- Samples are written to the home's `domosenso/floorplan.json` only. Nothing goes to Home Assistant
+  until `floorplan push --plan` and, after the owner's go-ahead, `--apply`.
+- **Suggested next spots**, in order: handover zones without a reading, rooms without a reading,
+  then the spots farthest from any reading.
+- Lines: `read <target>: ...`, `survey <url>`, `link <band> <channel> <dbm> dBm` every 30 s, per tap
+  `sample <floor or -> <x> <y> <band> <dbm> dBm <access point or ->` and `wrote
+  domosenso/floorplan.json`, or `sample skipped <reason>`, and `stopped` (Ctrl-C).
+- **Which operating system.** macOS: a small CoreWLAN helper is compiled with `swiftc` on first use
+  (Xcode command-line tools), else `system_profiler`. Linux: `iw`. Windows: `netsh wlan show
+  interfaces` (signal in % converted to dBm, an approximation; Windows 11's Band line gives 6 GHz).
+  `--interface` names the Wi-Fi interface when the machine has several.
+- **macOS note.** Without Location permission macOS gives no BSSID, so the serving access point
+  comes from the router's client list (the laptop's MAC address in the router integration's client
+  trackers, which update about every 30 s), else it stays unknown. An unknown access point counts
+  at half weight in the calibration.
+- **Manual readings.** In edit mode **Add reading** places a reading by hand: dBm, band and the
+  access point or unknown, for example from a phone's Wi-Fi scanner.
+- Sample dots show on the Confidence map and in edit mode. Survey and manual samples calibrate the
+  maps like device readings.
+
+The walk:
+
+1. Run the survey on the laptop you carry; keep it on the home's own network, not a hotspot.
+2. Hold it at chest height with the lid open, in front of you, the way a phone is held on a call.
+3. Start at an access point, then walk room by room. Stop about every 2 m and in every doorway.
+4. At each stop: tap exactly where you stand, press **I'm here**, stand still for 10 s.
+5. Visit the suggested spots, above all the handover zones between access points.
+6. The laptop reports the band it is on; a mesh with one network name chooses it. To survey another
+   band, rerun with a network name that has only that band, if the router offers one, or accept the
+   fit's carry-over between bands.
+7. Push the samples to Home Assistant (`floorplan push`), and repeat the walk after moving an access
+   point or changing a wall's or window's material.
 
 ## After editing in Home Assistant
 
