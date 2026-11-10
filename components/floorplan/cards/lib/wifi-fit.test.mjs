@@ -158,26 +158,40 @@ test("a fitted loss never goes below 0 and n stays within [1.5, 4]", () => {
 
 const res = (x, y, r, extra = {}) => ({ obs: { floorId: "f0", band: "5", x, y, ...extra }, r });
 
-test("residualAt: an observation 8 dB above its prediction (r = -8) pulls the value to -8, so the map rises", () => {
+const W0 = 1 / 1.5 ** 2;
+const wOf = (d, walls = 0) => (1 - d / 3) ** 2 / (d * d + 0.05) * 0.5 ** walls;
+
+test("residualAt: a lone reading (r = -8, i.e. 8 dB above its prediction) corrects nearly fully beside it and fades to 0 at 3 m", () => {
   const rs = [res(5, 5, -8)];
-  near(residualAt(rs, [], [5.2, 5]), -8, 0.01);
-  near(residualAt(rs, [], [7.9, 5]), -8, 0.01, "the mean of one reading is the reading, anywhere in range");
-  assert.equal(residualAt(rs, [], [8.1, 5]), 0, "nothing beyond 3 m");
-  near(residualAt([res(5, 5, 8)], [], [5.2, 5]), 8, 0.01);
+  const beside = residualAt(rs, [], [5.1, 5]);
+  near(beside, -8 * wOf(0.1) / (wOf(0.1) + W0), 1e-9);
+  assert.ok(beside < -7.5, `${beside}`);
+  near(residualAt([res(5, 5, 8)], [], [5.1, 5]), -beside, 1e-9);
+  assert.equal(residualAt(rs, [], [8, 5]), 0, "nothing at 3 m");
+  assert.equal(residualAt(rs, [], [8.1, 5]), 0);
+  let last = Infinity;
+  for (let d = 0.1; d <= 2.95; d += 0.05) {
+    const v = Math.abs(residualAt(rs, [], [5 + d, 5]));
+    assert.ok(v < last, `monotone at ${d}`);
+    last = v;
+  }
+  assert.ok(Math.abs(residualAt(rs, [], [7.9, 5])) < 0.2, "no jump towards the edge");
+});
+
+test("residualAt: a closed wall between weakens a lone reading by the formula, an open opening does not", () => {
+  const rs = [res(0, 0, 10)];
+  const wall = { a: [0.5, -1], b: [0.5, 1], material: "brick", open: false };
+  const clear = residualAt(rs, [], [1, 0]);
+  const walled = residualAt(rs, [wall], [1, 0]);
+  near(clear, 10 * wOf(1) / (wOf(1) + W0), 1e-9);
+  near(walled, 10 * wOf(1, 1) / (wOf(1, 1) + W0), 1e-9);
+  assert.ok(walled < clear * 0.8);
+  near(residualAt(rs, [{ ...wall, open: true }], [1, 0]), clear, 1e-9);
 });
 
 test("residualAt: inverse distance squared between two readings", () => {
-  const rs = [res(0, 0, 10), res(3, 0, -10)];
-  // at x = 1: weights 1 and 1/4 -> (10 - 2.5) / 1.25 = 6
-  near(residualAt(rs, [], [1, 0]), 6, 1e-9);
-});
-
-test("residualAt: a closed wall between halves the weight, an open opening does not count", () => {
-  const rs = [res(0, 0, 10), res(0, 2, -10)];                  // both 1 m from p = (0, 1)
-  const wall = { a: [-1, 0.5], b: [1, 0.5], material: "brick", open: false };  // between the first and p
-  near(residualAt(rs, [], [0, 1]), 0, 1e-9);
-  near(residualAt(rs, [wall], [0, 1]), (0.5 * 10 - 10) / 1.5, 1e-9);
-  near(residualAt(rs, [{ ...wall, open: true }], [0, 1]), 0, 1e-9);
+  const rs = [res(0, 0, 10), res(3.5, 0, -10)];
+  near(residualAt(rs, [], [1, 0]), (10 * wOf(1) - 10 * wOf(2.5)) / (wOf(1) + wOf(2.5) + W0), 1e-9);
 });
 
 test("calibratedCoverage: +8 dB reading raises the cell beside it by about 8, nothing at 3.1 m", () => {
@@ -191,11 +205,11 @@ test("calibratedCoverage: +8 dB reading raises the cell beside it by about 8, no
   const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false },
     residuals: [{ obs, r: -8, ap: "node" }] };
   const m = calibratedCoverage(ctx, "5", 1, fit);
-  near(at(m, 6, 4).dbm - at(base, 6, 4).dbm, 8, 0.01);
+  near(at(m, 6, 4).dbm - at(base, 6, 4).dbm, 8, 0.7);
   near(at(m, 6, 4).second ?? 0, at(base, 6, 4).second ?? 0, 1e-9, "no second access point here");
   assert.equal(at(m, 10, 4).dbm, at(base, 10, 4).dbm, "10.5 is 4 m from the reading");
   const lower = calibratedCoverage(ctx, "5", 1, { ...fit, residuals: [{ obs, r: 8, ap: "node" }] });
-  near(at(lower, 6, 4).dbm - at(base, 6, 4).dbm, -8, 0.01);
+  near(at(lower, 6, 4).dbm - at(base, 6, 4).dbm, -8, 0.7);
 });
 
 test("calibratedCoverage: dbm and second move together", () => {
@@ -209,7 +223,7 @@ test("calibratedCoverage: dbm and second move together", () => {
   const base = coverage(ctx, "5", 1).cells.find((c) => c.x === 6 && c.y === 4);
   const cal = calibratedCoverage(ctx, "5", 1, fit).cells.find((c) => c.x === 6 && c.y === 4);
   near(cal.dbm - cal.second, base.dbm - base.second, 1e-9);
-  near(base.dbm - cal.dbm, 5, 0.01);
+  near(base.dbm - cal.dbm, 5, 0.5);
 });
 
 test("confidence: high near a reading of the serving access point, medium over a fitted wall, else low", () => {
@@ -262,10 +276,11 @@ test("2000 observations and 200 m² on one band in under 300 ms", () => {
   const residuals = Array.from({ length: 2000 }, (_, i) => ({ r: (i % 7) - 3, ap: "node",
     obs: { floorId: "f0", band: "5", ap: "node", x: (i * 7.3) % 20, y: (i * 3.1) % 10 } }));
   const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false }, residuals };
-  calibratedCoverage(ctx, "5", 0.5, fit);                      // warm up
+  calibratedCoverage(ctx, "5", 0.15, fit);                     // warm up
   const t = performance.now();
-  const m = calibratedCoverage(ctx, "5", 0.5, fit);
+  const m = calibratedCoverage(ctx, "5", 0.15, fit);          // the map's grid
   const ms = performance.now() - t;
-  assert.ok(m.cells.length >= 700);
+  assert.equal(m.cells.length, coverage(ctx, "5", 0.15).cells.length);
+  assert.ok(m.cells.length > 8800 && m.cells.length < 9000, `${m.cells.length} cells at 0.15 m`);
   assert.ok(ms < 300, `${ms} ms`);
 });

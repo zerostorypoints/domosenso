@@ -185,32 +185,58 @@ export function calibrate(ctx, observations, table) {
 // ---- residuals and confidence (SPEC-044 S2) ----
 
 const RESIDUAL_RANGE_M = 3;
-const MIN_RESIDUAL_D = 0.25;           // m: closer than this the weight stops growing
+const BACKGROUND_W = 1 / 1.5 ** 2;     // weight of the zero-residual background in residualAt
 const NEAR_M = 2;                      // m: "high" confidence within this of a reading of the serving access point
 const MOVED_DB = 0.5;                  // a parameter counts as changed by the fit beyond this
 
 // What the fit leaves near p. Each residual is {obs, r}, r = prediction − reading, so the correction
 // to ADD to a prediction is −residualAt(...): a reading 8 dB above its prediction has r = −8 and raises
-// the map by about 8. Weight 1/d² within 3 m (0 beyond), halved for every closed wall the line from the
-// reading to p crosses; the result is the weighted mean of the residuals in range, 0 when none is.
+// the map by about 8. Value = Σ wᵢ·rᵢ / (Σ wᵢ + w₀) with wᵢ = 1/(d²+0.05) · (1 − d/3)² · 0.5^walls (0 at and
+// beyond 3 m; walls = closed segments between the reading and p) and w₀ = 1/1.5², a zero-residual
+// background: a lone reading corrects fully beside it and fades smoothly to nothing, and a wall weakens it.
 // The caller passes the residuals of one floor and one band, and that floor's wall segments.
 export function residualAt(residuals, segments, p) {
-  let sum = 0, wsum = 0;
-  for (const { obs, r } of residuals) {
-    const dx = obs.x - p[0], dy = obs.y - p[1];
-    const d2 = dx * dx + dy * dy;
-    if (d2 > RESIDUAL_RANGE_M ** 2) continue;
-    let w = 1 / Math.max(d2, MIN_RESIDUAL_D ** 2);
-    const walls = crossings(segments, [obs.x, obs.y], p).length;
-    if (walls) w *= 0.5 ** walls;
-    sum += w * r;
-    wsum += w;
+  return residualIndex(residuals, segments)(p);
+}
+
+// residualAt for many points: the residuals are bucketed in 3 m squares once, so a point looks at nine
+// buckets, not at every reading.
+function residualIndex(residuals, segments) {
+  const R = RESIDUAL_RANGE_M;
+  const buckets = new Map();
+  for (const e of residuals) {
+    const key = Math.floor(e.obs.x / R) * 65536 + Math.floor(e.obs.y / R);
+    (buckets.get(key) ?? buckets.set(key, []).get(key)).push(e);
   }
-  return wsum ? sum / wsum : 0;
+  const q = [0, 0];
+  return (p) => {
+    let sum = 0, wsum = BACKGROUND_W;
+    const bx = Math.floor(p[0] / R), by = Math.floor(p[1] / R);
+    for (let i = bx - 1; i <= bx + 1; i++) {
+      for (let j = by - 1; j <= by + 1; j++) {
+        const list = buckets.get(i * 65536 + j);
+        if (!list) continue;
+        for (const { obs, r } of list) {
+          const dx = obs.x - p[0], dy = obs.y - p[1];
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= R * R) continue;
+          const f = 1 - Math.sqrt(d2) / R;
+          let w = f * f / (d2 + 0.05);
+          if (segments.length) {
+            q[0] = obs.x; q[1] = obs.y;
+            const walls = crossings(segments, q, p).length;
+            if (walls) w *= 0.5 ** walls;
+          }
+          sum += w * r;
+          wsum += w;
+        }
+      }
+    }
+    return sum / wsum;
+  };
 }
 
 // The cell's centre (coverage() reports a cell by its corner); step 0 takes x, y as the point.
-const assignedCache = new WeakMap();   // fit.residuals -> Map(obs -> assigned access point)
 const centreOf = (cell, step) => [cell.x + step / 2, cell.y + step / 2];
 
 // "high" within 2 m of a reading of the cell's serving access point and band (a reading without a
@@ -220,12 +246,11 @@ const centreOf = (cell, step) => [cell.x + step / 2, cell.y + step / 2];
 // band and step are the map's (the cell carries neither).
 export function confidenceOf(cell, observations, fit, ctx, band, step = 0) {
   const c = centreOf(cell, step);
-  let assigned = assignedCache.get(fit.residuals);
-  if (!assigned) assignedCache.set(fit.residuals, assigned = new Map(fit.residuals.map((e) => [e.obs, e.ap])));
   for (const obs of observations ?? []) {
     if (obs.band !== band || obs.floorId !== ctx.floorId) continue;
-    if ((obs.ap ?? assigned.get(obs)) !== cell.ap) continue;
-    if ((obs.x - c[0]) ** 2 + (obs.y - c[1]) ** 2 <= NEAR_M ** 2) return "high";
+    if ((obs.x - c[0]) ** 2 + (obs.y - c[1]) ** 2 > NEAR_M ** 2) continue;
+    // only a reading in range without a named access point is looked up (rare)
+    if ((obs.ap ?? fit.residuals.find((e) => e.obs === obs)?.ap) === cell.ap) return "high";
   }
   const { params, prior } = fit;
   if (Math.abs((params.tx[cell.ap]?.[band] ?? 0) - (prior.tx[cell.ap]?.[band] ?? 0)) > MOVED_DB) return "medium";
@@ -240,17 +265,18 @@ export function confidenceOf(cell, observations, fit, ctx, band, step = 0) {
 // coverage() with the fit's residuals added: the prediction for a map calibrated by `fit`, plus the
 // correction −residualAt at each cell, applied to dbm and second alike (so handover stays consistent),
 // and cell.conf. The caller passes a ctx already built with fit.params (contextFor(..., fit.params));
-// this function does not rebuild it.
+// this function does not rebuild it. (ctx must be built from fit.params.)
 export function calibratedCoverage(ctx, band, step, fit) {
   const map = coverage(ctx, band, step);
   const segs = ctx.segmentsByFloor[ctx.floorId] ?? [];
   const here = fit.residuals.filter((e) => e.obs.band === band && e.obs.floorId === ctx.floorId);
   const observations = here.map((e) => e.obs);
+  const at = residualIndex(here, segs);
   const c = [0, 0];
   for (const cell of map.cells) {
     c[0] = cell.x + step / 2;
     c[1] = cell.y + step / 2;
-    const add = -residualAt(here, segs, c);
+    const add = -at(c);
     cell.dbm += add;
     if (cell.second !== null) cell.second += add;
     cell.conf = confidenceOf(cell, observations, fit, ctx, band, step);
