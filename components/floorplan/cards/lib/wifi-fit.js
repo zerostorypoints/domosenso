@@ -3,7 +3,7 @@
 // a row pulling it towards its prior by its uncertainty. Pure and deterministic: sorted unknowns,
 // a fixed number of Gauss-Newton iterations, no randomness.
 
-import { BANDS, priorParams, predict, rayTerms } from "./wifi.js";
+import { BANDS, priorParams, predict, rayTerms, coverage, crossings } from "./wifi.js";
 import { pointInPolygon } from "./geometry.js";
 
 const ITERATIONS = 10;
@@ -176,7 +176,84 @@ export function calibrate(ctx, observations, table) {
     crossBand();
   }
 
-  const residuals = rows.map((r) => ({ obs: r.obs, r: choose(r).pred - r.obs.dbm }));
+  // ap: the access point the fit assigned the reading to (the named one, or the strongest candidate).
+  const residuals = rows.map((r) => { const { c, pred } = choose(r); return { obs: r.obs, r: pred - r.obs.dbm, ap: c.key }; });
   const kind = (k) => keys.some((key) => key === k || key.startsWith(`${k}|`));
-  return { params, moved: { tx: kind("tx"), loss: kind("loss"), n: kind("n") }, residuals };
+  return { params, moved: { tx: kind("tx"), loss: kind("loss"), n: kind("n") }, residuals, prior };
+}
+
+// ---- residuals and confidence (SPEC-044 S2) ----
+
+const RESIDUAL_RANGE_M = 3;
+const MIN_RESIDUAL_D = 0.25;           // m: closer than this the weight stops growing
+const NEAR_M = 2;                      // m: "high" confidence within this of a reading of the serving access point
+const MOVED_DB = 0.5;                  // a parameter counts as changed by the fit beyond this
+
+// What the fit leaves near p. Each residual is {obs, r}, r = prediction − reading, so the correction
+// to ADD to a prediction is −residualAt(...): a reading 8 dB above its prediction has r = −8 and raises
+// the map by about 8. Weight 1/d² within 3 m (0 beyond), halved for every closed wall the line from the
+// reading to p crosses; the result is the weighted mean of the residuals in range, 0 when none is.
+// The caller passes the residuals of one floor and one band, and that floor's wall segments.
+export function residualAt(residuals, segments, p) {
+  let sum = 0, wsum = 0;
+  for (const { obs, r } of residuals) {
+    const dx = obs.x - p[0], dy = obs.y - p[1];
+    const d2 = dx * dx + dy * dy;
+    if (d2 > RESIDUAL_RANGE_M ** 2) continue;
+    let w = 1 / Math.max(d2, MIN_RESIDUAL_D ** 2);
+    const walls = crossings(segments, [obs.x, obs.y], p).length;
+    if (walls) w *= 0.5 ** walls;
+    sum += w * r;
+    wsum += w;
+  }
+  return wsum ? sum / wsum : 0;
+}
+
+// The cell's centre (coverage() reports a cell by its corner); step 0 takes x, y as the point.
+const assignedCache = new WeakMap();   // fit.residuals -> Map(obs -> assigned access point)
+const centreOf = (cell, step) => [cell.x + step / 2, cell.y + step / 2];
+
+// "high" within 2 m of a reading of the cell's serving access point and band (a reading without a
+// named access point counts as the one the fit assigned it to); "medium" where the path from the serving
+// access point crosses a material the fit changed (fit.moved.loss and more than 0.5 dB from its prior)
+// or that access point's transmit power was changed by more than 0.5 dB; else "low".
+// band and step are the map's (the cell carries neither).
+export function confidenceOf(cell, observations, fit, ctx, band, step = 0) {
+  const c = centreOf(cell, step);
+  let assigned = assignedCache.get(fit.residuals);
+  if (!assigned) assignedCache.set(fit.residuals, assigned = new Map(fit.residuals.map((e) => [e.obs, e.ap])));
+  for (const obs of observations ?? []) {
+    if (obs.band !== band || obs.floorId !== ctx.floorId) continue;
+    if ((obs.ap ?? assigned.get(obs)) !== cell.ap) continue;
+    if ((obs.x - c[0]) ** 2 + (obs.y - c[1]) ** 2 <= NEAR_M ** 2) return "high";
+  }
+  const { params, prior } = fit;
+  if (Math.abs((params.tx[cell.ap]?.[band] ?? 0) - (prior.tx[cell.ap]?.[band] ?? 0)) > MOVED_DB) return "medium";
+  if (fit.moved.loss && ctx.apPos[cell.ap]) {
+    const terms = rayTerms(ctx, cell.ap, band, c);
+    const changed = (m) => Math.abs((params.loss[m]?.[band] ?? 0) - (prior.loss[m]?.[band] ?? 0)) > MOVED_DB;
+    if (terms.crossings.some((x) => changed(x.material)) || terms.slabs.some(changed)) return "medium";
+  }
+  return "low";
+}
+
+// coverage() with the fit's residuals added: the prediction for a map calibrated by `fit`, plus the
+// correction −residualAt at each cell, applied to dbm and second alike (so handover stays consistent),
+// and cell.conf. The caller passes a ctx already built with fit.params (contextFor(..., fit.params));
+// this function does not rebuild it.
+export function calibratedCoverage(ctx, band, step, fit) {
+  const map = coverage(ctx, band, step);
+  const segs = ctx.segmentsByFloor[ctx.floorId] ?? [];
+  const here = fit.residuals.filter((e) => e.obs.band === band && e.obs.floorId === ctx.floorId);
+  const observations = here.map((e) => e.obs);
+  const c = [0, 0];
+  for (const cell of map.cells) {
+    c[0] = cell.x + step / 2;
+    c[1] = cell.y + step / 2;
+    const add = -residualAt(here, segs, c);
+    cell.dbm += add;
+    if (cell.second !== null) cell.second += add;
+    cell.conf = confidenceOf(cell, observations, fit, ctx, band, step);
+  }
+  return map;
 }

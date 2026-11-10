@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { calibrate } from "./wifi-fit.js";
-import { contextFor, priorParams, predict } from "./wifi.js";
+import { calibrate, residualAt, calibratedCoverage, confidenceOf } from "./wifi-fit.js";
+import { contextFor, priorParams, predict, coverage, wallSegments } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -152,4 +152,120 @@ test("a fitted loss never goes below 0 and n stays within [1.5, 4]", () => {
   const fit = calibrate(ctxOf(doc), observe(doc, truth, inRow, "5"), table);
   assert.ok(fit.params.loss.brick["5"] >= 0, `brick ${fit.params.loss.brick["5"]}`);
   assert.ok(fit.params.n >= 1.5 && fit.params.n <= 4, `n ${fit.params.n}`);
+});
+
+// ---- residuals and confidence ----
+
+const res = (x, y, r, extra = {}) => ({ obs: { floorId: "f0", band: "5", x, y, ...extra }, r });
+
+test("residualAt: an observation 8 dB above its prediction (r = -8) pulls the value to -8, so the map rises", () => {
+  const rs = [res(5, 5, -8)];
+  near(residualAt(rs, [], [5.2, 5]), -8, 0.01);
+  near(residualAt(rs, [], [7.9, 5]), -8, 0.01, "the mean of one reading is the reading, anywhere in range");
+  assert.equal(residualAt(rs, [], [8.1, 5]), 0, "nothing beyond 3 m");
+  near(residualAt([res(5, 5, 8)], [], [5.2, 5]), 8, 0.01);
+});
+
+test("residualAt: inverse distance squared between two readings", () => {
+  const rs = [res(0, 0, 10), res(3, 0, -10)];
+  // at x = 1: weights 1 and 1/4 -> (10 - 2.5) / 1.25 = 6
+  near(residualAt(rs, [], [1, 0]), 6, 1e-9);
+});
+
+test("residualAt: a closed wall between halves the weight, an open opening does not count", () => {
+  const rs = [res(0, 0, 10), res(0, 2, -10)];                  // both 1 m from p = (0, 1)
+  const wall = { a: [-1, 0.5], b: [1, 0.5], material: "brick", open: false };  // between the first and p
+  near(residualAt(rs, [], [0, 1]), 0, 1e-9);
+  near(residualAt(rs, [wall], [0, 1]), (0.5 * 10 - 10) / 1.5, 1e-9);
+  near(residualAt(rs, [{ ...wall, open: true }], [0, 1]), 0, 1e-9);
+});
+
+test("calibratedCoverage: +8 dB reading raises the cell beside it by about 8, nothing at 3.1 m", () => {
+  const doc = openDoc();
+  const ctx = ctxOf(doc);
+  const base = coverage(ctx, "5", 1);
+  const at = (m, x, y) => m.cells.find((c) => c.x === x && c.y === y);
+  const obs = { floorId: "f0", x: 6.5, y: 4.5, band: "5", ap: "node", source: "device", device: "d", weight: 1,
+    dbm: predict(ctx, "node", "5", [6.5, 4.5]) + 8 };
+  // a fit that left exactly this residual: the priors, one reading
+  const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false },
+    residuals: [{ obs, r: -8, ap: "node" }] };
+  const m = calibratedCoverage(ctx, "5", 1, fit);
+  near(at(m, 6, 4).dbm - at(base, 6, 4).dbm, 8, 0.01);
+  near(at(m, 6, 4).second ?? 0, at(base, 6, 4).second ?? 0, 1e-9, "no second access point here");
+  assert.equal(at(m, 10, 4).dbm, at(base, 10, 4).dbm, "10.5 is 4 m from the reading");
+  const lower = calibratedCoverage(ctx, "5", 1, { ...fit, residuals: [{ obs, r: 8, ap: "node" }] });
+  near(at(lower, 6, 4).dbm - at(base, 6, 4).dbm, -8, 0.01);
+});
+
+test("calibratedCoverage: dbm and second move together", () => {
+  const doc = openDoc();
+  doc.floors[0].points.push(pt("far", 11, 7));
+  doc.floors[0].access_points.push(ap("far"));
+  const ctx = ctxOf(doc);
+  const obs = { floorId: "f0", x: 6.5, y: 4.5, band: "5", ap: "node", source: "device", device: "d", weight: 1, dbm: -40 };
+  const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false },
+    residuals: [{ obs, r: 5, ap: "node" }] };
+  const base = coverage(ctx, "5", 1).cells.find((c) => c.x === 6 && c.y === 4);
+  const cal = calibratedCoverage(ctx, "5", 1, fit).cells.find((c) => c.x === 6 && c.y === 4);
+  near(cal.dbm - cal.second, base.dbm - base.second, 1e-9);
+  near(base.dbm - cal.dbm, 5, 0.01);
+});
+
+test("confidence: high near a reading of the serving access point, medium over a fitted wall, else low", () => {
+  const doc = rowDoc();
+  const truth = clone(priors(doc));
+  truth.loss.brick["5"] = 12;
+  const obs = observe(doc, truth, inRow, "5");
+  const fit = calibrate(ctxOf(doc), obs, table);
+  const ctx = contextFor(doc, "f0", {}, table, fit.params);
+  const m = calibratedCoverage(ctx, "5", 1, fit);
+  const at = (x, y) => m.cells.find((c) => c.x === x && c.y === y);
+  assert.equal(at(1, 2).conf, "high");                         // beside readings, same room as the node
+  assert.equal(at(9, 1).conf, "high");
+  // drop the readings near the third room: its cells are only "medium", through the fitted brick
+  const far = obs.filter((o) => o.x < 6);
+  const m2 = calibratedCoverage(ctx, "5", 1, { ...fit, residuals: fit.residuals.filter((e) => far.includes(e.obs)) });
+  assert.equal(m2.cells.find((c) => c.x === 9 && c.y === 1).conf, "medium");
+  // nothing fitted, nothing near: low
+  const none = { ...fit, moved: { tx: false, loss: false, n: false }, params: fit.prior, residuals: [] };
+  assert.equal(calibratedCoverage(ctx, "5", 1, none).cells.find((c) => c.x === 9 && c.y === 1).conf, "low");
+});
+
+test("confidence: another band's or another access point's readings do not make it high", () => {
+  const doc = openDoc();
+  doc.floors[0].points.push(pt("far", 11, 7));
+  doc.floors[0].access_points.push(ap("far"));
+  const ctx = ctxOf(doc);
+  const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false }, residuals: [] };
+  const cell = { x: 1, y: 1, ap: "node", dbm: -50, second: null };
+  const o = (extra) => ({ floorId: "f0", x: 1.5, y: 1.5, band: "5", source: "device", dbm: -50, weight: 1, ...extra });
+  assert.equal(confidenceOf(cell, [o({ ap: "node" })], fit, ctx, "5", 1), "high");
+  assert.equal(confidenceOf(cell, [o({ ap: "node", band: "2.4" })], fit, ctx, "5", 1), "low");
+  assert.equal(confidenceOf(cell, [o({ ap: "far" })], fit, ctx, "5", 1), "low");
+  assert.equal(confidenceOf(cell, [o({ ap: "node", x: 4 })], fit, ctx, "5", 1), "low");
+  // ap: null counts as the access point the fit assigned
+  const unnamed = o({ ap: null });
+  assert.equal(confidenceOf(cell, [unnamed], { ...fit, residuals: [{ obs: unnamed, r: 0, ap: "node" }] }, ctx, "5", 1), "high");
+  assert.equal(confidenceOf(cell, [unnamed], fit, ctx, "5", 1), "low");
+  // a transmit power moved by more than 0.5 dB: medium
+  const tx = clone(fit.params);
+  tx.tx.node["5"] += 1;
+  assert.equal(confidenceOf(cell, [], { ...fit, params: tx }, ctx, "5", 1), "medium");
+});
+
+test("2000 observations and 200 m² on one band in under 300 ms", () => {
+  const doc = { schema: 1, floors: [{ floor_id: "f0", rooms: [room(0, 0, 20, 10, "alex")],
+    walls: [{ at: [10, 5], material: "brick" }],
+    points: [pt("node", 1, 1)], access_points: [ap("node")] }] };
+  const ctx = ctxOf(doc);
+  const residuals = Array.from({ length: 2000 }, (_, i) => ({ r: (i % 7) - 3, ap: "node",
+    obs: { floorId: "f0", band: "5", ap: "node", x: (i * 7.3) % 20, y: (i * 3.1) % 10 } }));
+  const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false }, residuals };
+  calibratedCoverage(ctx, "5", 0.5, fit);                      // warm up
+  const t = performance.now();
+  const m = calibratedCoverage(ctx, "5", 0.5, fit);
+  const ms = performance.now() - t;
+  assert.ok(m.cells.length >= 700);
+  assert.ok(ms < 300, `${ms} ms`);
 });
