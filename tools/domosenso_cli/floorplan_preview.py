@@ -83,6 +83,9 @@ class Preview:
         self.say, self.shown = say, shown
         self.key = secrets.token_urlsafe(24)
         self._lock = threading.Lock()
+        # One writer or reader of the plan file at a time: a write truncates first, so a read during it
+        # sees half a file, and two read-modify-writes would lose one.
+        self.file_lock = threading.RLock()
         self._seq = 0
         self._changed: dict[str, int] = {}   # entity id -> the seq of its last change: one entry each, never more
 
@@ -102,7 +105,8 @@ class Preview:
             return {"hass": self.hass, "entries": self.entries, "seq": self._seq}
 
     def _file(self) -> dict:
-        value = doc.read_json(self.plan_file)
+        with self.file_lock:
+            value = doc.read_json(self.plan_file)
         if value is None:
             raise DomosensoError(f"no plan in {self.shown}")
         doc.validate(value)
@@ -116,7 +120,8 @@ class Preview:
         if plan is None:
             raise DomosensoError("no plan in the saved config")
         doc.validate(plan)
-        doc.write_plan_file(self.plan_file, plan)
+        with self.file_lock:
+            doc.write_plan_file(self.plan_file, plan)
         self.say(("wrote", self.shown))
 
     def page(self) -> str:

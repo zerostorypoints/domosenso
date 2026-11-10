@@ -3,6 +3,7 @@ import asyncio
 import http.client
 import json
 import shutil
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -419,3 +420,58 @@ def test_command_fails_without_rendered_rules(home, capsys):
     (root / "home-assistant" / "www" / "domosenso" / "floorplan" / "0.1.0" / "cards" / "lib" / "wifi-rules.json").unlink()
     assert main(["--home", str(root), "floorplan", "survey", "production", "--no-open"]) == 1
     assert "FAIL no floorplan card rendered:" in capsys.readouterr().out
+
+
+# ---- fix round 1: the editor's save and the samples share the file ---------------------------
+
+def test_a_stale_save_keeps_the_samples(survey):
+    s, plan_file, lines, _ = survey
+    got = s.sample("ground", 1, 1, FIVE, None)
+    stale = json.loads(json.dumps(PLAN))  # the page's plan from before the sample
+    stale["floors"][0]["points"][0]["x"] = 2.5
+    stale["wifi"] = {"defaults": {"interior": "interior", "exterior": "exterior"}}
+    s.save(fd.dashboard_config(stale))
+    written = json.loads(plan_file.read_text())
+    assert written["wifi"]["samples"] == [got], "R17: the file's samples stay"
+    assert written["wifi"]["defaults"] == stale["wifi"]["defaults"] and written["floors"][0]["points"][0]["x"] == 2.5
+    assert written["source"] == SOURCE and lines[-1] == ("wrote", "domosenso/floorplan.json")
+
+
+def test_a_save_cannot_add_or_change_samples(survey):
+    s, plan_file, _, _ = survey
+    forged = {**PLAN, "wifi": {"samples": [{"floor_id": "ground", "x": 1, "y": 1, "band": "5", "dbm": -10}]}}
+    s.save(fd.dashboard_config(forged))
+    assert samples_of(plan_file) == [], "the file had none; the survey alone adds them"
+
+
+def test_a_save_waits_for_a_sample_being_written(survey):
+    s, plan_file, _, _ = survey
+    done = []
+    with s.file_lock:
+        t = threading.Thread(target=lambda: (s.save(fd.dashboard_config(PLAN)), done.append(1)))
+        t.start()
+        time.sleep(0.05)
+        assert done == [], "the save waits for the file lock"
+        s.sample("ground", 1, 1, FIVE, None)
+    t.join(5)
+    assert done == [1] and len(samples_of(plan_file)) == 1
+
+
+def test_a_reader_that_raises_keeps_the_loop_alive(survey, monkeypatch):
+    s, _, _, _ = survey
+    monkeypatch.setattr(fs, "INTERVAL_S", 0.01)
+    calls = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) <= 2:
+            raise RuntimeError("tool crashed")
+        return FIVE[0]
+
+    s.reader = flaky
+    s.start()
+    try:
+        time.sleep(0.1)
+        assert len(calls) > 2 and s.reading()["dbm"] == -58.0
+    finally:
+        s.stop()

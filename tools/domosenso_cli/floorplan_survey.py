@@ -108,7 +108,10 @@ class Survey(Preview):
         said = None
         while not self._stop.is_set():
             began = time.monotonic()
-            link = self.reader()
+            try:
+                link = self.reader()
+            except Exception:  # noqa: BLE001 - one failed read is a link down, not the end of the survey
+                link = None
             with self._cond:
                 self._last = link
                 self._tick += 1
@@ -126,7 +129,9 @@ class Survey(Preview):
     def take(self, floor_id: str | None, x: float, y: float) -> dict | None:
         """The next READINGS readings averaged into a sample at (x, y)."""
         with self._taking:
-            if self._skip_if_full(self._read_plan()):
+            with self.file_lock:
+                full = self._skip_if_full(self._read_plan())
+            if full:
                 return None
             with self._cond:
                 start = self._tick
@@ -166,6 +171,10 @@ class Survey(Preview):
         """Average `readings` into one sample, append it to the plan file's `wifi.samples` and write the
         file; None (and a `sample skipped` line) when it is not taken. `tracker` is the laptop's client
         tracker state, read at this sample's time."""
+        with self.file_lock:
+            return self._sample(floor_id, x, y, readings, tracker)
+
+    def _sample(self, floor_id, x, y, readings, tracker) -> dict | None:
         plan = self._read_plan()
         if self._skip_if_full(plan):
             return None
@@ -245,6 +254,23 @@ class Survey(Preview):
                             and norm_mac(((states.get(eid) or {}).get("attributes") or {}).get("mac")) == node):
                         return key
         return None
+
+    def save(self, config: dict) -> None:
+        """The editor's save keeps the file's samples (R17): a page loaded before a sample would drop it."""
+        plan = doc.extract(config)
+        if plan is None:
+            raise DomosensoError("no plan in the saved config")
+        with self.file_lock:
+            current = (self._read_plan().get("wifi") or {}).get("samples")
+            wifi = {k: v for k, v in (plan.get("wifi") or {}).items() if k != "samples"}
+            if current:
+                wifi["samples"] = current
+            plan = {k: v for k, v in plan.items() if k != "wifi"}
+            if wifi:
+                plan["wifi"] = wifi
+            doc.validate(plan)
+            doc.write_plan_file(self.plan_file, plan)
+        self.say(("wrote", self.shown))
 
     # ---- the page ----
 
