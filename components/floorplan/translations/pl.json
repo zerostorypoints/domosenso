@@ -33,7 +33,8 @@
         "join": "Połącz",
         "open": "Otwarte",
         "openings": "Drzwi i okna",
-        "walls": "Ściany"
+        "walls": "Ściany",
+        "reading": "Dodaj pomiar"
       },
       "hint": {
         "empty": "To piętro nie ma jeszcze pomieszczeń ani czujników.",
@@ -42,7 +43,8 @@
         "join": "Stuknij dwa sąsiednie pomieszczenia; pierwsze zachowuje swój obszar.",
         "open": "Stuknij dwa pomieszczenia otwarte na siebie, bez drzwi: ich mapy dzielą odczyty.",
         "openings": "Dotknij ściany, aby dodać drzwi; dotknij drzwi lub okna, aby je zmienić, i przeciągnij wzdłuż ściany.",
-        "walls": "Dotknij ściany, aby wybrać jej materiał. Poniżej: wysokość tego piętra i strop pod nim."
+        "walls": "Dotknij ściany, aby wybrać jej materiał. Poniżej: wysokość tego piętra i strop pod nim.",
+        "reading": "Dotknij miejsca, w którym skaner Wi-Fi telefonu zmierzył sygnał, a potem wpisz dBm, pasmo i punkt dostępu."
       },
       "area": {
         "label": "Obszar tego pomieszczenia",
@@ -185,6 +187,31 @@
         "interior": "Ściana wewnętrzna (typowa)",
         "exterior": "Ściana zewnętrzna (typowa)",
         "slab": "Strop (typowy)"
+      },
+      "reading": {
+        "dbm": "Sygnał (dBm)",
+        "band": "Pasmo",
+        "ap": "Punkt dostępu",
+        "unknown": "nieznany",
+        "add": "Dodaj pomiar"
+      },
+      "survey": {
+        "link": "{band} GHz · kanał {channel} · {dbm} dBm · szum {noise} dBm",
+        "link_no_noise": "{band} GHz · kanał {channel} · {dbm} dBm",
+        "no_link": "Brak połączenia Wi-Fi",
+        "here": "Jestem tutaj",
+        "pick": "Dotknij planu dokładnie tam, gdzie stoisz",
+        "recording": "Pomiar przez 10 s: stój nieruchomo",
+        "taken": "Pomiar: {dbm} dBm w paśmie {band} GHz",
+        "skipped": "Nie zapisano: {reason}",
+        "failed": "Pomiar nieudany: {error}",
+        "next": "Następne miejsca:",
+        "why": {
+          "far": "daleko od każdego pomiaru",
+          "handover": "strefa przełączania bez pomiaru",
+          "room": "pomieszczenie bez pomiaru"
+        },
+        "help": "Trzymaj laptopa na wysokości klatki piersiowej, z otwartą klapą, w domowej sieci. Zacznij przy punkcie dostępu i idź pokój po pokoju; zatrzymuj się mniej więcej co 2 m i w każdym przejściu. Na każdym postoju dotknij miejsca, w którym stoisz, naciśnij Jestem tutaj i stój nieruchomo 10 s."
       }
     }
   }

@@ -33,7 +33,8 @@
         "join": "Verbinden",
         "open": "Offen",
         "openings": "Türen & Fenster",
-        "walls": "Wände"
+        "walls": "Wände",
+        "reading": "Messwert erfassen"
       },
       "hint": {
         "empty": "Dieses Stockwerk hat noch keine Räume und keine Sensoren.",
@@ -42,7 +43,8 @@
         "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich.",
         "open": "Tippen Sie auf zwei Räume, die ohne Tür ineinander übergehen: ihre Wärmekarten teilen die Messwerte.",
         "openings": "Tippe auf eine Wand, um eine Tür hinzuzufügen; tippe auf eine Tür oder ein Fenster, um sie zu ändern, und ziehe sie an der Wand entlang.",
-        "walls": "Tippe auf eine Wand, um ihr Material zu wählen. Darunter: die Höhe dieses Stockwerks und die Decke darunter."
+        "walls": "Tippe auf eine Wand, um ihr Material zu wählen. Darunter: die Höhe dieses Stockwerks und die Decke darunter.",
+        "reading": "Tippe dort, wo der WLAN-Scanner eines Telefons das Signal gemessen hat, und gib dann dBm, Band und Zugangspunkt ein."
       },
       "area": {
         "label": "Bereich dieses Raums",
@@ -185,6 +187,31 @@
         "interior": "Innenwand (typisch)",
         "exterior": "Aussenwand (typisch)",
         "slab": "Geschossdecke (typisch)"
+      },
+      "reading": {
+        "dbm": "Signal (dBm)",
+        "band": "Band",
+        "ap": "Zugangspunkt",
+        "unknown": "unbekannt",
+        "add": "Messwert erfassen"
+      },
+      "survey": {
+        "link": "{band} GHz · Kanal {channel} · {dbm} dBm · Rauschen {noise} dBm",
+        "link_no_noise": "{band} GHz · Kanal {channel} · {dbm} dBm",
+        "no_link": "Keine WLAN-Verbindung",
+        "here": "Ich bin hier",
+        "pick": "Tippe im Plan genau dorthin, wo du stehst",
+        "recording": "Misst 10 s: stillstehen",
+        "taken": "Messung: {dbm} dBm auf {band} GHz",
+        "skipped": "Nicht erfasst: {reason}",
+        "failed": "Messung fehlgeschlagen: {error}",
+        "next": "Nächste Stellen:",
+        "why": {
+          "far": "weit weg von jeder Messung",
+          "handover": "Übergabezone ohne Messung",
+          "room": "Raum ohne Messung"
+        },
+        "help": "Halte den Laptop auf Brusthöhe, aufgeklappt, im eigenen Netz der Wohnung. Beginne bei einem Zugangspunkt und gehe Raum für Raum; halte etwa alle 2 m und in jeder Türöffnung an. Tippe bei jedem Halt dorthin, wo du stehst, drücke Ich bin hier und stehe 10 s still."
       }
     }
   }

@@ -156,6 +156,20 @@ export function deviceObservations(hass, doc, floorId, rules, values) {
   return out;
 }
 
+// ---- survey and manual samples (SPEC-044 S3) ----
+
+// The floor's `wifi.samples` as observations: weight 1, source "manual" for a typed reading and "survey" for
+// the laptop's (the fit gives each source its own offset, 0 ± 3 dB and 0 ± 5 dB), the access point or null.
+export function sampleObservations(doc, floorId) {
+  const out = [];
+  for (const s of doc?.wifi?.samples || []) {
+    if (s.floor_id !== floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y) || !Number.isFinite(s.dbm)) continue;
+    out.push({ floorId, x: s.x, y: s.y, band: s.band, ap: s.ap ?? null, dbm: s.dbm, weight: 1,
+      source: s.source === "manual" ? "manual" : "survey" });
+  }
+  return out;
+}
+
 // ---- disabled signal sources (SPEC-044 S2) ----
 
 // Registry entries (config/entity_registry/list, an admin call) of switched-off sensors the rules would

@@ -56,8 +56,8 @@ import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
-  setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi } from "./lib/wifi.js";
-import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities } from "./lib/wifi-sources.js";
+  setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, addReading, nextSpots } from "./lib/wifi.js";
+import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage } from "./lib/wifi-fit.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
@@ -89,6 +89,7 @@ const NARROW_PX = 600;             // a card narrower than this (a phone) predic
 const NARROW_STEP_M = 0.3;
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
+const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -133,6 +134,9 @@ const keyOf = (p) => p.device_id ?? p.entity_id;
 // Only a path on this Home Assistant or an http(s) URL is shown as a photo.
 const safePicture = (url) => typeof url === "string" && /^(\/(?!\/)|https?:\/\/)/.test(url);
 const fmt = (v) => String(Math.round(v * 1e6) / 1e6);
+const mm = (v) => Math.round(v * 1000) / 1000;
+// A dBm value as a label writes it: whole, with a true minus.
+const dbmText = (dbm) => { const v = Math.round(dbm); return `${v < 0 ? "\u2212" : ""}${Math.abs(v)}`; };
 
 class FloorplanCard extends HTMLElement {
   setConfig(config) {
@@ -180,6 +184,17 @@ class FloorplanCard extends HTMLElement {
     this._fitMemo = null;          // the last fit: {doc, states, digest, fit}
     this._disabled = null;         // edit mode: the plan's switched-off Wi-Fi signal sensors
     this._editSession = 0;
+    this._reading = null;          // reading tool: where the manual reading was taken
+    // `survey: true` is set by `domosenso floorplan survey`'s page alone: the radio layer, the Survey panel,
+    // the laptop's link from the page's own server. Its hass is the preview's read-only one.
+    if (this._config.survey && !Array.isArray(this._config.layers)) this._config.layers = ["radio"];
+    this._spot = null;             // survey: where the owner stands, tapped on the plan
+    this._link = undefined;        // survey: the last link read, null while there is none
+    this._taking = false;          // survey: a sample is being recorded
+    this._surveyNote = null;       // survey: {key, vars} of the last sample's outcome
+    this._spotsMemo = null;
+    this._stopPolling();
+    this._startPolling();
     if (this._hass) this._load();
   }
 
@@ -194,6 +209,36 @@ class FloorplanCard extends HTMLElement {
   connectedCallback() {
     this._onResize ??= () => this._fill();
     window.addEventListener("resize", this._onResize);
+    this._startPolling();
+  }
+
+  // The survey page's link, read every LINK_MS while the card is on the page.
+  _startPolling() {
+    if (!this._config?.survey || !this.isConnected || this._poll) return;
+    this._poll = setInterval(() => this._pollLink(), LINK_MS);
+    this._pollLink();
+  }
+
+  _stopPolling() {
+    if (this._poll) clearInterval(this._poll);
+    this._poll = null;
+  }
+
+  // The page's server answers {link: {band, channel, dbm, noise, bssid} | null}; a failed read is no link.
+  // Same origin, so the request carries the page's key cookie as its own reads do.
+  async _pollLink() {
+    let link = null;
+    try {
+      const r = await fetch("survey/link");
+      link = r.ok ? (await r.json())?.link ?? null : null;
+    } catch {
+      link = null;
+    }
+    this._link = link;
+    // The link line alone: the panel's buttons stay under a finger about to press them.
+    const line = this.shadowRoot?.querySelector(".survey-link");
+    if (line) line.textContent = this._linkText();
+    else this._drawSurvey();
   }
 
   // The plan's size changed (the card was shown, `fill` grew it, the window turned): readings and
@@ -210,6 +255,7 @@ class FloorplanCard extends HTMLElement {
     // The element may be kept and shown again (the Ramka hides its plan): a tooltip a tap pinned
     // would come back over a plan the person has not touched since.
     if (this._pinned) this._unpinTip();
+    this._stopPolling();
   }
 
   // `fill`: as tall as the screen below the card's top; true when the height changed.
@@ -353,7 +399,7 @@ class FloorplanCard extends HTMLElement {
   }
 
   // Every floor's device observations (the fit is home-wide), from the 24-hour means of their signal
-  // sensors (a sensor without statistics gives its state), and a digest of what the fit reads: the
+  // sensors (a sensor without statistics gives its state), with the plan's survey and manual samples, and a digest of what the fit reads: the
   // readings to OBS_DB, their places, access points and bands. Worked out again when the plan, a state
   // or the statistics change; the fit only when the digest does.
   _observations() {
@@ -365,8 +411,9 @@ class FloorplanCard extends HTMLElement {
       const mean = figure(this._stats?.[id], "mean");
       if (mean !== undefined) values[id] = mean;
     }
-    const list = this._doc.floors.flatMap((f) => deviceObservations(h, this._doc, f.floor_id, wifiRules, values));
-    const digest = list.map((o) => [o.entity, o.floorId, o.x, o.y, o.ap, o.band, Math.round(o.dbm / OBS_DB) * OBS_DB].join("|")).join(";");
+    const list = this._doc.floors.flatMap((f) => [...deviceObservations(h, this._doc, f.floor_id, wifiRules, values),
+      ...sampleObservations(this._doc, f.floor_id)]);
+    const digest = list.map((o) => [o.entity ?? o.source, o.floorId, o.x, o.y, o.ap, o.band, Math.round(o.dbm / OBS_DB) * OBS_DB].join("|")).join(";");
     this._obsMemo = { from, list, digest };
     return this._obsMemo;
   }
@@ -570,6 +617,7 @@ ${STYLE}
       <ha-card>
         <div class="layers"></div>
         <div class="bar"></div>
+        <div class="survey"></div>
         <div class="area-panel"></div>
         <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div></div>
         <div class="hint"></div>
@@ -614,7 +662,7 @@ ${STYLE}
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
     $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml()
-      || this._wallPanelHtml() || this._offerHtml() + this._disabledHtml() : "";
+      || this._readingPanelHtml() || this._wallPanelHtml() || this._offerHtml() + this._disabledHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
     const floor = this._floor;
     const empty = ready && floor && !floor.rooms.length && !floor.points.length;
@@ -627,6 +675,7 @@ ${STYLE}
       : this._message ? esc(t(h, this._message.key, this._message.vars)) : "";
     this._svg.style.display = ready ? "" : "none";
     this._drawSvg(editing);
+    this._drawSurvey();
     this._stamp = this._valueStamp();
     this._announce();
   }
@@ -652,7 +701,8 @@ ${STYLE}
       html += `<select class="floor" aria-label="${esc(t(h, "card.floorplan.floor"))}">${this._doc.floors.map((f) =>
         `<option value="${esc(f.floor_id)}" ${f.floor_id === this._floorId ? "selected" : ""}>${esc(name(f.floor_id))}</option>`).join("")}</select>`;
     }
-    for (const tool of ["move", "split", "join", "open", "openings", ...(this._wifiOn ? ["walls"] : [])]) {
+    const wifiTools = this._wifiOn ? ["walls", ...(offeredBands(this._doc).length ? ["reading"] : [])] : [];
+    for (const tool of ["move", "split", "join", "open", "openings", ...wifiTools]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
@@ -858,6 +908,21 @@ ${STYLE}
       + ` placeholder="${MOUNT_M}" value="${esc(String(ap.mount ?? ""))}">`;
   }
 
+  // The reading tool, once a spot is tapped: the reading's dBm, its band (one some access point serves) and
+  // the access point it was on, or unknown.
+  _readingPanelHtml() {
+    if (this._tool !== "reading" || !this._wifiOn || !this._reading) return "";
+    const h = this._hass;
+    const label = (key) => `<label>${esc(t(h, `card.floorplan.reading.${key}`))}</label>`;
+    const opt = (value, text) => `<option value="${esc(value)}">${esc(text)}</option>`;
+    const bands = offeredBands(this._doc).map((b) => opt(b, t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) })));
+    const aps = accessPoints(this._doc).map((ap) => opt(ap.key, pointName(h, this._apPoint(ap.key) ?? { device_id: ap.key })));
+    return `<div class="reading-panel">${label("dbm")}<input type="number" class="reading-field" data-field="dbm" min="-110" max="0" step="1">`
+      + `${label("band")}<select class="reading-field" data-field="band">${bands.join("")}</select>`
+      + `${label("ap")}<select class="reading-field" data-field="ap">${opt("", t(h, "card.floorplan.reading.unknown"))}${aps.join("")}</select>`
+      + `<button data-action="add_reading" class="primary">${esc(t(h, "card.floorplan.reading.add"))}</button></div>`;
+  }
+
   // The walls tool: the selected wall's material and the buttons that make it the interior or
   // exterior default, then this floor's height and the floor under it.
   _wallPanelHtml() {
@@ -989,6 +1054,7 @@ ${STYLE}
     }
     this._drawOpenings(svg, floor, px, editing);
     if (editing && this._tool === "walls" && this._wall) this._drawWall(svg, px);
+    this._drawSamples(svg, px, editing, map);
     // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
     // readings keep clear of them; in view mode the readings are laid out first and a name they
     // would cover moves to a free corner of its room (placeNames, after the layout below).
@@ -1085,6 +1151,122 @@ ${STYLE}
       el("circle", { class: "shape", r: 7 * px }, g);
       el("text", { y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
     }
+  }
+
+  // Survey and manual samples, a small dot with its dBm: on the Confidence map, in edit mode and on the
+  // survey page. On the survey page also the next spots and the spot tapped; the reading tool's spot.
+  _drawSamples(svg, px, editing, map) {
+    if (!this._wifiOn) return;
+    const survey = this._config.survey && !editing;
+    if (editing || survey || map?.cls === "confidence") {
+      const g = el("g", {}, svg);
+      for (const s of this._doc.wifi?.samples || []) {
+        if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        const dot = el("g", { class: "sample", "data-source": s.source ?? "survey", transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
+        el("circle", { r: fmt(3 * px) }, dot);
+        el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "dominant-baseline": "central" }, dot)
+          .textContent = dbmText(s.dbm);
+      }
+    }
+    if (survey) {
+      this._nextSpots().forEach((spot, i) => {
+        el("circle", { class: "next-spot", cx: fmt(spot.x), cy: fmt(spot.y), r: fmt(10 * px), "data-why": spot.why }, svg);
+        el("text", { class: "next-spot-label", x: fmt(spot.x), y: fmt(spot.y), "font-size": fmt(11 * px), "dominant-baseline": "central" }, svg)
+          .textContent = String(i + 1);
+      });
+      if (this._spot) el("circle", { class: "survey-spot", cx: fmt(this._spot[0]), cy: fmt(this._spot[1]), r: fmt(7 * px) }, svg);
+    }
+    if (editing && this._tool === "reading" && this._reading) {
+      el("circle", { class: "reading-spot", cx: fmt(this._reading[0]), cy: fmt(this._reading[1]), r: fmt(7 * px) }, svg);
+    }
+  }
+
+  // The survey's next spots on the floor and band shown (the map's cells, calibrated where it is), worked
+  // out again when the map or the readings change.
+  _nextSpots() {
+    const map = this._map();
+    if (!map?.band || !map.cls) return [];
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    const { key, cells } = this._wifi(map.band, step, map.calibrated);
+    const { list, digest } = this._observations();
+    const memo = `${key}|${digest}`;
+    if (this._spotsMemo?.key !== memo) {
+      const obs = list.filter((o) => o.floorId === this._floorId && o.band === map.band);
+      const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId)?.rooms ?? [];
+      const centred = cells.map((c) => ({ ...c, x: c.x + step / 2, y: c.y + step / 2 }));
+      this._spotsMemo = { key: memo, spots: nextSpots(centred, obs, rooms) };
+    }
+    return this._spotsMemo.spots;
+  }
+
+  // The Survey panel (survey page, view mode): the live link, I'm here, the last sample's outcome, the next
+  // spots and how to walk.
+  _drawSurvey() {
+    const box = this.shadowRoot?.querySelector(".survey");
+    if (!box) return;
+    if (!this._config.survey || this._status !== "ready" || this._mode === "edit") {
+      box.innerHTML = "";
+      return;
+    }
+    const h = this._hass;
+    const note = this._surveyNote && t(h, this._surveyNote.key, this._surveyNote.vars);
+    const spots = this._nextSpots();
+    box.innerHTML = `<div class="survey-link">${esc(this._linkText())}</div>`
+      + `<div class="survey-actions"><button data-action="survey_here" class="primary" ${this._spot && !this._taking ? "" : "disabled"}>`
+      + `${esc(t(h, "card.floorplan.survey.here"))}</button>`
+      + (this._taking ? `<span class="survey-progress"><span></span></span><span>${esc(t(h, "card.floorplan.survey.recording"))}</span>`
+        : !this._spot ? `<span>${esc(t(h, "card.floorplan.survey.pick"))}</span>` : "")
+      + (note && !this._taking ? `<span class="survey-note">${esc(note)}</span>` : "") + "</div>"
+      + (spots.length ? `<div class="survey-next"><span>${esc(t(h, "card.floorplan.survey.next"))}</span><ol>${spots.map((s) =>
+        `<li>${esc(t(h, `card.floorplan.survey.why.${s.why}`))}</li>`).join("")}</ol></div>` : "")
+      + `<p class="survey-help">${esc(t(h, "card.floorplan.survey.help"))}</p>`;
+  }
+
+  _linkText() {
+    const h = this._hass;
+    const l = this._link;
+    if (!l) return t(h, "card.floorplan.survey.no_link");
+    const vars = { band: this._bandNumber(String(l.band)), channel: l.channel, dbm: dbmText(l.dbm) };
+    return Number.isFinite(l.noise) ? t(h, "card.floorplan.survey.link", { ...vars, noise: dbmText(l.noise) })
+      : t(h, "card.floorplan.survey.link_no_noise", vars);
+  }
+
+  // I'm here: the page's server records the next 5 readings (about 10 s) at the tapped spot and writes the
+  // sample to the plan file; the card adds it to the plan as read, so a later save keeps it.
+  async _takeSample() {
+    if (!this._spot || this._taking) return;
+    const [x, y] = this._spot.map(mm);
+    this._taking = true;
+    this._surveyNote = null;
+    this._drawSurvey();
+    let note;
+    try {
+      const r = await fetch("survey/sample", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ floor_id: this._floorId, x, y }) });
+      if (!r.ok) note = { key: "card.floorplan.survey.failed", vars: { error: await r.text() } };
+      else {
+        const got = await r.json();
+        if (got?.sample) {
+          this._addSample(got.sample);
+          this._spot = null;
+          note = { key: "card.floorplan.survey.taken", vars: { dbm: dbmText(got.sample.dbm), band: this._bandNumber(String(got.sample.band)) } };
+        } else note = { key: "card.floorplan.survey.skipped", vars: { reason: got?.skipped ?? "" } };
+      }
+    } catch (err) {
+      note = { key: "card.floorplan.survey.failed", vars: { error: err?.message || String(err) } };
+    }
+    this._taking = false;
+    this._surveyNote = note;
+    this._render();
+  }
+
+  // A sample the server wrote: in the plan as read, as edited and as Cancel returns to.
+  _addSample(sample) {
+    const add = (doc) => doc && { ...doc, wifi: { ...doc.wifi, samples: [...(doc.wifi?.samples || []), sample] } };
+    const clean = this._doc === this._base;
+    this._loaded = add(this._loaded);
+    this._base = add(this._base);
+    this._doc = clean ? this._base : add(this._doc);
   }
 
   // The floor as drawn: a sensor linked to an opening stands on it (SPEC-028 Amendment 9).
@@ -1438,7 +1620,7 @@ ${STYLE}
         ids.push(...Object.values(this._readings(p)));
         if (p.device_id && this._lamps.has(p.device_id)) ids.push(this._lamps.get(p.device_id));
       }
-      if (map.layer === "radio") ids.push(...this._observations().list.map((o) => o.entity));
+      if (map.layer === "radio") ids.push(...this._observations().list.filter((o) => o.entity).map((o) => o.entity));
     }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
@@ -1468,6 +1650,15 @@ ${STYLE}
     else if (action === "edit") this._enterEdit();
     else if (action === "cancel") this._leaveEdit(this._base);
     else if (action === "save") return void this._save();
+    else if (action === "survey_here") return void this._takeSample();
+    else if (action === "add_reading") {
+      const panel = this.shadowRoot.querySelector(".reading-panel");
+      const value = (name) => panel?.querySelector(`[data-field="${name}"]`)?.value ?? "";
+      const raw = value("dbm").trim();
+      const next = this._reading && addReading(this._doc, this._floorId,
+        { x: mm(this._reading[0]), y: mm(this._reading[1]), band: value("band"), dbm: raw === "" ? NaN : Number(raw), ap: value("ap") || null });
+      if (this._edit(next)) this._reading = null;
+    }
     else if (action === "tool") {
       this._tool = button.getAttribute("data-tool");
       this._resetPicks();
@@ -1613,6 +1804,7 @@ ${STYLE}
     this._pendingSplit = null;
     this._opening = null;
     this._wall = null;
+    this._reading = null;
   }
 
   // Apply a refusable edit: a refused one leaves the plan as it was and says so.
@@ -1949,6 +2141,12 @@ ${STYLE}
       // A tap selects it (on the pointerdown); a drag has slid it along the walls.
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.
+    } else if (d.kind === "pan" && !d.moved && this._mode !== "edit" && this._config.survey) {
+      // The survey page: a tap inside a room is where the owner stands.
+      const pt = this._at(e);
+      if (!this._floor?.rooms.some((r) => pointInPolygon(pt, r.polygon))) return;
+      this._spot = pt;
+      this._surveyNote = null;
     } else if (d.kind === "pan" && !d.moved && this._mode !== "edit") {
       // A finger's tap on a marker shows its tooltip until the next tap elsewhere; that tap only
       // closes it (it opens no room).
@@ -1999,6 +2197,8 @@ ${STYLE}
         this._edit(next);
         this._opening = this._floor.openings.length - 1;
       } else this._opening = null;
+    } else if (this._tool === "reading") {
+      this._reading = this._floor.rooms.some((r) => pointInPolygon(pt, r.polygon)) ? pt : null;
     } else if (this._tool === "walls") {
       this._wall = wallSegmentAt(this._floor, this._doc.wifi, pt, PICK_PX * this._px())?.at ?? null;
     } else if (this._tool === "split") {

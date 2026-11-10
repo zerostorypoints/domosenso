@@ -256,12 +256,19 @@ class Survey(Preview):
         return None
 
     def save(self, config: dict) -> None:
-        """The editor's save keeps the file's samples (R17): a page loaded before a sample would drop it."""
+        """The editor's save keeps the file's samples (R17): a page loaded before a sample would drop it.
+        Of the page's samples only manual readings it added (Add reading) are appended, once each; a survey
+        sample comes from `sample` alone."""
         plan = doc.extract(config)
         if plan is None:
             raise DomosensoError("no plan in the saved config")
         with self.file_lock:
-            current = (self._read_plan().get("wifi") or {}).get("samples")
+            current = list((self._read_plan().get("wifi") or {}).get("samples") or [])
+            known = {_sample_key(x) for x in current if isinstance(x, dict)}
+            for got in (plan.get("wifi") or {}).get("samples") or []:
+                if isinstance(got, dict) and got.get("source") == "manual" and _sample_key(got) not in known:
+                    current.append(got)
+                    known.add(_sample_key(got))
             wifi = {k: v for k, v in (plan.get("wifi") or {}).items() if k != "samples"}
             if current:
                 wifi["samples"] = current
@@ -296,6 +303,11 @@ class Survey(Preview):
                 return 400, str(exc)
             return 200, {"sample": got} if got is not None else {"sample": None, "skipped": self._why.reason}
         return None
+
+
+def _sample_key(sample: dict) -> str:
+    """What makes two samples the same reading."""
+    return json.dumps([sample.get(k) for k in ("floor_id", "x", "y", "t", "band", "dbm")])
 
 
 def _valid_tap(value: Any) -> bool:

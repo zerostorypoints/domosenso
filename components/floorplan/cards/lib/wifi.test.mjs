@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
-  wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi } from "./wifi.js";
+  wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi,
+  addReading, nextSpots } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
+import { widestRow } from "./geometry.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 const two = () => ({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: sq(3, 0, 3, 3) }] });
@@ -359,4 +361,80 @@ test("setFloorWifi sets height and slab within range; defaults remove them", () 
   assert.ok(!("height" in fl(setFloorWifi(a, "ground", { height: "" }))));
   assert.equal(setFloorWifi(doc, "ground", { height: 12 }), null);
   assert.equal(setFloorWifi(doc, "ground", { slab: "brick" }), null);
+});
+
+// ---- manual readings and the survey's next spots (SPEC-044 S3) ----
+
+test("addReading adds a manual sample at the tap, in UTC; refuses what the plan would not hold", () => {
+  const doc = groundOf({ ...two(), points: [pt("d_node", 1, 1)], access_points: [{ device_id: "d_node", bands: ["2.4", "5"] }] });
+  const now = new Date("2026-11-11T19:30:12.345+01:00");
+  const a = addReading(doc, "ground", { x: 1.23456, y: 2, band: "5", dbm: -61, ap: "d_node" }, now);
+  assert.deepEqual(a.wifi.samples, [{ floor_id: "ground", x: 1.235, y: 2, t: "2026-11-11T18:30:12Z", band: "5", dbm: -61,
+    ap: "d_node", source: "manual" }]);
+  assert.deepEqual(doc.wifi, undefined, "the plan given is not changed");
+  const b = addReading(a, "ground", { x: 4, y: 1, band: "2.4", dbm: -70, ap: null }, now);
+  assert.equal(b.wifi.samples.length, 2);
+  assert.ok(!("ap" in b.wifi.samples[1]), "unknown access point: no ap");
+  const kept = addReading({ ...doc, wifi: { defaults: { interior: "brick" } } }, "ground", { x: 1, y: 1, band: "5", dbm: -50 }, now);
+  assert.deepEqual(kept.wifi.defaults, { interior: "brick" }, "the defaults stay");
+  assert.ok(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(addReading(doc, "ground", { x: 1, y: 1, band: "5", dbm: -50 }).wifi.samples[0].t));
+  for (const [why, r] of [
+    ["dBm above 0", { x: 1, y: 1, band: "5", dbm: 1 }],
+    ["dBm below -110", { x: 1, y: 1, band: "5", dbm: -111 }],
+    ["dBm not a number", { x: 1, y: 1, band: "5", dbm: Number.NaN }],
+    ["a band no access point serves", { x: 1, y: 1, band: "6", dbm: -50 }],
+    ["an unknown band", { x: 1, y: 1, band: "60", dbm: -50 }],
+    ["not an access point", { x: 1, y: 1, band: "5", dbm: -50, ap: "d_other" }],
+    ["no position", { x: null, y: 1, band: "5", dbm: -50 }],
+  ]) assert.equal(addReading(doc, "ground", r, now), null, why);
+  assert.equal(addReading(doc, "upstairs", { x: 1, y: 1, band: "5", dbm: -50 }, now), null, "not a floor of the plan");
+  assert.equal(addReading(groundOf(two()), "ground", { x: 1, y: 1, band: "5", dbm: -50 }, now), null, "no access point at all");
+  const full = { ...doc, wifi: { samples: Array.from({ length: 2000 }, () => ({ floor_id: "ground", x: 1, y: 1, band: "5", dbm: -50 })) } };
+  assert.equal(addReading(full, "ground", { x: 1, y: 1, band: "5", dbm: -50 }, now), null, "at most 2000 samples");
+  assert.deepEqual(addReading(doc, "ground", { x: 0, y: 0, band: "5", dbm: 0 }, now).wifi.samples[0].dbm, 0, "0 dBm is in range");
+});
+
+// Cells as coverage() gives them with x, y their centres: a 1 m grid over a 6 x 3 room pair.
+const gridCells = (apAt = () => "a", second = () => null) => {
+  const out = [];
+  for (let x = 0.5; x < 6; x += 1) for (let y = 0.5; y < 3; y += 1) out.push({ x, y, room: x < 3 ? 0 : 1, dbm: -50, ap: apAt(x, y), second: second(x, y) });
+  return out;
+};
+const obsAt = (x, y, ap = "a") => ({ floorId: "ground", x, y, band: "5", ap, dbm: -50, weight: 1, source: "survey" });
+
+test("nextSpots: the cells farthest from a reading of their serving access point first, at most n, apart from each other", () => {
+  const spots = nextSpots(gridCells(), [obsAt(0.5, 0.5)], two().rooms);
+  assert.equal(spots.length, 3);
+  assert.deepEqual(spots[0], { x: 5.5, y: 2.5, why: "far" }, "the far corner");
+  assert.ok(spots.every((s) => s.why === "far"));
+  for (const s of spots) for (const o of spots) if (s !== o) assert.ok(Math.hypot(s.x - o.x, s.y - o.y) >= 2, JSON.stringify(spots));
+  assert.equal(nextSpots(gridCells(), [obsAt(0.5, 0.5)], two().rooms, 1).length, 1);
+  assert.deepEqual(nextSpots(gridCells(), [obsAt(0.5, 0.5)], two().rooms), spots, "deterministic");
+  // A reading of another access point does not count for cells served by "a".
+  const other = nextSpots(gridCells(), [obsAt(5.5, 2.5, "b")], two().rooms, 1);
+  assert.deepEqual(other[0], { x: 0.5, y: 0.5, why: "far" }, "nothing of a's: every cell as far, ties by x then y");
+  // A reading without an access point counts for the one serving where it was taken.
+  const unknown = nextSpots(gridCells(), [obsAt(5.5, 2.5, null)], two().rooms, 1);
+  assert.deepEqual(unknown[0], { x: 0.5, y: 0.5, why: "far" });
+  const placed = nextSpots(gridCells(), [obsAt(0.5, 0.5, null)], two().rooms, 1);
+  assert.deepEqual(placed[0], { x: 5.5, y: 2.5, why: "far" });
+});
+
+test("nextSpots: then handover cells without a reading within 1 m, then rooms without any; a cell within 2 m is no far spot", () => {
+  // A 3 m room and a 1 m one; the column at x = 2.5 is a handover zone.
+  const rooms = [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: sq(3, 0, 1, 3) }];
+  const cells = gridCells(() => "a", (x) => (x === 2.5 ? -52 : null)).filter((c) => c.x < 4);
+  // Every cell within 2 m of a reading; all readings in the first room; the zone's ends 1.1 m from one.
+  const obs = [obsAt(1.4, 0.5), obsAt(1.4, 2.5), obsAt(2.9, 1.5)];
+  const spots = nextSpots(cells, obs, rooms, 5);
+  const middle = widestRow(rooms[1].polygon);
+  assert.deepEqual(spots, [{ x: 2.5, y: 0.5, why: "handover" }, { x: 2.5, y: 2.5, why: "handover" },
+    { x: middle.x, y: middle.y, why: "room" }]);
+  assert.deepEqual(nextSpots(cells, obs, rooms, 2).map((s) => s.why), ["handover", "handover"], "at most n");
+  // Without the reading at the top left, that corner is far: it comes first.
+  const fewer = nextSpots(cells, [obsAt(1.4, 0.5), obsAt(2.9, 1.5)], rooms, 5);
+  assert.deepEqual(fewer[0], { x: 0.5, y: 2.5, why: "far" });
+  assert.deepEqual(fewer.slice(1).map((s) => s.why), ["handover", "handover", "room"]);
+  assert.deepEqual(nextSpots([], [], rooms), [{ ...widestRow(rooms[0].polygon), why: "room" }, { ...widestRow(rooms[1].polygon), why: "room" }]
+    .map(({ x, y, why }) => ({ x, y, why })), "no cells: the rooms");
 });

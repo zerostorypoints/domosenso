@@ -33,7 +33,8 @@
         "join": "Join",
         "open": "Open",
         "openings": "Doors & windows",
-        "walls": "Walls"
+        "walls": "Walls",
+        "reading": "Add reading"
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
@@ -42,7 +43,8 @@
         "join": "Tap two neighbouring rooms; the first keeps its area.",
         "open": "Tap two rooms open to each other without a door: their heat maps share readings.",
         "openings": "Tap a wall to add a door; tap a door or window to change it, drag it along the walls.",
-        "walls": "Tap a wall to set its material. Below: this floor's height and the floor under it."
+        "walls": "Tap a wall to set its material. Below: this floor's height and the floor under it.",
+        "reading": "Tap where a phone's Wi-Fi scanner read the signal, then enter its dBm, band and access point."
       },
       "area": {
         "label": "Area of this room",
@@ -185,6 +187,31 @@
         "interior": "Interior wall (typical)",
         "exterior": "Exterior wall (typical)",
         "slab": "Floor slab (typical)"
+      },
+      "reading": {
+        "dbm": "Signal (dBm)",
+        "band": "Band",
+        "ap": "Access point",
+        "unknown": "unknown",
+        "add": "Add reading"
+      },
+      "survey": {
+        "link": "{band} GHz · channel {channel} · {dbm} dBm · noise {noise} dBm",
+        "link_no_noise": "{band} GHz · channel {channel} · {dbm} dBm",
+        "no_link": "No Wi-Fi link",
+        "here": "I'm here",
+        "pick": "Tap the plan exactly where you stand",
+        "recording": "Recording for 10 s: stand still",
+        "taken": "Sample: {dbm} dBm on {band} GHz",
+        "skipped": "Not recorded: {reason}",
+        "failed": "Sample failed: {error}",
+        "next": "Next spots:",
+        "why": {
+          "far": "far from any reading",
+          "handover": "handover zone without a reading",
+          "room": "room without a reading"
+        },
+        "help": "Hold the laptop at chest height, lid open, on the home's own network. Start at an access point and walk room by room; stop about every 2 m and in every doorway. At each stop tap where you stand, press I'm here and stand still for 10 s."
       }
     }
   }

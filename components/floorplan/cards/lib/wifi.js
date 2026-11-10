@@ -3,7 +3,7 @@
 
 import materials from "./materials.json" with { type: "json" };
 import { facingWalls, editFloor } from "./plan.js";
-import { pointInPolygon } from "./geometry.js";
+import { pointInPolygon, widestRow } from "./geometry.js";
 import { openingShape, openingState, kindOf, SHARED_M } from "./openings.js";
 
 export const BANDS = ["2.4", "5", "6"];
@@ -430,4 +430,66 @@ export function setFloorWifi(doc, floorId, patch) {
     }
     return next;
   });
+}
+
+// ---- manual readings (SPEC-044 edit mode: Add reading) ----
+
+const DBM_RANGE = [-110, 0];
+const MAX_SAMPLES = 2000;
+
+// A reading from a phone's Wi-Fi scanner at (x, y) of the floor: a sample with `source: "manual"`, its time
+// `now` in UTC to the second. `band` one some access point of the plan serves; `ap` an access point serving
+// it, or empty for unknown; `dbm` -110 to 0. Null when refused, as the other editors.
+export function addReading(doc, floorId, { x, y, band, dbm, ap }, now = new Date()) {
+  if (!(doc.floors || []).some((f) => f.floor_id === floorId)) return null;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  if (!Number.isFinite(dbm) || dbm < DBM_RANGE[0] || dbm > DBM_RANGE[1]) return null;
+  const aps = (doc.floors || []).flatMap((f) => f.access_points || []);
+  if (!BANDS.includes(band) || !aps.some((a) => (a.bands ?? BANDS).includes(band))) return null;
+  if (!empty(ap) && !aps.some((a) => apKeyOf(a) === ap && (a.bands ?? BANDS).includes(band))) return null;
+  const samples = doc.wifi?.samples || [];
+  if (samples.length >= MAX_SAMPLES) return null;
+  const t = `${now.toISOString().slice(0, 19)}Z`;
+  const sample = { floor_id: floorId, x: mm(x), y: mm(y), t, band, dbm, ...(empty(ap) ? {} : { ap }), source: "manual" };
+  return { ...doc, wifi: { ...doc.wifi, samples: [...samples, sample] } };
+}
+
+// ---- the survey's next spots (SPEC-044 S3) ----
+
+const FAR_M = 2;                       // m: a cell nearer a reading of its access point is covered (high confidence)
+const SAMPLED_M = 1;                   // m: a handover cell with a reading this near has been sampled
+const APART_M = 2;                     // m: two suggested spots are at least this far apart
+
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const byXY = (a, b) => a.x - b.x || a.y - b.y;
+
+// Where to stand next: `cells` one floor's and band's (coverage(), x and y their centres), `observations`
+// that floor's and band's, `rooms` the floor's. First the cells farthest from any reading of their serving
+// access point (a reading without one counts for the access point serving its spot), beyond 2 m; then the
+// handover cells without a reading within 1 m; then the rooms without any reading, at their middle. A cell
+// within 2 m of a spot already chosen is passed over. At most n, ties by x, then y.
+export function nextSpots(cells, observations, rooms, n = 3) {
+  const nearest = (o) => {
+    let best = null;
+    for (const c of cells) if (!best || dist(c, o) < dist(best, o)) best = c;
+    return best?.ap ?? null;
+  };
+  const obs = (observations ?? []).map((o) => ({ x: o.x, y: o.y, ap: o.ap ?? nearest(o) }));
+  const out = [];
+  const take = (c, why, apart = true) => {
+    if (out.length >= n || (apart && out.some((s) => dist(s, c) < APART_M))) return;
+    out.push({ x: c.x, y: c.y, why });
+  };
+  const far = cells.map((c) => ({ c, d: Math.min(Infinity, ...obs.filter((o) => o.ap === c.ap).map((o) => dist(o, c))) }))
+    .filter((e) => e.d > FAR_M)
+    .sort((a, b) => b.d - a.d || byXY(a.c, b.c));
+  for (const { c } of far) take(c, "far");
+  const open = cells.filter((c) => isHandover(c) && !obs.some((o) => dist(o, c) < SAMPLED_M)).sort(byXY);
+  for (const c of open) take(c, "handover");
+  for (const room of rooms ?? []) {
+    if (obs.some((o) => pointInPolygon([o.x, o.y], room.polygon))) continue;
+    const { x, y } = widestRow(room.polygon);
+    take({ x, y }, "room", false);
+  }
+  return out;
 }

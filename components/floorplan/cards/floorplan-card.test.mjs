@@ -2103,3 +2103,185 @@ test("disabled sources: view mode and a non-admin (the kiosk user) never read th
   }
   window.localStorage.clear();
 });
+
+// ---- survey panel, next spots and manual readings (SPEC-044 S3) --------------------------------
+
+// The survey page's server: `routes` answers a path with a value (as JSON), or {status, text} for an error.
+function surveyFetch(routes) {
+  const calls = [];
+  const saved = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    const call = { url: String(url), method: options.method ?? "GET", body: options.body ? JSON.parse(options.body) : null };
+    calls.push(call);
+    const answer = await routes[call.url]?.(call);
+    const failed = answer && typeof answer.status === "number";
+    return { ok: !failed, status: failed ? answer.status : 200, json: async () => answer, text: async () => (failed ? answer.text : "") };
+  };
+  return { calls, restore: () => { globalThis.fetch = saved; } };
+}
+const LINK = { band: "5", channel: 36, dbm: -58.2, noise: -92, bssid: null };
+const SAMPLE = { floor_id: "ground", x: 2, y: 1, t: "2026-11-11T19:30:00Z", band: "5", channel: 36, dbm: -58.2, noise: -92, source: "survey" };
+const MANUAL = { floor_id: "ground", x: 3, y: 3, t: "2026-11-11T19:31:00Z", band: "2.4", dbm: -63, source: "manual" };
+const sampleDots = (card) => [...card.shadowRoot.querySelectorAll("g.sample")];
+
+test("survey: the panel shows the laptop's live link from /survey/link every 2 s; without one it says so", async () => {
+  window.localStorage.clear();
+  let link = LINK;
+  const f = surveyFetch({ "survey/link": () => ({ link }) });
+  const every = [];
+  const setI = globalThis.setInterval;
+  globalThis.setInterval = (fn, ms) => (every.push(ms), setI(fn, ms));
+  try {
+    const card = await make({ plan: wifiPlan(), survey: true }, wifiHass());
+    await settle();
+    await settle();
+    assert.deepEqual(every, [2000], "one poll, every 2 s");
+    assert.ok(f.calls.some((c) => c.url === "survey/link" && c.method === "GET"));
+    const text = $(card, ".survey .survey-link").textContent;
+    assert.equal(text, "5 GHz · channel 36 · −58 dBm · noise −92 dBm");
+    assert.ok($(card, ".survey .survey-help").textContent.includes("10 s"));
+    link = null;
+    await card._pollLink();
+    assert.equal($(card, ".survey-link").textContent, EN("card.floorplan.survey.no_link"));
+    card.remove();
+    const before = f.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(f.calls.length, before, "a removed card stops polling");
+    const plain = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+    await settle();
+    assert.equal($(plain, ".survey").innerHTML, "", "no Survey panel without survey: true");
+    assert.equal(f.calls.filter((c) => c.url === "survey/link").length, before, "and no polling");
+    plain.remove();
+  } finally {
+    globalThis.setInterval = setI;
+    f.restore();
+    window.localStorage.clear();
+  }
+});
+
+test("survey: a tap marks the spot, I'm here posts it and waits 10 s, then the sample is drawn or the skip shown", async () => {
+  window.localStorage.clear();
+  let answer;
+  const f = surveyFetch({ "survey/link": () => ({ link: LINK }), "survey/sample": () => new Promise((r) => { answer = r; }) });
+  try {
+    const card = await make({ plan: wifiPlan(), survey: true }, wifiHass());
+    await settle();
+    const here = () => $(card, "[data-action=survey_here]");
+    assert.ok(here().disabled, "no spot yet");
+    assert.equal(sampleDots(card).length, 0);
+    let tapped = 0;
+    card.addEventListener("room-tap", () => tapped++);
+    tap(card, 2, 1);
+    assert.equal(tapped, 0, "a survey tap is a spot, not a room");
+    assert.ok($(card, "circle.survey-spot"));
+    assert.ok(!here().disabled);
+    click(here());
+    await settle();
+    const post = f.calls.find((c) => c.url === "survey/sample");
+    assert.equal(post.method, "POST");
+    assert.equal(post.body.floor_id, "ground");
+    assert.ok(Math.abs(post.body.x - 2) < 0.01 && Math.abs(post.body.y - 1) < 0.01, JSON.stringify(post.body));
+    assert.ok($(card, ".survey .survey-progress"), "the 10 s wait shows");
+    assert.ok(here().disabled, "one sample at a time");
+    answer({ sample: SAMPLE });
+    await settle();
+    await settle();
+    assert.equal($(card, ".survey-progress"), null);
+    assert.deepEqual(card._doc.wifi.samples, [SAMPLE]);
+    assert.deepEqual(card._loaded.wifi.samples, [SAMPLE], "the file has it: a later save is not refused");
+    assert.equal(sampleDots(card).length, 1, "the new sample drawn");
+    assert.equal(sampleDots(card)[0].querySelector("text").textContent, "−58");
+    assert.ok($(card, ".survey-note").textContent.includes("−58 dBm"), $(card, ".survey-note").textContent);
+    assert.equal($(card, "circle.survey-spot"), null, "the next stop is tapped again");
+    tap(card, 3, 3);
+    click(here());
+    await settle();
+    answer({ sample: null, skipped: "too few readings" });
+    await settle();
+    await settle();
+    assert.ok($(card, ".survey-note").textContent.includes("too few readings"));
+    assert.equal(card._doc.wifi.samples.length, 1);
+    f.calls.length = 0;
+    click(here());
+    await settle();
+    answer({ status: 400, text: "plan has 2000 samples" });
+    await settle();
+    await settle();
+    assert.ok($(card, ".survey-note").textContent.includes("plan has 2000 samples"));
+    card.remove();
+  } finally {
+    f.restore();
+    window.localStorage.clear();
+  }
+});
+
+test("survey: the next spots are drawn and listed, farthest from the readings first", async () => {
+  window.localStorage.clear();
+  const f = surveyFetch({ "survey/link": () => ({ link: LINK }) });
+  try {
+    const card = await make({ plan: wifiPlan(), survey: true }, wifiHass());
+    await settle();
+    assert.equal(card.shadowRoot.querySelectorAll("circle.next-spot").length, 3);
+    const items = [...card.shadowRoot.querySelectorAll(".survey-next li")];
+    assert.equal(items.length, 3);
+    assert.ok(items.every((li) => li.textContent.includes(EN("card.floorplan.survey.why.far"))), items.map((li) => li.textContent).join());
+    card.remove();
+  } finally {
+    f.restore();
+    window.localStorage.clear();
+  }
+});
+
+test("samples: dots with their dBm on the Confidence map and in edit mode only; every floor's samples calibrate", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors.push({ floor_id: "upstairs", rooms: [], points: [] });
+  plan.wifi = { samples: [MANUAL, { ...SAMPLE, floor_id: "upstairs" }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal(sampleDots(card).length, 0, "not on a band map");
+  assert.deepEqual(calibChips(card).map((b) => b.getAttribute("data-calib")), ["predicted", "calibrated"], "samples calibrate");
+  assert.deepEqual(card._observations().list.map((o) => [o.floorId, o.source]), [["ground", "manual"], ["upstairs", "survey"]]);
+  click($(card, '.bar [data-map="confidence"]'));
+  assert.equal(sampleDots(card).length, 1, "this floor's");
+  assert.equal(sampleDots(card)[0].querySelector("text").textContent, "−63");
+  click($(card, "[data-action=edit]"));
+  assert.equal(sampleDots(card).length, 1, "edit mode");
+  window.localStorage.clear();
+});
+
+test("add reading: a tap places a manual reading; dBm, band and access point go into the plan and are saved", async () => {
+  window.localStorage.clear();
+  const hass = wifiHass({ dashboard: dashboardOf(wifiPlan()) });
+  const card = await make({ layers: ["radio"] }, hass);
+  await settle();
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="reading"]'));
+  assert.equal($(card, '[data-tool="reading"]').textContent, EN("card.floorplan.tool.reading"));
+  assert.equal($(card, ".hint").textContent, EN("card.floorplan.hint.reading"));
+  assert.equal($(card, ".reading-panel"), null, "nothing tapped yet");
+  tap(card, 2, 1);
+  assert.ok($(card, "circle.reading-spot"));
+  const field = (name) => $(card, `.reading-panel [data-field="${name}"]`);
+  assert.deepEqual([...field("band").options].map((o) => o.value), ["2.4", "5"]);
+  assert.deepEqual([...field("ap").options].map((o) => o.value), ["", "d_mesh", "d_mesh2"]);
+  field("dbm").value = "5";
+  click($(card, "[data-action=add_reading]"));
+  assert.equal(card._doc.wifi, undefined, "5 dBm is refused");
+  assert.ok($(card, ".message").textContent.includes(EN("card.floorplan.refused")));
+  field("dbm").value = "-63";
+  field("band").value = "5";
+  field("ap").value = "d_mesh2";
+  click($(card, "[data-action=add_reading]"));
+  const [got] = card._doc.wifi.samples;
+  assert.deepEqual({ ...got, x: 0, y: 0, t: 0 }, { floor_id: "ground", x: 0, y: 0, t: 0, band: "5", dbm: -63, ap: "d_mesh2", source: "manual" });
+  assert.ok(Math.abs(got.x - 2) < 0.01 && Math.abs(got.y - 1) < 0.01);
+  assert.equal(sampleDots(card).length, 1, "drawn at once");
+  assert.equal($(card, ".reading-panel"), null, "the next reading is tapped again");
+  click($(card, "[data-action=save]"));
+  await settle();
+  await settle();
+  const saved = hass.calls.find((c) => c.type === "lovelace/config/save");
+  assert.deepEqual(saved.config.views[0].cards[0].plan.wifi.samples, [got]);
+  window.localStorage.clear();
+});

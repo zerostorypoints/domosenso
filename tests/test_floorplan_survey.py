@@ -444,6 +444,33 @@ def test_a_save_cannot_add_or_change_samples(survey):
     assert samples_of(plan_file) == [], "the file had none; the survey alone adds them"
 
 
+def test_a_save_adds_the_manual_readings_the_file_lacks(survey):
+    """Task 16: a reading typed on the survey page (Add reading) reaches the file; survey samples stay the
+    survey's alone, and a manual reading already in the file is not added twice."""
+    s, plan_file, lines, _ = survey
+    got = s.sample("ground", 1, 1, FIVE, None)
+    manual = {"floor_id": "ground", "x": 2.5, "y": 1.2, "t": "2026-11-11T19:31:00Z", "band": "5", "dbm": -63,
+              "ap": "dev-ap", "source": "manual"}
+    forged = {**got, "dbm": -10}
+    page = {**PLAN, "wifi": {"samples": [manual, forged]}}  # loaded before the survey sample, then a reading added
+    s.save(fd.dashboard_config(page))
+    assert samples_of(plan_file) == [got, manual], "the file's samples, then the new manual one; the forged survey one dropped"
+    assert lines[-1] == ("wrote", "domosenso/floorplan.json")
+    s.save(fd.dashboard_config({**PLAN, "wifi": {"samples": [got, manual]}}))
+    assert samples_of(plan_file) == [got, manual], "already in the file: not added again"
+    s.save(fd.dashboard_config(PLAN))
+    assert samples_of(plan_file) == [got, manual], "a save without them keeps them"
+
+
+def test_a_plain_preview_save_writes_the_samples_as_given(tmp_path):
+    plan_file = tmp_path / "floorplan.json"
+    plan_file.write_text(json.dumps(PLAN))
+    p = fp.Preview(fp.build_hass(RAW), fp.entries(RAW), plan_file, make_card(tmp_path), [].append)
+    manual = {"floor_id": "ground", "x": 2.5, "y": 1.2, "band": "5", "dbm": -63, "source": "manual"}
+    p.save(fd.dashboard_config({**PLAN, "wifi": {"samples": [manual]}}))
+    assert samples_of(plan_file) == [manual]
+
+
 def test_a_save_waits_for_a_sample_being_written(survey):
     s, plan_file, _, _ = survey
     done = []
