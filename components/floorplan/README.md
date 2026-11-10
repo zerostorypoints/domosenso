@@ -50,10 +50,11 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     a material, and the floor height and slab. Nothing is measured: the loss per material
     (`cards/lib/materials.json`) is a prior from ITU-R P.2040 and field values, a typical wall of
     that kind, not yours. Real walls differ, so read the map as where signal is likely strong,
-    weak or gone, not as dBm to the decibel. Coated glass (low-E) and metal block the most.
+    weak or gone, not as dBm to the decibel. Triple low-E glazing and metal block the most; reinforced concrete and low-E glazing come next.
   - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
   - Without an access point on the plan there is no map; the bar says how to add one.
-  - `wifi: false` turns the Wi-Fi maps off.
+  - `wifi: false` turns the Wi-Fi maps off, and with them the Walls tool, the opening **Material**,
+    the access point panel and the offer.
   - **Calibration against your devices' Wi-Fi signals and the walk-around survey are not yet
     available**; the maps are the prediction alone.
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
@@ -210,10 +211,10 @@ In edit mode (SPEC-044):
   serves, the **transmit power** per band (dBm; empty keeps the default) and the **height above the
   floor** (m). Stored as `access_points` on the floor.
 - **Walls.** The **Walls** tool selects a wall segment with a tap; its panel sets **Wall material**.
-  Two buttons use that material for all interior or all exterior walls (the defaults for walls
+  With a wall selected, two buttons use that material for all interior or all exterior walls (the defaults for walls
   nothing was set on). Stored as `walls`.
-- **Doors and windows.** The opening's panel has **Material**: a window or fixed glass is glass,
-  double glazing (default), low-E or triple low-E; a door is wood (default), glass or metal; a
+- **Doors and windows.** The opening's panel has **Material**. A window or fixed glass: one of glass,
+  double glazing (default), low-E, triple low-E; a door is wood (default), glass or metal; a
   doorway has none. Stored as `material` on the opening.
 - **Floor.** With the Walls tool, the floor's **Height** (m, default 2.7) and **Floor below** (the
   slab material) are set in its panel; they decide how much a signal loses between floors.
