@@ -29,8 +29,8 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   appliance's door or a vacuum's camera map is not a role. The tooltip names the dot's category
   and each ring ("Also senses: Presence and security"); the layer bar explains rings once when the
   plan has one.
-- **Maps** (SPEC-028 Amendment 7): with one of plants, climate or light shown alone, the bar offers
-  its maps. Plants: light, temperature, soil moisture; climate: temperature, humidity, CO₂; light:
+- **Maps** (SPEC-028 Amendment 7): with one of plants, climate, light or radio shown alone, the bar
+  offers its maps (radio: the Wi-Fi maps, below). Plants: light, temperature, soil moisture; climate: temperature, humidity, CO₂; light:
   light (what the sensors measure, lamps included) and lamps (on with a glow by brightness, off
   grey). A reading's map is interpolated inside each room from that room's placed sensors, whatever
   their category; a room without one is hatched. **Now / 24 h** switches between the current
@@ -41,6 +41,21 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   every other sensor in it (one on an amplifier, at a vent) is a spot that fades out within 1.2 m.
   Such a room is hatched while its own sensor has no value; its tooltip says "Room sensor". Fixed scales: 17–24 °C, 30–60 %, soil 10–50 %,
   400–1400 ppm, 0–20 000 lx (log). The browser remembers the map per layer and the switch.
+- **Wi-Fi maps** (SPEC-044): with the radio layer shown alone, one map per band some access point
+  serves (**2.4 GHz**, **5 GHz**, **6 GHz**: the strongest predicted signal per spot) and
+  **Serving** (each spot in the colour of the access point that serves it on the band chosen beside
+  it; where a client moving through would hand over between two, the spot is hatched).
+  - **A prediction, not a measurement.** It is worked out from the access points' positions, bands,
+    transmit power and mount height, the rooms' walls and the doors and windows in them, each with
+    a material, and the floor height and slab. Nothing is measured: the loss per material
+    (`cards/lib/materials.json`) is a prior from ITU-R P.2040 and field values, a typical wall of
+    that kind, not yours. Real walls differ, so read the map as where signal is likely strong,
+    weak or gone, not as dBm to the decibel. Coated glass (low-E) and metal block the most.
+  - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
+  - Without an access point on the plan there is no map; the bar says how to add one.
+  - `wifi: false` turns the Wi-Fi maps off.
+  - **Calibration against your devices' Wi-Fi signals and the walk-around survey are not yet
+    available**; the maps are the prediction alone.
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
   share their readings on the maps instead of stopping at the line between them; the walls between
   them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
@@ -66,6 +81,7 @@ values: true                       # false: markers without readings
 layers: [climate, plants]          # optional: only these categories, no chips
 layer_choice: one                  # with layers: a chip each, one layer at a time (the Ramka)
 maps: true                         # false: no maps
+wifi: true                         # false: no Wi-Fi maps on the radio layer
 fill: true                         # optional: as tall as the screen below the card's top
 area: living_room                  # optional: that area's room alone, fitted to the card; no Edit
 context: true                      # with area: the floor's other rooms faded around it
@@ -183,6 +199,26 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
   and edit again. **Cancel** drops the unsaved edits of the plan. An area created by name in the
   editor is created in Home Assistant at once: Cancel does not remove it (delete it in Home
   Assistant's area settings if it is not wanted).
+
+### Wi-Fi: access points and materials
+
+In edit mode (SPEC-044):
+
+- **Access points.** A point the rules recognise as an access point (a mesh node or router from a
+  supported integration) is offered once per browser: "<name>: use as access point?" (Yes / No).
+  Any other point: tap it, switch on **Access point** in its panel. The panel also sets the bands it
+  serves, the **transmit power** per band (dBm; empty keeps the default) and the **height above the
+  floor** (m). Stored as `access_points` on the floor.
+- **Walls.** The **Walls** tool selects a wall segment with a tap; its panel sets **Wall material**.
+  Two buttons use that material for all interior or all exterior walls (the defaults for walls
+  nothing was set on). Stored as `walls`.
+- **Doors and windows.** The opening's panel has **Material**: a window or fixed glass is glass,
+  double glazing (default), low-E or triple low-E; a door is wood (default), glass or metal; a
+  doorway has none. Stored as `material` on the opening.
+- **Floor.** With the Walls tool, the floor's **Height** (m, default 2.7) and **Floor below** (the
+  slab material) are set in its panel; they decide how much a signal loses between floors.
+- A change to walls, materials, access points, height or slab shows on the maps at once; **Save**
+  and `floorplan push` write it as for any other edit.
 
 ## After editing in Home Assistant
 
