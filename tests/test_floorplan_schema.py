@@ -294,6 +294,7 @@ def wifi_demo() -> dict:
     floor["access_points"] = [{"device_id": "dev1", "bands": ["2.4", "5"], "tx": {"5": 20}, "mount": 1.0}]
     doc["wifi"] = {
         "defaults": {"interior": "interior", "exterior": "exterior"},
+        "outdoor": ["kitchen"],
         "samples": [{"floor_id": "ground", "x": 3.4, "y": 2.1, "t": "2026-11-10T19:30:00Z",
                      "band": "5", "channel": 36, "dbm": -58, "noise": -92,
                      "ap": "dev1", "bssid": "02:00:00:00:00:01", "source": "survey"}],
@@ -318,13 +319,15 @@ REFUSALS = [
     (lambda d: d["floors"][0]["walls"][0].update(at=[2.7, 2.0]),
      "wall on floor ground: [2.7, 2.0] is not on a room edge"),
     (lambda d: d["floors"][0]["walls"][0].update(material="mud"), "unknown material mud"),
-    (lambda d: d["floors"][0]["walls"][0].update(material="double"), "material double does not fit a wall"),
+    (lambda d: d["floors"][0]["walls"][0].update(material="slab"), "material slab does not fit a wall"),
     (lambda d: d["floors"][0].update(slab="mud"), "unknown material mud"),
     (lambda d: d["floors"][0].update(slab="brick"), "material brick does not fit a slab"),
-    (lambda d: d["wifi"]["defaults"].update(interior="glass"), "material glass does not fit a wall"),
+    (lambda d: d["wifi"]["defaults"].update(interior="slab"), "material slab does not fit a wall"),
     (lambda d: d["floors"][0]["openings"][0].update(material="wood"), "material wood does not fit a window"),
-    (lambda d: d["floors"][0]["openings"][0].update(kind="door", material="double"),
-     "material double does not fit a door"),
+    (lambda d: d["floors"][0]["openings"][0].update(kind="door", material="brick"),
+     "material brick does not fit a door"),
+    (lambda d: d["wifi"]["outdoor"].append("garden"), "outdoor: garden is not a room"),
+    (lambda d: d["wifi"]["outdoor"].append("kitchen"), "outdoor: kitchen twice"),
     (lambda d: d["floors"][0]["openings"][0].update(kind="opening", material="wood"),
      "material wood does not fit a doorway"),
     (lambda d: d["floors"][0]["access_points"].__setitem__(0, {"device_id": "nope", "bands": ["5"]}),
@@ -379,6 +382,30 @@ def test_wifi_changes_are_diffed_per_floor_and_order_is_left_out():
     new = copy.deepcopy(old)
     new["floors"][0]["openings"][0]["material"] = "double"
     assert ("wifi", "change", "ground") in diff(old, new)
+
+
+def test_glazing_fits_walls_and_doors_and_thick_concrete_a_slab():
+    doc = wifi_demo()
+    doc["floors"][0]["walls"][0]["material"] = "low_e"
+    doc["floors"][0]["openings"][0].update(kind="door", material="triple_low_e")
+    doc["floors"][0]["slab"] = "concrete_thick"
+    doc["wifi"]["defaults"] = {"interior": "concrete_thin", "exterior": "glass"}
+    validate(doc)
+
+
+def test_an_outdoor_flag_change_is_a_wifi_change_of_its_floor():
+    old = wifi_demo()
+    second = {"floor_id": "upstairs", "rooms": [{"area_id": "terrace", "polygon": SQUARE}], "points": []}
+    old["floors"].append(second)
+    validate(old)
+    new = copy.deepcopy(old)
+    new["wifi"]["outdoor"] = ["terrace", "kitchen"]
+    assert diff(old, new) == [("wifi", "change", "upstairs")], "order is left out"
+    new["wifi"]["outdoor"] = ["terrace"]
+    assert diff(old, new) == [("wifi", "change", "ground"), ("wifi", "change", "upstairs")]
+    del new["wifi"]["outdoor"]
+    validate(new)
+    assert diff(old, new) == [("wifi", "change", "ground")]
 
 
 def test_wifi_samples_are_diffed_by_count_after_the_push():

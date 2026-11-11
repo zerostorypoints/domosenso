@@ -98,10 +98,18 @@ def _near_edge(polygon: list, at: list) -> bool:
 
 def _check_wifi(doc: dict) -> None:
     """SPEC-044 limits the schema cannot say: material ids and what they fit, walls on room edges,
-    access points that are points of their floor, ranges and the samples."""
+    access points that are points of their floor, ranges, outdoor rooms and the samples."""
     defaults = (doc.get("wifi") or {}).get("defaults") or {}
     for material_id in defaults.values():
         _check_material(material_id, "wall")
+    rooms = {room["area_id"] for floor in doc["floors"] for room in floor["rooms"]}
+    outdoor = set()
+    for area in (doc.get("wifi") or {}).get("outdoor") or []:
+        if area not in rooms:
+            raise DomosensoError(f"outdoor: {area} is not a room")
+        if area in outdoor:
+            raise DomosensoError(f"outdoor: {area} twice")
+        outdoor.add(area)
     samples = (doc.get("wifi") or {}).get("samples") or []
     if len(samples) > _MAX_SAMPLES:
         raise DomosensoError(f"more than {_MAX_SAMPLES} samples")
@@ -249,7 +257,7 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
             lines.append(("open", "change", label))
         if _openings(old_floor) != _openings(new_floor):
             lines.append(("openings", "change", label))
-        if _wifi(old_floor) != _wifi(new_floor):
+        if _wifi(old_floor, _outdoor(old)) != _wifi(new_floor, _outdoor(new)):
             lines.append(("wifi", "change", label))
     if _samples(old) != _samples(new):
         lines.append(("wifi", "samples", str(len(_samples(new)))))
@@ -293,11 +301,17 @@ def _check_opening(opening: dict, areas: set, linked: set, label: str) -> None:
         linked.add(entity)
 
 
-def _wifi(floor: dict) -> str:
-    """What the prediction reads of a floor, order left out, numbers rounded like points."""
+def _outdoor(doc: dict | None) -> set:
+    return set(((doc or {}).get("wifi") or {}).get("outdoor") or [])
+
+
+def _wifi(floor: dict, outdoor: set) -> str:
+    """What the prediction reads of a floor, order left out, numbers rounded like points; `outdoor`
+    the plan's outdoor rooms, of which the floor's own count."""
     keep = lambda items: sorted(json.dumps(_round(i), sort_keys=True) for i in items)  # noqa: E731
     return json.dumps({
         "height": _round(floor.get("height")), "slab": floor.get("slab"),
+        "outdoor": sorted(room["area_id"] for room in floor["rooms"] if room["area_id"] in outdoor),
         "walls": keep(floor.get("walls", [])),
         "access_points": keep(floor.get("access_points", [])),
         "materials": keep([o["at"], o["material"]] for o in floor.get("openings", []) if "material" in o),

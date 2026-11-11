@@ -21,6 +21,10 @@
           "description": "Material ids for walls no `walls` entry covers: interior (two rooms share it) and exterior",
           "properties": {"interior": {"type": "string", "minLength": 1}, "exterior": {"type": "string", "minLength": 1}}
         },
+        "outdoor": {
+          "type": "array", "description": "Area ids of rooms that are outdoors (balcony, terrace, winter garden): each a room of some floor, once (Amendment 1)",
+          "items": {"type": "string", "minLength": 1}
+        },
         "samples": {
           "type": "array", "description": "Survey and manual readings, at most 2000",
           "items": {

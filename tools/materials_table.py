@@ -42,6 +42,7 @@ def slab_loss(material: str, f_ghz: float, thickness_m: float) -> float:
 
 def main() -> None:
     rows = [('drywall', 'plasterboard', (0.0125, 0.025)), ('wood', 'wood', (0.04,)), ('brick', 'brick', (0.12, 0.25)),
+            ('concrete_thin', 'concrete', (0.10,)), ('concrete_thick', 'concrete', (0.25,)),
             ('concrete', 'concrete', (0.10, 0.20)), ('reinforced_concrete', 'concrete', (0.20, 0.25)),
             ('glass', 'glass', (0.004,))]
     for mid, ref, thicknesses in rows:

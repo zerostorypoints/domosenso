@@ -17,8 +17,8 @@
     }
   },
   "defaults": {
-    "interior": "interior",
-    "exterior": "exterior",
+    "interior": "concrete_thin",
+    "exterior": "concrete_thick",
     "slab": "slab",
     "window": "double",
     "door": "wood"
@@ -73,6 +73,31 @@
       ],
       "basis": "P.2040 3.8-7.6, widened for mortar and plaster"
     },
+    "concrete_thin": {
+      "loss": {
+        "2.4": 9,
+        "5": 14,
+        "6": 16
+      },
+      "sd": 4,
+      "for": [
+        "wall"
+      ],
+      "basis": "P.2040 concrete 10 cm 8.1 / 13.9 / 15.7"
+    },
+    "concrete_thick": {
+      "loss": {
+        "2.4": 20,
+        "5": 33,
+        "6": 37
+      },
+      "sd": 6,
+      "for": [
+        "wall",
+        "slab"
+      ],
+      "basis": "P.2040 concrete 25 cm 18.0 / 32.7 / 37.1, plus rebar"
+    },
     "concrete": {
       "loss": {
         "2.4": 12,
@@ -106,6 +131,7 @@
       },
       "sd": 1,
       "for": [
+        "wall",
         "window",
         "door"
       ],
@@ -119,7 +145,9 @@
       },
       "sd": 2,
       "for": [
-        "window"
+        "wall",
+        "window",
+        "door"
       ],
       "basis": "P.2040 2x4 mm"
     },
@@ -131,7 +159,9 @@
       },
       "sd": 8,
       "for": [
-        "window"
+        "wall",
+        "window",
+        "door"
       ],
       "basis": "measurements: single-silver low-E about 27 dB at 5 GHz; coating changes moved 7-9 dB at 2.4 and 14-17 dB at 5 GHz"
     },
@@ -143,7 +173,9 @@
       },
       "sd": 10,
       "for": [
-        "window"
+        "wall",
+        "window",
+        "door"
       ],
       "basis": "vendor data: about 40 dB for one triple-silver laminate"
     },

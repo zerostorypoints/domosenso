@@ -170,13 +170,16 @@
         },
         "floor": "Dieses Stockwerk:",
         "height": "Höhe (m)",
-        "slab": "Decke darunter"
+        "slab": "Decke darunter",
+        "outdoor": "Im Freien:"
       },
       "material": {
         "drywall": "Gipskarton",
         "wood": "Holz",
         "aerated_block": "Porenbeton",
         "brick": "Backstein",
+        "concrete_thin": "Beton, dünn (etwa 10 cm)",
+        "concrete_thick": "Stahlbeton, dick (etwa 25 cm)",
         "concrete": "Beton",
         "reinforced_concrete": "Stahlbeton",
         "glass": "Glas",
@@ -184,8 +187,8 @@
         "low_e": "Wärmeschutzverglasung",
         "triple_low_e": "Dreifach-Wärmeschutzverglasung",
         "metal": "Metall",
-        "interior": "Innenwand (typisch)",
-        "exterior": "Aussenwand (typisch)",
+        "interior": "Innenwand, Material unbekannt",
+        "exterior": "Aussenwand, Material unbekannt",
         "slab": "Geschossdecke (typisch)"
       },
       "reading": {

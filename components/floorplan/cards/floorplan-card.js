@@ -56,7 +56,8 @@ import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
-  setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, addReading, nextSpots } from "./lib/wifi.js";
+  setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots }
+  from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage } from "./lib/wifi-fit.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
@@ -928,7 +929,7 @@ ${STYLE}
   }
 
   // The walls tool: the selected wall's material and the buttons that make it the interior or
-  // exterior default, then this floor's height and the floor under it.
+  // exterior default, then this floor's height, the floor under it and which of its rooms are outdoors.
   _wallPanelHtml() {
     if (this._tool !== "walls" || !this._wifiOn || !this._floor) return "";
     const h = this._hass;
@@ -946,6 +947,10 @@ ${STYLE}
     html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.floor"))}</span>` + label("height")
       + `<input type="number" class="wall-field" data-field="height" min="2" max="10" step="0.05" value="${esc(String(floor.height ?? FLOOR_HEIGHT_M))}">`
       + label("slab") + `<select class="wall-field" data-field="slab">${options("slab", floor.slab ?? materials.defaults.slab)}</select>`;
+    const outdoor = this._doc.wifi?.outdoor ?? [];
+    html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.outdoor"))}</span>` + floor.rooms.map((room) =>
+      `<label class="outdoor-check"><input type="checkbox" class="wall-field" data-field="outdoor" data-area="${esc(room.area_id)}"`
+      + ` ${outdoor.includes(room.area_id) ? "checked" : ""}>${esc(roomLabel(room, h, this._config.rooms).text)}</label>`).join("");
     return `<div class="wall-panel">${html}</div>`;
   }
 
@@ -988,14 +993,14 @@ ${STYLE}
     }
     const cls = { door: "door", window: "window", fixed: "window" }[kind];
     if (cls && this._wifiOn) {
-      const current = o.material ?? materials.defaults[cls];
+      const current = o.material ?? openingDefaults(this._doc.wifi, o).material;
       html += sel("material", "material", materialsFor(cls).map((id) => opt(id, t(h, `card.floorplan.material.${id}`), id === current)).join(""));
     }
     html += `<label>${esc(t(h, "card.floorplan.opening.width"))}</label>`
       + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`
       + button("fill_wall", "fill_wall");
     if (kind === "door" || kind === "window") {
-      const state = o.state ?? (o.rooms.includes(null) ? "closed" : "open");
+      const state = o.state ?? openingDefaults(this._wifiOn ? this._doc.wifi : undefined, o).state;
       html += sel("state", "default", ["open", "closed"].map((s) => opt(s, t(h, `card.floorplan.opening.${s}`), s === state)).join(""))
         + sel("entity", "sensor", opt("", t(h, "card.floorplan.opening.no_sensor"), !o.entity)
           + openingSensors(h, o).map((c) => opt(c.id, c.name, c.id === o.entity)).join(""));
@@ -1725,7 +1730,7 @@ ${STYLE}
       else {
         const value = field === "width" ? Number(raw) || "" : field === "sliding" ? raw === "true" : raw;
         const next = setOpening(this._doc, this._floorId, this._opening, { [field]: value });
-        // A new kind sheds a material it cannot have (low-E glass on a door, any on a doorway).
+        // A new kind sheds a material it cannot have (wood on a window, any on a doorway).
         const o = next?.floors.find((f) => f.floor_id === this._floorId).openings[this._opening];
         const fits = !o?.material || !!setOpeningMaterial(next, this._floorId, this._opening, o.material);
         this._edit(fits ? next : setOpeningMaterial(next, this._floorId, this._opening, null));
@@ -1734,7 +1739,8 @@ ${STYLE}
     } else if (e.target.matches?.(".wall-field")) {
       const field = e.target.getAttribute("data-field");
       const raw = e.target.value;
-      if (field === "wall") {
+      if (field === "outdoor") this._edit(setOutdoor(this._doc, e.target.getAttribute("data-area"), e.target.checked));
+      else if (field === "wall") {
         const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
         if (seg) this._edit(setWallMaterial(this._doc, this._floorId, seg.at, raw));
       } else this._edit(setFloorWifi(this._doc, this._floorId, { [field]: field === "height" ? (raw === "" ? null : Number(raw)) : raw }));

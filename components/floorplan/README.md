@@ -217,15 +217,31 @@ In edit mode (SPEC-044):
   Any other point: tap it, switch on **Access point** in its panel. The panel also sets the bands it
   serves, the **transmit power** per band (dBm; empty keeps the default) and the **height above the
   floor** (m). Stored as `access_points` on the floor.
-- **Walls.** The **Walls** tool selects a wall segment with a tap; its panel sets **Wall material**.
-  With a wall selected, two buttons use that material for all interior or all exterior walls (the defaults for walls
-  nothing was set on). Stored as `walls`.
+- **Walls.** The **Walls** tool selects a wall segment with a tap; its panel sets **Wall material**:
+  drywall, wood, aerated concrete block, brick, thin concrete (about 10 cm), thick reinforced
+  concrete (about 25 cm), concrete, reinforced concrete, metal, a glass wall or facade (glass,
+  double glazing, low-E, triple low-E, independent of any window in it), or an interior or exterior
+  wall of unknown material. A wall two rooms share is interior; a wall one room has alone, or one
+  between an indoor and an outdoor room, is exterior. Until you say otherwise, **outer walls are
+  thick concrete and inner walls thin concrete** (SPEC-044 Amendment 2): a pessimistic start for a
+  masonry home. With a wall selected, two buttons use that material for all interior or all
+  exterior walls (the defaults for walls nothing was set on). Stored as `walls` and
+  `wifi.defaults`. These are assumptions: readings from your devices and a survey walk (below)
+  validate them and move each wall type's loss per band, and the Confidence map shows where they
+  did.
+- **Outdoor rooms.** A balcony, terrace or winter garden drawn as a room is computed and drawn like
+  any room (its cells, its next spots), and is often the weakest spot of a home. Switch it on under
+  **Outdoors** in the Walls tool's floor panel: its wall to the home becomes exterior, a door or
+  window to it is closed unless its sensor or its own state says otherwise, and a door to it is
+  double glazing unless set. Stored as `wifi.outdoor` (area ids).
 - **Doors and windows.** The opening's panel has **Material**. A window or fixed glass: one of glass,
-  double glazing (default), low-E, triple low-E; a door is wood (default), glass or metal; a
-  doorway has none. Stored as `material` on the opening.
+  double glazing (default), low-E, triple low-E; a door is wood (default; double glazing to an
+  outdoor room), metal or any of the glazings (a glazed door); a doorway has none. Stored as
+  `material` on the opening.
 - **Floor.** With the Walls tool, the floor's **Height** (m, default 2.7) and **Floor below** (the
-  slab material) are set in its panel; they decide how much a signal loses between floors.
-- A change to walls, materials, access points, height or slab shows on the maps at once; **Save**
+  slab material: a typical slab, thick reinforced concrete or reinforced concrete) are set in its
+  panel; they decide how much a signal loses between floors.
+- A change to walls, materials, access points, height, slab or outdoor rooms shows on the maps at once; **Save**
   and `floorplan push` write it as for any other edit.
 
 ### Wi-Fi calibration from your devices

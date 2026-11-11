@@ -4,7 +4,7 @@
 import materials from "./materials.json" with { type: "json" };
 import { facingWalls, editFloor } from "./plan.js";
 import { pointInPolygon, widestRow } from "./geometry.js";
-import { openingShape, openingState, kindOf, SHARED_M } from "./openings.js";
+import { openingShape, openingState, kindOf, outside, SHARED_M } from "./openings.js";
 
 export const BANDS = ["2.4", "5", "6"];
 
@@ -40,7 +40,7 @@ function distToSegment(p, a, b) {
 
 // Every room edge once, as stretches of one class: a long wall one room has and two shorter rooms
 // share is cut where the sharing starts and ends. A shared stretch belongs to the first room that
-// has it. {a, b, shared}
+// has it. {a, b, shared, rooms}: `rooms` the indices of the rooms that have it, its owner first.
 function stretches(floor) {
   const out = [];
   const rooms = floor.rooms || [];
@@ -66,7 +66,7 @@ function stretches(floor) {
         const mid = (t0 + t1) / 2;
         const by = cover.filter((c) => c[0] <= mid && mid <= c[1]).map((c) => c[2]);
         if (by.some((j) => j < i)) continue;           // that room emitted it
-        out.push({ a: at(t0), b: at(t1), shared: by.length > 0 });
+        out.push({ a: at(t0), b: at(t1), shared: by.length > 0, rooms: [i, ...by] });
       }
     });
   });
@@ -79,12 +79,35 @@ function cutOf(a, b, gap) {
   return t && [t[0] / Math.hypot(...sub(b, a)), t[1] / Math.hypot(...sub(b, a))];
 }
 
+// Whether an opening joins an indoor room to an outdoor one (Amendment 1: a balcony's door).
+const toOutdoor = (wifi, o) => {
+  const outdoor = wifi?.outdoor ?? [];
+  const sides = o.rooms.filter((r) => r !== null);
+  return sides.some((r) => outdoor.includes(r)) && sides.some((r) => !outdoor.includes(r));
+};
+
+// What an opening is without its own `material` and `state`: glazing on a window, fixed glass and a door
+// to an outdoor room, wood on any other door, none on a doorway; closed to the outside or to an outdoor
+// room, else open (a doorway always).
+export function openingDefaults(wifi, o) {
+  const kind = kindOf(o);
+  const boundary = toOutdoor(wifi, o);
+  if (kind === "opening") return { material: null, state: "open" };
+  const material = kind === "door" && !boundary ? materials.defaults.door : materials.defaults.window;
+  return { material, state: outside(o) || boundary ? "closed" : "open" };
+}
+
 // A floor's walls as segments {a, b, material, open, kind}: every room edge once (shared edges
 // merged), edges inside an open space dropped, every opening cut out of its wall as a segment of
-// its own. `wifi` is the plan's `wifi` (its defaults), possibly undefined.
+// its own. A wall is `cls` interior when two rooms share it, exterior when one room has it alone or it
+// parts an indoor from an outdoor room. `wifi` is the plan's `wifi` (its defaults and outdoor rooms),
+// possibly undefined.
 export function wallSegments(floor, wifi, hass) {
   const defaults = { ...materials.defaults };
   for (const k of ["interior", "exterior"]) if (wifi?.defaults?.[k]) defaults[k] = wifi.defaults[k];
+  const outdoor = new Set(wifi?.outdoor ?? []);
+  const rooms = floor.rooms || [];
+  const isOut = (i) => outdoor.has(rooms[i].area_id);
   const facing = facingWalls(floor);
   const walls = floor.walls || [];
   let segs = stretches(floor).filter((s) => {
@@ -92,17 +115,20 @@ export function wallSegments(floor, wifi, hass) {
     return !facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M);
   }).map((s) => {
     const set = walls.find((w) => distToSegment(w.at, s.a, s.b) <= SHARED_M);
-    return { a: s.a, b: s.b, material: set?.material ?? (s.shared ? defaults.interior : defaults.exterior), open: false, kind: "wall",
-      shared: s.shared };
+    const cls = s.shared && (s.rooms.every(isOut) || !s.rooms.some(isOut)) ? "interior" : "exterior";
+    return { a: s.a, b: s.b, material: set?.material ?? defaults[cls], open: false, kind: "wall", shared: s.shared, cls };
   });
 
   for (const o of floor.openings || []) {
     const shape = openingShape(floor, o);
     if (!shape) continue;
     const kind = kindOf(o);
-    const material = kind === "opening" ? "opening"
-      : o.material ?? (kind === "door" ? defaults.door : defaults.window);
-    const { open } = openingState(o, hass);
+    const material = kind === "opening" ? "opening" : o.material ?? openingDefaults(wifi, o).material;
+    const state = openingState(o, hass);
+    // A sensor's answer or the opening's own state decides; else a door or window to an outdoor room is
+    // closed (the drawing keeps openings.js's default: this is the prediction's assumption).
+    const open = (kind === "door" || kind === "window") && !o.state && !(state.linked && state.known) && toOutdoor(wifi, o)
+      ? false : state.open;
     const next = [];
     for (const s of segs) {
       const cut = s.kind === "wall" && cutOf(s.a, s.b, shape.ends);
@@ -118,7 +144,7 @@ export function wallSegments(floor, wifi, hass) {
 }
 
 // The wall stretch nearest `pt` within `tol`, whole from corner to corner (an opening on it does not
-// cut it): {a, b, material, shared, at}, `at` its middle to the millimetre; null without a wall there.
+// cut it): {a, b, material, shared, cls, at}, `at` its middle to the millimetre; null without a wall there.
 export function wallSegmentAt(floor, wifi, pt, tol) {
   let best = null;
   for (const s of wallSegments({ ...floor, openings: [] }, wifi, {})) {
@@ -126,8 +152,8 @@ export function wallSegmentAt(floor, wifi, pt, tol) {
     if (d <= tol && (!best || d < best.d)) best = { s, d };
   }
   if (!best) return null;
-  const { a, b, material, shared } = best.s;
-  return { a, b, material, shared, at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
+  const { a, b, material, shared, cls } = best.s;
+  return { a, b, material, shared, cls, at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
 }
 
 const mm = (v) => Math.round(v * 1000) / 1000;
@@ -333,14 +359,14 @@ const withList = (floor, key, list) => {
 };
 
 // The wall stretch through `at` made of `material`; the default for its class (interior: shared by two
-// rooms, exterior: one room's alone) removes its entry instead.
+// rooms, exterior: one room's alone or between an indoor and an outdoor room) removes its entry instead.
 export function setWallMaterial(doc, floorId, at, material) {
   if (!materialsFor("wall").includes(material)) return null;
   return editFloor(doc, floorId, (floor) => {
     const seg = wallSegmentAt(floor, doc.wifi, at, SHARED_M);
     if (!seg) return null;
     const walls = (floor.walls || []).filter((w) => distToSegment(w.at, seg.a, seg.b) > SHARED_M);
-    if (material !== wallDefault(doc.wifi, seg.shared ? "interior" : "exterior")) walls.push({ at: [mm(at[0]), mm(at[1])], material });
+    if (material !== wallDefault(doc.wifi, seg.cls)) walls.push({ at: [mm(at[0]), mm(at[1])], material });
     return withList(floor, "walls", walls);
   });
 }
@@ -357,8 +383,8 @@ export function setWifiDefault(doc, which, material) {
   return Object.keys(wifi).length ? { ...rest, wifi } : rest;
 }
 
-// Opening `index` of `material`, which must fit its kind; its kind's default or an empty value removes
-// it (any kind: a doorway that was a window sheds it so).
+// Opening `index` of `material`, which must fit its kind; its default (openingDefaults) or an empty value
+// removes it (any kind: a doorway that was a window sheds it so).
 export function setOpeningMaterial(doc, floorId, index, material) {
   return editFloor(doc, floorId, (floor) => {
     const list = floor.openings || [];
@@ -368,7 +394,7 @@ export function setOpeningMaterial(doc, floorId, index, material) {
     const { material: _, ...next } = o;
     if (!empty(material)) {
       if (!cls || !materialsFor(cls).includes(material)) return null;
-      if (material !== materials.defaults[cls]) next.material = material;
+      if (material !== openingDefaults(doc.wifi, o).material) next.material = material;
     }
     return { ...floor, openings: list.map((x, i) => (i === index ? next : x)) };
   });
@@ -430,6 +456,17 @@ export function setFloorWifi(doc, floorId, patch) {
     }
     return next;
   });
+}
+
+// Room `areaId` (a room of some floor) outdoors or not (Amendment 1); an empty list removes the key.
+export function setOutdoor(doc, areaId, on) {
+  if (!(doc.floors || []).some((f) => (f.rooms || []).some((r) => r.area_id === areaId))) return null;
+  const was = doc.wifi?.outdoor ?? [];
+  const list = on ? (was.includes(areaId) ? was : [...was, areaId]) : was.filter((id) => id !== areaId);
+  const { outdoor: _, ...wifi } = doc.wifi || {};
+  if (list.length) wifi.outdoor = list;
+  const { wifi: __, ...rest } = doc;
+  return Object.keys(wifi).length ? { ...rest, wifi } : rest;
 }
 
 // ---- manual readings (SPEC-044 edit mode: Add reading) ----

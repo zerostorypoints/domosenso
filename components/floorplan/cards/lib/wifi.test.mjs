@@ -2,13 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
   wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi,
-  addReading, nextSpots } from "./wifi.js";
+  addReading, nextSpots, setOutdoor, openingDefaults } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 import { widestRow } from "./geometry.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 const two = () => ({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: sq(3, 0, 3, 3) }] });
-const L = { brick: { 5: 10 }, wood: { 5: 3 }, double: { 5: 3 }, interior: { 5: 5 }, exterior: { 5: 15 } };
+const L = { brick: { 5: 10 }, wood: { 5: 3 }, double: { 5: 3 }, low_e: { 5: 27 }, concrete_thin: { 5: 14 }, concrete_thick: { 5: 33 } };
 const len = (s) => Math.hypot(s.b[0] - s.a[0], s.b[1] - s.a[1]);
 const onX = (s, x) => Math.abs(s.a[0] - x) < 1e-6 && Math.abs(s.b[0] - x) < 1e-6;
 
@@ -28,7 +28,7 @@ test("a ray through the shared wall pays it once", () => {
 
 test("a ray through a corner pays one wall, not two", () => {
   const segs = wallSegments({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }] }, undefined, {});
-  const losses = { exterior: { 5: 10 } };
+  const losses = { concrete_thick: { 5: 10 } };
   // diagonal from inside to outside exactly through the corner (3, 3)
   assert.ok(Math.abs(pathLoss(segs, [2, 2], [4, 4], "5", losses) - 10 * Math.SQRT2) < 1e-9);
   // and the same corner from the other side of both walls
@@ -78,15 +78,19 @@ test("a long wall shared by two shorter rooms is split at the sharing", () => {
   const segs = wallSegments(floor, undefined, {}).filter((s) => onX(s, 3));
   assert.equal(segs.length, 2);
   const shared = segs.find((s) => Math.max(s.a[1], s.b[1]) <= 2 + 1e-6);
-  assert.equal(shared.material, "interior");
-  assert.equal(segs.find((s) => s !== shared).material, "exterior");
+  assert.equal(shared.material, "concrete_thin");
+  assert.equal(segs.find((s) => s !== shared).material, "concrete_thick");
   assert.ok(Math.abs(segs.reduce((n, s) => n + len(s), 0) - 6) < 1e-9, "the wall is covered once");
 });
 
-test("unset walls take the interior and exterior defaults", () => {
+test("unset walls take the interior and exterior defaults: thin concrete inside, thick outside", () => {
   const segs = wallSegments(two(), undefined, {});
-  assert.equal(segs.find((s) => onX(s, 3)).material, "interior");
-  assert.equal(segs.find((s) => onX(s, 0)).material, "exterior");
+  assert.equal(segs.find((s) => onX(s, 3)).material, "concrete_thin");
+  assert.equal(segs.find((s) => onX(s, 0)).material, "concrete_thick");
+  const loss = priorParams(table, []).loss;
+  assert.equal(pathLoss(segs, [1.5, 1.5], [-1, 1.5], "5", loss), 33, "one outer wall at 5 GHz");
+  assert.deepEqual(BANDS.map((b) => pathLoss(segs, [1.5, 1.5], [-1, 1.5], b, loss)), [20, 33, 37]);
+  assert.equal(pathLoss(segs, [1.5, 1.5], [4.5, 1.5], "5", loss), 14, "one inner wall at 5 GHz");
   const own = wallSegments(two(), { defaults: { interior: "drywall", exterior: "brick" } }, {});
   assert.equal(own.find((s) => onX(s, 3)).material, "drywall");
   assert.equal(own.find((s) => onX(s, 6)).material, "brick");
@@ -139,7 +143,7 @@ test("crossings: the closed segments a ray crosses with their oblique factor; pa
     openings: [{ kind: "door", rooms: ["alex", "sam"], at: [3, 0.5], state: "open" }] };
   const segs = wallSegments(floor, undefined, {});
   const c = crossings(segs, [1.5, 1.5], [7, 4]);
-  assert.deepEqual(c.map((x) => x.material), ["brick", "exterior"]);
+  assert.deepEqual(c.map((x) => x.material), ["brick", "concrete_thick"]);
   near(c[0].k, Math.hypot(5.5, 2.5) / 5.5);
   assert.equal(pathLoss(segs, [1.5, 1.5], [7, 4], "5", L), c.reduce((t, x) => t + L[x.material][5] * x.k, 0));
   assert.deepEqual(crossings(segs, [1.5, 0.5], [4.5, 0.5]), [], "an open door is no crossing");
@@ -264,10 +268,11 @@ const groundOf = (floor) => ({ schema: 1, floors: [{ floor_id: "ground", points:
 const fl = (doc) => doc.floors[0];
 
 test("materialsFor lists the materials whose `for` has the class", () => {
-  assert.deepEqual(materialsFor("door"), ["wood", "glass", "metal"]);
+  assert.deepEqual(materialsFor("door"), ["wood", "glass", "double", "low_e", "triple_low_e", "metal"]);
   assert.deepEqual(materialsFor("window"), ["glass", "double", "low_e", "triple_low_e"]);
   assert.ok(materialsFor("wall").every((id) => table.materials[id].for.includes("wall")));
-  assert.deepEqual(materialsFor("slab"), ["reinforced_concrete", "slab"]);
+  for (const id of ["concrete_thin", "concrete_thick", "glass", "double", "low_e", "triple_low_e"]) assert.ok(materialsFor("wall").includes(id), id);
+  assert.deepEqual(materialsFor("slab"), ["concrete_thick", "reinforced_concrete", "slab"]);
 });
 
 test("wallSegmentAt: the whole stretch between corners, through any opening on it", () => {
@@ -276,7 +281,8 @@ test("wallSegmentAt: the whole stretch between corners, through any opening on i
   assert.ok(onX(seg, 3) && Math.abs(len(seg) - 3) < 1e-9);
   assert.equal(seg.shared, true);
   assert.deepEqual(seg.at, [3, 1.5]);
-  assert.equal(seg.material, "interior");
+  assert.equal(seg.material, "concrete_thin");
+  assert.equal(seg.cls, "interior");
   assert.equal(wallSegmentAt(floor, undefined, [1.5, 1.5], 0.1), null);
 });
 
@@ -287,13 +293,16 @@ test("setWallMaterial sets one wall; its class's default removes the entry", () 
   assert.ok(!("walls" in fl(doc)), "a new doc");
   const again = setWallMaterial(brick, "ground", [3, 0.5], "concrete");
   assert.deepEqual(fl(again).walls, [{ at: [3, 0.5], material: "concrete" }], "one entry per stretch");
-  assert.ok(!("walls" in fl(setWallMaterial(brick, "ground", [3, 1.5], "interior"))), "interior wall back to its default");
-  const outer = setWallMaterial(doc, "ground", [0, 1.5], "interior");
-  assert.deepEqual(fl(outer).walls, [{ at: [0, 1.5], material: "interior" }], "interior material on an exterior wall is kept");
-  assert.ok(!("walls" in fl(setWallMaterial(outer, "ground", [0, 1.5], "exterior"))));
+  assert.ok(!("walls" in fl(setWallMaterial(brick, "ground", [3, 1.5], "concrete_thin"))), "interior wall back to its default");
+  const outer = setWallMaterial(doc, "ground", [0, 1.5], "concrete_thin");
+  assert.deepEqual(fl(outer).walls, [{ at: [0, 1.5], material: "concrete_thin" }], "interior material on an exterior wall is kept");
+  assert.ok(!("walls" in fl(setWallMaterial(outer, "ground", [0, 1.5], "concrete_thick"))));
+  assert.deepEqual(fl(setWallMaterial(doc, "ground", [3, 1.5], "interior")).walls, [{ at: [3, 1.5], material: "interior" }],
+    "the unknown interior wall is a choice of its own now");
   const custom = { ...doc, wifi: { defaults: { interior: "drywall" } } };
   assert.ok(!("walls" in fl(setWallMaterial(custom, "ground", [3, 1.5], "drywall"))), "the plan's own default");
-  assert.equal(setWallMaterial(doc, "ground", [3, 1.5], "low_e"), null, "not a wall material");
+  assert.deepEqual(fl(setWallMaterial(doc, "ground", [0, 1.5], "low_e")).walls, [{ at: [0, 1.5], material: "low_e" }], "a glass facade");
+  assert.equal(setWallMaterial(doc, "ground", [3, 1.5], "slab"), null, "not a wall material");
   assert.equal(setWallMaterial(doc, "ground", [1.5, 1.5], "brick"), null, "no wall there");
   assert.equal(setWallMaterial(doc, "upstairs", [3, 1.5], "brick"), null);
 });
@@ -305,11 +314,13 @@ test("setWifiDefault sets interior or exterior; the table's default removes it",
   assert.ok(!("wifi" in doc));
   const b = setWifiDefault(a, "exterior", "concrete");
   assert.deepEqual(b.wifi.defaults, { interior: "brick", exterior: "concrete" });
-  assert.ok(!("wifi" in setWifiDefault(a, "interior", "interior")));
-  const kept = setWifiDefault({ ...a, wifi: { ...a.wifi, samples: [] } }, "interior", "interior");
+  assert.ok(!("wifi" in setWifiDefault(a, "interior", "concrete_thin")));
+  assert.deepEqual(setWifiDefault(a, "interior", "interior").wifi, { defaults: { interior: "interior" } });
+  const kept = setWifiDefault({ ...a, wifi: { ...a.wifi, samples: [] } }, "interior", "concrete_thin");
   assert.deepEqual(kept.wifi, { samples: [] });
   assert.equal(setWifiDefault(doc, "slab", "brick"), null);
-  assert.equal(setWifiDefault(doc, "interior", "glass"), null);
+  assert.equal(setWifiDefault(doc, "interior", "slab"), null);
+  assert.deepEqual(setWifiDefault(doc, "exterior", "glass").wifi, { defaults: { exterior: "glass" } });
 });
 
 test("setOpeningMaterial fits the kind; the default or empty removes it; a doorway has none", () => {
@@ -327,7 +338,8 @@ test("setOpeningMaterial fits the kind; the default or empty removes it; a doorw
   assert.equal(setOpeningMaterial(doc, "ground", 0, "wood"), null, "wood is no window");
   assert.equal(fl(setOpeningMaterial(doc, "ground", 1, "metal")).openings[1].material, "metal", "a door without a kind");
   assert.ok(!("material" in fl(setOpeningMaterial(doc, "ground", 1, "wood")).openings[1]), "a door's default");
-  assert.equal(setOpeningMaterial(doc, "ground", 1, "low_e"), null);
+  assert.equal(fl(setOpeningMaterial(doc, "ground", 1, "low_e")).openings[1].material, "low_e", "a glazed door");
+  assert.equal(setOpeningMaterial(doc, "ground", 1, "brick"), null);
   assert.equal(setOpeningMaterial(doc, "ground", 2, "glass"), null, "a doorway");
   assert.equal(fl(setOpeningMaterial(doc, "ground", 3, "triple_low_e")).openings[3].material, "triple_low_e");
   assert.equal(setOpeningMaterial(doc, "ground", 9, "glass"), null);
@@ -442,4 +454,83 @@ test("nextSpots: a handover cell with a reading within 1 m is sampled; far cells
   const none = nextSpots(zone, [obsAt(2.5, 0.5), obsAt(2.5, 1.5), obsAt(2.5, 2.5)], rooms, 1);
   assert.equal(none[0].why, "room", "every handover cell sampled; the second room has no reading");
   assert.deepEqual(nextSpots([], [], rooms).map((s) => s.why), ["room", "room"], "no cells: the rooms");
+});
+
+// ---- outdoor rooms (Amendment 1) ----
+
+// A living room (0..4) and a balcony (4..6) behind its outer wall, a door between them.
+const balcony = (opening = {}, outdoor = ["balcony"]) => ({
+  floor: { rooms: [{ area_id: "living", polygon: sq(0, 0, 4, 3) }, { area_id: "balcony", polygon: sq(4, 0, 2, 3) }],
+    openings: [{ rooms: ["living", "balcony"], at: [4, 1.5], ...opening }] },
+  wifi: outdoor ? { outdoor } : undefined,
+});
+const atX = (segs, x) => segs.filter((s) => onX(s, x));
+
+test("a wall shared with an outdoor room is exterior; two outdoor rooms share an interior one; unshared stays exterior", () => {
+  const { floor, wifi } = balcony();
+  const walls = atX(wallSegments(floor, wifi, {}), 4).filter((s) => s.kind === "wall");
+  assert.ok(walls.length && walls.every((s) => s.material === "concrete_thick" && s.cls === "exterior"));
+  const own = wallSegments(floor, { ...wifi, defaults: { exterior: "brick" } }, {});
+  assert.ok(atX(own, 4).filter((s) => s.kind === "wall").every((s) => s.material === "brick"), "the plan's exterior default");
+  assert.equal(atX(wallSegments(floor, wifi, {}), 6)[0].material, "concrete_thick", "the balcony's own outer wall");
+  const terraces = { rooms: [{ area_id: "a", polygon: sq(0, 0, 3, 3) }, { area_id: "b", polygon: sq(3, 0, 3, 3) }] };
+  assert.equal(atX(wallSegments(terraces, { outdoor: ["a", "b"] }, {}), 3)[0].material, "concrete_thin");
+  assert.equal(wallSegmentAt(floor, wifi, [4, 0.3], 0.1).cls, "exterior");
+});
+
+test("an unmarked room behaves as before: interior wall, the door open and wood", () => {
+  const { floor } = balcony({}, null);
+  const segs = wallSegments(floor, undefined, {});
+  assert.ok(atX(segs, 4).filter((s) => s.kind === "wall").every((s) => s.material === "concrete_thin"));
+  const door = segs.find((s) => s.kind === "opening");
+  assert.equal(door.open, true);
+  assert.equal(door.material, "wood");
+  assert.deepEqual(wallSegments(floor, { outdoor: [] }, {}), segs);
+});
+
+test("an opening to an outdoor room without sensor or state is closed; a door to one is double glazing", () => {
+  const door = (o, hass = {}) => { const { floor, wifi } = balcony(o); return wallSegments(floor, wifi, hass).find((s) => s.kind === "opening"); };
+  assert.equal(door({}).open, false);
+  assert.equal(door({}).material, "double");
+  assert.equal(door({ material: "low_e" }).material, "low_e");
+  assert.equal(door({ kind: "window" }).open, false);
+  assert.equal(door({ kind: "window" }).material, "double");
+  assert.equal(door({ state: "open" }).open, true, "its explicit state wins");
+  const hass = (s) => ({ states: { "binary_sensor.balcony": { state: s, attributes: {} } } });
+  assert.equal(door({ entity: "binary_sensor.balcony" }, hass("on")).open, true, "a live sensor wins");
+  assert.equal(door({ entity: "binary_sensor.balcony" }, {}).open, false, "a sensor that has not answered: closed");
+  assert.equal(door({ kind: "opening" }).open, true, "a doorway is always open");
+  const { floor } = balcony();
+  assert.deepEqual(openingDefaults({ outdoor: ["balcony"] }, floor.openings[0]), { material: "double", state: "closed" });
+  assert.deepEqual(openingDefaults(undefined, floor.openings[0]), { material: "wood", state: "open" });
+  assert.deepEqual(openingDefaults(undefined, { kind: "window", rooms: ["living", null] }), { material: "double", state: "closed" });
+  assert.deepEqual(openingDefaults(undefined, { kind: "opening", rooms: ["living", null] }), { material: null, state: "open" });
+});
+
+test("a balcony behind a closed low-E door pays its loss; marking it outdoors changes the shared wall", () => {
+  const { floor, wifi } = balcony({ material: "low_e" });
+  const loss = priorParams(table, []).loss;
+  const segs = wallSegments(floor, wifi, {});
+  assert.equal(pathLoss(segs, [2, 1.5], [5, 1.5], "5", loss), 27, "through the closed low-E door");
+  assert.equal(pathLoss(segs, [2, 0.3], [5, 0.3], "5", loss), 33, "through the exterior wall beside it");
+  const before = wallSegments(floor, undefined, {});
+  assert.equal(pathLoss(before, [2, 0.3], [5, 0.3], "5", loss), 14, "unmarked: an interior wall");
+  assert.equal(pathLoss(before, [2, 1.5], [5, 1.5], "5", loss), 0, "unmarked: the door defaults open");
+});
+
+test("setOutdoor marks and unmarks a room of some floor; empty removes the key; the default door follows", () => {
+  const doc = { schema: 1, floors: [{ floor_id: "ground", points: [], ...balcony().floor }, { floor_id: "up", points: [], rooms: [room(0, 0, 3, 3, "attic")] }] };
+  const a = setOutdoor(doc, "balcony", true);
+  assert.deepEqual(a.wifi, { outdoor: ["balcony"] });
+  assert.ok(!("wifi" in doc), "a new doc");
+  assert.deepEqual(setOutdoor(a, "attic", true).wifi.outdoor, ["balcony", "attic"], "a room of another floor");
+  assert.deepEqual(setOutdoor(a, "balcony", true).wifi.outdoor, ["balcony"], "once");
+  assert.deepEqual(setOutdoor(setOutdoor(a, "attic", true), "balcony", true).wifi.outdoor, ["balcony", "attic"], "in its place");
+  assert.ok(!("wifi" in setOutdoor(a, "balcony", false)));
+  const kept = setOutdoor({ ...a, wifi: { ...a.wifi, defaults: { interior: "brick" } } }, "balcony", false);
+  assert.deepEqual(kept.wifi, { defaults: { interior: "brick" } });
+  assert.equal(setOutdoor(doc, "garden", true), null, "not a room");
+  // a door to an outdoor room: double is its default, wood is a choice of its own
+  assert.ok(!("material" in fl(setOpeningMaterial(a, "ground", 0, "double")).openings[0]));
+  assert.equal(fl(setOpeningMaterial(a, "ground", 0, "wood")).openings[0].material, "wood");
 });

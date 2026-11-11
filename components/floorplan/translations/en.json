@@ -170,13 +170,16 @@
         },
         "floor": "This floor:",
         "height": "Height (m)",
-        "slab": "Floor below"
+        "slab": "Floor below",
+        "outdoor": "Outdoors:"
       },
       "material": {
         "drywall": "Drywall",
         "wood": "Wood",
         "aerated_block": "Aerated concrete block",
         "brick": "Brick",
+        "concrete_thin": "Thin concrete (about 10 cm)",
+        "concrete_thick": "Thick reinforced concrete (about 25 cm)",
         "concrete": "Concrete",
         "reinforced_concrete": "Reinforced concrete",
         "glass": "Glass",
@@ -184,8 +187,8 @@
         "low_e": "Low-E glazing",
         "triple_low_e": "Triple low-E glazing",
         "metal": "Metal",
-        "interior": "Interior wall (typical)",
-        "exterior": "Exterior wall (typical)",
+        "interior": "Interior wall, material unknown",
+        "exterior": "Exterior wall, material unknown",
         "slab": "Floor slab (typical)"
       },
       "reading": {

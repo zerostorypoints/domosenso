@@ -1798,7 +1798,10 @@ test("the Walls tool: a tap on a wall selects its segment; its material, the def
   assert.deepEqual(["x1", "y1", "x2", "y2"].map((a) => Number(sel.getAttribute(a))).sort(), [0, 4, 5, 5]);
   const field = (name) => $(card, `.wall-panel [data-field="${name}"]`);
   assert.deepEqual(optionValues(field("wall")), materialIds("wall"), "only wall materials");
-  assert.equal(field("wall").querySelector("option[selected]").value, "interior");
+  assert.equal(field("wall").querySelector("option[selected]").value, "concrete_thin", "thin concrete inside by default");
+  for (const id of ["concrete_thin", "concrete_thick", "glass", "double", "low_e", "triple_low_e"]) {
+    assert.ok(optionValues(field("wall")).includes(id), `the wall picker offers ${id}`);
+  }
   change(field("wall"), "brick");
   assert.deepEqual(card._doc.floors[0].walls, [{ at: [5, 2], material: "brick" }]);
   click($(card, '[data-action=wall_default][data-which="interior"]'));
@@ -1838,13 +1841,65 @@ test("the opening panel's Material: window materials for a window, door material
   change(field("material"), "low_e");
   assert.equal(card._doc.floors[0].openings[0].material, "low_e");
   change(field("kind"), "door");
-  assert.ok(!("material" in card._doc.floors[0].openings[0]), "low-E glass is no door: dropped");
-  assert.deepEqual(optionValues(field("material")), ["wood", "glass", "metal"]);
+  assert.equal(card._doc.floors[0].openings[0].material, "low_e", "a glazed door keeps its glazing");
+  assert.deepEqual(optionValues(field("material")), ["wood", "glass", "double", "low_e", "triple_low_e", "metal"]);
   change(field("material"), "metal");
   assert.equal(card._doc.floors[0].openings[0].material, "metal");
+  change(field("kind"), "window");
+  assert.ok(!("material" in card._doc.floors[0].openings[0]), "metal is no window: dropped");
+  change(field("kind"), "door");
   change(field("kind"), "opening");
   assert.equal(field("material"), null, "a doorway has no material");
   assert.ok(!("material" in card._doc.floors[0].openings[0]));
+});
+
+test("the Walls tool's floor panel: an Outdoors switch per room marks it; the Wi-Fi map changes", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors[0].openings = [];
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  const boxes = () => [...card.shadowRoot.querySelectorAll('.wall-panel input[data-field="outdoor"]')];
+  assert.deepEqual(boxes().map((b) => b.getAttribute("data-area")), ["living_room", "kitchen"]);
+  assert.ok($(card, ".wall-panel").textContent.includes(EN("card.floorplan.wall.outdoor")));
+  assert.ok(boxes().every((b) => !b.checked));
+  const box = boxes()[1];
+  box.checked = true;
+  box.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.deepEqual(card._doc.wifi, { outdoor: ["kitchen"] });
+  assert.ok(boxes()[1].checked, "drawn on");
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));
+  assert.equal($(card, '.wall-panel [data-field="wall"]').querySelector("option[selected]").value, "concrete_thick",
+    "the wall to an outdoor room is exterior");
+  const dbm = async (doc) => {
+    const view = await make({ plan: doc, layers: ["radio"] }, wifiHass());
+    await settle();
+    click($(view, '.bar [data-map="wifi_24"]'));          // the kitchen's node alone serves 2.4 GHz
+    return cellsOf(view).map((c) => c.getAttribute("data-dbm")).join();
+  };
+  assert.notEqual(await dbm(card._doc), await dbm(plan), "an outdoor kitchen: its wall is exterior, the living room darker");
+  const off = boxes()[1];
+  off.checked = false;
+  off.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.ok(!("wifi" in card._doc));
+  window.localStorage.clear();
+});
+
+test("the opening panel: a door to an outdoor room shows double glazing and closed as its defaults", async () => {
+  const plan = withOpenings([{ rooms: ["living_room", "kitchen"], at: [5, 2] }]);
+  plan.wifi = { outdoor: ["kitchen"] };
+  const card = await make({ plan }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  const [sx, sy] = clientAt(card, 5, 2);
+  pointer($(card, "g.opening line.hit"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointerup", sx, sy);
+  const field = (name) => $(card, `.opening-panel [data-field="${name}"]`);
+  assert.equal(field("material").querySelector("option[selected]").value, "double");
+  assert.equal(field("state").querySelector("option[selected]").value, "closed");
+  change(field("material"), "wood");
+  assert.equal(card._doc.floors[0].openings[0].material, "wood", "wood is a choice of its own here");
 });
 
 const OFFER_KEY = "domosenso.floorplan.ap_offered";

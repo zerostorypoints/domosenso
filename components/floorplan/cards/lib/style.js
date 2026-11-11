@@ -128,9 +128,9 @@ export const STYLE = `
   .wall-panel, .ap-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .wifi-disabled { font-size: 12px; color: var(--secondary-text-color); }
   .wifi-disabled ul { margin: 4px 0 0; padding-left: 18px; }
-  .wall-panel input, .point-panel input[type=number] { width: 5em; }
+  .wall-panel input[type=number], .point-panel input[type=number] { width: 5em; }
   .wall-panel .floor-label { margin-left: 12px; }
-  .ap-check { display: inline-flex; align-items: center; gap: 4px; }
+  .ap-check, .outdoor-check { display: inline-flex; align-items: center; gap: 4px; }
   .sample { pointer-events: none; }
   .sample circle { fill: var(--primary-text-color); stroke: var(--card-background-color, #fff); stroke-width: 1;
                    vector-effect: non-scaling-stroke; }

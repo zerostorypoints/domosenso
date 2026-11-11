@@ -170,13 +170,16 @@
         },
         "floor": "To piętro:",
         "height": "Wysokość (m)",
-        "slab": "Strop pod nim"
+        "slab": "Strop pod nim",
+        "outdoor": "Na zewnątrz:"
       },
       "material": {
         "drywall": "Płyta gipsowo-kartonowa",
         "wood": "Drewno",
         "aerated_block": "Beton komórkowy",
         "brick": "Cegła",
+        "concrete_thin": "Beton cienki (ok. 10 cm)",
+        "concrete_thick": "Żelbet gruby (ok. 25 cm)",
         "concrete": "Beton",
         "reinforced_concrete": "Żelbet",
         "glass": "Szkło",
@@ -184,8 +187,8 @@
         "low_e": "Szyba niskoemisyjna",
         "triple_low_e": "Szyba potrójna niskoemisyjna",
         "metal": "Metal",
-        "interior": "Ściana wewnętrzna (typowa)",
-        "exterior": "Ściana zewnętrzna (typowa)",
+        "interior": "Ściana wewnętrzna, materiał nieznany",
+        "exterior": "Ściana zewnętrzna, materiał nieznany",
         "slab": "Strop (typowy)"
       },
       "reading": {
