@@ -427,6 +427,19 @@ def test_push_plan_prints_wifi_samples_with_the_count_after_push(home, capsys):
     assert code == 0 and lines[0] == "wifi samples 2", lines
 
 
+def test_push_plan_counts_phone_samples_with_their_scans(home, capsys):
+    root, box = home
+    box["ha"] = Dashboards(PLAN).ha
+    record(root, "staging", PLAN)
+    scan = {"t": "2026-11-11T18:05:27+01:00", "bssid": "02:00:00:00:00:01", "dbm": -61, "rx": 2401}
+    sample = {"floor_id": "ground", "x": 1.0, "y": 1.0, "band": "5", "dbm": -61, "source": "phone",
+              "phone": "ios", "method": "shortcut", "spread": 1.0, "scans": [scan, {**scan, "dbm": -62}]}
+    write_plan(root, {**PLAN, "wifi": {"samples": [sample]}})
+    code = cli(root, "push", "staging", "--plan")
+    lines = out(capsys)
+    assert code == 0 and lines[0] == "wifi samples 1", lines
+
+
 def test_a_plan_without_wifi_keys_validates_and_pushes_unchanged(home, capsys):
     root, box = home
     box["ha"] = Dashboards(PLAN).ha

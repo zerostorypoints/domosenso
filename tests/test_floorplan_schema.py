@@ -302,6 +302,24 @@ def wifi_demo() -> dict:
     return doc
 
 
+def _scan(**kw) -> dict:
+    return {"t": "2026-11-11T18:05:27+01:00", "ssid": "Home", "bssid": "02:00:00:00:00:01", "dbm": -61,
+            "noise": -96, "channel": 40, "standard": "802.11ax", "rx": 2401, "tx": 1921, "mhz": None,
+            "mac": "02:00:00:00:00:aa", **kw}
+
+
+def _phone_sample(**kw) -> dict:
+    return {"floor_id": "ground", "x": 3.4, "y": 2.1, "t": "2026-11-11T17:05:31Z", "band": "5", "channel": 40,
+            "dbm": -61, "noise": -96, "ap": "dev1", "bssid": "02:00:00:00:00:01", "source": "phone",
+            "phone": "ios", "method": "shortcut", "spread": 2.0, "scans": [_scan(), _scan(dbm=-62)], **kw}
+
+
+def test_a_phone_sample_with_its_scans_validates():
+    doc = wifi_demo()
+    doc["wifi"]["samples"].append(_phone_sample())
+    validate(doc)
+
+
 def test_a_plan_with_wifi_keys_validates():
     validate(wifi_demo())
 
@@ -356,6 +374,23 @@ REFUSALS = [
     (lambda d: d["wifi"]["samples"][0].update(dbm=5), "sample 0: dbm out of range"),
     (lambda d: d["wifi"]["samples"][0].update(dbm=-120), "sample 0: dbm out of range"),
     (lambda d: d["wifi"].update(samples=d["wifi"]["samples"] * 2001), "more than 2000 samples"),
+    # SPEC-045: phone samples. Structure is the schema's (its message), ranges are the checker's.
+    (lambda d: d["wifi"]["samples"][0].update(source="radar"),
+     "wifi.samples.0.source: 'radar' is not one of ['survey', 'manual', 'phone']"),
+    (lambda d: d["wifi"]["samples"][0].update(scans=[{"t": "2026-11-11T18:05:27+01:00"}]),
+     "sample 0: scans only with source phone"),
+    (lambda d: d["wifi"]["samples"].__setitem__(0, {**_phone_sample(), "scans": [_scan()] * 21}),
+     "sample 0: more than 20 scans"),
+    (lambda d: d["wifi"]["samples"].__setitem__(0, {**_phone_sample(), "scans": [{"dbm": "-61"}]}),
+     "missing key wifi.samples.0.scans.0.t"),
+    (lambda d: d["wifi"]["samples"].__setitem__(0, {**_phone_sample(), "scans": [_scan(), _scan(dbm=-120)]}),
+     "sample 0: scan 1 dbm out of range"),
+    (lambda d: d["wifi"]["samples"].__setitem__(0, {**_phone_sample(), "scans": [_scan(rx=10001)]}),
+     "sample 0: scan 0 rx out of range"),
+    (lambda d: d["wifi"]["samples"].__setitem__(0, {**_phone_sample(), "scans": [_scan(mhz=2000)]}),
+     "sample 0: scan 0 mhz out of range"),
+    (lambda d: d["wifi"]["samples"].__setitem__(0, {**_phone_sample(), "spread": -1}),
+     "sample 0: spread out of range"),
 ]
 
 

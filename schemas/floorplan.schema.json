@@ -39,7 +39,28 @@
               "noise": {"type": "number"},
               "ap": {"type": "string", "description": "Device id of an access point, or absent"},
               "bssid": {"type": "string"},
-              "source": {"enum": ["survey", "manual"]}
+              "source": {"enum": ["survey", "manual", "phone"]},
+              "phone": {"type": "string", "description": "source phone: the mobile_app device id, or ios / android (SPEC-045)"},
+              "method": {"enum": ["shortcut", "companion"]},
+              "spread": {"type": "number", "description": "dB, max - min of the scans' RSSI, >= 0"},
+              "scans": {
+                "type": "array", "minItems": 1,
+                "description": "source phone: each scan the phone took, the fields it gave, at most 20 (SPEC-045)",
+                "items": {
+                  "type": "object", "additionalProperties": false, "required": ["t"],
+                  "properties": {
+                    "t": {"type": "string"},
+                    "ssid": {"type": ["string", "null"]}, "bssid": {"type": ["string", "null"]},
+                    "mac": {"type": ["string", "null"]}, "standard": {"type": ["string", "null"]},
+                    "dbm": {"type": ["number", "null"], "description": "-110 to 0"},
+                    "noise": {"type": ["number", "null"]},
+                    "channel": {"type": ["integer", "null"]},
+                    "rx": {"type": ["number", "null"], "description": "Mbps, 0 to 10000"},
+                    "tx": {"type": ["number", "null"], "description": "Mbps, 0 to 10000"},
+                    "mhz": {"type": ["number", "null"], "description": "2400 to 7125"}
+                  }
+                }
+              }
             }
           }
         }

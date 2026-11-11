@@ -96,6 +96,28 @@ def _near_edge(polygon: list, at: list) -> bool:
     return False
 
 
+_MAX_SCANS = 20
+_PHONE_KEYS = ("scans", "phone", "method", "spread")
+_SCAN_RANGES = (("dbm", -110, 0), ("rx", 0, 10000), ("tx", 0, 10000), ("mhz", 2400, 7125))
+
+
+def _check_phone_sample(index: int, sample: dict) -> None:
+    """SPEC-045: what a phone's reading carries only with `source: phone`, and its scans' ranges."""
+    if sample.get("source") != "phone":
+        for key in _PHONE_KEYS:
+            if key in sample:
+                raise DomosensoError(f"sample {index}: {key} only with source phone")
+        return
+    if len(sample.get("scans", [])) > _MAX_SCANS:
+        raise DomosensoError(f"sample {index}: more than {_MAX_SCANS} scans")
+    if sample.get("spread", 0) < 0:
+        raise DomosensoError(f"sample {index}: spread out of range")
+    for number, scan in enumerate(sample.get("scans", [])):
+        for key, low, high in _SCAN_RANGES:
+            if scan.get(key) is not None and not low <= scan[key] <= high:
+                raise DomosensoError(f"sample {index}: scan {number} {key} out of range")
+
+
 def _check_wifi(doc: dict) -> None:
     """SPEC-044 limits the schema cannot say: material ids and what they fit, walls on room edges,
     access points that are points of their floor, ranges, outdoor rooms and the samples."""
@@ -120,6 +142,7 @@ def _check_wifi(doc: dict) -> None:
             raise DomosensoError(f"sample {index}: floor {label} not in the plan")
         if not -110 <= sample["dbm"] <= 0:
             raise DomosensoError(f"sample {index}: dbm out of range")
+        _check_phone_sample(index, sample)
     aps = set()
     for floor in doc["floors"]:
         label = "-" if floor["floor_id"] is None else floor["floor_id"]
