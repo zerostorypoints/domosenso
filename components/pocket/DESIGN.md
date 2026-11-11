@@ -341,7 +341,9 @@ it, or it does not go in.
   band and channel, access point, noise, rates, spread, the model's value), the failed checks (hard
   in the poor colour, soft in the fair one) and Keep / Retry, or the 2.4 / 6 GHz pick.
 - **Install card:** a first use per device shows what that phone needs (the Shortcut and its Server
-  step; on Android the Companion app's sensors and the phone picker) above the panel, until done. The
+  step; on Android the Companion app's sensors and the phone picker) above the panel. On the iPhone it folds
+  away by itself once a reading has come from the Shortcut (no "done" button: a mistaken tap hid it for
+  good); "Install the Shortcut" beside the method line opens it again at any time. The
   Shortcut is a download named as Pocket runs it, opened in Shortcuts (its `import-shortcut` link refuses
   a file served by Home Assistant).
 - **Room picker** above the plan (a native drop-down, "Whole floor plan" first, then the plan's rooms by

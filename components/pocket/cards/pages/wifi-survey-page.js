@@ -129,9 +129,10 @@ export function render(ctx) {
     <select class="room-pick" hidden></select>
     <div class="box" hidden></div>
     <div class="install" hidden><b class="install-title"></b><p class="install-text"></p><a class="install-link" target="_blank"></a>
-      <p class="install-server"></p><select class="phone-pick" hidden></select><button class="act done" type="button"></button></div>
+      <p class="install-server"></p><select class="phone-pick" hidden></select></div>
     <div class="panel" hidden>
-      <div class="method"><span class="method-name"></span><button class="link change" type="button"></button></div>
+      <div class="method"><span class="method-name"></span><span><button class="link reinstall" type="button"></button>
+        <button class="link change" type="button"></button></span></div>
       <div class="why"></div>
       <div class="row"><button class="act primary measure" type="button"></button><button class="act cancel" type="button" hidden></button>
         <span class="progress"></span></div>
@@ -164,8 +165,9 @@ export function render(ctx) {
     put(KEY.method, next);
     update(root, s.ctx);
   });
-  $(".done").addEventListener("click", () => {
-    put(KEY.installed, "1");
+  // The install card, opened or closed by hand; it closes by itself once a reading has come from the Shortcut.
+  $(".reinstall").addEventListener("click", () => {
+    s.showInstall = !installShown(root);
     update(root, s.ctx);
   });
   $(".phone-pick").addEventListener("change", (e) => {
@@ -311,7 +313,12 @@ export function render(ctx) {
     s.result.prediction = sample?.ap && sample.band ? s.card?.predictionAt(pending, sample.ap, sample.band) ?? null : null;
     s.pending = null;
     clearPending(store());
-    if (pending.method !== "companion") markReturn(store(), Date.now());
+    if (pending.method !== "companion") {
+      markReturn(store(), Date.now());
+      // A reading came from the Shortcut: it is installed, the install card folds away.
+      if (scans.length) put(KEY.installed, "1");
+      s.showInstall = null;
+    }
     persist();
     // Every check passed: kept at once (a green dot); a warning waits for the person (amber), a failure keeps
     // nothing (red).
@@ -416,6 +423,9 @@ export function update(root, ctx) {
   installCard(root, ctx, method);
   setText($(".method-name"), t(`card.pocket.wifi.method.${method}`));
   setText($(".change"), t("card.pocket.wifi.change"));
+  const reinstall = $(".reinstall");
+  reinstall.hidden = method === "companion";
+  setText(reinstall, t("card.pocket.wifi.install.title"));
   setText($(".why"), s.why ? t(`card.pocket.wifi.why.${s.why}`) : s.spot ? t("card.pocket.wifi.here") : t("card.pocket.wifi.pick"));
   const measure = $(".measure");
   setText(measure, t("card.pocket.wifi.measure"));
@@ -553,7 +563,6 @@ function installCard(root, ctx, method) {
     setText($(".install-text"), t("card.pocket.wifi.install.android"));
     $(".install-link").hidden = true;
     $(".install-server").hidden = true;
-    $(".done").hidden = true;
     pick.hidden = false;
     const ids = androidPhones(hass);
     const key = ids.join(" ");
@@ -569,7 +578,7 @@ function installCard(root, ctx, method) {
     pick.value = phone ?? "";
     return;
   }
-  box.hidden = get(KEY.installed) === "1";
+  box.hidden = !installShown(root);
   pick.hidden = true;
   setText($(".install-title"), t("card.pocket.wifi.install.title"));
   setText($(".install-text"), t("card.pocket.wifi.install.iphone"));
@@ -582,7 +591,10 @@ function installCard(root, ctx, method) {
   const server = $(".install-server");
   server.hidden = method !== "shortcut-event";
   setText(server, t("card.pocket.wifi.install.server"));
-  const done = $(".done");
-  done.hidden = false;
-  setText(done, t("card.pocket.wifi.install.done"));
+}
+
+// The iPhone's install card shows until a reading has come from the Shortcut, unless opened or closed by hand.
+function installShown(root) {
+  const s = root._survey;
+  return s.showInstall ?? get(KEY.installed) !== "1";
 }

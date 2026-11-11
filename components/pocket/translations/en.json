@@ -845,7 +845,6 @@
           "iphone": "The iPhone measures with the Shortcut \"Domosenso Wi-Fi\". Install it once: download it, open the download and tap Add Shortcut.",
           "link": "Download \"Domosenso Wi-Fi\"",
           "server": "Then open the Shortcut, tap Server in its Fire event action and choose your Home Assistant (listed by its name in the Companion app).",
-          "done": "Installed",
           "android_title": "Choose this phone",
           "android": "Turn on the Companion app's Wi-Fi sensors (signal strength, BSSID, frequency, link speed, connection), then choose this phone.",
           "phone": "This phone…"

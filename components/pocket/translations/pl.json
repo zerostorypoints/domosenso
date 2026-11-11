@@ -845,7 +845,6 @@
           "iphone": "iPhone mierzy skrótem \"Domosenso Wi-Fi\". Zainstaluj go raz: pobierz, otwórz pobrany plik i dotknij Dodaj skrót.",
           "link": "Pobierz \"Domosenso Wi-Fi\"",
           "server": "Następnie otwórz skrót, dotknij Server w jego akcji Fire event i wybierz swój Home Assistant (pod nazwą z aplikacji Companion).",
-          "done": "Zainstalowano",
           "android_title": "Wybierz ten telefon",
           "android": "Włącz czujniki Wi-Fi w aplikacji Companion (siła sygnału, BSSID, częstotliwość, szybkość łącza, połączenie), potem wybierz ten telefon.",
           "phone": "Ten telefon…"

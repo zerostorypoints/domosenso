@@ -191,18 +191,28 @@ test("Android: Measure asks the phone to update its sensors and collects its Wi-
   }
 });
 
-test("first use on an iPhone: the install card with the Shortcut and the Server step", async () => {
+test("first use on an iPhone: the install card until the first reading arrives; Install the Shortcut always reopens it", async () => {
   window.localStorage.removeItem("pocket.wifi.installed");
-  const el = await mount(ctxOf({ hass: surveyHass(), cfg }));
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = await mount(ctx);
   const install = $(el, ".install");
   assert.ok(!install.hidden);
-  const href = $(install, "a.install-link").getAttribute("href");
-  assert.ok(/\/shortcuts\/Domosenso%20Wi-Fi\.shortcut$/.test(href), "the file: Shortcuts refuses import-shortcut for it");
+  assert.ok(/\/shortcuts\/Domosenso%20Wi-Fi\.shortcut$/.test($(install, "a.install-link").getAttribute("href")));
   assert.equal($(install, "a.install-link").getAttribute("download"), "Domosenso Wi-Fi.shortcut");
   assert.ok(text(install).includes("Server"), text(install));
-  click($(install, ".done"));
+  assert.equal($(install, ".done"), null, "no button that hides it for good");
+  tapPlan(2, 1);
+  click($(el, ".measure"));
+  const { code } = loadPending(window.localStorage, Date.now());
+  ctx.hass = surveyHass({ states: reading(code) });
+  page.update(el, ctx);
+  assert.ok(install.hidden, "a reading arrived: the Shortcut is installed");
+  const again = $(el, ".reinstall");
+  assert.ok(!again.hidden);
+  click(again);
+  assert.ok(!install.hidden, "always reachable again");
+  click(again);
   assert.ok(install.hidden);
-  assert.equal(window.localStorage.getItem("pocket.wifi.installed"), "1");
 });
 
 test("an update never hides a shown part for a moment: the page keeps its height and its scroll", async () => {
