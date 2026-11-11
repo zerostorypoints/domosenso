@@ -180,7 +180,8 @@ class FloorplanCard extends HTMLElement {
     this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
     this._wifiKey = null;          // the last cache key and what it was computed from
     this._wall = null;             // walls tool: the middle of the selected wall stretch
-    this._offered = new Set(load(OFFER_KEY, []));   // points this browser asked "Use as access point?" about
+    const offered = load(OFFER_KEY, []);           // another page's or a hand-edited value may be no list
+    this._offered = new Set(Array.isArray(offered) ? offered : []);   // points this browser asked "Use as access point?" about
     this._calib = load(CALIB_KEY, null);           // "predicted" chosen; else calibrated once there are readings
     this._obsMemo = null;          // the devices' observations and their digest, and what they came from
     this._fitMemo = null;          // the last fit: {doc, states, digest, fit}

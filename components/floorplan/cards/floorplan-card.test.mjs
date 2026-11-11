@@ -1937,6 +1937,17 @@ test("a Deco node point is offered 'Use as access point?' once; accepting marks 
   window.localStorage.clear();
 });
 
+test("a corrupt stored offer list (not a list) is read as none: the card still starts and offers", async () => {
+  for (const bad of ["5", "{\"d_mesh\": true}", "null"]) {
+    window.localStorage.clear();
+    window.localStorage.setItem(OFFER_KEY, bad);
+    const card = await make({ plan: planOf([pt("d_mesh", 6.5, 2)]) }, nodeHass());
+    click($(card, "[data-action=edit]"));
+    assert.ok($(card, ".ap-offer"), `offered after ${bad}`);
+  }
+  window.localStorage.clear();
+});
+
 test("German confidence levels: hoch, mittel, niedrig (not tief)", () => {
   assert.deepEqual(at(LANGS.de, "card.floorplan.wifi.confidence"), { high: "hoch", medium: "mittel", low: "niedrig" });
   assert.ok(!at(LANGS.de, "card.floorplan.wifi.confidence_legend").includes("tief"));
