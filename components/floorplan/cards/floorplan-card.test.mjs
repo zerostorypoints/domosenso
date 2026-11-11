@@ -2441,6 +2441,25 @@ test("a finger's tap on a client dot opens the same panel; a tap elsewhere close
   window.localStorage.clear();
 });
 
+test("a placed client whose device's layer is hidden is a tappable disc at its point; with the marker shown, a ring", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors[0].points.push({ device_id: "d_climate", x: 3, y: 1, placed: true, mac: LAPTOP });
+  const card = await linksCard({}, trafficHass(), plan);      // the climate layer is not shown: no marker there
+  assert.ok(!markerOf(card, "d_climate"));
+  assert.ok(!$(card, "circle.client-ring"), "no ring without a marker");
+  const dot = dotOf(card, LAPTOP);
+  const [x, y] = translateOf(dot);
+  assert.ok(Math.abs(x - 3) < 1e-6 && Math.abs(y - 1) < 1e-6, "a disc at the point");
+  const [cx, cy] = clientAt(card, 3, 1);
+  hoverNode(card, dot, cx, cy);
+  assert.ok(tipShown(card));
+  assert.equal(tipRows(card)[0], "Climate sensor");
+  const shown = await linksCard({}, phoneHass(), (() => { const p = wifiPlan(); p.floors[0].points.push({ device_id: "d_phone", x: 3, y: 1, placed: true, mac: LAPTOP }); return p; })());
+  assert.ok(markerOf(shown, "d_phone") && $(shown, "circle.client-ring") && !dotOf(shown, LAPTOP), "marker shown: a ring");
+  window.localStorage.clear();
+});
+
 test("an open tip is refreshed: new rates and age, and closed when the client goes", async () => {
   window.localStorage.clear();
   const real = Date.now;

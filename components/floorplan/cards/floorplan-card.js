@@ -1928,7 +1928,8 @@ ${STYLE}
       if (c.point) {
         if (c.point.floorId !== this._floorId) continue;
         const p = at(c.point.key);
-        if (p) s = { centre: [p.x, p.y], radius: SHARED_RING_M, group: `p:${c.point.key}`, placed: true };
+        if (p) s = { centre: [p.x, p.y], radius: SHARED_RING_M, group: `p:${c.point.key}`, placed: true,
+          marker: this._shown(this._cat(p)) || this._sourceObs(p).length > 0 };     // is its device's marker drawn there?
       }
       if (!s && c.ap && apAt.has(c.ap)) s = { centre: apAt.get(c.ap), radius: 1.2, group: `a:${c.ap}`, placed: false };
       if (!s) continue;
@@ -1944,7 +1945,7 @@ ${STYLE}
       // An unplaced client always takes its place on the ring; a placed one stays on its point when alone.
       const at2 = !s.placed ? ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius)
         : mates.length === 1 ? s.centre : ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius);
-      dots.push({ c, at: at2, placed: s.placed, ring: s.placed && mates.length === 1 });
+      dots.push({ c, at: at2, placed: s.placed, ring: s.placed && s.marker && mates.length === 1 });
       const to = c.ap && apAt.get(c.ap);
       if (!to) continue;
       const attrs = { class: c.stale ? "client-line stale" : "client-line", "data-mac": c.mac, x1: fmt(at2[0]), y1: fmt(at2[1]),
