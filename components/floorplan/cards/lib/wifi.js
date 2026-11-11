@@ -4,7 +4,7 @@
 import materials from "./materials.json" with { type: "json" };
 import { facingWalls, editFloor } from "./plan.js";
 import { pointInPolygon, widestRow } from "./geometry.js";
-import { openingShape, openingState, kindOf, outside, SHARED_M } from "./openings.js";
+import { openingShape, openingState, toOutdoorRoom, kindOf, outside, SHARED_M } from "./openings.js";
 
 export const BANDS = ["2.4", "5", "6"];
 
@@ -79,19 +79,12 @@ function cutOf(a, b, gap) {
   return t && [t[0] / Math.hypot(...sub(b, a)), t[1] / Math.hypot(...sub(b, a))];
 }
 
-// Whether an opening joins an indoor room to an outdoor one (Amendment 1: a balcony's door).
-const toOutdoor = (wifi, o) => {
-  const outdoor = wifi?.outdoor ?? [];
-  const sides = o.rooms.filter((r) => r !== null);
-  return sides.some((r) => outdoor.includes(r)) && sides.some((r) => !outdoor.includes(r));
-};
-
 // What an opening is without its own `material` and `state`: glazing on a window, fixed glass and a door
 // to an outdoor room, wood on any other door, none on a doorway; closed to the outside or to an outdoor
 // room, else open (a doorway always).
 export function openingDefaults(wifi, o) {
   const kind = kindOf(o);
-  const boundary = toOutdoor(wifi, o);
+  const boundary = toOutdoorRoom(o, wifi?.outdoor);
   if (kind === "opening") return { material: null, state: "open" };
   const material = kind === "door" && !boundary ? materials.defaults.door : materials.defaults.window;
   return { material, state: outside(o) || boundary ? "closed" : "open" };
@@ -124,11 +117,7 @@ export function wallSegments(floor, wifi, hass) {
     if (!shape) continue;
     const kind = kindOf(o);
     const material = kind === "opening" ? "opening" : o.material ?? openingDefaults(wifi, o).material;
-    const state = openingState(o, hass);
-    // A sensor's answer or the opening's own state decides; else a door or window to an outdoor room is
-    // closed (the drawing keeps openings.js's default: this is the prediction's assumption).
-    const open = (kind === "door" || kind === "window") && !o.state && !(state.linked && state.known) && toOutdoor(wifi, o)
-      ? false : state.open;
+    const { open } = openingState(o, hass, wifi?.outdoor);
     const next = [];
     for (const s of segs) {
       const cut = s.kind === "wall" && cutOf(s.a, s.b, shape.ends);

@@ -1890,6 +1890,9 @@ test("the opening panel: a door to an outdoor room shows double glazing and clos
   const plan = withOpenings([{ rooms: ["living_room", "kitchen"], at: [5, 2] }]);
   plan.wifi = { outdoor: ["kitchen"] };
   const card = await make({ plan }, hassOf());
+  assert.ok($(card, "g.opening").classList.contains("closed"), "drawn closed, as predicted");
+  const indoor = await make({ plan: withOpenings([{ rooms: ["living_room", "kitchen"], at: [5, 2] }]) }, hassOf());
+  assert.ok($(indoor, "g.opening").classList.contains("open"), "between two indoor rooms: open");
   click($(card, "[data-action=edit]"));
   click($(card, '[data-action=tool][data-tool="openings"]'));
   const [sx, sy] = clientAt(card, 5, 2);

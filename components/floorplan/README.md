@@ -231,13 +231,15 @@ In edit mode (SPEC-044):
   did.
 - **Outdoor rooms.** A balcony, terrace or winter garden drawn as a room is computed and drawn like
   any room (its cells, its next spots), and is often the weakest spot of a home. Switch it on under
-  **Outdoors** in the Walls tool's floor panel: its wall to the home becomes exterior, a door or
-  window to it is closed unless its sensor or its own state says otherwise, and a door to it is
-  double glazing unless set. Stored as `wifi.outdoor` (area ids).
+  **Outdoors** in the Walls tool's floor panel: its wall to the home becomes exterior, and a door or
+  window between it and an indoor room is drawn and computed closed unless its sensor or its own
+  state says otherwise. Joining, splitting or relinking rooms keeps the flags true to the rooms.
+  Stored as `wifi.outdoor` (area ids).
 - **Doors and windows.** The opening's panel has **Material**. A window or fixed glass: one of glass,
-  double glazing (default), low-E, triple low-E; a door is wood (default; double glazing to an
-  outdoor room), metal or any of the glazings (a glazed door); a doorway has none. Stored as
-  `material` on the opening.
+  double glazing (default), low-E, triple low-E; a door is wood, metal or any of the glazings (a
+  glazed door); a doorway has none. A door without its own material follows the outdoor flags:
+  double glazing between an indoor and an outdoor room, wood otherwise (also between two outdoor
+  rooms and to the outside). Stored as `material` on the opening.
 - **Floor.** With the Walls tool, the floor's **Height** (m, default 2.7) and **Floor below** (the
   slab material: a typical slab, thick reinforced concrete or reinforced concrete) are set in its
   panel; they decide how much a signal loses between floors.

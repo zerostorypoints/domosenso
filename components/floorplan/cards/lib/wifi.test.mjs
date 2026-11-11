@@ -5,6 +5,7 @@ import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predic
   addReading, nextSpots, setOutdoor, openingDefaults } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 import { widestRow } from "./geometry.js";
+import { openingState } from "./openings.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 const two = () => ({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: sq(3, 0, 3, 3) }] });
@@ -505,6 +506,16 @@ test("an opening to an outdoor room without sensor or state is closed; a door to
   assert.deepEqual(openingDefaults(undefined, floor.openings[0]), { material: "wood", state: "open" });
   assert.deepEqual(openingDefaults(undefined, { kind: "window", rooms: ["living", null] }), { material: "double", state: "closed" });
   assert.deepEqual(openingDefaults(undefined, { kind: "opening", rooms: ["living", null] }), { material: null, state: "open" });
+});
+
+test("the drawn and the predicted state of a balcony door agree", () => {
+  const { floor, wifi } = balcony();
+  for (const [o, hass] of [[{}, {}], [{ state: "open" }, {}],
+    [{ entity: "binary_sensor.balcony" }, { states: { "binary_sensor.balcony": { state: "on", attributes: {} } } }]]) {
+    const f = { ...floor, openings: [{ ...floor.openings[0], ...o }] };
+    const predicted = wallSegments(f, wifi, hass).find((s) => s.kind === "opening").open;
+    assert.equal(predicted, openingState(f.openings[0], hass, wifi.outdoor).open, JSON.stringify(o));
+  }
 });
 
 test("a balcony behind a closed low-E door pays its loss; marking it outdoors changes the shared wall", () => {

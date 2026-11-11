@@ -546,6 +546,20 @@ test("join, split and relink keep a room's open space", () => {
   assert.deepEqual(groupsOf(linked), [["hall", "lounge"]]);
 });
 
+test("join, split and relink keep wifi.outdoor true to the rooms (SPEC-044 Amendment 1)", () => {
+  const marked = (outdoor) => ({ ...doc(), wifi: { outdoor, defaults: { interior: "brick" } } });
+  const dropped = joinRooms(marked(["living_room"]), "ground", "kitchen", "living_room");
+  assert.deepEqual(dropped.wifi, { defaults: { interior: "brick" } }, "the dropped room's id goes; the key with it");
+  assert.deepEqual(joinRooms(marked(["kitchen"]), "ground", "kitchen", "living_room").wifi.outdoor, ["kitchen"],
+    "the kept room keeps its own flag");
+  const bare = joinRooms({ ...doc(), wifi: { outdoor: ["living_room"] } }, "ground", "kitchen", "living_room");
+  assert.ok(!("wifi" in bare), "nothing left in wifi");
+  assert.deepEqual(linkRoom(marked(["living_room", "kitchen"]), "ground", "living_room", "office").wifi.outdoor, ["office", "kitchen"]);
+  assert.deepEqual(splitRoom(marked(["living_room"]), "ground", "living_room", [2, -0.01], [2, 4.01], "office").wifi.outdoor,
+    ["living_room", "office"], "both halves of an outdoor room are outdoors");
+  assert.ok(!("wifi" in joinRooms(doc(), "ground", "kitchen", "living_room")), "a plan without wifi stays so");
+});
+
 test("facingWalls: the walls two rooms of a group show each other, within 0.3 m", () => {
   const d = openRooms(threeRooms(), "ground", "living_room", "hall");
   const walls = facingWalls(d.floors[0]);

@@ -369,7 +369,7 @@ class FloorplanCard extends HTMLElement {
   // The open or closed state of every opening with a sensor: live state the cache keys leave out.
   _openingStates() {
     return this._doc.floors.flatMap((f) => (f.openings || []).filter((o) => o.entity)
-      .map((o) => openingState(o, this._hass).open)).join();
+      .map((o) => openingState(o, this._hass, this._doc.wifi?.outdoor).open)).join();
   }
 
   // The prediction of the floor shown on one band, or the calibrated one, memoised by its cache key,
@@ -1000,7 +1000,7 @@ ${STYLE}
       + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`
       + button("fill_wall", "fill_wall");
     if (kind === "door" || kind === "window") {
-      const state = o.state ?? openingDefaults(this._wifiOn ? this._doc.wifi : undefined, o).state;
+      const state = o.state ?? openingDefaults(this._doc.wifi, o).state;
       html += sel("state", "default", ["open", "closed"].map((s) => opt(s, t(h, `card.floorplan.opening.${s}`), s === state)).join(""))
         + sel("entity", "sensor", opt("", t(h, "card.floorplan.opening.no_sensor"), !o.entity)
           + openingSensors(h, o).map((c) => opt(c.id, c.name, c.id === o.entity)).join(""));
@@ -1304,7 +1304,7 @@ ${STYLE}
       const shape = openingShape(floor, o);
       if (!shape) return;
       const kind = kindOf(o);
-      const state = openingState(o, h);
+      const state = openingState(o, h, this._doc.wifi?.outdoor);
       const cls = ["opening", kind, state.open ? "open" : "closed"];
       if (styleOf(o) === "sliding") cls.push("sliding");
       if (state.linked) cls.push("linked");

@@ -490,8 +490,20 @@ export function facingWalls(floor) {
   return out;
 }
 
+// The plan (or null) with `fn(id)` applied to every id of `wifi.outdoor` (SPEC-044 Amendment 1): an id,
+// a list of ids or null to take it out; each id once, and no key (no `wifi`) when nothing is left.
+function withOutdoor(doc, fn) {
+  if (!doc?.wifi?.outdoor) return doc;
+  const list = [...new Set(doc.wifi.outdoor.flatMap((id) => [fn(id)].flat()).filter(Boolean))];
+  const { outdoor: _, ...wifi } = doc.wifi;
+  if (list.length) wifi.outdoor = list;
+  const { wifi: __, ...rest } = doc;
+  return Object.keys(wifi).length ? { ...rest, wifi } : rest;
+}
+
+// Both halves stay outdoors when the room was (and in its open space).
 export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
-  return editFloor(doc, floorId, (floor) => {
+  return withOutdoor(editFloor(doc, floorId, (floor) => {
     const k = floor.rooms.findIndex((r) => r.area_id === areaId);
     if (k < 0 || !newAreaId || floor.rooms.some((r) => r.area_id === newAreaId)) return null;
     // The chord's ends are snapped onto the walls, so they are rounded after the split; both halves
@@ -503,11 +515,12 @@ export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
     // Both halves stay in the room's open space.
     const groups = openSpaces(floor).map((g) => (g.includes(areaId) ? [...g, newAreaId] : g));
     return withGroups({ ...floor, rooms }, groups);
-  });
+  }), (id) => (id === areaId ? [id, newAreaId] : id));
 }
 
+// The kept room keeps its own outdoor flag; the dropped room's goes.
 export function joinRooms(doc, floorId, keepAreaId, dropAreaId) {
-  return editFloor(doc, floorId, (floor) => {
+  return withOutdoor(editFloor(doc, floorId, (floor) => {
     const keep = floor.rooms.find((r) => r.area_id === keepAreaId);
     const drop = floor.rooms.find((r) => r.area_id === dropAreaId);
     if (!keep || !drop || keep === drop) return null;
@@ -519,16 +532,16 @@ export function joinRooms(doc, floorId, keepAreaId, dropAreaId) {
     const touched = groups.filter((g) => g.includes(keepAreaId) || g.includes(dropAreaId));
     const merged = [...new Set(touched.flat().map((x) => (x === dropAreaId ? keepAreaId : x)))];
     return withGroups({ ...floor, rooms }, [...groups.filter((g) => !touched.includes(g)), merged]);
-  });
+  }), (id) => (id === dropAreaId ? null : id));
 }
 
 export function linkRoom(doc, floorId, areaId, newAreaId) {
-  return editFloor(doc, floorId, (floor) => {
+  return withOutdoor(editFloor(doc, floorId, (floor) => {
     if (!newAreaId || floor.rooms.some((r) => r.area_id === newAreaId)) return null;
     if (!floor.rooms.some((r) => r.area_id === areaId)) return null;
     const rooms = floor.rooms.map((r) => (r.area_id === areaId ? { ...r, area_id: newAreaId } : r));
     return withGroups({ ...floor, rooms }, mapGroups(floor, (x) => (x === areaId ? newAreaId : x)));
-  });
+  }), (id) => (id === areaId ? newAreaId : id));
 }
 
 // The dashboard config with the card's plan replaced; every other key stays (floorplan_doc.dashboard_config).
