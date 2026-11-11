@@ -15,6 +15,7 @@ const MIN_BAND_OBS = 5;                // fewer on a band: only that band's tran
 const MIN_ROOMS = 3;                   // fewer rooms observed: materials keep their priors
 const CROSS_BAND = 1 / 3;
 const N_RANGE = [1.5, 4];              // a fit outside this is the data's fault, not the building's
+const HUBER = 1.5;                     // sd: a row beyond this is down-weighted (IRLS), so one bad reading cannot drag the fit
 
 // A device's offset is its own; survey and manual readings share one offset per source.
 const offsetKey = (o) => (o.source === "device" ? o.device ?? o.entity ?? "device" : o.source);
@@ -87,7 +88,8 @@ export function calibrate(ctx, observations, table) {
   for (const r of rows) perBand[r.obs.band] = (perBand[r.obs.band] ?? 0) + 1;
   const rich = (band) => (perBand[band] ?? 0) >= MIN_BAND_OBS;
   const anyRich = BANDS.some(rich);
-  const roomsOk = new Set(rows.map((r) => r.room).filter((x) => x !== null)).size >= MIN_ROOMS;
+  // Only the bands whose materials can move count their rooms.
+  const roomsOk = new Set(rows.filter((r) => rich(r.obs.band)).map((r) => r.room).filter((x) => x !== null)).size >= MIN_ROOMS;
 
   const params = { tx: structuredClone(prior.tx), n: prior.n, loss: structuredClone(prior.loss), device: {} };
   for (const r of rows) params.device[r.offset] = 0;
@@ -151,8 +153,12 @@ export function calibrate(ctx, observations, table) {
     };
     for (const r of rows) {
       const { c, pred } = choose(r);
-      const w = r.obs.weight / OBS_SD;
       const band = r.obs.band;
+      // A sparse band's offset is frozen at 0: its prior uncertainty is noise the row carries.
+      const sd = rich(band) ? OBS_SD : Math.hypot(OBS_SD, OFFSET_SD[r.obs.source]);
+      let w = r.obs.weight / sd;
+      const z = Math.abs(pred - r.obs.dbm) * w;
+      if (z > HUBER) w *= Math.sqrt(HUBER / z);
       const entries = [];
       const put = (key, v) => { if (key in index) entries.push([index[key], v * w]); };
       put(`tx|${c.key}|${band}`, 1);

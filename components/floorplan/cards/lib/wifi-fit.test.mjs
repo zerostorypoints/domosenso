@@ -144,6 +144,51 @@ test("readings on a sparse band move only that band's transmit power, not n or t
   assert.ok(both.params.tx.node["2.4"] > 22, `the sparse band's tx moved: ${both.params.tx.node["2.4"]}`);
 });
 
+// R25: on a sparse band a reading also carries its frozen offset's uncertainty, and every band's rows
+// are Huber-weighted at 1.5 sd, so one bad reading cannot drag a transmit power.
+test("one reading 30 dB below its prediction moves the transmit power by less than 4 dB", () => {
+  const doc = openDoc();
+  const ctx = ctxOf(doc);
+  const at = [6, 4];
+  const obs = [{ floorId: "f0", x: at[0], y: at[1], band: "5", ap: "node", dbm: predict(ctx, "node", "5", at) - 30,
+    weight: 1, source: "device", device: "dev0" }];
+  const fit = calibrate(ctx, obs, table);
+  assert.ok(Math.abs(fit.params.tx.node["5"] - 23) < 4, `tx ${fit.params.tx.node["5"]}`);
+});
+
+test("four readings with one 30 dB outlier move the transmit power by less than 2 dB", () => {
+  const doc = openDoc();
+  const obs = observe(doc, priors(doc), [[3, 2], [6, 4], [9, 6], [11, 2]], "5");
+  obs[3].dbm -= 30;
+  const fit = calibrate(ctxOf(doc), obs, table);
+  assert.ok(Math.abs(fit.params.tx.node["5"] - 23) < 2, `tx ${fit.params.tx.node["5"]}`);
+});
+
+test("noisy readings (a fixed ±2 dB pattern) still recover a +5 dB transmit offset within 1.5 dB", () => {
+  const doc = openDoc();
+  doc.floors[0].points.push(pt("far", 11, 7));
+  doc.floors[0].access_points.push(ap("far"));
+  const truth = clone(priors(doc));
+  truth.tx.node["5"] = 28;
+  const at = grid([2, 4, 6, 8, 10, 11.5], [1.5, 3, 4.5, 6, 7.5]);
+  const noise = [2, -2, 1, -1, 2, 0, -2, 1, -1, 0];
+  const obs = [...observe(doc, truth, at, "5"), ...observe(doc, truth, at, "5", {}, "far")]
+    .map((o, i) => ({ ...o, dbm: o.dbm + noise[i % noise.length] }));
+  const fit = calibrate(ctxOf(doc), obs, table);
+  near(fit.params.tx.node["5"], 28, 1.5);
+});
+
+test("rooms seen only on a sparse band do not free the materials", () => {
+  const doc = rowDoc();
+  const truth = clone(priors(doc));
+  truth.loss.brick["5"] = 15;
+  const rich = observe(doc, truth, grid([8.5, 9.5, 10.5, 11.5], [0.5, 2, 3.5]), "5");   // one room
+  const sparse = observe(doc, truth, [[1, 1], [5, 1]], "2.4");                         // two more rooms
+  const fit = calibrate(ctxOf(doc), [...rich, ...sparse], table);
+  assert.equal(fit.moved.loss, false);
+  assert.deepEqual(fit.params.loss, priors(doc).loss);
+});
+
 test("a fitted loss never goes below 0 and n stays within [1.5, 4]", () => {
   const doc = rowDoc();
   const truth = clone(priors(doc));
