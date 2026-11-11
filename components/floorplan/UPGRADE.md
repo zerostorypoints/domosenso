@@ -2,6 +2,22 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: Wi-Fi coverage (SPEC-044)
+
+- The **radio** layer shown alone carries the Wi-Fi map bar (a map per band some access point
+  serves, Serving, Confidence), or the hint "No Wi-Fi access point on the plan: mark a point as an
+  access point in edit mode" until one is marked. `wifi: false` on the card turns the maps off.
+- Walls without a material of their own count as thin concrete inside and thick reinforced
+  concrete outside. Edit mode's **Walls** tool sets a wall's material and the defaults for all
+  interior or exterior walls.
+- Readings from the devices' Wi-Fi signal sensors, and from `domosenso floorplan survey` (a walk
+  with a laptop), calibrate the maps.
+- **What a home does:** nothing for a home without access points on the plan: it looks as before.
+  To use the maps, mark the access points in edit mode. In a brick, drywall or timber home, set the
+  walls' material, or "material unknown", in the Walls tool. Mark balconies and terraces under
+  **Outdoors** in the Walls tool. Optionally walk the home with `domosenso floorplan survey`. A
+  `domosenso` command older than this catalog refuses a plan with the Wi-Fi keys.
+
 ## Unreleased: the home's rooms name and colour the plan
 
 - `floorplan-card` takes `rooms`, the home inputs' rooms (`[{id, name, area, climate?}]`):
