@@ -32,7 +32,9 @@
         "split": "Split",
         "join": "Join",
         "open": "Open",
-        "openings": "Doors & windows"
+        "openings": "Doors & windows",
+        "walls": "Walls",
+        "reading": "Add reading"
       },
       "hint": {
         "empty": "This floor has no rooms or sensors yet.",
@@ -40,7 +42,9 @@
         "split": "Tap two points on the walls of one room.",
         "join": "Tap two neighbouring rooms; the first keeps its area.",
         "open": "Tap two rooms open to each other without a door: their heat maps share readings.",
-        "openings": "Tap a wall to add a door; tap a door or window to change it, drag it along the walls."
+        "openings": "Tap a wall to add a door; tap a door or window to change it, drag it along the walls.",
+        "walls": "Tap a wall to set its material. Below: this floor's height and the floor under it.",
+        "reading": "Tap where a phone's Wi-Fi scanner read the signal, then enter its dBm, band and access point."
       },
       "area": {
         "label": "Area of this room",
@@ -99,7 +103,12 @@
         "no_sensor": "no sensor in the room",
         "room_sensor": "Room sensor",
         "lamps_legend": "Lamps: a glow by brightness when on, grey when off",
-        "off": "off"
+        "off": "off",
+        "wifi_24": "2.4 GHz",
+        "wifi_5": "5 GHz",
+        "wifi_6": "6 GHz",
+        "serving": "Serving",
+        "confidence": "Confidence"
       },
       "opening": {
         "kind": "Kind",
@@ -124,7 +133,99 @@
         },
         "swap_hinge": "⇄ Left/right",
         "swap_side": "⇅ Other side",
-        "fill_wall": "Whole wall"
+        "fill_wall": "Whole wall",
+        "material": "Material"
+      },
+      "wifi": {
+        "bands": "{bands} GHz",
+        "handover": "handover zone",
+        "serving_legend": "the access point with the strongest predicted signal on {bands} GHz; hatched: a client moving through hands over between two",
+        "dbm_legend": "the strongest predicted signal per spot; marks at {call} dBm (the usual floor for calls) and {weak} dBm",
+        "hint": {
+          "no_access_points": "No Wi-Fi access point on the plan: mark a point as an access point in edit mode"
+        },
+        "offer": "{name}: use as access point?",
+        "yes": "Yes",
+        "no": "No",
+        "access_point": "Access point",
+        "tx": "Transmit power at {band} GHz (dBm)",
+        "mount": "Height above the floor (m)",
+        "predicted": "Predicted",
+        "calibrated": "Calibrated",
+        "source": "{dbm} dBm · {band} · {ap}",
+        "dbm_calibrated_legend": "the strongest signal per spot, predicted and corrected by {count} readings of your devices; marks at {call} dBm (the usual floor for calls) and {weak} dBm",
+        "confidence": {
+          "high": "high",
+          "medium": "medium",
+          "low": "low"
+        },
+        "confidence_legend": "how far to trust the {bands} GHz map: high within 2 m of a device's reading of the serving access point, medium where the readings moved the model, low where only the typical values apply",
+        "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:",
+        "ranges": "Ranges",
+        "ranges_legend": "solid {call} dBm, dashed {weak} dBm"
+      },
+      "wall": {
+        "material": "Wall material",
+        "default": {
+          "interior": "Use for all interior walls",
+          "exterior": "Use for all exterior walls"
+        },
+        "floor": "This floor:",
+        "height": "Height (m)",
+        "slab": "Floor below",
+        "outdoor": "Outdoors:",
+        "none": "No wall",
+        "half": "Half height",
+        "weight": {
+          "light": "light",
+          "solid": "solid",
+          "heavy": "heavy",
+          "title": "Walls by their loss at 5 GHz: light below 10 dB, solid 10 to 25 dB, heavy above 25 dB; glass tinted blue, a half-height wall dashed, no wall dotted"
+        }
+      },
+      "material": {
+        "drywall": "Drywall",
+        "wood": "Wood",
+        "aerated_block": "Aerated concrete block",
+        "brick": "Brick",
+        "concrete_thin": "Thin concrete (about 10 cm)",
+        "concrete_thick": "Thick reinforced concrete (about 25 cm)",
+        "concrete": "Concrete",
+        "reinforced_concrete": "Reinforced concrete",
+        "glass": "Glass",
+        "double": "Double glazing",
+        "low_e": "Low-E glazing",
+        "triple_low_e": "Triple low-E glazing",
+        "metal": "Metal",
+        "railing": "Railing (bars or mesh)",
+        "interior": "Interior wall, material unknown",
+        "exterior": "Exterior wall, material unknown",
+        "slab": "Floor slab (typical)"
+      },
+      "reading": {
+        "dbm": "Signal (dBm)",
+        "band": "Band",
+        "ap": "Access point",
+        "unknown": "unknown",
+        "add": "Add reading"
+      },
+      "survey": {
+        "link": "{band} GHz · channel {channel} · {dbm} dBm · noise {noise} dBm",
+        "link_no_noise": "{band} GHz · channel {channel} · {dbm} dBm",
+        "no_link": "No Wi-Fi link",
+        "here": "I'm here",
+        "pick": "Tap the plan exactly where you stand",
+        "recording": "Recording for 10 s: stand still",
+        "taken": "Sample: {dbm} dBm on {band} GHz",
+        "skipped": "Not recorded: {reason}",
+        "failed": "Sample failed: {error}",
+        "next": "Next spots:",
+        "why": {
+          "far": "far from any reading",
+          "handover": "handover zone without a reading",
+          "room": "room without a reading"
+        },
+        "help": "1. Run the survey on the laptop you carry, on the home's own network, not a hotspot. 2. Hold it at chest height, lid open, in front of you, the way a phone is held on a call. 3. Start at an access point, then walk room by room; stop about every 2 m and in every doorway. 4. At each stop tap exactly where you stand, press I'm here and stand still for 10 s. 5. Visit the suggested spots, above all the handover zones between access points. 6. The laptop reports the band it is on; a mesh with one network name chooses it. To survey another band, rerun with a network name that has only that band, if the router offers one, or accept the fit's carry-over between bands. 7. Push the samples to Home Assistant (floorplan push), and repeat the walk after moving an access point or changing a wall's or window's material."
       }
     }
   }

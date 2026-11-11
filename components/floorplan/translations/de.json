@@ -32,7 +32,9 @@
         "split": "Teilen",
         "join": "Verbinden",
         "open": "Offen",
-        "openings": "Türen & Fenster"
+        "openings": "Türen & Fenster",
+        "walls": "Wände",
+        "reading": "Messwert erfassen"
       },
       "hint": {
         "empty": "Dieses Stockwerk hat noch keine Räume und keine Sensoren.",
@@ -40,7 +42,9 @@
         "split": "Tippen Sie auf zwei Punkte an den Wänden eines Raums.",
         "join": "Tippen Sie auf zwei benachbarte Räume; der erste behält seinen Bereich.",
         "open": "Tippen Sie auf zwei Räume, die ohne Tür ineinander übergehen: ihre Wärmekarten teilen die Messwerte.",
-        "openings": "Tippe auf eine Wand, um eine Tür hinzuzufügen; tippe auf eine Tür oder ein Fenster, um sie zu ändern, und ziehe sie an der Wand entlang."
+        "openings": "Tippe auf eine Wand, um eine Tür hinzuzufügen; tippe auf eine Tür oder ein Fenster, um sie zu ändern, und ziehe sie an der Wand entlang.",
+        "walls": "Tippe auf eine Wand, um ihr Material zu wählen. Darunter: die Höhe dieses Stockwerks und die Decke darunter.",
+        "reading": "Tippe dort, wo der WLAN-Scanner eines Telefons das Signal gemessen hat, und gib dann dBm, Band und Zugangspunkt ein."
       },
       "area": {
         "label": "Bereich dieses Raums",
@@ -99,7 +103,12 @@
         "no_sensor": "kein Sensor im Raum",
         "room_sensor": "Raumsensor",
         "lamps_legend": "Lampen: eingeschaltet mit Schein nach Helligkeit, ausgeschaltet grau",
-        "off": "aus"
+        "off": "aus",
+        "wifi_24": "2,4 GHz",
+        "wifi_5": "5 GHz",
+        "wifi_6": "6 GHz",
+        "serving": "Zuständig",
+        "confidence": "Verlässlichkeit"
       },
       "opening": {
         "kind": "Art",
@@ -124,7 +133,99 @@
         },
         "swap_hinge": "⇄ Links/rechts",
         "swap_side": "⇅ Andere Seite",
-        "fill_wall": "Ganze Wand"
+        "fill_wall": "Ganze Wand",
+        "material": "Material"
+      },
+      "wifi": {
+        "bands": "{bands} GHz",
+        "handover": "Übergabezone",
+        "serving_legend": "der Zugangspunkt mit dem stärksten vorhergesagten Signal auf {bands} GHz; schraffiert: ein Gerät in Bewegung wechselt hier zwischen zweien",
+        "dbm_legend": "das stärkste vorhergesagte Signal pro Stelle; Marken bei {call} dBm (die übliche Grenze für Anrufe) und {weak} dBm",
+        "hint": {
+          "no_access_points": "Kein WLAN-Zugangspunkt im Plan: im Bearbeitungsmodus einen Punkt als Zugangspunkt markieren"
+        },
+        "offer": "{name}: als Zugangspunkt verwenden?",
+        "yes": "Ja",
+        "no": "Nein",
+        "access_point": "Zugangspunkt",
+        "tx": "Sendeleistung bei {band} GHz (dBm)",
+        "mount": "Höhe über dem Boden (m)",
+        "predicted": "Vorhergesagt",
+        "calibrated": "Kalibriert",
+        "source": "{dbm} dBm · {band} · {ap}",
+        "dbm_calibrated_legend": "das stärkste Signal pro Stelle, vorhergesagt und mit {count} Messungen Ihrer Geräte korrigiert; Marken bei {call} dBm (die übliche Grenze für Anrufe) und {weak} dBm",
+        "confidence": {
+          "high": "hoch",
+          "medium": "mittel",
+          "low": "niedrig"
+        },
+        "confidence_legend": "wie weit der Karte auf {bands} GHz zu trauen ist: hoch bis 2 m um die Messung eines Geräts am zuständigen Zugangspunkt, mittel wo die Messungen das Modell verschoben haben, niedrig wo nur die typischen Werte gelten",
+        "disabled": "Ausgeschaltete WLAN-Signalsensoren, die die Karte kalibrieren würden; aktivieren Sie sie unter Einstellungen → Entitäten:",
+        "ranges": "Reichweiten",
+        "ranges_legend": "durchgezogen {call} dBm, gestrichelt {weak} dBm"
+      },
+      "wall": {
+        "material": "Material der Wand",
+        "default": {
+          "interior": "Für alle Innenwände",
+          "exterior": "Für alle Aussenwände"
+        },
+        "floor": "Dieses Stockwerk:",
+        "height": "Höhe (m)",
+        "slab": "Decke darunter",
+        "outdoor": "Im Freien:",
+        "none": "Keine Wand",
+        "half": "Halbe Höhe",
+        "weight": {
+          "light": "leicht",
+          "solid": "massiv",
+          "heavy": "schwer",
+          "title": "Wände nach ihrer Dämpfung bei 5 GHz: leicht unter 10 dB, massiv 10 bis 25 dB, schwer über 25 dB; Glas blau getönt, eine Wand halber Höhe gestrichelt, keine Wand gepunktet"
+        }
+      },
+      "material": {
+        "drywall": "Gipskarton",
+        "wood": "Holz",
+        "aerated_block": "Porenbeton",
+        "brick": "Backstein",
+        "concrete_thin": "Beton, dünn (etwa 10 cm)",
+        "concrete_thick": "Stahlbeton, dick (etwa 25 cm)",
+        "concrete": "Beton",
+        "reinforced_concrete": "Stahlbeton",
+        "glass": "Glas",
+        "double": "Zweifachverglasung",
+        "low_e": "Wärmeschutzverglasung",
+        "triple_low_e": "Dreifach-Wärmeschutzverglasung",
+        "metal": "Metall",
+        "railing": "Geländer (Stäbe oder Gitter)",
+        "interior": "Innenwand, Material unbekannt",
+        "exterior": "Aussenwand, Material unbekannt",
+        "slab": "Geschossdecke (typisch)"
+      },
+      "reading": {
+        "dbm": "Signal (dBm)",
+        "band": "Band",
+        "ap": "Zugangspunkt",
+        "unknown": "unbekannt",
+        "add": "Messwert erfassen"
+      },
+      "survey": {
+        "link": "{band} GHz · Kanal {channel} · {dbm} dBm · Rauschen {noise} dBm",
+        "link_no_noise": "{band} GHz · Kanal {channel} · {dbm} dBm",
+        "no_link": "Keine WLAN-Verbindung",
+        "here": "Ich bin hier",
+        "pick": "Tippe im Plan genau dorthin, wo du stehst",
+        "recording": "Misst 10 s: stillstehen",
+        "taken": "Messung: {dbm} dBm auf {band} GHz",
+        "skipped": "Nicht erfasst: {reason}",
+        "failed": "Messung fehlgeschlagen: {error}",
+        "next": "Nächste Stellen:",
+        "why": {
+          "far": "weit weg von jeder Messung",
+          "handover": "Übergabezone ohne Messung",
+          "room": "Raum ohne Messung"
+        },
+        "help": "1. Starte die Messung auf dem Laptop, den du trägst, im eigenen Netz der Wohnung, nicht über einen Hotspot. 2. Halte ihn auf Brusthöhe, aufgeklappt, vor dir, so wie man ein Telefon beim Anruf hält. 3. Beginne bei einem Zugangspunkt und gehe dann Raum für Raum; halte etwa alle 2 m und in jeder Türöffnung an. 4. Tippe bei jedem Halt genau dorthin, wo du stehst, drücke Ich bin hier und stehe 10 s still. 5. Besuche die vorgeschlagenen Stellen, vor allem die Übergabezonen zwischen den Zugangspunkten. 6. Der Laptop meldet das Band, auf dem er ist; ein Mesh mit einem Netznamen wählt es. Für ein anderes Band starte neu mit einem Netznamen, der nur dieses Band hat, falls der Router einen anbietet, oder nimm die Übertragung der Anpassung zwischen den Bändern hin. 7. Übertrage die Messpunkte zu Home Assistant (floorplan push) und wiederhole den Rundgang, nachdem du einen Zugangspunkt verschoben oder das Material einer Wand oder eines Fensters geändert hast."
       }
     }
   }

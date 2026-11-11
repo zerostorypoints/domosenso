@@ -29,8 +29,8 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   appliance's door or a vacuum's camera map is not a role. The tooltip names the dot's category
   and each ring ("Also senses: Presence and security"); the layer bar explains rings once when the
   plan has one.
-- **Maps** (SPEC-028 Amendment 7): with one of plants, climate or light shown alone, the bar offers
-  its maps. Plants: light, temperature, soil moisture; climate: temperature, humidity, CO₂; light:
+- **Maps** (SPEC-028 Amendment 7): with one of plants, climate, light or radio shown alone, the bar
+  offers its maps (radio: the Wi-Fi maps, below). Plants: light, temperature, soil moisture; climate: temperature, humidity, CO₂; light:
   light (what the sensors measure, lamps included) and lamps (on with a glow by brightness, off
   grey). A reading's map is interpolated inside each room from that room's placed sensors, whatever
   their category; a room without one is hatched. **Now / 24 h** switches between the current
@@ -41,9 +41,53 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   every other sensor in it (one on an amplifier, at a vent) is a spot that fades out within 1.2 m.
   Such a room is hatched while its own sensor has no value; its tooltip says "Room sensor". Fixed scales: 17–24 °C, 30–60 %, soil 10–50 %,
   400–1400 ppm, 0–20 000 lx (log). The browser remembers the map per layer and the switch.
+- **Wi-Fi maps** (SPEC-044): with the radio layer shown alone, one map per band some access point
+  serves (**2.4 GHz**, **5 GHz**, **6 GHz**: the strongest predicted signal per spot) and
+  **Serving** (each spot in the colour of the access point that serves it on the band chosen beside
+  it; where a client moving through would hand over between two, the spot is hatched).
+  - **A prediction, not a measurement.** It is worked out from the access points' positions, bands,
+    transmit power and mount height, the rooms' walls and the doors and windows in them, each with
+    a material, and the floor height and slab. Nothing is measured: the loss per material
+    (`cards/lib/materials.json`) is a prior from ITU-R P.2040 and field values, a typical wall of
+    that kind, not yours. Real walls differ, so read the map as where signal is likely strong,
+    weak or gone, not as dBm to the decibel. Triple low-E glazing and metal block the most; reinforced concrete and low-E glazing come next.
+  - **Smoothed** (Amendment 3): straight rays alone would draw a sharp beam through every doorway and
+    stair-stepped shadows behind corners; real waves bend round them. Each access point's level is
+    smoothed over 0.5 m (a Gaussian, in dB) before the map picks the strongest, and the Ranges
+    outlines use the same smoothed levels (pieces under 1 m are left out), so map and outlines agree.
+    Calibration compares the readings with the unsmoothed prediction at their spot.
+  - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
+  - **Ranges** (SPEC-044 Amendment 3): a switch on the 2.4, 5 and 6 GHz maps (the browser
+    remembers it). Each access point gets its Serving colour, a ring at its place with its name, and
+    its outline at −67 dBm (solid) and −75 dBm (dashed) on the map's band, predicted or calibrated
+    as the map is, so where access points overlap and where one reaches alone shows directly.
+  - Without an access point on the plan there is no map; the bar says how to add one.
+  - `wifi: false` turns the Wi-Fi maps off, and with them the Walls tool, the opening **Material**,
+    the access point panel and the offer.
+  - **Confidence** shows how far to trust the map on the band chosen beside it: **high** within 2 m
+    of a device's reading of the access point serving that spot, **medium** where the readings
+    changed what that spot's signal depends on (its access point's power, a wall's material),
+    **low** where only the typical values apply.
+  - With devices on the plan that report their Wi-Fi signal (calibration, below), the band maps and
+    Serving get **Predicted / Calibrated** instead of Now / 24 h; **Calibrated** is the default and
+    the browser remembers the choice. Without such a device there is nothing to calibrate with and
+    the switch is not shown. Such a device's label reads "−52 dBm · 2.4 · <access point>" (`—` when
+    the access point is not known).
+- **Wall weights** (SPEC-044 Amendment 3): with Wi-Fi on (the default), the plan and every map draw
+  the walls as lines, each wall once, instead of room outlines, so the differences show at a glance
+  rather than as an architect's drawing. Three weights by the wall's loss at 5 GHz (after the half
+  height below): **light** below 10 dB (drywall, wood, a railing, double glazing), **solid** 10 to
+  25 dB (brick, thin concrete), **heavy** above 25 dB (thick concrete, low-E glazing, metal). Glass
+  walls are tinted light blue, a half-height wall is dashed, an edge with no wall (an open space, a
+  balcony's open side) is a faint dotted line. The widths stay the same at any zoom. A key (light,
+  solid, heavy) shows in the bar wherever the walls are drawn so: the plain plan, every map and edit
+  mode (a host that sets `maps: false` drops it with the maps). A card showing one room (`area`)
+  draws that room's walls as the whole floor has them. A door or window on a thick wall is drawn on
+  the wall's middle line, and a tap there picks the wall (Walls tool) or places the opening on it
+  between its two rooms (Openings tool). `wifi: false` keeps the room outlines as before.
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
   share their readings on the maps instead of stopping at the line between them; the walls between
-  them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
+  them are dashed (with Wi-Fi on: dotted, no wall). Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
   panel names what it is open to and has **Close off**.
 - **Doors, windows and doorways** (SPEC-028 Amendment 9, draft): drawn in the walls, each
   optionally linked to its door or window sensor (a `binary_sensor` door, window, opening or garage
@@ -66,6 +110,7 @@ values: true                       # false: markers without readings
 layers: [climate, plants]          # optional: only these categories, no chips
 layer_choice: one                  # with layers: a chip each, one layer at a time (the Ramka)
 maps: true                         # false: no maps
+wifi: true                         # false: no Wi-Fi maps on the radio layer
 fill: true                         # optional: as tall as the screen below the card's top
 area: living_room                  # optional: that area's room alone, fitted to the card; no Edit
 context: true                      # with area: the floor's other rooms faded around it
@@ -183,6 +228,139 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
   and edit again. **Cancel** drops the unsaved edits of the plan. An area created by name in the
   editor is created in Home Assistant at once: Cancel does not remove it (delete it in Home
   Assistant's area settings if it is not wanted).
+
+### Wi-Fi: access points and materials
+
+In edit mode (SPEC-044):
+
+- **Access points.** A point the rules recognise as an access point (a mesh node or router from a
+  supported integration) is offered once per browser: "<name>: use as access point?" (Yes / No).
+  Any other point: tap it, switch on **Access point** in its panel. The panel also sets the bands it
+  serves, the **transmit power** per band (dBm; empty keeps the default) and the **height above the
+  floor** (m). Stored as `access_points` on the floor.
+- **Walls.** The **Walls** tool selects a wall segment with a tap; its panel sets **Wall material**:
+  drywall, wood, aerated concrete block, brick, thin concrete (about 10 cm), thick reinforced
+  concrete (about 25 cm), concrete, reinforced concrete, metal, a glass wall or facade (glass,
+  double glazing, low-E, triple low-E, independent of any window in it), or an interior or exterior
+  wall of unknown material, or a **railing** (open bars or a mesh, 2 / 3 / 3 dB). A wall two rooms
+  share is interior; a wall one room has alone, or one between an indoor and an outdoor room, is
+  exterior. **Thick walls:** a plan traced with the walls' real thickness leaves a gap between two
+  rooms; two rooms' edges that are parallel within 10°, overlap along their length and lie at most
+  0.6 m apart are one interior wall over the stretch where they overlap, charged once (with the
+  material set on either edge), not two exterior walls. The rest of each edge stays as it was, except
+  a piece of at most 0.6 m where such walls meet in a T, which is interior too; a room standing in
+  the gap (a shaft, a duct) splits the pair where it stands. The outdoor rules apply to such a pair as
+  to a shared edge. Until you say otherwise, **outer walls are
+  thick concrete and inner walls thin concrete** (SPEC-044 Amendment 2): a pessimistic start for a
+  masonry home. With a wall selected, two buttons use that material for all interior or all
+  exterior walls (the defaults for walls nothing was set on). Stored as `walls` and
+  `wifi.defaults`. These are assumptions: readings from your devices and a survey walk (below)
+  validate them and move each wall type's loss per band, and the Confidence map shows where they
+  did.
+- **Half height.** The selected wall's **Half height** switch is for a balcony frame, a parapet or a
+  staircase's balustrade: such a wall costs half its material's loss on every band (a working
+  assumption: part of the signal passes over it); calibration moves the material, not the half.
+  Stored as `height: "half"` on the wall's entry. An outdoor room's open edge has nothing to lower
+  until a material is set.
+- **Outdoor rooms.** A balcony, terrace or winter garden drawn as a room is computed and drawn like
+  any room (its cells, its next spots), and is often the weakest spot of a home. Switch it on under
+  **Outdoors** in the Walls tool's floor panel: its wall to the home becomes exterior, and a door or
+  window between it and an indoor room is drawn and computed closed unless its sensor or its own
+  state says otherwise. Its own edges no room shares (a railing) are **No wall** and cost nothing
+  until you pick a material for them (glass for a winter garden). Joining, splitting or relinking
+  rooms keeps the flags true to the rooms. Stored as `wifi.outdoor` (area ids).
+- **Doors and windows.** The opening's panel has **Material**. A window or fixed glass: one of glass,
+  double glazing (default), low-E, triple low-E; a door is wood, metal or any of the glazings (a
+  glazed door); a doorway has none. A door without its own material follows the outdoor flags:
+  double glazing between an indoor and an outdoor room, wood otherwise (also between two outdoor
+  rooms and to the outside). Stored as `material` on the opening.
+- **Floor.** With the Walls tool, the floor's **Height** (m, default 2.7) and **Floor below** (the
+  slab material: a typical slab, thick reinforced concrete or reinforced concrete) are set in its
+  panel; they decide how much a signal loses between floors.
+- A change to walls, materials, access points, height, slab or outdoor rooms shows on the maps at once; **Save**
+  and `floorplan push` write it as for any other edit.
+
+### Wi-Fi calibration from your devices
+
+Devices on the plan that report their own Wi-Fi signal check the prediction where they stand
+(SPEC-044). The card uses each one's **mean over the last 24 hours** (the recorder's hourly
+statistics; a sensor without statistics gives its current state) and finds the access point and band
+it is on from its BSSID sensor, matched to an access point's BSSID sensors (`tplink_deco`), else from
+the router's client tracker for its MAC address, else not at all.
+
+- **Counted:** sensors with device class `signal_strength` in dBm from ESPHome (`wifi_signal`, with
+  `wifi_info`'s BSSID), Shelly, Tasmota, WLED, TP-Link Kasa/Tapo Wi-Fi devices and the Android
+  Companion app, or any such sensor whose entity id says `wi_fi` or `wifi`.
+- **Not counted:** Bluetooth devices' signal strength in dBm (a RuuviTag through the `bluetooth`
+  integration), the Tapo T310/T315 `signal_level` 0–3 (their sub-GHz link to the hub), Zigbee, and
+  any device with a Bluetooth or Zigbee connection. The rules are data:
+  `cards/lib/wifi-rules.json`.
+- **Switched-off sensors.** Many integrations ship their signal sensor disabled. In edit mode an
+  administrator's card lists the plan's switched-off Wi-Fi signal sensors; enable them in Settings →
+  Entities and they count from their first readings. (Only edit mode reads this list: it is an
+  administrator's call, so a wall tablet's or kiosk user's card never makes it.)
+- **What the fit changes.** Within the uncertainty of each typical value it moves each access
+  point's transmit power per band, how fast the signal falls with distance, the loss of each
+  material a reading's path crosses, and one offset per device (a device's antenna reads a few dB
+  high or low). Each is pulled back towards its typical value; what is left at each reading is
+  spread around it within 3 m, weaker behind each wall. The same plan and readings always give the
+  same map.
+- **Guards.** With fewer than 5 readings on a band, only that band's transmit powers move. With
+  readings in fewer than 3 rooms, the materials keep their typical losses. A reading whose access
+  point is unknown is compared with the strongest predicted one at half weight. A material's loss
+  fitted on one band moves its loss on the other bands by a third as much, in proportion (a
+  2.4 GHz-only device still says something about 5 GHz).
+- **Survey:** a walk-around with a laptop measuring as you tap the plan refines the same maps; see
+  *Survey walk* below. Survey and manual readings calibrate like device readings.
+
+## Survey walk
+
+`domosenso floorplan survey <target>` serves the card on this machine for a walk with a laptop
+(SPEC-044), as `preview` does and reading the target read-only.
+
+```bash
+domosenso floorplan survey production        # --port <n>, --no-open, --interface <if>
+```
+
+- It serves the home's rendered card on `127.0.0.1` behind a random key, with the Wi-Fi maps and a
+  **Survey** panel. The panel shows the live link: band, channel, signal (dBm) and noise.
+- Tap the plan where you stand, press **I'm here**: 5 readings over about 10 s are averaged into
+  one sample (the band most readings agree on). With fewer than 3 usable readings the sample is
+  skipped and the panel says why.
+- Samples are written to the home's `domosenso/floorplan.json` only. Nothing goes to Home Assistant
+  until `floorplan push --plan` and, after the owner's go-ahead, `--apply`.
+- **Suggested next spots**: up to three, in order: handover zones without a reading, rooms without
+  a reading, then the spots far from any reading of their serving access point and band.
+- Lines: `read <target>: ...`, `survey <url>`, `link <band> <channel> <dbm> dBm` every 30 s, per tap
+  `sample <floor or -> <x> <y> <band> <dbm> dBm <access point or ->` and `wrote
+  domosenso/floorplan.json`, or `sample skipped <reason>`, and `stopped` (Ctrl-C).
+  It fails with `no Wi-Fi interface` (no MAC address for the interface) or `Wi-Fi is off` (no link at
+  start).
+- **Which operating system.** macOS: a small CoreWLAN helper is compiled with `swiftc` on first use
+  (Xcode command-line tools), else `system_profiler`. Linux: `iw`. Windows: `netsh wlan show
+  interfaces` (signal in % converted to dBm, an approximation; Windows 11's Band line gives 6 GHz).
+  `--interface` names the Wi-Fi interface when the machine has several.
+- **macOS note.** Without Location permission macOS gives no BSSID, so the serving access point
+  comes from the router's client list (the laptop's MAC address in the router integration's client
+  trackers, which update about every 30 s), else it stays unknown. An unknown access point counts
+  at half weight in the calibration.
+- **Manual readings.** In edit mode **Add reading** places a reading by hand: dBm, band and the
+  access point or unknown, for example from a phone's Wi-Fi scanner.
+- Sample dots show on the Confidence map and in edit mode. Survey and manual samples calibrate the
+  maps like device readings.
+
+The walk:
+
+1. Run the survey on the laptop you carry; keep it on the home's own network, not a hotspot.
+2. Hold it at chest height with the lid open, in front of you, the way a phone is held on a call.
+3. Start at an access point, then walk room by room. Stop about every 2 m and in every doorway.
+4. At each stop: tap exactly where you stand, press **I'm here**, stand still for 10 s.
+5. Visit the suggested spots, above all the handover zones between access points.
+6. The laptop reports the band it is on; a mesh with one network name chooses it. To survey another
+   band, rerun with a network name that has only that band, if the router offers one, or accept the
+   fit's carry-over between bands.
+7. Push the samples to Home Assistant (`floorplan push`), and repeat the walk after moving an access
+   point or changing a wall's or window's material.
 
 ## After editing in Home Assistant
 

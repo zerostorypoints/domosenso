@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { shadowText } from "./testing/dom-env.mjs";
 import { withPlan } from "./lib/plan.js";
 import { colourAt } from "./lib/maps.js";
+import materials from "./lib/materials.json" with { type: "json" };
 
 await import("./floorplan-card.js");
 const load = (lang) => JSON.parse(readFileSync(new URL(`../translations/${lang}.json`, import.meta.url), "utf8"));
@@ -1500,7 +1501,7 @@ test("open spaces: the Open tool joins two rooms' heat; the walls between them a
   tap(card, 2, 2, $(card, 'polygon.room[data-area="living_room"]'));
   tap(card, 6, 2, $(card, 'polygon.room[data-area="kitchen"]'));
   assert.deepEqual(card._doc.floors[0].open_spaces, [["living_room", "kitchen"]]);
-  assert.equal(card.shadowRoot.querySelectorAll("line.open-wall").length, 2, "each room's side of the shared wall");
+  assert.equal(card.shadowRoot.querySelectorAll("line.wall-line.none").length, 1, "the shared wall once, as no wall");
   // The plan view of the climate layer: the kitchen has no sensor but shares the living room's.
   click($(card, '[data-action=tool][data-tool="move"]'));
   tap(card, 6, 3, $(card, 'polygon.room[data-area="kitchen"]'));
@@ -1634,4 +1635,969 @@ test("a door's panel swaps its hinge and side and makes it sliding; a selected o
   assert.deepEqual(Object.keys(opening()).sort(), ["at", "kind", "rooms", "width"]);
   assert.equal($(card, '.opening-panel [data-field="entity"]'), null, "fixed glass has no sensor");
   assert.equal($(card, "[data-action=swap_hinge]"), null);
+});
+
+// ---- Wi-Fi maps on the radio layer (SPEC-044) --------------------------------------------------
+
+// Two mesh nodes: one in the kitchen on 2.4 and 5 GHz, one in the living room on 5 GHz only.
+function wifiHass(opts) {
+  const hass = categoryHass(opts);
+  hass.devices.d_mesh2 = { id: "d_mesh2", name: "Mesh satellite", area_id: "living_room", config_entries: ["e_mesh"] };
+  hass.entities["switch.mesh2_led"] = { entity_id: "switch.mesh2_led", device_id: "d_mesh2", platform: "tplink_deco" };
+  hass.states["switch.mesh2_led"] = { state: "on", attributes: {} };
+  hass.states["binary_sensor.door"] = { state: "off", attributes: { device_class: "door" } };
+  return hass;
+}
+const APS = [{ device_id: "d_mesh", bands: ["2.4", "5"] }, { device_id: "d_mesh2", bands: ["5"] }];
+function wifiPlan(aps = APS) {
+  const plan = planOf([pt("d_mesh", 6.5, 2), pt("d_mesh2", 1, 2)]);
+  plan.floors[0].access_points = aps;
+  plan.floors[0].openings = [{ kind: "door", rooms: ["living_room", "kitchen"], at: [5, 2], entity: "binary_sensor.door" }];
+  return plan;
+}
+const mapChips = (card) => [...card.shadowRoot.querySelectorAll(".bar [data-action=map]")].map((b) => b.getAttribute("data-map"));
+const cellsOf = (card) => [...card.shadowRoot.querySelectorAll(".heat rect[data-dbm]")];
+
+test("wifi maps: the radio layer offers the bands its access points serve, then Serving, without Now / 24 h", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(mapChips(card), ["wifi_24", "wifi_5", "serving", "confidence"], "nobody serves 6 GHz");
+  assert.equal($(card, '.bar [data-map="wifi_24"]').getAttribute("aria-pressed"), "true", "the first band by default");
+  assert.equal($(card, '.bar [data-map="wifi_5"]').textContent, EN("card.floorplan.maps.wifi_5"));
+  assert.ok(!$(card, ".bar [data-action=day]"), "no Now / 24 h on a radio map");
+  window.localStorage.clear();
+});
+
+test("wifi maps: 5 GHz draws cells with their dBm; the legend is -90 to -30 dBm with marks at -67 and -75", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="wifi_5"]'));
+  const cells = cellsOf(card);
+  assert.ok(cells.length > 0);
+  const dbm = (x, y) => Number(cells.find((c) => Math.abs(Number(c.getAttribute("x")) - x) < 0.1
+    && Math.abs(Number(c.getAttribute("y")) - y) < 0.1).getAttribute("data-dbm"));
+  assert.ok(dbm(1.05, 1.95) > dbm(3.45, 3.75), "stronger beside an access point");
+  assert.ok(cells.every((c) => c.getAttribute("fill").startsWith("rgb(")));
+  const legend = $(card, ".bar .legend");
+  assert.ok(legend.textContent.includes("-90 dBm") && legend.textContent.includes("-30 dBm"), legend.textContent);
+  assert.deepEqual([...legend.querySelectorAll(".mark")].map((m) => m.getAttribute("data-mark")), ["-67", "-75"]);
+  assert.ok(!legend.textContent.includes(EN("card.floorplan.maps.no_sensor")), "every room has a prediction");
+  window.localStorage.clear();
+});
+
+test("wifi maps: Serving colours each cell by its access point on the band chosen beside it and hatches handover", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="serving"]'));
+  const bands = [...card.shadowRoot.querySelectorAll(".bar [data-action=band]")];
+  assert.deepEqual(bands.map((b) => b.getAttribute("data-band")), ["2.4", "5"]);
+  assert.equal(bands[0].getAttribute("aria-pressed"), "true", "the first offered band by default");
+  const aps = () => new Set(cellsOf(card).map((c) => c.getAttribute("data-ap")));
+  assert.deepEqual([...aps()], ["d_mesh"], "2.4 GHz: one access point serves everything");
+  assert.equal(card.shadowRoot.querySelectorAll(".heat .handover").length, 0);
+  click($(card, '.bar [data-band="5"]'));
+  assert.deepEqual([...aps()].sort(), ["d_mesh", "d_mesh2"]);
+  const fills = new Map(cellsOf(card).map((c) => [c.getAttribute("data-ap"), c.getAttribute("fill")]));
+  assert.notEqual(fills.get("d_mesh"), fills.get("d_mesh2"));
+  const handover = card.shadowRoot.querySelectorAll(".heat .handover").length;
+  assert.ok(handover > 0 && handover < cellsOf(card).length, "a zone between them, not everywhere");
+  const legend = $(card, ".bar .legend");
+  assert.ok(legend.textContent.includes("Mesh node") && legend.textContent.includes("Mesh satellite"), legend.textContent);
+  assert.ok(legend.textContent.includes(EN("card.floorplan.wifi.handover")));
+  const again = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal($(again, '.bar [data-band="5"]').getAttribute("aria-pressed"), "true", "the band is remembered");
+  window.localStorage.clear();
+});
+
+test("wifi maps: an access point's label lists its bands", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(lines(card, "d_mesh"), [["2.4 · 5 GHz", true]]);
+  assert.deepEqual(lines(card, "d_mesh2"), [["5 GHz", true]]);
+  const pl = await make({ plan: wifiPlan(), layers: ["radio"] }, Object.assign(wifiHass(), { language: "pl", locale: { language: "pl" } }));
+  await settle();
+  assert.deepEqual(lines(pl, "d_mesh"), [["2,4 · 5 GHz", true]]);
+  window.localStorage.clear();
+});
+
+test("wifi maps: wifi false offers none; without access points the bar says how to get one", async () => {
+  window.localStorage.clear();
+  const off = await make({ plan: wifiPlan(), layers: ["radio"], wifi: false }, wifiHass());
+  await settle();
+  assert.ok(!$(off, ".bar [data-action=map]") && !$(off, ".heat"));
+  assert.ok(!$(off, ".bar").textContent.includes(EN("card.floorplan.wifi.hint.no_access_points")));
+  const none = await make({ plan: wifiPlan([]), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.ok(!$(none, ".bar [data-action=map]") && !$(none, ".heat rect"));
+  assert.ok($(none, ".bar").textContent.includes(EN("card.floorplan.wifi.hint.no_access_points")));
+  window.localStorage.clear();
+});
+
+test("wifi maps: the coverage is computed once per cache key; a door opening computes it again", async () => {
+  window.localStorage.clear();
+  const hass = wifiHass();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  let runs = 0;
+  const predict = card._predict.bind(card);
+  card._predict = (...args) => (runs++, predict(...args));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(runs, 1);
+  pointer(markerOf(card, "d_mesh"), "pointerover", 10, 10);
+  card.hass = { ...hass, states: { ...hass.states, "switch.mesh_led": { state: "off", attributes: {} } } };
+  assert.equal(runs, 1, "a redraw, another state: the same cells");
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(runs, 2, "Serving on its first band, 2.4 GHz");
+  click($(card, '.bar [data-band="5"]'));
+  click($(card, '.bar [data-map="wifi_24"]'));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(runs, 2, "Serving on 5 GHz and both band maps: from the cache");
+  const before = cellsOf(card).map((c) => c.getAttribute("data-dbm")).join();
+  card.hass = { ...card._hass, states: { ...card._hass.states, "binary_sensor.door": { state: "on", attributes: { device_class: "door" } } } };
+  assert.equal(runs, 3, "an open door is a new prediction");
+  assert.notEqual(cellsOf(card).map((c) => c.getAttribute("data-dbm")).join(), before);
+  window.localStorage.clear();
+});
+
+test("wifi maps: a card narrower than 600 px draws 0.3 m cells", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  const width = () => Number(cellsOf(card)[0].getAttribute("width"));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.ok(Math.abs(width() - 0.16) < 1e-9, String(width()));
+  $(card, "svg").getBoundingClientRect = () => ({ ...RECT, width: 500, right: 500 });
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.ok(Math.abs(width() - 0.31) < 1e-9, String(width()));
+  window.localStorage.clear();
+});
+
+// ---- Wi-Fi edit tools (SPEC-044): walls, opening materials, access points, floors ---------------
+
+const change = (node, value) => {
+  node.value = value;
+  node.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+};
+const optionValues = (select) => [...select.querySelectorAll("option")].map((o) => o.value);
+const materialIds = (cls) => Object.keys(materials.materials).filter((id) => materials.materials[id].for.includes(cls));
+
+test("the Walls tool: a tap on a wall selects its segment; its material, the defaults and the floor", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  assert.ok($(card, ".hint").textContent.includes(EN("card.floorplan.hint.walls")));
+  assert.equal($(card, ".wall-panel [data-field=wall]"), null, "no wall yet");
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));
+  const sel = $(card, "line.wall-selected");
+  assert.ok(sel, "the tapped segment is drawn selected");
+  assert.deepEqual(["x1", "y1", "x2", "y2"].map((a) => Number(sel.getAttribute(a))).sort(), [0, 4, 5, 5]);
+  const field = (name) => $(card, `.wall-panel [data-field="${name}"]`);
+  assert.deepEqual(optionValues(field("wall")), materialIds("wall"), "only wall materials");
+  assert.equal(field("wall").querySelector("option[selected]").value, "concrete_thin", "thin concrete inside by default");
+  for (const id of ["concrete_thin", "concrete_thick", "glass", "double", "low_e", "triple_low_e"]) {
+    assert.ok(optionValues(field("wall")).includes(id), `the wall picker offers ${id}`);
+  }
+  change(field("wall"), "brick");
+  assert.deepEqual(card._doc.floors[0].walls, [{ at: [5, 2], material: "brick" }]);
+  click($(card, '[data-action=wall_default][data-which="interior"]'));
+  assert.deepEqual(card._doc.wifi, { defaults: { interior: "brick" } });
+  assert.ok(!("walls" in card._doc.floors[0]), "the wall now has the default");
+  change(field("height"), "3.1");
+  change(field("slab"), "reinforced_concrete");
+  assert.equal(card._doc.floors[0].height, 3.1);
+  assert.equal(card._doc.floors[0].slab, "reinforced_concrete");
+  assert.deepEqual(optionValues(field("slab")), materialIds("slab"));
+  tap(card, 2.5, 2, $(card, 'polygon.room[data-area="living_room"]'));
+  assert.equal($(card, "line.wall-selected"), null, "a tap inside a room selects no wall");
+});
+
+test("wifi false: no Walls tool, no material or access point fields", async () => {
+  const card = await make({ plan: withOpenings([{ kind: "window", rooms: ["living_room", null], at: [0, 2] }]), wifi: false }, hassOf());
+  click($(card, "[data-action=edit]"));
+  assert.equal($(card, '[data-tool="walls"]'), null);
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  const [sx, sy] = clientAt(card, 0, 2);
+  pointer($(card, "g.opening line.hit"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointerup", sx, sy);
+  assert.ok($(card, ".opening-panel"));
+  assert.equal($(card, '.opening-panel [data-field="material"]'), null);
+});
+
+test("the opening panel's Material: window materials for a window, door materials for a door, none for a doorway", async () => {
+  const card = await make({ plan: withOpenings([{ kind: "window", rooms: ["living_room", null], at: [0, 2] }]) }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  const [sx, sy] = clientAt(card, 0, 2);
+  pointer($(card, "g.opening line.hit"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointerup", sx, sy);
+  const field = (name) => $(card, `.opening-panel [data-field="${name}"]`);
+  assert.deepEqual(optionValues(field("material")), ["glass", "double", "low_e", "triple_low_e"]);
+  assert.equal(field("material").querySelector("option[selected]").value, "double", "the window's default");
+  change(field("material"), "low_e");
+  assert.equal(card._doc.floors[0].openings[0].material, "low_e");
+  change(field("kind"), "door");
+  assert.equal(card._doc.floors[0].openings[0].material, "low_e", "a glazed door keeps its glazing");
+  assert.deepEqual(optionValues(field("material")), ["wood", "glass", "double", "low_e", "triple_low_e", "metal"]);
+  change(field("material"), "metal");
+  assert.equal(card._doc.floors[0].openings[0].material, "metal");
+  change(field("kind"), "window");
+  assert.ok(!("material" in card._doc.floors[0].openings[0]), "metal is no window: dropped");
+  change(field("kind"), "door");
+  change(field("kind"), "opening");
+  assert.equal(field("material"), null, "a doorway has no material");
+  assert.ok(!("material" in card._doc.floors[0].openings[0]));
+});
+
+test("the Walls tool: an outdoor room's own edge is No wall until a material is chosen; No wall again removes it", async () => {
+  const plan = planOf();
+  plan.wifi = { outdoor: ["kitchen"] };
+  const card = await make({ plan }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  tap(card, 7.98, 2, $(card, 'polygon.room[data-area="kitchen"]'));      // the kitchen's east edge
+  const field = () => $(card, '.wall-panel [data-field="wall"]');
+  assert.deepEqual(optionValues(field()), ["", ...materialIds("wall")]);
+  assert.equal(field().querySelector("option[selected]").value, "");
+  assert.equal(field().querySelector('option[value=""]').textContent, EN("card.floorplan.wall.none"));
+  assert.equal($(card, "[data-action=wall_default]"), null, "no wall is no default for the others");
+  change(field(), "glass");
+  assert.deepEqual(card._doc.floors[0].walls, [{ at: [8, 2], material: "glass" }]);
+  change(field(), "");
+  assert.ok(!("walls" in card._doc.floors[0]));
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));    // the wall to the outdoor kitchen
+  assert.ok(!optionValues(field()).includes(""), "an indoor room's wall is always some material");
+});
+
+test("the Walls tool's floor panel: an Outdoors switch per room marks it; the Wi-Fi map changes", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors[0].openings = [];
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  const boxes = () => [...card.shadowRoot.querySelectorAll('.wall-panel input[data-field="outdoor"]')];
+  assert.deepEqual(boxes().map((b) => b.getAttribute("data-area")), ["living_room", "kitchen"]);
+  assert.ok($(card, ".wall-panel").textContent.includes(EN("card.floorplan.wall.outdoor")));
+  assert.ok(boxes().every((b) => !b.checked));
+  const box = boxes()[1];
+  box.checked = true;
+  box.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.deepEqual(card._doc.wifi, { outdoor: ["kitchen"] });
+  assert.ok(boxes()[1].checked, "drawn on");
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));
+  assert.equal($(card, '.wall-panel [data-field="wall"]').querySelector("option[selected]").value, "concrete_thick",
+    "the wall to an outdoor room is exterior");
+  const dbm = async (doc) => {
+    const view = await make({ plan: doc, layers: ["radio"] }, wifiHass());
+    await settle();
+    click($(view, '.bar [data-map="wifi_24"]'));          // the kitchen's node alone serves 2.4 GHz
+    return cellsOf(view).map((c) => c.getAttribute("data-dbm")).join();
+  };
+  assert.notEqual(await dbm(card._doc), await dbm(plan), "an outdoor kitchen: its wall is exterior, the living room darker");
+  const off = boxes()[1];
+  off.checked = false;
+  off.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.ok(!("wifi" in card._doc));
+  window.localStorage.clear();
+});
+
+test("the opening panel: a door to an outdoor room shows double glazing and closed as its defaults", async () => {
+  const plan = withOpenings([{ rooms: ["living_room", "kitchen"], at: [5, 2] }]);
+  plan.wifi = { outdoor: ["kitchen"] };
+  const card = await make({ plan }, hassOf());
+  assert.ok($(card, "g.opening").classList.contains("closed"), "drawn closed, as predicted");
+  const indoor = await make({ plan: withOpenings([{ rooms: ["living_room", "kitchen"], at: [5, 2] }]) }, hassOf());
+  assert.ok($(indoor, "g.opening").classList.contains("open"), "between two indoor rooms: open");
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  const [sx, sy] = clientAt(card, 5, 2);
+  pointer($(card, "g.opening line.hit"), "pointerdown", sx, sy);
+  pointer($(card, "svg"), "pointerup", sx, sy);
+  const field = (name) => $(card, `.opening-panel [data-field="${name}"]`);
+  assert.equal(field("material").querySelector("option[selected]").value, "double");
+  assert.equal(field("state").querySelector("option[selected]").value, "closed");
+  change(field("material"), "wood");
+  assert.equal(card._doc.floors[0].openings[0].material, "wood", "wood is a choice of its own here");
+});
+
+const OFFER_KEY = "domosenso.floorplan.ap_offered";
+function nodeHass() {
+  const hass = wifiHass();
+  hass.entities["device_tracker.mesh_node"] = { entity_id: "device_tracker.mesh_node", device_id: "d_mesh", platform: "tplink_deco" };
+  hass.states["device_tracker.mesh_node"] = { state: "home", attributes: { device_type: "deco" } };
+  return hass;
+}
+
+test("a Deco node point is offered 'Use as access point?' once; accepting marks it", async () => {
+  window.localStorage.clear();
+  const plan = planOf([pt("d_mesh", 6.5, 2), pt("d_climate", 1, 1)]);
+  const card = await make({ plan }, nodeHass());
+  click($(card, "[data-action=edit]"));
+  const offer = $(card, ".ap-offer");
+  assert.ok(offer && offer.textContent.includes(EN("card.floorplan.wifi.offer").replace("{name}", "Mesh node")), offer?.textContent);
+  click($(card, '.ap-offer [data-answer="yes"]'));
+  assert.deepEqual(card._doc.floors[0].access_points, [{ device_id: "d_mesh", bands: ["2.4", "5"] }]);
+  assert.equal($(card, ".ap-offer"), null);
+  // Unmarked again in a new card: not offered a second time in this browser.
+  const again = await make({ plan }, nodeHass());
+  click($(again, "[data-action=edit]"));
+  assert.equal($(again, ".ap-offer"), null);
+  window.localStorage.clear();
+  const declined = await make({ plan }, nodeHass());
+  click($(declined, "[data-action=edit]"));
+  click($(declined, '.ap-offer [data-answer="no"]'));
+  assert.ok(!("access_points" in declined._doc.floors[0]));
+  assert.deepEqual(JSON.parse(window.localStorage.getItem(OFFER_KEY)), ["d_mesh"]);
+  assert.equal($(declined, ".ap-offer"), null);
+  window.localStorage.clear();
+});
+
+test("a corrupt stored offer list (not a list) is read as none: the card still starts and offers", async () => {
+  for (const bad of ["5", "{\"d_mesh\": true}", "null"]) {
+    window.localStorage.clear();
+    window.localStorage.setItem(OFFER_KEY, bad);
+    const card = await make({ plan: planOf([pt("d_mesh", 6.5, 2)]) }, nodeHass());
+    click($(card, "[data-action=edit]"));
+    assert.ok($(card, ".ap-offer"), `offered after ${bad}`);
+  }
+  window.localStorage.clear();
+});
+
+test("German confidence levels: hoch, mittel, niedrig (not tief)", () => {
+  assert.deepEqual(at(LANGS.de, "card.floorplan.wifi.confidence"), { high: "hoch", medium: "mittel", low: "niedrig" });
+  assert.ok(!at(LANGS.de, "card.floorplan.wifi.confidence_legend").includes("tief"));
+});
+
+test("a point's panel marks it as access point with its bands, transmit power and mount height", async () => {
+  window.localStorage.clear();
+  window.localStorage.setItem(OFFER_KEY, JSON.stringify(["d_mesh"]));
+  const card = await make({ plan: planOf([pt("d_mesh", 6.5, 2)]) }, nodeHass());
+  click($(card, "[data-action=edit]"));
+  const [x, y] = clientAt(card, 6.5, 2);
+  pointer(markerOf(card, "d_mesh"), "pointerdown", x, y);
+  pointer(markerOf(card, "d_mesh"), "pointerup", x, y);
+  const ap = () => card._doc.floors[0].access_points?.[0];
+  const check = (sel, on) => {
+    const box = $(card, sel);
+    box.checked = on;
+    box.dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  };
+  assert.equal($(card, '.point-panel [data-field="ap_tx"]'), null, "not an access point yet");
+  check('.point-panel [data-field="ap"]', true);
+  assert.deepEqual(ap(), { device_id: "d_mesh", bands: ["2.4", "5"] });
+  check('.point-panel [data-field="ap_band"][data-band="6"]', true);
+  assert.deepEqual(ap().bands, ["2.4", "5", "6"]);
+  change($(card, '.point-panel [data-field="ap_tx"][data-band="5"]'), "20");
+  change($(card, '.point-panel [data-field="ap_mount"]'), "2.2");
+  assert.deepEqual(ap(), { device_id: "d_mesh", bands: ["2.4", "5", "6"], tx: { "5": 20 }, mount: 2.2 });
+  check('.point-panel [data-field="ap_band"][data-band="5"]', false);
+  assert.deepEqual(ap(), { device_id: "d_mesh", bands: ["2.4", "6"], mount: 2.2 }, "tx kept only for its bands");
+  change($(card, '.point-panel [data-field="ap_mount"]'), "9");
+  assert.equal(ap().mount, 2.2, "out of range: refused");
+  assert.ok($(card, ".message").textContent.includes(EN("card.floorplan.refused")));
+  check('.point-panel [data-field="ap"]', false);
+  assert.ok(!("access_points" in card._doc.floors[0]));
+  window.localStorage.clear();
+});
+
+test("after an edit the Wi-Fi map shows the change", async () => {
+  window.localStorage.clear();
+  // One access point in the kitchen: the living room's cells are behind the shared wall.
+  const card = await make({ plan: wifiPlan([APS[0]]), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="wifi_5"]'));
+  const before = cellsOf(card).map((c) => c.getAttribute("data-dbm")).join();
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));
+  change($(card, '.wall-panel [data-field="wall"]'), "metal");
+  card._leaveEdit(card._doc);
+  card._render();
+  assert.ok(cellsOf(card).map((c) => c.getAttribute("data-dbm")).join() !== before, "a metal wall: other cells");
+  window.localStorage.clear();
+});
+
+// ---- Wi-Fi calibration from the devices' signal sensors (SPEC-044 S2) ---------------------------
+
+const DBM = { device_class: "signal_strength", unit_of_measurement: "dBm", state_class: "measurement" };
+const BSSID_24 = "02:00:00:00:00:01";
+const BSSID_5 = "02:00:00:00:00:02";
+// wifiHass, the kitchen node's BSSIDs, and an ESPHome sensor reporting its Wi-Fi signal and the BSSID it is on.
+function sourceHass({ dbm = "-52", bssid = BSSID_24, ...opts } = {}) {
+  const hass = wifiHass(opts);
+  hass.devices.d_atom = { id: "d_atom", name: "Alex's sensor", area_id: "kitchen" };
+  hass.devices.d_sam = { id: "d_sam", name: "Sam's sensor", area_id: "living_room" };
+  const add = (id, device_id, platform, state, attributes = {}) => {
+    hass.entities[id] = { entity_id: id, device_id, platform };
+    hass.states[id] = { state, attributes };
+  };
+  add("sensor.mesh_bssid_2_4_ghz", "d_mesh", "tplink_deco", BSSID_24);
+  add("sensor.mesh_bssid_5_ghz", "d_mesh", "tplink_deco", BSSID_5);
+  add("sensor.atom_wi_fi_signal", "d_atom", "esphome", dbm, DBM);
+  if (bssid) add("sensor.atom_connected_ap_bssid", "d_atom", "esphome", bssid);
+  return hass;
+}
+const ATOM = pt("d_atom", 7, 3.5);
+const sourcePlan = (extra = []) => {
+  const plan = wifiPlan();
+  plan.floors[0].points.push(ATOM, ...extra);
+  return plan;
+};
+const calibChips = (card) => [...card.shadowRoot.querySelectorAll(".bar [data-action=calib]")];
+const pressed = (card, sel) => $(card, sel)?.getAttribute("aria-pressed");
+const dbmNear = (card, x, y) => Number(cellsOf(card).find((c) => Math.abs(Number(c.getAttribute("x")) - x) < 0.1
+  && Math.abs(Number(c.getAttribute("y")) - y) < 0.1).getAttribute("data-dbm"));
+
+test("calibration: Predicted / Calibrated replaces nothing without observations; with one, Calibrated is the default and remembered", async () => {
+  window.localStorage.clear();
+  const plain = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(calibChips(plain), [], "nothing to calibrate with: no switch");
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ dbm: "-75" }));
+  await settle();
+  assert.deepEqual(calibChips(card).map((b) => b.getAttribute("data-calib")), ["predicted", "calibrated"]);
+  assert.equal(calibChips(card)[0].textContent, EN("card.floorplan.wifi.predicted"));
+  assert.equal(pressed(card, '.bar [data-calib="calibrated"]'), "true", "Calibrated by default");
+  assert.ok(!$(card, ".bar [data-action=day]"), "no Now / 24 h");
+  click($(card, '.bar [data-map="wifi_24"]'));     // drawn again at the card's width: 0.15 m cells
+  const calibrated = dbmNear(card, 6.9, 3.45);
+  click($(card, '.bar [data-calib="predicted"]'));
+  assert.equal(pressed(card, '.bar [data-calib="predicted"]'), "true");
+  const predicted = dbmNear(card, 6.9, 3.45);
+  assert.ok(Math.abs(calibrated + 75) < Math.abs(predicted + 75), `calibrated ${calibrated} nearer -75 dBm than predicted ${predicted}`);
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(calibChips(card).length, 2, "Serving has the switch too");
+  click($(card, '.bar [data-map="confidence"]'));
+  assert.deepEqual(calibChips(card), [], "Confidence has none");
+  const again = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass());
+  await settle();
+  click($(again, '.bar [data-map="wifi_24"]'));
+  assert.equal(pressed(again, '.bar [data-calib="predicted"]'), "true", "the choice is remembered");
+  window.localStorage.clear();
+});
+
+test("calibration: Confidence draws high, medium and low in three fills on the band chosen beside it, with a legend", async () => {
+  window.localStorage.clear();
+  // On the kitchen node's 5 GHz, some 30 dB below its prediction: high beside the reading, medium where that node
+  // serves, low where the living room's node serves.
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ dbm: "-60", bssid: BSSID_5 }));
+  await settle();
+  click($(card, '.bar [data-map="confidence"]'));
+  click($(card, '.bar [data-band="5"]'));
+  const cells = cellsOf(card);
+  const levels = new Map(cells.map((c) => [c.getAttribute("data-conf"), c.getAttribute("fill")]));
+  assert.deepEqual([...levels.keys()].sort(), ["high", "low", "medium"]);
+  assert.equal(new Set(levels.values()).size, 3, "three distinct fills");
+  const near = cells.find((c) => Math.abs(Number(c.getAttribute("x")) - 6.9) < 0.1 && Math.abs(Number(c.getAttribute("y")) - 3.45) < 0.1);
+  assert.equal(near.getAttribute("data-conf"), "high");
+  const legend = $(card, ".bar .legend");
+  for (const level of ["high", "medium", "low"]) {
+    assert.ok(legend.textContent.includes(EN(`card.floorplan.wifi.confidence.${level}`)), legend.textContent);
+  }
+  assert.equal(legend.querySelectorAll(".swatch").length, 3);
+  window.localStorage.clear();
+});
+
+test("calibration: the fit runs once per plan and readings, not per band nor on an unrelated update; a changed reading fits again", async () => {
+  window.localStorage.clear();
+  const hass = sourceHass();
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, hass);
+  await settle();
+  let fits = 0;
+  const run = card._runFit.bind(card);
+  card._runFit = (...args) => (fits++, run(...args));
+  card._wifiMemo.clear();
+  card._fitMemo = null;
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(fits, 1);
+  click($(card, '.bar [data-map="wifi_24"]'));
+  click($(card, '.bar [data-map="serving"]'));
+  click($(card, '.bar [data-map="confidence"]'));
+  assert.equal(fits, 1, "one fit for every band and map");
+  const setState = (id, state) => {
+    card.hass = { ...card._hass, states: { ...card._hass.states, [id]: { ...card._hass.states[id], state } } };
+  };
+  setState("switch.mesh_led", "off");
+  assert.equal(fits, 1, "another entity's state: no new fit");
+  setState("sensor.atom_wi_fi_signal", "-52.1");
+  assert.equal(fits, 1, "within 0.5 dB: the same fit");
+  setState("sensor.atom_wi_fi_signal", "-58");
+  assert.equal(fits, 2, "a changed reading: a new fit");
+  window.localStorage.clear();
+});
+
+test("calibration: the observations are built again for a signal, BSSID or tracker state, not for another entity's", async () => {
+  window.localStorage.clear();
+  const hass = sourceHass();
+  hass.entities["device_tracker.atom"] = { entity_id: "device_tracker.atom", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.atom"] = { state: "home", attributes: { mac: "02:00:00:00:00:aa", connection_type: "band5" } };
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, hass);
+  await settle();
+  let builds = 0;
+  const build = card._buildObservations.bind(card);
+  card._buildObservations = (...args) => (builds++, build(...args));
+  const setState = (id, state) => {
+    card.hass = { ...card._hass, states: { ...card._hass.states, [id]: { ...card._hass.states[id], state } } };
+    card._observations();
+  };
+  card._observations();
+  setState("switch.mesh_led", "off");
+  assert.equal(builds, 0, "another entity's state: the same observations");
+  setState("sensor.atom_wi_fi_signal", "-60");
+  assert.equal(builds, 1, "a signal sensor");
+  setState("sensor.atom_connected_ap_bssid", BSSID_5);
+  assert.equal(builds, 2, "the device's BSSID");
+  setState("sensor.mesh_bssid_5_ghz", "02:00:00:00:00:03");
+  assert.equal(builds, 3, "an access point's BSSID");
+  setState("device_tracker.atom", "not_home");
+  assert.equal(builds, 4, "a router tracker");
+  window.localStorage.clear();
+});
+
+test("calibration: a signal source's label shows its dBm, band and access point; its 24 h mean once the statistics arrive", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass());
+  await settle();
+  assert.deepEqual(lines(card, "d_atom"), [["−52 dBm · 2.4 · Mesh node", true]]);
+  assert.deepEqual(lines(card, "d_mesh"), [["2.4 · 5 GHz", true]], "an access point still lists its bands");
+  const unknown = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ bssid: null }));
+  await settle();
+  assert.deepEqual(lines(unknown, "d_atom"), [["−52 dBm · 2.4 · —", true]], "access point unknown");
+  const pl = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass({ language: "pl" }));
+  await settle();
+  assert.deepEqual(lines(pl, "d_atom"), [["−52 dBm · 2,4 · Mesh node", true]]);
+  const hass = sourceHass({ answers: { "recorder/statistics_during_period": { "sensor.atom_wi_fi_signal": [{ mean: -60 }, { mean: -62 }] } } });
+  const day = await make({ plan: sourcePlan(), layers: ["radio"] }, hass);
+  await settle();
+  const stats = hass.calls.find((c) => c.type === "recorder/statistics_during_period");
+  assert.ok(stats && stats.statistic_ids.includes("sensor.atom_wi_fi_signal") && stats.period === "hour", JSON.stringify(stats));
+  assert.ok(Date.now() - Date.parse(stats.start_time) - 24 * 3600 * 1000 < 60 * 1000, "the last 24 hours");
+  assert.deepEqual(lines(day, "d_atom"), [["−61 dBm · 2.4 · Mesh node", true]], "the mean of the hourly means");
+  window.localStorage.clear();
+});
+
+const registryCalls = (hass) => hass.calls.filter((c) => c.type === "config/entity_registry/list");
+const DISABLED = [
+  { entity_id: "sensor.sam_wi_fi_signal", device_id: "d_sam", platform: "esphome", disabled_by: "integration" },
+  { entity_id: "sensor.sam_uptime", device_id: "d_sam", platform: "esphome", disabled_by: "integration" },
+];
+
+test("disabled sources: in edit mode an admin's card lists the plan's switched-off Wi-Fi signal sensors, read once per edit session", async () => {
+  window.localStorage.clear();
+  const hass = sourceHass({ answers: { "config/entity_registry/list": DISABLED } });
+  const card = await make({ plan: sourcePlan([pt("d_sam", 2, 2)]), layers: ["radio"] }, hass);
+  await settle();
+  assert.equal(registryCalls(hass).length, 0, "view mode never asks");
+  click($(card, "[data-action=edit]"));
+  await settle();
+  const list = $(card, ".area-panel .wifi-disabled");
+  assert.ok(list, $(card, ".area-panel").innerHTML);
+  assert.ok(list.textContent.includes(EN("card.floorplan.wifi.disabled")), list.textContent);
+  assert.ok(list.textContent.includes("Sam's sensor") && list.textContent.includes("sensor.sam_wi_fi_signal"), list.textContent);
+  assert.ok(!list.textContent.includes("sensor.sam_uptime"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  card.hass = { ...card._hass, states: { ...card._hass.states } };
+  await settle();
+  assert.equal(registryCalls(hass).length, 1, "once per edit session");
+  click($(card, "[data-action=cancel]"));
+  click($(card, "[data-action=edit]"));
+  await settle();
+  assert.equal(registryCalls(hass).length, 2, "a new edit session reads it again");
+  window.localStorage.clear();
+});
+
+test("disabled sources: view mode and a non-admin (the kiosk user) never read the entity registry", async () => {
+  window.localStorage.clear();
+  for (const admin of [true, false]) {
+    const hass = sourceHass({ admin, answers: { "config/entity_registry/list": DISABLED } });
+    const card = await make({ plan: sourcePlan([pt("d_sam", 2, 2)]), layers: ["radio"] }, hass);
+    await settle();
+    for (const map of ["wifi_24", "serving", "confidence"]) click($(card, `.bar [data-map="${map}"]`));
+    card.hass = { ...card._hass, states: { ...card._hass.states } };
+    await settle();
+    assert.equal(registryCalls(hass).length, 0, `admin ${admin}`);
+    assert.equal($(card, ".wifi-disabled"), null);
+  }
+  window.localStorage.clear();
+});
+
+// ---- survey panel, next spots and manual readings (SPEC-044 S3) --------------------------------
+
+// The survey page's server: `routes` answers a path with a value (as JSON), or {status, text} for an error.
+function surveyFetch(routes) {
+  const calls = [];
+  const saved = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    const call = { url: String(url), method: options.method ?? "GET", body: options.body ? JSON.parse(options.body) : null };
+    calls.push(call);
+    const answer = await routes[call.url]?.(call);
+    const failed = answer && typeof answer.status === "number";
+    return { ok: !failed, status: failed ? answer.status : 200, json: async () => answer, text: async () => (failed ? answer.text : "") };
+  };
+  return { calls, restore: () => { globalThis.fetch = saved; } };
+}
+const LINK = { band: "5", channel: 36, dbm: -58.2, noise: -92, bssid: null };
+const SAMPLE = { floor_id: "ground", x: 2, y: 1, t: "2026-11-11T19:30:00Z", band: "5", channel: 36, dbm: -58.2, noise: -92, source: "survey" };
+const MANUAL = { floor_id: "ground", x: 3, y: 3, t: "2026-11-11T19:31:00Z", band: "2.4", dbm: -63, source: "manual" };
+const sampleDots = (card) => [...card.shadowRoot.querySelectorAll("g.sample")];
+
+test("survey: the panel shows the laptop's live link from /survey/link every 2 s; without one it says so", async () => {
+  window.localStorage.clear();
+  let link = LINK;
+  const f = surveyFetch({ "survey/link": () => ({ link }) });
+  const every = [];
+  const setI = globalThis.setInterval;
+  globalThis.setInterval = (fn, ms) => (every.push(ms), setI(fn, ms));
+  try {
+    const card = await make({ plan: wifiPlan(), survey: true }, wifiHass());
+    await settle();
+    await settle();
+    assert.deepEqual(every, [2000], "one poll, every 2 s");
+    assert.ok(f.calls.some((c) => c.url === "survey/link" && c.method === "GET"));
+    const text = $(card, ".survey .survey-link").textContent;
+    assert.equal(text, "5 GHz · channel 36 · −58 dBm · noise −92 dBm");
+    assert.ok($(card, ".survey .survey-help").textContent.includes("10 s"));
+    // A poll still waiting for its answer is not doubled.
+    let release;
+    f.calls.length = 0;
+    const slow = surveyFetch({ "survey/link": () => new Promise((r) => { release = r; }) });
+    const first = card._pollLink();
+    await card._pollLink();
+    assert.equal(slow.calls.length, 1, "one request in flight at a time");
+    release({ link: null });
+    await first;
+    slow.restore();
+    link = null;
+    await card._pollLink();
+    assert.equal($(card, ".survey-link").textContent, EN("card.floorplan.survey.no_link"));
+    card.remove();
+    const before = f.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(f.calls.length, before, "a removed card stops polling");
+    const plain = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+    await settle();
+    assert.equal($(plain, ".survey").innerHTML, "", "no Survey panel without survey: true");
+    assert.equal(f.calls.filter((c) => c.url === "survey/link").length, before, "and no polling");
+    plain.remove();
+  } finally {
+    globalThis.setInterval = setI;
+    f.restore();
+    window.localStorage.clear();
+  }
+});
+
+test("survey: a tap marks the spot, I'm here posts it and waits 10 s, then the sample is drawn or the skip shown", async () => {
+  window.localStorage.clear();
+  let answer;
+  const f = surveyFetch({ "survey/link": () => ({ link: LINK }), "survey/sample": () => new Promise((r) => { answer = r; }) });
+  try {
+    const card = await make({ plan: wifiPlan(), survey: true }, wifiHass());
+    await settle();
+    const here = () => $(card, "[data-action=survey_here]");
+    assert.ok(here().disabled, "no spot yet");
+    assert.equal(sampleDots(card).length, 0);
+    let tapped = 0;
+    card.addEventListener("room-tap", () => tapped++);
+    tap(card, 2, 1);
+    assert.equal(tapped, 0, "a survey tap is a spot, not a room");
+    assert.ok($(card, "circle.survey-spot"));
+    assert.ok(!here().disabled);
+    click(here());
+    await settle();
+    const post = f.calls.find((c) => c.url === "survey/sample");
+    assert.equal(post.method, "POST");
+    assert.equal(post.body.floor_id, "ground");
+    assert.ok(Math.abs(post.body.x - 2) < 0.01 && Math.abs(post.body.y - 1) < 0.01, JSON.stringify(post.body));
+    assert.ok($(card, ".survey .survey-progress"), "the 10 s wait shows");
+    assert.ok(here().disabled, "one sample at a time");
+    answer({ sample: SAMPLE });
+    await settle();
+    await settle();
+    assert.equal($(card, ".survey-progress"), null);
+    assert.deepEqual(card._doc.wifi.samples, [SAMPLE]);
+    assert.deepEqual(card._loaded.wifi.samples, [SAMPLE], "the file has it: a later save is not refused");
+    assert.ok($(card, ".survey-note").textContent.includes("−58 dBm"), $(card, ".survey-note").textContent);
+    assert.ok($(card, '.bar [data-map="wifi_24"][aria-pressed="true"]'), "the survey page opens on a band map");
+    assert.equal(sampleDots(card).length, 0, "a band map shows no sample dots, on the survey page too");
+    click($(card, '.bar [data-map="confidence"]'));
+    assert.equal(sampleDots(card).length, 1, "the new sample on the Confidence map");
+    assert.equal(sampleDots(card)[0].querySelector("text").textContent, "−58");
+    assert.equal($(card, "circle.survey-spot"), null, "the next stop is tapped again");
+    tap(card, 3, 3);
+    click(here());
+    await settle();
+    answer({ sample: null, skipped: "too few readings" });
+    await settle();
+    await settle();
+    assert.ok($(card, ".survey-note").textContent.includes("too few readings"));
+    assert.equal(card._doc.wifi.samples.length, 1);
+    f.calls.length = 0;
+    click(here());
+    await settle();
+    answer({ status: 400, text: "plan has 2000 samples" });
+    await settle();
+    await settle();
+    assert.ok($(card, ".survey-note").textContent.includes("plan has 2000 samples"));
+    card.remove();
+  } finally {
+    f.restore();
+    window.localStorage.clear();
+  }
+});
+
+test("survey: the next spots are drawn and listed: rooms without a reading before far cells", async () => {
+  window.localStorage.clear();
+  const f = surveyFetch({ "survey/link": () => ({ link: LINK }) });
+  try {
+    const card = await make({ plan: wifiPlan(), survey: true }, wifiHass());
+    await settle();
+    assert.equal(card.shadowRoot.querySelectorAll("circle.next-spot").length, 3);
+    const items = [...card.shadowRoot.querySelectorAll(".survey-next li")];
+    assert.equal(items.length, 3);
+    // No reading yet, one access point on 2.4 GHz (no handover): both rooms, then a far cell.
+    assert.deepEqual(items.map((li) => li.textContent), ["room", "room", "far"].map((w) => EN(`card.floorplan.survey.why.${w}`)));
+    assert.deepEqual([...card.shadowRoot.querySelectorAll("circle.next-spot")].map((c) => c.getAttribute("data-why")), ["room", "room", "far"]);
+    card.remove();
+  } finally {
+    f.restore();
+    window.localStorage.clear();
+  }
+});
+
+test("samples: dots with their dBm on the Confidence map and in edit mode only; every floor's samples calibrate", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors.push({ floor_id: "upstairs", rooms: [], points: [] });
+  plan.wifi = { samples: [MANUAL, { ...SAMPLE, floor_id: "upstairs" }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal(sampleDots(card).length, 0, "not on a band map");
+  assert.deepEqual(calibChips(card).map((b) => b.getAttribute("data-calib")), ["predicted", "calibrated"], "samples calibrate");
+  assert.deepEqual(card._observations().list.map((o) => [o.floorId, o.source]), [["ground", "manual"], ["upstairs", "survey"]]);
+  click($(card, '.bar [data-map="confidence"]'));
+  assert.equal(sampleDots(card).length, 1, "this floor's");
+  assert.equal(sampleDots(card)[0].querySelector("text").textContent, "−63");
+  click($(card, "[data-action=edit]"));
+  assert.equal(sampleDots(card).length, 1, "edit mode");
+  window.localStorage.clear();
+});
+
+test("add reading: a tap places a manual reading; dBm, band and access point go into the plan and are saved", async () => {
+  window.localStorage.clear();
+  const hass = wifiHass({ dashboard: dashboardOf(wifiPlan()) });
+  const card = await make({ layers: ["radio"] }, hass);
+  await settle();
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="reading"]'));
+  assert.equal($(card, '[data-tool="reading"]').textContent, EN("card.floorplan.tool.reading"));
+  assert.equal($(card, ".hint").textContent, EN("card.floorplan.hint.reading"));
+  assert.equal($(card, ".reading-panel"), null, "nothing tapped yet");
+  tap(card, 2, 1);
+  assert.ok($(card, "circle.reading-spot"));
+  const field = (name) => $(card, `.reading-panel [data-field="${name}"]`);
+  assert.deepEqual([...field("band").options].map((o) => o.value), ["2.4", "5"]);
+  assert.deepEqual([...field("ap").options].map((o) => o.value), ["", "d_mesh", "d_mesh2"]);
+  field("dbm").value = "5";
+  click($(card, "[data-action=add_reading]"));
+  assert.equal(card._doc.wifi, undefined, "5 dBm is refused");
+  assert.ok($(card, ".message").textContent.includes(EN("card.floorplan.refused")));
+  field("dbm").value = "-63";
+  field("band").value = "5";
+  field("ap").value = "d_mesh2";
+  click($(card, "[data-action=add_reading]"));
+  const [got] = card._doc.wifi.samples;
+  assert.deepEqual({ ...got, x: 0, y: 0, t: 0 }, { floor_id: "ground", x: 0, y: 0, t: 0, band: "5", dbm: -63, ap: "d_mesh2", source: "manual" });
+  assert.ok(Math.abs(got.x - 2) < 0.01 && Math.abs(got.y - 1) < 0.01);
+  assert.equal(sampleDots(card).length, 1, "drawn at once");
+  assert.equal($(card, ".reading-panel"), null, "the next reading is tapped again");
+  click($(card, "[data-action=save]"));
+  await settle();
+  await settle();
+  const saved = hass.calls.find((c) => c.type === "lovelace/config/save");
+  assert.deepEqual(saved.config.views[0].cards[0].plan.wifi.samples, [got]);
+  window.localStorage.clear();
+});
+
+// ---- Amendment 3: wall weights, half-height walls, ranges -----------------------------------------
+
+const all = (card, sel) => [...card.shadowRoot.querySelectorAll(sel)];
+const onLine = (l, x) => Number(l.getAttribute("x1")) === x && Number(l.getAttribute("x2")) === x;
+
+test("wall weights: walls are lines by weight on the plan and every map; rooms keep their fill unstroked; the key", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.ok(all(card, "polygon.room").every((r) => r.classList.contains("walled")));
+  assert.equal(all(card, "line.wall-line.heavy").length, 6, "thick concrete outside by default");
+  assert.deepEqual(all(card, "line.wall-line.solid").filter((l) => onLine(l, 5)).length, 2, "thin concrete inside, the door cut out");
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(all(card, ".heat polygon.wall").length, 0, "no room outlines over the heat");
+  assert.ok(all(card, "line.wall-line").length >= 8, "the walls over the map");
+  const key = $(card, ".bar .wall-key");
+  assert.deepEqual(all(card, ".bar .wall-key .wall-swatch").map((s) => s.className), ["wall-swatch light", "wall-swatch solid", "wall-swatch heavy"]);
+  for (const w of ["light", "solid", "heavy"]) assert.ok(key.textContent.includes(EN(`card.floorplan.wall.weight.${w}`)));
+  click($(card, '.bar [data-map="serving"]'));
+  assert.ok($(card, ".bar .wall-key"), "on every Wi-Fi map");
+  click($(card, "[data-action=edit]"));
+  assert.ok($(card, ".bar .wall-key"), "in edit mode");
+  const glass = wifiPlan();
+  glass.floors[0].walls = [{ at: [5, 0.5], material: "low_e", height: "half" }, { at: [8, 2], material: "double" }];
+  const other = await make({ plan: glass, layers: ["radio"] }, wifiHass());
+  await settle();
+  const inner = all(other, "line.wall-line").filter((l) => onLine(l, 5));
+  assert.ok(inner.length === 2 && inner.every((l) => l.getAttribute("class") === "wall-line solid glass half"), inner.map((l) => l.getAttribute("class")).join());
+  assert.deepEqual(all(other, "line.wall-line").filter((l) => onLine(l, 8)).map((l) => l.getAttribute("class")), ["wall-line light glass"]);
+  const off = await make({ plan: wifiPlan(), layers: ["radio"], wifi: false }, wifiHass());
+  await settle();
+  assert.equal(all(off, "line.wall-line").length + all(off, ".wall-key").length, 0, "wifi false: outlines as before");
+  window.localStorage.clear();
+});
+
+test("the Walls tool: Half height lowers the selected wall; its material stays; no wall has nothing to lower", async () => {
+  const card = await make({ plan: planOf() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));
+  const half = () => $(card, '.wall-panel input[data-field="half"]');
+  assert.ok(half() && !half().checked);
+  assert.ok($(card, ".wall-panel").textContent.includes(EN("card.floorplan.wall.half")));
+  half().checked = true;
+  half().dispatchEvent(new window.Event("change", { bubbles: true, composed: true }));
+  assert.deepEqual(card._doc.floors[0].walls, [{ at: [5, 2], material: "concrete_thin", height: "half" }]);
+  assert.ok(half().checked);
+  assert.deepEqual(all(card, "line.wall-line").filter((l) => onLine(l, 5)).map((l) => l.getAttribute("class")), ["wall-line light half"],
+    "14 dB halved: light, dashed");
+  change($(card, '.wall-panel [data-field="wall"]'), "brick");
+  assert.deepEqual(card._doc.floors[0].walls, [{ at: [5, 2], material: "brick", height: "half" }]);
+  const balcony = planOf();
+  balcony.wifi = { outdoor: ["kitchen"] };
+  const open = await make({ plan: balcony }, hassOf());
+  click($(open, "[data-action=edit]"));
+  click($(open, '[data-action=tool][data-tool="walls"]'));
+  tap(open, 7.98, 2, $(open, 'polygon.room[data-area="kitchen"]'));
+  assert.equal($(open, '.wall-panel [data-field="wall"]').value, "");
+  assert.equal($(open, '.wall-panel input[data-field="half"]'), null, "the balcony's open edge: no wall to lower");
+  assert.ok(all(open, "line.wall-line.none").length >= 3, "its open edges dotted");
+});
+
+test("ranges: the band maps outline each access point at -67 and -75 dBm in its colour, ringed and named", async () => {
+  window.localStorage.clear();
+  const aps = [{ device_id: "d_mesh", bands: ["2.4", "5"], tx: { 5: -10 } }, { device_id: "d_mesh2", bands: ["5"], tx: { 5: -10 } }];
+  const card = await make({ plan: wifiPlan(aps), layers: ["radio"] }, wifiHass());
+  await settle();
+  let runs = 0;
+  const levels = card._levels.bind(card);
+  card._levels = (...args) => (runs++, levels(...args));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  const chip = () => $(card, ".bar [data-action=ranges]");
+  assert.equal(chip().getAttribute("aria-pressed"), "false");
+  assert.equal(chip().textContent, EN("card.floorplan.wifi.ranges"));
+  assert.equal($(card, ".ranges"), null, "off by default");
+  click(chip());
+  assert.equal(chip().getAttribute("aria-pressed"), "true");
+  const paths = (ap, cls) => all(card, `.ranges path.range.${cls}[data-ap="${ap}"]`);
+  for (const ap of ["d_mesh", "d_mesh2"]) {
+    assert.ok(paths(ap, "call").length >= 1 && paths(ap, "weak").length >= 1, ap);
+    // 3 m round each access point runs out of the 8 x 4 m home: open lines, ending where the rooms do
+    assert.ok(paths(ap, "call").every((p) => p.getAttribute("data-dbm") === "-67" && p.getAttribute("d").startsWith("M ")));
+  }
+  assert.notEqual(paths("d_mesh", "call")[0].getAttribute("stroke"), paths("d_mesh2", "call")[0].getAttribute("stroke"));
+  const rings = all(card, ".ranges circle.range-ring");
+  assert.deepEqual(rings.map((r) => r.getAttribute("data-ap")), ["d_mesh", "d_mesh2"]);
+  assert.equal(rings[0].getAttribute("stroke"), paths("d_mesh", "call")[0].getAttribute("stroke"), "the ring in the outline's colour");
+  assert.deepEqual(all(card, ".ranges text.range-name").map((n) => n.textContent), ["Mesh node", "Mesh satellite"]);
+  const legend = $(card, ".bar .ranges-legend");
+  assert.ok(legend.textContent.includes("Mesh node") && legend.textContent.includes(EN("card.floorplan.wifi.ranges_legend")
+    .replace("{call}", "-67").replace("{weak}", "-75")), legend.textContent);
+  assert.equal(runs, 1);
+  card._render();
+  assert.equal(runs, 1, "a redraw: the same outlines");
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.deepEqual(all(card, ".ranges circle.range-ring").map((r) => r.getAttribute("data-ap")), ["d_mesh"], "2.4 GHz: one access point");
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(chip(), null, "not on Serving");
+  assert.equal($(card, ".ranges"), null);
+  const again = await make({ plan: wifiPlan(aps), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(again, '.bar [data-map="wifi_5"]'));
+  assert.equal($(again, ".bar [data-action=ranges]").getAttribute("aria-pressed"), "true", "remembered");
+  window.localStorage.clear();
+});
+
+// ---- Amendment 3 review fixes ----
+
+// The living room and the kitchen traced with a 0.5 m wall between them.
+const thickPlan = () => {
+  const plan = planOf();
+  plan.floors[0].rooms[1] = { area_id: "kitchen", polygon: sq(5.5, 0, 3, 4) };
+  return plan;
+};
+
+test("a thick wall is picked on its drawn middle line by the Walls tool and the Openings tool", async () => {
+  const card = await make({ plan: thickPlan() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  assert.ok(12 * card._px() < 0.25, "zoomed in enough that the edges are out of reach from the middle");
+  const mid = all(card, "line.wall-line").filter((l) => onLine(l, 5.25));
+  assert.equal(mid.length, 1, "drawn once, on the middle line");
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  tap(card, 5.25, 1);
+  const sel = $(card, "line.wall-selected");
+  assert.ok(sel && Number(sel.getAttribute("x1")) === 5.25, "selected where it is drawn");
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  tap(card, 5.25, 2);
+  assert.deepEqual(card._doc.floors[0].openings, [{ kind: "door", rooms: ["living_room", "kitchen"], at: [5, 2] }],
+    "on the living room's edge, between the two rooms, not to the outside");
+  const door = $(card, 'g.opening[data-index="0"]');
+  assert.equal(door.getAttribute("transform"), "translate(0.25 0)", "drawn on the wall's middle line");
+  const gap = all(card, "line.wall-line").filter((l) => onLine(l, 5.25)).map((l) => [Number(l.getAttribute("y1")), Number(l.getAttribute("y2"))]);
+  assert.equal(gap.length, 2, "the wall line has the door's gap");
+});
+
+test("a card showing one room draws its walls as the whole floor has them", async () => {
+  const plan = planOf();
+  plan.floors[0].rooms.push({ area_id: "hall", polygon: sq(0, 4, 5, 2) });
+  plan.floors[0].open_spaces = [["living_room", "kitchen"]];
+  const whole = await make({ plan }, hassOf());
+  const room = await make({ plan, area: "living_room" }, hassOf());
+  const weights = (card) => Object.fromEntries(all(card, "line.wall-line").map((l) =>
+    [[l.getAttribute("x1"), l.getAttribute("y1"), l.getAttribute("x2"), l.getAttribute("y2")].join(), l.getAttribute("data-weight")]));
+  const mine = weights(room);
+  const full = weights(whole);
+  assert.equal(Object.keys(mine).length, 4, "the living room's four walls alone");
+  for (const [k, w] of Object.entries(mine)) assert.equal(w, full[k], k);
+  assert.deepEqual(Object.values(mine).sort(), ["heavy", "heavy", "none", "solid"], "the open space none, the hall's wall interior");
+});
+
+test("the wall key shows wherever the walls are weighted: the plain plan and every map", async () => {
+  window.localStorage.clear();
+  const plain = await make({ plan: planOf() }, hassOf());
+  assert.ok($(plain, ".bar .wall-key"), "no map");
+  const climate = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate"] }, mapsHass());
+  await settle();
+  assert.ok($(climate, ".bar .legend:not(.wall-key)") && $(climate, ".bar .wall-key"), "beside a climate map's scale");
+  assert.equal(all(climate, ".bar .wall-key").length, 1);
+  const off = await make({ plan: planOf(), wifi: false }, hassOf());
+  assert.equal($(off, ".wall-key"), null, "wifi false: outlines, no key");
+  window.localStorage.clear();
+});
+
+test("ranges: the name's halo is 3 px at any zoom, a stroke in plan metres", async () => {
+  window.localStorage.clear();
+  const aps = [{ device_id: "d_mesh", bands: ["2.4", "5"], tx: { 5: -10 } }];
+  const card = await make({ plan: wifiPlan(aps), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="wifi_5"]'));
+  click($(card, ".bar [data-action=ranges]"));
+  const halo = () => Number($(card, ".ranges text.range-name").getAttribute("stroke-width"));
+  assert.ok(Math.abs(halo() - 3 * card._px()) < 1e-6, String(halo()));
+  assert.ok(halo() < 0.1, "metres, not 3 m");
+  const before = halo();
+  click($(card, "[data-action=zoom_in]"));
+  assert.ok(halo() < before, "scales with the zoom");
+  window.localStorage.clear();
 });

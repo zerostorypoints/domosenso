@@ -3,6 +3,7 @@ form for comparing and the diff `floorplan push` prints."""
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -13,6 +14,11 @@ from domosenso_cli.schema import SCHEMAS, describe, key_path
 SCHEMA_VERSION = 1
 URL_PATH = "floorplan"
 CARD_TYPE = "custom:floorplan-card"
+
+MATERIALS = SCHEMAS.parent / "components" / "floorplan" / "cards" / "lib" / "materials.json"
+_WALL_TOLERANCE = 0.05  # metres; the card snaps a wall to its segment within this (SPEC-044)
+_BANDS = ("2.4", "5", "6")
+_MAX_SAMPLES = 2000
 
 _DECIMALS = 3  # a millimetre; finer values are drag noise and would make every push look changed
 
@@ -31,6 +37,7 @@ def validate(doc: dict) -> None:
     if errors:
         raise DomosensoError(describe(errors[0]))
     _refuse_duplicates(doc)
+    _check_wifi(doc)
 
 
 def _refuse_duplicates(doc: dict) -> None:
@@ -63,6 +70,87 @@ def _refuse_duplicates(doc: dict) -> None:
                 if key in points:
                     raise DomosensoError(f"duplicate point: {key}")
                 points.add(key)
+
+
+def _materials() -> dict:
+    return json.loads(MATERIALS.read_text(encoding="utf-8"))["materials"]
+
+
+def _check_material(material_id: str, kind: str, noun: str | None = None) -> None:
+    """`kind` is what the table's `for` lists name: wall, window, door or slab."""
+    known = _materials()
+    if material_id not in known:
+        raise DomosensoError(f"unknown material {material_id}")
+    if kind not in known[material_id]["for"]:
+        raise DomosensoError(f"material {material_id} does not fit a {noun or kind}")
+
+
+def _near_edge(polygon: list, at: list) -> bool:
+    """Whether `at` is within the wall tolerance of an edge of `polygon` (geometry.js `snapToEdge`)."""
+    for (ax, ay), (bx, by) in zip(polygon, polygon[1:] + polygon[:1]):
+        dx, dy = bx - ax, by - ay
+        length2 = dx * dx + dy * dy
+        t = 0.0 if length2 == 0 else max(0.0, min(1.0, ((at[0] - ax) * dx + (at[1] - ay) * dy) / length2))
+        if math.hypot(at[0] - (ax + t * dx), at[1] - (ay + t * dy)) <= _WALL_TOLERANCE:
+            return True
+    return False
+
+
+def _check_wifi(doc: dict) -> None:
+    """SPEC-044 limits the schema cannot say: material ids and what they fit, walls on room edges,
+    access points that are points of their floor, ranges, outdoor rooms and the samples."""
+    defaults = (doc.get("wifi") or {}).get("defaults") or {}
+    for material_id in defaults.values():
+        _check_material(material_id, "wall")
+    rooms = {room["area_id"] for floor in doc["floors"] for room in floor["rooms"]}
+    outdoor = set()
+    for area in (doc.get("wifi") or {}).get("outdoor") or []:
+        if area not in rooms:
+            raise DomosensoError(f"outdoor: {area} is not a room")
+        if area in outdoor:
+            raise DomosensoError(f"outdoor: {area} twice")
+        outdoor.add(area)
+    samples = (doc.get("wifi") or {}).get("samples") or []
+    if len(samples) > _MAX_SAMPLES:
+        raise DomosensoError(f"more than {_MAX_SAMPLES} samples")
+    floor_ids = {floor["floor_id"] for floor in doc["floors"]}
+    for index, sample in enumerate(samples):
+        if sample["floor_id"] not in floor_ids:
+            label = "-" if sample["floor_id"] is None else sample["floor_id"]
+            raise DomosensoError(f"sample {index}: floor {label} not in the plan")
+        if not -110 <= sample["dbm"] <= 0:
+            raise DomosensoError(f"sample {index}: dbm out of range")
+    aps = set()
+    for floor in doc["floors"]:
+        label = "-" if floor["floor_id"] is None else floor["floor_id"]
+        if "height" in floor and not 2 <= floor["height"] <= 10:
+            raise DomosensoError("height out of range")
+        if "slab" in floor:
+            _check_material(floor["slab"], "slab")
+        for wall in floor.get("walls", []):
+            _check_material(wall["material"], "wall")
+            if not any(_near_edge(room["polygon"], wall["at"]) for room in floor["rooms"]):
+                raise DomosensoError(f"wall on floor {label}: {wall['at']} is not on a room edge")
+            if "height" in wall and wall["height"] != "half":
+                x, y = wall["at"]
+                raise DomosensoError(f"wall at {x:g},{y:g}: height must be half")
+        # A point's own key only: the card places an access point by it and does not resolve `also`.
+        keys = {point_key(point) for point in floor["points"]}
+        for ap in floor.get("access_points", []):
+            key = ap.get("device_id") or ap["entity_id"]
+            if key not in keys:
+                raise DomosensoError(f"access point on floor {label}: {key} is not a point of the floor")
+            if key in aps:
+                raise DomosensoError(f"access point twice: {key}")
+            aps.add(key)
+            bands = ap["bands"]
+            if not bands or any(band not in _BANDS for band in bands):
+                raise DomosensoError(f"access point {key}: bands empty or unknown")
+            for band, tx in ap.get("tx", {}).items():
+                if band not in bands or not -10 <= tx <= 36:
+                    raise DomosensoError(f"access point {key}: tx {band} out of range")
+            if "mount" in ap and not 0 <= ap["mount"] <= 5:
+                raise DomosensoError("mount out of range")
 
 
 def read_json(path: Path) -> dict | None:
@@ -173,6 +261,10 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
             lines.append(("open", "change", label))
         if _openings(old_floor) != _openings(new_floor):
             lines.append(("openings", "change", label))
+        if _wifi(old_floor, _outdoor(old)) != _wifi(new_floor, _outdoor(new)):
+            lines.append(("wifi", "change", label))
+    if _samples(old) != _samples(new):
+        lines.append(("wifi", "samples", str(len(_samples(new)))))
     return lines
 
 
@@ -184,6 +276,11 @@ def _check_opening(opening: dict, areas: set, linked: set, label: str) -> None:
         if area not in areas:
             raise DomosensoError(f"opening on floor {label}: {area} is not a room of the floor")
     kind = opening.get("kind", "door")
+    if "material" in opening:
+        # A fixed pane is glass in a wall like a window; a doorway has no leaf and no material.
+        if kind == "opening":
+            raise DomosensoError(f"material {opening['material']} does not fit a doorway")
+        _check_material(opening["material"], "door" if kind == "door" else "window", kind)
     # A doorway has no leaf: nothing closes it, and nothing senses it. Fixed glass never opens.
     if kind == "opening":
         if "entity" in opening:
@@ -206,6 +303,28 @@ def _check_opening(opening: dict, areas: set, linked: set, label: str) -> None:
         if entity in linked:
             raise DomosensoError(f"opening on floor {label}: {entity} on two openings")
         linked.add(entity)
+
+
+def _outdoor(doc: dict | None) -> set:
+    return set(((doc or {}).get("wifi") or {}).get("outdoor") or [])
+
+
+def _wifi(floor: dict, outdoor: set) -> str:
+    """What the prediction reads of a floor, order left out, numbers rounded like points; `outdoor`
+    the plan's outdoor rooms, of which the floor's own count."""
+    keep = lambda items: sorted(json.dumps(_round(i), sort_keys=True) for i in items)  # noqa: E731
+    return json.dumps({
+        "height": _round(floor.get("height")), "slab": floor.get("slab"),
+        "outdoor": sorted(room["area_id"] for room in floor["rooms"] if room["area_id"] in outdoor),
+        "walls": keep(floor.get("walls", [])),
+        "access_points": keep(floor.get("access_points", [])),
+        "materials": keep([o["at"], o["material"]] for o in floor.get("openings", []) if "material" in o),
+    }, sort_keys=True)
+
+
+def _samples(doc: dict | None) -> list:
+    """The samples as a rounded, sorted list."""
+    return sorted(json.dumps(_round(s), sort_keys=True) for s in ((doc or {}).get("wifi") or {}).get("samples", []))
 
 
 def _openings(floor: dict) -> list:

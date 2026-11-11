@@ -1,0 +1,6 @@
+
+There is 1 interface on the system:
+
+    Name                   : Wi-Fi
+    Physical address       : 02:00:00:00:00:bb
+    State                  : disconnected

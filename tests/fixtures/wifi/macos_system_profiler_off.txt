@@ -1,0 +1,7 @@
+Wi-Fi:
+
+      Interfaces:
+        en0:
+          Card Type: Wi-Fi  (0x14E4, 0x4388)
+          MAC Address: 02:00:00:00:00:aa
+          Status: Off

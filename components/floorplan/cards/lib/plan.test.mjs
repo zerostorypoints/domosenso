@@ -193,6 +193,35 @@ test("joinRooms keeps keepAreaId and drops the other; refuses non-adjacent rooms
   assert.equal(joinRooms(far, "ground", "kitchen", "living_room"), null);
 });
 
+// SPEC-044: a wall material is kept at a point `at` on a room edge; floorplan_doc.py refuses a plan
+// whose wall entry is on no edge, so every polygon edit keeps walls[] on the floor's edges.
+const withWalls = (walls) => ({ ...doc(), floors: [{ ...doc().floors[0], walls }] });
+
+test("joinRooms drops the wall material of the shared edge that is gone", () => {
+  const d = withWalls([{ at: [4, 2], material: "glass" }, { at: [2, 0], material: "brick" }]);
+  const out = joinRooms(d, "ground", "living_room", "kitchen");
+  assert.deepEqual(out.floors[0].walls, [{ at: [2, 0], material: "brick" }]);
+  const none = joinRooms(withWalls([{ at: [4, 2], material: "glass" }]), "ground", "living_room", "kitchen");
+  assert.equal("walls" in none.floors[0], false, "no empty walls list");
+});
+
+test("moveCorner carries a wall on a moved edge along it and drops none", () => {
+  const d = withWalls([{ at: [0, 2], material: "glass" }, { at: [5, 4], material: "brick" }]);
+  const out = moveCorner(d, "ground", "living_room", 0, [-1, 0]);
+  // The west edge (0,4)-(0,0) became (0,4)-(-1,0): the wall's point keeps its place along it.
+  assert.deepEqual(out.floors[0].walls, [{ at: [-0.5, 2], material: "glass" }, { at: [5, 4], material: "brick" }]);
+});
+
+test("removeCorner, insertCorner and splitRoom keep walls[] on the floor's edges", () => {
+  // The diagonal left by removing corner (4,4) of the living room is not where the wall was.
+  const d = withWalls([{ at: [2, 4], material: "glass" }]);
+  assert.equal("walls" in removeCorner(d, "ground", "living_room", 2).floors[0], false);
+  const ins = insertCorner(withWalls([{ at: [2, 4], material: "glass" }]), "ground", "living_room", 2, [2, 5]);
+  assert.equal("walls" in ins.floors[0], false);
+  const split = splitRoom(withWalls([{ at: [2, 4], material: "glass" }]), "ground", "living_room", [2, -0.01], [2, 4.01], "office");
+  assert.deepEqual(split.floors[0].walls, [{ at: [2, 4], material: "glass" }], "a split keeps every edge");
+});
+
 test("splitRoom keeps the area on one half and gives the other the new area", () => {
   const out = splitRoom(doc(), "ground", "living_room", [2, -0.01], [2, 4.01], "office");
   const ids = out.floors[0].rooms.map((r) => r.area_id);
@@ -544,6 +573,20 @@ test("join, split and relink keep a room's open space", () => {
   assert.deepEqual(groupsOf(joined), [["hall", "kitchen"]], "the joined room takes the dropped one's place");
   const linked = linkRoom(d, "ground", "living_room", "lounge");
   assert.deepEqual(groupsOf(linked), [["hall", "lounge"]]);
+});
+
+test("join, split and relink keep wifi.outdoor true to the rooms (SPEC-044 Amendment 1)", () => {
+  const marked = (outdoor) => ({ ...doc(), wifi: { outdoor, defaults: { interior: "brick" } } });
+  const dropped = joinRooms(marked(["living_room"]), "ground", "kitchen", "living_room");
+  assert.deepEqual(dropped.wifi, { defaults: { interior: "brick" } }, "the dropped room's id goes; the key with it");
+  assert.deepEqual(joinRooms(marked(["kitchen"]), "ground", "kitchen", "living_room").wifi.outdoor, ["kitchen"],
+    "the kept room keeps its own flag");
+  const bare = joinRooms({ ...doc(), wifi: { outdoor: ["living_room"] } }, "ground", "kitchen", "living_room");
+  assert.ok(!("wifi" in bare), "nothing left in wifi");
+  assert.deepEqual(linkRoom(marked(["living_room", "kitchen"]), "ground", "living_room", "office").wifi.outdoor, ["office", "kitchen"]);
+  assert.deepEqual(splitRoom(marked(["living_room"]), "ground", "living_room", [2, -0.01], [2, 4.01], "office").wifi.outdoor,
+    ["living_room", "office"], "both halves of an outdoor room are outdoors");
+  assert.ok(!("wifi" in joinRooms(doc(), "ground", "kitchen", "living_room")), "a plan without wifi stays so");
 });
 
 test("facingWalls: the walls two rooms of a group show each other, within 0.3 m", () => {

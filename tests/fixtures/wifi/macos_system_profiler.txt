@@ -1,0 +1,26 @@
+Wi-Fi:
+
+      Software Versions:
+          CoreWLAN: 16.0 (1657)
+      Interfaces:
+        en0:
+          Card Type: Wi-Fi  (0x14E4, 0x4388)
+          MAC Address: 02:00:00:00:00:aa
+          Status: Connected
+          Current Network Information:
+            <redacted>:
+              PHY Mode: 802.11ac
+              Channel: 36 (5GHz, 80MHz)
+              Country Code: CH
+              Network Type: Infrastructure
+              Security: WPA2 Personal
+              Signal / Noise: -58 dBm / -92 dBm
+              Transmit Rate: 585
+              MCS Index: 9
+          Other Local Wi-Fi Networks:
+            <redacted>:
+              PHY Mode: 802.11n
+              Channel: 1 (2GHz, 20MHz)
+              Network Type: Infrastructure
+              Security: WPA2 Personal
+              Signal / Noise: -80 dBm / -92 dBm
