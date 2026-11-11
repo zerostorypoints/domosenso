@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals, HEAT_SIGMA_M, HEAT_CUT_M } from "./traffic.js";
+import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals, HEAT_SIGMA_M, HEAT_CUT_M,
+  ringPosition, lineWidth, dotRadius, IDLE_KEY, LINK_COLOURS } from "./traffic.js";
 import { pointInPolygon } from "./geometry.js";
 import rules from "./wifi-rules.json" with { type: "json" };
 
@@ -279,4 +280,38 @@ test("room fallback in an L-shaped room: every cell centre is inside the polygon
 test("roomIndex out of range: nothing", () => {
   const h = heatCells([cl({ link: "6" })], floor, {}, pointAt, () => ({ x: 0, y: 0, floorId: "ground", roomIndex: 9 }), 1);
   assert.deepEqual(h, []);
+});
+
+test("ringPosition spaces n clients evenly around the access point, from the top, clockwise", () => {
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  const [x0, y0] = ringPosition([10, 5], 0, 4);
+  assert.ok(near(x0, 10) && near(y0, 5 - 1.2), "the first one straight above (y grows downwards)");
+  const [x1, y1] = ringPosition([10, 5], 1, 4);
+  assert.ok(near(x1, 11.2) && near(y1, 5), "then clockwise: to the right");
+  const [x2, y2] = ringPosition([10, 5], 2, 4, 2);
+  assert.ok(near(x2, 10) && near(y2, 7), "a radius of 2");
+  const ring = [0, 1, 2].map((i) => ringPosition([0, 0], i, 3));
+  assert.ok(ring.every(([x, y]) => near(Math.hypot(x, y), 1.2)), "all on the ring");
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  assert.ok(near(d(ring[0], ring[1]), d(ring[1], ring[2])) && near(d(ring[1], ring[2]), d(ring[2], ring[0])), "evenly");
+  assert.deepEqual(ringPosition([3, 4], 0, 1).map((v) => Math.round(v * 100) / 100), [3, 2.8], "one client: on top");
+});
+
+test("lineWidth and dotRadius grow with total and floor at idle", () => {
+  for (const f of [lineWidth, dotRadius]) {
+    assert.ok(f(0) > 0, "never zero");
+    assert.equal(f(0), f(0.01), "idle is the minimum");
+    assert.equal(f(0.001), f(0));
+    assert.ok(f(0.1) > f(0.01) && f(1) > f(0.1) && f(10) > f(1) && f(100) > f(10) && f(1000) > f(100));
+    assert.equal(f(1e6), f(1000), "capped at the scale's top");
+    // monotonic in log10: equal steps per decade
+    const step = (a, b) => f(b) - f(a);
+    assert.ok(Math.abs(step(0.1, 1) - step(1, 10)) < 1e-9 && Math.abs(step(1, 10) - step(10, 100)) < 1e-9);
+  }
+});
+
+test("link colours are four distinct categoricals; the idle key is namespaced", () => {
+  assert.deepEqual(Object.keys(LINK_COLOURS).sort(), ["2.4", "5", "6", "wired"]);
+  assert.equal(new Set(Object.values(LINK_COLOURS)).size, 4);
+  assert.equal(IDLE_KEY, "domosenso.floorplan.traffic_idle");
 });

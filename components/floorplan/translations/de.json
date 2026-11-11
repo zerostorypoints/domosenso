@@ -232,7 +232,26 @@
       "traffic": {
         "not_live": "Router-Daten von {time}, nicht live",
         "unavailable": "Die Router-Daten sind nicht verfügbar",
-        "legend": "Durchsatz pro Stelle, Download plus Upload, logarithmische Skala (Marken bei 1, 10 und 100 Mbit/s)"
+        "legend": "Durchsatz pro Stelle, Download plus Upload, logarithmische Skala (Marken bei 1, 10 und 100 Mbit/s)",
+        "idle": "Inaktiv",
+        "router_name": "Name im Router: {name}",
+        "access_point": "Zugangspunkt: {name}",
+        "link": "Verbindung: {link}",
+        "down": "↓ {value}",
+        "up": "↑ {value}",
+        "matched": {
+          "link": "Zugeordnet über die MAC des Punkts",
+          "registry": "Zugeordnet über die Geräteregistrierung",
+          "none": "Keinem Gerät zugeordnet"
+        },
+        "updated_ago": "Aktualisiert vor {time}",
+        "clients_vs_node": "Clients {clients} · Knoten {node} Mbit/s",
+        "clients_total": "Clients {clients} Mbit/s",
+        "ap_label": "{total} · {count}",
+        "off_plan": "An Zugangspunkten, die nicht im Plan sind",
+        "links": {
+          "wired": "Kabel"
+        }
       }
     }
   }

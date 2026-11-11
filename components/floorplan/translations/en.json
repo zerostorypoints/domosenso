@@ -232,7 +232,26 @@
       "traffic": {
         "not_live": "Router data from {time}, not live",
         "unavailable": "The router's data is unavailable",
-        "legend": "Throughput per spot, down plus up, on a log scale (marks at 1, 10 and 100 Mbit/s)"
+        "legend": "Throughput per spot, down plus up, on a log scale (marks at 1, 10 and 100 Mbit/s)",
+        "idle": "Idle",
+        "router_name": "Router name: {name}",
+        "access_point": "Access point: {name}",
+        "link": "Link: {link}",
+        "down": "↓ {value}",
+        "up": "↑ {value}",
+        "matched": {
+          "link": "Matched by the point's MAC",
+          "registry": "Matched by the device registry",
+          "none": "Not matched to a device"
+        },
+        "updated_ago": "Updated {time} ago",
+        "clients_vs_node": "Clients {clients} · node {node} Mbit/s",
+        "clients_total": "Clients {clients} Mbit/s",
+        "ap_label": "{total} · {count}",
+        "off_plan": "On access points not on the plan",
+        "links": {
+          "wired": "Wired"
+        }
       }
     }
   }

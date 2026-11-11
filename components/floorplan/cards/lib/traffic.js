@@ -202,3 +202,22 @@ function roomCentres(poly, step) {
   }
   return out;
 }
+
+// ---- Traffic links (SPEC-047) ----------------------------------------------------------------
+
+export const IDLE_KEY = "domosenso.floorplan.traffic_idle"; // localStorage: false hides the idle clients (default: shown, small)
+export const IDLE_MBPS = 0.01;                               // Mbit/s: a client under this is idle
+
+// One colour per link: categorical and apart from the Serving map's (blue, orange, purple, cyan, pink...).
+export const LINK_COLOURS = { wired: "#2ca02c", "2.4": "#d62728", 5: "#e6ab02", 6: "#c51b7d" };
+
+// The i-th of n clients on a ring around `centre`, evenly spaced from the top, clockwise on the screen (y runs down).
+export function ringPosition([cx, cy], i, n, radius = 1.2) {
+  const a = (2 * Math.PI * i) / n;
+  return [cx + radius * Math.sin(a), cy - radius * Math.cos(a)];
+}
+
+// Size by the scale's decades: idle (0.01 Mbit/s and under) is the minimum, 1000 Mbit/s the maximum.
+const decades = (total) => Math.max(0, Math.min(1, (Math.log10(Math.max(total, IDLE_MBPS)) - Math.log10(IDLE_MBPS)) / 5));
+export const lineWidth = (total) => 1 + 4 * decades(total);   // screen px
+export const dotRadius = (total) => 3 + 5 * decades(total);   // screen px

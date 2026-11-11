@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { shadowText } from "./testing/dom-env.mjs";
 import { withPlan } from "./lib/plan.js";
 import { colourAt } from "./lib/maps.js";
+import { LINK_COLOURS, IDLE_KEY, dotRadius, lineWidth } from "./lib/traffic.js";
 import materials from "./lib/materials.json" with { type: "json" };
 
 await import("./floorplan-card.js");
@@ -2223,6 +2224,235 @@ test("a router gone silent shows the banner without any state change, on the rou
   } finally { mock.timers.reset(); }
   window.localStorage.clear();
 });
+
+// ---- Traffic links, the Idle switch and the tap panel (SPEC-047 T2) ------------------------------
+
+const linksCard = async (config = {}, hass = trafficHass(), plan = wifiPlan()) => {
+  const card = await make({ plan, layers: ["radio"], ...config }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_links"]'));
+  return card;
+};
+const lineOf = (card, mac) => $(card, `.traffic-links line[data-mac="${mac}"]`);
+const dotOf = (card, mac) => $(card, `g.client[data-mac="${mac}"]`);
+const NAS = "02:00:00:00:bb:01";
+const LAPTOP = "02:00:00:00:bb:02";
+const translateOf = (node) => node.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+const hoverNode = (card, node, cx, cy) => pointer(node, "pointermove", cx, cy);
+
+test("links: solid for wired, dashed for Wi-Fi, coloured by link", async () => {
+  window.localStorage.clear();
+  const card = await linksCard();
+  const wired = lineOf(card, NAS);
+  const wifi = lineOf(card, LAPTOP);
+  assert.ok(wired && wifi);
+  assert.equal(wired.getAttribute("stroke-dasharray"), null, "wired is solid");
+  assert.ok(wifi.getAttribute("stroke-dasharray"), "Wi-Fi is dashed");
+  assert.equal(wired.getAttribute("stroke"), LINK_COLOURS.wired);
+  assert.equal(wifi.getAttribute("stroke"), LINK_COLOURS["5"]);
+  assert.ok(Number(wired.getAttribute("stroke-width")) > Number(wifi.getAttribute("stroke-width")), "100 Mbit/s is thicker than 10");
+  assert.equal(Number(wired.getAttribute("stroke-width")), lineWidth(100));
+  assert.ok(!$(card, ".heat rect[data-mbps]"), "the links map paints no heat");
+  window.localStorage.clear();
+});
+
+test("an unplaced client sits on its access point's ring with a dotted rim", async () => {
+  window.localStorage.clear();
+  const card = await linksCard();
+  const dot = dotOf(card, NAS);
+  const [x, y] = translateOf(dot);
+  assert.ok(Math.abs(Math.hypot(x - 6.5, y - 2) - 1.2) < 0.01, `on the 1.2 m ring around the kitchen node: ${x},${y}`);
+  assert.ok(dot.classList.contains("unplaced"));
+  assert.ok(dot.querySelector("circle").getAttribute("stroke-dasharray"), "a dotted rim");
+  const line = lineOf(card, NAS);
+  assert.ok(Math.abs(Number(line.getAttribute("x2")) - 6.5) < 1e-6 && Math.abs(Number(line.getAttribute("y2")) - 2) < 1e-6, "the line ends at the access point");
+  assert.ok(Math.abs(Number(line.getAttribute("x1")) - x) < 1e-6, "and starts at the dot");
+  window.localStorage.clear();
+});
+
+test("a placed client's dot sits at its point, without a dotted rim; sharing a point they spread on a 0.3 m ring", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors[0].points.push({ device_id: "d_climate", x: 3, y: 1, placed: true, mac: LAPTOP });
+  const one = await linksCard({}, trafficHass(), plan);
+  const [x, y] = translateOf(dotOf(one, LAPTOP));
+  assert.ok(Math.abs(x - 3) < 1e-6 && Math.abs(y - 1) < 1e-6, `at its point: ${x},${y}`);
+  assert.ok(!dotOf(one, LAPTOP).classList.contains("unplaced"));
+  assert.equal(dotOf(one, LAPTOP).querySelector("circle").getAttribute("stroke-dasharray"), null);
+  const line = lineOf(one, LAPTOP);
+  assert.ok(Math.abs(Number(line.getAttribute("x2")) - 1) < 1e-6, "still joined to its access point");
+  window.localStorage.clear();
+  // two clients of one device (the registry lists both MACs): they spread on a 0.3 m ring around its point
+  const hass = trafficHass();
+  hass.entities["device_tracker.tv"] = { entity_id: "device_tracker.tv", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.tv"] = { state: "home", last_updated: new Date().toISOString(), attributes: { device_type: "client", friendly_name: "tv",
+    mac: "02:00:00:00:bb:03", deco_mac: NODE2, connection_type: "band5", down_kilobytes_per_s: 125, up_kilobytes_per_s: 0 } };
+  hass.devices.d_climate.connections = [["mac", LAPTOP], ["mac", "02:00:00:00:bb:03"]];
+  const shared = wifiPlan();
+  shared.floors[0].points.push({ device_id: "d_climate", x: 3, y: 1, placed: true });
+  const many = await linksCard({}, hass, shared);
+  const a = translateOf(dotOf(many, LAPTOP));
+  const b = translateOf(dotOf(many, "02:00:00:00:bb:03"));
+  assert.ok(Math.abs(Math.hypot(a[0] - 3, a[1] - 1) - 0.3) < 0.01 && Math.abs(Math.hypot(b[0] - 3, b[1] - 1) - 0.3) < 0.01, `${a} ${b}`);
+  assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) > 0.5, "apart");
+  window.localStorage.clear();
+});
+
+test("an access point is labelled with its clients' total and count", async () => {
+  window.localStorage.clear();
+  const card = await linksCard();
+  const label = (key) => [...markerOf(card, key).querySelectorAll("text.value")].map((n) => n.textContent).join(" ");
+  assert.equal(label("d_mesh"), "100.00 Mbit/s \u00b7 1");
+  assert.equal(label("d_mesh2"), "10.00 Mbit/s \u00b7 1");
+  window.localStorage.clear();
+});
+
+test("Idle on: idle clients small and unlabelled; off: hidden; remembered", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  hass.entities["device_tracker.printer"] = { entity_id: "device_tracker.printer", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.printer"] = { state: "home", last_updated: new Date().toISOString(), attributes: { device_type: "client", friendly_name: "printer",
+    mac: "02:00:00:00:bb:09", deco_mac: NODE1, connection_type: "band5", down_kilobytes_per_s: 0, up_kilobytes_per_s: 0 } };
+  const card = await linksCard({}, hass);
+  const idle = $(card, '.bar [data-action="idle"]');
+  assert.equal(idle.textContent, EN("card.floorplan.traffic.idle"));
+  assert.equal(idle.getAttribute("aria-pressed"), "true", "on by default");
+  const P = "02:00:00:00:bb:09";
+  assert.ok(dotOf(card, P), "drawn");
+  const radius = (mac) => Number(dotOf(card, mac).querySelector("circle").getAttribute("r"));
+  assert.ok(Math.abs(radius(P) / radius(NAS) - dotRadius(0) / dotRadius(100)) < 1e-3, "small");
+  assert.ok(!dotOf(card, P).querySelector("text"), "unlabelled");
+  assert.ok(dotOf(card, NAS).querySelector("text"), "an active client is labelled");
+  click(idle);
+  assert.ok(!dotOf(card, P) && !lineOf(card, P), "off: hidden, dot and line");
+  assert.ok(dotOf(card, NAS), "the others stay");
+  assert.equal($(card, '.bar [data-action="idle"]').getAttribute("aria-pressed"), "false");
+  assert.equal(window.localStorage.getItem(IDLE_KEY), "false", "remembered");
+  const again = await linksCard({}, hass);
+  assert.ok(!dotOf(again, P), "a new card starts with Idle off");
+  click($(again, '.bar [data-map="traffic_heat"]'));
+  assert.ok(!$(again, '.bar [data-action="idle"]'), "the switch belongs to the links map");
+  window.localStorage.clear();
+});
+
+test("dots and lines keep their size in screen pixels when zooming", async () => {
+  window.localStorage.clear();
+  const card = await linksCard();
+  const r = () => Number(dotOf(card, NAS).querySelector("circle").getAttribute("r"));
+  const before = r();
+  click($(card, '.bar [data-action="zoom_in"]'));
+  assert.ok(r() < before, "fewer metres per pixel: a smaller radius in plan units");
+  assert.equal(Number(lineOf(card, NAS).getAttribute("stroke-width")), lineWidth(100), "line widths are screen pixels (non-scaling)");
+  window.localStorage.clear();
+});
+
+test("not live: every client dot and line is grey, the banner stays", async () => {
+  window.localStorage.clear();
+  const card = await linksCard({}, trafficHass({ updatedAgoS: 3600 }));
+  assert.ok($(card, ".banner"));
+  for (const mac of [NAS, LAPTOP]) {
+    assert.ok(dotOf(card, mac).classList.contains("stale"), "dot");
+    assert.ok(lineOf(card, mac).classList.contains("stale"), "line");
+  }
+  const live = await linksCard();
+  assert.ok(!dotOf(live, NAS).classList.contains("stale"));
+  window.localStorage.clear();
+});
+
+test("heat: a client at 0.05 Mbit/s draws no cell (below the scale's floor)", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  const attrs = (id, down) => ({ ...hass.states[id], attributes: { ...hass.states[id].attributes, down_kilobytes_per_s: down } });
+  hass.states["device_tracker.nas"] = attrs("device_tracker.nas", 0);
+  hass.states["device_tracker.laptop"] = attrs("device_tracker.laptop", 6.25);   // 0.05 Mbit/s
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  assert.equal(trafficCells(card).length, 0);
+  window.localStorage.clear();
+});
+
+const tipRows = (card) => [...tip(card).querySelectorAll(".tip-name, .tip-value")].map((n) => n.textContent);
+
+test("tap a client: name, router name when different, access point, link, down and up, matched_by, updated", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.floors[0].points.push({ device_id: "d_climate", x: 3, y: 1, placed: true, mac: LAPTOP });
+  const card = await linksCard({}, trafficHass(), plan);
+  // an unplaced client on its ring: its own target
+  const [nx, ny] = translateOf(dotOf(card, NAS));
+  const [cx, cy] = clientAt(card, nx, ny);
+  hoverNode(card, dotOf(card, NAS), cx, cy);
+  assert.ok(tipShown(card));
+  const rows = tipRows(card);
+  assert.equal(rows[0], "nas");
+  assert.ok(!rows.some((r) => r.startsWith(EN("card.floorplan.traffic.router_name").split("{")[0])), "no router name: it is the name");
+  assert.ok(rows.includes("Access point: Mesh node"), rows.join(" | "));
+  assert.ok(rows.includes("Link: Wired"), rows.join(" | "));
+  assert.ok(rows.includes("\u2193 100.00 Mbit/s") && rows.includes("\u2191 0.00 Mbit/s"), rows.join(" | "));
+  assert.ok(rows.includes("Not matched to a device"), rows.join(" | "));
+  assert.ok(rows.some((r) => /^Updated \d+ s ago$/.test(r)), rows.join(" | "));
+  // a client matched to a point: the device's name, the router's name beside it
+  pointer($(card, "polygon.room"), "pointermove", 700, 390);
+  const [lx, ly] = clientAt(card, 3, 1);
+  hoverNode(card, dotOf(card, LAPTOP), lx, ly);
+  const rows2 = tipRows(card);
+  assert.equal(rows2[0], "Climate sensor");
+  assert.ok(rows2.includes("Router name: laptop"), rows2.join(" | "));
+  assert.ok(rows2.includes("Link: 5 GHz") && rows2.includes("Matched by the point's MAC"), rows2.join(" | "));
+  window.localStorage.clear();
+});
+
+test("a finger's tap on a client dot opens the same panel; a tap elsewhere closes it", async () => {
+  window.localStorage.clear();
+  const card = await linksCard();
+  const touch = (node, type, x, y) => node.dispatchEvent(new window.PointerEvent(type, {
+    bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: 7, button: 0, isPrimary: true, pointerType: "touch" }));
+  const [nx, ny] = translateOf(dotOf(card, NAS));
+  const [cx, cy] = clientAt(card, nx, ny);
+  touch(dotOf(card, NAS), "pointerdown", cx, cy);
+  touch(dotOf(card, NAS), "pointerup", cx, cy);
+  assert.ok(tipShown(card), "the tap opens it");
+  assert.equal(tipRows(card)[0], "nas");
+  window.localStorage.clear();
+});
+
+test("tap an access point: clients vs node rates, and clients on access points not on the plan", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  const sensor = (id, state) => {
+    hass.entities[id] = { entity_id: id, device_id: "d_mesh", platform: "tplink_deco" };
+    hass.states[id] = { state, attributes: {} };
+  };
+  sensor("sensor.kitchen_node_down", "13750");   // 110 Mbit/s
+  sensor("sensor.kitchen_node_up", "0");
+  hass.entities["device_tracker.guest"] = { entity_id: "device_tracker.guest", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.guest"] = { state: "home", last_updated: new Date().toISOString(), attributes: { device_type: "client", friendly_name: "guest phone",
+    mac: "02:00:00:00:bb:07", deco_mac: "02:00:00:00:ee:ee", connection_type: "band5", down_kilobytes_per_s: 250, up_kilobytes_per_s: 0 } };
+  const card = await linksCard({}, hass);
+  const [mx, my] = clientAt(card, 6.5, 2);
+  hoverNode(card, markerOf(card, "d_mesh"), mx, my);
+  const rows = tipRows(card);
+  assert.ok(rows.includes("Clients 100.00 \u00b7 node 110.00 Mbit/s"), rows.join(" | "));
+  assert.ok(rows.includes(EN("card.floorplan.traffic.off_plan")), rows.join(" | "));
+  assert.ok(rows.includes("guest phone: 2.00 Mbit/s"), rows.join(" | "));
+  assert.ok(!dotOf(card, "02:00:00:00:bb:07"), "no access point on the plan: no dot");
+  window.localStorage.clear();
+});
+
+for (const lang of ["de", "pl"]) {
+  test(`traffic tap panel strings exist in ${lang}, translated`, () => {
+    const same = ["down", "up", "ap_label", "clients_total"];     // symbols and loanwords read alike
+    const words = ["idle", "router_name", "access_point", "link", "matched.link", "matched.registry", "matched.none", "updated_ago",
+      "clients_vs_node", "off_plan", "links.wired"];
+    for (const k of [...same, ...words]) {
+      const own = at(LANGS[lang], `card.floorplan.traffic.${k}`);
+      assert.ok(own && typeof own === "string", `${k} missing`);
+      assert.deepEqual([...own.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), [...at(LANGS.en, `card.floorplan.traffic.${k}`).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), `${k}: same placeholders`);
+    }
+    for (const k of words) assert.notEqual(at(LANGS[lang], `card.floorplan.traffic.${k}`), at(LANGS.en, `card.floorplan.traffic.${k}`), `${k} is translated`);
+  });
+}
 
 // ---- Wi-Fi calibration from the devices' signal sensors (SPEC-044 S2) ---------------------------
 

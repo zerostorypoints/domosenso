@@ -127,6 +127,15 @@ export const STYLE = `
   .legend .scale { position: relative; width: 90px; height: 8px; border-radius: 4px; }
   .legend .mark { position: absolute; top: -2px; width: 2px; height: 12px; margin-left: -1px;
                   background: var(--primary-text-color); }
+  .traffic-links { pointer-events: none; }
+  .traffic-links .client { pointer-events: auto; cursor: default; }
+  .client circle { stroke: var(--card-background-color, #fff); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  .client.unplaced circle { stroke: var(--primary-text-color); }
+  .client-line { vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0.85; }
+  .client-label { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; paint-order: stroke;
+                  stroke: var(--card-background-color, #fff); stroke-width: 3px; stroke-linejoin: round; }
+  .client.stale circle { fill: var(--disabled-text-color, #9e9e9e); }
+  .client-line.stale { stroke: var(--disabled-text-color, #9e9e9e); }
   .banner { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: color-mix(in srgb, var(--warning-color, #ffa600) 30%, transparent); color: var(--primary-text-color); }
   .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-left: 6px;

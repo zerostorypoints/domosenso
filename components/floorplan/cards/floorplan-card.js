@@ -62,7 +62,8 @@ import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_H
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
   observationIndex } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
-import { trafficRules, clients, heatCells } from "./lib/traffic.js";
+import { trafficRules, clients, heatCells, apTotals, nodeRates, ringPosition, lineWidth, dotRadius, IDLE_KEY, IDLE_MBPS,
+  LINK_COLOURS } from "./lib/traffic.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
@@ -85,6 +86,8 @@ const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while t
 const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
 const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
 const CALIB_KEY = "domosenso.floorplan.calibrated"; // localStorage: "predicted" or "calibrated" on the Wi-Fi maps
+const TIP_TARGET = "g.marker[data-key]:not(.ghost), g.client[data-key]";   // what a hover or a finger's tap opens the tip for
+const SHARED_RING_M = 0.3;      // clients of one point spread on a ring of this radius around it
 const RANGES_KEY = "domosenso.floorplan.ranges";   // localStorage: true while the band maps show each access point's range
 const WEIGHTS = ["light", "solid", "heavy"];       // the wall weights of the plan's key (Amendment 3)
 const HOUR_MS = 60 * 60 * 1000;
@@ -197,6 +200,7 @@ class FloorplanCard extends HTMLElement {
     this._calib = load(CALIB_KEY, null);           // "predicted" chosen; else calibrated once there are readings
     this._ranges = load(RANGES_KEY, false) === true;   // the band maps outline each access point's range
     this._rangeMemo = null;        // the last ranges drawn: {key, aps, lines}
+    this._idle = load(IDLE_KEY, true) !== false;      // Traffic links: idle clients drawn small, else hidden
     this._wallMemo = null;         // the walls drawn: {floor, wifi, lines}
     this._obsMemo = null;          // the devices' observations and their digest, and what they came from
     this._fitMemo = null;          // the last fit: {doc, states, digest, fit}
@@ -387,7 +391,7 @@ class FloorplanCard extends HTMLElement {
     if (!maps.length) return { layer: "radio", cls: null, rule: null, maps, hint: "no_access_points" };
     const [cls] = maps.find(([c]) => c === this._maps.radio) ?? maps[0];
     // A traffic map has no band, no Predicted / Calibrated switch and no Ranges: those are Wi-Fi's.
-    if (TRAFFIC_MAPS.includes(cls)) return { layer: "radio", cls, rule: null, maps, bands, traffic: this._traffic() };
+    if (TRAFFIC_MAPS.includes(cls)) return { layer: "radio", cls, rule: null, maps, bands, traffic: this._traffic(), idle: this._idle };
     const band = BAND_OF[cls] ?? (bands.includes(this._band) ? this._band : bands[0]);
     // Confidence is always the calibrated model's; the other maps follow the switch once there are readings.
     const observed = this._observations().list.length > 0;
@@ -821,6 +825,9 @@ ${STYLE}
     }
     if (map.layer === "radio" && BAND_OF[map.cls]) {
       html += `<span class="maps">${chip('data-action="ranges"', map.ranges, t(h, "card.floorplan.wifi.ranges"))}</span>`;
+    }
+    if (map.cls === "traffic_links") {
+      html += `<span class="maps">${chip('data-action="idle"', map.idle, t(h, "card.floorplan.traffic.idle"))}</span>`;
     }
     if (map.rule) {
       html += `<span class="maps">${chip('data-action="day" data-day="0"', !this._day, t(h, "card.floorplan.maps.now"))}`
@@ -1823,7 +1830,8 @@ ${STYLE}
   // clipped to the drawn rooms. Rebuilt at most once a second; kept while the router's data is not
   // live (the banner says so). The links map draws no layer of its own here.
   _drawTraffic(svg, floor, map) {
-    if (map.cls !== "traffic_heat" || !map.traffic.live) return;
+    if (map.cls === "traffic_links") return void this._drawLinks(svg, floor, map);
+    if (!map.traffic.live) return;
     const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
     // Serving cells as the Serving map has them: calibrated once there are readings, unless Predicted is chosen.
     const calibrated = this._observations().list.length > 0 && this._calib !== "predicted";
@@ -1886,10 +1894,139 @@ ${STYLE}
     const clipped = el("g", { "clip-path": "url(#fp-traffic-clip)" }, g);
     const inner = clipped;
     for (const c of cells) {
+      if (c.value < SCALES.mbps.lo) continue;     // under the scale's floor the heat is transparent, not the lowest colour
       el("rect", { x: fmt(c.x), y: fmt(c.y), width: step, height: step, "data-mbps": Math.round(c.value * 1e6) / 1e6,
         fill: colourAt("mbps", c.value) }, inner);
     }
     return g;
+  }
+
+  // A rate as the card writes it: 12.50 Mbit/s.
+  _mbit(v) {
+    return `${numberText(this._hass, v, SCALES.mbps.digits)} ${SCALES.mbps.unit}`;
+  }
+
+  // Traffic links (SPEC-047): each client a dot joined to its access point by a line, solid wired and dashed
+  // Wi-Fi, in its link's colour, width and dot size by `total`; an unplaced client on a ring around its access
+  // point, a placed one at its point (clients sharing a point spread on a small ring). Sizes are screen pixels.
+  // Idle clients (under 0.01 Mbit/s) are small and unlabelled, or hidden with the Idle switch off. Not live: grey.
+  _drawLinks(svg, floor, map) {
+    const px = this._px();
+    const h = this._hass;
+    const at = (key) => floor.points.find((q) => keyOf(q) === key && q.placed !== false && Number.isFinite(q.x) && Number.isFinite(q.y));
+    const apAt = new Map(accessPoints(this._doc).filter((a) => a.floorId === this._floorId)
+      .flatMap((a) => { const p = at(a.key); return p ? [[a.key, [p.x, p.y]]] : []; }));
+    const shown = map.traffic.list.filter((c) => map.idle || c.total >= IDLE_MBPS)
+      .sort((a, b) => (a.mac < b.mac ? -1 : 1));
+    // Where each dot stands: its point, or the ring of its access point; clients on one spot are spread.
+    const spot = new Map();      // mac -> {centre, radius, group, placed}
+    const groups = new Map();
+    for (const c of shown) {
+      let s = null;
+      if (c.point) {
+        if (c.point.floorId !== this._floorId) continue;
+        const p = at(c.point.key);
+        if (p) s = { centre: [p.x, p.y], radius: SHARED_RING_M, group: `p:${c.point.key}`, placed: true };
+      }
+      if (!s && c.ap && apAt.has(c.ap)) s = { centre: apAt.get(c.ap), radius: 1.2, group: `a:${c.ap}`, placed: false };
+      if (!s) continue;
+      spot.set(c.mac, s);
+      groups.set(s.group, [...(groups.get(s.group) ?? []), c.mac]);
+    }
+    const g = el("g", { class: "traffic-links" }, svg);
+    const dots = [];
+    for (const c of shown) {
+      const s = spot.get(c.mac);
+      if (!s) continue;
+      const mates = groups.get(s.group);
+      // An unplaced client always takes its place on the ring; a placed one stays on its point when alone.
+      const at2 = !s.placed ? ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius)
+        : mates.length === 1 ? s.centre : ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius);
+      dots.push({ c, at: at2, placed: s.placed });
+      const to = c.ap && apAt.get(c.ap);
+      if (!to) continue;
+      const attrs = { class: c.stale ? "client-line stale" : "client-line", "data-mac": c.mac, x1: fmt(at2[0]), y1: fmt(at2[1]),
+        x2: fmt(to[0]), y2: fmt(to[1]), stroke: LINK_COLOURS[c.link], "stroke-width": fmt(lineWidth(c.total)) };
+      if (c.link !== "wired") attrs["stroke-dasharray"] = "6 4";
+      el("line", attrs, g);
+    }
+    for (const { c, at: [x, y], placed } of dots) {
+      const idle = c.total < IDLE_MBPS;
+      const cls = ["client"];
+      if (!placed) cls.push("unplaced");
+      if (c.stale) cls.push("stale");
+      const dot = el("g", { class: cls.join(" "), "data-kind": "client", "data-key": `client:${c.mac}`, "data-mac": c.mac,
+        transform: `translate(${fmt(x)} ${fmt(y)})` }, g);
+      const r = dotRadius(c.total) * px;
+      const rim = placed ? {} : { "stroke-dasharray": "2 2" };
+      el("circle", { r: fmt(r), fill: LINK_COLOURS[c.link], ...rim }, dot);
+      if (!idle) el("text", { class: "client-label", y: fmt(r + 11 * px), "font-size": fmt(11 * px) }, dot).textContent = this._clientTitle(c);
+    }
+  }
+
+  // A client's name: its device's when the registry or a point's MAC found one, else the router's.
+  _clientTitle(c) {
+    const dev = c.device_id && this._hass.devices?.[c.device_id];
+    return (dev && (dev.name_by_user || dev.name)) || c.name;
+  }
+
+  // "5 s", "3 min", "2 h" since a time.
+  _since(date) {
+    const s = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+    return s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+  }
+
+  _clientLink(link) {
+    return link === "wired" ? t(this._hass, "card.floorplan.traffic.links.wired")
+      : t(this._hass, "card.floorplan.wifi.bands", { bands: this._bandNumber(link) });
+  }
+
+  // The tap panel's lines for one client: the router's name when it differs from the title, its access
+  // point, link, down and up, how it was matched to a device, and the time since its last update.
+  _clientRows(c, title = this._clientTitle(c)) {
+    const h = this._hass;
+    const tt = (key, vars) => t(h, `card.floorplan.traffic.${key}`, vars);
+    const ap = c.ap ? pointName(h, this._apPoint(c.ap) ?? { device_id: c.ap }) : "\u2014";
+    return [
+      ...(c.name !== title ? [tt("router_name", { name: c.name })] : []),
+      tt("access_point", { name: ap }),
+      tt("link", { link: this._clientLink(c.link) }),
+      tt("down", { value: this._mbit(c.down) }),
+      tt("up", { value: this._mbit(c.up) }),
+      tt(`matched.${c.matched_by ?? "none"}`),
+      tt("updated_ago", { time: this._since(c.updated) }),
+    ];
+  }
+
+  // The tip a Traffic links client opens: its name and rows.
+  _clientTip(key) {
+    const c = this._trafficList().find((x) => `client:${x.mac}` === key);
+    if (!c) return null;
+    return { key: `m:${key}`, name: this._clientTitle(c), ids: [], rows: this._clientRows(c) };
+  }
+
+  // The tip's traffic lines for a marker on Traffic links: an access point's clients against its own
+  // node rates and the clients on access points the plan does not have; a device its placed clients'.
+  _trafficRows(point) {
+    const h = this._hass;
+    const list = this._trafficList();
+    const key = keyOf(point);
+    const tt = (k, vars) => t(h, `card.floorplan.traffic.${k}`, vars);
+    if (accessPoints(this._doc).some((a) => a.key === key)) {
+      const sum = apTotals(list).get(key)?.total ?? 0;
+      const node = nodeRates(h, wifiRules, key);
+      const num = (v) => numberText(h, v, SCALES.mbps.digits);
+      const rows = [node ? tt("clients_vs_node", { clients: num(sum), node: num(node.down + node.up) }) : tt("clients_total", { clients: num(sum) })];
+      const known = new Set(accessPoints(this._doc).map((a) => a.key));
+      const off = list.filter((c) => !c.ap || !known.has(c.ap));
+      if (off.length) rows.push(tt("off_plan"), ...off.map((c) => `${this._clientTitle(c)}: ${this._mbit(c.total)}`));
+      return rows;
+    }
+    return list.filter((c) => c.point?.key === key).flatMap((c) => this._clientRows(c, pointName(h, point)));
+  }
+
+  _trafficList() {
+    return this._mapNow?.traffic?.list ?? [];
   }
 
   // A marker's lines: its readings, or on a map the map's (the shown one first and marked main). On
@@ -1901,6 +2038,10 @@ ${STYLE}
     const h = this._hass;
     if (map.layer === "radio") {
       const ap = accessPoints(this._doc).find((a) => a.key === keyOf(point));
+      if (ap && map.cls === "traffic_links") {
+        const sum = apTotals(map.traffic.list).get(ap.key) ?? { total: 0, count: 0 };
+        return [{ text: t(h, "card.floorplan.traffic.ap_label", { total: this._mbit(sum.total), count: sum.count }), main: true }];
+      }
       if (ap) return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
       const own = this._sourceObs(point);
       if (own.length) return own.map((o) => ({ text: this._sourceText(o), main: true }));
@@ -2026,6 +2167,9 @@ ${STYLE}
     } else if (action === "calib") {
       this._calib = button.getAttribute("data-calib");
       save(CALIB_KEY, this._calib);
+    } else if (action === "idle") {
+      this._idle = !this._idle;
+      save(IDLE_KEY, this._idle);
     } else if (action === "ranges") {
       this._ranges = !this._ranges;
       save(RANGES_KEY, this._ranges);
@@ -2267,7 +2411,7 @@ ${STYLE}
       const cluster = kind === "cluster" ? target.getAttribute("data-cluster") : null;
       // A finger (no hover) on a marker in view mode: a tap shows its tooltip.
       const touch = !!e.pointerType && e.pointerType !== "mouse";
-      const marker = touch ? e.target.closest?.("g.marker[data-key]:not(.ghost)")?.getAttribute("data-key") ?? null : null;
+      const marker = touch ? e.target.closest?.(TIP_TARGET)?.getAttribute("data-key") ?? null : null;
       this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null, cluster, touch, marker, hadTip };
     }
   }
@@ -2275,12 +2419,13 @@ ${STYLE}
   // ---- tooltip: a sensor's photo (a plant's, from the plants component), name and readings ------
 
   _hover(e) {
-    const marker = e.target.closest?.("g.marker[data-key]:not(.ghost)");
+    const marker = e.target.closest?.(TIP_TARGET);
     const cluster = !marker && e.target.closest?.("g.cluster");
     const item = !marker && !cluster && e.target.closest?.(".tray [data-key], .cluster-list [data-point]");
     const hoverKey = marker ? marker.getAttribute("data-key") : null;
-    if (hoverKey !== this._hoverKey) {
-      this._hoverKey = hoverKey;     // its registry links show while it is hovered
+    const linkKey = hoverKey?.startsWith("client:") ? null : hoverKey;     // a traffic client has no registry links
+    if (linkKey !== this._hoverKey) {
+      this._hoverKey = linkKey;     // its registry links show while it is hovered
       this._drawSvg(this._status === "ready" && this._mode === "edit");
     }
     // The tooltip's content is worked out only when the pointer reaches something new.
@@ -2306,10 +2451,12 @@ ${STYLE}
 
   // A marker's tooltip content: its names, readings, presence sensors and roles; null when gone.
   _markerTip(pointKey) {
+    if (pointKey.startsWith("client:")) return this._clientTip(pointKey);
     const point = this._floor?.points.find((p) => keyOf(p) === pointKey);
     if (!point) return null;
+    const rows = this._mapNow?.cls === "traffic_links" ? this._trafficRows(point) : [];
     return { key: `m:${pointKey}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
-      presence: presenceEntities(this._hass, point), roles: this._cat(point).roles };
+      presence: presenceEntities(this._hass, point), roles: this._cat(point).roles, rows };
   }
 
   // A tooltip a tap opened (no hover on a phone): it stays, with the marker's links, until the next
@@ -2318,7 +2465,7 @@ ${STYLE}
     const content = this._markerTip(pointKey);
     if (!content) return;
     this._pinned = pointKey;
-    this._hoverKey = pointKey;
+    this._hoverKey = pointKey.startsWith("client:") ? null : pointKey;
     this._drawSvg(false);
     this._showTip(content, e);
   }
@@ -2365,7 +2512,7 @@ ${STYLE}
       tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
         + `<div class="tip-name">${esc(content.name)}</div>` + roles
         + (roomSensor ? `<div class="tip-value">${esc(t(h, "card.floorplan.maps.room_sensor"))}</div>` : "")
-        + [...values, ...presence].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+        + [...values, ...presence, ...(content.rows || [])].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
       this._tipKey = content.key;
     }
     tip.hidden = false;

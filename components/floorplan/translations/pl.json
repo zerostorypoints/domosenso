@@ -232,7 +232,26 @@
       "traffic": {
         "not_live": "Dane routera z {time}, nieaktualne",
         "unavailable": "Dane routera są niedostępne",
-        "legend": "Przepustowość w danym miejscu, pobieranie plus wysyłanie, skala logarytmiczna (znaczniki przy 1, 10 i 100 Mbit/s)"
+        "legend": "Przepustowość w danym miejscu, pobieranie plus wysyłanie, skala logarytmiczna (znaczniki przy 1, 10 i 100 Mbit/s)",
+        "idle": "Bezczynne",
+        "router_name": "Nazwa w routerze: {name}",
+        "access_point": "Punkt dostępu: {name}",
+        "link": "Połączenie: {link}",
+        "down": "↓ {value}",
+        "up": "↑ {value}",
+        "matched": {
+          "link": "Dopasowano po MAC punktu",
+          "registry": "Dopasowano po rejestrze urządzeń",
+          "none": "Nie dopasowano do urządzenia"
+        },
+        "updated_ago": "Zaktualizowano {time} temu",
+        "clients_vs_node": "Klienci {clients} · węzeł {node} Mbit/s",
+        "clients_total": "Klienci {clients} Mbit/s",
+        "ap_label": "{total} · {count}",
+        "off_plan": "Na punktach dostępu spoza planu",
+        "links": {
+          "wired": "Przewodowo"
+        }
       }
     }
   }
