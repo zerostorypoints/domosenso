@@ -78,12 +78,38 @@ function solve(A, b) {
   return x;
 }
 
+// Band steering (Amendment 4): a survey or phone reading on 2.4 GHz says 5 GHz at its spot was below the
+// router's steering threshold. Each is a ceiling on the strongest 5 GHz there: one-sided rows in the fit, and
+// a downward residual where the calibrated map still exceeds it. Not from typed readings or device sensors
+// (those clients may have no 5 GHz), not on a floor without a 5 GHz access point.
+const CEILING_WEIGHT = 0.5;
+const STEERED_SOURCES = new Set(["survey", "phone"]);
+
+function ceilingRows(ctx, observations, steeringDbm) {
+  if (!Number.isFinite(steeringDbm)) return [];
+  const keys = Object.keys(ctx.apPos).filter((k) => serves(ctx.apPos[k], "5")).sort();
+  if (!keys.length) return [];
+  const out = [];
+  for (const o of observations ?? []) {
+    if (o.band !== "2.4" || !STEERED_SOURCES.has(o.source) || !Number.isFinite(o.x) || !Number.isFinite(o.y)) continue;
+    if (!ctx.floors.some((f) => f.floor_id === o.floorId)) continue;
+    const octx = { ...ctx, floorId: o.floorId };
+    const p = [o.x, o.y];
+    const obs = { floorId: o.floorId, x: o.x, y: o.y, band: "5", ap: null, dbm: steeringDbm, weight: CEILING_WEIGHT, source: o.source };
+    out.push({ obs, octx, p, cands: keys.map((key) => ({ key, terms: rayTerms(octx, key, "5", p) })) });
+  }
+  return out;
+}
+
 // The calibrated parameters, which kinds moved, and what the fit leaves at each usable observation
 // (pred − dbm). Observations the model cannot predict (an unplaced access point, an unknown band or
-// source) are left out.
-export function calibrate(ctx, observations, table) {
+// source) are left out. `steeringDbm` (Amendment 4): the 5 GHz level below which the router moves a client
+// to 2.4 GHz; with it, 2.4 GHz survey readings bound 5 GHz (residuals of kind "ceiling", ap "*": every
+// access point).
+export function calibrate(ctx, observations, table, { steeringDbm } = {}) {
   const prior = priorParams(table, ctx.doc.floors.flatMap((f) => f.access_points ?? []));
   const rows = usable(ctx, observations);
+  const ceilings = ceilingRows(ctx, observations, steeringDbm);
 
   // The guards decide which parameters are free.
   const perBand = {};
@@ -111,6 +137,10 @@ export function calibrate(ctx, observations, table) {
     }
     if (rich(band)) free(`off|${r.offset}`, () => params.device[r.offset], (v) => { params.device[r.offset] = v; },
       0, OFFSET_SD[r.obs.source]);
+  }
+  // A ceiling can move its candidates' 5 GHz transmit powers (down: its rows are one-sided).
+  for (const r of ceilings) {
+    for (const c of r.cands) free(`tx|${c.key}|5`, () => params.tx[c.key]["5"], (v) => { params.tx[c.key]["5"] = v; }, prior.tx[c.key]["5"], TX_SD);
   }
   if (anyRich) free("n", () => params.n, (v) => { params.n = v; }, prior.n, N_SD);
   const keys = Object.keys(spec).sort();
@@ -143,6 +173,16 @@ export function calibrate(ctx, observations, table) {
     return { c: best, pred: bestV + params.device[r.offset] };
   };
 
+  // The strongest candidate of a ceiling, without any device offset (it bounds the network, not a device).
+  const strongest = (r) => {
+    let best = r.cands[0], bestV = -Infinity;
+    for (const c of r.cands) {
+      const v = predict({ ...r.octx, params }, c.key, "5", r.p);
+      if (v > bestV) { best = c; bestV = v; }
+    }
+    return { c: best, pred: bestV };
+  };
+
   const n = keys.length;
   for (let it = 0; it < ITERATIONS && n; it++) {
     const A = keys.map(() => new Array(n).fill(0));
@@ -172,6 +212,22 @@ export function calibrate(ctx, observations, table) {
       }
       add(entries, (pred - r.obs.dbm) * w);
     }
+    // Ceilings: a row only while the strongest 5 GHz prediction is above the ceiling.
+    for (const r of ceilings) {
+      const { c, pred } = strongest(r);
+      if (pred <= r.obs.dbm) continue;
+      let w = r.obs.weight / OBS_SD;
+      const z = (pred - r.obs.dbm) * w;
+      if (z > HUBER) w *= Math.sqrt(HUBER / z);
+      const entries = [];
+      const put = (key, v) => { if (key in index) entries.push([index[key], v * w]); };
+      put(`tx|${c.key}|5`, 1);
+      if (rich("5")) {
+        put("n", -10 * c.terms.logd);
+        for (const [m, k] of Object.entries(lossTerms(c.terms))) put(`loss|${m}|5`, -k);
+      }
+      add(entries, (pred - r.obs.dbm) * w);
+    }
     keys.forEach((key, i) => {
       const s = spec[key];
       add([[i, 1 / s.sd]], (s.get() - s.prior) / s.sd);
@@ -186,6 +242,14 @@ export function calibrate(ctx, observations, table) {
 
   // ap: the access point the fit assigned the reading to (the named one, or the strongest candidate).
   const residuals = rows.map((r) => { const { c, pred } = choose(r); return { obs: r.obs, r: pred - r.obs.dbm, ap: c.key }; });
+  // A ceiling the calibrated 5 GHz map (the fitted prediction with the readings' residuals) still exceeds at its
+  // spot adds that excess as a residual there, downward only, for every access point ("*").
+  for (const r of ceilings) {
+    const { pred } = strongest(r);
+    const own = residuals.filter((e) => e.obs.band === "5" && e.obs.floorId === r.obs.floorId);
+    const excess = pred - residualAt(own, ctx.segmentsByFloor[r.obs.floorId] ?? [], r.p) - r.obs.dbm;
+    if (excess > 0) residuals.push({ obs: r.obs, r: excess, ap: "*", kind: "ceiling" });
+  }
   const kind = (k) => keys.some((key) => key === k || key.startsWith(`${k}|`));
   return { params, moved: { tx: kind("tx"), loss: kind("loss"), n: kind("n") }, residuals, prior };
 }
@@ -324,7 +388,7 @@ export function calibratedLevelGrid(ctx, band, step, fit) {
   const { x0, y0, nx, ny } = grid;
   const c = [0, 0];
   grid.aps.forEach((key, k) => {
-    const own = here.filter((e) => (e.obs.ap ?? e.ap) === key);
+    const own = here.filter((e) => (e.obs.ap ?? e.ap) === key || e.ap === "*");
     if (!own.length) return;
     const at = residualIndex(own, segs);
     const v = grid.levels[k];

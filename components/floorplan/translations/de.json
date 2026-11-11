@@ -174,7 +174,8 @@
             "phone": "Telefon",
             "survey": "Laptop-Messung",
             "manual": "eingegeben"
-          }
+          },
+          "ceiling": "auf 2,4 GHz: 5 GHz hier unter {dbm} dBm (Bandsteuerung)"
         }
       },
       "wall": {
@@ -194,7 +195,8 @@
           "solid": "massiv",
           "heavy": "schwer",
           "title": "Wände nach ihrer Dämpfung bei 5 GHz: leicht unter 10 dB, massiv 10 bis 25 dB, schwer über 25 dB; Glas blau getönt, eine Wand halber Höhe gestrichelt, keine Wand gepunktet"
-        }
+        },
+        "steering": "Bandsteuerung unter (dBm)"
       },
       "material": {
         "drywall": "Gipskarton",

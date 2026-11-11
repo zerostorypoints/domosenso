@@ -740,6 +740,18 @@ export function setWifiDefault(doc, which, material) {
   return Object.keys(wifi).length ? { ...rest, wifi } : rest;
 }
 
+// The band-steering threshold (Amendment 4): the 5 GHz level below which the home's router moves a client to
+// 2.4 GHz. -90 to -55 dBm; STEERING_DBM (the default) removes the key. Null when refused.
+export const STEERING_DBM = -75;
+const STEERING_RANGE = [-90, -55];
+export function setSteering(doc, dbm) {
+  if (!Number.isFinite(dbm) || dbm < STEERING_RANGE[0] || dbm > STEERING_RANGE[1]) return null;
+  const { steering_dbm: _, ...wifi } = doc.wifi || {};
+  if (dbm !== STEERING_DBM) wifi.steering_dbm = dbm;
+  const { wifi: __, ...rest } = doc;
+  return Object.keys(wifi).length ? { ...rest, wifi } : rest;
+}
+
 // Opening `index` of `material`, which must fit its kind; its default (openingDefaults) or an empty value
 // removes it (any kind: a doorway that was a window sheds it so).
 export function setOpeningMaterial(doc, floorId, index, material) {

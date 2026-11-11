@@ -375,6 +375,8 @@ REFUSALS = [
     (lambda d: d["wifi"]["samples"][0].update(dbm=-120), "sample 0: dbm out of range"),
     (lambda d: d["wifi"].update(samples=d["wifi"]["samples"] * 2001), "more than 2000 samples"),
     # SPEC-045: phone samples. Structure is the schema's (its message), ranges are the checker's.
+    (lambda d: d["wifi"].update(steering_dbm=-50), "steering_dbm out of range"),
+    (lambda d: d["wifi"].update(steering_dbm=-95), "steering_dbm out of range"),
     (lambda d: d["wifi"]["samples"][0].update(source="radar"),
      "wifi.samples.0.source: 'radar' is not one of ['survey', 'manual', 'phone']"),
     (lambda d: d["wifi"]["samples"][0].update(scans=[{"t": "2026-11-11T18:05:27+01:00"}]),
@@ -515,3 +517,12 @@ def test_the_cards_geometry_edits_leave_walls_the_validator_accepts(tmp_path):
     assert len(moved["floors"][0]["walls"]) == 3
     assert [w["material"] for w in removed["floors"][0]["walls"]] == ["glass", "brick"]
     assert [w["material"] for w in inserted["floors"][0]["walls"]] == ["glass", "brick"]
+
+
+def test_steering_threshold_validates_and_its_change_is_a_wifi_change():
+    """SPEC-044 Amendment 4: wifi.steering_dbm, -90 to -55."""
+    old = wifi_demo()
+    new = copy.deepcopy(old)
+    new["wifi"]["steering_dbm"] = -70
+    validate(new)
+    assert ("wifi", "change", "ground") in diff(old, new)

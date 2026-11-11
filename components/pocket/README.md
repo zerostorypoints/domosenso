@@ -288,7 +288,9 @@ floor plan's Wi-Fi maps (SPEC-045; the floorplan component's *Wi-Fi* sections). 
   steers them to, and neither Shortcuts nor the Companion app can choose it. Expect mostly 5 GHz near
   the access points and 2.4 GHz where 5 GHz is weak. Each reading keeps its band; the floor plan's
   calibration carries what a reading says about the walls to the other bands, partially (the floorplan
-  README's *Bands*). The Readings switch on the plan shows a band map's own readings.
+  README's *Bands*), and a reading on 2.4 GHz also caps 5 GHz at its spot (band steering: the phone
+  left 5 GHz because it was weak there). The Readings switch on the plan shows a band map's own
+  readings, and on 5 GHz those ceilings as hollow dots.
 - **Kept at once** when every check passes (a green dot); with a warning (amber) you choose **Keep** or
   **Retry**; a failure (red) keeps nothing. A kept reading is a sample of the plan (`source: phone`, with
   every scan) and the maps recalibrate at once; **Undo** takes the last one out. **Readings kept**, under

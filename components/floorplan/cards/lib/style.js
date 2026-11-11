@@ -162,6 +162,7 @@ export const STYLE = `
   .sample circle { fill: var(--primary-text-color); stroke: var(--card-background-color, #fff); stroke-width: 1;
                    vector-effect: non-scaling-stroke; }
   .sample[data-source=manual] circle { fill: var(--secondary-text-color); }
+  .sample.ceiling circle { fill: none; stroke: var(--primary-text-color); stroke-width: 1.5; }
   .sample-label { fill: var(--primary-text-color); paint-order: stroke; stroke: var(--card-background-color, #fff);
                   stroke-linejoin: round; }
   .next-spot { fill: none; stroke: var(--accent-color, #ff9800); stroke-width: 2; stroke-dasharray: 4 3;

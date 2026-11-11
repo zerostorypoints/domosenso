@@ -334,6 +334,15 @@ the router's client tracker for its MAC address, else not at all.
   band's own readings. So the carry-over between bands is partial and approximate: 5 and 6 GHz lose
   more in walls than 2.4 GHz, and a reading on a band tells most about that band. A band with no
   readings of its own keeps its typical transmit powers and gets only the shared wall losses.
+- **Band steering (SPEC-044 Amendment 4).** A survey or phone reading on 2.4 GHz also says that 5 GHz
+  at that spot was below the router's steering threshold, or the client would have stayed on 5 GHz.
+  Each such reading is a ceiling on 5 GHz there: the fit lowers the 5 GHz model while its prediction
+  is above the ceiling (never raises it), and the calibrated 5 GHz map is held at the ceiling around
+  the spot, fading back over 3 m and less through walls (the Ranges outlines too). Typed readings and
+  device sensors make no ceiling (such clients may have no 5 GHz). The threshold is **Band steering
+  below** in the Walls tool's panel, −75 dBm by default (routers typically steer between −70 and
+  −75 dBm; set your router's if you know it). With Readings on, the 5 GHz map shows such a spot as a
+  hollow dot "≤ −75".
 - **Choosing the band is the client's business.** On one network name a client joins the band the
   router steers it to (band steering), usually 5 GHz near an access point and 2.4 GHz where 5 GHz
   is weak; a phone or a laptop cannot be told which. A survey therefore collects mostly one band

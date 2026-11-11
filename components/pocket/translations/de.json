@@ -857,7 +857,7 @@
         "not_kept": "Nicht behalten. Erneut messen.",
         "readings": "Behaltene Messungen: {n}",
         "no_readings": "Noch keine Messung behalten.",
-        "no_room": "Außerhalb der Räume",
+        "no_room": "Ausserhalb der Räume",
         "scans": "Messungen: {list}",
         "no_input": "Der Kurzbefehl lief ohne die Anfrage von Pocket; seine Messung ist nicht verwendbar. Von hier aus erneut messen."
       }

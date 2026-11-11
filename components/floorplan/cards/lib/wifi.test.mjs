@@ -913,3 +913,13 @@ test("nextSpots with { far: false, apartM }: rooms without a reading and open ha
   assert.deepEqual(nextSpots(cells, [...obs, { x: 6, y: 2, ap: "a" }, { x: 10, y: 2, ap: "a" }], rooms, 3, { far: false, apartM: 4 }), [],
     "every room measured, no handover: nothing to suggest");
 });
+
+test("setSteering: the band-steering threshold in the plan, -90 to -55; the default removes it (Amendment 4)", async () => {
+  const { setSteering, STEERING_DBM } = await import("./wifi.js");
+  assert.equal(STEERING_DBM, -75);
+  const doc = { schema: 1, floors: [] };
+  assert.deepEqual(setSteering(doc, -70).wifi, { steering_dbm: -70 });
+  assert.deepEqual(setSteering(setSteering(doc, -70), -75), { schema: 1, floors: [] }, "the default is no key");
+  assert.equal(setSteering(doc, -50), null);
+  assert.equal(setSteering(doc, Number.NaN), null);
+});

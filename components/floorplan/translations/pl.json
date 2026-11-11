@@ -174,7 +174,8 @@
             "phone": "telefon",
             "survey": "pomiar laptopem",
             "manual": "wpisany"
-          }
+          },
+          "ceiling": "na 2,4 GHz: 5 GHz tutaj poniżej {dbm} dBm (sterowanie pasmem)"
         }
       },
       "wall": {
@@ -194,7 +195,8 @@
           "solid": "pełna",
           "heavy": "ciężka",
           "title": "Ściany według tłumienia przy 5 GHz: lekka poniżej 10 dB, pełna od 10 do 25 dB, ciężka powyżej 25 dB; szkło zabarwione na niebiesko, ściana do połowy wysokości przerywana, brak ściany kropkowany"
-        }
+        },
+        "steering": "Sterowanie pasmem poniżej (dBm)"
       },
       "material": {
         "drywall": "Płyta gipsowo-kartonowa",

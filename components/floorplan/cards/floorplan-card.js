@@ -57,7 +57,8 @@ import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValu
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
-  wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift, predict, apKeyOf } from "./lib/wifi.js";
+  wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift, predict, apKeyOf, setSteering,
+  STEERING_DBM } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
   observationIndex } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid, residualAt } from "./lib/wifi-fit.js";
@@ -464,7 +465,7 @@ class FloorplanCard extends HTMLElement {
 
   // The engine's fit: a method of its own, so a test counts the fits.
   _runFit(ctx, observations) {
-    return calibrate(ctx, observations, materials);
+    return calibrate(ctx, observations, materials, { steeringDbm: this._doc.wifi?.steering_dbm ?? STEERING_DBM });
   }
 
   // The shown floor's observations of one point: what its label reports on a radio map.
@@ -1015,6 +1016,9 @@ ${STYLE}
     html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.floor"))}</span>` + label("height")
       + `<input type="number" class="wall-field" data-field="height" min="2" max="10" step="0.05" value="${esc(String(floor.height ?? FLOOR_HEIGHT_M))}">`
       + label("slab") + `<select class="wall-field" data-field="slab">${options("slab", floor.slab ?? materials.defaults.slab)}</select>`;
+    // Amendment 4: home-wide, the 5 GHz level below which the router moves a client to 2.4 GHz.
+    html += label("steering") + `<input type="number" class="wall-field" data-field="steering" min="-90" max="-55" step="1"`
+      + ` value="${esc(String(this._doc.wifi?.steering_dbm ?? STEERING_DBM))}">`;
     const outdoor = this._doc.wifi?.outdoor ?? [];
     html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.outdoor"))}</span>` + floor.rooms.map((room) =>
       `<label class="outdoor-check"><input type="checkbox" class="wall-field" data-field="outdoor" data-area="${esc(room.area_id)}"`
@@ -1247,9 +1251,23 @@ ${STYLE}
     // (where the model has been measured at all) every one.
     if (editing || map?.cls === "confidence" || (this._showReadings && map?.layer === "radio")) {
       const g = el("g", {}, svg);
+      const h0 = this._hass;
+      this._serves5 = this._doc.floors.some((f) => (f.access_points || []).some((a) => (a.bands ?? BANDS).includes("5")));
       for (const s of this._doc.wifi?.samples || []) {
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
-        if (!editing && map?.cls !== "confidence" && map?.band && s.band !== map.band) continue;
+        // Amendment 4: on the 5 GHz map a survey reading on 2.4 GHz is a ceiling there: a hollow dot "≤ threshold".
+        const ceiling = !editing && map?.band === "5" && s.band === "2.4" && (s.source === "survey" || s.source === "phone")
+          && this._serves5;
+        if (!ceiling && !editing && map?.cls !== "confidence" && map?.band && s.band !== map.band) continue;
+        if (ceiling) {
+          const steering = this._doc.wifi?.steering_dbm ?? STEERING_DBM;
+          const dot = el("g", { class: "sample ceiling", "data-source": s.source, transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
+          el("title", {}, dot).textContent = `${t(h0, "card.floorplan.wifi.reading.ceiling", { dbm: dbmText(steering) })}\n${this._sampleTitle(s)}`;
+          el("circle", { r: fmt(3 * px) }, dot);
+          el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "stroke-width": fmt(3 * px),
+            "dominant-baseline": "central" }, dot).textContent = `≤${dbmText(steering)}`;
+          continue;
+        }
         const dot = el("g", { class: "sample", "data-source": s.source ?? "survey", transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
         el("title", {}, dot).textContent = this._sampleTitle(s);
         el("circle", { r: fmt(3 * px) }, dot);
@@ -1948,6 +1966,7 @@ ${STYLE}
       const field = e.target.getAttribute("data-field");
       const raw = e.target.value;
       if (field === "outdoor") this._edit(setOutdoor(this._doc, e.target.getAttribute("data-area"), e.target.checked));
+      else if (field === "steering") this._edit(setSteering(this._doc, raw === "" ? STEERING_DBM : Number(raw)));
       else if (field === "wall" || field === "half") {
         const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
         if (seg && field === "wall") this._edit(setWallMaterial(this._doc, this._floorId, seg.at, raw || null));

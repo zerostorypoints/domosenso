@@ -121,6 +121,9 @@ def _check_phone_sample(index: int, sample: dict) -> None:
 def _check_wifi(doc: dict) -> None:
     """SPEC-044 limits the schema cannot say: material ids and what they fit, walls on room edges,
     access points that are points of their floor, ranges, outdoor rooms and the samples."""
+    steering = (doc.get("wifi") or {}).get("steering_dbm")
+    if steering is not None and not -90 <= steering <= -55:
+        raise DomosensoError("steering_dbm out of range")
     defaults = (doc.get("wifi") or {}).get("defaults") or {}
     for material_id in defaults.values():
         _check_material(material_id, "wall")
@@ -284,7 +287,7 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
             lines.append(("open", "change", label))
         if _openings(old_floor) != _openings(new_floor):
             lines.append(("openings", "change", label))
-        if _wifi(old_floor, _outdoor(old)) != _wifi(new_floor, _outdoor(new)):
+        if _wifi(old_floor, _outdoor(old), _steering(old)) != _wifi(new_floor, _outdoor(new), _steering(new)):
             lines.append(("wifi", "change", label))
     if _samples(old) != _samples(new):
         lines.append(("wifi", "samples", str(len(_samples(new)))))
@@ -332,12 +335,17 @@ def _outdoor(doc: dict | None) -> set:
     return set(((doc or {}).get("wifi") or {}).get("outdoor") or [])
 
 
-def _wifi(floor: dict, outdoor: set) -> str:
+def _steering(doc: dict | None):
+    return ((doc or {}).get("wifi") or {}).get("steering_dbm")
+
+
+def _wifi(floor: dict, outdoor: set, steering=None) -> str:
     """What the prediction reads of a floor, order left out, numbers rounded like points; `outdoor`
-    the plan's outdoor rooms, of which the floor's own count."""
+    the plan's outdoor rooms, of which the floor's own count; `steering` the plan's band-steering
+    threshold (Amendment 4), which every floor's calibration reads."""
     keep = lambda items: sorted(json.dumps(_round(i), sort_keys=True) for i in items)  # noqa: E731
     return json.dumps({
-        "height": _round(floor.get("height")), "slab": floor.get("slab"),
+        "height": _round(floor.get("height")), "slab": floor.get("slab"), "steering": steering,
         "outdoor": sorted(room["area_id"] for room in floor["rooms"] if room["area_id"] in outdoor),
         "walls": keep(floor.get("walls", [])),
         "access_points": keep(floor.get("access_points", [])),

@@ -2713,7 +2713,8 @@ test("phone survey: the readings follow the Readings switch too (opt-in), the ma
   assert.equal(sampleDots(card).length, 0, "off until chosen, on the phone too");
   click($(card, ".bar [data-action=readings]"));
   click($(card, '.bar [data-map="wifi_5"]'));
-  assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−48"], "the 5 GHz map: 5 GHz readings only");
+  assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−48", "≤−75"],
+    "the 5 GHz map: its readings, and the 2.4 GHz one as the ceiling it is (Amendment 4)");
   click($(card, '.bar [data-map="wifi_24"]'));
   assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−73"]);
   window.localStorage.clear();
@@ -2777,5 +2778,30 @@ test("wifi maps: a reading's dot tells its data on hover (its title)", async () 
   for (const part of ["−48 dBm", "2.4 GHz", "channel 6", "Mesh", "noise −96 dBm", "spread 2 dB", "2 scans"]) {
     assert.ok(title.includes(part), `${part} in ${title}`);
   }
+  window.localStorage.clear();
+});
+
+test("steering (Amendment 4): the Walls panel sets Band steering below; on the 5 GHz map a 2.4 GHz reading is a hollow ≤ dot and the map is held under it", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.wifi = { samples: [{ floor_id: "ground", x: 1, y: 3, t: "2026-11-11T18:56:28Z", band: "2.4", dbm: -79, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:56:24Z", dbm: -79 }] }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.ok(card._calibration().residuals.some((e) => e.kind === "ceiling" && e.obs.dbm === -75), "the default threshold reaches the fit");
+  click($(card, ".bar [data-action=readings]"));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  const dot = $(card, "g.sample.ceiling");
+  assert.ok(dot, "a hollow dot on the 5 GHz map");
+  assert.equal(dot.querySelector(".sample-label").textContent, "≤−75");
+  assert.ok(dot.querySelector("title").textContent.includes("2.4 GHz"), dot.querySelector("title").textContent);
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.equal($(card, "g.sample.ceiling"), null, "on 2.4 GHz it is the reading itself");
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  const field = $(card, '.wall-panel [data-field="steering"]');
+  assert.equal(field.value, "-75");
+  change(field, "-70");
+  assert.equal(card._doc.wifi.steering_dbm, -70);
   window.localStorage.clear();
 });

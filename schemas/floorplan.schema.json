@@ -16,6 +16,7 @@
       "type": "object", "additionalProperties": false,
       "description": "Wi-Fi coverage (SPEC-044)",
       "properties": {
+        "steering_dbm": {"type": "number", "description": "The 5 GHz level below which the router moves a client to 2.4 GHz, -90 to -55; default -75 (SPEC-044 Amendment 4)"},
         "defaults": {
           "type": "object", "additionalProperties": false,
           "description": "Material ids for walls no `walls` entry covers: interior (two rooms share it) and exterior",
