@@ -47,10 +47,12 @@ class MusicStripComponent : public Component {
   void set_attack_ms(float ms);
   void set_release_ms(float ms);
   void set_beat_sensitivity(float pct);
+  void set_range_db(float db);
   void set_palette_kind(ms::PaletteKind kind);
   // false (and one warning in the log) when the text is not 2-5 #rrggbb stops; the last good one stays.
   bool set_custom_palette(const std::string &text);
   void set_intensity(float pct);
+  void set_pastel(float pct);
   void set_mounting(ms::Mounting mounting);
   void set_beat_strength(float pct);
   void set_bass(ms::BassPosition bass);
