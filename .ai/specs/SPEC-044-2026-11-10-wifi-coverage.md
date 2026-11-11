@@ -422,3 +422,42 @@ and for a device its device id. Sources and their weights:
   wall type's loss per band, and the Confidence map shows where they did.
 - Tests: the defaults; a thick exterior wall costs 20/33/37 dB per band before calibration; a glass
   wall material on a wall; the materials table test pins the two new rows.
+
+## Amendment 3 (thick walls, half-height walls, wall weights, ranges)
+
+- Status: approved 2026-11-11 by the maintainer ("build all"). Source: the maintainer, 2026-11-11,
+  after the first prototype on a real home: doors looked like strong beams, a small room behind
+  the hallway had no signal, and the access points' reach was hard to see. "It would be good to
+  differentiate the wall thickness on the floor plan … I want to quickly spot the differences and
+  not to have it as an architectural diagram"; a half wall "with working assumptions that it takes
+  1/2 of the height", for balcony frames and staircases.
+- **Thick walls (a fix of the model).** A plan traced with real wall thickness leaves a gap between
+  neighbouring rooms; each room's edge then counted as an exterior wall, so one interior wall cost
+  two exterior walls (measured on the first home: 23 of 39 "exterior" segments had another room's
+  edge within 0.5 m). Two edges of different rooms that are parallel within 10°, overlap along
+  their length and lie at most `WALL_GAP_M` = 0.6 m apart are **one interior wall**: the stretch
+  where they overlap is charged once (on the edge of the room listed first), at the interior
+  default or the material set on either edge; the rest of each edge is classified as before.
+  Outdoor rules (Amendment 1) apply to the pair as to a shared edge.
+- **Half-height walls.** `walls[].height` (optional): `"half"`; absent means full. A half wall costs
+  `HALF_WALL` = 0.5 of its material's loss on every band (working assumption: part of the signal
+  passes over it); calibration fits the material, not the factor. New material `railing` (open bars
+  or a mesh) 2 / 3 / 3 dB ± 2, for `wall`. The Walls panel gains a **Half height** switch; the
+  open edge of an outdoor room stays no wall until a material is set.
+- **Wall weights on the plan.** Every map draws the walls as lines (shared walls once) instead of
+  room outlines, in three weights by the wall's 5 GHz loss after the half factor: **light** below
+  10 dB (1.5 px), **solid** 10 to 25 dB (3 px), **heavy** above 25 dB (5 px); glazing materials
+  (`glass`, `double`, `low_e`, `triple_low_e`) are tinted light blue; a half wall is dashed; an
+  edge with no wall is a faint dotted line. Widths do not scale with zoom. A three-entry key
+  (light, solid, heavy) shows on the Wi-Fi maps and in edit mode.
+- **Ranges.** The 2.4/5/6 GHz maps gain a **Ranges** switch: each access point gets its own colour
+  (the Serving map's), a ringed marker at its place with its name, and its outline at −67 dBm
+  (solid) and −75 dBm (dashed) on the map's band and mode (Predicted or Calibrated), so where
+  access points overlap shows directly.
+- Validation and `push --plan`: `height` other than `"half"` refused (`wall at <x>,<y>: height must
+  be half`); a change prints `wifi change <floor>`.
+- Tests: two rooms 0.3 m apart cost one interior wall, not two exterior ones; 0.7 m apart stay two;
+  a half wall costs half; `railing` in the table; the weight of each material and of a half wall;
+  the ranges outline of one access point in an empty room is closed and nearer than −75's.
+- Out of scope (later): a what-if mode that moves an access point without saving and drops that
+  access point's local corrections.
