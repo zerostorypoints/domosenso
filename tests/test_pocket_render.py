@@ -10,7 +10,10 @@ from domosenso_render import RenderError, render_component
 
 ROOT = Path(__file__).resolve().parent.parent
 COMPONENT = ROOT / "components/pocket"
-INPUTS = yaml.safe_load((ROOT / "examples/demo-home/inputs/pocket.yaml").read_text(encoding="utf-8")) or {}
+# The demo home's inputs without the floor plan and the Wi-Fi survey it turns on: the tests add them back.
+INPUTS = {key: value for key, value in (yaml.safe_load(
+    (ROOT / "examples/demo-home/inputs/pocket.yaml").read_text(encoding="utf-8")) or {}).items()
+    if key not in ("floorplan", "wifi_survey", "wifi_ssid")}
 HOME = yaml.safe_load((ROOT / "examples/demo-home/home.inputs.yaml").read_text(encoding="utf-8"))
 
 

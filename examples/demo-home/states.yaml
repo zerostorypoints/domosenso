@@ -94,6 +94,11 @@ states:
   weather.forecast_home: partlycloudy
   calendar.family: "off"
 
+  # the floor plan's three access points (examples/demo-home/floorplan.json)
+  device_tracker.access_point_living_room: home
+  device_tracker.access_point_office: home
+  device_tracker.access_point_hallway: home
+
 attributes:
   binary_sensor.balcony_door_contact: {friendly_name: Balcony door, device_class: door}
   lock.front_door: {friendly_name: Front door}
@@ -102,6 +107,9 @@ attributes:
   siren.hall_siren: {friendly_name: Hall siren, supported_features: 19}
   person.alex: {friendly_name: Alex}
   person.sam: {friendly_name: Sam}
+  device_tracker.access_point_living_room: {friendly_name: Access point Living room}
+  device_tracker.access_point_office: {friendly_name: Access point Office}
+  device_tracker.access_point_hallway: {friendly_name: Access point Hallway}
   media_player.living_room_speaker:
     friendly_name: Living room speaker
     volume_level: 0.25
