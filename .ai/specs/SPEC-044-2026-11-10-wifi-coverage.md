@@ -144,12 +144,17 @@ and for a device its device id. Sources and their weights:
 - **The fit** is a regularised least-squares (maximum a posteriori) estimate of: each access
   point's `T` offset per band, the distance exponent `n`, each material's loss per band (only
   materials some observation's path crosses) and each device's offset, every one pulled towards
-  its prior by its uncertainty. Gauss–Newton on a few dozen unknowns; in the card, in a worker
-  when available.
+  its prior by its uncertainty. Gauss–Newton on a few dozen unknowns, in the card on the main
+  thread (measured: a few milliseconds for a home's readings, so no worker).
 - **Guards:** fewer than 5 observations on a band: only the `T` offsets of that band move; fewer
   than 3 distinct rooms with observations: materials keep their priors. Bands share the materials'
   ratios: a 2.4 GHz-only device moves a material's 5 and 6 GHz loss by the prior's ratio, at a
-  third of the weight.
+  third of the weight. The rooms are counted among the observations of bands with 5 or more.
+- **Robustness (final review, R25):** on a band with fewer than 5 observations a reading's
+  uncertainty also carries its source's frozen offset, `sd = hypot(4, offset sd)` (device 7.2,
+  survey 5, manual 6.4 dB). On every band each reading is Huber-weighted at 1.5 sd: with
+  `z = |prediction − reading| / sd`, beyond 1.5 its weight is multiplied by `sqrt(1.5 / z)`. One
+  reading 30 dB off moves a transmit power by less than 4 dB.
 - **Residuals:** what the fit leaves at each observation is spread to the grid by inverse distance
   squared with a 3 m range, each wall between an observation and a cell halving its weight. The
   calibrated map is prediction-with-fit plus residuals, so a measurement can raise or lower the
@@ -234,8 +239,8 @@ and for a device its device id. Sources and their weights:
   `wled`, `tplink`, `mobile_app`) or by a `wi_fi`/`wifi` object id; left out when the device has a
   `bluetooth` or `zigbee` connection or its integration is `bluetooth`, `zha`, `mqtt` with a Zigbee
   model, and every non-dBm `signal_level`.
-- **Disabled sources:** in edit mode (admins only, as edit mode is), the Confidence map's legend
-  lists signal entities the rules would use that are disabled, read with
+- **Disabled sources:** in edit mode (admins only, as edit mode is), the edit-mode panel (edit
+  mode shows no maps, so not the Confidence legend; R15) lists signal entities the rules would use that are disabled, read with
   `config/entity_registry/list` (an admin call; view mode and the kiosk user never make it), so the
   owner can enable them.
 - Card config: `wifi` (boolean, default `true`): `false` draws no Wi-Fi maps or tools.
@@ -384,6 +389,8 @@ and for a device its device id. Sources and their weights:
 - Prediction: a wall between an indoor and an outdoor room is exterior (its default is
   `wifi.defaults.exterior`); an opening between an indoor and an outdoor room defaults to
   `state: closed` like one to the outside; a door to an outdoor room defaults to material `double`.
+  An outdoor room's own edges that no other room shares (a railing) are no wall and cost nothing
+  until the owner sets a material for them in the Walls tool (`floor.walls`; R24, final review).
   An outdoor room's cells are computed and drawn like any room's; next spots include it.
 - Materials: `double`, `low_e`, `triple_low_e` are also door materials (a glazed door is glazing).
 - Card: the Walls tool's floor panel lists the floor's rooms with an **Outdoors** switch each.
