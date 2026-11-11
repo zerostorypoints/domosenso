@@ -26,6 +26,8 @@ struct FeatureSettings {
   float attack_ms = 20;
   float release_ms = 300;
   float beat_sensitivity = 50;  // 0-100: how far above its usual swing the low end must jump
+  // dB from a band's 0 to its 1, under the reference: smaller tells bands of similar loudness apart.
+  float range_db = 30;
 };
 
 class FeatureExtractor {
@@ -110,7 +112,8 @@ class FeatureExtractor {
     for (size_t b = 0; b < NUM_BANDS; b++) {
       double sum = 0;
       for (size_t k = this->edge_[b]; k < this->edge_[b + 1] && k < this->bins_; k++) sum += power[k];
-      target[b] = unit((db_power((float) sum * this->power_scale_) - ref_db + RANGE_DB) / RANGE_DB);
+      const float range = std::max(this->settings_.range_db, 1.0f);
+      target[b] = unit((db_power((float) sum * this->power_scale_) - ref_db + range) / range);
     }
 
     // Beat: the low end against its own 1 s mean, so the test is the same at any volume and with any
