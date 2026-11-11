@@ -15,7 +15,7 @@ import { el, setAttr, setText } from "../lib/page-kit.js";
 import { ELEMENT } from "../lib/area-plan.js";
 import { loadPlan, forgetPlan } from "../lib/plan-cache.js";
 import { PENDING_MS, SHORTCUT, detectMethod, newCode, savePending, loadPending, clearPending, shortcutUrl, readingFromSensor, callbackResult,
-  parseScans, phoneEntities, androidCollector } from "../lib/wifi-capture.js";
+  parseScans, phoneEntities, androidCollector, markReturn, saveOutcome, loadOutcome } from "../lib/wifi-capture.js";
 import { checkReading, sampleWithBand } from "../lib/wifi-checks.js";
 
 export const SNAP_M = 1;
@@ -147,6 +147,15 @@ export function render(ctx) {
     <div class="readings" hidden><h3></h3><div class="list"></div><p class="empty"></p></div>`;
   const s = { ctx, card: null, loading: true, spot: null, why: null, pending: loadPending(store(), Date.now()), result: null,
     seen: null, kept: null, collector: null, timer: null, failure: null };
+  // The outcome of a Measure that ended just before this page was built (the Companion app's return builds
+  // it anew): shown again, never kept again.
+  const before = loadOutcome(store(), Date.now());
+  if (before) {
+    s.kept = before.kept ?? null;
+    s.result = before.result ?? null;
+  }
+  // Remembers the outcome for the page built on the app's return; null forgets it.
+  const persist = () => saveOutcome(store(), s.kept || s.result ? { kept: s.kept, result: s.result } : null, Date.now());
   root._survey = s;
   const $ = (sel) => root.querySelector(sel);
   $(".back").addEventListener("click", () => s.ctx.navigate("#/system"));
@@ -185,6 +194,8 @@ export function render(ctx) {
   $(".retry").addEventListener("click", () => {
     s.result = null;
     s.failure = null;
+    s.kept = null;
+    persist();
     update(root, s.ctx);
   });
   $(".keep").addEventListener("click", () => keep(null));
@@ -193,6 +204,7 @@ export function render(ctx) {
     const kept = s.kept;
     s.kept = null;
     s.result = null;
+    persist();
     if (kept) await s.card?.removeSample(kept.t, kept.phone);
     forgetPlan();
     update(root, s.ctx);
@@ -219,6 +231,7 @@ export function render(ctx) {
     s.kept = null;
     s.pending = { code: newCode(), ...s.spot, at: Date.now(), method, phone };
     savePending(store(), s.pending);
+    persist();
     const n = s.ctx.config?.wifi_scans ?? 5;
     if (method === "companion") {
       const entities = phoneEntities(hass, phone);
@@ -276,12 +289,14 @@ export function render(ctx) {
     // Shown as kept at once (Pocket's optimistic pattern); a failed save takes it back with the reason.
     s.kept = sample;
     update(root, s.ctx);
+    persist();
     try {
       await s.card.addSamples([sample]);
       forgetPlan();
     } catch (err) {
       s.kept = null;
       s.failure = err?.message || String(err);
+      persist();
     }
     update(root, s.ctx);
   }
@@ -295,6 +310,8 @@ export function render(ctx) {
     s.result.prediction = sample?.ap && sample.band ? s.card?.predictionAt(pending, sample.ap, sample.band) ?? null : null;
     s.pending = null;
     clearPending(store());
+    if (pending.method !== "companion") markReturn(store(), Date.now());
+    persist();
     // Every check passed: kept at once (a green dot); a warning waits for the person (amber), a failure keeps
     // nothing (red).
     if (sample && s.result.checks.every((c) => c.ok)) keep(null);

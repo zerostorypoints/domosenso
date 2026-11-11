@@ -284,3 +284,21 @@ test("the readings kept: newest first with room, time and value; a tap shows the
   page.update(el, ctx);
   assert.equal(el.querySelectorAll(".readings .reading").length, 1, "the picked room's readings");
 });
+
+test("the outcome survives the page being built again on the app's return: still a green Kept with Undo", async () => {
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = await mount(ctx);
+  tapPlan(2, 1);
+  click($(el, ".measure"));
+  const { code } = loadPending(window.localStorage, Date.now());
+  ctx.hass = surveyHass({ states: reading(code) });
+  page.update(el, ctx);
+  await settle();
+  assert.ok($(el, ".status").classList.contains("ok"));
+  document.body.innerHTML = "";
+  const again = await mount(ctxOf({ hass: surveyHass({ states: reading(code) }), cfg }));
+  assert.ok($(again, ".status").classList.contains("ok"), $(again, ".status").className);
+  assert.ok(text($(again, ".status")).includes("Kept"), text($(again, ".status")));
+  assert.ok(!$(again, ".undo").hidden);
+  assert.equal(card.calls.addSamples.length, 0, "the new page keeps nothing twice");
+});

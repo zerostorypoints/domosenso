@@ -353,8 +353,10 @@ it, or it does not go in.
 - **Readings kept** (a section under the panel): the phone's readings in the plan, newest first, of the
   picked room when there is one; a row (room, time and band, the value) opens its details and every
   scan. The same readings are dots with their dBm on the plan.
-- **The return from Shortcuts** lands on the dashboard without a hash; while a Measure waits, the shell
-  turns that into `#/wifi-survey`. A tap on Home (`#/`) stays Home.
+- **The return from Shortcuts** lands on the dashboard without a hash, and on an iPhone it comes after the
+  page (still open) has received and kept the reading. So the shell turns a dashboard without a hash into
+  `#/wifi-survey` while a Measure waits, or once within 60 s of a reading that came back; the outcome
+  (the dot, Undo, the result) is remembered for the page built anew. A tap on Home (`#/`) stays Home.
 - **A waiting Measure** has Cancel beside it; after 30 s it says the Shortcut may be missing or its
   Server unset, and after 2 min it is given up (Measure is free again).
 - **Per device** (localStorage): the method, the Android phone, the expected network name when the

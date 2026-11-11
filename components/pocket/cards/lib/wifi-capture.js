@@ -60,9 +60,48 @@ export function clearPending(storage) {
   }
 }
 
-// The route Pocket opens on start while a Measure waits for its reading: the Companion app returns to the
-// dashboard's first page, not to the survey (Amendment 1).
-export const resumeRoute = (storage, now) => (loadPending(storage, now) ? "#/wifi-survey" : null);
+export const RETURN_MS = 60_000;
+const RETURN_KEY = "pocket.wifi.returned";
+const OUTCOME_KEY = "pocket.wifi.outcome";
+
+const read = (storage, key) => {
+  try {
+    return JSON.parse(storage.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+};
+const write = (storage, key, value) => {
+  try {
+    if (value == null) storage.removeItem(key);
+    else storage.setItem(key, JSON.stringify(value));
+  } catch {
+    // blocked storage
+  }
+};
+
+// A reading has just come back: the Companion app processes the Shortcut's return address (the dashboard,
+// without the survey's hash) after the page, still open, has received and kept it.
+export const markReturn = (storage, now) => write(storage, RETURN_KEY, { at: now });
+
+// The route Pocket opens when the dashboard is shown without a hash: the survey while a Measure waits for its
+// reading, or once within RETURN_MS of one that came back (Amendment 1); else null.
+export function resumeRoute(storage, now) {
+  if (loadPending(storage, now)) return "#/wifi-survey";
+  const back = read(storage, RETURN_KEY);
+  if (!back || !Number.isFinite(back.at)) return null;
+  write(storage, RETURN_KEY, null);
+  return now - back.at <= RETURN_MS ? "#/wifi-survey" : null;
+}
+
+// The last Measure's outcome ({tone, dbm, t, phone}), shown again when the page is built anew within RETURN_MS.
+export const saveOutcome = (storage, outcome, now) => write(storage, OUTCOME_KEY, outcome && { ...outcome, at: now });
+export function loadOutcome(storage, now) {
+  const o = read(storage, OUTCOME_KEY);
+  if (!o || !Number.isFinite(o.at) || now - o.at > RETURN_MS) return null;
+  const { at: _, ...outcome } = o;
+  return outcome;
+}
 
 // Every value percent-encoded (a space as %20): Shortcuts reads a + in its URL as a plus, not a space.
 const query = (params) => Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");

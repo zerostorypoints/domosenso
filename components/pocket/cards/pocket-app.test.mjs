@@ -1034,3 +1034,15 @@ test("the Companion app's return (the dashboard without a hash, same page) reope
     clearPending(window.localStorage);
   }
 });
+
+test("a reading that just came back reopens the survey once when the app then shows the dashboard without a hash", async () => {
+  const { markReturn } = await import("./lib/wifi-capture.js");
+  const card = mountDemo("#/wifi-survey", { ...demoConfig, floorplan: true, wifi_survey: true });
+  markReturn(window.localStorage, Date.now());
+  window.history.replaceState(null, "", window.location.pathname);
+  card._route();
+  assert.equal(window.location.hash, "#/wifi-survey");
+  window.history.replaceState(null, "", window.location.pathname);
+  card._route();
+  assert.equal(window.location.hash, "", "once");
+});

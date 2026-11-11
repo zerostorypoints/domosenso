@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { detectMethod, newCode, savePending, loadPending, clearPending, resumeRoute, shortcutUrl, parseScans,
+import { detectMethod, newCode, savePending, loadPending, clearPending, resumeRoute, markReturn, saveOutcome, loadOutcome,
+  RETURN_MS, shortcutUrl, parseScans,
   readingFromSensor, callbackResult, phoneEntities, androidCollector, PENDING_MS } from "./wifi-capture.js";
 
 const memory = () => {
@@ -137,4 +138,20 @@ test("androidCollector: after 20 s, 3 scans or more are enough, fewer fail", () 
   assert.equal(c.state(20_001), "failed");
   c.offer(androidHass(3000));
   assert.equal(c.state(20_001), "done");
+});
+
+test("a reading that just came back reopens the survey once, for RETURN_MS: the app's return comes after it", () => {
+  const storage = memory();
+  markReturn(storage, 1_000);
+  assert.equal(resumeRoute(storage, 1_000 + 5_000), "#/wifi-survey");
+  assert.equal(resumeRoute(storage, 1_000 + 6_000), null, "once");
+  markReturn(storage, 1_000);
+  assert.equal(resumeRoute(storage, 1_000 + RETURN_MS + 1), null, "too late: the person went on");
+});
+
+test("the outcome of the last Measure survives the page being built again, for RETURN_MS", () => {
+  const storage = memory();
+  saveOutcome(storage, { tone: "ok", dbm: -51, t: "2026-11-11T18:35:11Z", phone: "ios" }, 1_000);
+  assert.deepEqual(loadOutcome(storage, 2_000), { tone: "ok", dbm: -51, t: "2026-11-11T18:35:11Z", phone: "ios" });
+  assert.equal(loadOutcome(storage, 1_000 + RETURN_MS + 1), null);
 });
