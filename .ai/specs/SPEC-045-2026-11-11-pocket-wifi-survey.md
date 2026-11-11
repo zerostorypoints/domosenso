@@ -1,6 +1,6 @@
 # SPEC-045 — A guided Wi-Fi spot survey in Pocket, measured with the phone
 
-**Status:** draft 2026-11-11, waiting for the maintainer's approval.
+**Status:** approved 2026-11-11 by the maintainer ("Approve, write plan").
 
 **Source:** the maintainer, 2026-11-11, after SPEC-044 was prototyped on a real home: surveying
 needs a laptop today; the maintainer carries an iPhone and wants the survey in Pocket, guided by the

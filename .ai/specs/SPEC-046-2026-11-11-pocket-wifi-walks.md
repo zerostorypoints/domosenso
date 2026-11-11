@@ -1,6 +1,6 @@
 # SPEC-046 — Wi-Fi walk recordings in Pocket: handovers while moving, for calls that drop
 
-**Status:** draft 2026-11-11, waiting for the maintainer's approval.
+**Status:** approved 2026-11-11 by the maintainer ("Approve, write plan").
 
 **Source:** the maintainer, 2026-11-11: calls (Teams) drop while walking between rooms on a mesh
 network after a phone change; a spot survey shows levels, not what happens during a handover.
