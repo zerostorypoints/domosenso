@@ -58,7 +58,8 @@ import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValu
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots }
   from "./lib/wifi.js";
-import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations } from "./lib/wifi-sources.js";
+import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
+  observationIndex } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage } from "./lib/wifi-fit.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
@@ -322,6 +323,7 @@ class FloorplanCard extends HTMLElement {
     this._readCache = new WeakMap();
     this._lamps = lampIndex(h);
     this._signalIds = signalEntities(h, wifiRules);
+    this._obsIndex = observationIndex(h, wifiRules);
   }
 
   // A point's reading entities by device class (a plant's through its named sensors).
@@ -406,22 +408,30 @@ class FloorplanCard extends HTMLElement {
 
   // Every floor's device observations (the fit is home-wide), from the 24-hour means of their signal
   // sensors (a sensor without statistics gives its state), with the plan's survey and manual samples, and a digest of what the fit reads: the
-  // readings to OBS_DB, their places, access points and bands. Worked out again when the plan, a state
-  // or the statistics change; the fit only when the digest does.
+  // readings to OBS_DB, their places, access points and bands. Worked out again when the plan, the
+  // registries (the index), the statistics or the state of an entity the observations read (signal,
+  // BSSID, router tracker) change, not for any other state; the fit only when the digest does.
   _observations() {
     const h = this._hass;
-    const from = [this._doc, h.states, h.entities, h.devices, this._stats];
-    if (this._obsMemo && from.every((v, i) => v === this._obsMemo.from[i])) return this._obsMemo;
+    const from = [this._doc, this._obsIndex, this._stats];
+    const watched = this._obsIndex.watched.map((id) => h.states?.[id]);
+    const m = this._obsMemo;
+    if (m && from.every((v, i) => v === m.from[i]) && watched.every((v, i) => v === m.watched[i])) return m;
     const values = {};
     for (const id of this._signalIds) {
       const mean = figure(this._stats?.[id], "mean");
       if (mean !== undefined) values[id] = mean;
     }
-    const list = this._doc.floors.flatMap((f) => [...deviceObservations(h, this._doc, f.floor_id, wifiRules, values),
-      ...sampleObservations(this._doc, f.floor_id)]);
+    const list = this._buildObservations(values);
     const digest = list.map((o) => [o.entity ?? o.source, o.floorId, o.x, o.y, o.ap, o.band, Math.round(o.dbm / OBS_DB) * OBS_DB].join("|")).join(";");
-    this._obsMemo = { from, list, digest };
+    this._obsMemo = { from, watched, list, digest };
     return this._obsMemo;
+  }
+
+  // Every floor's device and sample observations: a method of its own, so a test counts the builds.
+  _buildObservations(values) {
+    return this._doc.floors.flatMap((f) => [...deviceObservations(this._hass, this._doc, f.floor_id, wifiRules, values, this._obsIndex),
+      ...sampleObservations(this._doc, f.floor_id)]);
   }
 
   // The fit of the whole home, once per plan, openings' states and readings' digest: every band and

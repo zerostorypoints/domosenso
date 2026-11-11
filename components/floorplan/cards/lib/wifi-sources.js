@@ -43,8 +43,9 @@ const BAND_OF_CONNECTION = { band2_4: "2.4", band5: "5", band6: "6" };
 const UNKNOWN_WEIGHT = 0.5;
 
 const deviceOf = (hass, entityId) => hass.entities?.[entityId]?.device_id ?? null;
-const entitiesOfDevice = (hass, deviceId) =>
-  Object.values(hass.entities || {}).filter((e) => e.device_id === deviceId).map((e) => e.entity_id);
+// A device's entity ids, from the prebuilt index when there is one (observationIndex).
+const entitiesOfDevice = (hass, deviceId, ix = null) => (ix ? ix.byDevice.get(deviceId) ?? []
+  : Object.values(hass.entities || {}).filter((e) => e.device_id === deviceId).map((e) => e.entity_id));
 const objectId = (entityId) => entityId.slice(entityId.indexOf(".") + 1);
 const macsOf = (hass, deviceId) =>
   (hass.devices?.[deviceId]?.connections || []).filter(([type]) => type === "mac").map(([, v]) => normMac(v));
@@ -69,14 +70,37 @@ export function signalEntities(hass, rules) {
   return Object.keys(hass.entities || {}).filter((id) => isSignalEntity(hass, id, rules));
 }
 
+// What deviceObservations looks up in the registries, built once per registry change: each device's
+// entity ids, the access point integrations' device trackers, and `watched`, the entities whose states
+// the observations read (Wi-Fi signals, BSSIDs, those trackers). A card keys its observations on the
+// states of `watched` alone: hass is set for every state change in Home Assistant.
+export function observationIndex(hass, rules) {
+  const byDevice = new Map();
+  for (const e of Object.values(hass.entities || {})) {
+    if (!e.device_id) continue;
+    (byDevice.get(e.device_id) ?? byDevice.set(e.device_id, []).get(e.device_id)).push(e.entity_id);
+  }
+  const platforms = new Set((rules?.access_points || []).map((r) => r.integration));
+  const words = rules?.signal?.bssid_object_id || [];
+  const ids = Object.keys(hass.entities || {});
+  const trackers = ids.filter((id) => id.startsWith("device_tracker.") && platforms.has(hass.entities[id].platform));
+  const signals = new Set(signalEntities(hass, rules));
+  const apBssid = (id) => (rules?.access_points || []).some((rule) => hass.entities[id].platform === rule.integration
+    && Object.values(rule.bssid || {}).some((suffix) => id.endsWith(`_${suffix}`)));
+  const tracked = new Set(trackers);
+  const watched = ids.filter((id) => signals.has(id) || tracked.has(id) || apBssid(id)
+    || words.some((w) => objectId(id).includes(w)));
+  return { byDevice, trackers, watched };
+}
+
 // The BSSID entities of an access point: its band and the BSSID the integration reports for it.
-function apBssids(hass, apKey, rules) {
+function apBssids(hass, apKey, rules, ix) {
   const deviceId = hass.entities?.[apKey] ? deviceOf(hass, apKey) : apKey;
   const out = [];
   if (!deviceId) return out;
   for (const rule of rules?.access_points || []) {
     for (const [band, suffix] of Object.entries(rule.bssid || {})) {
-      for (const id of entitiesOfDevice(hass, deviceId)) {
+      for (const id of entitiesOfDevice(hass, deviceId, ix)) {
         if (hass.entities[id].platform !== rule.integration || !id.endsWith(`_${suffix}`)) continue;
         const mac = normMac(hass.states?.[id]?.state);
         if (mac) out.push({ band, mac });
@@ -87,15 +111,15 @@ function apBssids(hass, apKey, rules) {
 }
 
 // The access point (by key) and band the device's own BSSID sensor points to, among the marked access points.
-function byBssid(hass, deviceId, aps, rules) {
+function byBssid(hass, deviceId, aps, rules, ix) {
   const words = rules?.signal?.bssid_object_id || [];
-  const mine = entitiesOfDevice(hass, deviceId)
+  const mine = entitiesOfDevice(hass, deviceId, ix)
     .filter((id) => words.some((w) => objectId(id).includes(w)))
     .map((id) => normMac(hass.states?.[id]?.state))
     .filter((m) => m && /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(m));
   for (const mac of mine) {
     for (const ap of aps) {
-      const hit = apBssids(hass, ap, rules).find((b) => b.mac === mac);
+      const hit = apBssids(hass, ap, rules, ix).find((b) => b.mac === mac);
       if (hit) return { ap, band: hit.band };
     }
   }
@@ -104,26 +128,27 @@ function byBssid(hass, deviceId, aps, rules) {
 
 // The router's client tracker for one of the device's MACs: the access point is the node whose own
 // tracker has the client's `deco_mac`, the band comes from `connection_type`.
-function byTracker(hass, deviceId, aps, rules) {
+function byTracker(hass, deviceId, aps, rules, ix) {
   const macs = macsOf(hass, deviceId);
   if (!macs.length) return null;
   for (const rule of rules?.access_points || []) {
-    for (const [id, reg] of Object.entries(hass.entities || {})) {
+    for (const id of ix ? ix.trackers : Object.keys(hass.entities || {})) {
+      const reg = hass.entities[id];
       if (reg.platform !== rule.integration || !id.startsWith("device_tracker.")) continue;
       const attrs = hass.states?.[id]?.attributes || {};
       if (!macs.includes(normMac(attrs.mac))) continue;
       const band = BAND_OF_CONNECTION[attrs.connection_type];
       if (!band) continue; // wired / undefined: this tracker says nothing
       const node = normMac(attrs.deco_mac);
-      const ap = node && aps.find((key) => nodeMacs(hass, key, rule).includes(node));
+      const ap = node && aps.find((key) => nodeMacs(hass, key, rule, ix).includes(node));
       return { ap: ap ?? null, band };
     }
   }
   return null;
 }
 
-function nodeMacs(hass, apKey, rule) {
-  const ids = hass.entities?.[apKey] ? [apKey] : entitiesOfDevice(hass, apKey);
+function nodeMacs(hass, apKey, rule, ix) {
+  const ids = hass.entities?.[apKey] ? [apKey] : entitiesOfDevice(hass, apKey, ix);
   return ids
     .filter((id) => id.startsWith("device_tracker.") && hass.entities[id]?.platform === rule.integration)
     .map((id) => normMac(hass.states?.[id]?.attributes?.mac))
@@ -131,8 +156,9 @@ function nodeMacs(hass, apKey, rule) {
 }
 
 // One observation per Wi-Fi signal entity of a placed point on `floorId`. `values` holds the entities'
-// 24 h means; an entity without one reports its state.
-export function deviceObservations(hass, doc, floorId, rules, values) {
+// 24 h means; an entity without one reports its state. `index` (optional): observationIndex(hass, rules)
+// of the same registries, which spares the scans of every entity.
+export function deviceObservations(hass, doc, floorId, rules, values, index = null) {
   const floor = (doc.floors || []).find((f) => f.floor_id === floorId);
   if (!floor) return [];
   const aps = (doc.floors || []).flatMap((f) => (f.access_points || []).map(keyOf));
@@ -140,12 +166,13 @@ export function deviceObservations(hass, doc, floorId, rules, values) {
   for (const point of floor.points || []) {
     if (point.placed === false || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
     const deviceId = point.device_id ?? deviceOf(hass, point.entity_id);
-    const ids = point.device_id ? entitiesOfDevice(hass, point.device_id) : [point.entity_id];
+    const ids = point.device_id ? entitiesOfDevice(hass, point.device_id, index) : [point.entity_id];
     for (const id of ids.filter((i) => isSignalEntity(hass, i, rules))) {
       const raw = values?.[id] ?? hass.states[id].state;
       const dbm = typeof raw === "number" ? raw : raw === "" || raw == null ? NaN : Number(raw);
       if (!Number.isFinite(dbm)) continue;
-      const found = (deviceId && (byBssid(hass, deviceId, aps, rules) || byTracker(hass, deviceId, aps, rules))) || null;
+      const found = (deviceId && (byBssid(hass, deviceId, aps, rules, index)
+        || byTracker(hass, deviceId, aps, rules, index))) || null;
       const ap = found?.ap ?? null;
       out.push({
         floorId, x: point.x, y: point.y, band: found?.band ?? "2.4", ap, dbm,

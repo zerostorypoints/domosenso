@@ -227,3 +227,27 @@ test("sampleObservations: a floor's samples as observations, survey or manual, t
   assert.deepEqual(sampleObservations({ ...doc, wifi: { samples: [{ floor_id: "ground", x: 1, y: 1, band: "5", dbm: "x" }] } }, "ground"), [],
     "a sample the model cannot read is left out");
 });
+
+// ---- the prebuilt index (final review: observations per registry change, not per state) ----
+import { observationIndex } from "./wifi-sources.js";
+
+test("observationIndex: deviceObservations reads the same with the index as without", () => {
+  const ix = observationIndex(obsHass, rules);
+  const pts = [espPt, { device_id: "dev-plug", x: 1, y: 1 }, { device_id: "dev-ruuvi", x: 2, y: 2 }];
+  for (const aps of [undefined, [{ device_id: "dev-ap2" }], []]) {
+    const doc = obsDoc(pts, aps);
+    assert.deepEqual(deviceObservations(obsHass, doc, "f1", rules, {}, ix), deviceObservations(obsHass, doc, "f1", rules, {}));
+  }
+});
+
+test("observationIndex watches the signals, BSSIDs and router trackers, not other entities", () => {
+  const h = { ...obsHass, entities: { ...obsHass.entities, "switch.alex_deco_led": ent("switch.alex_deco_led", "dev-ap", "tplink_deco") } };
+  const ix = observationIndex(h, rules);
+  assert.deepEqual([...ix.watched].sort(), [
+    "device_tracker.alex_deco", "device_tracker.plug", "device_tracker.sam_deco",
+    "sensor.alex_deco_bssid_2_4_ghz", "sensor.alex_deco_bssid_5_ghz", "sensor.esp_connected_ap_bssid",
+    "sensor.esp_wi_fi_signal", "sensor.plug_wi_fi_signal", "sensor.sam_deco_bssid_2_4_ghz",
+  ]);
+  assert.deepEqual(ix.byDevice.get("dev-ap"), ["device_tracker.alex_deco", "sensor.alex_deco_bssid_2_4_ghz",
+    "sensor.alex_deco_bssid_5_ghz", "switch.alex_deco_led"]);
+});

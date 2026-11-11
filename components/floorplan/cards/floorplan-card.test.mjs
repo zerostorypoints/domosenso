@@ -2095,6 +2095,34 @@ test("calibration: the fit runs once per plan and readings, not per band nor on 
   window.localStorage.clear();
 });
 
+test("calibration: the observations are built again for a signal, BSSID or tracker state, not for another entity's", async () => {
+  window.localStorage.clear();
+  const hass = sourceHass();
+  hass.entities["device_tracker.atom"] = { entity_id: "device_tracker.atom", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.atom"] = { state: "home", attributes: { mac: "02:00:00:00:00:aa", connection_type: "band5" } };
+  const card = await make({ plan: sourcePlan(), layers: ["radio"] }, hass);
+  await settle();
+  let builds = 0;
+  const build = card._buildObservations.bind(card);
+  card._buildObservations = (...args) => (builds++, build(...args));
+  const setState = (id, state) => {
+    card.hass = { ...card._hass, states: { ...card._hass.states, [id]: { ...card._hass.states[id], state } } };
+    card._observations();
+  };
+  card._observations();
+  setState("switch.mesh_led", "off");
+  assert.equal(builds, 0, "another entity's state: the same observations");
+  setState("sensor.atom_wi_fi_signal", "-60");
+  assert.equal(builds, 1, "a signal sensor");
+  setState("sensor.atom_connected_ap_bssid", BSSID_5);
+  assert.equal(builds, 2, "the device's BSSID");
+  setState("sensor.mesh_bssid_5_ghz", "02:00:00:00:00:03");
+  assert.equal(builds, 3, "an access point's BSSID");
+  setState("device_tracker.atom", "not_home");
+  assert.equal(builds, 4, "a router tracker");
+  window.localStorage.clear();
+});
+
 test("calibration: a signal source's label shows its dBm, band and access point; its 24 h mean once the statistics arrive", async () => {
   window.localStorage.clear();
   const card = await make({ plan: sourcePlan(), layers: ["radio"] }, sourceHass());
