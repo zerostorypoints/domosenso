@@ -124,7 +124,8 @@ def build(kind: str) -> dict:
             'WFWorkflowIcon': {'WFWorkflowIconStartColor': 463140863, 'WFWorkflowIconGlyphNumber': 59511}}
 
 
-FILES = {'event': 'domosenso-wifi.shortcut', 'callback': 'domosenso-wifi-safari.shortcut'}
+# Named as Pocket runs them: Shortcuts names an imported file after the file, not after its WFWorkflowName.
+FILES = {kind: f'{name}.shortcut' for kind, name in NAMES.items()}
 
 
 def file_name(kind: str) -> str:

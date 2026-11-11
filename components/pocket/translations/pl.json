@@ -848,8 +848,12 @@
           "done": "Zainstalowano",
           "android_title": "Wybierz ten telefon",
           "android": "Włącz czujniki Wi-Fi w aplikacji Companion (siła sygnału, BSSID, częstotliwość, szybkość łącza, połączenie), potem wybierz ten telefon.",
-          "phone": "Ten telefon…"
-        }
+          "phone": "Ten telefon…",
+          "file": "Albo pobierz plik i otwórz go w Skrótach"
+        },
+        "cancel": "Anuluj",
+        "slow": "Brak odczytu. Czy skrót \"Domosenso Wi-Fi\" jest zainstalowany i ma wybrany Server?",
+        "none_arrived": "Odczyt nie dotarł. Zmierz ponownie."
       }
     }
   }

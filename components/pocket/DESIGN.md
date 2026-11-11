@@ -341,7 +341,11 @@ it, or it does not go in.
   band and channel, access point, noise, rates, spread, the model's value), the failed checks (hard
   in the poor colour, soft in the fair one) and Keep / Retry, or the 2.4 / 6 GHz pick.
 - **Install card:** a first use per device shows what that phone needs (the Shortcut and its Server
-  step; on Android the Companion app's sensors and the phone picker) above the panel, until done.
+  step; on Android the Companion app's sensors and the phone picker) above the panel, until done. The
+  Shortcut installs through Shortcuts' own `import-shortcut` link (no download in Safari between), named
+  as Pocket runs it; the file itself is the fallback link.
+- **A waiting Measure** has Cancel beside it; after 30 s it says the Shortcut may be missing or its
+  Server unset, and after 2 min it is given up (Measure is free again).
 - **Per device** (localStorage): the method, the Android phone, the expected network name when the
   home sets none, the Shortcut installed. A Measure waiting for the iPhone's reading is kept there
   too, and the shell reopens `#/wifi-survey` from Home while it waits (the Companion app returns to

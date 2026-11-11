@@ -14,17 +14,22 @@
 import { el, setAttr, setText } from "../lib/page-kit.js";
 import { ELEMENT } from "../lib/area-plan.js";
 import { loadPlan, forgetPlan } from "../lib/plan-cache.js";
-import { detectMethod, newCode, savePending, loadPending, clearPending, shortcutUrl, readingFromSensor, callbackResult,
+import { PENDING_MS, SHORTCUT, detectMethod, newCode, savePending, loadPending, clearPending, shortcutUrl, readingFromSensor, callbackResult,
   parseScans, phoneEntities, androidCollector } from "../lib/wifi-capture.js";
 import { checkReading, sampleWithBand } from "../lib/wifi-checks.js";
 
 export const SNAP_M = 1;
+export const SLOW_MS = 30_000;           // a reading this late: the Shortcut may be missing or its Server unset
 const READING = "sensor.domosenso_wifi_reading";
 const KEY = { method: "pocket.wifi.method", phone: "pocket.wifi.phone", ssid: "pocket.wifi.ssid", installed: "pocket.wifi.installed" };
 // The Shortcuts tools/pocket_shortcuts.py writes, served beside the cards: the Companion app's (event) and
 // Safari's (x-callback).
-const SHORTCUT_FILE = { "shortcut-event": new URL("../shortcuts/domosenso-wifi.shortcut", import.meta.url).href,
-  "shortcut-callback": new URL("../shortcuts/domosenso-wifi-safari.shortcut", import.meta.url).href };
+// Shortcuts names an imported file after the file, so each is named as Pocket runs it.
+const SHORTCUT_FILE = { "shortcut-event": new URL(`../shortcuts/${SHORTCUT}.shortcut`, import.meta.url).href,
+  "shortcut-callback": new URL(`../shortcuts/${SHORTCUT} Safari.shortcut`, import.meta.url).href };
+const SHORTCUT_NAME = { "shortcut-event": SHORTCUT, "shortcut-callback": `${SHORTCUT} Safari` };
+// Shortcuts' own import: it fetches the file and opens the import, no download in Safari between.
+const importUrl = (file, name) => `shortcuts://import-shortcut?url=${encodeURIComponent(file)}&name=${encodeURIComponent(name)}`;
 
 const STYLE = `
   .wifi-survey .top { display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; }
@@ -53,6 +58,7 @@ const STYLE = `
                                                display: flex; flex-direction: column; gap: 4px; overflow-wrap: break-word; }
   .wifi-survey .checks .bad { color: var(--bad); }
   .wifi-survey .checks .warn { color: var(--warn); }
+  .wifi-survey .install a.install-file { font-size: 13px; }
   .wifi-survey .install a { color: var(--acc); font-size: 15px; min-height: 44px; display: flex; align-items: center; }
   .wifi-survey .install p { margin: 0; font-size: 13px; color: var(--mut); overflow-wrap: break-word; }
   .wifi-survey select { min-height: 44px; font: inherit; }
@@ -104,12 +110,13 @@ export function render(ctx) {
     <div class="top"><button class="back" type="button"><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
     <p class="none" hidden></p>
     <div class="box" hidden></div>
-    <div class="install" hidden><b class="install-title"></b><p class="install-text"></p><a class="install-link" target="_blank"></a>
+    <div class="install" hidden><b class="install-title"></b><p class="install-text"></p><a class="install-link" target="_blank"></a><a class="install-file" target="_blank"></a>
       <p class="install-server"></p><select class="phone-pick" hidden></select><button class="act done" type="button"></button></div>
     <div class="panel" hidden>
       <div class="method"><span class="method-name"></span><button class="link change" type="button"></button></div>
       <div class="why"></div>
-      <div class="row"><button class="act primary measure" type="button"></button><span class="progress"></span></div>
+      <div class="row"><button class="act primary measure" type="button"></button><button class="act cancel" type="button" hidden></button>
+        <span class="progress"></span></div>
       <div class="result" hidden>
         <div class="value"></div><ul class="facts"></ul><ul class="checks"></ul>
         <div class="row bands" hidden><button class="act" type="button" data-band="2.4">2.4 GHz</button>
@@ -137,6 +144,10 @@ export function render(ctx) {
     update(root, s.ctx);
   });
   $(".measure").addEventListener("click", () => measure());
+  $(".cancel").addEventListener("click", () => {
+    stop(null);
+    update(root, s.ctx);
+  });
   $(".retry").addEventListener("click", () => {
     s.result = null;
     s.failure = null;
@@ -169,6 +180,7 @@ export function render(ctx) {
     if (method === "companion" && !phone) return void update(root, s.ctx);
     s.result = null;
     s.failure = null;
+    s.note = null;
     s.kept = null;
     s.pending = { code: newCode(), ...s.spot, at: Date.now(), method, phone };
     savePending(store(), s.pending);
@@ -189,6 +201,16 @@ export function render(ctx) {
     update(root, s.ctx);
   }
   s.measure = measure;
+
+  // The waiting Measure ends without a reading: cancelled (note null) or given up.
+  function stop(note) {
+    s.pending = null;
+    s.collector = null;
+    s.note = note;
+    clearInterval(s.timer);
+    clearPending(store());
+  }
+  s.stop = stop;
 
   function send(phone) {
     const hass = s.ctx.hass;
@@ -314,6 +336,8 @@ export function update(root, ctx) {
     }
   }
   if (s.collector && s.collector.offer(hass)) s.send(s.pending?.phone);
+  const waited = s.pending ? Date.now() - s.pending.at : 0;
+  if (s.pending && !s.collector && waited > PENDING_MS) s.stop("none_arrived");
 
   const method = s.methodOf();
   installCard(root, ctx, method);
@@ -323,8 +347,12 @@ export function update(root, ctx) {
   const measure = $(".measure");
   setText(measure, t("card.pocket.wifi.measure"));
   measure.disabled = !s.spot || !!s.pending || (method === "companion" && !get(KEY.phone));
+  const cancel = $(".cancel");
+  cancel.hidden = !s.pending;
+  setText(cancel, t("card.pocket.wifi.cancel"));
   setText($(".progress"), s.pending ? (s.collector ? t("card.pocket.wifi.reading", { n: s.collector.scans.length,
-    total: ctx.config?.wifi_scans ?? 5 }) : t("card.pocket.wifi.waiting")) : s.failure ? t("card.pocket.wifi.failed", { error: s.failure }) : "");
+    total: ctx.config?.wifi_scans ?? 5 }) : t(waited > SLOW_MS ? "card.pocket.wifi.slow" : "card.pocket.wifi.waiting"))
+    : s.failure ? t("card.pocket.wifi.failed", { error: s.failure }) : s.note ? t(`card.pocket.wifi.${s.note}`) : "");
 
   const box = $(".result");
   const r = s.result;
@@ -368,6 +396,7 @@ function installCard(root, ctx, method) {
     setText($(".install-title"), t("card.pocket.wifi.install.android_title"));
     setText($(".install-text"), t("card.pocket.wifi.install.android"));
     $(".install-link").hidden = true;
+    $(".install-file").hidden = true;
     $(".install-server").hidden = true;
     $(".done").hidden = true;
     pick.hidden = false;
@@ -391,8 +420,13 @@ function installCard(root, ctx, method) {
   setText($(".install-text"), t("card.pocket.wifi.install.iphone"));
   const link = $(".install-link");
   link.hidden = false;
-  setAttr(link, "href", SHORTCUT_FILE[method] ?? SHORTCUT_FILE["shortcut-event"]);
+  const kind = SHORTCUT_FILE[method] ? method : "shortcut-event";
+  setAttr(link, "href", importUrl(SHORTCUT_FILE[kind], SHORTCUT_NAME[kind]));
   setText(link, t("card.pocket.wifi.install.link"));
+  const file = $(".install-file");
+  file.hidden = false;
+  setAttr(file, "href", SHORTCUT_FILE[kind]);
+  setText(file, t("card.pocket.wifi.install.file"));
   const server = $(".install-server");
   server.hidden = method !== "shortcut-event";
   setText(server, t("card.pocket.wifi.install.server"));

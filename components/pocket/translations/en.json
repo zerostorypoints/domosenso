@@ -848,8 +848,12 @@
           "done": "Installed",
           "android_title": "Choose this phone",
           "android": "Turn on the Companion app's Wi-Fi sensors (signal strength, BSSID, frequency, link speed, connection), then choose this phone.",
-          "phone": "This phone…"
-        }
+          "phone": "This phone…",
+          "file": "Or download the file and open it in Shortcuts"
+        },
+        "cancel": "Cancel",
+        "slow": "No reading yet. Is the Shortcut \"Domosenso Wi-Fi\" installed, and its Server chosen?",
+        "none_arrived": "No reading arrived. Measure again."
       }
     }
   }

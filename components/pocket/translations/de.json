@@ -848,8 +848,12 @@
           "done": "Installiert",
           "android_title": "Dieses Telefon wählen",
           "android": "Die WLAN-Sensoren der Companion-App einschalten (Signalstärke, BSSID, Frequenz, Verbindungsgeschwindigkeit, Verbindung), dann dieses Telefon wählen.",
-          "phone": "Dieses Telefon…"
-        }
+          "phone": "Dieses Telefon…",
+          "file": "Oder die Datei laden und in Kurzbefehle öffnen"
+        },
+        "cancel": "Abbrechen",
+        "slow": "Noch keine Messung. Ist der Kurzbefehl \"Domosenso Wi-Fi\" installiert und sein Server gewählt?",
+        "none_arrived": "Keine Messung angekommen. Erneut messen."
       }
     }
   }

@@ -185,7 +185,12 @@ test("first use on an iPhone: the install card with the Shortcut and the Server 
   const el = await mount(ctxOf({ hass: surveyHass(), cfg }));
   const install = $(el, ".install");
   assert.ok(!install.hidden);
-  assert.ok($(install, "a").getAttribute("href").endsWith("/shortcuts/domosenso-wifi.shortcut"));
+  const href = $(install, "a.install-link").getAttribute("href");
+  assert.ok(href.startsWith("shortcuts://import-shortcut?"), href);
+  const q = new URL(href).searchParams;
+  assert.equal(q.get("name"), "Domosenso Wi-Fi", "Shortcuts names it as Pocket runs it");
+  assert.ok(/^[a-z]+:\/\/.*\/shortcuts\/Domosenso%20Wi-Fi\.shortcut$/.test(q.get("url")), q.get("url"));
+  assert.ok($(install, "a.install-file").getAttribute("href").endsWith("/shortcuts/Domosenso%20Wi-Fi.shortcut"), "the file, as a fallback");
   assert.ok(text(install).includes("Server"), text(install));
   click($(install, ".done"));
   assert.ok(install.hidden);
@@ -208,4 +213,26 @@ test("an update never hides a shown part for a moment: the page keeps its height
   watch.disconnect();
   const flips = [...touched].filter((n) => shownBefore.has(n) && !n.hidden).map((n) => n.className);
   assert.deepEqual(flips, []);
+});
+
+test("a Measure waiting for its reading can be cancelled; after 30 s a hint, after 2 min it is given up", async () => {
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = await mount(ctx);
+  tapPlan(2, 1);
+  click($(el, ".measure"));
+  assert.ok($(el, ".measure").disabled);
+  assert.ok(!$(el, ".cancel").hidden);
+  click($(el, ".cancel"));
+  assert.ok(!$(el, ".measure").disabled);
+  assert.ok($(el, ".cancel").hidden);
+  assert.equal(loadPending(window.localStorage, Date.now()), null);
+  click($(el, ".measure"));
+  el._survey.pending.at -= 31_000;
+  page.update(el, ctx);
+  assert.ok(text($(el, ".progress")).includes("Server"), text($(el, ".progress")));
+  el._survey.pending.at -= 90_000;
+  page.update(el, ctx);
+  assert.ok(!$(el, ".measure").disabled, "given up after 2 min");
+  assert.ok($(el, ".cancel").hidden);
+  assert.ok(text($(el, ".progress")).includes("No reading arrived"), text($(el, ".progress")));
 });
