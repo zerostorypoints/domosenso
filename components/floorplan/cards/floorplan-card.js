@@ -150,7 +150,7 @@ class FloorplanCard extends HTMLElement {
     this._config = { edit: true, values: true, maps: true, zoom: true, chips: true, tap_tips: true, ...config };
     // One area's room (a phone's area page): read-only, so its scoped floor is never saved.
     if (this._config.area) this._config.edit = false;
-    this._scoped = new WeakMap();  // floor -> that floor with the area's room alone (config.area)
+    this._scoped = new WeakMap();  // floor -> Map(area -> that floor with the area's room alone): config.area changes (focusRoom)
     this._status = "loading";      // loading | none | unsupported | no_area | ready
     this._doc = null;              // the plan as edited
     this._loaded = null;           // the plan as read: the save guard compares against it
@@ -580,16 +580,17 @@ class FloorplanCard extends HTMLElement {
   // and its openings. An opening whose first room is the other one is turned round (the same wall,
   // the same side it opens into), so its shape is found from this room. Kept per floor object.
   _scope(floor) {
-    let scoped = this._scoped.get(floor);
-    if (scoped) return scoped;
     const area = this._config.area;
+    const byArea = this._scoped.get(floor) ?? this._scoped.set(floor, new Map()).get(floor);
+    let scoped = byArea.get(area);
+    if (scoped) return scoped;
     const room = floor.rooms.find((r) => r.area_id === area);
     const inside = (p) => room && (pointInPolygon([p.x, p.y], room.polygon) || snapToEdge(room.polygon, [p.x, p.y], 1e-6));
     const openings = (floor.openings || []).filter((o) => room && o.rooms.includes(area)).map((o) =>
       (o.rooms.find((x) => x !== null) === area ? o
         : { ...o, rooms: [area, ...o.rooms.filter((x) => x !== area)], opens: opensInto(o) ?? "outside" }));
     scoped = { ...floor, rooms: room ? [room] : [], points: floor.points.filter(inside), openings, open_spaces: [] };
-    this._scoped.set(floor, scoped);
+    byArea.set(area, scoped);
     return scoped;
   }
 

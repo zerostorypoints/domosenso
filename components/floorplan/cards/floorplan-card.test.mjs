@@ -2714,3 +2714,20 @@ test("phone survey: the kept readings show as dots with their dBm on the band ma
   assert.equal(dots[0].getAttribute("data-source"), "phone");
   assert.ok(dots[0].textContent.includes("48"), dots[0].textContent);
 });
+
+test("phone survey: focusRoom from one room straight to another shows the other (the scoped floor is per room)", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+  await settle();
+  card.focusRoom("kitchen");
+  await settle();
+  card.focusRoom("living_room");                               // x 0..5, y 0..4
+  await settle();
+  const inLiving = (px, py) => px >= -1e-6 && px <= 5 + 1e-6 && py >= -1e-6 && py <= 4 + 1e-6;
+  const cells = [...card.shadowRoot.querySelectorAll(".heat rect[data-dbm]")];
+  assert.ok(cells.length > 0 && cells.every((c) => inLiving(Number(c.getAttribute("x")), Number(c.getAttribute("y")))),
+    "the living room's map, not the kitchen's");
+  assert.ok(card.surveySpots().every((p) => inLiving(p.x, p.y)), JSON.stringify(card.surveySpots()));
+  const [x] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  assert.ok(x < 0, `fitted to the living room: ${x}`);
+});
