@@ -195,7 +195,7 @@ screen, the report. UPGRADE.md: "Install the walk Shortcut on the iPhone."
 
 ## Amendment 1 (S0 results, 2026-11-11)
 
-- Status: draft, waiting for the maintainer's approval. Source: SPEC-045's S0 spike.
+- Status: approved 2026-11-11 by the maintainer ("Approve, start Task 1"). Source: SPEC-045's S0 spike.
 - SPEC-045 Amendment 1 applies here: the Fire event action's real identifier
   (`io.robbie.HomeAssistant.FireEventIntent`), the Server chosen once after installing, scans as JSON
   text, the return without a fragment and Pocket reopening its own route.

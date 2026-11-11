@@ -337,7 +337,7 @@ verified: how fast the app answers repeated commands; S0 measures it).
 
 ## Amendment 1 (S0 results, 2026-11-11)
 
-- Status: draft, waiting for the maintainer's approval. Source: the S0 spike on the maintainer's
+- Status: approved 2026-11-11 by the maintainer ("Approve, start Task 1"). Source: the S0 spike on the maintainer's
   iPhone (iOS, HA Companion app, a mesh on one SSID), with a read-only listener on Home Assistant.
 - **Verified:**
   - A Shortcut generated as a binary plist and signed with `shortcuts sign --mode anyone` on macOS

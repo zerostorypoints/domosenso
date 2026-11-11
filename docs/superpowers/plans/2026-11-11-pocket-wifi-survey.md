@@ -185,11 +185,13 @@ the model, samples and fit; `components/pocket/DESIGN.md` for every screen.
 
 **Interfaces (Produces):**
 - `detectMethod(win) -> "companion" | "shortcut-event" | "shortcut-callback" | null`
-- `newCode(rand = crypto.getRandomValues) -> string` (12 base32); `pending` store:
-  `savePending(storage, {code, floor_id, x, y, at, method, phone})`, `loadPending(storage, now) -> pending|null` (null after 120 s), `clearPending(storage)`.
-- `shortcutUrl({code, n, mode, returnUrl}) -> string` (`shortcuts://run-shortcut?...` for event,
+- `newCode(rand = crypto.getRandomValues) -> string` (12 base32); `pending` store in **localStorage**
+  (SPEC-045 Amendment 1): `savePending(storage, {code, floor_id, x, y, at, method, phone})`,
+  `loadPending(storage, now) -> pending|null` (null after 120 s), `clearPending(storage)`;
+  `resumeRoute(storage, now) -> "#/wifi-survey" | null` (the shell calls it on start).
+- `shortcutUrl({code, n, mode, returnUrl}) -> string` (`returnUrl` `homeassistant://navigate/<dashboard path>`, no fragment) (`shortcuts://run-shortcut?...` for event,
   `shortcuts://x-callback-url/run-shortcut?...&x-success=` for callback).
-- `parseScans(raw) -> Scan[]`; `Scan = {t, ssid, bssid, mac, dbm, noise, channel, standard, rx, tx, mhz}`
+- `parseScans(raw) -> Scan[]` (raw: the event's `scans`, every value a string, Amendment 1); `Scan = {t, ssid, bssid, mac, dbm, noise, channel, standard, rx, tx, mhz}`
   numbers or null, MACs normalised lower-case colons.
 - `readingFromSensor(state, pending) -> {scans, user_id} | null` (state = the sensor's HA state).
 - `callbackResult(location) -> string | null` (`result` from the query or after the fragment).
@@ -220,7 +222,7 @@ the model, samples and fit; `components/pocket/DESIGN.md` for every screen.
   `ctx = {pending, now, userId, readingUserId, phoneEntities, ssid, resolve, spot}`,
   `Check = {id, ok, level: "hard"|"soft", reason}` (reason a translation key `card.pocket.wifi.check.<id>`),
   `Sample` exactly SPEC-045's shape (`dbm`, `noise`, `channel` medians of the majority BSSID's scans,
-  `spread` max−min, `t` the last scan's, `phone` the chosen `mobile_app` device id on Android and `"ios"` on the iPhone, `method` `shortcut` or `companion`). `sampleWithBand(sample, band)` for the person's pick.
+  `spread` max−min, rates judged by their median (the first scan's is not trusted), `t` the last scan's, `phone` the chosen `mobile_app` device id on Android and `"ios"` on the iPhone, `method` `shortcut` or `companion`). `sampleWithBand(sample, band)` for the person's pick.
 
 - [ ] **Step 1: Failing tests:** one per hard check (each makes `sample` null) and soft check (sample
   kept; `known_ap` → no `ap`); median of `[-60, -62, -61, -80, -61]` with the −80 on another BSSID →
@@ -272,16 +274,19 @@ the model, samples and fit; `components/pocket/DESIGN.md` for every screen.
 ### Task 7: The Shortcut, docs and the S2 prototype
 
 **Files:**
-- Create: `components/pocket/shortcuts/domosenso-wifi.shortcut` (signed, anyone) and
-  `components/pocket/shortcuts/README.md` (build steps, action by action, and how to re-sign)
+- Create: `tools/pocket_shortcuts.py` (writes both Shortcuts as binary plists: Fire event as
+  `io.robbie.HomeAssistant.FireEventIntent`, Server empty, scans as JSON text; then `shortcuts sign
+  --mode anyone`), its pytest (the plist's actions and identifiers), the signed
+  `components/pocket/shortcuts/domosenso-wifi.shortcut`, and `components/pocket/shortcuts/README.md`
+  (regenerate, re-sign, and choosing the Server once after installing)
 - Modify: `components/pocket/component.yaml` (install path carries `shortcuts/`), `README.md`, `DESIGN.md`
   (route, page anatomy: plan + panel section, install card, per-device settings), `UPGRADE.md`,
   `docs/COMPATIBILITY.md` (Pocket rows: route, sensor, event, inputs, Shortcut input)
 - Test: `catalog_check`; a test that the rendered install contains `shortcuts/domosenso-wifi.shortcut`
 
-- [ ] **Step 1:** Build the Shortcut on the Mac per its README (input JSON → Repeat n → Get Network
-  Details fields → dictionary → list → Wait 1 → If mode = event: Fire event + Open URL, else output
-  JSON), export, `shortcuts sign --mode anyone --input … --output …`.
+- [ ] **Step 1:** Generate with `tools/pocket_shortcuts.py` (input JSON → Repeat n → Get Network
+  Details fields → JSON text → Wait 1 → If mode = event: Fire event + Open URL, else output the JSON);
+  the S0 generator in the session scratchpad is the starting point.
 - [ ] **Step 2:** The install-path test → FAIL, then add `shortcuts/` to the install → PASS.
 - [ ] **Step 3:** Docs as listed; `tools/check-all.sh` green. Commit "Pocket: the Domosenso Wi-Fi Shortcut and the survey's docs (SPEC-045)".
 - [ ] **Step 4:** Prototype on the maintainer's HA (AGENTS.md of the home: `render --catalog-dev`,
