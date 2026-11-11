@@ -471,7 +471,7 @@ and for a device its device id. Sources and their weights:
 
 ## Amendment 4 (band steering: a reading on 2.4 GHz bounds 5 GHz)
 
-- Status: draft 2026-11-11, waiting for the maintainer's approval. Source: the maintainer, 2026-11-11,
+- Status: approved 2026-11-11 by the maintainer ("Approve, build it"). Source: the maintainer, 2026-11-11,
   after a phone survey (SPEC-045): where the phone dropped to 2.4 GHz the 2.4 GHz map was red, while the
   5 GHz map, with no 5 GHz reading there, looked better in the same corner than it can be. "How to
   address it?" Three options were offered (a steering bound, carrying values over between bands,
