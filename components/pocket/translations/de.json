@@ -853,7 +853,8 @@
         },
         "cancel": "Abbrechen",
         "slow": "Noch keine Messung. Ist der Kurzbefehl \"Domosenso Wi-Fi\" installiert und sein Server gewählt?",
-        "none_arrived": "Keine Messung angekommen. Erneut messen."
+        "none_arrived": "Keine Messung angekommen. Erneut messen.",
+        "whole_plan": "Ganzer Grundriss"
       }
     }
   }

@@ -62,6 +62,8 @@ const STYLE = `
   .wifi-survey .install a { color: var(--acc); font-size: 15px; min-height: 44px; display: flex; align-items: center; }
   .wifi-survey .install p { margin: 0; font-size: 13px; color: var(--mut); overflow-wrap: break-word; }
   .wifi-survey select { min-height: 44px; font: inherit; }
+  .wifi-survey .room-pick { width: 100%; margin: 0 0 8px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line);
+                            background: var(--card); color: var(--fg); font-size: 15px; }
 `;
 
 const store = () => {
@@ -109,6 +111,7 @@ export function render(ctx) {
   root.innerHTML = `<style>${STYLE}</style>
     <div class="top"><button class="back" type="button"><ha-icon icon="mdi:chevron-left"></ha-icon><b></b></button></div>
     <p class="none" hidden></p>
+    <select class="room-pick" hidden></select>
     <div class="box" hidden></div>
     <div class="install" hidden><b class="install-title"></b><p class="install-text"></p><a class="install-link" target="_blank"></a><a class="install-file" target="_blank"></a>
       <p class="install-server"></p><select class="phone-pick" hidden></select><button class="act done" type="button"></button></div>
@@ -143,6 +146,8 @@ export function render(ctx) {
     put(KEY.phone, e.target.value || null);
     update(root, s.ctx);
   });
+  // The room the person stands in: the plan zooms to it, so a tap is big enough on a phone.
+  $(".room-pick").addEventListener("change", (e) => s.card?.focusRoom(e.target.value || null));
   $(".measure").addEventListener("click", () => measure());
   $(".cancel").addEventListener("click", () => {
     stop(null);
@@ -287,6 +292,7 @@ export function render(ctx) {
     });
     card.hass = s.ctx.hass;
     s.card = card;
+    s.rooms = plan.floors.flatMap((f) => f.rooms.map((r) => r.area_id));
     root.querySelector(".box").append(card);
     if (s.pending) card.setSurveySpot({ floor_id: s.pending.floor_id, x: s.pending.x, y: s.pending.y });
     update(root, s.ctx);
@@ -312,6 +318,7 @@ export function update(root, ctx) {
   none.hidden = admin && !noPlan;
   setText(none, !admin ? t("card.pocket.wifi.admin_only") : t("card.pocket.wifi.no_plan"));
   $(".box").hidden = !s.card;
+  roomPick(root, ctx);
   $(".panel").hidden = !s.card;
   // Each part's hidden is set once per update, to its final value: hiding one for a moment while the
   // floorplan card measures itself (its hass) shortens the page and the browser scrolls it to the top.
@@ -381,6 +388,27 @@ export function update(root, ctx) {
     setText($(".kept-text"), t("card.pocket.wifi.kept", { dbm: dbmText(s.kept.dbm) }));
     setText($(".undo"), t("card.pocket.wifi.undo"));
   }
+}
+
+// The rooms of the plan by their Home Assistant names, after "Whole floor plan"; built again only when
+// the rooms or their names change, so the choice stays.
+function roomPick(root, ctx) {
+  const s = root._survey;
+  const pick = root.querySelector(".room-pick");
+  pick.hidden = !s.card;
+  if (!s.card) return;
+  const rows = [["", ctx.t("card.pocket.wifi.whole_plan")],
+    ...(s.rooms ?? []).map((id) => [id, ctx.hass?.areas?.[id]?.name ?? id])];
+  const key = JSON.stringify(rows);
+  if (pick.dataset.key === key) return;
+  const chosen = pick.value;
+  pick.dataset.key = key;
+  pick.replaceChildren(...rows.map(([value, name]) => {
+    const option = textNode("option", "", name);
+    option.value = value;
+    return option;
+  }));
+  pick.value = rows.some(([value]) => value === chosen) ? chosen : "";
 }
 
 // First use on this phone: the Shortcut to install (iPhone), or the Companion app's sensors and the phone

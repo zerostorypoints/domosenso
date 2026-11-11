@@ -9,7 +9,9 @@ import { forgetPlan } from "../lib/plan-cache.js";
 import { loadPending, savePending } from "../lib/wifi-capture.js";
 import { config, hassOf, ctxOf, text } from "../testing/demo-home.mjs";
 
-const PLAN = { schema: 1, floors: [{ floor_id: "ground", rooms: [], points: [], access_points: [{ device_id: "dev-ap", bands: ["5"] }] }] };
+const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+const PLAN = { schema: 1, floors: [{ floor_id: "ground", points: [], access_points: [{ device_id: "dev-ap", bands: ["5"] }],
+  rooms: [{ area_id: "living_room", polygon: sq(0, 0, 5, 4) }, { area_id: "kitchen", polygon: sq(5, 0, 3, 4) }] }] };
 const SPOTS = [{ floor_id: "ground", x: 2, y: 1, why: "handover" }, { floor_id: "ground", x: 6, y: 3, why: "room" }];
 let card;   // the last stand-in made
 
@@ -24,6 +26,7 @@ class FakePlan extends HTMLElement {
   set hass(h) { this._hass = h; }
   surveySpots() { return SPOTS; }
   setSurveySpot(s) { this.calls.spot.push(s); }
+  focusRoom(id) { this.calls.focus = [...(this.calls.focus ?? []), id]; }
   resolveReading() { return { ap: "dev-ap", band: "5", via: "bssid" }; }
   predictionAt() { return -62; }
   async addSamples(s) { this.calls.addSamples.push(s); }
@@ -43,6 +46,7 @@ function surveyHass({ admin = true, states = {} } = {}) {
   hass.user = { id: "u1", is_admin: admin };
   hass.callWS = async (msg) => (msg.type === "lovelace/config" ? structuredClone(DASHBOARD) : null);
   hass.services = { notify: { mobile_app_sams_phone: {} } };
+  hass.areas = { living_room: { area_id: "living_room", name: "Living room" }, kitchen: { area_id: "kitchen", name: "Kitchen" } };
   hass.served = [];
   hass.callService = async (domain, service, data) => { hass.served.push([domain, service, data]); };
   return hass;
@@ -235,4 +239,18 @@ test("a Measure waiting for its reading can be cancelled; after 30 s a hint, aft
   assert.ok(!$(el, ".measure").disabled, "given up after 2 min");
   assert.ok($(el, ".cancel").hidden);
   assert.ok(text($(el, ".progress")).includes("No reading arrived"), text($(el, ".progress")));
+});
+
+test("a room picker above the plan: the whole floor plan by default, a room zooms the plan to it", async () => {
+  const el = await mount(ctxOf({ hass: surveyHass(), cfg }));
+  const pick = $(el, "select.room-pick");
+  assert.deepEqual([...pick.options].map((o) => [o.value, o.textContent]),
+    [["", "Whole floor plan"], ["living_room", "Living room"], ["kitchen", "Kitchen"]]);
+  assert.equal(pick.value, "");
+  pick.value = "kitchen";
+  pick.dispatchEvent(new window.Event("change", { bubbles: true }));
+  pick.value = "";
+  pick.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.deepEqual(card.calls.focus, ["kitchen", null]);
+  assert.ok(pick.compareDocumentPosition($(el, ".box")) & window.Node.DOCUMENT_POSITION_FOLLOWING, "above the plan");
 });

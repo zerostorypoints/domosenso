@@ -95,7 +95,8 @@ const NARROW_STEP_M = 0.3;
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
 const LINK_MS = 2000;
-const PHONE_SPOTS = 8;             // next spots offered to a phone survey (SPEC-045); the laptop's page shows 3              // the survey page reads the laptop's Wi-Fi link this often
+const PHONE_SPOTS = 8;
+const FOCUS_M = 1;                 // m around a room the phone survey zooms to (focusRoom)             // next spots offered to a phone survey (SPEC-045); the laptop's page shows 3              // the survey page reads the laptop's Wi-Fi link this often
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -2030,6 +2031,26 @@ ${STYLE}
   // Where the person stands ({floor_id, x, y} on the floor shown), or null: the filled dot.
   setSurveySpot(spot) {
     this._spot = spot && spot.floor_id === this._floorId ? [spot.x, spot.y] : null;
+    this._render();
+  }
+
+  // Zooms to one room (an area id) with FOCUS_M around it, on its floor; null, or a room the plan does not
+  // have, shows the whole floor. The other rooms stay drawn and a tap anywhere still counts; zooming out
+  // reaches the whole floor (the fit's width is the most the view shows).
+  focusRoom(areaId) {
+    const floor = areaId && this._doc?.floors.find((f) => f.rooms.some((r) => r.area_id === areaId));
+    if (floor && floor.floor_id !== this._floorId) this._floorId = floor.floor_id;
+    const whole = this._fit();
+    const room = floor?.rooms.find((r) => r.area_id === areaId);
+    if (!room) {
+      this._view = whole;
+    } else {
+      const xs = room.polygon.map((p) => p[0]);
+      const ys = room.polygon.map((p) => p[1]);
+      const x = Math.min(...xs) - FOCUS_M;
+      const y = Math.min(...ys) - FOCUS_M;
+      this._view = { x, y, w: Math.max(...xs) + FOCUS_M - x, h: Math.max(...ys) + FOCUS_M - y, max: whole.max };
+    }
     this._render();
   }
 

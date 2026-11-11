@@ -2670,3 +2670,19 @@ test("phone survey: resolveReading and predictionAt answer from the card's plan 
   assert.ok(Number.isFinite(near) && near > far && near > -50, `${near} vs ${far}`);
   assert.equal(card.predictionAt({ floor_id: "ground", x: 1, y: 1 }, "d_mesh2", "2.4"), null, "a band it does not serve");
 });
+
+test("phone survey: focusRoom zooms to one room with 1 m around it, null shows the whole floor again", async () => {
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+  await settle();
+  const box = () => $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  const whole = box();
+  card.focusRoom("kitchen");                                   // the kitchen: x 5..8, y 0..4
+  const [x, y, w, h] = box();
+  assert.ok(Math.abs(x - 4) < 0.01 && Math.abs(y + 1) < 0.01, `${x} ${y}`);
+  assert.ok(w <= 5.01 && h <= 6.01 && (Math.abs(w - 5) < 0.01 || Math.abs(h - 6) < 0.01), `${w} ${h}`);
+  assert.equal(card.shadowRoot.querySelectorAll('polygon.room, [data-area="living_room"]').length > 0, true, "the other rooms stay drawn");
+  card.focusRoom(null);
+  assert.deepEqual(box(), whole);
+  card.focusRoom("attic");
+  assert.deepEqual(box(), whole, "an unknown room: the whole floor");
+});

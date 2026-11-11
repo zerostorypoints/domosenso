@@ -853,7 +853,8 @@
         },
         "cancel": "Anuluj",
         "slow": "Brak odczytu. Czy skrót \"Domosenso Wi-Fi\" jest zainstalowany i ma wybrany Server?",
-        "none_arrived": "Odczyt nie dotarł. Zmierz ponownie."
+        "none_arrived": "Odczyt nie dotarł. Zmierz ponownie.",
+        "whole_plan": "Cały plan"
       }
     }
   }

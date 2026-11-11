@@ -344,6 +344,9 @@ it, or it does not go in.
   step; on Android the Companion app's sensors and the phone picker) above the panel, until done. The
   Shortcut installs through Shortcuts' own `import-shortcut` link (no download in Safari between), named
   as Pocket runs it; the file itself is the fallback link.
+- **Room picker** above the plan (a native drop-down, "Whole floor plan" first, then the plan's rooms by
+  their HA names): a room zooms the plan to it with 1 m around (the card's `focusRoom`), so a tap where
+  you stand is big enough on a phone; the rest of the plan stays drawn.
 - **A waiting Measure** has Cancel beside it; after 30 s it says the Shortcut may be missing or its
   Server unset, and after 2 min it is given up (Measure is free again).
 - **Per device** (localStorage): the method, the Android phone, the expected network name when the
