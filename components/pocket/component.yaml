@@ -53,6 +53,19 @@ inputs:
     default: null               # Read only with `sound`; another key fails the render
     example: {leq_1_min: sensor.room_leq_1_min, leq_15_min: sensor.room_leq_15_min, leq_1_h: sensor.room_leq_1_h}
 
+  wifi_survey:                  # true: the Wi-Fi survey page for administrators, measured with the phone (SPEC-045):
+    type: bool                  # the System page links it, readings become the floor plan's samples. Needs
+    default: false              # `floorplan`; adds packages/pocket.yaml (sensor.domosenso_wifi_reading)
+    example: true
+  wifi_ssid:                    # the network name a reading must be on; empty: the first kept reading's,
+    type: string                # changed on the page
+    default: null
+    example: Home
+  wifi_scans:                   # readings per measurement, 1 s apart (3 to 20)
+    type: int
+    default: 5
+    example: 5
+
 assistant:
   version: 1
   definition: assistant.yaml
@@ -62,6 +75,7 @@ artifacts:
   templates:
     - templates/assistant-bindings.yaml.j2
     - templates/dashboard.lang.yaml.j2   # -> dashboard.<lang>.yaml, one YAML dashboard per language
+    - templates/package.yaml.j2          # -> packages/pocket.yaml, only with wifi_survey (SPEC-045)
   ha_packages: []
   # Served as /local/domosenso/pocket/<version>/: cards/*.js, cards/lib/** and translations/ keep
   # their paths from this directory (tests and cards/testing/ stay behind).
@@ -70,7 +84,9 @@ artifacts:
     - cards/pocket-app.js       # custom:pocket-app, the whole phone view
 
 provides:
-  entities: []
+  entities:
+    - {id: sensor.domosenso_wifi_reading, stability: stable, feature: wifi_survey,
+       note: "the last Wi-Fi reading of the iPhone Shortcut: state its one-time code; attributes scans, user_id, at (SPEC-045)"}
 
 # The thresholds the card's levels read; with no climate-air in the home they are missing and the
 # card shows no level.

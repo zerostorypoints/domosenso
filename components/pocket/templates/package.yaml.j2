@@ -1,0 +1,24 @@
+[#
+  Pocket's Home Assistant package (SPEC-045), rendered only with the input wifi_survey (otherwise empty,
+  so no file): the sensor that carries the iPhone Shortcut's Wi-Fi reading to Pocket. While Shortcuts is
+  in front iOS may suspend Pocket's page, so a live event subscription could miss the reading (and
+  subscribing to a custom event is admin-only): the sensor keeps the last one, and Pocket reads it when
+  it comes back. Its state is the reading's one-time code; its attributes the scans (at most 20), the
+  user who fired it and when it arrived.
+#]
+[%- if inputs.wifi_survey | default(false) %]
+template:
+  - triggers:
+      - trigger: event
+        event_type: domosenso_wifi_reading
+    sensor:
+      - name: Domosenso Wi-Fi reading
+        unique_id: domosenso_wifi_reading
+        # The name alone would give sensor.domosenso_wi_fi_reading.
+        default_entity_id: sensor.domosenso_wifi_reading
+        state: "{{ trigger.event.data.code | default('') | string | truncate(32, true, '') }}"
+        attributes:
+          scans: "{{ (trigger.event.data.scans | default([]))[:20] }}"
+          user_id: "{{ trigger.event.context.user_id }}"
+          at: "{{ now().isoformat() }}"
+[%- endif %]

@@ -793,6 +793,73 @@
           "switches": "Schalter",
           "buttons": "Tasten"
         }
+      },
+      "wifi": {
+        "check": {
+          "fresh": "Die Messung gehört nicht zu diesem Messen. Bitte erneut messen.",
+          "phone": "Die Messung kam vom Telefon einer anderen Person.",
+          "wifi": "Das Telefon war nicht im WLAN.",
+          "network": "Das Telefon war in einem anderen Netz als dem des Zuhauses.",
+          "count": "Zu wenige Messungen. Stillstehen und erneut messen.",
+          "known_ap": "Der Zugangspunkt ist auf dem Plan nicht markiert. Ohne ihn behalten, mit halbem Gewicht.",
+          "steady": "Das Signal schwankte oder das Telefon wechselte beim Messen den Zugangspunkt.",
+          "band": "Das Band ist unklar: 2,4 oder 6 GHz wählen."
+        },
+        "title": "WLAN-Messung",
+        "back": "Zurück zu System",
+        "admin_only": "Nur ein Administrator kann das WLAN vermessen.",
+        "no_plan": "Dieses Zuhause hat noch keinen Grundriss.",
+        "row": "WLAN-Messung",
+        "row_hint": "Das WLAN mit diesem Telefon messen",
+        "method": {
+          "shortcut-event": "Gemessen mit dem iPhone-Kurzbefehl",
+          "shortcut-callback": "Gemessen mit dem iPhone-Kurzbefehl (in Safari)",
+          "companion": "Gemessen mit den Sensoren der Companion-App"
+        },
+        "change": "Ändern",
+        "pick": "Tippe auf dem Plan, wo du stehst.",
+        "here": "Hier stillstehen und messen.",
+        "why": {
+          "handover": "Übergabe zwischen zwei Zugangspunkten: hier messen.",
+          "room": "In diesem Raum gibt es noch keine Messung.",
+          "far": "Weit entfernt von jeder Messung."
+        },
+        "measure": "Messen",
+        "waiting": "Der Kurzbefehl misst. Wenn er fertig ist, zurück zu Home Assistant wechseln (◀ oben links): die Messung erscheint hier.",
+        "reading": "Messung {n} von {total}",
+        "failed": "Nicht gespeichert: {error}",
+        "no_value": "Kein Signal",
+        "band": "{band} GHz, Kanal {channel}",
+        "ap": "Zugangspunkt: {name}",
+        "ap_unknown": "Zugangspunkt unbekannt",
+        "noise": "Rauschen {noise}",
+        "rates": "Rate {rx} / {tx} Mbit/s",
+        "spread": "Streuung {spread} dB",
+        "model": "Modell {dbm}",
+        "keep": "Behalten",
+        "retry": "Wiederholen",
+        "kept": "Behalten: {dbm}",
+        "undo": "Rückgängig",
+        "install": {
+          "title": "Kurzbefehl installieren",
+          "iphone": "Das iPhone misst mit dem Kurzbefehl \"Domosenso Wi-Fi\". Einmal installieren: laden, den Download öffnen und auf Kurzbefehl hinzufügen tippen.",
+          "link": "\"Domosenso Wi-Fi\" laden",
+          "server": "Dann den Kurzbefehl öffnen, in seiner Aktion Fire event auf Server tippen und dein Home Assistant wählen (mit seinem Namen in der Companion-App).",
+          "android_title": "Dieses Telefon wählen",
+          "android": "Die WLAN-Sensoren der Companion-App einschalten (Signalstärke, BSSID, Frequenz, Verbindungsgeschwindigkeit, Verbindung), dann dieses Telefon wählen.",
+          "phone": "Dieses Telefon…"
+        },
+        "cancel": "Abbrechen",
+        "slow": "Noch keine Messung. Ist der Kurzbefehl \"Domosenso Wi-Fi\" installiert und sein Server gewählt?",
+        "none_arrived": "Keine Messung angekommen. Erneut messen.",
+        "whole_plan": "Ganzer Grundriss",
+        "decide": "Die Hinweise prüfen, dann die Messung behalten oder erneut messen.",
+        "not_kept": "Nicht behalten. Erneut messen.",
+        "readings": "Behaltene Messungen: {n}",
+        "no_readings": "Noch keine Messung behalten.",
+        "no_room": "Ausserhalb der Räume",
+        "scans": "Messungen: {list}",
+        "no_input": "Der Kurzbefehl lief ohne die Anfrage von Pocket; seine Messung ist nicht verwendbar. Von hier aus erneut messen."
       }
     }
   }

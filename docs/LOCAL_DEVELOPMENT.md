@@ -73,7 +73,10 @@ not shown, with the reason.
 
 The demo also installs Pocket (the phone view) and the climate-air thresholds it reads, from the
 demo home's shared inputs (`examples/demo-home/home.inputs.yaml`), as dashboards
-`dashboard-pocket-<lang>`. Take the images from a running demo with the website's Playwright:
+`dashboard-pocket-<lang>`, and the floorplan card with a fictional plan
+(`examples/demo-home/floorplan.json`: four rooms, three access points, walls, openings and Wi-Fi
+readings), pushed to the `floorplan` dashboard with an HA area per room on every `up`; Pocket's
+floor plan and Wi-Fi survey pages (`#/wifi-survey`) read it. Take the images from a running demo with the website's Playwright:
 
 ```sh
 node tools/dev_home/screenshots.mjs --name review --out .domosenso/shots \

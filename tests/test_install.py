@@ -116,6 +116,8 @@ def test_every_installed_card_module_imports_with_its_version(tmp_path):
             continue
         version_query = cc.install_version(path.parent, data)
         for rel in cc.install_files(path.parent, data):
+            if not rel.endswith((".js", ".mjs")):
+                continue    # imports are a module's; a translation or a signed Shortcut (binary) has none
             text = cc.versioned(rel, (path.parent / rel).read_bytes(), version_query).decode("utf-8")
             assert not unversioned.findall(text), f"{path.parent.name}/{rel}"
             checked += rel.endswith(".js")
