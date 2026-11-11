@@ -13,7 +13,7 @@ const ent = (entity_id, device_id, platform = "tplink_deco") => ({ entity_id, de
 const doc = {
   floors: [{
     floor_id: "ground",
-    points: [{ device_id: "dev-office", xy: [1, 1] }, { device_id: "dev-hall", xy: [5, 1] }],
+    points: [{ device_id: "dev-office", x: 1, y: 1 }, { device_id: "dev-hall", x: 5, y: 1 }],
     access_points: [{ device_id: "dev-office" }, { device_id: "dev-hall" }],
   }],
 };
@@ -77,7 +77,7 @@ test("match by a point's mac link before the registry", () => {
   const h = build([{ id: "sam_tv", mac: M(20), device_id: "dev-tv" }], {
     devices: { "dev-tv": { connections: [["mac", M(20)]] }, "dev-tv2": {} },
   });
-  const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, { device_id: "dev-tv" }, { device_id: "dev-tv2", mac: M(20), xy: [2, 2] }] }] };
+  const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, { device_id: "dev-tv" }, { device_id: "dev-tv2", mac: M(20), x: 2, y: 2 }] }] };
   const c = byMac(clients(h, d, rules, NOW).list, M(20));
   assert.deepEqual([c.matched_by, c.point, c.device_id], ["link", { floorId: "ground", key: "dev-tv2" }, "dev-tv2"]);
 });
@@ -90,15 +90,15 @@ test("match by registry, the router's own tracker device excluded", () => {
     },
   });
   const onPlan = (keys) => ({ floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, ...keys] }] });
-  let c = byMac(clients(h, onPlan([{ device_id: "dev-router-client", xy: [3, 3] }]), rules, NOW).list, M(21));
+  let c = byMac(clients(h, onPlan([{ device_id: "dev-router-client", x: 3, y: 3 }]), rules, NOW).list, M(21));
   assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", null, "dev-tv"]); // dev-tv is not on this plan
-  c = byMac(clients(h, onPlan([{ device_id: "dev-tv", xy: [3, 3] }]), rules, NOW).list, M(21));
+  c = byMac(clients(h, onPlan([{ device_id: "dev-tv", x: 3, y: 3 }]), rules, NOW).list, M(21));
   assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", { floorId: "ground", key: "dev-tv" }, "dev-tv"]);
 });
 
 test("a point's also device matches by registry", () => {
   const h = build([{ id: "sam_tv", mac: M(22) }], { devices: { "dev-cast": {}, "dev-upnp": { connections: [["mac", M(22)]] } } });
-  const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, { device_id: "dev-cast", also: ["dev-upnp"], xy: [3, 3] }] }] };
+  const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, { device_id: "dev-cast", also: ["dev-upnp"], x: 3, y: 3 }] }] };
   const c = byMac(clients(h, d, rules, NOW).list, M(22));
   assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", { floorId: "ground", key: "dev-cast" }, "dev-upnp"]);
 });
@@ -107,6 +107,22 @@ test("a registry device not on the plan is the matched device, unplaced", () => 
   const h = build([{ id: "tv", mac: M(24) }], { devices: { "dev-tv": { connections: [["mac", M(24)]] } } });
   const c = byMac(clients(h, doc, rules, NOW).list, M(24));
   assert.deepEqual([c.device_id, c.point, c.matched_by], ["dev-tv", null, "registry"]);
+});
+
+test("a registry device whose point is not yet dragged (placed: false) is matched, unplaced", () => {
+  const h = build([{ id: "sam_streamer", mac: M(25) }], { devices: { "dev-streamer": { connections: [["mac", M(25)]] } } });
+  const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, { device_id: "dev-streamer", x: 3, y: 3, placed: false }] }] };
+  const c = byMac(clients(h, d, rules, NOW).list, M(25));
+  assert.deepEqual([c.device_id, c.point, c.matched_by], ["dev-streamer", null, "registry"]);
+});
+
+test("a mac link on a point not yet dragged, or without x and y, gives no point", () => {
+  const h = build([{ id: "alex_tv", mac: M(26) }, { id: "sam_tv", mac: M(27) }]);
+  const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points,
+    { device_id: "dev-tv", mac: M(26), x: 3, y: 3, placed: false }, { device_id: "dev-tv2", mac: M(27) }] }] };
+  const { list } = clients(h, d, rules, NOW);
+  assert.deepEqual([byMac(list, M(26)).point, byMac(list, M(26)).matched_by, byMac(list, M(26)).device_id], [null, "link", "dev-tv"]);
+  assert.deepEqual([byMac(list, M(27)).point, byMac(list, M(27)).matched_by], [null, "link"]);
 });
 
 test("unmatched: device_id and point null, matched_by null", () => {
@@ -168,7 +184,7 @@ test("two trackers with one MAC: the newer wins", () => {
 test("a link and a registry match for different MACs both hold", () => {
   const h = build([{ id: "a", mac: M(40) }, { id: "b", mac: M(41) }], { devices: { "dev-b": { connections: [["mac", M(41)]] } } });
   const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points,
-    { device_id: "dev-a", mac: M(40), xy: [2, 2] }, { device_id: "dev-b", xy: [3, 3] }] }] };
+    { device_id: "dev-a", mac: M(40), x: 2, y: 2 }, { device_id: "dev-b", x: 3, y: 3 }] }] };
   const list = clients(h, d, rules, NOW).list;
   assert.equal(byMac(list, M(40)).matched_by, "link");
   assert.equal(byMac(list, M(41)).matched_by, "registry");

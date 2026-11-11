@@ -2286,6 +2286,24 @@ test("links: a client label's halo is 3 px at any zoom, a stroke in plan metres"
   window.localStorage.clear();
 });
 
+test("links: a client whose device's point is not yet dragged sits on its access point's ring", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  hass.devices.d_streamer = { id: "d_streamer", name: "Streamer", area_id: "living_room", connections: [["mac", "02:00:00:00:bb:03"]] };
+  hass.entities["device_tracker.streamer"] = { entity_id: "device_tracker.streamer", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.streamer"] = { state: "home", last_updated: new Date().toISOString(), attributes: { device_type: "client",
+    friendly_name: "streamer", mac: "02:00:00:00:bb:03", deco_mac: NODE2, connection_type: "wired", down_kilobytes_per_s: 100, up_kilobytes_per_s: 8.75 } };
+  const plan = wifiPlan();
+  plan.floors[0].points.push({ device_id: "d_streamer", x: 2.5, y: 3.4, placed: false });
+  const card = await linksCard({}, hass, plan);
+  const dot = dotOf(card, "02:00:00:00:bb:03");
+  assert.ok(dot && dot.classList.contains("unplaced"), "a disc with a dotted rim, not a ring round a marker");
+  const [x, y] = translateOf(dot);
+  assert.ok(Math.abs(Math.hypot(x - 1, y - 2) - 1.2) < 0.01, `on the living room node's ring: ${x}, ${y}`);
+  assert.ok(Math.hypot(x - 2.5, y - 3.4) > 0.5, "not at the undragged spot");
+  window.localStorage.clear();
+});
+
 test("links: solid for wired, dashed for Wi-Fi, coloured by link", async () => {
   window.localStorage.clear();
   const card = await linksCard();

@@ -39,25 +39,28 @@ function freshness(hass, rule, now) {
 }
 
 // The plan points with their registry keys, to match a client to one: [{floorId, key, keys, mac}].
+// `placed`: dragged onto the plan with a place; an auto-placed point (`placed: false`) stands for its room, not a spot.
 const planPoints = (doc) => (doc?.floors || []).flatMap((f) => (f.points || []).map((p) => ({
   floorId: f.floor_id, key: keyOf(p), keys: keysOf(p), mac: normMac(p.mac), device_id: p.device_id ?? null, entity_id: p.entity_id ?? null,
+  placed: p.placed !== false && Number.isFinite(p.x) && Number.isFinite(p.y),
 })));
+// A matched point as the record's `point`: null while it is not placed (the client is then unplaced, still matched).
+const pointOf = (p) => (p.placed ? { floorId: p.floorId, key: p.key } : null);
 
 function match(hass, mac, ownDevice, points) {
   // 1. A point's mac link; the registry only decides when no point links this MAC.
   const linked = points.find((p) => p.mac === mac);
   if (linked) {
     const device_id = linked.device_id ?? hass.entities?.[linked.entity_id]?.device_id ?? null;
-    return { device_id, point: { floorId: linked.floorId, key: linked.key }, matched_by: "link" };
+    return { device_id, point: pointOf(linked), matched_by: "link" };
   }
   // 2. A device with this MAC, other than the router integration's own device for the tracker.
   // A device on the plan wins; one that is not on it still is the matched device, unplaced.
   const devices = Object.entries(hass.devices || {}).filter(([id, dev]) => id !== ownDevice
     && (dev.connections || []).some(([type, v]) => type === "mac" && normMac(v) === mac)).map(([id]) => id);
-  for (const id of devices) {
-    const p = points.find((q) => q.keys.includes(id));
-    if (p) return { device_id: id, point: { floorId: p.floorId, key: p.key }, matched_by: "registry" };
-  }
+  const onPlan = devices.flatMap((id) => points.filter((q) => q.keys.includes(id)).map((p) => ({ id, p })));
+  const hit = onPlan.find(({ p }) => p.placed) ?? onPlan[0];
+  if (hit) return { device_id: hit.id, point: pointOf(hit.p), matched_by: "registry" };
   if (devices.length) return { device_id: devices[0], point: null, matched_by: "registry" };
   return { device_id: null, point: null, matched_by: null };
 }
