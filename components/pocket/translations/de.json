@@ -825,7 +825,7 @@
           "far": "Weit entfernt von jeder Messung."
         },
         "measure": "Messen",
-        "waiting": "Warte auf die Messung des Telefons…",
+        "waiting": "Der Kurzbefehl misst. Wenn er fertig ist, zurück zu Home Assistant wechseln (◀ oben links): die Messung erscheint hier.",
         "reading": "Messung {n} von {total}",
         "failed": "Nicht gespeichert: {error}",
         "no_value": "Kein Signal",

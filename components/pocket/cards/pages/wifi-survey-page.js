@@ -21,7 +21,7 @@ import { checkReading, sampleWithBand } from "../lib/wifi-checks.js";
 export const SNAP_M = 1;
 export const SLOW_MS = 30_000;           // a reading this late: the Shortcut may be missing or its Server unset
 const READING = "sensor.domosenso_wifi_reading";
-const KEY = { method: "pocket.wifi.method", phone: "pocket.wifi.phone", ssid: "pocket.wifi.ssid", installed: "pocket.wifi.installed" };
+const KEY = { room: "pocket.wifi.room", method: "pocket.wifi.method", phone: "pocket.wifi.phone", ssid: "pocket.wifi.ssid", installed: "pocket.wifi.installed" };
 // The Shortcuts tools/pocket_shortcuts.py writes, served beside the cards: the Companion app's (event) and
 // Safari's (x-callback).
 // Shortcuts names an imported file after the file, so each is named as Pocket runs it.
@@ -175,6 +175,7 @@ export function render(ctx) {
   // The room the person stands in: the plan zooms to it, so a tap is big enough on a phone.
   $(".room-pick").addEventListener("change", (e) => {
     s.room = e.target.value || null;
+    put(KEY.room, s.room);
     s.card?.focusRoom(s.room);
     update(root, s.ctx);
   });
@@ -347,6 +348,12 @@ export function render(ctx) {
     s.card = card;
     s.rooms = plan.floors.flatMap((f) => f.rooms.map((r) => r.area_id));
     s.plan = plan;
+    // The room picked on this phone, kept across a reload.
+    const room = get(KEY.room);
+    if (room && s.rooms.includes(room)) {
+      s.room = room;
+      card.focusRoom(room);
+    }
     root.querySelector(".box").append(card);
     if (s.pending) card.setSurveySpot({ floor_id: s.pending.floor_id, x: s.pending.x, y: s.pending.y });
     update(root, s.ctx);
@@ -518,7 +525,7 @@ function roomPick(root, ctx) {
     ...(s.rooms ?? []).map((id) => [id, ctx.hass?.areas?.[id]?.name ?? id])];
   const key = JSON.stringify(rows);
   if (pick.dataset.key === key) return;
-  const chosen = pick.value;
+  const chosen = s.room ?? "";
   pick.dataset.key = key;
   pick.replaceChildren(...rows.map(([value, name]) => {
     const option = textNode("option", "", name);

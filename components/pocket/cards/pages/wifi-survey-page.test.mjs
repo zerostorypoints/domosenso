@@ -302,3 +302,18 @@ test("the outcome survives the page being built again on the app's return: still
   assert.ok(!$(again, ".undo").hidden);
   assert.equal(card.calls.addSamples.length, 0, "the new page keeps nothing twice");
 });
+
+test("the waiting line says to go back to Home Assistant; the picked room is kept on this phone", async () => {
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = await mount(ctx);
+  tapPlan(2, 1);
+  click($(el, ".measure"));
+  assert.ok(text($(el, ".progress")).includes("go back to Home Assistant"), text($(el, ".progress")));
+  const pick = $(el, "select.room-pick");
+  pick.value = "kitchen";
+  pick.dispatchEvent(new window.Event("change", { bubbles: true }));
+  document.body.innerHTML = "";
+  const again = await mount(ctxOf({ hass: surveyHass(), cfg }));
+  assert.equal($(again, "select.room-pick").value, "kitchen");
+  assert.deepEqual(card.calls.focus, ["kitchen"], "the new plan shows the room");
+});

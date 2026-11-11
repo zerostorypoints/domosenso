@@ -374,3 +374,19 @@ verified: how fast the app answers repeated commands; S0 measures it).
     and Pocket, on start, opens `#/wifi-survey` when a pending measurement younger than 120 s exists.
   - `rx` and `tx` are judged by their median over the scans (the first scan's rate is not trusted);
     the `scans` keep every raw value.
+
+## Amendment 2 (no return from the Shortcut, 2026-11-11)
+
+- Status: approved 2026-11-11 by the maintainer, who proposed it after the prototype ("keep it as is
+  without switching back to HA and explain to the user that once the shortcut is executed he should go
+  back to HA"). Source: the prototype on the maintainer's iPhone.
+- **Verified:** the Shortcut's Open URLs (`homeassistant://navigate/<dashboard>`) restarts the Companion
+  app's page: the reading had already been received and kept by the page still open, then the app
+  reloaded on Home and the page's state (the picked room) was lost.
+- **Change:** "Domosenso Wi-Fi" no longer opens the app. It ends with a notification ("Reading sent. Go
+  back to Home Assistant."); the person goes back (◀ at the top left, or the app switcher) and the page,
+  still open, shows the reading as it arrives: the dot, the result, the row in Readings kept. The waiting
+  line says the same. The input's `return` stays in the JSON, unused.
+- The picked room is kept per device (localStorage), so a reload keeps it. The shell's return to the
+  survey (a dashboard shown without a hash while a Measure waits or within 60 s of one) stays, for a
+  reload.

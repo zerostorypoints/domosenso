@@ -6,7 +6,8 @@ reproducible and reviewed: binary plists, then signed for anyone with macOS's `s
 
 - "Domosenso Wi-Fi" (event): its input is Pocket's JSON {code, n, mode, return}. It reads Get Network
   Details n times, 1 s apart, every field as text, builds the reading as JSON text {code, scans}, fires
-  `domosenso_wifi_reading` with the Companion app's Fire event action and opens `return` (Pocket).
+  `domosenso_wifi_reading` with the Companion app's Fire event action and shows a notification to go back
+  to Home Assistant; it does not open the app, which would restart it (Amendment 2).
   The action's Server is left empty: it is an entry each phone generates, so the person chooses it
   once after installing (verified in S0: `io.robbie.HomeAssistant.FireEventIntent`).
 - "Domosenso Wi-Fi Safari" (callback): the same reading as the Shortcut's output, for Pocket opened in
@@ -112,7 +113,9 @@ def build(kind: str) -> dict:
             f'{HA_BUNDLE}.FireEventIntent', eventName=EVENT, eventData=_tokens(_out(reading, 'Text')),
             AppIntentDescriptor={'TeamIdentifier': HA_TEAM, 'BundleIdentifier': HA_BUNDLE, 'Name': 'Home Assistant',
                                  'AppIntentIdentifier': 'FireEventIntent'})))
-        actions.append(_action('is.workflow.actions.openurl', WFInput=_tokens(_out(back, 'Dictionary Value'))))
+        # No return to the app: opening it from Shortcuts restarts it (Amendment 2). The person goes back.
+        actions.append(_action('is.workflow.actions.notification', WFNotificationActionTitle=NAMES['event'],
+                               WFNotificationActionBody='Reading sent. Go back to Home Assistant.'))
     else:
         actions.append(_action('is.workflow.actions.output', WFOutput=_tokens(_out(reading, 'Text')),
                                WFNoOutputSurfaceBehavior='Respond'))

@@ -825,7 +825,7 @@
           "far": "Far from any reading."
         },
         "measure": "Measure",
-        "waiting": "Waiting for the phone's reading…",
+        "waiting": "The Shortcut is measuring. When it has finished, go back to Home Assistant (◀ at the top left): the reading shows here.",
         "reading": "Reading {n} of {total}",
         "failed": "Not saved: {error}",
         "no_value": "No signal",

@@ -31,7 +31,10 @@ def test_event_shortcut_reads_every_field_and_fires_the_event_through_the_compan
     assert fire['eventName'] == 'domosenso_wifi_reading'
     assert fire['AppIntentDescriptor']['AppIntentIdentifier'] == 'FireEventIntent'
     assert 'server' not in fire, 'the phone chooses its own server once (Amendment 1)'
-    assert ids(w)[-1] == 'is.workflow.actions.openurl'
+    assert 'is.workflow.actions.openurl' not in ids(w), 'opening the app restarts it: the person goes back (Amendment 2)'
+    assert ids(w)[-1] == 'is.workflow.actions.notification'
+    (note,) = params(w, 'is.workflow.actions.notification')
+    assert 'Home Assistant' in note['WFNotificationActionBody']
     assert 'is.workflow.actions.output' not in ids(w)
 
 

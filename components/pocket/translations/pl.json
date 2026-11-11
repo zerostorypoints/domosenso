@@ -825,7 +825,7 @@
           "far": "Daleko od każdego odczytu."
         },
         "measure": "Zmierz",
-        "waiting": "Czekam na odczyt z telefonu…",
+        "waiting": "Skrót mierzy. Gdy skończy, wróć do Home Assistant (◀ w lewym górnym rogu): odczyt pojawi się tutaj.",
         "reading": "Odczyt {n} z {total}",
         "failed": "Nie zapisano: {error}",
         "no_value": "Brak sygnału",

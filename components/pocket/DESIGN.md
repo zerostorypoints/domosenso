@@ -353,7 +353,10 @@ it, or it does not go in.
 - **Readings kept** (a section under the panel): the phone's readings in the plan, newest first, of the
   picked room when there is one; a row (room, time and band, the value) opens its details and every
   scan. The same readings are dots with their dBm on the plan.
-- **The return from Shortcuts** lands on the dashboard without a hash, and on an iPhone it comes after the
+- **No return from Shortcuts** (SPEC-045 Amendment 2): the Shortcut ends with a notification, the person
+  goes back, and the page still open shows the reading as it arrives. The picked room is kept per
+  device. Should the page be built anew (a reload), the shell's resume below still applies.
+- **The return from Shortcuts** (when the app does open the dashboard) lands on it without a hash, and on an iPhone it comes after the
   page (still open) has received and kept the reading. So the shell turns a dashboard without a hash into
   `#/wifi-survey` while a Measure waits, or once within 60 s of a reading that came back; the outcome
   (the dot, Undo, the result) is remembered for the page built anew. A tap on Home (`#/`) stays Home.
