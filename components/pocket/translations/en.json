@@ -853,7 +853,13 @@
         "cancel": "Cancel",
         "slow": "No reading yet. Is the Shortcut \"Domosenso Wi-Fi\" installed, and its Server chosen?",
         "none_arrived": "No reading arrived. Measure again.",
-        "whole_plan": "Whole floor plan"
+        "whole_plan": "Whole floor plan",
+        "decide": "Check the warnings, then keep the reading or measure again.",
+        "not_kept": "Not kept. Measure again.",
+        "readings": "Readings kept: {n}",
+        "no_readings": "No reading kept yet.",
+        "no_room": "Outside the rooms",
+        "scans": "Scans: {list}"
       }
     }
   }

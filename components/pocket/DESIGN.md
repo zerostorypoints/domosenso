@@ -348,6 +348,13 @@ it, or it does not go in.
   their HA names): a room is shown as the area page shows it (the card's `focusRoom`: the room alone,
   fitted, its neighbours faded), with its spots and map only, so a tap where you stand is big enough on
   a phone.
+- **The outcome is a dot and a line** under the result: green "Kept" (with Undo) when every check passed,
+  kept at once; amber when a warning waits for Keep / Retry; red when nothing was kept.
+- **Readings kept** (a section under the panel): the phone's readings in the plan, newest first, of the
+  picked room when there is one; a row (room, time and band, the value) opens its details and every
+  scan. The same readings are dots with their dBm on the plan.
+- **The return from Shortcuts** lands on the dashboard without a hash; while a Measure waits, the shell
+  turns that into `#/wifi-survey`. A tap on Home (`#/`) stays Home.
 - **A waiting Measure** has Cancel beside it; after 30 s it says the Shortcut may be missing or its
   Server unset, and after 2 min it is given up (Measure is free again).
 - **Per device** (localStorage): the method, the Android phone, the expected network name when the

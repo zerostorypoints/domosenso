@@ -853,7 +853,13 @@
         "cancel": "Abbrechen",
         "slow": "Noch keine Messung. Ist der Kurzbefehl \"Domosenso Wi-Fi\" installiert und sein Server gewählt?",
         "none_arrived": "Keine Messung angekommen. Erneut messen.",
-        "whole_plan": "Ganzer Grundriss"
+        "whole_plan": "Ganzer Grundriss",
+        "decide": "Die Hinweise prüfen, dann die Messung behalten oder erneut messen.",
+        "not_kept": "Nicht behalten. Erneut messen.",
+        "readings": "Behaltene Messungen: {n}",
+        "no_readings": "Noch keine Messung behalten.",
+        "no_room": "Außerhalb der Räume",
+        "scans": "Messungen: {list}"
       }
     }
   }

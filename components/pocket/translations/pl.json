@@ -853,7 +853,13 @@
         "cancel": "Anuluj",
         "slow": "Brak odczytu. Czy skrót \"Domosenso Wi-Fi\" jest zainstalowany i ma wybrany Server?",
         "none_arrived": "Odczyt nie dotarł. Zmierz ponownie.",
-        "whole_plan": "Cały plan"
+        "whole_plan": "Cały plan",
+        "decide": "Sprawdź ostrzeżenia, potem zachowaj odczyt lub zmierz ponownie.",
+        "not_kept": "Nie zachowano. Zmierz ponownie.",
+        "readings": "Zachowane odczyty: {n}",
+        "no_readings": "Nie zachowano jeszcze żadnego odczytu.",
+        "no_room": "Poza pokojami",
+        "scans": "Pomiary: {list}"
       }
     }
   }

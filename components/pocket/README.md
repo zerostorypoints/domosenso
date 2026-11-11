@@ -283,8 +283,10 @@ floor plan's Wi-Fi maps (SPEC-045; the floorplan component's *Wi-Fi* sections). 
   weight), the signal moved by more than 6 dB or the phone changed access point while measuring, or
   the band is unclear (a channel 6 GHz shares with another band: pick 2.4 or 6 GHz). The model's
   value shows beside the reading; a reading is never refused for disagreeing with it.
-- **Keep** saves the reading into the plan as a sample (`source: phone`, with every scan); the maps
-  recalibrate at once. **Undo** takes the last one out.
+- **Kept at once** when every check passes (a green dot); with a warning (amber) you choose **Keep** or
+  **Retry**; a failure (red) keeps nothing. A kept reading is a sample of the plan (`source: phone`, with
+  every scan) and the maps recalibrate at once; **Undo** takes the last one out. **Readings kept**, under
+  the panel, lists them with their details and scans, and the plan shows them as dots.
 - The Shortcuts are written by `tools/pocket_shortcuts.py` (plists, then `shortcuts sign --mode
   anyone` on macOS) into `cards/shortcuts/`; regenerate them there after changing the tool.
 

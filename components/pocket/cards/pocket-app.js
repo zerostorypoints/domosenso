@@ -581,9 +581,10 @@ class PocketApp extends HTMLElement {
     // A link of the first version (#/rooms, #/room/<id>): its new hash, in place of the old entry.
     const legacy = legacyRoute(window.location.hash);
     if (legacy) window.history.replaceState(window.history.state, "", legacy);
-    // The Companion app returns from the iPhone Shortcut to the dashboard's Home: a Measure still waiting
-    // for its reading reopens the Wi-Fi survey, once per card (SPEC-045 Amendment 1).
-    if (!this._resumed && this._config.wifi_survey && parseRoute(window.location.hash).page === "home" && !parseRoute(window.location.hash).id) {
+    // The Companion app returns from the iPhone Shortcut to the dashboard without a hash (its navigate drops
+    // it, on the page already open or a new one): a Measure still waiting for its reading reopens the Wi-Fi
+    // survey. A tap on Home (#/) is the person's choice and stays (SPEC-045 Amendment 1).
+    if (this._config.wifi_survey && (window.location.hash === "" || window.location.hash === "#")) {
       let storage = null;
       try {
         storage = window.localStorage;
@@ -593,7 +594,6 @@ class PocketApp extends HTMLElement {
       const resume = storage && resumeRoute(storage, Date.now());
       if (resume) window.history.replaceState(window.history.state, "", resume);
     }
-    this._resumed = true;
     let route = parseRoute(window.location.hash);
     const instead = this._unknownArea(route);
     if (instead) {

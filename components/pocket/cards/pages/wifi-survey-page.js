@@ -51,6 +51,22 @@ const STYLE = `
   .wifi-survey button.primary { background: var(--acc); border-color: var(--acc); color: var(--on-acc, #fff); }
   .wifi-survey button.act:disabled { opacity: .5; cursor: default; }
   .wifi-survey button.link { min-height: 44px; border: 0; background: none; color: var(--acc); font: inherit; font-size: 13px; cursor: pointer; }
+  .wifi-survey .status { font-size: 15px; }
+  .wifi-survey .status .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; background: var(--mut); }
+  .wifi-survey .status.ok .dot { background: var(--good, #2e9d58); }
+  .wifi-survey .status.warn .dot { background: var(--warn); }
+  .wifi-survey .status.bad .dot { background: var(--bad); }
+  .wifi-survey .status .status-text { flex: 1 1 10em; overflow-wrap: break-word; }
+  .wifi-survey .readings { margin: 12px 0 0; padding: 4px 14px; background: var(--card); border: 1px solid var(--line);
+                            border-radius: 18px; }
+  .wifi-survey .readings h3 { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--mut); }
+  .wifi-survey .reading { box-sizing: border-box; width: 100%; min-height: 48px; margin: 0; padding: 6px 0; border: 0;
+                          border-top: 1px solid var(--line); background: none; color: var(--fg); font: inherit; font-size: 15px;
+                          display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer; }
+  .wifi-survey .reading .label { flex: 1 1 8em; overflow-wrap: break-word; }
+  .wifi-survey .reading small { display: block; font-size: 12.5px; color: var(--mut); }
+  .wifi-survey .reading .v { font-weight: 600; }
+  .wifi-survey .readings .empty { margin: 6px 0 10px; font-size: 13px; color: var(--mut); }
   .wifi-survey .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .wifi-survey .progress { font-size: 13px; color: var(--mut); }
   .wifi-survey .value { font-size: 28px; font-weight: 650; }
@@ -125,8 +141,10 @@ export function render(ctx) {
           <button class="act" type="button" data-band="6">6 GHz</button></div>
         <div class="row"><button class="act primary keep" type="button"></button><button class="act retry" type="button"></button></div>
       </div>
-      <div class="row kept" hidden><span class="kept-text"></span><button class="act undo" type="button"></button></div>
-    </div>`;
+      <div class="row status" hidden><span class="dot"></span><span class="status-text"></span>
+        <button class="act undo" type="button" hidden></button></div>
+    </div>
+    <div class="readings" hidden><h3></h3><div class="list"></div><p class="empty"></p></div>`;
   const s = { ctx, card: null, loading: true, spot: null, why: null, pending: loadPending(store(), Date.now()), result: null,
     seen: null, kept: null, collector: null, timer: null, failure: null };
   root._survey = s;
@@ -146,7 +164,19 @@ export function render(ctx) {
     update(root, s.ctx);
   });
   // The room the person stands in: the plan zooms to it, so a tap is big enough on a phone.
-  $(".room-pick").addEventListener("change", (e) => s.card?.focusRoom(e.target.value || null));
+  $(".room-pick").addEventListener("change", (e) => {
+    s.room = e.target.value || null;
+    s.card?.focusRoom(s.room);
+    update(root, s.ctx);
+  });
+  // A tap on a reading opens its details; another tap, or another reading, closes them.
+  $(".readings .list").addEventListener("click", (e) => {
+    const row = e.target.closest?.(".reading");
+    if (!row) return;
+    s.open = s.open === row.dataset.key ? null : row.dataset.key;
+    s.readingsKey = null;
+    update(root, s.ctx);
+  });
   $(".measure").addEventListener("click", () => measure());
   $(".cancel").addEventListener("click", () => {
     stop(null);
@@ -162,6 +192,7 @@ export function render(ctx) {
   $(".undo").addEventListener("click", async () => {
     const kept = s.kept;
     s.kept = null;
+    s.result = null;
     if (kept) await s.card?.removeSample(kept.t, kept.phone);
     forgetPlan();
     update(root, s.ctx);
@@ -237,16 +268,19 @@ export function render(ctx) {
     const result = s.result;
     if (!result?.sample) return;
     const sample = band ? sampleWithBand(result.sample, band) : result.sample;
-    s.result = null;
+    s.result = { ...result, sample: null, kept: true };
     if (!s.ctx.config?.wifi_ssid && !get(KEY.ssid)) {
       const ssid = sample.scans.find((x) => x.ssid)?.ssid;
       if (ssid) put(KEY.ssid, ssid);
     }
+    // Shown as kept at once (Pocket's optimistic pattern); a failed save takes it back with the reason.
+    s.kept = sample;
+    update(root, s.ctx);
     try {
       await s.card.addSamples([sample]);
-      s.kept = sample;
       forgetPlan();
     } catch (err) {
+      s.kept = null;
       s.failure = err?.message || String(err);
     }
     update(root, s.ctx);
@@ -261,6 +295,9 @@ export function render(ctx) {
     s.result.prediction = sample?.ap && sample.band ? s.card?.predictionAt(pending, sample.ap, sample.band) ?? null : null;
     s.pending = null;
     clearPending(store());
+    // Every check passed: kept at once (a green dot); a warning waits for the person (amber), a failure keeps
+    // nothing (red).
+    if (sample && s.result.checks.every((c) => c.ok)) keep(null);
   }
   s.evaluate = evaluate;
 
@@ -292,6 +329,7 @@ export function render(ctx) {
     card.hass = s.ctx.hass;
     s.card = card;
     s.rooms = plan.floors.flatMap((f) => f.rooms.map((r) => r.area_id));
+    s.plan = plan;
     root.querySelector(".box").append(card);
     if (s.pending) card.setSurveySpot({ floor_id: s.pending.floor_id, x: s.pending.x, y: s.pending.y });
     update(root, s.ctx);
@@ -318,6 +356,7 @@ export function update(root, ctx) {
   setText(none, !admin ? t("card.pocket.wifi.admin_only") : t("card.pocket.wifi.no_plan"));
   $(".box").hidden = !s.card;
   roomPick(root, ctx);
+  readings(root, ctx);
   $(".panel").hidden = !s.card;
   // Each part's hidden is set once per update, to its final value: hiding one for a moment while the
   // floorplan card measures itself (its hass) shortens the page and the browser scrolls it to the top.
@@ -365,28 +404,90 @@ export function update(root, ctx) {
   box.hidden = !r;
   if (r) {
     const sample = r.sample;
-    const dbm = sample?.dbm ?? null;
+    const shown = sample ?? s.kept;
+    const dbm = shown?.dbm ?? null;
     setText($(".value"), dbm == null ? t("card.pocket.wifi.no_value") : dbmText(dbm));
     const facts = [];
-    if (sample?.band) facts.push(t("card.pocket.wifi.band", { band: sample.band, channel: sample.channel ?? "?" }));
-    if (sample) facts.push(sample.ap ? t("card.pocket.wifi.ap", { name: hass?.devices?.[sample.ap]?.name_by_user ?? hass?.devices?.[sample.ap]?.name ?? sample.ap })
+    if (shown?.band) facts.push(t("card.pocket.wifi.band", { band: shown.band, channel: shown.channel ?? "?" }));
+    if (shown) facts.push(shown.ap ? t("card.pocket.wifi.ap", { name: hass?.devices?.[shown.ap]?.name_by_user ?? hass?.devices?.[shown.ap]?.name ?? shown.ap })
       : t("card.pocket.wifi.ap_unknown"));
-    if (sample?.noise != null) facts.push(t("card.pocket.wifi.noise", { noise: dbmText(sample.noise) }));
+    if (shown?.noise != null) facts.push(t("card.pocket.wifi.noise", { noise: dbmText(shown.noise) }));
     if (r.rates.rx != null) facts.push(t("card.pocket.wifi.rates", { rx: r.rates.rx, tx: r.rates.tx ?? "?" }));
-    if (sample) facts.push(t("card.pocket.wifi.spread", { spread: sample.spread }));
+    if (shown) facts.push(t("card.pocket.wifi.spread", { spread: shown.spread }));
     if (r.prediction != null) facts.push(t("card.pocket.wifi.model", { dbm: dbmText(r.prediction) }));
     $(".facts").replaceChildren(...facts.map((f) => textNode("li", "", f)));
     $(".checks").replaceChildren(...r.checks.filter((c) => !c.ok).map((c) => textNode("li", c.level === "hard" ? "bad" : "warn", t(c.reason))));
     $(".bands").hidden = !(sample && r.needsBand);
     $(".keep").hidden = !sample || r.needsBand;
+    $(".retry").hidden = !!r.kept;
     setText($(".keep"), t("card.pocket.wifi.keep"));
     setText($(".retry"), t("card.pocket.wifi.retry"));
   }
-  $(".kept").hidden = !s.kept;
-  if (s.kept) {
-    setText($(".kept-text"), t("card.pocket.wifi.kept", { dbm: dbmText(s.kept.dbm) }));
-    setText($(".undo"), t("card.pocket.wifi.undo"));
+  // The outcome, a dot and a line: kept (green), waiting for the person's choice (amber), not kept (red).
+  const status = $(".status");
+  const tone = s.kept ? "ok" : s.failure || (r && !r.sample && !r.kept) ? "bad" : r?.sample ? "warn" : null;
+  status.hidden = !tone;
+  const name = `row status${tone ? ` ${tone}` : ""}`;
+  if (status.className !== name) status.className = name;
+  setText($(".status-text"), tone === "ok" ? t("card.pocket.wifi.kept", { dbm: dbmText(s.kept.dbm) })
+    : tone === "warn" ? t("card.pocket.wifi.decide") : tone === "bad" ? (s.failure ? t("card.pocket.wifi.failed", { error: s.failure })
+      : t("card.pocket.wifi.not_kept")) : "");
+  $(".undo").hidden = tone !== "ok";
+  setText($(".undo"), t("card.pocket.wifi.undo"));
+}
+
+// Whether [x, y] lies in a polygon (ray casting).
+function inside([x, y], polygon) {
+  let hit = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
   }
+  return hit;
+}
+
+// The phone's readings kept in the plan (the card's surveySamples), newest first, of the picked room when
+// there is one: time and room, the value; a tap opens the details and every scan. Rebuilt only when the
+// readings, the room, the open one or the language change.
+function readings(root, ctx) {
+  const s = root._survey;
+  const box = root.querySelector(".readings");
+  box.hidden = !s.card;
+  if (!s.card) return;
+  const { t, hass } = ctx;
+  const roomOf = (x) => s.plan?.floors.find((f) => f.floor_id === x.floor_id)?.rooms.find((r) => inside([x.x, x.y], r.polygon))?.area_id ?? null;
+  const list = (s.card.surveySamples?.() ?? []).filter((x) => !s.room || roomOf(x) === s.room);
+  const key = JSON.stringify([list.map((x) => [x.t, x.phone, x.dbm]), s.room, s.open, ctx.lang]);
+  setText(box.querySelector("h3"), t("card.pocket.wifi.readings", { n: list.length }));
+  const empty = box.querySelector(".empty");
+  empty.hidden = list.length > 0;
+  setText(empty, t("card.pocket.wifi.no_readings"));
+  if (s.readingsKey === key) return;
+  s.readingsKey = key;
+  const time = (iso) => new Date(iso).toLocaleTimeString(ctx.lang, { hour: "2-digit", minute: "2-digit" });
+  const nodes = [];
+  for (const x of list) {
+    const id = `${x.t}|${x.phone}`;
+    const row = el("button", "reading", `<span class="label"><span class="n"></span><small></small></span><span class="v"></span>`);
+    row.type = "button";
+    row.dataset.key = id;
+    const room = roomOf(x);
+    row.querySelector(".n").textContent = room ? hass?.areas?.[room]?.name ?? room : t("card.pocket.wifi.no_room");
+    row.querySelector("small").textContent = `${time(x.t)} · ${x.band ? `${x.band} GHz` : "?"}`;
+    row.querySelector(".v").textContent = dbmText(x.dbm);
+    nodes.push(row);
+    if (s.open !== id) continue;
+    const facts = [t("card.pocket.wifi.band", { band: x.band ?? "?", channel: x.channel ?? "?" }),
+      x.ap ? t("card.pocket.wifi.ap", { name: hass?.devices?.[x.ap]?.name_by_user ?? hass?.devices?.[x.ap]?.name ?? x.ap }) : t("card.pocket.wifi.ap_unknown"),
+      ...(x.noise != null ? [t("card.pocket.wifi.noise", { noise: dbmText(x.noise) })] : []),
+      t("card.pocket.wifi.spread", { spread: x.spread ?? 0 }),
+      t("card.pocket.wifi.scans", { list: (x.scans ?? []).map((sc) => (sc.dbm == null ? "?" : dbmText(sc.dbm))).join(", ") })];
+    const details = el("ul", "facts details");
+    details.replaceChildren(...facts.map((f) => textNode("li", "", f)));
+    nodes.push(details);
+  }
+  box.querySelector(".list").replaceChildren(...nodes);
 }
 
 // The rooms of the plan by their Home Assistant names, after "Whole floor plan"; built again only when

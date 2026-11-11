@@ -2650,6 +2650,7 @@ test("phone survey: addSamples reads the dashboard again and appends to that pla
   assert.ok(saved.floors[0].points.some((p) => p.device_id === "d_office"), "the fresh plan, not the card's");
   assert.deepEqual(saved.wifi.samples, [sample]);
   assert.deepEqual(card._doc.wifi.samples, [sample], "the card shows the saved plan");
+  assert.deepEqual(card.surveySamples(), [sample], "the plan's phone readings, newest first");
   await card.removeSample(sample.t, "ios");
   const again = hass.calls.filter((c) => c.type === "lovelace/config/save").at(-1).config.views[0].cards[0].plan;
   assert.deepEqual(again.wifi?.samples ?? [], []);
@@ -2699,4 +2700,17 @@ test("phone survey: focusRoom shows one room as the area view does, neighbours f
   assert.equal($(card, "g.context"), null);
   assert.deepEqual(box(), whole);
   assert.ok(card.surveySpots().some((p) => !inKitchen(p.x, p.y)), "the whole floor's spots again");
+});
+
+test("phone survey: the kept readings show as dots with their dBm on the band map", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.wifi = { samples: [{ floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:26:28Z", band: "5", dbm: -48, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:26:24Z", dbm: -48 }] }] };
+  const card = await make({ plan, survey: "phone" }, wifiHass());
+  await settle();
+  const dots = sampleDots(card);
+  assert.equal(dots.length, 1);
+  assert.equal(dots[0].getAttribute("data-source"), "phone");
+  assert.ok(dots[0].textContent.includes("48"), dots[0].textContent);
 });

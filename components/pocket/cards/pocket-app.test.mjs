@@ -1010,11 +1010,26 @@ test("a Measure waiting for its reading reopens the Wi-Fi survey when Pocket sta
   const { savePending, clearPending } = await import("./lib/wifi-capture.js");
   savePending(window.localStorage, { code: "abc", floor_id: "ground", x: 1, y: 1, at: Date.now(), method: "shortcut-event", phone: "ios" });
   try {
-    mountDemo("#/", { ...demoConfig, floorplan: true, wifi_survey: true });
+    mountDemo(window.location.pathname, { ...demoConfig, floorplan: true, wifi_survey: true });   // the app's start: no hash
     assert.equal(window.location.hash, "#/wifi-survey");
-    window.history.replaceState(null, "", "#/");
-    mountDemo("#/", demoConfig);
-    assert.equal(window.location.hash, "#/", "not without the survey");
+    mountDemo(window.location.pathname, demoConfig);
+    assert.equal(window.location.hash, "", "not without the survey");
+  } finally {
+    clearPending(window.localStorage);
+  }
+});
+
+test("the Companion app's return (the dashboard without a hash, same page) reopens the waiting survey; Home itself does not", async () => {
+  const { savePending, clearPending } = await import("./lib/wifi-capture.js");
+  const card = mountDemo("#/wifi-survey", { ...demoConfig, floorplan: true, wifi_survey: true });
+  savePending(window.localStorage, { code: "abc", floor_id: "ground", x: 1, y: 1, at: Date.now(), method: "shortcut-event", phone: "ios" });
+  try {
+    window.history.replaceState(null, "", window.location.pathname);          // HA's navigate: no hash
+    card._route();
+    assert.equal(window.location.hash, "#/wifi-survey");
+    window.history.replaceState(null, "", "#/");                               // the person taps Home
+    card._route();
+    assert.equal(window.location.hash, "#/");
   } finally {
     clearPending(window.localStorage);
   }

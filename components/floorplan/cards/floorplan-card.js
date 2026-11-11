@@ -1235,7 +1235,8 @@ ${STYLE}
   _drawSamples(svg, px, editing, map) {
     if (!this._wifiOn) return;
     const survey = this._config.survey && !editing;
-    if (editing || map?.cls === "confidence") {
+    // A phone survey (SPEC-045) shows the readings on every map: the person sees what was kept, and where.
+    if (editing || map?.cls === "confidence" || this._config.survey === "phone") {
       const g = el("g", {}, svg);
       for (const s of this._doc.wifi?.samples || []) {
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
@@ -2049,6 +2050,12 @@ ${STYLE}
     this._spotsMemo = null;
     this._view = this._fit();
     this._render();
+  }
+
+  // The plan's phone readings (SPEC-045), every floor, newest first.
+  surveySamples() {
+    return (this._doc?.wifi?.samples || []).filter((x) => x.source === "phone")
+      .sort((a, b) => (a.t < b.t ? 1 : a.t > b.t ? -1 : 0));
   }
 
   // A reading's access point (a key of the plan's access points, or null) and band, and how they were found.

@@ -27,6 +27,7 @@ class FakePlan extends HTMLElement {
   surveySpots() { return SPOTS; }
   setSurveySpot(s) { this.calls.spot.push(s); }
   focusRoom(id) { this.calls.focus = [...(this.calls.focus ?? []), id]; }
+  surveySamples() { return this.samples ?? []; }
   resolveReading() { return { ap: "dev-ap", band: "5", via: "bssid" }; }
   predictionAt() { return -62; }
   async addSamples(s) { this.calls.addSamples.push(s); }
@@ -117,9 +118,11 @@ test("Measure on an iPhone opens the Shortcut and waits; the sensor's reading is
   assert.ok(!$(el, ".result").hidden);
   assert.ok(text($(el, ".result")).includes("−61 dBm"), text($(el, ".result")));
   assert.ok(text($(el, ".result")).includes("−62 dBm"), "the model beside it");
-  click($(el, ".keep"));
   await settle();
-  assert.equal(card.calls.addSamples.length, 1);
+  assert.equal(card.calls.addSamples.length, 1, "a reading every check passes is kept at once");
+  assert.ok($(el, ".status").classList.contains("ok"), $(el, ".status").className);
+  assert.ok(text($(el, ".status")).includes("Kept"), text($(el, ".status")));
+  assert.ok($(el, ".keep").hidden, "nothing to choose");
   const [sample] = card.calls.addSamples[0];
   assert.equal(sample.source, "phone");
   assert.equal(sample.dbm, -61);
@@ -152,6 +155,8 @@ test("a hard failure offers only Retry; an unclear band offers 2.4 and 6 GHz", a
   page.update(el, ctx);
   assert.ok($(el, ".keep").hidden);
   assert.ok(!$(el, ".retry").hidden);
+  assert.ok($(el, ".status").classList.contains("bad"), "a red dot: not kept");
+  assert.equal(card.calls.addSamples.length, 0);
   assert.ok(text($(el, ".checks")).includes("Too few readings"), text($(el, ".checks")));
   click($(el, ".retry"));
   card.resolveReading = () => ({ ap: null, band: null, via: null });
@@ -160,6 +165,8 @@ test("a hard failure offers only Retry; an unclear band offers 2.4 and 6 GHz", a
   ctx.hass = surveyHass({ states: reading(second) });
   page.update(el, ctx);
   assert.ok(!$(el, ".bands").hidden);
+  assert.ok($(el, ".status").classList.contains("warn"), "an amber dot: the person decides");
+  assert.equal(card.calls.addSamples.length, 0, "not kept before the choice");
   click($(el, '.bands [data-band="6"]'));
   await settle();
   assert.equal(card.calls.addSamples[0][0].band, "6");
@@ -250,4 +257,30 @@ test("a room picker above the plan: the whole floor plan by default, a room zoom
   pick.dispatchEvent(new window.Event("change", { bubbles: true }));
   assert.deepEqual(card.calls.focus, ["kitchen", null]);
   assert.ok(pick.compareDocumentPosition($(el, ".box")) & window.Node.DOCUMENT_POSITION_FOLLOWING, "above the plan");
+});
+
+test("the readings kept: newest first with room, time and value; a tap shows the details and every scan", async () => {
+  const sample = (t, x, dbm) => ({ floor_id: "ground", x, y: 1, t, band: "5", channel: 40, dbm, noise: -96, ap: "dev-ap",
+    source: "phone", phone: "ios", method: "shortcut", spread: 1, scans: [{ t, dbm: dbm - 1 }, { t, dbm }] });
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = page.render(ctx);
+  document.body.appendChild(el);
+  await settle();
+  card.samples = [sample("2026-11-11T18:30:00Z", 6, -55), sample("2026-11-11T18:26:28Z", 2, -48)];
+  page.update(el, ctx);
+  const rows = [...el.querySelectorAll(".readings .reading")];
+  assert.equal(rows.length, 2);
+  assert.ok(text(rows[0]).includes("Kitchen") && text(rows[0]).includes("−55 dBm"), text(rows[0]));
+  assert.ok(text(rows[1]).includes("Living room") && text(rows[1]).includes("−48 dBm"), text(rows[1]));
+  assert.ok(text($(el, ".readings h3")).includes("2"), text($(el, ".readings h3")));
+  click(rows[1]);
+  page.update(el, ctx);
+  const details = $(el, ".readings .details");
+  assert.ok(!details.hidden);
+  assert.ok(text(details).includes("channel 40") && text(details).includes("−49") && text(details).includes("Spread 1 dB"), text(details));
+  const pick = $(el, "select.room-pick");
+  pick.value = "kitchen";
+  pick.dispatchEvent(new window.Event("change", { bubbles: true }));
+  page.update(el, ctx);
+  assert.equal(el.querySelectorAll(".readings .reading").length, 1, "the picked room's readings");
 });
