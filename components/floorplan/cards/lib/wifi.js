@@ -863,7 +863,8 @@ const byXY = (a, b) => a.x - b.x || a.y - b.y;
 // then the cells farthest from a reading of their serving access point (a reading without one counts for the
 // access point serving its spot), beyond 2 m. Every spot at least 2 m from the others; at most n, ties by x,
 // then y.
-export function nextSpots(cells, observations, rooms, n = 3) {
+// `far: false` leaves out the far cells, `apartM` spaces the spots (a phone survey: SPEC-045).
+export function nextSpots(cells, observations, rooms, n = 3, { far: withFar = true, apartM = APART_M } = {}) {
   const nearest = (o) => {
     let best = null;
     for (const c of cells) if (!best || dist(c, o) < dist(best, o)) best = c;
@@ -871,7 +872,7 @@ export function nextSpots(cells, observations, rooms, n = 3) {
   };
   const obs = (observations ?? []).map((o) => ({ x: o.x, y: o.y, ap: o.ap ?? nearest(o) }));
   const out = [];
-  const free = (c) => !out.some((s) => dist(s, c) < APART_M);
+  const free = (c) => !out.some((s) => dist(s, c) < apartM);
   const take = (c, why) => {
     if (out.length >= n || !free(c)) return false;
     out.push({ x: c.x, y: c.y, why });
@@ -887,6 +888,7 @@ export function nextSpots(cells, observations, rooms, n = 3) {
     const own = cells.filter((c) => c.room === i).sort((a, b) => dist(a, middle) - dist(b, middle) || byXY(a, b));
     for (const c of own) if (take(c, "room")) return;
   });
+  if (!withFar) return out;
   const far = cells.map((c) => ({ c, d: Math.min(Infinity, ...obs.filter((o) => o.ap === c.ap).map((o) => dist(o, c))) }))
     .filter((e) => e.d > FAR_M)
     .sort((a, b) => b.d - a.d || byXY(a.c, b.c));

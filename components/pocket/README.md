@@ -263,11 +263,11 @@ floor plan's Wi-Fi maps (SPEC-045; the floorplan component's *Wi-Fi* sections). 
 (with `floorplan: true`), render and deploy: that adds `packages/pocket.yaml` with
 `sensor.domosenso_wifi_reading`, and a **Wi-Fi survey** row on the System page for administrators.
 
-- **The page** (`#/wifi-survey`) shows the floor plan's Wi-Fi map with up to 8 suggested spots,
-  numbered: handover zones between access points, rooms without a reading, places far from any. Tap
+- **The page** (`#/wifi-survey`) shows the floor plan's Wi-Fi map with up to 3 suggested spots,
+  numbered: handover zones between access points and rooms without a reading, at least 4 m apart. Tap
   where you stand (a tap within 1 m of a spot takes the spot), press **Measure** and stand still.
 - **iPhone** (iOS 17.4 or later): Pocket opens the Shortcut **Domosenso Wi-Fi**, which reads the
-  Wi-Fi details 5 times a second apart (signal, noise, channel, Wi-Fi standard, rates, the access
+  Wi-Fi details 5 times, a second apart (signal, noise, channel, Wi-Fi standard, rates, the access
   point's BSSID, the network name), sends them to Home Assistant with the Companion app's **Fire
   event** and shows a notification; go back to Home Assistant (◀ at the top left) and the reading shows
   on the page. The Shortcut does not open the app itself: that would restart it. Install it once from the page's install card (download it, open the download, tap Add

@@ -2613,8 +2613,8 @@ test("phone survey: spots drawn, a tap is the spot and a floorplan-tap in metres
     assert.equal($(card, ".survey").innerHTML, "", "the host draws its own panel");
     assert.equal(f.calls.length, 0, "no laptop link is read");
     const spots = card.surveySpots();
-    assert.ok(spots.length > 3 && spots.length <= 8, `up to 8 spots, got ${spots.length}`);
-    assert.ok(spots.every((s) => s.floor_id === "ground" && ["handover", "room", "far"].includes(s.why)));
+    assert.ok(spots.length > 0 && spots.length <= 3, `up to 3 spots, got ${spots.length}`);
+    assert.ok(spots.every((s) => s.floor_id === "ground" && ["handover", "room"].includes(s.why)), "no far spots on a phone");
     assert.equal(card.shadowRoot.querySelectorAll("circle.next-spot").length, spots.length);
     const taps = [];
     let rooms = 0;

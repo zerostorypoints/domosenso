@@ -141,7 +141,8 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
 - `--floorplan-target: 44px` (a CSS variable on the card) makes the bar's buttons and the chips at
   least that big, for fingers.
 - **A phone survey** (SPEC-045, Pocket's Wi-Fi survey): `survey: "phone"` shows the radio layer with
-  up to 8 next spots, numbered, and the spot where the person stands. A tap in a room sets that spot
+  up to 3 next spots, numbered (rooms without a reading and handover zones without one, at least
+  4 m apart; no "far" spots), and the spot where the person stands. A tap in a room sets that spot
   and fires `floorplan-tap` (`detail: {floor_id, x, y}` in metres) instead of `room-tap`. The host
   draws its own panel and calls the card: `surveySpots()` (`[{floor_id, x, y, why}]`, why `handover`,
   `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `surveySamples()` (the plan's phone readings, newest first; with

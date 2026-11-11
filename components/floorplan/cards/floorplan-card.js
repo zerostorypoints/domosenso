@@ -94,9 +94,9 @@ const NARROW_PX = 600;             // a card narrower than this (a phone) predic
 const NARROW_STEP_M = 0.3;
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
-const LINK_MS = 2000;
-const PHONE_SPOTS = 8;
-const FOCUS_M = 1;                 // m around a room the phone survey zooms to (focusRoom)             // next spots offered to a phone survey (SPEC-045); the laptop's page shows 3              // the survey page reads the laptop's Wi-Fi link this often
+const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
+const PHONE_SPOTS = 3;             // next spots offered to a phone survey (SPEC-045): unmeasured rooms and handover zones only,
+const PHONE_APART_M = 4;           // at least this far apart; a phone walk is coarser than the laptop's 2 m grid
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -1274,11 +1274,13 @@ ${STYLE}
       const obs = list.filter((o) => o.floorId === this._floorId && o.band === map.band);
       const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId)?.rooms ?? [];
       const centred = cells.map((c) => ({ ...c, x: c.x + step / 2, y: c.y + step / 2 }));
-      const n = this._config.survey === "phone" ? PHONE_SPOTS : undefined;
+      const phone = this._config.survey === "phone";
+      const n = phone ? PHONE_SPOTS : undefined;
+      const options = phone ? { far: false, apartM: PHONE_APART_M } : {};
       // With `area` (a phone survey's room) only that room's cells and rooms: the spots are where it can measure.
       const shown = this._floor?.rooms ?? rooms;
       const own = this._config.area ? centred.filter((c) => shown.some((r) => pointInPolygon([c.x, c.y], r.polygon))) : centred;
-      this._spotsMemo = { key: `${memo}|${this._config.area ?? ""}`, spots: nextSpots(own, obs, this._config.area ? shown : rooms, n)
+      this._spotsMemo = { key: `${memo}|${this._config.area ?? ""}`, spots: nextSpots(own, obs, this._config.area ? shown : rooms, n, options)
         .map((spot) => ({ floor_id: this._floorId, ...spot })) };
     }
     return this._spotsMemo.spots;

@@ -387,6 +387,10 @@ verified: how fast the app answers repeated commands; S0 measures it).
   back to Home Assistant."); the person goes back (◀ at the top left, or the app switcher) and the page,
   still open, shows the reading as it arrives: the dot, the result, the row in Readings kept. The waiting
   line says the same. The input's `return` stays in the JSON, unused.
-- The picked room is kept per device (localStorage), so a reload keeps it. The shell's return to the
+- The picked room is kept per device (localStorage), so a reload keeps it.
+- **Fewer spots** (the maintainer: "too many suggested points … not sure if moving 2m will drastically
+  change the picture"): Pocket asks for at most 3 spots, at least 4 m apart, and only rooms without a
+  reading and handover zones without one (`nextSpots(..., {far: false, apartM: 4})`); the laptop survey
+  keeps its far spots and 2 m. The shell's return to the
   survey (a dashboard shown without a hash while a Measure waits or within 60 s of one) stays, for a
   reload.
