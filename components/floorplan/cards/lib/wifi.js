@@ -93,8 +93,9 @@ export function openingDefaults(wifi, o) {
 // A floor's walls as segments {a, b, material, open, kind}: every room edge once (shared edges
 // merged), edges inside an open space dropped, every opening cut out of its wall as a segment of
 // its own. A wall is `cls` interior when two rooms share it, exterior when one room has it alone or it
-// parts an indoor from an outdoor room. `wifi` is the plan's `wifi` (its defaults and outdoor rooms),
-// possibly undefined.
+// parts an indoor from an outdoor room, outdoor when it is an outdoor room's own (a balcony's railing
+// side): that one is no wall (open, material null) until the owner sets a material for it (R24).
+// `wifi` is the plan's `wifi` (its defaults and outdoor rooms), possibly undefined.
 export function wallSegments(floor, wifi, hass) {
   const defaults = { ...materials.defaults };
   for (const k of ["interior", "exterior"]) if (wifi?.defaults?.[k]) defaults[k] = wifi.defaults[k];
@@ -108,8 +109,10 @@ export function wallSegments(floor, wifi, hass) {
     return !facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M);
   }).map((s) => {
     const set = walls.find((w) => distToSegment(w.at, s.a, s.b) <= SHARED_M);
-    const cls = s.shared && (s.rooms.every(isOut) || !s.rooms.some(isOut)) ? "interior" : "exterior";
-    return { a: s.a, b: s.b, material: set?.material ?? defaults[cls], open: false, kind: "wall", shared: s.shared, cls };
+    const cls = !s.shared && isOut(s.rooms[0]) ? "outdoor"
+      : s.shared && (s.rooms.every(isOut) || !s.rooms.some(isOut)) ? "interior" : "exterior";
+    const material = set?.material ?? defaults[cls] ?? null;
+    return { a: s.a, b: s.b, material, open: material === null, kind: "wall", shared: s.shared, cls };
   });
 
   for (const o of floor.openings || []) {
@@ -349,13 +352,14 @@ const withList = (floor, key, list) => {
 
 // The wall stretch through `at` made of `material`; the default for its class (interior: shared by two
 // rooms, exterior: one room's alone or between an indoor and an outdoor room) removes its entry instead.
+// An outdoor room's own edge has no default: null (no wall) removes its entry, any material keeps one.
 export function setWallMaterial(doc, floorId, at, material) {
-  if (!materialsFor("wall").includes(material)) return null;
+  if (material !== null && !materialsFor("wall").includes(material)) return null;
   return editFloor(doc, floorId, (floor) => {
     const seg = wallSegmentAt(floor, doc.wifi, at, SHARED_M);
-    if (!seg) return null;
+    if (!seg || (material === null && seg.cls !== "outdoor")) return null;
     const walls = (floor.walls || []).filter((w) => distToSegment(w.at, seg.a, seg.b) > SHARED_M);
-    if (material !== wallDefault(doc.wifi, seg.cls)) walls.push({ at: [mm(at[0]), mm(at[1])], material });
+    if (material !== null && material !== wallDefault(doc.wifi, seg.cls)) walls.push({ at: [mm(at[0]), mm(at[1])], material });
     return withList(floor, "walls", walls);
   });
 }

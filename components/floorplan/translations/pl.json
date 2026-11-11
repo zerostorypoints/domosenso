@@ -171,7 +171,8 @@
         "floor": "To piętro:",
         "height": "Wysokość (m)",
         "slab": "Strop pod nim",
-        "outdoor": "Na zewnątrz:"
+        "outdoor": "Na zewnątrz:",
+        "none": "Brak ściany"
       },
       "material": {
         "drywall": "Płyta gipsowo-kartonowa",

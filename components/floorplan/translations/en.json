@@ -171,7 +171,8 @@
         "floor": "This floor:",
         "height": "Height (m)",
         "slab": "Floor below",
-        "outdoor": "Outdoors:"
+        "outdoor": "Outdoors:",
+        "none": "No wall"
       },
       "material": {
         "drywall": "Drywall",

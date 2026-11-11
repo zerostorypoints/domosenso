@@ -1853,6 +1853,26 @@ test("the opening panel's Material: window materials for a window, door material
   assert.ok(!("material" in card._doc.floors[0].openings[0]));
 });
 
+test("the Walls tool: an outdoor room's own edge is No wall until a material is chosen; No wall again removes it", async () => {
+  const plan = planOf();
+  plan.wifi = { outdoor: ["kitchen"] };
+  const card = await make({ plan }, hassOf());
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  tap(card, 7.98, 2, $(card, 'polygon.room[data-area="kitchen"]'));      // the kitchen's east edge
+  const field = () => $(card, '.wall-panel [data-field="wall"]');
+  assert.deepEqual(optionValues(field()), ["", ...materialIds("wall")]);
+  assert.equal(field().querySelector("option[selected]").value, "");
+  assert.equal(field().querySelector('option[value=""]').textContent, EN("card.floorplan.wall.none"));
+  assert.equal($(card, "[data-action=wall_default]"), null, "no wall is no default for the others");
+  change(field(), "glass");
+  assert.deepEqual(card._doc.floors[0].walls, [{ at: [8, 2], material: "glass" }]);
+  change(field(), "");
+  assert.ok(!("walls" in card._doc.floors[0]));
+  tap(card, 5.02, 1, $(card, 'polygon.room[data-area="living_room"]'));    // the wall to the outdoor kitchen
+  assert.ok(!optionValues(field()).includes(""), "an indoor room's wall is always some material");
+});
+
 test("the Walls tool's floor panel: an Outdoors switch per room marks it; the Wi-Fi map changes", async () => {
   window.localStorage.clear();
   const plan = wifiPlan();

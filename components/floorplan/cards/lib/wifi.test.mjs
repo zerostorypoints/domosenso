@@ -467,16 +467,36 @@ const balcony = (opening = {}, outdoor = ["balcony"]) => ({
 });
 const atX = (segs, x) => segs.filter((s) => onX(s, x));
 
-test("a wall shared with an outdoor room is exterior; two outdoor rooms share an interior one; unshared stays exterior", () => {
+test("a wall shared with an outdoor room is exterior; two outdoor rooms share an interior one", () => {
   const { floor, wifi } = balcony();
   const walls = atX(wallSegments(floor, wifi, {}), 4).filter((s) => s.kind === "wall");
   assert.ok(walls.length && walls.every((s) => s.material === "concrete_thick" && s.cls === "exterior"));
   const own = wallSegments(floor, { ...wifi, defaults: { exterior: "brick" } }, {});
   assert.ok(atX(own, 4).filter((s) => s.kind === "wall").every((s) => s.material === "brick"), "the plan's exterior default");
-  assert.equal(atX(wallSegments(floor, wifi, {}), 6)[0].material, "concrete_thick", "the balcony's own outer wall");
+  assert.equal(atX(wallSegments(floor, undefined, {}), 6)[0].material, "concrete_thick", "unmarked, the outer wall");
   const terraces = { rooms: [{ area_id: "a", polygon: sq(0, 0, 3, 3) }, { area_id: "b", polygon: sq(3, 0, 3, 3) }] };
   assert.equal(atX(wallSegments(terraces, { outdoor: ["a", "b"] }, {}), 3)[0].material, "concrete_thin");
   assert.equal(wallSegmentAt(floor, wifi, [4, 0.3], 0.1).cls, "exterior");
+});
+
+// R24: a balcony's railing side (an outdoor room's edge no other room shares) is no wall by default.
+test("an outdoor room's own unshared edges cost nothing unless the owner sets a material", () => {
+  const { floor, wifi } = balcony({ kind: "opening" });
+  const loss = priorParams(table, []).loss;
+  const rail = atX(wallSegments(floor, wifi, {}), 6);
+  assert.ok(rail.length && rail.every((s) => s.open && s.material === null && s.cls === "outdoor"), JSON.stringify(rail));
+  assert.equal(pathLoss(wallSegments(floor, wifi, {}), [5, 1.5], [7, 1.5], "5", loss), 0, "across the railing: nothing");
+  assert.equal(pathLoss(wallSegments(floor, wifi, {}), [2, 1.5], [7, 1.5], "5", loss), 0, "from inside, through the doorway and the railing");
+  const glazed = { ...floor, walls: [{ at: [6, 1.5], material: "glass" }] };
+  assert.equal(pathLoss(wallSegments(glazed, wifi, {}), [5, 1.5], [7, 1.5], "5", loss), 3, "a winter garden's glass");
+  const seg = wallSegmentAt(floor, wifi, [6, 1], 0.1);
+  assert.deepEqual([seg.cls, seg.material], ["outdoor", null], "the Walls tool still picks the railing");
+  // setting a material keeps an entry for every wall material; null takes it away again
+  const doc = { schema: 1, floors: [{ floor_id: "g", points: [], ...floor }], wifi };
+  const set = setWallMaterial(doc, "g", [6, 1], "concrete_thick");
+  assert.deepEqual(set.floors[0].walls, [{ at: [6, 1], material: "concrete_thick" }]);
+  assert.ok(!("walls" in setWallMaterial(set, "g", [6, 1], null).floors[0]));
+  assert.equal(setWallMaterial(doc, "g", [4, 0.3], null), null, "an indoor wall is always some material");
 });
 
 test("an unmarked room behaves as before: interior wall, the door open and wood", () => {

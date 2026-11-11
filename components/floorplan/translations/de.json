@@ -171,7 +171,8 @@
         "floor": "Dieses Stockwerk:",
         "height": "Höhe (m)",
         "slab": "Decke darunter",
-        "outdoor": "Im Freien:"
+        "outdoor": "Im Freien:",
+        "none": "Keine Wand"
       },
       "material": {
         "drywall": "Gipskarton",

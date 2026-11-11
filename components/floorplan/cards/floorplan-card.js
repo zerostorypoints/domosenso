@@ -952,9 +952,14 @@ ${STYLE}
     let html = "";
     const seg = this._wall && wallSegmentAt(floor, this._doc.wifi, this._wall, PICK_PX * this._px());
     if (seg) {
-      html += label("material") + `<select class="wall-field" data-field="wall">${options("wall", seg.material)}</select>`
-        + ["interior", "exterior"].map((w) => `<button data-action="wall_default" data-which="${w}">`
+      // An outdoor room's own edge (a balcony's railing side) is no wall until a material is chosen (R24).
+      const none = seg.cls === "outdoor"
+        ? `<option value="" ${seg.material === null ? "selected" : ""}>${esc(t(h, "card.floorplan.wall.none"))}</option>` : "";
+      html += label("material") + `<select class="wall-field" data-field="wall">${none}${options("wall", seg.material)}</select>`;
+      if (seg.material !== null) {
+        html += ["interior", "exterior"].map((w) => `<button data-action="wall_default" data-which="${w}">`
           + `${esc(t(h, `card.floorplan.wall.default.${w}`))}</button>`).join("");
+      }
     }
     html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.floor"))}</span>` + label("height")
       + `<input type="number" class="wall-field" data-field="height" min="2" max="10" step="0.05" value="${esc(String(floor.height ?? FLOOR_HEIGHT_M))}">`
@@ -1754,7 +1759,7 @@ ${STYLE}
       if (field === "outdoor") this._edit(setOutdoor(this._doc, e.target.getAttribute("data-area"), e.target.checked));
       else if (field === "wall") {
         const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
-        if (seg) this._edit(setWallMaterial(this._doc, this._floorId, seg.at, raw));
+        if (seg) this._edit(setWallMaterial(this._doc, this._floorId, seg.at, raw || null));
       } else this._edit(setFloorWifi(this._doc, this._floorId, { [field]: field === "height" ? (raw === "" ? null : Number(raw)) : raw }));
       this._render();
     } else if (e.target.matches?.(".ap-field") && this._picked) {

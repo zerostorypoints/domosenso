@@ -233,8 +233,9 @@ In edit mode (SPEC-044):
   any room (its cells, its next spots), and is often the weakest spot of a home. Switch it on under
   **Outdoors** in the Walls tool's floor panel: its wall to the home becomes exterior, and a door or
   window between it and an indoor room is drawn and computed closed unless its sensor or its own
-  state says otherwise. Joining, splitting or relinking rooms keeps the flags true to the rooms.
-  Stored as `wifi.outdoor` (area ids).
+  state says otherwise. Its own edges no room shares (a railing) are **No wall** and cost nothing
+  until you pick a material for them (glass for a winter garden). Joining, splitting or relinking
+  rooms keeps the flags true to the rooms. Stored as `wifi.outdoor` (area ids).
 - **Doors and windows.** The opening's panel has **Material**. A window or fixed glass: one of glass,
   double glazing (default), low-E, triple low-E; a door is wood, metal or any of the glazings (a
   glazed door); a doorway has none. A door without its own material follows the outdoor flags:
