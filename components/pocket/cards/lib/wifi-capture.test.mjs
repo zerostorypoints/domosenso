@@ -83,7 +83,8 @@ test("readingFromSensor: the pending code's reading, not another code's or an ol
   assert.equal(got.user_id, "u1");
   assert.deepEqual(got.scans.map((s) => s.dbm), [-60]);
   assert.equal(readingFromSensor(sensor("old", "2026-11-11T17:05:10Z"), pending), null);
-  assert.equal(readingFromSensor(sensor("abc", "2026-11-11T17:04:00Z"), pending), null, "fired before Measure");
+  assert.ok(readingFromSensor(sensor("abc", "2026-11-11T17:04:00Z"), pending),
+    "the single-use code proves the reading fresh: Home Assistant's clock behind the phone's does not drop it");
   assert.equal(readingFromSensor(undefined, pending), null);
   assert.equal(readingFromSensor(sensor("abc", "2026-11-11T17:05:10Z"), null), null);
 });
@@ -154,4 +155,21 @@ test("the outcome of the last Measure survives the page being built again, for R
   saveOutcome(storage, { tone: "ok", dbm: -51, t: "2026-11-11T18:35:11Z", phone: "ios" }, 1_000);
   assert.deepEqual(loadOutcome(storage, 2_000), { tone: "ok", dbm: -51, t: "2026-11-11T18:35:11Z", phone: "ios" });
   assert.equal(loadOutcome(storage, 1_000 + RETURN_MS + 1), null);
+});
+
+test("parseScans: only scans the plan accepts — a time, a signal of -110..0; rates and frequency out of range dropped to null", () => {
+  const ok = { t: "2026-11-11T18:05:27+01:00", bssid: "02:00:00:00:00:0a" };
+  assert.deepEqual(parseScans([{ ...ok, rssi: "+5" }, { ...ok, rssi: "-127" }, { rssi: "-60" }]), [], "+5, -127, and no time");
+  const [s] = parseScans([{ ...ok, rssi: "\u221261", rx: "2\u00a0401", tx: "20000", mhz: "1200" }]);
+  assert.equal(s.dbm, -61, "a Unicode minus is a minus");
+  assert.equal(s.rx, 2401, "a space between thousands");
+  assert.equal(s.tx, null);
+  assert.equal(s.mhz, null);
+});
+
+test("androidCollector: the app's invalid signal (-127) is no scan", () => {
+  const start = 0;
+  const c = androidCollector({ n: 3, startedAt: start, entities: phoneEntities(androidHass(0), "dev-sam") });
+  assert.equal(c.offer(androidHass(1000, { dbm: "-127" })), false);
+  assert.equal(c.scans.length, 0);
 });

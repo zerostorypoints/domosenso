@@ -500,6 +500,9 @@ and for a device its device id. Sources and their weights:
   point's 5 GHz level at the spot).
 - **Shown.** With Readings on, the 5 GHz map shows such a sample as a hollow dot labelled `≤ −75`; its
   hover tells "on 2.4 GHz: 5 GHz below −75 dBm here (band steering)". The 2.4 GHz map shows it as before.
+- **Scope (final review):** a ceiling is made when any access point of the home serves 5 GHz, not only
+  one on the reading's floor (5 GHz crosses slabs, weakly, and a client may hold an access point on
+  another floor); the bound applies to the strongest 5 GHz there of any access point.
 - **Not done:** 6 GHz (a phone without 6 GHz support would bound it wrongly); bounds from device
   sensors; learning the threshold from the data (the default and the setting stand).
 - **Tests:** a 2.4 GHz survey sample in a corner lowers the calibrated 5 GHz map there to the ceiling

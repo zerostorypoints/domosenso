@@ -394,3 +394,33 @@ verified: how fast the app answers repeated commands; S0 measures it).
   keeps its far spots and 2 m. The shell's return to the
   survey (a dashboard shown without a hash while a Measure waits or within 60 s of one) stays, for a
   reload.
+
+## Amendment 3 (what the prototype settled, 2026-11-11)
+
+- Status: approved 2026-11-11: each change below was asked for or accepted by the maintainer while
+  trying the prototype; this records them. Source: the prototype sessions and the final review.
+- **Kept at once.** A reading that passes every check is kept without a tap (green dot, "Kept", Undo);
+  a soft failure waits for Keep or Retry (amber); a hard one keeps nothing (red). The body's "Keep"
+  applies to the amber case only.
+- **Readings kept.** A list under the panel shows the phone's readings in the plan, newest first, of
+  the picked room when there is one; a row opens its details and scans. On the plan they show with the
+  floor plan's Readings switch (opt-in), the band map's own only.
+- **Room picker.** A drop-down above the plan, "Whole floor plan" first: a room is shown as the area
+  view shows it (the card's `focusRoom`: the room alone, its neighbours faded), with its spots and taps
+  only; kept per device.
+- **Spots.** At most 3, 4 m apart, rooms without a reading and open handover zones only (no far spots).
+- **Install.** A download of the signed file named as Pocket runs it ("Domosenso Wi-Fi.shortcut");
+  Shortcuts' `import-shortcut` link refuses a file served by Home Assistant (verified). No "Installed"
+  button: the install card folds away after the first reading from the Shortcut, and "Install the
+  Shortcut" reopens it.
+- **The System row** shows for an administrator of a home with `wifi_survey`, without checking for an
+  access point (the page itself says when the plan has none).
+- **Values.** A scan the plan would refuse is dropped before it is kept: no time, or a signal outside
+  −110..0 dBm (Android's −127 "no value"); rates and frequency outside their ranges become null. A
+  Unicode minus and a space between thousands are read as such.
+- **Freshness by the code.** The reading's single-use random code proves it fresh; Home Assistant's
+  clock is not compared with the phone's (a phone a few seconds ahead silently dropped readings).
+- **Not done (recorded by the final review):** Undo while the save is in flight can race; `floorplan
+  push` after a phone survey refuses with a message about rooms and points (pull first); an SSID with
+  `"` breaks the Shortcut's JSON; the signed Shortcut's certificate expires 2027-12-08 (regenerate with
+  `tools/pocket_shortcuts.py`); every iPhone shares the offset `ios`.

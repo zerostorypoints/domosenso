@@ -118,12 +118,20 @@ const text = (v) => {
   const s = String(v).trim();
   return s === "" || s.toLowerCase() === NOT_CONNECTED ? null : s;
 };
-// A number from the Shortcut's text: "864 Mbps", "-61,5", "36".
+// A number from the Shortcut's text: "864 Mbps", "-61,5", "36", "−61" (a Unicode minus), "2 401" (a space,
+// narrow or not, between thousands).
 const number = (v) => {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  const m = /-?\d+(?:[.,]\d+)?/.exec(String(v ?? ""));
+  const text = String(v ?? "").replace(/(\d)[\s\u00a0\u202f](?=\d{3}\b)/g, "$1").replace(/[\u2212\u2010\u2011\u2012\u2013]/g, "-");
+  const m = /-?\d+(?:[.,]\d+)?/.exec(text);
   return m ? Number(m[0].replace(",", ".")) : null;
 };
+// The ranges the plan document accepts (schemas/floorplan.schema.json, SPEC-045): a value outside its range
+// is the phone's "no value" (Android's -127), never a reading.
+const DBM = [-110, 0];
+const RATE = [0, 10000];
+const MHZ = [2400, 7125];
+const within = (v, [lo, hi]) => (v !== null && v >= lo && v <= hi ? v : null);
 const mac = (v) => {
   const s = text(v)?.replaceAll("-", ":").toLowerCase();
   return s && /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(s) ? s : null;
@@ -144,20 +152,22 @@ export function parseScans(raw) {
   for (const s of list) {
     if (!s || typeof s !== "object") continue;
     if ([s.ssid, s.bssid].some((v) => String(v ?? "").trim().toLowerCase() === NOT_CONNECTED)) continue;
-    const dbm = number(s.rssi ?? s.dbm);
-    if (dbm === null) continue;
+    // A scan the plan would refuse is no scan: no time, or a signal outside -110..0.
+    const dbm = within(number(s.rssi ?? s.dbm), DBM);
+    const t = text(s.t);
+    if (dbm === null || t === null) continue;
     const channel = number(s.channel);
-    out.push({ t: text(s.t), ssid: text(s.ssid), bssid: mac(s.bssid), mac: mac(s.mac), dbm, noise: number(s.noise),
-      channel: channel === null ? null : Math.round(channel), standard: text(s.standard), rx: number(s.rx), tx: number(s.tx),
-      mhz: number(s.mhz) });
+    out.push({ t, ssid: text(s.ssid), bssid: mac(s.bssid), mac: mac(s.mac), dbm, noise: number(s.noise),
+      channel: channel === null ? null : Math.round(channel), standard: text(s.standard), rx: within(number(s.rx), RATE),
+      tx: within(number(s.tx), RATE), mhz: within(number(s.mhz), MHZ) });
   }
   return out;
 }
 
+// The pending code's reading. The code is random and used once, so it alone proves the reading fresh: Home
+// Assistant's clock (the sensor's `at`) is not compared with the phone's, which may differ by seconds.
 export function readingFromSensor(state, pending) {
   if (!state || !pending || state.state !== pending.code) return null;
-  const at = Date.parse(state.attributes?.at ?? "");
-  if (!Number.isFinite(at) || at < pending.at) return null;
   return { scans: parseScans(state.attributes?.scans), user_id: state.attributes?.user_id ?? null };
 }
 
@@ -196,11 +206,12 @@ export function androidCollector({ n, startedAt, entities, timeoutMs = ANDROID_T
       const signal = hass.states?.[entities.signal];
       const at = Date.parse(signal?.last_updated ?? "");
       if (!Number.isFinite(at) || at <= last || scans.length >= n) return false;
-      const dbm = number(signal.state);
+      const dbm = within(number(signal.state), DBM);
       if (dbm === null) return false;
       last = at;
       scans.push({ t: new Date(at).toISOString(), ssid: text(value(hass, "connection")), bssid: mac(value(hass, "bssid")), mac: null,
-        dbm, noise: null, channel: null, standard: null, rx: number(value(hass, "link")), tx: null, mhz: number(value(hass, "frequency")) });
+        dbm, noise: null, channel: null, standard: null, rx: within(number(value(hass, "link")), RATE), tx: null,
+        mhz: within(number(value(hass, "frequency")), MHZ) });
       return true;
     },
     state(now) {
