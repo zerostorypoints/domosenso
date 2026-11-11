@@ -357,7 +357,7 @@ def home(tmp_path, monkeypatch):
         return FIVE[0]
 
     monkeypatch.setattr(wifi_link, "read_link", read_link)
-    monkeypatch.setattr(wifi_link, "mac_address", lambda interface, system=None: LAPTOP)
+    monkeypatch.setattr(wifi_link, "mac_address", lambda interface, system=None, cache_dir=None: LAPTOP)
     real_start = fp.start_server
     monkeypatch.setattr(fp, "start_server", lambda page, port: seen.setdefault("server", real_start(page, port)))
 
@@ -393,7 +393,7 @@ def test_command_records_a_sample_and_writes_nothing_to_home_assistant(home, cap
 
 def test_command_fails_without_a_wifi_interface(home, capsys, monkeypatch):
     root, ha, _ = home
-    monkeypatch.setattr(wifi_link, "mac_address", lambda interface, system=None: None)
+    monkeypatch.setattr(wifi_link, "mac_address", lambda interface, system=None, cache_dir=None: None)
     monkeypatch.setattr(wifi_link, "read_link", lambda system=None, interface=None, cache_dir=None: None)
     assert main(["--home", str(root), "floorplan", "survey", "production", "--no-open"]) == 1
     assert "FAIL no Wi-Fi interface" in capsys.readouterr().out

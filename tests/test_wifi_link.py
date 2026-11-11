@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from domosenso_cli import wifi_link
-from domosenso_cli.wifi_link import (Link, band_of, mac_address, parse_helper, parse_iw,
+from domosenso_cli.wifi_link import (Link, band_of, helper_interface, mac_address, parse_helper, parse_iw,
                                      parse_macos, parse_netsh, read_link)
 
 FIX = Path(__file__).parent / "fixtures" / "wifi"
@@ -219,3 +219,87 @@ def test_mac_address_missing_tool(monkeypatch):
 
     monkeypatch.setattr(wifi_link.subprocess, "run", run)
     assert mac_address("en0", system="Darwin") is None
+
+
+# ---- which interface: the Mac's Wi-Fi device, Linux's first wireless one (final review) ----
+
+NETWORKSETUP = """
+Hardware Port: Ethernet
+Device: en0
+Ethernet Address: 02:00:00:00:00:e0
+
+Hardware Port: Wi-Fi
+Device: en1
+Ethernet Address: 02:00:00:00:00:e1
+"""
+
+
+def ifconfig(name: str, mac: str) -> str:
+    return f"{name}: flags=8863<UP>\n\tether {mac}\n\tinet 192.0.2.5\n"
+
+
+def test_helper_prints_its_interface():
+    assert helper_interface("rssi=-40 noise=-91 channel=69 band=3 if=en1\n") == "en1"
+    assert helper_interface("off if=en7") == "en7"
+    assert helper_interface("off") is None
+    assert parse_helper("rssi=-40 noise=-91 channel=69 band=3 if=en1") == Link("6", 69, -40.0, -91.0, None)
+    assert "if=" in wifi_link.HELPER_SOURCE.read_text()
+
+
+def test_mac_address_macos_takes_the_helpers_interface(monkeypatch, tmp_path):
+    calls = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        if cmd[0] == "swiftc":
+            Path(cmd[cmd.index("-o") + 1]).write_text("binary")
+            return completed("")
+        if cmd[0] == "ifconfig":
+            return completed(ifconfig(cmd[1], "02:00:00:00:00:a7" if cmd[1] == "en7" else "02:00:00:00:00:a0"))
+        return completed("rssi=-40 noise=-91 channel=69 band=3 if=en7\n")
+
+    monkeypatch.setattr(wifi_link.subprocess, "run", run)
+    monkeypatch.setattr(wifi_link.shutil, "which", lambda name: "/usr/bin/" + name)
+    assert mac_address(None, system="Darwin", cache_dir=tmp_path) == "02:00:00:00:00:a7"
+    assert ["ifconfig", "en7"] in calls
+
+
+def test_mac_address_macos_without_helper_asks_networksetup(monkeypatch, tmp_path):
+    calls = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        if cmd[:2] == ["networksetup", "-listallhardwareports"]:
+            return completed(NETWORKSETUP)
+        if cmd[0] == "ifconfig":
+            return completed(ifconfig(cmd[1], {"en0": "02:00:00:00:00:e0", "en1": "02:00:00:00:00:e1"}[cmd[1]]))
+        return completed("", 1)
+
+    monkeypatch.setattr(wifi_link.subprocess, "run", run)
+    monkeypatch.setattr(wifi_link.shutil, "which", lambda name: None)
+    assert mac_address(None, system="Darwin", cache_dir=tmp_path) == "02:00:00:00:00:e1", "the Wi-Fi port, not en0"
+    calls.clear()
+    assert mac_address("en0", system="Darwin", cache_dir=tmp_path) == "02:00:00:00:00:e0", "a named interface"
+    assert calls == [["ifconfig", "en0"]]
+
+
+def test_linux_default_is_the_first_wireless_interface(monkeypatch, tmp_path):
+    for name, wireless in (("eth0", False), ("wlp3s0", True), ("wlp9s0", True)):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "address").write_text(f"02:00:00:00:00:{name[-2:]}\n")
+        if wireless:
+            (tmp_path / name / "wireless").mkdir()
+    monkeypatch.setattr(wifi_link, "SYS_NET", tmp_path)
+    calls = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        return completed(fx("linux_iw_link.txt"))
+
+    monkeypatch.setattr(wifi_link.subprocess, "run", run)
+    assert mac_address(None, system="Linux") == (tmp_path / "wlp3s0" / "address").read_text().strip()
+    assert read_link("Linux").channel == 36
+    assert calls == [["iw", "dev", "wlp3s0", "link"]]
+    for name in ("wlp3s0", "wlp9s0"):
+        (tmp_path / name / "wireless").rmdir()
+    assert mac_address(None, system="Linux") is None, "no wireless interface: wlan0, which is not there"

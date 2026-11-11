@@ -95,6 +95,18 @@ def parse_helper(text: str) -> Link | None:
     return Link(HELPER_BANDS.get(band) or band_of(channel, None), channel, float(rssi), float(noise), None)
 
 
+def helper_interface(text: str) -> str | None:
+    """The interface the CoreWLAN helper read: its `if=<name>` field (with a link or `off`)."""
+    m = re.search(r"\bif=(\S+)", text)
+    return m.group(1) if m else None
+
+
+def parse_networksetup(text: str) -> str | None:
+    """The device of the "Wi-Fi" port in `networksetup -listallhardwareports`."""
+    m = re.search(r"^Hardware Port:\s*Wi-Fi\s*\nDevice:\s*(\S+)", text, re.M)
+    return m.group(1) if m else None
+
+
 def parse_iw(text: str) -> Link | None:
     """Linux `iw dev <if> link`; the channel comes from the frequency."""
     bssid = re.search(r"Connected to ((?:[0-9a-f]{2}:){5}[0-9a-f]{2})", text, re.I)
@@ -165,12 +177,31 @@ def _read_macos(interface: str | None, cache_dir: Path) -> Link | None:
     return parse_macos(out) if out else None
 
 
+def _linux_interface() -> str:
+    """The first wireless interface (one with a `wireless` directory in sysfs), else wlan0."""
+    try:
+        names = sorted(p.parent.name for p in SYS_NET.glob("*/wireless") if p.is_dir())
+    except OSError:
+        names = []
+    return names[0] if names else "wlan0"
+
+
+def _macos_interface(cache_dir: Path) -> str:
+    """The Mac's Wi-Fi device: the one the CoreWLAN helper reads, else networksetup's "Wi-Fi" port,
+    else en0 (a Mac with an Ethernet port has Wi-Fi on en1 or later)."""
+    binary = _helper_binary(cache_dir)
+    name = helper_interface(_run([str(binary)]) or "") if binary else None
+    if not name:
+        name = parse_networksetup(_run(["networksetup", "-listallhardwareports"]) or "")
+    return name or "en0"
+
+
 def read_link(system: str | None = None, interface: str | None = None, cache_dir: Path | None = None) -> Link | None:
     system = system or platform.system()
     if system == "Darwin":
         return _read_macos(interface, Path(cache_dir) if cache_dir else DEFAULT_CACHE)
     if system == "Linux":
-        out = _run(["iw", "dev", interface or "wlan0", "link"])
+        out = _run(["iw", "dev", interface or _linux_interface(), "link"])
         return parse_iw(out) if out else None
     if system == "Windows":
         out = _run(["netsh", "wlan", "show", "interfaces"])
@@ -178,16 +209,16 @@ def read_link(system: str | None = None, interface: str | None = None, cache_dir
     return None
 
 
-def mac_address(interface: str | None, system: str | None = None) -> str | None:
+def mac_address(interface: str | None, system: str | None = None, cache_dir: Path | None = None) -> str | None:
     """The laptop's own Wi-Fi MAC, for matching it in the router's client tracker."""
     system = system or platform.system()
     if system == "Darwin":
-        out = _run(["ifconfig", interface or "en0"])
+        out = _run(["ifconfig", interface or _macos_interface(Path(cache_dir) if cache_dir else DEFAULT_CACHE)])
         m = re.search(r"\bether\s+((?:[0-9a-f]{2}:){5}[0-9a-f]{2})", out or "", re.I)
         return m.group(1).lower() if m else None
     if system == "Linux":
         try:
-            return (SYS_NET / (interface or "wlan0") / "address").read_text().strip().lower() or None
+            return (SYS_NET / (interface or _linux_interface()) / "address").read_text().strip().lower() or None
         except OSError:
             return None
     if system == "Windows":

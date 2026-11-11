@@ -41,7 +41,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--confirm", metavar="HASH", help="push --apply: the hash of the plan, instead of typing 'production'")
     parser.add_argument("--port", type=int, default=8130, help="preview, survey: the port on 127.0.0.1 (default 8130)")
     parser.add_argument("--no-open", action="store_true", help="preview, survey: do not open the page in a browser")
-    parser.add_argument("--interface", metavar="<if>", help="survey: the Wi-Fi interface (default en0 on macOS, wlan0 on Linux)")
+    parser.add_argument("--interface", metavar="<if>", help="survey: the Wi-Fi interface (default: the Mac's Wi-Fi port, Linux's first wireless one)")
 
 
 def _shown(home: Path, path: Path) -> str:
@@ -183,7 +183,7 @@ async def _preview(args: argparse.Namespace, rep: Reporter) -> int:
         def reader():
             return wifi_link.read_link(interface=args.interface, cache_dir=cache)
 
-        mac = wifi_link.mac_address(args.interface)
+        mac = wifi_link.mac_address(args.interface, cache_dir=cache)
         if mac is None:
             raise DomosensoError("no Wi-Fi interface")
         if reader() is None:
