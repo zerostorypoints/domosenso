@@ -50,11 +50,14 @@ function match(hass, mac, ownDevice, points) {
     return { device_id, point: { floorId: linked.floorId, key: linked.key }, matched_by: "link" };
   }
   // 2. A device with this MAC, other than the router integration's own device for the tracker.
-  for (const [id, dev] of Object.entries(hass.devices || {})) {
-    if (id === ownDevice || !(dev.connections || []).some(([type, v]) => type === "mac" && normMac(v) === mac)) continue;
+  // A device on the plan wins; one that is not on it still is the matched device, unplaced.
+  const devices = Object.entries(hass.devices || {}).filter(([id, dev]) => id !== ownDevice
+    && (dev.connections || []).some(([type, v]) => type === "mac" && normMac(v) === mac)).map(([id]) => id);
+  for (const id of devices) {
     const p = points.find((q) => q.keys.includes(id));
     if (p) return { device_id: id, point: { floorId: p.floorId, key: p.key }, matched_by: "registry" };
   }
+  if (devices.length) return { device_id: devices[0], point: null, matched_by: "registry" };
   return { device_id: null, point: null, matched_by: null };
 }
 
@@ -81,7 +84,7 @@ export function clients(hass, doc, rules, now = Date.now()) {
       const link = c.link.values[a[c.link.attr]];
       const mac = normMac(a.mac);
       if (st?.state !== "home" || !link || !mac || !a[c.node_mac]) continue;
-      const seenMs = timeOf(st.last_updated) ?? now;
+      const seenMs = timeOf(st.last_reported) ?? timeOf(st.last_updated) ?? now; // last_updated only moves on a change: an idle client would read stale
       if (byMacMap.has(mac) && byMacMap.get(mac).seenMs >= seenMs) continue;
       const node = normMac(a[c.node_mac]);
       const down = toMbps(a[c.down], c.unit);

@@ -39,7 +39,7 @@ function build(extra = [], { updatedAge = 5, polling = "on", devices = {}, entit
     const id = `device_tracker.${t.id}`;
     h.entities[id] = ent(id, t.device_id);
     h.states[id] = {
-      state: t.state ?? "home", last_updated: ago(t.age ?? 5),
+      state: t.state ?? "home", last_updated: ago(t.age ?? 5), ...(t.reported != null ? { last_reported: ago(t.reported) } : {}),
       attributes: { device_type: "client", friendly_name: t.name ?? t.id, mac: t.mac, deco_mac: "deco" in t ? t.deco : OFFICE,
         connection_type: t.link ?? "wired", down_kilobytes_per_s: t.down ?? 0, up_kilobytes_per_s: t.up ?? 0 },
     };
@@ -89,7 +89,7 @@ test("match by registry, the router's own tracker device excluded", () => {
   });
   const onPlan = (keys) => ({ floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, ...keys] }] });
   let c = byMac(clients(h, onPlan([{ device_id: "dev-router-client", xy: [3, 3] }]), rules, NOW).list, M(21));
-  assert.deepEqual([c.matched_by, c.point, c.device_id], [null, null, null]);
+  assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", null, "dev-tv"]); // dev-tv is not on this plan
   c = byMac(clients(h, onPlan([{ device_id: "dev-tv", xy: [3, 3] }]), rules, NOW).list, M(21));
   assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", { floorId: "ground", key: "dev-tv" }, "dev-tv"]);
 });
@@ -99,6 +99,18 @@ test("a point's also device matches by registry", () => {
   const d = { floors: [{ ...doc.floors[0], points: [...doc.floors[0].points, { device_id: "dev-cast", also: ["dev-upnp"], xy: [3, 3] }] }] };
   const c = byMac(clients(h, d, rules, NOW).list, M(22));
   assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", { floorId: "ground", key: "dev-cast" }, "dev-upnp"]);
+});
+
+test("a registry device not on the plan is the matched device, unplaced", () => {
+  const h = build([{ id: "tv", mac: M(24) }], { devices: { "dev-tv": { connections: [["mac", M(24)]] } } });
+  const c = byMac(clients(h, doc, rules, NOW).list, M(24));
+  assert.deepEqual([c.device_id, c.point, c.matched_by], ["dev-tv", null, "registry"]);
+});
+
+test("an idle client with a fresh last_reported is not stale", () => {
+  const h = build([{ id: "a", mac: M(25), age: 600, reported: 10 }]);
+  const c = clients(h, doc, rules, NOW).list[0];
+  assert.deepEqual([c.stale, c.updated.toISOString()], [false, ago(10)]);
 });
 
 test("unmatched: device_id and point null, matched_by null", () => {
