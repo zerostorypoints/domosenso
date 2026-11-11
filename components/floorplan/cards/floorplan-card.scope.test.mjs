@@ -142,7 +142,11 @@ test("without area the card draws every room as before", async () => {
   const card = await make({ plan: plan() });
   assert.equal($$(card, "polygon.room").length, 2);
   assert.ok($(card, "[data-action=edit]"));
-  assert.equal($$(card, "line.open-wall").length > 0, true);
+  // Wi-Fi on (the default): the walls are lines by weight, the open space's edge no wall (Amendment 3).
+  assert.equal($$(card, "line.wall-line.none").length > 0, true);
+  const plain = await make({ plan: plan(), wifi: false });
+  assert.equal($$(plain, "line.open-wall").length > 0, true, "wifi false: the outlines and dashed open walls as before");
+  assert.equal($$(plain, "line.wall-line").length, 0);
 });
 
 test("a tap on a room in view mode fires room-tap with its area; a drag does not", async () => {

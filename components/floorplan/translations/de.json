@@ -160,7 +160,9 @@
           "low": "niedrig"
         },
         "confidence_legend": "wie weit der Karte auf {bands} GHz zu trauen ist: hoch bis 2 m um die Messung eines Geräts am zuständigen Zugangspunkt, mittel wo die Messungen das Modell verschoben haben, niedrig wo nur die typischen Werte gelten",
-        "disabled": "Ausgeschaltete WLAN-Signalsensoren, die die Karte kalibrieren würden; aktivieren Sie sie unter Einstellungen → Entitäten:"
+        "disabled": "Ausgeschaltete WLAN-Signalsensoren, die die Karte kalibrieren würden; aktivieren Sie sie unter Einstellungen → Entitäten:",
+        "ranges": "Reichweiten",
+        "ranges_legend": "durchgezogen {call} dBm, gestrichelt {weak} dBm"
       },
       "wall": {
         "material": "Material der Wand",
@@ -172,7 +174,14 @@
         "height": "Höhe (m)",
         "slab": "Decke darunter",
         "outdoor": "Im Freien:",
-        "none": "Keine Wand"
+        "none": "Keine Wand",
+        "half": "Halbe Höhe",
+        "weight": {
+          "light": "leicht",
+          "solid": "massiv",
+          "heavy": "schwer",
+          "title": "Wände nach ihrer Dämpfung bei 5 GHz: leicht unter 10 dB, massiv 10 bis 25 dB, schwer über 25 dB; Glas blau getönt, eine Wand halber Höhe gestrichelt, keine Wand gepunktet"
+        }
       },
       "material": {
         "drywall": "Gipskarton",
@@ -188,6 +197,7 @@
         "low_e": "Wärmeschutzverglasung",
         "triple_low_e": "Dreifach-Wärmeschutzverglasung",
         "metal": "Metall",
+        "railing": "Geländer (Stäbe oder Gitter)",
         "interior": "Innenwand, Material unbekannt",
         "exterior": "Aussenwand, Material unbekannt",
         "slab": "Geschossdecke (typisch)"

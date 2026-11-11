@@ -21,6 +21,29 @@ export const STYLE = `
   .room { fill: var(--secondary-background-color, #f2f2f2); stroke: var(--primary-text-color);
           stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .room.selected, .room.picked { fill: var(--primary-color); fill-opacity: 0.25; }
+  /* Amendment 3: with Wi-Fi on, the rooms keep their fill and the walls are drawn as lines by weight. */
+  .room.walled { stroke: none; }
+  .wall-line { stroke: var(--primary-text-color); stroke-linecap: square; vector-effect: non-scaling-stroke;
+               pointer-events: none; }
+  .wall-line.light { stroke-width: 1.5; }
+  .wall-line.solid { stroke-width: 3; }
+  .wall-line.heavy { stroke-width: 5; }
+  .wall-line.glass { stroke: var(--floorplan-glass, #7cb9e8); }
+  .wall-line.half { stroke-dasharray: 6 4; stroke-linecap: butt; }
+  .wall-line.none { stroke: var(--secondary-text-color); stroke-width: 1; stroke-dasharray: 1 4; stroke-opacity: 0.6;
+                    stroke-linecap: round; }
+  .wall-key .wall-swatch { display: inline-block; width: 14px; height: 0; border-top: solid var(--primary-text-color);
+                           vertical-align: middle; }
+  .wall-key .wall-swatch.light { border-top-width: 1.5px; }
+  .wall-key .wall-swatch.solid { border-top-width: 3px; }
+  .wall-key .wall-swatch.heavy { border-top-width: 5px; }
+  .walls, .ranges { pointer-events: none; }
+  .range { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .range.weak { stroke-dasharray: 6 4; }
+  .range-ring { fill: none; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+  .range-name { text-anchor: middle; font-weight: 600; paint-order: stroke; stroke: var(--card-background-color, #fff);
+                stroke-width: 3px; stroke-linejoin: round; }
+  .half-check { display: inline-flex; align-items: center; gap: 4px; }
   .label { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
            pointer-events: none; }
   .label.missing { font-style: italic; opacity: 0.6; }

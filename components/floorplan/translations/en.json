@@ -160,7 +160,9 @@
           "low": "low"
         },
         "confidence_legend": "how far to trust the {bands} GHz map: high within 2 m of a device's reading of the serving access point, medium where the readings moved the model, low where only the typical values apply",
-        "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:"
+        "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:",
+        "ranges": "Ranges",
+        "ranges_legend": "solid {call} dBm, dashed {weak} dBm"
       },
       "wall": {
         "material": "Wall material",
@@ -172,7 +174,14 @@
         "height": "Height (m)",
         "slab": "Floor below",
         "outdoor": "Outdoors:",
-        "none": "No wall"
+        "none": "No wall",
+        "half": "Half height",
+        "weight": {
+          "light": "light",
+          "solid": "solid",
+          "heavy": "heavy",
+          "title": "Walls by their loss at 5 GHz: light below 10 dB, solid 10 to 25 dB, heavy above 25 dB; glass tinted blue, a half-height wall dashed, no wall dotted"
+        }
       },
       "material": {
         "drywall": "Drywall",
@@ -188,6 +197,7 @@
         "low_e": "Low-E glazing",
         "triple_low_e": "Triple low-E glazing",
         "metal": "Metal",
+        "railing": "Railing (bars or mesh)",
         "interior": "Interior wall, material unknown",
         "exterior": "Exterior wall, material unknown",
         "slab": "Floor slab (typical)"
