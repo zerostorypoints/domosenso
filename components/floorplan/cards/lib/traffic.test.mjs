@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clients, nodeRates, toMbps, trafficRules } from "./traffic.js";
+import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals } from "./traffic.js";
+import { pointInPolygon } from "./geometry.js";
 import rules from "./wifi-rules.json" with { type: "json" };
 
 const NOW = Date.parse("2026-11-11T12:00:00Z");
@@ -203,7 +204,6 @@ test("toMbps and trafficRules", () => {
 });
 
 // --- heat cells ---
-import { heatCells, apTotals } from "./traffic.js";
 const cl = (o) => ({ mac: "02:00:00:00:00:10", name: "Alex phone", ap: "office", link: "5", down: 0, up: 0, total: 2, device_id: null, point: null, ...o });
 const floor = { floor_id: "ground", rooms: [{ polygon: [[0, 0], [2, 0], [2, 2], [0, 2]] }] };
 const serve = [0, 1].flatMap((x) => [0, 1].map((y) => ({ x, y, room: 0, dbm: -50, ap: "office", second: null })));
@@ -239,4 +239,31 @@ test("cells sum their clients", () => {
 test("apTotals sums total and counts clients per access point", () => {
   const t = apTotals([cl({ total: 1 }), cl({ total: 2.5 }), cl({ ap: "hall", total: 4 }), cl({ ap: null })]);
   assert.deepEqual([...t], [["office", { total: 3.5, count: 2 }], ["hall", { total: 4, count: 1 }]]);
+});
+
+test("a room off the step lattice: placed and spread contributions share cells, no duplicate keys", () => {
+  const f = { floor_id: "ground", rooms: [{ polygon: [[0.07, 0.11], [0.67, 0.11], [0.67, 0.71], [0.07, 0.71]] }] };
+  const step = 0.15;
+  // coverage-style cells: anchored at the room's bbox minimum
+  const cells = [];
+  for (let x = 0.07; x < 0.67; x += step) for (let y = 0.11; y < 0.71; y += step) cells.push({ x, y, room: 0, dbm: -50, ap: "office", second: null });
+  const at = (p) => [0.2, 0.2];
+  const h = heatCells([cl({ total: 1 }), cl({ total: 3, point: { floorId: "ground", key: "a" } })], f, { 5: cells }, at, apAt, step);
+  const keys = h.map((c) => `${Math.round(c.x * 1e6)}|${Math.round(c.y * 1e6)}`);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.ok(h.every((c) => Math.abs(c.x / step - Math.round(c.x / step)) < 1e-6));
+  assert.ok(h.some((c) => c.value > 3), "the placed 3 and a spread share sum in one cell");
+  assert.ok(Math.abs(h.reduce((s, c) => s + c.value, 0) - 4) < 1e-9);
+});
+test("room fallback in an L-shaped room: every cell centre is inside the polygon", () => {
+  const poly = [[0.07, 0.11], [1.07, 0.11], [1.07, 0.51], [0.47, 0.51], [0.47, 1.11], [0.07, 1.11]];
+  const f = { floor_id: "ground", rooms: [{ polygon: poly }] };
+  const step = 0.15;
+  const h = heatCells([cl({ link: "6" })], f, {}, pointAt, () => ({ x: 0, y: 0, floorId: "ground", roomIndex: 0 }), step);
+  assert.ok(h.length > 5);
+  assert.ok(h.every((c) => pointInPolygon([c.x + step / 2, c.y + step / 2], poly)));
+});
+test("roomIndex out of range: nothing", () => {
+  const h = heatCells([cl({ link: "6" })], floor, {}, pointAt, () => ({ x: 0, y: 0, floorId: "ground", roomIndex: 9 }), 1);
+  assert.deepEqual(h, []);
 });
