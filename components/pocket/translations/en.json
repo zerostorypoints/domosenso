@@ -842,14 +842,13 @@
         "undo": "Undo",
         "install": {
           "title": "Install the Shortcut",
-          "iphone": "The iPhone measures with the Shortcut \"Domosenso Wi-Fi\". Install it once.",
-          "link": "Install \"Domosenso Wi-Fi\"",
+          "iphone": "The iPhone measures with the Shortcut \"Domosenso Wi-Fi\". Install it once: download it, open the download and tap Add Shortcut.",
+          "link": "Download \"Domosenso Wi-Fi\"",
           "server": "Then open the Shortcut, tap Server in its Fire event action and choose your Home Assistant (listed by its name in the Companion app).",
           "done": "Installed",
           "android_title": "Choose this phone",
           "android": "Turn on the Companion app's Wi-Fi sensors (signal strength, BSSID, frequency, link speed, connection), then choose this phone.",
-          "phone": "This phone…",
-          "file": "Or download the file and open it in Shortcuts"
+          "phone": "This phone…"
         },
         "cancel": "Cancel",
         "slow": "No reading yet. Is the Shortcut \"Domosenso Wi-Fi\" installed, and its Server chosen?",

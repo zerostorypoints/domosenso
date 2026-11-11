@@ -46,6 +46,8 @@ test("shortcutUrl: the event route runs the Shortcut with its input; the callbac
   assert.equal(ev.protocol, "shortcuts:");
   assert.equal(ev.href.startsWith("shortcuts://run-shortcut?"), true);
   assert.equal(ev.searchParams.get("name"), "Domosenso Wi-Fi");
+  assert.ok(ev.href.includes("name=Domosenso%20Wi-Fi&"), "a space is %20: Shortcuts reads + as a plus");
+  assert.ok(!ev.href.includes("+"), ev.href);
   assert.equal(ev.searchParams.get("input"), "text");
   assert.deepEqual(JSON.parse(ev.searchParams.get("text")), { code: "abc", n: 5, mode: "event", return: ret });
   const cb = shortcutUrl({ code: "abc", n: 5, mode: "callback", returnUrl: "https://ha.example/dashboard-pocket" });

@@ -64,8 +64,12 @@ export function clearPending(storage) {
 // dashboard's first page, not to the survey (Amendment 1).
 export const resumeRoute = (storage, now) => (loadPending(storage, now) ? "#/wifi-survey" : null);
 
+// Every value percent-encoded (a space as %20): Shortcuts reads a + in its URL as a plus, not a space.
+const query = (params) => Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+
 export function shortcutUrl({ code, n, mode, returnUrl }) {
-  const q = new URLSearchParams({ name: SHORTCUT, input: "text", text: JSON.stringify({ code, n, mode, return: returnUrl }) });
+  const q = query({ name: mode === "callback" ? `${SHORTCUT} Safari` : SHORTCUT, input: "text",
+    text: JSON.stringify({ code, n, mode, return: returnUrl }) });
   if (mode === "callback") return `shortcuts://x-callback-url/run-shortcut?${q}&x-success=${encodeURIComponent(returnUrl)}`;
   return `shortcuts://run-shortcut?${q}`;
 }

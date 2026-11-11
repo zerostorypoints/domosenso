@@ -269,8 +269,8 @@ floor plan's Wi-Fi maps (SPEC-045; the floorplan component's *Wi-Fi* sections). 
 - **iPhone** (iOS 17.4 or later): Pocket opens the Shortcut **Domosenso Wi-Fi**, which reads the
   Wi-Fi details 5 times a second apart (signal, noise, channel, Wi-Fi standard, rates, the access
   point's BSSID, the network name), sends them to Home Assistant with the Companion app's **Fire
-  event** and returns to Pocket. Install it once from the page's install card, then open it in
-  Shortcuts, tap **Server** in its Fire event action and choose your Home Assistant (it is listed by
+  event** and returns to Pocket. Install it once from the page's install card (download it, open the download, tap Add
+  Shortcut), then open it in Shortcuts, tap **Server** in its Fire event action and choose your Home Assistant (it is listed by
   its name in the Companion app; searching for its address finds nothing). Allow Shortcuts Location
   access if the reading has no BSSID. Pocket in Safari without the Companion app uses **Domosenso
   Wi-Fi Safari** instead, which hands the reading back through x-callback-url.

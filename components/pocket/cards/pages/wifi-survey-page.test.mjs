@@ -190,11 +190,8 @@ test("first use on an iPhone: the install card with the Shortcut and the Server 
   const install = $(el, ".install");
   assert.ok(!install.hidden);
   const href = $(install, "a.install-link").getAttribute("href");
-  assert.ok(href.startsWith("shortcuts://import-shortcut?"), href);
-  const q = new URL(href).searchParams;
-  assert.equal(q.get("name"), "Domosenso Wi-Fi", "Shortcuts names it as Pocket runs it");
-  assert.ok(/^[a-z]+:\/\/.*\/shortcuts\/Domosenso%20Wi-Fi\.shortcut$/.test(q.get("url")), q.get("url"));
-  assert.ok($(install, "a.install-file").getAttribute("href").endsWith("/shortcuts/Domosenso%20Wi-Fi.shortcut"), "the file, as a fallback");
+  assert.ok(/\/shortcuts\/Domosenso%20Wi-Fi\.shortcut$/.test(href), "the file: Shortcuts refuses import-shortcut for it");
+  assert.equal($(install, "a.install-link").getAttribute("download"), "Domosenso Wi-Fi.shortcut");
   assert.ok(text(install).includes("Server"), text(install));
   click($(install, ".done"));
   assert.ok(install.hidden);

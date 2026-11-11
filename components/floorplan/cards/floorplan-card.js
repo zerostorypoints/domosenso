@@ -1268,12 +1268,16 @@ ${STYLE}
     const { key, cells } = this._wifi(map.band, step, map.calibrated, map.cls === "confidence");
     const { list, digest } = this._observations();
     const memo = `${key}|${digest}`;
-    if (this._spotsMemo?.key !== memo) {
+    if (this._spotsMemo?.key !== `${memo}|${this._config.area ?? ""}`) {
       const obs = list.filter((o) => o.floorId === this._floorId && o.band === map.band);
       const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId)?.rooms ?? [];
       const centred = cells.map((c) => ({ ...c, x: c.x + step / 2, y: c.y + step / 2 }));
       const n = this._config.survey === "phone" ? PHONE_SPOTS : undefined;
-      this._spotsMemo = { key: memo, spots: nextSpots(centred, obs, rooms, n).map((spot) => ({ floor_id: this._floorId, ...spot })) };
+      // With `area` (a phone survey's room) only that room's cells and rooms: the spots are where it can measure.
+      const shown = this._floor?.rooms ?? rooms;
+      const own = this._config.area ? centred.filter((c) => shown.some((r) => pointInPolygon([c.x, c.y], r.polygon))) : centred;
+      this._spotsMemo = { key: `${memo}|${this._config.area ?? ""}`, spots: nextSpots(own, obs, this._config.area ? shown : rooms, n)
+        .map((spot) => ({ floor_id: this._floorId, ...spot })) };
     }
     return this._spotsMemo.spots;
   }
@@ -2034,23 +2038,16 @@ ${STYLE}
     this._render();
   }
 
-  // Zooms to one room (an area id) with FOCUS_M around it, on its floor; null, or a room the plan does not
-  // have, shows the whole floor. The other rooms stay drawn and a tap anywhere still counts; zooming out
-  // reaches the whole floor (the fit's width is the most the view shows).
+  // One room (an area id) shown as the area view shows it (`area` with `context`): the room alone, fitted,
+  // the floor's other rooms faded around it; the spots, the map and the taps are that room's. Null, or a
+  // room the plan does not have, shows the whole floor again.
   focusRoom(areaId) {
     const floor = areaId && this._doc?.floors.find((f) => f.rooms.some((r) => r.area_id === areaId));
-    if (floor && floor.floor_id !== this._floorId) this._floorId = floor.floor_id;
-    const whole = this._fit();
-    const room = floor?.rooms.find((r) => r.area_id === areaId);
-    if (!room) {
-      this._view = whole;
-    } else {
-      const xs = room.polygon.map((p) => p[0]);
-      const ys = room.polygon.map((p) => p[1]);
-      const x = Math.min(...xs) - FOCUS_M;
-      const y = Math.min(...ys) - FOCUS_M;
-      this._view = { x, y, w: Math.max(...xs) + FOCUS_M - x, h: Math.max(...ys) + FOCUS_M - y, max: whole.max };
-    }
+    const { area: _, context: __, ...rest } = this._config;
+    this._config = floor ? { ...rest, area: areaId, context: true } : rest;
+    if (floor) this._floorId = floor.floor_id;
+    this._spotsMemo = null;
+    this._view = this._fit();
     this._render();
   }
 

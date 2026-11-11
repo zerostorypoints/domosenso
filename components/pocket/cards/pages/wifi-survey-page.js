@@ -28,8 +28,8 @@ const KEY = { method: "pocket.wifi.method", phone: "pocket.wifi.phone", ssid: "p
 const SHORTCUT_FILE = { "shortcut-event": new URL(`../shortcuts/${SHORTCUT}.shortcut`, import.meta.url).href,
   "shortcut-callback": new URL(`../shortcuts/${SHORTCUT} Safari.shortcut`, import.meta.url).href };
 const SHORTCUT_NAME = { "shortcut-event": SHORTCUT, "shortcut-callback": `${SHORTCUT} Safari` };
-// Shortcuts' own import: it fetches the file and opens the import, no download in Safari between.
-const importUrl = (file, name) => `shortcuts://import-shortcut?url=${encodeURIComponent(file)}&name=${encodeURIComponent(name)}`;
+// Installed by downloading the file and opening it in Shortcuts: Shortcuts refuses its import-shortcut link
+// for a file served by Home Assistant ("The shortcut URL provided was invalid", verified on an iPhone).
 
 const STYLE = `
   .wifi-survey .top { display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; }
@@ -58,7 +58,6 @@ const STYLE = `
                                                display: flex; flex-direction: column; gap: 4px; overflow-wrap: break-word; }
   .wifi-survey .checks .bad { color: var(--bad); }
   .wifi-survey .checks .warn { color: var(--warn); }
-  .wifi-survey .install a.install-file { font-size: 13px; }
   .wifi-survey .install a { color: var(--acc); font-size: 15px; min-height: 44px; display: flex; align-items: center; }
   .wifi-survey .install p { margin: 0; font-size: 13px; color: var(--mut); overflow-wrap: break-word; }
   .wifi-survey select { min-height: 44px; font: inherit; }
@@ -113,7 +112,7 @@ export function render(ctx) {
     <p class="none" hidden></p>
     <select class="room-pick" hidden></select>
     <div class="box" hidden></div>
-    <div class="install" hidden><b class="install-title"></b><p class="install-text"></p><a class="install-link" target="_blank"></a><a class="install-file" target="_blank"></a>
+    <div class="install" hidden><b class="install-title"></b><p class="install-text"></p><a class="install-link" target="_blank"></a>
       <p class="install-server"></p><select class="phone-pick" hidden></select><button class="act done" type="button"></button></div>
     <div class="panel" hidden>
       <div class="method"><span class="method-name"></span><button class="link change" type="button"></button></div>
@@ -424,7 +423,6 @@ function installCard(root, ctx, method) {
     setText($(".install-title"), t("card.pocket.wifi.install.android_title"));
     setText($(".install-text"), t("card.pocket.wifi.install.android"));
     $(".install-link").hidden = true;
-    $(".install-file").hidden = true;
     $(".install-server").hidden = true;
     $(".done").hidden = true;
     pick.hidden = false;
@@ -449,12 +447,9 @@ function installCard(root, ctx, method) {
   const link = $(".install-link");
   link.hidden = false;
   const kind = SHORTCUT_FILE[method] ? method : "shortcut-event";
-  setAttr(link, "href", importUrl(SHORTCUT_FILE[kind], SHORTCUT_NAME[kind]));
+  setAttr(link, "href", SHORTCUT_FILE[kind]);
+  setAttr(link, "download", `${SHORTCUT_NAME[kind]}.shortcut`);
   setText(link, t("card.pocket.wifi.install.link"));
-  const file = $(".install-file");
-  file.hidden = false;
-  setAttr(file, "href", SHORTCUT_FILE[kind]);
-  setText(file, t("card.pocket.wifi.install.file"));
   const server = $(".install-server");
   server.hidden = method !== "shortcut-event";
   setText(server, t("card.pocket.wifi.install.server"));

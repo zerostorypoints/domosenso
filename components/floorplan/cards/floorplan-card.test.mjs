@@ -2671,18 +2671,32 @@ test("phone survey: resolveReading and predictionAt answer from the card's plan 
   assert.equal(card.predictionAt({ floor_id: "ground", x: 1, y: 1 }, "d_mesh2", "2.4"), null, "a band it does not serve");
 });
 
-test("phone survey: focusRoom zooms to one room with 1 m around it, null shows the whole floor again", async () => {
+test("phone survey: focusRoom shows one room as the area view does, neighbours faded; spots, map and taps in it alone", async () => {
+  window.localStorage.clear();
   const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
   await settle();
   const box = () => $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
   const whole = box();
   card.focusRoom("kitchen");                                   // the kitchen: x 5..8, y 0..4
-  const [x, y, w, h] = box();
-  assert.ok(Math.abs(x - 4) < 0.01 && Math.abs(y + 1) < 0.01, `${x} ${y}`);
-  assert.ok(w <= 5.01 && h <= 6.01 && (Math.abs(w - 5) < 0.01 || Math.abs(h - 6) < 0.01), `${w} ${h}`);
-  assert.equal(card.shadowRoot.querySelectorAll('polygon.room, [data-area="living_room"]').length > 0, true, "the other rooms stay drawn");
+  await settle();
+  assert.ok($(card, "g.context"), "the other rooms, faded");
+  const [x, y] = box();
+  assert.ok(x < 5 && x > 2 && y < 0, `fitted to the kitchen with its context: ${box()}`);
+  const inKitchen = (px, py) => px >= 5 - 1e-6 && px <= 8 + 1e-6 && py >= -1e-6 && py <= 4 + 1e-6;
+  const spots = card.surveySpots();
+  assert.ok(spots.length > 0 && spots.every((p) => inKitchen(p.x, p.y)), JSON.stringify(spots));
+  const cells = [...card.shadowRoot.querySelectorAll(".heat rect[data-dbm]")];
+  assert.ok(cells.length > 0 && cells.every((c) => inKitchen(Number(c.getAttribute("x")), Number(c.getAttribute("y")))),
+    "the map in the kitchen only");
+  const taps = [];
+  card.addEventListener("floorplan-tap", (e) => taps.push(e.detail));
+  tap(card, 2, 1);                                             // the living room, faded
+  assert.equal(taps.length, 0);
+  tap(card, 6, 1);
+  assert.equal(taps.length, 1);
   card.focusRoom(null);
+  await settle();
+  assert.equal($(card, "g.context"), null);
   assert.deepEqual(box(), whole);
-  card.focusRoom("attic");
-  assert.deepEqual(box(), whole, "an unknown room: the whole floor");
+  assert.ok(card.surveySpots().some((p) => !inKitchen(p.x, p.y)), "the whole floor's spots again");
 });

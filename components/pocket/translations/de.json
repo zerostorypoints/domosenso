@@ -842,14 +842,13 @@
         "undo": "Rückgängig",
         "install": {
           "title": "Kurzbefehl installieren",
-          "iphone": "Das iPhone misst mit dem Kurzbefehl \"Domosenso Wi-Fi\". Einmal installieren.",
-          "link": "\"Domosenso Wi-Fi\" installieren",
+          "iphone": "Das iPhone misst mit dem Kurzbefehl \"Domosenso Wi-Fi\". Einmal installieren: laden, den Download öffnen und auf Kurzbefehl hinzufügen tippen.",
+          "link": "\"Domosenso Wi-Fi\" laden",
           "server": "Dann den Kurzbefehl öffnen, in seiner Aktion Fire event auf Server tippen und dein Home Assistant wählen (mit seinem Namen in der Companion-App).",
           "done": "Installiert",
           "android_title": "Dieses Telefon wählen",
           "android": "Die WLAN-Sensoren der Companion-App einschalten (Signalstärke, BSSID, Frequenz, Verbindungsgeschwindigkeit, Verbindung), dann dieses Telefon wählen.",
-          "phone": "Dieses Telefon…",
-          "file": "Oder die Datei laden und in Kurzbefehle öffnen"
+          "phone": "Dieses Telefon…"
         },
         "cancel": "Abbrechen",
         "slow": "Noch keine Messung. Ist der Kurzbefehl \"Domosenso Wi-Fi\" installiert und sein Server gewählt?",

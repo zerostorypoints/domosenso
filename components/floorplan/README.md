@@ -144,8 +144,9 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
   up to 8 next spots, numbered, and the spot where the person stands. A tap in a room sets that spot
   and fires `floorplan-tap` (`detail: {floor_id, x, y}` in metres) instead of `room-tap`. The host
   draws its own panel and calls the card: `surveySpots()` (`[{floor_id, x, y, why}]`, why `handover`,
-  `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `focusRoom(area_id | null)` (zooms to that room with 1 m
-  around it; null shows the whole floor), `resolveReading({bssid, mac, mhz,
+  `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `focusRoom(area_id | null)` (that room as `area` with
+  `context` shows it: alone, fitted, the other rooms faded; its spots, map and taps only; null shows the
+  whole floor), `resolveReading({bssid, mac, mhz,
   channel})` (`{ap, band, via}`: the access point by its BSSID sensor, else the router's client
   tracker for the phone's MAC, else the band from the channel; a channel 6 GHz shares with another
   band is unclear while an access point serves 6 GHz), `predictionAt({floor_id, x, y}, ap, band)`
