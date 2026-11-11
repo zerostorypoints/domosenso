@@ -75,8 +75,11 @@ back to Home Assistant by `domosenso floorplan pull | push`.
   25 dB (brick, thin concrete), **heavy** above 25 dB (thick concrete, low-E glazing, metal). Glass
   walls are tinted light blue, a half-height wall is dashed, an edge with no wall (an open space, a
   balcony's open side) is a faint dotted line. The widths stay the same at any zoom. A key (light,
-  solid, heavy) shows in the bar on the Wi-Fi maps and in edit mode. `wifi: false` keeps the room
-  outlines as before.
+  solid, heavy) shows in the bar wherever the walls are drawn so: the plain plan, every map and edit
+  mode (a host that sets `maps: false` drops it with the maps). A card showing one room (`area`)
+  draws that room's walls as the whole floor has them. A door or window on a thick wall is drawn on
+  the wall's middle line, and a tap there picks the wall (Walls tool) or places the opening on it
+  between its two rooms (Openings tool). `wifi: false` keeps the room outlines as before.
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
   share their readings on the maps instead of stopping at the line between them; the walls between
   them are dashed (with Wi-Fi on: dotted, no wall). Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
@@ -239,8 +242,10 @@ In edit mode (SPEC-044):
   exterior. **Thick walls:** a plan traced with the walls' real thickness leaves a gap between two
   rooms; two rooms' edges that are parallel within 10°, overlap along their length and lie at most
   0.6 m apart are one interior wall over the stretch where they overlap, charged once (with the
-  material set on either edge), not two exterior walls. The rest of each edge stays as it was, and
-  the outdoor rules apply to such a pair as to a shared edge. Until you say otherwise, **outer walls are
+  material set on either edge), not two exterior walls. The rest of each edge stays as it was, except
+  a piece of at most 0.6 m where such walls meet in a T, which is interior too; a room standing in
+  the gap (a shaft, a duct) splits the pair where it stands. The outdoor rules apply to such a pair as
+  to a shared edge. Until you say otherwise, **outer walls are
   thick concrete and inner walls thin concrete** (SPEC-044 Amendment 2): a pessimistic start for a
   masonry home. With a wall selected, two buttons use that material for all interior or all
   exterior walls (the defaults for walls nothing was set on). Stored as `walls` and

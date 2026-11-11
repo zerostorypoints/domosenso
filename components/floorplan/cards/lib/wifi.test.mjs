@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
   wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi,
   addReading, nextSpots, setOutdoor, openingDefaults, WALL_GAP_M, HALF_WALL, wallWeight, wallLines, setWallHeight,
-  levelGrid, contour } from "./wifi.js";
+  levelGrid, contour, wallPickPoint, openingShift } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
-import { widestRow } from "./geometry.js";
+import { widestRow, pointInPolygon } from "./geometry.js";
 import { openingState } from "./openings.js";
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -757,4 +757,81 @@ test("contour: a saddle is read by its centre; an outline at the grid's edge clo
   assert.equal(lines.length, 1, "the whole room is above -67: the outline runs round the grid's border ring");
   assert.ok(lines[0].closed);
   assert.equal(levelGrid(ctxOf(one([room(0, 0, 2, 2)], [ap("a", { bands: ["2.4"] })], [pt("a", 1, 1)])), "5", 0.25), null);
+});
+
+// ---- Amendment 3 review fixes ----
+
+test("a thick wall is picked on its drawn middle line, and a door tapped there lands on its owner's edge", () => {
+  const floor = apart(0.5);
+  for (const tol of [0.05, 0.15]) {
+    const seg = wallSegmentAt(floor, undefined, [3.25, 1.5], tol);
+    assert.ok(seg?.pair, `tol ${tol}`);
+    assert.deepEqual(seg.at, [3, 1.5]);
+  }
+  assert.deepEqual(wallPickPoint(floor, undefined, [3.25, 1.2], 0.15), [3, 1.2]);
+  assert.deepEqual(wallPickPoint(two(), undefined, [3.01, 1.2], 0.15), [3.01, 1.2], "a plain wall: the tap as it is");
+});
+
+test("a tilted pair is cut across its bisector: no ray across the wall pays interior plus exterior, none pays nothing", () => {
+  // Rays along the wall's normal (across the bisector of the two edges), from inside one room to inside the other.
+  const check = (floor, label) => {
+    const [p, q] = floor.rooms[1].polygon;            // sam's edge facing alex's x = 3
+    const vl = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    const sign = q[1] > p[1] ? 1 : -1;                 // oriented like alex's edge, upwards
+    const w = [sign * (q[0] - p[0]) / vl, 1 + sign * (q[1] - p[1]) / vl];
+    const wl = Math.hypot(...w);
+    const n = [w[1] / wl, -w[0] / wl];
+    const segs = wallSegments(floor, undefined, {});
+    let rays = 0;
+    for (let y = 0.001; y < 3; y += 0.001) {
+      // just inside alex's edge, to well inside sam: the ray crosses those two edges and no other
+      const from = [3 - 0.01 * n[0], y - 0.01 * n[1]];
+      const to = [3 + 1 * n[0], y + 1 * n[1]];
+      if (!pointInPolygon(from, floor.rooms[0].polygon) || !pointInPolygon(to, floor.rooms[1].polygon)) continue;
+      if (crossings([{ a: p, b: q, material: "x", open: false }], from, to).length !== 1) continue;   // into sam past its corner
+      rays++;
+      const ms = crossings(segs, from, to).map((c) => c.material);
+      assert.deepEqual(ms, ["concrete_thin"], `${label} at y ${y.toFixed(3)}: ${ms}`);
+    }
+    assert.ok(rays > 1000, `${label}: ${rays} rays`);
+  };
+  for (const deg of [-9.5, -9, -5, 5, 9, 9.5]) {
+    const top = [3.3 + 3 * Math.tan((deg * Math.PI) / 180) / 2, -0.2];
+    const bottom = [3.3 - 3 * Math.tan((deg * Math.PI) / 180) / 2, 2.8];
+    check({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: [bottom, top, [6.5, -0.2], [6.5, 2.8]] }] }, `${deg} deg`);
+  }
+  // the reviewer's pair, about -9 degrees and at most 0.58 m apart
+  check({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) },
+    { area_id: "sam", polygon: [[3.038, 2.788], [3.513, -0.212], [6.5, -0.212], [6.5, 2.788]] }] }, "the reviewer's pair");
+});
+
+test("a stub where traced walls meet in a T is interior, drawn on the middle line", () => {
+  const floor = { rooms: [{ area_id: "i", polygon: sq(0, 0, 10, 4) }, { area_id: "j", polygon: sq(0, 4.3, 4.85, 4) },
+    { area_id: "k", polygon: sq(5.15, 4.3, 4.85, 4) }] };
+  const segs = wallSegments(floor, undefined, {});
+  assert.deepEqual(crossings(segs, [5, 2], [5, 6]).map((c) => c.material), ["concrete_thin"], "the stub under the j/k gap");
+  assert.ok(!crossings(segs, [5, 2], [4.6, 8]).some((c) => c.material === "concrete_thick"), "the reviewer's ray");
+  const xs = (l) => [l.a[0], l.b[0]].sort((p, q) => p - q);
+  const stub = wallLines(floor, undefined, {}).find((l) => Math.abs(xs(l)[0] - 4.85) < 1e-9 && Math.abs(xs(l)[1] - 5.15) < 1e-9);
+  assert.equal(stub.weight, "solid");
+  assert.ok(Math.abs(stub.a[1] - 4.15) < 1e-9, "on the middle line of the pairs beside it");
+  // past the last neighbour, the end of an outer wall stays exterior
+  const end = { rooms: [{ area_id: "i", polygon: sq(0, 0, 5, 4) }, { area_id: "j", polygon: sq(0, 4.3, 4.7, 4) }] };
+  assert.deepEqual(crossings(wallSegments(end, undefined, {}), [4.85, 2], [4.85, 6]).map((c) => c.material), ["concrete_thick"]);
+});
+
+test("a room standing in part of the gap (a duct) splits the pair there, not the whole wall", () => {
+  const floor = { rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 6) }, { area_id: "sam", polygon: sq(3.3, 0, 3, 6) },
+    { area_id: "duct", polygon: sq(3, 2.85, 0.3, 0.3) }] };
+  const segs = wallSegments(floor, undefined, {});
+  for (const y of [0.5, 2, 4, 5.5]) assert.equal(pathLoss(segs, [1.5, y], [4.8, y], "5", L3), 14, `y ${y}`);
+  assert.equal(pathLoss(segs, [1.5, 3], [4.8, 3], "5", L3), 28, "through the duct: its two walls");
+});
+
+test("openingShift moves a door on either edge of a thick wall to its middle line", () => {
+  const segs = wallSegments(apart(0.3), undefined, {});
+  const close = (a, b) => assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-9, `${a} vs ${b}`);
+  close(openingShift(segs, [3.3, 1.5]), [-0.15, 0]);
+  close(openingShift(segs, [3, 1.5]), [0.15, 0]);
+  assert.deepEqual(openingShift(wallSegments(two(), undefined, {}), [3, 1.5]), [0, 0]);
 });

@@ -57,7 +57,7 @@ import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValu
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
-  wallLines, setWallHeight, levelGrid, contour } from "./lib/wifi.js";
+  wallLines, setWallHeight, levelGrid, contour, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
   observationIndex } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
@@ -717,7 +717,10 @@ ${STYLE}
       let tail = this._config.zoom ? zoom : "";
       if (this._config.edit && h?.user?.is_admin) tail += btn("edit", t(h, "card.floorplan.edit"));
       const maps = this._mapsHtml();
-      return maps || tail ? `${maps}<span class="spacer"></span>${tail}` : "";
+      // The wall weights' key wherever the walls are drawn by weight (Wi-Fi on), on every map and on the
+      // plain plan; a host that turns the maps off (`maps: false`, a phone's fixed room) drops it with them.
+      const key = this._wifiOn && this._config.maps ? this._wallKeyHtml() : "";
+      return maps || tail || key ? `${maps}${key}<span class="spacer"></span>${tail}` : "";
     }
     let html = `${zoom}${this._wifiOn ? this._wallKeyHtml() : ""}<span class="spacer"></span>`;
     if (this._doc.floors.length > 1) {
@@ -792,9 +795,9 @@ ${STYLE}
   }
 
   // A band map: the dBm scale with its marks (with Ranges each access point's colour and the outlines'
-  // levels); Serving: each access point's colour and the hatching; then the wall weights.
+  // levels); Serving: each access point's colour and the hatching. (The wall key follows in the bar.)
   _wifiLegendHtml(map) {
-    return this._wifiScaleHtml(map) + this._wallKeyHtml();
+    return this._wifiScaleHtml(map);
   }
 
   _wifiScaleHtml(map) {
@@ -1110,7 +1113,7 @@ ${STYLE}
       if (map.cls) this._drawWifi(svg, floor, map);
     } else if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
     if (this._wifiOn) {
-      this._drawWalls(svg, floor);
+      this._drawWalls(svg);
       if (map?.layer === "radio" && map.ranges) this._drawRanges(svg, map, px);
     } else {
       // Walls between rooms of one open space: dashed and lighter, over the solid outline.
@@ -1369,7 +1372,10 @@ ${STYLE}
       if (state.linked) cls.push("linked");
       if (!state.known) cls.push("unknown");
       if (tool && this._opening === i) cls.push("selected");
-      const g = el("g", { class: cls.join(" "), "data-kind": "opening", "data-index": i }, svg);
+      // On a thick wall the opening is drawn on the wall's middle line, where its gap in the wall line is.
+      const [dx, dy] = this._wifiOn && this._wallMemo ? openingShift(this._wallMemo.paired, shape.centre) : [0, 0];
+      const g = el("g", { class: cls.join(" "), "data-kind": "opening", "data-index": i,
+        ...(dx || dy ? { transform: `translate(${fmt(dx)} ${fmt(dy)})` } : {}) }, svg);
       const line = (a, b, c) => el("line", { class: c, x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) }, g);
       const [p, q] = shape.ends;
       const n = shape.normal;
@@ -1408,16 +1414,20 @@ ${STYLE}
 
   // The floor's walls as lines by weight (Amendment 3), over the maps: light, solid, heavy by their 5 GHz
   // loss, glazing tinted, a half wall dashed, an edge with no wall faintly dotted; a thick wall once, on
-  // the middle of its gap. Kept while the floor and the plan's Wi-Fi settings are the same.
-  _drawWalls(svg, floor) {
+  // the middle of its gap. Worked out on the whole floor, as the Wi-Fi model sees it, so a card showing one
+  // room (`area`) draws that room's walls classified among its neighbours. Kept while the floor and the
+  // plan's Wi-Fi settings are the same.
+  _drawWalls(svg) {
+    const full = this._doc.floors.find((f) => f.floor_id === this._floorId);
     const m = this._wallMemo;
-    if (!m || m.rooms !== floor.rooms || m.walls !== floor.walls || m.openings !== floor.openings
-      || m.spaces !== floor.open_spaces || m.wifi !== this._doc.wifi) {
-      this._wallMemo = { rooms: floor.rooms, walls: floor.walls, openings: floor.openings, spaces: floor.open_spaces,
-        wifi: this._doc.wifi, lines: wallLines(floor, this._doc.wifi, this._hass) };
+    if (!m || m.floor !== full || m.wifi !== this._doc.wifi) {
+      this._wallMemo = { floor: full, wifi: this._doc.wifi, lines: wallLines(full, this._doc.wifi, this._hass),
+        paired: wallSegments({ ...full, openings: [] }, this._doc.wifi, {}).filter((s) => s.pair) };
     }
+    const area = this._config.area;
     const g = el("g", { class: "walls" }, svg);
     for (const l of this._wallMemo.lines) {
+      if (area && !l.areas.includes(area)) continue;
       const cls = ["wall-line", l.weight, ...(l.glass ? ["glass"] : []), ...(l.half ? ["half"] : [])];
       el("line", { class: cls.join(" "), "data-weight": l.weight, x1: fmt(l.a[0]), y1: fmt(l.a[1]), x2: fmt(l.b[0]), y2: fmt(l.b[1]) }, g);
     }
@@ -1473,6 +1483,23 @@ ${STYLE}
       return calibratedLevelGrid(contextFor(doc, this._floorId, this._hass, materials, fit.params), map.band, step, fit);
     }
     return levelGrid(contextFor(doc, this._floorId, this._hass, materials, this._wifiKey.params), map.band, step);
+  }
+
+  // A tap for an opening: on a thick wall (drawn on the middle of its gap) the point on its room's edge.
+  _onWall(pt, tol) {
+    return this._wifiOn ? wallPickPoint(this._floor, this._doc.wifi, pt, tol) : pt;
+  }
+
+  // An opening on a thick wall parts its two rooms (Amendment 3), not a room from the outside, though the
+  // other room's edge is across the gap: its second room set, an "outside" it opens into dropped.
+  _pairRooms(doc, index) {
+    if (!this._wifiOn) return doc;
+    const floor = doc.floors.find((f) => f.floor_id === this._floorId);
+    const o = floor.openings?.[index];
+    const seg = o && o.rooms[1] === null && wallSegmentAt(floor, doc.wifi, o.at, 0.01);
+    const other = seg?.pair && seg.areas.find((a) => a !== o.rooms[0]);
+    if (!other) return doc;
+    return setOpening(doc, this._floorId, index, { rooms: [o.rooms[0], other], ...(o.opens === "outside" ? { opens: null } : {}) }) ?? doc;
   }
 
   // The wall stretch the walls tool selected, corner to corner.
@@ -2241,7 +2268,9 @@ ${STYLE}
     } else if (d.kind === "point") {
       this._doc = movePoint(this._doc, this._floorId, d.key, this._inRooms(this._at(e))) ?? this._doc;
     } else if (d.kind === "opening") {
-      this._doc = moveOpening(this._doc, this._floorId, d.index, this._at(e), PICK_PX * 3 * this._px()) ?? this._doc;
+      const tol = PICK_PX * 3 * this._px();
+      const moved = moveOpening(this._doc, this._floorId, d.index, this._onWall(this._at(e), tol), tol);
+      this._doc = (moved && this._pairRooms(moved, d.index)) ?? this._doc;
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
     } else {      // a tray item or group is dropped on pointerup; until then a ghost shows where
@@ -2337,7 +2366,8 @@ ${STYLE}
         if (a !== b) this._edit(openRooms(this._doc, this._floorId, a, b));
       }
     } else if (this._tool === "openings") {
-      const next = addOpening(this._doc, this._floorId, pt, PICK_PX * this._px());
+      const placed = addOpening(this._doc, this._floorId, this._onWall(pt, PICK_PX * this._px()), PICK_PX * this._px());
+      const next = placed && this._pairRooms(placed, (placed.floors.find((f) => f.floor_id === this._floorId).openings.length - 1));
       if (next) {
         this._edit(next);
         this._opening = this._floor.openings.length - 1;

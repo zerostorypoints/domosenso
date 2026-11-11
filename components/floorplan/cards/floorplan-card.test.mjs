@@ -2527,3 +2527,60 @@ test("ranges: the band maps outline each access point at -67 and -75 dBm in its 
   assert.equal($(again, ".bar [data-action=ranges]").getAttribute("aria-pressed"), "true", "remembered");
   window.localStorage.clear();
 });
+
+// ---- Amendment 3 review fixes ----
+
+// The living room and the kitchen traced with a 0.5 m wall between them.
+const thickPlan = () => {
+  const plan = planOf();
+  plan.floors[0].rooms[1] = { area_id: "kitchen", polygon: sq(5.5, 0, 3, 4) };
+  return plan;
+};
+
+test("a thick wall is picked on its drawn middle line by the Walls tool and the Openings tool", async () => {
+  const card = await make({ plan: thickPlan() }, hassOf());
+  click($(card, "[data-action=edit]"));
+  assert.ok(12 * card._px() < 0.25, "zoomed in enough that the edges are out of reach from the middle");
+  const mid = all(card, "line.wall-line").filter((l) => onLine(l, 5.25));
+  assert.equal(mid.length, 1, "drawn once, on the middle line");
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  tap(card, 5.25, 1);
+  const sel = $(card, "line.wall-selected");
+  assert.ok(sel && Number(sel.getAttribute("x1")) === 5.25, "selected where it is drawn");
+  click($(card, '[data-action=tool][data-tool="openings"]'));
+  tap(card, 5.25, 2);
+  assert.deepEqual(card._doc.floors[0].openings, [{ kind: "door", rooms: ["living_room", "kitchen"], at: [5, 2] }],
+    "on the living room's edge, between the two rooms, not to the outside");
+  const door = $(card, 'g.opening[data-index="0"]');
+  assert.equal(door.getAttribute("transform"), "translate(0.25 0)", "drawn on the wall's middle line");
+  const gap = all(card, "line.wall-line").filter((l) => onLine(l, 5.25)).map((l) => [Number(l.getAttribute("y1")), Number(l.getAttribute("y2"))]);
+  assert.equal(gap.length, 2, "the wall line has the door's gap");
+});
+
+test("a card showing one room draws its walls as the whole floor has them", async () => {
+  const plan = planOf();
+  plan.floors[0].rooms.push({ area_id: "hall", polygon: sq(0, 4, 5, 2) });
+  plan.floors[0].open_spaces = [["living_room", "kitchen"]];
+  const whole = await make({ plan }, hassOf());
+  const room = await make({ plan, area: "living_room" }, hassOf());
+  const weights = (card) => Object.fromEntries(all(card, "line.wall-line").map((l) =>
+    [[l.getAttribute("x1"), l.getAttribute("y1"), l.getAttribute("x2"), l.getAttribute("y2")].join(), l.getAttribute("data-weight")]));
+  const mine = weights(room);
+  const full = weights(whole);
+  assert.equal(Object.keys(mine).length, 4, "the living room's four walls alone");
+  for (const [k, w] of Object.entries(mine)) assert.equal(w, full[k], k);
+  assert.deepEqual(Object.values(mine).sort(), ["heavy", "heavy", "none", "solid"], "the open space none, the hall's wall interior");
+});
+
+test("the wall key shows wherever the walls are weighted: the plain plan and every map", async () => {
+  window.localStorage.clear();
+  const plain = await make({ plan: planOf() }, hassOf());
+  assert.ok($(plain, ".bar .wall-key"), "no map");
+  const climate = await make({ plan: planOf([pt("d_climate", 1, 1)]), layers: ["climate"] }, mapsHass());
+  await settle();
+  assert.ok($(climate, ".bar .legend:not(.wall-key)") && $(climate, ".bar .wall-key"), "beside a climate map's scale");
+  assert.equal(all(climate, ".bar .wall-key").length, 1);
+  const off = await make({ plan: planOf(), wifi: false }, hassOf());
+  assert.equal($(off, ".wall-key"), null, "wifi false: outlines, no key");
+  window.localStorage.clear();
+});

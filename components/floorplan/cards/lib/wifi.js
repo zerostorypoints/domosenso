@@ -20,6 +20,7 @@ const PARALLEL_SIN = Math.sin((10 * Math.PI) / 180);
 // material, never this factor.
 export const HALF_WALL = 0.5;
 const GLAZING = new Set(["glass", "double", "low_e", "triple_low_e"]);
+const GAP_PROBE_M = 0.1;               // m: how often the gap of a thick wall is probed for a room standing in it
 
 const sub = (p, q) => [p[0] - q[0], p[1] - q[1]];
 const cross = (u, v) => u[0] * v[1] - u[1] * v[0];
@@ -39,25 +40,50 @@ function overlap(a, b, c, d) {
   return t1 - t0 > MIN_M ? [t0, t1] : null;
 }
 
-// The stretch [t0, t1] of edge a-b (metres from a) that edge c-d faces across a gap of at most
-// WALL_GAP_M: parallel within 10 degrees, on one side of a-b. With the points of c-d across from a-b's
-// t0 and t1: [t0, t1, p0, p1], or null.
-function across(a, b, c, d) {
+// The stretches of edge a-b that edge c-d faces across a gap of at most WALL_GAP_M: parallel within 10
+// degrees, on one side of a-b, with no room standing in the gap. Both edges are cut across the bisector
+// of their directions, so either room splits the overlap at the same points (no sliver one room charges
+// and the other drops). The gap is probed every GAP_PROBE_M half-way across; where a room stands in it
+// (a shaft, a duct) the pair is split. [[t0, t1, p0, p1], ...]: t metres along a-b, p0 and p1 the points
+// of c-d across from t0 and t1.
+function across(a, b, c, d, rooms) {
   const len = Math.hypot(...sub(b, a));
   const u = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
   const v = sub(d, c);
   const vl = Math.hypot(...v);
-  if (vl < EPS || Math.abs(cross(u, v)) / vl > PARALLEL_SIN) return null;
-  const [tc, td] = [dot(u, sub(c, a)), dot(u, sub(d, a))];
-  if (Math.abs(td - tc) < EPS) return null;
-  const t0 = Math.max(0, Math.min(tc, td));
-  const t1 = Math.min(len, Math.max(tc, td));
-  if (t1 - t0 <= MIN_M) return null;
-  const on = (t) => [c[0] + v[0] * (t - tc) / (td - tc), c[1] + v[1] * (t - tc) / (td - tc)];
-  const [p0, p1] = [on(t0), on(t1)];
-  const [o0, o1] = [cross(u, sub(p0, a)), cross(u, sub(p1, a))];
-  if (Math.abs(o0) > WALL_GAP_M || Math.abs(o1) > WALL_GAP_M || o0 * o1 < -EPS) return null;
-  return [t0, t1, p0, p1];
+  if (vl < EPS || Math.abs(cross(u, v)) / vl > PARALLEL_SIN) return [];
+  const sign = dot(u, v) < 0 ? -1 : 1;
+  const w0 = [u[0] + sign * v[0] / vl, u[1] + sign * v[1] / vl];
+  const wl = Math.hypot(...w0);
+  const w = [w0[0] / wl, w0[1] / wl];
+  const [sa, sb, sc, sd] = [a, b, c, d].map((q) => dot(q, w));
+  if (Math.abs(sd - sc) < EPS) return [];
+  const lo = Math.max(sa, Math.min(sc, sd));
+  const hi = Math.min(sb, Math.max(sc, sd));
+  if (hi - lo <= MIN_M) return [];
+  const onAB = (x) => lerp(a, b, (x - sa) / (sb - sa));
+  const onCD = (x) => lerp(c, d, (x - sc) / (sd - sc));
+  const side = (x) => cross(u, sub(onCD(x), a));
+  const [o0, o1] = [side(lo), side(hi)];
+  if (Math.hypot(...sub(onCD(lo), onAB(lo))) > WALL_GAP_M || Math.hypot(...sub(onCD(hi), onAB(hi))) > WALL_GAP_M
+    || o0 * o1 < -EPS) return [];
+  const n = Math.max(1, Math.ceil((hi - lo) / GAP_PROBE_M));
+  const free = [];
+  for (let k = 0; k < n; k++) {
+    const x = lo + ((hi - lo) * (k + 0.5)) / n;
+    const [mine, theirs] = [onAB(x), onCD(x)];
+    const probe = lerp(mine, theirs, 0.5);
+    free.push(Math.hypot(...sub(theirs, mine)) <= SHARED_M || !rooms.some((r) => pointInPolygon(probe, r.polygon)));
+  }
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    if (!free[k] || (k > 0 && free[k - 1])) continue;
+    let e = k;
+    while (e + 1 < n && free[e + 1]) e++;
+    const [x0, x1] = [lo + ((hi - lo) * k) / n, lo + ((hi - lo) * (e + 1)) / n];
+    out.push([(len * (x0 - sa)) / (sb - sa), (len * (x1 - sa)) / (sb - sa), onCD(x0), onCD(x1)]);
+  }
+  return out;
 }
 
 // The distance from point p to segment a-b.
@@ -74,6 +100,9 @@ function distToSegment(p, a, b) {
 // Two rooms' edges facing each other across a gap no room fills (`across`) share the stretch where
 // they overlap like touching edges do (Amendment 3); `pair` is then the other room's edge across from
 // a and b, the stretch charged once, on the owner's edge.
+// A stub (`stub: true`): a piece of one room's edge no longer than WALL_GAP_M between two such pairs, or
+// between a pair and another room's edge (where traced walls meet in a T), is interior too; its `pair`
+// is its own edge moved as far as its paired neighbour's, so it is drawn on the same middle line.
 function stretches(floor) {
   const out = [];
   const rooms = floor.rooms || [];
@@ -83,48 +112,60 @@ function stretches(floor) {
       const b = poly[(k + 1) % poly.length];
       const len = Math.hypot(...sub(b, a));
       if (len < MIN_M) return;
-      const cover = [];                  // [t0, t1, other room index]
+      const cover = [];                  // [t0, t1, other room index, across's stretch or null]
       rooms.forEach((other, j) => {
         if (j === i) return;
         other.polygon.forEach((c, m) => {
           const d = other.polygon[(m + 1) % other.polygon.length];
           const t = overlap(a, b, c, d);
           if (t) return void cover.push([...t, j, null]);
-          const g = across(a, b, c, d);
-          if (g && !gapFilled(rooms, a, b, g)) cover.push([g[0], g[1], j, g]);
+          for (const g of across(a, b, c, d, rooms)) cover.push([g[0], g[1], j, g]);
         });
       });
       const cuts = [...new Set([0, len, ...cover.flatMap((c) => [c[0], c[1]])])].sort((x, y) => x - y);
       const at = (t) => [a[0] + (b[0] - a[0]) * t / len, a[1] + (b[1] - a[1]) * t / len];
+      const pieces = [];
       for (let n = 0; n + 1 < cuts.length; n++) {
         const [t0, t1] = [cuts[n], cuts[n + 1]];
         if (t1 - t0 < MIN_M) continue;
         const mid = (t0 + t1) / 2;
-        const covering = cover.filter((c) => c[0] <= mid && mid <= c[1]);
-        const by = covering.map((c) => c[2]);
-        if (by.some((j) => j < i)) continue;           // that room emitted it
-        const gap = covering.find((c) => c[3])?.[3];
-        const pair = gap && [t0, t1].map((t) => lerp(gap[2], gap[3], (t - gap[0]) / (gap[1] - gap[0])));
-        out.push({ a: at(t0), b: at(t1), shared: by.length > 0, rooms: [i, ...by], ...(pair ? { pair } : {}) });
+        pieces.push({ t0, t1, covering: cover.filter((c) => c[0] <= mid && mid <= c[1]) });
       }
+      const gapOf = (p) => p?.covering.find((c) => c[3])?.[3];
+      const pairAt = (gap, t) => lerp(gap[2], gap[3], (t - gap[0]) / (gap[1] - gap[0]));
+      // Another room's edge within WALL_GAP_M of the edge's end `pt`, not one of the rooms in `skip`.
+      const meets = (pt, skip) => rooms.some((r, j) => j !== i && !skip.includes(j) && r.polygon.some((c, m) =>
+        distToSegment(pt, c, r.polygon[(m + 1) % r.polygon.length]) <= WALL_GAP_M));
+      pieces.forEach((piece, n) => {
+        const { t0, t1, covering } = piece;
+        const by = covering.map((c) => c[2]);
+        if (by.some((j) => j < i)) return;           // that room emitted it
+        const gap = gapOf(piece);
+        if (gap) {
+          const pair = [t0, t1].map((t) => pairAt(gap, t));
+          return void out.push({ a: at(t0), b: at(t1), shared: true, rooms: [i, ...by], pair });
+        }
+        if (!covering.length && t1 - t0 <= WALL_GAP_M + MIN_M) {
+          const [before, after] = [pieces[n - 1], pieces[n + 1]];
+          const near = [before, after].filter(Boolean).flatMap((p) => p.covering.map((c) => c[2]));
+          const sideOk = (p, t) => (p ? p.covering.length > 0 : meets(at(t), near));
+          const paired = gapOf(before) ? before : gapOf(after) ? after : null;
+          if (paired && sideOk(before, t0) && sideOk(after, t1)) {
+            const g = gapOf(paired);
+            const end = paired === before ? t0 : t1;
+            const off = sub(pairAt(g, end), at(end));
+            const pair = [at(t0), at(t1)].map((q) => [q[0] + off[0], q[1] + off[1]]);
+            return void out.push({ a: at(t0), b: at(t1), shared: true, rooms: [i, ...new Set(near.filter((j) => j !== i))], pair, stub: true });
+          }
+        }
+        out.push({ a: at(t0), b: at(t1), shared: by.length > 0, rooms: [i, ...by] });
+      });
     });
   });
   return out;
 }
 
 const lerp = (p, q, f) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
-
-// Whether a room stands in the gap between edge a-b and the edge across from it (`across`'s result),
-// probed half-way across at the middle of their overlap: a room there is the wall's neighbour, not a gap.
-function gapFilled(rooms, a, b, g) {
-  const len = Math.hypot(...sub(b, a));
-  const tm = (g[0] + g[1]) / 2;
-  const mine = lerp(a, b, tm / len);
-  const theirs = lerp(g[2], g[3], 0.5);
-  if (Math.hypot(...sub(theirs, mine)) <= SHARED_M) return false;      // touching at an angle
-  const probe = lerp(mine, theirs, 0.5);
-  return rooms.some((r) => pointInPolygon(probe, r.polygon));
-}
 
 // Whether `pt` is within `tol` of a wall stretch: of its own edge or of the edge across its gap.
 const nearStretch = (pt, s, tol) => distToSegment(pt, s.a, s.b) <= tol || (!!s.pair && distToSegment(pt, s.pair[0], s.pair[1]) <= tol);
@@ -182,8 +223,9 @@ function segmentsOf(floor, wifi, hass, space) {
   for (const s of stretches(floor)) {
     const mid = [(s.a[0] + s.b[0]) / 2, (s.a[1] + s.b[1]) / 2];
     // An edge inside an open space is no wall; across a gap too, though FACING_M does not reach it.
-    if (facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M) || (s.pair && together(s))) {
-      if (space) segs.push({ a: s.a, b: s.b, ...(s.pair ? { pair: s.pair } : {}), material: null, open: true, kind: "wall", shared: true, cls: "interior", half: false, space: true });
+    const areas = s.rooms.map((i) => rooms[i].area_id);
+    if (facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M) || ((s.pair || s.stub) && together(s))) {
+      if (space) segs.push({ a: s.a, b: s.b, ...(s.pair ? { pair: s.pair } : {}), material: null, open: true, kind: "wall", shared: true, cls: "interior", half: false, space: true, areas });
       continue;
     }
     const set = walls.find((w) => nearStretch(w.at, s, SHARED_M));
@@ -191,7 +233,7 @@ function segmentsOf(floor, wifi, hass, space) {
       : s.shared && (s.rooms.every(isOut) || !s.rooms.some(isOut)) ? "interior" : "exterior";
     const material = set?.material ?? defaults[cls] ?? null;
     segs.push({ a: s.a, b: s.b, ...(s.pair ? { pair: s.pair } : {}), material, open: material === null, kind: "wall",
-      shared: s.shared, cls, half: set?.height === "half" });
+      shared: s.shared, cls, half: set?.height === "half", areas });
   }
 
   for (const o of floor.openings || []) {
@@ -225,27 +267,59 @@ export function wallWeight(material, half = false) {
 
 // The floor's walls as the plan draws them: every wall piece once (openings cut out, the card draws
 // those), a thick wall on the middle line of its gap, an edge inside an open space and an outdoor
-// room's open edge as no wall. [{a, b, weight, glass, half}].
+// room's open edge as no wall. [{a, b, weight, glass, half, areas}], `areas` the rooms that have the wall
+// (a card showing one room draws the full floor's walls of that room, classified among its neighbours).
 export function wallLines(floor, wifi, hass) {
   return segmentsOf(floor, wifi, hass, true).filter((s) => s.kind === "wall").map((s) => {
     const { weight, glass } = s.space ? { weight: "none", glass: false } : wallWeight(s.material, s.half);
-    const [a, b] = s.pair ? [lerp(s.a, s.pair[0], 0.5), lerp(s.b, s.pair[1], 0.5)] : [s.a, s.b];
-    return { a, b, weight, glass, half: weight !== "none" && s.half };
+    const [a, b] = midLine(s);
+    return { a, b, weight, glass, half: weight !== "none" && s.half, areas: s.areas };
   });
 }
 
+// Where a wall segment is drawn: a thick wall on the middle line of its gap, any other on its edge.
+const midLine = (s) => (s.pair ? [lerp(s.a, s.pair[0], 0.5), lerp(s.b, s.pair[1], 0.5)] : [s.a, s.b]);
+
+// The point on a room's edge to put an opening at for a tap at `pt`: on a thick wall (picked on its
+// drawn middle line or on either edge, within `tol`) the point across on its owner's edge; else `pt`.
+export function wallPickPoint(floor, wifi, pt, tol) {
+  const seg = wallSegmentAt(floor, wifi, pt, tol);
+  if (!seg?.pair) return pt;
+  const ab = sub(seg.b, seg.a);
+  const f = Math.max(0, Math.min(1, dot(sub(pt, seg.a), ab) / dot(ab, ab)));
+  return lerp(seg.a, seg.b, f);
+}
+
+// How far to move an opening's drawing (its leaf, jambs and panes) from the room edge it sits on to the
+// middle line its thick wall is drawn on: [dx, dy], [0, 0] off a thick wall. `segments` the floor's
+// wallSegments without openings, `centre` the opening's (openingShape).
+export function openingShift(segments, centre) {
+  for (const s of segments) {
+    if (!s.pair || s.kind !== "wall") continue;
+    for (const [p, q, o0, o1] of [[s.a, s.b, s.pair[0], s.pair[1]], [s.pair[0], s.pair[1], s.a, s.b]]) {
+      if (distToSegment(centre, p, q) > SHARED_M) continue;
+      const pq = sub(q, p);
+      const f = Math.max(0, Math.min(1, dot(sub(centre, p), pq) / dot(pq, pq)));
+      const [on, other] = [lerp(p, q, f), lerp(o0, o1, f)];
+      return [(other[0] - on[0]) / 2, (other[1] - on[1]) / 2];
+    }
+  }
+  return [0, 0];
+}
+
 // The wall stretch nearest `pt` within `tol`, whole from corner to corner (an opening on it does not
-// cut it), a thick wall picked on either room's edge: {a, b, material, shared, cls, half, pair, at}, `at`
+// cut it), a thick wall picked on either room's edge or on the middle line it is drawn on: {a, b, material, shared, cls, half, pair, areas, at}, `at`
 // its middle to the millimetre; null without a wall there.
 export function wallSegmentAt(floor, wifi, pt, tol) {
   let best = null;
   for (const s of wallSegments({ ...floor, openings: [] }, wifi, {})) {
-    const d = Math.min(distToSegment(pt, s.a, s.b), s.pair ? distToSegment(pt, s.pair[0], s.pair[1]) : Infinity);
+    const d = Math.min(distToSegment(pt, s.a, s.b), s.pair ? distToSegment(pt, s.pair[0], s.pair[1]) : Infinity,
+      s.pair ? distToSegment(pt, ...midLine(s)) : Infinity);
     if (d <= tol && (!best || d < best.d)) best = { s, d };
   }
   if (!best) return null;
-  const { a, b, material, shared, cls, half, pair } = best.s;
-  return { a, b, material, shared, cls, half, ...(pair ? { pair } : {}), at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
+  const { a, b, material, shared, cls, half, pair, areas } = best.s;
+  return { a, b, material, shared, cls, half, areas, ...(pair ? { pair } : {}), at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
 }
 
 const mm = (v) => Math.round(v * 1000) / 1000;

@@ -438,7 +438,9 @@ and for a device its device id. Sources and their weights:
   their length and lie at most `WALL_GAP_M` = 0.6 m apart are **one interior wall**: the stretch
   where they overlap is charged once (on the edge of the room listed first), at the interior
   default or the material set on either edge; the rest of each edge is classified as before.
-  Outdoor rules (Amendment 1) apply to the pair as to a shared edge.
+  Outdoor rules (Amendment 1) apply to the pair as to a shared edge. A remainder no longer than
+  `WALL_GAP_M` that lies between two such pairs, or between a pair and another room's edge (where
+  traced walls meet in a T), bridges the gap and is interior too.
 - **Half-height walls.** `walls[].height` (optional): `"half"`; absent means full. A half wall costs
   `HALF_WALL` = 0.5 of its material's loss on every band (working assumption: part of the signal
   passes over it); calibration fits the material, not the factor. New material `railing` (open bars
