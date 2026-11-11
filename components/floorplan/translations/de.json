@@ -163,7 +163,19 @@
         "disabled": "Ausgeschaltete WLAN-Signalsensoren, die die Karte kalibrieren würden; aktivieren Sie sie unter Einstellungen → Entitäten:",
         "ranges": "Reichweiten",
         "ranges_legend": "durchgezogen {call} dBm, gestrichelt {weak} dBm",
-        "readings": "Messungen"
+        "readings": "Messungen",
+        "reading": {
+          "band": "{band} GHz, Kanal {channel}",
+          "no_ap": "Zugangspunkt unbekannt",
+          "noise": "Rauschen {noise} dBm",
+          "spread": "Streuung {spread} dB",
+          "scans": "{n} Messungen",
+          "source": {
+            "phone": "Telefon",
+            "survey": "Laptop-Messung",
+            "manual": "eingegeben"
+          }
+        }
       },
       "wall": {
         "material": "Material der Wand",

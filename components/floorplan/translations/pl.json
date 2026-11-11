@@ -163,7 +163,19 @@
         "disabled": "Wyłączone czujniki sygnału Wi-Fi, które skalibrowałyby mapę; włącz je w Ustawienia → Encje:",
         "ranges": "Zasięgi",
         "ranges_legend": "ciągła {call} dBm, przerywana {weak} dBm",
-        "readings": "Odczyty"
+        "readings": "Odczyty",
+        "reading": {
+          "band": "{band} GHz, kanał {channel}",
+          "no_ap": "punkt dostępowy nieznany",
+          "noise": "szum {noise} dBm",
+          "spread": "rozrzut {spread} dB",
+          "scans": "pomiary: {n}",
+          "source": {
+            "phone": "telefon",
+            "survey": "pomiar laptopem",
+            "manual": "wpisany"
+          }
+        }
       },
       "wall": {
         "material": "Materiał ściany",

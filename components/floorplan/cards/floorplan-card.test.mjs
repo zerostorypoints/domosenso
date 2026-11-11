@@ -2713,9 +2713,9 @@ test("phone survey: the readings follow the Readings switch too (opt-in), the ma
   assert.equal(sampleDots(card).length, 0, "off until chosen, on the phone too");
   click($(card, ".bar [data-action=readings]"));
   click($(card, '.bar [data-map="wifi_5"]'));
-  assert.deepEqual(sampleDots(card).map((d) => d.textContent.trim()), ["−48"], "the 5 GHz map: 5 GHz readings only");
+  assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−48"], "the 5 GHz map: 5 GHz readings only");
   click($(card, '.bar [data-map="wifi_24"]'));
-  assert.deepEqual(sampleDots(card).map((d) => d.textContent.trim()), ["−73"]);
+  assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−73"]);
   window.localStorage.clear();
 });
 
@@ -2762,5 +2762,20 @@ test("wifi maps: Readings (opt-in, remembered) shows the survey readings as dots
   const none = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
   await settle();
   assert.equal($(none, ".bar [data-action=readings]"), null, "no readings in the plan: no switch");
+  window.localStorage.clear();
+});
+
+test("wifi maps: a reading's dot tells its data on hover (its title)", async () => {
+  window.localStorage.clear();
+  window.localStorage.setItem("domosenso.floorplan.readings", "true");
+  const plan = wifiPlan();
+  plan.wifi = { samples: [{ floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:26:28Z", band: "2.4", channel: 6, dbm: -48, noise: -96,
+    ap: "d_mesh", source: "phone", phone: "ios", method: "shortcut", spread: 2, scans: [{ t: "2026-11-11T18:26:24Z", dbm: -48 }, { t: "2026-11-11T18:26:25Z", dbm: -49 }] }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  const title = sampleDots(card)[0].querySelector("title").textContent;
+  for (const part of ["−48 dBm", "2.4 GHz", "channel 6", "Mesh", "noise −96 dBm", "spread 2 dB", "2 scans"]) {
+    assert.ok(title.includes(part), `${part} in ${title}`);
+  }
   window.localStorage.clear();
 });

@@ -327,8 +327,22 @@ the router's client tracker for its MAC address, else not at all.
   point is unknown is compared with the strongest predicted one at half weight. A material's loss
   fitted on one band moves its loss on the other bands by a third as much, in proportion (a
   2.4 GHz-only device still says something about 5 GHz).
+- **Bands: how a reading on one band informs the others.** Every reading is on one band, the one the
+  client was connected on. The fit ties a material's loss across the bands: a reading on 2.4 GHz also
+  moves that wall's 5 and 6 GHz losses, in proportion to their typical values and at a third of its
+  weight, and the other way round. An access point's transmit power on a band is fitted only from that
+  band's own readings. So the carry-over between bands is partial and approximate: 5 and 6 GHz lose
+  more in walls than 2.4 GHz, and a reading on a band tells most about that band. A band with no
+  readings of its own keeps its typical transmit powers and gets only the shared wall losses.
+- **Choosing the band is the client's business.** On one network name a client joins the band the
+  router steers it to (band steering), usually 5 GHz near an access point and 2.4 GHz where 5 GHz
+  is weak; a phone or a laptop cannot be told which. A survey therefore collects mostly one band
+  where the signal is good and the other at the edges. To measure a band on purpose the router needs
+  a network name of its own for it, if it offers one. 6 GHz is measured only when an access point is
+  marked as serving it (edit mode: the access point's bands) and the client supports it.
 - **Survey:** a walk-around with a laptop measuring as you tap the plan refines the same maps; see
-  *Survey walk* below. Survey and manual readings calibrate like device readings.
+  *Survey walk* below. Survey and manual readings calibrate like device readings, and so do the
+  readings of Pocket's Wi-Fi survey with a phone.
 
 ## Survey walk
 

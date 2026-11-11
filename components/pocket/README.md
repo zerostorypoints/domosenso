@@ -284,6 +284,11 @@ floor plan's Wi-Fi maps (SPEC-045; the floorplan component's *Wi-Fi* sections). 
   weight), the signal moved by more than 6 dB or the phone changed access point while measuring, or
   the band is unclear (a channel 6 GHz shares with another band: pick 2.4 or 6 GHz). The model's
   value shows beside the reading; a reading is never refused for disagreeing with it.
+- **Bands.** The phone measures the band it is connected on; iOS and Android join the band the router
+  steers them to, and neither Shortcuts nor the Companion app can choose it. Expect mostly 5 GHz near
+  the access points and 2.4 GHz where 5 GHz is weak. Each reading keeps its band; the floor plan's
+  calibration carries what a reading says about the walls to the other bands, partially (the floorplan
+  README's *Bands*). The Readings switch on the plan shows a band map's own readings.
 - **Kept at once** when every check passes (a green dot); with a warning (amber) you choose **Keep** or
   **Retry**; a failure (red) keeps nothing. A kept reading is a sample of the plan (`source: phone`, with
   every scan) and the maps recalibrate at once; **Undo** takes the last one out. **Readings kept**, under

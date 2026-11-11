@@ -156,6 +156,9 @@ export const STYLE = `
   .wall-panel .floor-label { margin-left: 12px; }
   .ap-check, .outdoor-check { display: inline-flex; align-items: center; gap: 4px; }
   .sample { pointer-events: none; }
+  /* The dot and its value take the pointer, so a hover shows the reading's data (its <title>); a tap still
+     reaches the plan, which handles taps by position. */
+  .sample circle, .sample .sample-label { pointer-events: auto; cursor: default; }
   .sample circle { fill: var(--primary-text-color); stroke: var(--card-background-color, #fff); stroke-width: 1;
                    vector-effect: non-scaling-stroke; }
   .sample[data-source=manual] circle { fill: var(--secondary-text-color); }

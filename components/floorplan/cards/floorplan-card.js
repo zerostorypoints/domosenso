@@ -1251,6 +1251,7 @@ ${STYLE}
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
         if (!editing && map?.cls !== "confidence" && map?.band && s.band !== map.band) continue;
         const dot = el("g", { class: "sample", "data-source": s.source ?? "survey", transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
+        el("title", {}, dot).textContent = this._sampleTitle(s);
         el("circle", { r: fmt(3 * px) }, dot);
         el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "stroke-width": fmt(3 * px),
           "dominant-baseline": "central" }, dot)
@@ -1268,6 +1269,24 @@ ${STYLE}
     if (editing && this._tool === "reading" && this._reading) {
       el("circle", { class: "reading-spot", cx: fmt(this._reading[0]), cy: fmt(this._reading[1]), r: fmt(7 * px) }, svg);
     }
+  }
+
+  // A reading's data, the tooltip of its dot (a hover): value, band and channel; access point; where it came
+  // from and when; noise, spread and scans when it has them.
+  _sampleTitle(s) {
+    const h = this._hass;
+    const dev = s.ap ? h?.devices?.[s.ap] : null;
+    const when = Number.isFinite(Date.parse(s.t ?? "")) ? new Date(s.t).toLocaleString(h?.locale?.language ?? h?.language,
+      { dateStyle: "short", timeStyle: "short" }) : null;
+    const extra = [s.noise != null ? t(h, "card.floorplan.wifi.reading.noise", { noise: dbmText(s.noise) }) : null,
+      s.spread != null ? t(h, "card.floorplan.wifi.reading.spread", { spread: s.spread }) : null,
+      Array.isArray(s.scans) ? t(h, "card.floorplan.wifi.reading.scans", { n: s.scans.length }) : null].filter(Boolean);
+    return [
+      `${dbmText(s.dbm)} dBm · ${t(h, "card.floorplan.wifi.reading.band", { band: s.band ?? "?", channel: s.channel ?? "?" })}`,
+      dev ? dev.name_by_user ?? dev.name ?? s.ap : t(h, "card.floorplan.wifi.reading.no_ap"),
+      [t(h, `card.floorplan.wifi.reading.source.${s.source === "phone" || s.source === "manual" ? s.source : "survey"}`), when].filter(Boolean).join(" · "),
+      extra.join(" · "),
+    ].filter(Boolean).join("\n");
   }
 
   // The survey's next spots on the floor and band shown (the map's cells, calibrated where it is), worked

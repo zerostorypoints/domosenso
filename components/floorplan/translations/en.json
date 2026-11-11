@@ -163,7 +163,19 @@
         "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:",
         "ranges": "Ranges",
         "ranges_legend": "solid {call} dBm, dashed {weak} dBm",
-        "readings": "Readings"
+        "readings": "Readings",
+        "reading": {
+          "band": "{band} GHz, channel {channel}",
+          "no_ap": "access point unknown",
+          "noise": "noise {noise} dBm",
+          "spread": "spread {spread} dB",
+          "scans": "{n} scans",
+          "source": {
+            "phone": "phone",
+            "survey": "laptop survey",
+            "manual": "typed in"
+          }
+        }
       },
       "wall": {
         "material": "Wall material",
