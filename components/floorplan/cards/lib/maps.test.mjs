@@ -176,3 +176,12 @@ test("the Confidence map's three levels have three distinct fills", () => {
   assert.deepEqual(Object.keys(CONFIDENCE), ["high", "medium", "low"]);
   assert.equal(new Set(Object.values(CONFIDENCE)).size, 3);
 });
+
+test("mbps colours: 0.1 and below the first ramp colour, 1000 and above the last, 10 the middle", () => {
+  const r = SCALES.mbps.ramp, rgb = (c) => `rgb(${[16, 8, 0].map((s) => (parseInt(c.slice(1), 16) >> s) & 255).join(",")})`;
+  assert.equal(colourAt("mbps", 0.1), rgb(r[0]));
+  assert.equal(colourAt("mbps", 0), rgb(r[0]));
+  assert.equal(colourAt("mbps", 5000), rgb(r[4]));
+  assert.equal(colourAt("mbps", 10), rgb(r[2]));
+  assert.deepEqual(SCALES.mbps.marks, [1, 10, 100]);
+});

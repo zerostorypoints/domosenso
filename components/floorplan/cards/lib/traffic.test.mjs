@@ -201,3 +201,42 @@ test("toMbps and trafficRules", () => {
   assert.equal(trafficRules(rules).length, 1);
   assert.deepEqual(trafficRules({ access_points: [{ integration: "x" }] }), []);
 });
+
+// --- heat cells ---
+import { heatCells, apTotals } from "./traffic.js";
+const cl = (o) => ({ mac: "02:00:00:00:00:10", name: "Alex phone", ap: "office", link: "5", down: 0, up: 0, total: 2, device_id: null, point: null, ...o });
+const floor = { floor_id: "ground", rooms: [{ polygon: [[0, 0], [2, 0], [2, 2], [0, 2]] }] };
+const serve = [0, 1].flatMap((x) => [0, 1].map((y) => ({ x, y, room: 0, dbm: -50, ap: "office", second: null })));
+const pointAt = (p) => (p.floorId === "ground" ? [p.key === "a" ? 1.4 : 0.2, 0.3] : null);
+const apAt = (k) => ({ office: { x: 0.5, y: 1.5, floorId: "ground", roomIndex: 0 }, up: { x: 0, y: 0, floorId: "first", roomIndex: 0 } })[k] ?? null;
+const heat = (list, serving = { 5: serve }) => heatCells(list, floor, serving, pointAt, apAt, 1);
+
+test("a placed client puts its total in the cell at its point", () => {
+  assert.deepEqual(heat([cl({ point: { floorId: "ground", key: "a" } })]), [{ x: 1, y: 0, value: 2 }]);
+});
+test("an unplaced Wi-Fi client spreads its total evenly over its access point's serving cells of its band", () => {
+  const h = heat([cl()]);
+  assert.equal(h.length, 4);
+  assert.ok(h.every((c) => c.value === 0.5));
+});
+test("no serving cells for that band: the access point's room on this floor takes it", () => {
+  const h = heat([cl({ link: "6" })]);
+  assert.deepEqual(h.map((c) => [c.x, c.y, c.value]), [[0, 0, 0.5], [0, 1, 0.5], [1, 0, 0.5], [1, 1, 0.5]]);
+});
+test("the access point serves another floor only: nothing on this floor", () => {
+  assert.deepEqual(heat([cl({ ap: "up", link: "6" })]), []);
+});
+test("an unplaced wired client sits at its access point", () => {
+  assert.deepEqual(heat([cl({ link: "wired" })]), [{ x: 0, y: 1, value: 2 }]);
+});
+test("ap null: left out", () => {
+  assert.deepEqual(heat([cl({ ap: null })]), []);
+});
+test("cells sum their clients", () => {
+  const h = heat([cl({ point: { floorId: "ground", key: "b" } }), cl({ point: { floorId: "ground", key: "b" }, total: 3 })]);
+  assert.deepEqual(h, [{ x: 0, y: 0, value: 5 }]);
+});
+test("apTotals sums total and counts clients per access point", () => {
+  const t = apTotals([cl({ total: 1 }), cl({ total: 2.5 }), cl({ ap: "hall", total: 4 }), cl({ ap: null })]);
+  assert.deepEqual([...t], [["office", { total: 3.5, count: 2 }], ["hall", { total: 4, count: 1 }]]);
+});

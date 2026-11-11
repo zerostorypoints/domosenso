@@ -3,6 +3,7 @@
 import { normMac, nodeMacs } from "./wifi-sources.js";
 import { accessPoints } from "./maps.js";
 import { keysOf } from "./plan.js";
+import { pointInPolygon } from "./geometry.js";
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const objectId = (entityId) => entityId.slice(entityId.indexOf(".") + 1);
@@ -121,4 +122,63 @@ export function nodeRates(hass, rules, apKey) {
     return { down: rate(d), up: rate(u) };
   }
   return null;
+}
+
+// Throughput per access point: Map<apKey, {total, count}> over the clients that have one.
+export function apTotals(list) {
+  const out = new Map();
+  for (const c of list) {
+    if (!c.ap) continue;
+    const t = out.get(c.ap) ?? { total: 0, count: 0 };
+    t.total += c.total;
+    t.count += 1;
+    out.set(c.ap, t);
+  }
+  return out;
+}
+
+// The heat on this floor's `step` grid: [{x, y, value}] sorted by x then y. A placed client, or a wired one
+// at its access point, lands in the one cell holding that point; an unplaced Wi-Fi client spreads its total
+// evenly over its access point's serving cells of its band, or, with none, over the cells of the room the
+// access point sits in. `pointAt(point) -> [x, y]|null` and `apAt(key) -> {x, y, floorId, roomIndex}|null`
+// are the card's; a point or access point on another floor gives nothing here.
+export function heatCells(list, floor, servingByBand, pointAt, apAt, step) {
+  const sums = new Map();
+  const add = (x, y, v) => {
+    const k = `${x}|${y}`;
+    const e = sums.get(k);
+    if (e) e.value += v; else sums.set(k, { x, y, value: v });
+  };
+  const at = ([px, py], v) => add(Math.floor(px / step) * step, Math.floor(py / step) * step, v);
+  for (const c of list) {
+    if (c.point) {
+      const xy = pointAt(c.point);
+      if (xy) at(xy, c.total);
+      continue;
+    }
+    if (!c.ap) continue;
+    const ap = apAt(c.ap);
+    if (c.link === "wired") {
+      if (ap && ap.floorId === floor.floor_id) at([ap.x, ap.y], c.total);
+      continue;
+    }
+    let cells = (servingByBand[c.link] || []).filter((cell) => cell.ap === c.ap);
+    if (!cells.length && ap && ap.floorId === floor.floor_id && ap.roomIndex != null) {
+      cells = roomCells(floor.rooms?.[ap.roomIndex]?.polygon, step);
+    }
+    for (const cell of cells) add(cell.x, cell.y, c.total / cells.length);
+  }
+  return [...sums.values()].sort((a, b) => a.x - b.x || a.y - b.y);
+}
+
+// The cells of one room on the step grid from its bounding box, kept when the centre is inside (as `coverage` does).
+function roomCells(poly, step) {
+  if (!poly) return [];
+  let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
+  for (const [px, py] of poly) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+  const out = [];
+  for (let x = x0; x < x1; x += step) {
+    for (let y = y0; y < y1; y += step) if (pointInPolygon([x + step / 2, y + step / 2], poly)) out.push({ x, y });
+  }
+  return out;
 }
