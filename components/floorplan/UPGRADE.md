@@ -12,6 +12,14 @@ Newest first. Each entry says what changed and what a home that already runs the
   interior or exterior walls.
 - Readings from the devices' Wi-Fi signal sensors, and from `domosenso floorplan survey` (a walk
   with a laptop), calibrate the maps.
+- **Thick walls** (Amendment 3): two rooms' edges parallel within 10°, overlapping and at most 0.6 m
+  apart (a plan traced with wall thickness) are now one interior wall, not two exterior ones. This
+  changes the predictions of such a plan: rooms behind a traced wall get markedly stronger signal
+  (a closet behind a hallway that read about −90 dBm can read −50 to −75). Readings taken before
+  still calibrate; look at the maps again.
+- With Wi-Fi on, the plan draws the walls as lines by weight (light, solid, heavy) instead of room
+  outlines; a wall can be **Half height** (`walls[].height: "half"`); the band maps have **Ranges**;
+  new wall material `railing`. `wifi: false` keeps the outlines.
 - **What a home does:** nothing for a home without access points on the plan: it looks as before.
   To use the maps, mark the access points in edit mode. In a brick, drywall or timber home, set the
   walls' material, or "material unknown", in the Walls tool. Mark balconies and terraces under

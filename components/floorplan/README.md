@@ -52,6 +52,10 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     that kind, not yours. Real walls differ, so read the map as where signal is likely strong,
     weak or gone, not as dBm to the decibel. Triple low-E glazing and metal block the most; reinforced concrete and low-E glazing come next.
   - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
+  - **Ranges** (SPEC-044 Amendment 3): a switch on the 2.4, 5 and 6 GHz maps (the browser
+    remembers it). Each access point gets its Serving colour, a ring at its place with its name, and
+    its outline at −67 dBm (solid) and −75 dBm (dashed) on the map's band, predicted or calibrated
+    as the map is, so where access points overlap and where one reaches alone shows directly.
   - Without an access point on the plan there is no map; the bar says how to add one.
   - `wifi: false` turns the Wi-Fi maps off, and with them the Walls tool, the opening **Material**,
     the access point panel and the offer.
@@ -64,9 +68,18 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     the browser remembers the choice. Without such a device there is nothing to calibrate with and
     the switch is not shown. Such a device's label reads "−52 dBm · 2.4 · <access point>" (`—` when
     the access point is not known).
+- **Wall weights** (SPEC-044 Amendment 3): with Wi-Fi on (the default), the plan and every map draw
+  the walls as lines, each wall once, instead of room outlines, so the differences show at a glance
+  rather than as an architect's drawing. Three weights by the wall's loss at 5 GHz (after the half
+  height below): **light** below 10 dB (drywall, wood, a railing, double glazing), **solid** 10 to
+  25 dB (brick, thin concrete), **heavy** above 25 dB (thick concrete, low-E glazing, metal). Glass
+  walls are tinted light blue, a half-height wall is dashed, an edge with no wall (an open space, a
+  balcony's open side) is a faint dotted line. The widths stay the same at any zoom. A key (light,
+  solid, heavy) shows in the bar on the Wi-Fi maps and in edit mode. `wifi: false` keeps the room
+  outlines as before.
 - **Open spaces:** rooms open to each other without doors (a living room, kitchen and hall in one)
   share their readings on the maps instead of stopping at the line between them; the walls between
-  them are dashed. Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
+  them are dashed (with Wi-Fi on: dotted, no wall). Mark them in edit mode with the **Open** tool (tap two rooms); a selected room's
   panel names what it is open to and has **Close off**.
 - **Doors, windows and doorways** (SPEC-028 Amendment 9, draft): drawn in the walls, each
   optionally linked to its door or window sensor (a `binary_sensor` door, window, opening or garage
@@ -221,14 +234,24 @@ In edit mode (SPEC-044):
   drywall, wood, aerated concrete block, brick, thin concrete (about 10 cm), thick reinforced
   concrete (about 25 cm), concrete, reinforced concrete, metal, a glass wall or facade (glass,
   double glazing, low-E, triple low-E, independent of any window in it), or an interior or exterior
-  wall of unknown material. A wall two rooms share is interior; a wall one room has alone, or one
-  between an indoor and an outdoor room, is exterior. Until you say otherwise, **outer walls are
+  wall of unknown material, or a **railing** (open bars or a mesh, 2 / 3 / 3 dB). A wall two rooms
+  share is interior; a wall one room has alone, or one between an indoor and an outdoor room, is
+  exterior. **Thick walls:** a plan traced with the walls' real thickness leaves a gap between two
+  rooms; two rooms' edges that are parallel within 10°, overlap along their length and lie at most
+  0.6 m apart are one interior wall over the stretch where they overlap, charged once (with the
+  material set on either edge), not two exterior walls. The rest of each edge stays as it was, and
+  the outdoor rules apply to such a pair as to a shared edge. Until you say otherwise, **outer walls are
   thick concrete and inner walls thin concrete** (SPEC-044 Amendment 2): a pessimistic start for a
   masonry home. With a wall selected, two buttons use that material for all interior or all
   exterior walls (the defaults for walls nothing was set on). Stored as `walls` and
   `wifi.defaults`. These are assumptions: readings from your devices and a survey walk (below)
   validate them and move each wall type's loss per band, and the Confidence map shows where they
   did.
+- **Half height.** The selected wall's **Half height** switch is for a balcony frame, a parapet or a
+  staircase's balustrade: such a wall costs half its material's loss on every band (a working
+  assumption: part of the signal passes over it); calibration moves the material, not the half.
+  Stored as `height: "half"` on the wall's entry. An outdoor room's open edge has nothing to lower
+  until a material is set.
 - **Outdoor rooms.** A balcony, terrace or winter garden drawn as a room is computed and drawn like
   any room (its cells, its next spots), and is often the weakest spot of a home. Switch it on under
   **Outdoors** in the Walls tool's floor panel: its wall to the home becomes exterior, and a door or
