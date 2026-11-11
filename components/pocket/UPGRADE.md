@@ -2,6 +2,16 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
+## Unreleased: the Wi-Fi survey (SPEC-045)
+
+- New inputs `wifi_survey` (needs `floorplan`), `wifi_ssid`, `wifi_scans`. With `wifi_survey: true` the
+  render adds `packages/pocket.yaml` (`sensor.domosenso_wifi_reading`) and the System page a **Wi-Fi
+  survey** row for administrators.
+- **What a home does:** nothing unless it wants the survey. To use it: set `wifi_survey: true`, render,
+  deploy (the package needs Home Assistant's restart, which the deploy does), install the Shortcut
+  **Domosenso Wi-Fi** on the iPhone from the page and choose the Server in its Fire event action once;
+  on Android turn on the Companion app's Wi-Fi sensors.
+
 ## 0.1.0 (unreleased): areas from Home Assistant, area settings, Quick actions (SPEC-038)
 
 - **The areas are Home Assistant's**, by their HA names (not translated), in floor order. Links use

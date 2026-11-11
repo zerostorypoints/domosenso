@@ -103,6 +103,13 @@ uses the plant measurement keys and carries the last valid `at` timestamp, numer
 current `available` flag. `domosenso_legacy_moisture_history` optionally gives the earlier
 `statistic_id` and `before` cutover time. Existing sensor bindings retain their behaviour.
 
+For Pocket's Wi-Fi survey ([SPEC-045](../.ai/specs/SPEC-045-2026-11-11-pocket-wifi-survey.md)),
+`sensor.domosenso_wifi_reading` is STABLE: its state is a reading's one-time code, its attributes
+`scans`, `user_id` and `at`. The event `domosenso_wifi_reading` with data `{code, scans}` (each scan's
+values as text: `t`, `ssid`, `bssid`, `rssi`, `noise`, `channel`, `standard`, `rx`, `tx`, `mac`) and the
+Shortcuts' names and input JSON `{code, n, mode, return}` are ADDITIVE-ONLY; the route `#/wifi-survey`
+is STABLE.
+
 ### Cards (Lovelace resources)
 
 | surface | level |

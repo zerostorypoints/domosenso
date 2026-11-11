@@ -30,7 +30,7 @@ Principles, in order when they conflict:
 
 - **Routes in the hash** (`lib/router.js`): `#/`, `#/systems`, `#/areas`, `#/area/<id>`,
   `#/controls[/status]`,
-  `#/climate`, `#/media[/<id>]`, `#/power`, `#/plants`, `#/scenes`, `#/safety`, `#/system`, `#/floorplan[/<id>]`,
+  `#/climate`, `#/media[/<id>]`, `#/power`, `#/plants`, `#/scenes`, `#/safety`, `#/system`, `#/wifi-survey`, `#/floorplan[/<id>]`,
   `#/settings[/<panel>]`. Back and deep links work; nothing reloads.
 - **Levels:**
   - Level 0: **Home**, in two views switched under the title: **Overview** (what is happening now and
@@ -332,6 +332,21 @@ it, or it does not go in.
 | a backup is fair after 8 days, poor after 30 | `lib/system.js` | open |
 | a plant's battery is low under 15 % | `lib/plants.js` | open |
 
+### 4.8 Wi-Fi survey (SPEC-045)
+
+- An administrator's page reached from System (a row there), with its own back to System. The plan
+  fills the top (the floorplan card in its phone survey mode: spots numbered, the spot a filled dot)
+  and a **panel section under it**, not a sheet, so the plan stays in sight while measuring: the
+  method with Change, why this spot, Measure and its progress, then the result (the value in dBm,
+  band and channel, access point, noise, rates, spread, the model's value), the failed checks (hard
+  in the poor colour, soft in the fair one) and Keep / Retry, or the 2.4 / 6 GHz pick.
+- **Install card:** a first use per device shows what that phone needs (the Shortcut and its Server
+  step; on Android the Companion app's sensors and the phone picker) above the panel, until done.
+- **Per device** (localStorage): the method, the Android phone, the expected network name when the
+  home sets none, the Shortcut installed. A Measure waiting for the iPhone's reading is kept there
+  too, and the shell reopens `#/wifi-survey` from Home while it waits (the Companion app returns to
+  the dashboard's first page).
+
 ## 11. Decisions log
 
 | decision | why |
@@ -343,6 +358,7 @@ it, or it does not go in.
 | Quick actions are a person's list with the home's default under it; Home's Quick has an "Edit" link to Settings → Quick actions | Quick is personal like the bar; the link is this feature's UX choice: the list is edited where it is missed |
 | In Settings every choice among fixed options is a drop-down row, the theme included | one pattern for every setting, readable on a phone: name and source left, value right |
 | Climate's main sensor is HA's own area field (Related sensors) | one place for what HA configures (principle 4) |
+| The Wi-Fi survey is a page of its own under System, its result a section under the plan | measuring is a task, not a glance at the floor plan; the plan must stay visible while the result and checks are read |
 | The language is a person's setting, Automatic by default; names are not translated | a person picks their language without a second dashboard; area names are HA's |
 | Home has Overview and Systems | a single Home mixed status and navigation and was hard to read |
 | Widgets open sheets, tiles open pages | one rule for "tap for details" vs "go to the aspect" |

@@ -21,7 +21,10 @@ import { checkReading, sampleWithBand } from "../lib/wifi-checks.js";
 export const SNAP_M = 1;
 const READING = "sensor.domosenso_wifi_reading";
 const KEY = { method: "pocket.wifi.method", phone: "pocket.wifi.phone", ssid: "pocket.wifi.ssid", installed: "pocket.wifi.installed" };
-const SHORTCUT_FILE = new URL("../../shortcuts/domosenso-wifi.shortcut", import.meta.url).href;
+// The Shortcuts tools/pocket_shortcuts.py writes, served beside the cards: the Companion app's (event) and
+// Safari's (x-callback).
+const SHORTCUT_FILE = { "shortcut-event": new URL("../shortcuts/domosenso-wifi.shortcut", import.meta.url).href,
+  "shortcut-callback": new URL("../shortcuts/domosenso-wifi-safari.shortcut", import.meta.url).href };
 
 const STYLE = `
   .wifi-survey .top { display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; }
@@ -384,7 +387,7 @@ function installCard(root, ctx, method) {
   setText($(".install-text"), t("card.pocket.wifi.install.iphone"));
   const link = $(".install-link");
   link.hidden = false;
-  setAttr(link, "href", SHORTCUT_FILE);
+  setAttr(link, "href", SHORTCUT_FILE[method] ?? SHORTCUT_FILE["shortcut-event"]);
   setText(link, t("card.pocket.wifi.install.link"));
   const server = $(".install-server");
   server.hidden = method !== "shortcut-event";
