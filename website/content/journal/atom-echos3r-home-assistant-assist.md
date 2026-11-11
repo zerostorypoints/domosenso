@@ -4,6 +4,7 @@ title: How to connect an M5Stack Atom EchoS3R to Home Assistant Assist
 summary: Check the hardware model, select the manufacturer's voice firmware and test each stage of a Home Assistant Assist command.
 category: updates
 date: '2026-11-03'
+updated: '2026-11-11'
 status: published
 author: DomoSenso
 components:
@@ -11,12 +12,15 @@ components:
 releases: []
 sources:
 - https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r
-- https://docs.m5stack.com/en/core/Atom_EchoS3R
+- https://docs.m5stack.com/en/core/Atom_VoiceS3R
+- https://github.com/m5stack/esphome-yaml/releases/tag/2026.10.0
 ---
 
-Start by checking the exact model printed on your device. At the time of writing, M5Stack's
-documentation at the Atom EchoS3R guide URL uses the name **Atom VoiceS3R**. Match your hardware
-to the manufacturer's product page before choosing firmware.
+Start by checking the model on the board or packaging. M5Stack's EchoS3R product URL redirects
+to [Atom VoiceS3R, SKU C126-ECHO](https://docs.m5stack.com/en/core/Atom_VoiceS3R), and its Assist
+guide identifies the same board. Match the SKU before choosing firmware. The
+[M5Stack Atom setup guide](/journal/set-up-m5stack-atom-home-assistant/) compares the available
+models and firmware.
 
 This is a guide to the manufacturer's Assist setup, not a claim of a tested DomoSenso voice
 integration. DomoSenso currently documents this board as an
@@ -32,10 +36,11 @@ so you have a working reference before adding the satellite.
 
 ## 2. Install firmware for the correct hardware
 
-Use the precompiled firmware or complete ESPHome configuration linked from the
-[manufacturer's setup guide](https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r).
-The guide currently specifies ESPHome **2026.1.0 or later**. Check that requirement again
-when preparing your device.
+Follow the [manufacturer's setup guide](https://docs.m5stack.com/en/homeassistant/applications/voice_assistant/atom_echos3r).
+M5Stack's [2026.10.0 release](https://github.com/m5stack/esphome-yaml/releases/tag/2026.10.0) provides
+`atom-voices3r-satellite.factory.bin` for first installation and `atom-voices3r-satellite.ota.bin`
+for updates. You can also build from the complete ESPHome configuration linked in the guide.
+Check the ESPHome version required by that source before building.
 
 Use the complete configuration rather than mixing microphone and speaker settings from
 similarly named Atom models. Save the configuration and firmware revision you use, along with
@@ -69,3 +74,16 @@ Change one thing at a time and repeat the same command. A clear description such
 For voice interaction, follow the upstream Assist configuration above. For room sound readings,
 read the [DomoSenso audio-sensor component](/components/audio-sensor/) and its stated limits.
 These are separate configurations, and this article does not establish that they can be combined.
+
+## Prepare the setup with an AI agent
+
+Open the [DomoSenso repository](https://github.com/zerostorypoints/domosenso) with your agent
+and give it this prompt.
+
+> Confirm the exact model and SKU of my M5Stack Atom and confirm that I want a Home Assistant
+> Assist satellite. Read AGENTS.md and the relevant instructions in
+> https://github.com/zerostorypoints/domosenso and my home project. Find the official M5Stack
+> Assist guide for my hardware and prepare the provisioning steps or a local ESPHome
+> configuration. Tell me how to check the pipeline and verify one spoken command. Keep
+> credentials local and out of chat and Git. Ask for separate approval before flashing or
+> deploying anything.

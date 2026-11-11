@@ -65,7 +65,8 @@ test('no JavaScript retains catalog, views and journal content',async({browser})
  await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(14);
  await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(12);
  await page.goto('http://127.0.0.1:4336/components/ramka/');await expect(page.locator('#views')).toContainText('Home status');
- await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(11);
+ await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(12);
+ await expect(page.getByRole('link',{name:'Set up an M5Stack Atom in Home Assistant'})).toHaveAttribute('href','/journal/set-up-m5stack-atom-home-assistant/');
  await context.close();
 });
 
