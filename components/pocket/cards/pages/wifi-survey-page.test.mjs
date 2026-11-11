@@ -191,3 +191,21 @@ test("first use on an iPhone: the install card with the Shortcut and the Server 
   assert.ok(install.hidden);
   assert.equal(window.localStorage.getItem("pocket.wifi.installed"), "1");
 });
+
+test("an update never hides a shown part for a moment: the page keeps its height and its scroll", async () => {
+  window.localStorage.removeItem("pocket.wifi.installed");
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = await mount(ctx);
+  // A part shown before and after an update must not have been hidden in between.
+  const parts = [...el.querySelectorAll("*")];
+  const shownBefore = new Set(parts.filter((n) => !n.hidden));
+  const touched = new Set();
+  const watch = new window.MutationObserver((records) => { for (const r of records) touched.add(r.target); });
+  watch.observe(el, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
+  page.update(el, ctx);
+  page.update(el, ctx);
+  await settle();
+  watch.disconnect();
+  const flips = [...touched].filter((n) => shownBefore.has(n) && !n.hidden).map((n) => n.className);
+  assert.deepEqual(flips, []);
+});

@@ -291,8 +291,12 @@ export function update(root, ctx) {
   setText(none, !admin ? t("card.pocket.wifi.admin_only") : t("card.pocket.wifi.no_plan"));
   $(".box").hidden = !s.card;
   $(".panel").hidden = !s.card;
-  $(".install").hidden = true;
-  if (!s.card) return;
+  // Each part's hidden is set once per update, to its final value: hiding one for a moment while the
+  // floorplan card measures itself (its hass) shortens the page and the browser scrolls it to the top.
+  if (!s.card) {
+    $(".install").hidden = true;
+    return;
+  }
   s.card.hass = hass;
 
   // A reading that arrived: the Shortcut's (sensor or address) or nothing yet; each code once.
