@@ -67,6 +67,7 @@ import { powerSheet } from "./pages/power-page.js";
 import { forgetPlan } from "./lib/plan-cache.js";
 import { pages } from "./pages/index.js";
 import { redirectAtStart } from "./lib/start.js";
+import { resumeRoute } from "./lib/wifi-capture.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -580,6 +581,19 @@ class PocketApp extends HTMLElement {
     // A link of the first version (#/rooms, #/room/<id>): its new hash, in place of the old entry.
     const legacy = legacyRoute(window.location.hash);
     if (legacy) window.history.replaceState(window.history.state, "", legacy);
+    // The Companion app returns from the iPhone Shortcut to the dashboard's Home: a Measure still waiting
+    // for its reading reopens the Wi-Fi survey, once per card (SPEC-045 Amendment 1).
+    if (!this._resumed && this._config.wifi_survey && parseRoute(window.location.hash).page === "home" && !parseRoute(window.location.hash).id) {
+      let storage = null;
+      try {
+        storage = window.localStorage;
+      } catch {
+        // blocked storage: nothing waits
+      }
+      const resume = storage && resumeRoute(storage, Date.now());
+      if (resume) window.history.replaceState(window.history.state, "", resume);
+    }
+    this._resumed = true;
     let route = parseRoute(window.location.hash);
     const instead = this._unknownArea(route);
     if (instead) {

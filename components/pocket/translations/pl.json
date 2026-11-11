@@ -804,6 +804,51 @@
           "known_ap": "Punkt dostępowy nie jest zaznaczony na planie. Zachowano bez niego, z połową wagi.",
           "steady": "Sygnał się wahał lub telefon zmienił punkt dostępowy podczas pomiaru.",
           "band": "Pasmo jest niejasne: wybierz 2,4 lub 6 GHz."
+        },
+        "title": "Pomiar Wi-Fi",
+        "back": "Wróć do System",
+        "admin_only": "Tylko administrator może mierzyć Wi-Fi.",
+        "no_plan": "Ten dom nie ma jeszcze planu.",
+        "row": "Pomiar Wi-Fi",
+        "row_hint": "Zmierz Wi-Fi tym telefonem",
+        "method": {
+          "shortcut-event": "Mierzone skrótem na iPhonie",
+          "shortcut-callback": "Mierzone skrótem na iPhonie (w Safari)",
+          "companion": "Mierzone czujnikami aplikacji Companion"
+        },
+        "change": "Zmień",
+        "pick": "Dotknij na planie miejsca, w którym stoisz.",
+        "here": "Stój tutaj nieruchomo i zmierz.",
+        "why": {
+          "handover": "Przełączanie między dwoma punktami dostępowymi: zmierz tutaj.",
+          "room": "W tym pokoju nie ma jeszcze odczytu.",
+          "far": "Daleko od każdego odczytu."
+        },
+        "measure": "Zmierz",
+        "waiting": "Czekam na odczyt z telefonu…",
+        "reading": "Odczyt {n} z {total}",
+        "failed": "Nie zapisano: {error}",
+        "no_value": "Brak sygnału",
+        "band": "{band} GHz, kanał {channel}",
+        "ap": "Punkt dostępowy: {name}",
+        "ap_unknown": "Punkt dostępowy nieznany",
+        "noise": "Szum {noise}",
+        "rates": "Szybkość {rx} / {tx} Mb/s",
+        "spread": "Rozrzut {spread} dB",
+        "model": "Model {dbm}",
+        "keep": "Zachowaj",
+        "retry": "Ponów",
+        "kept": "Zachowano: {dbm}",
+        "undo": "Cofnij",
+        "install": {
+          "title": "Zainstaluj skrót",
+          "iphone": "iPhone mierzy skrótem \"Domosenso Wi-Fi\". Zainstaluj go raz.",
+          "link": "Zainstaluj \"Domosenso Wi-Fi\"",
+          "server": "Następnie otwórz skrót, dotknij Server w jego akcji Fire event i wybierz swój Home Assistant (pod nazwą z aplikacji Companion).",
+          "done": "Zainstalowano",
+          "android_title": "Wybierz ten telefon",
+          "android": "Włącz czujniki Wi-Fi w aplikacji Companion (siła sygnału, BSSID, częstotliwość, szybkość łącza, połączenie), potem wybierz ten telefon.",
+          "phone": "Ten telefon…"
         }
       }
     }

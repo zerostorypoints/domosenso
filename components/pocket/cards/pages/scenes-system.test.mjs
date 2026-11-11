@@ -126,3 +126,19 @@ test("the System page and its tile", () => {
   assert.equal(tile.head, "1 update");
   assert.match(tile.status, /^Backup /);
 });
+
+test("system: a Wi-Fi survey row for an administrator of a home with the survey (SPEC-045), opening #/wifi-survey", () => {
+  const admin = systemHass();
+  admin.user = { is_admin: true };
+  const ctx = ctxOf({ hass: admin, cfg: { ...config, floorplan: true, wifi_survey: true } });
+  const el = systemPage.render(ctx);
+  const row = el.querySelector(".wifi");
+  assert.ok(!row.hidden);
+  assert.ok(text(row).includes("Wi-Fi survey"), text(row));
+  row.querySelector("button").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert.deepEqual(ctx.routes, ["#/wifi-survey"]);
+  const user = systemHass();
+  user.user = { is_admin: false };
+  assert.ok(systemPage.render(ctxOf({ hass: user, cfg: { ...config, floorplan: true, wifi_survey: true } })).querySelector(".wifi").hidden);
+  assert.ok(systemPage.render(ctxOf({ hass: admin })).querySelector(".wifi").hidden, "without the input");
+});

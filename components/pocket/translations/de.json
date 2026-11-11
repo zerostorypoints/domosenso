@@ -804,6 +804,51 @@
           "known_ap": "Der Zugangspunkt ist auf dem Plan nicht markiert. Ohne ihn behalten, mit halbem Gewicht.",
           "steady": "Das Signal schwankte oder das Telefon wechselte beim Messen den Zugangspunkt.",
           "band": "Das Band ist unklar: 2,4 oder 6 GHz wählen."
+        },
+        "title": "WLAN-Messung",
+        "back": "Zurück zu System",
+        "admin_only": "Nur ein Administrator kann das WLAN vermessen.",
+        "no_plan": "Dieses Zuhause hat noch keinen Grundriss.",
+        "row": "WLAN-Messung",
+        "row_hint": "Das WLAN mit diesem Telefon messen",
+        "method": {
+          "shortcut-event": "Gemessen mit dem iPhone-Kurzbefehl",
+          "shortcut-callback": "Gemessen mit dem iPhone-Kurzbefehl (in Safari)",
+          "companion": "Gemessen mit den Sensoren der Companion-App"
+        },
+        "change": "Ändern",
+        "pick": "Tippe auf dem Plan, wo du stehst.",
+        "here": "Hier stillstehen und messen.",
+        "why": {
+          "handover": "Übergabe zwischen zwei Zugangspunkten: hier messen.",
+          "room": "In diesem Raum gibt es noch keine Messung.",
+          "far": "Weit entfernt von jeder Messung."
+        },
+        "measure": "Messen",
+        "waiting": "Warte auf die Messung des Telefons…",
+        "reading": "Messung {n} von {total}",
+        "failed": "Nicht gespeichert: {error}",
+        "no_value": "Kein Signal",
+        "band": "{band} GHz, Kanal {channel}",
+        "ap": "Zugangspunkt: {name}",
+        "ap_unknown": "Zugangspunkt unbekannt",
+        "noise": "Rauschen {noise}",
+        "rates": "Rate {rx} / {tx} Mbit/s",
+        "spread": "Streuung {spread} dB",
+        "model": "Modell {dbm}",
+        "keep": "Behalten",
+        "retry": "Wiederholen",
+        "kept": "Behalten: {dbm}",
+        "undo": "Rückgängig",
+        "install": {
+          "title": "Kurzbefehl installieren",
+          "iphone": "Das iPhone misst mit dem Kurzbefehl \"Domosenso Wi-Fi\". Einmal installieren.",
+          "link": "\"Domosenso Wi-Fi\" installieren",
+          "server": "Dann den Kurzbefehl öffnen, in seiner Aktion Fire event auf Server tippen und dein Home Assistant wählen (mit seinem Namen in der Companion-App).",
+          "done": "Installiert",
+          "android_title": "Dieses Telefon wählen",
+          "android": "Die WLAN-Sensoren der Companion-App einschalten (Signalstärke, BSSID, Frequenz, Verbindungsgeschwindigkeit, Verbindung), dann dieses Telefon wählen.",
+          "phone": "Dieses Telefon…"
         }
       }
     }

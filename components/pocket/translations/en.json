@@ -804,6 +804,51 @@
           "known_ap": "The access point is not one marked on the plan. Kept without it, at half weight.",
           "steady": "The signal moved or the phone changed access point while measuring.",
           "band": "The band is unclear: pick 2.4 or 6 GHz."
+        },
+        "title": "Wi-Fi survey",
+        "back": "Back to System",
+        "admin_only": "Only an administrator can survey Wi-Fi.",
+        "no_plan": "This home has no floor plan yet.",
+        "row": "Wi-Fi survey",
+        "row_hint": "Measure the Wi-Fi with this phone",
+        "method": {
+          "shortcut-event": "Measured with the iPhone Shortcut",
+          "shortcut-callback": "Measured with the iPhone Shortcut (in Safari)",
+          "companion": "Measured with the Companion app's sensors"
+        },
+        "change": "Change",
+        "pick": "Tap where you stand on the plan.",
+        "here": "Stand still here and measure.",
+        "why": {
+          "handover": "Handover between two access points: measure here.",
+          "room": "No reading in this room yet.",
+          "far": "Far from any reading."
+        },
+        "measure": "Measure",
+        "waiting": "Waiting for the phone's reading…",
+        "reading": "Reading {n} of {total}",
+        "failed": "Not saved: {error}",
+        "no_value": "No signal",
+        "band": "{band} GHz, channel {channel}",
+        "ap": "Access point: {name}",
+        "ap_unknown": "Access point unknown",
+        "noise": "Noise {noise}",
+        "rates": "Rate {rx} / {tx} Mbps",
+        "spread": "Spread {spread} dB",
+        "model": "Model {dbm}",
+        "keep": "Keep",
+        "retry": "Retry",
+        "kept": "Kept: {dbm}",
+        "undo": "Undo",
+        "install": {
+          "title": "Install the Shortcut",
+          "iphone": "The iPhone measures with the Shortcut \"Domosenso Wi-Fi\". Install it once.",
+          "link": "Install \"Domosenso Wi-Fi\"",
+          "server": "Then open the Shortcut, tap Server in its Fire event action and choose your Home Assistant (listed by its name in the Companion app).",
+          "done": "Installed",
+          "android_title": "Choose this phone",
+          "android": "Turn on the Companion app's Wi-Fi sensors (signal strength, BSSID, frequency, link speed, connection), then choose this phone.",
+          "phone": "This phone…"
         }
       }
     }

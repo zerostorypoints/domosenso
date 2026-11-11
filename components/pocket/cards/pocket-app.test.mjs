@@ -133,7 +133,7 @@ test("the page gets the contract's ctx", async () => {
 
 test("every page follows the contract; each one is built", async () => {
   assert.deepEqual(Object.keys(pages).sort(),
-    ["area", "areas", "climate", "controls", "floorplan", "home", "media", "plants", "power", "safety", "scenes", "settings", "system"]);
+    ["area", "areas", "climate", "controls", "floorplan", "home", "media", "plants", "power", "safety", "scenes", "settings", "system", "wifi-survey"]);
   for (const [id, page] of Object.entries(pages)) {
     assert.equal(typeof page.render, "function", id);
     assert.equal(typeof page.update, "function", id);
@@ -1004,4 +1004,18 @@ test("back after a swipe goes back to where the area was opened from, not to a n
   await tick(); await tick();
   assert.equal(window.location.hash, "#/", "back to Home, where the area was opened");
   assert.ok(window.history.length <= length, "no new entry pushed");
+});
+
+test("a Measure waiting for its reading reopens the Wi-Fi survey when Pocket starts on Home (SPEC-045)", async () => {
+  const { savePending, clearPending } = await import("./lib/wifi-capture.js");
+  savePending(window.localStorage, { code: "abc", floor_id: "ground", x: 1, y: 1, at: Date.now(), method: "shortcut-event", phone: "ios" });
+  try {
+    mountDemo("#/", { ...demoConfig, floorplan: true, wifi_survey: true });
+    assert.equal(window.location.hash, "#/wifi-survey");
+    window.history.replaceState(null, "", "#/");
+    mountDemo("#/", demoConfig);
+    assert.equal(window.location.hash, "#/", "not without the survey");
+  } finally {
+    clearPending(window.localStorage);
+  }
 });

@@ -47,7 +47,9 @@ export const MAX_TABS = 5;
 export const HOME_VIEWS = ["overview", "systems"];
 // The System page (pages/system-page.js): reached from Home's Systems, never on the bar.
 export const SYSTEM = { page: "system", route: "#/system", icon: "mdi:server-outline" };
-const SINGLE = new Set([...TABS, SYSTEM].map((tab) => tab.page).filter((page) => page !== "home"));
+// The Wi-Fi survey (pages/wifi-survey-page.js, SPEC-045): reached from the System page, an administrator's.
+export const WIFI_SURVEY = { page: "wifi-survey", route: "#/wifi-survey", icon: "mdi:wifi-marker" };
+const SINGLE = new Set([...TABS, SYSTEM, WIFI_SURVEY].map((tab) => tab.page).filter((page) => page !== "home"));
 const HOME = Object.freeze({ page: "home" });
 export const SETTINGS_PANELS = ["areas", "quick", "comfort", "about"];
 // The panels with pages of their own under them (#/settings/<panel>/<item>): an area's settings, and
@@ -101,7 +103,7 @@ export function legacyRoute(hash) {
 // has no tab of its own for it (`tabs`: the bar's page ids).
 export function tabOf(page, tabs = []) {
   if (page === "floorplan") return tabs.includes("floorplan") ? "floorplan" : "areas";
-  if (page === "system") return "home";
+  if (page === "system" || page === "wifi-survey") return "home";
   return page === "area" ? "areas" : page;
 }
 
