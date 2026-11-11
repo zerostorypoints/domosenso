@@ -2249,6 +2249,18 @@ const LAPTOP = "02:00:00:00:bb:02";
 const translateOf = (node) => node.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
 const hoverNode = (card, node, cx, cy) => pointer(node, "pointermove", cx, cy);
 
+test("links: a client label's halo is 3 px at any zoom, a stroke in plan metres", async () => {
+  window.localStorage.clear();
+  const card = await linksCard();
+  const halo = () => Number(dotOf(card, LAPTOP).querySelector("text.client-label").getAttribute("stroke-width"));
+  assert.ok(Math.abs(halo() - 3 * card._px()) < 1e-6, String(halo()));
+  assert.ok(halo() < 0.1, "metres, not 3 m");
+  const before = halo();
+  click($(card, "[data-action=zoom_in]"));
+  assert.ok(halo() < before, "scales with the zoom");
+  window.localStorage.clear();
+});
+
 test("links: solid for wired, dashed for Wi-Fi, coloured by link", async () => {
   window.localStorage.clear();
   const card = await linksCard();

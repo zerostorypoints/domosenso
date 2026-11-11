@@ -1969,7 +1969,7 @@ ${STYLE}
       const r = dotRadius(c.total) * px;
       const rim = placed ? {} : { "stroke-dasharray": "2 2" };
       el("circle", { r: fmt(r), fill: LINK_COLOURS[c.link], ...rim }, dot);
-      if (!idle) el("text", { class: "client-label", y: fmt(r + 11 * px), "font-size": fmt(11 * px) }, dot).textContent = this._clientTitle(c);
+      if (!idle) el("text", { class: "client-label", y: fmt(r + 11 * px), "font-size": fmt(11 * px), "stroke-width": fmt(3 * px) }, dot).textContent = this._clientTitle(c);
     }
   }
 

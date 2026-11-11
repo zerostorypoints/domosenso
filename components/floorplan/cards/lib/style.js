@@ -134,8 +134,9 @@ export const STYLE = `
   .client-ring { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0.9; }
   .client-ring.stale { stroke: var(--disabled-text-color, #9e9e9e); }
   .client-line { vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0.85; }
+  /* As .range-name: the halo's width is an attribute, 3 px in plan metres. */
   .client-label { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; paint-order: stroke;
-                  stroke: var(--card-background-color, #fff); stroke-width: 3px; stroke-linejoin: round; }
+                  stroke: var(--card-background-color, #fff); stroke-linejoin: round; }
   .client.stale circle { fill: var(--disabled-text-color, #9e9e9e); }
   .client-line.stale { stroke: var(--disabled-text-color, #9e9e9e); }
   .banner { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: color-mix(in srgb, var(--warning-color, #ffa600) 30%, transparent); color: var(--primary-text-color); }
