@@ -844,8 +844,17 @@ ${STYLE}
     if (!TRAFFIC_MAPS.includes(map.cls) || map.traffic.live) return "";
     const h = this._hass;
     const text = map.traffic.reason === "unavailable" ? t(h, "card.floorplan.traffic.unavailable")
-      : t(h, "card.floorplan.traffic.not_live", { time: formatDate(h, map.traffic.updated, { hour: "2-digit", minute: "2-digit" }) });
+      : t(h, "card.floorplan.traffic.not_live", { time: this._updatedText(map.traffic.updated) });
     return `<span class="banner" role="status">${esc(text)}</span>`;
+  }
+
+  // The router's last update as HH:MM; with the day when it is not today (a banner read at noon must not
+  // pass yesterday's 14:05 off as today's).
+  _updatedText(date) {
+    const h = this._hass;
+    const today = date instanceof Date && date.toDateString() === new Date(Date.now()).toDateString();
+    return formatDate(h, date, today ? { hour: "2-digit", minute: "2-digit" }
+      : { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
 
   // The map's scale, compact, in the bar: never over the plan (on the Ramka a legend on the plan
@@ -1037,7 +1046,8 @@ ${STYLE}
     const key = keyOf(point);
     const mine = normMac(point.mac);
     const online = [...this._traffic().list].sort((a, b) => a.name.localeCompare(b.name));
-    const taken = (c) => c.mac !== mine && c.matched_by !== null;   // linked to, or matched with, another point
+    // Marked only when a different point holds the client: linked by its mac, or matched to a device placed there.
+    const taken = (c) => c.mac !== mine && (c.matched_by === "link" || (c.matched_by === "registry" && !!c.point && c.point.key !== key));
     const opts = online.map((c) => `<option value="${esc(c.mac)}" ${c.mac === mine ? "selected" : ""}>${esc(taken(c) ? tt("elsewhere", { name: c.name }) : c.name)}</option>`);
     const offline = mine && !online.some((c) => c.mac === mine);
     if (offline) opts.unshift(`<option value="${esc(mine)}" selected>${esc(mine)}</option>`);
@@ -1870,9 +1880,10 @@ ${STYLE}
     const key = JSON.stringify([this._floorId, floor.rooms.map((r) => r.area_id), step, calibrated]);
     const kept = this._trafficCache;
     const age = kept ? Date.now() - kept.at : Infinity;
-    if (!kept || kept.key !== key || kept.doc !== this._doc || age >= TRAFFIC_MS) {
+    const changed = !!kept && kept.list !== map.traffic.list;
+    if (!kept || kept.key !== key || kept.doc !== this._doc || (changed && age >= TRAFFIC_MS)) {
       this._trafficCache = { key, doc: this._doc, at: Date.now(), g: this._trafficHeat(floor, map, step, calibrated), list: map.traffic.list };
-    } else if (kept.list !== map.traffic.list && !this._trafficTimer) {
+    } else if (changed && !this._trafficTimer) {
       // Throttled: one rebuild when the second is up, so the last change is not left unseen.
       this._trafficTimer = setTimeout(() => {
         this._trafficTimer = null;
@@ -2083,6 +2094,7 @@ ${STYLE}
         const sum = apTotals(map.traffic.list).get(ap.key) ?? { total: 0, count: 0 };
         return [{ text: t(h, "card.floorplan.traffic.ap_label", { total: this._mbit(sum.total), count: sum.count }), main: true }];
       }
+      if (map.cls === "traffic_heat" && (ap || this._sourceObs(point).length)) return [];     // markers without numbers on the heat
       if (ap) return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
       const own = this._sourceObs(point);
       if (own.length) return own.map((o) => ({ text: this._sourceText(o), main: true }));
@@ -2522,12 +2534,16 @@ ${STYLE}
   // An open marker tip is worked out again from the current states: a client's rates and age change, and the
   // client may be gone. Same place; closed (and unpinned) when its subject is no more.
   _retip() {
+    // Only the traffic maps' client and access point tips move with the router's data; every other tip is left as it is.
+    if (!TRAFFIC_MAPS.includes(this._mapNow?.cls)) return;
     const tip = this.shadowRoot?.querySelector(".tip");
     const subject = this._tipSubject;
     if (!tip || tip.hidden || !subject?.startsWith("m:")) return;
-    const content = this._markerTip(subject.slice(2));
+    const pointKey = subject.slice(2);
+    if (!pointKey.startsWith("client:") && !accessPoints(this._doc).some((a) => a.key === pointKey)) return;
+    const content = this._markerTip(pointKey);
     if (!content) return void (this._pinned ? this._unpinTip() : this._showTip(null));
-    this._tipKey = null;
+    if (this._tipMarkup(content) === this._tipHtml) return;     // nothing changed: no reassign, no measuring
     this._showTip(content, this._tipAt);
   }
 
@@ -2545,6 +2561,31 @@ ${STYLE}
     return [pointName(h, point), ...joined];
   }
 
+  // A tooltip's HTML for its content. Compared with what is shown, so an unchanged tip is neither
+  // reassigned (its photo would reload) nor measured again.
+  _tipMarkup(content) {
+    const h = this._hass;
+    const pic = content.ids.map((id) => h.states?.[id]?.attributes?.entity_picture).find(safePicture);
+    const values = content.ids.map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== content.name);
+    // Presence and contact sensors by name: "Presence: Detected".
+    const named = (id) => h.entities?.[id]?.name || h.entities?.[id]?.original_name
+      || h.states?.[id]?.attributes?.friendly_name || id;
+    const presence = (content.presence || []).map((id) => `${named(id)}: ${valueText(h, id)}`);
+    // What the dot's colour and rings mean: its category, then "Also senses:" each further role.
+    const lang = h?.language;
+    const [main, ...further] = (content.roles || []).map(categoryById).filter(Boolean);
+    const roles = main ? `<div class="tip-roles"><span class="dot" style="background: ${colourOf(main)}"></span>`
+      + `${esc(categoryName(main, lang))}${further.map((c) => `<br><span class="ring" style="border-color: ${colourOf(c)}"></span>`
+        + `${esc(t(h, "card.floorplan.roles.also"))} ${esc(categoryName(c, lang))}`).join("")}</div>` : "";
+    // A room's own sensor, as its area names it, gives the room its colour on the climate maps.
+    const roomSensor = Object.values(h.areas || {}).some((a) => content.ids.includes(a.temperature_entity_id)
+      || content.ids.includes(a.humidity_entity_id));
+    return (pic ? `<img src="${esc(pic)}" alt="">` : "")
+      + `<div class="tip-name">${esc(content.name)}</div>` + roles
+      + (roomSensor ? `<div class="tip-value">${esc(t(h, "card.floorplan.maps.room_sensor"))}</div>` : "")
+      + [...values, ...presence, ...(content.rows || [])].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+  }
+
   _showTip(content, e) {
     const tip = this.shadowRoot?.querySelector(".tip");
     if (!tip) return;
@@ -2553,27 +2594,13 @@ ${STYLE}
       this._tipKey = null;
       return;
     }
-    if (content.key !== this._tipKey) {
-      const h = this._hass;
-      const pic = content.ids.map((id) => h.states?.[id]?.attributes?.entity_picture).find(safePicture);
-      const values = content.ids.map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== content.name);
-      // Presence and contact sensors by name: "Presence: Detected".
-      const named = (id) => h.entities?.[id]?.name || h.entities?.[id]?.original_name
-        || h.states?.[id]?.attributes?.friendly_name || id;
-      const presence = (content.presence || []).map((id) => `${named(id)}: ${valueText(h, id)}`);
-      // What the dot's colour and rings mean: its category, then "Also senses:" each further role.
-      const lang = h?.language;
-      const [main, ...further] = (content.roles || []).map(categoryById).filter(Boolean);
-      const roles = main ? `<div class="tip-roles"><span class="dot" style="background: ${colourOf(main)}"></span>`
-        + `${esc(categoryName(main, lang))}${further.map((c) => `<br><span class="ring" style="border-color: ${colourOf(c)}"></span>`
-          + `${esc(t(h, "card.floorplan.roles.also"))} ${esc(categoryName(c, lang))}`).join("")}</div>` : "";
-      // A room's own sensor, as its area names it, gives the room its colour on the climate maps.
-      const roomSensor = Object.values(h.areas || {}).some((a) => content.ids.includes(a.temperature_entity_id)
-        || content.ids.includes(a.humidity_entity_id));
-      tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
-        + `<div class="tip-name">${esc(content.name)}</div>` + roles
-        + (roomSensor ? `<div class="tip-value">${esc(t(h, "card.floorplan.maps.room_sensor"))}</div>` : "")
-        + [...values, ...presence, ...(content.rows || [])].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+    // Content without ids is only a key: the tip shown for it stays as it is.
+    if (content.ids) {
+      const html = this._tipMarkup(content);
+      if (html !== this._tipHtml) {
+        tip.innerHTML = html;
+        this._tipHtml = html;
+      }
       this._tipKey = content.key;
     }
     tip.hidden = false;

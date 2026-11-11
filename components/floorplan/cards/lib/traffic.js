@@ -5,6 +5,9 @@ import { accessPoints } from "./maps.js";
 import { keysOf, editFloor, joinPoint } from "./plan.js";
 import { pointInPolygon } from "./geometry.js";
 
+// A MAC as the plan document stores it: six lower-case hex pairs, colon separated.
+export const isMac = (mac) => /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/.test(mac ?? "");
+
 const round2 = (n) => Math.round(n * 100) / 100;
 const objectId = (entityId) => entityId.slice(entityId.indexOf(".") + 1);
 const keyOf = (point) => point.device_id ?? point.entity_id;
@@ -87,7 +90,7 @@ export function clients(hass, doc, rules, now = Date.now(), ix = null) {
       const a = st?.attributes || {};
       const link = c.link.values[a[c.link.attr]];
       const mac = normMac(a.mac);
-      if (st?.state !== "home" || !link || !mac || !a[c.node_mac]) continue;
+      if (st?.state !== "home" || !link || !isMac(mac) || !a[c.node_mac]) continue;   // a MAC the plan could not store is no client
       const seenMs = timeOf(st.last_reported) ?? timeOf(st.last_updated) ?? now; // last_updated only moves on a change: an idle client would read stale
       if (byMacMap.has(mac) && byMacMap.get(mac).seenMs >= seenMs) continue;
       const node = normMac(a[c.node_mac]);
@@ -228,9 +231,10 @@ export const dotRadius = (total) => 3 + 5 * decades(total);   // screen px
 // ---- Linking a client to a point, and the same-device suggestion (SPEC-047) -------------------
 
 // A point linked to the router client with this MAC (normalised); null removes the link. A MAC links one
-// point only: it leaves any other point that held it. Null when the point is not on that floor.
+// point only: it leaves any other point that held it. Null when the point is not on that floor or the MAC is malformed.
 export function setPointMac(doc, floorId, key, mac) {
   const m = mac ? normMac(mac) : null;
+  if (m && !isMac(m)) return null;
   const onFloor = (doc?.floors || []).find((f) => f.floor_id === floorId);
   if (!onFloor?.points.some((p) => keyOf(p) === key)) return null;
   const strip = ({ mac: _, ...rest }) => rest;
@@ -250,6 +254,9 @@ export function applySuggestion(doc, { deviceId, pointKey, floorId }) {
   const home = homeOf(doc, deviceId);
   let base = doc;
   if (home) {
+    // An access point or a point with a category of its own is something the user set up: it is not folded away.
+    if (home.point.category) return null;
+    if ((doc.floors || []).some((f) => (f.access_points || []).some((a) => (a.device_id ?? a.entity_id) === keyOf(home.point)))) return null;
     if (home.point.placed !== false && Number.isFinite(home.point.x) && Number.isFinite(home.point.y)) return null; // dragged: the user put it there
     if (keyOf(home.point) === deviceId) {
       if (home.point.also?.length) return null; // would drop its joined devices

@@ -3291,3 +3291,92 @@ test("traffic edit strings exist in en, de and pl", () => {
     }
   }
 });
+
+// ---- Final review fixes (SPEC-047) ---------------------------------------------------------------
+
+test("a tip pinned on a non-traffic layer is not rebuilt by an unrelated hass set", async () => {
+  const hass = photoHass();
+  const card = await make({ plan: planOf([{ entity_id: "plant.monstera", x: 6, y: 2, placed: true }]) }, hass);
+  const [mx, my] = clientAt(card, 6, 2);
+  pointer($(card, 'g.marker[data-key="plant.monstera"]'), "pointermove", mx, my);
+  const img = tip(card).querySelector("img");
+  assert.ok(img && tipShown(card));
+  let assigned = 0;
+  const desc = Object.getOwnPropertyDescriptor(window.Element.prototype, "innerHTML");
+  Object.defineProperty(tip(card), "innerHTML", { configurable: true, get() { return desc.get.call(this); }, set(v) { assigned++; desc.set.call(this, v); } });
+  card.hass = { ...hass, states: { ...hass.states, "sensor.unrelated": { state: "1", attributes: {} } } };
+  await settle();
+  card._drawSvg(false);
+  assert.equal(assigned, 0, "tip.innerHTML is not reassigned");
+  assert.equal(tip(card).querySelector("img"), img, "the photo node is the same");
+});
+
+test("a pinned traffic tip whose text is unchanged is not reassigned either", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  const card = await linksCard({}, hass);
+  const touch = (node, type, x, y) => node.dispatchEvent(new window.PointerEvent(type, {
+    bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, pointerId: 7, button: 0, isPrimary: true, pointerType: "touch" }));
+  const [nx, ny] = translateOf(dotOf(card, NAS));
+  const [cx, cy] = clientAt(card, nx, ny);
+  touch(dotOf(card, NAS), "pointerdown", cx, cy);
+  touch(dotOf(card, NAS), "pointerup", cx, cy);
+  assert.ok(tipShown(card));
+  let assigned = 0;
+  const desc = Object.getOwnPropertyDescriptor(window.Element.prototype, "innerHTML");
+  Object.defineProperty(tip(card), "innerHTML", { configurable: true, get() { return desc.get.call(this); }, set(v) { assigned++; desc.set.call(this, v); } });
+  card._retip();
+  assert.equal(assigned, 0);
+  window.localStorage.clear();
+});
+
+test("the traffic heat group is reused while the list, the key and the plan are unchanged", async () => {
+  window.localStorage.clear();
+  const real = Date.now;
+  let now = Math.floor(real() / 5000) * 5000 + 100;
+  Date.now = () => now;
+  try {
+    const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass());
+    await settle();
+    click($(card, '.bar [data-map="traffic_heat"]'));
+    const g = card._trafficCache.g;
+    now += 2000;
+    card._drawSvg(false);
+    assert.equal(card._trafficCache.g, g, "the same group node after 2 s");
+    assert.ok(g.isConnected);
+  } finally { Date.now = real; }
+  window.localStorage.clear();
+});
+
+test("traffic heat: access points are markers without numbers", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass());
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  assert.deepEqual(lines(card, "d_mesh"), []);
+  assert.deepEqual(lines(card, "d_mesh2"), []);
+  window.localStorage.clear();
+});
+
+test("not live since yesterday: the banner names the day", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass({ updatedAgoS: 25 * 3600 }));
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  const day = new Date(Date.now() - 25 * 3600 * 1000).toLocaleDateString("en", { weekday: "short" });
+  const text = $(card, ".banner").textContent;
+  assert.ok(text.includes(day) && /\d\d:\d\d/.test(text), text);
+  window.localStorage.clear();
+});
+
+test("edit panel: a client matched to this point's own device is not marked elsewhere; one matched to another point is", async () => {
+  const hass = phoneHass();
+  hass.devices.d_phone.connections = [["mac", LAPTOP]];
+  hass.devices.d_mesh2.connections = [["mac", NAS]];
+  const card = await make({ plan: planOf([pt("d_phone", 3, 3), pt("d_mesh2", 1, 2)]), layers: ["radio"] }, hass);
+  await settle();
+  editTap(card, "d_phone", 3, 3);
+  const text = (mac) => [...clientField(card).options].find((o) => o.value === mac).textContent;
+  assert.equal(text(LAPTOP), "laptop", "its own device's client");
+  assert.equal(text(NAS), ENv("card.floorplan.traffic.edit.elsewhere", { name: "nas" }), "another point's device");
+});

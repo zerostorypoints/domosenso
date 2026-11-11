@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals, HEAT_SIGMA_M, HEAT_CUT_M,
-  ringPosition, lineWidth, dotRadius, IDLE_KEY, LINK_COLOURS, setPointMac, suggestions, applySuggestion, lastSeen } from "./traffic.js";
+  ringPosition, lineWidth, dotRadius, IDLE_KEY, LINK_COLOURS, setPointMac, isMac, suggestions, applySuggestion, lastSeen } from "./traffic.js";
 import { pointInPolygon } from "./geometry.js";
 import rules from "./wifi-rules.json" with { type: "json" };
 
@@ -346,6 +346,17 @@ test("setPointMac normalises, removes with null, moves a MAC from another point"
   assert.equal(setPointMac(d, "attic", "a", M(1)), null);
 });
 
+test("setPointMac refuses a malformed MAC", () => {
+  const d = planOfPoints([{ device_id: "a", x: 1, y: 1 }]);
+  for (const bad of ["02:00:00:00:00", "zz:00:00:00:00:01", "02:00:00:00:00:01:02", "020000000001"]) assert.equal(setPointMac(d, "ground", "a", bad), null, bad);
+  assert.ok(isMac("02:00:00:00:00:0a") && !isMac("02:00:00:00:00:0A") && !isMac(null));
+});
+
+test("clients() skips a tracker whose MAC is malformed", () => {
+  const h = build([{ id: "bad", mac: "not-a-mac" }, { id: "short", mac: "02:00:00:00:00" }, { id: "ok", mac: M(40) }]);
+  assert.deepEqual(clients(h, doc, rules, NOW).list.map((c) => c.mac), [M(40)]);
+});
+
 // A streamer seen by UPnP with its MAC (undragged point), and by Cast without one (placed).
 const STREAMER = { manufacturer: "Acme", connections: [["mac", M(20)]] };
 const CAST = { manufacturer: "Acme", connections: [] };
@@ -376,6 +387,16 @@ test("no suggestion when the device is dragged, the manufacturer differs, or a c
   assert.deepEqual(suggestions(other.h, other.d, other.list), []);
   const withMac = streamer({ extra: { "dev-cast": { manufacturer: "Acme", connections: [["mac", M(21)]] } } });
   assert.deepEqual(suggestions(withMac.h, withMac.d, withMac.list), []);
+});
+
+test("no suggestion when the MAC device's undragged point is an access point or carries a category", () => {
+  const asAp = streamer();
+  asAp.d.floors[0].access_points = [{ device_id: "dev-upnp" }];
+  assert.equal(applySuggestion(asAp.d, { deviceId: "dev-upnp", pointKey: "dev-cast", floorId: "ground" }), null);
+  assert.deepEqual(suggestions(asAp.h, asAp.d, asAp.list), []);
+  const cat = streamer({ points: [{ device_id: "dev-cast", x: 3, y: 3 }, { device_id: "dev-upnp", x: 2, y: 2, placed: false, category: "lamps" }] });
+  assert.equal(applySuggestion(cat.d, { deviceId: "dev-upnp", pointKey: "dev-cast", floorId: "ground" }), null);
+  assert.deepEqual(suggestions(cat.h, cat.d, cat.list), []);
 });
 
 test("no suggestion with two candidate points", () => {

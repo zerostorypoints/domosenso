@@ -28,9 +28,9 @@ export const SCALES = {
   moisture: { lo: 10, hi: 50, unit: "%", digits: 0, ramp: ["#8c510a", "#d8b365", "#f6e8c3", "#5ab4ac", "#01665e"] },
   carbon_dioxide: { lo: 400, hi: 1400, unit: "ppm", digits: 0, ramp: ["#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027"] },
   illuminance: { lo: 0, hi: 20000, unit: "lx", digits: 0, log: true, ramp: ["#1b1f3a", "#3b3f75", "#a07a2a", "#f2c14e", "#fff3b0"] },
-  // Marks: -67 dBm, the usual floor for calls, and -75 dBm.
   // Logarithmic by decade (0.1 to 1000 Mbit/s); a sequential ramp, pale to deep orange.
   mbps: { lo: 0.1, hi: 1000, unit: "Mbit/s", digits: 2, log: "decade", marks: [1, 10, 100], ramp: ["#fff1de", "#fdd0a2", "#fd8d3c", "#d94801", "#7f2704"] },
+  // Marks: -67 dBm, the usual floor for calls, and -75 dBm.
   dbm: { lo: -90, hi: -30, unit: "dBm", digits: 0, marks: [-67, -75], ramp: ["#d7191c", "#fdae61", "#ffffbf", "#a6d96a", "#1a9641"] },
 };
 
