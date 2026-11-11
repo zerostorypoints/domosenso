@@ -118,10 +118,19 @@ function byBssid(hass, deviceId, aps, rules, ix) {
     .map((id) => normMac(hass.states?.[id]?.state))
     .filter((m) => m && /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(m));
   for (const mac of mine) {
-    for (const ap of aps) {
-      const hit = apBssids(hass, ap, rules, ix).find((b) => b.mac === mac);
-      if (hit) return { ap, band: hit.band };
-    }
+    const hit = apOfBssid(hass, aps, rules, mac, ix);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+// The access point (by key, among `aps`) and band whose BSSID sensor reports `bssid`; null when none does.
+export function apOfBssid(hass, aps, rules, bssid, ix = null) {
+  const mac = normMac(bssid);
+  if (!mac) return null;
+  for (const ap of aps) {
+    const hit = apBssids(hass, ap, rules, ix).find((b) => b.mac === mac);
+    if (hit) return { ap, band: hit.band };
   }
   return null;
 }
@@ -129,7 +138,13 @@ function byBssid(hass, deviceId, aps, rules, ix) {
 // The router's client tracker for one of the device's MACs: the access point is the node whose own
 // tracker has the client's `deco_mac`, the band comes from `connection_type`.
 function byTracker(hass, deviceId, aps, rules, ix) {
-  const macs = macsOf(hass, deviceId);
+  return apOfClient(hass, aps, rules, macsOf(hass, deviceId), ix);
+}
+
+// The router's client tracker of a client with one of `macs`: the access point among `aps` (or null) and the
+// band it is connected on; null when no tracker names the client with a band.
+export function apOfClient(hass, aps, rules, macs, ix = null) {
+  macs = macs.map(normMac).filter(Boolean);
   if (!macs.length) return null;
   for (const rule of rules?.access_points || []) {
     for (const id of ix ? ix.trackers : Object.keys(hass.entities || {})) {

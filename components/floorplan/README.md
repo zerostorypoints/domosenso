@@ -140,6 +140,16 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
   pinch closes it too. A mouse keeps hover. `tap_tips: false` turns it off.
 - `--floorplan-target: 44px` (a CSS variable on the card) makes the bar's buttons and the chips at
   least that big, for fingers.
+- **A phone survey** (SPEC-045, Pocket's Wi-Fi survey): `survey: "phone"` shows the radio layer with
+  up to 8 next spots, numbered, and the spot where the person stands. A tap in a room sets that spot
+  and fires `floorplan-tap` (`detail: {floor_id, x, y}` in metres) instead of `room-tap`. The host
+  draws its own panel and calls the card: `surveySpots()` (`[{floor_id, x, y, why}]`, why `handover`,
+  `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `resolveReading({bssid, mac, mhz,
+  channel})` (`{ap, band, via}`: the access point by its BSSID sensor, else the router's client
+  tracker for the phone's MAC, else the band from the channel; a channel 6 GHz shares with another
+  band is unclear while an access point serves 6 GHz), `predictionAt({floor_id, x, y}, ap, band)`
+  (the calibrated level in dBm), and `addSamples(samples)` / `removeSample(t, phone)`, which read
+  the dashboard again, change its plan's samples and save it (administrators only).
 
 Every user can read the `floorplan` dashboard, the Ramka's kiosk user included; saving needs an
 administrator (`lovelace/config/save` requires one).
@@ -348,6 +358,11 @@ domosenso floorplan survey production        # --port <n>, --no-open, --interfac
   access point or unknown, for example from a phone's Wi-Fi scanner.
 - Sample dots show on the Confidence map and in edit mode. Survey and manual samples calibrate the
   maps like device readings.
+- **Phone readings** (`source: "phone"`, SPEC-045) come from Pocket's Wi-Fi survey. They keep each
+  scan the phone took (`scans`, up to 20, with SSID, BSSID, signal, noise, channel, Wi-Fi standard,
+  rates and the phone's MAC as the phone gave them), the phone (`phone`), how it measured (`method`)
+  and the spread of the signal (`spread`, dB). Each phone gets its own offset in the calibration,
+  0 ± 4 dB, since phones report signal differently by model.
 
 The walk:
 

@@ -2601,3 +2601,72 @@ test("ranges: the name's halo is 3 px at any zoom, a stroke in plan metres", asy
   assert.ok(halo() < before, "scales with the zoom");
   window.localStorage.clear();
 });
+
+// ---- the survey API for a phone survey in a host (SPEC-045: Pocket) ----------------------------
+
+test("phone survey: spots drawn, a tap is the spot and a floorplan-tap in metres; no Survey panel and no polling", async () => {
+  window.localStorage.clear();
+  const f = surveyFetch({});
+  try {
+    const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+    await settle();
+    assert.equal($(card, ".survey").innerHTML, "", "the host draws its own panel");
+    assert.equal(f.calls.length, 0, "no laptop link is read");
+    const spots = card.surveySpots();
+    assert.ok(spots.length > 3 && spots.length <= 8, `up to 8 spots, got ${spots.length}`);
+    assert.ok(spots.every((s) => s.floor_id === "ground" && ["handover", "room", "far"].includes(s.why)));
+    assert.equal(card.shadowRoot.querySelectorAll("circle.next-spot").length, spots.length);
+    const taps = [];
+    let rooms = 0;
+    card.addEventListener("floorplan-tap", (e) => taps.push(e.detail));
+    card.addEventListener("room-tap", () => rooms++);
+    tap(card, 2, 1);
+    assert.equal(rooms, 0);
+    assert.equal(taps.length, 1);
+    assert.equal(taps[0].floor_id, "ground");
+    assert.ok(Math.abs(taps[0].x - 2) < 0.1 && Math.abs(taps[0].y - 1) < 0.1, JSON.stringify(taps[0]));
+    assert.ok($(card, "circle.survey-spot"));
+    card.setSurveySpot(null);
+    assert.equal($(card, "circle.survey-spot"), null);
+    card.setSurveySpot({ floor_id: "ground", x: 6, y: 3 });
+    assert.equal($(card, "circle.survey-spot").getAttribute("cx"), "6");
+  } finally {
+    f.restore();
+  }
+});
+
+test("phone survey: addSamples reads the dashboard again and appends to that plan, then shows it", async () => {
+  window.localStorage.clear();
+  const fresh = wifiPlan();
+  fresh.floors[0].points.push(pt("d_office", 1, 3));                       // edited on a laptop meanwhile
+  const hass = hassOf({ dashboard: dashboardOf(fresh) });
+  Object.assign(hass.devices, wifiHass().devices);
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, hass);
+  const sample = { floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:05:31Z", band: "5", dbm: -61, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:05:27+01:00", dbm: -61 }] };
+  await card.addSamples([sample]);
+  const save = hass.calls.find((c) => c.type === "lovelace/config/save");
+  const saved = save.config.views[0].cards[0].plan;
+  assert.ok(saved.floors[0].points.some((p) => p.device_id === "d_office"), "the fresh plan, not the card's");
+  assert.deepEqual(saved.wifi.samples, [sample]);
+  assert.deepEqual(card._doc.wifi.samples, [sample], "the card shows the saved plan");
+  await card.removeSample(sample.t, "ios");
+  const again = hass.calls.filter((c) => c.type === "lovelace/config/save").at(-1).config.views[0].cards[0].plan;
+  assert.deepEqual(again.wifi?.samples ?? [], []);
+});
+
+test("phone survey: a non-administrator cannot save samples", async () => {
+  const hass = hassOf({ admin: false, dashboard: dashboardOf(wifiPlan()) });
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, hass);
+  await assert.rejects(card.addSamples([{ floor_id: "ground", x: 1, y: 1, band: "5", dbm: -60 }]), /not admin/);
+  assert.ok(!hass.calls.some((c) => c.type === "lovelace/config/save"));
+});
+
+test("phone survey: resolveReading and predictionAt answer from the card's plan and hass", async () => {
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+  assert.deepEqual(card.resolveReading({ bssid: "02:00:00:00:00:77", channel: 44 }), { ap: null, band: "5", via: "channel" });
+  const near = card.predictionAt({ floor_id: "ground", x: 6.5, y: 2.5 }, "d_mesh", "5");
+  const far = card.predictionAt({ floor_id: "ground", x: 0.5, y: 0.5 }, "d_mesh", "5");
+  assert.ok(Number.isFinite(near) && near > far && near > -50, `${near} vs ${far}`);
+  assert.equal(card.predictionAt({ floor_id: "ground", x: 1, y: 1 }, "d_mesh2", "2.4"), null, "a band it does not serve");
+});

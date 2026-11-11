@@ -57,10 +57,11 @@ import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValu
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
-  wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
+  wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift, predict, apKeyOf } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
   observationIndex } from "./lib/wifi-sources.js";
-import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
+import { calibrate, calibratedCoverage, calibratedLevelGrid, residualAt } from "./lib/wifi-fit.js";
+import { resolveReading, appendSamples, removeSample } from "./lib/survey-api.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
@@ -93,7 +94,8 @@ const NARROW_PX = 600;             // a card narrower than this (a phone) predic
 const NARROW_STEP_M = 0.3;
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
-const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
+const LINK_MS = 2000;
+const PHONE_SPOTS = 8;             // next spots offered to a phone survey (SPEC-045); the laptop's page shows 3              // the survey page reads the laptop's Wi-Fi link this often
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -195,6 +197,8 @@ class FloorplanCard extends HTMLElement {
     this._reading = null;          // reading tool: where the manual reading was taken
     // `survey: true` is set by `domosenso floorplan survey`'s page alone: the radio layer, the Survey panel,
     // the laptop's link from the page's own server. Its hass is the preview's read-only one.
+    // `survey: "phone"` (SPEC-045, Pocket's Wi-Fi survey): the radio layer, the next spots and the spot, a
+    // tap told to the host as `floorplan-tap`; the host draws its own panel and measures with the phone.
     if (this._config.survey && !Array.isArray(this._config.layers)) this._config.layers = ["radio"];
     this._spot = null;             // survey: where the owner stands, tapped on the plan
     this._link = undefined;        // survey: the last link read, null while there is none
@@ -222,7 +226,7 @@ class FloorplanCard extends HTMLElement {
 
   // The survey page's link, read every LINK_MS while the card is on the page.
   _startPolling() {
-    if (!this._config?.survey || !this.isConnected || this._poll) return;
+    if (this._config?.survey !== true || !this.isConnected || this._poll) return;
     this._poll = setInterval(() => this._pollLink(), LINK_MS);
     this._pollLink();
   }
@@ -1267,7 +1271,8 @@ ${STYLE}
       const obs = list.filter((o) => o.floorId === this._floorId && o.band === map.band);
       const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId)?.rooms ?? [];
       const centred = cells.map((c) => ({ ...c, x: c.x + step / 2, y: c.y + step / 2 }));
-      this._spotsMemo = { key: memo, spots: nextSpots(centred, obs, rooms) };
+      const n = this._config.survey === "phone" ? PHONE_SPOTS : undefined;
+      this._spotsMemo = { key: memo, spots: nextSpots(centred, obs, rooms, n).map((spot) => ({ floor_id: this._floorId, ...spot })) };
     }
     return this._spotsMemo.spots;
   }
@@ -1277,7 +1282,7 @@ ${STYLE}
   _drawSurvey() {
     const box = this.shadowRoot?.querySelector(".survey");
     if (!box) return;
-    if (!this._config.survey || this._status !== "ready" || this._mode === "edit") {
+    if (this._config.survey !== true || this._status !== "ready" || this._mode === "edit") {
       box.innerHTML = "";
       return;
     }
@@ -2015,6 +2020,58 @@ ${STYLE}
     }
   }
 
+  // ---- the survey API (SPEC-045): what a host measuring with a phone asks of the plan -------------------
+
+  // The next spots on the floor and band shown: [{floor_id, x, y, why}], numbered in this order on the plan.
+  surveySpots() {
+    return this._status === "ready" ? this._nextSpots() : [];
+  }
+
+  // Where the person stands ({floor_id, x, y} on the floor shown), or null: the filled dot.
+  setSurveySpot(spot) {
+    this._spot = spot && spot.floor_id === this._floorId ? [spot.x, spot.y] : null;
+    this._render();
+  }
+
+  // A reading's access point (a key of the plan's access points, or null) and band, and how they were found.
+  resolveReading(reading) {
+    return resolveReading(this._hass, this._doc, wifiRules, reading ?? {}, this._obsIndex);
+  }
+
+  // The calibrated level in dBm of access point `ap` on `band` at {floor_id, x, y}, unsmoothed; null when the
+  // access point does not serve the band or the floor is unknown. Shown beside a reading, never a check of it.
+  predictionAt(at, ap, band) {
+    const point = this._doc.floors.flatMap((f) => f.access_points ?? []).find((a) => apKeyOf(a) === ap);
+    if (!point || !(point.bands ?? BANDS).includes(band) || !this._doc.floors.some((f) => f.floor_id === at.floor_id)) return null;
+    const fit = this._calibration();
+    const ctx = contextFor(this._doc, at.floor_id, this._hass, materials, fit.params);
+    const here = fit.residuals.filter((e) => e.obs.band === band && e.obs.floorId === at.floor_id);
+    const value = predict(ctx, ap, band, [at.x, at.y]) - residualAt(here, ctx.segmentsByFloor[at.floor_id] ?? [], [at.x, at.y]);
+    return Number.isFinite(value) ? Math.round(value * 10) / 10 : null;
+  }
+
+  // Samples added to, or one taken out of, the plan saved in Home Assistant: the dashboard is read again so
+  // an edit made elsewhere meanwhile is kept, then saved, and the card shows that plan. Administrators only.
+  async addSamples(samples) {
+    await this._saveSamples((doc) => appendSamples(doc, samples));
+  }
+
+  async removeSample(t, phone) {
+    await this._saveSamples((doc) => removeSample(doc, t, phone));
+  }
+
+  async _saveSamples(change) {
+    if (this._hass?.user?.is_admin !== true) throw new Error("not admin");
+    const config = await this._hass.callWS({ type: "lovelace/config", url_path: URL_PATH });
+    const doc = change(extract(config) ?? this._doc);
+    if (!doc) throw new Error("more than 2000 samples");
+    await this._hass.callWS({ type: "lovelace/config/save", url_path: URL_PATH, config: withPlan(config, doc) });
+    this._doc = doc;
+    this._loaded = doc;
+    this._base = doc;
+    this._render();
+  }
+
   async _save() {
     this._saving = true;
     this._render();
@@ -2324,6 +2381,10 @@ ${STYLE}
       if (!this._floor?.rooms.some((r) => pointInPolygon(pt, r.polygon))) return;
       this._spot = pt;
       this._surveyNote = null;
+      if (this._config.survey === "phone") {
+        this.dispatchEvent(new window.CustomEvent("floorplan-tap", { detail: { floor_id: this._floorId, x: mm(pt[0]), y: mm(pt[1]) },
+          bubbles: true, composed: true }));
+      }
     } else if (d.kind === "pan" && !d.moved && this._mode !== "edit") {
       // A finger's tap on a marker shows its tooltip until the next tap elsewhere; that tap only
       // closes it (it opens no room).
