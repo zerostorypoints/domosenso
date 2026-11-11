@@ -2,6 +2,36 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## Unreleased: Wi-Fi coverage (SPEC-044)
+
+- The **radio** layer shown alone carries the Wi-Fi map bar (a map per band some access point
+  serves, Serving, Confidence), or the hint "No Wi-Fi access point on the plan: mark a point as an
+  access point in edit mode" until one is marked. `wifi: false` on the card turns the maps off.
+- Walls without a material of their own count as thin concrete inside and thick reinforced
+  concrete outside. Edit mode's **Walls** tool sets a wall's material and the defaults for all
+  interior or exterior walls.
+- Readings from the devices' Wi-Fi signal sensors, and from `domosenso floorplan survey` (a walk
+  with a laptop), calibrate the maps.
+- **Thick walls** (Amendment 3): two rooms' edges parallel within 10°, overlapping and at most 0.6 m
+  apart (a plan traced with wall thickness) are now one interior wall, not two exterior ones; so is
+  the short piece where such walls meet in a T, and a room standing in the gap (a duct) splits the
+  pair only where it stands. This
+  changes the predictions of such a plan: rooms behind a traced wall get markedly stronger signal
+  (a closet behind a hallway that read about −90 dBm can read −50 to −75). Readings taken before
+  still calibrate; look at the maps again.
+- **Every home with Wi-Fi on** (the card's default, with or without access points on the plan) now
+  draws the walls as lines by weight (light, solid, heavy, with their key in the bar) instead of room
+  outlines, on the plain plan and on every map, a room card (`area`) included. Unset walls read as
+  thin concrete (solid) inside and thick concrete (heavy) outside. `wifi: false` on the card keeps
+  the outlines as before.
+- A wall can be **Half height** (`walls[].height: "half"`); the band maps have **Ranges**; new wall
+  material `railing`.
+- **What a home does:** nothing has to be done; the walls look different (above), set
+  `wifi: false` to keep the outlines. To use the maps, mark the access points in edit mode. In a brick, drywall or timber home, set the
+  walls' material, or "material unknown", in the Walls tool. Mark balconies and terraces under
+  **Outdoors** in the Walls tool. Optionally walk the home with `domosenso floorplan survey`. A
+  `domosenso` command older than this catalog refuses a plan with the Wi-Fi keys.
+
 ## Unreleased: the home's rooms name and colour the plan
 
 - `floorplan-card` takes `rooms`, the home inputs' rooms (`[{id, name, area, climate?}]`):

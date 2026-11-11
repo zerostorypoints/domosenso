@@ -24,14 +24,21 @@ export const opensInto = (o) => {
   if (o.opens === "outside" && outside(o)) return null;
   return o.opens && o.rooms.includes(o.opens) ? o.opens : inside;
 };
-const fallbackOpen = (o) => (o.state ? o.state === "open" : !outside(o));
+// Whether an opening joins an indoor room to one of `outdoor` (area ids, the plan's `wifi.outdoor`):
+// a balcony's door (SPEC-044 Amendment 1).
+export const toOutdoorRoom = (o, outdoor = []) => {
+  const sides = o.rooms.filter((r) => r !== null);
+  return sides.some((r) => outdoor.includes(r)) && sides.some((r) => !outdoor.includes(r));
+};
+const fallbackOpen = (o, outdoor) => (o.state ? o.state === "open" : !outside(o) && !toOutdoorRoom(o, outdoor));
 
 // Whether it is open now, and whether that is known from its sensor (`linked`: it has one; `known`:
-// the sensor answered). A doorway is always open.
-export function openingState(o, hass) {
+// the sensor answered). A doorway is always open. Without its sensor's answer it is its own `state`,
+// else closed to the outside or to an outdoor room (`outdoor`, the plan's `wifi.outdoor`), else open.
+export function openingState(o, hass, outdoor = []) {
   if (kindOf(o) === "opening") return { open: true, linked: false, known: true };
   if (kindOf(o) === "fixed") return { open: false, linked: false, known: true };
-  if (!o.entity) return { open: fallbackOpen(o), linked: false, known: true };
+  if (!o.entity) return { open: fallbackOpen(o, outdoor), linked: false, known: true };
   const st = hass?.states?.[o.entity];
   const s = st?.state;
   if (o.entity.startsWith("binary_sensor.") && (s === "on" || s === "off")) return { open: s === "on", linked: true, known: true };
@@ -40,7 +47,7 @@ export function openingState(o, hass) {
     if (s === "open" || s === "opening" || (Number.isFinite(pos) && pos > 0)) return { open: true, linked: true, known: true };
     if (s === "closed" || s === "closing") return { open: false, linked: true, known: true };
   }
-  return { open: fallbackOpen(o), linked: true, known: false };
+  return { open: fallbackOpen(o, outdoor), linked: true, known: false };
 }
 
 // The opening on its wall: the wall of its first room nearest `at`, the gap's two ends along it,

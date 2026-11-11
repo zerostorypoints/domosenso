@@ -21,6 +21,30 @@ export const STYLE = `
   .room { fill: var(--secondary-background-color, #f2f2f2); stroke: var(--primary-text-color);
           stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .room.selected, .room.picked { fill: var(--primary-color); fill-opacity: 0.25; }
+  /* Amendment 3: with Wi-Fi on, the rooms keep their fill and the walls are drawn as lines by weight. */
+  .room.walled { stroke: none; }
+  .wall-line { stroke: var(--primary-text-color); stroke-linecap: square; vector-effect: non-scaling-stroke;
+               pointer-events: none; }
+  .wall-line.light { stroke-width: 1.5; }
+  .wall-line.solid { stroke-width: 3; }
+  .wall-line.heavy { stroke-width: 5; }
+  .wall-line.glass { stroke: var(--floorplan-glass, #7cb9e8); }
+  .wall-line.half { stroke-dasharray: 6 4; stroke-linecap: butt; }
+  .wall-line.none { stroke: var(--secondary-text-color); stroke-width: 1; stroke-dasharray: 1 4; stroke-opacity: 0.6;
+                    stroke-linecap: round; }
+  .wall-key .wall-swatch { display: inline-block; width: 14px; height: 0; border-top: solid var(--primary-text-color);
+                           vertical-align: middle; }
+  .wall-key .wall-swatch.light { border-top-width: 1.5px; }
+  .wall-key .wall-swatch.solid { border-top-width: 3px; }
+  .wall-key .wall-swatch.heavy { border-top-width: 5px; }
+  .walls, .ranges { pointer-events: none; }
+  .range { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .range.weak { stroke-dasharray: 6 4; }
+  .range-ring { fill: none; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+  /* Its halo's width is an attribute, 3 px in plan metres: a CSS width here would override it. */
+  .range-name { text-anchor: middle; font-weight: 600; paint-order: stroke; stroke: var(--card-background-color, #fff);
+                stroke-linejoin: round; }
+  .half-check { display: inline-flex; align-items: center; gap: 4px; }
   .label { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
            pointer-events: none; }
   .label.missing { font-style: italic; opacity: 0.6; }
@@ -94,13 +118,16 @@ export const STYLE = `
   .tip-value { color: var(--secondary-text-color); }
   .maps { display: inline-flex; gap: 4px; margin-right: 8px; }
   .heat { pointer-events: none; opacity: 0.8; }
-  .heat .no-sensor { fill: url(#fp-hatch); }
+  .heat .no-sensor, .heat .handover { fill: url(#fp-hatch); }
   .heat .wall { fill: none; stroke: var(--primary-text-color); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .hatch-line { stroke: var(--divider-color, #888); }
   .marker .glow { fill: url(#fp-glow); stroke: none; pointer-events: none; }
   .marker text.value.main { font-weight: 600; }
   .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--secondary-text-color); }
-  .legend .scale { width: 90px; height: 8px; border-radius: 4px; }
+  .legend .scale { position: relative; width: 90px; height: 8px; border-radius: 4px; }
+  .legend .mark { position: absolute; top: -2px; width: 2px; height: 12px; margin-left: -1px;
+                  background: var(--primary-text-color); }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-left: 6px;
                    background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
   .opening line, .opening path { vector-effect: non-scaling-stroke; fill: none; }
@@ -120,6 +147,40 @@ export const STYLE = `
   .opening .hit { stroke: transparent; stroke-width: 16; cursor: move; }
   .opening-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .opening-panel input { width: 5em; }
+  .wall-selected { stroke: var(--accent-color, #ff9800); stroke-width: 5; stroke-opacity: 0.6; stroke-linecap: round;
+    vector-effect: non-scaling-stroke; pointer-events: none; }
+  .wall-panel, .ap-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .wifi-disabled { font-size: 12px; color: var(--secondary-text-color); }
+  .wifi-disabled ul { margin: 4px 0 0; padding-left: 18px; }
+  .wall-panel input[type=number], .point-panel input[type=number] { width: 5em; }
+  .wall-panel .floor-label { margin-left: 12px; }
+  .ap-check, .outdoor-check { display: inline-flex; align-items: center; gap: 4px; }
+  .sample { pointer-events: none; }
+  .sample circle { fill: var(--primary-text-color); stroke: var(--card-background-color, #fff); stroke-width: 1;
+                   vector-effect: non-scaling-stroke; }
+  .sample[data-source=manual] circle { fill: var(--secondary-text-color); }
+  .sample-label { fill: var(--primary-text-color); paint-order: stroke; stroke: var(--card-background-color, #fff);
+                  stroke-linejoin: round; }
+  .next-spot { fill: none; stroke: var(--accent-color, #ff9800); stroke-width: 2; stroke-dasharray: 4 3;
+               vector-effect: non-scaling-stroke; pointer-events: none; }
+  .next-spot-label { fill: var(--accent-color, #ff9800); text-anchor: middle; font-weight: 600; pointer-events: none; }
+  .survey-spot, .reading-spot { fill: var(--primary-color); fill-opacity: 0.35; stroke: var(--primary-color); stroke-width: 2;
+                                vector-effect: non-scaling-stroke; pointer-events: none; }
+  .survey { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .survey:empty { display: none; }
+  .survey-link { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .survey-actions, .reading-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .reading-panel input { width: 5em; }
+  .survey-progress { display: inline-block; width: 120px; height: 6px; border-radius: 3px; overflow: hidden;
+                     background: var(--divider-color, #888); }
+  .survey-progress span { display: block; height: 100%; width: 0; background: var(--primary-color);
+                          animation: survey-fill 10s linear forwards; }
+  @keyframes survey-fill { to { width: 100%; } }
+  .survey-note, .survey-help, .survey-next { color: var(--secondary-text-color); }
+  .survey-next ol { display: inline; margin: 0; padding-left: 0; }
+  .survey-next li { display: inline; margin-left: 8px; }
+  .survey-next li::before { content: counter(list-item) ". "; }
+  .survey-help { margin: 0; font-size: 12px; }
   .open-wall-mask { stroke: var(--card-background-color, #fff); stroke-width: 3; vector-effect: non-scaling-stroke;
                     pointer-events: none; }
   .open-wall { stroke: var(--secondary-text-color); stroke-width: 1.5; stroke-dasharray: 5 4;

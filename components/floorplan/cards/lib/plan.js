@@ -2,7 +2,7 @@
 // frontend registries. No DOM. Every edit returns a new document, or null when it is refused, so the
 // card can ignore a refused gesture without checking state. Shapes mirror tools/domosenso_cli/floorplan_doc.py.
 
-import { pointInPolygon, centroid, interiorPoint, splitPolygon, joinPolygons } from "./geometry.js";
+import { pointInPolygon, centroid, interiorPoint, splitPolygon, joinPolygons, snapToEdge } from "./geometry.js";
 import { language } from "./i18n.js";
 import { rolesOf, categoryById, FALLBACK } from "./categories.js";
 import { DERIVED_PLATFORMS, CARD_TYPE, usable, scanForm, extract } from "./shared.js";
@@ -38,13 +38,26 @@ const onPlan = (doc) => new Set(doc.floors.flatMap((f) => f.points.flatMap(keysO
 const floorIndex = (doc, floorId) => doc.floors.findIndex((f) => f.floor_id === floorId);
 const sameXY = (p, q) => Math.abs(p[0] - q[0]) <= SAME && Math.abs(p[1] - q[1]) <= SAME;
 
-// A new doc with the floor replaced by fn(floor); fn returns null to refuse.
+// A new doc with the floor replaced by fn(floor); fn returns null to refuse. Wall materials (SPEC-044)
+// whose point is no longer on a room edge go: floorplan_doc.py refuses a plan that keeps one.
 export function editFloor(doc, floorId, fn) {
   const i = floorIndex(doc, floorId);
   if (i < 0) return null;
   const floor = fn(doc.floors[i]);
   if (!floor) return null;
-  return { ...doc, floors: doc.floors.map((f, j) => (j === i ? floor : f)) };
+  return { ...doc, floors: doc.floors.map((f, j) => (j === i ? pruneWalls(floor) : f)) };
+}
+
+// lib/openings.js SHARED_M and floorplan_doc.py _WALL_TOLERANCE: a wall's point this close to an edge is on it.
+const WALL_M = 0.05;
+const onSomeEdge = (floor, at) => floor.rooms.some((r) => snapToEdge(r.polygon, at, WALL_M));
+
+function pruneWalls(floor) {
+  if (!Array.isArray(floor.walls)) return floor;
+  const walls = floor.walls.filter((w) => onSomeEdge(floor, w.at));
+  if (walls.length === floor.walls.length) return floor;
+  const { walls: _, ...rest } = floor;
+  return walls.length ? { ...rest, walls } : rest;
 }
 
 function editRoom(doc, floorId, areaId, fn) {
@@ -372,13 +385,34 @@ export function moveCorner(doc, floorId, areaId, index, to) {
     const from = room?.polygon[index];
     if (!from) return null;
     const move = (p) => (sameXY(p, from) ? [pt[0], pt[1]] : p);
-    return {
+    const out = {
       ...floor,
       rooms: floor.rooms.map((r) => (r.area_id === areaId
         ? { ...r, polygon: r.polygon.map((p, i) => (i === index ? [pt[0], pt[1]] : p)) }
         : { ...r, polygon: r.polygon.map(move) })),
     };
+    return floor.walls ? { ...out, walls: floor.walls.map((w) => carryWall(floor, w, from, pt)) } : out;
   });
+}
+
+// A wall material on an edge that ends in the moved corner keeps its place along that edge
+// (the same fraction from the edge's fixed end); one on an unmoved edge stays where it is.
+function carryWall(floor, wall, from, to) {
+  let moved = null;
+  for (const { polygon } of floor.rooms) {
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      if (!snapToEdge([a, b], wall.at, WALL_M)) continue;
+      const fixed = sameXY(a, from) ? b : sameXY(b, from) ? a : null;
+      if (!fixed) return wall;
+      moved ??= { fixed, len: Math.hypot(from[0] - fixed[0], from[1] - fixed[1]) };
+    }
+  }
+  if (!moved || moved.len < 1e-9) return wall;
+  const { fixed, len } = moved;
+  const t = Math.hypot(wall.at[0] - fixed[0], wall.at[1] - fixed[1]) / len;
+  return { ...wall, at: mmPt([fixed[0] + t * (to[0] - fixed[0]), fixed[1] + t * (to[1] - fixed[1])]) };
 }
 
 // Inserts a corner between corner `edge` and the next one.
@@ -490,8 +524,20 @@ export function facingWalls(floor) {
   return out;
 }
 
+// The plan (or null) with `fn(id)` applied to every id of `wifi.outdoor` (SPEC-044 Amendment 1): an id,
+// a list of ids or null to take it out; each id once, and no key (no `wifi`) when nothing is left.
+function withOutdoor(doc, fn) {
+  if (!doc?.wifi?.outdoor) return doc;
+  const list = [...new Set(doc.wifi.outdoor.flatMap((id) => [fn(id)].flat()).filter(Boolean))];
+  const { outdoor: _, ...wifi } = doc.wifi;
+  if (list.length) wifi.outdoor = list;
+  const { wifi: __, ...rest } = doc;
+  return Object.keys(wifi).length ? { ...rest, wifi } : rest;
+}
+
+// Both halves stay outdoors when the room was (and in its open space).
 export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
-  return editFloor(doc, floorId, (floor) => {
+  return withOutdoor(editFloor(doc, floorId, (floor) => {
     const k = floor.rooms.findIndex((r) => r.area_id === areaId);
     if (k < 0 || !newAreaId || floor.rooms.some((r) => r.area_id === newAreaId)) return null;
     // The chord's ends are snapped onto the walls, so they are rounded after the split; both halves
@@ -503,11 +549,12 @@ export function splitRoom(doc, floorId, areaId, a, b, newAreaId) {
     // Both halves stay in the room's open space.
     const groups = openSpaces(floor).map((g) => (g.includes(areaId) ? [...g, newAreaId] : g));
     return withGroups({ ...floor, rooms }, groups);
-  });
+  }), (id) => (id === areaId ? [id, newAreaId] : id));
 }
 
+// The kept room keeps its own outdoor flag; the dropped room's goes.
 export function joinRooms(doc, floorId, keepAreaId, dropAreaId) {
-  return editFloor(doc, floorId, (floor) => {
+  return withOutdoor(editFloor(doc, floorId, (floor) => {
     const keep = floor.rooms.find((r) => r.area_id === keepAreaId);
     const drop = floor.rooms.find((r) => r.area_id === dropAreaId);
     if (!keep || !drop || keep === drop) return null;
@@ -519,16 +566,16 @@ export function joinRooms(doc, floorId, keepAreaId, dropAreaId) {
     const touched = groups.filter((g) => g.includes(keepAreaId) || g.includes(dropAreaId));
     const merged = [...new Set(touched.flat().map((x) => (x === dropAreaId ? keepAreaId : x)))];
     return withGroups({ ...floor, rooms }, [...groups.filter((g) => !touched.includes(g)), merged]);
-  });
+  }), (id) => (id === dropAreaId ? null : id));
 }
 
 export function linkRoom(doc, floorId, areaId, newAreaId) {
-  return editFloor(doc, floorId, (floor) => {
+  return withOutdoor(editFloor(doc, floorId, (floor) => {
     if (!newAreaId || floor.rooms.some((r) => r.area_id === newAreaId)) return null;
     if (!floor.rooms.some((r) => r.area_id === areaId)) return null;
     const rooms = floor.rooms.map((r) => (r.area_id === areaId ? { ...r, area_id: newAreaId } : r));
     return withGroups({ ...floor, rooms }, mapGroups(floor, (x) => (x === areaId ? newAreaId : x)));
-  });
+  }), (id) => (id === areaId ? newAreaId : id));
 }
 
 // The dashboard config with the card's plan replaced; every other key stays (floorplan_doc.dashboard_config).

@@ -1,0 +1,19 @@
+{
+  "access_points": [
+    {
+      "integration": "tplink_deco",
+      "device_attr": { "device_type": "deco" },
+      "bssid": { "2.4": "bssid_2_4_ghz", "5": "bssid_5_ghz" },
+      "clients": "device_tracker"
+    }
+  ],
+  "signal": {
+    "integrations": ["esphome", "shelly", "tasmota", "wled", "tplink", "mobile_app"],
+    "object_id": ["wi_fi", "wifi"],
+    "bssid_object_id": ["bssid", "connected_ap_bssid"]
+  },
+  "exclude": {
+    "integrations": ["bluetooth", "zha"],
+    "connections": ["bluetooth", "zigbee"]
+  }
+}

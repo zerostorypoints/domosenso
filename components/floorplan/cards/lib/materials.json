@@ -1,0 +1,244 @@
+{
+  "bands": {
+    "2.4": {
+      "mhz": 2437,
+      "l0": 40.2,
+      "tx": 20
+    },
+    "5": {
+      "mhz": 5500,
+      "l0": 47.3,
+      "tx": 23
+    },
+    "6": {
+      "mhz": 6500,
+      "l0": 48.7,
+      "tx": 23
+    }
+  },
+  "defaults": {
+    "interior": "concrete_thin",
+    "exterior": "concrete_thick",
+    "slab": "slab",
+    "window": "double",
+    "door": "wood"
+  },
+  "materials": {
+    "drywall": {
+      "loss": {
+        "2.4": 3,
+        "5": 4,
+        "6": 4
+      },
+      "sd": 2,
+      "for": [
+        "wall"
+      ],
+      "basis": "P.2040 slab 1-2 dB, widened for studs and cavity"
+    },
+    "wood": {
+      "loss": {
+        "2.4": 2,
+        "5": 3,
+        "6": 3
+      },
+      "sd": 2,
+      "for": [
+        "wall",
+        "door"
+      ],
+      "basis": "P.2040 0.7 / 1.6 / 1.9"
+    },
+    "aerated_block": {
+      "loss": {
+        "2.4": 5,
+        "5": 8,
+        "6": 9
+      },
+      "sd": 3,
+      "for": [
+        "wall"
+      ],
+      "basis": "inference between drywall and brick"
+    },
+    "brick": {
+      "loss": {
+        "2.4": 7,
+        "5": 10,
+        "6": 11
+      },
+      "sd": 3,
+      "for": [
+        "wall"
+      ],
+      "basis": "P.2040 3.8-7.6, widened for mortar and plaster"
+    },
+    "concrete_thin": {
+      "loss": {
+        "2.4": 9,
+        "5": 14,
+        "6": 16
+      },
+      "sd": 4,
+      "for": [
+        "wall"
+      ],
+      "basis": "P.2040 concrete 10 cm 8.1 / 13.9 / 15.7"
+    },
+    "concrete_thick": {
+      "loss": {
+        "2.4": 20,
+        "5": 33,
+        "6": 37
+      },
+      "sd": 6,
+      "for": [
+        "wall",
+        "slab"
+      ],
+      "basis": "P.2040 concrete 25 cm 18.0 / 32.7 / 37.1, plus rebar"
+    },
+    "concrete": {
+      "loss": {
+        "2.4": 12,
+        "5": 20,
+        "6": 23
+      },
+      "sd": 5,
+      "for": [
+        "wall"
+      ],
+      "basis": "P.2040 8.1-14.7 / 13.9-26.5 / 15.7-29.9"
+    },
+    "reinforced_concrete": {
+      "loss": {
+        "2.4": 18,
+        "5": 30,
+        "6": 34
+      },
+      "sd": 6,
+      "for": [
+        "wall",
+        "slab"
+      ],
+      "basis": "P.2040 concrete 14.7-18.0 / 26.5-32.7 / 29.9-37.1, plus rebar"
+    },
+    "glass": {
+      "loss": {
+        "2.4": 2,
+        "5": 3,
+        "6": 3
+      },
+      "sd": 1,
+      "for": [
+        "wall",
+        "window",
+        "door"
+      ],
+      "basis": "P.2040 1.1 / 2.9 / 3.2"
+    },
+    "double": {
+      "loss": {
+        "2.4": 3,
+        "5": 3,
+        "6": 3
+      },
+      "sd": 2,
+      "for": [
+        "wall",
+        "window",
+        "door"
+      ],
+      "basis": "P.2040 2x4 mm"
+    },
+    "low_e": {
+      "loss": {
+        "2.4": 20,
+        "5": 27,
+        "6": 30
+      },
+      "sd": 8,
+      "for": [
+        "wall",
+        "window",
+        "door"
+      ],
+      "basis": "measurements: single-silver low-E about 27 dB at 5 GHz; coating changes moved 7-9 dB at 2.4 and 14-17 dB at 5 GHz"
+    },
+    "triple_low_e": {
+      "loss": {
+        "2.4": 35,
+        "5": 40,
+        "6": 42
+      },
+      "sd": 10,
+      "for": [
+        "wall",
+        "window",
+        "door"
+      ],
+      "basis": "vendor data: about 40 dB for one triple-silver laminate"
+    },
+    "metal": {
+      "loss": {
+        "2.4": 30,
+        "5": 35,
+        "6": 35
+      },
+      "sd": 10,
+      "for": [
+        "wall",
+        "door"
+      ],
+      "basis": "cap; diffraction round it carries the signal"
+    },
+    "railing": {
+      "loss": {
+        "2.4": 2,
+        "5": 3,
+        "6": 3
+      },
+      "sd": 2,
+      "for": [
+        "wall"
+      ],
+      "basis": "inference: open bars or a mesh, mostly air (SPEC-044 Amendment 3)"
+    },
+    "interior": {
+      "loss": {
+        "2.4": 5,
+        "5": 7,
+        "6": 8
+      },
+      "sd": 4,
+      "for": [
+        "wall"
+      ],
+      "basis": "between drywall and brick, wide on purpose"
+    },
+    "exterior": {
+      "loss": {
+        "2.4": 10,
+        "5": 15,
+        "6": 17
+      },
+      "sd": 6,
+      "for": [
+        "wall"
+      ],
+      "basis": "brick to concrete, wide on purpose"
+    },
+    "slab": {
+      "loss": {
+        "2.4": 15,
+        "5": 25,
+        "6": 28
+      },
+      "sd": 8,
+      "for": [
+        "slab"
+      ],
+      "basis": "reinforced concrete, widened"
+    }
+  }
+}

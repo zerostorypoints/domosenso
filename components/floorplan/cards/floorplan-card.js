@@ -16,7 +16,8 @@
 //   values: true                       # false: points without their readings
 //   layers: [climate, plants]          # optional: only these categories, no layer chips
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
-//   maps: true                         # false: no maps on the plants, climate and light layers
+//   maps: true                         # false: no maps on the plants, climate, light and radio layers
+//   wifi: true                         # false: no Wi-Fi maps on the radio layer (SPEC-044)
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
 //   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
 //   context: true                      # with area: the floor's other rooms faded around it, for orientation
@@ -30,7 +31,10 @@
 //
 // With one of the plants, climate or light layers shown (Amendment 7) the bar offers its maps: the
 // reading interpolated inside each room, or the lamps; and "now" or the map's figure over the last
-// 24 hours, from the recorder's hourly statistics.
+// 24 hours, from the recorder's hourly statistics. With the radio layer shown alone (SPEC-044) it
+// offers the predicted Wi-Fi signal per band its access points serve, which access point serves
+// each spot, and how far to trust the map (Confidence). With devices reporting their Wi-Fi signal on
+// the plan, a Predicted / Calibrated switch: calibrated, the model is fitted to their 24-hour means.
 
 import { createT } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
@@ -49,7 +53,16 @@ import { KINDS, STYLES, opensInto, kindOf, widthOf, styleOf, openingState, openi
   moveOpening, setOpening, swapHinge, swapSide, fillWall, removeOpening, openingSensors, linkedSpots } from "./lib/openings.js";
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
-import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf } from "./lib/maps.js";
+import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
+  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
+import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
+  setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
+  wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
+import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
+  observationIndex } from "./lib/wifi-sources.js";
+import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
+import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
+import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -67,10 +80,20 @@ const HIDDEN_KEY = "domosenso.floorplan.hidden";   // localStorage: the layers t
 const CHOSEN_KEY = "domosenso.floorplan.chosen";   // localStorage: the one layer shown (layer_choice: one)
 const MAP_KEY = "domosenso.floorplan.map";         // localStorage: the map chosen per layer
 const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while the maps show the last 24 hours
+const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
+const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
+const CALIB_KEY = "domosenso.floorplan.calibrated"; // localStorage: "predicted" or "calibrated" on the Wi-Fi maps
+const RANGES_KEY = "domosenso.floorplan.ranges";   // localStorage: true while the band maps show each access point's range
+const WEIGHTS = ["light", "solid", "heavy"];       // the wall weights of the plan's key (Amendment 3)
 const HOUR_MS = 60 * 60 * 1000;
 const STATS_MS = HOUR_MS / 2;     // the 24-hour figures are fetched again this often while shown
 const FILL_GAP_PX = 8;
 const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around an area (context: true)
+const NARROW_PX = 600;             // a card narrower than this (a phone) predicts Wi-Fi on coarser cells
+const NARROW_STEP_M = 0.3;
+const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
+const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
+const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
 
 // The devices a link reaches inside a cluster: two names, then how many more.
 function linkLabel(names) {
@@ -115,6 +138,9 @@ const keyOf = (p) => p.device_id ?? p.entity_id;
 // Only a path on this Home Assistant or an http(s) URL is shown as a photo.
 const safePicture = (url) => typeof url === "string" && /^(\/(?!\/)|https?:\/\/)/.test(url);
 const fmt = (v) => String(Math.round(v * 1e6) / 1e6);
+const mm = (v) => Math.round(v * 1000) / 1000;
+// A dBm value as a label writes it: whole, with a true minus.
+const dbmText = (dbm) => { const v = Math.round(dbm); return `${v < 0 ? "\u2212" : ""}${Math.abs(v)}`; };
 
 class FloorplanCard extends HTMLElement {
   setConfig(config) {
@@ -152,6 +178,31 @@ class FloorplanCard extends HTMLElement {
     this._statIds = "";
     this._statsAt = 0;
     this._heatCache = null;
+    this._band = load(BAND_KEY, null);             // the Serving map's band, while some access point serves it
+    this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
+    this._wifiKey = null;          // the last cache key and what it was computed from
+    this._wall = null;             // walls tool: the middle of the selected wall stretch
+    const offered = load(OFFER_KEY, []);           // another page's or a hand-edited value may be no list
+    this._offered = new Set(Array.isArray(offered) ? offered : []);   // points this browser asked "Use as access point?" about
+    this._calib = load(CALIB_KEY, null);           // "predicted" chosen; else calibrated once there are readings
+    this._ranges = load(RANGES_KEY, false) === true;   // the band maps outline each access point's range
+    this._rangeMemo = null;        // the last ranges drawn: {key, aps, lines}
+    this._wallMemo = null;         // the walls drawn: {floor, wifi, lines}
+    this._obsMemo = null;          // the devices' observations and their digest, and what they came from
+    this._fitMemo = null;          // the last fit: {doc, states, digest, fit}
+    this._disabled = null;         // edit mode: the plan's switched-off Wi-Fi signal sensors
+    this._editSession = 0;
+    this._reading = null;          // reading tool: where the manual reading was taken
+    // `survey: true` is set by `domosenso floorplan survey`'s page alone: the radio layer, the Survey panel,
+    // the laptop's link from the page's own server. Its hass is the preview's read-only one.
+    if (this._config.survey && !Array.isArray(this._config.layers)) this._config.layers = ["radio"];
+    this._spot = null;             // survey: where the owner stands, tapped on the plan
+    this._link = undefined;        // survey: the last link read, null while there is none
+    this._taking = false;          // survey: a sample is being recorded
+    this._surveyNote = null;       // survey: {key, vars} of the last sample's outcome
+    this._spotsMemo = null;
+    this._stopPolling();
+    this._startPolling();
     if (this._hass) this._load();
   }
 
@@ -166,6 +217,40 @@ class FloorplanCard extends HTMLElement {
   connectedCallback() {
     this._onResize ??= () => this._fill();
     window.addEventListener("resize", this._onResize);
+    this._startPolling();
+  }
+
+  // The survey page's link, read every LINK_MS while the card is on the page.
+  _startPolling() {
+    if (!this._config?.survey || !this.isConnected || this._poll) return;
+    this._poll = setInterval(() => this._pollLink(), LINK_MS);
+    this._pollLink();
+  }
+
+  _stopPolling() {
+    if (this._poll) clearInterval(this._poll);
+    this._poll = null;
+  }
+
+  // The page's server answers {link: {band, channel, dbm, noise, bssid} | null}; a failed read is no link.
+  // Same origin, so the request carries the page's key cookie as its own reads do.
+  async _pollLink() {
+    if (this._polling) return;     // a slow answer: the next tick waits for it, not a second request
+    this._polling = true;
+    let link = null;
+    try {
+      const r = await fetch("survey/link");
+      link = r.ok ? (await r.json())?.link ?? null : null;
+    } catch {
+      link = null;
+    } finally {
+      this._polling = false;
+    }
+    this._link = link;
+    // The link line alone: the panel's buttons stay under a finger about to press them.
+    const line = this.shadowRoot?.querySelector(".survey-link");
+    if (line) line.textContent = this._linkText();
+    else this._drawSurvey();
   }
 
   // The plan's size changed (the card was shown, `fill` grew it, the window turned): readings and
@@ -182,6 +267,7 @@ class FloorplanCard extends HTMLElement {
     // The element may be kept and shown again (the Ramka hides its plan): a tooltip a tap pinned
     // would come back over a plan the person has not touched since.
     if (this._pinned) this._unpinTip();
+    this._stopPolling();
   }
 
   // `fill`: as tall as the screen below the card's top; true when the height changed.
@@ -242,6 +328,8 @@ class FloorplanCard extends HTMLElement {
     this._catCache = new WeakMap();
     this._readCache = new WeakMap();
     this._lamps = lampIndex(h);
+    this._signalIds = signalEntities(h, wifiRules);
+    this._obsIndex = observationIndex(h, wifiRules);
   }
 
   // A point's reading entities by device class (a plant's through its named sensors).
@@ -251,22 +339,137 @@ class FloorplanCard extends HTMLElement {
     return ids;
   }
 
-  // The layer whose maps the bar offers: the one shown of plants, climate and light, outside edit mode.
+  // The layer whose maps the bar offers: the one shown of plants, climate, light and (with `wifi`)
+  // radio, outside edit mode.
   _mapLayer() {
     if (!this._config.maps || this._mode === "edit" || this._status !== "ready" || !this._floor) return null;
     let ids;
     if (this._one) ids = [this._chosen];
     else if (this._config.layers) ids = this._config.layers;
     else ids = [...new Set(this._floor.points.flatMap((p) => this._cat(p).roles))].filter((id) => this._visible(id));
-    return ids.length === 1 && MAPS[ids[0]] ? ids[0] : null;
+    if (ids.length !== 1 || !MAPS[ids[0]]) return null;
+    // `wifi` is on unless false, and left out of the stored config: a host such as Pocket checks it.
+    return ids[0] === "radio" && this._config.wifi === false ? null : ids[0];
   }
 
-  // The map shown: {layer, cls, rule}; null without one.
+  // The map shown: {layer, cls, rule, maps (the layer's offered)}; null without one. On the radio
+  // layer also its band; without an access point no map (cls null) and the hint why.
   _map() {
     const layer = this._mapLayer();
     if (!layer) return null;
+    if (layer === "radio") return this._wifiMap();
     const [cls, rule] = MAPS[layer].find(([c]) => c === this._maps[layer]) ?? MAPS[layer][0];
-    return { layer, cls, rule };
+    return { layer, cls, rule, maps: MAPS[layer] };
+  }
+
+  _wifiMap() {
+    const bands = offeredBands(this._doc);
+    const maps = radioMaps(bands);
+    if (!maps.length) return { layer: "radio", cls: null, rule: null, maps, hint: "no_access_points" };
+    const [cls] = maps.find(([c]) => c === this._maps.radio) ?? maps[0];
+    const band = BAND_OF[cls] ?? (bands.includes(this._band) ? this._band : bands[0]);
+    // Confidence is always the calibrated model's; the other maps follow the switch once there are readings.
+    const observed = this._observations().list.length > 0;
+    const calibrated = cls === "confidence" || (observed && this._calib !== "predicted");
+    // Ranges (Amendment 3): on the band maps only, where the outline's level is the map's own.
+    const ranges = !!BAND_OF[cls] && this._ranges;
+    return { layer: "radio", cls, rule: null, maps, band, bands, observed, calibrated, ranges };
+  }
+
+  // The open or closed state of every opening with a sensor: live state the cache keys leave out.
+  _openingStates() {
+    return this._doc.floors.flatMap((f) => (f.openings || []).filter((o) => o.entity)
+      .map((o) => openingState(o, this._hass, this._doc.wifi?.outdoor).open)).join();
+  }
+
+  // The prediction of the floor shown on one band, or the calibrated one, memoised by its cache key,
+  // the openings' states and (calibrated) the readings' digest. The key itself is worked out again
+  // only when the plan, the floor, the band, the cell, such a state or the digest changed. Cells carry
+  // their confidence only for the Confidence map (`confidence`), which is always calibrated.
+  _wifi(band, step, calibrated = false, confidence = false) {
+    const doc = this._doc;
+    const states = this._openingStates();
+    const digest = calibrated ? this._observations().digest : null;
+    const from = [doc, this._floorId, band, step, states, digest, confidence];
+    if (!this._wifiKey || from.some((v, i) => v !== this._wifiKey.from[i])) {
+      const params = priorParams(materials, doc.floors.flatMap((f) => f.access_points ?? []));
+      this._wifiKey = { from, params,
+        key: `${cacheKey(doc, this._floorId, band, params, step)}|${states}${calibrated ? `|calibrated|${digest}` : ""}${confidence ? "|confidence" : ""}` };
+    }
+    const { key, params } = this._wifiKey;
+    let out = this._wifiMemo.get(key);
+    if (!out) {
+      if (calibrated) {
+        const fit = this._calibration();
+        out = calibratedCoverage(contextFor(doc, this._floorId, this._hass, materials, fit.params), band, step, fit, { confidence });
+      } else out = this._predict(contextFor(doc, this._floorId, this._hass, materials, params), band, step);
+      this._wifiMemo.set(key, out);
+      if (this._wifiMemo.size > WIFI_MEMO) this._wifiMemo.delete(this._wifiMemo.keys().next().value);
+    }
+    return { key, ...out };
+  }
+
+  // The engine's coverage: a method of its own, so a test counts the computations.
+  _predict(ctx, band, step) {
+    return coverage(ctx, band, step);
+  }
+
+  // Every floor's device observations (the fit is home-wide), from the 24-hour means of their signal
+  // sensors (a sensor without statistics gives its state), with the plan's survey and manual samples, and a digest of what the fit reads: the
+  // readings to OBS_DB, their places, access points and bands. Worked out again when the plan, the
+  // registries (the index), the statistics or the state of an entity the observations read (signal,
+  // BSSID, router tracker) change, not for any other state; the fit only when the digest does.
+  _observations() {
+    const h = this._hass;
+    const from = [this._doc, this._obsIndex, this._stats];
+    const watched = this._obsIndex.watched.map((id) => h.states?.[id]);
+    const m = this._obsMemo;
+    if (m && from.every((v, i) => v === m.from[i]) && watched.every((v, i) => v === m.watched[i])) return m;
+    const values = {};
+    for (const id of this._signalIds) {
+      const mean = figure(this._stats?.[id], "mean");
+      if (mean !== undefined) values[id] = mean;
+    }
+    const list = this._buildObservations(values);
+    const digest = list.map((o) => [o.entity ?? o.source, o.floorId, o.x, o.y, o.ap, o.band, Math.round(o.dbm / OBS_DB) * OBS_DB].join("|")).join(";");
+    this._obsMemo = { from, watched, list, digest };
+    return this._obsMemo;
+  }
+
+  // Every floor's device and sample observations: a method of its own, so a test counts the builds.
+  _buildObservations(values) {
+    return this._doc.floors.flatMap((f) => [...deviceObservations(this._hass, this._doc, f.floor_id, wifiRules, values, this._obsIndex),
+      ...sampleObservations(this._doc, f.floor_id)]);
+  }
+
+  // The fit of the whole home, once per plan, openings' states and readings' digest: every band and
+  // map shares it.
+  _calibration() {
+    const doc = this._doc;
+    const states = this._openingStates();
+    const { list, digest } = this._observations();
+    const m = this._fitMemo;
+    if (m && m.doc === doc && m.states === states && m.digest === digest) return m.fit;
+    const fit = this._runFit(contextFor(doc, this._floorId, this._hass, materials), list);
+    this._fitMemo = { doc, states, digest, fit };
+    return fit;
+  }
+
+  // The engine's fit: a method of its own, so a test counts the fits.
+  _runFit(ctx, observations) {
+    return calibrate(ctx, observations, materials);
+  }
+
+  // The shown floor's observations of one point: what its label reports on a radio map.
+  _sourceObs(point) {
+    return this._observations().list.filter((o) => o.floorId === this._floorId
+      && (point.device_id ? o.device === point.device_id : o.entity === point.entity_id));
+  }
+
+  // The signal sensors of the plan's devices and entities: the ones whose 24-hour means the fit reads.
+  _planSignalIds() {
+    const keys = new Set(this._doc.floors.flatMap((f) => (f.points || []).map(keyOf)));
+    return this._signalIds.filter((id) => keys.has(id) || keys.has(this._hass.entities?.[id]?.device_id)).sort();
   }
 
   // Per room of the floor, its own sensor of the map's reading, or null: the one the home inputs
@@ -287,14 +490,22 @@ class FloorplanCard extends HTMLElement {
 
   // The last 24 hours' statistics of every reading on the floor, while a reading map shows them:
   // fetched when the readings change and every STATS_MS.
+  // On a Wi-Fi map: the plan's Wi-Fi signal sensors, always (the calibration reads their means).
   _wantStats() {
     const map = this._map();
-    if (!this._day || !map || map.cls === "lamps") return;
-    // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out. And
-    // the rooms' own sensors, which give a room its value placed or not.
-    const own = this._roomSensors(map).filter(Boolean);
-    const ids = [...new Set([...this._floor.points.flatMap((p) => Object.values(this._readings(p))), ...own])]
-      .sort().join(",");
+    if (!map) return;
+    let ids;
+    if (map.layer === "radio") {
+      if (!map.cls) return;
+      ids = this._planSignalIds().join(",");
+    } else {
+      if (!this._day || map.cls === "lamps") return;
+      // Every point's: an unplaced one's label shows its figure too; only the heat leaves it out. And
+      // the rooms' own sensors, which give a room its value placed or not.
+      const own = this._roomSensors(map).filter(Boolean);
+      ids = [...new Set([...this._floor.points.flatMap((p) => Object.values(this._readings(p))), ...own])]
+        .sort().join(",");
+    }
     if (!ids || (ids === this._statIds && Date.now() - this._statsAt < STATS_MS)) return;
     this._fetchStats(ids);
   }
@@ -430,6 +641,7 @@ ${STYLE}
       <ha-card>
         <div class="layers"></div>
         <div class="bar"></div>
+        <div class="survey"></div>
         <div class="area-panel"></div>
         <div class="body"><svg xmlns="${SVG_NS}" preserveAspectRatio="xMidYMid meet"></svg><div class="tray"></div><div class="cluster-list" hidden></div><div class="tip" hidden></div></div>
         <div class="hint"></div>
@@ -473,7 +685,8 @@ ${STYLE}
     this._registry();
     this._tipKey = null;     // a tooltip shown before is drawn again on the next hover
     $(".layers").innerHTML = ready ? this._layersHtml() : "";
-    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml() : "";
+    $(".area-panel").innerHTML = editing ? this._areaPanelHtml() || this._pointPanelHtml() || this._openingPanelHtml()
+      || this._readingPanelHtml() || this._wallPanelHtml() || this._offerHtml() + this._disabledHtml() : "";
     $(".tray").innerHTML = editing ? this._trayHtml() : "";
     const floor = this._floor;
     const empty = ready && floor && !floor.rooms.length && !floor.points.length;
@@ -486,6 +699,7 @@ ${STYLE}
       : this._message ? esc(t(h, this._message.key, this._message.vars)) : "";
     this._svg.style.display = ready ? "" : "none";
     this._drawSvg(editing);
+    this._drawSurvey();
     this._stamp = this._valueStamp();
     this._announce();
   }
@@ -503,15 +717,19 @@ ${STYLE}
       let tail = this._config.zoom ? zoom : "";
       if (this._config.edit && h?.user?.is_admin) tail += btn("edit", t(h, "card.floorplan.edit"));
       const maps = this._mapsHtml();
-      return maps || tail ? `${maps}<span class="spacer"></span>${tail}` : "";
+      // The wall weights' key wherever the walls are drawn by weight (Wi-Fi on), on every map and on the
+      // plain plan; a host that turns the maps off (`maps: false`, a phone's fixed room) drops it with them.
+      const key = this._wifiOn && this._config.maps ? this._wallKeyHtml() : "";
+      return maps || tail || key ? `${maps}${key}<span class="spacer"></span>${tail}` : "";
     }
-    let html = `${zoom}<span class="spacer"></span>`;
+    let html = `${zoom}${this._wifiOn ? this._wallKeyHtml() : ""}<span class="spacer"></span>`;
     if (this._doc.floors.length > 1) {
       const name = (id) => h.floors?.[id]?.name || id;
       html += `<select class="floor" aria-label="${esc(t(h, "card.floorplan.floor"))}">${this._doc.floors.map((f) =>
         `<option value="${esc(f.floor_id)}" ${f.floor_id === this._floorId ? "selected" : ""}>${esc(name(f.floor_id))}</option>`).join("")}</select>`;
     }
-    for (const tool of ["move", "split", "join", "open", "openings"]) {
+    const wifiTools = this._wifiOn ? ["walls", ...(offeredBands(this._doc).length ? ["reading"] : [])] : [];
+    for (const tool of ["move", "split", "join", "open", "openings", ...wifiTools]) {
       html += btn("tool", t(h, `card.floorplan.tool.${tool}`), "", `data-tool="${tool}" class="${tool === this._tool ? "on" : ""}"`);
     }
     const dirty = this._doc !== this._base;
@@ -521,14 +739,28 @@ ${STYLE}
     return html;
   }
 
-  // The shown layer's maps, then now or the last 24 hours (not for the lamps).
+  // The shown layer's maps, then now or the last 24 hours (not for the lamps nor the radio maps),
+  // beside Serving and Confidence the band, and on the other Wi-Fi maps Predicted / Calibrated once
+  // some device reports its signal.
   _mapsHtml() {
     const map = this._map();
     if (!map) return "";
     const h = this._hass;
+    if (map.hint) return `<span class="legend">${esc(t(h, `card.floorplan.wifi.hint.${map.hint}`))}</span>`;
     const chip = (attrs, on, text) => `<button ${attrs} aria-pressed="${on}" class="chip">${esc(text)}</button>`;
-    let html = `<span class="maps">${MAPS[map.layer].map(([cls]) =>
+    let html = `<span class="maps">${map.maps.map(([cls]) =>
       chip(`data-action="map" data-map="${cls}"`, cls === map.cls, t(h, `card.floorplan.maps.${cls}`))).join("")}</span>`;
+    if (map.cls === "serving" || map.cls === "confidence") {
+      html += `<span class="maps">${map.bands.map((b) => chip(`data-action="band" data-band="${b}"`, b === map.band,
+        t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) }))).join("")}</span>`;
+    }
+    if (map.layer === "radio" && map.observed && map.cls !== "confidence") {
+      html += `<span class="maps">${["predicted", "calibrated"].map((c) => chip(`data-action="calib" data-calib="${c}"`,
+        (c === "calibrated") === map.calibrated, t(h, `card.floorplan.wifi.${c}`))).join("")}</span>`;
+    }
+    if (map.layer === "radio" && BAND_OF[map.cls]) {
+      html += `<span class="maps">${chip('data-action="ranges"', map.ranges, t(h, "card.floorplan.wifi.ranges"))}</span>`;
+    }
     if (map.rule) {
       html += `<span class="maps">${chip('data-action="day" data-day="0"', !this._day, t(h, "card.floorplan.maps.now"))}`
         + chip('data-action="day" data-day="1"', this._day, t(h, "card.floorplan.maps.day",
@@ -542,6 +774,7 @@ ${STYLE}
   // covered a room). The chips name the map and now or 24 h; the full sentence is its tooltip.
   _legendHtml(map) {
     const h = this._hass;
+    if (map.layer === "radio") return this._wifiLegendHtml(map);
     if (map.cls === "lamps") return `<span class="legend">${esc(t(h, "card.floorplan.maps.lamps_legend"))}</span>`;
     const s = SCALES[map.cls];
     const figureKey = map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`;
@@ -552,6 +785,72 @@ ${STYLE}
       + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})"></span>`
       + `<span>${esc(formatValue(map.cls, s.hi))}</span>`
       + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.maps.no_sensor"))}</span></span>`;
+  }
+
+  // The plan's three wall weights (Amendment 3), on the Wi-Fi maps and in edit mode: a line each, as drawn.
+  _wallKeyHtml() {
+    const h = this._hass;
+    return `<span class="legend wall-key" title="${esc(t(h, "card.floorplan.wall.weight.title"))}">${WEIGHTS.map((w) =>
+      `<span class="wall-swatch ${w}"></span><span>${esc(t(h, `card.floorplan.wall.weight.${w}`))}</span>`).join("")}</span>`;
+  }
+
+  // A band map: the dBm scale with its marks (with Ranges each access point's colour and the outlines'
+  // levels); Serving: each access point's colour and the hatching. (The wall key follows in the bar.)
+  _wifiLegendHtml(map) {
+    return this._wifiScaleHtml(map);
+  }
+
+  _wifiScaleHtml(map) {
+    const h = this._hass;
+    const name = t(h, `card.floorplan.maps.${map.cls}`);
+    if (map.cls === "serving") {
+      const aps = accessPoints(this._doc).filter((ap) => ap.bands.includes(map.band));
+      const title = t(h, "card.floorplan.wifi.serving_legend", { bands: bandsText([map.band], (x) => this._bandNumber(x)) });
+      return `<span class="legend" title="${esc(`${name}, ${title}`)}">${aps.map((ap, i) =>
+        `<span class="swatch" style="background: ${servingColour(i)}"></span><span>${esc(pointName(h, this._apPoint(ap.key) ?? { device_id: ap.key }))}</span>`).join("")}`
+        + `<span class="hatch"></span><span>${esc(t(h, "card.floorplan.wifi.handover"))}</span></span>`;
+    }
+    if (map.cls === "confidence") {
+      const title = t(h, "card.floorplan.wifi.confidence_legend", { bands: bandsText([map.band], (x) => this._bandNumber(x)) });
+      return `<span class="legend" title="${esc(`${name}, ${title}`)}">${Object.entries(CONFIDENCE).map(([level, fill]) =>
+        `<span class="swatch" style="background: ${fill}"></span><span>${esc(t(h, `card.floorplan.wifi.confidence.${level}`))}</span>`).join("")}</span>`;
+    }
+    const s = SCALES.dbm;
+    const at = (v) => fmt(((v - s.lo) / (s.hi - s.lo)) * 100);
+    const [call, weak] = s.marks;
+    const count = this._observations().list.length;
+    const what = map.calibrated ? t(h, "card.floorplan.wifi.dbm_calibrated_legend", { count, call, weak })
+      : t(h, "card.floorplan.wifi.dbm_legend", { call, weak });
+    return `<span class="legend" title="${esc(`${name}, ${what}`)}">`
+      + `<span>${esc(formatValue("dbm", s.lo))}</span>`
+      + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})">${s.marks.map((m) =>
+        `<span class="mark" data-mark="${m}" style="left: ${at(m)}%"></span>`).join("")}</span>`
+      + `<span>${esc(formatValue("dbm", s.hi))}</span></span>`
+      + (map.ranges ? this._rangesLegendHtml(map) : "");
+  }
+
+  // Ranges: each access point on the band in its colour, and which line is which level.
+  _rangesLegendHtml(map) {
+    const h = this._hass;
+    const [call, weak] = SCALES.dbm.marks;
+    const aps = accessPoints(this._doc).filter((ap) => ap.bands.includes(map.band));
+    return `<span class="legend ranges-legend">${aps.map((ap, i) =>
+      `<span class="swatch" style="background: ${servingColour(i)}"></span><span>${esc(pointName(h, this._apPoint(ap.key) ?? { device_id: ap.key }))}</span>`).join("")}`
+      + `<span>${esc(t(h, "card.floorplan.wifi.ranges_legend", { call, weak }))}</span></span>`;
+  }
+
+  // A band as this language writes the number: 2.4, or 2,4.
+  _bandNumber(band) {
+    return band.includes(".") ? numberText(this._hass, Number(band), 1) : band;
+  }
+
+  // The point an access point stands on, on any floor.
+  _apPoint(key) {
+    for (const f of this._doc.floors) {
+      const p = (f.points ?? []).find((q) => keyOf(q) === key);
+      if (p) return p;
+    }
+    return null;
   }
 
   _areaPanelHtml() {
@@ -633,7 +932,103 @@ ${STYLE}
     return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
       + `<select class="category">${options}</select>`
       + (joined ? `<span class="joined-label">${esc(t(h, "card.floorplan.point.joined"))}</span>${joined}` : "")
+      + this._apFieldsHtml(point)
       + "</div>";
+  }
+
+  // `wifi` is on unless false: the Wi-Fi tools and fields with it.
+  get _wifiOn() {
+    return this._config.wifi !== false;
+  }
+
+  // A point's access point fields: on/off, then its bands, transmit power per band and mount height.
+  _apFieldsHtml(point) {
+    if (!this._wifiOn) return "";
+    const h = this._hass;
+    const ap = this._floor.access_points?.find((a) => (a.device_id ?? a.entity_id) === keyOf(point));
+    const box = (attrs, on, text) => `<label class="ap-check"><input type="checkbox" class="ap-field" ${attrs} ${on ? "checked" : ""}>${esc(text)}</label>`;
+    let html = box('data-field="ap"', !!ap, t(h, "card.floorplan.wifi.access_point"));
+    if (!ap) return html;
+    const ghz = (b) => t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) });
+    html += BANDS.map((b) => box(`data-field="ap_band" data-band="${b}"`, ap.bands.includes(b), ghz(b))).join("");
+    for (const b of ap.bands) {
+      html += `<label>${esc(t(h, "card.floorplan.wifi.tx", { band: this._bandNumber(b) }))}</label>`
+        + `<input type="number" class="ap-field" data-field="ap_tx" data-band="${b}" min="-10" max="36" step="1"`
+        + ` placeholder="${materials.bands[b].tx}" value="${esc(String(ap.tx?.[b] ?? ""))}">`;
+    }
+    return html + `<label>${esc(t(h, "card.floorplan.wifi.mount"))}</label>`
+      + `<input type="number" class="ap-field" data-field="ap_mount" min="0" max="5" step="0.1"`
+      + ` placeholder="${MOUNT_M}" value="${esc(String(ap.mount ?? ""))}">`;
+  }
+
+  // The reading tool, once a spot is tapped: the reading's dBm, its band (one some access point serves) and
+  // the access point it was on, or unknown.
+  _readingPanelHtml() {
+    if (this._tool !== "reading" || !this._wifiOn || !this._reading) return "";
+    const h = this._hass;
+    const label = (key) => `<label>${esc(t(h, `card.floorplan.reading.${key}`))}</label>`;
+    const opt = (value, text) => `<option value="${esc(value)}">${esc(text)}</option>`;
+    const bands = offeredBands(this._doc).map((b) => opt(b, t(h, "card.floorplan.wifi.bands", { bands: bandsText([b], (x) => this._bandNumber(x)) })));
+    const aps = accessPoints(this._doc).map((ap) => opt(ap.key, pointName(h, this._apPoint(ap.key) ?? { device_id: ap.key })));
+    return `<div class="reading-panel">${label("dbm")}<input type="number" class="reading-field" data-field="dbm" min="-110" max="0" step="1">`
+      + `${label("band")}<select class="reading-field" data-field="band">${bands.join("")}</select>`
+      + `${label("ap")}<select class="reading-field" data-field="ap">${opt("", t(h, "card.floorplan.reading.unknown"))}${aps.join("")}</select>`
+      + `<button data-action="add_reading" class="primary">${esc(t(h, "card.floorplan.reading.add"))}</button></div>`;
+  }
+
+  // The walls tool: the selected wall's material and the buttons that make it the interior or
+  // exterior default, then this floor's height, the floor under it and which of its rooms are outdoors.
+  _wallPanelHtml() {
+    if (this._tool !== "walls" || !this._wifiOn || !this._floor) return "";
+    const h = this._hass;
+    const floor = this._floor;
+    const options = (cls, current) => materialsFor(cls).map((id) =>
+      `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(t(h, `card.floorplan.material.${id}`))}</option>`).join("");
+    const label = (key) => `<label>${esc(t(h, `card.floorplan.wall.${key}`))}</label>`;
+    let html = "";
+    const seg = this._wall && wallSegmentAt(floor, this._doc.wifi, this._wall, PICK_PX * this._px());
+    if (seg) {
+      // An outdoor room's own edge (a balcony's railing side) is no wall until a material is chosen (R24).
+      const none = seg.cls === "outdoor"
+        ? `<option value="" ${seg.material === null ? "selected" : ""}>${esc(t(h, "card.floorplan.wall.none"))}</option>` : "";
+      html += label("material") + `<select class="wall-field" data-field="wall">${none}${options("wall", seg.material)}</select>`;
+      if (seg.material !== null) {
+        // Amendment 3: a balcony frame or a balustrade; the open edge of an outdoor room has nothing to lower.
+        html += `<label class="half-check"><input type="checkbox" class="wall-field" data-field="half" ${seg.half ? "checked" : ""}>`
+          + `${esc(t(h, "card.floorplan.wall.half"))}</label>`;
+        html += ["interior", "exterior"].map((w) => `<button data-action="wall_default" data-which="${w}">`
+          + `${esc(t(h, `card.floorplan.wall.default.${w}`))}</button>`).join("");
+      }
+    }
+    html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.floor"))}</span>` + label("height")
+      + `<input type="number" class="wall-field" data-field="height" min="2" max="10" step="0.05" value="${esc(String(floor.height ?? FLOOR_HEIGHT_M))}">`
+      + label("slab") + `<select class="wall-field" data-field="slab">${options("slab", floor.slab ?? materials.defaults.slab)}</select>`;
+    const outdoor = this._doc.wifi?.outdoor ?? [];
+    html += `<span class="floor-label">${esc(t(h, "card.floorplan.wall.outdoor"))}</span>` + floor.rooms.map((room) =>
+      `<label class="outdoor-check"><input type="checkbox" class="wall-field" data-field="outdoor" data-area="${esc(room.area_id)}"`
+      + ` ${outdoor.includes(room.area_id) ? "checked" : ""}>${esc(roomLabel(room, h, this._config.rooms).text)}</label>`).join("");
+    return `<div class="wall-panel">${html}</div>`;
+  }
+
+  // The plan's switched-off Wi-Fi signal sensors, read when edit mode started: enabling them calibrates
+  // the maps. (Edit mode has no maps, so the list stands in the panel, not in the Confidence legend.)
+  _disabledHtml() {
+    if (!this._wifiOn || !this._disabled?.length) return "";
+    const h = this._hass;
+    const name = (d) => pointName(h, d.device_id ? { device_id: d.device_id } : { entity_id: d.entity_id });
+    return `<div class="wifi-disabled"><span>${esc(t(h, "card.floorplan.wifi.disabled"))}</span><ul>${this._disabled.map((d) =>
+      `<li>${esc(name(d))}: <code>${esc(d.entity_id)}</code></li>`).join("")}</ul></div>`;
+  }
+
+  // "Use as access point?" for the first point of the floor the rules match, asked once per browser.
+  _offerHtml() {
+    if (!this._wifiOn || !this._floor) return "";
+    const key = accessPointCandidates(this._hass, this._floor, wifiRules).find((k) => !this._offered.has(k));
+    const point = key && this._floor.points.find((p) => keyOf(p) === key);
+    if (!point) return "";
+    const h = this._hass;
+    const answer = (a) => `<button data-action="ap_offer" data-key="${esc(key)}" data-answer="${a}">${esc(t(h, `card.floorplan.wifi.${a}`))}</button>`;
+    return `<div class="ap-offer"><span>${esc(t(h, "card.floorplan.wifi.offer", { name: pointName(h, point) }))}</span>${answer("yes")}${answer("no")}</div>`;
   }
 
   // The selected opening: its kind, width, state without a sensor and sensor; a door's
@@ -652,11 +1047,16 @@ ${STYLE}
       html += sel("sliding", "style", STYLES.map((v) => opt(v === "sliding" ? "true" : "", t(h, `card.floorplan.opening.styles.${v}`), v === styleOf(o))).join(""))
         + button("swap_hinge", "swap_hinge") + button("swap_side", "swap_side");
     }
+    const cls = { door: "door", window: "window", fixed: "window" }[kind];
+    if (cls && this._wifiOn) {
+      const current = o.material ?? openingDefaults(this._doc.wifi, o).material;
+      html += sel("material", "material", materialsFor(cls).map((id) => opt(id, t(h, `card.floorplan.material.${id}`), id === current)).join(""));
+    }
     html += `<label>${esc(t(h, "card.floorplan.opening.width"))}</label>`
       + `<input class="opening-field" data-field="width" type="number" min="0.1" step="0.05" value="${esc(String(widthOf(o)))}">`
       + button("fill_wall", "fill_wall");
     if (kind === "door" || kind === "window") {
-      const state = o.state ?? (o.rooms.includes(null) ? "closed" : "open");
+      const state = o.state ?? openingDefaults(this._doc.wifi, o).state;
       html += sel("state", "default", ["open", "closed"].map((s) => opt(s, t(h, `card.floorplan.opening.${s}`), s === state)).join(""))
         + sel("entity", "sensor", opt("", t(h, "card.floorplan.opening.no_sensor"), !o.entity)
           + openingSensors(h, o).map((c) => opt(c.id, c.name, c.id === o.entity)).join(""));
@@ -704,18 +1104,28 @@ ${STYLE}
       const cls = ["room"];
       if (room.area_id === this._selected) cls.push("selected");
       if (this._picks.includes(room.area_id)) cls.push("picked");
+      if (this._wifiOn) cls.push("walled");      // its edges drawn as walls, by weight
       el("polygon", { class: cls.join(" "), "data-kind": "room", "data-area": room.area_id,
         points: room.polygon.map((p) => p.join(",")).join(" ") }, svg);
     }
     if (map) this._defs(svg, px);
-    if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
-    // Walls between rooms of one open space: dashed and lighter, over the solid outline.
-    for (const [a, b] of facingWalls(floor)) {
-      const at = { x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) };
-      el("line", { class: "open-wall-mask", ...at }, svg);
-      el("line", { class: "open-wall", ...at }, svg);
+    if (map?.layer === "radio") {
+      if (map.cls) this._drawWifi(svg, floor, map);
+    } else if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
+    if (this._wifiOn) {
+      this._drawWalls(svg);
+      if (map?.layer === "radio" && map.ranges) this._drawRanges(svg, map, px);
+    } else {
+      // Walls between rooms of one open space: dashed and lighter, over the solid outline.
+      for (const [a, b] of facingWalls(floor)) {
+        const at = { x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) };
+        el("line", { class: "open-wall-mask", ...at }, svg);
+        el("line", { class: "open-wall", ...at }, svg);
+      }
     }
     this._drawOpenings(svg, floor, px, editing);
+    if (editing && this._tool === "walls" && this._wall) this._drawWall(svg, px);
+    this._drawSamples(svg, px, editing, map);
     // Room names. In edit mode they stay in the middle of the room, the floor area under them, and
     // readings keep clear of them; in view mode the readings are laid out first and a name they
     // would cover moves to a free corner of its room (placeNames, after the layout below).
@@ -777,8 +1187,8 @@ ${STYLE}
     const clustered = new Set(inCluster.keys());
     // Readings laid out clear of walls, dots and each other; cluster dots are obstacles too. A
     // reading map also shows every placed point that measures it, whatever its layer.
-    const measures = (p) => map && map.cls !== "lamps" && p.placed && this._readings(p)[map.cls]
-      && this._value(this._readings(p)[map.cls], map.cls, map.layer) !== undefined;
+    const measures = (p) => map && p.placed && (map.layer === "radio" ? this._sourceObs(p).length > 0
+      : map.cls !== "lamps" && this._readings(p)[map.cls] && this._value(this._readings(p)[map.cls], map.cls, map.layer) !== undefined);
     const shown = floor.points.filter((p) => !clustered.has(keyOf(p)) && (this._shown(this._cat(p)) || measures(p)));
     const labels = new Map(layoutLabels([
       ...shown.map((p) => ({ key: keyOf(p), at: [p.x, p.y], lines: this._lines(p).map((l) => l.text) })),
@@ -814,6 +1224,124 @@ ${STYLE}
     }
   }
 
+  // Survey and manual samples, a small dot with its dBm: on the Confidence map and in edit mode only (the
+  // survey page's panel names the newest). On the survey page the next spots and the spot tapped; the
+  // reading tool's spot.
+  _drawSamples(svg, px, editing, map) {
+    if (!this._wifiOn) return;
+    const survey = this._config.survey && !editing;
+    if (editing || map?.cls === "confidence") {
+      const g = el("g", {}, svg);
+      for (const s of this._doc.wifi?.samples || []) {
+        if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        const dot = el("g", { class: "sample", "data-source": s.source ?? "survey", transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
+        el("circle", { r: fmt(3 * px) }, dot);
+        el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "stroke-width": fmt(3 * px),
+          "dominant-baseline": "central" }, dot)
+          .textContent = dbmText(s.dbm);
+      }
+    }
+    if (survey) {
+      this._nextSpots().forEach((spot, i) => {
+        el("circle", { class: "next-spot", cx: fmt(spot.x), cy: fmt(spot.y), r: fmt(10 * px), "data-why": spot.why }, svg);
+        el("text", { class: "next-spot-label", x: fmt(spot.x), y: fmt(spot.y), "font-size": fmt(11 * px), "dominant-baseline": "central" }, svg)
+          .textContent = String(i + 1);
+      });
+      if (this._spot) el("circle", { class: "survey-spot", cx: fmt(this._spot[0]), cy: fmt(this._spot[1]), r: fmt(7 * px) }, svg);
+    }
+    if (editing && this._tool === "reading" && this._reading) {
+      el("circle", { class: "reading-spot", cx: fmt(this._reading[0]), cy: fmt(this._reading[1]), r: fmt(7 * px) }, svg);
+    }
+  }
+
+  // The survey's next spots on the floor and band shown (the map's cells, calibrated where it is), worked
+  // out again when the map or the readings change.
+  _nextSpots() {
+    const map = this._map();
+    if (!map?.band || !map.cls) return [];
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    const { key, cells } = this._wifi(map.band, step, map.calibrated, map.cls === "confidence");
+    const { list, digest } = this._observations();
+    const memo = `${key}|${digest}`;
+    if (this._spotsMemo?.key !== memo) {
+      const obs = list.filter((o) => o.floorId === this._floorId && o.band === map.band);
+      const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId)?.rooms ?? [];
+      const centred = cells.map((c) => ({ ...c, x: c.x + step / 2, y: c.y + step / 2 }));
+      this._spotsMemo = { key: memo, spots: nextSpots(centred, obs, rooms) };
+    }
+    return this._spotsMemo.spots;
+  }
+
+  // The Survey panel (survey page, view mode): the live link, I'm here, the last sample's outcome, the next
+  // spots and how to walk.
+  _drawSurvey() {
+    const box = this.shadowRoot?.querySelector(".survey");
+    if (!box) return;
+    if (!this._config.survey || this._status !== "ready" || this._mode === "edit") {
+      box.innerHTML = "";
+      return;
+    }
+    const h = this._hass;
+    const note = this._surveyNote && t(h, this._surveyNote.key, this._surveyNote.vars);
+    const spots = this._nextSpots();
+    box.innerHTML = `<div class="survey-link">${esc(this._linkText())}</div>`
+      + `<div class="survey-actions"><button data-action="survey_here" class="primary" ${this._spot && !this._taking ? "" : "disabled"}>`
+      + `${esc(t(h, "card.floorplan.survey.here"))}</button>`
+      + (this._taking ? `<span class="survey-progress"><span></span></span><span>${esc(t(h, "card.floorplan.survey.recording"))}</span>`
+        : !this._spot ? `<span>${esc(t(h, "card.floorplan.survey.pick"))}</span>` : "")
+      + (note && !this._taking ? `<span class="survey-note">${esc(note)}</span>` : "") + "</div>"
+      + (spots.length ? `<div class="survey-next"><span>${esc(t(h, "card.floorplan.survey.next"))}</span><ol>${spots.map((s) =>
+        `<li>${esc(t(h, `card.floorplan.survey.why.${s.why}`))}</li>`).join("")}</ol></div>` : "")
+      + `<p class="survey-help">${esc(t(h, "card.floorplan.survey.help"))}</p>`;
+  }
+
+  _linkText() {
+    const h = this._hass;
+    const l = this._link;
+    if (!l) return t(h, "card.floorplan.survey.no_link");
+    const vars = { band: this._bandNumber(String(l.band)), channel: l.channel, dbm: dbmText(l.dbm) };
+    return Number.isFinite(l.noise) ? t(h, "card.floorplan.survey.link", { ...vars, noise: dbmText(l.noise) })
+      : t(h, "card.floorplan.survey.link_no_noise", vars);
+  }
+
+  // I'm here: the page's server records the next 5 readings (about 10 s) at the tapped spot and writes the
+  // sample to the plan file; the card adds it to the plan as read, so a later save keeps it.
+  async _takeSample() {
+    if (!this._spot || this._taking) return;
+    const [x, y] = this._spot.map(mm);
+    this._taking = true;
+    this._surveyNote = null;
+    this._drawSurvey();
+    let note;
+    try {
+      const r = await fetch("survey/sample", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ floor_id: this._floorId, x, y }) });
+      if (!r.ok) note = { key: "card.floorplan.survey.failed", vars: { error: await r.text() } };
+      else {
+        const got = await r.json();
+        if (got?.sample) {
+          this._addSample(got.sample);
+          this._spot = null;
+          note = { key: "card.floorplan.survey.taken", vars: { dbm: dbmText(got.sample.dbm), band: this._bandNumber(String(got.sample.band)) } };
+        } else note = { key: "card.floorplan.survey.skipped", vars: { reason: got?.skipped ?? "" } };
+      }
+    } catch (err) {
+      note = { key: "card.floorplan.survey.failed", vars: { error: err?.message || String(err) } };
+    }
+    this._taking = false;
+    this._surveyNote = note;
+    this._render();
+  }
+
+  // A sample the server wrote: in the plan as read, as edited and as Cancel returns to.
+  _addSample(sample) {
+    const add = (doc) => doc && { ...doc, wifi: { ...doc.wifi, samples: [...(doc.wifi?.samples || []), sample] } };
+    const clean = this._doc === this._base;
+    this._loaded = add(this._loaded);
+    this._base = add(this._base);
+    this._doc = clean ? this._base : add(this._doc);
+  }
+
   // The floor as drawn: a sensor linked to an opening stands on it (SPEC-028 Amendment 9).
   _drawnFloor() {
     const floor = this._floor;
@@ -839,13 +1367,16 @@ ${STYLE}
       const shape = openingShape(floor, o);
       if (!shape) return;
       const kind = kindOf(o);
-      const state = openingState(o, h);
+      const state = openingState(o, h, this._doc.wifi?.outdoor);
       const cls = ["opening", kind, state.open ? "open" : "closed"];
       if (styleOf(o) === "sliding") cls.push("sliding");
       if (state.linked) cls.push("linked");
       if (!state.known) cls.push("unknown");
       if (tool && this._opening === i) cls.push("selected");
-      const g = el("g", { class: cls.join(" "), "data-kind": "opening", "data-index": i }, svg);
+      // On a thick wall the opening is drawn on the wall's middle line, where its gap in the wall line is.
+      const [dx, dy] = this._wifiOn && this._wallMemo ? openingShift(this._wallMemo.paired, shape.centre) : [0, 0];
+      const g = el("g", { class: cls.join(" "), "data-kind": "opening", "data-index": i,
+        ...(dx || dy ? { transform: `translate(${fmt(dx)} ${fmt(dy)})` } : {}) }, svg);
       const line = (a, b, c) => el("line", { class: c, x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) }, g);
       const [p, q] = shape.ends;
       const n = shape.normal;
@@ -880,6 +1411,108 @@ ${STYLE}
       const dragged = this._drag?.kind === "opening" && this._drag.index === i;
       if (tool && (this._opening === i || dragged)) this._drawSpan(svg, floor, shape, px);
     });
+  }
+
+  // The floor's walls as lines by weight (Amendment 3), over the maps: light, solid, heavy by their 5 GHz
+  // loss, glazing tinted, a half wall dashed, an edge with no wall faintly dotted; a thick wall once, on
+  // the middle of its gap. Worked out on the whole floor, as the Wi-Fi model sees it, so a card showing one
+  // room (`area`) draws that room's walls classified among its neighbours. Kept while the floor and the
+  // plan's Wi-Fi settings are the same.
+  _drawWalls(svg) {
+    const full = this._doc.floors.find((f) => f.floor_id === this._floorId);
+    const m = this._wallMemo;
+    if (!m || m.floor !== full || m.wifi !== this._doc.wifi) {
+      this._wallMemo = { floor: full, wifi: this._doc.wifi, lines: wallLines(full, this._doc.wifi, this._hass),
+        paired: wallSegments({ ...full, openings: [] }, this._doc.wifi, {}).filter((s) => s.pair) };
+    }
+    const area = this._config.area;
+    const g = el("g", { class: "walls" }, svg);
+    for (const l of this._wallMemo.lines) {
+      if (area && !l.areas.includes(area)) continue;
+      const cls = ["wall-line", l.weight, ...(l.glass ? ["glass"] : []), ...(l.half ? ["half"] : [])];
+      el("line", { class: cls.join(" "), "data-weight": l.weight, x1: fmt(l.a[0]), y1: fmt(l.a[1]), x2: fmt(l.b[0]), y2: fmt(l.b[1]) }, g);
+    }
+  }
+
+  // Ranges (Amendment 3): each access point's outline at -67 dBm (solid) and -75 dBm (dashed) on the map's
+  // band and mode in its Serving colour, inside the rooms, and a ring at its place with its name.
+  _drawRanges(svg, map, px) {
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    const { aps, lines } = this._rangeLines(map, step);
+    const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId)?.rooms ?? [];
+    const g = el("g", { class: "ranges" }, svg);
+    const clip = el("clipPath", { id: "fp-ranges" }, el("defs", {}, g));
+    for (const room of rooms) el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+    const inside = el("g", { "clip-path": "url(#fp-ranges)" }, g);
+    const path = (l) => `M ${l.points.map(([x, y]) => `${fmt(x)} ${fmt(y)}`).join(" L ")}${l.closed ? " Z" : ""}`;
+    const [call, weak] = SCALES.dbm.marks;
+    lines.forEach(({ ap, outlines }, i) => {
+      const stroke = servingColour(i);
+      for (const [level, ls] of [[call, outlines.call], [weak, outlines.weak]]) {
+        for (const l of ls) el("path", { class: `range ${level === call ? "call" : "weak"}`, "data-ap": ap, "data-dbm": level, d: path(l), stroke }, inside);
+      }
+    });
+    const h = this._hass;
+    for (const ap of accessPoints(this._doc)) {
+      const i = aps.indexOf(ap.key);
+      const point = ap.floorId === this._floorId && i >= 0 && this._floor.points.find((p) => keyOf(p) === ap.key);
+      if (!point) continue;
+      const stroke = servingColour(i);
+      el("circle", { class: "range-ring", "data-ap": ap.key, cx: fmt(point.x), cy: fmt(point.y), r: fmt(14 * px), stroke }, g);
+      // The halo is a stroke in the plan's metres (vector-effect does not reach text): 3 px, scaled like the font.
+      el("text", { class: "range-name", x: fmt(point.x), y: fmt(point.y - 18 * px), "font-size": fmt(11 * px),
+        "stroke-width": fmt(3 * px), fill: stroke }, g)
+        .textContent = pointName(h, point);
+    }
+  }
+
+  // Every access point's outlines on the band and mode of the map, from the levels on one grid over the
+  // floor (wifi.js levelGrid; calibrated like the map's cells), worked out again when the map's cache key changes.
+  _rangeLines(map, step) {
+    const { key } = this._wifi(map.band, step, map.calibrated);
+    if (this._rangeMemo?.key === key) return this._rangeMemo;
+    const grid = this._levels(map, step);
+    const [call, weak] = SCALES.dbm.marks;
+    const lines = (grid?.aps ?? []).map((ap, i) => ({ ap, outlines: { call: rangeOutlines(grid, grid.levels[i], call), weak: rangeOutlines(grid, grid.levels[i], weak) } }));
+    this._rangeMemo = { key, aps: grid?.aps ?? [], lines };
+    return this._rangeMemo;
+  }
+
+  // The engine's per-access-point grid: a method of its own, so a test counts the computations.
+  _levels(map, step) {
+    const doc = this._doc;
+    if (map.calibrated) {
+      const fit = this._calibration();
+      return calibratedLevelGrid(contextFor(doc, this._floorId, this._hass, materials, fit.params), map.band, step, fit);
+    }
+    return levelGrid(contextFor(doc, this._floorId, this._hass, materials, this._wifiKey.params), map.band, step);
+  }
+
+  // A tap for an opening: on a thick wall (drawn on the middle of its gap) the point on its room's edge.
+  _onWall(pt, tol) {
+    return this._wifiOn ? wallPickPoint(this._floor, this._doc.wifi, pt, tol) : pt;
+  }
+
+  // An opening on a thick wall parts its two rooms (Amendment 3), not a room from the outside, though the
+  // other room's edge is across the gap: its second room set, an "outside" it opens into dropped.
+  _pairRooms(doc, index) {
+    if (!this._wifiOn) return doc;
+    const floor = doc.floors.find((f) => f.floor_id === this._floorId);
+    const o = floor.openings?.[index];
+    const seg = o && o.rooms[1] === null && wallSegmentAt(floor, doc.wifi, o.at, 0.01);
+    const other = seg?.pair && seg.areas.find((a) => a !== o.rooms[0]);
+    if (!other) return doc;
+    return setOpening(doc, this._floorId, index, { rooms: [o.rooms[0], other], ...(o.opens === "outside" ? { opens: null } : {}) }) ?? doc;
+  }
+
+  // The wall stretch the walls tool selected, corner to corner.
+  _drawWall(svg, px) {
+    const seg = wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * px);
+    if (!seg) return;
+    // A thick wall is drawn on the middle of its gap: selected there too.
+    const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    const [a, b] = seg.pair ? [mid(seg.a, seg.pair[0]), mid(seg.b, seg.pair[1])] : [seg.a, seg.b];
+    el("line", { class: "wall-selected", x1: fmt(a[0]), y1: fmt(a[1]), x2: fmt(b[0]), y2: fmt(b[1]) }, svg);
   }
 
   // Along the wall, 12 px off it on the side the opening opens into: the free wall from each end of
@@ -1058,18 +1691,64 @@ ${STYLE}
           fill: colourAt(map.cls, c.value) }, byRoom.get(c.room));
       }
       for (const i of empty) el("polygon", { class: "no-sensor", points: floor.rooms[i].polygon.map((p) => p.join(",")).join(" ") }, g);
-      // The walls again, over the heat.
-      for (const room of floor.rooms) el("polygon", { class: "wall", points: room.polygon.map((p) => p.join(",")).join(" ") }, g);
+      // The walls again, over the heat (with Wi-Fi on, the wall lines are drawn over every map instead).
+      if (!this._wifiOn) for (const room of floor.rooms) el("polygon", { class: "wall", points: room.polygon.map((p) => p.join(",")).join(" ") }, g);
       this._heatCache = { key, floor, g };
     }
     svg.appendChild(this._heatCache.g);
   }
 
-  // A marker's lines: its readings, or on a map the map's (the shown one first and marked main).
+  // The predicted (or calibrated) Wi-Fi of the floor's rooms, drawn like the heat: a band map in the
+  // dBm ramp, the Serving map in each access point's colour with handover cells hatched, Confidence
+  // in its three fills. Cells are 0.3 m on a narrow card. Kept while the prediction and the map are the same.
+  _drawWifi(svg, floor, map) {
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    const { key, cells, aps } = this._wifi(map.band, step, map.calibrated, map.cls === "confidence");
+    // The rooms drawn (one with `area`), by their index in the plan's floor, which the cells carry.
+    const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId).rooms;
+    const drawn = new Set(floor.rooms.map((r) => r.area_id));
+    const cacheKey = `wifi|${key}|${map.cls}|${[...drawn].join()}`;
+    if (this._heatCache?.key !== cacheKey) {
+      const g = el("g", { class: "heat" });
+      const defs = el("defs", {}, g);
+      const byRoom = new Map();
+      rooms.forEach((room, i) => {
+        if (!drawn.has(room.area_id)) return;
+        const clip = el("clipPath", { id: `fp-room-${i}` }, defs);
+        el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+        byRoom.set(i, el("g", { "clip-path": `url(#fp-room-${i})` }, g));
+      });
+      const serving = map.cls === "serving";
+      const confidence = map.cls === "confidence";
+      const size = step + 0.01;
+      for (const c of cells) {
+        const parent = byRoom.get(c.room);
+        if (!parent) continue;
+        const at = { x: fmt(c.x), y: fmt(c.y), width: size, height: size };
+        const fill = confidence ? CONFIDENCE[c.conf] : serving ? servingColour(aps.indexOf(c.ap)) : colourAt("dbm", c.dbm);
+        el("rect", { ...at, "data-dbm": Math.round(c.dbm), ...(serving ? { "data-ap": c.ap } : {}),
+          ...(confidence ? { "data-conf": c.conf } : {}), fill }, parent);
+        if (serving && isHandover(c)) el("rect", { ...at, class: "handover" }, parent);
+      }
+      this._heatCache = { key: cacheKey, floor, g };
+    }
+    svg.appendChild(this._heatCache.g);
+  }
+
+  // A marker's lines: its readings, or on a map the map's (the shown one first and marked main). On
+  // a radio map an access point lists its bands, a signal source what it reports ("−52 dBm · 2.4 · its
+  // access point", the 24-hour mean once the statistics are in), any other point its readings.
   _lines(point) {
     const map = this._mapNow;
     if (!map || !this._config.values) return this._values(point).map((text) => ({ text, main: false }));
     const h = this._hass;
+    if (map.layer === "radio") {
+      const ap = accessPoints(this._doc).find((a) => a.key === keyOf(point));
+      if (ap) return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
+      const own = this._sourceObs(point);
+      if (own.length) return own.map((o) => ({ text: this._sourceText(o), main: true }));
+      return this._values(point).map((text) => ({ text, main: false }));
+    }
     if (map.cls === "lamps") {
       const lamp = point.device_id && lampOf(h, this._lamps, [point.device_id, ...(point.also || [])]);
       return lamp ? [{ text: lamp.on ? `${lamp.brightness} %` : t(h, "card.floorplan.maps.off"), main: false }] : [];
@@ -1080,6 +1759,14 @@ ${STYLE}
       const value = ids[cls] && this._value(ids[cls], cls, map.layer);
       return value === undefined ? [] : [{ text: formatValue(cls, value), main: cls === map.cls }];
     });
+  }
+
+  // An observation as a label: its dBm with a true minus, its band, its access point's name (— unknown).
+  _sourceText(o) {
+    const h = this._hass;
+    const v = Math.round(o.dbm);
+    return t(h, "card.floorplan.wifi.source", { dbm: `${v < 0 ? "\u2212" : ""}${Math.abs(v)}`, band: this._bandNumber(o.band),
+      ap: o.ap ? pointName(h, this._apPoint(o.ap) ?? { device_id: o.ap }) : "\u2014" });
   }
 
   // Readings only: names would collide once a plan holds many sensors, so they are in the tooltip.
@@ -1096,12 +1783,14 @@ ${STYLE}
     if (!floor || !this._hass) return "";
     const ids = this._config.values ? floor.points.flatMap((p) => pointEntities(p, this._entities)) : [];
     for (const o of floor.openings || []) if (o.entity) ids.push(o.entity);
-    // A map also follows a plant's sensors and the lamps.
-    if (this._map()) {
+    // A map also follows a plant's sensors and the lamps; a Wi-Fi map the signal sensors.
+    const map = this._map();
+    if (map) {
       for (const p of floor.points) {
         ids.push(...Object.values(this._readings(p)));
         if (p.device_id && this._lamps.has(p.device_id)) ids.push(this._lamps.get(p.device_id));
       }
+      if (map.layer === "radio") ids.push(...this._observations().list.filter((o) => o.entity).map((o) => o.entity));
     }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
@@ -1131,6 +1820,15 @@ ${STYLE}
     else if (action === "edit") this._enterEdit();
     else if (action === "cancel") this._leaveEdit(this._base);
     else if (action === "save") return void this._save();
+    else if (action === "survey_here") return void this._takeSample();
+    else if (action === "add_reading") {
+      const panel = this.shadowRoot.querySelector(".reading-panel");
+      const value = (name) => panel?.querySelector(`[data-field="${name}"]`)?.value ?? "";
+      const raw = value("dbm").trim();
+      const next = this._reading && addReading(this._doc, this._floorId,
+        { x: mm(this._reading[0]), y: mm(this._reading[1]), band: value("band"), dbm: raw === "" ? NaN : Number(raw), ap: value("ap") || null });
+      if (this._edit(next)) this._reading = null;
+    }
     else if (action === "tool") {
       this._tool = button.getAttribute("data-tool");
       this._resetPicks();
@@ -1141,11 +1839,31 @@ ${STYLE}
     } else if (action === "swap_hinge") this._edit(swapHinge(this._doc, this._floorId, this._opening));
     else if (action === "swap_side") this._edit(swapSide(this._doc, this._floorId, this._opening));
     else if (action === "fill_wall") this._edit(fillWall(this._doc, this._floorId, this._opening));
+    else if (action === "wall_default") {
+      // The selected wall's material for every wall of its kind without one of its own; its own entry goes.
+      const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
+      const next = seg && setWifiDefault(this._doc, button.getAttribute("data-which"), seg.material);
+      if (this._edit(next)) this._doc = setWallMaterial(next, this._floorId, seg.at, seg.material) ?? next;
+    } else if (action === "ap_offer") {
+      const key = button.getAttribute("data-key");
+      if (button.getAttribute("data-answer") === "yes") this._edit(setAccessPoint(this._doc, this._floorId, key, {}));
+      this._offered.add(key);
+      save(OFFER_KEY, [...this._offered]);
+    }
     else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
       this._maps = { ...this._maps, [this._mapLayer()]: button.getAttribute("data-map") };
       save(MAP_KEY, this._maps);
+    } else if (action === "band") {
+      this._band = button.getAttribute("data-band");
+      save(BAND_KEY, this._band);
+    } else if (action === "calib") {
+      this._calib = button.getAttribute("data-calib");
+      save(CALIB_KEY, this._calib);
+    } else if (action === "ranges") {
+      this._ranges = !this._ranges;
+      save(RANGES_KEY, this._ranges);
     } else if (action === "day") {
       this._day = button.getAttribute("data-day") === "1";
       save(AGG_KEY, this._day);
@@ -1171,8 +1889,28 @@ ${STYLE}
     } else if (e.target.matches?.(".opening-field") && this._opening != null) {
       const field = e.target.getAttribute("data-field");
       const raw = e.target.value;
-      const value = field === "width" ? Number(raw) || "" : field === "sliding" ? raw === "true" : raw;
-      this._edit(setOpening(this._doc, this._floorId, this._opening, { [field]: value }));
+      if (field === "material") this._edit(setOpeningMaterial(this._doc, this._floorId, this._opening, raw));
+      else {
+        const value = field === "width" ? Number(raw) || "" : field === "sliding" ? raw === "true" : raw;
+        const next = setOpening(this._doc, this._floorId, this._opening, { [field]: value });
+        // A new kind sheds a material it cannot have (wood on a window, any on a doorway).
+        const o = next?.floors.find((f) => f.floor_id === this._floorId).openings[this._opening];
+        const fits = !o?.material || !!setOpeningMaterial(next, this._floorId, this._opening, o.material);
+        this._edit(fits ? next : setOpeningMaterial(next, this._floorId, this._opening, null));
+      }
+      this._render();
+    } else if (e.target.matches?.(".wall-field")) {
+      const field = e.target.getAttribute("data-field");
+      const raw = e.target.value;
+      if (field === "outdoor") this._edit(setOutdoor(this._doc, e.target.getAttribute("data-area"), e.target.checked));
+      else if (field === "wall" || field === "half") {
+        const seg = this._wall && wallSegmentAt(this._floor, this._doc.wifi, this._wall, PICK_PX * this._px());
+        if (seg && field === "wall") this._edit(setWallMaterial(this._doc, this._floorId, seg.at, raw || null));
+        else if (seg) this._edit(setWallHeight(this._doc, this._floorId, seg.at, e.target.checked));
+      } else this._edit(setFloorWifi(this._doc, this._floorId, { [field]: field === "height" ? (raw === "" ? null : Number(raw)) : raw }));
+      this._render();
+    } else if (e.target.matches?.(".ap-field") && this._picked) {
+      this._edit(this._apChange(e.target));
       this._render();
     } else if (e.target.matches?.("select.category") && this._picked) {
       const own = this._cands?.get(this._picked)?.category ?? null;
@@ -1181,17 +1919,56 @@ ${STYLE}
     }
   }
 
+  // The picked point's access point after a change of one of its fields; null when refused.
+  _apChange(input) {
+    const key = this._picked;
+    const field = input.getAttribute("data-field");
+    const band = input.getAttribute("data-band");
+    const num = (raw) => (raw === "" ? null : Number(raw));
+    if (field === "ap") return setAccessPoint(this._doc, this._floorId, key, input.checked ? {} : null);
+    const ap = this._floor.access_points?.find((a) => (a.device_id ?? a.entity_id) === key);
+    if (!ap) return null;
+    if (field === "ap_band") {
+      return setAccessPoint(this._doc, this._floorId, key, { bands: input.checked ? [...ap.bands, band] : ap.bands.filter((b) => b !== band) });
+    }
+    if (field === "ap_tx") return setAccessPoint(this._doc, this._floorId, key, { tx: { [band]: num(input.value) } });
+    return setAccessPoint(this._doc, this._floorId, key, { mount: num(input.value) });
+  }
+
   _enterEdit() {
     this._mode = "edit";
     this._tool = "move";
     this._say(null);
     this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
+    this._loadDisabled();
   }
 
   _leaveEdit(doc) {
     this._mode = "view";
     this._doc = doc;
+    this._disabled = null;
+    this._editSession++;
     this._resetPicks();
+  }
+
+  // The plan's switched-off Wi-Fi signal sensors, read once per edit session: config/entity_registry/list
+  // is an admin call, so view mode and a kiosk user never make it.
+  async _loadDisabled() {
+    const h = this._hass;
+    this._disabled = null;
+    // Only a plan with an access point has Wi-Fi maps to calibrate.
+    if (!this._wifiOn || !h?.user?.is_admin || !this._doc.floors.some((f) => f.access_points?.length)) return;
+    const session = ++this._editSession;
+    let entries;
+    try {
+      entries = await h.callWS({ type: "config/entity_registry/list" });
+    } catch {
+      return;
+    }
+    if (session !== this._editSession || this._mode !== "edit") return;
+    const keys = new Set(this._doc.floors.flatMap((f) => (f.points || []).map(keyOf)));
+    this._disabled = disabledSignalEntities(this._hass, entries, wifiRules, keys);
+    if (this._disabled.length) this._render();
   }
 
   _resetPicks() {
@@ -1201,6 +1978,8 @@ ${STYLE}
     this._openCluster = null;
     this._pendingSplit = null;
     this._opening = null;
+    this._wall = null;
+    this._reading = null;
   }
 
   // Apply a refusable edit: a refused one leaves the plan as it was and says so.
@@ -1492,7 +2271,9 @@ ${STYLE}
     } else if (d.kind === "point") {
       this._doc = movePoint(this._doc, this._floorId, d.key, this._inRooms(this._at(e))) ?? this._doc;
     } else if (d.kind === "opening") {
-      this._doc = moveOpening(this._doc, this._floorId, d.index, this._at(e), PICK_PX * 3 * this._px()) ?? this._doc;
+      const tol = PICK_PX * 3 * this._px();
+      const moved = moveOpening(this._doc, this._floorId, d.index, this._onWall(this._at(e), tol), tol);
+      this._doc = (moved && this._pairRooms(moved, d.index)) ?? this._doc;
     } else if (d.kind === "corner") {
       this._doc = moveCorner(this._doc, this._floorId, d.area, d.index, this._at(e)) ?? this._doc;
     } else {      // a tray item or group is dropped on pointerup; until then a ghost shows where
@@ -1537,6 +2318,12 @@ ${STYLE}
       // A tap selects it (on the pointerdown); a drag has slid it along the walls.
     } else if (d.kind === "point" && !d.moved) {
       // A tap picks the point: its distances to the walls and its category show.
+    } else if (d.kind === "pan" && !d.moved && this._mode !== "edit" && this._config.survey) {
+      // The survey page: a tap inside a room is where the owner stands.
+      const pt = this._at(e);
+      if (!this._floor?.rooms.some((r) => pointInPolygon(pt, r.polygon))) return;
+      this._spot = pt;
+      this._surveyNote = null;
     } else if (d.kind === "pan" && !d.moved && this._mode !== "edit") {
       // A finger's tap on a marker shows its tooltip until the next tap elsewhere; that tap only
       // closes it (it opens no room).
@@ -1582,11 +2369,16 @@ ${STYLE}
         if (a !== b) this._edit(openRooms(this._doc, this._floorId, a, b));
       }
     } else if (this._tool === "openings") {
-      const next = addOpening(this._doc, this._floorId, pt, PICK_PX * this._px());
+      const placed = addOpening(this._doc, this._floorId, this._onWall(pt, PICK_PX * this._px()), PICK_PX * this._px());
+      const next = placed && this._pairRooms(placed, (placed.floors.find((f) => f.floor_id === this._floorId).openings.length - 1));
       if (next) {
         this._edit(next);
         this._opening = this._floor.openings.length - 1;
       } else this._opening = null;
+    } else if (this._tool === "reading") {
+      this._reading = this._floor.rooms.some((r) => pointInPolygon(pt, r.polygon)) ? pt : null;
+    } else if (this._tool === "walls") {
+      this._wall = wallSegmentAt(this._floor, this._doc.wifi, pt, PICK_PX * this._px())?.at ?? null;
     } else if (this._tool === "split") {
       const wall = nearestWall(this._floor, pt, PICK_PX * this._px());
       if (!wall) return;

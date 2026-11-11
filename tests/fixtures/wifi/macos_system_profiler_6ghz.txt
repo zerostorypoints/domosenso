@@ -1,0 +1,20 @@
+Wi-Fi:
+
+      Interfaces:
+        en0:
+          Status: Connected
+          Current Network Information:
+            <redacted>:
+              PHY Mode: 802.11ax
+              Channel: 69 (6GHz, 160MHz)
+              Country Code: CH
+              Network Type: Infrastructure
+              Security: WPA3 Personal
+              Signal / Noise: -43 dBm / -92 dBm
+              Transmit Rate: 0
+              MCS Index: 9
+          Other Local Wi-Fi Networks:
+            <redacted>:
+              PHY Mode: 802.11ac
+              Channel: 100 (5GHz, 80MHz)
+              Signal / Noise: -70 dBm / -92 dBm

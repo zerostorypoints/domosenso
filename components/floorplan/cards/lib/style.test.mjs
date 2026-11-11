@@ -12,3 +12,12 @@ test("every class the card draws has a rule in the stylesheet", () => {
   const missing = drawn.filter((name) => !new RegExp(`\\.${name}(?![a-z-])`).test(STYLE));
   assert.deepEqual(missing, []);
 });
+
+// A halo on svg text is a stroke in the plan's metres (vector-effect does not reach text): its width is an
+// attribute scaled by the card (3 px), never a CSS width, which would be read as metres and override it.
+test("no text halo has a CSS stroke width", () => {
+  for (const name of ["range-name", "sample-label"]) {
+    const rule = STYLE.match(new RegExp(`\\.${name} \\{[^}]*\\}`))[0];
+    assert.ok(!/stroke-width/.test(rule), rule);
+  }
+});

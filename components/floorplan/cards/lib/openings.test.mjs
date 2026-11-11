@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  openingState, openingShape, wallAt, addOpening, moveOpening, setOpening, removeOpening, openingSensors,
+  openingState, toOutdoorRoom, openingShape, wallAt, addOpening, moveOpening, setOpening, removeOpening, openingSensors,
   linkedSpots, widthOf, styleOf, wallSpan, swapHinge, swapSide, fillWall,
 } from "./openings.js";
 
@@ -22,6 +22,23 @@ test("without a sensor: open between rooms, closed to the outside, unless state 
   assert.equal(openingState({ rooms: ["a", null] }, {}).open, false);
   assert.equal(openingState({ rooms: ["a", "b"], state: "closed" }, {}).open, false);
   assert.equal(openingState({ kind: "opening", rooms: ["a", "b"], state: "closed" }, {}).open, true);
+});
+
+test("an opening between an indoor and an outdoor room defaults closed; its state or a live sensor wins", () => {
+  const out = ["balcony"];
+  assert.equal(openingState({ rooms: ["living", "balcony"] }, {}, out).open, false);
+  assert.equal(openingState({ kind: "window", rooms: ["balcony", "living"] }, {}, out).open, false);
+  assert.equal(openingState({ rooms: ["living", "balcony"] }, {}).open, true, "unmarked: open between rooms");
+  assert.equal(openingState({ rooms: ["living", "hall"] }, {}, out).open, true, "indoor to indoor: open");
+  assert.equal(openingState({ rooms: ["balcony", "terrace"] }, {}, ["balcony", "terrace"]).open, true, "outdoor to outdoor: open");
+  assert.equal(openingState({ rooms: ["living", "balcony"], state: "open" }, {}, out).open, true);
+  const o = { rooms: ["living", "balcony"], entity: "binary_sensor.balcony" };
+  const hass = (state) => ({ states: { [o.entity]: { state, attributes: {} } } });
+  assert.deepEqual(openingState(o, hass("on"), out), { open: true, linked: true, known: true });
+  assert.deepEqual(openingState(o, {}, out), { open: false, linked: true, known: false }, "unanswered: the default");
+  assert.equal(openingState({ kind: "opening", rooms: ["living", "balcony"] }, {}, out).open, true, "a doorway");
+  assert.equal(toOutdoorRoom({ rooms: ["living", "balcony"] }, out), true);
+  assert.equal(toOutdoorRoom({ rooms: ["living", null] }, out), false);
 });
 
 test("a linked sensor gives the live state; an unanswered one falls back and is unknown", () => {
