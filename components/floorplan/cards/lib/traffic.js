@@ -64,7 +64,7 @@ function match(hass, mac, ownDevice, points) {
 
 // One record per client tracker (state `home`, a known link) of the rules' integrations, newest tracker
 // per MAC. `live` and `reason` say whether the router's data is current: if not, every client is stale.
-export function clients(hass, doc, rules, now = Date.now()) {
+export function clients(hass, doc, rules, now = Date.now(), ix = null) {
   const aps = accessPoints(doc).map((a) => a.key);
   const points = planPoints(doc);
   const byMacMap = new Map();
@@ -93,7 +93,7 @@ export function clients(hass, doc, rules, now = Date.now()) {
       byMacMap.set(mac, {
         seenMs,
         record: {
-          mac, name: a.friendly_name ?? id, ap: aps.find((key) => nodeMacs(hass, key, rule).includes(node)) ?? null, link,
+          mac, name: a.friendly_name ?? id, ap: aps.find((key) => nodeMacs(hass, key, rule, ix).includes(node)) ?? null, link,
           down: round2(down), up: round2(up), total: round2(down + up),
           ...match(hass, mac, hass.entities[id].device_id ?? null, points),
           stale: !!fresh.reason, updated: new Date(seenMs),
@@ -137,13 +137,17 @@ export function apTotals(list) {
   return out;
 }
 
+export const HEAT_SIGMA_M = 1; // m: a point's heat falls off as a Gaussian of this sigma...
+export const HEAT_CUT_M = 3;    // ...and is cut at this distance
+
 // The heat on this floor on one global `step` lattice: [{x, y, value}] sorted by x then y, x and y the cell's
-// lower corner. Every contribution is keyed by the lattice cell holding its centre, because `coverage`
-// anchors each room's cells at that room's own bounding box, so its cells and a point's would otherwise
-// land on different lattices. A placed client, or a wired one at its access point, lands in the cell holding
-// that point; an unplaced Wi-Fi client spreads its total evenly over its access point's serving cells of its
-// band, or, with none, over the cells of the room the access point sits in. `pointAt(point) -> [x, y]|null`
-// and `apAt(key) -> {x, y, floorId, roomIndex}|null` are the card's; another floor gives nothing here.
+// lower corner (SPEC-047 Amendment 2). Every contribution is keyed by the lattice cell holding its centre,
+// because `coverage` anchors each room's cells at that room's own bounding box, so its cells and a point's
+// would otherwise land on different lattices. A placed client, or a wired one at its access point, paints
+// `total * exp(-d^2 / 2 sigma^2)` on each cell whose centre is within HEAT_CUT_M of the point; an unplaced
+// Wi-Fi client paints its full total on each of its access point's serving cells of its band, or, with none,
+// on each cell of the room the access point sits in. Cells sum. `pointAt(point) -> [x, y]|null` and
+// `apAt(key) -> {x, y, floorId, roomIndex}|null` are the card's; another floor gives nothing here.
 export function heatCells(list, floor, servingByBand, pointAt, apAt, step) {
   const q = (v) => Math.round(v * 1e6) / 1e6;
   const idx = (centre) => Math.floor(centre / step + 1e-9); // the epsilon keeps 0.45/0.15 on its own side
@@ -153,23 +157,33 @@ export function heatCells(list, floor, servingByBand, pointAt, apAt, step) {
     const e = sums.get(k);
     if (e) e.value += v; else sums.set(k, { x: q(i * step), y: q(j * step), value: v });
   };
+  const paint = ([px, py], total) => {
+    for (let i = idx(px - HEAT_CUT_M) - 1; (i + 0.5) * step <= px + HEAT_CUT_M; i++) {
+      for (let j = idx(py - HEAT_CUT_M) - 1; (j + 0.5) * step <= py + HEAT_CUT_M; j++) {
+        const d2 = ((i + 0.5) * step - px) ** 2 + ((j + 0.5) * step - py) ** 2;
+        if (d2 <= HEAT_CUT_M ** 2) add(i, j, total * Math.exp(-d2 / (2 * HEAT_SIGMA_M ** 2)));
+      }
+    }
+  };
   for (const c of list) {
     if (c.point) {
       const xy = pointAt(c.point);
-      if (xy) add(idx(xy[0]), idx(xy[1]), c.total);
+      if (xy) paint(xy, c.total);
       continue;
     }
     if (!c.ap) continue;
     const ap = apAt(c.ap);
     if (c.link === "wired") {
-      if (ap && ap.floorId === floor.floor_id) add(idx(ap.x), idx(ap.y), c.total);
+      if (ap && ap.floorId === floor.floor_id) paint([ap.x, ap.y], c.total);
       continue;
     }
     let centres = (servingByBand[c.link] || []).filter((cell) => cell.ap === c.ap).map((cell) => [cell.x + step / 2, cell.y + step / 2]);
     if (!centres.length && ap && ap.floorId === floor.floor_id && ap.roomIndex != null) {
       centres = roomCentres(floor.rooms?.[ap.roomIndex]?.polygon, step);
     }
-    for (const [cx, cy] of centres) add(idx(cx), idx(cy), c.total / centres.length);
+    // Two centres can fall in one lattice cell (rooms anchor their grids apart): a client paints a cell once.
+    const cells = new Map(centres.map(([cx, cy]) => [`${idx(cx)}|${idx(cy)}`, [idx(cx), idx(cy)]]));
+    for (const [i, j] of cells.values()) add(i, j, c.total);
   }
   return [...sums.values()].sort((a, b) => a.x - b.x || a.y - b.y);
 }

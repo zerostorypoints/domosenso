@@ -2074,23 +2074,23 @@ test("traffic heat draws cells coloured on the mbps scale", async () => {
   const cells = trafficCells(card);
   assert.ok(cells.length > 0);
   assert.ok(cells.every((c) => c.getAttribute("fill") === colourAt("mbps", Number(c.getAttribute("data-mbps")))));
-  const wired = cells.find((c) => Number(c.getAttribute("data-mbps")) === 100);
-  assert.ok(wired, "the wired client's 100 Mbit/s in the cell of its access point");
-  assert.ok(Number(wired.getAttribute("x")) < 6.5 && Number(wired.getAttribute("x")) + 0.16 > 6.5);
-  assert.ok($(card, ".heat [filter]"), "blurred");
+  const wired = cells.reduce((a, c) => (Number(c.getAttribute("data-mbps")) > Number(a.getAttribute("data-mbps")) ? c : a));
+  assert.ok(Number(wired.getAttribute("data-mbps")) > 99 && Number(wired.getAttribute("data-mbps")) <= 100, "the wired client's 100 Mbit/s at its access point");
+  assert.ok(Math.abs(Number(wired.getAttribute("x")) + 0.075 - 6.5) < 0.1);
+  assert.ok(!$(card, ".heat [filter]"), "no blur: the heat paints");
   assert.ok(!$(card, ".banner"), "live: no banner");
   assert.ok(!$(card, '.bar [data-action="calib"]') && !$(card, '.bar [data-action="ranges"]'), "no Wi-Fi-only switches");
   window.localStorage.clear();
 });
 
-test("not live: banner with the time, no heat cells, devices grey", async () => {
+test("not live: banner with the time as HH:MM, no heat cells", async () => {
   window.localStorage.clear();
   const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass({ updatedAgoS: 3600 }));
   await settle();
   click($(card, '.bar [data-map="traffic_heat"]'));
   assert.equal(trafficCells(card).length, 0);
   const banner = $(card, ".banner");
-  assert.ok(banner && !banner.textContent.includes("{time}") && banner.textContent.startsWith("Router data from "), banner?.textContent);
+  assert.ok(banner && !banner.textContent.includes("{time}") && /^Router data from \d\d:\d\d, not live$/.test(banner.textContent), banner?.textContent);
   window.localStorage.clear();
 });
 
@@ -2117,7 +2117,7 @@ test("a tracker's rate change redraws the heat, at most once a second", async ()
     const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
     await settle();
     click($(card, '.bar [data-map="traffic_heat"]'));
-    const peak = () => Math.max(...trafficCells(card).map((c) => Number(c.getAttribute("data-mbps"))));
+    const peak = () => Math.round(Math.max(...trafficCells(card).map((c) => Number(c.getAttribute("data-mbps")))) / 10) * 10;
     assert.equal(peak(), 100);
     const next = (down) => ({ ...hass, states: { ...hass.states,
       "device_tracker.nas": { ...hass.states["device_tracker.nas"], attributes: { ...hass.states["device_tracker.nas"].attributes, down_kilobytes_per_s: down } } } });
@@ -2137,8 +2137,90 @@ test("legend: 0.1 to 1000 Mbit/s with marks 1, 10, 100", async () => {
   await settle();
   click($(card, '.bar [data-map="traffic_heat"]'));
   const legend = $(card, ".bar .legend");
-  assert.ok(legend.textContent.includes("0.10 Mbit/s") && legend.textContent.includes("1000.00 Mbit/s"), legend.textContent);
+  assert.ok(legend.textContent.includes("0.1 Mbit/s") && legend.textContent.includes("1000 Mbit/s"), legend.textContent);
   assert.deepEqual([...legend.querySelectorAll(".mark")].map((m) => m.getAttribute("data-mark")), ["1", "10", "100"]);
+  window.localStorage.clear();
+});
+
+test("not live with no update time: the banner reads a dash", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  delete hass.entities["sensor.router_client_last_successful_update"];
+  delete hass.states["sensor.router_client_last_successful_update"];
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  assert.equal($(card, ".banner").textContent, "Router data from \u2014, not live");
+  window.localStorage.clear();
+});
+
+test("an unplaced Wi-Fi client paints its full total over its access point's serving cells of its band", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  hass.states["device_tracker.nas"] = { ...hass.states["device_tracker.nas"], attributes: { ...hass.states["device_tracker.nas"].attributes, down_kilobytes_per_s: 0 } };
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  const serving = card._wifi("5", 0.15, false).cells.filter((c) => c.ap === "d_mesh2");
+  const painted = trafficCells(card).filter((c) => Number(c.getAttribute("data-mbps")) > 0);
+  assert.ok(serving.length > 20);
+  assert.ok(painted.every((c) => Number(c.getAttribute("data-mbps")) === 10), "10 Mbit/s on each cell, not divided");
+  assert.ok(Math.abs(painted.length - serving.length) <= 2, `${painted.length} cells for ${serving.length} serving cells`);
+  window.localStorage.clear();
+});
+
+test("a throttled heat is rebuilt once the second is up, with the last update", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  const peak = () => Math.round(Math.max(...trafficCells(card).map((c) => Number(c.getAttribute("data-mbps")))) / 10) * 10;
+  const next = (down) => ({ ...hass, states: { ...hass.states,
+    "device_tracker.nas": { ...hass.states["device_tracker.nas"], attributes: { ...hass.states["device_tracker.nas"].attributes, down_kilobytes_per_s: down } } } });
+  card.hass = next(25000);
+  await new Promise((r) => setTimeout(r, 200));
+  card.hass = next(50000);
+  assert.equal(peak(), 100, "throttled");
+  await new Promise((r) => setTimeout(r, 1100));
+  assert.equal(peak(), 400, "the second update shows without a further hass");
+  window.localStorage.clear();
+});
+
+test("clients() is not read again for an update that changes no tracker", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  let reads = 0;
+  const read = card._readClients.bind(card);
+  card._readClients = () => { reads += 1; return read(); };
+  card.hass = { ...hass, states: { ...hass.states, "light.lamp": { state: "off", attributes: {} } } };
+  card.hass = { ...hass, states: { ...hass.states, "light.lamp": { state: "on", attributes: {} } } };
+  assert.equal(reads, 0);
+  card.hass = { ...hass, states: { ...hass.states, "device_tracker.nas": { ...hass.states["device_tracker.nas"] } } };
+  assert.equal(reads, 1, "a tracker's state object changed");
+  window.localStorage.clear();
+});
+
+test("a router gone silent shows the banner without any state change, on the router's interval", async () => {
+  window.localStorage.clear();
+  const { mock } = await import("node:test");
+  mock.timers.enable({ apis: ["setInterval", "Date"], now: Date.now() });
+  try {
+    const hass = trafficHass({ updatedAgoS: 5 });
+    const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+    await settle();
+    click($(card, '.bar [data-map="traffic_heat"]'));
+    assert.ok(!$(card, ".banner"));
+    mock.timers.tick(30000);
+    assert.ok(!$(card, ".banner"), "35 s old: still live");
+    mock.timers.tick(90000);
+    assert.ok($(card, ".banner"), "125 s old with no update: not live");
+    click($(card, '.bar [data-map="wifi_5"]'));
+    assert.equal(card._tickMs, 0, "another map: no timer");
+  } finally { mock.timers.reset(); }
   window.localStorage.clear();
 });
 

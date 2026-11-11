@@ -133,15 +133,16 @@ documentation); a link holds until the phone rotates it.
 - **Scale**, the same for every home: logarithmic, 0.1 to 1000 Mbit/s, marks at 1, 10 and 100. A
   client's value is `total` (down + up).
 - **Traffic heat:**
-  - a client with a point: its `total` at the point;
-  - a Wi-Fi client without a point: its `total` spread evenly over the cells its `ap` serves on its
-    band (SPEC-044's serving pick, calibrated when calibrated); a plan without access points'
-    bands, or a band the access point does not serve, falls back to the cells of the room its
-    access point stands in;
-  - a wired client without a point: its `total` at its access point;
+  - a client with a point: its `total` at the point, with a Gaussian fall-off (σ = 1 m, cut at 3 m)
+    on the cells around it;
+  - a Wi-Fi client without a point: its full `total` on each cell its `ap` serves on its band
+    (SPEC-044's serving pick, calibrated when calibrated); a plan without access points' bands, or a
+    band the access point does not serve, falls back to each cell of the room its access point
+    stands in;
+  - a wired client without a point: its `total` at its access point, with the same fall-off;
   - a client whose `ap` is `null`: left out;
-  - cells sum their clients, blurred over 1 m, drawn with the scale's colours. Access points as
-    markers without numbers.
+  - cells sum their clients, drawn with the scale's colours, no blur. Access points as markers
+    without numbers.
 - **Traffic links:**
   - each access point labelled with the sum of its clients' `total` and their count;
   - each client a dot joined to its access point: solid line wired, dashed Wi-Fi, colour by band
@@ -246,3 +247,7 @@ A `network` component, taking over `lib/traffic.js` with its tests:
 ## Amendment 1 (per-client staleness dropped, 2026-11-11)
 
 Verified on a live `tplink_deco` (2026-11-11): with the router's `client_last_successful_update` 17 s old, three idle clients' trackers had not been written for 35 minutes; the integration does not rewrite every tracker on each poll. A client is therefore stale exactly when the router's data is not live; the per-tracker 3 × `interval_s` rule of **Freshness** is withdrawn. A client's `updated` stays, shown in the tap panel.
+
+## Amendment 2 (heat paints, it does not divide, 2026-11-11)
+
+Spreading a client's total evenly over its serving cells put typical rates below the scale's 0.1 Mbit/s floor, and a 1 m blur of a single 0.15 m cell left about 0.4 % of its value at the spot: neither showed where traffic is. A spread client now paints its full total on each serving cell of its band (room fallback likewise); a placed client, or a wired one at its access point, paints its total with a Gaussian fall-off (σ = 1 m, cut at 3 m); cells sum. The heat reads as traffic intensity per place; no blur is applied.

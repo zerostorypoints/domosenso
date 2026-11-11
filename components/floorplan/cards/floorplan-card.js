@@ -94,7 +94,7 @@ const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around a
 const NARROW_PX = 600;             // a card narrower than this (a phone) predicts Wi-Fi on coarser cells
 const NARROW_STEP_M = 0.3;
 const TRAFFIC_MS = 1000;           // the traffic heat is rebuilt at most this often
-const TRAFFIC_BLUR_M = 1;          // the traffic heat is blurred by a metre (the plan is in metres)
+const TRAFFIC_BUCKET_MS = 5000;    // the clients are read again at least this often: staleness moves with the clock
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
 const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
@@ -184,6 +184,10 @@ class FloorplanCard extends HTMLElement {
     this._heatCache = null;
     this._trafficCache = null;     // the last traffic heat group {key, at, g}, kept for a second
     this._trafficMemo = null;
+    this._trafficIdsMemo = null;
+    this._trafficTimer = null;     // the one pending rebuild of a throttled heat
+    this._tickTimer = null;        // re-checks the stamp while a traffic map is shown
+    this._tickMs = 0;
     this._band = load(BAND_KEY, null);             // the Serving map's band, while some access point serves it
     this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
     this._wifiKey = null;          // the last cache key and what it was computed from
@@ -274,6 +278,11 @@ class FloorplanCard extends HTMLElement {
     // would come back over a plan the person has not touched since.
     if (this._pinned) this._unpinTip();
     this._stopPolling();
+    clearTimeout(this._trafficTimer);
+    clearInterval(this._tickTimer);
+    this._trafficTimer = null;
+    this._tickTimer = null;
+    this._tickMs = 0;
   }
 
   // `fill`: as tall as the screen below the card's top; true when the height changed.
@@ -299,6 +308,10 @@ class FloorplanCard extends HTMLElement {
     // hass is set for every state change in Home Assistant: redraw only what changed. A new reading
     // redraws the plan alone, so a half-typed area name or an open select survives it.
     this._wantStats();
+    this._refresh();
+  }
+
+  _refresh() {
     const stamp = this._valueStamp();
     if (stamp === this._stamp) return;
     if (stamp.split("\n")[0] !== this._stamp?.split("\n")[0]) this._render();
@@ -386,18 +399,42 @@ class FloorplanCard extends HTMLElement {
 
   // The traffic maps are offered when the router integration of a traffic rule has client trackers (SPEC-047).
   _trafficOffered() {
-    return this._config.traffic !== false && trafficRules(wifiRules).length > 0 && this._obsIndex?.trackers.length > 0;
+    return this._config.traffic !== false && this._trafficIds().trackers.length > 0;
   }
 
-  // The router's clients (traffic.js), worked out again when the registries, the states, the plan or the
-  // second change; a method of its own so one redraw reads them once.
+  // The entities `clients()` reads, by the registries: the client trackers of the traffic rules' integrations
+  // and the router's freshness sensor and polling switch.
+  _trafficIds() {
+    const h = this._hass;
+    const m = this._trafficIdsMemo;
+    if (m && m.entities === h.entities) return m;
+    const rules = trafficRules(wifiRules);
+    const platforms = new Set(rules.map((r) => r.integration));
+    const suffixes = rules.flatMap((r) => [r.traffic.freshness?.updated, r.traffic.freshness?.polling]).filter(Boolean);
+    const ids = Object.keys(h.entities || {}).filter((id) => platforms.has(h.entities[id].platform));
+    const trackers = ids.filter((id) => id.startsWith("device_tracker."));
+    const fresh = ids.filter((id) => /^(sensor|switch)\./.test(id) && suffixes.some((x) => id.endsWith(x)));
+    this._trafficIdsMemo = { entities: h.entities, trackers, watched: [...trackers, ...fresh] };
+    return this._trafficIdsMemo;
+  }
+
+  // The router's clients (traffic.js), worked out again only when the registries, the plan, the states of
+  // the trackers and freshness entities or the clock's tick change: not for any other state.
   _traffic() {
+    const h = this._hass;
+    const { watched } = this._trafficIds();
     const m = this._trafficMemo;
-    const second = Math.floor(Date.now() / 1000);
-    if (m && m.hass === this._hass && m.doc === this._doc && m.second === second) return m.out;
-    const out = clients(this._hass, this._doc, wifiRules);
-    this._trafficMemo = { hass: this._hass, doc: this._doc, second, out };
+    const tick = Math.floor(Date.now() / TRAFFIC_BUCKET_MS);
+    if (m && m.entities === h.entities && m.devices === h.devices && m.doc === this._doc && m.tick === tick
+      && watched.every((id, i) => h.states?.[id] === m.states[i])) return m.out;
+    const out = this._readClients();
+    this._trafficMemo = { entities: h.entities, devices: h.devices, doc: this._doc, tick, states: watched.map((id) => h.states?.[id]), out };
     return out;
+  }
+
+  // The reading itself: a method of its own, so a test counts the runs.
+  _readClients() {
+    return clients(this._hass, this._doc, wifiRules, Date.now(), this._obsIndex);
   }
 
   // The open or closed state of every opening with a sensor: live state the cache keys leave out.
@@ -834,10 +871,10 @@ ${STYLE}
     const s = SCALES.mbps;
     const at = (v) => fmt((Math.log10(v / s.lo) / Math.log10(s.hi / s.lo)) * 100);
     return `<span class="legend" title="${esc(`${t(h, `card.floorplan.maps.${map.cls}`)}, ${t(h, "card.floorplan.traffic.legend")}`)}">`
-      + `<span>${esc(formatValue("mbps", s.lo))}</span>`
+      + `<span>${esc(`${s.lo} ${s.unit}`)}</span>`
       + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})">${s.marks.map((m) =>
         `<span class="mark" data-mark="${m}" style="left: ${at(m)}%"></span>`).join("")}</span>`
-      + `<span>${esc(formatValue("mbps", s.hi))}</span></span>`;
+      + `<span>${esc(`${s.hi} ${s.unit}`)}</span></span>`;
   }
 
   // A band map: the dBm scale with its marks (with Ranges each access point's colour and the outlines'
@@ -1145,6 +1182,7 @@ ${STYLE}
     const names = [];       // where each room's name is, for readings to keep clear of
     const map = this._map();
     this._mapNow = map;
+    this._syncTick(map);
     this._drawContext(svg, px);
     for (const room of floor.rooms) {
       const cls = ["room"];
@@ -1781,27 +1819,45 @@ ${STYLE}
     svg.appendChild(this._heatCache.g);
   }
 
-  // The traffic maps (SPEC-047). The heat: each cell of heatCells() on the global lattice, blurred by a metre,
-  // the blur clipped to the drawn rooms. Rebuilt at most once a second; kept while the router's data is not
+  // The traffic maps (SPEC-047). The heat: each cell of heatCells() on the global lattice,
+  // clipped to the drawn rooms. Rebuilt at most once a second; kept while the router's data is not
   // live (the banner says so). The links map draws no layer of its own here.
   _drawTraffic(svg, floor, map) {
     if (map.cls !== "traffic_heat" || !map.traffic.live) return;
     const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
-    const rooms = floor.rooms;
-    const key = JSON.stringify([this._floorId, rooms.map((r) => r.area_id)]);
+    // Serving cells as the Serving map has them: calibrated once there are readings, unless Predicted is chosen.
+    const calibrated = this._observations().list.length > 0 && this._calib !== "predicted";
+    const key = JSON.stringify([this._floorId, floor.rooms.map((r) => r.area_id), step, calibrated]);
     const kept = this._trafficCache;
-    if (!kept || kept.key !== key || kept.doc !== this._doc || Date.now() - kept.at >= TRAFFIC_MS) {
-      this._trafficCache = { key, doc: this._doc, at: Date.now(), g: this._trafficHeat(floor, map, step) };
+    const age = kept ? Date.now() - kept.at : Infinity;
+    if (!kept || kept.key !== key || kept.doc !== this._doc || age >= TRAFFIC_MS) {
+      this._trafficCache = { key, doc: this._doc, at: Date.now(), g: this._trafficHeat(floor, map, step, calibrated), list: map.traffic.list };
+    } else if (kept.list !== map.traffic.list && !this._trafficTimer) {
+      // Throttled: one rebuild when the second is up, so the last change is not left unseen.
+      this._trafficTimer = setTimeout(() => {
+        this._trafficTimer = null;
+        this._drawSvg(this._status === "ready" && this._mode === "edit");
+      }, TRAFFIC_MS - age);
+      this._trafficTimer.unref?.();
     }
     svg.appendChild(this._trafficCache.g);
   }
 
-  _trafficHeat(floor, map, step) {
+  // While a traffic map is shown the stamp is checked every `interval_s` of the router, so a router that
+  // goes silent shows its banner without any state change.
+  _syncTick(map) {
+    const want = map && TRAFFIC_MAPS.includes(map.cls) ? (trafficRules(wifiRules)[0]?.traffic.freshness?.interval_s ?? 30) * 1000 : 0;
+    if (want === this._tickMs) return;
+    clearInterval(this._tickTimer);
+    this._tickMs = want;
+    this._tickTimer = want ? setInterval(() => this._refresh(), want) : null;
+    this._tickTimer?.unref?.();
+  }
+
+  _trafficHeat(floor, map, step, calibrated) {
     const full = this._doc.floors.find((f) => f.floor_id === this._floorId);
     const list = map.traffic.list;
     // Serving cells for the bands some unplaced Wi-Fi client uses, as the Serving map has them.
-    const observed = this._observations().list.length > 0;
-    const calibrated = observed && this._calib !== "predicted";
     const bands = offeredBands(this._doc);
     const serving = {};
     for (const c of list) {
@@ -1827,12 +1883,10 @@ ${STYLE}
     const defs = el("defs", {}, g);
     const clip = el("clipPath", { id: "fp-traffic-clip" }, defs);
     for (const room of floor.rooms) el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
-    const blur = el("filter", { id: "fp-traffic-blur", x: "-20%", y: "-20%", width: "140%", height: "140%" }, defs);
-    el("feGaussianBlur", { stdDeviation: TRAFFIC_BLUR_M }, blur);
     const clipped = el("g", { "clip-path": "url(#fp-traffic-clip)" }, g);
-    const inner = el("g", { filter: "url(#fp-traffic-blur)" }, clipped);
+    const inner = clipped;
     for (const c of cells) {
-      el("rect", { x: fmt(c.x), y: fmt(c.y), width: step, height: step, "data-mbps": Math.round(c.value * 100) / 100,
+      el("rect", { x: fmt(c.x), y: fmt(c.y), width: step, height: step, "data-mbps": Math.round(c.value * 1e6) / 1e6,
         fill: colourAt("mbps", c.value) }, inner);
     }
     return g;
@@ -1889,6 +1943,7 @@ ${STYLE}
     // A map also follows a plant's sensors and the lamps; a Wi-Fi map the signal sensors.
     const map = this._map();
     let traffic = "";
+    let liveness = "";     // the banner is in the bar: a change of it is a full render
     if (map) {
       for (const p of floor.points) {
         ids.push(...Object.values(this._readings(p)));
@@ -1898,14 +1953,15 @@ ${STYLE}
       // A traffic map follows the router's clients: their rates, links and nodes, and whether it is live.
       if (TRAFFIC_MAPS.includes(map.cls)) {
         const { list, reason, updated } = this._traffic();
-        traffic = JSON.stringify([reason, updated?.getTime(), list.map((c) => [c.mac, c.down, c.up, c.link, c.ap, c.stale])]);
+        traffic = JSON.stringify([updated?.getTime(), list.map((c) => [c.mac, c.down, c.up, c.link, c.ap, c.stale])]);
+        liveness = reason;
       }
     }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
     // name with a newline on that first line.
     const areas = Object.values(this._hass.areas || {}).map((a) => [a.area_id, a.name]).sort();
-    return [JSON.stringify([this._hass.language, areas]),
+    return [JSON.stringify([this._hass.language, areas, liveness]),
       ids.map((id) => this._hass.states?.[id]?.state).join("|") + traffic].join("\n");
   }
 

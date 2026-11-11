@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals } from "./traffic.js";
+import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals, HEAT_SIGMA_M, HEAT_CUT_M } from "./traffic.js";
 import { pointInPolygon } from "./geometry.js";
 import rules from "./wifi-rules.json" with { type: "json" };
 
@@ -211,30 +211,44 @@ const pointAt = (p) => (p.floorId === "ground" ? [p.key === "a" ? 1.4 : 0.2, 0.3
 const apAt = (k) => ({ office: { x: 0.5, y: 1.5, floorId: "ground", roomIndex: 0 }, up: { x: 0, y: 0, floorId: "first", roomIndex: 0 } })[k] ?? null;
 const heat = (list, serving = { 5: serve }) => heatCells(list, floor, serving, pointAt, apAt, 1);
 
-test("a placed client puts its total in the cell at its point", () => {
-  assert.deepEqual(heat([cl({ point: { floorId: "ground", key: "a" } })]), [{ x: 1, y: 0, value: 2 }]);
+const near = (a, b) => Math.abs(a - b) < 1e-6;
+const cellOf = (h, x, y) => h.find((c) => near(c.x, x) && near(c.y, y));
+test("a placed client's own cell holds its total; a cell 1 m away total x e^-0.5; nothing beyond 3 m", () => {
+  const c = cl({ point: { floorId: "ground", key: "a" } });
+  const h = heatCells([c], floor, {}, () => [10.5, 10.5], apAt, 1);
+  assert.ok(near(cellOf(h, 10, 10).value, 2));
+  assert.ok(near(cellOf(h, 11, 10).value, 2 * Math.exp(-0.5)));
+  assert.equal([HEAT_SIGMA_M, HEAT_CUT_M].join(), "1,3");
+  assert.ok(h.every((x) => Math.hypot(x.x + 0.5 - 10.5, x.y + 0.5 - 10.5) <= 3 + 1e-9));
+  assert.equal(cellOf(h, 14, 10), undefined);
 });
-test("an unplaced Wi-Fi client spreads its total evenly over its access point's serving cells of its band", () => {
+test("a placed client on another floor paints nothing", () => {
+  assert.deepEqual(heat([cl({ point: { floorId: "first", key: "a" } })]), []);
+});
+test("an unplaced Wi-Fi client paints its full total on every serving cell of its access point and band", () => {
   const h = heat([cl()]);
   assert.equal(h.length, 4);
-  assert.ok(h.every((c) => c.value === 0.5));
+  assert.ok(h.every((c) => c.value === 2));
 });
-test("no serving cells for that band: the access point's room on this floor takes it", () => {
+test("no serving cells for that band: the access point's room on this floor takes its full total", () => {
   const h = heat([cl({ link: "6" })]);
-  assert.deepEqual(h.map((c) => [c.x, c.y, c.value]), [[0, 0, 0.5], [0, 1, 0.5], [1, 0, 0.5], [1, 1, 0.5]]);
+  assert.deepEqual(h.map((c) => [c.x, c.y, c.value]), [[0, 0, 2], [0, 1, 2], [1, 0, 2], [1, 1, 2]]);
 });
 test("the access point serves another floor only: nothing on this floor", () => {
   assert.deepEqual(heat([cl({ ap: "up", link: "6" })]), []);
 });
-test("an unplaced wired client sits at its access point", () => {
-  assert.deepEqual(heat([cl({ link: "wired" })]), [{ x: 0, y: 1, value: 2 }]);
+test("an unplaced wired client paints at its access point, with the fall-off", () => {
+  const h = heat([cl({ link: "wired" })]);
+  assert.ok(near(cellOf(h, 0, 1).value, 2 * Math.exp(-0.0 / 2)));
+  assert.ok(cellOf(h, 2, 1).value < cellOf(h, 0, 1).value);
 });
 test("ap null: left out", () => {
   assert.deepEqual(heat([cl({ ap: null })]), []);
 });
 test("cells sum their clients", () => {
-  const h = heat([cl({ point: { floorId: "ground", key: "b" } }), cl({ point: { floorId: "ground", key: "b" }, total: 3 })]);
-  assert.deepEqual(h, [{ x: 0, y: 0, value: 5 }]);
+  const one = cellOf(heat([cl({ point: { floorId: "ground", key: "b" } })]), 0, 0).value;
+  const both = cellOf(heat([cl({ point: { floorId: "ground", key: "b" } }), cl({ point: { floorId: "ground", key: "b" }, total: 3 })]), 0, 0).value;
+  assert.ok(near(both, one * 2.5));
 });
 test("apTotals sums total and counts clients per access point", () => {
   const t = apTotals([cl({ total: 1 }), cl({ total: 2.5 }), cl({ ap: "hall", total: 4 }), cl({ ap: null })]);
@@ -252,8 +266,7 @@ test("a room off the step lattice: placed and spread contributions share cells, 
   const keys = h.map((c) => `${Math.round(c.x * 1e6)}|${Math.round(c.y * 1e6)}`);
   assert.equal(new Set(keys).size, keys.length);
   assert.ok(h.every((c) => Math.abs(c.x / step - Math.round(c.x / step)) < 1e-6));
-  assert.ok(h.some((c) => c.value > 3), "the placed 3 and a spread share sum in one cell");
-  assert.ok(Math.abs(h.reduce((s, c) => s + c.value, 0) - 4) < 1e-9);
+  assert.ok(h.some((c) => c.value > 3), "the placed 3 and a spread 1 sum in one cell");
 });
 test("room fallback in an L-shaped room: every cell centre is inside the polygon", () => {
   const poly = [[0.07, 0.11], [1.07, 0.11], [1.07, 0.51], [0.47, 0.51], [0.47, 1.11], [0.07, 1.11]];
