@@ -1,6 +1,6 @@
 # SPEC-047 — Network traffic on the floor plan: live heat and devices with their links
 
-**Status:** draft, 2026-11-11.
+**Status:** approved 2026-11-11 by the maintainer ("Approve, write plan").
 
 **Source:** the maintainer, 2026-11-11, right after Wi-Fi coverage
 ([SPEC-044](SPEC-044-2026-11-10-wifi-coverage.md)): the router integration already tells, per access
