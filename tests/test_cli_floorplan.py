@@ -388,6 +388,21 @@ def test_push_plan_prints_wifi_change_when_a_wall_material_changes(home, capsys)
     assert out(capsys)[-1] == "FAIL wall on floor ground: [2.0, 1.5] is not on a room edge"
 
 
+def test_push_plan_prints_wifi_change_when_a_wall_becomes_half_height(home, capsys):
+    root, box = home
+    wall = {"at": [4.0, 1.5], "material": "railing"}
+    old = {**PLAN, "floors": [{**PLAN["floors"][0], "walls": [wall]}]}
+    box["ha"] = Dashboards(old).ha
+    record(root, "staging", old)
+    write_plan(root, {**PLAN, "floors": [{**PLAN["floors"][0], "walls": [{**wall, "height": "half"}]}]})
+    code = cli(root, "push", "staging", "--plan")
+    lines = out(capsys)
+    assert code == 0 and lines[0] == "wifi change ground", lines
+    write_plan(root, {**PLAN, "floors": [{**PLAN["floors"][0], "walls": [{**wall, "height": "full"}]}]})
+    assert cli(root, "push", "staging", "--plan") == 1
+    assert out(capsys)[-1] == "FAIL wall at 4,1.5: height must be half"
+
+
 def test_push_plan_prints_wifi_change_when_a_room_is_marked_outdoors(home, capsys):
     root, box = home
     box["ha"] = Dashboards(PLAN).ha

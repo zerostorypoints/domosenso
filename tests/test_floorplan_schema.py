@@ -306,6 +306,12 @@ def test_a_plan_with_wifi_keys_validates():
     validate(wifi_demo())
 
 
+def test_a_half_height_wall_validates():
+    doc = wifi_demo()
+    doc["floors"][0]["walls"][0]["height"] = "half"
+    validate(doc)
+
+
 def _edit(doc, fn):
     fn(doc)
     return doc
@@ -318,6 +324,8 @@ def _ap(**kw):
 REFUSALS = [
     (lambda d: d["floors"][0]["walls"][0].update(at=[2.7, 2.0]),
      "wall on floor ground: [2.7, 2.0] is not on a room edge"),
+    (lambda d: d["floors"][0]["walls"][0].update(height="full"), "wall at 5.4,3.8: height must be half"),
+    (lambda d: d["floors"][0]["walls"][0].update(height=0.5), "wall at 5.4,3.8: height must be half"),
     (lambda d: d["floors"][0]["walls"][0].update(material="mud"), "unknown material mud"),
     (lambda d: d["floors"][0]["walls"][0].update(material="slab"), "material slab does not fit a wall"),
     (lambda d: d["floors"][0].update(slab="mud"), "unknown material mud"),

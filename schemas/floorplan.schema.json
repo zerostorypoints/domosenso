@@ -66,7 +66,8 @@
             "type": "object", "additionalProperties": false, "required": ["at", "material"],
             "properties": {
               "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/number"}},
-              "material": {"type": "string", "minLength": 1}
+              "material": {"type": "string", "minLength": 1},
+              "height": {"description": "\"half\": a half-height wall (a balcony frame, a staircase's balustrade) costs half its material's loss; absent: full height (Amendment 3)"}
             }
           }
         },

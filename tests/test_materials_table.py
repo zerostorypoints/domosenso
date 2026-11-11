@@ -22,8 +22,8 @@ def test_p2040_slab_values_match_the_spec_basis():
 def test_table_has_the_spec_rows_and_bands():
     t = json.loads(MATERIALS.read_text())
     assert set(t['materials']) == {'drywall', 'wood', 'aerated_block', 'brick', 'concrete', 'reinforced_concrete',
-        'concrete_thin', 'concrete_thick', 'glass', 'double', 'low_e', 'triple_low_e', 'metal', 'interior', 'exterior',
-        'slab'}
+        'concrete_thin', 'concrete_thick', 'glass', 'double', 'low_e', 'triple_low_e', 'metal', 'railing', 'interior',
+        'exterior', 'slab'}
     assert t['materials']['low_e']['loss'] == {'2.4': 20, '5': 27, '6': 30} and t['materials']['low_e']['sd'] == 8
     assert t['bands']['5'] == {'mhz': 5500, 'l0': 47.3, 'tx': 23}
     assert t['bands']['2.4'] == {'mhz': 2437, 'l0': 40.2, 'tx': 20}
@@ -63,3 +63,10 @@ def test_thin_and_thick_concrete_rows_are_the_spec_priors():
     assert t['concrete_thin']['for'] == ['wall']
     assert t['concrete_thick']['loss'] == {'2.4': 20, '5': 33, '6': 37} and t['concrete_thick']['sd'] == 6
     assert t['concrete_thick']['for'] == ['wall', 'slab']
+
+
+def test_railing_row_is_the_spec_prior():
+    # Amendment 3: open bars or a mesh, for a balcony's railing or a staircase's balustrade.
+    t = json.loads(MATERIALS.read_text())['materials']
+    assert t['railing']['loss'] == {'2.4': 2, '5': 3, '6': 3} and t['railing']['sd'] == 2
+    assert t['railing']['for'] == ['wall']

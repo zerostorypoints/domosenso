@@ -192,6 +192,18 @@
       ],
       "basis": "cap; diffraction round it carries the signal"
     },
+    "railing": {
+      "loss": {
+        "2.4": 2,
+        "5": 3,
+        "6": 3
+      },
+      "sd": 2,
+      "for": [
+        "wall"
+      ],
+      "basis": "inference: open bars or a mesh, mostly air (SPEC-044 Amendment 3)"
+    },
     "interior": {
       "loss": {
         "2.4": 5,
