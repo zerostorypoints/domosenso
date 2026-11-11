@@ -170,6 +170,40 @@ def test_diff_also_is_a_change():
     assert diff(old, new) == [("point", "change", "ground", new["floors"][0]["points"][0]["device_id"])]
 
 
+def test_mac_on_a_point_is_valid():
+    for mac in ("02:00:00:00:00:10", "02-00-00-00-00-10"):
+        doc = demo()
+        doc["floors"][0]["points"][0]["mac"] = mac
+        validate(doc)
+    doc = demo()
+    doc["floors"][0]["points"][1]["mac"] = "02:00:00:00:00:11"   # an entity point too
+    validate(doc)
+
+
+def test_mac_malformed():
+    doc = demo()
+    point = doc["floors"][0]["points"][0]
+    point["mac"] = "02:00:00"
+    with pytest.raises(DomosensoError, match=f"^point {point['device_id']}: mac malformed$"):
+        validate(doc)
+
+
+def test_mac_linked_twice():
+    doc = demo()
+    points = doc["floors"][0]["points"]
+    points[0]["mac"] = "02:00:00:00:00:10"
+    points[1]["mac"] = "02-00-00-00-00-10".upper()
+    with pytest.raises(DomosensoError, match="^mac linked twice: 02:00:00:00:00:10$"):
+        validate(doc)
+
+
+def test_diff_mac_is_a_change():
+    old = demo()
+    new = copy.deepcopy(old)
+    new["floors"][0]["points"][0]["mac"] = "02:00:00:00:00:10"
+    assert diff(old, new) == [("point", "change", "ground", new["floors"][0]["points"][0]["device_id"])]
+
+
 def test_diff_removed_floor():
     old = demo()
     new = {"schema": 1, "floors": []}
