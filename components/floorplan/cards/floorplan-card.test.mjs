@@ -2731,3 +2731,30 @@ test("phone survey: focusRoom from one room straight to another shows the other 
   const [x] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
   assert.ok(x < 0, `fitted to the living room: ${x}`);
 });
+
+test("wifi maps: Readings (opt-in, remembered) shows the survey readings as dots on any Wi-Fi map", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.wifi = { samples: [
+    { floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:26:28Z", band: "5", dbm: -48, source: "phone", phone: "ios", method: "shortcut",
+      spread: 1, scans: [{ t: "2026-11-11T18:26:24Z", dbm: -48 }] },
+    { floor_id: "ground", x: 6, y: 3, t: "2026-11-11T19:31:00Z", band: "2.4", dbm: -63, source: "manual" }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  const chip = () => $(card, ".bar [data-action=readings]");
+  assert.equal(chip().getAttribute("aria-pressed"), "false", "off until chosen");
+  assert.equal(sampleDots(card).length, 0);
+  click(chip());
+  assert.equal(sampleDots(card).length, 2);
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(sampleDots(card).length, 2, "on every Wi-Fi map");
+  const again = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal($(again, ".bar [data-action=readings]").getAttribute("aria-pressed"), "true", "remembered");
+  click($(again, ".bar [data-action=readings]"));
+  assert.equal(sampleDots(again).length, 0);
+  const none = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal($(none, ".bar [data-action=readings]"), null, "no readings in the plan: no switch");
+  window.localStorage.clear();
+});

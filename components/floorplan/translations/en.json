@@ -162,7 +162,8 @@
         "confidence_legend": "how far to trust the {bands} GHz map: high within 2 m of a device's reading of the serving access point, medium where the readings moved the model, low where only the typical values apply",
         "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:",
         "ranges": "Ranges",
-        "ranges_legend": "solid {call} dBm, dashed {weak} dBm"
+        "ranges_legend": "solid {call} dBm, dashed {weak} dBm",
+        "readings": "Readings"
       },
       "wall": {
         "material": "Wall material",

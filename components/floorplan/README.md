@@ -57,6 +57,9 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     outlines use the same smoothed levels (pieces under 1 m are left out), so map and outlines agree.
     Calibration compares the readings with the unsmoothed prediction at their spot.
   - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
+  - **Readings**: a switch on every Wi-Fi map, off until chosen (the browser remembers it), shown when
+    the plan has survey readings: each reading (phone, laptop or typed) as a dot with its dBm, the
+    readings that calibrate the map. The Confidence map and edit mode show them anyway.
   - **Ranges** (SPEC-044 Amendment 3): a switch on the 2.4, 5 and 6 GHz maps (the browser
     remembers it). Each access point gets its Serving colour, a ring at its place with its name, and
     its outline at −67 dBm (solid) and −75 dBm (dashed) on the map's band, predicted or calibrated

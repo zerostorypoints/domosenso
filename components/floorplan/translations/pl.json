@@ -162,7 +162,8 @@
         "confidence_legend": "na ile można ufać mapie w paśmie {bands} GHz: wysoka do 2 m od odczytu urządzenia z obsługującego punktu dostępu, średnia tam, gdzie odczyty przesunęły model, niska tam, gdzie obowiązują tylko typowe wartości",
         "disabled": "Wyłączone czujniki sygnału Wi-Fi, które skalibrowałyby mapę; włącz je w Ustawienia → Encje:",
         "ranges": "Zasięgi",
-        "ranges_legend": "ciągła {call} dBm, przerywana {weak} dBm"
+        "ranges_legend": "ciągła {call} dBm, przerywana {weak} dBm",
+        "readings": "Odczyty"
       },
       "wall": {
         "material": "Materiał ściany",

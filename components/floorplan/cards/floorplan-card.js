@@ -84,6 +84,7 @@ const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while t
 const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
 const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
 const CALIB_KEY = "domosenso.floorplan.calibrated"; // localStorage: "predicted" or "calibrated" on the Wi-Fi maps
+const READINGS_KEY = "domosenso.floorplan.readings"; // localStorage: true while the Wi-Fi maps show the survey readings
 const RANGES_KEY = "domosenso.floorplan.ranges";   // localStorage: true while the band maps show each access point's range
 const WEIGHTS = ["light", "solid", "heavy"];       // the wall weights of the plan's key (Amendment 3)
 const HOUR_MS = 60 * 60 * 1000;
@@ -188,6 +189,7 @@ class FloorplanCard extends HTMLElement {
     const offered = load(OFFER_KEY, []);           // another page's or a hand-edited value may be no list
     this._offered = new Set(Array.isArray(offered) ? offered : []);   // points this browser asked "Use as access point?" about
     this._calib = load(CALIB_KEY, null);           // "predicted" chosen; else calibrated once there are readings
+    this._showReadings = load(READINGS_KEY, false) === true;  // the Wi-Fi maps show the survey readings (opt-in)
     this._ranges = load(RANGES_KEY, false) === true;   // the band maps outline each access point's range
     this._rangeMemo = null;        // the last ranges drawn: {key, aps, lines}
     this._wallMemo = null;         // the walls drawn: {floor, wifi, lines}
@@ -767,6 +769,10 @@ ${STYLE}
     if (map.layer === "radio" && BAND_OF[map.cls]) {
       html += `<span class="maps">${chip('data-action="ranges"', map.ranges, t(h, "card.floorplan.wifi.ranges"))}</span>`;
     }
+    // The survey readings that calibrate the maps, as dots: opt-in, only when the plan has some.
+    if (map.layer === "radio" && map.cls && (this._doc.wifi?.samples || []).length) {
+      html += `<span class="maps">${chip('data-action="readings"', this._showReadings, t(h, "card.floorplan.wifi.readings"))}</span>`;
+    }
     if (map.rule) {
       html += `<span class="maps">${chip('data-action="day" data-day="0"', !this._day, t(h, "card.floorplan.maps.now"))}`
         + chip('data-action="day" data-day="1"', this._day, t(h, "card.floorplan.maps.day",
@@ -1237,7 +1243,7 @@ ${STYLE}
     if (!this._wifiOn) return;
     const survey = this._config.survey && !editing;
     // A phone survey (SPEC-045) shows the readings on every map: the person sees what was kept, and where.
-    if (editing || map?.cls === "confidence" || this._config.survey === "phone") {
+    if (editing || map?.cls === "confidence" || this._config.survey === "phone" || (this._showReadings && map?.layer === "radio")) {
       const g = el("g", {}, svg);
       for (const s of this._doc.wifi?.samples || []) {
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
@@ -1875,6 +1881,9 @@ ${STYLE}
     } else if (action === "calib") {
       this._calib = button.getAttribute("data-calib");
       save(CALIB_KEY, this._calib);
+    } else if (action === "readings") {
+      this._showReadings = !this._showReadings;
+      save(READINGS_KEY, this._showReadings);
     } else if (action === "ranges") {
       this._ranges = !this._ranges;
       save(RANGES_KEY, this._ranges);
