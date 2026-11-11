@@ -107,12 +107,6 @@ test("a registry device not on the plan is the matched device, unplaced", () => 
   assert.deepEqual([c.device_id, c.point, c.matched_by], ["dev-tv", null, "registry"]);
 });
 
-test("an idle client with a fresh last_reported is not stale", () => {
-  const h = build([{ id: "a", mac: M(25), age: 600, reported: 10 }]);
-  const c = clients(h, doc, rules, NOW).list[0];
-  assert.deepEqual([c.stale, c.updated.toISOString()], [false, ago(10)]);
-});
-
 test("unmatched: device_id and point null, matched_by null", () => {
   const c = byMac(clients(build([{ id: "phone", mac: M(23) }]), doc, rules, NOW).list, M(23));
   assert.deepEqual([c.device_id, c.point, c.matched_by], [null, null, null]);
@@ -149,12 +143,12 @@ test("unavailable when no node tracker is home", () => {
   assert.deepEqual([r.live, r.reason], [false, "unavailable"]);
 });
 
-test("one tracker older than 90 s is stale alone", () => {
-  const h = build([{ id: "a", mac: M(33), age: 200 }, { id: "b", mac: M(34), age: 10 }]);
+test("an idle tracker is not stale while the router is live; updated keeps its old time", () => {
+  // tplink_deco does not rewrite every tracker on each poll (SPEC-047 Amendment 1)
+  const h = build([{ id: "a", mac: M(33), age: 2100, reported: 2100 }]);
   const r = clients(h, doc, rules, NOW);
   assert.equal(r.live, true);
-  assert.deepEqual([byMac(r.list, M(33)).stale, byMac(r.list, M(34)).stale], [true, false]);
-  assert.equal(byMac(r.list, M(33)).updated.toISOString(), ago(200));
+  assert.deepEqual([r.list[0].stale, r.list[0].updated.toISOString()], [false, ago(2100)]);
 });
 
 test("missing mac or deco_mac: skipped", () => {

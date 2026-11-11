@@ -16,7 +16,7 @@
 
 - Mbit/s = kB/s × 8 / 1000, rounded to 0.01.
 - Scale `mbps`: logarithmic 0.1 to 1000 Mbit/s, marks at 1, 10 and 100; a client's value is `total` (down + up).
-- Live: the router's `freshness.updated` sensor younger than 3 × `interval_s` and its `polling` switch (when it exists) `on`; a single tracker not updated for 3 × `interval_s` is stale alone.
+- Live: the router's `freshness.updated` sensor younger than 3 × `interval_s` and its `polling` switch (when it exists) `on`; a client is stale exactly when the router is not live (SPEC-047 Amendment 1).
 - Idle: under 0.01 Mbit/s.
 - Heat blur: 1 m. Heat redraw at most once a second.
 - Card config `traffic` (boolean, default `true`).

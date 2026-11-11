@@ -114,8 +114,7 @@ documentation); a link holds until the phone rotates it.
 
 - The router's data is **live** while its `freshness.updated` sensor is younger than three
   `interval_s` and its `polling` switch (when it exists) is on.
-- Otherwise every client is `stale`; a client is also `stale` alone when its tracker has not
-  updated for three `interval_s`.
+- Otherwise every client is `stale` (Amendment 1: no per-client staleness).
 
 ## The plan document (`schemas/floorplan.schema.json`, `schema: 1`, one new optional key)
 
@@ -243,3 +242,7 @@ A `network` component, taking over `lib/traffic.js` with its tests:
 - Whether `down_kilobytes_per_s` is averaged over the polling interval or a momentary value
   (inference: averaged by the Deco; checked on the prototype against a client of known rate, a
   network streamer's reported bit rate).
+
+## Amendment 1 (per-client staleness dropped, 2026-11-11)
+
+Verified on a live `tplink_deco` (2026-11-11): with the router's `client_last_successful_update` 17 s old, three idle clients' trackers had not been written for 35 minutes; the integration does not rewrite every tracker on each poll. A client is therefore stale exactly when the router's data is not live; the per-tracker 3 × `interval_s` rule of **Freshness** is withdrawn. A client's `updated` stays, shown in the tap panel.

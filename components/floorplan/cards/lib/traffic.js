@@ -34,7 +34,7 @@ function freshness(hass, rule, now) {
   let reason = null;
   if (!sensor || updatedMs == null || now - updatedMs >= limit) reason = "stale";
   else if (polling && hass.states?.[polling]?.state !== "on") reason = "polling_off";
-  return { reason, updated: updatedMs == null ? null : new Date(updatedMs), limit };
+  return { reason, updated: updatedMs == null ? null : new Date(updatedMs) };
 }
 
 // The plan points with their registry keys, to match a client to one: [{floorId, key, keys, mac}].
@@ -95,7 +95,7 @@ export function clients(hass, doc, rules, now = Date.now()) {
           mac, name: a.friendly_name ?? id, ap: aps.find((key) => nodeMacs(hass, key, rule).includes(node)) ?? null, link,
           down: round2(down), up: round2(up), total: round2(down + up),
           ...match(hass, mac, hass.entities[id].device_id ?? null, points),
-          stale: !!fresh.reason || now - seenMs >= fresh.limit, updated: new Date(seenMs),
+          stale: !!fresh.reason, updated: new Date(seenMs),
         },
       });
     }
