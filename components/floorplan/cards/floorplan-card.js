@@ -374,23 +374,24 @@ class FloorplanCard extends HTMLElement {
 
   // The prediction of the floor shown on one band, or the calibrated one, memoised by its cache key,
   // the openings' states and (calibrated) the readings' digest. The key itself is worked out again
-  // only when the plan, the floor, the band, the cell, such a state or the digest changed.
-  _wifi(band, step, calibrated = false) {
+  // only when the plan, the floor, the band, the cell, such a state or the digest changed. Cells carry
+  // their confidence only for the Confidence map (`confidence`), which is always calibrated.
+  _wifi(band, step, calibrated = false, confidence = false) {
     const doc = this._doc;
     const states = this._openingStates();
     const digest = calibrated ? this._observations().digest : null;
-    const from = [doc, this._floorId, band, step, states, digest];
+    const from = [doc, this._floorId, band, step, states, digest, confidence];
     if (!this._wifiKey || from.some((v, i) => v !== this._wifiKey.from[i])) {
       const params = priorParams(materials, doc.floors.flatMap((f) => f.access_points ?? []));
       this._wifiKey = { from, params,
-        key: `${cacheKey(doc, this._floorId, band, params, step)}|${states}${calibrated ? `|calibrated|${digest}` : ""}` };
+        key: `${cacheKey(doc, this._floorId, band, params, step)}|${states}${calibrated ? `|calibrated|${digest}` : ""}${confidence ? "|confidence" : ""}` };
     }
     const { key, params } = this._wifiKey;
     let out = this._wifiMemo.get(key);
     if (!out) {
       if (calibrated) {
         const fit = this._calibration();
-        out = calibratedCoverage(contextFor(doc, this._floorId, this._hass, materials, fit.params), band, step, fit);
+        out = calibratedCoverage(contextFor(doc, this._floorId, this._hass, materials, fit.params), band, step, fit, { confidence });
       } else out = this._predict(contextFor(doc, this._floorId, this._hass, materials, params), band, step);
       this._wifiMemo.set(key, out);
       if (this._wifiMemo.size > WIFI_MEMO) this._wifiMemo.delete(this._wifiMemo.keys().next().value);
@@ -1197,7 +1198,7 @@ ${STYLE}
     const map = this._map();
     if (!map?.band || !map.cls) return [];
     const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
-    const { key, cells } = this._wifi(map.band, step, map.calibrated);
+    const { key, cells } = this._wifi(map.band, step, map.calibrated, map.cls === "confidence");
     const { list, digest } = this._observations();
     const memo = `${key}|${digest}`;
     if (this._spotsMemo?.key !== memo) {
@@ -1542,7 +1543,7 @@ ${STYLE}
   // in its three fills. Cells are 0.3 m on a narrow card. Kept while the prediction and the map are the same.
   _drawWifi(svg, floor, map) {
     const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
-    const { key, cells, aps } = this._wifi(map.band, step, map.calibrated);
+    const { key, cells, aps } = this._wifi(map.band, step, map.calibrated, map.cls === "confidence");
     // The rooms drawn (one with `area`), by their index in the plan's floor, which the cells carry.
     const rooms = this._doc.floors.find((f) => f.floor_id === this._floorId).rooms;
     const drawn = new Set(floor.rooms.map((r) => r.area_id));

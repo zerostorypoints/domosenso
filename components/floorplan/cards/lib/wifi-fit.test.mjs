@@ -278,17 +278,23 @@ test("confidence: high near a reading of the serving access point, medium over a
   const obs = observe(doc, truth, inRow, "5");
   const fit = calibrate(ctxOf(doc), obs, table);
   const ctx = contextFor(doc, "f0", {}, table, fit.params);
-  const m = calibratedCoverage(ctx, "5", 1, fit);
+  const m = calibratedCoverage(ctx, "5", 1, fit, { confidence: true });
   const at = (x, y) => m.cells.find((c) => c.x === x && c.y === y);
   assert.equal(at(1, 2).conf, "high");                         // beside readings, same room as the node
   assert.equal(at(9, 1).conf, "high");
   // drop the readings near the third room: its cells are only "medium", through the fitted brick
   const far = obs.filter((o) => o.x < 6);
-  const m2 = calibratedCoverage(ctx, "5", 1, { ...fit, residuals: fit.residuals.filter((e) => far.includes(e.obs)) });
+  const m2 = calibratedCoverage(ctx, "5", 1, { ...fit, residuals: fit.residuals.filter((e) => far.includes(e.obs)) },
+    { confidence: true });
   assert.equal(m2.cells.find((c) => c.x === 9 && c.y === 1).conf, "medium");
   // nothing fitted, nothing near: low
   const none = { ...fit, moved: { tx: false, loss: false, n: false }, params: fit.prior, residuals: [] };
-  assert.equal(calibratedCoverage(ctx, "5", 1, none).cells.find((c) => c.x === 9 && c.y === 1).conf, "low");
+  assert.equal(calibratedCoverage(ctx, "5", 1, none, { confidence: true }).cells.find((c) => c.x === 9 && c.y === 1).conf, "low");
+  // every cell agrees with confidenceOf over all the readings; a band map does not work it out
+  for (const cell of m.cells) assert.equal(cell.conf, confidenceOf(cell, obs, fit, ctx, "5", 1), `${cell.x},${cell.y}`);
+  const plain = calibratedCoverage(ctx, "5", 1, fit);
+  assert.ok(plain.cells.every((c) => !("conf" in c)));
+  assert.deepEqual(plain.cells.map((c) => c.dbm), m.cells.map((c) => c.dbm));
 });
 
 test("confidence: another band's or another access point's readings do not make it high", () => {
@@ -321,12 +327,12 @@ test("2000 observations and 200 m² on one band in under 300 ms", () => {
   const residuals = Array.from({ length: 2000 }, (_, i) => ({ r: (i % 7) - 3, ap: "node",
     obs: { floorId: "f0", band: "5", ap: "node", x: (i * 7.3) % 20, y: (i * 3.1) % 10 } }));
   const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false }, residuals };
-  calibratedCoverage(ctx, "5", 0.15, fit);                     // warm up
+  calibratedCoverage(ctx, "5", 0.15, fit, { confidence: true });   // warm up
   // The best of three runs: a parallel test run (check-all) can stall any one of them.
   let m, ms = Infinity;
   for (let run = 0; run < 3; run++) {
     const t = performance.now();
-    m = calibratedCoverage(ctx, "5", 0.15, fit);              // the map's grid
+    m = calibratedCoverage(ctx, "5", 0.15, fit, { confidence: true });   // the Confidence map's grid
     ms = Math.min(ms, performance.now() - t);
   }
   assert.equal(m.cells.length, coverage(ctx, "5", 0.15).cells.length);

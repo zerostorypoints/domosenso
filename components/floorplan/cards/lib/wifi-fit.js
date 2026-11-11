@@ -215,7 +215,7 @@ function residualIndex(residuals, segments) {
     (buckets.get(key) ?? buckets.set(key, []).get(key)).push(e);
   }
   const q = [0, 0];
-  return (p) => {
+  const at = (p) => {
     let sum = 0, wsum = BACKGROUND_W;
     const bx = Math.floor(p[0] / R), by = Math.floor(p[1] / R);
     for (let i = bx - 1; i <= bx + 1; i++) {
@@ -240,6 +240,20 @@ function residualIndex(residuals, segments) {
     }
     return sum / wsum;
   };
+  // The residuals within `m` (at most R) of p, from the same nine buckets.
+  at.near = (p, m) => {
+    const out = [];
+    const bx = Math.floor(p[0] / R), by = Math.floor(p[1] / R);
+    for (let i = bx - 1; i <= bx + 1; i++) {
+      for (let j = by - 1; j <= by + 1; j++) {
+        for (const e of buckets.get(i * 65536 + j) ?? []) {
+          if ((e.obs.x - p[0]) ** 2 + (e.obs.y - p[1]) ** 2 <= m * m) out.push(e);
+        }
+      }
+    }
+    return out;
+  };
+  return at;
 }
 
 // The cell's centre (coverage() reports a cell by its corner); step 0 takes x, y as the point.
@@ -258,6 +272,11 @@ export function confidenceOf(cell, observations, fit, ctx, band, step = 0) {
     // only a reading in range without a named access point is looked up (rare)
     if ((obs.ap ?? fit.residuals.find((e) => e.obs === obs)?.ap) === cell.ap) return "high";
   }
+  return fitConfidence(cell, c, fit, ctx, band);
+}
+
+// confidenceOf past the 2 m test: "medium" or "low" by what the fit changed on the cell's path.
+function fitConfidence(cell, c, fit, ctx, band) {
   const { params, prior } = fit;
   if (Math.abs((params.tx[cell.ap]?.[band] ?? 0) - (prior.tx[cell.ap]?.[band] ?? 0)) > MOVED_DB) return "medium";
   if (fit.moved.loss && ctx.apPos[cell.ap]) {
@@ -270,13 +289,12 @@ export function confidenceOf(cell, observations, fit, ctx, band, step = 0) {
 
 // coverage() with the fit's residuals added: the prediction for a map calibrated by `fit`, plus the
 // correction −residualAt at each cell, applied to dbm and second alike (so handover stays consistent),
-// and cell.conf. The caller passes a ctx already built with fit.params (contextFor(..., fit.params));
-// this function does not rebuild it. (ctx must be built from fit.params.)
-export function calibratedCoverage(ctx, band, step, fit) {
+// and, for the Confidence map only ({confidence: true}), cell.conf. The caller passes a ctx already
+// built with fit.params (contextFor(..., fit.params)); this function does not rebuild it.
+export function calibratedCoverage(ctx, band, step, fit, { confidence = false } = {}) {
   const map = coverage(ctx, band, step);
   const segs = ctx.segmentsByFloor[ctx.floorId] ?? [];
   const here = fit.residuals.filter((e) => e.obs.band === band && e.obs.floorId === ctx.floorId);
-  const observations = here.map((e) => e.obs);
   const at = residualIndex(here, segs);
   const c = [0, 0];
   for (const cell of map.cells) {
@@ -285,7 +303,10 @@ export function calibratedCoverage(ctx, band, step, fit) {
     const add = -at(c);
     cell.dbm += add;
     if (cell.second !== null) cell.second += add;
-    cell.conf = confidenceOf(cell, observations, fit, ctx, band, step);
+    if (!confidence) continue;
+    // a residual carries the access point the fit assigned, so a reading without a named one needs no lookup
+    const high = at.near(c, NEAR_M).some((e) => (e.obs.ap ?? e.ap) === cell.ap);
+    cell.conf = high ? "high" : fitConfidence(cell, c, fit, ctx, band);
   }
   return map;
 }
