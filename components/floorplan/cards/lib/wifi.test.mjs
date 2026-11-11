@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
   wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi,
   addReading, nextSpots, setOutdoor, openingDefaults, WALL_GAP_M, HALF_WALL, wallWeight, wallLines, setWallHeight,
-  levelGrid, contour, wallPickPoint, openingShift } from "./wifi.js";
+  levelGrid, contour, wallPickPoint, openingShift, SMOOTH_M, rangeOutlines, MIN_OUTLINE_M, sampleGrid } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 import { widestRow, pointInPolygon } from "./geometry.js";
 import { openingState } from "./openings.js";
@@ -747,15 +747,13 @@ test("the ranges outline of one access point in an empty room is closed and near
   for (const d of r(weak)) assert.ok(Math.abs(d - expected(-75)) < 0.05, String(d));
 });
 
-test("contour: a saddle is read by its centre; an outline at the grid's edge closes", () => {
+test("contour: a saddle is read by its centre; no outline where the level never crosses", () => {
   const grid = { x0: 0, y0: 0, step: 1, nx: 2, ny: 2 };
   assert.equal(contour(grid, [1, 0, 0, 1], 0.5).length, 2, "two diagonal corners above, centre above: one line each side");
   assert.equal(contour(grid, [1, 0, 0, 1], 0.6).length, 2, "centre below: the other pairing, still two");
   assert.deepEqual(contour(grid, [0, 0, 0, 0], 0.5), []);
   const big = levelGrid(ctxOf(one([room(0, 0, 2, 2)], [ap("a")], [pt("a", 1, 1)])), "5", 0.25);
-  const lines = contour(big, big.levels[0], -67);
-  assert.equal(lines.length, 1, "the whole room is above -67: the outline runs round the grid's border ring");
-  assert.ok(lines[0].closed);
+  assert.deepEqual(contour(big, big.levels[0], -67), [], "the whole room and its margin above -67: no outline at all");
   assert.equal(levelGrid(ctxOf(one([room(0, 0, 2, 2)], [ap("a", { bands: ["2.4"] })], [pt("a", 1, 1)])), "5", 0.25), null);
 });
 
@@ -834,4 +832,67 @@ test("openingShift moves a door on either edge of a thick wall to its middle lin
   close(openingShift(segs, [3.3, 1.5]), [-0.15, 0]);
   close(openingShift(segs, [3, 1.5]), [0.15, 0]);
   assert.deepEqual(openingShift(wallSegments(two(), undefined, {}), [3, 1.5]), [0, 0]);
+});
+
+// ---- Amendment 3 fix round 2: smoothing, open outlines ----
+
+test("the smoothing constants", () => {
+  assert.equal(SMOOTH_M, 0.5);
+  assert.equal(MIN_OUTLINE_M, 1);
+});
+
+test("an outline that runs off the grid stays open there: no line along the grid's edge", () => {
+  // -10 dBm at 5 GHz in a corner of a 6 m room: -75 dBm about 7.7 m away, beyond the grid
+  const doc = one([room(0, 0, 6, 6)], [ap("a", { tx: { 5: -10 } })], [pt("a", 0.5, 0.5)]);
+  const grid = levelGrid(ctxOf(doc), "5", 0.15);
+  const [xa, ya] = [grid.x0, grid.y0];
+  const [xb, yb] = [grid.x0 + (grid.nx - 1) * grid.step, grid.y0 + (grid.ny - 1) * grid.step];
+  const edge = (p) => [Math.abs(p[0] - xa) < 1e-9 && "l", Math.abs(p[0] - xb) < 1e-9 && "r",
+    Math.abs(p[1] - ya) < 1e-9 && "t", Math.abs(p[1] - yb) < 1e-9 && "b"].filter(Boolean);
+  for (const level of [-67, -75]) {
+    for (const line of contour(grid, grid.levels[0], level)) {
+      for (let i = 1; i < line.points.length; i++) {
+        const [e0, e1] = [edge(line.points[i - 1]), edge(line.points[i])];
+        assert.ok(!e0.some((e) => e1.includes(e)), `${level}: a segment along the grid's edge`);
+      }
+    }
+  }
+  const weak = contour(grid, grid.levels[0], -75);
+  assert.ok(weak.every((l) => !l.closed), "-75 leaves the grid: open");
+});
+
+test("smoothing: a beam through a doorway behind a 9 dB wall becomes a gradual change", () => {
+  const rooms = [room(0, 0, 4, 6, "alex"), room(4, 0, 4, 6, "sam")];
+  const floor = { floor_id: "f0", rooms, points: [pt("a", 1, 3)], access_points: [ap("a")],
+    openings: [{ kind: "opening", rooms: ["alex", "sam"], at: [4, 3] }] };
+  const doc = docOf([floor]);
+  const ctx = ctxOf(doc);
+  const raw = (p) => predict(ctx, "a", "2.4", p);
+  assert.ok(raw([6, 3]) - raw([6, 4]) > 8, "the ray model: a sharp beam");
+  const cells = coverage(ctx, "2.4", 0.25).cells;
+  const at = (x, y) => cells.find((c) => Math.abs(c.x + 0.125 - x) < 1e-6 && Math.abs(c.y + 0.125 - y) < 1e-6).dbm;
+  const beam = at(6.125, 3.125);
+  const beside = at(6.125, 4.125);
+  assert.ok(beam - beside < 6 && beam - beside > 0, `${beam} vs ${beside}`);
+  // calibration still compares readings with the unsmoothed point prediction
+  near(predict(ctx, "a", "2.4", [6.125, 4.125]), raw([6.125, 4.125]));
+});
+
+test("rangeOutlines drops fragments shorter than 1 m", () => {
+  const grid = { x0: 0, y0: 0, step: 0.1, nx: 10, ny: 10 };
+  const values = new Float64Array(100).fill(-80);
+  values[5 * 10 + 5] = -60;
+  assert.equal(contour(grid, values, -67).length, 1, "a speck 0.1 m across");
+  assert.deepEqual(rangeOutlines(grid, values, -67), []);
+  const doc = one([room(0, 0, 20, 20)], [ap("a", { tx: { 5: -10 } })], [pt("a", 10, 10)]);
+  const big = levelGrid(ctxOf(doc), "5", 0.15);
+  const loops = rangeOutlines(big, big.levels[0], -67);
+  assert.equal(loops.length, 1);
+  assert.ok(loops[0].closed, "the empty room's outline is still one closed loop");
+});
+
+test("sampleGrid interpolates between the four nodes", () => {
+  const grid = { x0: 0, y0: 0, step: 1, nx: 2, ny: 2 };
+  near(sampleGrid(grid, [0, 10, 20, 30], [0.5, 0.5]), 15);
+  near(sampleGrid(grid, [0, 10, 20, 30], [1, 0]), 10, 1e-4);
 });

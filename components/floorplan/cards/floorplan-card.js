@@ -57,7 +57,7 @@ import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValu
   BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
-  wallLines, setWallHeight, levelGrid, contour, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
+  wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
   observationIndex } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
@@ -1236,7 +1236,8 @@ ${STYLE}
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
         const dot = el("g", { class: "sample", "data-source": s.source ?? "survey", transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
         el("circle", { r: fmt(3 * px) }, dot);
-        el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "dominant-baseline": "central" }, dot)
+        el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "stroke-width": fmt(3 * px),
+          "dominant-baseline": "central" }, dot)
           .textContent = dbmText(s.dbm);
       }
     }
@@ -1458,7 +1459,9 @@ ${STYLE}
       if (!point) continue;
       const stroke = servingColour(i);
       el("circle", { class: "range-ring", "data-ap": ap.key, cx: fmt(point.x), cy: fmt(point.y), r: fmt(14 * px), stroke }, g);
-      el("text", { class: "range-name", x: fmt(point.x), y: fmt(point.y - 18 * px), "font-size": fmt(11 * px), fill: stroke }, g)
+      // The halo is a stroke in the plan's metres (vector-effect does not reach text): 3 px, scaled like the font.
+      el("text", { class: "range-name", x: fmt(point.x), y: fmt(point.y - 18 * px), "font-size": fmt(11 * px),
+        "stroke-width": fmt(3 * px), fill: stroke }, g)
         .textContent = pointName(h, point);
     }
   }
@@ -1470,7 +1473,7 @@ ${STYLE}
     if (this._rangeMemo?.key === key) return this._rangeMemo;
     const grid = this._levels(map, step);
     const [call, weak] = SCALES.dbm.marks;
-    const lines = (grid?.aps ?? []).map((ap, i) => ({ ap, outlines: { call: contour(grid, grid.levels[i], call), weak: contour(grid, grid.levels[i], weak) } }));
+    const lines = (grid?.aps ?? []).map((ap, i) => ({ ap, outlines: { call: rangeOutlines(grid, grid.levels[i], call), weak: rangeOutlines(grid, grid.levels[i], weak) } }));
     this._rangeMemo = { key, aps: grid?.aps ?? [], lines };
     return this._rangeMemo;
   }

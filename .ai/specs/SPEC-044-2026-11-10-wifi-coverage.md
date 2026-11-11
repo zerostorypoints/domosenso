@@ -456,6 +456,11 @@ and for a device its device id. Sources and their weights:
   (the Serving map's), a ringed marker at its place with its name, and its outline at −67 dBm
   (solid) and −75 dBm (dashed) on the map's band and mode (Predicted or Calibrated), so where
   access points overlap shows directly.
+- Smoothing: each access point's level is smoothed with a Gaussian of `SMOOTH_M` σ 0.5 m (in dB, on
+  the floor's grid, a point outside every room taking the nearest room's level) before the map's
+  strongest and serving pick and for the Ranges outlines alike (map and outlines agree; outline pieces
+  under 1 m dropped), since waves blur the sharp shadows and door beams of straight rays; calibration
+  compares readings with the unsmoothed point prediction.
 - Validation and `push --plan`: `height` other than `"half"` refused (`wall at <x>,<y>: height must
   be half`); a change prints `wifi change <floor>`.
 - Tests: two rooms 0.3 m apart cost one interior wall, not two exterior ones; 0.7 m apart stay two;

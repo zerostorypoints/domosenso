@@ -2503,7 +2503,8 @@ test("ranges: the band maps outline each access point at -67 and -75 dBm in its 
   const paths = (ap, cls) => all(card, `.ranges path.range.${cls}[data-ap="${ap}"]`);
   for (const ap of ["d_mesh", "d_mesh2"]) {
     assert.ok(paths(ap, "call").length >= 1 && paths(ap, "weak").length >= 1, ap);
-    assert.ok(paths(ap, "call").every((p) => p.getAttribute("data-dbm") === "-67" && p.getAttribute("d").endsWith("Z")));
+    // 3 m round each access point runs out of the 8 x 4 m home: open lines, ending where the rooms do
+    assert.ok(paths(ap, "call").every((p) => p.getAttribute("data-dbm") === "-67" && p.getAttribute("d").startsWith("M ")));
   }
   assert.notEqual(paths("d_mesh", "call")[0].getAttribute("stroke"), paths("d_mesh2", "call")[0].getAttribute("stroke"));
   const rings = all(card, ".ranges circle.range-ring");
@@ -2582,5 +2583,21 @@ test("the wall key shows wherever the walls are weighted: the plain plan and eve
   assert.equal(all(climate, ".bar .wall-key").length, 1);
   const off = await make({ plan: planOf(), wifi: false }, hassOf());
   assert.equal($(off, ".wall-key"), null, "wifi false: outlines, no key");
+  window.localStorage.clear();
+});
+
+test("ranges: the name's halo is 3 px at any zoom, a stroke in plan metres", async () => {
+  window.localStorage.clear();
+  const aps = [{ device_id: "d_mesh", bands: ["2.4", "5"], tx: { 5: -10 } }];
+  const card = await make({ plan: wifiPlan(aps), layers: ["radio"] }, wifiHass());
+  await settle();
+  click($(card, '.bar [data-map="wifi_5"]'));
+  click($(card, ".bar [data-action=ranges]"));
+  const halo = () => Number($(card, ".ranges text.range-name").getAttribute("stroke-width"));
+  assert.ok(Math.abs(halo() - 3 * card._px()) < 1e-6, String(halo()));
+  assert.ok(halo() < 0.1, "metres, not 3 m");
+  const before = halo();
+  click($(card, "[data-action=zoom_in]"));
+  assert.ok(halo() < before, "scales with the zoom");
   window.localStorage.clear();
 });

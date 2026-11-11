@@ -311,24 +311,28 @@ export function calibratedCoverage(ctx, band, step, fit, { confidence = false } 
   return map;
 }
 
-// levelGrid() calibrated by `fit` (Amendment 3, the Ranges outlines): every access point's level plus the
-// same correction −residualAt that calibratedCoverage gives a cell, so an outline agrees with the map.
-// The ctx is built with fit.params, as for calibratedCoverage.
+// levelGrid() calibrated by `fit` (Amendment 3, the Ranges outlines): each access point's level plus the
+// correction −residualAt of its own readings (a residual's `obs.ap`, else the access point the fit assigned
+// it); a residual with neither moves no outline. The ctx is built with fit.params, as for calibratedCoverage.
 export function calibratedLevelGrid(ctx, band, step, fit) {
   const grid = levelGrid(ctx, band, step);
   if (!grid) return grid;
   const here = fit.residuals.filter((e) => e.obs.band === band && e.obs.floorId === ctx.floorId);
-  if (!here.length) return grid;
-  const at = residualIndex(here, ctx.segmentsByFloor[ctx.floorId] ?? []);
+  const segs = ctx.segmentsByFloor[ctx.floorId] ?? [];
   const { x0, y0, nx, ny } = grid;
   const c = [0, 0];
-  for (let j = 1; j + 1 < ny; j++) {
-    for (let i = 1; i + 1 < nx; i++) {
-      c[0] = x0 + i * step;
-      c[1] = y0 + j * step;
-      const add = -at(c);
-      for (const v of grid.levels) v[j * nx + i] += add;
+  grid.aps.forEach((key, k) => {
+    const own = here.filter((e) => (e.obs.ap ?? e.ap) === key);
+    if (!own.length) return;
+    const at = residualIndex(own, segs);
+    const v = grid.levels[k];
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        c[0] = x0 + i * grid.step;
+        c[1] = y0 + j * grid.step;
+        v[j * nx + i] -= at(c);
+      }
     }
-  }
+  });
   return grid;
 }

@@ -470,7 +470,8 @@ export const isHandover = (cell, margin = HANDOVER_DB) => cell.second !== null &
 export function coverage(ctx, band, step) {
   const aps = Object.keys(ctx.apPos).filter((k) => !ctx.apPos[k].bands || ctx.apPos[k].bands.includes(band));
   if (!aps.length) return { cells: [], aps: [], hint: "no_access_points" };
-  const pre = aps.map((k) => prepare(ctx, k, band));
+  // Each access point's level, smoothed (SMOOTH_M), read at the cell's centre; then the strongest.
+  const grid = levelGrid(ctx, band, Math.min(step, SMOOTH_M / 2));
   const cells = [];
   const c = [0, 0];
   (ctx.doc.floors.find((f) => f.floor_id === ctx.floorId)?.rooms ?? []).forEach((r, room) => {
@@ -483,8 +484,8 @@ export function coverage(ctx, band, step) {
         c[1] = y + step / 2;
         if (!pointInPolygon(c, poly)) continue;
         let best = -Infinity, second = -Infinity, who = 0;
-        for (let i = 0; i < pre.length; i++) {
-          const v = level(pre[i], c);
+        for (let i = 0; i < aps.length; i++) {
+          const v = sampleGrid(grid, grid.levels[i], c);
           if (v > best) { second = best; best = v; who = i; } else if (v > second) second = v;
         }
         cells.push({ x, y, room, dbm: best, ap: aps[who], second: second === -Infinity ? null : second });
@@ -494,38 +495,106 @@ export function coverage(ctx, band, step) {
   return { cells, aps, hint: null };
 }
 
+// A grid's `values` at point p, interpolated between its four nodes (clamped to the grid).
+export function sampleGrid(grid, values, p) {
+  const { x0, y0, step, nx, ny } = grid;
+  const fx = Math.max(0, Math.min(nx - 1.000001, (p[0] - x0) / step));
+  const fy = Math.max(0, Math.min(ny - 1.000001, (p[1] - y0) / step));
+  const [i, j] = [Math.floor(fx), Math.floor(fy)];
+  const [u, v] = [fx - i, fy - j];
+  const at = (a, b) => values[b * nx + a];
+  return (at(i, j) * (1 - u) + at(i + 1, j) * u) * (1 - v) + (at(i, j + 1) * (1 - u) + at(i + 1, j + 1) * u) * v;
+}
+
 // ---- ranges (Amendment 3) ----
 
-const BORDER_DB = -200;                // the grid's outer ring: below any level, so every outline closes
+// Waves bend round edges and through gaps, the straight rays do not: a ray model alone draws a sharp beam
+// through a door and a stair-stepped shadow behind a corner. Every access point's level is smoothed with a
+// Gaussian of SMOOTH_M (in dB) over the floor's grid, for the maps and the Ranges outlines alike;
+// calibration compares readings with the unsmoothed point prediction (predict).
+export const SMOOTH_M = 0.5;
 
-// Each access point's level on its own, on one grid over the floor's rooms with a cell of margin, so an
-// outline runs on from room to room: {x0, y0, step, nx, ny, aps, levels}, node (i, j) at
+// Each access point's level on its own, smoothed, on one grid over the floor's rooms with SMOOTH_M of
+// margin (a node outside every room takes the level of the nearest one inside), so an outline runs on from
+// room to room: {x0, y0, step, nx, ny, aps, levels}, node (i, j) at
 // (x0 + i * step, y0 + j * step), levels[k][j * nx + i] the k-th access point's dBm there (coverage's
-// order and model); the outer ring BORDER_DB. Null without an access point on the band or a room.
+// order and model). Null without an access point on the band or a room.
 export function levelGrid(ctx, band, step) {
   const aps = Object.keys(ctx.apPos).filter((k) => !ctx.apPos[k].bands || ctx.apPos[k].bands.includes(band));
   const rooms = ctx.doc.floors.find((f) => f.floor_id === ctx.floorId)?.rooms ?? [];
   if (!aps.length || !rooms.length) return null;
   let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
   for (const r of rooms) for (const [px, py] of r.polygon) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
-  [x0, y0] = [x0 - step, y0 - step];
-  const nx = Math.ceil((x1 - x0) / step) + 2;
-  const ny = Math.ceil((y1 - y0) / step) + 2;
+  const margin = Math.max(1, Math.ceil(SMOOTH_M / step)) * step;
+  [x0, y0] = [x0 - margin, y0 - margin];
+  const nx = Math.ceil((x1 + margin - x0) / step) + 1;
+  const ny = Math.ceil((y1 + margin - y0) / step) + 1;
+  const owner = nearestInside(rooms, x0, y0, step, nx, ny);
   const c = [0, 0];
   const levels = aps.map((k) => {
     const pre = prepare(ctx, k, band);
     const v = new Float64Array(nx * ny);
-    for (let j = 0; j < ny; j++) {
-      for (let i = 0; i < nx; i++) {
-        if (i === 0 || j === 0 || i === nx - 1 || j === ny - 1) { v[j * nx + i] = BORDER_DB; continue; }
-        c[0] = x0 + i * step;
-        c[1] = y0 + j * step;
-        v[j * nx + i] = level(pre, c);
-      }
+    for (let n = 0; n < nx * ny; n++) {
+      if (owner[n] !== n) continue;
+      c[0] = x0 + (n % nx) * step;
+      c[1] = y0 + Math.floor(n / nx) * step;
+      v[n] = level(pre, c);
     }
-    return v;
+    for (let n = 0; n < nx * ny; n++) if (owner[n] !== n) v[n] = v[owner[n]];
+    return blur(v, nx, ny, step, SMOOTH_M);
   });
   return { x0, y0, step, nx, ny, aps, levels };
+}
+
+// Per grid node the node whose level it takes: its own inside a room, else the nearest one inside a room
+// (by grid steps). Outside the rooms (beyond an outer wall, in a traced wall's gap, past the grid's edge)
+// there is no level to draw: the rooms' own carry on, so an outline exists only where the level crosses
+// inside the rooms, and the smoothing pulls in no value from outdoors.
+function nearestInside(rooms, x0, y0, step, nx, ny) {
+  const owner = new Int32Array(nx * ny).fill(-1);
+  const queue = [];
+  const c = [0, 0];
+  for (let n = 0; n < nx * ny; n++) {
+    c[0] = x0 + (n % nx) * step;
+    c[1] = y0 + Math.floor(n / nx) * step;
+    if (rooms.some((r) => pointInPolygon(c, r.polygon))) { owner[n] = n; queue.push(n); }
+  }
+  if (!queue.length) return owner.map((_, n) => n);
+  for (let q = 0; q < queue.length; q++) {
+    const n = queue[q];
+    const [i, j] = [n % nx, Math.floor(n / nx)];
+    for (const [a, b] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) {
+      if (a < 0 || b < 0 || a >= nx || b >= ny || owner[b * nx + a] >= 0) continue;
+      owner[b * nx + a] = owner[n];
+      queue.push(b * nx + a);
+    }
+  }
+  return owner;
+}
+
+// A separable Gaussian of `sigma` metres over a grid's values, cut at 3 sigma and weighted again at the
+// grid's edge (no value from beyond it).
+function blur(values, nx, ny, step, sigma) {
+  const r = Math.ceil((3 * sigma) / step);
+  const kernel = Array.from({ length: 2 * r + 1 }, (_, k) => Math.exp(-(((k - r) * step) ** 2) / (2 * sigma * sigma)));
+  const pass = (src, n, m, index) => {
+    const out = new Float64Array(src.length);
+    for (let b = 0; b < m; b++) {
+      for (let a = 0; a < n; a++) {
+        let sum = 0, w = 0;
+        for (let k = -r; k <= r; k++) {
+          const t = a + k;
+          if (t < 0 || t >= n) continue;
+          sum += src[index(t, b)] * kernel[k + r];
+          w += kernel[k + r];
+        }
+        out[index(a, b)] = sum / w;
+      }
+    }
+    return out;
+  };
+  const rows = pass(values, nx, ny, (i, j) => j * nx + i);
+  return pass(rows, ny, nx, (j, i) => j * nx + i);
 }
 
 // The lines where a grid's `values` (levelGrid's) cross `at`, by marching squares with linear
@@ -584,6 +653,16 @@ export function contour(grid, values, at) {
   for (const [id, n] of links) if (n.length === 1 && !used.has(id)) walk(id);
   for (const id of links.keys()) if (!used.has(id)) walk(id);
   return lines;
+}
+
+export const MIN_OUTLINE_M = 1;        // m: a shorter piece of a Ranges outline is noise, not a range
+
+// The Ranges outlines of `values` at `at`: contour's lines of MIN_OUTLINE_M or longer. Where the level runs
+// off the grid the line stays open at its edge: there is no outline where the level does not cross.
+export function rangeOutlines(grid, values, at) {
+  const length = (l) => l.points.reduce((sum, p, i) => (i ? sum + Math.hypot(p[0] - l.points[i - 1][0], p[1] - l.points[i - 1][1]) : 0), 0)
+    + (l.closed ? Math.hypot(l.points[0][0] - l.points.at(-1)[0], l.points[0][1] - l.points.at(-1)[1]) : 0);
+  return contour(grid, values, at).filter((l) => length(l) >= MIN_OUTLINE_M);
 }
 
 const stable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x)

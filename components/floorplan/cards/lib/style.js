@@ -41,8 +41,9 @@ export const STYLE = `
   .range { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
   .range.weak { stroke-dasharray: 6 4; }
   .range-ring { fill: none; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+  /* Its halo's width is an attribute, 3 px in plan metres: a CSS width here would override it. */
   .range-name { text-anchor: middle; font-weight: 600; paint-order: stroke; stroke: var(--card-background-color, #fff);
-                stroke-width: 3px; stroke-linejoin: round; }
+                stroke-linejoin: round; }
   .half-check { display: inline-flex; align-items: center; gap: 4px; }
   .label { fill: var(--secondary-text-color); text-anchor: middle; dominant-baseline: middle;
            pointer-events: none; }
@@ -159,7 +160,7 @@ export const STYLE = `
                    vector-effect: non-scaling-stroke; }
   .sample[data-source=manual] circle { fill: var(--secondary-text-color); }
   .sample-label { fill: var(--primary-text-color); paint-order: stroke; stroke: var(--card-background-color, #fff);
-                  stroke-width: 3px; stroke-linejoin: round; }
+                  stroke-linejoin: round; }
   .next-spot { fill: none; stroke: var(--accent-color, #ff9800); stroke-width: 2; stroke-dasharray: 4 3;
                vector-effect: non-scaling-stroke; pointer-events: none; }
   .next-spot-label { fill: var(--accent-color, #ff9800); text-anchor: middle; font-weight: 600; pointer-events: none; }

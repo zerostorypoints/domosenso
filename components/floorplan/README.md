@@ -51,6 +51,11 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     (`cards/lib/materials.json`) is a prior from ITU-R P.2040 and field values, a typical wall of
     that kind, not yours. Real walls differ, so read the map as where signal is likely strong,
     weak or gone, not as dBm to the decibel. Triple low-E glazing and metal block the most; reinforced concrete and low-E glazing come next.
+  - **Smoothed** (Amendment 3): straight rays alone would draw a sharp beam through every doorway and
+    stair-stepped shadows behind corners; real waves bend round them. Each access point's level is
+    smoothed over 0.5 m (a Gaussian, in dB) before the map picks the strongest, and the Ranges
+    outlines use the same smoothed levels (pieces under 1 m are left out), so map and outlines agree.
+    Calibration compares the readings with the unsmoothed prediction at their spot.
   - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
   - **Ranges** (SPEC-044 Amendment 3): a switch on the 2.4, 5 and 6 GHz maps (the browser
     remembers it). Each access point gets its Serving colour, a ring at its place with its name, and

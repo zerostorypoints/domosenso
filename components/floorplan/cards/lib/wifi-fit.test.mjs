@@ -348,12 +348,31 @@ test("calibratedLevelGrid: the Ranges grid moves with a reading exactly as the c
   const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false },
     residuals: [{ obs, r: -8, ap: "node" }] };
   const cell = calibratedCoverage(ctx, "5", 1, fit).cells.find((c) => c.x === 6 && c.y === 4);
-  const g = calibratedLevelGrid(ctx, "5", 0.5, fit);
-  const plain = levelGrid(ctx, "5", 0.5);
+  // the map reads the same smoothed grid (its cells at 0.25 m for a 1 m map), so outline and map agree
+  const g = calibratedLevelGrid(ctx, "5", 0.25, fit);
+  const plain = levelGrid(ctx, "5", 0.25);
   const node = (gr) => gr.levels[0][Math.round((4.5 - gr.y0) / gr.step) * gr.nx + Math.round((6.5 - gr.x0) / gr.step)];
   near(node(g), cell.dbm, 1e-9);
   near(node(g) - node(plain), 8, 0.7);
-  assert.equal(g.levels[0][0], plain.levels[0][0], "the border ring stays below every level");
-  const none = calibratedLevelGrid(ctx, "5", 0.5, { ...fit, residuals: [] });
+  assert.equal(g.levels[0][0], plain.levels[0][0], "beyond the reading's reach nothing moves");
+  const none = calibratedLevelGrid(ctx, "5", 0.25, { ...fit, residuals: [] });
   assert.deepEqual([...none.levels[0]], [...plain.levels[0]]);
+});
+
+test("calibratedLevelGrid: a reading of one access point moves that access point's outline alone", () => {
+  const doc = openDoc();
+  doc.floors[0].points.push(pt("far", 11, 7));
+  doc.floors[0].access_points.push(ap("far"));
+  const ctx = ctxOf(doc);
+  const obs = { floorId: "f0", x: 6.5, y: 4.5, band: "5", ap: "node", source: "device", device: "d", weight: 1,
+    dbm: predict(ctx, "node", "5", [6.5, 4.5]) + 8 };
+  const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false },
+    residuals: [{ obs, r: -8, ap: "node" }, { obs: { ...obs, ap: undefined, x: 2, y: 2 }, r: -5 }] };
+  const g = calibratedLevelGrid(ctx, "5", 0.25, fit);
+  const plain = levelGrid(ctx, "5", 0.25);
+  assert.deepEqual(g.aps, ["node", "far"]);
+  assert.deepEqual([...g.levels[1]], [...plain.levels[1]], "the second access point's grid unchanged");
+  assert.notDeepEqual([...g.levels[0]], [...plain.levels[0]]);
+  const i = Math.round((2 - g.y0) / g.step) * g.nx + Math.round((2 - g.x0) / g.step);
+  near(g.levels[0][i], plain.levels[0][i], 1e-9, "a residual with no access point moves no outline");
 });
