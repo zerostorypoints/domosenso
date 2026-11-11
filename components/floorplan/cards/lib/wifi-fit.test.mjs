@@ -118,6 +118,27 @@ test("survey and manual readings share one offset per source", () => {
   assert.ok(fit.params.device.survey < 0, "the shift is partly the offset");
 });
 
+test("two phones with offsets +5 and -5 dB each get their own offset and leave the brick loss unbiased (SPEC-045)", () => {
+  const doc = rowDoc();
+  const truth = clone(priors(doc));
+  truth.loss.brick["5"] = 12;
+  const phone = (id, shift) => observe(doc, truth, inRow, "5", { source: "phone", device: id })
+    .map((o) => ({ ...o, dbm: o.dbm + shift }));
+  const fit = calibrate(ctxOf(doc), [...phone("phone-a", 5), ...phone("phone-b", -5)], table);
+  assert.deepEqual(Object.keys(fit.params.device).sort(), ["phone:phone-a", "phone:phone-b"]);
+  near(fit.params.device["phone:phone-a"], 5, 1);
+  near(fit.params.device["phone:phone-b"], -5, 1);
+  near(fit.params.loss.brick["5"], 12, 1);
+});
+
+test("a phone's offset never shares a key with a placed device of the same id", () => {
+  const doc = openDoc();
+  const truth = priors(doc);
+  const at = grid([3, 6, 9], [2, 5]);
+  const obs = [...observe(doc, truth, at, "5", { device: "same" }), ...observe(doc, truth, at, "5", { source: "phone", device: "same" })];
+  assert.deepEqual(Object.keys(calibrate(ctxOf(doc), obs, table).params.device).sort(), ["phone:same", "same"]);
+});
+
 test("the same input gives the same parameters", () => {
   const doc = rowDoc();
   const truth = clone(priors(doc));

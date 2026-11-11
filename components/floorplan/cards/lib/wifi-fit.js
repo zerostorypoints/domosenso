@@ -10,15 +10,17 @@ const ITERATIONS = 10;
 const OBS_SD = 4;                      // dB: one reading at weight 1
 const TX_SD = 4;
 const N_SD = 0.3;
-const OFFSET_SD = { device: 6, survey: 3, manual: 5 };
+const OFFSET_SD = { device: 6, survey: 3, manual: 5, phone: 4 };
 const MIN_BAND_OBS = 5;                // fewer on a band: only that band's transmit powers move
 const MIN_ROOMS = 3;                   // fewer rooms observed: materials keep their priors
 const CROSS_BAND = 1 / 3;
 const N_RANGE = [1.5, 4];              // a fit outside this is the data's fault, not the building's
 const HUBER = 1.5;                     // sd: a row beyond this is down-weighted (IRLS), so one bad reading cannot drag the fit
 
-// A device's offset is its own; survey and manual readings share one offset per source.
-const offsetKey = (o) => (o.source === "device" ? o.device ?? o.entity ?? "device" : o.source);
+// A device's offset is its own; so is each phone's (SPEC-045: phones' antennas differ by model), kept apart
+// from a placed device of the same id; survey and manual readings share one offset per source.
+const offsetKey = (o) => (o.source === "device" ? o.device ?? o.entity ?? "device"
+  : o.source === "phone" ? `phone:${o.device ?? "phone"}` : o.source);
 
 const serves = (pos, band) => !pos.bands || pos.bands.includes(band);
 
