@@ -87,6 +87,7 @@ const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving 
 const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
 const CALIB_KEY = "domosenso.floorplan.calibrated"; // localStorage: "predicted" or "calibrated" on the Wi-Fi maps
 const TIP_TARGET = "g.marker[data-key]:not(.ghost), g.client[data-key]";   // what a hover or a finger's tap opens the tip for
+const MARKER_R = 8;             // px: the widest marker shape (a diamond) from its centre
 const SHARED_RING_M = 0.3;      // clients of one point spread on a ring of this radius around it
 const RANGES_KEY = "domosenso.floorplan.ranges";   // localStorage: true while the band maps show each access point's range
 const WEIGHTS = ["light", "solid", "heavy"];       // the wall weights of the plan's key (Amendment 3)
@@ -317,7 +318,7 @@ class FloorplanCard extends HTMLElement {
 
   _refresh() {
     const stamp = this._valueStamp();
-    if (stamp === this._stamp) return;
+    if (stamp === this._stamp) return void this._retip();     // the clock alone moves "Updated 5 s ago"
     if (stamp.split("\n")[0] !== this._stamp?.split("\n")[0]) this._render();
     else {
       this._drawSvg(this._status === "ready" && this._mode === "edit");
@@ -1313,6 +1314,7 @@ ${STYLE}
       el("circle", { class: "shape", r: 7 * px }, g);
       el("text", { y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
     }
+    this._retip();
   }
 
   // Survey and manual samples, a small dot with its dBm: on the Confidence map and in edit mode only (the
@@ -1942,7 +1944,7 @@ ${STYLE}
       // An unplaced client always takes its place on the ring; a placed one stays on its point when alone.
       const at2 = !s.placed ? ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius)
         : mates.length === 1 ? s.centre : ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius);
-      dots.push({ c, at: at2, placed: s.placed });
+      dots.push({ c, at: at2, placed: s.placed, ring: s.placed && mates.length === 1 });
       const to = c.ap && apAt.get(c.ap);
       if (!to) continue;
       const attrs = { class: c.stale ? "client-line stale" : "client-line", "data-mac": c.mac, x1: fmt(at2[0]), y1: fmt(at2[1]),
@@ -1950,7 +1952,13 @@ ${STYLE}
       if (c.link !== "wired") attrs["stroke-dasharray"] = "6 4";
       el("line", attrs, g);
     }
-    for (const { c, at: [x, y], placed } of dots) {
+    for (const { c, at: [x, y], placed, ring } of dots) {
+      if (ring) {
+        // A lone placed client is a ring round its device's marker (a disc would hide under it); the marker's tip lists it.
+        el("circle", { class: c.stale ? "client-ring stale" : "client-ring", "data-mac": c.mac, cx: fmt(x), cy: fmt(y),
+          r: fmt((MARKER_R + dotRadius(c.total)) * px), fill: "none", stroke: LINK_COLOURS[c.link], "stroke-width": fmt(lineWidth(c.total)) }, g);
+        continue;
+      }
       const idle = c.total < IDLE_MBPS;
       const cls = ["client"];
       if (!placed) cls.push("unplaced");
@@ -2022,7 +2030,9 @@ ${STYLE}
       if (off.length) rows.push(tt("off_plan"), ...off.map((c) => `${this._clientTitle(c)}: ${this._mbit(c.total)}`));
       return rows;
     }
-    return list.filter((c) => c.point?.key === key).flatMap((c) => this._clientRows(c, pointName(h, point)));
+    // A heading per client; with several on one device they are told apart by the router's name.
+    const mine = list.filter((c) => c.point?.key === key);
+    return mine.flatMap((c) => { const head = mine.length > 1 ? c.name : this._clientTitle(c); return [head, ...this._clientRows(c, head)]; });
   }
 
   _trafficList() {
@@ -2470,6 +2480,18 @@ ${STYLE}
     this._showTip(content, e);
   }
 
+  // An open marker tip is worked out again from the current states: a client's rates and age change, and the
+  // client may be gone. Same place; closed (and unpinned) when its subject is no more.
+  _retip() {
+    const tip = this.shadowRoot?.querySelector(".tip");
+    const subject = this._tipSubject;
+    if (!tip || tip.hidden || !subject?.startsWith("m:")) return;
+    const content = this._markerTip(subject.slice(2));
+    if (!content) return void (this._pinned ? this._unpinTip() : this._showTip(null));
+    this._tipKey = null;
+    this._showTip(content, this._tipAt);
+  }
+
   _unpinTip() {
     this._pinned = null;
     this._hoverKey = null;
@@ -2516,6 +2538,8 @@ ${STYLE}
       this._tipKey = content.key;
     }
     tip.hidden = false;
+    this._tipAt = { clientX: e.clientX, clientY: e.clientY };
+    this._tipSubject = content.key;
     // Below right of the pointer, flipped to its left near the card's right edge.
     const body = this.shadowRoot.querySelector(".body").getBoundingClientRect();
     const x = e.clientX - body.left;

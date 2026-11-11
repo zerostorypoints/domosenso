@@ -131,6 +131,8 @@ export const STYLE = `
   .traffic-links .client { pointer-events: auto; cursor: default; }
   .client circle { stroke: var(--card-background-color, #fff); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .client.unplaced circle { stroke: var(--primary-text-color); }
+  .client-ring { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0.9; }
+  .client-ring.stale { stroke: var(--disabled-text-color, #9e9e9e); }
   .client-line { vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0.85; }
   .client-label { fill: var(--primary-text-color); text-anchor: middle; pointer-events: none; paint-order: stroke;
                   stroke: var(--card-background-color, #fff); stroke-width: 3px; stroke-linejoin: round; }
