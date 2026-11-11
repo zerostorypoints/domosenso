@@ -1,0 +1,121 @@
+// Network traffic on the plan (SPEC-047): the router's clients as records, from the access point rules'
+// `traffic` block. Pure functions of the frontend's `hass` registries, the plan document and the rules.
+import { normMac, nodeMacs } from "./wifi-sources.js";
+import { accessPoints } from "./maps.js";
+import { keysOf } from "./plan.js";
+
+const round2 = (n) => Math.round(n * 100) / 100;
+const objectId = (entityId) => entityId.slice(entityId.indexOf(".") + 1);
+const keyOf = (point) => point.device_id ?? point.entity_id;
+const PER_SECOND_TO_MBIT = { "kB/s": 8 / 1000, "B/s": 8 / 1e6, "MB/s": 8, "kbit/s": 1 / 1000, "Mbit/s": 1 };
+
+// The access point rules that report traffic; a rule without a `traffic` block gives none.
+export const trafficRules = (rules) => (rules?.access_points || []).filter((r) => r.traffic);
+
+// A reading in Mbit/s, unrounded. A string is parsed; null, "unknown" and the like read as 0.
+export function toMbps(value, unit) {
+  const n = typeof value === "number" ? value : value == null || value === "" ? NaN : Number(value);
+  return Number.isFinite(n) ? n * (PER_SECOND_TO_MBIT[unit] ?? PER_SECOND_TO_MBIT["kB/s"]) : 0;
+}
+
+const timeOf = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? t : null; };
+
+// Freshness (SPEC-047): the router's `updated` sensor and `polling` switch are entities of the
+// integration, found by object id suffix among all of them: they need not sit on a node's device.
+function freshness(hass, rule, now) {
+  const f = rule.traffic.freshness || {};
+  const own = Object.keys(hass.entities || {}).filter((id) => hass.entities[id].platform === rule.integration);
+  const find = (domain, suffix) => suffix && own.find((id) => id.startsWith(`${domain}.`) && objectId(id).endsWith(suffix));
+  const sensor = find("sensor", f.updated);
+  const polling = find("switch", f.polling);
+  const st = sensor ? hass.states?.[sensor] : null;
+  const updatedMs = st ? timeOf(st.state) ?? timeOf(st.last_updated) : null;
+  const limit = 3 * (f.interval_s ?? 30) * 1000;
+  let reason = null;
+  if (!sensor || updatedMs == null || now - updatedMs >= limit) reason = "stale";
+  else if (polling && hass.states?.[polling]?.state !== "on") reason = "polling_off";
+  return { reason, updated: updatedMs == null ? null : new Date(updatedMs), limit };
+}
+
+// The plan points with their registry keys, to match a client to one: [{floorId, key, keys, mac}].
+const planPoints = (doc) => (doc?.floors || []).flatMap((f) => (f.points || []).map((p) => ({
+  floorId: f.floor_id, key: keyOf(p), keys: keysOf(p), mac: normMac(p.mac), device_id: p.device_id ?? null, entity_id: p.entity_id ?? null,
+})));
+
+function match(hass, mac, ownDevice, points) {
+  // 1. A point's mac link; the registry only decides when no point links this MAC.
+  const linked = points.find((p) => p.mac === mac);
+  if (linked) {
+    const device_id = linked.device_id ?? hass.entities?.[linked.entity_id]?.device_id ?? null;
+    return { device_id, point: { floorId: linked.floorId, key: linked.key }, matched_by: "link" };
+  }
+  // 2. A device with this MAC, other than the router integration's own device for the tracker.
+  for (const [id, dev] of Object.entries(hass.devices || {})) {
+    if (id === ownDevice || !(dev.connections || []).some(([type, v]) => type === "mac" && normMac(v) === mac)) continue;
+    const p = points.find((q) => q.keys.includes(id));
+    if (p) return { device_id: id, point: { floorId: p.floorId, key: p.key }, matched_by: "registry" };
+  }
+  return { device_id: null, point: null, matched_by: null };
+}
+
+// One record per client tracker (state `home`, a known link) of the rules' integrations, newest tracker
+// per MAC. `live` and `reason` say whether the router's data is current: if not, every client is stale.
+export function clients(hass, doc, rules, now = Date.now()) {
+  const aps = accessPoints(doc).map((a) => a.key);
+  const points = planPoints(doc);
+  const byMacMap = new Map();
+  let reason = null;
+  let updated = null;
+  for (const rule of trafficRules(rules)) {
+    const c = rule.traffic.client;
+    const fresh = freshness(hass, rule, now);
+    const ids = Object.keys(hass.entities || {}).filter((id) => id.startsWith("device_tracker.") && hass.entities[id].platform === rule.integration);
+    const nodes = ids.filter((id) => hass.states?.[id]?.state === "home"
+      && Object.entries(rule.device_attr || {}).every(([k, v]) => hass.states[id].attributes?.[k] === v));
+    if (!nodes.length) fresh.reason = "unavailable";
+    reason ??= fresh.reason;
+    updated ??= fresh.updated;
+    for (const id of ids) {
+      const st = hass.states?.[id];
+      const a = st?.attributes || {};
+      const link = c.link.values[a[c.link.attr]];
+      const mac = normMac(a.mac);
+      if (st?.state !== "home" || !link || !mac || !a[c.node_mac]) continue;
+      const seenMs = timeOf(st.last_updated) ?? now;
+      if (byMacMap.has(mac) && byMacMap.get(mac).seenMs >= seenMs) continue;
+      const node = normMac(a[c.node_mac]);
+      const down = toMbps(a[c.down], c.unit);
+      const up = toMbps(a[c.up], c.unit);
+      byMacMap.set(mac, {
+        seenMs,
+        record: {
+          mac, name: a.friendly_name ?? id, ap: aps.find((key) => nodeMacs(hass, key, rule).includes(node)) ?? null, link,
+          down: round2(down), up: round2(up), total: round2(down + up),
+          ...match(hass, mac, hass.entities[id].device_id ?? null, points),
+          stale: !!fresh.reason || now - seenMs >= fresh.limit, updated: new Date(seenMs),
+        },
+      });
+    }
+  }
+  return { list: [...byMacMap.values()].map((v) => v.record), live: reason === null, updated, reason };
+}
+
+// An access point's own throughput in Mbit/s, from its device's sensors (object id suffixes of the
+// rule's `node` block); `exclude` drops the integration's whole-network sensors (`total_down`). Null
+// when the device has none.
+export function nodeRates(hass, rules, apKey) {
+  const deviceId = hass.entities?.[apKey] ? hass.entities[apKey].device_id : apKey;
+  for (const rule of trafficRules(rules)) {
+    const n = rule.traffic.node;
+    if (!n) continue;
+    const mine = Object.values(hass.entities || {}).filter((e) => e.device_id === deviceId && e.platform === rule.integration
+      && e.entity_id.startsWith("sensor.") && !(n.exclude && objectId(e.entity_id).includes(n.exclude)));
+    const read = (suffix) => mine.find((e) => objectId(e.entity_id).endsWith(suffix));
+    const d = read(n.down);
+    const u = read(n.up);
+    if (!d && !u) continue;
+    const rate = (e) => (e ? round2(toMbps(hass.states?.[e.entity_id]?.state, n.unit)) : 0);
+    return { down: rate(d), up: rate(u) };
+  }
+  return null;
+}

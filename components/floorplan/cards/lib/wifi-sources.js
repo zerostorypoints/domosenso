@@ -147,7 +147,8 @@ function byTracker(hass, deviceId, aps, rules, ix) {
   return null;
 }
 
-function nodeMacs(hass, apKey, rule, ix) {
+// The MACs of an access point's own trackers (a node's `mac`).
+export function nodeMacs(hass, apKey, rule, ix) {
   const ids = hass.entities?.[apKey] ? [apKey] : entitiesOfDevice(hass, apKey, ix);
   return ids
     .filter((id) => id.startsWith("device_tracker.") && hass.entities[id]?.platform === rule.integration)
