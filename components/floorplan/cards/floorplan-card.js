@@ -1242,11 +1242,14 @@ ${STYLE}
   _drawSamples(svg, px, editing, map) {
     if (!this._wifiOn) return;
     const survey = this._config.survey && !editing;
-    // A phone survey (SPEC-045) shows the readings on every map: the person sees what was kept, and where.
-    if (editing || map?.cls === "confidence" || this._config.survey === "phone" || (this._showReadings && map?.layer === "radio")) {
+    // The Readings switch (opt-in, a phone survey too) shows them on any Wi-Fi map; a map shows its band's
+    // readings only (a 2.4 GHz reading says little about the 5 GHz map); edit mode and the Confidence map
+    // (where the model has been measured at all) every one.
+    if (editing || map?.cls === "confidence" || (this._showReadings && map?.layer === "radio")) {
       const g = el("g", {}, svg);
       for (const s of this._doc.wifi?.samples || []) {
         if (s.floor_id !== this._floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        if (!editing && map?.cls !== "confidence" && map?.band && s.band !== map.band) continue;
         const dot = el("g", { class: "sample", "data-source": s.source ?? "survey", transform: `translate(${fmt(s.x)} ${fmt(s.y)})` }, g);
         el("circle", { r: fmt(3 * px) }, dot);
         el("text", { class: "sample-label", x: fmt(5 * px), "font-size": fmt(10 * px), "stroke-width": fmt(3 * px),

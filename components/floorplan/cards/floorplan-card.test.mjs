@@ -2702,17 +2702,21 @@ test("phone survey: focusRoom shows one room as the area view does, neighbours f
   assert.ok(card.surveySpots().some((p) => !inKitchen(p.x, p.y)), "the whole floor's spots again");
 });
 
-test("phone survey: the kept readings show as dots with their dBm on the band map", async () => {
+test("phone survey: the readings follow the Readings switch too (opt-in), the map's band only", async () => {
   window.localStorage.clear();
   const plan = wifiPlan();
-  plan.wifi = { samples: [{ floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:26:28Z", band: "5", dbm: -48, source: "phone", phone: "ios",
-    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:26:24Z", dbm: -48 }] }] };
+  const phone = (x, band, dbm) => ({ floor_id: "ground", x, y: 1, t: `2026-11-11T18:2${x}:00Z`, band, dbm, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:26:24Z", dbm }] });
+  plan.wifi = { samples: [phone(2, "5", -48), phone(6, "2.4", -73)] };
   const card = await make({ plan, survey: "phone" }, wifiHass());
   await settle();
-  const dots = sampleDots(card);
-  assert.equal(dots.length, 1);
-  assert.equal(dots[0].getAttribute("data-source"), "phone");
-  assert.ok(dots[0].textContent.includes("48"), dots[0].textContent);
+  assert.equal(sampleDots(card).length, 0, "off until chosen, on the phone too");
+  click($(card, ".bar [data-action=readings]"));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.deepEqual(sampleDots(card).map((d) => d.textContent.trim()), ["−48"], "the 5 GHz map: 5 GHz readings only");
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.deepEqual(sampleDots(card).map((d) => d.textContent.trim()), ["−73"]);
+  window.localStorage.clear();
 });
 
 test("phone survey: focusRoom from one room straight to another shows the other (the scoped floor is per room)", async () => {
@@ -2745,9 +2749,11 @@ test("wifi maps: Readings (opt-in, remembered) shows the survey readings as dots
   assert.equal(chip().getAttribute("aria-pressed"), "false", "off until chosen");
   assert.equal(sampleDots(card).length, 0);
   click(chip());
-  assert.equal(sampleDots(card).length, 2);
+  assert.equal(sampleDots(card).length, 1, "the 2.4 GHz map: its reading");
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(sampleDots(card).length, 1, "the 5 GHz map: its reading");
   click($(card, '.bar [data-map="serving"]'));
-  assert.equal(sampleDots(card).length, 2, "on every Wi-Fi map");
+  assert.equal(sampleDots(card).length, 1, "Serving: the band beside it");
   const again = await make({ plan, layers: ["radio"] }, wifiHass());
   await settle();
   assert.equal($(again, ".bar [data-action=readings]").getAttribute("aria-pressed"), "true", "remembered");

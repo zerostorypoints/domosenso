@@ -354,7 +354,8 @@ it, or it does not go in.
   kept at once; amber when a warning waits for Keep / Retry; red when nothing was kept.
 - **Readings kept** (a section under the panel): the phone's readings in the plan, newest first, of the
   picked room when there is one; a row (room, time and band, the value) opens its details and every
-  scan. The same readings are dots with their dBm on the plan.
+  scan. On the plan they are dots with their dBm when the floor plan's Readings switch is on (opt-in),
+  the shown band's only.
 - **No return from Shortcuts** (SPEC-045 Amendment 2): the Shortcut ends with a notification, the person
   goes back, and the page still open shows the reading as it arrives. The picked room is kept per
   device. Should the page be built anew (a reload), the shell's resume below still applies.

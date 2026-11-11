@@ -57,9 +57,10 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     outlines use the same smoothed levels (pieces under 1 m are left out), so map and outlines agree.
     Calibration compares the readings with the unsmoothed prediction at their spot.
   - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
-  - **Readings**: a switch on every Wi-Fi map, off until chosen (the browser remembers it), shown when
-    the plan has survey readings: each reading (phone, laptop or typed) as a dot with its dBm, the
-    readings that calibrate the map. The Confidence map and edit mode show them anyway.
+  - **Readings**: a switch on every Wi-Fi map, off until chosen (the browser remembers it, a phone
+    survey too), shown when the plan has survey readings: each reading (phone, laptop or typed) as a dot
+    with its dBm. A band map (and Serving) shows its band's readings only; the Confidence map and edit
+    mode show every one, without the switch.
   - **Ranges** (SPEC-044 Amendment 3): a switch on the 2.4, 5 and 6 GHz maps (the browser
     remembers it). Each access point gets its Serving colour, a ring at its place with its name, and
     its outline at −67 dBm (solid) and −75 dBm (dashed) on the map's band, predicted or calibrated
@@ -148,8 +149,7 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
   4 m apart; no "far" spots), and the spot where the person stands. A tap in a room sets that spot
   and fires `floorplan-tap` (`detail: {floor_id, x, y}` in metres) instead of `room-tap`. The host
   draws its own panel and calls the card: `surveySpots()` (`[{floor_id, x, y, why}]`, why `handover`,
-  `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `surveySamples()` (the plan's phone readings, newest first; with
-  `survey: "phone"` the plan draws them as dots on every map), `focusRoom(area_id | null)` (that room as `area` with
+  `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `surveySamples()` (the plan's phone readings, newest first), `focusRoom(area_id | null)` (that room as `area` with
   `context` shows it: alone, fitted, the other rooms faded; its spots, map and taps only; null shows the
   whole floor), `resolveReading({bssid, mac, mhz,
   channel})` (`{ap, band, via}`: the access point by its BSSID sensor, else the router's client
