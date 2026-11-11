@@ -793,6 +793,18 @@
           "switches": "Schalter",
           "buttons": "Tasten"
         }
+      },
+      "wifi": {
+        "check": {
+          "fresh": "Die Messung gehört nicht zu diesem Messen. Bitte erneut messen.",
+          "phone": "Die Messung kam vom Telefon einer anderen Person.",
+          "wifi": "Das Telefon war nicht im WLAN.",
+          "network": "Das Telefon war in einem anderen Netz als dem des Zuhauses.",
+          "count": "Zu wenige Messungen. Stillstehen und erneut messen.",
+          "known_ap": "Der Zugangspunkt ist auf dem Plan nicht markiert. Ohne ihn behalten, mit halbem Gewicht.",
+          "steady": "Das Signal schwankte oder das Telefon wechselte beim Messen den Zugangspunkt.",
+          "band": "Das Band ist unklar: 2,4 oder 6 GHz wählen."
+        }
       }
     }
   }

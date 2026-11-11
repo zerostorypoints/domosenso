@@ -793,6 +793,18 @@
           "switches": "Przełączniki",
           "buttons": "Przyciski"
         }
+      },
+      "wifi": {
+        "check": {
+          "fresh": "Odczyt nie pochodzi z tego pomiaru. Zmierz ponownie.",
+          "phone": "Odczyt pochodzi z telefonu innej osoby.",
+          "wifi": "Telefon nie był połączony z Wi-Fi.",
+          "network": "Telefon był w innej sieci niż sieć domu.",
+          "count": "Za mało odczytów. Stój nieruchomo i zmierz ponownie.",
+          "known_ap": "Punkt dostępowy nie jest zaznaczony na planie. Zachowano bez niego, z połową wagi.",
+          "steady": "Sygnał się wahał lub telefon zmienił punkt dostępowy podczas pomiaru.",
+          "band": "Pasmo jest niejasne: wybierz 2,4 lub 6 GHz."
+        }
       }
     }
   }
