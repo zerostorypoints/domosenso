@@ -251,6 +251,15 @@
         "off_plan": "An Zugangspunkten, die nicht im Plan sind",
         "links": {
           "wired": "Kabel"
+        },
+        "edit": {
+          "title": "Netzwerkgerät",
+          "choose": "Gerät wählen",
+          "not_seen": "Zuletzt gesehen: {time}",
+          "not_seen_ever": "Nicht gesehen",
+          "remove": "Verknüpfung entfernen",
+          "same_device": "Dasselbe Gerät wie {name}?",
+          "elsewhere": "{name} (anderswo verknüpft)"
         }
       }
     }

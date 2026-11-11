@@ -251,6 +251,15 @@
         "off_plan": "Na punktach dostępu spoza planu",
         "links": {
           "wired": "Przewodowo"
+        },
+        "edit": {
+          "title": "Klient sieci",
+          "choose": "Wybierz klienta",
+          "not_seen": "Ostatnio widziany: {time}",
+          "not_seen_ever": "Niewidziany",
+          "remove": "Usuń powiązanie",
+          "same_device": "To samo urządzenie co {name}?",
+          "elsewhere": "{name} (powiązany gdzie indziej)"
         }
       }
     }

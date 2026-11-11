@@ -362,6 +362,47 @@ The walk:
 7. Push the samples to Home Assistant (`floorplan push`), and repeat the walk after moving an access
    point or changing a wall's or window's material.
 
+## Network traffic
+
+With a supported router integration (`tplink_deco` today; the rules are data in
+`cards/lib/wifi-rules.json`) the radio layer offers two more maps beside the Wi-Fi ones, built from
+the router's clients and their live rates:
+
+- **Traffic heat** paints the throughput (down plus up, on a log scale) around each client that is
+  on the plan, and over the rooms an access point serves for a client that is not.
+- **Traffic links** draws a line from each access point to its clients, one colour per link (wired,
+  2.4, 5 or 6 GHz), the width and the dot growing with the rate. **Idle** shows or hides the
+  clients that move almost nothing. Tapping a dot lists the client's router name, access point,
+  link, rates and how it was matched.
+
+A client is matched to a point of the plan in this order:
+
+1. a point's **Network client** link (its MAC address), chosen in edit mode;
+2. the device registry: a device whose MAC is the client's (the router integration's own device
+   for the client excluded), also when it is one of a point's joined devices.
+
+A matched point that was never dragged to a spot (it only stands for its room) does not place the
+client: the client still counts as unplaced and is drawn at its access point.
+
+**Linking a client.** In edit mode, tap a point: **Network client** lists the online clients by the
+router's name; clients already linked to, or matched with, another point are marked, and choosing
+one moves the link (a MAC belongs to one point). A linked client that is offline stays linked and
+reads "Not seen since <time>" (the router's last report), or "Not seen" when the router has never
+listed it. **Remove link** clears it.
+
+**Same device.** Streamers and speakers are often listed twice: one integration knows the MAC, the
+other (Cast, say) is the one on the plan. When the MAC belongs to a device that is not dragged onto
+the plan, and exactly one placed point of the same manufacturer has no MAC of its own, that point's
+panel offers "Same device as ...?". Accepting it removes the other device's undragged point and joins
+it to this one in a single edit. Nothing is ever joined without that tap.
+
+`traffic: false` in the card's configuration turns both maps and the Network client field off.
+
+Limits: the router reports no signal strength per client, so the maps show how much, not how good;
+rates refresh about every 30 seconds, and a map older than three times that says it is not live;
+phones that use a private (randomised) address per network do not match a device by registry, link
+them by hand.
+
 ## After editing in Home Assistant
 
 The repository copy is now behind. Run `domosenso floorplan pull <target>` and commit

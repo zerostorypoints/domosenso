@@ -251,6 +251,15 @@
         "off_plan": "On access points not on the plan",
         "links": {
           "wired": "Wired"
+        },
+        "edit": {
+          "title": "Network client",
+          "choose": "Choose a client",
+          "not_seen": "Not seen since {time}",
+          "not_seen_ever": "Not seen",
+          "remove": "Remove link",
+          "same_device": "Same device as {name}?",
+          "elsewhere": "{name} (linked elsewhere)"
         }
       }
     }

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { clients, nodeRates, toMbps, trafficRules, heatCells, apTotals, HEAT_SIGMA_M, HEAT_CUT_M,
-  ringPosition, lineWidth, dotRadius, IDLE_KEY, LINK_COLOURS } from "./traffic.js";
+  ringPosition, lineWidth, dotRadius, IDLE_KEY, LINK_COLOURS, setPointMac, suggestions, applySuggestion, lastSeen } from "./traffic.js";
 import { pointInPolygon } from "./geometry.js";
 import rules from "./wifi-rules.json" with { type: "json" };
 
@@ -330,4 +330,71 @@ test("link colours are four distinct categoricals; the idle key is namespaced", 
   assert.deepEqual(Object.keys(LINK_COLOURS).sort(), ["2.4", "5", "6", "wired"]);
   assert.equal(new Set(Object.values(LINK_COLOURS)).size, 4);
   assert.equal(IDLE_KEY, "domosenso.floorplan.traffic_idle");
+});
+
+// ---- Linking a client in edit mode, and the same-device suggestion (SPEC-047) ---------------------
+
+const planOfPoints = (points) => ({ floors: [{ floor_id: "ground", points, access_points: [] }] });
+
+test("setPointMac normalises, removes with null, moves a MAC from another point", () => {
+  const d = planOfPoints([{ device_id: "a", x: 1, y: 1 }, { device_id: "b", x: 2, y: 1, mac: "02:00:00:00:00:0a" }]);
+  const one = setPointMac(d, "ground", "a", "02-00-00-00-00-0A");
+  assert.equal(one.floors[0].points[0].mac, "02:00:00:00:00:0a");
+  assert.ok(!("mac" in one.floors[0].points[1]), "one point per MAC: the link moved");
+  assert.equal("mac" in setPointMac(one, "ground", "a", null).floors[0].points[0], false);
+  assert.equal(setPointMac(d, "ground", "nobody", M(1)), null);
+  assert.equal(setPointMac(d, "attic", "a", M(1)), null);
+});
+
+// A streamer seen by UPnP with its MAC (undragged point), and by Cast without one (placed).
+const STREAMER = { manufacturer: "Acme", connections: [["mac", M(20)]] };
+const CAST = { manufacturer: "Acme", connections: [] };
+function streamer({ dragged = false, extra = {}, points = null } = {}) {
+  const h = build([{ id: "streamer", mac: M(20) }], { devices: { "dev-upnp": STREAMER, "dev-cast": CAST, ...extra } });
+  const d = planOfPoints(points ?? [
+    { device_id: "dev-cast", x: 3, y: 3 },
+    dragged ? { device_id: "dev-upnp", x: 4, y: 4 } : { device_id: "dev-upnp", x: 2, y: 2, placed: false },
+  ]);
+  return { h, d, list: clients(h, d, rules, NOW).list };
+}
+
+test("suggestion: MAC on an unplaced device, one placed point of its manufacturer without a mac connection", () => {
+  const { h, d, list } = streamer();
+  assert.deepEqual(suggestions(h, d, list), [{ mac: M(20), deviceId: "dev-upnp", pointKey: "dev-cast", floorId: "ground" }]);
+  const done = applySuggestion(d, suggestions(h, d, list)[0]);
+  assert.deepEqual(done.floors[0].points, [{ device_id: "dev-cast", x: 3, y: 3, also: ["dev-upnp"] }], "its undragged point goes, the device joins");
+  // The device not on the plan at all counts as unplaced too.
+  const bare = streamer({ points: [{ device_id: "dev-cast", x: 3, y: 3 }] });
+  assert.equal(suggestions(bare.h, bare.d, bare.list).length, 1);
+  assert.deepEqual(applySuggestion(bare.d, suggestions(bare.h, bare.d, bare.list)[0]).floors[0].points[0].also, ["dev-upnp"]);
+});
+
+test("no suggestion when the device is dragged, the manufacturer differs, or a candidate has a mac", () => {
+  const dragged = streamer({ dragged: true });
+  assert.deepEqual(suggestions(dragged.h, dragged.d, dragged.list), []);
+  const other = streamer({ extra: { "dev-cast": { manufacturer: "Other", connections: [] } } });
+  assert.deepEqual(suggestions(other.h, other.d, other.list), []);
+  const withMac = streamer({ extra: { "dev-cast": { manufacturer: "Acme", connections: [["mac", M(21)]] } } });
+  assert.deepEqual(suggestions(withMac.h, withMac.d, withMac.list), []);
+});
+
+test("no suggestion with two candidate points", () => {
+  const { h, d, list } = streamer({ extra: { "dev-cast2": CAST }, points: [
+    { device_id: "dev-cast", x: 3, y: 3 }, { device_id: "dev-cast2", x: 5, y: 3 }, { device_id: "dev-upnp", x: 2, y: 2, placed: false }] });
+  assert.deepEqual(suggestions(h, d, list), []);
+});
+
+test("a suggestion is never applied by clients()", () => {
+  const { d, list } = streamer();
+  const c = byMac(list, M(20));
+  assert.deepEqual([c.matched_by, c.point, c.device_id], ["registry", null, "dev-upnp"]);
+  assert.deepEqual(d.floors[0].points[0], { device_id: "dev-cast", x: 3, y: 3 }, "the plan is untouched");
+});
+
+test("lastSeen: the tracker's last_reported, else last_updated, when it is not home; null without a tracker", () => {
+  const h = build([{ id: "away", mac: M(30), state: "not_home", age: 600, reported: 120 }, { id: "gone", mac: M(31), state: "not_home", age: 900 }]);
+  assert.equal(lastSeen(h, rules, M(30)).getTime(), NOW - 120000);
+  assert.equal(lastSeen(h, rules, M(31)).getTime(), NOW - 900000);
+  assert.equal(lastSeen(h, rules, "02-00-00-00-00-30").getTime(), NOW - 120000, "any MAC spelling");
+  assert.equal(lastSeen(h, rules, M(99)), null);
 });

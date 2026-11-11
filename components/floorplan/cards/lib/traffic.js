@@ -2,7 +2,7 @@
 // `traffic` block. Pure functions of the frontend's `hass` registries, the plan document and the rules.
 import { normMac, nodeMacs } from "./wifi-sources.js";
 import { accessPoints } from "./maps.js";
-import { keysOf } from "./plan.js";
+import { keysOf, editFloor, joinPoint } from "./plan.js";
 import { pointInPolygon } from "./geometry.js";
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -224,3 +224,82 @@ export function ringPosition([cx, cy], i, n, radius = 1.2) {
 const decades = (total) => Math.max(0, Math.min(1, (Math.log10(Math.max(total, IDLE_MBPS)) - Math.log10(IDLE_MBPS)) / 5));
 export const lineWidth = (total) => 1 + 4 * decades(total);   // screen px
 export const dotRadius = (total) => 3 + 5 * decades(total);   // screen px
+
+// ---- Linking a client to a point, and the same-device suggestion (SPEC-047) -------------------
+
+// A point linked to the router client with this MAC (normalised); null removes the link. A MAC links one
+// point only: it leaves any other point that held it. Null when the point is not on that floor.
+export function setPointMac(doc, floorId, key, mac) {
+  const m = mac ? normMac(mac) : null;
+  const onFloor = (doc?.floors || []).find((f) => f.floor_id === floorId);
+  if (!onFloor?.points.some((p) => keyOf(p) === key)) return null;
+  const strip = ({ mac: _, ...rest }) => rest;
+  const moved = m ? { ...doc, floors: doc.floors.map((f) => ({ ...f, points: f.points.map((p) => (normMac(p.mac) === m && keyOf(p) !== key ? strip(p) : p)) })) } : doc;
+  return editFloor(moved, floorId, (floor) => ({ ...floor, points: floor.points.map((p) => (keyOf(p) !== key ? p : m ? { ...p, mac: m } : strip(p))) }));
+}
+
+// Where a device sits on the plan, if anywhere: its own undragged point, or an also entry of one.
+function homeOf(doc, deviceId) {
+  for (const f of doc.floors || []) for (const p of f.points || []) if (keysOf(p).includes(deviceId)) return { floorId: f.floor_id, point: p };
+  return null;
+}
+
+// The plan after the suggestion: the MAC-bearing device leaves its undragged point and joins the placed
+// point as the same hardware, in one edit. Null when the plan no longer allows it.
+export function applySuggestion(doc, { deviceId, pointKey, floorId }) {
+  const home = homeOf(doc, deviceId);
+  let base = doc;
+  if (home) {
+    if (home.point.placed !== false && Number.isFinite(home.point.x) && Number.isFinite(home.point.y)) return null; // dragged: the user put it there
+    if (keyOf(home.point) === deviceId) {
+      if (home.point.also?.length) return null; // would drop its joined devices
+      base = editFloor(doc, home.floorId, (f) => ({ ...f, points: f.points.filter((p) => p !== home.point) }));
+    } else {
+      base = separatePointOf(doc, home, deviceId);
+    }
+    if (!base) return null;
+  }
+  return joinPoint(base, floorId, pointKey, { kind: "device", key: deviceId });
+}
+
+function separatePointOf(doc, home, deviceId) {
+  return editFloor(doc, home.floorId, (f) => ({ ...f, points: f.points.map((p) => {
+    if (p !== home.point) return p;
+    const left = p.also.filter((id) => id !== deviceId);
+    const { also, ...rest } = p;
+    return left.length ? { ...rest, also: left } : rest;
+  }) }));
+}
+
+// A client matched only by the registry to a device that is unplaced (no point, or an undragged one) may
+// be the same hardware as a placed point of the same manufacturer that has no MAC of its own: Cast and
+// DLNA each list a streamer, one with the MAC. Offered only when exactly one such point exists; never applied here.
+export function suggestions(hass, doc, list) {
+  const maker = (id) => String(hass.devices?.[id]?.manufacturer ?? "").trim().toLowerCase();
+  const hasMac = (id) => (hass.devices?.[id]?.connections || []).some(([type]) => type === "mac");
+  const placed = planPoints(doc).filter((p) => p.placed && p.device_id && !p.mac);
+  const out = [];
+  for (const c of list) {
+    if (c.matched_by !== "registry" || c.point || !c.device_id || !maker(c.device_id)) continue;
+    const fits = placed.filter((p) => maker(p.device_id) === maker(c.device_id) && !p.keys.includes(c.device_id) && !p.keys.some(hasMac));
+    if (fits.length !== 1) continue;
+    const s = { mac: c.mac, deviceId: c.device_id, pointKey: fits[0].key, floorId: fits[0].floorId };
+    if (applySuggestion(doc, s)) out.push(s);
+  }
+  return out;
+}
+
+// When the router last saw a client: its tracker's `last_reported`, else `last_updated`. Null when no
+// tracker of the rules' integrations has this MAC.
+export function lastSeen(hass, rules, mac) {
+  const want = normMac(mac);
+  const platforms = new Set(trafficRules(rules).map((r) => r.integration));
+  let best = null;
+  for (const [id, e] of Object.entries(hass.entities || {})) {
+    const st = hass.states?.[id];
+    if (!id.startsWith("device_tracker.") || !platforms.has(e.platform) || normMac(st?.attributes?.mac) !== want) continue;
+    const ms = timeOf(st.last_reported) ?? timeOf(st.last_updated);
+    if (ms != null && (best == null || ms > best)) best = ms;
+  }
+  return best == null ? null : new Date(best);
+}

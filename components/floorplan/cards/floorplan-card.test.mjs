@@ -2180,6 +2180,10 @@ test("a wired client whose device is an unplaced point paints at its access poin
   // Sam's streamer: a registry device with its MAC, auto-placed (placed: false) in the living room, wired on its node.
   hass.devices.d_streamer = { id: "d_streamer", name: "Streamer", area_id: "living_room", connections: [["mac", "02:00:00:00:bb:03"]] };
   hass.entities["device_tracker.streamer"] = { entity_id: "device_tracker.streamer", device_id: null, platform: "tplink_deco" };
+  for (const [id, device, platform] of [["media_player.streamer_cast", "d_cast", "cast"], ["media_player.streamer_up", "d_up", "upnp"]]) {
+    hass.entities[id] = { entity_id: id, device_id: device, platform };
+    hass.states[id] = { state: "idle", attributes: {} };
+  }
   hass.states["device_tracker.streamer"] = { state: "home", last_updated: new Date().toISOString(), attributes: { device_type: "client",
     friendly_name: "streamer", mac: "02:00:00:00:bb:03", deco_mac: NODE2, connection_type: "wired", down_kilobytes_per_s: 100, up_kilobytes_per_s: 8.75 } };
   const plan = wifiPlan();
@@ -3167,4 +3171,123 @@ test("ranges: the name's halo is 3 px at any zoom, a stroke in plan metres", asy
   click($(card, "[data-action=zoom_in]"));
   assert.ok(halo() < before, "scales with the zoom");
   window.localStorage.clear();
+});
+
+// ---- Network client in edit mode, and the same-device suggestion (SPEC-047 T6) -------------------
+
+const ENv = (key, vars) => Object.entries(vars).reduce((text, [k, v]) => text.replace(`{${k}}`, v), EN(key));
+const ALEX_PHONE = "02:00:00:00:cc:01";
+const SAM_TABLET = "02:00:00:00:cc:02";
+const editTap = (card, key, x, y) => {
+  click($(card, "[data-action=edit]"));
+  const [cx, cy] = clientAt(card, x, y);
+  pointer(markerOf(card, key), "pointerdown", cx, cy);
+  pointer(markerOf(card, key), "pointerup", cx, cy);
+};
+const clientField = (card) => $(card, '.point-panel [data-field="mac"]');
+function awayTracker(hass, id, mac, { reported = null } = {}) {
+  hass.entities[`device_tracker.${id}`] = { entity_id: `device_tracker.${id}`, device_id: null, platform: "tplink_deco" };
+  hass.states[`device_tracker.${id}`] = { state: "not_home", last_updated: "2026-11-10T08:00:00Z", ...(reported ? { last_reported: reported } : {}),
+    attributes: { device_type: "client", friendly_name: id, mac, deco_mac: NODE1, connection_type: "band5" } };
+}
+
+test("edit panel: Network client lists online clients by router name; choosing one sets mac", async () => {
+  window.localStorage.clear();
+  const hass = phoneHass();
+  hass.states["device_tracker.laptop"].attributes.friendly_name = "Sam's laptop";
+  hass.states["device_tracker.nas"].attributes.friendly_name = "Alex's NAS";
+  const card = await make({ plan: planOf([pt("d_phone", 3, 3)]), layers: ["radio"] }, hass);
+  await settle();
+  editTap(card, "d_phone", 3, 3);
+  assert.equal($(card, ".point-panel").textContent.includes(EN("card.floorplan.traffic.edit.title")), true);
+  assert.deepEqual([...clientField(card).options].map((o) => o.textContent.replace(/ \(.*/, "")), [EN("card.floorplan.traffic.edit.choose"), "Alex's NAS", "Sam's laptop"]);
+  assert.deepEqual(optionValues(clientField(card)), ["", NAS, LAPTOP]);
+  change(clientField(card), LAPTOP);
+  assert.equal(card._doc.floors[0].points[0].mac, LAPTOP);
+  assert.equal([...clientField(card).options].find((o) => o.hasAttribute("selected")).value, LAPTOP, "the panel shows the link");
+  window.localStorage.clear();
+});
+
+test("edit panel: a client linked to another point is marked, and choosing it moves the link", async () => {
+  const hass = phoneHass();
+  const plan = planOf([pt("d_phone", 3, 3), { ...pt("d_mesh2", 1, 2), mac: NAS }]);
+  const card = await make({ plan, layers: ["radio"] }, hass);
+  await settle();
+  editTap(card, "d_phone", 3, 3);
+  const nas = [...clientField(card).options].find((o) => o.value === NAS);
+  assert.equal(nas.textContent, ENv("card.floorplan.traffic.edit.elsewhere", { name: "nas" }));
+  change(clientField(card), NAS);
+  const points = card._doc.floors[0].points;
+  assert.equal(points.find((p) => p.device_id === "d_phone").mac, NAS);
+  assert.ok(!("mac" in points.find((p) => p.device_id === "d_mesh2")), "one point per MAC");
+});
+
+test("edit panel: a link to an offline client shows not seen since <time>; Remove clears it", async () => {
+  const hass = phoneHass();
+  awayTracker(hass, "alex_phone", ALEX_PHONE, { reported: "2026-11-10T21:30:00Z" });
+  const plan = planOf([{ ...pt("d_phone", 3, 3), mac: ALEX_PHONE }, { ...pt("d_mesh2", 1, 2), mac: SAM_TABLET }]);
+  const card = await make({ plan, layers: ["radio"] }, hass);
+  await settle();
+  editTap(card, "d_phone", 3, 3);
+  const text = $(card, ".point-panel .not-seen").textContent;
+  const [before, after] = EN("card.floorplan.traffic.edit.not_seen").split("{time}");
+  assert.ok(text.startsWith(before) && text.endsWith(after) && text.length > before.length + after.length, text);
+  assert.ok(!text.includes("{time}") && !text.includes("\u2014"), text);
+  click($(card, '.point-panel [data-action="unlink_mac"]'));
+  assert.ok(!("mac" in card._doc.floors[0].points.find((p) => p.device_id === "d_phone")));
+  assert.ok(!$(card, ".point-panel .not-seen"));
+  // A MAC no tracker has: plain "not seen".
+  const other = await make({ plan: planOf([{ ...pt("d_phone", 3, 3), mac: SAM_TABLET }]), layers: ["radio"] }, phoneHass());
+  await settle();
+  editTap(other, "d_phone", 3, 3);
+  assert.equal($(other, ".point-panel .not-seen").textContent, EN("card.floorplan.traffic.edit.not_seen_ever"));
+});
+
+test("edit panel: no Network client section with traffic: false", async () => {
+  const card = await make({ plan: planOf([pt("d_phone", 3, 3)]), layers: ["radio"], traffic: false }, phoneHass());
+  await settle();
+  editTap(card, "d_phone", 3, 3);
+  assert.equal(clientField(card), null);
+});
+
+// A streamer seen by UPnP with the MAC (an undragged point) and by Cast without one (placed).
+function streamerHass() {
+  const hass = phoneHass();
+  hass.devices.d_up = { id: "d_up", name: "Streamer (UPnP)", manufacturer: "Acme", connections: [["mac", ALEX_PHONE]], config_entries: ["e_up"] };
+  hass.devices.d_cast = { id: "d_cast", name: "Streamer (Cast)", manufacturer: "Acme", connections: [], config_entries: ["e_cast"] };
+  hass.states["device_tracker.streamer"] = { state: "home", last_updated: new Date().toISOString(),
+    attributes: { device_type: "client", friendly_name: "streamer", mac: ALEX_PHONE, deco_mac: NODE1, connection_type: "wired", down_kilobytes_per_s: 10, up_kilobytes_per_s: 0 } };
+  hass.entities["device_tracker.streamer"] = { entity_id: "device_tracker.streamer", device_id: null, platform: "tplink_deco" };
+  return hass;
+}
+
+test("edit panel: Same device as <point>? adds the device to the point's also and drops its undragged point", async () => {
+  const plan = planOf([pt("d_cast", 3, 3), { ...pt("d_up", 2, 2), placed: false }]);
+  const card = await make({ plan }, streamerHass());
+  await settle();
+  editTap(card, "d_cast", 3, 3);
+  const button = $(card, '.point-panel [data-action="same_device"]');
+  assert.ok(button, $(card, ".point-panel").innerHTML);
+  assert.equal(button.textContent, ENv("card.floorplan.traffic.edit.same_device", { name: "Streamer (UPnP)" }));
+  assert.ok(!card._doc.floors[0].points.find((p) => p.device_id === "d_cast").also, "not applied until accepted");
+  click(button);
+  const points = card._doc.floors[0].points.filter((p) => p.device_id);
+  assert.ok(!points.some((p) => p.device_id === "d_up"), "its undragged point is gone");
+  assert.deepEqual(points.find((p) => p.device_id === "d_cast").also, ["d_up"]);
+});
+
+test("edit panel: no suggestion when the MAC-bearing device's point is dragged", async () => {
+  const plan = planOf([pt("d_cast", 3, 3), pt("d_up", 5, 3)]);
+  const card = await make({ plan }, streamerHass());
+  await settle();
+  editTap(card, "d_cast", 3, 3);
+  assert.equal($(card, '.point-panel [data-action="same_device"]'), null);
+});
+
+test("traffic edit strings exist in en, de and pl", () => {
+  for (const lang of ["en", "de", "pl"]) {
+    for (const k of ["title", "choose", "not_seen", "not_seen_ever", "remove", "same_device", "elsewhere"]) {
+      assert.ok(at(LANGS[lang], `card.floorplan.traffic.edit.${k}`), `${lang} ${k}`);
+    }
+  }
 });

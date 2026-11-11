@@ -60,10 +60,10 @@ import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_H
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
   wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
-  observationIndex } from "./lib/wifi-sources.js";
+  observationIndex, normMac } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
 import { trafficRules, clients, heatCells, apTotals, nodeRates, ringPosition, lineWidth, dotRadius, IDLE_KEY, IDLE_MBPS,
-  LINK_COLOURS } from "./lib/traffic.js";
+  LINK_COLOURS, setPointMac, suggestions, applySuggestion, lastSeen } from "./lib/traffic.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
@@ -1023,8 +1023,38 @@ ${STYLE}
     return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
       + `<select class="category">${options}</select>`
       + (joined ? `<span class="joined-label">${esc(t(h, "card.floorplan.point.joined"))}</span>${joined}` : "")
+      + this._clientFieldsHtml(point)
       + this._apFieldsHtml(point)
       + "</div>";
+  }
+
+  // Network client (SPEC-047): link the point to a router client by its MAC, and the same-device suggestion.
+  // Offered when the plan could show traffic at all: a traffic rule, `traffic` not false, client trackers.
+  _clientFieldsHtml(point) {
+    if (!this._trafficOffered()) return "";
+    const h = this._hass;
+    const tt = (key, vars) => t(h, `card.floorplan.traffic.edit.${key}`, vars);
+    const key = keyOf(point);
+    const mine = normMac(point.mac);
+    const online = [...this._traffic().list].sort((a, b) => a.name.localeCompare(b.name));
+    const taken = (c) => c.mac !== mine && c.matched_by !== null;   // linked to, or matched with, another point
+    const opts = online.map((c) => `<option value="${esc(c.mac)}" ${c.mac === mine ? "selected" : ""}>${esc(taken(c) ? tt("elsewhere", { name: c.name }) : c.name)}</option>`);
+    const offline = mine && !online.some((c) => c.mac === mine);
+    if (offline) opts.unshift(`<option value="${esc(mine)}" selected>${esc(mine)}</option>`);
+    let html = `<label>${esc(tt("title"))}</label><select class="traffic-field" data-field="mac">`
+      + `<option value="" ${mine ? "" : "selected"}>${esc(tt("choose"))}</option>${opts.join("")}</select>`;
+    if (offline) {
+      const seen = lastSeen(h, wifiRules, mine);
+      const when = seen ? tt("not_seen", { time: formatDate(h, seen, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) }) : tt("not_seen_ever");
+      html += `<span class="not-seen">${esc(when)}</span>`;
+    }
+    if (mine) html += `<button data-action="unlink_mac">${esc(tt("remove"))}</button>`;
+    // A suggestion is offered, never applied: the user decides that the two devices are one piece of hardware.
+    for (const s of suggestions(h, this._doc, this._traffic().list)) {
+      if (s.pointKey !== key || s.floorId !== this._floorId) continue;
+      html += `<button data-action="same_device" data-device="${esc(s.deviceId)}">${esc(tt("same_device", { name: pointName(h, { device_id: s.deviceId }) }))}</button>`;
+    }
+    return html;
   }
 
   // `wifi` is on unless false: the Wi-Fi tools and fields with it.
@@ -2167,7 +2197,12 @@ ${STYLE}
       this._offered.add(key);
       save(OFFER_KEY, [...this._offered]);
     }
-    else if (action === "separate") {
+    else if (action === "unlink_mac") this._edit(setPointMac(this._doc, this._floorId, this._picked, null));
+    else if (action === "same_device") {
+      const s = suggestions(this._hass, this._doc, this._traffic().list)
+        .find((x) => x.pointKey === this._picked && x.floorId === this._floorId && x.deviceId === button.getAttribute("data-device"));
+      this._edit(s && applySuggestion(this._doc, s));
+    } else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
       this._maps = { ...this._maps, [this._mapLayer()]: button.getAttribute("data-map") };
@@ -2231,6 +2266,9 @@ ${STYLE}
       this._render();
     } else if (e.target.matches?.(".ap-field") && this._picked) {
       this._edit(this._apChange(e.target));
+      this._render();
+    } else if (e.target.matches?.(".traffic-field") && this._picked) {
+      this._edit(setPointMac(this._doc, this._floorId, this._picked, e.target.value || null));
       this._render();
     } else if (e.target.matches?.("select.category") && this._picked) {
       const own = this._cands?.get(this._picked)?.category ?? null;
