@@ -859,7 +859,8 @@
         "readings": "Zachowane odczyty: {n}",
         "no_readings": "Nie zachowano jeszcze żadnego odczytu.",
         "no_room": "Poza pokojami",
-        "scans": "Pomiary: {list}"
+        "scans": "Pomiary: {list}",
+        "no_input": "Skrót uruchomił się bez żądania Pocket, więc jego odczytu nie da się użyć. Zmierz ponownie stąd."
       }
     }
   }

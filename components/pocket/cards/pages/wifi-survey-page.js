@@ -397,7 +397,11 @@ export function update(root, ctx) {
       s.callback = null;
       s.evaluate(scans, null);
     } else {
-      const got = readingFromSensor(hass?.states?.[READING], s.pending);
+      const state = hass?.states?.[READING];
+      // An empty reading fired after Measure: the Shortcut ran without Pocket's input (run by hand, or
+      // Shortcuts did not pass it). No reading of this Measure can come any more.
+      if (state && state.state === "" && Date.parse(state.attributes?.at ?? "") >= s.pending.at) s.stop("no_input");
+      const got = s.pending && readingFromSensor(state, s.pending);
       if (got && s.seen !== s.pending.code) {
         s.seen = s.pending.code;
         s.evaluate(got.scans, got.user_id);

@@ -317,3 +317,15 @@ test("the waiting line says to go back to Home Assistant; the picked room is kep
   assert.equal($(again, "select.room-pick").value, "kitchen");
   assert.deepEqual(card.calls.focus, ["kitchen"], "the new plan shows the room");
 });
+
+test("the Shortcut ran without Pocket's request (an empty reading after Measure): said at once, Measure free again", async () => {
+  const ctx = ctxOf({ hass: surveyHass(), cfg });
+  const el = await mount(ctx);
+  tapPlan(2, 1);
+  click($(el, ".measure"));
+  ctx.hass = surveyHass({ states: reading("", []) });
+  page.update(el, ctx);
+  assert.ok(!$(el, ".measure").disabled);
+  assert.ok($(el, ".cancel").hidden);
+  assert.ok(text($(el, ".progress")).includes("without Pocket's request"), text($(el, ".progress")));
+});

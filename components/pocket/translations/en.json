@@ -859,7 +859,8 @@
         "readings": "Readings kept: {n}",
         "no_readings": "No reading kept yet.",
         "no_room": "Outside the rooms",
-        "scans": "Scans: {list}"
+        "scans": "Scans: {list}",
+        "no_input": "The Shortcut ran without Pocket's request, so its reading cannot be used. Measure again from here."
       }
     }
   }

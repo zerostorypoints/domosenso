@@ -99,3 +99,11 @@ test("Android: the companion method, the phone's device id, the band from the fr
   assert.equal(r.sample.phone, "dev-sam");
   assert.equal(r.sample.noise, undefined, "no noise from Android");
 });
+
+test("fresh: a scan time cut to the second just before Measure is fine (the Shortcut writes whole seconds), 5 s before is not", () => {
+  const tap = AT + 700;                                          // Measure at .700, the first scan in the same second
+  const scans = five().map((x, i) => ({ ...x, t: new Date(AT + 1000 * i).toISOString().replace(/\.\d+Z$/, "Z") }));
+  assert.deepEqual(failed(checkReading(scans, ctx({ pending: { ...ctx().pending, at: tap } }))), []);
+  const old = [{ ...scans[0], t: new Date(AT - 5000).toISOString() }, ...scans.slice(1)];
+  assert.ok(failed(checkReading(old, ctx({ pending: { ...ctx().pending, at: tap } }))).includes("hard:fresh"));
+});

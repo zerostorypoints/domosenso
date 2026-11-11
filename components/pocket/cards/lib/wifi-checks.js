@@ -14,6 +14,9 @@
 import { PENDING_MS, MIN_SCANS } from "./wifi-capture.js";
 
 export const STEADY_DB = 6;
+// The Shortcut writes a scan's time in whole seconds: one taken in the second of the Measure tap reads as
+// up to a second before it. A scan older than this before the tap is an earlier reading.
+export const FRESH_SLACK_MS = 2000;
 const ORDER = ["fresh", "phone", "wifi", "network", "count", "known_ap", "steady", "band"];
 const HARD = new Set(["fresh", "phone", "wifi", "network", "count"]);
 
@@ -49,7 +52,7 @@ export function checkReading(scans, ctx) {
     : { ap: null, band: null, via: null };
   const known = resolved.via === "bssid" || resolved.via === "tracker";
   const fail = {
-    fresh: !pending || now - pending.at > PENDING_MS || scans.some((s) => Date.parse(s.t ?? "") < pending.at),
+    fresh: !pending || now - pending.at > PENDING_MS || scans.some((s) => Date.parse(s.t ?? "") < pending.at - FRESH_SLACK_MS),
     phone: ctx.readingUserId != null && ctx.readingUserId !== ctx.userId,
     wifi: scans.length === 0,
     network: ctx.ssid != null && scans.length > 0 && majority(scans.map((s) => s.ssid)) !== ctx.ssid,
