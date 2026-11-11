@@ -1937,6 +1937,11 @@ test("a Deco node point is offered 'Use as access point?' once; accepting marks 
   window.localStorage.clear();
 });
 
+test("German confidence levels: hoch, mittel, niedrig (not tief)", () => {
+  assert.deepEqual(at(LANGS.de, "card.floorplan.wifi.confidence"), { high: "hoch", medium: "mittel", low: "niedrig" });
+  assert.ok(!at(LANGS.de, "card.floorplan.wifi.confidence_legend").includes("tief"));
+});
+
 test("a point's panel marks it as access point with its bands, transmit power and mount height", async () => {
   window.localStorage.clear();
   window.localStorage.setItem(OFFER_KEY, JSON.stringify(["d_mesh"]));
