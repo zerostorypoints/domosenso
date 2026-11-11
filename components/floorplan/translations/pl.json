@@ -162,7 +162,21 @@
         "confidence_legend": "na ile można ufać mapie w paśmie {bands} GHz: wysoka do 2 m od odczytu urządzenia z obsługującego punktu dostępu, średnia tam, gdzie odczyty przesunęły model, niska tam, gdzie obowiązują tylko typowe wartości",
         "disabled": "Wyłączone czujniki sygnału Wi-Fi, które skalibrowałyby mapę; włącz je w Ustawienia → Encje:",
         "ranges": "Zasięgi",
-        "ranges_legend": "ciągła {call} dBm, przerywana {weak} dBm"
+        "ranges_legend": "ciągła {call} dBm, przerywana {weak} dBm",
+        "readings": "Odczyty",
+        "reading": {
+          "band": "{band} GHz, kanał {channel}",
+          "no_ap": "punkt dostępowy nieznany",
+          "noise": "szum {noise} dBm",
+          "spread": "rozrzut {spread} dB",
+          "scans": "pomiary: {n}",
+          "source": {
+            "phone": "telefon",
+            "survey": "pomiar laptopem",
+            "manual": "wpisany"
+          },
+          "ceiling": "na 2,4 GHz: 5 GHz tutaj poniżej {dbm} dBm (sterowanie pasmem)"
+        }
       },
       "wall": {
         "material": "Materiał ściany",
@@ -181,7 +195,8 @@
           "solid": "pełna",
           "heavy": "ciężka",
           "title": "Ściany według tłumienia przy 5 GHz: lekka poniżej 10 dB, pełna od 10 do 25 dB, ciężka powyżej 25 dB; szkło zabarwione na niebiesko, ściana do połowy wysokości przerywana, brak ściany kropkowany"
-        }
+        },
+        "steering": "Sterowanie pasmem poniżej (dBm)"
       },
       "material": {
         "drywall": "Płyta gipsowo-kartonowa",

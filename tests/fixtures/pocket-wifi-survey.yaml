@@ -1,0 +1,7 @@
+# The demo home's pocket inputs with the floor plan and the Wi-Fi survey on (SPEC-045): its package
+# (sensor.domosenso_wifi_reading). For `INPUTS=tests/fixtures/pocket-wifi-survey.yaml tools/ha-check.sh pocket`
+# (tools/check-all.sh).
+plants: true
+floorplan: true
+wifi_survey: true
+wifi_ssid: Home

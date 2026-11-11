@@ -248,11 +248,55 @@ default dashboard in the user's profile).
   (`sound_averages`: `leq_1_min`, `leq_15_min`, `leq_1_h`) are the home's own sensors in dB SPL.
 - **plants** (optional, with the input `plants: true`): Plants on the default bar. The page reads
   every `plant.*` whether or not the flag is set.
+- **The Wi-Fi survey** (optional, with the input `wifi_survey: true`, which needs `floorplan`): see
+  *Wi-Fi survey* below.
 - **climate-air** for the levels: its threshold helpers (comfort range per room with climate, air
   limits per reading). Without it the card shows readings but no level.
 - A YAML dashboard per language in `configuration.yaml`, at the paths you choose
   (`dashboard_paths` is reserved: no template reads it, it only records them; default
   `dashboard-pocket` for English), each with `filename:` the rendered file.
+
+## Wi-Fi survey
+
+An administrator measures the home's Wi-Fi with the phone they carry and the readings calibrate the
+floor plan's Wi-Fi maps (SPEC-045; the floorplan component's *Wi-Fi* sections). Set `wifi_survey: true`
+(with `floorplan: true`), render and deploy: that adds `packages/pocket.yaml` with
+`sensor.domosenso_wifi_reading`, and a **Wi-Fi survey** row on the System page for administrators.
+
+- **The page** (`#/wifi-survey`) shows the floor plan's Wi-Fi map with up to 3 suggested spots,
+  numbered: handover zones between access points and rooms without a reading, at least 4 m apart. Tap
+  where you stand (a tap within 1 m of a spot takes the spot), press **Measure** and stand still.
+- **iPhone** (iOS 17.4 or later): Pocket opens the Shortcut **Domosenso Wi-Fi**, which reads the
+  Wi-Fi details 5 times, a second apart (signal, noise, channel, Wi-Fi standard, rates, the access
+  point's BSSID, the network name), sends them to Home Assistant with the Companion app's **Fire
+  event** and shows a notification; go back to Home Assistant (◀ at the top left) and the reading shows
+  on the page. The Shortcut does not open the app itself: that would restart it. Install it once from the page's install card (download it, open the download, tap Add
+  Shortcut), then open it in Shortcuts, tap **Server** in its Fire event action and choose your Home Assistant (it is listed by
+  its name in the Companion app; searching for its address finds nothing). Allow Shortcuts Location
+  access if the reading has no BSSID. Pocket in Safari without the Companion app uses **Domosenso
+  Wi-Fi Safari** instead, which hands the reading back through x-callback-url.
+- **Android**: turn on the Companion app's Wi-Fi sensors (signal strength, BSSID, frequency, link
+  speed, connection) and choose the phone on the page. Measure asks the app to update its sensors
+  (`command_update_sensors`) and collects 5 fresh readings within 20 s.
+- **The checks.** A reading is not kept when it is not from this Measure, comes from someone else's
+  phone, was not on Wi-Fi or on another network, or has fewer than 3 scans: retry. It is kept or
+  retried at your choice when its access point is not one on the plan (kept without it, at half
+  weight), the signal moved by more than 6 dB or the phone changed access point while measuring, or
+  the band is unclear (a channel 6 GHz shares with another band: pick 2.4 or 6 GHz). The model's
+  value shows beside the reading; a reading is never refused for disagreeing with it.
+- **Bands.** The phone measures the band it is connected on; iOS and Android join the band the router
+  steers them to, and neither Shortcuts nor the Companion app can choose it. Expect mostly 5 GHz near
+  the access points and 2.4 GHz where 5 GHz is weak. Each reading keeps its band; the floor plan's
+  calibration carries what a reading says about the walls to the other bands, partially (the floorplan
+  README's *Bands*), and a reading on 2.4 GHz also caps 5 GHz at its spot (band steering: the phone
+  left 5 GHz because it was weak there). The Readings switch on the plan shows a band map's own
+  readings, and on 5 GHz those ceilings as hollow dots.
+- **Kept at once** when every check passes (a green dot); with a warning (amber) you choose **Keep** or
+  **Retry**; a failure (red) keeps nothing. A kept reading is a sample of the plan (`source: phone`, with
+  every scan) and the maps recalibrate at once; **Undo** takes the last one out. **Readings kept**, under
+  the panel, lists them with their details and scans, and the plan shows them as dots.
+- The Shortcuts are written by `tools/pocket_shortcuts.py` (plists, then `shortcuts sign --mode
+  anyone` on macOS) into `cards/shortcuts/`; regenerate them there after changing the tool.
 
 ## The card's config
 
@@ -268,6 +312,7 @@ Rendered from the home inputs; nothing in it is a state.
 | `thresholds.air` | per air reading any room names (score, co2, pm2_5, voc, nox): `fair`, `poor` ids |
 | `floorplan` | `true` with the input `floorplan`: the home has the floorplan component, whose card the area pages and the floor plan view use; absent otherwise |
 | `plants` | `true` with the input `plants`: the home has the plants component, so Plants is on the default bar; absent otherwise |
+| `wifi_survey`, `wifi_scans`, `wifi_ssid` | with the input `wifi_survey`: `true`, the readings per measurement (the input `wifi_scans`, default 5) and the network name a reading must be on (the input `wifi_ssid`, absent when empty); absent otherwise |
 | `sound` | with the input `sound`: `level` (`sensor.music_level`), `offset` (`sensor.music_spl_offset`) and `averages` (the input `sound_averages`); absent otherwise |
 
 ## Levels

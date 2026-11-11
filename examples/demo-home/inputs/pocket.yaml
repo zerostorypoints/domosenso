@@ -1,4 +1,8 @@
 # The values the demo home supplies to the pocket component (its `inputs:` in component.yaml): the
-# demo home has the plants component, so Plants is on the default bar; the rest are the defaults;
-# the rooms come from the demo home's home.inputs.yaml.
+# demo home has the plants component, so Plants is on the default bar; it has the floorplan component
+# (its plan is examples/demo-home/floorplan.json), so the area pages show their room and the Wi-Fi
+# survey page is on; the rest are the defaults; the rooms come from the demo home's home.inputs.yaml.
 plants: true
+floorplan: true
+wifi_survey: true
+wifi_ssid: Home

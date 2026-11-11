@@ -341,6 +341,8 @@ ENTITY_OWNER = {
     "binary_sensor.balcony_door_contact": None, "lock.front_door": None,
     "binary_sensor.kitchen_smoke": None, "binary_sensor.bathroom_leak": None, "siren.hall_siren": None,
     "person.alex": None, "person.sam": None,
+    "device_tracker.access_point_living_room": "floorplan", "device_tracker.access_point_office": "floorplan",
+    "device_tracker.access_point_hallway": "floorplan",
     "calendar.family": "calendar",
 }
 DEVICE_ENTITIES = {

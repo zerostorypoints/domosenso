@@ -41,6 +41,7 @@ import * as scenes from "./scenes-page.js";
 import * as safety from "./safety-page.js";
 import * as controls from "./controls-page.js";
 import * as system from "./system-page.js";
+import * as wifiSurvey from "./wifi-survey-page.js";
 
 export const pages = {
   home,
@@ -56,4 +57,5 @@ export const pages = {
   system,
   settings,
   floorplan,
+  "wifi-survey": wifiSurvey,
 };

@@ -5,7 +5,8 @@
 //   - Updates: each update waiting, its installed and its new version; a row opens Home Assistant's
 //     more-info, where an administrator installs or skips it;
 //   - Not reading: the devices whose every entity is unavailable, with their area;
-//   - for an administrator, a link to Home Assistant's settings (opened inside HA, no reload).
+//   - for an administrator, a link to Home Assistant's settings (opened inside HA, no reload);
+//   - for an administrator of a home with the Wi-Fi survey (config wifi_survey, SPEC-045), its row.
 // render() builds the frame once; the lists are rebuilt only when what they hold changes.
 
 import { BACKUP_FAIR, BACKUP_POOR, ago, systemOf } from "../lib/system.js";
@@ -46,6 +47,7 @@ export function render(ctx) {
     </div>
     <div class="group updates"><h3></h3><div class="list"></div><p class="none"></p></div>
     <div class="group silent"><h3></h3><div class="list"></div><p class="none"></p></div>
+    <div class="group wifi" hidden><button class="row" type="button"><span class="label"><span class="n"></span><small></small></span><span class="v">›</span></button></div>
     <a class="admin" hidden></a>`;
   const parts = { ctx, updatesKey: null, silentKey: null };
   const admin = root.querySelector(".admin");
@@ -53,6 +55,7 @@ export function render(ctx) {
     event.preventDefault();
     openInHa(SETTINGS_URL);
   });
+  root.querySelector(".wifi button").addEventListener("click", () => parts.ctx.navigate("#/wifi-survey"));
   root._system = parts;
   update(root, ctx);
   return root;
@@ -127,6 +130,11 @@ export function update(root, ctx) {
   const noSilent = silent.querySelector(".none");
   noSilent.hidden = sys.silent.length > 0;
   setText(noSilent, ctx.t("card.pocket.system.all_reading"));
+
+  const wifi = $(".wifi");
+  wifi.hidden = hass?.user?.is_admin !== true || !ctx.config?.wifi_survey;
+  setText(wifi.querySelector(".n"), ctx.t("card.pocket.wifi.row"));
+  setText(wifi.querySelector("small"), ctx.t("card.pocket.wifi.row_hint"));
 
   // HA's settings are an administrator's only.
   const admin = $(".admin");

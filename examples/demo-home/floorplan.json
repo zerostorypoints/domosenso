@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "floors": [
+    {
+      "floor_id": null,
+      "height": 2.7,
+      "rooms": [
+        {"area_id": "living_room", "polygon": [[0, 0], [6, 0], [6, 4], [0, 4]]},
+        {"area_id": "office", "polygon": [[6, 0], [10, 0], [10, 4], [6, 4]]},
+        {"area_id": "hallway", "polygon": [[0, 4], [4, 4], [4, 7], [0, 7]]},
+        {"area_id": "bedroom", "polygon": [[4, 4], [10, 4], [10, 7], [4, 7]]}
+      ],
+      "points": [
+        {"entity_id": "sensor.living_room_temperature", "x": 4.6, "y": 1.2, "placed": true},
+        {"entity_id": "sensor.living_room_co2", "x": 4.6, "y": 1.6, "placed": true},
+        {"entity_id": "sensor.bedroom_temperature", "x": 9.2, "y": 6.2, "placed": true},
+        {"entity_id": "device_tracker.access_point_living_room", "x": 0.6, "y": 0.6, "placed": true, "category": "radio"},
+        {"entity_id": "device_tracker.access_point_office", "x": 9.4, "y": 0.6, "placed": true, "category": "radio"},
+        {"entity_id": "device_tracker.access_point_hallway", "x": 0.6, "y": 6.4, "placed": true, "category": "radio"}
+      ],
+      "walls": [
+        {"at": [6, 2], "material": "brick"},
+        {"at": [7, 4], "material": "concrete"},
+        {"at": [4, 5.5], "material": "drywall"}
+      ],
+      "openings": [
+        {"kind": "window", "rooms": ["living_room", null], "at": [3, 0], "width": 1.6},
+        {"kind": "window", "rooms": ["office", null], "at": [8, 0], "width": 1.2},
+        {"kind": "window", "rooms": ["bedroom", null], "at": [7.5, 7], "width": 1.4},
+        {"kind": "door", "rooms": ["living_room", "office"], "at": [6, 3.2], "width": 0.9, "state": "open"},
+        {"kind": "opening", "rooms": ["living_room", "hallway"], "at": [2, 4], "width": 1.2},
+        {"kind": "door", "rooms": ["hallway", "bedroom"], "at": [4, 6.2], "width": 0.9, "state": "closed"},
+        {"kind": "door", "rooms": ["hallway", null], "at": [0, 5.5], "width": 1.0, "state": "closed"}
+      ],
+      "access_points": [
+        {"entity_id": "device_tracker.access_point_living_room", "bands": ["2.4", "5"], "mount": 1.0},
+        {"entity_id": "device_tracker.access_point_office", "bands": ["2.4", "5", "6"], "mount": 2.0},
+        {"entity_id": "device_tracker.access_point_hallway", "bands": ["2.4"], "mount": 1.0}
+      ]
+    }
+  ],
+  "wifi": {
+    "steering_dbm": -75,
+    "defaults": {"interior": "concrete_thin", "exterior": "concrete_thick"},
+    "samples": [
+      {"floor_id": null, "x": 3.2, "y": 2.0, "t": "2026-11-10T18:02:11Z", "band": "5", "channel": 36, "dbm": -47,
+       "bssid": "02:00:00:00:00:01", "source": "phone", "phone": "ios", "method": "shortcut", "spread": 2,
+       "scans": [
+         {"t": "2026-11-10T18:02:08Z", "ssid": "Home", "bssid": "02:00:00:00:00:01", "standard": "802.11ax", "dbm": -46, "channel": 36, "rx": 1201, "tx": 1080},
+         {"t": "2026-11-10T18:02:09Z", "ssid": "Home", "bssid": "02:00:00:00:00:01", "standard": "802.11ax", "dbm": -48, "channel": 36, "rx": 1201, "tx": 1080},
+         {"t": "2026-11-10T18:02:10Z", "ssid": "Home", "bssid": "02:00:00:00:00:01", "standard": "802.11ax", "dbm": -47, "channel": 36, "rx": 1201, "tx": 961}
+       ]},
+      {"floor_id": null, "x": 8.2, "y": 2.4, "t": "2026-11-10T18:04:40Z", "band": "5", "channel": 149, "dbm": -54,
+       "bssid": "02:00:00:00:00:02", "source": "phone", "phone": "ios", "method": "shortcut", "spread": 3,
+       "scans": [
+         {"t": "2026-11-10T18:04:37Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11ax", "dbm": -53, "channel": 149, "rx": 864, "tx": 720},
+         {"t": "2026-11-10T18:04:38Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11ax", "dbm": -56, "channel": 149, "rx": 864, "tx": 648},
+         {"t": "2026-11-10T18:04:39Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11ax", "dbm": -54, "channel": 149, "rx": 864, "tx": 720}
+       ]},
+      {"floor_id": null, "x": 2.0, "y": 5.6, "t": "2026-11-10T18:07:02Z", "band": "2.4", "channel": 6, "dbm": -52,
+       "bssid": "02:00:00:00:00:03", "source": "phone", "phone": "android", "method": "companion", "spread": 1,
+       "scans": [
+         {"t": "2026-11-10T18:07:00Z", "ssid": "Home", "bssid": "02:00:00:00:00:03", "dbm": -52, "rx": 144, "mhz": 2437},
+         {"t": "2026-11-10T18:07:01Z", "ssid": "Home", "bssid": "02:00:00:00:00:03", "dbm": -53, "rx": 144, "mhz": 2437}
+       ]},
+      {"floor_id": null, "x": 6.0, "y": 5.8, "t": "2026-11-10T18:09:25Z", "band": "2.4", "channel": 6, "dbm": -63,
+       "bssid": "02:00:00:00:00:03", "source": "phone", "phone": "ios", "method": "shortcut", "spread": 2,
+       "scans": [
+         {"t": "2026-11-10T18:09:22Z", "ssid": "Home", "bssid": "02:00:00:00:00:03", "standard": "802.11n", "dbm": -62, "channel": 6, "rx": 144, "tx": 130},
+         {"t": "2026-11-10T18:09:23Z", "ssid": "Home", "bssid": "02:00:00:00:00:03", "standard": "802.11n", "dbm": -64, "channel": 6, "rx": 130, "tx": 117},
+         {"t": "2026-11-10T18:09:24Z", "ssid": "Home", "bssid": "02:00:00:00:00:03", "standard": "802.11n", "dbm": -63, "channel": 6, "rx": 144, "tx": 130}
+       ]},
+      {"floor_id": null, "x": 8.8, "y": 5.4, "t": "2026-11-10T18:11:50Z", "band": "2.4", "channel": 1, "dbm": -66,
+       "bssid": "02:00:00:00:00:02", "source": "phone", "phone": "ios", "method": "shortcut", "spread": 3,
+       "scans": [
+         {"t": "2026-11-10T18:11:47Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11n", "dbm": -65, "channel": 1, "rx": 117, "tx": 104},
+         {"t": "2026-11-10T18:11:48Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11n", "dbm": -68, "channel": 1, "rx": 104, "tx": 86},
+         {"t": "2026-11-10T18:11:49Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11n", "dbm": -66, "channel": 1, "rx": 117, "tx": 104}
+       ]},
+      {"floor_id": null, "x": 5.0, "y": 1.0, "t": "2026-11-09T20:15:00Z", "band": "5", "channel": 36, "dbm": -51,
+       "noise": -94, "bssid": "02:00:00:00:00:01", "source": "survey"},
+      {"floor_id": null, "x": 8.0, "y": 0.8, "t": "2026-11-09T20:18:00Z", "band": "2.4", "channel": 1, "dbm": -44,
+       "bssid": "02:00:00:00:00:02", "source": "manual"}
+    ]
+  }
+}

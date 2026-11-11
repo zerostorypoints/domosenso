@@ -793,6 +793,73 @@
           "switches": "Switches",
           "buttons": "Buttons"
         }
+      },
+      "wifi": {
+        "check": {
+          "fresh": "The reading is not from this Measure. Measure again.",
+          "phone": "The reading came from another person's phone.",
+          "wifi": "The phone was not on Wi-Fi.",
+          "network": "The phone was on another network than the home's.",
+          "count": "Too few readings. Stand still and measure again.",
+          "known_ap": "The access point is not one marked on the plan. Kept without it, at half weight.",
+          "steady": "The signal moved or the phone changed access point while measuring.",
+          "band": "The band is unclear: pick 2.4 or 6 GHz."
+        },
+        "title": "Wi-Fi survey",
+        "back": "Back to System",
+        "admin_only": "Only an administrator can survey Wi-Fi.",
+        "no_plan": "This home has no floor plan yet.",
+        "row": "Wi-Fi survey",
+        "row_hint": "Measure the Wi-Fi with this phone",
+        "method": {
+          "shortcut-event": "Measured with the iPhone Shortcut",
+          "shortcut-callback": "Measured with the iPhone Shortcut (in Safari)",
+          "companion": "Measured with the Companion app's sensors"
+        },
+        "change": "Change",
+        "pick": "Tap where you stand on the plan.",
+        "here": "Stand still here and measure.",
+        "why": {
+          "handover": "Handover between two access points: measure here.",
+          "room": "No reading in this room yet.",
+          "far": "Far from any reading."
+        },
+        "measure": "Measure",
+        "waiting": "The Shortcut is measuring. When it has finished, go back to Home Assistant (◀ at the top left): the reading shows here.",
+        "reading": "Reading {n} of {total}",
+        "failed": "Not saved: {error}",
+        "no_value": "No signal",
+        "band": "{band} GHz, channel {channel}",
+        "ap": "Access point: {name}",
+        "ap_unknown": "Access point unknown",
+        "noise": "Noise {noise}",
+        "rates": "Rate {rx} / {tx} Mbps",
+        "spread": "Spread {spread} dB",
+        "model": "Model {dbm}",
+        "keep": "Keep",
+        "retry": "Retry",
+        "kept": "Kept: {dbm}",
+        "undo": "Undo",
+        "install": {
+          "title": "Install the Shortcut",
+          "iphone": "The iPhone measures with the Shortcut \"Domosenso Wi-Fi\". Install it once: download it, open the download and tap Add Shortcut.",
+          "link": "Download \"Domosenso Wi-Fi\"",
+          "server": "Then open the Shortcut, tap Server in its Fire event action and choose your Home Assistant (listed by its name in the Companion app).",
+          "android_title": "Choose this phone",
+          "android": "Turn on the Companion app's Wi-Fi sensors (signal strength, BSSID, frequency, link speed, connection), then choose this phone.",
+          "phone": "This phone…"
+        },
+        "cancel": "Cancel",
+        "slow": "No reading yet. Is the Shortcut \"Domosenso Wi-Fi\" installed, and its Server chosen?",
+        "none_arrived": "No reading arrived. Measure again.",
+        "whole_plan": "Whole floor plan",
+        "decide": "Check the warnings, then keep the reading or measure again.",
+        "not_kept": "Not kept. Measure again.",
+        "readings": "Readings kept: {n}",
+        "no_readings": "No reading kept yet.",
+        "no_room": "Outside the rooms",
+        "scans": "Scans: {list}",
+        "no_input": "The Shortcut ran without Pocket's request, so its reading cannot be used. Measure again from here."
       }
     }
   }

@@ -468,3 +468,45 @@ and for a device its device id. Sources and their weights:
   the ranges outline of one access point in an empty room is closed and nearer than −75's.
 - Out of scope (later): a what-if mode that moves an access point without saving and drops that
   access point's local corrections.
+
+## Amendment 4 (band steering: a reading on 2.4 GHz bounds 5 GHz)
+
+- Status: approved 2026-11-11 by the maintainer ("Approve, build it"). Source: the maintainer, 2026-11-11,
+  after a phone survey (SPEC-045): where the phone dropped to 2.4 GHz the 2.4 GHz map was red, while the
+  5 GHz map, with no 5 GHz reading there, looked better in the same corner than it can be. "How to
+  address it?" Three options were offered (a steering bound, carrying values over between bands,
+  leaving the model as is); the maintainer chose the steering bound.
+- **Why.** On one network name a dual-band client is kept on 5 GHz while 5 GHz is good and moved to
+  2.4 GHz when it gets weak (band steering; routers use thresholds around −70 to −75 dBm, inference
+  from vendor documentation). A survey reading taken on 2.4 GHz therefore says, beyond its own level,
+  that **5 GHz at that spot was below the steering threshold**. The model used only the level.
+- **Document.** `wifi.steering_dbm` (optional number, −90 to −55, default −75): the 5 GHz level below
+  which the home's router moves a client to 2.4 GHz. Validation refuses `steering_dbm out of range`;
+  `push --plan` prints `wifi change <floor>` for each floor when it changes. The Walls tool's defaults
+  panel gains **Band steering below** (dBm).
+- **The bound.** Each survey or phone sample (`source` `survey` or `phone`; not `manual`, not a device
+  sensor: those clients may be 2.4 GHz only) on band `2.4`, on a floor where some access point serves
+  `5`, becomes a **ceiling** on 5 GHz at its point: the strongest predicted 5 GHz level of any access
+  point there should be at most `steering_dbm`. A 5 GHz reading bounds nothing on 2.4 GHz.
+- **Fit.** A ceiling is one-sided: it adds a row only while the strongest 5 GHz prediction at its point
+  is above the ceiling (prediction − ceiling, at half weight like a reading without an access point,
+  Huber-weighted as the others); below it, it adds nothing. Ceilings do not count towards the 5
+  readings a band needs, nor towards the rooms the materials need.
+- **Map.** After the fit, each ceiling still exceeded by the calibrated 5 GHz map at its point by `e` dB
+  adds a residual of `+e` at that point to the 5 GHz residuals (only downward), spread like any
+  residual (3 m, inverse distance squared, halved per wall): the 5 GHz map comes down to the ceiling
+  around the spot and fades back with distance. A ceiling already met adds nothing. The Ranges
+  outlines follow (they use the same residuals per access point: the bound applies to every access
+  point's 5 GHz level at the spot).
+- **Shown.** With Readings on, the 5 GHz map shows such a sample as a hollow dot labelled `≤ −75`; its
+  hover tells "on 2.4 GHz: 5 GHz below −75 dBm here (band steering)". The 2.4 GHz map shows it as before.
+- **Scope (final review):** a ceiling is made when any access point of the home serves 5 GHz, not only
+  one on the reading's floor (5 GHz crosses slabs, weakly, and a client may hold an access point on
+  another floor); the bound applies to the strongest 5 GHz there of any access point.
+- **Not done:** 6 GHz (a phone without 6 GHz support would bound it wrongly); bounds from device
+  sensors; learning the threshold from the data (the default and the setting stand).
+- **Tests:** a 2.4 GHz survey sample in a corner lowers the calibrated 5 GHz map there to the ceiling
+  and fades over 3 m; a ceiling below the prediction already changes nothing; manual and device
+  readings make no ceiling; a home with no 5 GHz access point makes none; `steering_dbm` validation and
+  default; the fit's transmit power moves down, not up, from ceilings alone; the hollow dot and its
+  hover on the 5 GHz map.
