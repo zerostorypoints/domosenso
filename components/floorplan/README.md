@@ -293,11 +293,13 @@ domosenso floorplan survey production        # --port <n>, --no-open, --interfac
   skipped and the panel says why.
 - Samples are written to the home's `domosenso/floorplan.json` only. Nothing goes to Home Assistant
   until `floorplan push --plan` and, after the owner's go-ahead, `--apply`.
-- **Suggested next spots**, in order: handover zones without a reading, rooms without a reading,
-  then the spots farthest from any reading.
+- **Suggested next spots**: up to three, in order: handover zones without a reading, rooms without
+  a reading, then the spots far from any reading of their serving access point and band.
 - Lines: `read <target>: ...`, `survey <url>`, `link <band> <channel> <dbm> dBm` every 30 s, per tap
   `sample <floor or -> <x> <y> <band> <dbm> dBm <access point or ->` and `wrote
   domosenso/floorplan.json`, or `sample skipped <reason>`, and `stopped` (Ctrl-C).
+  It fails with `no Wi-Fi interface` (no MAC address for the interface) or `Wi-Fi is off` (no link at
+  start).
 - **Which operating system.** macOS: a small CoreWLAN helper is compiled with `swiftc` on first use
   (Xcode command-line tools), else `system_profiler`. Linux: `iw`. Windows: `netsh wlan show
   interfaces` (signal in % converted to dBm, an approximation; Windows 11's Band line gives 6 GHz).

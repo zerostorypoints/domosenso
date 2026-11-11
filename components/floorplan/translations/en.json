@@ -214,7 +214,7 @@
           "handover": "handover zone without a reading",
           "room": "room without a reading"
         },
-        "help": "Hold the laptop at chest height, lid open, on the home's own network. Start at an access point and walk room by room; stop about every 2 m and in every doorway. At each stop tap where you stand, press I'm here and stand still for 10 s. Visit the suggested spots, above all the handover zones between access points."
+        "help": "1. Run the survey on the laptop you carry, on the home's own network, not a hotspot. 2. Hold it at chest height, lid open, in front of you, the way a phone is held on a call. 3. Start at an access point, then walk room by room; stop about every 2 m and in every doorway. 4. At each stop tap exactly where you stand, press I'm here and stand still for 10 s. 5. Visit the suggested spots, above all the handover zones between access points. 6. The laptop reports the band it is on; a mesh with one network name chooses it. To survey another band, rerun with a network name that has only that band, if the router offers one. 7. Push the samples to Home Assistant (floorplan push), and repeat the walk after moving an access point or changing a wall's or window's material."
       }
     }
   }
