@@ -108,7 +108,9 @@
         "wifi_5": "5 GHz",
         "wifi_6": "6 GHz",
         "serving": "Zuständig",
-        "confidence": "Verlässlichkeit"
+        "confidence": "Verlässlichkeit",
+        "traffic_heat": "Verkehrs-Heatmap",
+        "traffic_links": "Verkehrs-Verbindungen"
       },
       "opening": {
         "kind": "Art",
@@ -226,6 +228,11 @@
           "room": "Raum ohne Messung"
         },
         "help": "1. Starte die Messung auf dem Laptop, den du trägst, im eigenen Netz der Wohnung, nicht über einen Hotspot. 2. Halte ihn auf Brusthöhe, aufgeklappt, vor dir, so wie man ein Telefon beim Anruf hält. 3. Beginne bei einem Zugangspunkt und gehe dann Raum für Raum; halte etwa alle 2 m und in jeder Türöffnung an. 4. Tippe bei jedem Halt genau dorthin, wo du stehst, drücke Ich bin hier und stehe 10 s still. 5. Besuche die vorgeschlagenen Stellen, vor allem die Übergabezonen zwischen den Zugangspunkten. 6. Der Laptop meldet das Band, auf dem er ist; ein Mesh mit einem Netznamen wählt es. Für ein anderes Band starte neu mit einem Netznamen, der nur dieses Band hat, falls der Router einen anbietet, oder nimm die Übertragung der Anpassung zwischen den Bändern hin. 7. Übertrage die Messpunkte zu Home Assistant (floorplan push) und wiederhole den Rundgang, nachdem du einen Zugangspunkt verschoben oder das Material einer Wand oder eines Fensters geändert hast."
+      },
+      "traffic": {
+        "not_live": "Router-Daten von {time}, nicht live",
+        "unavailable": "Die Router-Daten sind nicht verfügbar",
+        "legend": "Durchsatz pro Stelle, Download plus Upload, logarithmische Skala (Marken bei 1, 10 und 100 Mbit/s)"
       }
     }
   }

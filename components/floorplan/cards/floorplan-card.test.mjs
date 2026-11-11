@@ -2022,6 +2022,126 @@ test("after an edit the Wi-Fi map shows the change", async () => {
   window.localStorage.clear();
 });
 
+// ---- Network traffic on the radio layer (SPEC-047) ----------------------------------------------
+
+const NODE1 = "02:00:00:00:aa:01";   // the kitchen node (d_mesh)
+const NODE2 = "02:00:00:00:aa:02";   // the living room node (d_mesh2)
+// wifiHass plus the router's trackers: both nodes, a wired client on the kitchen node (100 Mbit/s) and a 5 GHz one
+// on the living room node (10 Mbit/s), and the integration's freshness sensor and polling switch.
+function trafficHass({ updatedAgoS = 5, polling = "on" } = {}) {
+  const hass = wifiHass();
+  const ent = (id, device) => { hass.entities[id] = { entity_id: id, device_id: device, platform: "tplink_deco" }; };
+  const tracker = (id, device, attributes) => { ent(id, device); hass.states[id] = { state: "home", attributes, last_updated: new Date().toISOString() }; };
+  tracker("device_tracker.node1", "d_mesh", { device_type: "deco", mac: NODE1 });
+  tracker("device_tracker.node2", "d_mesh2", { device_type: "deco", mac: NODE2 });
+  const client = (id, mac, node, link, down) => tracker(`device_tracker.${id}`, null,
+    { device_type: "client", friendly_name: id, mac, deco_mac: node, connection_type: link, down_kilobytes_per_s: down, up_kilobytes_per_s: 0 });
+  client("nas", "02:00:00:00:bb:01", NODE1, "wired", 12500);
+  client("laptop", "02:00:00:00:bb:02", NODE2, "band5", 1250);
+  ent("sensor.router_client_last_successful_update", "d_mesh");
+  hass.states["sensor.router_client_last_successful_update"] = { state: new Date(Date.now() - updatedAgoS * 1000).toISOString(), attributes: {} };
+  ent("switch.router_polling", "d_mesh");
+  hass.states["switch.router_polling"] = { state: polling, attributes: {} };
+  return hass;
+}
+const trafficCells = (card) => [...card.shadowRoot.querySelectorAll(".heat rect[data-mbps]")];
+
+test("traffic maps offered only when a traffic rule finds client trackers", async () => {
+  window.localStorage.clear();
+  const on = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass());
+  await settle();
+  assert.deepEqual(mapChips(on), ["wifi_24", "wifi_5", "serving", "confidence", "traffic_heat", "traffic_links"]);
+  assert.equal($(on, '.bar [data-map="traffic_heat"]').textContent, EN("card.floorplan.maps.traffic_heat"));
+  const off = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.deepEqual(mapChips(off), ["wifi_24", "wifi_5", "serving", "confidence"], "no router trackers: no traffic maps");
+  window.localStorage.clear();
+});
+
+test("traffic: false offers neither traffic map", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"], traffic: false }, trafficHass());
+  await settle();
+  assert.deepEqual(mapChips(card), ["wifi_24", "wifi_5", "serving", "confidence"]);
+  window.localStorage.clear();
+});
+
+test("traffic heat draws cells coloured on the mbps scale", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass());
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  const cells = trafficCells(card);
+  assert.ok(cells.length > 0);
+  assert.ok(cells.every((c) => c.getAttribute("fill") === colourAt("mbps", Number(c.getAttribute("data-mbps")))));
+  const wired = cells.find((c) => Number(c.getAttribute("data-mbps")) === 100);
+  assert.ok(wired, "the wired client's 100 Mbit/s in the cell of its access point");
+  assert.ok(Number(wired.getAttribute("x")) < 6.5 && Number(wired.getAttribute("x")) + 0.16 > 6.5);
+  assert.ok($(card, ".heat [filter]"), "blurred");
+  assert.ok(!$(card, ".banner"), "live: no banner");
+  assert.ok(!$(card, '.bar [data-action="calib"]') && !$(card, '.bar [data-action="ranges"]'), "no Wi-Fi-only switches");
+  window.localStorage.clear();
+});
+
+test("not live: banner with the time, no heat cells, devices grey", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass({ updatedAgoS: 3600 }));
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  assert.equal(trafficCells(card).length, 0);
+  const banner = $(card, ".banner");
+  assert.ok(banner && !banner.textContent.includes("{time}") && banner.textContent.startsWith("Router data from "), banner?.textContent);
+  window.localStorage.clear();
+});
+
+test("integration unavailable: the maps stay, with the reason", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  hass.states["device_tracker.node1"] = { ...hass.states["device_tracker.node1"], state: "not_home" };
+  hass.states["device_tracker.node2"] = { ...hass.states["device_tracker.node2"], state: "not_home" };
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+  await settle();
+  assert.ok(mapChips(card).includes("traffic_heat"));
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  assert.equal($(card, ".banner").textContent, EN("card.floorplan.traffic.unavailable"));
+  window.localStorage.clear();
+});
+
+test("a tracker's rate change redraws the heat, at most once a second", async () => {
+  window.localStorage.clear();
+  const real = Date.now;
+  let now = real();
+  Date.now = () => now;
+  try {
+    const hass = trafficHass();
+    const card = await make({ plan: wifiPlan(), layers: ["radio"] }, hass);
+    await settle();
+    click($(card, '.bar [data-map="traffic_heat"]'));
+    const peak = () => Math.max(...trafficCells(card).map((c) => Number(c.getAttribute("data-mbps"))));
+    assert.equal(peak(), 100);
+    const next = (down) => ({ ...hass, states: { ...hass.states,
+      "device_tracker.nas": { ...hass.states["device_tracker.nas"], attributes: { ...hass.states["device_tracker.nas"].attributes, down_kilobytes_per_s: down } } } });
+    card.hass = next(25000);
+    assert.equal(peak(), 100, "within a second: the drawn heat is kept");
+    now += 1500;
+    card.hass = next(50000);
+    await settle();
+    assert.equal(peak(), 400, "a second later: redrawn");
+  } finally { Date.now = real; }
+  window.localStorage.clear();
+});
+
+test("legend: 0.1 to 1000 Mbit/s with marks 1, 10, 100", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), layers: ["radio"] }, trafficHass());
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  const legend = $(card, ".bar .legend");
+  assert.ok(legend.textContent.includes("0.10 Mbit/s") && legend.textContent.includes("1000.00 Mbit/s"), legend.textContent);
+  assert.deepEqual([...legend.querySelectorAll(".mark")].map((m) => m.getAttribute("data-mark")), ["1", "10", "100"]);
+  window.localStorage.clear();
+});
+
 // ---- Wi-Fi calibration from the devices' signal sensors (SPEC-044 S2) ---------------------------
 
 const DBM = { device_class: "signal_strength", unit_of_measurement: "dBm", state_class: "measurement" };

@@ -14,7 +14,8 @@ export const MAPS = {
   climate: [["temperature", "mean"], ["humidity", "mean"], ["carbon_dioxide", "max"]],
   light: [["illuminance", "max"], ["lamps", null]],
   // Predictions, with no 24-hour figure; only the bands some access point serves are offered.
-  radio: [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null], ["confidence", null]],
+  radio: [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null], ["confidence", null],
+    ["traffic_heat", null], ["traffic_links", null]],
 };
 
 // The band of a Wi-Fi map (a map id is a translation key: no dot in it).
@@ -238,10 +239,15 @@ export function accessPoints(doc) {
 
 export const offeredBands = (doc) => BANDS.filter((b) => accessPoints(doc).some((ap) => ap.bands.includes(b)));
 
+// The radio layer's traffic maps (SPEC-047): no band, no prediction.
+export const TRAFFIC_MAPS = ["traffic_heat", "traffic_links"];
+
 // The radio layer's maps for those bands: a map each, then Serving and Confidence; none without a band.
-export function radioMaps(bands) {
-  if (!bands.length) return [];
-  return MAPS.radio.filter(([id]) => !BAND_OF[id] || bands.includes(BAND_OF[id]));
+// With `traffic` the two traffic maps follow, even with no band.
+export function radioMaps(bands, traffic = false) {
+  const wifi = bands.length
+    ? MAPS.radio.filter(([id]) => !TRAFFIC_MAPS.includes(id) && (!BAND_OF[id] || bands.includes(BAND_OF[id]))) : [];
+  return traffic ? [...wifi, ...MAPS.radio.filter(([id]) => TRAFFIC_MAPS.includes(id))] : wifi;
 }
 
 // An access point's bands in band order, "2.4 · 5"; `number` formats each (a decimal comma).

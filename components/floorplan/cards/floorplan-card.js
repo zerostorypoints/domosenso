@@ -18,6 +18,7 @@
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
 //   maps: true                         # false: no maps on the plants, climate, light and radio layers
 //   wifi: true                         # false: no Wi-Fi maps on the radio layer (SPEC-044)
+//   traffic: true                      # false: no traffic maps on the radio layer (SPEC-047)
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
 //   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
 //   context: true                      # with area: the floor's other rooms faded around it, for orientation
@@ -36,7 +37,7 @@
 // each spot, and how far to trust the map (Confidence). With devices reporting their Wi-Fi signal on
 // the plan, a Predicted / Calibrated switch: calibrated, the model is fitted to their 24-hour means.
 
-import { createT } from "./lib/i18n.js";
+import { createT, formatDate } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
 import { zoomAt, snapToEdge, pointInPolygon, widestRow, insideRooms } from "./lib/geometry.js";
 import {
@@ -54,13 +55,14 @@ import { KINDS, STYLES, opensInto, kindOf, widthOf, styleOf, openingState, openi
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
-  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
+  BAND_OF, TRAFFIC_MAPS, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
   wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
   observationIndex } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid } from "./lib/wifi-fit.js";
+import { trafficRules, clients, heatCells } from "./lib/traffic.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
 import en from "../translations/en.json" with { type: "json" };
@@ -91,6 +93,8 @@ const FILL_GAP_PX = 8;
 const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around an area (context: true)
 const NARROW_PX = 600;             // a card narrower than this (a phone) predicts Wi-Fi on coarser cells
 const NARROW_STEP_M = 0.3;
+const TRAFFIC_MS = 1000;           // the traffic heat is rebuilt at most this often
+const TRAFFIC_BLUR_M = 1;          // the traffic heat is blurred by a metre (the plan is in metres)
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
 const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
@@ -178,6 +182,8 @@ class FloorplanCard extends HTMLElement {
     this._statIds = "";
     this._statsAt = 0;
     this._heatCache = null;
+    this._trafficCache = null;     // the last traffic heat group {key, at, g}, kept for a second
+    this._trafficMemo = null;
     this._band = load(BAND_KEY, null);             // the Serving map's band, while some access point serves it
     this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
     this._wifiKey = null;          // the last cache key and what it was computed from
@@ -364,9 +370,11 @@ class FloorplanCard extends HTMLElement {
 
   _wifiMap() {
     const bands = offeredBands(this._doc);
-    const maps = radioMaps(bands);
+    const maps = radioMaps(bands, this._trafficOffered());
     if (!maps.length) return { layer: "radio", cls: null, rule: null, maps, hint: "no_access_points" };
     const [cls] = maps.find(([c]) => c === this._maps.radio) ?? maps[0];
+    // A traffic map has no band, no Predicted / Calibrated switch and no Ranges: those are Wi-Fi's.
+    if (TRAFFIC_MAPS.includes(cls)) return { layer: "radio", cls, rule: null, maps, bands, traffic: this._traffic() };
     const band = BAND_OF[cls] ?? (bands.includes(this._band) ? this._band : bands[0]);
     // Confidence is always the calibrated model's; the other maps follow the switch once there are readings.
     const observed = this._observations().list.length > 0;
@@ -374,6 +382,22 @@ class FloorplanCard extends HTMLElement {
     // Ranges (Amendment 3): on the band maps only, where the outline's level is the map's own.
     const ranges = !!BAND_OF[cls] && this._ranges;
     return { layer: "radio", cls, rule: null, maps, band, bands, observed, calibrated, ranges };
+  }
+
+  // The traffic maps are offered when the router integration of a traffic rule has client trackers (SPEC-047).
+  _trafficOffered() {
+    return this._config.traffic !== false && trafficRules(wifiRules).length > 0 && this._obsIndex?.trackers.length > 0;
+  }
+
+  // The router's clients (traffic.js), worked out again when the registries, the states, the plan or the
+  // second change; a method of its own so one redraw reads them once.
+  _traffic() {
+    const m = this._trafficMemo;
+    const second = Math.floor(Date.now() / 1000);
+    if (m && m.hass === this._hass && m.doc === this._doc && m.second === second) return m.out;
+    const out = clients(this._hass, this._doc, wifiRules);
+    this._trafficMemo = { hass: this._hass, doc: this._doc, second, out };
+    return out;
   }
 
   // The open or closed state of every opening with a sensor: live state the cache keys leave out.
@@ -767,13 +791,23 @@ ${STYLE}
           { figure: t(h, `card.floorplan.maps.figure.${map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`}`) }))
         + "</span>";
     }
-    return html + this._legendHtml(map);
+    return html + this._legendHtml(map) + this._bannerHtml(map);
+  }
+
+  // Router data that is not current (SPEC-047): when it was last fresh, or that the integration is unavailable.
+  _bannerHtml(map) {
+    if (!TRAFFIC_MAPS.includes(map.cls) || map.traffic.live) return "";
+    const h = this._hass;
+    const text = map.traffic.reason === "unavailable" ? t(h, "card.floorplan.traffic.unavailable")
+      : t(h, "card.floorplan.traffic.not_live", { time: formatDate(h, map.traffic.updated, { hour: "2-digit", minute: "2-digit" }) });
+    return `<span class="banner" role="status">${esc(text)}</span>`;
   }
 
   // The map's scale, compact, in the bar: never over the plan (on the Ramka a legend on the plan
   // covered a room). The chips name the map and now or 24 h; the full sentence is its tooltip.
   _legendHtml(map) {
     const h = this._hass;
+    if (TRAFFIC_MAPS.includes(map.cls)) return this._trafficLegendHtml(map);
     if (map.layer === "radio") return this._wifiLegendHtml(map);
     if (map.cls === "lamps") return `<span class="legend">${esc(t(h, "card.floorplan.maps.lamps_legend"))}</span>`;
     const s = SCALES[map.cls];
@@ -792,6 +826,18 @@ ${STYLE}
     const h = this._hass;
     return `<span class="legend wall-key" title="${esc(t(h, "card.floorplan.wall.weight.title"))}">${WEIGHTS.map((w) =>
       `<span class="wall-swatch ${w}"></span><span>${esc(t(h, `card.floorplan.wall.weight.${w}`))}</span>`).join("")}</span>`;
+  }
+
+  // The traffic maps' scale: 0.1 to 1000 Mbit/s on a log scale, marked at 1, 10 and 100.
+  _trafficLegendHtml(map) {
+    const h = this._hass;
+    const s = SCALES.mbps;
+    const at = (v) => fmt((Math.log10(v / s.lo) / Math.log10(s.hi / s.lo)) * 100);
+    return `<span class="legend" title="${esc(`${t(h, `card.floorplan.maps.${map.cls}`)}, ${t(h, "card.floorplan.traffic.legend")}`)}">`
+      + `<span>${esc(formatValue("mbps", s.lo))}</span>`
+      + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})">${s.marks.map((m) =>
+        `<span class="mark" data-mark="${m}" style="left: ${at(m)}%"></span>`).join("")}</span>`
+      + `<span>${esc(formatValue("mbps", s.hi))}</span></span>`;
   }
 
   // A band map: the dBm scale with its marks (with Ranges each access point's colour and the outlines'
@@ -1110,7 +1156,7 @@ ${STYLE}
     }
     if (map) this._defs(svg, px);
     if (map?.layer === "radio") {
-      if (map.cls) this._drawWifi(svg, floor, map);
+      if (map.cls) (TRAFFIC_MAPS.includes(map.cls) ? this._drawTraffic(svg, floor, map) : this._drawWifi(svg, floor, map));
     } else if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
     if (this._wifiOn) {
       this._drawWalls(svg);
@@ -1735,6 +1781,63 @@ ${STYLE}
     svg.appendChild(this._heatCache.g);
   }
 
+  // The traffic maps (SPEC-047). The heat: each cell of heatCells() on the global lattice, blurred by a metre,
+  // the blur clipped to the drawn rooms. Rebuilt at most once a second; kept while the router's data is not
+  // live (the banner says so). The links map draws no layer of its own here.
+  _drawTraffic(svg, floor, map) {
+    if (map.cls !== "traffic_heat" || !map.traffic.live) return;
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    const rooms = floor.rooms;
+    const key = JSON.stringify([this._floorId, rooms.map((r) => r.area_id)]);
+    const kept = this._trafficCache;
+    if (!kept || kept.key !== key || kept.doc !== this._doc || Date.now() - kept.at >= TRAFFIC_MS) {
+      this._trafficCache = { key, doc: this._doc, at: Date.now(), g: this._trafficHeat(floor, map, step) };
+    }
+    svg.appendChild(this._trafficCache.g);
+  }
+
+  _trafficHeat(floor, map, step) {
+    const full = this._doc.floors.find((f) => f.floor_id === this._floorId);
+    const list = map.traffic.list;
+    // Serving cells for the bands some unplaced Wi-Fi client uses, as the Serving map has them.
+    const observed = this._observations().list.length > 0;
+    const calibrated = observed && this._calib !== "predicted";
+    const bands = offeredBands(this._doc);
+    const serving = {};
+    for (const c of list) {
+      if (c.link === "wired" || c.point || !c.ap || serving[c.link]) continue;
+      serving[c.link] = bands.includes(c.link) ? this._wifi(c.link, step, calibrated).cells : [];
+    }
+    const placed = ({ floorId, key }) => {
+      const p = floorId === this._floorId && floor.points.find((q) => keyOf(q) === key);
+      return p && p.placed !== false && Number.isFinite(p.x) && Number.isFinite(p.y) ? [p.x, p.y] : null;
+    };
+    const apAt = (key) => {
+      for (const f of this._doc.floors) {
+        const p = (f.points ?? []).find((q) => keyOf(q) === key && q.placed !== false && Number.isFinite(q.x) && Number.isFinite(q.y));
+        if (p) {
+          const i = f.rooms.findIndex((r) => pointInPolygon([p.x, p.y], r.polygon));
+          return { x: p.x, y: p.y, floorId: f.floor_id, roomIndex: i < 0 ? null : i };
+        }
+      }
+      return null;
+    };
+    const cells = heatCells(list, full, serving, placed, apAt, step);
+    const g = el("g", { class: "heat traffic" });
+    const defs = el("defs", {}, g);
+    const clip = el("clipPath", { id: "fp-traffic-clip" }, defs);
+    for (const room of floor.rooms) el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+    const blur = el("filter", { id: "fp-traffic-blur", x: "-20%", y: "-20%", width: "140%", height: "140%" }, defs);
+    el("feGaussianBlur", { stdDeviation: TRAFFIC_BLUR_M }, blur);
+    const clipped = el("g", { "clip-path": "url(#fp-traffic-clip)" }, g);
+    const inner = el("g", { filter: "url(#fp-traffic-blur)" }, clipped);
+    for (const c of cells) {
+      el("rect", { x: fmt(c.x), y: fmt(c.y), width: step, height: step, "data-mbps": Math.round(c.value * 100) / 100,
+        fill: colourAt("mbps", c.value) }, inner);
+    }
+    return g;
+  }
+
   // A marker's lines: its readings, or on a map the map's (the shown one first and marked main). On
   // a radio map an access point lists its bands, a signal source what it reports ("−52 dBm · 2.4 · its
   // access point", the 24-hour mean once the statistics are in), any other point its readings.
@@ -1785,19 +1888,25 @@ ${STYLE}
     for (const o of floor.openings || []) if (o.entity) ids.push(o.entity);
     // A map also follows a plant's sensors and the lamps; a Wi-Fi map the signal sensors.
     const map = this._map();
+    let traffic = "";
     if (map) {
       for (const p of floor.points) {
         ids.push(...Object.values(this._readings(p)));
         if (p.device_id && this._lamps.has(p.device_id)) ids.push(this._lamps.get(p.device_id));
       }
       if (map.layer === "radio") ids.push(...this._observations().list.filter((o) => o.entity).map((o) => o.entity));
+      // A traffic map follows the router's clients: their rates, links and nodes, and whether it is live.
+      if (TRAFFIC_MAPS.includes(map.cls)) {
+        const { list, reason, updated } = this._traffic();
+        traffic = JSON.stringify([reason, updated?.getTime(), list.map((c) => [c.mac, c.down, c.up, c.link, c.ap, c.stale])]);
+      }
     }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
     // name with a newline on that first line.
     const areas = Object.values(this._hass.areas || {}).map((a) => [a.area_id, a.name]).sort();
     return [JSON.stringify([this._hass.language, areas]),
-      ids.map((id) => this._hass.states?.[id]?.state).join("|")].join("\n");
+      ids.map((id) => this._hass.states?.[id]?.state).join("|") + traffic].join("\n");
   }
 
   // ---- buttons and selects -----------------------------------------------------------------

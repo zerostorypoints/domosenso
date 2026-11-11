@@ -127,6 +127,7 @@ export const STYLE = `
   .legend .scale { position: relative; width: 90px; height: 8px; border-radius: 4px; }
   .legend .mark { position: absolute; top: -2px; width: 2px; height: 12px; margin-left: -1px;
                   background: var(--primary-text-color); }
+  .banner { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--warning-color, #ffa600); color: var(--text-primary-color, #fff); }
   .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
   .legend .hatch { display: inline-block; width: 10px; height: 10px; margin-left: 6px;
                    background: repeating-linear-gradient(45deg, var(--divider-color, #888) 0 2px, transparent 2px 5px); }
