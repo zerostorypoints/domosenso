@@ -334,6 +334,10 @@ REFUSALS = [
      "access point on floor ground: nope is not a point of the floor"),
     (lambda d: d["floors"][0]["access_points"].append({"device_id": "dev1", "bands": ["5"]}),
      "access point twice: dev1"),
+    # the card places an access point by its point's own key: a device joined to it (`also`) is no key
+    (lambda d: (d["floors"][0]["points"][0].__setitem__("also", ["cast1"]),
+                d["floors"][0]["access_points"].__setitem__(0, {"device_id": "cast1", "bands": ["5"]})),
+     "access point on floor ground: cast1 is not a point of the floor"),
     (_ap(bands=[]), "access point dev1: bands empty or unknown"),
     (_ap(bands=["7"]), "access point dev1: bands empty or unknown"),
     (_ap(tx={"5": 40}), "access point dev1: tx 5 out of range"),

@@ -131,7 +131,8 @@ def _check_wifi(doc: dict) -> None:
             _check_material(wall["material"], "wall")
             if not any(_near_edge(room["polygon"], wall["at"]) for room in floor["rooms"]):
                 raise DomosensoError(f"wall on floor {label}: {wall['at']} is not on a room edge")
-        keys = {key for point in floor["points"] for key in [point_key(point), *point.get("also", [])]}
+        # A point's own key only: the card places an access point by it and does not resolve `also`.
+        keys = {point_key(point) for point in floor["points"]}
         for ap in floor.get("access_points", []):
             key = ap.get("device_id") or ap["entity_id"]
             if key not in keys:
