@@ -84,6 +84,17 @@ views:
         # part of the plan and the floor plan view.
         floorplan: true
 [%- endif %]
+[%- if inputs.wifi_survey | default(false) %]
+[%- if not inputs.floorplan | default(false) %][[ fail('wifi_survey needs floorplan: the survey measures on the floor plan') ]][% endif %]
+[%- set scans = inputs.wifi_scans | default(5) %]
+[%- if scans is not number or scans < 3 or scans > 20 %][[ fail('wifi_scans must be 3 to 20, not ' ~ scans) ]][% endif %]
+        # The Wi-Fi survey page for administrators (SPEC-045): readings measured with the phone.
+        wifi_survey: true
+        wifi_scans: [[ scans ]]
+[%- if inputs.wifi_ssid | default(none) %]
+        wifi_ssid: [[ inputs.wifi_ssid | string | yaml ]]
+[%- endif %]
+[%- endif %]
 [%- if inputs.plants | default(false) %]
         # The plants component is in the home: Plants is on the default bar (the page finds every
         # plant.* itself; a home without the flag still has the page in Settings).

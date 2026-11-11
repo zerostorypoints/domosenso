@@ -226,3 +226,38 @@ def test_quick_actions_pass_as_the_homes_default(tmp_path):
     inputs = {**INPUTS, "quick_actions": ["area:living_room", "scene.all_lights_off", "all_off"]}
     assert _card(_dashboard(tmp_path, inputs=inputs))["quick"] == ["area:living_room", "scene.all_lights_off", "all_off"]
     assert "quick" not in _card(_dashboard(tmp_path / "none"))
+
+
+# ---- the Wi-Fi survey (SPEC-045) ----------------------------------------------------------------
+
+SURVEY = {**INPUTS, "floorplan": True, "wifi_survey": True}
+
+
+def test_wifi_survey_package_and_card_config_only_with_the_input(tmp_path):
+    _dashboard(tmp_path / "without")
+    assert not (tmp_path / "without/package.yaml").exists()
+    assert "wifi_survey" not in _card(_dashboard(tmp_path / "without"))
+    card = _card(_dashboard(tmp_path / "with", inputs={**SURVEY, "wifi_ssid": "Home", "wifi_scans": 7}))
+    assert card["wifi_survey"] is True and card["wifi_ssid"] == "Home" and card["wifi_scans"] == 7
+    package = yaml.safe_load((tmp_path / "with/package.yaml").read_text(encoding="utf-8"))
+    (entry,) = package["template"]
+    assert entry["triggers"] == [{"trigger": "event", "event_type": "domosenso_wifi_reading"}]
+    (sensor,) = entry["sensor"]
+    assert sensor["default_entity_id"] == "sensor.domosenso_wifi_reading"
+    assert sensor["unique_id"] == "domosenso_wifi_reading"
+    assert set(sensor["attributes"]) == {"scans", "user_id", "at"}
+
+
+def test_wifi_survey_defaults_scans_to_5_and_no_ssid(tmp_path):
+    card = _card(_dashboard(tmp_path, inputs=SURVEY))
+    assert card["wifi_scans"] == 5 and "wifi_ssid" not in card
+
+
+@pytest.mark.parametrize("inputs,reason", [
+    ({**INPUTS, "floorplan": False, "wifi_survey": True}, "wifi_survey needs floorplan"),
+    ({**SURVEY, "wifi_scans": 2}, "wifi_scans must be 3 to 20"),
+    ({**SURVEY, "wifi_scans": 21}, "wifi_scans must be 3 to 20"),
+])
+def test_wifi_survey_refusals(tmp_path, inputs, reason):
+    with pytest.raises(RenderError, match=reason):
+        _dashboard(tmp_path, inputs=inputs)
