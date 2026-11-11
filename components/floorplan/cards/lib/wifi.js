@@ -2,7 +2,7 @@
 // crossing them. Pure functions of the plan and hass; no DOM.
 
 import materials from "./materials.json" with { type: "json" };
-import { facingWalls, editFloor } from "./plan.js";
+import { facingWalls, editFloor, openSpaces } from "./plan.js";
 import { pointInPolygon, widestRow } from "./geometry.js";
 import { openingShape, openingState, toOutdoorRoom, kindOf, outside, SHARED_M } from "./openings.js";
 
@@ -11,6 +11,15 @@ export const BANDS = ["2.4", "5", "6"];
 const EPS = 1e-9;
 const MIN_M = 1e-6;                    // m: a stretch shorter than this is a rounding sliver
 const OBLIQUE_CAP = 2;
+// Amendment 3: a plan traced with real wall thickness leaves a gap between two rooms; their edges that
+// face each other across it, parallel within 10 degrees, are one interior wall, not two exterior ones.
+export const WALL_GAP_M = 0.6;
+const PARALLEL_SIN = Math.sin((10 * Math.PI) / 180);
+// A half-height wall (a balcony frame, a staircase's balustrade) costs this share of its material's
+// loss on every band: a working assumption that part of the signal passes over it. The fit moves the
+// material, never this factor.
+export const HALF_WALL = 0.5;
+const GLAZING = new Set(["glass", "double", "low_e", "triple_low_e"]);
 
 const sub = (p, q) => [p[0] - q[0], p[1] - q[1]];
 const cross = (u, v) => u[0] * v[1] - u[1] * v[0];
@@ -30,6 +39,27 @@ function overlap(a, b, c, d) {
   return t1 - t0 > MIN_M ? [t0, t1] : null;
 }
 
+// The stretch [t0, t1] of edge a-b (metres from a) that edge c-d faces across a gap of at most
+// WALL_GAP_M: parallel within 10 degrees, on one side of a-b. With the points of c-d across from a-b's
+// t0 and t1: [t0, t1, p0, p1], or null.
+function across(a, b, c, d) {
+  const len = Math.hypot(...sub(b, a));
+  const u = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+  const v = sub(d, c);
+  const vl = Math.hypot(...v);
+  if (vl < EPS || Math.abs(cross(u, v)) / vl > PARALLEL_SIN) return null;
+  const [tc, td] = [dot(u, sub(c, a)), dot(u, sub(d, a))];
+  if (Math.abs(td - tc) < EPS) return null;
+  const t0 = Math.max(0, Math.min(tc, td));
+  const t1 = Math.min(len, Math.max(tc, td));
+  if (t1 - t0 <= MIN_M) return null;
+  const on = (t) => [c[0] + v[0] * (t - tc) / (td - tc), c[1] + v[1] * (t - tc) / (td - tc)];
+  const [p0, p1] = [on(t0), on(t1)];
+  const [o0, o1] = [cross(u, sub(p0, a)), cross(u, sub(p1, a))];
+  if (Math.abs(o0) > WALL_GAP_M || Math.abs(o1) > WALL_GAP_M || o0 * o1 < -EPS) return null;
+  return [t0, t1, p0, p1];
+}
+
 // The distance from point p to segment a-b.
 function distToSegment(p, a, b) {
   const ab = sub(b, a);
@@ -40,7 +70,10 @@ function distToSegment(p, a, b) {
 
 // Every room edge once, as stretches of one class: a long wall one room has and two shorter rooms
 // share is cut where the sharing starts and ends. A shared stretch belongs to the first room that
-// has it. {a, b, shared, rooms}: `rooms` the indices of the rooms that have it, its owner first.
+// has it. {a, b, shared, rooms, pair}: `rooms` the indices of the rooms that have it, its owner first.
+// Two rooms' edges facing each other across a gap no room fills (`across`) share the stretch where
+// they overlap like touching edges do (Amendment 3); `pair` is then the other room's edge across from
+// a and b, the stretch charged once, on the owner's edge.
 function stretches(floor) {
   const out = [];
   const rooms = floor.rooms || [];
@@ -54,8 +87,11 @@ function stretches(floor) {
       rooms.forEach((other, j) => {
         if (j === i) return;
         other.polygon.forEach((c, m) => {
-          const t = overlap(a, b, c, other.polygon[(m + 1) % other.polygon.length]);
-          if (t) cover.push([...t, j]);
+          const d = other.polygon[(m + 1) % other.polygon.length];
+          const t = overlap(a, b, c, d);
+          if (t) return void cover.push([...t, j, null]);
+          const g = across(a, b, c, d);
+          if (g && !gapFilled(rooms, a, b, g)) cover.push([g[0], g[1], j, g]);
         });
       });
       const cuts = [...new Set([0, len, ...cover.flatMap((c) => [c[0], c[1]])])].sort((x, y) => x - y);
@@ -64,12 +100,39 @@ function stretches(floor) {
         const [t0, t1] = [cuts[n], cuts[n + 1]];
         if (t1 - t0 < MIN_M) continue;
         const mid = (t0 + t1) / 2;
-        const by = cover.filter((c) => c[0] <= mid && mid <= c[1]).map((c) => c[2]);
+        const covering = cover.filter((c) => c[0] <= mid && mid <= c[1]);
+        const by = covering.map((c) => c[2]);
         if (by.some((j) => j < i)) continue;           // that room emitted it
-        out.push({ a: at(t0), b: at(t1), shared: by.length > 0, rooms: [i, ...by] });
+        const gap = covering.find((c) => c[3])?.[3];
+        const pair = gap && [t0, t1].map((t) => lerp(gap[2], gap[3], (t - gap[0]) / (gap[1] - gap[0])));
+        out.push({ a: at(t0), b: at(t1), shared: by.length > 0, rooms: [i, ...by], ...(pair ? { pair } : {}) });
       }
     });
   });
+  return out;
+}
+
+const lerp = (p, q, f) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
+
+// Whether a room stands in the gap between edge a-b and the edge across from it (`across`'s result),
+// probed half-way across at the middle of their overlap: a room there is the wall's neighbour, not a gap.
+function gapFilled(rooms, a, b, g) {
+  const len = Math.hypot(...sub(b, a));
+  const tm = (g[0] + g[1]) / 2;
+  const mine = lerp(a, b, tm / len);
+  const theirs = lerp(g[2], g[3], 0.5);
+  if (Math.hypot(...sub(theirs, mine)) <= SHARED_M) return false;      // touching at an angle
+  const probe = lerp(mine, theirs, 0.5);
+  return rooms.some((r) => pointInPolygon(probe, r.polygon));
+}
+
+// Whether `pt` is within `tol` of a wall stretch: of its own edge or of the edge across its gap.
+const nearStretch = (pt, s, tol) => distToSegment(pt, s.a, s.b) <= tol || (!!s.pair && distToSegment(pt, s.pair[0], s.pair[1]) <= tol);
+
+// Part f0..f1 of a wall segment, its pair cut alike.
+function slice(s, f0, f1) {
+  const out = { ...s, a: lerp(s.a, s.b, f0), b: lerp(s.a, s.b, f1) };
+  if (s.pair) out.pair = [lerp(s.pair[0], s.pair[1], f0), lerp(s.pair[0], s.pair[1], f1)];
   return out;
 }
 
@@ -95,25 +158,41 @@ export function openingDefaults(wifi, o) {
 // its own. A wall is `cls` interior when two rooms share it, exterior when one room has it alone or it
 // parts an indoor from an outdoor room, outdoor when it is an outdoor room's own (a balcony's railing
 // side): that one is no wall (open, material null) until the owner sets a material for it (R24).
+// Two rooms' edges across a gap of at most WALL_GAP_M share it like touching ones (Amendment 3): the
+// segment lies on the first room's edge and carries `pair`, the other's edge across from it. `half`: a
+// half-height wall (`walls[].height`), which costs HALF_WALL of its material.
 // `wifi` is the plan's `wifi` (its defaults and outdoor rooms), possibly undefined.
 export function wallSegments(floor, wifi, hass) {
+  return segmentsOf(floor, wifi, hass, false);
+}
+
+// wallSegments, with `space` true the edges inside an open space kept as no wall (`space: true`), for drawing.
+function segmentsOf(floor, wifi, hass, space) {
   const defaults = { ...materials.defaults };
   for (const k of ["interior", "exterior"]) if (wifi?.defaults?.[k]) defaults[k] = wifi.defaults[k];
   const outdoor = new Set(wifi?.outdoor ?? []);
   const rooms = floor.rooms || [];
   const isOut = (i) => outdoor.has(rooms[i].area_id);
   const facing = facingWalls(floor);
+  const group = new Map(openSpaces(floor).flatMap((g, n) => g.map((area) => [area, n])));
+  const together = (s) => s.rooms.length > 1 && s.rooms.every((i) => group.has(rooms[i].area_id)
+    && group.get(rooms[i].area_id) === group.get(rooms[s.rooms[0]].area_id));
   const walls = floor.walls || [];
-  let segs = stretches(floor).filter((s) => {
+  let segs = [];
+  for (const s of stretches(floor)) {
     const mid = [(s.a[0] + s.b[0]) / 2, (s.a[1] + s.b[1]) / 2];
-    return !facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M);
-  }).map((s) => {
-    const set = walls.find((w) => distToSegment(w.at, s.a, s.b) <= SHARED_M);
+    // An edge inside an open space is no wall; across a gap too, though FACING_M does not reach it.
+    if (facing.some(([p, q]) => distToSegment(mid, p, q) <= SHARED_M) || (s.pair && together(s))) {
+      if (space) segs.push({ a: s.a, b: s.b, ...(s.pair ? { pair: s.pair } : {}), material: null, open: true, kind: "wall", shared: true, cls: "interior", half: false, space: true });
+      continue;
+    }
+    const set = walls.find((w) => nearStretch(w.at, s, SHARED_M));
     const cls = !s.shared && isOut(s.rooms[0]) ? "outdoor"
       : s.shared && (s.rooms.every(isOut) || !s.rooms.some(isOut)) ? "interior" : "exterior";
     const material = set?.material ?? defaults[cls] ?? null;
-    return { a: s.a, b: s.b, material, open: material === null, kind: "wall", shared: s.shared, cls };
-  });
+    segs.push({ a: s.a, b: s.b, ...(s.pair ? { pair: s.pair } : {}), material, open: material === null, kind: "wall",
+      shared: s.shared, cls, half: set?.height === "half" });
+  }
 
   for (const o of floor.openings || []) {
     const shape = openingShape(floor, o);
@@ -123,35 +202,56 @@ export function wallSegments(floor, wifi, hass) {
     const { open } = openingState(o, hass, wifi?.outdoor);
     const next = [];
     for (const s of segs) {
-      const cut = s.kind === "wall" && cutOf(s.a, s.b, shape.ends);
+      // An opening on the other room's edge of a thick wall cuts it too.
+      const cut = s.kind === "wall" && (cutOf(s.a, s.b, shape.ends) || (s.pair && cutOf(s.pair[0], s.pair[1], shape.ends)));
       if (!cut || cut[1] - cut[0] < MIN_M) { next.push(s); continue; }
-      const at = (t) => [s.a[0] + (s.b[0] - s.a[0]) * t, s.a[1] + (s.b[1] - s.a[1]) * t];
-      if (cut[0] > MIN_M) next.push({ ...s, b: at(cut[0]) });
+      if (cut[0] > MIN_M) next.push(slice(s, 0, cut[0]));
+      const at = (t) => lerp(s.a, s.b, t);
       next.push({ a: at(cut[0]), b: at(cut[1]), material, open, kind: "opening" });
-      if (cut[1] < 1 - MIN_M) next.push({ ...s, a: at(cut[1]) });
+      if (cut[1] < 1 - MIN_M) next.push(slice(s, cut[1], 1));
     }
     segs = next;
   }
   return segs;
 }
 
+// How heavy a wall reads on the plan (Amendment 3), by its 5 GHz loss after the half-height factor:
+// light below 10 dB, solid 10 to 25 dB, heavy above; `glass` for a glazing material; "none" for no wall.
+export function wallWeight(material, half = false) {
+  if (material === null || material === undefined) return { weight: "none", glass: false };
+  const db = (materials.materials[material]?.loss?.["5"] ?? 0) * (half ? HALF_WALL : 1);
+  return { weight: db < 10 ? "light" : db <= 25 ? "solid" : "heavy", glass: GLAZING.has(material) };
+}
+
+// The floor's walls as the plan draws them: every wall piece once (openings cut out, the card draws
+// those), a thick wall on the middle line of its gap, an edge inside an open space and an outdoor
+// room's open edge as no wall. [{a, b, weight, glass, half}].
+export function wallLines(floor, wifi, hass) {
+  return segmentsOf(floor, wifi, hass, true).filter((s) => s.kind === "wall").map((s) => {
+    const { weight, glass } = s.space ? { weight: "none", glass: false } : wallWeight(s.material, s.half);
+    const [a, b] = s.pair ? [lerp(s.a, s.pair[0], 0.5), lerp(s.b, s.pair[1], 0.5)] : [s.a, s.b];
+    return { a, b, weight, glass, half: weight !== "none" && s.half };
+  });
+}
+
 // The wall stretch nearest `pt` within `tol`, whole from corner to corner (an opening on it does not
-// cut it): {a, b, material, shared, cls, at}, `at` its middle to the millimetre; null without a wall there.
+// cut it), a thick wall picked on either room's edge: {a, b, material, shared, cls, half, pair, at}, `at`
+// its middle to the millimetre; null without a wall there.
 export function wallSegmentAt(floor, wifi, pt, tol) {
   let best = null;
   for (const s of wallSegments({ ...floor, openings: [] }, wifi, {})) {
-    const d = distToSegment(pt, s.a, s.b);
+    const d = Math.min(distToSegment(pt, s.a, s.b), s.pair ? distToSegment(pt, s.pair[0], s.pair[1]) : Infinity);
     if (d <= tol && (!best || d < best.d)) best = { s, d };
   }
   if (!best) return null;
-  const { a, b, material, shared, cls } = best.s;
-  return { a, b, material, shared, cls, at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
+  const { a, b, material, shared, cls, half, pair } = best.s;
+  return { a, b, material, shared, cls, half, ...(pair ? { pair } : {}), at: [mm((a[0] + b[0]) / 2), mm((a[1] + b[1]) / 2)] };
 }
 
 const mm = (v) => Math.round(v * 1000) / 1000;
 
 // Calls fn(material, k) for each closed segment the open segment p-q crosses, k = min(1/cos(theta), 2),
-// theta the angle to the wall's normal. A crossing at a segment's start counts, at its end it does
+// theta the angle to the wall's normal, times HALF_WALL for a half-height wall. A crossing at a segment's start counts, at its end it does
 // not: a corner is paid once.
 function eachCrossing(segments, p, q, fn) {
   const d = sub(q, p);
@@ -168,7 +268,7 @@ function eachCrossing(segments, p, q, fn) {
     const u = cross(w, d) / den;                                       // along the wall
     if (t <= EPS || t >= 1 - EPS || u < -EPS || u >= 1 - EPS) continue;
     const cos = Math.abs(cross(d, e)) / (dl * el);                    // |cos| to the normal = |sin| to the wall
-    fn(s.material, Math.min(1 / cos, OBLIQUE_CAP));
+    fn(s.material, Math.min(1 / cos, OBLIQUE_CAP) * (s.half ? HALF_WALL : 1));
   }
 }
 
@@ -320,6 +420,98 @@ export function coverage(ctx, band, step) {
   return { cells, aps, hint: null };
 }
 
+// ---- ranges (Amendment 3) ----
+
+const BORDER_DB = -200;                // the grid's outer ring: below any level, so every outline closes
+
+// Each access point's level on its own, on one grid over the floor's rooms with a cell of margin, so an
+// outline runs on from room to room: {x0, y0, step, nx, ny, aps, levels}, node (i, j) at
+// (x0 + i * step, y0 + j * step), levels[k][j * nx + i] the k-th access point's dBm there (coverage's
+// order and model); the outer ring BORDER_DB. Null without an access point on the band or a room.
+export function levelGrid(ctx, band, step) {
+  const aps = Object.keys(ctx.apPos).filter((k) => !ctx.apPos[k].bands || ctx.apPos[k].bands.includes(band));
+  const rooms = ctx.doc.floors.find((f) => f.floor_id === ctx.floorId)?.rooms ?? [];
+  if (!aps.length || !rooms.length) return null;
+  let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
+  for (const r of rooms) for (const [px, py] of r.polygon) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+  [x0, y0] = [x0 - step, y0 - step];
+  const nx = Math.ceil((x1 - x0) / step) + 2;
+  const ny = Math.ceil((y1 - y0) / step) + 2;
+  const c = [0, 0];
+  const levels = aps.map((k) => {
+    const pre = prepare(ctx, k, band);
+    const v = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        if (i === 0 || j === 0 || i === nx - 1 || j === ny - 1) { v[j * nx + i] = BORDER_DB; continue; }
+        c[0] = x0 + i * step;
+        c[1] = y0 + j * step;
+        v[j * nx + i] = level(pre, c);
+      }
+    }
+    return v;
+  });
+  return { x0, y0, step, nx, ny, aps, levels };
+}
+
+// The lines where a grid's `values` (levelGrid's) cross `at`, by marching squares with linear
+// interpolation (a saddle is read by its centre): [{points: [[x, y], ...], closed}].
+export function contour(grid, values, at) {
+  const { x0, y0, step, nx, ny } = grid;
+  const v = (i, j) => values[j * nx + i];
+  const up = (i, j) => v(i, j) >= at;
+  // A crossing is named by its grid edge: "h" from (i, j) to (i + 1, j), "v" from (i, j) to (i, j + 1).
+  const where = new Map();
+  const point = (id, i, j, di, dj) => {
+    if (!where.has(id)) {
+      const [a, b] = [v(i, j), v(i + di, j + dj)];
+      const f = (at - a) / (b - a);
+      where.set(id, [x0 + (i + di * f) * step, y0 + (j + dj * f) * step]);
+    }
+    return id;
+  };
+  const links = new Map();
+  const link = (p, q) => {
+    (links.get(p) ?? links.set(p, []).get(p)).push(q);
+    (links.get(q) ?? links.set(q, []).get(q)).push(p);
+  };
+  for (let j = 0; j + 1 < ny; j++) {
+    for (let i = 0; i + 1 < nx; i++) {
+      const [a, b, c, d] = [up(i, j), up(i + 1, j), up(i + 1, j + 1), up(i, j + 1)];    // corners clockwise from top left
+      if (a === b && b === c && c === d) continue;
+      const top = a !== b && point(`h${i},${j}`, i, j, 1, 0);
+      const right = b !== c && point(`v${i + 1},${j}`, i + 1, j, 0, 1);
+      const bottom = d !== c && point(`h${i},${j + 1}`, i, j + 1, 1, 0);
+      const left = a !== d && point(`v${i},${j}`, i, j, 0, 1);
+      const cut = [top, right, bottom, left].filter(Boolean);
+      if (cut.length === 2) link(cut[0], cut[1]);
+      else {
+        const centre = (v(i, j) + v(i + 1, j) + v(i + 1, j + 1) + v(i, j + 1)) / 4 >= at;
+        if (a !== centre) { link(left, top); link(right, bottom); }      // top left and bottom right cut off
+        else { link(top, right); link(bottom, left); }
+      }
+    }
+  }
+  const lines = [];
+  const used = new Set();
+  const walk = (start) => {
+    const ids = [start];
+    used.add(start);
+    for (let here = start; ;) {
+      const next = (links.get(here) ?? []).find((n) => !used.has(n));
+      if (next === undefined) break;
+      used.add(next);
+      ids.push(next);
+      here = next;
+    }
+    const closed = ids.length > 2 && (links.get(ids[ids.length - 1]) ?? []).includes(start);
+    lines.push({ points: ids.map((id) => where.get(id)), closed });
+  };
+  for (const [id, n] of links) if (n.length === 1 && !used.has(id)) walk(id);
+  for (const id of links.keys()) if (!used.has(id)) walk(id);
+  return lines;
+}
+
 const stable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x)
   ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
 
@@ -350,18 +542,37 @@ const withList = (floor, key, list) => {
   return list.length ? { ...rest, [key]: list } : rest;
 };
 
-// The wall stretch through `at` made of `material`; the default for its class (interior: shared by two
-// rooms, exterior: one room's alone or between an indoor and an outdoor room) removes its entry instead.
-// An outdoor room's own edge has no default: null (no wall) removes its entry, any material keeps one.
-export function setWallMaterial(doc, floorId, at, material) {
-  if (material !== null && !materialsFor("wall").includes(material)) return null;
+// The wall entry of the stretch through `at` after `change(seg, {material, half})` returns its new
+// {material, half} (null: refused). The entry is kept while it says something: a material other than its
+// class's default (interior: shared by two rooms, exterior: one room's alone or between an indoor and an
+// outdoor room) or a half height; else removed. An outdoor room's own edge has no default: no wall (null)
+// removes its entry, any material keeps one. Entries on either edge of a thick wall are replaced.
+function editWall(doc, floorId, at, change) {
   return editFloor(doc, floorId, (floor) => {
     const seg = wallSegmentAt(floor, doc.wifi, at, SHARED_M);
-    if (!seg || (material === null && seg.cls !== "outdoor")) return null;
-    const walls = (floor.walls || []).filter((w) => distToSegment(w.at, seg.a, seg.b) > SHARED_M);
-    if (material !== null && material !== wallDefault(doc.wifi, seg.cls)) walls.push({ at: [mm(at[0]), mm(at[1])], material });
+    if (!seg) return null;
+    const now = change(seg, { material: seg.material, half: !!seg.half });
+    if (!now) return null;
+    const walls = (floor.walls || []).filter((w) => !nearStretch(w.at, seg, SHARED_M));
+    if (now.material !== null && (now.material !== wallDefault(doc.wifi, seg.cls) || now.half)) {
+      walls.push({ at: [mm(at[0]), mm(at[1])], material: now.material, ...(now.half ? { height: "half" } : {}) });
+    }
     return withList(floor, "walls", walls);
   });
+}
+
+// The wall stretch through `at` made of `material`, its height kept; null (no wall) only on an outdoor
+// room's own edge, and drops a half height with it.
+export function setWallMaterial(doc, floorId, at, material) {
+  if (material !== null && !materialsFor("wall").includes(material)) return null;
+  return editWall(doc, floorId, at, (seg, was) => (material === null && seg.cls !== "outdoor" ? null
+    : { material, half: material !== null && was.half }));
+}
+
+// The wall stretch through `at` half height or full (Amendment 3), its material kept; refused where there
+// is no wall (an outdoor room's open edge).
+export function setWallHeight(doc, floorId, at, half) {
+  return editWall(doc, floorId, at, (seg, was) => (was.material === null ? null : { material: was.material, half: !!half }));
 }
 
 // The plan's default for interior or exterior walls; the table's own default removes it.

@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BANDS, wallSegments, pathLoss, crossings, rayTerms, priorParams, predict, coverage, isHandover, contextFor, cacheKey,
   wallSegmentAt, materialsFor, setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi,
-  addReading, nextSpots, setOutdoor, openingDefaults } from "./wifi.js";
+  addReading, nextSpots, setOutdoor, openingDefaults, WALL_GAP_M, HALF_WALL, wallWeight, wallLines, setWallHeight,
+  levelGrid, contour } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 import { widestRow } from "./geometry.js";
 import { openingState } from "./openings.js";
@@ -564,4 +565,196 @@ test("setOutdoor marks and unmarks a room of some floor; empty removes the key; 
   // a door to an outdoor room: double is its default, wood is a choice of its own
   assert.ok(!("material" in fl(setOpeningMaterial(a, "ground", 0, "double")).openings[0]));
   assert.equal(fl(setOpeningMaterial(a, "ground", 0, "wood")).openings[0].material, "wood");
+});
+
+// ---- Amendment 3: thick walls, half-height walls, wall weights, ranges ----
+
+// Two 3 m rooms side by side with `gap` metres of wall between them (a plan traced with wall thickness).
+const apart = (gap) => ({ rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: sq(3 + gap, 0, 3, 3) }] });
+const L3 = { concrete_thin: { 5: 14 }, concrete_thick: { 5: 33 }, brick: { 5: 10 }, railing: { 5: 3 }, wood: { 5: 3 } };
+
+test("the gap constants", () => {
+  assert.equal(WALL_GAP_M, 0.6);
+  assert.equal(HALF_WALL, 0.5);
+});
+
+test("two rooms 0.3 m apart cost one interior wall, not two exterior ones", () => {
+  const segs = wallSegments(apart(0.3), undefined, {});
+  assert.equal(pathLoss(segs, [1.5, 1.5], [4.8, 1.5], "5", L3), 14);
+  const between = segs.filter((s) => s.a[0] > 2.9 && s.a[0] < 3.4 && s.b[0] > 2.9 && s.b[0] < 3.4);
+  assert.equal(between.length, 1, "charged once, on the first room's edge");
+  assert.equal(between[0].cls, "interior");
+  assert.ok(onX(between[0], 3));
+  assert.ok(Math.abs(between[0].pair[0][0] - 3.3) < 1e-9 && Math.abs(between[0].pair[1][0] - 3.3) < 1e-9);
+  assert.equal(segs.length, 7, "as two touching rooms");
+});
+
+test("two rooms 0.7 m apart stay two exterior walls", () => {
+  const segs = wallSegments(apart(0.7), undefined, {});
+  assert.equal(pathLoss(segs, [1.5, 1.5], [5.2, 1.5], "5", L3), 66);
+  assert.equal(segs.length, 8);
+  assert.ok(segs.every((s) => s.cls === "exterior" && !s.pair));
+});
+
+test("touching rooms are as before; a gap within 10 degrees pairs, a steeper one does not", () => {
+  assert.deepEqual(wallSegments(apart(0), undefined, {}), wallSegments(two(), undefined, {}));
+  const tilted = (deg) => {
+    const dx = 3 * Math.tan((deg * Math.PI) / 180);
+    return { rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) },
+      { area_id: "sam", polygon: [[3.2, 0], [6, 0], [6, 3], [3.2 + dx, 3]] }] };
+  };
+  assert.equal(pathLoss(wallSegments(tilted(5), undefined, {}), [1.5, 1.5], [5, 1.5], "5", L3), 14);
+  assert.ok(pathLoss(wallSegments(tilted(15), undefined, {}), [1.5, 1.5], [5, 1.5], "5", L3) > 66, "two exterior walls, one oblique");
+});
+
+test("only the overlap of two offset rooms is one wall; the rest of each edge stays exterior", () => {
+  const floor = { rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "sam", polygon: sq(3.3, 2, 3, 3) }] };
+  const segs = wallSegments(floor, undefined, {});
+  assert.equal(pathLoss(segs, [1.5, 2.5], [4.8, 2.5], "5", L3), 14, "through the overlap");
+  assert.equal(pathLoss(segs, [1.5, 1], [4.8, 1], "5", L3), 33, "beside it: alex's exterior wall only");
+  assert.equal(pathLoss(segs, [4.8, 4], [1.5, 4], "5", L3), 33, "sam's own exterior wall");
+});
+
+test("a room standing in the gap is a neighbour, not a thick wall", () => {
+  const floor = { rooms: [{ area_id: "alex", polygon: sq(0, 0, 3, 3) }, { area_id: "hall", polygon: sq(3, 0, 0.4, 3) },
+    { area_id: "sam", polygon: sq(3.4, 0, 3, 3) }] };
+  assert.equal(pathLoss(wallSegments(floor, undefined, {}), [1.5, 1.5], [4.8, 1.5], "5", L3), 28, "two touching interior walls");
+});
+
+test("a thick wall takes the material set on either edge, and a door on either edge cuts it", () => {
+  const left = { ...apart(0.3), walls: [{ at: [3, 1.5], material: "brick" }] };
+  const right = { ...apart(0.3), walls: [{ at: [3.3, 1.5], material: "brick" }] };
+  for (const f of [left, right]) assert.equal(pathLoss(wallSegments(f, undefined, {}), [1.5, 1.5], [4.8, 1.5], "5", L3), 10);
+  const door = { ...apart(0.3), openings: [{ kind: "door", rooms: ["sam", "alex"], at: [3.3, 1.5], state: "closed" }] };
+  const segs = wallSegments(door, undefined, {});
+  assert.equal(pathLoss(segs, [1.5, 1.5], [4.8, 1.5], "5", L3), 3, "the door's wood, not the wall");
+  assert.equal(pathLoss(segs, [1.5, 0.2], [4.8, 0.2], "5", L3), 14, "beside the door the wall remains");
+});
+
+test("setWallMaterial on a thick wall picks it from either edge and keeps one entry", () => {
+  const doc = groundOf(apart(0.3));
+  const a = setWallMaterial(doc, "ground", [3.3, 1.5], "brick");
+  assert.equal(fl(a).walls.length, 1);
+  const b = setWallMaterial(a, "ground", [3, 1.5], "drywall");
+  assert.deepEqual(fl(b).walls, [{ at: [3, 1.5], material: "drywall" }], "the other edge's entry replaced");
+  assert.equal(wallSegmentAt(fl(b), undefined, [3.28, 1.5], 0.05).material, "drywall");
+});
+
+test("an outdoor room across a gap: the pair parts indoors from outdoors like a shared edge", () => {
+  const segs = wallSegments(apart(0.3), { outdoor: ["sam"] }, {});
+  const wall = segs.find((s) => s.pair);
+  assert.equal(wall.cls, "exterior");
+  assert.equal(wall.material, "concrete_thick");
+  assert.ok(segs.filter((s) => s.a[0] >= 3.3 - 1e-9 && s.b[0] >= 3.3 - 1e-9).every((s) => s.cls === "outdoor" && s.open));
+});
+
+test("rooms of one open space across a gap have no wall between them", () => {
+  const floor = { ...apart(0.45), open_spaces: [["alex", "sam"]] };
+  assert.equal(pathLoss(wallSegments(floor, undefined, {}), [1.5, 1.5], [4.9, 1.5], "5", L3), 0);
+});
+
+test("a closet behind the hallway, its rooms traced with wall gaps, is reached through two thin walls", () => {
+  // living 0..4, a 0.2 m wall, hallway 4.2..5.6, a 0.4 m wall, the closet 6..7 (wide 2 m)
+  const rooms = [room(0, 0, 4, 4, "living"), room(4.2, 0, 1.4, 4, "hall"), room(6, 1, 1, 2, "closet")];
+  const doc = one(rooms, [ap("a")], [pt("a", 3.5, 2)]);
+  const at = predict(ctxOf(doc), "a", "2.4", [6.5, 2]);
+  const freeSpace = 20 - 40.2 - 20 * Math.log10(3);
+  near(at, freeSpace - 2 * 9, 1e-9);
+  const traced = one([room(0, 0, 4, 4, "living"), room(4.7, 0, 1.4, 4, "hall"), room(6.8, 1, 1, 2, "closet")], [ap("a")], [pt("a", 3.5, 2)]);
+  assert.ok(predict(ctxOf(traced), "a", "2.4", [7.3, 2]) < -100, "0.7 m gaps: four exterior walls, as before");
+});
+
+test("a half wall costs half its material on every band", () => {
+  const full = { ...two(), walls: [{ at: [3, 1.5], material: "brick" }] };
+  const half = { ...two(), walls: [{ at: [3, 1.5], material: "brick", height: "half" }] };
+  const losses = { brick: table.materials.brick.loss };
+  for (const band of BANDS) {
+    const f = pathLoss(wallSegments(full, undefined, {}), [1.5, 1.5], [4.5, 1.5], band, losses);
+    near(pathLoss(wallSegments(half, undefined, {}), [1.5, 1.5], [4.5, 1.5], band, losses), f * HALF_WALL);
+  }
+  const k = crossings(wallSegments(half, undefined, {}), [1.5, 1.5], [4.5, 1.5]);
+  assert.deepEqual(k, [{ material: "brick", k: 0.5 }], "the fit sees the factor in k and fits the material");
+});
+
+test("railing is a wall material", () => {
+  assert.ok(materialsFor("wall").includes("railing"));
+  assert.deepEqual(table.materials.railing.loss, { "2.4": 2, "5": 3, "6": 3 });
+});
+
+test("setWallHeight makes a wall half height and back; the material stays", () => {
+  const doc = groundOf(two());
+  const half = setWallHeight(doc, "ground", [3, 1.5], true);
+  assert.deepEqual(fl(half).walls, [{ at: [3, 1.5], material: "concrete_thin", height: "half" }], "a default wall keeps an entry for its height");
+  assert.ok(!("walls" in fl(setWallHeight(half, "ground", [3, 1.5], false))), "full height at the default: no entry");
+  const brick = setWallMaterial(half, "ground", [3, 1.5], "brick");
+  assert.deepEqual(fl(brick).walls, [{ at: [3, 1.5], material: "brick", height: "half" }], "a new material keeps the height");
+  assert.deepEqual(fl(setWallHeight(brick, "ground", [3, 1.5], false)).walls, [{ at: [3, 1.5], material: "brick" }]);
+  assert.deepEqual(fl(setWallMaterial(brick, "ground", [3, 1.5], "concrete_thin")).walls,
+    [{ at: [3, 1.5], material: "concrete_thin", height: "half" }]);
+  assert.equal(wallSegmentAt(fl(brick), undefined, [3, 1.5], 0.05).half, true);
+  // a balcony's open edge has no wall to lower until a material is set; a railing then can be
+  const balcony = { ...groundOf(two()), wifi: { outdoor: ["sam"] } };
+  assert.equal(setWallHeight(balcony, "ground", [6, 1.5], true), null);
+  const railing = setWallHeight(setWallMaterial(balcony, "ground", [6, 1.5], "railing"), "ground", [6, 1.5], true);
+  assert.deepEqual(fl(railing).walls, [{ at: [6, 1.5], material: "railing", height: "half" }]);
+  assert.ok(!("walls" in fl(setWallMaterial(railing, "ground", [6, 1.5], null))), "no wall drops the height with it");
+  assert.equal(setWallHeight(doc, "ground", [1.5, 1.5], true), null, "no wall there");
+});
+
+test("wall weights by the 5 GHz loss after the half factor; glazing tinted", () => {
+  const expected = { drywall: "light", wood: "light", aerated_block: "light", brick: "solid", concrete_thin: "solid",
+    concrete_thick: "heavy", concrete: "solid", reinforced_concrete: "heavy", glass: "light", double: "light", low_e: "heavy",
+    triple_low_e: "heavy", metal: "heavy", railing: "light", interior: "light", exterior: "solid" };
+  for (const id of materialsFor("wall")) assert.equal(wallWeight(id).weight, expected[id], id);
+  assert.deepEqual(materialsFor("wall").filter((id) => wallWeight(id).glass), ["glass", "double", "low_e", "triple_low_e"]);
+  assert.equal(wallWeight("concrete_thick", true).weight, "solid", "33 dB halved is 16.5");
+  assert.equal(wallWeight("brick", true).weight, "light", "10 dB halved is 5");
+  assert.equal(wallWeight("low_e", true).weight, "solid");
+  assert.equal(wallWeight("metal", true).weight, "solid", "35 halved is 17.5");
+  assert.deepEqual(wallWeight(null), { weight: "none", glass: false });
+});
+
+test("wallLines draws a thick wall once on its middle line, open-space and open edges as no wall", () => {
+  const lines = wallLines(apart(0.3), undefined, {});
+  const mid = lines.filter((l) => Math.abs(l.a[0] - 3.15) < 1e-9 && Math.abs(l.b[0] - 3.15) < 1e-9);
+  assert.equal(mid.length, 1);
+  assert.equal(mid[0].weight, "solid");
+  assert.equal(lines.filter((l) => l.weight === "heavy").length, 6, "the outer walls");
+  const open = wallLines({ ...two(), open_spaces: [["alex", "sam"]] }, undefined, {});
+  assert.deepEqual(open.filter((l) => onX(l, 3)).map((l) => l.weight), ["none"]);
+  const balcony = wallLines(two(), { outdoor: ["sam"] }, {});
+  assert.equal(balcony.filter((l) => l.weight === "none").length, 3, "the balcony's own three edges");
+  const half = wallLines({ ...two(), walls: [{ at: [3, 1.5], material: "low_e", height: "half" }] }, undefined, {});
+  assert.deepEqual(half.filter((l) => onX(l, 3)).map(({ weight, glass, half: h }) => ({ weight, glass, half: h })),
+    [{ weight: "solid", glass: true, half: true }]);
+  const door = wallLines({ ...two(), openings: [{ kind: "door", rooms: ["alex", "sam"], at: [3, 1.5] }] }, undefined, {});
+  assert.equal(door.filter((l) => onX(l, 3)).length, 2, "the door cut out");
+});
+
+test("the ranges outline of one access point in an empty room is closed and nearer than -75's", () => {
+  // -10 dBm at 5 GHz: -67 dBm at about 3.05 m, -75 dBm at about 7.7 m
+  const doc = one([room(0, 0, 20, 20)], [ap("a", { tx: { 5: -10 } })], [pt("a", 10, 10)]);
+  const grid = levelGrid(ctxOf(doc), "5", 0.15);
+  assert.deepEqual(grid.aps, ["a"]);
+  const r = (l) => l.points.map(([x, y]) => Math.hypot(x - 10, y - 10));
+  const [call] = contour(grid, grid.levels[0], -67);
+  const [weak] = contour(grid, grid.levels[0], -75);
+  assert.equal(contour(grid, grid.levels[0], -67).length, 1);
+  assert.ok(call.closed && weak.closed);
+  assert.ok(Math.max(...r(call)) < Math.min(...r(weak)));
+  const expected = (dbm) => 10 ** ((-10 - 47.3 - dbm) / 20);
+  for (const d of r(call)) assert.ok(Math.abs(d - expected(-67)) < 0.05, String(d));
+  for (const d of r(weak)) assert.ok(Math.abs(d - expected(-75)) < 0.05, String(d));
+});
+
+test("contour: a saddle is read by its centre; an outline at the grid's edge closes", () => {
+  const grid = { x0: 0, y0: 0, step: 1, nx: 2, ny: 2 };
+  assert.equal(contour(grid, [1, 0, 0, 1], 0.5).length, 2, "two diagonal corners above, centre above: one line each side");
+  assert.equal(contour(grid, [1, 0, 0, 1], 0.6).length, 2, "centre below: the other pairing, still two");
+  assert.deepEqual(contour(grid, [0, 0, 0, 0], 0.5), []);
+  const big = levelGrid(ctxOf(one([room(0, 0, 2, 2)], [ap("a")], [pt("a", 1, 1)])), "5", 0.25);
+  const lines = contour(big, big.levels[0], -67);
+  assert.equal(lines.length, 1, "the whole room is above -67: the outline runs round the grid's border ring");
+  assert.ok(lines[0].closed);
+  assert.equal(levelGrid(ctxOf(one([room(0, 0, 2, 2)], [ap("a", { bands: ["2.4"] })], [pt("a", 1, 1)])), "5", 0.25), null);
 });

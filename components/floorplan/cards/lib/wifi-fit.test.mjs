@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { calibrate, residualAt, calibratedCoverage, confidenceOf } from "./wifi-fit.js";
-import { contextFor, priorParams, predict, coverage, wallSegments } from "./wifi.js";
+import { calibrate, residualAt, calibratedCoverage, confidenceOf, calibratedLevelGrid } from "./wifi-fit.js";
+import { contextFor, priorParams, predict, coverage, wallSegments, levelGrid } from "./wifi.js";
 import table from "./materials.json" with { type: "json" };
 
 const sq = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -338,4 +338,22 @@ test("2000 observations and 200 m² on one band in under 300 ms", () => {
   assert.equal(m.cells.length, coverage(ctx, "5", 0.15).cells.length);
   assert.ok(m.cells.length > 8800 && m.cells.length < 9000, `${m.cells.length} cells at 0.15 m`);
   assert.ok(ms < 300, `${ms} ms`);
+});
+
+test("calibratedLevelGrid: the Ranges grid moves with a reading exactly as the calibrated map's cell", () => {
+  const doc = openDoc();
+  const ctx = ctxOf(doc);
+  const obs = { floorId: "f0", x: 6.5, y: 4.5, band: "5", ap: "node", source: "device", device: "d", weight: 1,
+    dbm: predict(ctx, "node", "5", [6.5, 4.5]) + 8 };
+  const fit = { params: priors(doc), prior: priors(doc), moved: { tx: false, loss: false, n: false },
+    residuals: [{ obs, r: -8, ap: "node" }] };
+  const cell = calibratedCoverage(ctx, "5", 1, fit).cells.find((c) => c.x === 6 && c.y === 4);
+  const g = calibratedLevelGrid(ctx, "5", 0.5, fit);
+  const plain = levelGrid(ctx, "5", 0.5);
+  const node = (gr) => gr.levels[0][Math.round((4.5 - gr.y0) / gr.step) * gr.nx + Math.round((6.5 - gr.x0) / gr.step)];
+  near(node(g), cell.dbm, 1e-9);
+  near(node(g) - node(plain), 8, 0.7);
+  assert.equal(g.levels[0][0], plain.levels[0][0], "the border ring stays below every level");
+  const none = calibratedLevelGrid(ctx, "5", 0.5, { ...fit, residuals: [] });
+  assert.deepEqual([...none.levels[0]], [...plain.levels[0]]);
 });

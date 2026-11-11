@@ -3,7 +3,7 @@
 // a row pulling it towards its prior by its uncertainty. Pure and deterministic: sorted unknowns,
 // a fixed number of Gauss-Newton iterations, no randomness.
 
-import { BANDS, priorParams, predict, rayTerms, coverage, crossings } from "./wifi.js";
+import { BANDS, priorParams, predict, rayTerms, coverage, crossings, levelGrid } from "./wifi.js";
 import { pointInPolygon } from "./geometry.js";
 
 const ITERATIONS = 10;
@@ -309,4 +309,26 @@ export function calibratedCoverage(ctx, band, step, fit, { confidence = false } 
     cell.conf = high ? "high" : fitConfidence(cell, c, fit, ctx, band);
   }
   return map;
+}
+
+// levelGrid() calibrated by `fit` (Amendment 3, the Ranges outlines): every access point's level plus the
+// same correction −residualAt that calibratedCoverage gives a cell, so an outline agrees with the map.
+// The ctx is built with fit.params, as for calibratedCoverage.
+export function calibratedLevelGrid(ctx, band, step, fit) {
+  const grid = levelGrid(ctx, band, step);
+  if (!grid) return grid;
+  const here = fit.residuals.filter((e) => e.obs.band === band && e.obs.floorId === ctx.floorId);
+  if (!here.length) return grid;
+  const at = residualIndex(here, ctx.segmentsByFloor[ctx.floorId] ?? []);
+  const { x0, y0, nx, ny } = grid;
+  const c = [0, 0];
+  for (let j = 1; j + 1 < ny; j++) {
+    for (let i = 1; i + 1 < nx; i++) {
+      c[0] = x0 + i * step;
+      c[1] = y0 + j * step;
+      const add = -at(c);
+      for (const v of grid.levels) v[j * nx + i] += add;
+    }
+  }
+  return grid;
 }
