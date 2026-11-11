@@ -2171,6 +2171,31 @@ test("an unplaced Wi-Fi client paints its full total over its access point's ser
   window.localStorage.clear();
 });
 
+test("a wired client whose device is an unplaced point paints at its access point", async () => {
+  window.localStorage.clear();
+  const hass = trafficHass();
+  for (const id of ["device_tracker.nas", "device_tracker.laptop"]) {
+    hass.states[id] = { ...hass.states[id], attributes: { ...hass.states[id].attributes, down_kilobytes_per_s: 0 } };
+  }
+  // Sam's streamer: a registry device with its MAC, auto-placed (placed: false) in the living room, wired on its node.
+  hass.devices.d_streamer = { id: "d_streamer", name: "Streamer", area_id: "living_room", connections: [["mac", "02:00:00:00:bb:03"]] };
+  hass.entities["device_tracker.streamer"] = { entity_id: "device_tracker.streamer", device_id: null, platform: "tplink_deco" };
+  hass.states["device_tracker.streamer"] = { state: "home", last_updated: new Date().toISOString(), attributes: { device_type: "client",
+    friendly_name: "streamer", mac: "02:00:00:00:bb:03", deco_mac: NODE2, connection_type: "wired", down_kilobytes_per_s: 100, up_kilobytes_per_s: 8.75 } };
+  const plan = wifiPlan();
+  plan.floors[0].points.push({ device_id: "d_streamer", x: 2.5, y: 2.4, placed: false });
+  const card = await make({ plan, layers: ["radio"] }, hass);
+  await settle();
+  click($(card, '.bar [data-map="traffic_heat"]'));
+  const cells = trafficCells(card);
+  assert.ok(cells.length > 0, "the streamer's 0.87 Mbit/s glows");
+  const top = cells.reduce((a, c) => (Number(c.getAttribute("data-mbps")) > Number(a.getAttribute("data-mbps")) ? c : a));
+  assert.ok(Number(top.getAttribute("data-mbps")) > 0.85, top.getAttribute("data-mbps"));
+  const [x, y] = [Number(top.getAttribute("x")) + 0.075, Number(top.getAttribute("y")) + 0.075];
+  assert.ok(Math.hypot(x - 1, y - 2) < 0.15, `at the living room node, not the unplaced point: ${x}, ${y}`);
+  window.localStorage.clear();
+});
+
 test("a throttled heat is rebuilt once the second is up, with the last update", async () => {
   window.localStorage.clear();
   const hass = trafficHass();

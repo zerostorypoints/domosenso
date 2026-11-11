@@ -1866,7 +1866,13 @@ ${STYLE}
 
   _trafficHeat(floor, map, step, calibrated) {
     const full = this._doc.floors.find((f) => f.floor_id === this._floorId);
-    const list = map.traffic.list;
+    const placed = ({ floorId, key }) => {
+      const p = floorId === this._floorId && floor.points.find((q) => keyOf(q) === key);
+      return p && p.placed !== false && Number.isFinite(p.x) && Number.isFinite(p.y) ? [p.x, p.y] : null;
+    };
+    // A point on this floor not yet dragged (placed: false) is no place: its client is one without a point,
+    // at its access point as on Traffic links, not left out.
+    const list = map.traffic.list.map((c) => (c.point?.floorId === this._floorId && !placed(c.point) ? { ...c, point: null } : c));
     // Serving cells for the bands some unplaced Wi-Fi client uses, as the Serving map has them.
     const bands = offeredBands(this._doc);
     const serving = {};
@@ -1874,10 +1880,6 @@ ${STYLE}
       if (c.link === "wired" || c.point || !c.ap || serving[c.link]) continue;
       serving[c.link] = bands.includes(c.link) ? this._wifi(c.link, step, calibrated).cells : [];
     }
-    const placed = ({ floorId, key }) => {
-      const p = floorId === this._floorId && floor.points.find((q) => keyOf(q) === key);
-      return p && p.placed !== false && Number.isFinite(p.x) && Number.isFinite(p.y) ? [p.x, p.y] : null;
-    };
     const apAt = (key) => {
       for (const f of this._doc.floors) {
         const p = (f.points ?? []).find((q) => keyOf(q) === key && q.placed !== false && Number.isFinite(q.x) && Number.isFinite(q.y));
