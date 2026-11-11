@@ -16,6 +16,37 @@ What a home needs to know beyond `component.yaml`.
   Assistant restart.
 - The sensors needed no firmware update out of the box.
 
+## Hydroculture: what the sensor can and cannot tell
+
+Many houseplants, in Switzerland and Germany especially, grow in **hydroculture** (*Hydrokultur*):
+no soil, clay pebbles (LECA) in an inner pot, a reservoir of water with nutrient solution at the
+bottom, and a float gauge (*Wasserstandsanzeiger*) showing the water level. Ask for every plant,
+before adding it: soil or hydroculture? The pots look alike from a distance; the pebbles and the
+gauge give it away.
+
+| reading | in hydroculture | why |
+|---|---|---|
+| light | valid | measured by the sensor's head, above the pot; the pot's contents do not matter |
+| temperature | valid | the same |
+| moisture | **not meaningful** | the prongs (about 5 cm) reach only the pebbles above the reservoir, mostly air: they read 0 to 10 % however much water the pot holds, and do not rise when it is filled |
+| conductivity (fertility) | **not meaningful** | it measures the salts in moist soil between the prongs; dry pebbles conduct nothing (0 µS/cm), and its scale is made for soil, not for a nutrient solution |
+
+Pushing the sensor deeper does not help: the head is not made to sit in wet pebbles, and the
+reservoir is below the prongs' reach anyway. **The float gauge is the watering signal.**
+
+What a home does today (0.5.0), per hydroculture plant: set `min_moisture: 0` and
+`min_conductivity: 0`, so neither is ever low. Light and temperature stay judged; no watering push
+goes out and the Ramka and Pocket show no "thirsty" plant. "Last watered" and "water in" stay
+unknown for it, which is right: the sensor cannot see a watering. Tell the owner why, in these
+words or similar: *"In hydroculture the sensor only sees the dry pebbles at the top, so its moisture
+and fertility numbers stay near zero whatever the water level. We keep its light and temperature,
+which are real, and you water by the float gauge as before."*
+
+- **A new sensor in a hydroculture pot may never trigger the new-sensor push**: that push waits for
+  moisture above 0 %, and the pebbles may read 0. Find the sensor by its discovery name instead.
+- Light is where the sensor earns its place in these pots: hydroculture plants are often placed
+  deep in a room, and the 24-hour light peak shows whether the spot is bright enough.
+
 ## The package (0.2.0)
 
 - **Sensor ids.** The package expects `sensor.<plant>_{moisture,conductivity,illuminance,temperature}`,
@@ -35,6 +66,9 @@ What a home needs to know beyond `component.yaml`.
 ## Adding a plant (0.3.0)
 
 No app is needed: Home Assistant tells which sensor went into which pot.
+
+First ask whether the plant grows in soil or in hydroculture (see above): in hydroculture only light
+and temperature mean anything, and step 4 sets its moisture and conductivity limits to 0.
 
 1. **Pull the battery tab and keep the sensor in the hand.** Within about a minute Home Assistant
    shows a Xiaomi BLE discovery, "Plant Sensor XXXX (HHCCJCY01)", under Settings → Devices &
