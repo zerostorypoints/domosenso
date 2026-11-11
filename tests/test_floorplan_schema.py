@@ -425,3 +425,46 @@ def test_a_plan_without_wifi_keys_has_no_wifi_lines():
     assert diff(None, demo()) == [(k, "add", "ground", n) for k, n in
                                   [("room", "living_room"), ("room", "kitchen"),
                                    ("point", "dev1"), ("point", "plant.monstera")]]
+
+
+def test_the_cards_geometry_edits_leave_walls_the_validator_accepts(tmp_path):
+    """A wall material on an edge a join, a corner move, a corner removal or insertion takes away is
+    dropped (or carried along a moved edge) by lib/plan.js, so the edited plan still validates."""
+    import json
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not on PATH (eval \"$(fnm env --shell zsh)\")")
+    plan_js = Path(__file__).resolve().parents[1] / "components" / "floorplan" / "cards" / "lib" / "plan.js"
+    doc = demo()
+    del doc["source"]
+    doc["floors"][0]["walls"] = [
+        {"at": [5.4, 2], "material": "glass"},        # shared edge: gone with the join
+        {"at": [0, 3.8], "material": "brick"},        # west edge: moves with corner 0
+        {"at": [2.7, 7.6], "material": "drywall"},    # north edge: gone with corner 2's removal
+    ]
+    validate(doc)
+    script = tmp_path / "edits.mjs"
+    script.write_text(
+        f"import * as plan from {json.dumps(plan_js.as_uri())};\n"
+        "const doc = JSON.parse(process.argv[2]);\n"
+        "process.stdout.write(JSON.stringify([\n"
+        "  plan.joinRooms(doc, 'ground', 'living_room', 'kitchen'),\n"
+        "  plan.moveCorner(doc, 'ground', 'living_room', 0, [-1, 0]),\n"
+        "  plan.removeCorner(doc, 'ground', 'living_room', 2),\n"
+        "  plan.insertCorner(doc, 'ground', 'living_room', 2, [2.7, 8.6]),\n"
+        "]));\n",
+        encoding="utf-8")
+    result = subprocess.run([node, str(script), json.dumps(doc)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    edited = json.loads(result.stdout)
+    for out in edited:
+        validate(out)
+    joined, moved, removed, inserted = edited
+    assert [w["material"] for w in joined["floors"][0]["walls"]] == ["brick", "drywall"]
+    assert len(moved["floors"][0]["walls"]) == 3
+    assert [w["material"] for w in removed["floors"][0]["walls"]] == ["glass", "brick"]
+    assert [w["material"] for w in inserted["floors"][0]["walls"]] == ["glass", "brick"]
