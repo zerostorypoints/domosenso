@@ -169,5 +169,20 @@
       },
       "offset_estimated": "Offset geschätzt: mit einem Referenzmessgerät kalibrieren"
     }
+  },
+  "ui": {
+    "strip": {
+      "title": "Musikstreifen",
+      "look": "Aussehen",
+      "look_help": "- **Helligkeit** (der Regler unter dem Streifen): der Dimmer. Er bestimmt, wie viel Licht der Streifen gibt, nicht seine Farben.\n- **Style**: was der Streifen zeigt. Pulse und Glow leuchten mit dem ganzen Streifen; Bands, Spectrum und Heat verteilen die Frequenzen über seine Länge; Centre meter ist ein Pegelbalken; Ripple schickt bei jedem Beat eine Welle.\n- **Palette**: die Farben der Styles. *pastel* ist zart und fügt sich in den Raum; *custom* nimmt die Farben aus Custom palette.\n- **Custom palette**: 2 bis 5 Farben als #rrggbb, durch Kommas getrennt; die erste für leisen Klang oder Bass, die letzte für lauten Klang oder Höhen.\n- **Pastel**: mischt jede Farbe mit Weiss. Höher stellen, wenn die Farben zu kräftig wirken.\n- **Intensity**: wie stark die Musik die Helligkeit bewegt. Bei 0 % leuchtet der Streifen gleichmässig und nur die Farben folgen der Musik; bei 100 % werden leise Stellen dunkel und laute voll hell. In Heat verblassen bei 100 % die leisesten Frequenzen; mit der Palette *single* ist das eine Farbe, dunkel, wo die Musik leise ist.",
+      "layout": "Anordnung",
+      "layout_help": "- **Bass position**: wo die tiefen Töne liegen. *centre* und *ends* spiegeln das Bild um die Mitte des Streifens; *start* legt den Bass an den Anfang des Streifens (das Ende mit dem Kabel) und die Höhen ans andere Ende; *end* umgekehrt.\n- **Mounting**: *front* für einen Streifen, auf den man schaut (scharf); *wall* oder *floor* für einen, der eine Fläche beleuchtet (weicher, zu einem Schein verwischt).\n- **LEDs in use** und **First LED**: welcher Teil des Streifens leuchtet; der Rest bleibt dunkel.",
+      "sound": "Klang",
+      "sound_help": "- **Sensitivity**: wie laut die Musik sein muss. Niedriger (bis −40 dB), wenn der Streifen zu unruhig ist oder in seiner lautesten Farbe bleibt; höher für leises Hören.\n- **Range**: welchen Lautstärkeunterschied die Farben und die Helligkeit abdecken. Klein (10–20 dB) zeigt kleine Unterschiede zwischen den Frequenzen; gross (40–60 dB) ist ruhiger.\n- **Auto gain**: folgt der Lautstärke über etwa 10 Sekunden, damit sich der Streifen bei jeder Lautstärke bewegt. Eingeschaltet lassen.\n- **Attack** und **Release**: wie schnell der Streifen reagiert, wenn der Klang lauter wird, und wie langsam er ausklingt.\n- **Beat strength**: wie stark der Blitz oder die Welle bei einem Beat ist.\n- **Beat sensitivity**: wie leicht ein Bassschlag als Beat zählt. Höher, wenn Beats fehlen; niedriger, wenn der Streifen ohne Beat blitzt.",
+      "power": "Strom",
+      "power_help": "- **Power limit**: der höchste Strom, den der Streifen ziehen darf. 500 mA, wenn er seinen Strom über das Kabel des Boards bekommt; die Leistung des Netzteils, wenn er ein eigenes 5-V-Netzteil hat. Der Streifen dimmt sich selbst, um darunter zu bleiben.\n- **Current**: was der Streifen gerade zieht, alle 10 Sekunden geschätzt.\n- **Reset settings**: setzt jede Einstellung des Streifens auf dieser Seite auf ihren Standard zurück.",
+      "automation": "Automatik",
+      "automation_help": "- **Follow music**: schaltet den Streifen ein, wenn Musik läuft, und nach der Ausschaltverzögerung wieder aus.\n- **Off delay**: wie lange der Streifen nach dem Ende der Musik an bleibt (0 heisst 30 Sekunden).\n- **Follow effect**: der Style, mit dem der Streifen startet; *keep* startet den letzten.\n- **Ambient**: stellt die Helligkeit nach dem Licht im Raum ein, gedämpft im dunklen Raum und heller bei Tageslicht. Dark und bright lux sind die Lichtstärken, min und max die Helligkeit bei ihnen."
+    }
   }
 }

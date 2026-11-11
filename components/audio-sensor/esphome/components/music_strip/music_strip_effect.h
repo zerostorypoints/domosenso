@@ -15,6 +15,9 @@ namespace esphome::music_strip {
 // features (every 10.7 ms), so the strip never repeats a stale frame.
 class MusicStripEffect : public light::AddressableLightEffect {
  public:
+  // ESPHome's usual LED gamma, applied by the renderer before the light's brightness.
+  static constexpr float COLOUR_GAMMA = 2.8f;
+
   MusicStripEffect(const char *name, MusicStripComponent *parent, ms::Style style)
       : AddressableLightEffect(name), parent_(parent), style_(style) {}
 
@@ -36,6 +39,8 @@ class MusicStripEffect : public light::AddressableLightEffect {
     // colour correction applies to the frame on its way out.
     const light::LightColorValues &v = this->state_->current_values;
     s.gamma = this->state_->get_gamma_correct();
+    // The strip's own gamma: the light's is 1 (music-strip.yaml), so its brightness dims linearly.
+    s.colour_gamma = COLOUR_GAMMA;
     s.brightness = light::to_uint8_scale(v.get_brightness() * v.get_state());
     const size_t n = (size_t) it.size();
     this->frame_.resize(n);

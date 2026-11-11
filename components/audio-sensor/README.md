@@ -361,14 +361,16 @@ Configuration:
 
 | entity | values (default) | what it does |
 |---|---|---|
-| Music strip | light: on/off, brightness, colour, effect | the strip; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
+| Music strip | light: on/off, brightness, colour, effect | the strip; its brightness is the overall dimmer: the eye sees the square of the slider (50 % looks about half as bright), applied after the strip's own gamma, so the colours stay as they are; the effect is the style (None: a plain colour, capped at the power limit); the colour is the Single palette's |
 | Strip style | Pulse, Glow, Bands, Centre meter, Spectrum, Ripple, Heat (Pulse) | the style: switches a lit strip, and is what a turn-on starts; follows a style chosen in the light's dialog |
-| Strip palette | spectrum, warm, cool, single, custom (spectrum) | the colours the styles use |
+| Strip palette | spectrum, warm, cool, single, custom, pastel (spectrum) | the colours the styles use; pastel is soft blue, mint, cream, peach and rose |
 | Strip custom palette | 2–5 `#rrggbb` stops (`#ff3000,#ffb000,#2050ff`) | the custom palette; a typo keeps the last good one |
-| Strip intensity | 0–100 % (60) | how much of the music reaches the strip: a calm glow at 0, full flashes at 100 |
+| Strip intensity | 0–100 % (60) | how far the music moves the brightness: at 0 every lit part glows steadily and the music changes only colour and position; at 100 quiet parts go dark and loud parts light up fully |
+| Strip pastel | 0–100 % (0) | mixes every colour toward white at its own brightness: softer colours that blend with the room |
 | Strip mounting | front, wall, floor (front) | front: sharp; wall and floor: smoother and blurred into a wash |
 | Strip auto gain | on | follows the volume over about 10 s, so quiet listening still moves the strip |
-| Strip sensitivity | −20 to +20 dB (0) | the fixed gain while auto gain is off |
+| Strip sensitivity | −40 to +20 dB (0) | shifts every level: lower needs louder sound for the same brightness or colour, higher lights up sooner |
+| Strip range | 10–60 dB (30) | the dB between a band's quietest and loudest look (Heat's first and last colour; dark and full in Spectrum and Bands): smaller tells bands of similar loudness apart |
 | Strip attack, release | 0–200 ms (20), 50–2000 ms (300) | how fast the level rises and falls |
 | Strip beat strength | 0–100 % (50) | how bright a beat's flash or ripple is |
 | Strip beat sensitivity | 0–100 % (50) | how readily a jump in the low end counts as a beat; raise it if beats are missed, lower it if the strip flashes without one |
@@ -391,7 +393,7 @@ microphone has no left or right, and the strip sits between two speakers.
 | Centre meter | a level meter from the centre to both ends, a falling peak dot | front |
 | Spectrum | 8 bands mirrored from the centre, bass at the centre or the ends | front |
 | Ripple | a beat sends a wave from the centre to both ends | front, wall |
-| Heat | the bands laid along the strip; each part's colour is its band's level through the palette (quiet: the first colour, loud: the last), the brightness steady | front; with bass position start or end, bass to treble across the strip |
+| Heat | the bands laid along the strip; each part's colour is its band's level through the palette (quiet: the first colour, loud: the last); with Strip intensity its brightness follows the level too, so at 100 % a quiet band fades out (with the single palette: one colour, dark where quiet), at 0 % it is steady | front; with bass position start or end, bass to treble across the strip |
 
 A beat is the low end (40–250 Hz) jumping well above its own mean over the last second: a kick
 confined to the bass counts, the same at any volume and at any amount of bass at the board's spot.
@@ -402,6 +404,25 @@ light it.
 
 After a boot the strip is off, and a turn-on without a style (Home Assistant's `keep`, a tap on the
 light) starts the one in Strip style.
+
+### Settings page
+
+Home Assistant shows no description for a device's settings, so audio-sensor renders a page that
+does: `music-strip.<lang>.yaml`, one view per board with a strip, its settings in groups (look,
+placement, sound, power, and the automatic ones when `follow` or `ambient_light` is set), each group
+explained above it in plain words. A home without a strip gets no page. Register it once in the home's
+`configuration.yaml`:
+
+```yaml
+lovelace:
+  dashboards:
+    music-strip:
+      mode: yaml
+      title: Music strip
+      icon: mdi:led-strip-variant
+      filename: dashboards/music-strip.en.yaml
+      require_admin: true
+```
 
 ### In Home Assistant
 

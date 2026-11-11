@@ -169,5 +169,20 @@
       },
       "offset_estimated": "Offset estimated: calibrate against a reference meter"
     }
+  },
+  "ui": {
+    "strip": {
+      "title": "Music strip",
+      "look": "Look",
+      "look_help": "- **Brightness** (the slider under the strip): the dimmer. It sets how much light the strip gives, not its colours.\n- **Style**: what the strip draws. Pulse and Glow light the whole strip; Bands, Spectrum and Heat spread the frequencies along it; Centre meter is a level bar; Ripple sends a wave on each beat.\n- **Palette**: the colours the styles use. *pastel* is soft and blends with the room; *custom* uses the colours in Custom palette.\n- **Custom palette**: 2 to 5 colours as #rrggbb, separated by commas; the first is for quiet sound or bass, the last for loud sound or treble.\n- **Pastel**: mixes every colour toward white. Raise it when the colours look too vivid.\n- **Intensity**: how much the music moves the brightness. At 0 % the strip glows steadily and only its colours follow the music; at 100 % quiet parts go dark and loud parts light up fully. In Heat, at 100 % the quietest frequencies fade out; with the *single* palette that is one colour, dark where the music is quiet.",
+      "layout": "Placement",
+      "layout_help": "- **Bass position**: where the low notes go. *centre* and *ends* mirror the picture around the middle of the strip; *start* puts the bass at the strip's beginning (the end with the cable) and the treble at the far end; *end* the other way round.\n- **Mounting**: *front* for a strip you look at (sharp); *wall* or *floor* for one that lights a surface (smoother, blurred into a wash).\n- **LEDs in use** and **First LED**: which part of the strip lights up; the rest stays dark.",
+      "sound": "Sound",
+      "sound_help": "- **Sensitivity**: how loud the music has to be. Lower it (down to −40 dB) when the strip is too busy or stays at its loudest colour; raise it for quiet listening.\n- **Range**: how big a difference in loudness the colours and the brightness span. Small (10–20 dB) shows small differences between the frequencies; large (40–60 dB) is calmer.\n- **Auto gain**: follows the volume over about 10 seconds, so the strip moves at any volume. Leave it on.\n- **Attack** and **Release**: how fast the strip reacts when the sound rises, and how slowly it fades.\n- **Beat strength**: how strong the flash or the ripple on a beat is.\n- **Beat sensitivity**: how readily a bass hit counts as a beat. Raise it when beats are missed, lower it when the strip flashes without one.",
+      "power": "Power",
+      "power_help": "- **Power limit**: the most current the strip may draw. 500 mA when it takes its power from the board's cable; the supply's rating when it has its own 5 V supply. The strip dims itself to stay under it.\n- **Current**: what the strip draws now, an estimate every 10 seconds.\n- **Reset settings**: puts every setting of the strip on this page back to its default.",
+      "automation": "Automatic",
+      "automation_help": "- **Follow music**: turns the strip on when music plays and off after the off delay.\n- **Off delay**: how long the strip stays on after the music stops (0 means 30 seconds).\n- **Follow effect**: the style the strip starts with; *keep* starts the last one.\n- **Ambient**: sets the brightness from the room's light, dim in a dark room and brighter in daylight. Dark and bright lux are the light levels, min and max the brightness at them."
+    }
   }
 }

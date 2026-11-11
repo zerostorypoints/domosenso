@@ -164,7 +164,21 @@
         "confidence_legend": "how far to trust the {bands} GHz map: high within 2 m of a device's reading of the serving access point, medium where the readings moved the model, low where only the typical values apply",
         "disabled": "Switched-off Wi-Fi signal sensors that would calibrate the map; enable them in Settings → Entities:",
         "ranges": "Ranges",
-        "ranges_legend": "solid {call} dBm, dashed {weak} dBm"
+        "ranges_legend": "solid {call} dBm, dashed {weak} dBm",
+        "readings": "Readings",
+        "reading": {
+          "band": "{band} GHz, channel {channel}",
+          "no_ap": "access point unknown",
+          "noise": "noise {noise} dBm",
+          "spread": "spread {spread} dB",
+          "scans": "{n} scans",
+          "source": {
+            "phone": "phone",
+            "survey": "laptop survey",
+            "manual": "typed in"
+          },
+          "ceiling": "on 2.4 GHz: 5 GHz below {dbm} dBm here (band steering)"
+        }
       },
       "wall": {
         "material": "Wall material",
@@ -183,7 +197,8 @@
           "solid": "solid",
           "heavy": "heavy",
           "title": "Walls by their loss at 5 GHz: light below 10 dB, solid 10 to 25 dB, heavy above 25 dB; glass tinted blue, a half-height wall dashed, no wall dotted"
-        }
+        },
+        "steering": "Band steering below (dBm)"
       },
       "material": {
         "drywall": "Drywall",

@@ -57,6 +57,10 @@ back to Home Assistant by `domosenso floorplan pull | push`.
     outlines use the same smoothed levels (pieces under 1 m are left out), so map and outlines agree.
     Calibration compares the readings with the unsmoothed prediction at their spot.
   - **Scale:** fixed, −90 to −30 dBm, with marks at −67 dBm (the usual floor for calls) and −75 dBm.
+  - **Readings**: a switch on every Wi-Fi map, off until chosen (the browser remembers it, a phone
+    survey too), shown when the plan has survey readings: each reading (phone, laptop or typed) as a dot
+    with its dBm. A band map (and Serving) shows its band's readings only; the Confidence map and edit
+    mode show every one, without the switch.
   - **Ranges** (SPEC-044 Amendment 3): a switch on the 2.4, 5 and 6 GHz maps (the browser
     remembers it). Each access point gets its Serving colour, a ring at its place with its name, and
     its outline at −67 dBm (solid) and −75 dBm (dashed) on the map's band, predicted or calibrated
@@ -140,6 +144,19 @@ tap_tips: true                     # false: a finger's tap on a marker shows no 
   pinch closes it too. A mouse keeps hover. `tap_tips: false` turns it off.
 - `--floorplan-target: 44px` (a CSS variable on the card) makes the bar's buttons and the chips at
   least that big, for fingers.
+- **A phone survey** (SPEC-045, Pocket's Wi-Fi survey): `survey: "phone"` shows the radio layer with
+  up to 3 next spots, numbered (rooms without a reading and handover zones without one, at least
+  4 m apart; no "far" spots), and the spot where the person stands. A tap in a room sets that spot
+  and fires `floorplan-tap` (`detail: {floor_id, x, y}` in metres) instead of `room-tap`. The host
+  draws its own panel and calls the card: `surveySpots()` (`[{floor_id, x, y, why}]`, why `handover`,
+  `room` or `far`), `setSurveySpot({floor_id, x, y} | null)`, `surveySamples()` (the plan's phone readings, newest first), `focusRoom(area_id | null)` (that room as `area` with
+  `context` shows it: alone, fitted, the other rooms faded; its spots, map and taps only; null shows the
+  whole floor), `resolveReading({bssid, mac, mhz,
+  channel})` (`{ap, band, via}`: the access point by its BSSID sensor, else the router's client
+  tracker for the phone's MAC, else the band from the channel; a channel 6 GHz shares with another
+  band is unclear while an access point serves 6 GHz), `predictionAt({floor_id, x, y}, ap, band)`
+  (the calibrated level in dBm), and `addSamples(samples)` / `removeSample(t, phone)`, which read
+  the dashboard again, change its plan's samples and save it (administrators only).
 
 Every user can read the `floorplan` dashboard, the Ramka's kiosk user included; saving needs an
 administrator (`lovelace/config/save` requires one).
@@ -310,8 +327,31 @@ the router's client tracker for its MAC address, else not at all.
   point is unknown is compared with the strongest predicted one at half weight. A material's loss
   fitted on one band moves its loss on the other bands by a third as much, in proportion (a
   2.4 GHz-only device still says something about 5 GHz).
+- **Bands: how a reading on one band informs the others.** Every reading is on one band, the one the
+  client was connected on. The fit ties a material's loss across the bands: a reading on 2.4 GHz also
+  moves that wall's 5 and 6 GHz losses, in proportion to their typical values and at a third of its
+  weight, and the other way round. An access point's transmit power on a band is fitted only from that
+  band's own readings. So the carry-over between bands is partial and approximate: 5 and 6 GHz lose
+  more in walls than 2.4 GHz, and a reading on a band tells most about that band. A band with no
+  readings of its own keeps its typical transmit powers and gets only the shared wall losses.
+- **Band steering (SPEC-044 Amendment 4).** A survey or phone reading on 2.4 GHz also says that 5 GHz
+  at that spot was below the router's steering threshold, or the client would have stayed on 5 GHz.
+  Each such reading is a ceiling on 5 GHz there: the fit lowers the 5 GHz model while its prediction
+  is above the ceiling (never raises it), and the calibrated 5 GHz map is held at the ceiling around
+  the spot, fading back over 3 m and less through walls (the Ranges outlines too). Typed readings and
+  device sensors make no ceiling (such clients may have no 5 GHz). The threshold is **Band steering
+  below** in the Walls tool's panel, −75 dBm by default (routers typically steer between −70 and
+  −75 dBm; set your router's if you know it). With Readings on, the 5 GHz map shows such a spot as a
+  hollow dot "≤ −75".
+- **Choosing the band is the client's business.** On one network name a client joins the band the
+  router steers it to (band steering), usually 5 GHz near an access point and 2.4 GHz where 5 GHz
+  is weak; a phone or a laptop cannot be told which. A survey therefore collects mostly one band
+  where the signal is good and the other at the edges. To measure a band on purpose the router needs
+  a network name of its own for it, if it offers one. 6 GHz is measured only when an access point is
+  marked as serving it (edit mode: the access point's bands) and the client supports it.
 - **Survey:** a walk-around with a laptop measuring as you tap the plan refines the same maps; see
-  *Survey walk* below. Survey and manual readings calibrate like device readings.
+  *Survey walk* below. Survey and manual readings calibrate like device readings, and so do the
+  readings of Pocket's Wi-Fi survey with a phone.
 
 ## Survey walk
 
@@ -348,6 +388,11 @@ domosenso floorplan survey production        # --port <n>, --no-open, --interfac
   access point or unknown, for example from a phone's Wi-Fi scanner.
 - Sample dots show on the Confidence map and in edit mode. Survey and manual samples calibrate the
   maps like device readings.
+- **Phone readings** (`source: "phone"`, SPEC-045) come from Pocket's Wi-Fi survey. They keep each
+  scan the phone took (`scans`, up to 20, with SSID, BSSID, signal, noise, channel, Wi-Fi standard,
+  rates and the phone's MAC as the phone gave them), the phone (`phone`), how it measured (`method`)
+  and the spread of the signal (`spread`, dB). Each phone gets its own offset in the calibration,
+  0 ± 4 dB, since phones report signal differently by model.
 
 The walk:
 

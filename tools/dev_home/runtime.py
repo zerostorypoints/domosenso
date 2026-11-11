@@ -203,18 +203,21 @@ class Demo:
         # Pocket, the phone view, beside the Ramka: it and the climate-air thresholds it reads take
         # the demo home's shared inputs (home.inputs.yaml), as a home's render gives them.
         home = yaml.safe_load((fixture / 'home.inputs.yaml').read_text())
-        for component, package in [('timers', 'timers.yaml'), ('climate-air', 'climate_air.yaml'), ('pocket', None)]:
+        # Pocket's package exists only with its wifi_survey input (the demo's is on).
+        for component, package in [('timers', 'timers.yaml'), ('climate-air', 'climate_air.yaml'), ('pocket', 'pocket.yaml')]:
             rendered = self.path / f'rendered-{component}'
             shutil.rmtree(rendered, ignore_errors=True)
             component_inputs = yaml.safe_load((fixture / f'inputs/{component}.yaml').read_text()) or {}
             uses_home = 'uses_home' in yaml.safe_load((self.root / 'components' / component / 'component.yaml').read_text())
             render_component(self.root / 'components' / component, component_inputs, rendered, stamp=True,
                              **({'home': home} if uses_home else {}))
-            if package:
+            if package and (rendered / 'package.yaml').is_file():
                 shutil.copyfile(rendered / 'package.yaml', self.config / 'packages' / package)
             for source in rendered.glob('dashboard.*.yaml'):
                 shutil.copyfile(source, self.config / 'dashboards' / source.name.replace('dashboard.', f'{component}.'))
             resource_urls += install(self.root / 'components' / component, self.config)[1]
+        # The floorplan card: no inputs and no package; its plan is pushed after onboarding (push_floorplan).
+        resource_urls += install(self.root / 'components/floorplan', self.config)[1]
         shutil.copytree(fixture / 'custom_components/domosenso_demo', self.config / 'custom_components/domosenso_demo', dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copytree(fixture / 'media', self.config / 'www/ramka', dirs_exist_ok=True)
         shutil.copytree(fixture / 'media', self.config / 'www/media', dirs_exist_ok=True)
@@ -384,8 +387,62 @@ lovelace:
         self.start_proxy()
         self.audit(self.inspect())
         self.ready(); self.bootstrap()
+        self.push_floorplan()
         self.audit(self.inspect())
         return self.status()
+
+    def ws(self, calls):
+        """Each (type, fields) over HA's websocket in order; their results. The REST API has no area
+        registry and no Lovelace dashboards."""
+        from websockets.sync.client import connect
+        self.api('/api/')  # refreshes the access token when it is about to expire
+        token = json.loads((self.path / 'auth.json').read_text())['access_token']
+        results = []
+        try:
+            with connect(self.url.replace('http://', 'ws://') + '/api/websocket', open_timeout=10) as sock:
+                sock.recv(timeout=10)
+                sock.send(json.dumps({'type': 'auth', 'access_token': token}))
+                if json.loads(sock.recv(timeout=10)).get('type') != 'auth_ok':
+                    raise DemoError('websocket authentication failed')
+                for number, (kind, fields) in enumerate(calls, 1):
+                    sock.send(json.dumps({'id': number, 'type': kind, **fields}))
+                    reply = json.loads(sock.recv(timeout=10))
+                    if not reply.get('success'):
+                        raise DemoError(f"HA websocket {kind} failed: {reply.get('error')}")
+                    results.append(reply.get('result'))
+        except (OSError, TimeoutError, ValueError) as exc:
+            raise DemoError(f'HA websocket failed: {exc}') from exc
+        return results
+
+    def push_floorplan(self):
+        """The demo's fictional plan (examples/demo-home/floorplan.json) into the floorplan storage
+        dashboard, as `domosenso floorplan push` writes it, with an HA area for each of its rooms (the
+        demo sets states without areas otherwise). Run on every up: it writes the same each time."""
+        from domosenso_cli import floorplan_doc as doc
+        fixture = self.root / 'examples/demo-home'
+        plan = json.loads((fixture / 'floorplan.json').read_text())
+        doc.validate(plan)
+        home = yaml.safe_load((fixture / 'home.inputs.yaml').read_text())
+        names = {room['id']: room['name'] for room in home.get('rooms') or []}
+        areas, dashboards = self.ws([('config/area_registry/list', {}), ('lovelace/dashboards/list', {})])
+        known = {area['area_id'] for area in areas}
+        calls = []
+        for room in (r for floor in plan['floors'] for r in floor['rooms']):
+            if room['area_id'] not in known:
+                # HA makes the area id from the name: "Living room" -> living_room.
+                name = names.get(room['area_id'], room['area_id'].replace('_', ' ').capitalize())
+                calls.append(('config/area_registry/create', {'name': name}))
+        if not any(d.get('url_path') == doc.URL_PATH for d in dashboards):
+            calls.append(('lovelace/dashboards/create', {'url_path': doc.URL_PATH, 'title': 'Floor plan',
+                          'icon': 'mdi:floor-plan', 'show_in_sidebar': True, 'require_admin': False,
+                          'allow_single_word': True}))
+        calls.append(('lovelace/config/save', {'url_path': doc.URL_PATH,
+                      'config': doc.dashboard_config(plan, doc.card_rooms(home))}))
+        created = self.ws(calls)
+        wrong = [r['area_id'] for r, (kind, _) in zip(created, calls) if kind == 'config/area_registry/create'
+                 and r['area_id'] not in {room['area_id'] for floor in plan['floors'] for room in floor['rooms']}]
+        if wrong:
+            raise DemoError(f"area ids differ from the plan's: {', '.join(wrong)}")
 
     def audit(self, obj, proxy=True):
         self.ensure(False)

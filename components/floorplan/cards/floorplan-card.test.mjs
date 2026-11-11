@@ -3173,6 +3173,209 @@ test("ranges: the name's halo is 3 px at any zoom, a stroke in plan metres", asy
   window.localStorage.clear();
 });
 
+// ---- the survey API for a phone survey in a host (SPEC-045: Pocket) ----------------------------
+
+test("phone survey: spots drawn, a tap is the spot and a floorplan-tap in metres; no Survey panel and no polling", async () => {
+  window.localStorage.clear();
+  const f = surveyFetch({});
+  try {
+    const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+    await settle();
+    assert.equal($(card, ".survey").innerHTML, "", "the host draws its own panel");
+    assert.equal(f.calls.length, 0, "no laptop link is read");
+    const spots = card.surveySpots();
+    assert.ok(spots.length > 0 && spots.length <= 3, `up to 3 spots, got ${spots.length}`);
+    assert.ok(spots.every((s) => s.floor_id === "ground" && ["handover", "room"].includes(s.why)), "no far spots on a phone");
+    assert.equal(card.shadowRoot.querySelectorAll("circle.next-spot").length, spots.length);
+    const taps = [];
+    let rooms = 0;
+    card.addEventListener("floorplan-tap", (e) => taps.push(e.detail));
+    card.addEventListener("room-tap", () => rooms++);
+    tap(card, 2, 1);
+    assert.equal(rooms, 0);
+    assert.equal(taps.length, 1);
+    assert.equal(taps[0].floor_id, "ground");
+    assert.ok(Math.abs(taps[0].x - 2) < 0.1 && Math.abs(taps[0].y - 1) < 0.1, JSON.stringify(taps[0]));
+    assert.ok($(card, "circle.survey-spot"));
+    card.setSurveySpot(null);
+    assert.equal($(card, "circle.survey-spot"), null);
+    card.setSurveySpot({ floor_id: "ground", x: 6, y: 3 });
+    assert.equal($(card, "circle.survey-spot").getAttribute("cx"), "6");
+  } finally {
+    f.restore();
+  }
+});
+
+test("phone survey: addSamples reads the dashboard again and appends to that plan, then shows it", async () => {
+  window.localStorage.clear();
+  const fresh = wifiPlan();
+  fresh.floors[0].points.push(pt("d_office", 1, 3));                       // edited on a laptop meanwhile
+  const hass = hassOf({ dashboard: dashboardOf(fresh) });
+  Object.assign(hass.devices, wifiHass().devices);
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, hass);
+  const sample = { floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:05:31Z", band: "5", dbm: -61, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:05:27+01:00", dbm: -61 }] };
+  await card.addSamples([sample]);
+  const save = hass.calls.find((c) => c.type === "lovelace/config/save");
+  const saved = save.config.views[0].cards[0].plan;
+  assert.ok(saved.floors[0].points.some((p) => p.device_id === "d_office"), "the fresh plan, not the card's");
+  assert.deepEqual(saved.wifi.samples, [sample]);
+  assert.deepEqual(card._doc.wifi.samples, [sample], "the card shows the saved plan");
+  assert.deepEqual(card.surveySamples(), [sample], "the plan's phone readings, newest first");
+  await card.removeSample(sample.t, "ios");
+  const again = hass.calls.filter((c) => c.type === "lovelace/config/save").at(-1).config.views[0].cards[0].plan;
+  assert.deepEqual(again.wifi?.samples ?? [], []);
+});
+
+test("phone survey: a non-administrator cannot save samples", async () => {
+  const hass = hassOf({ admin: false, dashboard: dashboardOf(wifiPlan()) });
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, hass);
+  await assert.rejects(card.addSamples([{ floor_id: "ground", x: 1, y: 1, band: "5", dbm: -60 }]), /not admin/);
+  assert.ok(!hass.calls.some((c) => c.type === "lovelace/config/save"));
+});
+
+test("phone survey: resolveReading and predictionAt answer from the card's plan and hass", async () => {
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+  assert.deepEqual(card.resolveReading({ bssid: "02:00:00:00:00:77", channel: 44 }), { ap: null, band: "5", via: "channel" });
+  const near = card.predictionAt({ floor_id: "ground", x: 6.5, y: 2.5 }, "d_mesh", "5");
+  const far = card.predictionAt({ floor_id: "ground", x: 0.5, y: 0.5 }, "d_mesh", "5");
+  assert.ok(Number.isFinite(near) && near > far && near > -50, `${near} vs ${far}`);
+  assert.equal(card.predictionAt({ floor_id: "ground", x: 1, y: 1 }, "d_mesh2", "2.4"), null, "a band it does not serve");
+});
+
+test("phone survey: focusRoom shows one room as the area view does, neighbours faded; spots, map and taps in it alone", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+  await settle();
+  const box = () => $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  const whole = box();
+  card.focusRoom("kitchen");                                   // the kitchen: x 5..8, y 0..4
+  await settle();
+  assert.ok($(card, "g.context"), "the other rooms, faded");
+  const [x, y] = box();
+  assert.ok(x < 5 && x > 2 && y < 0, `fitted to the kitchen with its context: ${box()}`);
+  const inKitchen = (px, py) => px >= 5 - 1e-6 && px <= 8 + 1e-6 && py >= -1e-6 && py <= 4 + 1e-6;
+  const spots = card.surveySpots();
+  assert.ok(spots.length > 0 && spots.every((p) => inKitchen(p.x, p.y)), JSON.stringify(spots));
+  const cells = [...card.shadowRoot.querySelectorAll(".heat rect[data-dbm]")];
+  assert.ok(cells.length > 0 && cells.every((c) => inKitchen(Number(c.getAttribute("x")), Number(c.getAttribute("y")))),
+    "the map in the kitchen only");
+  const taps = [];
+  card.addEventListener("floorplan-tap", (e) => taps.push(e.detail));
+  tap(card, 2, 1);                                             // the living room, faded
+  assert.equal(taps.length, 0);
+  tap(card, 6, 1);
+  assert.equal(taps.length, 1);
+  card.focusRoom(null);
+  await settle();
+  assert.equal($(card, "g.context"), null);
+  assert.deepEqual(box(), whole);
+  assert.ok(card.surveySpots().some((p) => !inKitchen(p.x, p.y)), "the whole floor's spots again");
+});
+
+test("phone survey: the readings follow the Readings switch too (opt-in), the map's band only", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  const phone = (x, band, dbm) => ({ floor_id: "ground", x, y: 1, t: `2026-11-11T18:2${x}:00Z`, band, dbm, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:26:24Z", dbm }] });
+  plan.wifi = { samples: [phone(2, "5", -48), phone(6, "2.4", -73)] };
+  const card = await make({ plan, survey: "phone" }, wifiHass());
+  await settle();
+  assert.equal(sampleDots(card).length, 0, "off until chosen, on the phone too");
+  click($(card, ".bar [data-action=readings]"));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−48", "≤−75"],
+    "the 5 GHz map: its readings, and the 2.4 GHz one as the ceiling it is (Amendment 4)");
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.deepEqual(sampleDots(card).map((d) => d.querySelector(".sample-label").textContent), ["−73"]);
+  window.localStorage.clear();
+});
+
+test("phone survey: focusRoom from one room straight to another shows the other (the scoped floor is per room)", async () => {
+  window.localStorage.clear();
+  const card = await make({ plan: wifiPlan(), survey: "phone" }, wifiHass());
+  await settle();
+  card.focusRoom("kitchen");
+  await settle();
+  card.focusRoom("living_room");                               // x 0..5, y 0..4
+  await settle();
+  const inLiving = (px, py) => px >= -1e-6 && px <= 5 + 1e-6 && py >= -1e-6 && py <= 4 + 1e-6;
+  const cells = [...card.shadowRoot.querySelectorAll(".heat rect[data-dbm]")];
+  assert.ok(cells.length > 0 && cells.every((c) => inLiving(Number(c.getAttribute("x")), Number(c.getAttribute("y")))),
+    "the living room's map, not the kitchen's");
+  assert.ok(card.surveySpots().every((p) => inLiving(p.x, p.y)), JSON.stringify(card.surveySpots()));
+  const [x] = $(card, "svg").getAttribute("viewBox").split(" ").map(Number);
+  assert.ok(x < 0, `fitted to the living room: ${x}`);
+});
+
+test("wifi maps: Readings (opt-in, remembered) shows the survey readings as dots on any Wi-Fi map", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.wifi = { samples: [
+    { floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:26:28Z", band: "5", dbm: -48, source: "phone", phone: "ios", method: "shortcut",
+      spread: 1, scans: [{ t: "2026-11-11T18:26:24Z", dbm: -48 }] },
+    { floor_id: "ground", x: 6, y: 3, t: "2026-11-11T19:31:00Z", band: "2.4", dbm: -63, source: "manual" }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  const chip = () => $(card, ".bar [data-action=readings]");
+  assert.equal(chip().getAttribute("aria-pressed"), "false", "off until chosen");
+  assert.equal(sampleDots(card).length, 0);
+  click(chip());
+  assert.equal(sampleDots(card).length, 1, "the 2.4 GHz map: its reading");
+  click($(card, '.bar [data-map="wifi_5"]'));
+  assert.equal(sampleDots(card).length, 1, "the 5 GHz map: its reading");
+  click($(card, '.bar [data-map="serving"]'));
+  assert.equal(sampleDots(card).length, 1, "Serving: the band beside it");
+  const again = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal($(again, ".bar [data-action=readings]").getAttribute("aria-pressed"), "true", "remembered");
+  click($(again, ".bar [data-action=readings]"));
+  assert.equal(sampleDots(again).length, 0);
+  const none = await make({ plan: wifiPlan(), layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.equal($(none, ".bar [data-action=readings]"), null, "no readings in the plan: no switch");
+  window.localStorage.clear();
+});
+
+test("wifi maps: a reading's dot tells its data on hover (its title)", async () => {
+  window.localStorage.clear();
+  window.localStorage.setItem("domosenso.floorplan.readings", "true");
+  const plan = wifiPlan();
+  plan.wifi = { samples: [{ floor_id: "ground", x: 2, y: 1, t: "2026-11-11T18:26:28Z", band: "2.4", channel: 6, dbm: -48, noise: -96,
+    ap: "d_mesh", source: "phone", phone: "ios", method: "shortcut", spread: 2, scans: [{ t: "2026-11-11T18:26:24Z", dbm: -48 }, { t: "2026-11-11T18:26:25Z", dbm: -49 }] }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  const title = sampleDots(card)[0].querySelector("title").textContent;
+  for (const part of ["−48 dBm", "2.4 GHz", "channel 6", "Mesh", "noise −96 dBm", "spread 2 dB", "2 scans"]) {
+    assert.ok(title.includes(part), `${part} in ${title}`);
+  }
+  window.localStorage.clear();
+});
+
+test("steering (Amendment 4): the Walls panel sets Band steering below; on the 5 GHz map a 2.4 GHz reading is a hollow ≤ dot and the map is held under it", async () => {
+  window.localStorage.clear();
+  const plan = wifiPlan();
+  plan.wifi = { samples: [{ floor_id: "ground", x: 1, y: 3, t: "2026-11-11T18:56:28Z", band: "2.4", dbm: -79, source: "phone", phone: "ios",
+    method: "shortcut", spread: 1, scans: [{ t: "2026-11-11T18:56:24Z", dbm: -79 }] }] };
+  const card = await make({ plan, layers: ["radio"] }, wifiHass());
+  await settle();
+  assert.ok(card._calibration().residuals.some((e) => e.kind === "ceiling" && e.obs.dbm === -75), "the default threshold reaches the fit");
+  click($(card, ".bar [data-action=readings]"));
+  click($(card, '.bar [data-map="wifi_5"]'));
+  const dot = $(card, "g.sample.ceiling");
+  assert.ok(dot, "a hollow dot on the 5 GHz map");
+  assert.equal(dot.querySelector(".sample-label").textContent, "≤−75");
+  assert.ok(dot.querySelector("title").textContent.includes("2.4 GHz"), dot.querySelector("title").textContent);
+  click($(card, '.bar [data-map="wifi_24"]'));
+  assert.equal($(card, "g.sample.ceiling"), null, "on 2.4 GHz it is the reading itself");
+  click($(card, "[data-action=edit]"));
+  click($(card, '[data-action=tool][data-tool="walls"]'));
+  const field = $(card, '.wall-panel [data-field="steering"]');
+  assert.equal(field.value, "-75");
+  change(field, "-70");
+  assert.equal(card._doc.wifi.steering_dbm, -70);
+  window.localStorage.clear();
+});
 // ---- Network client in edit mode, and the same-device suggestion (SPEC-047 T6) -------------------
 
 const ENv = (key, vars) => Object.entries(vars).reduce((text, [k, v]) => text.replace(`{${k}}`, v), EN(key));

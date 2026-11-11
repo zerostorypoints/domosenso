@@ -169,5 +169,20 @@
       },
       "offset_estimated": "Przesunięcie szacunkowe: skalibruj względem miernika wzorcowego"
     }
+  },
+  "ui": {
+    "strip": {
+      "title": "Pasek muzyczny",
+      "look": "Wygląd",
+      "look_help": "- **Jasność** (suwak pod paskiem): ściemniacz. Ustala, ile światła daje pasek, a nie jego kolory.\n- **Style**: co pokazuje pasek. Pulse i Glow świecą całym paskiem; Bands, Spectrum i Heat rozkładają częstotliwości wzdłuż niego; Centre meter to słupek poziomu; Ripple wysyła falę przy każdym uderzeniu.\n- **Palette**: kolory, których używają style. *pastel* jest delikatna i wtapia się we wnętrze; *custom* bierze kolory z Custom palette.\n- **Custom palette**: od 2 do 5 kolorów jako #rrggbb, oddzielonych przecinkami; pierwszy dla cichego dźwięku lub basu, ostatni dla głośnego dźwięku lub sopranów.\n- **Pastel**: miesza każdy kolor z bielą. Zwiększ, gdy kolory wydają się zbyt jaskrawe.\n- **Intensity**: jak mocno muzyka porusza jasnością. Przy 0 % pasek świeci równo, a za muzyką podążają tylko kolory; przy 100 % ciche miejsca gasną, a głośne świecą w pełni. W Heat przy 100 % najcichsze częstotliwości wygasają; z paletą *single* to jeden kolor, ciemny tam, gdzie muzyka jest cicha.",
+      "layout": "Ułożenie",
+      "layout_help": "- **Bass position**: gdzie trafiają niskie tony. *centre* i *ends* odbijają obraz lustrzanie wokół środka paska; *start* kładzie bas na początku paska (końcu z kablem), a soprany na drugim końcu; *end* odwrotnie.\n- **Mounting**: *front* dla paska, na który się patrzy (ostro); *wall* lub *floor* dla paska, który oświetla powierzchnię (łagodniej, rozmyty w poświatę).\n- **LEDs in use** i **First LED**: która część paska świeci; reszta pozostaje ciemna.",
+      "sound": "Dźwięk",
+      "sound_help": "- **Sensitivity**: jak głośna musi być muzyka. Zmniejsz (do −40 dB), gdy pasek jest zbyt nerwowy albo stoi w swoim najgłośniejszym kolorze; zwiększ przy cichym słuchaniu.\n- **Range**: jaką różnicę głośności obejmują kolory i jasność. Mały (10–20 dB) pokazuje drobne różnice między częstotliwościami; duży (40–60 dB) jest spokojniejszy.\n- **Auto gain**: dostosowuje się do głośności w ciągu około 10 sekund, więc pasek reaguje przy każdej głośności. Zostaw włączone.\n- **Attack** i **Release**: jak szybko pasek reaguje, gdy dźwięk narasta, i jak wolno wygasa.\n- **Beat strength**: jak silny jest błysk lub fala przy uderzeniu.\n- **Beat sensitivity**: jak łatwo uderzenie basu liczy się jako beat. Zwiększ, gdy beaty umykają; zmniejsz, gdy pasek błyska bez beatu.",
+      "power": "Zasilanie",
+      "power_help": "- **Power limit**: największy prąd, jaki pasek może pobierać. 500 mA, gdy zasila się przez kabel płytki; moc zasilacza, gdy ma własny zasilacz 5 V. Pasek sam się przyciemnia, aby zmieścić się w limicie.\n- **Current**: ile pasek pobiera teraz, szacowane co 10 sekund.\n- **Reset settings**: przywraca domyślne wartości wszystkich ustawień paska na tej stronie.",
+      "automation": "Automatyka",
+      "automation_help": "- **Follow music**: włącza pasek, gdy gra muzyka, i wyłącza po czasie wyłączenia.\n- **Off delay**: jak długo pasek świeci po końcu muzyki (0 oznacza 30 sekund).\n- **Follow effect**: styl, od którego pasek zaczyna; *keep* uruchamia ostatni.\n- **Ambient**: ustawia jasność według światła w pokoju, przyciemnioną w ciemnym pokoju i mocniejszą w dzień. Dark i bright lux to poziomy światła, min i max to jasność przy nich."
+    }
   }
 }

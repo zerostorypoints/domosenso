@@ -118,10 +118,19 @@ function byBssid(hass, deviceId, aps, rules, ix) {
     .map((id) => normMac(hass.states?.[id]?.state))
     .filter((m) => m && /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(m));
   for (const mac of mine) {
-    for (const ap of aps) {
-      const hit = apBssids(hass, ap, rules, ix).find((b) => b.mac === mac);
-      if (hit) return { ap, band: hit.band };
-    }
+    const hit = apOfBssid(hass, aps, rules, mac, ix);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+// The access point (by key, among `aps`) and band whose BSSID sensor reports `bssid`; null when none does.
+export function apOfBssid(hass, aps, rules, bssid, ix = null) {
+  const mac = normMac(bssid);
+  if (!mac) return null;
+  for (const ap of aps) {
+    const hit = apBssids(hass, ap, rules, ix).find((b) => b.mac === mac);
+    if (hit) return { ap, band: hit.band };
   }
   return null;
 }
@@ -129,7 +138,13 @@ function byBssid(hass, deviceId, aps, rules, ix) {
 // The router's client tracker for one of the device's MACs: the access point is the node whose own
 // tracker has the client's `deco_mac`, the band comes from `connection_type`.
 function byTracker(hass, deviceId, aps, rules, ix) {
-  const macs = macsOf(hass, deviceId);
+  return apOfClient(hass, aps, rules, macsOf(hass, deviceId), ix);
+}
+
+// The router's client tracker of a client with one of `macs`: the access point among `aps` (or null) and the
+// band it is connected on; null when no tracker names the client with a band.
+export function apOfClient(hass, aps, rules, macs, ix = null) {
+  macs = macs.map(normMac).filter(Boolean);
   if (!macs.length) return null;
   for (const rule of rules?.access_points || []) {
     for (const id of ix ? ix.trackers : Object.keys(hass.entities || {})) {
@@ -186,14 +201,17 @@ export function deviceObservations(hass, doc, floorId, rules, values, index = nu
 
 // ---- survey and manual samples (SPEC-044 S3) ----
 
-// The floor's `wifi.samples` as observations: weight 1 (half without an access point, as a device's), source "manual" for a typed reading and "survey" for
-// the laptop's (the fit gives each source its own offset, 0 ± 3 dB and 0 ± 5 dB), the access point or null.
+// The floor's `wifi.samples` as observations: weight 1 (half without an access point, as a device's), source
+// "manual" for a typed reading, "phone" with its phone as `device` for a phone's (SPEC-045) and "survey" for the
+// laptop's; the fit gives survey and manual one offset each (0 ± 3 and 0 ± 5 dB) and each phone its own (0 ± 4 dB).
+// The access point or null.
 export function sampleObservations(doc, floorId) {
   const out = [];
   for (const s of doc?.wifi?.samples || []) {
     if (s.floor_id !== floorId || !Number.isFinite(s.x) || !Number.isFinite(s.y) || !Number.isFinite(s.dbm)) continue;
+    const source = s.source === "manual" || s.source === "phone" ? s.source : "survey";
     out.push({ floorId, x: s.x, y: s.y, band: s.band, ap: s.ap ?? null, dbm: s.dbm, weight: s.ap ? 1 : UNKNOWN_WEIGHT,
-      source: s.source === "manual" ? "manual" : "survey" });
+      source, ...(source === "phone" ? { device: s.phone ?? "phone" } : {}) });
   }
   return out;
 }

@@ -228,6 +228,19 @@ test("sampleObservations: a floor's samples as observations, survey or manual, t
     "a sample the model cannot read is left out");
 });
 
+test("sampleObservations: a phone's sample is a phone observation with its phone as the device (SPEC-045)", async () => {
+  const { sampleObservations } = await import("./wifi-sources.js");
+  const doc = { schema: 1, floors: [{ floor_id: "ground" }], wifi: { samples: [
+    { floor_id: "ground", x: 1, y: 2, band: "5", dbm: -61, ap: "dev-office", source: "phone", phone: "phone-alex",
+      method: "shortcut", spread: 2, scans: [{ t: "2026-11-11T18:05:27+01:00", dbm: -61 }] },
+    { floor_id: "ground", x: 2, y: 2, band: "5", dbm: -70, source: "phone" },
+  ] } };
+  assert.deepEqual(sampleObservations(doc, "ground"), [
+    { floorId: "ground", x: 1, y: 2, band: "5", ap: "dev-office", dbm: -61, weight: 1, source: "phone", device: "phone-alex" },
+    { floorId: "ground", x: 2, y: 2, band: "5", ap: null, dbm: -70, weight: 0.5, source: "phone", device: "phone" },
+  ]);
+});
+
 // ---- the prebuilt index (final review: observations per registry change, not per state) ----
 import { observationIndex } from "./wifi-sources.js";
 

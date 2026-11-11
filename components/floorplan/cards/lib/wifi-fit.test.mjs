@@ -118,6 +118,27 @@ test("survey and manual readings share one offset per source", () => {
   assert.ok(fit.params.device.survey < 0, "the shift is partly the offset");
 });
 
+test("two phones with offsets +5 and -5 dB each get their own offset and leave the brick loss unbiased (SPEC-045)", () => {
+  const doc = rowDoc();
+  const truth = clone(priors(doc));
+  truth.loss.brick["5"] = 12;
+  const phone = (id, shift) => observe(doc, truth, inRow, "5", { source: "phone", device: id })
+    .map((o) => ({ ...o, dbm: o.dbm + shift }));
+  const fit = calibrate(ctxOf(doc), [...phone("phone-a", 5), ...phone("phone-b", -5)], table);
+  assert.deepEqual(Object.keys(fit.params.device).sort(), ["phone:phone-a", "phone:phone-b"]);
+  near(fit.params.device["phone:phone-a"], 5, 1);
+  near(fit.params.device["phone:phone-b"], -5, 1);
+  near(fit.params.loss.brick["5"], 12, 1);
+});
+
+test("a phone's offset never shares a key with a placed device of the same id", () => {
+  const doc = openDoc();
+  const truth = priors(doc);
+  const at = grid([3, 6, 9], [2, 5]);
+  const obs = [...observe(doc, truth, at, "5", { device: "same" }), ...observe(doc, truth, at, "5", { source: "phone", device: "same" })];
+  assert.deepEqual(Object.keys(calibrate(ctxOf(doc), obs, table).params.device).sort(), ["phone:same", "same"]);
+});
+
 test("the same input gives the same parameters", () => {
   const doc = rowDoc();
   const truth = clone(priors(doc));
@@ -377,4 +398,56 @@ test("calibratedLevelGrid: a reading of one access point moves that access point
   assert.notDeepEqual([...g.levels[0]], [...plain.levels[0]]);
   const i = Math.round((2 - g.y0) / g.step) * g.nx + Math.round((2 - g.x0) / g.step);
   near(g.levels[0][i], plain.levels[0][i], 1e-9, "a residual with no access point moves no outline");
+});
+
+// ---- band steering: a reading on 2.4 GHz bounds 5 GHz (Amendment 4) ----
+
+const steered = (x, y, extra = {}) => ({ floorId: "f0", x, y, band: "2.4", ap: "node", dbm: -74, weight: 1, source: "survey", ...extra });
+const level5 = (doc, fit, p) => {
+  const ctx = contextFor(doc, "f0", {}, table, fit.params);
+  const map = calibratedCoverage(ctx, "5", 0.25, fit);
+  let best = null;
+  for (const c of map.cells) if (!best || Math.hypot(c.x + 0.125 - p[0], c.y + 0.125 - p[1]) < Math.hypot(best.x + 0.125 - p[0], best.y + 0.125 - p[1])) best = c;
+  return best.dbm;
+};
+
+test("steering: a 2.4 GHz survey reading lowers the calibrated 5 GHz map to the ceiling at its spot, fading over 3 m", () => {
+  const doc = openDoc();
+  const plain = calibrate(ctxOf(doc), [], table);
+  const before = level5(doc, plain, [10, 6]);
+  assert.ok(before > -60, `the open room predicts a good 5 GHz there: ${before}`);
+  const fit = calibrate(ctxOf(doc), [steered(10, 6)], table, { steeringDbm: -75 });
+  assert.ok(level5(doc, fit, [10, 6]) <= -73, `at the spot, within the map cell and residual background: ${level5(doc, fit, [10, 6])}`);
+  const far = level5(doc, fit, [3, 2]);
+  assert.ok(Math.abs(far - level5(doc, plain, [3, 2])) < 6, "far from it the map is the fit's");
+  assert.ok(fit.params.tx.node["5"] <= plain.params.tx.node["5"] + 1e-9, "ceilings alone only lower the transmit power");
+});
+
+test("steering: a ceiling already met changes nothing; manual and device readings, or no 5 GHz access point, make none", () => {
+  const doc = openDoc();
+  const plain = calibrate(ctxOf(doc), [], table);
+  const met = calibrate(ctxOf(doc), [steered(10, 6)], table, { steeringDbm: -30 });
+  assert.equal(level5(doc, met, [10, 6]), level5(doc, plain, [10, 6]));
+  for (const other of [steered(10, 6, { source: "manual" }), steered(10, 6, { source: "device", device: "d1" })]) {
+    const fit = calibrate(ctxOf(doc), [other], table, { steeringDbm: -75 });
+    assert.equal(fit.residuals.some((e) => e.kind === "ceiling"), false, other.source);
+  }
+  const no5 = openDoc();
+  no5.floors[0].access_points = [{ device_id: "node", bands: ["2.4"] }];
+  const fit = calibrate(ctxOf(no5), [steered(10, 6)], table, { steeringDbm: -75 });
+  assert.equal(fit.residuals.some((e) => e.kind === "ceiling"), false, "no 5 GHz to bound");
+});
+
+test("steering: the ceiling's residual moves every access point's Ranges grid on 5 GHz", () => {
+  const doc = openDoc();
+  const fit = calibrate(ctxOf(doc), [steered(10, 6)], table, { steeringDbm: -75 });
+  const ceil = fit.residuals.filter((e) => e.kind === "ceiling");
+  assert.equal(ceil.length, 1);
+  assert.equal(ceil[0].obs.band, "5");
+  assert.ok(ceil[0].r > 0, "downward only");
+  const ctx = contextFor(doc, "f0", {}, table, fit.params);
+  const grid = calibratedLevelGrid(ctx, "5", 0.25, fit);
+  const plainGrid = levelGrid(ctx, "5", 0.25);
+  const i = Math.round((10 - grid.x0) / grid.step), j = Math.round((6 - grid.y0) / grid.step);
+  assert.ok(grid.levels[0][j * grid.nx + i] < plainGrid.levels[0][j * plainGrid.nx + i] - 3);
 });

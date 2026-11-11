@@ -70,6 +70,11 @@ lovelace:
   mode: storage
 ''')
 
+    def push_floorplan(self):
+        # The demo's fictional plan belongs to the catalog demo; a home's staging gets its own plan
+        # with `domosenso floorplan push`.
+        pass
+
     async def create_token(self):
         # A long-lived token is needed by the existing deploy CLI across HA restarts.
         self.api('/api/')  # Refresh the local access token if necessary.

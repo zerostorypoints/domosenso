@@ -896,3 +896,30 @@ test("sampleGrid interpolates between the four nodes", () => {
   near(sampleGrid(grid, [0, 10, 20, 30], [0.5, 0.5]), 15);
   near(sampleGrid(grid, [0, 10, 20, 30], [1, 0]), 10, 1e-4);
 });
+
+test("nextSpots with { far: false, apartM }: rooms without a reading and open handover zones only, spaced (SPEC-045 phone survey)", async () => {
+  const { nextSpots } = await import("./wifi.js");
+  const room = (x, id) => ({ area_id: id, polygon: [[x, 0], [x + 4, 0], [x + 4, 4], [x, 4]] });
+  const rooms = [room(0, "alex"), room(4, "sam"), room(8, "kim")];
+  // cells over the three rooms, served by "a", no handover anywhere
+  const cells = [];
+  for (let x = 0.25; x < 12; x += 0.5) for (let y = 0.25; y < 4; y += 0.5) {
+    cells.push({ x, y, ap: "a", dbm: -50, second: null, room: Math.floor(x / 4) });
+  }
+  const obs = [{ x: 2, y: 2, ap: "a" }];                       // alex has a reading
+  const spots = nextSpots(cells, obs, rooms, 3, { far: false, apartM: 4 });
+  assert.deepEqual(spots.map((s) => s.why), ["room", "room"], "sam and kim, no far spots");
+  assert.ok(Math.hypot(spots[0].x - spots[1].x, spots[0].y - spots[1].y) >= 4);
+  assert.deepEqual(nextSpots(cells, [...obs, { x: 6, y: 2, ap: "a" }, { x: 10, y: 2, ap: "a" }], rooms, 3, { far: false, apartM: 4 }), [],
+    "every room measured, no handover: nothing to suggest");
+});
+
+test("setSteering: the band-steering threshold in the plan, -90 to -55; the default removes it (Amendment 4)", async () => {
+  const { setSteering, STEERING_DBM } = await import("./wifi.js");
+  assert.equal(STEERING_DBM, -75);
+  const doc = { schema: 1, floors: [] };
+  assert.deepEqual(setSteering(doc, -70).wifi, { steering_dbm: -70 });
+  assert.deepEqual(setSteering(setSteering(doc, -70), -75), { schema: 1, floors: [] }, "the default is no key");
+  assert.equal(setSteering(doc, -50), null);
+  assert.equal(setSteering(doc, Number.NaN), null);
+});
