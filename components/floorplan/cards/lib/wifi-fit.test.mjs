@@ -319,7 +319,7 @@ test("confidence: another band's or another access point's readings do not make 
   assert.equal(confidenceOf(cell, [], { ...fit, params: tx }, ctx, "5", 1), "medium");
 });
 
-test("2000 observations and 200 m² on one band in under 300 ms", () => {
+test("2000 observations and 200 m² on one band in under 2 s", () => {
   const doc = { schema: 1, floors: [{ floor_id: "f0", rooms: [room(0, 0, 20, 10, "alex")],
     walls: [{ at: [10, 5], material: "brick" }],
     points: [pt("node", 1, 1)], access_points: [ap("node")] }] };
@@ -337,7 +337,9 @@ test("2000 observations and 200 m² on one band in under 300 ms", () => {
   }
   assert.equal(m.cells.length, coverage(ctx, "5", 0.15).cells.length);
   assert.ok(m.cells.length > 8800 && m.cells.length < 9000, `${m.cells.length} cells at 0.15 m`);
-  assert.ok(ms < 300, `${ms} ms`);
+  // A guard against an order-of-magnitude regression (every point weighing every reading instead of
+  // the nine 3 m buckets around it), not a benchmark: about 170 ms on a laptop, 750 ms on a shared CI runner.
+  assert.ok(ms < 2000, `${ms} ms`);
 });
 
 test("calibratedLevelGrid: the Ranges grid moves with a reading exactly as the calibrated map's cell", () => {
