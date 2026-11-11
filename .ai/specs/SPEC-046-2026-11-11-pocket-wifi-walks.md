@@ -192,3 +192,14 @@ screen, the report. UPGRADE.md: "Install the walk Shortcut on the iPhone."
   batches.
 - Android: whether 5 s update commands drain the battery noticeably during a 30 min walk
   (inference: no).
+
+## Amendment 1 (S0 results, 2026-11-11)
+
+- Status: draft, waiting for the maintainer's approval. Source: SPEC-045's S0 spike.
+- SPEC-045 Amendment 1 applies here: the Fire event action's real identifier
+  (`io.robbie.HomeAssistant.FireEventIntent`), the Server chosen once after installing, scans as JSON
+  text, the return without a fragment and Pocket reopening its own route.
+- **Not verified:** a looping Shortcut behind Pocket, with the screen locked and behind a Teams call
+  (the maintainer deferred it). It becomes the **first step of W2**: a generated test Shortcut runs
+  the three cases on the maintainer's iPhone before the recording screen is built; the fallback
+  (Shortcut in front, time line only, taps placed afterwards) stays as specified.
