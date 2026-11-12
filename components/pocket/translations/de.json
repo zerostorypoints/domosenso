@@ -500,7 +500,8 @@
           "needs_fertiliser": "Braucht Dünger",
           "too_much_fertiliser": "Zu viel Dünger",
           "low_battery": "Batterie schwach"
-        }
+        },
+        "hydroculture": "In Ordnung · Hydrokultur, giessen nach Anzeiger"
       },
       "sections": {
         "label": "{name}: {head}, {status}",

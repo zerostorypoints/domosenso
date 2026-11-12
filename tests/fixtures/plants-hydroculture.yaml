@@ -1,0 +1,6 @@
+# The plants component with a hydroculture plant beside a soil one (SPEC-048): the plant entry
+# without moisture or conductivity, and no watering sensors for it. Read by check-all's ha-check.
+plants:
+  - {entity: plant.monstera, label: Living room, name: Monstera}
+  - {entity: plant.dragon_tree, label: Hall, name: Dragon tree, medium: hydroculture, min_temperature: 15}
+notify: notify.mobile_app_alex_phone

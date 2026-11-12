@@ -100,7 +100,8 @@
       "list": {
         "plant": "Plant",
         "days": "Last {count} days"
-      }
+      },
+      "hydroculture": "Hydroculture · water by the gauge"
     },
     "air": {
       "level": {

@@ -65,8 +65,18 @@
 [[ fail(field ~ ': give the previous sensor ID and a quoted ISO 8601 timestamp with time zone') ]]
 [%- endif -%]
 [%- endif -%]
+[#- SPEC-048: in hydroculture the prongs read only the pebbles above the reservoir, so the plant is
+    judged on light and temperature; a moisture or conductivity band would mean nothing. -#]
+[%- set medium = item.medium | default('soil') -%]
+[%- if medium not in ['soil', 'hydroculture'] -%]
+[[ fail(item.entity ~ '.medium must be soil or hydroculture') ]]
+[%- endif -%]
+[%- set soil_bands = ['min_moisture', 'max_moisture', 'min_conductivity', 'max_conductivity'] -%]
+[%- if medium == 'hydroculture' and soil_bands | select('in', item) | list -%]
+[[ fail(item.entity ~ ': a hydroculture plant takes no moisture or conductivity band (its sensor reads only the pebbles)') ]]
+[%- endif -%]
 [%- set limits = {} -%]
-[%- for band in bands -%]
+[%- for band in bands if medium == 'soil' or band not in soil_bands -%]
 [%- if item[band] is defined -%][%- set _ = limits.update({band: item[band]}) -%]
 [%- elif band in defaults -%][%- set _ = limits.update({band: defaults[band]}) -%]
 [%- endif -%]
@@ -77,6 +87,6 @@
 [%- set ns.rows = ns.rows + [{'id': p, 'name': given_name if given_name is string else given_name.values() | first,
                               'label': item.label if item.label is string else item.label.values() | first,
                               'names': given_name if given_name is mapping else none,
-                              'rooms': item.label if item.label is mapping else none, 'photo': item.photo | default(none), 'sensors': sensors, 'source': source, 'source_moisture': source_moisture, 'legacy': legacy, 'limits': limits, 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
+                              'rooms': item.label if item.label is mapping else none, 'photo': item.photo | default(none), 'sensors': sensors, 'source': source, 'source_moisture': source_moisture, 'legacy': legacy, 'limits': limits, 'hydro': medium == 'hydroculture', 'check_days': item.check_days | default(defaults.check_days | default(3))}] -%]
 [%- endfor -%]
 [%- set rows = ns.rows -%]
