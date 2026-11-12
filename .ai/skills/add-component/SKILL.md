@@ -149,6 +149,22 @@ and whether it is the music source (`music: true`; at most one sensor).
   The Music page's Advanced block (measured offset, note, Apply) sets it against a reference meter
   (`audio-sensor/README.md`, "The music source and calibration").
 
+## 5.2 Plants (only for `plants`)
+
+One sensor per plant, added one at a time (`plants/README.md`, "Adding a plant"). For each plant ask
+the name, the room, a photo, and **whether it grows in soil or in hydroculture** (clay pebbles over
+a water reservoir with a float gauge; common in Swiss and German homes). Then:
+
+- **Soil:** all four readings count; the bands are the species' or the defaults.
+- **Hydroculture:** say why only part of the sensor is used, before writing the inputs: the prongs
+  reach only the pebbles above the water, so moisture stays near 0 % and conductivity at 0 whatever
+  the reservoir holds; light and temperature come from the sensor's head and are real. Set
+  `min_moisture: 0` and `min_conductivity: 0` for that plant, so it is judged on light and
+  temperature only and never pushes "needs water"; the float gauge stays the watering signal. Such
+  a sensor may never show on `sensor.plants_unplaced_in_soil` (it waits for moisture above 0): find
+  it by its discovery name.
+- Read each new sensor's signal strength: below about -90 dBm it needs a nearer proxy.
+
 ## 6. Render, plan, apply, verify
 
 ```bash
