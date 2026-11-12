@@ -1,0 +1,11 @@
+{
+  "domain": "tplink_deco",
+  "name": "Domosenso fictional demo router",
+  "version": "0.1.0",
+  "documentation": "https://github.com/zerostorypoints/domosenso",
+  "codeowners": [],
+  "config_flow": true,
+  "single_config_entry": true,
+  "iot_class": "local_polling",
+  "requirements": []
+}
