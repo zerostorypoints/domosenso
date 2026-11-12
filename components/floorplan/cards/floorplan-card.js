@@ -18,6 +18,7 @@
 //   layer_choice: one                  # with layers: a chip each, one layer shown at a time (the Ramka)
 //   maps: true                         # false: no maps on the plants, climate, light and radio layers
 //   wifi: true                         # false: no Wi-Fi maps on the radio layer (SPEC-044)
+//   traffic: true                      # false: no traffic maps on the radio layer (SPEC-047)
 //   fill: true                         # optional: as tall as the screen below the card's top (the Ramka)
 //   area: living_room                  # optional: that area's room alone, fitted to the card, no Edit
 //   context: true                      # with area: the floor's other rooms faded around it, for orientation
@@ -36,7 +37,7 @@
 // each spot, and how far to trust the map (Confidence). With devices reporting their Wi-Fi signal on
 // the plan, a Predicted / Calibrated switch: calibrated, the model is fitted to their 24-hour means.
 
-import { createT } from "./lib/i18n.js";
+import { createT, formatDate } from "./lib/i18n.js";
 import { STYLE } from "./lib/style.js";
 import { zoomAt, snapToEdge, pointInPolygon, widestRow, insideRooms } from "./lib/geometry.js";
 import {
@@ -54,14 +55,16 @@ import { KINDS, STYLES, opensInto, kindOf, widthOf, styleOf, openingState, openi
 import { drawGrid, drawDims, drawWallDistances, numberText } from "./lib/measure.js";
 import { layoutLabels, placeNames, CHAR_EM } from "./lib/labels.js";
 import { MAPS, SCALES, STEP_M, ruleOf, readingIds, labelClasses, figure, nowValue, formatValue, colourAt, heat, areaSensorField, lampIndex, lampOf,
-  BAND_OF, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
+  BAND_OF, TRAFFIC_MAPS, accessPoints, offeredBands, radioMaps, bandsText, servingColour, CONFIDENCE } from "./lib/maps.js";
 import { contextFor, coverage, isHandover, cacheKey, priorParams, BANDS, FLOOR_HEIGHT_M, MOUNT_M, wallSegmentAt, materialsFor,
   setWallMaterial, setWifiDefault, setOpeningMaterial, setAccessPoint, setFloorWifi, setOutdoor, openingDefaults, addReading, nextSpots,
   wallLines, setWallHeight, levelGrid, rangeOutlines, wallSegments, wallPickPoint, openingShift, predict, apKeyOf, setSteering,
   STEERING_DBM } from "./lib/wifi.js";
 import { accessPointCandidates, signalEntities, deviceObservations, disabledSignalEntities, sampleObservations,
-  observationIndex } from "./lib/wifi-sources.js";
+  observationIndex, normMac } from "./lib/wifi-sources.js";
 import { calibrate, calibratedCoverage, calibratedLevelGrid, residualAt } from "./lib/wifi-fit.js";
+import { trafficRules, clients, heatCells, apTotals, nodeRates, ringPosition, lineWidth, dotRadius, IDLE_KEY, IDLE_MBPS,
+  LINK_COLOURS, setPointMac, suggestions, applySuggestion, lastSeen } from "./lib/traffic.js";
 import { resolveReading, appendSamples, removeSample } from "./lib/survey-api.js";
 import wifiRules from "./lib/wifi-rules.json" with { type: "json" };
 import materials from "./lib/materials.json" with { type: "json" };
@@ -85,6 +88,9 @@ const AGG_KEY = "domosenso.floorplan.day";         // localStorage: true while t
 const BAND_KEY = "domosenso.floorplan.band";       // localStorage: the Serving map's band
 const OFFER_KEY = "domosenso.floorplan.ap_offered"; // localStorage: points already offered as access points
 const CALIB_KEY = "domosenso.floorplan.calibrated"; // localStorage: "predicted" or "calibrated" on the Wi-Fi maps
+const TIP_TARGET = "g.marker[data-key]:not(.ghost), g.client[data-key]";   // what a hover or a finger's tap opens the tip for
+const MARKER_R = 8;             // px: the widest marker shape (a diamond) from its centre
+const SHARED_RING_M = 0.3;      // clients of one point spread on a ring of this radius around it
 const READINGS_KEY = "domosenso.floorplan.readings"; // localStorage: true while the Wi-Fi maps show the survey readings
 const RANGES_KEY = "domosenso.floorplan.ranges";   // localStorage: true while the band maps show each access point's range
 const WEIGHTS = ["light", "solid", "heavy"];       // the wall weights of the plan's key (Amendment 3)
@@ -94,6 +100,8 @@ const FILL_GAP_PX = 8;
 const CONTEXT_M = 1.5;             // m of the neighbouring rooms shown around an area (context: true)
 const NARROW_PX = 600;             // a card narrower than this (a phone) predicts Wi-Fi on coarser cells
 const NARROW_STEP_M = 0.3;
+const TRAFFIC_MS = 1000;           // the traffic heat is rebuilt at most this often
+const TRAFFIC_BUCKET_MS = 5000;    // the clients are read again at least this often: staleness moves with the clock
 const WIFI_MEMO = 8;               // Wi-Fi predictions kept: the bands, and a door or two open or closed
 const OBS_DB = 0.5;                // dB: readings closer than this to the last fit's do not fit again
 const LINK_MS = 2000;              // the survey page reads the laptop's Wi-Fi link this often
@@ -183,6 +191,12 @@ class FloorplanCard extends HTMLElement {
     this._statIds = "";
     this._statsAt = 0;
     this._heatCache = null;
+    this._trafficCache = null;     // the last traffic heat group {key, at, g}, kept for a second
+    this._trafficMemo = null;
+    this._trafficIdsMemo = null;
+    this._trafficTimer = null;     // the one pending rebuild of a throttled heat
+    this._tickTimer = null;        // re-checks the stamp while a traffic map is shown
+    this._tickMs = 0;
     this._band = load(BAND_KEY, null);             // the Serving map's band, while some access point serves it
     this._wifiMemo = new Map();    // cache key -> a Wi-Fi prediction {cells, aps, hint}
     this._wifiKey = null;          // the last cache key and what it was computed from
@@ -193,6 +207,7 @@ class FloorplanCard extends HTMLElement {
     this._showReadings = load(READINGS_KEY, false) === true;  // the Wi-Fi maps show the survey readings (opt-in)
     this._ranges = load(RANGES_KEY, false) === true;   // the band maps outline each access point's range
     this._rangeMemo = null;        // the last ranges drawn: {key, aps, lines}
+    this._idle = load(IDLE_KEY, true) !== false;      // Traffic links: idle clients drawn small, else hidden
     this._wallMemo = null;         // the walls drawn: {floor, wifi, lines}
     this._obsMemo = null;          // the devices' observations and their digest, and what they came from
     this._fitMemo = null;          // the last fit: {doc, states, digest, fit}
@@ -276,6 +291,11 @@ class FloorplanCard extends HTMLElement {
     // would come back over a plan the person has not touched since.
     if (this._pinned) this._unpinTip();
     this._stopPolling();
+    clearTimeout(this._trafficTimer);
+    clearInterval(this._tickTimer);
+    this._trafficTimer = null;
+    this._tickTimer = null;
+    this._tickMs = 0;
   }
 
   // `fill`: as tall as the screen below the card's top; true when the height changed.
@@ -301,8 +321,12 @@ class FloorplanCard extends HTMLElement {
     // hass is set for every state change in Home Assistant: redraw only what changed. A new reading
     // redraws the plan alone, so a half-typed area name or an open select survives it.
     this._wantStats();
+    this._refresh();
+  }
+
+  _refresh() {
     const stamp = this._valueStamp();
-    if (stamp === this._stamp) return;
+    if (stamp === this._stamp) return void this._retip();     // the clock alone moves "Updated 5 s ago"
     if (stamp.split("\n")[0] !== this._stamp?.split("\n")[0]) this._render();
     else {
       this._drawSvg(this._status === "ready" && this._mode === "edit");
@@ -372,9 +396,11 @@ class FloorplanCard extends HTMLElement {
 
   _wifiMap() {
     const bands = offeredBands(this._doc);
-    const maps = radioMaps(bands);
+    const maps = radioMaps(bands, this._trafficOffered());
     if (!maps.length) return { layer: "radio", cls: null, rule: null, maps, hint: "no_access_points" };
     const [cls] = maps.find(([c]) => c === this._maps.radio) ?? maps[0];
+    // A traffic map has no band, no Predicted / Calibrated switch and no Ranges: those are Wi-Fi's.
+    if (TRAFFIC_MAPS.includes(cls)) return { layer: "radio", cls, rule: null, maps, bands, traffic: this._traffic(), idle: this._idle };
     const band = BAND_OF[cls] ?? (bands.includes(this._band) ? this._band : bands[0]);
     // Confidence is always the calibrated model's; the other maps follow the switch once there are readings.
     const observed = this._observations().list.length > 0;
@@ -382,6 +408,46 @@ class FloorplanCard extends HTMLElement {
     // Ranges (Amendment 3): on the band maps only, where the outline's level is the map's own.
     const ranges = !!BAND_OF[cls] && this._ranges;
     return { layer: "radio", cls, rule: null, maps, band, bands, observed, calibrated, ranges };
+  }
+
+  // The traffic maps are offered when the router integration of a traffic rule has client trackers (SPEC-047).
+  _trafficOffered() {
+    return this._config.traffic !== false && this._trafficIds().trackers.length > 0;
+  }
+
+  // The entities `clients()` reads, by the registries: the client trackers of the traffic rules' integrations
+  // and the router's freshness sensor and polling switch.
+  _trafficIds() {
+    const h = this._hass;
+    const m = this._trafficIdsMemo;
+    if (m && m.entities === h.entities) return m;
+    const rules = trafficRules(wifiRules);
+    const platforms = new Set(rules.map((r) => r.integration));
+    const suffixes = rules.flatMap((r) => [r.traffic.freshness?.updated, r.traffic.freshness?.polling]).filter(Boolean);
+    const ids = Object.keys(h.entities || {}).filter((id) => platforms.has(h.entities[id].platform));
+    const trackers = ids.filter((id) => id.startsWith("device_tracker."));
+    const fresh = ids.filter((id) => /^(sensor|switch)\./.test(id) && suffixes.some((x) => id.endsWith(x)));
+    this._trafficIdsMemo = { entities: h.entities, trackers, watched: [...trackers, ...fresh] };
+    return this._trafficIdsMemo;
+  }
+
+  // The router's clients (traffic.js), worked out again only when the registries, the plan, the states of
+  // the trackers and freshness entities or the clock's tick change: not for any other state.
+  _traffic() {
+    const h = this._hass;
+    const { watched } = this._trafficIds();
+    const m = this._trafficMemo;
+    const tick = Math.floor(Date.now() / TRAFFIC_BUCKET_MS);
+    if (m && m.entities === h.entities && m.devices === h.devices && m.doc === this._doc && m.tick === tick
+      && watched.every((id, i) => h.states?.[id] === m.states[i])) return m.out;
+    const out = this._readClients();
+    this._trafficMemo = { entities: h.entities, devices: h.devices, doc: this._doc, tick, states: watched.map((id) => h.states?.[id]), out };
+    return out;
+  }
+
+  // The reading itself: a method of its own, so a test counts the runs.
+  _readClients() {
+    return clients(this._hass, this._doc, wifiRules, Date.now(), this._obsIndex);
   }
 
   // The open or closed state of every opening with a sensor: live state the cache keys leave out.
@@ -770,6 +836,9 @@ ${STYLE}
     if (map.layer === "radio" && BAND_OF[map.cls]) {
       html += `<span class="maps">${chip('data-action="ranges"', map.ranges, t(h, "card.floorplan.wifi.ranges"))}</span>`;
     }
+    if (map.cls === "traffic_links") {
+      html += `<span class="maps">${chip('data-action="idle"', map.idle, t(h, "card.floorplan.traffic.idle"))}</span>`;
+    }
     // The survey readings that calibrate the maps, as dots: opt-in, only when the plan has some.
     if (map.layer === "radio" && map.cls && (this._doc.wifi?.samples || []).length) {
       html += `<span class="maps">${chip('data-action="readings"', this._showReadings, t(h, "card.floorplan.wifi.readings"))}</span>`;
@@ -780,13 +849,32 @@ ${STYLE}
           { figure: t(h, `card.floorplan.maps.figure.${map.rule === "mean" ? "mean" : `${map.cls}_${map.rule}`}`) }))
         + "</span>";
     }
-    return html + this._legendHtml(map);
+    return html + this._legendHtml(map) + this._bannerHtml(map);
+  }
+
+  // Router data that is not current (SPEC-047): when it was last fresh, or that the integration is unavailable.
+  _bannerHtml(map) {
+    if (!TRAFFIC_MAPS.includes(map.cls) || map.traffic.live) return "";
+    const h = this._hass;
+    const text = map.traffic.reason === "unavailable" ? t(h, "card.floorplan.traffic.unavailable")
+      : t(h, "card.floorplan.traffic.not_live", { time: this._updatedText(map.traffic.updated) });
+    return `<span class="banner" role="status">${esc(text)}</span>`;
+  }
+
+  // The router's last update as HH:MM; with the day when it is not today (a banner read at noon must not
+  // pass yesterday's 14:05 off as today's).
+  _updatedText(date) {
+    const h = this._hass;
+    const today = date instanceof Date && date.toDateString() === new Date(Date.now()).toDateString();
+    return formatDate(h, date, today ? { hour: "2-digit", minute: "2-digit" }
+      : { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
 
   // The map's scale, compact, in the bar: never over the plan (on the Ramka a legend on the plan
   // covered a room). The chips name the map and now or 24 h; the full sentence is its tooltip.
   _legendHtml(map) {
     const h = this._hass;
+    if (TRAFFIC_MAPS.includes(map.cls)) return this._trafficLegendHtml(map);
     if (map.layer === "radio") return this._wifiLegendHtml(map);
     if (map.cls === "lamps") return `<span class="legend">${esc(t(h, "card.floorplan.maps.lamps_legend"))}</span>`;
     const s = SCALES[map.cls];
@@ -805,6 +893,18 @@ ${STYLE}
     const h = this._hass;
     return `<span class="legend wall-key" title="${esc(t(h, "card.floorplan.wall.weight.title"))}">${WEIGHTS.map((w) =>
       `<span class="wall-swatch ${w}"></span><span>${esc(t(h, `card.floorplan.wall.weight.${w}`))}</span>`).join("")}</span>`;
+  }
+
+  // The traffic maps' scale: 0.1 to 1000 Mbit/s on a log scale, marked at 1, 10 and 100.
+  _trafficLegendHtml(map) {
+    const h = this._hass;
+    const s = SCALES.mbps;
+    const at = (v) => fmt((Math.log10(v / s.lo) / Math.log10(s.hi / s.lo)) * 100);
+    return `<span class="legend" title="${esc(`${t(h, `card.floorplan.maps.${map.cls}`)}, ${t(h, "card.floorplan.traffic.legend")}`)}">`
+      + `<span>${esc(`${s.lo} ${s.unit}`)}</span>`
+      + `<span class="scale" style="background: linear-gradient(90deg, ${s.ramp.join(", ")})">${s.marks.map((m) =>
+        `<span class="mark" data-mark="${m}" style="left: ${at(m)}%"></span>`).join("")}</span>`
+      + `<span>${esc(`${s.hi} ${s.unit}`)}</span></span>`;
   }
 
   // A band map: the dBm scale with its marks (with Ranges each access point's colour and the outlines'
@@ -945,8 +1045,39 @@ ${STYLE}
     return `<div class="point-panel"><label>${esc(pointName(h, point))}: ${esc(t(h, "card.floorplan.point.category"))}</label>`
       + `<select class="category">${options}</select>`
       + (joined ? `<span class="joined-label">${esc(t(h, "card.floorplan.point.joined"))}</span>${joined}` : "")
+      + this._clientFieldsHtml(point)
       + this._apFieldsHtml(point)
       + "</div>";
+  }
+
+  // Network client (SPEC-047): link the point to a router client by its MAC, and the same-device suggestion.
+  // Offered when the plan could show traffic at all: a traffic rule, `traffic` not false, client trackers.
+  _clientFieldsHtml(point) {
+    if (!this._trafficOffered()) return "";
+    const h = this._hass;
+    const tt = (key, vars) => t(h, `card.floorplan.traffic.edit.${key}`, vars);
+    const key = keyOf(point);
+    const mine = normMac(point.mac);
+    const online = [...this._traffic().list].sort((a, b) => a.name.localeCompare(b.name));
+    // Marked only when a different point holds the client: linked by its mac, or matched to a device placed there.
+    const taken = (c) => c.mac !== mine && (c.matched_by === "link" || (c.matched_by === "registry" && !!c.point && c.point.key !== key));
+    const opts = online.map((c) => `<option value="${esc(c.mac)}" ${c.mac === mine ? "selected" : ""}>${esc(taken(c) ? tt("elsewhere", { name: c.name }) : c.name)}</option>`);
+    const offline = mine && !online.some((c) => c.mac === mine);
+    if (offline) opts.unshift(`<option value="${esc(mine)}" selected>${esc(mine)}</option>`);
+    let html = `<label>${esc(tt("title"))}</label><select class="traffic-field" data-field="mac">`
+      + `<option value="" ${mine ? "" : "selected"}>${esc(tt("choose"))}</option>${opts.join("")}</select>`;
+    if (offline) {
+      const seen = lastSeen(h, wifiRules, mine);
+      const when = seen ? tt("not_seen", { time: formatDate(h, seen, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) }) : tt("not_seen_ever");
+      html += `<span class="not-seen">${esc(when)}</span>`;
+    }
+    if (mine) html += `<button data-action="unlink_mac">${esc(tt("remove"))}</button>`;
+    // A suggestion is offered, never applied: the user decides that the two devices are one piece of hardware.
+    for (const s of suggestions(h, this._doc, this._traffic().list)) {
+      if (s.pointKey !== key || s.floorId !== this._floorId) continue;
+      html += `<button data-action="same_device" data-device="${esc(s.deviceId)}">${esc(tt("same_device", { name: pointName(h, { device_id: s.deviceId }) }))}</button>`;
+    }
+    return html;
   }
 
   // `wifi` is on unless false: the Wi-Fi tools and fields with it.
@@ -1115,6 +1246,7 @@ ${STYLE}
     const names = [];       // where each room's name is, for readings to keep clear of
     const map = this._map();
     this._mapNow = map;
+    this._syncTick(map);
     this._drawContext(svg, px);
     for (const room of floor.rooms) {
       const cls = ["room"];
@@ -1126,7 +1258,7 @@ ${STYLE}
     }
     if (map) this._defs(svg, px);
     if (map?.layer === "radio") {
-      if (map.cls) this._drawWifi(svg, floor, map);
+      if (map.cls) (TRAFFIC_MAPS.includes(map.cls) ? this._drawTraffic(svg, floor, map) : this._drawWifi(svg, floor, map));
     } else if (map && map.cls !== "lamps") this._drawHeat(svg, floor, map);
     if (this._wifiOn) {
       this._drawWalls(svg);
@@ -1238,6 +1370,7 @@ ${STYLE}
       el("circle", { class: "shape", r: 7 * px }, g);
       el("text", { y: 22 * px, "font-size": 13 * px }, g).textContent = ghost.label;
     }
+    this._retip();
   }
 
   // Survey and manual samples, a small dot with its dBm: on the Confidence map and in edit mode only (the
@@ -1795,6 +1928,219 @@ ${STYLE}
     svg.appendChild(this._heatCache.g);
   }
 
+  // The traffic maps (SPEC-047). The heat: each cell of heatCells() on the global lattice,
+  // clipped to the drawn rooms. Rebuilt at most once a second; kept while the router's data is not
+  // live (the banner says so). The links map draws no layer of its own here.
+  _drawTraffic(svg, floor, map) {
+    if (map.cls === "traffic_links") return void this._drawLinks(svg, floor, map);
+    if (!map.traffic.live) return;
+    const step = this._rect().width < NARROW_PX ? NARROW_STEP_M : STEP_M;
+    // Serving cells as the Serving map has them: calibrated once there are readings, unless Predicted is chosen.
+    const calibrated = this._observations().list.length > 0 && this._calib !== "predicted";
+    const key = JSON.stringify([this._floorId, floor.rooms.map((r) => r.area_id), step, calibrated]);
+    const kept = this._trafficCache;
+    const age = kept ? Date.now() - kept.at : Infinity;
+    const changed = !!kept && kept.list !== map.traffic.list;
+    if (!kept || kept.key !== key || kept.doc !== this._doc || (changed && age >= TRAFFIC_MS)) {
+      this._trafficCache = { key, doc: this._doc, at: Date.now(), g: this._trafficHeat(floor, map, step, calibrated), list: map.traffic.list };
+    } else if (changed && !this._trafficTimer) {
+      // Throttled: one rebuild when the second is up, so the last change is not left unseen.
+      this._trafficTimer = setTimeout(() => {
+        this._trafficTimer = null;
+        this._drawSvg(this._status === "ready" && this._mode === "edit");
+      }, TRAFFIC_MS - age);
+      this._trafficTimer.unref?.();
+    }
+    svg.appendChild(this._trafficCache.g);
+  }
+
+  // While a traffic map is shown the stamp is checked every `interval_s` of the router, so a router that
+  // goes silent shows its banner without any state change.
+  _syncTick(map) {
+    const want = map && TRAFFIC_MAPS.includes(map.cls) ? (trafficRules(wifiRules)[0]?.traffic.freshness?.interval_s ?? 30) * 1000 : 0;
+    if (want === this._tickMs) return;
+    clearInterval(this._tickTimer);
+    this._tickMs = want;
+    this._tickTimer = want ? setInterval(() => this._refresh(), want) : null;
+    this._tickTimer?.unref?.();
+  }
+
+  _trafficHeat(floor, map, step, calibrated) {
+    const full = this._doc.floors.find((f) => f.floor_id === this._floorId);
+    const list = map.traffic.list;
+    // Serving cells for the bands some unplaced Wi-Fi client uses, as the Serving map has them.
+    const bands = offeredBands(this._doc);
+    const serving = {};
+    for (const c of list) {
+      if (c.link === "wired" || c.point || !c.ap || serving[c.link]) continue;
+      serving[c.link] = bands.includes(c.link) ? this._wifi(c.link, step, calibrated).cells : [];
+    }
+    const placed = ({ floorId, key }) => {
+      const p = floorId === this._floorId && floor.points.find((q) => keyOf(q) === key);
+      return p && p.placed !== false && Number.isFinite(p.x) && Number.isFinite(p.y) ? [p.x, p.y] : null;
+    };
+    const apAt = (key) => {
+      for (const f of this._doc.floors) {
+        const p = (f.points ?? []).find((q) => keyOf(q) === key && q.placed !== false && Number.isFinite(q.x) && Number.isFinite(q.y));
+        if (p) {
+          const i = f.rooms.findIndex((r) => pointInPolygon([p.x, p.y], r.polygon));
+          return { x: p.x, y: p.y, floorId: f.floor_id, roomIndex: i < 0 ? null : i };
+        }
+      }
+      return null;
+    };
+    const cells = heatCells(list, full, serving, placed, apAt, step);
+    const g = el("g", { class: "heat traffic" });
+    const defs = el("defs", {}, g);
+    const clip = el("clipPath", { id: "fp-traffic-clip" }, defs);
+    for (const room of floor.rooms) el("polygon", { points: room.polygon.map((p) => p.join(",")).join(" ") }, clip);
+    const clipped = el("g", { "clip-path": "url(#fp-traffic-clip)" }, g);
+    const inner = clipped;
+    for (const c of cells) {
+      if (c.value < SCALES.mbps.lo) continue;     // under the scale's floor the heat is transparent, not the lowest colour
+      el("rect", { x: fmt(c.x), y: fmt(c.y), width: step, height: step, "data-mbps": Math.round(c.value * 1e6) / 1e6,
+        fill: colourAt("mbps", c.value) }, inner);
+    }
+    return g;
+  }
+
+  // A rate as the card writes it: 12.50 Mbit/s.
+  _mbit(v) {
+    return `${numberText(this._hass, v, SCALES.mbps.digits)} ${SCALES.mbps.unit}`;
+  }
+
+  // Traffic links (SPEC-047): each client a dot joined to its access point by a line, solid wired and dashed
+  // Wi-Fi, in its link's colour, width and dot size by `total`; an unplaced client on a ring around its access
+  // point, a placed one at its point (clients sharing a point spread on a small ring). Sizes are screen pixels.
+  // Idle clients (under 0.01 Mbit/s) are small and unlabelled, or hidden with the Idle switch off. Not live: grey.
+  _drawLinks(svg, floor, map) {
+    const px = this._px();
+    const h = this._hass;
+    const at = (key) => floor.points.find((q) => keyOf(q) === key && q.placed !== false && Number.isFinite(q.x) && Number.isFinite(q.y));
+    const apAt = new Map(accessPoints(this._doc).filter((a) => a.floorId === this._floorId)
+      .flatMap((a) => { const p = at(a.key); return p ? [[a.key, [p.x, p.y]]] : []; }));
+    const shown = map.traffic.list.filter((c) => map.idle || c.total >= IDLE_MBPS)
+      .sort((a, b) => (a.mac < b.mac ? -1 : 1));
+    // Where each dot stands: its point, or the ring of its access point; clients on one spot are spread.
+    const spot = new Map();      // mac -> {centre, radius, group, placed}
+    const groups = new Map();
+    for (const c of shown) {
+      let s = null;
+      if (c.point) {
+        if (c.point.floorId !== this._floorId) continue;
+        const p = at(c.point.key);
+        if (p) s = { centre: [p.x, p.y], radius: SHARED_RING_M, group: `p:${c.point.key}`, placed: true,
+          marker: this._shown(this._cat(p)) || this._sourceObs(p).length > 0 };     // is its device's marker drawn there?
+      }
+      if (!s && c.ap && apAt.has(c.ap)) s = { centre: apAt.get(c.ap), radius: 1.2, group: `a:${c.ap}`, placed: false };
+      if (!s) continue;
+      spot.set(c.mac, s);
+      groups.set(s.group, [...(groups.get(s.group) ?? []), c.mac]);
+    }
+    const g = el("g", { class: "traffic-links" }, svg);
+    const dots = [];
+    for (const c of shown) {
+      const s = spot.get(c.mac);
+      if (!s) continue;
+      const mates = groups.get(s.group);
+      // An unplaced client always takes its place on the ring; a placed one stays on its point when alone.
+      const at2 = !s.placed ? ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius)
+        : mates.length === 1 ? s.centre : ringPosition(s.centre, mates.indexOf(c.mac), mates.length, s.radius);
+      dots.push({ c, at: at2, placed: s.placed, ring: s.placed && s.marker && mates.length === 1 });
+      const to = c.ap && apAt.get(c.ap);
+      if (!to) continue;
+      const attrs = { class: c.stale ? "client-line stale" : "client-line", "data-mac": c.mac, x1: fmt(at2[0]), y1: fmt(at2[1]),
+        x2: fmt(to[0]), y2: fmt(to[1]), stroke: LINK_COLOURS[c.link], "stroke-width": fmt(lineWidth(c.total)) };
+      if (c.link !== "wired") attrs["stroke-dasharray"] = "6 4";
+      el("line", attrs, g);
+    }
+    for (const { c, at: [x, y], placed, ring } of dots) {
+      if (ring) {
+        // A lone placed client is a ring round its device's marker (a disc would hide under it); the marker's tip lists it.
+        el("circle", { class: c.stale ? "client-ring stale" : "client-ring", "data-mac": c.mac, cx: fmt(x), cy: fmt(y),
+          r: fmt((MARKER_R + dotRadius(c.total)) * px), fill: "none", stroke: LINK_COLOURS[c.link], "stroke-width": fmt(lineWidth(c.total)) }, g);
+        continue;
+      }
+      const idle = c.total < IDLE_MBPS;
+      const cls = ["client"];
+      if (!placed) cls.push("unplaced");
+      if (c.stale) cls.push("stale");
+      const dot = el("g", { class: cls.join(" "), "data-kind": "client", "data-key": `client:${c.mac}`, "data-mac": c.mac,
+        transform: `translate(${fmt(x)} ${fmt(y)})` }, g);
+      const r = dotRadius(c.total) * px;
+      const rim = placed ? {} : { "stroke-dasharray": "2 2" };
+      el("circle", { r: fmt(r), fill: LINK_COLOURS[c.link], ...rim }, dot);
+      if (!idle) el("text", { class: "client-label", y: fmt(r + 11 * px), "font-size": fmt(11 * px), "stroke-width": fmt(3 * px) }, dot).textContent = this._clientTitle(c);
+    }
+  }
+
+  // A client's name: its device's when the registry or a point's MAC found one, else the router's.
+  _clientTitle(c) {
+    const dev = c.device_id && this._hass.devices?.[c.device_id];
+    return (dev && (dev.name_by_user || dev.name)) || c.name;
+  }
+
+  // "5 s", "3 min", "2 h" since a time.
+  _since(date) {
+    const s = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+    return s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+  }
+
+  _clientLink(link) {
+    return link === "wired" ? t(this._hass, "card.floorplan.traffic.links.wired")
+      : t(this._hass, "card.floorplan.wifi.bands", { bands: this._bandNumber(link) });
+  }
+
+  // The tap panel's lines for one client: the router's name when it differs from the title, its access
+  // point, link, down and up, how it was matched to a device, and the time since its last update.
+  _clientRows(c, title = this._clientTitle(c)) {
+    const h = this._hass;
+    const tt = (key, vars) => t(h, `card.floorplan.traffic.${key}`, vars);
+    const ap = c.ap ? pointName(h, this._apPoint(c.ap) ?? { device_id: c.ap }) : "\u2014";
+    return [
+      ...(c.name !== title ? [tt("router_name", { name: c.name })] : []),
+      tt("access_point", { name: ap }),
+      tt("link", { link: this._clientLink(c.link) }),
+      tt("down", { value: this._mbit(c.down) }),
+      tt("up", { value: this._mbit(c.up) }),
+      tt(`matched.${c.matched_by ?? "none"}`),
+      tt("updated_ago", { time: this._since(c.updated) }),
+    ];
+  }
+
+  // The tip a Traffic links client opens: its name and rows.
+  _clientTip(key) {
+    const c = this._trafficList().find((x) => `client:${x.mac}` === key);
+    if (!c) return null;
+    return { key: `m:${key}`, name: this._clientTitle(c), ids: [], rows: this._clientRows(c) };
+  }
+
+  // The tip's traffic lines for a marker on Traffic links: an access point's clients against its own
+  // node rates and the clients on access points the plan does not have; a device its placed clients'.
+  _trafficRows(point) {
+    const h = this._hass;
+    const list = this._trafficList();
+    const key = keyOf(point);
+    const tt = (k, vars) => t(h, `card.floorplan.traffic.${k}`, vars);
+    if (accessPoints(this._doc).some((a) => a.key === key)) {
+      const sum = apTotals(list).get(key)?.total ?? 0;
+      const node = nodeRates(h, wifiRules, key);
+      const num = (v) => numberText(h, v, SCALES.mbps.digits);
+      const rows = [node ? tt("clients_vs_node", { clients: num(sum), node: num(node.down + node.up) }) : tt("clients_total", { clients: num(sum) })];
+      const known = new Set(accessPoints(this._doc).map((a) => a.key));
+      const off = list.filter((c) => !c.ap || !known.has(c.ap));
+      if (off.length) rows.push(tt("off_plan"), ...off.map((c) => `${this._clientTitle(c)}: ${this._mbit(c.total)}`));
+      return rows;
+    }
+    // A heading per client; with several on one device they are told apart by the router's name.
+    const mine = list.filter((c) => c.point?.key === key);
+    return mine.flatMap((c) => { const head = mine.length > 1 ? c.name : this._clientTitle(c); return [head, ...this._clientRows(c, head)]; });
+  }
+
+  _trafficList() {
+    return this._mapNow?.traffic?.list ?? [];
+  }
+
   // A marker's lines: its readings, or on a map the map's (the shown one first and marked main). On
   // a radio map an access point lists its bands, a signal source what it reports ("−52 dBm · 2.4 · its
   // access point", the 24-hour mean once the statistics are in), any other point its readings.
@@ -1804,6 +2150,11 @@ ${STYLE}
     const h = this._hass;
     if (map.layer === "radio") {
       const ap = accessPoints(this._doc).find((a) => a.key === keyOf(point));
+      if (ap && map.cls === "traffic_links") {
+        const sum = apTotals(map.traffic.list).get(ap.key) ?? { total: 0, count: 0 };
+        return [{ text: t(h, "card.floorplan.traffic.ap_label", { total: this._mbit(sum.total), count: sum.count }), main: true }];
+      }
+      if (map.cls === "traffic_heat" && (ap || this._sourceObs(point).length)) return [];     // markers without numbers on the heat
       if (ap) return [{ text: t(h, "card.floorplan.wifi.bands", { bands: bandsText(ap.bands, (b) => this._bandNumber(b)) }), main: true }];
       const own = this._sourceObs(point);
       if (own.length) return own.map((o) => ({ text: this._sourceText(o), main: true }));
@@ -1845,19 +2196,27 @@ ${STYLE}
     for (const o of floor.openings || []) if (o.entity) ids.push(o.entity);
     // A map also follows a plant's sensors and the lamps; a Wi-Fi map the signal sensors.
     const map = this._map();
+    let traffic = "";
+    let liveness = "";     // the banner is in the bar: a change of it is a full render
     if (map) {
       for (const p of floor.points) {
         ids.push(...Object.values(this._readings(p)));
         if (p.device_id && this._lamps.has(p.device_id)) ids.push(this._lamps.get(p.device_id));
       }
       if (map.layer === "radio") ids.push(...this._observations().list.filter((o) => o.entity).map((o) => o.entity));
+      // A traffic map follows the router's clients: their rates, links and nodes, and whether it is live.
+      if (TRAFFIC_MAPS.includes(map.cls)) {
+        const { list, reason, updated } = this._traffic();
+        traffic = JSON.stringify([updated?.getTime(), list.map((c) => [c.mac, c.down, c.up, c.link, c.ap, c.stale])]);
+        liveness = reason;
+      }
     }
     // The first line (the language and the areas' names) changes labels and selects: a full render.
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
     // name with a newline on that first line.
     const areas = Object.values(this._hass.areas || {}).map((a) => [a.area_id, a.name]).sort();
-    return [JSON.stringify([this._hass.language, areas]),
-      ids.map((id) => this._hass.states?.[id]?.state).join("|")].join("\n");
+    return [JSON.stringify([this._hass.language, areas, liveness]),
+      ids.map((id) => this._hass.states?.[id]?.state).join("|") + traffic].join("\n");
   }
 
   // ---- buttons and selects -----------------------------------------------------------------
@@ -1910,7 +2269,12 @@ ${STYLE}
       this._offered.add(key);
       save(OFFER_KEY, [...this._offered]);
     }
-    else if (action === "separate") {
+    else if (action === "unlink_mac") this._edit(setPointMac(this._doc, this._floorId, this._picked, null));
+    else if (action === "same_device") {
+      const s = suggestions(this._hass, this._doc, this._traffic().list)
+        .find((x) => x.pointKey === this._picked && x.floorId === this._floorId && x.deviceId === button.getAttribute("data-device"));
+      this._edit(s && applySuggestion(this._doc, s));
+    } else if (action === "separate") {
       this._edit(separatePoint(this._doc, this._floorId, this._picked, button.getAttribute("data-device")));
     } else if (action === "map") {
       this._maps = { ...this._maps, [this._mapLayer()]: button.getAttribute("data-map") };
@@ -1921,6 +2285,9 @@ ${STYLE}
     } else if (action === "calib") {
       this._calib = button.getAttribute("data-calib");
       save(CALIB_KEY, this._calib);
+    } else if (action === "idle") {
+      this._idle = !this._idle;
+      save(IDLE_KEY, this._idle);
     } else if (action === "readings") {
       this._showReadings = !this._showReadings;
       save(READINGS_KEY, this._showReadings);
@@ -1975,6 +2342,9 @@ ${STYLE}
       this._render();
     } else if (e.target.matches?.(".ap-field") && this._picked) {
       this._edit(this._apChange(e.target));
+      this._render();
+    } else if (e.target.matches?.(".traffic-field") && this._picked) {
+      this._edit(setPointMac(this._doc, this._floorId, this._picked, e.target.value || null));
       this._render();
     } else if (e.target.matches?.("select.category") && this._picked) {
       const own = this._cands?.get(this._picked)?.category ?? null;
@@ -2237,7 +2607,7 @@ ${STYLE}
       const cluster = kind === "cluster" ? target.getAttribute("data-cluster") : null;
       // A finger (no hover) on a marker in view mode: a tap shows its tooltip.
       const touch = !!e.pointerType && e.pointerType !== "mouse";
-      const marker = touch ? e.target.closest?.("g.marker[data-key]:not(.ghost)")?.getAttribute("data-key") ?? null : null;
+      const marker = touch ? e.target.closest?.(TIP_TARGET)?.getAttribute("data-key") ?? null : null;
       this._drag = { ...base, kind: "pan", area: kind === "room" ? target.getAttribute("data-area") : null, cluster, touch, marker, hadTip };
     }
   }
@@ -2245,12 +2615,13 @@ ${STYLE}
   // ---- tooltip: a sensor's photo (a plant's, from the plants component), name and readings ------
 
   _hover(e) {
-    const marker = e.target.closest?.("g.marker[data-key]:not(.ghost)");
+    const marker = e.target.closest?.(TIP_TARGET);
     const cluster = !marker && e.target.closest?.("g.cluster");
     const item = !marker && !cluster && e.target.closest?.(".tray [data-key], .cluster-list [data-point]");
     const hoverKey = marker ? marker.getAttribute("data-key") : null;
-    if (hoverKey !== this._hoverKey) {
-      this._hoverKey = hoverKey;     // its registry links show while it is hovered
+    const linkKey = hoverKey?.startsWith("client:") ? null : hoverKey;     // a traffic client has no registry links
+    if (linkKey !== this._hoverKey) {
+      this._hoverKey = linkKey;     // its registry links show while it is hovered
       this._drawSvg(this._status === "ready" && this._mode === "edit");
     }
     // The tooltip's content is worked out only when the pointer reaches something new.
@@ -2276,10 +2647,12 @@ ${STYLE}
 
   // A marker's tooltip content: its names, readings, presence sensors and roles; null when gone.
   _markerTip(pointKey) {
+    if (pointKey.startsWith("client:")) return this._clientTip(pointKey);
     const point = this._floor?.points.find((p) => keyOf(p) === pointKey);
     if (!point) return null;
+    const rows = this._mapNow?.cls === "traffic_links" ? this._trafficRows(point) : [];
     return { key: `m:${pointKey}`, name: this._pointNames(point).join(" + "), ids: pointEntities(point, this._entities),
-      presence: presenceEntities(this._hass, point), roles: this._cat(point).roles };
+      presence: presenceEntities(this._hass, point), roles: this._cat(point).roles, rows };
   }
 
   // A tooltip a tap opened (no hover on a phone): it stays, with the marker's links, until the next
@@ -2288,9 +2661,25 @@ ${STYLE}
     const content = this._markerTip(pointKey);
     if (!content) return;
     this._pinned = pointKey;
-    this._hoverKey = pointKey;
+    this._hoverKey = pointKey.startsWith("client:") ? null : pointKey;
     this._drawSvg(false);
     this._showTip(content, e);
+  }
+
+  // An open marker tip is worked out again from the current states: a client's rates and age change, and the
+  // client may be gone. Same place; closed (and unpinned) when its subject is no more.
+  _retip() {
+    // Only the traffic maps' client and access point tips move with the router's data; every other tip is left as it is.
+    if (!TRAFFIC_MAPS.includes(this._mapNow?.cls)) return;
+    const tip = this.shadowRoot?.querySelector(".tip");
+    const subject = this._tipSubject;
+    if (!tip || tip.hidden || !subject?.startsWith("m:")) return;
+    const pointKey = subject.slice(2);
+    if (!pointKey.startsWith("client:") && !accessPoints(this._doc).some((a) => a.key === pointKey)) return;
+    const content = this._markerTip(pointKey);
+    if (!content) return void (this._pinned ? this._unpinTip() : this._showTip(null));
+    if (this._tipMarkup(content) === this._tipHtml) return;     // nothing changed: no reassign, no measuring
+    this._showTip(content, this._tipAt);
   }
 
   _unpinTip() {
@@ -2307,6 +2696,31 @@ ${STYLE}
     return [pointName(h, point), ...joined];
   }
 
+  // A tooltip's HTML for its content. Compared with what is shown, so an unchanged tip is neither
+  // reassigned (its photo would reload) nor measured again.
+  _tipMarkup(content) {
+    const h = this._hass;
+    const pic = content.ids.map((id) => h.states?.[id]?.attributes?.entity_picture).find(safePicture);
+    const values = content.ids.map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== content.name);
+    // Presence and contact sensors by name: "Presence: Detected".
+    const named = (id) => h.entities?.[id]?.name || h.entities?.[id]?.original_name
+      || h.states?.[id]?.attributes?.friendly_name || id;
+    const presence = (content.presence || []).map((id) => `${named(id)}: ${valueText(h, id)}`);
+    // What the dot's colour and rings mean: its category, then "Also senses:" each further role.
+    const lang = h?.language;
+    const [main, ...further] = (content.roles || []).map(categoryById).filter(Boolean);
+    const roles = main ? `<div class="tip-roles"><span class="dot" style="background: ${colourOf(main)}"></span>`
+      + `${esc(categoryName(main, lang))}${further.map((c) => `<br><span class="ring" style="border-color: ${colourOf(c)}"></span>`
+        + `${esc(t(h, "card.floorplan.roles.also"))} ${esc(categoryName(c, lang))}`).join("")}</div>` : "";
+    // A room's own sensor, as its area names it, gives the room its colour on the climate maps.
+    const roomSensor = Object.values(h.areas || {}).some((a) => content.ids.includes(a.temperature_entity_id)
+      || content.ids.includes(a.humidity_entity_id));
+    return (pic ? `<img src="${esc(pic)}" alt="">` : "")
+      + `<div class="tip-name">${esc(content.name)}</div>` + roles
+      + (roomSensor ? `<div class="tip-value">${esc(t(h, "card.floorplan.maps.room_sensor"))}</div>` : "")
+      + [...values, ...presence, ...(content.rows || [])].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+  }
+
   _showTip(content, e) {
     const tip = this.shadowRoot?.querySelector(".tip");
     if (!tip) return;
@@ -2315,30 +2729,18 @@ ${STYLE}
       this._tipKey = null;
       return;
     }
-    if (content.key !== this._tipKey) {
-      const h = this._hass;
-      const pic = content.ids.map((id) => h.states?.[id]?.attributes?.entity_picture).find(safePicture);
-      const values = content.ids.map((id) => valueText(h, id)).filter((v) => v !== "—" && v !== content.name);
-      // Presence and contact sensors by name: "Presence: Detected".
-      const named = (id) => h.entities?.[id]?.name || h.entities?.[id]?.original_name
-        || h.states?.[id]?.attributes?.friendly_name || id;
-      const presence = (content.presence || []).map((id) => `${named(id)}: ${valueText(h, id)}`);
-      // What the dot's colour and rings mean: its category, then "Also senses:" each further role.
-      const lang = h?.language;
-      const [main, ...further] = (content.roles || []).map(categoryById).filter(Boolean);
-      const roles = main ? `<div class="tip-roles"><span class="dot" style="background: ${colourOf(main)}"></span>`
-        + `${esc(categoryName(main, lang))}${further.map((c) => `<br><span class="ring" style="border-color: ${colourOf(c)}"></span>`
-          + `${esc(t(h, "card.floorplan.roles.also"))} ${esc(categoryName(c, lang))}`).join("")}</div>` : "";
-      // A room's own sensor, as its area names it, gives the room its colour on the climate maps.
-      const roomSensor = Object.values(h.areas || {}).some((a) => content.ids.includes(a.temperature_entity_id)
-        || content.ids.includes(a.humidity_entity_id));
-      tip.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : "")
-        + `<div class="tip-name">${esc(content.name)}</div>` + roles
-        + (roomSensor ? `<div class="tip-value">${esc(t(h, "card.floorplan.maps.room_sensor"))}</div>` : "")
-        + [...values, ...presence].map((v) => `<div class="tip-value">${esc(v)}</div>`).join("");
+    // Content without ids is only a key: the tip shown for it stays as it is.
+    if (content.ids) {
+      const html = this._tipMarkup(content);
+      if (html !== this._tipHtml) {
+        tip.innerHTML = html;
+        this._tipHtml = html;
+      }
       this._tipKey = content.key;
     }
     tip.hidden = false;
+    this._tipAt = { clientX: e.clientX, clientY: e.clientY };
+    this._tipSubject = content.key;
     // Below right of the pointer, flipped to its left near the card's right edge.
     const body = this.shadowRoot.querySelector(".body").getBoundingClientRect();
     const x = e.clientX - body.left;
