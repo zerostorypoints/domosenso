@@ -442,3 +442,41 @@ test("the list shows moisture age and exposes the other reading ages with values
   dialog.querySelector("button").click();
   assert.equal(card.shadowRoot.querySelector("dialog"), null);
 });
+
+// SPEC-048: a hydroculture plant's sensor reads only the pebbles; it is judged on light and
+// temperature and never asked to be watered or fertilised.
+const HYDRO = { domosenso_medium: "hydroculture", moisture: 0, conductivity: 0,
+  domosenso_bands: { min_brightness: 500, min_temperature: 15 } };
+
+test("hydroculture: no water or fertiliser action, the gauge line instead, judged on light", () => {
+  for (const [lang, text] of [["en", "Hydroculture · water by the gauge"], ["de", "Hydrokultur · giessen nach Anzeiger"],
+    ["pl", "Hydrokultura · podlewaj według wskaźnika"]]) {
+    const card = discoverCard({ lang, plants: [plant("Dragon tree", HYDRO)] });
+    const tile = card.shadowRoot.querySelector(".plant");
+    assert.equal(action(card), "", lang);
+    assert.equal(tile.dataset.state, "good", lang);
+    assert.equal(tile.querySelector(".meta").textContent, text, lang);
+    assert.equal(tile.querySelector("svg.chart").innerHTML, "", lang);
+    const hidden = [...tile.querySelectorAll(".g")].filter((g) => g.style.visibility === "hidden").map((g) => g.dataset.k);
+    assert.deepEqual(hidden, ["conductivity", "moisture"], lang);
+  }
+  const dark = discoverCard({ lang: "en", plants: [plant("Dragon tree", { ...HYDRO, max_brightness: 100 })] });
+  assert.equal(action(dark), "More light");
+  assert.equal(dark.shadowRoot.querySelector(".plant").dataset.state, "need");
+});
+
+test("hydroculture plants never count as thirsty and sort after a dry soil plant", () => {
+  const card = discoverCard({ lang: "en", plants: [plant("Dragon tree", HYDRO), plant("Fern", { moisture: 5 })],
+    config: { title: "Plants" } });
+  assert.deepEqual(names(card), ["Fern", "Dragon tree"]);
+  assert.equal(card.shadowRoot.querySelector(".title").textContent, "Plants · to water: 1");
+});
+
+test("a list item may say medium: hydroculture", () => {
+  const card = document.createElement("plants-card");
+  card.setConfig({ plants: [{ entity: "plant.p0", medium: "hydroculture" }] });
+  card.hass = { locale: { language: "en" }, states: { "plant.p0": { state: "ok", attributes: { ...HEALTHY, moisture: 0 } } },
+    callWS: async () => ({}) };
+  assert.equal(action(card), "");
+  assert.equal(card.shadowRoot.querySelector(".meta").textContent, "Hydroculture · water by the gauge");
+});
