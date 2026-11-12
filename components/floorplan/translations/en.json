@@ -108,7 +108,9 @@
         "wifi_5": "5 GHz",
         "wifi_6": "6 GHz",
         "serving": "Serving",
-        "confidence": "Confidence"
+        "confidence": "Confidence",
+        "traffic_heat": "Traffic heat",
+        "traffic_links": "Traffic links"
       },
       "opening": {
         "kind": "Kind",
@@ -241,6 +243,39 @@
           "room": "room without a reading"
         },
         "help": "1. Run the survey on the laptop you carry, on the home's own network, not a hotspot. 2. Hold it at chest height, lid open, in front of you, the way a phone is held on a call. 3. Start at an access point, then walk room by room; stop about every 2 m and in every doorway. 4. At each stop tap exactly where you stand, press I'm here and stand still for 10 s. 5. Visit the suggested spots, above all the handover zones between access points. 6. The laptop reports the band it is on; a mesh with one network name chooses it. To survey another band, rerun with a network name that has only that band, if the router offers one, or accept the fit's carry-over between bands. 7. Push the samples to Home Assistant (floorplan push), and repeat the walk after moving an access point or changing a wall's or window's material."
+      },
+      "traffic": {
+        "not_live": "Router data from {time}, not live",
+        "unavailable": "The router's data is unavailable",
+        "legend": "Throughput per spot, down plus up, on a log scale (marks at 1, 10 and 100 Mbit/s)",
+        "idle": "Idle",
+        "router_name": "Router name: {name}",
+        "access_point": "Access point: {name}",
+        "link": "Link: {link}",
+        "down": "↓ {value}",
+        "up": "↑ {value}",
+        "matched": {
+          "link": "Matched by the point's MAC",
+          "registry": "Matched by the device registry",
+          "none": "Not matched to a device"
+        },
+        "updated_ago": "Updated {time} ago",
+        "clients_vs_node": "Clients {clients} · node {node} Mbit/s",
+        "clients_total": "Clients {clients} Mbit/s",
+        "ap_label": "{total} · {count}",
+        "off_plan": "On access points not on the plan",
+        "links": {
+          "wired": "Wired"
+        },
+        "edit": {
+          "title": "Network client",
+          "choose": "Choose a client",
+          "not_seen": "Not seen since {time}",
+          "not_seen_ever": "Not seen",
+          "remove": "Remove link",
+          "same_device": "Same device as {name}?",
+          "elsewhere": "{name} (linked elsewhere)"
+        }
       }
     }
   }
