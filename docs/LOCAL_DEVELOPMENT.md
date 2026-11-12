@@ -84,9 +84,24 @@ node tools/dev_home/screenshots.mjs --name review --out .domosenso/shots \
 ```
 
 `--dashboard` picks another dashboard (default `dashboard-pocket-en/home`), `--width`/`--height`
-another device size. `node tools/dev_home/phone_audit.mjs --name review` checks a phone dashboard at eight sizes
+another device size. `--theme default` shows Home Assistant's own theme (light, or dark with `--dark`)
+instead of the server default the Ramka sets (`ramka-dark`). `--steps` clicks, hovers or taps elements
+by CSS selector before the shot, inside a card's shadow DOM too, for a map, a tooltip or an edit panel:
+
+```sh
+node tools/dev_home/screenshots.mjs --name review --out .domosenso/shots --dashboard floorplan/0 \
+  --routes "links:#" --width 1440 --height 1000 --theme default \
+  --steps 'click=floorplan-card [data-layer="other"];;click=floorplan-card [data-map="traffic_links"]'
+```
+
+A marker's box includes its label: hover its shape (`g.marker[data-key="…"] > :first-child`). `node tools/dev_home/phone_audit.mjs --name review` checks a phone dashboard at eight sizes
 (compact Android to iPhone Pro Max, landscape, 130 % zoom): sideways scroll, targets under 44 px, cut
-text, words split over lines; it ends with `ok` or `FAIL <n> findings` (Pocket's DESIGN.md, section 12). The demo sets states without the entity registry and without HA areas, so a
+text, words split over lines; it ends with `ok` or `FAIL <n> findings` (Pocket's DESIGN.md, section 12). The floor plan's network traffic (SPEC-047) reads a fictional
+mesh router, `examples/demo-home/custom_components/tplink_deco`: it registers the three access points and
+eight clients (MACs `02:00:…`) under the platform the card's rules name, with a config entry so they have
+devices, and polls every 30 s; the demo integration's own config entry adds one streamer as two devices
+(Cast-like with the MAC, DLNA-like placed on the plan) for the "Same device as …?" suggestion. Everything
+else the demo sets as states without the entity registry and without HA areas, so a
 screen that finds devices by area (Pocket's area pages, Controls' Status) shows only what the home
 inputs name; kiosk-mode is not installed, so HA's header stays above a phone view.
 

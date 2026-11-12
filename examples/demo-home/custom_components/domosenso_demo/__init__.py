@@ -5,7 +5,9 @@ import json
 from pathlib import Path
 
 import voluptuous as vol
+from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -13,6 +15,15 @@ from homeassistant.util import dt as dt_util
 DOMAIN = 'domosenso_demo'
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({vol.Optional('weather_delay', default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=60))})}, extra=vol.ALLOW_EXTRA)
 PLATFORM_DOMAINS = {'light', 'media_player', 'weather', 'calendar'}
+# One streamer that two integrations list, as Cast and DLNA do: one device carries the MAC the demo router
+# reports (custom_components/tplink_deco), the other, placed on the floor plan, has none. Devices need a
+# config entry, so the demo creates one from configuration.yaml; its entities stay YAML platforms.
+STREAMER = {'manufacturer': 'Fictional Audio', 'model': 'Fictional streamer'}
+STREAMER_DEVICES = [
+    {'identifiers': {(DOMAIN, 'streamer_cast')}, 'name': 'Streamer (Cast)',
+     'connections': {(dr.CONNECTION_NETWORK_MAC, '02:00:00:00:01:02')}},
+    {'identifiers': {(DOMAIN, 'streamer_dlna')}, 'name': 'Streamer (DLNA)'},
+]
 
 
 @callback
@@ -103,12 +114,25 @@ async def async_setup(hass, config):
                     runtime['states'][eid] = 'locked' if call.service == 'lock' else 'unlocked'
         publish(hass)
 
+    if not hass.config_entries.async_entries(DOMAIN):
+        hass.async_create_task(hass.config_entries.flow.async_init(DOMAIN, context={'source': SOURCE_IMPORT}, data={}))
     hass.services.async_register(DOMAIN, 'scenario', scenario, schema=vol.Schema({vol.Required('scene'): str}))
     for name in ['mobile_app_dining_tablet', 'mobile_app_alex_phone']:
         hass.services.async_register('notify', name, notification)
     for domain, services in {'cover': ['open_cover', 'close_cover', 'stop_cover', 'set_cover_position'], 'lock': ['lock', 'unlock'], 'scene': ['turn_on']}.items():
         for service in services:
             hass.services.async_register(domain, service, generic_action)
+    return True
+
+
+async def async_setup_entry(hass, entry):
+    registry = dr.async_get(hass)
+    for device in STREAMER_DEVICES:
+        registry.async_get_or_create(config_entry_id=entry.entry_id, **STREAMER, **device)
+    return True
+
+
+async def async_unload_entry(hass, entry):
     return True
 
 

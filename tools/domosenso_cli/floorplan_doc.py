@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -42,7 +43,7 @@ def validate(doc: dict) -> None:
 
 def _refuse_duplicates(doc: dict) -> None:
     # The schema cannot say these; a duplicate would make `diff` and the card silently pick one.
-    floors, points = set(), set()
+    floors, points, macs = set(), set(), set()
     for floor in doc["floors"]:
         label = "-" if floor["floor_id"] is None else floor["floor_id"]
         if floor["floor_id"] in floors:
@@ -70,6 +71,13 @@ def _refuse_duplicates(doc: dict) -> None:
                 if key in points:
                     raise DomosensoError(f"duplicate point: {key}")
                 points.add(key)
+            if "mac" in point:
+                if not re.fullmatch(r"[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}", point["mac"]):
+                    raise DomosensoError(f"point {point_key(point)}: mac malformed")
+                mac = point["mac"].lower().replace("-", ":")
+                if mac in macs:
+                    raise DomosensoError(f"mac linked twice: {mac}")
+                macs.add(mac)
 
 
 def _materials() -> dict:
@@ -279,10 +287,10 @@ def diff(old: dict | None, new: dict) -> list[tuple[str, ...]]:
         lines += _compare("room", "area_id", "change", old_floor["rooms"], new_floor["rooms"],
                           label, lambda r: _round(r["polygon"]))
         # A point moved (or was placed); else, with only its category override or its joined
-        # devices (`also`) changed, "change".
+        # devices (`also`) or router-client MAC changed, "change".
         lines += _compare("point", None, "move", old_floor["points"], new_floor["points"], label,
                           lambda p: (_round(p["x"]), _round(p["y"]), p["placed"]),
-                          ("change", lambda p: (p.get("category"), p.get("also", []))))
+                          ("change", lambda p: (p.get("category"), p.get("also", []), p.get("mac"))))
         if _open(old_floor) != _open(new_floor):
             lines.append(("open", "change", label))
         if _openings(old_floor) != _openings(new_floor):

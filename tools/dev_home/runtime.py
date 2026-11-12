@@ -218,7 +218,9 @@ class Demo:
             resource_urls += install(self.root / 'components' / component, self.config)[1]
         # The floorplan card: no inputs and no package; its plan is pushed after onboarding (push_floorplan).
         resource_urls += install(self.root / 'components/floorplan', self.config)[1]
-        shutil.copytree(fixture / 'custom_components/domosenso_demo', self.config / 'custom_components/domosenso_demo', dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
+        # tplink_deco is the fictional router: the floor plan's traffic maps read its trackers by platform.
+        for integration in ['domosenso_demo', 'tplink_deco']:
+            shutil.copytree(fixture / 'custom_components' / integration, self.config / 'custom_components' / integration, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copytree(fixture / 'media', self.config / 'www/ramka', dirs_exist_ok=True)
         shutil.copytree(fixture / 'media', self.config / 'www/media', dirs_exist_ok=True)
         (self.config / 'demo.json').write_text(json.dumps({
@@ -248,6 +250,7 @@ system_log:
 my:
 onboarding:
 domosenso_demo:
+tplink_deco:
 light:
   - platform: domosenso_demo
 media_player:
@@ -421,10 +424,25 @@ lovelace:
         from domosenso_cli import floorplan_doc as doc
         fixture = self.root / 'examples/demo-home'
         plan = json.loads((fixture / 'floorplan.json').read_text())
-        doc.validate(plan)
         home = yaml.safe_load((fixture / 'home.inputs.yaml').read_text())
         names = {room['id']: room['name'] for room in home.get('rooms') or []}
-        areas, dashboards = self.ws([('config/area_registry/list', {}), ('lovelace/dashboards/list', {})])
+        # A device point names its device as "<integration>:<identifier>": HA picks the registry ids on
+        # start, and the demo's config entries (which own the devices) may still be setting up.
+        wanted = {p['device_id'] for floor in plan['floors'] for p in floor['points'] if 'device_id' in p}
+        deadline = time.monotonic() + 30
+        while True:
+            areas, dashboards, devices = self.ws([('config/area_registry/list', {}), ('lovelace/dashboards/list', {}),
+                                                  ('config/device_registry/list', {})])
+            by_identifier = {f'{domain}:{key}': device['id'] for device in devices for domain, key in device['identifiers']}
+            missing = sorted(wanted - set(by_identifier))
+            if not missing:
+                break
+            if time.monotonic() > deadline:
+                raise DemoError(f"no demo device {', '.join(missing)} in the device registry")
+            time.sleep(1)
+        for point in (p for floor in plan['floors'] for p in floor['points'] if 'device_id' in p):
+            point['device_id'] = by_identifier[point['device_id']]
+        doc.validate(plan)
         known = {area['area_id'] for area in areas}
         calls = []
         for room in (r for floor in plan['floors'] for r in floor['rooms']):

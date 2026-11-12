@@ -4,7 +4,16 @@
       "integration": "tplink_deco",
       "device_attr": { "device_type": "deco" },
       "bssid": { "2.4": "bssid_2_4_ghz", "5": "bssid_5_ghz" },
-      "clients": "device_tracker"
+      "clients": "device_tracker",
+      "traffic": {
+        "client": {
+          "node_mac": "deco_mac",
+          "link": { "attr": "connection_type", "values": { "wired": "wired", "band2_4": "2.4", "band5": "5", "band6": "6" } },
+          "down": "down_kilobytes_per_s", "up": "up_kilobytes_per_s", "unit": "kB/s"
+        },
+        "node": { "down": "_down", "up": "_up", "exclude": "total_", "unit": "kB/s" },
+        "freshness": { "updated": "client_last_successful_update", "polling": "polling", "interval_s": 30 }
+      }
     }
   ],
   "signal": {

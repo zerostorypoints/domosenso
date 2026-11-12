@@ -6,10 +6,16 @@
 //        [--routes name:#/hash,...] [--click <exact text>] [--dark] [--width 390 --height 844]
 //        [--wait <ms before the first screen, default 4000; a card that loads more slowly shows HA's
 //        "Configuration error" placeholder until it is defined>]
+//        [--steps "click=<css>;;hover=<css>;;tap=<css>;;wait=<ms>"] [--touch] [--theme <name>]
 //
 // Each route is opened in the same page (hash routes, nothing reloads) and saved as <out>/<name>.png;
-// with --click the element with that text is tapped first (a sheet, a menu). Logs in with the demo's
-// own generated tokens (.domosenso/dev/<identity>/auth.json).
+// with --click the element with that text is tapped first (a sheet, a menu). --steps runs before each
+// screen, in order: click, hover (a mouse over it, for a tooltip) or tap (a finger; needs --touch, which
+// also makes the page a touch screen) the first element the CSS selector finds, shadow roots included
+// (a card's SVG marker: `floorplan-card [data-map="traffic_links"]`). --theme picks the browser's theme
+// (`default` is Home Assistant's own; --dark its dark mode) over the server's default, which the Ramka
+// sets to ramka-dark. Logs in with the demo's own
+// generated tokens (.domosenso/dev/<identity>/auth.json).
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +31,7 @@ const { values: o } = parseArgs({ options: {
   click: { type: "string" }, dark: { type: "boolean", default: false },
   width: { type: "string", default: "390" }, height: { type: "string", default: "844" },
   wait: { type: "string", default: "4000" },
+  steps: { type: "string" }, touch: { type: "boolean", default: false }, theme: { type: "string" },
 } });
 if (!o.name || !o.out) throw new Error("--name and --out are required");
 
@@ -38,10 +45,13 @@ const base = `http://127.0.0.1:${runtime.port}`;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const context = await browser.newContext({
   viewport: { width: Number(o.width), height: Number(o.height) }, deviceScaleFactor: 2,
-  colorScheme: o.dark ? "dark" : "light",
+  colorScheme: o.dark ? "dark" : "light", hasTouch: o.touch,
 });
 await context.addInitScript((t) => localStorage.setItem("hassTokens", JSON.stringify(t)),
   { ...auth, hassUrl: base, token_type: "Bearer" });
+if (o.theme) {
+  await context.addInitScript((t) => localStorage.setItem("selectedTheme", JSON.stringify(t)), { theme: o.theme, dark: o.dark });
+}
 const page = await context.newPage();
 fs.mkdirSync(o.out, { recursive: true });
 let first = true;
@@ -53,6 +63,15 @@ for (const [name, hash] of o.routes.split(",").map((s) => s.split(/:(.*)/s))) {
   if (o.click) {
     await page.getByText(o.click, { exact: true }).first().click();
     await page.waitForTimeout(3000);
+  }
+  for (const step of (o.steps || "").split(";;").map((s) => s.trim()).filter(Boolean)) {
+    const [, verb, arg] = step.match(/^(click|hover|tap|wait)=(.*)$/s) ?? [];
+    if (!verb) throw new Error(`unknown step: ${step}`);
+    if (verb === "wait") await page.waitForTimeout(Number(arg));
+    else {
+      await page.locator(arg).first()[verb]({ force: true });
+      await page.waitForTimeout(1500);
+    }
   }
   await page.screenshot({ path: path.join(o.out, `${name}.png`) });
   console.log(path.join(o.out, `${name}.png`));

@@ -129,6 +129,20 @@ def network_check(demo):
             run(['docker', 'rm', '-f', endpoint])
 
 
+def router_registry(demo):
+    """The fictional router's trackers are registered under the tplink_deco platform (the floor plan's traffic
+    maps find them only there), and the streamer is two devices, one with the MAC a client reports."""
+    entities, devices = demo.ws([('config/entity_registry/list_for_display', {}), ('config/device_registry/list', {})])
+    own = {e['ei'] for e in entities['entities'] if e.get('pl') == 'tplink_deco'}
+    for key in ['access_point_living_room', 'access_point_office', 'access_point_hallway', 'living_room_streamer']:
+        require(f'device_tracker.{key}' in own, f'device_tracker.{key} is not registered under tplink_deco')
+    require({'sensor.demo_router_client_last_successful_update', 'switch.demo_router_polling'} <= own, 'router freshness entities missing')
+    streamer = demo.api('/api/states/device_tracker.living_room_streamer')['attributes']
+    macs = {name: [v for kind, v in d['connections'] if kind == 'mac'] for d in devices for name in [d['name']]}
+    require(macs.get('Streamer (Cast)') == [streamer['mac']] and macs.get('Streamer (DLNA)') == [], 'streamer devices differ')
+    return {'tplink_deco_entities': len(own), 'scope': 'fictional registry entries; no router or network'}
+
+
 def config_check(demo):
     result = run(['docker', 'exec', demo.resource, 'python', '-m', 'homeassistant', '--script', 'check_config', '-c', '/config', '--json'], timeout=90, check=False)
     (demo.path / 'config-check.json').write_text(result.stdout)
@@ -146,6 +160,7 @@ def check(demo, runtime_only=False):
     results.case('generated HA configuration', lambda: config_check(demo))
     results.case('registered synthetic service effects', lambda: services(demo))
     results.case('all existing catalog scene upstream states', lambda: scenes(demo))
+    results.case('fictional router in the entity and device registries', lambda: router_registry(demo))
     results.case('internal network and controlled egress rejection', lambda: network_check(demo))
 
     peer_name = 'check-' + hashlib.sha256(demo.name.encode()).hexdigest()[:12]

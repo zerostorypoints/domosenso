@@ -16,7 +16,8 @@
         {"entity_id": "sensor.bedroom_temperature", "x": 9.2, "y": 6.2, "placed": true},
         {"entity_id": "device_tracker.access_point_living_room", "x": 0.6, "y": 0.6, "placed": true, "category": "radio"},
         {"entity_id": "device_tracker.access_point_office", "x": 9.4, "y": 0.6, "placed": true, "category": "radio"},
-        {"entity_id": "device_tracker.access_point_hallway", "x": 0.6, "y": 6.4, "placed": true, "category": "radio"}
+        {"entity_id": "device_tracker.access_point_hallway", "x": 0.6, "y": 6.4, "placed": true, "category": "radio"},
+        {"device_id": "domosenso_demo:streamer_dlna", "x": 3.0, "y": 3.4, "placed": true}
       ],
       "walls": [
         {"at": [6, 2], "material": "brick"},
@@ -51,11 +52,11 @@
          {"t": "2026-11-10T18:02:10Z", "ssid": "Home", "bssid": "02:00:00:00:00:01", "standard": "802.11ax", "dbm": -47, "channel": 36, "rx": 1201, "tx": 961}
        ]},
       {"floor_id": null, "x": 8.2, "y": 2.4, "t": "2026-11-10T18:04:40Z", "band": "5", "channel": 149, "dbm": -54,
-       "bssid": "02:00:00:00:00:02", "source": "phone", "phone": "ios", "method": "shortcut", "spread": 3,
+       "bssid": "02:00:00:00:00:12", "source": "phone", "phone": "ios", "method": "shortcut", "spread": 3,
        "scans": [
-         {"t": "2026-11-10T18:04:37Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11ax", "dbm": -53, "channel": 149, "rx": 864, "tx": 720},
-         {"t": "2026-11-10T18:04:38Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11ax", "dbm": -56, "channel": 149, "rx": 864, "tx": 648},
-         {"t": "2026-11-10T18:04:39Z", "ssid": "Home", "bssid": "02:00:00:00:00:02", "standard": "802.11ax", "dbm": -54, "channel": 149, "rx": 864, "tx": 720}
+         {"t": "2026-11-10T18:04:37Z", "ssid": "Home", "bssid": "02:00:00:00:00:12", "standard": "802.11ax", "dbm": -53, "channel": 149, "rx": 864, "tx": 720},
+         {"t": "2026-11-10T18:04:38Z", "ssid": "Home", "bssid": "02:00:00:00:00:12", "standard": "802.11ax", "dbm": -56, "channel": 149, "rx": 864, "tx": 648},
+         {"t": "2026-11-10T18:04:39Z", "ssid": "Home", "bssid": "02:00:00:00:00:12", "standard": "802.11ax", "dbm": -54, "channel": 149, "rx": 864, "tx": 720}
        ]},
       {"floor_id": null, "x": 2.0, "y": 5.6, "t": "2026-11-10T18:07:02Z", "band": "2.4", "channel": 6, "dbm": -52,
        "bssid": "02:00:00:00:00:03", "source": "phone", "phone": "android", "method": "companion", "spread": 1,
