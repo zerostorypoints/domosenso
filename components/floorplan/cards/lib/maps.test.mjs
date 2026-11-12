@@ -144,7 +144,7 @@ const wifiDoc = (aps, points) => ({ schema: 1, floors: [{ floor_id: "ground", ro
   points, access_points: aps }] });
 
 test("the radio layer's maps: a map per band, then Serving; none has a 24-hour figure", () => {
-  assert.deepEqual(MAPS.radio, [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null], ["confidence", null]]);
+  assert.deepEqual(MAPS.radio, [["wifi_24", null], ["wifi_5", null], ["wifi_6", null], ["serving", null], ["confidence", null], ["traffic_heat", null], ["traffic_links", null]]);
   assert.deepEqual(BAND_OF, { wifi_24: "2.4", wifi_5: "5", wifi_6: "6" });
   assert.deepEqual(SCALES.dbm.marks, [-67, -75]);
   assert.equal(SCALES.dbm.lo, -90);
@@ -161,6 +161,7 @@ test("only the bands a placed access point serves are offered; Serving with any"
   assert.deepEqual(offeredBands(doc), ["2.4", "5"], "in band order");
   assert.deepEqual(radioMaps(offeredBands(doc)).map(([c]) => c), ["wifi_24", "wifi_5", "serving", "confidence"]);
   assert.deepEqual(radioMaps([]), [], "no access point: no map");
+  assert.deepEqual(radioMaps(offeredBands(doc), false).map(([c]) => c), ["wifi_24", "wifi_5", "serving", "confidence"]);
   const anyBand = wifiDoc([{ entity_id: "switch.ap" }], [{ entity_id: "switch.ap", x: 1, y: 1, placed: true }]);
   assert.deepEqual(offeredBands(anyBand), ["2.4", "5", "6"], "no bands listed: every band, as the prediction does");
 });
@@ -175,4 +176,19 @@ test("an access point's bands as its label; serving colours differ", () => {
 test("the Confidence map's three levels have three distinct fills", () => {
   assert.deepEqual(Object.keys(CONFIDENCE), ["high", "medium", "low"]);
   assert.equal(new Set(Object.values(CONFIDENCE)).size, 3);
+});
+
+test("mbps colours: 0.1 and below the first ramp colour, 1000 and above the last, 10 the middle", () => {
+  const r = SCALES.mbps.ramp, rgb = (c) => `rgb(${[16, 8, 0].map((s) => (parseInt(c.slice(1), 16) >> s) & 255).join(",")})`;
+  assert.equal(colourAt("mbps", 0.1), rgb(r[0]));
+  assert.equal(colourAt("mbps", 0), rgb(r[0]));
+  assert.equal(colourAt("mbps", 5000), rgb(r[4]));
+  assert.equal(colourAt("mbps", 10), rgb(r[2]));
+  assert.deepEqual(SCALES.mbps.marks, [1, 10, 100]);
+});
+
+test("radioMaps(bands, true) appends traffic_heat and traffic_links; radioMaps([], true) has only them", () => {
+  assert.deepEqual(radioMaps(["5"], true).map(([c]) => c), ["wifi_5", "serving", "confidence", "traffic_heat", "traffic_links"]);
+  assert.deepEqual(radioMaps([], true).map(([c]) => c), ["traffic_heat", "traffic_links"]);
+  assert.deepEqual(radioMaps([], false), []);
 });
