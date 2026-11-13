@@ -349,8 +349,11 @@ class PlantsCard extends HTMLElement {
                overflow: hidden; }
         .row .photo { height: 100%; border-radius: 0; }
         .row.top { background: none; border: none; color: var(--secondary-text-color); font-size: calc(3 * var(--u)); }
-        .rowname { display: flex; flex-direction: column; min-width: 0; }
-        .rowname .name { font-size: calc(4 * var(--u)); }
+        /* Fit the name, room and action inside one row, even on a full list page. */
+        .rowname { display: flex; flex-direction: column; min-width: 0;
+                   --row-text: min(var(--u), calc(var(--rh) / 14)); line-height: 1.1; }
+        .rowname .name { font-size: calc(4 * var(--row-text)); }
+        .rowname :is(.rm, .what) { font-size: calc(3.1 * var(--row-text)); }
         .rm, .what { font-size: calc(3.1 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                      color: var(--secondary-text-color); min-height: 1.2em; }
         .what.act { color: var(--c); font-weight: 600; }
@@ -562,7 +565,7 @@ class PlantsCard extends HTMLElement {
     if (!strip) {
       strip = document.createElement("div");
       strip.className = "strip";
-      strip.innerHTML = `<span class="pg"></span><div class="dots"></div><span class="cnt"></span>`;
+      strip.innerHTML = `<span class="pg"></span><span class="cnt"></span><div class="dots"></div>`;
       this._card.appendChild(strip);
     }
     strip.querySelector(".pg").textContent = `${page + 1} / ${pages}`;
