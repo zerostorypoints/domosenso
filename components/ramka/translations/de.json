@@ -588,6 +588,10 @@
       "tcl-9469x": {
         "description": "Ein 11,5-Zoll-Android-Tablet (TCL, Modell 9469X) mit einem Bildschirm von 2200 × 1440 Pixeln.",
         "does": "Hängt als Ramka an der Wand: Die Home Assistant Companion App zeigt das Dashboard bildschirmfüllend, weckt und dimmt den Bildschirm auf Befehl von Home Assistant und meldet Lichtsensor und Akku. Es hört bei 80 % von selbst auf zu laden und kann deshalb dauernd am Ladegerät bleiben."
+      },
+      "m5stack-unit-co2l": {
+        "description": "Ein photoakustischer CO2-Sensor Sensirion SCD41 (400 bis 5000 ppm) mit Temperatur und Feuchte, an einem Grove-Kabel. Er steckt im Grove-Anschluss eines M5Stack Atom Lite und braucht keine weitere Verdrahtung.",
+        "does": "Liefert einem Raum seinen CO2-Wert in Home Assistant, über den ESPHome-Knoten, an dem er hängt. Die Ramka zeigt diesen Raum auf ihrer Luftseite, neben den Sensoren anderer Räume."
       }
     },
     "assistant": {

@@ -588,6 +588,10 @@
       "tcl-9469x": {
         "description": "An 11.5-inch Android tablet (TCL, model 9469X) with a 2200 × 1440 screen.",
         "does": "Hangs on the wall as the Ramka: the Home Assistant Companion app shows the dashboard full screen, wakes and dims the screen on Home Assistant's commands and reports its light sensor and battery. It stops charging at 80 % by itself, so it can stay on the charger."
+      },
+      "m5stack-unit-co2l": {
+        "description": "A Sensirion SCD41 photoacoustic CO2 sensor (400 to 5000 ppm) with temperature and humidity, on a Grove cable. It plugs into an M5Stack Atom Lite's Grove port and needs no other wiring.",
+        "does": "Gives one room its CO2 reading in Home Assistant through the ESPHome node it hangs from. The Ramka shows that room on its Air page, next to other rooms' sensors."
       }
     },
     "assistant": {
