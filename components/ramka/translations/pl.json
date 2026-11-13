@@ -588,6 +588,10 @@
       "tcl-9469x": {
         "description": "Tablet z Androidem 11,5 cala (TCL, model 9469X) z ekranem 2200 × 1440 pikseli.",
         "does": "Wisi na ścianie jako Ramka: aplikacja Home Assistant Companion pokazuje panel na całym ekranie, budzi i przyciemnia ekran na polecenie Home Assistanta i przekazuje odczyty czujnika światła i baterii. Sam przestaje się ładować przy 80 %, więc może stale wisieć na ładowarce."
+      },
+      "m5stack-unit-co2l": {
+        "description": "Fotoakustyczny czujnik CO2 Sensirion SCD41 (400 do 5000 ppm) z pomiarem temperatury i wilgotności, na przewodzie Grove. Wpina się w gniazdo Grove M5Stack Atom Lite i nie wymaga innego okablowania.",
+        "does": "Przekazuje do Home Assistant stężenie CO2 w jednym pomieszczeniu, przez węzeł ESPHome, do którego jest podłączony. Ramka pokazuje to pomieszczenie na stronie powietrza, obok czujników z innych pomieszczeń."
       }
     },
     "assistant": {

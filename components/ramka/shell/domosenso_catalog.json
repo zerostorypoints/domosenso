@@ -162,6 +162,12 @@
    "page": true
   },
   {
+   "id": "m5stack-unit-co2l",
+   "match": [],
+   "name": "M5Stack Unit CO2L",
+   "page": false
+  },
+  {
    "id": "mi-flora",
    "match": [
     {
