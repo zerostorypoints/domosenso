@@ -14,6 +14,16 @@ What a home needs to know beyond `component.yaml`.
   integration. The score matches the Ruuvi app's "Air Quality /100"; enable it by hand for the
   Ramka's air page.
 
+## M5Stack Unit CO2L (`esphome`)
+
+- **A room with CO₂ only.** The unit (a Sensirion SCD41) hangs from an Atom Lite running ESPHome;
+  wiring, firmware and a printable stand are in the device guide `devices/m5stack-unit-co2l.md`.
+  Give the room's `air` just `co2`: the thresholds seed the CO₂ limit and nothing for the readings
+  the unit lacks (score, PM2.5, VOC, NOx).
+- The unit also reports temperature and humidity, warmed by the Atom next to it. Keep the room's
+  `climate` on its Tapo sensor; use the unit's readings only where the room has nothing else
+  *(inference: the offset was not measured)*.
+
 ## Tapo sensors (`tplink`)
 
 - The TP-Link account is entered in Home Assistant's UI; the hub is then polled on the home network.

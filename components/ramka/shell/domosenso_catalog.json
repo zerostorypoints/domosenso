@@ -163,9 +163,17 @@
   },
   {
    "id": "m5stack-unit-co2l",
-   "match": [],
+   "match": [
+    {
+     "entity_names": [
+      "CO2"
+     ],
+     "integration": "esphome",
+     "note": "inference"
+    }
+   ],
    "name": "M5Stack Unit CO2L",
-   "page": false
+   "page": true
   },
   {
    "id": "mi-flora",
