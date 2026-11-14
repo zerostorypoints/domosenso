@@ -373,7 +373,8 @@ function drawPlants(parts, ctx) {
     setText(row.querySelector(".r"), plant.name);
     setText(row.querySelector(".lt"), plant.reasons.length
       ? plant.reasons.map((r) => ctx.t(`card.pocket.plants.reason.${r}`)).join(" · ")
-      : ctx.t(plant.rank === 4 ? "card.pocket.plants.no_reading" : "card.pocket.plants.fine"));
+      : ctx.t(plant.rank === 4 ? "card.pocket.plants.no_reading"
+        : plant.hydro ? "card.pocket.plants.hydroculture" : "card.pocket.plants.fine"));
     const dot = row.querySelector(".dot");
     const name = ["dot", PLANT_TONE(plant)].filter(Boolean).join(" ");
     if (dot.className !== name) dot.className = name;

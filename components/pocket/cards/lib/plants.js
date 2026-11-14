@@ -35,6 +35,8 @@ const ATTRIBUTE = { moisture: "moisture", conductivity: "conductivity", illumina
   temperature: "temperature", battery: "battery" };
 export const REASONS = ["thirsty", "too_wet", "needs_light", "too_much_light", "cold", "warm",
   "needs_fertiliser", "too_much_fertiliser", "low_battery"];
+// The reasons only soil readings give; a hydroculture plant never has them (SPEC-048).
+const SOIL_REASONS = new Set(["thirsty", "too_wet", "needs_fertiliser", "too_much_fertiliser"]);
 export const DEFAULT_BANDS = Object.freeze({ min_moisture: 15, max_moisture: 60, min_conductivity: 350,
   max_conductivity: 2000, min_brightness: 500 });
 export const LOW_BATTERY = 15;
@@ -87,9 +89,13 @@ function brightest(hass, id, attributes) {
 function readPlant(hass, id) {
   const attributes = hass.states[id].attributes ?? {};
   const bands = { ...DEFAULT_BANDS, ...(attributes.domosenso_bands ?? {}) };
+  // SPEC-048: in hydroculture the sensor reads only the pebbles above the reservoir, so moisture
+  // and fertiliser are left out (not shown as missing) and the plant is judged on light and warmth.
+  const hydro = attributes.domosenso_medium === "hydroculture";
   const reasons = new Set();
   const readings = [];
   for (const reading of READINGS) {
+    if (hydro && (reading === "moisture" || reading === "conductivity")) continue;
     const entity = sensorOf(hass, id, reading);
     const value = entity ? numeric(hass, entity) ?? attrNumber(attributes[ATTRIBUTE[reading]])
       : attrNumber(attributes[ATTRIBUTE[reading]]);
@@ -120,14 +126,17 @@ function readPlant(hass, id) {
     readings.push({ reading, entity, value, unit, tone });
   }
   const problem = String(attributes.problem ?? "").toLowerCase();
-  for (const [pattern, reason] of PROBLEMS) if (pattern.test(problem)) reasons.add(reason);
+  for (const [pattern, reason] of PROBLEMS) {
+    if (hydro && SOIL_REASONS.has(reason)) continue;
+    if (pattern.test(problem)) reasons.add(reason);
+  }
   const ordered = REASONS.filter((reason) => reasons.has(reason));
   const moisture = readings.find((r) => r.reading === "moisture")?.value;
   let rank = ordered.length ? 2 : 3;
   if (ordered.includes("thirsty")) rank = 0;
   else if (ordered.includes("too_wet")) rank = 1;
   else if (!ordered.length && moisture == null && !readings.some((r) => r.value != null)) rank = 4;
-  return { id, name: attributes.friendly_name || objectId(id).replace(/_/g, " "), readings, reasons: ordered, rank };
+  return { id, name: attributes.friendly_name || objectId(id).replace(/_/g, " "), readings, reasons: ordered, rank, hydro };
 }
 
 // The HA area a plant stands in (see the header), or null.
