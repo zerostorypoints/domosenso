@@ -40,3 +40,21 @@ uv run --with cryptography python tests/acceptance/hifisync_studio.py \
 Allow up to six minutes for the real revalidation interval. For a faster fixture run, add `--accelerate-fixture`. It changes the polling intervals only in temporary files inside the test container, with the same API and reconciliation logic.
 
 Browser captures at 1100 × 720 and 720 × 1100 exercise the pinned renderer and touch navigation. A local APK using a separate package ID is suitable for a physical test alongside the installed app. Physical display, installation-specific HA mapping and a real HiFiSync account require their own acceptance. Use the version pins in the delivered branch and artifact manifest to identify the exact revisions exercised.
+
+## HiFiSync drawings on Studio 0.2.2
+
+Use matching HiFiSync web, connector, Frame bridge and Frame Android revisions.
+HiFiSync provides optional component dimensions and driver metadata through its
+existing scoped API. There is no new database migration for the drawings.
+The bridge sends the extra fields only to clients that advertise support.
+System uses the catalog rack elevation and the saved shelf order where
+available. Equipment on the same saved shelf is represented in sequence.
+Room uses the HiFiSync isometric view with its top-view preset. Unknown
+dimensions and incomplete room geometry retain the existing simple views.
+
+For a physical trial alongside the existing Frame, build with
+`FRAME_ANDROID_PACKAGE=com.domosenso.frame.hifisyncpilot` and a strictly
+increasing `FRAME_ANDROID_VERSION_CODE` for that package. The local test APK
+uses a separate Android application identity and pairing. Select Ramka /
+Studio in the pilot app after pairing. Test both room presets and verify
+that the chosen preset remains visible during ongoing playback updates.
