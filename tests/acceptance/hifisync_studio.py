@@ -1,7 +1,6 @@
 """Manual Docker-backed SPEC-049 acceptance. Uses synthetic credentials and data."""
 import argparse
 import base64
-from contextlib import contextmanager
 import json
 from pathlib import Path
 import secrets
