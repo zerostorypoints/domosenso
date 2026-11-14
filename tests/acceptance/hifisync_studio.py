@@ -118,7 +118,7 @@ def poll(callback, timeout=45):
 
 def snapshot(system_id, system_name, room_name):
     return {'version':1,'revision':'fixture-'+system_id,'system':{
-        'id':system_id,'name':system_name,'components':[{'id':'amp','role':'amplifier','quantity':1,'label':'Fixture amplifier'}],
+        'id':system_id,'name':system_name,'components':[{'id':'amp','role':'amplifier','quantity':1,'label':'Fixture amplifier','drawing':{'rackKind':'amp','widthCm':43,'heightCm':15}}],
         'rack':[['amp']]},'room':{'name':room_name,'widthM':4.2,'lengthM':5.8,'heightM':2.6,'placements':[
         {'role':'listening','xM':2.1,'yM':3.7,'rotationDeg':None}]}}
 
@@ -202,8 +202,9 @@ def run(config, container, args):
         admin.call(domain+'approve',deviceId=pending['deviceId'],code=pending['code'])
         profile=frame.call(domain+'profile')
         assert profile['endpoints'][0]['hifisyncVersion']==1
+        assert profile['endpoints'][0]['hifisyncDrawingsVersion']==1
         def detect():
-            s=frame.call(domain+'studio_display',offset=0,hifisyncVersion=1)
+            s=frame.call(domain+'studio_display',offset=0,hifisyncVersion=1,hifisyncDrawingsVersion=1)
             return s
         detect()
         lib=admin.call(domain+'studio_library')
@@ -211,6 +212,9 @@ def run(config, container, args):
         ready=poll(lambda:(value if (value:=detect())['data'].get('hifisync') else None))
         assert ready['screen']=='music', ready['screen']
         assert ready['data']['hifisync']['snapshot']['room']['name']=='Private Room'
+        assert ready['data']['hifisync']['snapshot']['system']['components'][0]['drawing']['rackKind']=='amp'
+        previous=frame.call(domain+'studio_display',offset=0,hifisyncVersion=1)
+        assert 'drawing' not in previous['data']['hifisync']['snapshot']['system']['components'][0]
         legacy = frame.call(domain+'studio_display',offset=0)
         assert 'hifisync' not in legacy['data']
         assert all(not s['id'].startswith('hifisync') for m in legacy['config']['modes'] for s in m['screens'])
