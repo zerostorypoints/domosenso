@@ -94,3 +94,12 @@ test("a recorded daily peak takes precedence over HA's low-light problem", () =>
   assert.deepEqual(herbs.reasons, []);
   assert.equal(herbs.readings.find((reading) => reading.reading === "illuminance").tone, "good");
 });
+
+test("a recorded low daily peak still gives light advice when the live sensor is unavailable", () => {
+  const hass = plantsHass({
+    "plant.herbs": st("ok", { friendly_name: "Herbs" }),
+    "sensor.herbs_illuminance": st("unavailable"),
+    "sensor.herbs_illuminance_max_24h": st(100),
+  });
+  assert.deepEqual(find(plantsOf(hass, config), "plant.herbs").reasons, ["needs_light"]);
+});
