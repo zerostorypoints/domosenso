@@ -29,6 +29,7 @@ code,pre,.mono,.eyebrow,.step-number,.pill { font-family: var(--mono); }
 .brand svg { width: 29px; height: 29px; margin-right: 9px; }
 .brand small { font: 9px var(--mono); letter-spacing: .1em; border-left: 1px solid var(--line); padding: 9px 0 9px 16px; margin-left: 16px; }
 .desktop-nav { display: flex; align-items: center; gap: 27px; font-size: 12px; }
+.desktop-nav a { white-space: nowrap; }
 .mobile-nav { display: none; }
 .edition-inner { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); padding: 12px 0; font: 9px/1.5 var(--mono); letter-spacing: .06em; }
 .edition-inner>span:first-child { display: flex; align-items: center; gap: 10px; }
@@ -145,6 +146,9 @@ th { font: 10px var(--mono); text-transform: uppercase; color: var(--muted); }
  .component-card { grid-template-columns: 45px 1fr 1.2fr 20px; gap: 20px; }
  .component-meta { grid-column: 2/4; flex-direction: row; flex-wrap: wrap; gap: 20px; }
  .component-card>.row-arrow { grid-column: 4; grid-row: 1; }
+}
+@media(max-width:900px) {
+ .desktop-nav { gap: 13px; }
 }
 @media(max-width:700px) {
  .header,.edition,.footer,.page { padding-inline: 22px; }
