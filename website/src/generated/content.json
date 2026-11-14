@@ -24,7 +24,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -134,7 +134,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -405,7 +405,7 @@
           "preview": "/previews/calendar.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -490,7 +490,7 @@
           "preview": "/previews/climate.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -505,7 +505,7 @@
           "preview": "/previews/air.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -602,7 +602,7 @@
           "preview": "/previews/floorplan.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -710,7 +710,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -819,7 +819,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -924,7 +924,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -943,7 +943,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1047,7 +1047,7 @@
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1132,7 +1132,7 @@
           "preview": "/previews/climate.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1147,7 +1147,7 @@
           "preview": "/previews/air.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1162,7 +1162,7 @@
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1177,7 +1177,7 @@
           "preview": "/previews/photos.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1192,7 +1192,7 @@
           "preview": "/previews/status.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1211,7 +1211,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1226,7 +1226,7 @@
           "preview": "/previews/floorplan.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1242,7 +1242,7 @@
           "preview": "/previews/music.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1257,7 +1257,7 @@
           "preview": "/previews/calendar.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         },
         {
@@ -1272,7 +1272,7 @@
           "preview": "/previews/clock-weather.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1284,8 +1284,8 @@
         "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
       ],
       "id": "ramka",
-      "version": "0.19.0",
-      "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+      "version": "0.20.0",
+      "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
       "evidencePaths": [
         "components/ramka/component.yaml"
       ],
@@ -1399,7 +1399,7 @@
           "preview": "/previews/controls.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1503,7 +1503,7 @@
           "preview": "/previews/clock-weather.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-          "sourceCommit": "968de694187054ab8c372f5640516a5c7877767b",
+          "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
           "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
         }
       ],
@@ -1620,7 +1620,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.19.0"
+          "version": "0.20.0"
         },
         {
           "id": "bermuda-presence",
@@ -1708,7 +1708,7 @@
         },
         {
           "id": "ramka",
-          "version": "0.19.0"
+          "version": "0.20.0"
         },
         {
           "id": "gate-remote",
@@ -1815,7 +1815,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.19.0"
+          "version": "0.20.0"
         }
       ],
       "body": "# M5Stack Unit CO2L: wiring, firmware and enclosure\n\nM5Stack's Unit CO2L (SKU U104) is a Sensirion **SCD41** photoacoustic CO₂ sensor that also reads\ntemperature and humidity. It comes with a 20 cm Grove cable and hangs from an M5Stack Atom Lite, which\nreports it to Home Assistant over ESPHome. One unit gives one room a CO₂ reading, and the Ramka shows\nthat room on its Air page (SPEC-042). Device file: [m5stack-unit-co2l.yaml](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/m5stack-unit-co2l.yaml).\n\n## Wiring\n\nPlug the unit's Grove cable into the Atom Lite's Grove port. It needs no other wiring.\n\n| Atom Lite Grove pin | signal | ESPHome |\n|---|---|---|\n| 5V | power (the unit regulates to 3.3 V) | |\n| G | ground | |\n| G26 | I²C SDA | `sda: GPIO26` |\n| G32 | I²C SCL | `scl: GPIO32` |\n\nKeep the unit at the end of its cable, away from the Atom. The Atom's warmth raises the unit's own\ntemperature reading.\n\n## Firmware\n\nThe catalog has no package for the unit yet. Add this to the Atom's ESPHome device file, next to\nwhatever the node already runs (a `bermuda-presence` proxy, for example):\n\n```yaml\nsubstitutions:\n  altitude: 300m   # the room's height above sea level, for the pressure compensation\n\ni2c:\n  id: grove_i2c\n  sda: GPIO26\n  scl: GPIO32\n\nsensor:\n  - platform: scd4x\n    id: co2_unit\n    i2c_id: grove_i2c\n    altitude_compensation: ${altitude}\n    automatic_self_calibration: true\n    update_interval: 60s\n    co2:\n      name: CO2\n    temperature:\n      name: CO2 unit temperature\n      disabled_by_default: true   # the unit's own air, warmed by the Atom\n    humidity:\n      name: CO2 unit humidity\n      disabled_by_default: true\n\napi:\n  actions:\n    - action: calibrate_co2\n      variables:\n        co2_ppm: int\n      then:\n        - scd4x.perform_forced_calibration:\n            value: !lambda 'return co2_ppm;'\n            id: co2_unit\n```\n\nName the CO₂ entity in the Ramka's `air` input as one room, for example\n`{label: Bedroom, room: bedroom, co2: sensor.<node>_co2}`.\n\n## After the first start\n\n- **Accuracy (Sensirion datasheet):** ±(50 ppm + 2.5 %) up to 1000 ppm and ±(50 ppm + 3 %) up to\n  2000 ppm; specified to 5000 ppm.\n- **Self-calibration:** it assumes the room reaches outdoor air, about 425 ppm, once a week. Treat the\n  first week's readings as provisional.\n- **A room that is never aired:** set `automatic_self_calibration: false` and calibrate by hand a few\n  times a year. Run the unit for 3 minutes at a wide-open window, then call the node's\n  `calibrate_co2` action with `co2_ppm: 425`.\n\n## Enclosure\n\n![The dragon stand closed: a dark figure of a dragon sitting on a rock, the sensor in its openwork head with gill slots, a wing on each side and the plunger's window in the rock](/enclosures/m5stack-co2l-atom-lite/closed.png)\n\nA printable bedside figure for the unit and the Atom: a dragon on a rock, joined by printed dowels and\ndovetail keys without screws. The unit lies in the dragon's openwork head. The Atom sits in a cave in\nthe rock, where a hollow plunger presses its button and lets its LED glow through. The Grove ribbon\nruns up a hollow core through the body and neck, and the USB-C cable through a tunnel in the rock.\nThe cave can be on the dragon's left or right.\n\n![What goes where: the cave half with the four dowel holes labelled by pin length, the Atom on the plunger and the unit in the head; the closed figure with the two keys sliding in from below, the long key into the rock's back face and each wing's peg into its shoulder socket](/enclosures/m5stack-co2l-atom-lite/connections.png)\n\n- [How to print and assemble it](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/README.md): the test cuts and\n  fit coupon to print first, the parts, print settings, assembly, measurements and what a print has\n  not confirmed yet.\n- Bambu Studio projects (P2S, settings applied). Halves with the cave on the dragon's left:\n  [cave half](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/light_left/dragon_stand-half_r.3mf), [other half](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/light_left/dragon_stand-half_l.3mf);\n  with the cave on its right: [cave half](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/light_right/dragon_stand-half_l.3mf),\n  [other half](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/light_right/dragon_stand-half_r.3mf). Shared parts:\n  [right wing](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/3mf/dragon_stand-wing_r.3mf), [left wing](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/3mf/dragon_stand-wing_l.3mf),\n  [plunger](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/3mf/dragon_stand-plunger.3mf), [dowels](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/3mf/dragon_stand-plate_dowels_petg.3mf),\n  [bottom key](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/3mf/dragon_stand-key_bottom.3mf) (print two), [back key](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/3mf/dragon_stand-key_rear.3mf).\n- STL for other slicers: the same parts in the folder's `light_left/`, `light_right/` and `stl/`.\n- [Parametric source](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/enclosure.scad) (OpenSCAD) and\n  [build script](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/devices/enclosures/m5stack-co2l-atom-lite/build.py).\n\nThe first build printed the halves, the wings and the keys. Its dowels came off the bed: they now lie\non a wider flat with a brim. Its wings were loose in 4 mm sockets: the pegs now go 8 mm deep. Neither\nfix has been printed yet.",
@@ -1920,7 +1920,7 @@
       "compatibility": [
         {
           "id": "ramka",
-          "version": "0.19.0"
+          "version": "0.20.0"
         }
       ],
       "body": "# Setting up the Ramka's tablet\n\nFrom a reset Android tablet to the Ramka on screen, with the TCL NXTPAPER 11 Plus (9469X,\nAndroid 16, `devices/tcl-9469x.yaml`) as the worked example. Other makers name the menus\ndifferently; what each setting is for is said next to it, so the same switch can be found\nelsewhere. The reasons behind the settings and the Companion app's quirks:\n[the ramka field notes](https://github.com/zerostorypoints/domosenso/blob/a87cf1195028af78a2d358fcb8bc2a0212375b1b/components/ramka/README.md#the-tablet).\n\nThe paths for the screen lock, the WebView version, app pinning and the Companion app's own\nsettings were written down on the tested TCL. The others (system update, special app access,\ndeveloper options) are stock Android 16 paths, not checked on it. The `adb` line next to a setting\ndoes the same from a computer, with USB debugging on (Settings → About tablet → tap *Build\nnumber* seven times, then Settings → System → Developer options → *USB debugging*).\n\n## 1. In Home Assistant, before the tablet\n\n- **A user for the tablet.** Settings → People → Add person, *Allow login* on, *Administrator*\n  off, *Can only log in from the local network* on if the tablet never leaves home. The tablet\n  signs in as this user, never as you: the device and its entities get registered under it, and\n  kiosk-mode hides the header and sidebar for this user only. Its user name goes into the\n  `kiosk_user` input.\n- **kiosk-mode** (optional): HACS → Frontend → *kiosk-mode* (NemesisRE). Without it the Ramka\n  shows Home Assistant's header and sidebar. `?disable_km` on a URL shows them again.\n\n## 2. Android\n\n| what | where on the TCL | why | `adb` instead |\n|---|---|---|---|\n| Android updates | Settings → System → System update | the WebView below needs a current Android | — |\n| *Android System WebView* 123 or newer | Play Store → update; the version: Settings → Apps → See all apps → Android System WebView, at the bottom | the cards import JSON modules; older WebViews do not load them | `adb shell dumpsys package com.google.android.webview \\| grep versionName` |\n| **Screen lock: None** | Settings → Security → Screen lock → None | the package wakes the screen; with a PIN or a swipe it stops on the lock screen | `adb shell locksettings set-disabled true` (only while no PIN is set) |\n| NXTPAPER key: **Color Paper** | the NXTPAPER key at the right end of the top edge | Ink Paper turns photos and album art grey; Home Assistant cannot switch the mode | — |\n| charge limit | none on this model; it stops at 80 % on the charger by itself | protects the battery on a tablet that never leaves the charger; on a tablet without a limit, use its battery-protection setting or a smart plug | — |\n\n## 3. The Companion app\n\nInstall *Home Assistant* (`io.homeassistant.companion.android`) from the Play Store. 2026.8.4 or\nnewer if the Play Store offers it: 2026.6.5 can keep the screen on for good (field notes).\n\n**Permissions**, Settings → Apps → Home Assistant (the app asks for the first two while it is set up;\nif they were refused, they are under *Advanced* or Settings → Apps → Special app access):\n\n| permission | value | without it | `adb` instead |\n|---|---|---|---|\n| *Modify system settings* | allowed | brightness and screen-timeout commands are dropped without a word | `adb shell appops set io.homeassistant.companion.android WRITE_SETTINGS allow` |\n| *Display over other apps* | allowed | the app cannot come to the front after a wake; `app_importance` reads `cached` | `adb shell appops set io.homeassistant.companion.android SYSTEM_ALERT_WINDOW allow` |\n| Battery → *Unrestricted* (battery optimisation **off**) | unrestricted | Android stops the app in the background and the commands stop arriving | `adb shell dumpsys deviceidle whitelist +io.homeassistant.companion.android` |\n| Notifications | allowed | — | — |\n| Location | may be denied | — | — |\n\n**Sign in** to your Home Assistant's local URL as the tablet's user (section 1).\n\n**App settings**, in the app: Settings → Companion app:\n\n| setting | value | why |\n|---|---|---|\n| Device name | short, lower case, e.g. `ramka` | becomes `notify.mobile_app_<slug>` and `sensor.<slug>_*`, which go into the `tablet_device` input; set it before the first sign-in finishes, or rename the entities afterwards |\n| **Keep screen on** | **off** | with it on the screen never sleeps; the package keeps the screen awake through Android's screen timeout instead |\n| Fullscreen | on | hides Android's status and navigation bars |\n| Screen orientation | Landscape | the tested layout is landscape |\n| Always show first view on app start | on | after Android kills the app it comes back on the Ramka, not on the last page |\n| Persistent connection | Always | commands arrive over the local websocket, not Firebase: no internet dependency, no delay |\n| Manage sensors | on: `light_sensor`, `battery_level`, `app_importance`, `charger_type`, `battery_temperature`, `is_charging`; for your own view also `interactive`, `battery_state`, `battery_health` | the package reads the first six; a disabled sensor is missing from Home Assistant |\n| Sensor update frequency | Fast always | once a minute; the slower settings drop to 15 minutes and brightness lags behind the room |\n\n**Profile**, in the app as the tablet's user (the person icon at the bottom of the sidebar):\n*Dashboard* = the Ramka's (`dashboard_path`, `dashboard-ramka` by default), *Language* and *Time\nformat* as the dashboard's language, *Theme* dark. Once kiosk-mode is active the profile page is\nhidden: set these first, or open the profile with `?disable_km`.\n\n**App pinning: leave it off.** Pinning (Settings → Security → App pinning) keeps a guest inside\nthe app, but it also blocks the way to unstick a screen that will not sleep (`command_launch_app`\nto Android's Settings and back, field notes). The Ramka's Exit button on the controls is its way out\ninstead: a tap opens `exit_left`, a long press reloads the Ramka with kiosk-mode off.\n\n## 4. Measure, render, check\n\n1. `domosenso probe <target> --install`, open `<HA URL>/domosenso-probe/0` in the Companion app\n   with the tablet in its final orientation, `domosenso probe <target> --read`, then\n   `domosenso probe <target> --remove`. The `viewport` goes into the `screen` input; `webview`\n   under 123 or `json-modules no` means the cards will not load; `user admin` means the app is\n   signed in as an administrator (section 1).\n2. Fill the inputs (`tablet_device`, `screen`, `kiosk_user`, the radar), render, deploy to staging,\n   look at the shots, then production. Press `input_button.<prefix>_reload` once the tablet shows\n   the dashboard.\n3. With nobody near the radar for `off_delay_s` the screen goes dark; walking in wakes it on the\n   ambient page. `sensor.<slug>_app_importance` reads `foreground` while the screen is on and\n   `top_sleeping` while it sleeps.\n\n| symptom | look at |\n|---|---|\n| the screen never sleeps | *Keep screen on* (section 3); on Companion 2026.6.5 see the field notes |\n| it wakes onto the lock screen | Screen lock (section 2) |\n| brightness never changes, the screen never times out | *Modify system settings* |\n| it wakes on the launcher or another app, `app_importance` = `cached` | *Display over other apps* |\n| commands arrive late or not at all after a while | battery *Unrestricted*, *Persistent connection* |\n| a sensor the package needs is `unavailable` or missing | Manage sensors |\n| the cards stay empty or show \"Custom element doesn't exist\" | the WebView version |\n| English words on a Polish (or German) dashboard | the profile's language |\n\n\n## A separate dashboard application\n\nFrom Ramka 0.14.0, set the installation input `tablet_wake_package: com.domosenso.frame` when\nFrame is the dashboard application. The default remains Home Assistant Companion. Keep Companion\ninstalled, signed in and allowed to deliver its existing screen/launch notification commands.\nInstall and pair Frame separately before selecting it. Render, stage and review the deployment\nplan, then verify a real radar wake restores the chosen app. Do not enable competing native radar\ncontrol when HA already owns sleep and brightness. This does not change any live HA preferences.\n\n### Home Assistant on the tablet\n\nFor an on-device HA Server pilot, Frame and Companion remain separate apps. The optional\n[official minimal Companion](https://companion.home-assistant.io/docs/core/android-flavors/)\nuses package `io.homeassistant.companion.android.minimal`. Register its local server at\n`http://127.0.0.1:8123` with a regular kiosk account. Enable `mobile_app` in local HA.\nAn existing full Companion can retain its NAS registration while the minimal client serves\nlocal HA. During isolation, disable the old Android package locally. Removing a server inside\nCompanion can revoke its session on that HA.\n\nName the new device, for example, `Frame local`, then confirm the generated notify service\nand sensor slugs. Put the actual values in this installation's Ramka inputs and render again.\nFor example:\n\n```yaml\ntablet_device:\n  notify: notify.mobile_app_frame_local\n  sensors: frame_local\ntablet_wake_package: com.domosenso.frame\n```\n\nUse the installed Frame package for `tablet_wake_package`, including a pilot suffix when\napplicable. Keep Frame as the default Home app and save the classic HA dashboard selection.\nLocal HA must receive the radar states directly. Its generated screen scripts then own sleep,\nbrightness and the launch of Frame.\n\nIn the minimal client's server settings, set **Persistent connection** to **Always** and\nconfirm Local Push is connected. Apply the permissions and battery settings from section 3.\nUnder **Manage sensors**, enable the listed sensors and enable **Interactive** and\n**Screen off timeout** for verification. Confirm that local HA receives their updates.\nMatch the account's display name, language, time format, backend-selected theme and default\ndashboard to the rendered kiosk configuration.\n\nAfter continuous radar absence for the configured delay, verify an actual screen-off report.\nApproach the tablet, verify radar presence and screen-on, then observe a reading page followed\nby a decoded photo without touching the screen. Repeat after reboot and with USB disconnected.\nTest LAN Wi-Fi with WAN unavailable separately from switching Wi-Fi off. Companion's persistent\nconnection can depend on Android reporting an active network even for a loopback server.\n[Local Push requirements](https://companion.home-assistant.io/docs/notifications/notification-local/)",
