@@ -159,3 +159,25 @@ test('an unconditionally placed room widget still requires its negotiated capabi
   s.capabilities = s.capabilities.filter(capability => capability !== 'hifisync-room');
   assert.doesNotMatch(text(mount(s)), /Listening room/);
 });
+
+test('bounded drawing metadata is accepted and the rack is mounted', () => {
+ const s=hiFiSnapshot();
+ s.data.hifisync.snapshot.system.components[0].drawing={rackKind:'amp',widthCm:43,heightCm:15};
+ const el=mount(s);
+ assert.ok(el.shadowRoot.querySelector('[data-hifisync-drawing="system"]'));
+ s.data.hifisync.snapshot.system.components[0].drawing.widthCm=1001;
+ assert.throws(()=>validateSnapshot(s), /Invalid/);
+});
+
+test('enhanced room uses the HiFiSync renderer with saved room placement', () => {
+ const s=hiFiSnapshot('hifisync-room');
+ s.data.hifisync.snapshot.system.components[0].drawing={rackKind:'amp',widthCm:43,heightCm:15};
+ const room=s.data.hifisync.snapshot.room;
+ room.heightM=2.7;
+ room.placements=[{role:'left',xM:1,yM:1,rotationDeg:0}];
+ const el=mount(s);
+ const view=el.shadowRoot.querySelector('[data-hifisync-drawing="room"]');
+ assert.ok(view);
+ el.snapshot={...s,fetchedAt:new Date().toISOString()};
+ assert.equal(el.shadowRoot.querySelector('[data-hifisync-drawing="room"]'),view);
+});

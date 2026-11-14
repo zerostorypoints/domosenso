@@ -2,6 +2,7 @@
 import {REGISTRY, positions, validateConfig, UI_VERSION} from './contract.js';
 import {translate} from './renderer-i18n.js';
 import {CSS} from './renderer-style.js';
+import {mountHiFiDrawing} from './hifisync-drawings.js';
 export {UI_VERSION};
 const fail=()=>{throw Error('Invalid Frame display contract');};
 const plain=v=>v!==null&&typeof v==='object'&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
@@ -41,6 +42,23 @@ export function validateSnapshot(s){
  optional(d.hifisync,validateHiFiProjection);
  optional(d.runtime,r=>{shape(r,['shieldUntil','approachEnabled']);optional(r.shieldUntil,x=>check(date(x)));optional(r.approachEnabled,bool);});return s;
 }
+function validateDrawing(drawing) {
+ shape(drawing,['rackKind','widthCm','heightCm','depthCm','floorstanding','drivers','bassAlignment','active']);
+ check(['amp','phono','tt','src','spk','sub','dac'].includes(drawing.rackKind));
+ for(const dimension of ['widthCm','heightCm','depthCm'])optional(drawing[dimension],value=>number(value,.01,1000));
+ for(const flag of ['floorstanding','active'])optional(drawing[flag],bool);
+ const label=value=>check(str(value,80)&&value.length>0);
+ optional(drawing.bassAlignment,label);
+ optional(drawing.drivers,drivers=>{
+  list(drivers,16);
+  for(const driver of drivers){
+   shape(driver,['role','size','count','type','face']);
+   label(driver.role);number(driver.size,.01,100);number(driver.count,1,32);
+   check(Number.isInteger(driver.count));
+   optional(driver.type,label);optional(driver.face,label);
+  }
+ });
+}
 function validateHiFiProjection(projection) {
  shape(projection,['snapshot','stale','validUntil']);
  bool(projection.stale);
@@ -55,7 +73,8 @@ function validateHiFiProjection(projection) {
  list(system.components,64);
  const ids=new Set();
  for(const component of system.components){
-  shape(component,['id','label','role','quantity']);
+  shape(component,['id','label','role','quantity','drawing']);
+  optional(component.drawing,validateDrawing);
   text(component.id);text(component.label);text(component.role);
   check(!ids.has(component.id)&&Number.isInteger(component.quantity)&&component.quantity>=1&&component.quantity<=64);
   ids.add(component.id);
@@ -83,7 +102,7 @@ const stamp=seconds=>{if(!finite(seconds))return '—';const n=Math.max(0,Math.f
 export class FrameUI extends (globalThis.HTMLElement||class{}){
  constructor(){super();this.attachShadow({mode:'open'});this._paused=false;this._portraitOverride=null;this._autoPortrait=false;this._shieldUntil=0;this._suppressClick=0;}
  connectedCallback(){if(globalThis.ResizeObserver){this._observer=new ResizeObserver(entries=>{const r=entries[0]?.contentRect;if(r&&r.width&&r.height){const portrait=r.height>r.width;if(portrait!==this._autoPortrait){this._autoPortrait=portrait;this.render();}}});this._observer.observe(this);}this._timer=setInterval(()=>this._tick(),1000);this.render();}
- disconnectedCallback(){clearInterval(this._timer);this._observer?.disconnect();}
+ disconnectedCallback(){clearInterval(this._timer);this._observer?.disconnect();this._removeHiFiDrawing();}
  set snapshot(v){validateSnapshot(v);if(v.mode==='controls'&&(this._snapshot?.mode!=='controls'||this._snapshot?.screen!==v.screen))this._shieldUntil=Date.now()+700;this._snapshot=structuredClone(v);this._preview=null;this.render();}
  get snapshot(){return this._snapshot;}
  set paused(v){this._paused=!!v;this.render();}
@@ -166,6 +185,24 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
    this._button('next',{kind:'navigation',action:'next'},null,'hifisync-next'));
   return nav;
  }
+ _removeHiFiDrawing(){
+  this._drawing?.dispose();
+  this._drawing=null;
+ }
+ _renderHiFiDrawing(card,type,system,model){
+  const locale=this._snapshot.config.locale;
+  const key=JSON.stringify([system.id,type,locale,model]);
+  if(this._drawing?.key!==key){
+   this._removeHiFiDrawing();
+   const host=node('div','hifisync-drawing');
+   host.dataset.hifisyncDrawing=type;
+   for(const event of ['click','pointerdown','pointerup'])host.addEventListener(event,event=>event.stopPropagation());
+   this._drawing={key,host,dispose:mountHiFiDrawing(host,type,model,locale,key=>this.t(key))};
+  }
+  this._drawing.used=true;
+  card.classList.add('with-hifisync-drawing');
+  card.append(this._drawing.host);
+ }
  _hiFiTrack(card,projection){
   if(projection.stale)card.append(node('span','hifi-stale',this.t('old')));
   const media=this._snapshot.data.media;
@@ -179,6 +216,9 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   const {system}=projection.snapshot;
   card.append(node('h3',null,system.name));
   this._hiFiTrack(card,projection);
+  if(system.components.some(component=>component.drawing?.widthCm&&component.drawing?.heightCm)){
+   this._renderHiFiDrawing(card,'system',system,system);return;
+  }
   const groups=new Map();
   for(const component of system.components){
    const role=['amplifier','source','speaker','subwoofer','dac'].includes(component.role)?component.role:'other';
@@ -213,6 +253,10 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   this._hiFiTrack(card,projection);
   const dimensions=[room.widthM,room.lengthM,room.heightM].filter(value=>value!==null);
   card.append(node('p','hifi-dimensions',`${dimensions.map(value=>this.format(value)).join(' × ')} m`));
+  const {system}=projection.snapshot;
+  if(room.heightM&&room.placements.length){
+   this._renderHiFiDrawing(card,'room',system,room);return;
+  }
   const padding=Math.min(room.widthM,room.lengthM)*0.08;
   const placementKeys={left:'L',right:'R',subwoofer:'S',listening:'●'};
   const plan=svgNode('svg',{'data-room-plan':'',role:'img','aria-label':this.t('hifi-plan'),viewBox:`${-padding} ${-padding} ${room.widthM+padding*2} ${room.lengthM+padding*2}`});
@@ -240,6 +284,6 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
  }
  _tick(){if(!this._snapshot)return;const blocked=this._blocked();if(blocked!==this._lastBlocked||this._lastHiFiProjection!==this._hiFiProjection()){this.render();return;}for(const n of this.shadowRoot.querySelectorAll('[data-clock]'))n.textContent=this._date(Date.now(),{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});for(const n of this.shadowRoot.querySelectorAll('[data-date]'))n.textContent=this._date(Date.now(),{weekday:'long',day:'numeric',month:'long'});const m=this._snapshot.data.media;if(m?.state==='playing'&&finite(m.position)&&finite(m.duration)){const position=Math.min(m.duration,m.position+Math.max(0,Date.now()-Date.parse(this._snapshot.fetchedAt))/1000);for(const n of this.shadowRoot.querySelectorAll('[data-progress]'))n.value=position;for(const n of this.shadowRoot.querySelectorAll('[data-position]'))n.textContent=stamp(position);}}
  _interactions(shell){shell.onclick=e=>{if(Date.now()<this._suppressClick||e.target.closest('button,input,select,label'))return;const s=this._preview||this._snapshot;if(['ambient','media','controls'].includes(s.mode)||s.screen==='calendar'){if(this._emit({kind:'navigation',action:'controls'})){this._shieldUntil=Date.now()+700;this.render();}}};shell.onpointerdown=e=>{this._pointer={x:e.clientX,y:e.clientY,id:e.pointerId,control:!!e.target.closest('button,input,select,label')};};shell.onpointercancel=()=>{this._pointer=null;};shell.onpointerup=e=>{const p=this._pointer;this._pointer=null;if(!p||p.control||p.id!==e.pointerId)return;const dy=e.clientY-p.y,dx=e.clientX-p.x;if(Math.abs(dy)<55||Math.abs(dy)<=Math.abs(dx)*1.3)return;this._suppressClick=Date.now()+700;const s=this._preview||this._snapshot,calendar=this._snapshot.config.modes.find(m=>m.id===s.mode)?.screens.find(screen=>screen.id===s.screen)?.widgets.some(w=>w.type==='calendar'),action=s.mode==='ambient'&&!calendar?(dy<0?'next':'previous'):(dy<0?'ambient':'media');if(this._emit({kind:'navigation',action})){this._shieldUntil=Date.now()+700;this.render();}};}
- render(){const root=this.shadowRoot,focus=root.activeElement?.dataset.key,scrolls=new Map(Array.from(root.querySelectorAll('[data-widget]'),el=>[el.dataset.widget,el.scrollTop]));root.replaceChildren(node('style',null,CSS));const s=this._snapshot;if(!s){root.append(node('div','shell',this.t('loading')));return;}this._lastBlocked=this._blocked();this._lastHiFiProjection=this._hiFiProjection();if(s.off){root.append(node('main','sleep'));return;}const current=this._preview||s,mode=s.config.modes.find(m=>m.id===current.mode),selected=mode.screens.find(x=>x.id===current.screen),screen=mode.id==='media'&&selected.requires.some(capability=>capability.startsWith('hifisync-'))&&!this._musicScreenAvailable(selected)?mode.screens.find(candidate=>!candidate.requires.length):selected,shell=node('main',`shell ${s.config.theme}`),grid=node('div','grid');shell.lang=s.config.locale;grid.dataset.rows=this.portrait?'24':'12';grid.setAttribute('aria-label',screen.title);const ps=positions(screen,this.portrait);screen.widgets.forEach((w,i)=>{const card=node('section',`widget ${w.type}`);card.dataset.widget=w.id;card.dataset.kind=w.type;const p=ps[i];card.style.gridColumn=`${p.x+1} / span ${p.w}`;card.style.gridRow=`${p.y+1} / span ${p.h}`;card.setAttribute('aria-label',this.t(w.type));card.append(node('h2',null,w.type==='history'?`${this.t(w.options?.metric||'temperature')} · ${this.t('history')}`:this.t(w.type)));const renderers={clock:()=>this._clock(card),weather:()=>this._weather(card,w.options||{}),rooms:()=>this._rooms(card),air:()=>this._air(card),history:()=>this._chart(card,s.data.history?.[w.options?.metric||'temperature'],w.options?.days),status:()=>this._status(card),plants:()=>this._plants(card),media:()=>this._media(card),mains:()=>this._mains(card),'media-controls':()=>this._mediaControls(card),lights:()=>this._lights(card),covers:()=>this._covers(card),navigation:()=>this._navigation(card,w.options||{}),calendar:()=>this._calendar(card),photos:()=>this._photos(card),'hifisync-system':()=>this._hiFiSystem(card,mode.id),'hifisync-room':()=>this._hiFiRoom(card,mode.id)};if(REGISTRY[w.type])renderers[w.type]();grid.append(card);});shell.append(grid);const musicNavigation=mode.id==='media'&&this._hiFiNavigation(screen,mode);if(musicNavigation)shell.append(musicNavigation);if(this._offline()){const n=node('div','notice',this.t('offline'));n.setAttribute('role','status');shell.append(n);}if(s.wind){const n=node('div','notice wind',this.t('wind'));n.setAttribute('role','status');shell.append(n);}if(s.readOnly||this._preview||this._paused)shell.append(node('div','read-only',this.t(this._paused?'paused':'preview')));this._interactions(shell);root.append(shell);for(const el of root.querySelectorAll('[data-widget]'))el.scrollTop=scrolls.get(el.dataset.widget)||0;if(focus)for(const el of root.querySelectorAll('[data-key]'))if(el.dataset.key===focus)el.focus();this._tick();}
+ render(){const root=this.shadowRoot,focus=root.activeElement?.dataset.key,scrolls=new Map(Array.from(root.querySelectorAll('[data-widget]'),el=>[el.dataset.widget,el.scrollTop]));if(this._drawing)this._drawing.used=false;root.replaceChildren(node('style',null,CSS));const s=this._snapshot;if(!s){root.append(node('div','shell',this.t('loading')));return;}this._lastBlocked=this._blocked();this._lastHiFiProjection=this._hiFiProjection();if(s.off){this._removeHiFiDrawing();root.append(node('main','sleep'));return;}const current=this._preview||s,mode=s.config.modes.find(m=>m.id===current.mode),selected=mode.screens.find(x=>x.id===current.screen),screen=mode.id==='media'&&selected.requires.some(capability=>capability.startsWith('hifisync-'))&&!this._musicScreenAvailable(selected)?mode.screens.find(candidate=>!candidate.requires.length):selected,shell=node('main',`shell ${s.config.theme}`),grid=node('div','grid');shell.lang=s.config.locale;grid.dataset.rows=this.portrait?'24':'12';grid.setAttribute('aria-label',screen.title);const ps=positions(screen,this.portrait);screen.widgets.forEach((w,i)=>{const card=node('section',`widget ${w.type}`);card.dataset.widget=w.id;card.dataset.kind=w.type;const p=ps[i];card.style.gridColumn=`${p.x+1} / span ${p.w}`;card.style.gridRow=`${p.y+1} / span ${p.h}`;card.setAttribute('aria-label',this.t(w.type));card.append(node('h2',null,w.type==='history'?`${this.t(w.options?.metric||'temperature')} · ${this.t('history')}`:this.t(w.type)));const renderers={clock:()=>this._clock(card),weather:()=>this._weather(card,w.options||{}),rooms:()=>this._rooms(card),air:()=>this._air(card),history:()=>this._chart(card,s.data.history?.[w.options?.metric||'temperature'],w.options?.days),status:()=>this._status(card),plants:()=>this._plants(card),media:()=>this._media(card),mains:()=>this._mains(card),'media-controls':()=>this._mediaControls(card),lights:()=>this._lights(card),covers:()=>this._covers(card),navigation:()=>this._navigation(card,w.options||{}),calendar:()=>this._calendar(card),photos:()=>this._photos(card),'hifisync-system':()=>this._hiFiSystem(card,mode.id),'hifisync-room':()=>this._hiFiRoom(card,mode.id)};if(REGISTRY[w.type])renderers[w.type]();grid.append(card);});shell.append(grid);const musicNavigation=mode.id==='media'&&this._hiFiNavigation(screen,mode);if(musicNavigation)shell.append(musicNavigation);if(this._offline()){const n=node('div','notice',this.t('offline'));n.setAttribute('role','status');shell.append(n);}if(s.wind){const n=node('div','notice wind',this.t('wind'));n.setAttribute('role','status');shell.append(n);}if(s.readOnly||this._preview||this._paused)shell.append(node('div','read-only',this.t(this._paused?'paused':'preview')));this._interactions(shell);root.append(shell);if(this._drawing&&!this._drawing.used)this._removeHiFiDrawing();for(const el of root.querySelectorAll('[data-widget]'))el.scrollTop=scrolls.get(el.dataset.widget)||0;if(focus)for(const el of root.querySelectorAll('[data-key]'))if(el.dataset.key===focus)el.focus();this._tick();}
 }
 if(globalThis.customElements&&!customElements.get('domosenso-studio-frame'))customElements.define('domosenso-studio-frame',FrameUI);

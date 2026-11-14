@@ -66,3 +66,14 @@ Verified source gap: the current Frame lock pins catalog commit `d50300efa0ff646
 5. Document installation, reconfiguration, rotation and update steps in the owning repos. Preserve existing HA and Studio customizations. Verify in staging before requesting authorization for any production or tablet installation changes.
 
 Outside the pilot: concurrent playback and automatic player switching, historical rooms, acoustic predictions, automatic rack or speaker placement, editing HiFiSync from HA, publishing to HACS default and submitting to HA core.
+
+
+## Amendment 2026-11-14: HiFiSync drawings
+
+The maintainer approved the interactive mockup with the HiFiSync rack elevation
+on System and the HiFiSync isometric room with a top-view preset on Room.
+Studio embeds the drawings from a pinned HiFiSync source revision. The optional
+drawing metadata extends the current scoped contract. Frame requests the
+extension explicitly, and the bridge omits it for earlier clients. Persisted
+room placement and available catalog dimensions are the source of the drawings.
+The current text and plan renderers remain available for partial data.

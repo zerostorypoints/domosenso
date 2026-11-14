@@ -1,4 +1,4 @@
-# Frame Studio — shared UI 0.2.1, contract 2
+# Frame Studio — shared UI 0.2.2, contract 2
 
 The catalog owns this portable renderer, widget registry and template editor. The same generated
 renderer runs in Home Assistant and the Android app. It has no HA globals or network access.
@@ -134,3 +134,17 @@ this template is explicit. The original Classic and Blank templates remain avail
 The renderer source was recovered from the Android lock's pinned DomoSenso
 revision `d50300efa0ff646bcd8dc5d7c0aa7abfa16b9242`. See SPEC-049 for
 provenance, permission filtering and expiry.
+
+
+### HiFiSync drawing source
+
+Studio 0.2.2 embeds the HiFiSync rack elevation and interactive room drawing. The
+generated module records its exact source revision. To regenerate it, check out
+that revision in HiFiSync, install its locked pnpm dependencies and run
+`node tools/build_hifisync_drawings.mjs <HiFiSync-checkout>` from DomoSenso.
+Then build the Studio artifact with `node tools/build_frame_studio.mjs <output>`.
+The checked-in drawing module lets the Studio build run independently.
+
+The bridge provides only bounded catalog and layout data. Older bridges retain
+the text system view. Rooms without enough saved geometry retain the simple
+plan. Presets and equipment selection stay local to the displayed drawing.
