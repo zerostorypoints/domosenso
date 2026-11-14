@@ -178,5 +178,23 @@
         ]
       }
     }
+  },
+  "hifisync-system": {
+    "label": "System",
+    "category": "Media",
+    "min": [
+      6,
+      5
+    ],
+    "options": {}
+  },
+  "hifisync-room": {
+    "label": "Room",
+    "category": "Media",
+    "min": [
+      6,
+      5
+    ],
+    "options": {}
   }
 }

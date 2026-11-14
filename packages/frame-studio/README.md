@@ -1,4 +1,4 @@
-# Frame Studio — shared UI 0.2.0, contract 2
+# Frame Studio — shared UI 0.2.1, contract 2
 
 The catalog owns this portable renderer, widget registry and template editor. The same generated
 renderer runs in Home Assistant and the Android app. It has no HA globals or network access.
@@ -123,3 +123,14 @@ Discovery currently returns at most 256 candidates per role (component-marked fi
 `device_class`; entity-name guesses and automatic custom-sensor conversion are deliberately absent.
 New custom assessment scores require advanced explicit configuration. The source editor currently
 uses English; frame content remains English, German or Polish.
+
+## Optional HiFiSync Music screens
+
+The Ramka Classic · HiFiSync template places System and Room after Now Playing.
+The bridge exposes these screens only to opted-in endpoints and clients with
+a valid projection for their mapped player. Room requires a saved room. Applying
+this template is explicit. The original Classic and Blank templates remain available.
+
+The renderer source was recovered from the Android lock's pinned DomoSenso
+revision `d50300efa0ff646bcd8dc5d7c0aa7abfa16b9242`. See SPEC-049 for
+provenance, permission filtering and expiry.

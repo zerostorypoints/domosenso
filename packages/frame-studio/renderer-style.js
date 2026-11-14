@@ -21,4 +21,13 @@ export const CSS=`
 @container(max-aspect-ratio:1/1){.media-main{flex-direction:column;justify-content:center;gap:1em}.artwork{width:auto;height:44%;max-width:100%;max-height:44%}.media-info{flex:0 1 auto;width:100%}.track-title{font-size:clamp(24px,6cqw,64px)}}
 .rooms .tiles{gap:clamp(5px,1.2cqw,14px)}.rooms .tile{padding:clamp(4px,2cqw,12px);justify-content:flex-start}.rooms .tile>*{flex-shrink:0}.rooms .tile h3{font-size:clamp(10px,min(8cqw,14cqh),24px);line-height:1.15}.rooms .tile .value{font-size:clamp(18px,min(24cqw,26cqh),64px)}.rooms .tile .humidity .value{font-size:clamp(14px,min(20cqw,20cqh),44px)}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+ .shell:has(.hifi-nav){display:grid;grid-template-rows:minmax(0,1fr) auto}
+.hifi-nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:6px 12px 12px}
+.hifi-nav button:first-child{justify-self:start}.hifi-nav button:last-child{justify-self:end}
+.hifi-components,.hifi-rack{margin:.6em 0;padding-inline-start:1.4em}
+.hifi-components li{padding:.32em 0}.hifi-components strong{margin-inline-start:.6em}
+.hifi-stale{color:var(--raised);font-size:.8em}.hifi-dimensions,.hifi-track{color:var(--muted);margin:.4em 0}
+.hifisync-room svg{display:block;width:100%;height:min(68cqh,520px);margin:auto}
+.hifi-outline{fill:#242a30;stroke:#aeb9c1;stroke-width:2px;vector-effect:non-scaling-stroke}
+.hifi-point{fill:var(--accent)}.hifi-listening{fill:#e6ab71}.hifi-subwoofer{fill:#b39dde}
 `;

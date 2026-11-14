@@ -51,3 +51,63 @@ test('shield starts when delayed controls become visible',()=>{const original=Da
 test('history accepts every supported mapped source including outside',()=>{const s=snapshot();s.data.history.temperature=Array.from({length:33},(_,i)=>({label:'Room '+i,points:[[1000,20],[2000,21]]}));s.data.history.co2=Array.from({length:64},(_,i)=>({label:'Sensor '+i,points:[[1000,600],[2000,650]]}));assert.equal(validateSnapshot(s),s);});
 test('calendar widgets in renamed ambient screens use detour swipe semantics',()=>{const el=mount(),actions=[];screen(el,'calendar');el.addEventListener('frame-action',e=>actions.push(e.detail));const grid=el.shadowRoot.querySelector('.grid');grid.dispatchEvent(new PointerEvent('pointerdown',{clientX:100,clientY:200,bubbles:true}));grid.dispatchEvent(new PointerEvent('pointerup',{clientX:100,clientY:50,bubbles:true}));assert.deepEqual(actions,[{kind:'navigation',action:'ambient'}]);});
 test('negotiated media capability flags disable only unsupported controls',()=>{const s=snapshot();s.data.media.controls={play_pause:true,previous:false,next:false,power:false,volume:false,source:false};const el=mount(s),actions=[];screen(el,'media-controls');el.addEventListener('frame-action',e=>actions.push(e.detail));for(const action of ['previous','next','power','volume','source'])assert.equal(button(el,action).disabled,true,action);assert.equal(button(el,'play_pause').disabled,false);button(el,'next').click();button(el,'play_pause').click();assert.deepEqual(actions,[{kind:'media',action:'play_pause'}]);});
+
+function hiFiSnapshot(screenId = 'hifisync-system') {
+  const s = snapshot();
+  s.mode = 'media';
+  s.screen = screenId;
+  const mode = s.config.modes.find(mode => mode.id === 'media');
+  for (const [id, title] of [['hifisync-system', 'System'], ['hifisync-room', 'Room']]) {
+    mode.screens.push({id, title, duration: 0, requires: [id], widgets: [
+      {id, type: id, layout: {x: 0, y: 0, w: 12, h: 12}},
+    ]});
+    s.capabilities.push(id);
+  }
+  s.data.hifisync = {
+    validUntil: new Date(Date.now() + 60_000).toISOString(),
+    stale: false,
+    snapshot: {
+      version: 1, revision: 'test-revision',
+      system: {
+        id: '731ba61b-a737-4b53-873e-a618711ee092', name: 'Listening system',
+        components: [{id: 'amp', label: 'Reference amplifier', role: 'amplifier', quantity: 1}],
+        rack: [['amp']],
+      },
+      room: {name: 'Listening room', widthM: 4, lengthM: 6, heightM: null, placements: []},
+    },
+  };
+  return s;
+}
+
+test('System renders equipment and local track metadata with touch navigation', () => {
+  const el = mount(hiFiSnapshot());
+  assert.match(text(el), /Reference amplifier/);
+  assert.match(text(el), /Demo song/);
+  const actions = [];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  button(el, 'hifisync-next').click();
+  assert.deepEqual(actions, [{kind: 'navigation', action: 'next'}]);
+});
+
+test('Room renders the dimensions without inventing speaker positions', () => {
+  const el = mount(hiFiSnapshot('hifisync-room'));
+  assert.match(text(el), /4.*6.*m/);
+  assert.ok(el.shadowRoot.querySelector('svg[data-room-plan]'));
+  assert.equal(el.shadowRoot.querySelectorAll('[data-placement]').length, 0);
+});
+
+test('an expired private projection falls back locally while the Room screen is open', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.data.hifisync.validUntil = new Date(Date.now() - 1000).toISOString();
+  const el = mount(s);
+  assert.doesNotMatch(text(el), /Listening room/);
+  assert.match(text(el), /Demo song/);
+});
+
+test('the Room screen cannot show a projection without a room', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.data.hifisync.snapshot.room = null;
+  const el = mount(s);
+  assert.doesNotMatch(text(el), /Listening room/);
+  assert.match(text(el), /Demo song/);
+});

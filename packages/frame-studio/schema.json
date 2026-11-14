@@ -85,7 +85,9 @@
                       "calendar",
                       "photos",
                       "lights",
-                      "covers"
+                      "covers",
+                      "hifisync-system",
+                      "hifisync-room"
                     ]
                   }
                 },
@@ -1367,6 +1369,204 @@
                           },
                           "type": {
                             "const": "photos"
+                          },
+                          "layout": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "x": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "y": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "w": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              },
+                              "h": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "w",
+                              "h"
+                            ]
+                          },
+                          "portrait": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "x": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "y": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "w": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              },
+                              "h": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "w",
+                              "h"
+                            ]
+                          },
+                          "options": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "interval": {
+                                "type": "integer",
+                                "minimum": 5,
+                                "maximum": 120
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 30
+                              }
+                            },
+                            "required": []
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "layout"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_-]{0,39}$"
+                          },
+                          "type": {
+                            "const": "hifisync-system"
+                          },
+                          "layout": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "x": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "y": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "w": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              },
+                              "h": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "w",
+                              "h"
+                            ]
+                          },
+                          "portrait": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "x": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "y": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "w": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              },
+                              "h": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 24
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "w",
+                              "h"
+                            ]
+                          },
+                          "options": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "interval": {
+                                "type": "integer",
+                                "minimum": 5,
+                                "maximum": 120
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 30
+                              }
+                            },
+                            "required": []
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "layout"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_-]{0,39}$"
+                          },
+                          "type": {
+                            "const": "hifisync-room"
                           },
                           "layout": {
                             "type": "object",
