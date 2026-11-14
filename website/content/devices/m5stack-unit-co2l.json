@@ -1,0 +1,18 @@
+{
+  "id": "m5stack-unit-co2l",
+  "title": "M5Stack Unit CO2L",
+  "summary": "One room's CO2 reading on the Ramka's Air page, and a printable dragon stand for the sensor and its Atom Lite.",
+  "sourcePath": "devices/m5stack-unit-co2l.md",
+  "sourceCommit": "a87cf1195028af78a2d358fcb8bc2a0212375b1b",
+  "components": [
+    "ramka"
+  ],
+  "compatibility": [
+    {
+      "id": "ramka",
+      "version": "0.19.0"
+    }
+  ],
+  "body": "",
+  "photo": null
+}
