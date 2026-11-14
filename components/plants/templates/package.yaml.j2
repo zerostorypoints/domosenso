@@ -11,6 +11,9 @@
 [%- from '_plant-rows.jinja' import rows, bands, reading_keys with context -%]
 [%- from '_plant-source.jinja' import source_templates with context -%]
 [%- set watered = rows | selectattr('limits.min_moisture', 'defined') | list -%]
+[#- Plants in soil: the moisture history, last watered and water in. A hydroculture plant has none
+    (SPEC-048): its sensor cannot see a watering. -#]
+[%- set soil_rows = rows | rejectattr('hydro') | list -%]
 [%- set watered_list = watered | map(attribute='sensors.moisture') | list | tojson | replace('"', "'") -%]
 [%- set thresholds = watered | map(attribute='limits.min_moisture') | unique | list -%]
 [%- macro row_limit(row) -%][[ row.limits.min_moisture ]][%- endmacro -%]
@@ -63,12 +66,17 @@ homeassistant:
 [%- if row.photo %]
       entity_picture: [[ row.photo | yaml ]]
 [%- endif %]
+[%- if row.hydro %]
+      # SPEC-048: judged on light and temperature; watered by its float gauge.
+      domosenso_medium: hydroculture
+[%- else %]
 [%- set watered_name = row.name ~ ' last watered' %]
 [%- set water_in_name = row.name ~ ' water in' %]
     sensor.[[ row.id ]]_last_watered:
       friendly_name: [[ watered_name | yaml ]]
     sensor.[[ row.id ]]_water_in_days:
       friendly_name: [[ water_in_name | yaml ]]
+[%- endif %]
 [%- set peak_name = row.name ~ ' illuminance max 24h' %]
     sensor.[[ row.id ]]_illuminance_max_24h:
       friendly_name: [[ peak_name | yaml ]]
@@ -78,8 +86,10 @@ plant:
 [%- for row in rows %]
   [[ row.id ]]:
     sensors:
+[%- if not row.hydro %]
       moisture: [[ row.sensors.moisture ]]
       conductivity: [[ row.sensors.conductivity ]]
+[%- endif %]
       brightness: [[ row.sensors.brightness ]]
       temperature: [[ row.sensors.temperature ]]
 [%- for band in bands if band in row.limits %]
@@ -100,6 +110,7 @@ sensor:
     state_characteristic: value_max
     max_age:
       hours: 24
+[%- if not row.hydro %]
   # The lowest moisture of the last 3 hours, for a watering that soaks in slowly, and the drying
   # rate behind "water in": the change per second over the readings of the last 48 hours (loaded
   # from the recorder at a start, so a shorter history gives the same rate, not half of it).
@@ -119,12 +130,13 @@ sensor:
     precision: 10
     max_age:
       hours: 48
+[%- endif %]
 [%- endfor %]
 
 template:
 [%- for row in rows if row.source %]
 [[ source_templates(row, reading_keys, silent_hours) ]]
-[%- endfor %][%- for row in rows %]
+[%- endfor %][%- for row in soil_rows %]
   # Watered: a rise of 10 points between two readings (a watering shows within a minute), or 10
   # points above the 3-hour minimum for one that soaks in slowly, at most once in 3 hours. The first
   # reading after a start comes from nothing or from unavailable, which is_number(f) refuses. No
@@ -155,8 +167,10 @@ template:
 [%- endif %]
           {{ now().isoformat() if rise or soak else (last.isoformat() if last is not none else none) }}
 [%- endfor %]
+[%- if soil_rows %]
   - sensor:
-[%- for row in rows %]
+[%- endif %]
+[%- for row in soil_rows %]
       # Whole days until the moisture reaches the minimum at the last 48 hours' rate; unknown within
       # 48 hours of a watering (the rate would include it) or while the soil is not drying.
       - name: [[ row.id ]] water in days

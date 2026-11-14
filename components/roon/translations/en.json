@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "description": "A Roon Core in Home Assistant: every Roon zone becomes a media player through the core roon integration, with play and pause, seek, shuffle, repeat, grouping, transfer and Roon's own library to browse. For a zone whose amplifier Roon cannot control, Roon's volume buttons turn that amplifier's volume through Home Assistant.",
+    "devices": {
+      "roon-core": {
+        "description": "The server that runs Roon: ROCK on an Intel NUC, a Nucleus, or Roon Server on a computer or NAS. It holds the library and sends music to the zones.",
+        "does": "Through the core roon integration, Home Assistant sees each Roon zone as a media player, controls playback and volume, moves the queue between zones and groups them. Nothing leaves the home network."
+      }
+    },
+    "assistant": {
+      "explain": {
+        "title": "About Roon",
+        "description": "Roon gives each zone of a Roon Core a media player in Home Assistant and can pass Roon's volume buttons to an amplifier; installed metadata does not say what is playing.",
+        "examples": [
+          "What does Roon do?"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "description": "Roon Core w Home Assistant: każda strefa Roon staje się odtwarzaczem multimediów dzięki wbudowanej integracji roon. Odtwarzanie i pauza, przewijanie, losowa kolejność, powtarzanie, grupowanie stref, przenoszenie kolejki i przeglądanie biblioteki Roon. W strefie, w której Roon nie steruje wzmacniaczem, przyciski głośności Roon zmieniają głośność tego wzmacniacza przez Home Assistant.",
+    "devices": {
+      "roon-core": {
+        "description": "Serwer, na którym działa Roon: ROCK na Intel NUC, Nucleus albo Roon Server na komputerze lub serwerze NAS. Przechowuje bibliotekę i wysyła muzykę do stref.",
+        "does": "Dzięki wbudowanej integracji roon Home Assistant widzi każdą strefę Roon jako odtwarzacz, steruje odtwarzaniem i głośnością, przenosi kolejkę między strefami i je grupuje. Nic nie wychodzi poza sieć domową."
+      }
+    },
+    "assistant": {
+      "explain": {
+        "title": "O Roon",
+        "description": "Roon tworzy w Home Assistant odtwarzacz dla każdej strefy Roon Core i może przekazywać przyciski głośności Roon do wzmacniacza; zainstalowane metadane nie mówią, co jest odtwarzane.",
+        "examples": [
+          "Co robi Roon?"
+        ]
+      }
+    }
+  }
+}
