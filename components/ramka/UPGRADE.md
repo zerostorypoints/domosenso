@@ -3,7 +3,9 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## 0.20.0: Plant recommendations, list layout and hydroculture
+## 0.20.0
+
+### Plant recommendations and list layout
 
 The plant list fits the name, room and recommendations inside each row on a full tablet page.
 The number of plants that need attention sits next to the page counter. Light recommendations
