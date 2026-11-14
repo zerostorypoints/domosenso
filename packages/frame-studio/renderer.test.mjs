@@ -111,3 +111,12 @@ test('the Room screen cannot show a projection without a room', () => {
   assert.doesNotMatch(text(el), /Listening room/);
   assert.match(text(el), /Demo song/);
 });
+
+test('stored zero-degree orientation points away from the front wall', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.data.hifisync.snapshot.room.placements = [{role: 'left', xM: 1, yM: 1, rotationDeg: 0}];
+  const el = mount(s);
+  const direction = el.shadowRoot.querySelector('svg[data-room-plan] line');
+  assert.equal(direction.getAttribute('x2'), '1');
+  assert.ok(Number(direction.getAttribute('y2')) > 1);
+});

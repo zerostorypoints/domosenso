@@ -214,7 +214,7 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
    if(point.rotationDeg!==null){
     const length=padding*0.75;
     const angle=point.rotationDeg*Math.PI/180;
-    plan.append(svgNode('line',{x1:point.xM,y1:point.yM,x2:point.xM+Math.sin(angle)*length,y2:point.yM-Math.cos(angle)*length,stroke:'currentColor','vector-effect':'non-scaling-stroke'}));
+    plan.append(svgNode('line',{x1:point.xM,y1:point.yM,x2:point.xM-Math.sin(angle)*length,y2:point.yM+Math.cos(angle)*length,stroke:'currentColor','vector-effect':'non-scaling-stroke'}));
    }
   }
   card.append(plan);
