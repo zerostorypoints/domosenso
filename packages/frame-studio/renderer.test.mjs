@@ -113,7 +113,33 @@ test('right swipe on Room sends previous and vertical swipe still leaves Music',
   }
 });
 
-test('Music background ignores short, diagonal and drawing-owned gestures', () => {
+test('Music offers a labelled swipe surface across every eligible page', () => {
+  for (const page of ['music','hifisync-system','hifisync-room']) {
+    const s=hiFiSnapshot(page);
+    s.config.locale='pl';
+    const el=mount(s),actions=[];
+    el.addEventListener('frame-action', event => actions.push(event.detail));
+    const hint=el.shadowRoot.querySelector('.music-swipe-hint');
+    assert.equal(hint?.textContent,'Przesuń w lewo lub w prawo');
+    swipe(hint,-100,0);
+    assert.deepEqual(actions,[{kind:'navigation',action:'next'}]);
+    el.remove();
+  }
+});
+
+test('passive rack graphics can page, while controls and equipment hit targets own the gesture', () => {
+  const s=hiFiSnapshot();
+  s.data.hifisync.snapshot.system.components[0].drawing={rackKind:'amp',widthCm:43,heightCm:15};
+  const el=mount(s),actions=[];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  swipe(el.shadowRoot.querySelector('.hifisync-equipment button'),-100,0);
+  swipe(el.shadowRoot.querySelector('.sc-rack-hit'),-100,0);
+  assert.deepEqual(actions,[]);
+  swipe(el.shadowRoot.querySelector('.hifisync-drawing svg'),-100,0);
+  assert.deepEqual(actions,[{kind:'navigation',action:'next'}]);
+});
+
+test('the Room drawing owns the gesture in isometric mode and pages in top view', () => {
   const s=hiFiSnapshot('hifisync-room');
   Object.assign(s.data.hifisync.snapshot.room, {heightM:2.7,placements:[{role:'left',xM:1,yM:1,rotationDeg:0}]});
   const el=mount(s),actions=[];
@@ -121,11 +147,16 @@ test('Music background ignores short, diagonal and drawing-owned gestures', () =
   const header=el.shadowRoot.querySelector('h3');
   swipe(header,-78,0);
   swipe(header,-100,75);
-  const drawing=el.shadowRoot.querySelector('.hifisync-drawing');
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  drawing.append(svg);
-  swipe(svg,-100,0);
+  const drawing=el.shadowRoot.querySelector('[data-testid=room-isometric]');
+  swipe(drawing.querySelector('svg'),-100,0);
   assert.deepEqual(actions,[]);
+  return import('node:timers/promises').then(async ({setTimeout})=>{
+    Array.from(drawing.querySelectorAll('button')).find(button=>button.textContent==='Top view').click();
+    for(let attempt=0;drawing.querySelector(':scope > span')&&attempt<10;attempt++)await setTimeout(5);
+    assert.equal(Boolean(drawing.querySelector(':scope > span')),false);
+    swipe(drawing.querySelector('svg'),100,0);
+    assert.deepEqual(actions,[{kind:'navigation',action:'previous'}]);
+  });
 });
 
 test('without a HiFiSync projection, horizontal gestures leave Now Playing alone', () => {
@@ -133,6 +164,7 @@ test('without a HiFiSync projection, horizontal gestures leave Now Playing alone
   delete s.data.hifisync;
   const el=mount(s),actions=[];
   el.addEventListener('frame-action', event => actions.push(event.detail));
+  assert.equal(Boolean(el.shadowRoot.querySelector('.music-swipe-hint')),false);
   swipe(el.shadowRoot.querySelector('.media-info'),-110,0);
   assert.deepEqual(actions,[]);
   assert.match(text(el),/Demo song/);
