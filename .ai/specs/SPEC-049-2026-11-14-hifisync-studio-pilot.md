@@ -1,6 +1,6 @@
 # SPEC-049: HiFiSync system and room in Frame Studio
 
-- Status: draft 2026-11-14, awaiting maintainer approval.
+- Status: approved 2026-11-14 by the maintainer.
 - Source: the requested tablet pilot and the follow-up on token-based access, system selection and deletion.
 - Scope: one Home Assistant installation, one player and one selected HiFiSync system. The first acceptance scenario uses a private system. The same flow accepts a public system owned by the linked account.
 
