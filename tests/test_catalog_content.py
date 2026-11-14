@@ -14,10 +14,10 @@ REPO = Path(__file__).resolve().parent.parent
 DEMO = REPO / "examples" / "demo-home"
 MEDIA = DEMO / "media"
 
-COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "gate-remote", "lights", "media", "plants", "pocket", "ramka", "remote-access", "timers", "weather"]
+COMPONENTS = ["audio-sensor", "awnings", "backup", "bermuda-presence", "calendar", "climate-air", "floorplan", "gate-remote", "lights", "media", "plants", "pocket", "ramka", "remote-access", "roon", "timers", "weather"]
 KINDS = ["air-quality-sensor", "android-tablet", "ble-proxy", "esp32-board", "led-strip", "mains-meter", "mqtt-broker",
-         "network-audio-player", "plant-sensor", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
-DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "m5stack-led-strip-sk6812", "m5stack-module-cc1101", "mi-flora", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]
+         "network-audio-player", "plant-sensor", "roon-core", "rts-awning", "sound-sensor", "temperature-humidity-sensor", "wind-sensor"]
+DEVICES = ["cc1101", "hegel-h400", "hlk-ld2410c", "hue-bridge", "m5stack-atom-echos3r", "m5stack-atom-lite", "m5stack-led-strip-sk6812", "m5stack-module-cc1101", "m5stack-unit-co2l", "mi-flora", "roon-core", "ruuvi-air", "shelly-pm-mini-gen3", "tapo-t315", "tcl-9469x"]
 
 # id -> (time, tablet)
 SCENES = {
@@ -350,6 +350,7 @@ DEVICE_ENTITIES = {
     "tapo-t315": [f"sensor.{room}_{kind}" for room in ROOMS_TAPO for kind in ("temperature", "humidity")],
     "ruuvi-air": [e for e in ENTITY_OWNER if e.startswith("sensor.dining_air_")],
     "mi-flora": ["plant.monstera", "plant.ficus", "plant.basil"],
+    "m5stack-unit-co2l": [],   # its readings are entities of its node; the demo home has none
 }
 
 

@@ -1,0 +1,62 @@
+# Domosenso component manifest: a Roon Core in Home Assistant (SPEC-049). The players come from the
+# core roon integration; the component adds the volume bridge for zones whose amplifier Roon cannot
+# control, and the field notes.
+id: roon
+version: 0.1.0
+summary: A Roon Core's zones as media players through the core roon integration, with Roon's volume buttons bridged to an amplifier
+description_key: meta.description
+photo: null
+
+devices:
+  requires:
+    - kind: roon-core
+      recommend: [roon-core]
+      count: 1
+      note: "ROCK, Nucleus or Roon Server on a computer or NAS, on the home network"
+  optional:
+    - kind: network-audio-player
+      feature: volume_bridges       # an amplifier with its own media_player behind a fixed-volume Roon zone
+
+host:
+  installs: [container, haos]
+  ha_min: "2026.9"
+
+integrations:
+  - name: roon
+    source: core
+    tested: "roonapi 0.1.6"
+    setup: "Add Roon in Settings > Devices & services (discovered, or the Core's address entered by hand), then enable the Home Assistant extension in the Roon app: Settings > Extensions"
+
+inputs:
+  volume_bridges:
+    type: list
+    default: []
+    example:
+      - {event: event.study_dac_roon_volume, amplifier: media_player.study_amplifier, steps: 1, mute: true}
+    note: "One per zone whose volume control in Roon is set to 'Home Assistant: <zone> roon volume'. steps 1-5 calls per press; mute toggles the amplifier's mute."
+
+assistant:
+  version: 1
+  definition: assistant.yaml
+  bindings: templates/assistant-bindings.yaml.j2
+
+artifacts:
+  templates:
+    - templates/assistant-bindings.yaml.j2
+    - templates/package.yaml.j2   # -> package.yaml: one automation per bridge; {} without bridges
+  ha_packages: []
+  services: []
+
+provides:
+  entities:
+    - {id: "automation.roon_volume_<zone>", stability: stable, note: "one per volume bridge; <zone> is the event id without event. and _roon_volume; mode queued, max 20"}
+  upstream:
+    - {id: "media_player.<zone>", owner: integration}
+    - {id: "event.<zone>_roon_volume", owner: integration}
+
+consumes: []
+
+tested:
+  ha: ["2026.9.2"]
+  homes: 1
+local_only: true

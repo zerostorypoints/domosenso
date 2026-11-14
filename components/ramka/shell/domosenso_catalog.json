@@ -42,6 +42,9 @@
   "remote-access": {
    "page": false
   },
+  "roon": {
+   "page": false
+  },
   "timers": {
    "page": true
   },
@@ -162,6 +165,20 @@
    "page": true
   },
   {
+   "id": "m5stack-unit-co2l",
+   "match": [
+    {
+     "entity_names": [
+      "CO2"
+     ],
+     "integration": "esphome",
+     "note": "inference"
+    }
+   ],
+   "name": "M5Stack Unit CO2L",
+   "page": true
+  },
+  {
    "id": "mi-flora",
    "match": [
     {
@@ -171,6 +188,12 @@
    ],
    "name": "Xiaomi Mi Flora plant sensor",
    "page": true
+  },
+  {
+   "id": "roon-core",
+   "match": [],
+   "name": "Roon Core",
+   "page": false
   },
   {
    "id": "ruuvi-air",

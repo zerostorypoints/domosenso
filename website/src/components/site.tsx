@@ -17,7 +17,7 @@ export function Header() {
       <Link href="/" aria-label="DomoSenso framework home"><Brand/></Link>
       <nav className="desktop-nav" aria-label="Main navigation">
         <Link href="/get-started/">Get started</Link><Link href="/components/">Components</Link>
-        <Link href="/docs/">Docs</Link><Link href="/how-to/">How-to</Link><Link href="/journal/">Journal</Link>
+        <Link href="/devices/">Hardware</Link><Link href="/docs/">Docs</Link><Link href="/how-to/">How-to</Link><Link href="/journal/">Journal</Link>
         <a href={repository}>GitHub <Arrow/></a>
         <RedditLink/>
       </nav>

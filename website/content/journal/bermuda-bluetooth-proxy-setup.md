@@ -4,6 +4,7 @@ title: How to set up a Bermuda Bluetooth proxy for room presence
 summary: Connect Bluetooth proxies, assign their rooms and check Bermuda's area estimates before building presence automations.
 category: updates
 date: '2026-11-03'
+updated: '2026-11-11'
 status: published
 author: DomoSenso
 components:
@@ -34,7 +35,9 @@ explains the supported arrangements.
 ## 1. Connect and name the proxies
 
 Set up your ESP32 devices with ESPHome Bluetooth proxy firmware and add them to Home Assistant
-through the ESPHome integration. Assign each proxy to the Home Assistant area where it is
+through the ESPHome integration. For an Atom Lite, use the
+[tagged package and build steps in the Atom guide](/journal/set-up-m5stack-atom-home-assistant/).
+Assign each proxy to the Home Assistant area where it is
 physically installed. Choose names that make that assignment easy to check later.
 
 ## 2. Select a device in Bermuda
@@ -78,3 +81,15 @@ The [presence guide](/how-to/presence-who-is-home/) explains the framework's roo
 approach and its optional radar hardware. The
 [Bermuda presence component](/components/bermuda-presence/) records the released DomoSenso
 scope. Keep proxy credentials and device identity information in your own home project.
+
+### Prepare an Atom Lite with an AI agent
+
+Open the [DomoSenso repository](https://github.com/zerostorypoints/domosenso) with your agent
+and give it this prompt.
+
+> Verify that my board is an M5Stack Atom Lite and confirm that I want a Bermuda Bluetooth
+> proxy. Read AGENTS.md and the relevant Bermuda Presence instructions in
+> https://github.com/zerostorypoints/domosenso and my home project. Find the released ESPHome
+> package and prepare a device YAML for each room I give you. Keep secrets local and out of
+> chat and Git. Give me the build command and the steps to check the proxies and a room change
+> in Home Assistant. Ask for separate approval before flashing or deploying anything.

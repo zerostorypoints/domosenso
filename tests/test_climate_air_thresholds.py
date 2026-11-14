@@ -51,6 +51,15 @@ def test_air_limit_helpers_only_for_present_readings(tmp_path):
     assert not [k for k in numbers if "pm2_5" in k or "voc" in k or "nox" in k]
 
 
+def test_a_co2_only_room_gets_only_co2_limits(tmp_path):
+    # An M5Stack Unit CO2L gives a room CO2 and nothing else (0.3.1 recommends it).
+    home = {"rooms": [{"id": "bedroom", "name": "Bedroom", "air": {"co2": "sensor.bedroom_node_co2"}}]}
+    numbers = _package(tmp_path, home)["input_number"]
+    assert {"climate_air_co2_fair", "climate_air_co2_poor"} <= set(numbers)
+    assert not [k for k in numbers if "score" in k or "pm2_5" in k or "voc" in k or "nox" in k]
+    assert set(_groups(_seed(tmp_path, home))) == {"air.co2"}
+
+
 def test_humidity_helpers_only_with_a_humidity_sensor(tmp_path):
     home = {"rooms": [{"id": "den", "name": "Den", "climate": {"temperature": "sensor.den_t"}}]}
     numbers = _package(tmp_path, home)["input_number"]

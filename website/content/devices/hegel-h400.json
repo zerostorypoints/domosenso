@@ -3,7 +3,7 @@
   "title": "Hegel",
   "summary": "The integrated amplifier used for the documented audio integration.",
   "sourcePath": "devices/hegel-h400.yaml",
-  "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
+  "sourceCommit": "a87cf1195028af78a2d358fcb8bc2a0212375b1b",
   "components": [
     "media"
   ],

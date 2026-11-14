@@ -3,7 +3,7 @@
   "title": "M5Stack Module CC1101 (868 MHz)",
   "summary": "A radio link to a garage door or gate handset at 868 MHz.",
   "sourcePath": "devices/m5stack-module-cc1101.md",
-  "sourceCommit": "87acd5fbb20f8e6ba0706977941fdaee98482a2b",
+  "sourceCommit": "a87cf1195028af78a2d358fcb8bc2a0212375b1b",
   "components": [
     "gate-remote"
   ],

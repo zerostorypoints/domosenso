@@ -1,0 +1,14 @@
+id: m5stack-unit-co2l
+names: {en: M5Stack Unit CO2L, de: M5Stack Unit CO2L, pl: M5Stack Unit CO2L}
+description_key: meta.devices.m5stack-unit-co2l.description
+does_key: meta.devices.m5stack-unit-co2l.does
+photo: null
+component: ramka
+tested: {homes: 1}  # the maintainer's home: one room's page on the Ramka's air rotation (SPEC-042)
+# M5Stack SKU U104, a Sensirion SCD41 on a Grove cable. It is not a device of its own in Home
+# Assistant: its readings are entities of the ESPHome node it hangs from (an Atom Lite), matched by
+# the CO2 sensor's name in the guide's firmware snippet (inference, not seen on a second node).
+match:
+  - integration: esphome
+    entity_names: ["CO2"]
+    note: inference
