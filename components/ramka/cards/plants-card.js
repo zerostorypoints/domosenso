@@ -97,7 +97,7 @@ class PlantsCard extends HTMLElement {
   _watched(hass) {
     const ids = [this._config.per_page, this._config.page_s, this._config.page].filter((v) => typeof v === "string");
     for (const id of Object.keys(hass.states)) {
-      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days|reading_status)$/.test(id)) ids.push(id);
+      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days|reading_status|illuminance_max_24h)$/.test(id)) ids.push(id);
     }
     return ids.map((id) => hass.states[id]);
   }
@@ -440,6 +440,8 @@ class PlantsCard extends HTMLElement {
     const a = (s && s.attributes) || {};
     const b = this._bands(p);
     const v = Object.fromEntries(GAUGES.map((g) => [g.key, parseFloat(g.value(a))]));
+    const peak = parseFloat(this._hass.states[`sensor.${objectId(p.entity)}_illuminance_max_24h`]?.state);
+    if (Number.isFinite(peak)) v.brightness = peak;
     const m = this._meta(p);
     const readings = this._readingLabels(p);
     if (readings) {

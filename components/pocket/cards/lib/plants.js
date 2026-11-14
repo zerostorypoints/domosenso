@@ -120,7 +120,11 @@ function readPlant(hass, id) {
     readings.push({ reading, entity, value, unit, tone });
   }
   const problem = String(attributes.problem ?? "").toLowerCase();
-  for (const [pattern, reason] of PROBLEMS) if (pattern.test(problem)) reasons.add(reason);
+  const hasDailyPeak = numeric(hass, `sensor.${objectId(id)}_illuminance_max_24h`) != null;
+  for (const [pattern, reason] of PROBLEMS) {
+    if (hasDailyPeak && (reason === "needs_light" || reason === "too_much_light")) continue;
+    if (pattern.test(problem)) reasons.add(reason);
+  }
   const ordered = REASONS.filter((reason) => reasons.has(reason));
   const moisture = readings.find((r) => r.reading === "moisture")?.value;
   let rank = ordered.length ? 2 : 3;

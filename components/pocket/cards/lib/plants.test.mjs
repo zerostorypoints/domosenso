@@ -84,3 +84,13 @@ test("a home without plants, or a hidden one: nothing", () => {
   hass.entities["plant.yucca"] = { entity_id: "plant.yucca", hidden_by: "user" };
   assert.equal(find(plantsOf(hass, config), "plant.yucca"), undefined);
 });
+
+test("a recorded daily peak takes precedence over HA's low-light problem", () => {
+  const hass = plantsHass({
+    "plant.herbs": st("problem", { friendly_name: "Herbs", brightness: 100, max_brightness: 100, problem: "brightness low" }),
+    "sensor.herbs_illuminance_max_24h": st(650),
+  });
+  const herbs = find(plantsOf(hass, config), "plant.herbs");
+  assert.deepEqual(herbs.reasons, []);
+  assert.equal(herbs.readings.find((reading) => reading.reading === "illuminance").tone, "good");
+});

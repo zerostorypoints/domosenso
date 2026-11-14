@@ -442,3 +442,11 @@ test("the list shows moisture age and exposes the other reading ages with values
   dialog.querySelector("button").click();
   assert.equal(card.shadowRoot.querySelector("dialog"), null);
 });
+
+test("light advice and gauge follow the recorded daily peak across HA restarts", () => {
+  const card = makeCard({ plants: [{ ...HEALTHY, brightness: 100, max_brightness: 100 }] });
+  assert.equal(action(card), "Więcej światła");
+  const hass = card._hass;
+  card.hass = { ...hass, states: { ...hass.states, "sensor.p0_illuminance_max_24h": { state: "650.0", attributes: {} } } };
+  assert.equal(action(card), "");
+});
