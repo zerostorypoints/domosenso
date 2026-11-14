@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {BUILTINS,REGISTRY,validateConfig,positions,migrate,place} from './contract.js';
 
 test('built-ins cover every implemented registry widget and fit both grids',()=>{
@@ -25,4 +26,13 @@ test('v1 migration retains order, widgets, locale and durations independently pe
  const c=migrate({version:1,locale:'pl',screens:[{id:'home',title:'Home',widgets:[{id:'clock',type:'clock',size:'small'},{id:'air',type:'measurements',topic:'air',size:'wide'}]}],modes:[{id:'controls',screens:['home'],rotationSeconds:30},{id:'ambient',screens:['home'],rotationSeconds:15},{id:'media',screens:['home'],rotationSeconds:0}]},'Imported');
  validateConfig(c);assert.equal(c.locale,'pl');assert.equal(c.modes[1].screens[0].duration,15);assert.equal(c.modes[0].screens[0].widgets[1].type,'air');
  c.modes[0].screens[0].title='Changed';assert.equal(c.modes[1].screens[0].title,'Home');
+});
+
+test('HiFiSync widget schema accepts the same options as the registry',()=>{
+ const schema=JSON.parse(readFileSync(new URL('./schema.json',import.meta.url),'utf8'));
+ const variants=schema.properties.modes.items.properties.screens.items.properties.widgets.items.oneOf;
+ for(const type of ['hifisync-system','hifisync-room']){
+  const options=variants.find(variant=>variant.properties.type.const===type).properties.options;
+  assert.deepEqual(Object.keys(options.properties),Object.keys(REGISTRY[type].options));
+ }
 });

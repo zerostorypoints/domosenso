@@ -25,9 +25,9 @@ export const CSS=`
 .hifi-nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:6px 12px 12px}
 .hifi-nav button:first-child{justify-self:start}.hifi-nav button:last-child{justify-self:end}
 .hifi-components,.hifi-rack{margin:.6em 0;padding-inline-start:1.4em}
-.hifi-components li{padding:.32em 0}.hifi-components strong{margin-inline-start:.6em}
+.hifi-components li{padding:.18em 0}.hifi-component-group h4{margin:.75em 0 .25em}.hifi-component-group .hifi-components{margin:.25em 0}
 .hifi-stale{color:var(--raised);font-size:.8em}.hifi-dimensions,.hifi-track{color:var(--muted);margin:.4em 0}
 .hifisync-room svg{display:block;width:100%;height:min(68cqh,520px);margin:auto}
 .hifi-outline{fill:#242a30;stroke:#aeb9c1;stroke-width:2px;vector-effect:non-scaling-stroke}
-.hifi-point{fill:var(--accent)}.hifi-listening{fill:#e6ab71}.hifi-subwoofer{fill:#b39dde}
+.hifi-point{fill:var(--accent)}.hifi-point-label{fill:#101214;font-weight:700;pointer-events:none}.hifi-listening{fill:#e6ab71}.hifi-subwoofer{fill:#b39dde}
 `;

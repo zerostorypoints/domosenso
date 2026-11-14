@@ -96,12 +96,18 @@ test('Room renders the dimensions without inventing speaker positions', () => {
   assert.equal(el.shadowRoot.querySelectorAll('[data-placement]').length, 0);
 });
 
-test('an expired private projection falls back locally while the Room screen is open', () => {
+test('an open Room hides itself on local expiry while disconnected', context => {
+  const now = Date.now();
+  const clock = context.mock.method(Date, 'now', () => now);
   const s = hiFiSnapshot('hifisync-room');
-  s.data.hifisync.validUntil = new Date(Date.now() - 1000).toISOString();
+  s.connected = false;
   const el = mount(s);
+  assert.match(text(el), /Listening room/);
+  clock.mock.mockImplementation(() => now + 60_001);
+  el._tick();
   assert.doesNotMatch(text(el), /Listening room/);
-  assert.match(text(el), /Demo song/);
+  assert.ok(el.shadowRoot.querySelector('[data-kind=media]'));
+  assert.equal(button(el, 'hifisync-next'), null);
 });
 
 test('the Room screen cannot show a projection without a room', () => {
@@ -119,4 +125,37 @@ test('stored zero-degree orientation points away from the front wall', () => {
   const direction = el.shadowRoot.querySelector('svg[data-room-plan] line');
   assert.equal(direction.getAttribute('x2'), '1');
   assert.ok(Number(direction.getAttribute('y2')) > 1);
+});
+
+test('System groups components by role even when the snapshot order interleaves them', () => {
+  const s = hiFiSnapshot();
+  s.data.hifisync.snapshot.system.components.push(
+    {id: 'streamer', label: 'Network streamer', role: 'source', quantity: 1},
+    {id: 'power', label: 'Power amplifier', role: 'amplifier', quantity: 1},
+  );
+  const el = mount(s);
+  const groups = [...el.shadowRoot.querySelectorAll('[data-component-role]')];
+  assert.deepEqual(groups.map(group => group.dataset.componentRole), ['amplifier', 'source']);
+  assert.match(groups[0].textContent, /Reference amplifier.*Power amplifier/);
+});
+
+test('Room marks label left and right speaker positions by visible keys', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.data.hifisync.snapshot.room.placements = [
+    {role: 'left', xM: 1, yM: 1, rotationDeg: null},
+    {role: 'right', xM: 2, yM: 0.8, rotationDeg: null},
+  ];
+  const el = mount(s);
+  assert.deepEqual(
+    [...el.shadowRoot.querySelectorAll('[data-placement-label]')].map(label => label.textContent),
+    ['L', 'R'],
+  );
+  assert.match(text(el), /L · Left speaker.*R · Right speaker/);
+});
+
+test('an unconditionally placed room widget still requires its negotiated capability', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.config.modes.find(mode => mode.id === 'media').screens.at(-1).requires = [];
+  s.capabilities = s.capabilities.filter(capability => capability !== 'hifisync-room');
+  assert.doesNotMatch(text(mount(s)), /Listening room/);
 });

@@ -1536,18 +1536,7 @@
                           "options": {
                             "type": "object",
                             "additionalProperties": false,
-                            "properties": {
-                              "interval": {
-                                "type": "integer",
-                                "minimum": 5,
-                                "maximum": 120
-                              },
-                              "count": {
-                                "type": "integer",
-                                "minimum": 1,
-                                "maximum": 30
-                              }
-                            },
+                            "properties": {},
                             "required": []
                           }
                         },
@@ -1635,18 +1624,7 @@
                           "options": {
                             "type": "object",
                             "additionalProperties": false,
-                            "properties": {
-                              "interval": {
-                                "type": "integer",
-                                "minimum": 5,
-                                "maximum": 120
-                              },
-                              "count": {
-                                "type": "integer",
-                                "minimum": 1,
-                                "maximum": 30
-                              }
-                            },
+                            "properties": {},
                             "required": []
                           }
                         },
