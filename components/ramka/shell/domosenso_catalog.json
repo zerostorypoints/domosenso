@@ -42,6 +42,9 @@
   "remote-access": {
    "page": false
   },
+  "roon": {
+   "page": false
+  },
   "timers": {
    "page": true
   },
@@ -185,6 +188,12 @@
    ],
    "name": "Xiaomi Mi Flora plant sensor",
    "page": true
+  },
+  {
+   "id": "roon-core",
+   "match": [],
+   "name": "Roon Core",
+   "page": false
   },
   {
    "id": "ruuvi-air",
