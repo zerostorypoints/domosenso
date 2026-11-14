@@ -80,12 +80,6 @@ export function sensorOf(hass, id, reading) {
   return hass?.states?.[own] ? own : null;
 }
 
-// The day's brightest light, or null when nothing tells it.
-function brightest(hass, id, attributes) {
-  const peak = numeric(hass, `sensor.${objectId(id)}_illuminance_max_24h`);
-  return peak ?? attrNumber(attributes.max_brightness);
-}
-
 function readPlant(hass, id) {
   const attributes = hass.states[id].attributes ?? {};
   const bands = { ...DEFAULT_BANDS, ...(attributes.domosenso_bands ?? {}) };
@@ -93,6 +87,12 @@ function readPlant(hass, id) {
   // and fertiliser are left out (not shown as missing) and the plant is judged on light and warmth.
   const hydro = attributes.domosenso_medium === "hydroculture";
   const reasons = new Set();
+  const dailyPeak = numeric(hass, `sensor.${objectId(id)}_illuminance_max_24h`);
+  const peak = dailyPeak ?? attrNumber(attributes.max_brightness);
+  if (peak != null) {
+    if (bands.min_brightness != null && peak < bands.min_brightness) reasons.add("needs_light");
+    else if (bands.max_brightness != null && peak > bands.max_brightness) reasons.add("too_much_light");
+  }
   const readings = [];
   for (const reading of READINGS) {
     if (hydro && (reading === "moisture" || reading === "conductivity")) continue;
@@ -104,9 +104,6 @@ function readPlant(hass, id) {
     let tone = null;
     const key = BAND_KEYS[reading];
     if (value != null && reading === "illuminance") {
-      const peak = brightest(hass, id, attributes);
-      if (peak != null && bands.min_brightness != null && peak < bands.min_brightness) reasons.add("needs_light");
-      else if (peak != null && bands.max_brightness != null && peak > bands.max_brightness) reasons.add("too_much_light");
       if (peak != null) tone = reasons.has("needs_light") || reasons.has("too_much_light") ? "fair" : "good";
     } else if (value != null && reading === "battery") {
       tone = value < LOW_BATTERY ? "fair" : "good";
@@ -127,6 +124,7 @@ function readPlant(hass, id) {
   }
   const problem = String(attributes.problem ?? "").toLowerCase();
   for (const [pattern, reason] of PROBLEMS) {
+    if (dailyPeak != null && (reason === "needs_light" || reason === "too_much_light")) continue;
     if (hydro && SOIL_REASONS.has(reason)) continue;
     if (pattern.test(problem)) reasons.add(reason);
   }

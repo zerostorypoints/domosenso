@@ -443,6 +443,14 @@ test("the list shows moisture age and exposes the other reading ages with values
   assert.equal(card.shadowRoot.querySelector("dialog"), null);
 });
 
+test("light advice and gauge follow the recorded daily peak across HA restarts", () => {
+  const card = makeCard({ plants: [{ ...HEALTHY, brightness: 100, max_brightness: 100 }] });
+  assert.equal(action(card), "Więcej światła");
+  const hass = card._hass;
+  card.hass = { ...hass, states: { ...hass.states, "sensor.p0_illuminance_max_24h": { state: "650.0", attributes: {} } } };
+  assert.equal(action(card), "");
+});
+
 // SPEC-048: a hydroculture plant's sensor reads only the pebbles; it is judged on light and
 // temperature and never asked to be watered or fertilised.
 const HYDRO = { domosenso_medium: "hydroculture", moisture: 0, conductivity: 0,
