@@ -11,9 +11,10 @@ const symbol=n=>'__'+n.replaceAll(/[^a-z]/g,'_');
 let bundle='// Generated portable Frame UI. Source lives in packages/frame-studio.\n';
 for(const [file,exports] of modules){let code=read(file);code=code.replace(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/([^'"]+)['"];?/g,(_,names,name)=>`const {${names}}=${symbol(name)};`).replace(/export\s*\{[^}]+\};?/g,'').replace(/export (const|function|class) /g,'$1 ');if(/^import /m.test(code)||/^export /m.test(code))throw Error('Unsupported source export '+file);bundle+=`const ${symbol(file)}=(()=>{\n${code}\nreturn {${exports.join(',')}};})();\n`;}
 bundle+='export const {FrameUI,validateSnapshot,UI_VERSION}=__frame_ui_js;\n';
+const version=JSON.parse(read('package.json')).version;
 const files={'frame-ui.js':bundle,'ha-card.js':read('ha-card.js'),'schema.json':read('schema.json')},sha=x=>createHash('sha256').update(x).digest('hex');
-const manifest={name:'@domosenso/frame-ui',version:'0.2.3',contract:2,sourceRevision:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),files:Object.fromEntries(Object.entries(files).map(([n,v])=>[n,sha(v)]))};manifest.contentHash=sha(JSON.stringify(manifest.files));manifest.sourceDirty=!!execFileSync('git',['status','--porcelain','--','packages/frame-studio','tools/build_frame_studio.mjs','tools/build_hifisync_drawings.mjs','tools/hifisync_drawings.tsx'],{cwd:root,encoding:'utf8'}).trim();
-const out=process.argv[2]?resolve(process.argv[2]):resolve(root,'integrations/domosenso_frame/custom_components/domosenso_frame/ui/0.2.3');mkdirSync(out,{recursive:true});
+const manifest={name:'@domosenso/frame-ui',version,contract:2,sourceRevision:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),files:Object.fromEntries(Object.entries(files).map(([n,v])=>[n,sha(v)]))};manifest.contentHash=sha(JSON.stringify(manifest.files));manifest.sourceDirty=!!execFileSync('git',['status','--porcelain','--','packages/frame-studio','tools/build_frame_studio.mjs','tools/build_hifisync_drawings.mjs','tools/hifisync_drawings.tsx'],{cwd:root,encoding:'utf8'}).trim();
+const out=process.argv[2]?resolve(process.argv[2]):resolve(root,'integrations/domosenso_frame/custom_components/domosenso_frame/ui',version);mkdirSync(out,{recursive:true});
 for(const [n,v]of Object.entries(files))writeFileSync(resolve(out,n),v);
 for(const n of ['registry.json','templates.json','registry.js','contract.js','studio-model.js','studio.js'])writeFileSync(resolve(out,n),read(n));
-writeFileSync(resolve(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');console.log('Frame UI 0.2.3 '+manifest.contentHash);
+writeFileSync(resolve(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');console.log('Frame UI '+version+' '+manifest.contentHash);
