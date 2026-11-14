@@ -2,6 +2,12 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
+## Unreleased: plants in hydroculture (SPEC-048)
+
+The Plants page leaves moisture and fertiliser out for a plant with `domosenso_medium:
+hydroculture`, never calls it thirsty, and its fine row reads "Fine · hydroculture, water by the
+gauge". Nothing to do.
+
 ## Unreleased: the Wi-Fi survey (SPEC-045)
 
 - New inputs `wifi_survey` (needs `floorplan`), `wifi_ssid`, `wifi_scans`. With `wifi_survey: true` the

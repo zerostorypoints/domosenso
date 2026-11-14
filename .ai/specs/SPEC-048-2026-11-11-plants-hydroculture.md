@@ -1,6 +1,6 @@
 # SPEC-048 — Plants in hydroculture
 
-**Status:** draft, 2026-11-11
+**Status:** approved 2026-11-12 (draft 2026-11-11)
 
 **Source:** the first home with six Mi Flora sensors (2026-11-11): four of its plants grow in
 hydroculture and read 0 to 9 % moisture and 0 µS/cm conductivity, which the package took for six

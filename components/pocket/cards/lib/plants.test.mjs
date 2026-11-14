@@ -103,3 +103,16 @@ test("a recorded low daily peak still gives light advice when the live sensor is
   });
   assert.deepEqual(find(plantsOf(hass, config), "plant.herbs").reasons, ["needs_light"]);
 });
+
+test("hydroculture (SPEC-048): no moisture or fertiliser reading, never thirsty, judged on light", () => {
+  const hass = plantsHass();
+  const id = Object.keys(hass.states).find((e) => e.startsWith("plant.") && find(plantsOf(hass, config), e)?.reasons.includes("thirsty"));
+  assert.ok(id, "the demo has a thirsty plant");
+  hass.states[id].attributes = { ...hass.states[id].attributes, domosenso_medium: "hydroculture" };
+  const plant = find(plantsOf(hass, config), id);
+  assert.equal(plant.hydro, true);
+  assert.ok(!plant.reasons.includes("thirsty") && !plant.reasons.includes("too_wet"));
+  assert.ok(!plant.readings.some((r) => r.reading === "moisture" || r.reading === "conductivity"));
+  assert.ok(plant.readings.some((r) => r.reading === "illuminance"));
+  assert.notEqual(plant.rank, 0);
+});

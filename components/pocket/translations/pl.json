@@ -500,7 +500,8 @@
           "needs_fertiliser": "Potrzebuje nawozu",
           "too_much_fertiliser": "Za dużo nawozu",
           "low_battery": "Słaba bateria"
-        }
+        },
+        "hydroculture": "W porządku · hydrokultura, podlewaj według wskaźnika"
       },
       "sections": {
         "label": "{name}: {head}, {status}",

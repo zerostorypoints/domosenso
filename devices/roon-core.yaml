@@ -1,0 +1,10 @@
+id: roon-core
+names: {en: Roon Core, de: Roon Core, pl: Roon Core}
+description_key: meta.devices.roon-core.description
+does_key: meta.devices.roon-core.does
+photo: null
+component: roon
+tested: {homes: 1}  # the maintainer's home: ROCK, Roon Server 2.74 (build 1719)
+# SPEC-049. No device rule: the hub device and the zones differ only in the case of their
+# manufacturer (Roonlabs, RoonLabs) and rules ignore case. The kind roon-core finds the Core by its
+# config entry instead.
