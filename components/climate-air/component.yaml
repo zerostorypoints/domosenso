@@ -1,8 +1,9 @@
 # Domosenso component manifest: room temperature and humidity from Tapo sensors, air quality from
-# a Ruuvi Air; from 0.2.0 a package with whole-home figures (SPEC-004).
+# a Ruuvi Air or CO2 alone from an M5Stack Unit CO2L; from 0.2.0 a package with whole-home figures
+# (SPEC-004).
 id: climate-air
-version: 0.3.0
-summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air
+version: 0.3.1
+summary: Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air, or CO2 alone from an M5Stack Unit CO2L
 description_key: meta.description
 photo: null
 uses_home: optional           # rooms with climate / air in the home inputs get comfort and air-limit helpers
@@ -15,11 +16,11 @@ devices:
       via: "a Tapo hub (tested: H200), which the sensors report to"
   optional:
     - kind: air-quality-sensor
-      recommend: [ruuvi-air]
-      feature: air                  # the Ramka's air page
+      recommend: [ruuvi-air, m5stack-unit-co2l]
+      feature: air                  # the Ramka's air page; the CO2L gives the `co2` reading only
     - kind: ble-proxy
       recommend: [m5stack-atom-lite]
-      via: bermuda-presence         # the Ruuvi Air is Bluetooth; one proxy within range is enough
+      via: bermuda-presence         # the Ruuvi Air is Bluetooth; one proxy within range is enough. A CO2L hangs from its own Atom Lite
       feature: air
 
 host:
@@ -29,6 +30,7 @@ host:
 integrations:
   - {name: tplink, source: core, setup: "the TP-Link account entered in Home Assistant's UI; the hub is polled on the home network. Reserve the hub's address in the router"}
   - {name: ruuvitag_ble, source: core, setup: "discovered through a Bluetooth proxy; enable the air-quality score entity by hand, it is off by default"}
+  - {name: esphome, source: core, setup: "only for a Unit CO2L: the Atom Lite it hangs from, flashed and adopted as the device guide m5stack-unit-co2l describes"}
   - {name: group, source: core}
   - {name: template, source: core}
 
