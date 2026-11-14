@@ -1,4 +1,4 @@
-# Frame Studio — shared UI 0.2.2, contract 2
+# Frame Studio — shared UI 0.2.4, contract 2
 
 The catalog owns this portable renderer, widget registry and template editor. The same generated
 renderer runs in Home Assistant and the Android app. It has no HA globals or network access.
@@ -148,3 +148,7 @@ The checked-in drawing module lets the Studio build run independently.
 The bridge provides only bounded catalog and layout data. Older bridges retain
 the text system view. Rooms without enough saved geometry retain the simple
 plan. Presets and equipment selection stay local to the displayed drawing.
+
+In the 0.2.4 HiFiSync template, the runtime cycles eligible music pages every
+15 seconds. The display sends its existing navigation actions on horizontal
+swipes outside the drawing and on the arrow keys when the Music view has focus.

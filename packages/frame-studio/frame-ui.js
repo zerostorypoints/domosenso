@@ -103,7 +103,19 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
  constructor(){super();this.attachShadow({mode:'open'});this._paused=false;this._portraitOverride=null;this._autoPortrait=false;this._shieldUntil=0;this._suppressClick=0;}
  connectedCallback(){if(globalThis.ResizeObserver){this._observer=new ResizeObserver(entries=>{const r=entries[0]?.contentRect;if(r&&r.width&&r.height){const portrait=r.height>r.width;if(portrait!==this._autoPortrait){this._autoPortrait=portrait;this.render();}}});this._observer.observe(this);}this._timer=setInterval(()=>this._tick(),1000);this.render();}
  disconnectedCallback(){clearInterval(this._timer);this._observer?.disconnect();this._removeHiFiDrawing();}
- set snapshot(v){validateSnapshot(v);if(v.mode==='controls'&&(this._snapshot?.mode!=='controls'||this._snapshot?.screen!==v.screen))this._shieldUntil=Date.now()+700;this._snapshot=structuredClone(v);this._preview=null;this.render();}
+ set snapshot(v){
+  validateSnapshot(v);
+  const previous=this._snapshot,gesture=this._pointer,incoming=v.data.hifisync;
+  // Replacing a touched element can lose touchend on the Android WebView.
+  const sameMusicPage=gesture?.musicPages&&Date.now()-gesture.started<=1500&&v.connected&&!v.off&&!v.readOnly&&
+   v.mode===previous.mode&&v.screen===previous.screen&&incoming&&
+   incoming.snapshot.revision===previous.data.hifisync?.snapshot.revision&&Date.now()<Date.parse(incoming.validUntil)&&
+   v.capabilities.join()===previous.capabilities.join();
+  if(v.mode==='controls'&&(previous?.mode!=='controls'||previous?.screen!==v.screen))this._shieldUntil=Date.now()+700;
+  this._snapshot=structuredClone(v);
+  this._preview=null;
+  if(!sameMusicPage){this._pointer=null;this.render();}
+ }
  get snapshot(){return this._snapshot;}
  set paused(v){this._paused=!!v;this.render();}
  get paused(){return this._paused;}
@@ -174,16 +186,8 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
    return this._snapshot.capabilities.includes(capability);
   });
  }
- _hiFiNavigation(screen,mode){
-  const hasExtra=mode.screens.some(candidate=>candidate.requires.some(capability=>capability.startsWith('hifisync-'))&&this._musicScreenAvailable(candidate));
-  if(!hasExtra)return;
-  const nav=node('nav','hifi-nav');
-  nav.setAttribute('aria-label',this.t('navigation'));
-  const title=screen.id==='hifisync-system'?'hifisync-system':screen.id==='hifisync-room'?'hifisync-room':'media';
-  nav.append(this._button('previous',{kind:'navigation',action:'previous'},null,'hifisync-previous'),
-   node('span',null,this.t(title)),
-   this._button('next',{kind:'navigation',action:'next'},null,'hifisync-next'));
-  return nav;
+ _hasMusicPages(mode){
+  return mode.id==='media'&&mode.screens.some(screen=>screen.requires.some(capability=>capability.startsWith('hifisync-'))&&this._musicScreenAvailable(screen));
  }
  _removeHiFiDrawing(){
   this._drawing?.dispose();
@@ -196,7 +200,7 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
    this._removeHiFiDrawing();
    const host=node('div','hifisync-drawing');
    host.dataset.hifisyncDrawing=type;
-   for(const event of ['click','pointerdown','pointerup'])host.addEventListener(event,event=>event.stopPropagation());
+   host.addEventListener('click',event=>event.stopPropagation());
    this._drawing={key,host,dispose:mountHiFiDrawing(host,type,model,locale,key=>this.t(key))};
   }
   this._drawing.used=true;
@@ -282,8 +286,57 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
    card.append(node('p','hifi-dimensions',key.join('   /   ')));
   }
  }
- _tick(){if(!this._snapshot)return;const blocked=this._blocked();if(blocked!==this._lastBlocked||this._lastHiFiProjection!==this._hiFiProjection()){this.render();return;}for(const n of this.shadowRoot.querySelectorAll('[data-clock]'))n.textContent=this._date(Date.now(),{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});for(const n of this.shadowRoot.querySelectorAll('[data-date]'))n.textContent=this._date(Date.now(),{weekday:'long',day:'numeric',month:'long'});const m=this._snapshot.data.media;if(m?.state==='playing'&&finite(m.position)&&finite(m.duration)){const position=Math.min(m.duration,m.position+Math.max(0,Date.now()-Date.parse(this._snapshot.fetchedAt))/1000);for(const n of this.shadowRoot.querySelectorAll('[data-progress]'))n.value=position;for(const n of this.shadowRoot.querySelectorAll('[data-position]'))n.textContent=stamp(position);}}
- _interactions(shell){shell.onclick=e=>{if(Date.now()<this._suppressClick||e.target.closest('button,input,select,label'))return;const s=this._preview||this._snapshot;if(['ambient','media','controls'].includes(s.mode)||s.screen==='calendar'){if(this._emit({kind:'navigation',action:'controls'})){this._shieldUntil=Date.now()+700;this.render();}}};shell.onpointerdown=e=>{this._pointer={x:e.clientX,y:e.clientY,id:e.pointerId,control:!!e.target.closest('button,input,select,label')};};shell.onpointercancel=()=>{this._pointer=null;};shell.onpointerup=e=>{const p=this._pointer;this._pointer=null;if(!p||p.control||p.id!==e.pointerId)return;const dy=e.clientY-p.y,dx=e.clientX-p.x;if(Math.abs(dy)<55||Math.abs(dy)<=Math.abs(dx)*1.3)return;this._suppressClick=Date.now()+700;const s=this._preview||this._snapshot,calendar=this._snapshot.config.modes.find(m=>m.id===s.mode)?.screens.find(screen=>screen.id===s.screen)?.widgets.some(w=>w.type==='calendar'),action=s.mode==='ambient'&&!calendar?(dy<0?'next':'previous'):(dy<0?'ambient':'media');if(this._emit({kind:'navigation',action})){this._shieldUntil=Date.now()+700;this.render();}};}
- render(){const root=this.shadowRoot,focus=root.activeElement?.dataset.key,scrolls=new Map(Array.from(root.querySelectorAll('[data-widget]'),el=>[el.dataset.widget,el.scrollTop]));if(this._drawing)this._drawing.used=false;root.replaceChildren(node('style',null,CSS));const s=this._snapshot;if(!s){root.append(node('div','shell',this.t('loading')));return;}this._lastBlocked=this._blocked();this._lastHiFiProjection=this._hiFiProjection();if(s.off){this._removeHiFiDrawing();root.append(node('main','sleep'));return;}const current=this._preview||s,mode=s.config.modes.find(m=>m.id===current.mode),selected=mode.screens.find(x=>x.id===current.screen),screen=mode.id==='media'&&selected.requires.some(capability=>capability.startsWith('hifisync-'))&&!this._musicScreenAvailable(selected)?mode.screens.find(candidate=>!candidate.requires.length):selected,shell=node('main',`shell ${s.config.theme}`),grid=node('div','grid');shell.lang=s.config.locale;grid.dataset.rows=this.portrait?'24':'12';grid.setAttribute('aria-label',screen.title);const ps=positions(screen,this.portrait);screen.widgets.forEach((w,i)=>{const card=node('section',`widget ${w.type}`);card.dataset.widget=w.id;card.dataset.kind=w.type;const p=ps[i];card.style.gridColumn=`${p.x+1} / span ${p.w}`;card.style.gridRow=`${p.y+1} / span ${p.h}`;card.setAttribute('aria-label',this.t(w.type));card.append(node('h2',null,w.type==='history'?`${this.t(w.options?.metric||'temperature')} · ${this.t('history')}`:this.t(w.type)));const renderers={clock:()=>this._clock(card),weather:()=>this._weather(card,w.options||{}),rooms:()=>this._rooms(card),air:()=>this._air(card),history:()=>this._chart(card,s.data.history?.[w.options?.metric||'temperature'],w.options?.days),status:()=>this._status(card),plants:()=>this._plants(card),media:()=>this._media(card),mains:()=>this._mains(card),'media-controls':()=>this._mediaControls(card),lights:()=>this._lights(card),covers:()=>this._covers(card),navigation:()=>this._navigation(card,w.options||{}),calendar:()=>this._calendar(card),photos:()=>this._photos(card),'hifisync-system':()=>this._hiFiSystem(card,mode.id),'hifisync-room':()=>this._hiFiRoom(card,mode.id)};if(REGISTRY[w.type])renderers[w.type]();grid.append(card);});shell.append(grid);const musicNavigation=mode.id==='media'&&this._hiFiNavigation(screen,mode);if(musicNavigation)shell.append(musicNavigation);if(this._offline()){const n=node('div','notice',this.t('offline'));n.setAttribute('role','status');shell.append(n);}if(s.wind){const n=node('div','notice wind',this.t('wind'));n.setAttribute('role','status');shell.append(n);}if(s.readOnly||this._preview||this._paused)shell.append(node('div','read-only',this.t(this._paused?'paused':'preview')));this._interactions(shell);root.append(shell);if(this._drawing&&!this._drawing.used)this._removeHiFiDrawing();for(const el of root.querySelectorAll('[data-widget]'))el.scrollTop=scrolls.get(el.dataset.widget)||0;if(focus)for(const el of root.querySelectorAll('[data-key]'))if(el.dataset.key===focus)el.focus();this._tick();}
+ _tick(){if(!this._snapshot)return;const blocked=this._blocked();if(blocked!==this._lastBlocked||this._lastHiFiProjection!==Boolean(this._hiFiProjection())){this.render();return;}for(const n of this.shadowRoot.querySelectorAll('[data-clock]'))n.textContent=this._date(Date.now(),{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});for(const n of this.shadowRoot.querySelectorAll('[data-date]'))n.textContent=this._date(Date.now(),{weekday:'long',day:'numeric',month:'long'});const m=this._snapshot.data.media;if(m?.state==='playing'&&finite(m.position)&&finite(m.duration)){const position=Math.min(m.duration,m.position+Math.max(0,Date.now()-Date.parse(this._snapshot.fetchedAt))/1000);for(const n of this.shadowRoot.querySelectorAll('[data-progress]'))n.value=position;for(const n of this.shadowRoot.querySelectorAll('[data-position]'))n.textContent=stamp(position);}}
+ _interactions(shell,musicPages){
+  const interactive='button,input,select,label,.hifisync-drawing svg';
+  const navigate=action=>this._emit({kind:'navigation',action});
+  shell.onclick=event=>{
+   if(Date.now()<this._suppressClick||event.target.closest(interactive))return;
+   const s=this._preview||this._snapshot;
+   if((['ambient','media','controls'].includes(s.mode)||s.screen==='calendar')&&navigate('controls')){
+    this._shieldUntil=Date.now()+700;this.render();
+   }
+  };
+  const begin=(target,{clientX:x,clientY:y},id)=>{
+   this._pointer={x,y,id,started:Date.now(),musicPages,control:!!target.closest(interactive)};
+  };
+  const end=({clientX:x,clientY:y},id)=>{
+   const p=this._pointer;
+   if(!p||p.id!==id)return;
+   this._pointer=null;
+   if(p.control)return;
+   const now=Date.now(),dx=x-p.x,dy=y-p.y,absX=Math.abs(dx),absY=Math.abs(dy);
+   if(musicPages&&absX>=80&&absX>=absY*1.5&&now-p.started<=1500){
+    if(now>=this._suppressClick&&navigate(dx<0?'next':'previous'))this._suppressClick=now+1000;
+    return;
+   }
+   if(absY<55||absY<=absX*1.3)return;
+   this._suppressClick=now+700;
+   const s=this._preview||this._snapshot;
+   const calendar=this._snapshot.config.modes.find(m=>m.id===s.mode)?.screens.find(screen=>screen.id===s.screen)?.widgets.some(w=>w.type==='calendar');
+   const action=s.mode==='ambient'&&!calendar?(dy<0?'next':'previous'):(dy<0?'ambient':'media');
+   if(navigate(action)){this._shieldUntil=now+700;this.render();}
+  };
+  shell.onpointerdown=event=>{if(event.pointerType!=='touch'&&event.button<=0)begin(event.target,event,event.pointerId);};
+  shell.onpointerup=event=>{if(event.pointerType!=='touch')end(event,event.pointerId);};
+  shell.onpointercancel=event=>{if(event.pointerType!=='touch')this._pointer=null;};
+  // WebViews can cancel pointers during a vertical pan while still delivering touchend.
+  shell.addEventListener('touchstart',event=>{
+   const point=event.changedTouches[0];
+   if(event.touches.length===1&&point)begin(event.target,point,point.identifier);
+   else this._pointer=null;
+  });
+  shell.addEventListener('touchend',event=>{for(const point of event.changedTouches)end(point,point.identifier);});
+  shell.addEventListener('touchcancel',()=>{this._pointer=null;});
+  if(musicPages){
+   shell.tabIndex=0;
+   shell.onkeydown=event=>{
+    if(event.target!==shell||!['ArrowLeft','ArrowRight'].includes(event.key))return;
+    if(navigate(event.key==='ArrowLeft'?'previous':'next'))event.preventDefault();
+   };
+  }
+ }
+
+ render(){const root=this.shadowRoot,focus=root.activeElement?.dataset.key,focusedMusic=root.activeElement?.classList.contains('music-pages'),scrolls=new Map(Array.from(root.querySelectorAll('[data-widget]'),el=>[el.dataset.widget,el.scrollTop]));if(this._drawing)this._drawing.used=false;root.replaceChildren(node('style',null,CSS));const s=this._snapshot;if(!s){root.append(node('div','shell',this.t('loading')));return;}this._lastBlocked=this._blocked();this._lastHiFiProjection=Boolean(this._hiFiProjection());if(s.off){this._removeHiFiDrawing();root.append(node('main','sleep'));return;}const current=this._preview||s,mode=s.config.modes.find(m=>m.id===current.mode),selected=mode.screens.find(x=>x.id===current.screen),screen=mode.id==='media'&&selected.requires.some(capability=>capability.startsWith('hifisync-'))&&!this._musicScreenAvailable(selected)?mode.screens.find(candidate=>!candidate.requires.length):selected,shell=node('main',`shell ${s.config.theme}`),grid=node('div','grid');shell.lang=s.config.locale;grid.dataset.rows=this.portrait?'24':'12';grid.setAttribute('aria-label',screen.title);const ps=positions(screen,this.portrait);screen.widgets.forEach((w,i)=>{const card=node('section',`widget ${w.type}`);card.dataset.widget=w.id;card.dataset.kind=w.type;const p=ps[i];card.style.gridColumn=`${p.x+1} / span ${p.w}`;card.style.gridRow=`${p.y+1} / span ${p.h}`;card.setAttribute('aria-label',this.t(w.type));card.append(node('h2',null,w.type==='history'?`${this.t(w.options?.metric||'temperature')} · ${this.t('history')}`:this.t(w.type)));const renderers={clock:()=>this._clock(card),weather:()=>this._weather(card,w.options||{}),rooms:()=>this._rooms(card),air:()=>this._air(card),history:()=>this._chart(card,s.data.history?.[w.options?.metric||'temperature'],w.options?.days),status:()=>this._status(card),plants:()=>this._plants(card),media:()=>this._media(card),mains:()=>this._mains(card),'media-controls':()=>this._mediaControls(card),lights:()=>this._lights(card),covers:()=>this._covers(card),navigation:()=>this._navigation(card,w.options||{}),calendar:()=>this._calendar(card),photos:()=>this._photos(card),'hifisync-system':()=>this._hiFiSystem(card,mode.id),'hifisync-room':()=>this._hiFiRoom(card,mode.id)};if(REGISTRY[w.type])renderers[w.type]();grid.append(card);});shell.append(grid);const musicPages=this._hasMusicPages(mode);if(musicPages)shell.classList.add('music-pages');if(this._offline()){const n=node('div','notice',this.t('offline'));n.setAttribute('role','status');shell.append(n);}if(s.wind){const n=node('div','notice wind',this.t('wind'));n.setAttribute('role','status');shell.append(n);}if(s.readOnly||this._preview||this._paused)shell.append(node('div','read-only',this.t(this._paused?'paused':'preview')));this._interactions(shell,musicPages);root.append(shell);if(focusedMusic&&musicPages)shell.focus();if(this._drawing&&!this._drawing.used)this._removeHiFiDrawing();for(const el of root.querySelectorAll('[data-widget]'))el.scrollTop=scrolls.get(el.dataset.widget)||0;if(focus)for(const el of root.querySelectorAll('[data-key]'))if(el.dataset.key===focus)el.focus();this._tick();}
 }
 if(globalThis.customElements&&!customElements.get('domosenso-studio-frame'))customElements.define('domosenso-studio-frame',FrameUI);

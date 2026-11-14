@@ -79,14 +79,73 @@ function hiFiSnapshot(screenId = 'hifisync-system') {
   return s;
 }
 
-test('System renders equipment and local track metadata with touch navigation', () => {
+function swipe(target, dx, dy, pointerType = 'mouse') {
+  const options = {bubbles:true, pointerId:1, pointerType};
+  target.dispatchEvent(new PointerEvent('pointerdown', {...options, clientX:200, clientY:200}));
+  target.dispatchEvent(new PointerEvent('pointerup', {...options, clientX:200+dx, clientY:200+dy}));
+}
+
+test('the pilot uses the same fifteen-second duration on all three music pages', () => {
+  const screens = BUILTINS.hifisync.modes.find(mode => mode.id === 'media').screens;
+  assert.deepEqual(screens.map(({id,duration}) => [id,duration]), [
+    ['music',15], ['hifisync-system',15], ['hifisync-room',15],
+  ]);
+});
+
+test('System renders equipment and track with a left swipe in place of page buttons', () => {
   const el = mount(hiFiSnapshot());
   assert.match(text(el), /Reference amplifier/);
   assert.match(text(el), /Demo song/);
+  assert.equal(Boolean(el.shadowRoot.querySelector('.hifi-nav')), false);
   const actions = [];
   el.addEventListener('frame-action', event => actions.push(event.detail));
-  button(el, 'hifisync-next').click();
-  assert.deepEqual(actions, [{kind: 'navigation', action: 'next'}]);
+  swipe(el.shadowRoot.querySelector('h3'), -100, 8);
+  assert.deepEqual(actions, [{kind:'navigation',action:'next'}]);
+});
+
+test('right swipe on Room sends previous and vertical swipe still leaves Music', () => {
+  for (const [dx,dy,action] of [[100,0,'previous'],[0,-100,'ambient']]) {
+    const el=mount(hiFiSnapshot('hifisync-room')),actions=[];
+    el.addEventListener('frame-action', event => actions.push(event.detail));
+    swipe(el.shadowRoot.querySelector('h3'),dx,dy);
+    assert.deepEqual(actions,[{kind:'navigation',action}]);
+    el.remove();
+  }
+});
+
+test('Music background ignores short, diagonal and drawing-owned gestures', () => {
+  const s=hiFiSnapshot('hifisync-room');
+  Object.assign(s.data.hifisync.snapshot.room, {heightM:2.7,placements:[{role:'left',xM:1,yM:1,rotationDeg:0}]});
+  const el=mount(s),actions=[];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  const header=el.shadowRoot.querySelector('h3');
+  swipe(header,-78,0);
+  swipe(header,-100,75);
+  const drawing=el.shadowRoot.querySelector('.hifisync-drawing');
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  drawing.append(svg);
+  swipe(svg,-100,0);
+  assert.deepEqual(actions,[]);
+});
+
+test('without a HiFiSync projection, horizontal gestures leave Now Playing alone', () => {
+  const s=hiFiSnapshot('hifisync-room');
+  delete s.data.hifisync;
+  const el=mount(s),actions=[];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  swipe(el.shadowRoot.querySelector('.media-info'),-110,0);
+  assert.deepEqual(actions,[]);
+  assert.match(text(el),/Demo song/);
+});
+
+test('an in-progress Music gesture cannot delay a missing private projection', () => {
+  const s=hiFiSnapshot('hifisync-room'),el=mount(s);
+  const heading=el.shadowRoot.querySelector('h3');
+  heading.dispatchEvent(new PointerEvent('pointerdown',{pointerType:'mouse',pointerId:1,clientX:200,clientY:200,bubbles:true}));
+  delete s.data.hifisync;
+  el.snapshot=s;
+  assert.doesNotMatch(text(el),/Listening room/);
+  assert.match(text(el),/Demo song/);
 });
 
 test('Room renders the dimensions without inventing speaker positions', () => {

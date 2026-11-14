@@ -39,7 +39,7 @@ async def fixture_request(request):
     expiry = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     if system_id is None:
         return web.json_response({'expiresAt':expiry,'systems':[
-            {'id': key,'name': value['system']['name'],'visibility': 'private','roomName':value['room']['name']}
+            {'id': key,'name': value['system']['name'],'visibility': 'private','roomName':value['room']['name'] if value['room'] else None}
             for key,value in data['systems'].items()]})
     if system_id not in data['systems']:
         return web.json_response({'error': 'unavailable'}, status=404)
@@ -147,9 +147,11 @@ def prepare(config, bridge, connector):
         'homeassistant':{'name':'Pilot Fixture','latitude':0,'longitude':0,'elevation':0,'unit_system':'metric','time_zone':'UTC'},
         'frontend':{}, 'mobile_app':{}, 'config':{},'person':{},'lovelace':{},
         'pilot_fixture':{},'media_player':[{'platform':'pilot_player'}],
+        'input_boolean':{'pilot_music_rotation_paused':{'initial':False}},
         'domosenso_frame':{'endpoints':[{
             'id':'pilot','name':'Pilot','dashboard':'/lovelace','hifisync':True,
-            'display':{'locale':'en'},'studio':{'media':{'entity':'media_player.pilot_player'}}
+            'display':{'locale':'en'},'studio':{'media':{'entity':'media_player.pilot_player'},
+                'runtime':{'paused':'input_boolean.pilot_music_rotation_paused'}}
         }]},
     }))
     subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-sha256','-days','1','-nodes',
@@ -158,7 +160,7 @@ def prepare(config, bridge, connector):
     support_path=config/'hifisync-fixture.json'
     data={'token':FIXTURE_TOKEN,'systems':{
         SYSTEM:snapshot(SYSTEM,'Private System','Private Room'),
-        REPLACEMENT:snapshot(REPLACEMENT,'Replacement System','Replacement Room')}}
+        REPLACEMENT:{**snapshot(REPLACEMENT,'Replacement System','Unused'),'room':None}}}
     support_path.write_text(json.dumps(data))
     return support_path, data
 
@@ -218,11 +220,22 @@ def run(config, container, args):
         legacy = frame.call(domain+'studio_display',offset=0)
         assert 'hifisync' not in legacy['data']
         assert all(not s['id'].startswith('hifisync') for m in legacy['config']['modes'] for s in m['screens'])
-        frame.call(domain+'studio_action',action={'kind':'navigation','action':'next'})
-        assert detect()['screen']=='hifisync-system'
-        frame.call(domain+'studio_action',action={'kind':'navigation','action':'next'})
+        for screen in ('hifisync-system','hifisync-room','music'):
+            poll(lambda:detect()['screen']==screen,timeout=19)
+        print('Paired HA WebSocket: all three pages rotate and wrap. Legacy projection retained.',flush=True)
+        api(url,'/api/services/input_boolean/turn_on',{'entity_id':'input_boolean.pilot_music_rotation_paused'},token)
+        assert detect()['screen']=='music'
+        frame.call(domain+'studio_action',action={'kind':'navigation','action':'previous'})
         assert detect()['screen']=='hifisync-room'
-        print('Paired HA WebSocket: Now Playing → System → Room. Old clients receive the legacy layout.', flush=True)
+        pause_until=time.monotonic()+16
+        while time.monotonic()<pause_until:
+            assert detect()['screen']=='hifisync-room'
+            time.sleep(.7)
+        frame.call(domain+'studio_action',action={'kind':'navigation','action':'next'})
+        assert detect()['screen']=='music'
+        frame.call(domain+'studio_action',action={'kind':'navigation','action':'previous'})
+        assert detect()['screen']=='hifisync-room'
+        print('Manual steps wrap in both directions and keep the mapped rotation pause.',flush=True)
         data['systems'].pop(SYSTEM)
         support_path.write_text(json.dumps(data))
         missing=poll(lambda:(value if not (value:=detect())['data'].get('hifisync') else None),timeout=35 if args.accelerate_fixture else 335)
@@ -237,7 +250,13 @@ def run(config, container, args):
         assert replacement['type'] in ('abort','create_entry')
         selected=poll(lambda:(value if (value:=detect())['data'].get('hifisync') else None))
         assert selected['data']['hifisync']['snapshot']['system']['id']==REPLACEMENT
-        print('Replacement system selected through HA with the same token.', flush=True)
+        assert selected['screen']=='music'
+        assert 'hifisync-room' not in selected['capabilities']
+        frame.call(domain+'studio_action',action={'kind':'navigation','action':'previous'})
+        assert detect()['screen']=='hifisync-system'
+        frame.call(domain+'studio_action',action={'kind':'navigation','action':'next'})
+        assert detect()['screen']=='music'
+        print('Replacement system selected with the same token. Room is skipped.',flush=True)
         admin.call(domain+'revoke',deviceId=pending['deviceId'])
         frame.call(domain+'studio_display',ok=False,offset=0,hifisyncVersion=1)
         print('Revoked paired client can no longer read Studio projections.', flush=True)

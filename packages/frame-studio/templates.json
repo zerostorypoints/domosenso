@@ -718,7 +718,7 @@
           {
             "id": "music",
             "title": "Music",
-            "duration": 0,
+            "duration": 15,
             "requires": [],
             "widgets": [
               {
@@ -769,7 +769,7 @@
           {
             "id": "hifisync-system",
             "title": "System",
-            "duration": 0,
+            "duration": 15,
             "requires": [
               "hifisync-system"
             ],
@@ -789,7 +789,7 @@
           {
             "id": "hifisync-room",
             "title": "Room",
-            "duration": 0,
+            "duration": 15,
             "requires": [
               "hifisync-room"
             ],

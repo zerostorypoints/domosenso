@@ -1,6 +1,6 @@
 import {REGISTRY,BUILTINS} from './registry.js';
 export {REGISTRY,BUILTINS};
-export const UI_VERSION='0.2.2';
+export const UI_VERSION='0.2.4';
 export const STATES=['controls','ambient','media'];
 const caps=['temperature','air','weather','status','rooms','plants','media','mains','history','calendar','photos','lights','covers','hifisync-system','hifisync-room'];
 const fail=()=>{throw new Error('Invalid template configuration');};

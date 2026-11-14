@@ -6,7 +6,7 @@
 
 ## Goal
 
-During playback, a paired Frame tablet in Ramka / Studio presents three music screens: Now Playing, System and Room. Now Playing opens first. The user can step through the screens and return using touch controls. Home Assistant provides playback state. HiFiSync provides the saved equipment and listening-room layout. The local player remains usable throughout setup and failures.
+During playback, a paired Frame tablet in Ramka / Studio presents three music screens: Now Playing, System and Room. Now Playing opens first. The user can swipe through the screens. Home Assistant provides playback state. HiFiSync provides the saved equipment and listening-room layout. The local player remains usable throughout setup and failures.
 
 ## Approach
 
@@ -39,7 +39,7 @@ The HA backend owns refresh and credential validation. The pilot keeps a bounded
 
 Require a paired Frame tablet with the Studio renderer, a fixture or live HA `media_player` and the optional HiFiSync integration enabled. The Frame HA bridge uses only the local provider for the same player bound to the Studio endpoint. For tablet reads, use the existing authenticated HA WebSocket and Frame pairing proof. Resolve the endpoint from that proof and the player from that endpoint's effective server-side mapping. The caller supplies neither identifier to select the data. Check the active user, paired grant, endpoint opt-in and HA read permission for the resolved player on each response, including cache hits and after asynchronous work. An administrator enables the feature for the intended endpoint and applies the template. Any preview of live private data requires an authorized HA administrator and the same endpoint and player checks. The renderer and app receive only bounded presentation data. The contract negotiates the optional extension so clients that do not opt in retain the previous response shape and cannot receive the new widget types or data.
 
-Use the existing Music mode and screen navigation. Keep Now Playing unconditional, first on entering a playback session and available regardless of HiFiSync. Show System and Room only during the mapped player's playback session and when their projections are available. The extra screens are user-selected and do not rotate automatically. Reuse the existing debounced music-view source for brief buffering and pause transitions where mapped. Sustained pause, idle or unavailable playback ends automatic Music mode. An explicitly opened idle Music view continues to offer existing playback controls with the two extra screens hidden. If the snapshot expires or access is lost during playback, select Now Playing on the next local display update, independent of the next cloud refresh. If the HA display transport itself goes offline, the client must stop presenting the private projection when its validity expires. Treat the server-provided projection validity as an upper bound.
+Use the existing Music mode and screen navigation. Keep Now Playing unconditional, first on entering a playback session and available regardless of HiFiSync. Show System and Room only during the mapped player's playback session and when their projections are available. The HiFiSync pilot template rotates its three pages every 15 seconds by default. Swipe left for the next eligible page and right for the previous one, wrapping in both directions. A manual step gives the selected page its full duration and preserves any rotation pause. Studio uses the existing HA-owned playlist clock. Older applied templates keep their saved durations until explicitly updated. Reuse the existing debounced music-view source for brief buffering and pause transitions where mapped. Sustained pause, idle or unavailable playback ends automatic Music mode. An explicitly opened idle Music view continues to offer existing playback controls with the two extra screens hidden. If the snapshot expires or access is lost during playback, select Now Playing on the next local display update, independent of the next cloud refresh. If the HA display transport itself goes offline, the client must stop presenting the private projection when its validity expires. Treat the server-provided projection validity as an upper bound.
 
 - **System** shows the name and equipment grouped by role, with rack arrangement when saved. The track strip uses the current HA playback summary when available.
 - **Room** shows a readable plan view and dimensions, with speakers, subwoofers and listening position only where stored geometry supports them. Dimensions-only rooms render as a dimensioned outline. The two screens use the Studio locale and support touch and keyboard navigation. Render from normalized data using the offline Studio bundle.
@@ -77,3 +77,17 @@ drawing metadata extends the current scoped contract. Frame requests the
 extension explicitly, and the bridge omits it for earlier clients. Persisted
 room placement and available catalog dimensions are the source of the drawings.
 The current text and plan renderers remain available for partial data.
+
+## Amendment 2026-11-14: Music pages follow Ramka air pages
+
+The maintainer requested the existing Now Playing layout first, followed by
+System and Room. The music scene uses the same paging gesture as Ramka's air
+quality views. Page buttons are removed. Horizontal gestures begin outside
+inputs, other buttons and the interactive drawing. The Room heading and the
+space beside the preset controls accept page gestures. Dragging the isometric
+canvas changes the drawing, and its existing presets remain interactive.
+Existing vertical gestures and native settings retain their behavior.
+If Room becomes unavailable, the cycle skips it. If HiFiSync becomes
+unavailable, Now Playing remains visible with the current track. The optional
+Studio mapping to the existing Ramka pause helper freezes automatic paging
+and permits manual paging without resuming it.

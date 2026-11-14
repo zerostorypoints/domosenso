@@ -6,7 +6,7 @@ The pilot adds System and Room to the Frame tablet's Music mode for one Home Ass
 
 - A HiFiSync environment running the pilot grant migration and web API.
 - Home Assistant 2026.9.2 or newer. Install the pilot builds of both the HiFiSync and DomoSenso Frame custom integrations in that instance.
-- Frame with the pilot Studio renderer (0.2.1) and a registered Home Assistant `media_player`.
+- Frame with the pilot Studio renderer (0.2.4) and a registered Home Assistant `media_player`.
 - A HiFiSync account with at least one active personal system. The deletion acceptance scenario requires two allowed systems.
 
 The administrator can use the same steps with HA Container or a standalone tablet backend. Install the components in the HA instance that the chosen Frame endpoint actually uses. Use a separate HA instance and synthetic systems for destructive tests.
@@ -17,7 +17,9 @@ The administrator can use the same steps with HA Container or a standalone table
 2. Install `custom_components/hifisync` and `custom_components/domosenso_frame` from the matching pilot revisions, then restart HA. Follow each integration's README for its installation mechanism. Back up the existing HA configuration before upgrading an installation.
 3. In HiFiSync **Account settings → Home Assistant**, create an installation grant and explicitly select the systems that installation may read. Copy the displayed token into HA **Settings → Devices & services → Add integration → HiFiSync**. Select one system and the registered player. For a duplicated amplifier, select the intended streaming entity.
 4. Open the updated Frame, pair it to the intended HA endpoint, and select **Ramka**. In the DomoSenso Frame administration panel enable HiFiSync for that endpoint. In **Template Studio**, confirm that its Media source maps the same player. Save or apply the `Ramka Classic · HiFiSync` template while the compatible paired Frame is online. Save a separate copy when customizing it.
-5. Start playback. The first view is **Now Playing**. The buttons for the previous and next screens expose **System** and, if geometry is available, **Room**. Saved geometry is drawn at its declared dimensions. HiFiSync settings and credentials remain on the server and in HA config entry data.
+5. Start playback. The first view is **Now Playing**. Studio gives each eligible music page 15 seconds. Swipe left for the next page or right for the previous one. On **Room**, swipe on the heading or beside the preset controls. Drag the drawing itself to rotate it. Saved geometry is drawn at its declared dimensions. HiFiSync settings and credentials remain on the server and in HA config entry data.
+
+To share Ramka’s existing rotation pause, map the endpoint’s `studio.runtime.paused` to its existing `input_boolean.<prefix>_paused`. While paused, a swipe still changes the page. Reapply a saved pilot template explicitly to adopt the new durations, or set the three durations in your own copy.
 
 An older Frame keeps its compatible Studio template projection. If the token is revoked, replace it through HA reauthentication. If the selected system is deleted or removed from the grant, use **Reconfigure** for the HiFiSync integration to select another system. Playback stays on the same HA player.
 
@@ -27,7 +29,7 @@ Disable HiFiSync for the endpoint in DomoSenso Frame, then apply the previously 
 
 ## Verification
 
-The reusable acceptance boundary is a fresh HA 2026.9.2 instance, a controlled HTTPS HiFiSync fixture, a registered fixture player and an authenticated Frame WebSocket pairing. Verify an unpaired request is denied, a legacy client receives the previous projection, and a negotiated client can move through all three views. While Room is active, delete the scoped fixture system. After authoritative revalidation, the endpoint must return Now Playing with its track still present. Reconfigure to another allowed system with the same token, then revoke pairing and confirm the private projection is unavailable.
+The reusable acceptance boundary is a fresh HA 2026.9.2 instance, a controlled HTTPS HiFiSync fixture, a registered fixture player and an authenticated Frame WebSocket pairing. Verify an unpaired request is denied, a legacy client receives the previous projection, and a negotiated client rotates through all three views. Verify manual steps, wraparound, pause and the missing-room path. While Room is active, delete the scoped fixture system. After authoritative revalidation, the endpoint must return Now Playing with its track still present. Reconfigure to another allowed system with the same token, then revoke pairing and confirm the private projection is unavailable.
 
 Run the Docker-backed acceptance from the catalog with Docker, OpenSSL and uv installed. Supply checkouts of the pilot bridge and connector:
 
