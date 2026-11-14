@@ -3,14 +3,23 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## Unreleased: plants in hydroculture (SPEC-048)
+## 0.20.0: Plant recommendations, list layout and hydroculture
+
+The plant list fits the name, room and recommendations inside each row on a full tablet page.
+The number of plants that need attention sits next to the page counter. Light recommendations
+use the recorded 24-hour maximum when available, falling back to Home Assistant's plant peak
+when the installation has no usable statistic.
+
+Existing plants, thresholds and history need no migration.
+
+### Plants in hydroculture (SPEC-048)
 
 The plants card judges a plant with the plants component's `domosenso_medium: hydroculture` (or
 `medium: hydroculture` on a `plants:` list item) on light and temperature: no water or fertiliser
 bar, no moisture line, and "Hydroculture · water by the gauge" in place of watered / water in.
 Nothing to do; a home without such plants sees no change.
 
-## Unreleased: the music strip's palette (SPEC-043)
+### The music strip's palette (SPEC-043)
 
 With `music_visual`, the music sensor sub-view shows audio-sensor's music strip while the selected
 sensor has one, and `input_boolean.<prefix>_music_strip_palette_sync` (off) pushes the music palette
