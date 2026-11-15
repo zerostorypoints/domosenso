@@ -52,7 +52,7 @@ def test_air_limit_helpers_only_for_present_readings(tmp_path):
 
 
 def test_a_co2_only_room_gets_only_co2_limits(tmp_path):
-    # An M5Stack Unit CO2L gives a room CO2 and nothing else (0.3.1 recommends it).
+    # An M5Stack Unit CO2L gives a room CO2 and nothing else (0.4.0 recommends it).
     home = {"rooms": [{"id": "bedroom", "name": "Bedroom", "air": {"co2": "sensor.bedroom_node_co2"}}]}
     numbers = _package(tmp_path, home)["input_number"]
     assert {"climate_air_co2_fair", "climate_air_co2_poor"} <= set(numbers)
