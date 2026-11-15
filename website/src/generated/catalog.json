@@ -3,15 +3,16 @@
   "components": [
     {
       "id": "audio-sensor",
-      "version": "0.4.0",
-      "sourceTag": "audio-sensor/0.4.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
-      "summary": "A room sound sensor on an M5Stack Atom EchoS3R, with sound level and a third-octave spectrum",
+      "version": "0.5.0",
+      "sourceTag": "audio-sensor/0.5.0",
+      "sourceCommit": "10b863238b9d89208a60a6e3d9bd959d47a0f083",
+      "summary": "Room sound level and third-octave spectrum on Atom EchoS3R or ESP32-S3 with IM73D122",
       "requirements": [
         {
           "kind": "sound-sensor",
           "recommend": [
-            "m5stack-atom-echos3r"
+            "m5stack-atom-echos3r",
+            "esp32-s3-im73d122"
           ],
           "count": "1 or more",
           "power": "5 V USB"
@@ -34,7 +35,16 @@
           "source": "core"
         }
       ],
-      "optionalRequirements": [],
+      "optionalRequirements": [
+        {
+          "kind": "led-strip",
+          "recommend": [
+            "m5stack-led-strip-sk6812"
+          ],
+          "count": "0 or 1 per Atom board",
+          "power": "5 V: the board's Grove port up to about 30 LEDs, else its own supply"
+        }
+      ],
       "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
@@ -52,17 +62,18 @@
       },
       "localOnly": true,
       "limitations": [
-        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+        "The ESP32-S3 IM73D122 assembly has offline bench evidence for sound response, 31 spectrum bands and its OLED. No deployed-home or calibrated SPL/20 Hz accuracy claim is made.",
+        "Actual Home Assistant metadata and direct octave-entity updates on the new PDM assembly still need runtime acceptance."
       ],
       "inputs": [
         {
           "name": "sensors",
-          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, entities: map, online?: entity_id}]",
+          "type": "list[{room: slug, area: area_name, music: bool, id_prefix: slug, name: str, friendly_name: str, mic_gain: str, board?: enum, oled?: bool, entities: map, online?: entity_id, strip?: map}]",
           "required": true
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/audio-sensor",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/audio-sensor/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/10b863238b9d89208a60a6e3d9bd959d47a0f083/components/audio-sensor",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/10b863238b9d89208a60a6e3d9bd959d47a0f083/components/audio-sensor/UPGRADE.md"
     },
     {
       "id": "awnings",
